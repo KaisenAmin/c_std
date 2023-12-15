@@ -248,7 +248,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 9: use 'data' "Returns pointer to the underlying array serving as element storage"
+## Example 9: use 'data' Returns pointer to the underlying array serving as element storage
 ```c
 Vector *intVector = vector_create(sizeof(int));
 
@@ -269,7 +269,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 10: 'begin', 'end' "Return pointer to the first and last element"
+## Example 10: 'begin', 'end' Return pointer to the first and last element
 
 ```c
 Vector *intVector = vector_create(sizeof(int));
@@ -287,7 +287,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 11: 'cbegin', 'cend' "Return const pointer to first and last element"
+## Example 11: 'cbegin', 'cend' Return const pointer to first and last element
 
 ```c 
 Vector *intVector = vector_create(sizeof(int));
@@ -305,7 +305,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 12 : 'crbegin', 'crend' "Return reverse read-only iteration over the vector"
+## Example 12 : 'crbegin', 'crend' Return reverse read-only iteration over the vector
 ```c
 Vector *intVector = vector_create(sizeof(int));
 
@@ -499,7 +499,7 @@ stringVector->deallocate(stringVector);
 
 ```
 
-## Example 20 : how to use String object in Vector
+## Example 20 : how to use 'String' object in Vector
 
 ```c
 
