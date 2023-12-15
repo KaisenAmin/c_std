@@ -165,3 +165,57 @@ myString->clear(myString);
 myString->deallocate(myString);
 
 ```
+
+
+## Example 7 : 'copy' how to copy some part of String 
+
+```c
+
+String *myString = string_create("Hello, World!");
+
+// Copy example
+char buffer[50];
+size_t copied = myString->copy(myString, buffer, 7, 5);
+printf("Copied '%s' (%zu characters)\n", buffer, copied);
+
+myString->deallocate(myString);
+
+```
+
+
+## Example 8 : 'find' find string in String and return position
+
+```c
+
+String *myString = string_create("Hello, World!");
+
+// Find example
+int findPos = myString->find(myString, "World", 0);
+printf("Found 'World' at position: %d\n", findPos);
+
+myString->deallocate(myString);
+
+```
+
+## Example 9 : how to use 'rfind', 'find_first_of', 'find_last_of'
+
+```c
+
+String *myString = string_create("Hello, World!");
+
+// rfind example
+int rfindPos = myString->rfind(myString, "o,", myString->length(myString) - 1);
+printf("Last 'o' found at position: %d\n", rfindPos);
+
+int findFirstOfPos = myString->find_first_of(myString, "World", 0);
+printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
+
+// find_last_of example
+int findLastOfPos = myString->find_last_of(myString, "World", myString->length(myString) - 1);
+printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
+
+// Deallocate and clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```

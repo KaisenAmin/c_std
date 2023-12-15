@@ -57,61 +57,6 @@ bool conditionToRemove(void *value) {
 
 int main(int argc, char** argv)
 {
-
-    String *myString = string_create("Hello World");
-
-    // Get the last character
-    char lastChar = *(char*)myString->back(myString);
-
-    printf("Last character : %c\n", lastChar);
-    // its just syntax !!!
-    *(char*)myString->back(myString) = 'a';
-
-    printf("Wowww: %c\n", *(char*)myString->back(myString));
-
-    // Get the first character
-    char firstChar = *(char*)myString->front(myString);
-    printf("First character: %c\n", firstChar);
-    printf("Max size is %zu\n", myString->max_size(myString));
-    
-    // Deallocate and clean up
-    myString->clear(myString);
-    myString->deallocate(myString);
-
-
-    // String *myString = string_create("Hello, World!");
-
-    // // Copy example
-    // char buffer[50];
-    // size_t copied = myString->copy(myString, buffer, 7, 5);
-    // printf("Copied '%s' (%zu characters)\n", buffer, copied);
-
-    // // Find example
-    // int findPos = myString->find(myString, "World", 0);
-    // printf("Found 'World' at position: %d\n", findPos);
-
-    // // Deallocate and clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-    
-
-    // String *myString = string_create("Hello, World!");
-
-    // // rfind example
-    // int rfindPos = myString->rfind(myString, "o,", myString->length(myString) - 1);
-    // printf("Last 'o' found at position: %d\n", rfindPos);
-
-    // int findFirstOfPos = myString->find_first_of(myString, "World", 0);
-    // printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
-
-    // // find_last_of example
-    // int findLastOfPos = myString->find_last_of(myString, "World", myString->length(myString) - 1);
-    // printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
-
-    // // Deallocate and clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-
     // String *myString = string_create("Hello, World!");
 
     // // find_first_not_of example
