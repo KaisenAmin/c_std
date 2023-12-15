@@ -274,10 +274,11 @@ array2D->deallocate(array2D);
 
 ```
 
-
 ## Example 10 : Use String object in Array 
 
 ```c
+
+#include "string/string.h"
 
 const size_t numStrings = 3; 
 Array* stringArray = array_create(sizeof(String*), numStrings);

@@ -57,48 +57,22 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    const size_t numStrings = 3; // Number of strings in the array
-    Array* stringArray = array_create(sizeof(String*), numStrings);
+    Queue* myQueue = queue_create(sizeof(int));
 
-    // Initialize each String in the Array
-    for (size_t i = 0; i < numStrings; ++i) {
-        String* str = string_create("Initial Text");
-        stringArray->set(stringArray, i, &str);
+    if (!myQueue) 
+    {
+        fprintf(stderr, "Failed to create queue.\n");
+        return EXIT_FAILURE;
     }
 
-    // Example manipulation: Append text to each string
-    for (size_t i = 0; i < numStrings; ++i) {
-        String** strPtr = (String**)stringArray->at(stringArray, i);
-        String* str = *strPtr;
-        str->append(str, " - Appended Text");
-        printf("String %zu: %s\n", i, str->c_str(str));
-    }
-
-    // Clean up: Deallocate each String and the Array
-    for (size_t i = 0; i < numStrings; ++i) {
-        String** strPtr = (String**)stringArray->at(stringArray, i);
-        String* str = *strPtr;
-        str->deallocate(str);
-    }
-    stringArray->deallocate(stringArray);
-
-    // Queue* myQueue = queue_create(sizeof(int));
-
-    // if (!myQueue) 
-    // {
-    //     fprintf(stderr, "Failed to create queue.\n");
-    //     return EXIT_FAILURE;
-    // }
-
-    // // Push some integers onto the queue
-    // int values[] = {10, 20, 30, 40, 50};
-    // for (int i = 0; i < 5; ++i) 
-    // {
-    //     myQueue->push(myQueue, &values[i]);
-    // }
-
-    // // Print the size of the queue
-    // printf("Queue size: %zu\n", myQueue->size(myQueue));
+    // Push some integers onto the queue
+    int values[] = {10, 20, 30, 40, 50};
+    for (int i = 0; i < 5; ++i) 
+        myQueue->push(myQueue, &values[i]);
+    
+    // Print the size of the queue
+    printf("Queue size: %zu\n", myQueue->size(myQueue));
+    myQueue->deallocate(myQueue);
 
     // // Check if the queue is empty
     // printf("Is the queue empty? %s\n", myQueue->empty(myQueue) ? "Yes" : "No");
