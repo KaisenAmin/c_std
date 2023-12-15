@@ -58,14 +58,14 @@ int main(int argc, char** argv)
 {
 
 
-    // // Pop an element from the queue
-    // myQueue->pop(myQueue);
-    // front = myQueue->front(myQueue);
+    // Pop an element from the queue
+    myQueue->pop(myQueue);
+    front = myQueue->front(myQueue);
 
-    // if (front) 
-    //     printf("New front element after pop: %d\n", *front);
+    if (front) 
+        printf("New front element after pop: %d\n", *front);
 
-    // myQueue->deallocate(myQueue);
+    myQueue->deallocate(myQueue);
     
 
     // Queue* myQueue1 = queue_create(sizeof(int));

@@ -67,7 +67,7 @@ myQueue->deallocate(myQueue);
 
 ```
 
-## Example 32 : 'front' and 'back' get ref to first and last element
+## Example 3 : 'front' and 'back' get ref to first and last element
 
 ```c
 Queue* myQueue = queue_create(sizeof(int));
@@ -95,6 +95,32 @@ if (front && back)
     *(int*)myQueue->back(myQueue) = 15236;
     printf("Back element After change: %d\n", *(int*)myQueue->back(myQueue));
 }
+
+myQueue->deallocate(myQueue);
+
+```
+
+## Example 4 : 'pop' element
+
+```c
+Queue* myQueue = queue_create(sizeof(int));
+
+if (!myQueue) 
+{
+    fprintf(stderr, "Failed to create queue.\n");
+    return EXIT_FAILURE;
+}
+
+// Push some integers onto the queue
+int values[] = {10, 20, 30, 40, 50};
+for (int i = 0; i < 5; ++i) 
+    myQueue->push(myQueue, &values[i]);
+
+myQueue->pop(myQueue);
+front = myQueue->front(myQueue);
+
+if (front) 
+    printf("New front element after pop: %d\n", *front);
 
 myQueue->deallocate(myQueue);
 
