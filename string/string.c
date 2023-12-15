@@ -44,8 +44,8 @@ static const char* string_cend_impl(String* str);
 static const char* string_crbegin_impl(String* str);
 static const char* string_crend_impl(String* str);
 static const char string_at_impl(String* str, size_t index);
-static const char string_back_impl(String* str);
-static const char string_front_impl(String* str);
+static char* string_back_impl(String* str);
+static char* string_front_impl(String* str);
 
 String* string_create(const char* initialStr) 
 {
@@ -435,21 +435,22 @@ static char string_at_impl(String* str, size_t index)
     return str->dataStr[index];
 }
 
-const char string_back_impl(String *str) 
+static char* string_back_impl(String *str) 
 {
     if (str == NULL || str->size == 0) 
-        return '\0'; 
+        return NULL; 
     
-    return str->dataStr[str->size - 1];
+    return &str->dataStr[str->size - 1];
 }
 
-const char string_front_impl(String *str) 
+static char* string_front_impl(String *str) 
 {
     if (str == NULL || str->size == 0) 
-        return '\0';  // Return null character for empty or null string
+        return NULL;  
     
-    return str->dataStr[0];
+    return &str->dataStr[0];
 }
+
 
 static size_t string_length_impl(String* str) 
 {

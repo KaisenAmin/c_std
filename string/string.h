@@ -54,8 +54,8 @@ struct String
     const char* (*crbegin)(String* str);
     const char* (*crend)(String* str);
     const char (*at)(String* str, size_t index);
-    const char (*back)(String* str);
-    const char (*front)(String* str);
+    char* (*back)(String* str);
+    char* (*front)(String* str);
 };
 
 String* string_create(const char* initialStr);

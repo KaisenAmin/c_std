@@ -58,6 +58,26 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
+    String *myString = string_create("Hello World");
+
+    // Get the last character
+    char lastChar = *(char*)myString->back(myString);
+
+    printf("Last character : %c\n", lastChar);
+    // its just syntax !!!
+    *(char*)myString->back(myString) = 'a';
+
+    printf("Wowww: %c\n", *(char*)myString->back(myString));
+
+    // Get the first character
+    char firstChar = *(char*)myString->front(myString);
+    printf("First character: %c\n", firstChar);
+    printf("Max size is %zu\n", myString->max_size(myString));
+    
+    // Deallocate and clean up
+    myString->clear(myString);
+    myString->deallocate(myString);
+
 
     // String *myString = string_create("Hello, World!");
 
