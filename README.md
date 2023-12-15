@@ -17,6 +17,7 @@ The project is organized into several subdirectories, each representing a differ
 - `stack`: Implements a stack akin to `std::stack`.
 - `string`: Implements a basic string class that mimics `std::string`.
 - `vector`: Implements a dynamic array similar to `std::vector`.
+- `priority_queue` : Implements a priority_queue based on `std::priority_queue`
 
 Each module comes with a `.c` source file and a `.h` header file, along with a `README.md` file that provides information on how to use that specific module.
 
