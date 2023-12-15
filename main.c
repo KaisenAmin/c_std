@@ -57,17 +57,21 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    /// Array
+    Array* intArray = array_create(sizeof(int), 5);
 
-    // Array* intArray = array_create(sizeof(int), 5);
+    if (intArray == NULL) 
+    {
+        printf("Failed to create array.\n");
+        return 1;
+    }
 
-    // if (intArray == NULL) {
-    //     printf("Failed to create array.\n");
-    //     return 1;
-    // }
+    int valueToFill = 42;
+    intArray->fill(intArray, &valueToFill);
 
-    // int valueToFill = 42;
-    // intArray->fill(intArray, &valueToFill);
+    for (int i = 0; i < intArray->size(intArray); i++)
+        printf("Number is %d\n", *(int*)intArray->at(intArray, i));
+    
+    intArray->deallocate(intArray);
 
     // printf("Array elements:\n");
     // for (size_t i = 0; i < intArray->size(intArray); ++i) 
