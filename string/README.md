@@ -166,7 +166,6 @@ myString->deallocate(myString);
 
 ```
 
-
 ## Example 7 : 'copy' how to copy some part of String 
 
 ```c
@@ -181,7 +180,6 @@ printf("Copied '%s' (%zu characters)\n", buffer, copied);
 myString->deallocate(myString);
 
 ```
-
 
 ## Example 8 : 'find' find string in String and return position
 
@@ -215,6 +213,55 @@ int findLastOfPos = myString->find_last_of(myString, "World", myString->length(m
 printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
 
 // Deallocate and clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```
+
+## Example 10 : 'find_first_not_of', 'find_last_not_of'
+
+```c
+
+String *myString = string_create("Hello, World!");
+
+// find_first_not_of example
+int firstNotOfPos = myString->find_first_not_of(myString, "Hello", 0);
+printf("First position not matching 'Hello': %d\n", firstNotOfPos);
+
+// find_last_not_of example
+int lastNotOfPos = myString->find_last_not_of(myString, "World", myString->length(myString) - 1);
+printf("Last position not matching 'World': %d\n", lastNotOfPos);
+
+myString->deallocate(myString);
+
+```
+
+## Example 11 : 'data' return pointer to String sequence 
+
+```c
+
+String *myString = string_create("Hello, World!");
+    
+// Data example
+const char *data = myString->data(myString);
+printf("Data: %s\n", data);
+
+// Deallocate and clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```
+
+
+## Example 12 : 'begin', 'end' return iterator pointer from begin and end of String sequence
+
+```c
+
+String *myString = string_create("Hello amin");
+
+for (char* it = myString->begin(myString); it != myString->end(myString); it++)
+    printf("%c", *it);
+    
 myString->clear(myString);
 myString->deallocate(myString);
 

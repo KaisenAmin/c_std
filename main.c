@@ -4,7 +4,6 @@
 #include "array/array.h"
 #include "queue/queue.h"
 #include "priority_queue/priority_queue.h"
-// #include "map/map.h"
 #include "list/list.h"
 #include "forward_list/forward_list.h"
 
@@ -57,33 +56,14 @@ bool conditionToRemove(void *value) {
 
 int main(int argc, char** argv)
 {
-    // String *myString = string_create("Hello, World!");
 
-    // // find_first_not_of example
-    // int firstNotOfPos = myString->find_first_not_of(myString, "Hello", 0);
-    // printf("First position not matching 'Hello': %d\n", firstNotOfPos);
+    String *myString = string_create("Hello amin");
 
-    // // find_last_not_of example
-    // int lastNotOfPos = myString->find_last_not_of(myString, "World", myString->length(myString) - 1);
-    // printf("Last position not matching 'World': %d\n", lastNotOfPos);
-
-    // // Data example
-    // const char *data = myString->data(myString);
-    // printf("Data: %s\n", data);
-
-    // // Deallocate and clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-
-    // String *myString = string_create("Hello amin");
-
-    // for (char* it = myString->begin(myString); it != myString->end(myString); it++)
-    // {
-    //     printf("%c", *it);
-    // }
-
-    // myString->clear(myString);
-    // myString->deallocate(myString);
+    for (char* it = myString->begin(myString); it != myString->end(myString); it++)
+        printf("%c", *it);
+    
+    myString->clear(myString);
+    myString->deallocate(myString);
 
     // String *myString = string_create("Hello amin");
 
