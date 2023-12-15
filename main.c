@@ -75,22 +75,17 @@ int main(int argc, char** argv)
     for (int i = 0; i < 5; ++i) 
         myQueue2->emplace(myQueue2, &values2[i], sizeof(int));
     
-    
-    // // Compare the two queues
-    printf("Are the queues equal? %s\n", myQueue1->is_equal(myQueue1, myQueue2) ? "Yes" : "No");
-    printf("Is myQueue1 less than myQueue2? %s\n", myQueue1->is_less(myQueue1, myQueue2) ? "Yes" : "No");
+    // Swap the two queues
+    myQueue1->swap(myQueue1, myQueue2);
 
-    // // Swap the two queues
-    // myQueue1->swap(myQueue1, myQueue2);
-
-    // // Check the front element of the swapped queues
-    // int* front1 = myQueue1->front(myQueue1);
-    // int* front2 = myQueue2->front(myQueue2);
-    // if (front1 && front2) 
-    // {
-    //     printf("Front element of myQueue1 after swap: %d\n", *front1);
-    //     printf("Front element of myQueue2 after swap: %d\n", *front2);
-    // }
+    // Check the front element of the swapped queues
+    int* front1 = myQueue1->front(myQueue1);
+    int* front2 = myQueue2->front(myQueue2);
+    if (front1 && front2) 
+    {
+        printf("Front element of myQueue1 after swap: %d\n", *front1);
+        printf("Front element of myQueue2 after swap: %d\n", *front2);
+    }
 
     // // Pop an element from myQueue1
     // myQueue1->pop(myQueue1);

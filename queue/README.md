@@ -134,7 +134,7 @@ Queue* myQueue2 = queue_create(sizeof(int));
 
 if (!myQueue1 || !myQueue2) 
 {
-    fprintf(stderr, "Failed to create queues.\n");
+    printf("Failed to create queue\n");
     return EXIT_FAILURE;
 }
 
@@ -154,4 +154,42 @@ printf("Is myQueue1 less than myQueue2? %s\n", myQueue1->is_less(myQueue1, myQue
 
 myQueue1->deallocate(myQueue1);
 myQueue2->deallocate(myQueue2);
+```
+
+## Example 6 : how to 'swap' Queue
+
+```c
+Queue* myQueue1 = queue_create(sizeof(int));
+Queue* myQueue2 = queue_create(sizeof(int));
+
+if (!myQueue1 || !myQueue2) 
+{
+    printf("Failed to create queue\n");
+    return EXIT_FAILURE;
+}
+
+// Push some integers onto the first queue
+int values1[] = {10, 20, 30, 40, 50};
+for (int i = 0; i < 5; ++i) 
+    myQueue1->push(myQueue1, &values1[i]);
+    
+int values2[] = {15, 25, 35, 45, 55};
+for (int i = 0; i < 5; ++i) 
+    myQueue2->emplace(myQueue2, &values2[i], sizeof(int));
+    
+// Swap the two queues
+myQueue1->swap(myQueue1, myQueue2);
+
+// Check the front element of the swapped queues
+int* front1 = myQueue1->front(myQueue1);
+int* front2 = myQueue2->front(myQueue2);
+if (front1 && front2) 
+{
+    printf("Front element of myQueue1 after swap: %d\n", *front1);
+    printf("Front element of myQueue2 after swap: %d\n", *front2);
+}
+
+myQueue1->deallocate(myQueue1);
+myQueue2->deallocate(myQueue2);
+
 ```
