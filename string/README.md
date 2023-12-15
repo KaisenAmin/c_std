@@ -285,3 +285,38 @@ myString->clear(myString);
 myString->deallocate(myString);
 
 ```
+
+## Example 14 : 'cbegin', 'cend'
+
+```c
+
+String *myString = string_create("Hello, World!");
+
+// Iterate using cbegin and cend
+printf("String using cbegin and cend: ");
+for (const char* it = myString->cbegin(myString); it != myString->cend(myString); ++it) 
+    printf("%c", *it);
+
+printf("\n");
+
+myString->deallocate(myString);
+
+```
+
+## Example 15 : 'crbegin', 'crend' 
+
+```c
+
+String *myString = string_create("Hello, World!");
+
+// Reverse iterate using crbegin and crend
+printf("String in reverse using crbegin and crend: ");
+for (const char* it = myString->crbegin(myString); it != myString->crend(myString); --it) 
+    printf("%c", *it);
+    
+printf("\n");
+
+// Clean up
+myString->deallocate(myString);
+
+```

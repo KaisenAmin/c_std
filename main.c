@@ -57,52 +57,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    String *myString = string_create("Hello amin");
-
-    for (char* it = myString->begin(myString); it != myString->end(myString); it++)
-        printf("%c", *it);
-    
-    myString->clear(myString);
-    myString->deallocate(myString);
-
-    // String *myString = string_create("Hello amin");
-
-    // // Reverse iteration using rbegin and rend
-    // printf("String in reverse: ");
-
-    // for (char* it = myString->rbegin(myString); it != myString->rend(myString); --it) 
-    // {
-    //     printf("%c", *it);
-    // }
-    // printf("\n");
-
-    // // Clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-    // free(myString);
-
-    // String *myString = string_create("Hello, World!");
-
-    // // Iterate using cbegin and cend
-    // printf("String using cbegin and cend: ");
-    // for (const char* it = myString->cbegin(myString); it != myString->cend(myString); ++it) 
-    // {
-    //     printf("%c", *it);
-    // }
-    // printf("\n");
-
-    // // Reverse iterate using crbegin and crend
-    // printf("String in reverse using crbegin and crend: ");
-    // for (const char* it = myString->crbegin(myString); it != myString->crend(myString); --it) 
-    // {   
-        
-    //     printf("%c", *it);
-    // }
-    // printf("\n");
-
-    // // Clean up
-    // myString->deallocate(myString);
-    // free(myString);
 
     // Stack* stack = stack_create(sizeof(int));
 
