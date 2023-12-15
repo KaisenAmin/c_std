@@ -57,19 +57,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-
-    String* str1 = string_create("Hello");
-    String* str2 = string_create("World");
-
-    if (str1->is_equal(str1, str2)) 
-        printf("Strings are equal\n");
-    
-    if (str1->is_less(str1, str2)) 
-        printf("String 1 is less than String 2\n");
-    
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-
    
     /// Array
 
