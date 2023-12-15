@@ -2,9 +2,11 @@
 
 # C Standard Library Implementation in C
 
-## Project Overview
-
 This project aims to reimplement the C++ standard library functionality using the C programming language. It is designed to provide C developers with the familiar tools and libraries that are commonly available in C++. This enables better data structure management, algorithm implementation, and feature usage while staying within the C language's ecosystem.
+
+## A Personal Note from the Me
+
+I undertake this project out of a deep affection for the C programming language. It is my belief that C remains an essential tool for any computer engineer or programmer, providing the foundation necessary to build efficient and robust software. My love for C drives this endeavor, aiming to enrich the language with the familiar conveniences found in C++.
 
 ## Project Structure
 
