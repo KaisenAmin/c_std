@@ -160,7 +160,7 @@ stringVector->deallocate(stringVector);
 
 
 ```
-## Example 6: how to use swap
+## Example 6: how to use 'swap'
 
 ```c
 
@@ -196,7 +196,7 @@ vector2->deallocate(vector2);
 
 ```
 
-## Example 6: how to use pop_back 
+## Example 6: how to use 'pop_back' 
 
 ```c 
 Vector *intVector = vector_create(sizeof(int));
@@ -215,7 +215,7 @@ intVector->deallocate(intVector)
 
 ```
 
-## Example 7: how to use front 
+## Example 7: how to use 'front' 
 
 ```c 
 
@@ -233,7 +233,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 8: how to use back
+## Example 8: how to use 'back'
 
 ```c
 Vector *intVector = vector_create(sizeof(int));
@@ -250,7 +250,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 9: use data "Returns pointer to the underlying array serving as element storage"
+## Example 9: use 'data' "Returns pointer to the underlying array serving as element storage"
 ```c
 Vector *intVector = vector_create(sizeof(int));
 
@@ -271,7 +271,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 10: begin, end "Return pointer to the first and last element"
+## Example 10: 'begin', 'end' "Return pointer to the first and last element"
 
 ```c
 Vector *intVector = vector_create(sizeof(int));
@@ -289,7 +289,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 11: cbegin, cend "Return const pointer to first and last element"
+## Example 11: 'cbegin', 'cend' "Return const pointer to first and last element"
 
 ```c 
 Vector *intVector = vector_create(sizeof(int));
@@ -307,7 +307,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 12 : crbegin, crend "Return reverse read-only iteration over the vector"
+## Example 12 : 'crbegin', 'crend' "Return reverse read-only iteration over the vector"
 ```c
 Vector *intVector = vector_create(sizeof(int));
 
@@ -324,7 +324,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 13: Using rbegin and rend for reverse iteration over the vector
+## Example 13: Using 'rbegin' and 'rend' for reverse iteration over the vector
 
 ```c
 Vector *intVector = vector_create(sizeof(int));
@@ -342,7 +342,7 @@ intVector->deallocate(intVector);
 
 ```
 
-## Example 14: insert New element to vector 
+## Example 14: 'insert' New element to vector 
 
 ```c 
 Vector *intVector = vector_create(sizeof(int));
@@ -353,7 +353,7 @@ for (int i = 0; i < 3; ++i)
     
 // Insert a new element
 int newElement = 25;
-intVector->insert(intVector, 0, &newElement); // Inserts 25 at position 1
+intVector->insert(intVector, 0, &newElement); // Inserts 25 at position 0
 
 // Print elements after insertion
 for (size_t i = 0; i < intVector->length(intVector); ++i) 
@@ -365,6 +365,54 @@ for (size_t i = 0; i < intVector->length(intVector); ++i)
 intVector->deallocate(intVector);
 
 ```
+
+## Example 15: 'erase' element from vector
+
+```c
+
+Vector *intVector = vector_create(sizeof(int));
+
+// Adding elements to the vector
+int values[] = {10, 20, 30, 40, 50};
+for (int i = 0; i < 5; ++i) 
+    intVector->push_back(intVector, &values[i]);
+    
+// Erase elements from position 1, removing 2 elements
+intVector->erase(intVector, 1, 2); // Should remove 20 and 30
+
+// Print elements after erasure
+for (size_t i = 0; i < intVector->length(intVector); ++i) 
+{
+    int* item = (int*) intVector->at(intVector, i);
+    printf("%d\n", *item);
+}
+
+intVector->deallocate(intVector);
+
+```
+
+## Example 16: 'reserve'
+
+```c
+Vector *intVector = vector_create(sizeof(int));
+
+// Reserve capacity for at least 10 elements
+intVector->reserve(intVector, 10);
+
+// Add elements and observe no need for reallocation until the 11th element
+for (int i = 0; i < 11; ++i) 
+{
+    int value = i * 10;
+    intVector->push_back(intVector, &value);
+}
+
+printf("Vector size: %zu, Vector capacity: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
+
+intVector->deallocate(intVector);
+
+```
+
+
 ## Advanced Operations
 
 The Vector library supports various operations such as `insert`, `erase`, `resize`, and `clear` and etc. For detailed instructions on how to use these operations, refer to the `README.md` file within the `vector` directory of the project.

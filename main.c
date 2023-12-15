@@ -327,53 +327,58 @@ int main(int argc, char** argv)
     
     // intVector->deallocate(intVector);
 
-    Vector *intVector = vector_create(sizeof(int));
-
-    int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
-        intVector->push_back(intVector, &values[i]);
-    
-    // Insert a new element
-    int newElement = 25;
-    intVector->insert(intVector, 0, &newElement); // Inserts 25 at position 1
-
-    // Print elements after insertion
-    for (size_t i = 0; i < intVector->length(intVector); ++i) 
-    {
-        int* item = (int*) intVector->at(intVector, i);
-        printf("%d\n", *item);
-    }
-
-    intVector->deallocate(intVector);
     // Vector *intVector = vector_create(sizeof(int));
 
-    // // Adding elements to the vector
-    // int values[] = {10, 20, 30, 40, 50};
-    // for (int i = 0; i < 5; ++i) {
+    // int values[] = {10, 20, 30};
+    // for (int i = 0; i < 3; ++i) 
     //     intVector->push_back(intVector, &values[i]);
-    // }
+    
+    // // Insert a new element
+    // int newElement = 25;
+    // intVector->insert(intVector, 0, &newElement); // Inserts 25 at position 1
 
-    // // Erase elements from position 1, removing 2 elements
-    // intVector->erase(intVector, 1, 2); // Should remove 20 and 30
-
-    // // Print elements after erasure
-    // for (size_t i = 0; i < intVector->length(intVector); ++i) {
+    // // Print elements after insertion
+    // for (size_t i = 0; i < intVector->length(intVector); ++i) 
+    // {
     //     int* item = (int*) intVector->at(intVector, i);
     //     printf("%d\n", *item);
     // }
 
+    // intVector->deallocate(intVector);
     // Vector *intVector = vector_create(sizeof(int));
 
-    // // Reserve capacity for at least 10 elements
-    // intVector->reserve(intVector, 10);
+    // // Adding elements to the vector
+    // int values[] = {10, 20, 30, 40, 50};
+    // for (int i = 0; i < 5; ++i) 
+    //     intVector->push_back(intVector, &values[i]);
+    
+    // // Erase elements from position 1, removing 2 elements
+    // intVector->erase(intVector, 1, 2); // Should remove 20 and 30
 
-    // // Add elements and observe no need for reallocation until the 11th element
-    // for (int i = 0; i < 11; ++i) {
-    //     int value = i * 10;
-    //     intVector->push_back(intVector, &value);
+    // // Print elements after erasure
+    // for (size_t i = 0; i < intVector->length(intVector); ++i) 
+    // {
+    //     int* item = (int*) intVector->at(intVector, i);
+    //     printf("%d\n", *item);
     // }
 
-    // printf("Vector size: %zu, Vector capacity: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
+    // intVector->deallocate(intVector);
+
+    Vector *intVector = vector_create(sizeof(int));
+
+    // Reserve capacity for at least 10 elements
+    intVector->reserve(intVector, 10);
+
+    // Add elements and observe no need for reallocation until the 11th element
+    for (int i = 0; i < 11; ++i) 
+    {
+        int value = i * 10;
+        intVector->push_back(intVector, &value);
+    }
+
+    printf("Vector size: %zu, Vector capacity: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
+
+    intVector->deallocate(intVector);
 
     // Vector *intVector = vector_create(sizeof(int));
 
