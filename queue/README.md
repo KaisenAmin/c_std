@@ -193,3 +193,131 @@ myQueue1->deallocate(myQueue1);
 myQueue2->deallocate(myQueue2);
 
 ```
+
+## Example 7 : Task Management System Using Queue
+
+```c
+
+#include <stdio.h>
+#include <string.h>
+#include "queue/queue.h"
+
+typedef struct Task 
+{
+    int id;
+    char description[100];
+    int priority;
+
+} Task;
+
+void addTask(Queue* queue, int id, const char* desc, int priority) 
+{
+    Task task;
+    task.id = id;
+
+    strncpy(task.description, desc, sizeof(task.description));
+    task.priority = priority;
+    queue->emplace(queue, &task, sizeof(Task));
+}
+
+void processTasks(Queue* queue) 
+{
+    while (!queue->empty(queue)) 
+    {
+        Task* task = (Task*)queue->front(queue);
+        printf("Processing Task ID %d: %s\n", task->id, task->description);
+
+        // Simulate task processing
+        queue->pop(queue);
+    }
+}
+
+int main() 
+{
+    Queue* taskQueue = queue_create(sizeof(Task));
+
+    if (!taskQueue) 
+    {
+        printf("Failed to create queue\n");
+        return EXIT_FAILURE;
+    }
+
+    addTask(taskQueue, 1, "Fix bug in code", 5);
+    addTask(taskQueue, 2, "Update documentation", 3);
+    addTask(taskQueue, 3, "Refactor module", 4);
+
+    printf("Task queue size before processing: %zu\n", taskQueue->size(taskQueue));
+    processTasks(taskQueue);
+    printf("Task queue size after processing: %zu\n", taskQueue->size(taskQueue));
+
+    taskQueue->deallocate(taskQueue);
+
+    return EXIT_SUCCESS;
+}
+
+```
+
+## Example 8 : 2D Queue of String Objects
+
+```c
+
+#include <stdio.h>
+#include "queue/queue.h"
+#include "string/string.h"
+
+int main() 
+{
+    // Create a Queue of String Queues (2D Queue)
+    Queue* queue2D = queue_create(sizeof(Queue*));
+
+    // Create and populate inner Queues
+    for (int i = 0; i < 3; ++i) 
+    { 
+        Queue* stringQueue = queue_create(sizeof(String*));
+
+        // Add Strings to the inner Queue
+        for (int j = 0; j < 5; ++j) 
+        { 
+            // Each inner Queue has 5 Strings
+            char buffer[50];
+            sprintf(buffer, "String %d-%d", i, j);
+
+            String* str = string_create(buffer);
+            stringQueue->emplace(stringQueue, &str, sizeof(String*));
+        }
+
+        // Add the inner Queue to the 2D Queue
+        queue2D->emplace(queue2D, &stringQueue, sizeof(Queue*));
+    }
+
+    // Iterate over each inner Queue and process its Strings
+    while (!queue2D->empty(queue2D)) 
+    {
+        Queue** innerQueuePtr = (Queue**)queue2D->front(queue2D);
+        Queue* innerQueue = *innerQueuePtr;
+
+        while (!innerQueue->empty(innerQueue)) 
+        {
+            String** strPtr = (String**)innerQueue->front(innerQueue);
+            String* str = *strPtr;
+            
+            printf("Processing: %s\n", str->c_str(str));
+
+            // Pop the processed String
+            innerQueue->pop(innerQueue);
+            str->deallocate(str);
+        }
+
+        // Pop the processed inner Queue
+        queue2D->pop(queue2D);
+        innerQueue->deallocate(innerQueue);
+    }
+
+    // Deallocate the outer Queue
+    queue2D->deallocate(queue2D);
+
+    return 0;
+}
+
+
+```

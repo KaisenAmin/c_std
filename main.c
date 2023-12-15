@@ -54,54 +54,54 @@ bool conditionToRemove(void *value) {
     return strcmp(str, "World") == 0;
 }
 
+
+
 int main(int argc, char** argv)
 {
 
-    Queue* myQueue1 = queue_create(sizeof(int));
-    Queue* myQueue2 = queue_create(sizeof(int));
+      // Create a Queue of String Queues (2D Queue)
+    Queue* queue2D = queue_create(sizeof(Queue*));
 
-    if (!myQueue1 || !myQueue2) 
-    {
-        fprintf(stderr, "Failed to create queues.\n");
-        return EXIT_FAILURE;
+    // Create and populate inner Queues
+    for (int i = 0; i < 3; ++i) { // For example, create 3 inner Queues
+        Queue* stringQueue = queue_create(sizeof(String*));
+
+        // Add Strings to the inner Queue
+        for (int j = 0; j < 5; ++j) { // Each inner Queue has 5 Strings
+            char buffer[50];
+            sprintf(buffer, "String %d-%d", i, j);
+            String* str = string_create(buffer);
+            stringQueue->emplace(stringQueue, &str, sizeof(String*));
+        }
+
+        // Add the inner Queue to the 2D Queue
+        queue2D->emplace(queue2D, &stringQueue, sizeof(Queue*));
     }
 
-    // Push some integers onto the first queue
-    int values1[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
-        myQueue1->push(myQueue1, &values1[i]);
-    
-    int values2[] = {15, 25, 35, 45, 55};
-    for (int i = 0; i < 5; ++i) 
-        myQueue2->emplace(myQueue2, &values2[i], sizeof(int));
-    
-    // Swap the two queues
-    myQueue1->swap(myQueue1, myQueue2);
+    // Example of processing the 2D Queue
+    // Iterate over each inner Queue and process its Strings
+    while (!queue2D->empty(queue2D)) {
+        Queue** innerQueuePtr = (Queue**)queue2D->front(queue2D);
+        Queue* innerQueue = *innerQueuePtr;
 
-    // Check the front element of the swapped queues
-    int* front1 = myQueue1->front(myQueue1);
-    int* front2 = myQueue2->front(myQueue2);
-    if (front1 && front2) 
-    {
-        printf("Front element of myQueue1 after swap: %d\n", *front1);
-        printf("Front element of myQueue2 after swap: %d\n", *front2);
+        while (!innerQueue->empty(innerQueue)) {
+            String** strPtr = (String**)innerQueue->front(innerQueue);
+            String* str = *strPtr;
+            printf("Processing: %s\n", str->c_str(str));
+
+            // Pop the processed String
+            innerQueue->pop(innerQueue);
+            str->deallocate(str);
+        }
+
+        // Pop the processed inner Queue
+        queue2D->pop(queue2D);
+        innerQueue->deallocate(innerQueue);
     }
 
-    // // Pop an element from myQueue1
-    // myQueue1->pop(myQueue1);
-    // front1 = myQueue1->front(myQueue1);
-    // if (front1) 
-    //     printf("New front element of myQueue1 after pop: %d\n", *front1);
+    // Deallocate the outer Queue
+    queue2D->deallocate(queue2D);
     
-
-    // // Clean up
-    // myQueue1->deallocate(myQueue1);
-    // myQueue2->deallocate(myQueue2);
-    // free(myQueue1);
-    // free(myQueue2);
-
-    // Clean up
-
     // PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
     // if (!pq) 
