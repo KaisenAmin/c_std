@@ -266,3 +266,22 @@ myString->clear(myString);
 myString->deallocate(myString);
 
 ```
+
+## Example 13 : 'rbeing', 'rend' return reverse iterator 
+
+```c
+
+String *myString = string_create("Hello amin");
+
+// Reverse iteration using rbegin and rend
+printf("String in reverse: ");
+for (char* it = myString->rbegin(myString); it != myString->rend(myString); --it) 
+    printf("%c", *it);
+    
+printf("\n");
+
+// Clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```
