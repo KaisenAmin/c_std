@@ -9,7 +9,7 @@ static void priority_queue_push_impl(PriorityQueue* pq, void* item);
 static void* priority_queue_top_impl(const PriorityQueue* pq);
 static void priority_queue_pop_impl(PriorityQueue* pq);
 static void priority_queue_deallocate_impl(PriorityQueue* pq);
-
+static void priority_queue_swap_impl(PriorityQueue* pq1, PriorityQueue* pq2);
 
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*)) 
 {
@@ -33,6 +33,7 @@ PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*
     pq->top = priority_queue_top_impl;
     pq->pop = priority_queue_pop_impl;
     pq->deallocate = priority_queue_deallocate_impl;
+    pq->swap = priority_queue_swap_impl;
 
     return pq;
 }
@@ -156,4 +157,20 @@ static void priority_queue_deallocate_impl(PriorityQueue* pq)
     
         free(pq);
     }
+}
+
+static void priority_queue_swap_impl(PriorityQueue* pq1, PriorityQueue* pq2) 
+{
+    if (!pq1 || !pq2) 
+        return;
+
+    // Swap the internal Vector pointers
+    Vector* tempVec = pq1->vec;
+    pq1->vec = pq2->vec;
+    pq2->vec = tempVec;
+
+    // Swap the comparison functions (if different priority queues might have different comparison logic)
+    int (*tempCompare)(const void*, const void*) = pq1->compare;
+    pq1->compare = pq2->compare;
+    pq2->compare = tempCompare;
 }

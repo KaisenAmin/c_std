@@ -55,53 +55,9 @@ bool conditionToRemove(void *value) {
 }
 
 
-
 int main(int argc, char** argv)
 {
 
-      // Create a Queue of String Queues (2D Queue)
-    Queue* queue2D = queue_create(sizeof(Queue*));
-
-    // Create and populate inner Queues
-    for (int i = 0; i < 3; ++i) { // For example, create 3 inner Queues
-        Queue* stringQueue = queue_create(sizeof(String*));
-
-        // Add Strings to the inner Queue
-        for (int j = 0; j < 5; ++j) { // Each inner Queue has 5 Strings
-            char buffer[50];
-            sprintf(buffer, "String %d-%d", i, j);
-            String* str = string_create(buffer);
-            stringQueue->emplace(stringQueue, &str, sizeof(String*));
-        }
-
-        // Add the inner Queue to the 2D Queue
-        queue2D->emplace(queue2D, &stringQueue, sizeof(Queue*));
-    }
-
-    // Example of processing the 2D Queue
-    // Iterate over each inner Queue and process its Strings
-    while (!queue2D->empty(queue2D)) {
-        Queue** innerQueuePtr = (Queue**)queue2D->front(queue2D);
-        Queue* innerQueue = *innerQueuePtr;
-
-        while (!innerQueue->empty(innerQueue)) {
-            String** strPtr = (String**)innerQueue->front(innerQueue);
-            String* str = *strPtr;
-            printf("Processing: %s\n", str->c_str(str));
-
-            // Pop the processed String
-            innerQueue->pop(innerQueue);
-            str->deallocate(str);
-        }
-
-        // Pop the processed inner Queue
-        queue2D->pop(queue2D);
-        innerQueue->deallocate(innerQueue);
-    }
-
-    // Deallocate the outer Queue
-    queue2D->deallocate(queue2D);
-    
     // PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
     // if (!pq) 

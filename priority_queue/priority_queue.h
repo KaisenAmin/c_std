@@ -3,7 +3,6 @@
 
 #include "../vector/vector.h"
 #include <stdbool.h>
-#include <stdbool.h>
 
 typedef struct PriorityQueue PriorityQueue;
 
@@ -18,9 +17,9 @@ struct PriorityQueue
     void* (*top)(const PriorityQueue* pq);
     void (*pop)(PriorityQueue* pq);
     void (*deallocate)(PriorityQueue* pq);
+    void (*swap)(PriorityQueue* pq1, PriorityQueue* pq2);
 };
 
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*));
-
 
 #endif 
