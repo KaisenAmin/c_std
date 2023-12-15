@@ -1,14 +1,12 @@
-Based on the examples you've provided, I'll draft a README for the Vector library. This README will include an introduction, compilation instructions, and usage examples for different data types including integers, strings, and user-defined structures.
 
 # Vector Library
-
-## Introduction
 
 The Vector library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::vector` in C++.
 
 ## Compilation
 
 To compile the Vector library along with your main program, use the following GCC command:
+if you need other lib just you can add name of libs .c 
 
 ```bash
 gcc -std=c11 -O3 -o main ./main.c ./vector/vector.c ./string/string.c
