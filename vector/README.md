@@ -446,6 +446,106 @@ intVector->clear(intVector);
 intVector->deallocate(intVector);
 
 ```
+
+## Example 18 : 'shrink_to_fit' fixed capacity
+
+```c
+
+Vector *intVector = vector_create(sizeof(int));
+
+// Reserve larger capacity
+intVector->reserve(intVector, 10);
+
+// Adding a few elements
+int values[] = {10, 20, 30};
+for (int i = 0; i < 3; ++i) 
+    intVector->push_back(intVector, &values[i]);
+    
+printf("Size before shrink_to_fit: %zu, Capacity before shrink_to_fit: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
+
+// Shrink to fit the actual number of elements
+intVector->shrink_to_fit(intVector);
+    
+printf("Size after shrink_to_fit: %zu, Capacity after shrink_to_fit: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
+
+intVector->deallocate(intVector);
+
+```
+
+## Example 19 : use 'emplace' and 'emplace_back' insert new element at positin and at the end of 
+
+```c
+
+Vector *stringVector = vector_create(sizeof(char*));
+char* values[] = {"Hello", "World", "Vector", "Example"};
+
+for (int i = 0; i < 4; ++i) 
+    stringVector->push_back(stringVector, &values[i]);
+    
+char* newValue = "NewString";
+stringVector->assign(stringVector, 1, &newValue);
+
+char* emplaceValue = "EmplacedString";
+stringVector->emplace(stringVector, 2, &emplaceValue, sizeof(char*));
+
+char* emplaceBackValue = "EmplacedBackString";
+stringVector->emplace_back(stringVector, &emplaceBackValue, sizeof(char*));
+
+for (size_t i = 0; i < stringVector->length(stringVector); ++i) 
+{
+    char** item = (char **)stringVector->at(stringVector, i);
+    printf("%s\n", *item);
+}
+
+stringVector->deallocate(stringVector);
+
+```
+
+## Example 20 : how to use String object in Vector
+
+```c
+
+#include "vector/vector.h"
+#include "string/string.h"
+
+
+String* myString = string_create("");
+Vector* vec = vector_create(sizeof(String*));
+
+String* myString1 = string_create("Hello");
+String* myString2 = string_create("World");
+String* myString3 = string_create("Example");
+
+vec->push_back(vec, &myString1);
+vec->push_back(vec, &myString2);
+vec->push_back(vec, &myString3);
+
+for (size_t i = 0; i < vec->length(vec); ++i) 
+{
+    String** strPtr = (String**) vec->at(vec, i);
+    if (strPtr && *strPtr) 
+        printf("%s\n", (*strPtr)->dataStr); 
+}
+
+for (size_t i = 0; i < vec->length(vec); ++i) 
+{
+    String** strPtr = (String**) vec->at(vec, i);
+
+    if (strPtr && *strPtr) 
+    {
+        (*strPtr)->deallocate(*strPtr);
+        free(*strPtr);
+    }
+}
+
+vec->deallocate(vec);
+
+myString1->deallocate(myString1);
+myString2->deallocate(myString2);
+myString3->deallocate(myString3);
+
+
+```
 ## Contribution
 
 Your contributions to this project are welcome! If you have suggestions or improvements, feel free to fork the repository, make your changes, and submit a pull request.
