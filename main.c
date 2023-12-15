@@ -364,49 +364,52 @@ int main(int argc, char** argv)
 
     // intVector->deallocate(intVector);
 
-    Vector *intVector = vector_create(sizeof(int));
-
-    // Reserve capacity for at least 10 elements
-    intVector->reserve(intVector, 10);
-
-    // Add elements and observe no need for reallocation until the 11th element
-    for (int i = 0; i < 11; ++i) 
-    {
-        int value = i * 10;
-        intVector->push_back(intVector, &value);
-    }
-
-    printf("Vector size: %zu, Vector capacity: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
-
-    intVector->deallocate(intVector);
-
     // Vector *intVector = vector_create(sizeof(int));
 
-    // // Adding elements to the vector
-    // int values[] = {10, 20, 30};
-    // for (int i = 0; i < 3; ++i) {
-    //     intVector->push_back(intVector, &values[i]);
+    // // Reserve capacity for at least 10 elements
+    // intVector->reserve(intVector, 10);
+
+    // // Add elements and observe no need for reallocation until the 11th element
+    // for (int i = 0; i < 11; ++i) 
+    // {
+    //     int value = i * 10;
+    //     intVector->push_back(intVector, &value);
     // }
 
-    // // Resize to a larger size (5)
-    // intVector->resize(intVector, 5);
+    // printf("Vector size: %zu, Vector capacity: %zu\n", intVector->length(intVector), intVector->capacity(intVector));
 
-    // printf("After resizing to larger size:\n");
-    // for (size_t i = 0; i < intVector->length(intVector); ++i) {
-    //     int* item = (int*) intVector->at(intVector, i);
-    //     printf("%d\n", *item); // The last two elements will be zero-initialized
-    // }
+    // intVector->deallocate(intVector);
 
-    // // Resize to a smaller size (2)
-    // intVector->resize(intVector, 2);
+    Vector *intVector = vector_create(sizeof(int));
 
-    // printf("After resizing to smaller size:\n");
-    // for (size_t i = 0; i < intVector->length(intVector); ++i) {
-    //     int* item = (int*) intVector->at(intVector, i);
-    //     printf("%d\n", *item); // Only the first two elements remain
-    // }
+    // Adding elements to the vector
+    int values[] = {10, 20, 30};
+    for (int i = 0; i < 3; ++i) 
+    {
+        intVector->push_back(intVector, &values[i]);
+    }
 
-    // intVector->clear(intVector);
+    // Resize to a larger size (5)
+    intVector->resize(intVector, 5);
+
+    printf("After resizing to larger size:\n");
+    for (size_t i = 0; i < intVector->length(intVector); ++i) 
+    {
+        int* item = (int*) intVector->at(intVector, i);
+        printf("%d\n", *item); // The last two elements will be zero-initialized
+    }
+
+    // Resize to a smaller size (2)
+    intVector->resize(intVector, 2);
+
+    printf("After resizing to smaller size:\n");
+    for (size_t i = 0; i < intVector->length(intVector); ++i) 
+    {
+        int* item = (int*) intVector->at(intVector, i);
+        printf("%d\n", *item); // Only the first two elements remain
+    }
+
+    intVector->clear(intVector);
 
     // Vector *intVector = vector_create(sizeof(int));
 

@@ -412,11 +412,40 @@ intVector->deallocate(intVector);
 
 ```
 
+## Example 17: 'resize' 
 
-## Advanced Operations
+```c
+Vector *intVector = vector_create(sizeof(int));
 
-The Vector library supports various operations such as `insert`, `erase`, `resize`, and `clear` and etc. For detailed instructions on how to use these operations, refer to the `README.md` file within the `vector` directory of the project.
+// Adding elements to the vector
+int values[] = {10, 20, 30};
+for (int i = 0; i < 3; ++i) 
+    intVector->push_back(intVector, &values[i]);
+    
+// Resize to a larger size (5)
+intVector->resize(intVector, 5);
 
+printf("After resizing to larger size:\n");
+for (size_t i = 0; i < intVector->length(intVector); ++i) 
+{
+    int* item = (int*) intVector->at(intVector, i);
+    printf("%d\n", *item); // The last two elements will be zero-initialized
+}
+
+// Resize to a smaller size (2)
+intVector->resize(intVector, 2);
+
+printf("After resizing to smaller size:\n");
+for (size_t i = 0; i < intVector->length(intVector); ++i) 
+{
+    int* item = (int*) intVector->at(intVector, i);
+    printf("%d\n", *item); // Only the first two elements remain
+}
+
+intVector->clear(intVector);
+intVector->deallocate(intVector);
+
+```
 ## Contribution
 
 Your contributions to this project are welcome! If you have suggestions or improvements, feel free to fork the repository, make your changes, and submit a pull request.
