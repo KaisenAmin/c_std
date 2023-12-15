@@ -273,3 +273,41 @@ for (size_t i = 0; i < rows; ++i)
 array2D->deallocate(array2D);
 
 ```
+
+
+## Example 10 : Use String object in Array 
+
+```c
+
+const size_t numStrings = 3; 
+Array* stringArray = array_create(sizeof(String*), numStrings);
+
+// Initialize each String in the Array
+for (size_t i = 0; i < numStrings; ++i) 
+{
+    String* str = string_create("Initial Text");
+    stringArray->set(stringArray, i, &str);
+}
+
+// Example manipulation: Append text to each string
+for (size_t i = 0; i < numStrings; ++i) 
+{
+    String** strPtr = (String**)stringArray->at(stringArray, i);
+    String* str = *strPtr;
+
+    str->append(str, " - Appended Text");
+    printf("String %zu: %s\n", i, str->c_str(str));
+}
+
+// Clean up: Deallocate each String and the Array
+for (size_t i = 0; i < numStrings; ++i) 
+{
+    String** strPtr = (String**)stringArray->at(stringArray, i);
+    String* str = *strPtr;
+
+    str->deallocate(str);
+}
+    
+stringArray->deallocate(stringArray);
+
+```

@@ -57,6 +57,31 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
+    const size_t numStrings = 3; // Number of strings in the array
+    Array* stringArray = array_create(sizeof(String*), numStrings);
+
+    // Initialize each String in the Array
+    for (size_t i = 0; i < numStrings; ++i) {
+        String* str = string_create("Initial Text");
+        stringArray->set(stringArray, i, &str);
+    }
+
+    // Example manipulation: Append text to each string
+    for (size_t i = 0; i < numStrings; ++i) {
+        String** strPtr = (String**)stringArray->at(stringArray, i);
+        String* str = *strPtr;
+        str->append(str, " - Appended Text");
+        printf("String %zu: %s\n", i, str->c_str(str));
+    }
+
+    // Clean up: Deallocate each String and the Array
+    for (size_t i = 0; i < numStrings; ++i) {
+        String** strPtr = (String**)stringArray->at(stringArray, i);
+        String* str = *strPtr;
+        str->deallocate(str);
+    }
+    stringArray->deallocate(stringArray);
+
     // Queue* myQueue = queue_create(sizeof(int));
 
     // if (!myQueue) 
