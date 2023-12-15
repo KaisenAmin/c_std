@@ -135,3 +135,141 @@ intArray->deallocate(intArray);
 
 
 ```
+
+
+## Example 5: Iterating with 'begin' and end with 'double'
+
+
+```c
+Array* doubleArray = array_create(sizeof(double), 5);
+
+if (doubleArray == NULL) 
+{
+    printf("Failed to create double array.\n");
+    return 1;
+}
+
+double values[] = {1.5, 2.5, 3.5, 4.5, 5.5};
+for (size_t i = 0; i < doubleArray->size(doubleArray); ++i) 
+    doubleArray->set(doubleArray, i, &values[i]);
+    
+for (double* it = (double*)doubleArray->begin(doubleArray); it != (double*)doubleArray->end(doubleArray); ++it) 
+    printf("Element: %f\n", *it);
+
+doubleArray->deallocate(doubleArray);
+
+```
+
+## Example 6 : Using 'cbegin' and 'cend' with char*
+
+```c
+
+Array* stringArray = array_create(sizeof(char*), 3);
+
+if (stringArray == NULL) 
+{
+    printf("Failed to create string array.\n");
+    return 1;
+}
+
+char* strings[] = {"Hello", "World", "Array"};
+for (size_t i = 0; i < stringArray->size(stringArray); ++i) 
+    stringArray->set(stringArray, i, &strings[i]);
+    
+for (const char** it = (const char**)stringArray->cbegin(stringArray); it != (const char**)stringArray->cend(stringArray); ++it) 
+    printf("String: %s\n", *it);
+    
+stringArray->deallocate(stringArray);
+
+```
+
+## Example 7 : Using Relational Operators
+
+```c
+
+Array* arr1 = array_create(sizeof(int), 3);
+Array* arr2 = array_create(sizeof(int), 3);
+
+int arr1Values[] = {1, 2, 3};
+int arr2Values[] = {1, 2, 3};
+
+for (size_t i = 0; i < 3; ++i) 
+{
+    arr1->set(arr1, i, &arr1Values[i]);
+    arr2->set(arr2, i, &arr2Values[i]);
+}
+
+if (arr1->is_equal(arr1, arr2))
+    printf("Arrays are equal.\n");
+else
+    printf("Arrays are not equal.\n");
+
+arr1->deallocate(arr1);
+arr2->deallocate(arr2);
+
+```
+
+## Example 8 : Using 'rbegin' and 'rend' with float
+
+```c
+Array* floatArray = array_create(sizeof(float), 4);
+
+if (floatArray == NULL) 
+{
+    printf("Failed to create float array.\n");
+    return 1;
+}
+
+float floatValues[] = {1.1f, 2.2f, 3.3f, 4.4f};
+for (size_t i = 0; i < floatArray->size(floatArray); ++i) 
+    floatArray->set(floatArray, i, &floatValues[i]);
+
+for (float* it = (float*)floatArray->rbegin(floatArray); it != (float*)floatArray->rend(floatArray); --it) 
+    printf("Element: %f\n", *it);
+
+floatArray->deallocate(floatArray);
+
+
+```
+
+## Example 9 : How to create 2D Array 
+
+```c
+const size_t rows = 3;
+const size_t cols = 4;
+
+// Step 1 & 2: Create an Array of Array Pointers
+Array* array2D = array_create(sizeof(Array*), rows);
+
+// Step 3: Initialize Each Row Array
+for (size_t i = 0; i < rows; ++i) 
+{
+    Array* row = array_create(sizeof(int), cols);
+    int valueToFill = i; // Example value to fill
+
+    row->fill(row, &valueToFill);
+    array2D->set(array2D, i, &row);
+}
+
+// Step 4: Use the 2D Array
+for (size_t i = 0; i < rows; ++i) 
+{
+    Array* row = *(Array**)array2D->at(array2D, i);
+    for (size_t j = 0; j < cols; ++j) 
+    {
+        int* element = (int*)row->at(row, j);
+        printf("%d ", *element);
+    }
+    printf("\n");
+}
+
+// Step 5: Clean Up
+for (size_t i = 0; i < rows; ++i) 
+{
+    Array* row = *(Array**)array2D->at(array2D, i);
+    row->deallocate(row);
+}
+
+array2D->deallocate(array2D);
+
+```

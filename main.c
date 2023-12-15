@@ -57,39 +57,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    Array* intArray = array_create(sizeof(int), 5);
-
-    if (intArray == NULL) 
-    {
-        printf("Failed to create array.\n");
-        return 1;
-    }
-
-    int valueToFill = 42;
-    intArray->fill(intArray, &valueToFill);
-
-    *(int*)intArray->front(intArray) = 1563;
-    // Access the front and back elements
-    int* frontElement = (int*)intArray->front(intArray);
-    int* backElement = (int*)intArray->back(intArray);
-
-    if (frontElement != NULL && backElement != NULL) 
-        printf("Front element: %d, Back element: %d\n", *frontElement, *backElement);
-    
-    for (size_t i = 0; i < intArray->size(intArray); ++i) 
-    {
-        int value = i * 2; 
-        intArray->set(intArray, i, &value);
-        int* element = (int*)intArray->at(intArray, i);
-
-        if (element != NULL) 
-            printf("Element %zu: %d\n", i, *element);
-        
-    }
-    // Deallocate the array
-    intArray->deallocate(intArray);
-   
-
     // Queue* myQueue = queue_create(sizeof(int));
 
     // if (!myQueue) 
