@@ -57,7 +57,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-   
     /// Array
 
     // Array* intArray = array_create(sizeof(int), 5);

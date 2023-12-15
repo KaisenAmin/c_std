@@ -541,6 +541,34 @@ myString1->deallocate(myString1);
 myString2->deallocate(myString2);
 myString3->deallocate(myString3);
 
+```
+
+## Example 21 : how to use relationals operators in Vector 
+
+```c
+
+Vector *vector1 = vector_create(sizeof(int));
+Vector *vector2 = vector_create(sizeof(int));
+
+int value1 = 10, value2 = 20;
+vector1->push_back(vector1, &value1);
+vector1->push_back(vector1, &value2);
+
+int value3 = 30, value4 = 40;
+vector2->push_back(vector2, &value3);
+vector2->push_back(vector2, &value4);
+   
+if (vector1->is_equal(vector1, vector2))
+    printf("Vector1 is equal with Vector2\n");
+
+if (vector1->is_less(vector1, vector2))
+    printf("Vector1 is less than Vector2\n");
+
+if (vector1->is_greater(vector1, vector2))
+    printf("Vector1 is greater than Vector2\n");
+
+vector1->deallocate(vector1);
+vector2->deallocate(vector2);
 
 ```
 ## Contribution
