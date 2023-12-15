@@ -167,7 +167,7 @@ static bool vector_is_empty_impl(Vector *vec)
 static void vector_erase_impl(Vector *vec, size_t pos, size_t len)
 {
     if (vec == NULL || pos >= vec->size || pos + len > vec->size) 
-        return; // Handle error: Vector is NULL, position is out of bounds, or len is too large
+        return; // Vector is NULL, position is out of bounds, or len is too large
     
 
     char *base = (char *)vec->items;
@@ -213,7 +213,7 @@ static void vector_reserve_impl(Vector *vec, size_t size)
 static void vector_resize_impl(Vector *vec, size_t size) 
 {
     if (vec == NULL) 
-        return; // Handle error: Vector is NULL
+        return; // Vector is NULL
      
     if (size > vec->capacitySize) 
         vector_reserve_impl(vec, size); // Resize capacity if new size exceeds current capacity
@@ -253,7 +253,7 @@ static void vector_swap_impl(Vector *vec1, Vector *vec2)
 {
     if (vec1 == NULL || vec2 == NULL)
      {
-        // Handle error: One or both vectors are NULL
+        // One or both vectors are NULL
         fprintf(stderr, "Error: One or both vectors are NULL in vector_swap_impl.\n");
         return;
     }
