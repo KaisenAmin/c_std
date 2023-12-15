@@ -57,42 +57,28 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
+    Queue* myQueue1 = queue_create(sizeof(int));
+    Queue* myQueue2 = queue_create(sizeof(int));
 
-    // Pop an element from the queue
-    myQueue->pop(myQueue);
-    front = myQueue->front(myQueue);
+    if (!myQueue1 || !myQueue2) 
+    {
+        fprintf(stderr, "Failed to create queues.\n");
+        return EXIT_FAILURE;
+    }
 
-    if (front) 
-        printf("New front element after pop: %d\n", *front);
-
-    myQueue->deallocate(myQueue);
+    // Push some integers onto the first queue
+    int values1[] = {10, 20, 30, 40, 50};
+    for (int i = 0; i < 5; ++i) 
+        myQueue1->push(myQueue1, &values1[i]);
     
-
-    // Queue* myQueue1 = queue_create(sizeof(int));
-    // Queue* myQueue2 = queue_create(sizeof(int));
-
-    // if (!myQueue1 || !myQueue2) 
-    // {
-    //     fprintf(stderr, "Failed to create queues.\n");
-    //     return EXIT_FAILURE;
-    // }
-
-    // // Push some integers onto the first queue
-    // int values1[] = {10, 20, 30, 40, 50};
-    // for (int i = 0; i < 5; ++i) 
-    // {
-    //     myQueue1->push(myQueue1, &values1[i]);
-    // }
-
-    // int values2[] = {15, 25, 35, 45, 55};
-    // for (int i = 0; i < 5; ++i) 
-    // {
-    //     myQueue2->emplace(myQueue2, &values2[i], sizeof(int));
-    // }
-
+    int values2[] = {15, 25, 35, 45, 55};
+    for (int i = 0; i < 5; ++i) 
+        myQueue2->emplace(myQueue2, &values2[i], sizeof(int));
+    
+    
     // // Compare the two queues
-    // printf("Are the queues equal? %s\n", myQueue1->is_equal(myQueue1, myQueue2) ? "Yes" : "No");
-    // printf("Is myQueue1 less than myQueue2? %s\n", myQueue1->is_less(myQueue1, myQueue2) ? "Yes" : "No");
+    printf("Are the queues equal? %s\n", myQueue1->is_equal(myQueue1, myQueue2) ? "Yes" : "No");
+    printf("Is myQueue1 less than myQueue2? %s\n", myQueue1->is_less(myQueue1, myQueue2) ? "Yes" : "No");
 
     // // Swap the two queues
     // myQueue1->swap(myQueue1, myQueue2);
