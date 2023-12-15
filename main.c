@@ -57,34 +57,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    Queue* myQueue = queue_create(sizeof(int));
-
-    if (!myQueue) 
-    {
-        fprintf(stderr, "Failed to create queue.\n");
-        return EXIT_FAILURE;
-    }
-
-    // Push some integers onto the queue
-    int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
-        myQueue->push(myQueue, &values[i]);
-    
-    // Print the size of the queue
-    printf("Queue size: %zu\n", myQueue->size(myQueue));
-    myQueue->deallocate(myQueue);
-
-    // // Check if the queue is empty
-    // printf("Is the queue empty? %s\n", myQueue->empty(myQueue) ? "Yes" : "No");
-
-    // // Access the front and back elements
-    // int* front = myQueue->front(myQueue);
-    // int* back = myQueue->back(myQueue);
-    // if (front && back) 
-    // {
-    //     printf("Front element: %d\n", *front);
-    //     printf("Back element: %d\n", *back);
-    // }
 
     // // Pop an element from the queue
     // myQueue->pop(myQueue);
