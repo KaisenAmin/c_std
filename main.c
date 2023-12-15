@@ -58,63 +58,19 @@ int main(int argc, char** argv)
 {
 
 
+    String* str1 = string_create("Hello");
+    String* str2 = string_create("World");
 
+    if (str1->is_equal(str1, str2)) 
+        printf("Strings are equal\n");
+    
+    if (str1->is_less(str1, str2)) 
+        printf("String 1 is less than String 2\n");
+    
+    str1->deallocate(str1);
+    str2->deallocate(str2);
 
-    // Stack* stk1 = stack_create(sizeof(int));
-    // Stack* stk2 = stack_create(sizeof(int));
-
-
-    // if (stk1->is_equal(stk1, stk2)) {
-    //     printf("stk1 is equal to stk2\n");
-    // }
-
-    // if (stk1->is_less(stk1, stk2)) {
-    //     printf("stk1 is less than stk2\n");
-    // }
-
-    // if (stk1->is_greater(stk1, stk2)) {
-    //     printf("stk1 is greater than stk2\n");
-    // }
-
-    // if (stk1->is_less_or_equal(stk1, stk2)) {
-    //     printf("stk1 is less than or equal to stk2\n");
-    // }
-
-    // if (stk1->is_greater_or_equal(stk1, stk2)) {
-    //     printf("stk1 is greater than or equal to stk2\n");
-    // }
-
-    // if (stk1->is_not_equal(stk1, stk2)) {
-    //     printf("stk1 is not equal to stk2\n");
-    // }
-
-    // // Clean up the stacks...
-    // stk1->deallocate(stk1);
-    // stk2->deallocate(stk2);
-    // free(stk1);
-    // free(stk2);
-
-
-    // String* str1 = string_create("Hello");
-    // String* str2 = string_create("World");
-
-    // if (str1->is_equal(str1, str2)) 
-    // {
-    //     printf("Strings are equal\n");
-    // }
-
-    // if (str1->is_less(str1, str2)) 
-    // {
-    //     printf("String 1 is less than String 2\n");
-    // }
-
-
-    // str1->deallocate(str1);
-    // str2->deallocate(str2);
-
-    // free(str1);
-    // free(str2);
-     
+   
     /// Array
 
     // Array* intArray = array_create(sizeof(int), 5);
