@@ -507,7 +507,6 @@ stringVector->deallocate(stringVector);
 #include "string/string.h"
 
 
-String* myString = string_create("");
 Vector* vec = vector_create(sizeof(String*));
 
 String* myString1 = string_create("Hello");

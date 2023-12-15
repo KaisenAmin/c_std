@@ -418,7 +418,9 @@ void string_deallocate_impl(String *str)
     if (str->dataStr != NULL)  // Free the dataStr if it's not NULL
     {
         free(str->dataStr);
-        str->dataStr = NULL;  
+        str->dataStr = NULL;
+
+        free(str);
     }
 }
 
