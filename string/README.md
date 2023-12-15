@@ -52,3 +52,27 @@ printf("%s\n", myString->c_str(myString));
 myString->deallocate(myString);
 
 ```
+
+## Example 2: 'shrink_to_fit', 'resize'
+
+```c
+
+String *myString = string_create("Hello");
+
+// Append a string
+myString->append(myString, ", World!");
+printf("String after append: %s\n", myString->dataStr);
+
+// Resize the string
+myString->resize(myString, 5);  // Resize to "Hello"
+printf("String after resize: %s\n", myString->dataStr);
+
+// Shrink to fit
+myString->shrink_to_fit(myString);
+printf("String capacity after shrink to fit: %zu\n", myString->capacity(myString));
+
+// Deallocate and clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```

@@ -58,52 +58,23 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    String* myString = string_create("");
-   
-    // Push back a new character
-    myString->push_back(myString, '!');
-    printf("String after push_back: %s\n", myString->dataStr);
+    String *myString = string_create("Hello");
 
-    // Access a character
-    char ch = myString->at(myString, 0);
-    printf("Character at index 1: %c\n", ch);
+    // Append a string
+    myString->append(myString, ", World!");
+    printf("String after append: %s\n", myString->dataStr);
 
-    // Print length and capacity
-    printf("Length: %zu, Capacity: %zu\n", myString->length(myString), myString->capacity(myString));
+    // Resize the string
+    myString->resize(myString, 5);  // Resize to "Hello"
+    printf("String after resize: %s\n", myString->dataStr);
 
-    // Clear the string
+    // Shrink to fit
+    myString->shrink_to_fit(myString);
+    printf("String capacity after shrink to fit: %zu\n", myString->capacity(myString));
+
+    // Deallocate and clean up
     myString->clear(myString);
-    printf("String after clear: %s\n", myString->dataStr);
-
-    // Clean up
-    myString->clear(myString);
-    myString->append(myString, "Hello C Programmers");
-    
-    printf("%s\n", myString->c_str(myString));
-
     myString->deallocate(myString);
-
-
-    
-    // String *myString = string_create("Hello");
-
-    // // Append a string
-    // myString->append(myString, ", World!");
-    // printf("String after append: %s\n", myString->dataStr);
-
-    // // Resize the string
-    // myString->resize(myString, 5);  // Resize to "Hello"
-    // printf("String after resize: %s\n", myString->dataStr);
-
-    // // Shrink to fit
-    // myString->shrink_to_fit(myString);
-    // printf("String capacity after shrink to fit: %zu\n", myString->capacity(myString));
-
-    // // Deallocate and clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-    // free(myString);
-
 
 
     // String *myString = string_create("Hello World");
