@@ -100,3 +100,63 @@ myString->clear(myString);
 myString->deallocate(myString);
 
 ```
+
+## Example 4: 'replace' Strings 
+
+```c
+
+String *str1 = string_create("Hello World");
+str1->replace(str1, "World", "There");
+    
+printf("After replace: %s\n", str1->dataStr);
+
+str1->deallocate(str1);
+
+```
+
+
+## Example 5: 'swap' two String obj and also 'pop_back'
+
+```c
+
+String *str1 = string_create("Hello World");
+str1->replace(str1, "World", "There");
+    
+printf("After replace: %s\n", str1->dataStr);
+
+// Swap example
+String *str2 = string_create("Sample Text");
+str2->swap(str1, str2);
+
+printf("After swap, str1: %s, str2: %s\n", str1->dataStr, str2->dataStr);
+
+// Pop back example
+str2->pop_back(str2);
+printf("After pop back: %s\n", str2->dataStr);
+
+str1->deallocate(str1);
+str2->deallocate(str2);
+
+```
+
+
+## Example 6: 'back' and 'front' return ref to front and last char of String 
+
+```c
+
+String *myString = string_create("Hello World");
+
+// Get the last character
+char lastChar = myString->back(myString);
+printf("Last character: %c\n", lastChar);
+
+// Get the first character
+char firstChar = myString->front(myString);
+printf("First character: %c\n", firstChar);
+printf("Max size is %zu\n", myString->max_size(myString));
+
+// Deallocate and clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```

@@ -58,59 +58,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    String *myString = string_create("Hello World");
-
-    // Assign a new string
-    myString->assign(myString, "New String");
-    printf("String after assign: %s\n", myString->dataStr);
-
-    // Insert a string
-    myString->insert(myString, 4, "Test ");
-    printf("String after insert: %s\n", myString->dataStr);
-
-    // Erase a portion of the string
-    myString->erase(myString, 0, 5);  // Erase "New T"
-    printf("String after erase: %s\n", myString->dataStr);
-
-    // Deallocate and clean up
-    myString->clear(myString);
-    myString->deallocate(myString);
-
-
-    // String *str1 = string_create("Hello World");
-    // str1->replace(str1, "World", "There");
-    // printf("After replace: %s\n", str1->dataStr);
-
-    // // Swap example
-    // String *str2 = string_create("Sample Text");
-    // str2->swap(str1, str2);
-    // printf("After swap, str1: %s, str2: %s\n", str1->dataStr, str2->dataStr);
-
-    // // Pop back example
-    // str2->pop_back(str2);
-    // printf("After pop back: %s\n", str2->dataStr);
-
-
-    // str1->clear(str1);
-    // str2->clear(str2);
-    // // Deallocate and clean up
-    // str1->deallocate(str1);
-    // str2->deallocate(str2);
-
-    // String *myString = string_create("Hello World");
-
-    // // Get the last character
-    // char lastChar = myString->back(myString);
-    // printf("Last character: %c\n", lastChar);
-
-    // // Get the first character
-    // char firstChar = myString->front(myString);
-    // printf("First character: %c\n", firstChar);
-    // printf("Max size is %zu\n", myString->max_size(myString));
-    // // Deallocate and clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-
 
     // String *myString = string_create("Hello, World!");
 
