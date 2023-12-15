@@ -76,3 +76,27 @@ myString->clear(myString);
 myString->deallocate(myString);
 
 ```
+
+## Example 3: how to 'assign' new string and 'erase' some part of String obj also 'insert' new ...  
+
+```c
+
+String *myString = string_create("Hello World");
+
+// Assign a new string
+myString->assign(myString, "New String");
+printf("String after assign: %s\n", myString->dataStr);
+
+// Insert a string
+myString->insert(myString, 4, "Test ");
+printf("String after insert: %s\n", myString->dataStr);
+
+// Erase a portion of the string
+myString->erase(myString, 0, 5);  // Erase "New T"
+printf("String after erase: %s\n", myString->dataStr);
+
+// Deallocate and clean up
+myString->clear(myString);
+myString->deallocate(myString);
+
+```

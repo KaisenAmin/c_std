@@ -77,7 +77,6 @@ int main(int argc, char** argv)
     myString->deallocate(myString);
 
 
-
     // String *str1 = string_create("Hello World");
     // str1->replace(str1, "World", "There");
     // printf("After replace: %s\n", str1->dataStr);
