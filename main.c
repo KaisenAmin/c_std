@@ -58,57 +58,6 @@ int main(int argc, char** argv)
 {
 
 
-    // Stack* stack = stack_create(sizeof(int));
-
-    // int arr[] = {10, 20, 30, 40, 50};
-
-    // for (int i = 0; i < 5; i++)
-    // {
-    //     stack->push(stack, &arr[i]);
-    // }
-
-    // printf("Size of stack is %d\n", stack->size(stack));
-    
-    // if (!stack->empty(stack))
-    // {
-    //     int topValue = *(int*)stack->top(stack);
-    //     printf("Top Element is %d\n", topValue);
-
-    //     int pop = *(int*)stack->pop(stack);
-    //     printf("Pop value is %d\n", pop);
-    //     printf("After Pop size is %d\n", stack->size(stack));
-    // }
-
-
-    // stack->deallocate(stack);
-    // free(stack);
-
-
-    // String* myString = string_create("");
-    // Stack* stack = stack_create(sizeof(char*));
-
-    // char* value1 = "Amin";
-    // myString->append(myString, value1);
-    // stack->push(stack, &myString);
-
-    // char* value2 = "Tahmasebi";
-    // myString->append(myString, value2);
-    // stack->push(stack, &myString);
-
-    // char* value3 = "C Programming";
-    // myString->append(myString, value3);
-    // stack->push(stack, &myString);
-
-
-    // printf("Size of Stack is %d\n", stack->size(stack));
-
-    // String** str1 = (String**)stack->pop(stack);
-    // printf("%s", (*str1)->c_str(*str1));
-
-    // (*str1)->deallocate(*str1);
-    // stack->deallocate(stack);
-    // free(*str1);
-    // free(stack);
 
 
     // Stack* stk1 = stack_create(sizeof(int));
@@ -524,62 +473,62 @@ int main(int argc, char** argv)
     // // Deallocate the list
     // myList->deallocate(myList);
 
-    ForwardList *myList = forward_list_create(sizeof(char*));
-    if (myList == NULL) {
-        printf("Failed to create list.\n");
-        return 1;
-    }
+    // ForwardList *myList = forward_list_create(sizeof(char*));
+    // if (myList == NULL) {
+    //     printf("Failed to create list.\n");
+    //     return 1;
+    // }
 
-    char *str1 = "Hello";
-    char *str2 = "World";
-    char *str3 = "Example";
-    char *str4 = "OpenAI";
-    char *str5 = "ChatGPT";
+    // char *str1 = "Hello";
+    // char *str2 = "World";
+    // char *str3 = "Example";
+    // char *str4 = "OpenAI";
+    // char *str5 = "ChatGPT";
 
-    myList->push_front(myList, str1);
-    myList->push_front(myList, str2);
-    myList->emplace_front(myList, str3);
-    myList->push_front(myList, str4); // Pushing another string
-    myList->emplace_front(myList, str5); 
+    // myList->push_front(myList, str1);
+    // myList->push_front(myList, str2);
+    // myList->emplace_front(myList, str3);
+    // myList->push_front(myList, str4); // Pushing another string
+    // myList->emplace_front(myList, str5); 
 
-    if (myList->empty(myList)) {
-    printf("List is empty.\n");
-    } else {
-        printf("List is not empty.\n");
+    // if (myList->empty(myList)) {
+    // printf("List is empty.\n");
+    // } else {
+    //     printf("List is not empty.\n");
 
-        ForwardListNode *node = myList->begin(myList);
-        while (node != myList->end(myList)) {
-            if (node->value != NULL) {
-                printf("%s ", (char *)node->value);
-            } else {
-                printf("(null) ");
-            }
-            node = node->next;
-        }
-        printf("\n");
-    }
+    //     ForwardListNode *node = myList->begin(myList);
+    //     while (node != myList->end(myList)) {
+    //         if (node->value != NULL) {
+    //             printf("%s ", (char *)node->value);
+    //         } else {
+    //             printf("(null) ");
+    //         }
+    //         node = node->next;
+    //     }
+    //     printf("\n");
+    // }
 
-    char *frontElement = myList->front(myList);
-    if (frontElement != NULL) {
-        printf("Front element: %s\n", frontElement);
-    }
+    // char *frontElement = myList->front(myList);
+    // if (frontElement != NULL) {
+    //     printf("Front element: %s\n", frontElement);
+    // }
 
-    ForwardList *anotherList = forward_list_create(sizeof(char*));
-    char *extra1 = "Extra1";
-    char *extra2 = "Extra2";
-    anotherList->push_front(anotherList, extra1);
-    anotherList->push_front(anotherList, extra2);
+    // ForwardList *anotherList = forward_list_create(sizeof(char*));
+    // char *extra1 = "Extra1";
+    // char *extra2 = "Extra2";
+    // anotherList->push_front(anotherList, extra1);
+    // anotherList->push_front(anotherList, extra2);
 
-    myList->merge(myList, anotherList); // Merge anotherList into myList
+    // myList->merge(myList, anotherList); // Merge anotherList into myList
 
-        // Remove a specific element
-    myList->remove_if(myList, conditionToRemove);
+    //     // Remove a specific element
+    // myList->remove_if(myList, conditionToRemove);
 
-    // Remove the front element
-    myList->pop_front(myList);
+    // // Remove the front element
+    // myList->pop_front(myList);
 
-    myList->clear(myList);
-    myList->deallocate(myList);
+    // myList->clear(myList);
+    // myList->deallocate(myList);
 
 
     getchar();
