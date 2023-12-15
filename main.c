@@ -78,6 +78,7 @@ int main(int argc, char** argv)
     // Clean up
     myString->clear(myString);
     myString->append(myString, "Hello C Programmers");
+    
     printf("%s\n", myString->c_str(myString));
 
     myString->deallocate(myString);
