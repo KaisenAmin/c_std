@@ -71,7 +71,7 @@ printf("String after resize: %s\n", myString->dataStr);
 myString->shrink_to_fit(myString);
 printf("String capacity after shrink to fit: %zu\n", myString->capacity(myString));
 
-// Deallocate and clean up
+// clean up and dellocate
 myString->clear(myString);
 myString->deallocate(myString);
 

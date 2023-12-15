@@ -1,6 +1,6 @@
 
 
-# C Standard Library Implementation in C
+# C++ Standard Library Implementation in C
 
 This project aims to reimplement the C++ standard library functionality using the C programming language. It is designed to provide C developers with the familiar tools and libraries that are commonly available in C++. This enables better data structure management, algorithm implementation, and feature usage while staying within the C language's ecosystem.
 

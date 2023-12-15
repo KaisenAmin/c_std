@@ -58,43 +58,24 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    String *myString = string_create("Hello");
+    String *myString = string_create("Hello World");
 
-    // Append a string
-    myString->append(myString, ", World!");
-    printf("String after append: %s\n", myString->dataStr);
+    // Assign a new string
+    myString->assign(myString, "New String");
+    printf("String after assign: %s\n", myString->dataStr);
 
-    // Resize the string
-    myString->resize(myString, 5);  // Resize to "Hello"
-    printf("String after resize: %s\n", myString->dataStr);
+    // Insert a string
+    myString->insert(myString, 4, "Test ");
+    printf("String after insert: %s\n", myString->dataStr);
 
-    // Shrink to fit
-    myString->shrink_to_fit(myString);
-    printf("String capacity after shrink to fit: %zu\n", myString->capacity(myString));
+    // Erase a portion of the string
+    myString->erase(myString, 0, 5);  // Erase "New T"
+    printf("String after erase: %s\n", myString->dataStr);
 
     // Deallocate and clean up
     myString->clear(myString);
     myString->deallocate(myString);
 
-
-    // String *myString = string_create("Hello World");
-
-    // // Assign a new string
-    // myString->assign(myString, "New String");
-    // printf("String after assign: %s\n", myString->dataStr);
-
-    // // Insert a string
-    // myString->insert(myString, 4, "Test ");
-    // printf("String after insert: %s\n", myString->dataStr);
-
-    // // Erase a portion of the string
-    // myString->erase(myString, 0, 5);  // Erase "New T"
-    // printf("String after erase: %s\n", myString->dataStr);
-
-    // // Deallocate and clean up
-    // myString->clear(myString);
-    // myString->deallocate(myString);
-    // free(myString);
 
 
     // String *str1 = string_create("Hello World");
