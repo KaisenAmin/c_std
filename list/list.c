@@ -35,7 +35,7 @@ static void list_remove_if_impl(List *list, ConditionFunction cond);
 static void list_unique_impl(List *list);
 static void list_merge_impl(List *list1, List *list2);
 
-List *list_create(size_t itemSize) 
+List *list_create(size_t itemSize, CompareFunction compare) 
 {
     List *list = malloc(sizeof(List));
     if (!list) return NULL;
@@ -43,6 +43,7 @@ List *list_create(size_t itemSize)
     list->head = list->tail = NULL;
     list->size = 0;
     list->itemSize = itemSize;
+    list->compare = compare; 
 
     // Assign function pointers
     list->assign = list_assign_impl;

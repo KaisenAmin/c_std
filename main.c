@@ -55,11 +55,50 @@ bool conditionToRemove(void *value) {
 }
 
 
+static int compare_strings(const void* a, const void* b) 
+{
+    String* strA = *(String**)a;
+    String* strB = *(String**)b;
+    return strA->is_less(strA, strB) ? -1 : strA->is_greater(strA, strB);
+}
+
+static bool filter_short_strings(void* value) 
+{
+    String* str = *(String**)value;
+    return str->length(str) < 5;
+}
+
 int main(int argc, char** argv)
 {
 
-    
+        List* stringList = list_create(sizeof(String*), NULL);
 
+    // Add strings to the list
+    String* str1 = string_create("Apple");
+    String* str2 = string_create("Banana");
+    String* str3 = string_create("Kiwi");
+
+    stringList->push_back(stringList, &str1);
+    stringList->push_back(stringList, &str2);
+    stringList->push_back(stringList, &str3);
+
+    // Remove short strings
+    stringList->remove_if(stringList, filter_short_strings);
+
+    // Iterate and print remaining strings
+    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next) 
+    {
+        String* str = *(String**)node->value;
+        printf("%s\n", str->c_str(str));
+    }
+
+    // Deallocate and clean up
+    str1->deallocate(str1);
+    str2->deallocate(str2);
+    str3->deallocate(str3);
+
+    stringList->deallocate(stringList);
+    
     // size_t keySize = sizeof(int);
     // size_t valueSize = sizeof(int);
     // Map *intMap = map_create(keySize, valueSize, int_compare);
@@ -204,21 +243,8 @@ int main(int argc, char** argv)
     // myMap->deallocate(myMap);
 
 
-    // List *myList = list_create(sizeof(int));
-    // myList->compare = compare_ints;
 
-    // // Add some integers to the list
-    // // int values[] = {10, 20, 30, 40, 50};
-    // clock_t start, end;
-    // double calc;
-    // start = clock();
-    // for (int i = 0; i < 100000000; ++i) 
-    //     myList->push_back(myList, &i);
-    
-    // end = clock();
-    // calc = ((double)(end - start)) / CLOCKS_PER_SEC;
-    
-    // printf("%f\n", calc);
+
     // // Demonstrate some methods
     // // Display the first and last elements
     // int *front = myList->front(myList);

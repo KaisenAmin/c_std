@@ -61,7 +61,7 @@ struct List
 };
 
 // Function declarations
-List *list_create(size_t itemSize);
+List *list_create(size_t itemSize, CompareFunction compare);
 
 
 #endif // LIST_H_

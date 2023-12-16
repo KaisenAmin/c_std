@@ -21,3 +21,399 @@ To use the List library in your project, include the `list.h` header file in you
 ```c
 #include "list/list.h"
 ```
+
+### Example 1: Create List and Add Elements Using `push_back`
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int values[] = {10, 20, 30, 40, 50};
+
+for (int i = 0; i < 5; ++i) 
+    myList->push_back(myList, &values[i]);
+
+myList->deallocate(myList);
+```
+
+### Example 2: Add Elements Using `push_front`
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int values[] = {10, 20, 30, 40, 50};
+
+for (int i = 0; i < 5; ++i) 
+    myList->push_front(myList, &values[i]);
+
+myList->deallocate(myList);
+```
+
+### Example 3: Pop Elements from Front
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->push_front(myList, &value);
+myList->pop_front(myList);
+
+myList->deallocate(myList);
+```
+
+### Example 4: Pop Elements from Back
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->push_back(myList, &value);
+myList->pop_back(myList);
+
+myList->deallocate(myList);
+```
+
+### Example 5: Insert Element at Specific Position
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->insert(myList, 0, &value); // Insert at the beginning
+
+myList->deallocate(myList);
+```
+
+### Example 6: Erase Element at Specific Position
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->push_back(myList, &value);
+myList->erase(myList, 0); // Erase the first element
+
+myList->deallocate(myList);
+```
+
+### Example 7: Clearing the List
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->push_back(myList, &value);
+myList->clear(myList); // Clear the list
+
+myList->deallocate(myList);
+```
+
+### Example 8: Resize the List
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int defaultValue = 0;
+
+myList->resize(myList, 10, &defaultValue); // Resize list to 10 elements
+
+myList->deallocate(myList);
+```
+
+### Example 9: Swap Two Lists
+
+```c
+List *list1 = list_create(sizeof(int), compare_ints);
+List *list2 = list_create(sizeof(int), compare_ints);
+
+list1->swap(list1, list2); // Swap list1 and list2
+
+list1->deallocate(list1);
+list2->deallocate(list2);
+```
+
+### Example 10: Reverse a List
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->push_back(myList, &value);
+myList->reverse(myList); // Reverse the list
+
+myList->deallocate(myList);
+```
+
+### Example 11: Sort a List
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int values[] = {50, 40, 30, 20, 10};
+
+for (int i = 0; i < 5; ++i) 
+    myList->push_back(myList, &values[i]);
+
+myList->sort(myList); // Sort the list
+
+myList->deallocate(myList);
+```
+
+### Example 12: Check if List is Empty
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+bool isEmpty = myList->empty(myList); // Check if list is empty
+
+myList->deallocate(myList);
+```
+
+### Example 13: Get the Length of the List
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int value = 100;
+
+myList->push_back(myList, &value);
+size_t length = myList->length(myList); // Get the length of the list
+
+myList->deallocate(myList);
+```
+
+### Example 14: Assign Values to List
+
+```c
+List *myList = list_create(sizeof(int), compare_ints);
+int values[] = {1, 2, 3, 4, 5};
+
+myList->assign(myList, values, 5); // Assign values to list
+
+myList->deallocate(myList);
+```
+
+### Example 15: Merge Two Lists
+
+```c
+List *list1 = list_create(sizeof(int), compare_ints);
+List *list2 = list_create(sizeof(int), compare_ints);
+int value1 = 10, value2 = 20;
+
+list1->push_back(list1, &value1);
+list2->push_back(list2, &value2);
+list1->merge(list1, list2); // Merge list2 into list1
+
+list1->deallocate(list1);
+list2->deallocate(list2);
+```
+
+### Example 16 : Storing Strings in a List and Sorting
+
+```c
+// Function to compare two strings in the list
+static int compare_strings(const void* a, const void* b) 
+{
+    String* strA = *(String**)a;
+    String* strB = *(String**)b;
+
+    return strA->is_less(strA, strB) ? -1 : strA->is_greater(strA, strB);
+}
+
+int main() 
+{
+    List* stringList = list_create(sizeof(String*), compare_strings);
+
+    // Add strings to the list
+    String* str1 = string_create("Apple");
+    String* str2 = string_create("Banana");
+    String* str3 = string_create("Cherry");
+
+    stringList->push_back(stringList, &str1);
+    stringList->push_back(stringList, &str2);
+    stringList->push_back(stringList, &str3);
+
+    // Sort the list of strings
+    stringList->sort(stringList);
+
+    // Iterate and print strings
+    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next) 
+    {
+        String* str = *(String**)node->value;
+        printf("%s\n", str->c_str(str));
+    }
+
+    // Deallocate and clean up
+    str1->deallocate(str1);
+    str2->deallocate(str2);
+    str3->deallocate(str3);
+
+    stringList->deallocate(stringList);
+
+    return 0;
+}
+```
+
+### Example 17: Merging Two Lists of Strings
+
+#include "string/string.h"
+
+```c
+int main() 
+{
+    List* list1 = list_create(sizeof(String*), NULL);
+    List* list2 = list_create(sizeof(String*), NULL);
+
+    String* str1 = string_create("Hello");
+    String* str2 = string_create("World");
+    String* str3 = string_create("Example");
+    String* str4 = string_create("Text");
+
+    list1->push_back(list1, &str1);
+    list1->push_back(list1, &str2);
+    list2->push_back(list2, &str3);
+    list2->push_back(list2, &str4);
+
+    // Merge list2 into list1
+    list1->merge(list1, list2);
+
+    // Iterate and print strings from merged list
+    for (Node* node = list1->begin(list1); node != list1->end(list1); node = node->next) 
+    {
+        String* str = *(String**)node->value;
+        printf("%s\n", str->c_str(str));
+    }
+
+    // Deallocate and clean up
+    str1->deallocate(str1);
+    str2->deallocate(str2);
+    str3->deallocate(str3);
+    str4->deallocate(str4);
+
+    list1->deallocate(list1);
+    list2->deallocate(list2);
+
+    return 0;
+}
+```
+
+### Example 18: Filtering Strings from a List
+
+```c
+#include "string/string.h"
+
+// Condition function to filter out short strings
+static bool filter_short_strings(void* value) 
+{
+    String* str = *(String**)value;
+    return str->length(str) < 5;
+}
+
+int main() 
+{
+    List* stringList = list_create(sizeof(String*), NULL);
+
+    // Add strings to the list
+    String* str1 = string_create("Apple");
+    String* str2 = string_create("Banana");
+    String* str3 = string_create("Kiwi");
+
+    stringList->push_back(stringList, &str1);
+    stringList->push_back(stringList, &str2);
+    stringList->push_back(stringList, &str3);
+
+    // Remove short strings
+    stringList->remove_if(stringList, filter_short_strings);
+
+    // Iterate and print remaining strings
+    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next) 
+    {
+        String* str = *(String**)node->value;
+        printf("%s\n", str->c_str(str));
+    }
+
+    // Deallocate and clean up
+    str1->deallocate(str1);
+    str2->deallocate(str2);
+    str3->deallocate(str3);
+
+    stringList->deallocate(stringList);
+
+    return 0;
+}
+```
+
+### Example 19: Concatenating All Strings in a List
+
+```c
+#include "string/string.h"
+
+int main() 
+{
+    List* stringList = list_create(sizeof(String*), NULL);
+    String* concatenated = string_create("");
+
+    // Add strings to the list
+    String* str1 = string_create("Hello, ");
+    String* str2 = string_create("world");
+    String* str3 = string_create("!");
+
+    stringList->push_back(stringList, &str1);
+    stringList->push_back(stringList, &str2);
+    stringList->push_back(stringList, &str3);
+
+    // Concatenate all strings
+    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next)
+    {
+        String* str = *(String**)node->value;
+        concatenated->append(concatenated, str->c_str(str));
+    }
+
+    printf("Concatenated String: %s\n", concatenated->c_str(concatenated));
+
+    // Deallocate and clean up
+    str1->deallocate(str1);
+    str2->deallocate(str2);
+    str3->deallocate(str3);
+
+    concatenated->deallocate(concatenated);
+    stringList->deallocate(stringList);
+
+    return 0;
+}
+```
+
+### Example 20: Reversing Each String in a List
+
+```c
+#include "string/string.h"
+
+int main() 
+{
+    List* stringList = list_create(sizeof(String*), NULL);
+
+    // Add strings to the list
+    String* str1 = string_create("Hello");
+    String* str2 = string_create("World");
+    String* str3 = string_create("Example");
+
+    stringList->push_back(stringList, &str1);
+    stringList->push_back(stringList, &str2);
+    stringList->push_back(stringList, &str3);
+
+    // Reverse each string
+    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next)
+    {
+        String* str = *(String**)node->value;
+        String* reversed = string_create(str->c_str(str));
+
+        for (int i = str->length(str) - 1; i >= 0; --i) 
+            reversed->push_back(reversed, str->c_str(str)[i]);
+        
+        printf("Reversed String: %s\n", reversed->c_str(reversed));
+
+        reversed->deallocate(reversed);
+    }
+
+    // Deallocate and clean up
+    str1->deallocate(str1);
+    str2->deallocate(str2);
+    str3->deallocate(str3);
+    stringList->deallocate(stringList);
+
+    return 0;
+}
+```
