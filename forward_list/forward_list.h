@@ -44,6 +44,14 @@ struct ForwardList
     void (*merge)(ForwardList *list1, ForwardList *list2);
     void (*sort)(ForwardList *list);
     void (*reverse)(ForwardList *list);
+
+    bool (*is_less)(const ForwardList *list1, const ForwardList *list2);
+    bool (*is_greater)(const ForwardList *list1, const ForwardList *list2);
+    bool (*is_equal)(const ForwardList *list1, const ForwardList *list2);
+    bool (*is_less_or_equal)(const ForwardList *list1, const ForwardList *list2);
+    bool (*is_greater_or_equal)(const ForwardList *list1, const ForwardList *list2);
+    bool (*is_not_equal)(const ForwardList *list1, const ForwardList *list2);
+
 };
 
 ForwardList* forward_list_create(size_t itemSize);

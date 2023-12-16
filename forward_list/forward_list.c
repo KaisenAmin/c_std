@@ -27,6 +27,13 @@ static void forward_list_unique_impl(ForwardList *list);
 static void forward_list_merge_impl(ForwardList *list1, ForwardList *list2);
 static void forward_list_sort_impl(ForwardList *list);
 static void forward_list_reverse_impl(ForwardList *list);
+static bool forward_list_is_less_impl(const ForwardList *list1, const ForwardList *list2);
+static bool forward_list_is_greater_impl(const ForwardList *list1, const ForwardList *list2);
+static bool forward_list_is_equal_impl(const ForwardList *list1, const ForwardList *list2);
+static bool forward_list_is_less_or_equal_impl(const ForwardList *list1, const ForwardList *list2);
+static bool forward_list_is_greater_or_equal_impl(const ForwardList *list1, const ForwardList *list2);
+static bool forward_list_is_not_equal_impl(const ForwardList *list1, const ForwardList *list2);
+
 
 ForwardList *forward_list_create(size_t itemSize) 
 {
@@ -64,6 +71,12 @@ ForwardList *forward_list_create(size_t itemSize)
     list->merge = forward_list_merge_impl;
     list->sort = forward_list_sort_impl;
     list->reverse = forward_list_reverse_impl;
+    list->is_less = forward_list_is_less_impl;
+    list->is_greater = forward_list_is_greater_impl;
+    list->is_equal = forward_list_is_equal_impl;
+    list->is_less_or_equal = forward_list_is_less_or_equal_impl;
+    list->is_greater_or_equal = forward_list_is_greater_or_equal_impl;
+    list->is_not_equal = forward_list_is_not_equal_impl;
 
     return list;
 }
@@ -510,4 +523,62 @@ static void forward_list_reverse_impl(ForwardList *list)
     }
 
     list->head = prev; // Update the head to the new front
+}
+
+
+// Helper function for comparing node values
+static int compare_node_values(const void *a, const void *b, size_t size) 
+{
+    return memcmp(a, b, size);
+}
+
+static bool forward_list_is_less_impl(const ForwardList *list1, const ForwardList *list2) 
+{
+    ForwardListNode *node1 = list1->head, *node2 = list2->head;
+
+    while (node1 && node2) 
+    {
+        if (compare_node_values(node1->value, node2->value, list1->itemSize) >= 0) 
+            return false;
+
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+    return node1 == NULL && node2 != NULL;
+}
+
+static bool forward_list_is_greater_impl(const ForwardList *list1, const ForwardList *list2) 
+{
+    return forward_list_is_less_impl(list2, list1); // Just invert list1 and list2 for is_greater
+}
+
+static bool forward_list_is_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+{
+    ForwardListNode *node1 = list1->head, *node2 = list2->head;
+
+    while (node1 && node2) 
+    {
+        if (compare_node_values(node1->value, node2->value, list1->itemSize) != 0) 
+            return false;
+
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+
+    return node1 == NULL && node2 == NULL;
+}
+
+static bool forward_list_is_less_or_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+{
+    return forward_list_is_less_impl(list1, list2) || forward_list_is_equal_impl(list1, list2);
+}
+
+static bool forward_list_is_greater_or_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+{
+    return forward_list_is_greater_impl(list1, list2) || forward_list_is_equal_impl(list1, list2);
+}
+
+static bool forward_list_is_not_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+{
+    return !forward_list_is_equal_impl(list1, list2);
 }
