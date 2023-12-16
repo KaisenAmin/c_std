@@ -243,7 +243,7 @@ int main()
 
     stringList->deallocate(stringList);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 ```
 
@@ -286,7 +286,7 @@ int main()
     list1->deallocate(list1);
     list2->deallocate(list2);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 ```
 
@@ -332,7 +332,7 @@ int main()
 
     stringList->deallocate(stringList);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 ```
 
@@ -372,7 +372,7 @@ int main()
     concatenated->deallocate(concatenated);
     stringList->deallocate(stringList);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 ```
 
@@ -414,6 +414,56 @@ int main()
     str3->deallocate(str3);
     stringList->deallocate(stringList);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
+```
+
+## Example 21 : Relational operators in List 
+
+```c
+
+// Function to compare integers for the list
+static int int_compare(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
+
+// Function to add elements to a list
+void add_elements_to_list(List* list, int* elements, size_t numElements) 
+{
+    for (size_t i = 0; i < numElements; ++i) 
+        list->push_back(list, &elements[i]);
+    
+}
+
+int main() 
+{
+    List* list1 = list_create(sizeof(int), int_compare);
+    List* list2 = list_create(sizeof(int), int_compare);
+
+    // Add elements to the lists
+    int elements1[] = {1, 2, 3, 4, 5};
+    int elements2[] = {1, 2, 3, 4, 6};
+
+    add_elements_to_list(list1, elements1, 5);
+    add_elements_to_list(list2, elements2, 5);
+
+    // Perform relational comparisons
+    printf("List 1 is less than List 2: %s\n", list1->is_less(list1, list2) ? "true" : "false");
+    printf("List 1 is greater than List 2: %s\n", list1->is_greater(list1, list2) ? "true" : "false");
+    printf("List 1 is equal to List 2: %s\n", list1->is_equal(list1, list2) ? "true" : "false");
+    printf("List 1 is less than or equal to List 2: %s\n", list1->is_less_or_equal(list1, list2) ? "true" : "false");
+    printf("List 1 is greater than or equal to List 2: %s\n", list1->is_greater_or_equal(list1, list2) ? "true" :"false");
+    printf("List 1 is not equal to List 2: %s\n", list1->is_not_equal(list1, list2) ? "true" : "false");
+
+    // Deallocate and clean up
+    list1->deallocate(list1);
+    list2->deallocate(list2);
+
+    return EXIT_SUCCESS;
+}
+
+
 ```

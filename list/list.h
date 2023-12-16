@@ -58,6 +58,12 @@ struct List
     void (*remove_if)(List *list, ConditionFunction cond);
     void (*unique)(List *list);
     void (*merge)(List *list1, List *list2);
+    bool (*is_less)(const List *list1, const List *list2);
+    bool (*is_greater)(const List *list1, const List *list2);
+    bool (*is_equal)(const List *list1, const List *list2);
+    bool (*is_less_or_equal)(const List *list1, const List *list2);
+    bool (*is_greater_or_equal)(const List *list1, const List *list2);
+    bool (*is_not_equal)(const List *list1, const List *list2);
 };
 
 // Function declarations

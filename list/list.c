@@ -34,6 +34,12 @@ static void list_remove_impl(List *list, void *value);
 static void list_remove_if_impl(List *list, ConditionFunction cond);
 static void list_unique_impl(List *list);
 static void list_merge_impl(List *list1, List *list2);
+static bool list_is_less_impl(const List *list1, const List *list2);
+static bool list_is_greater_impl(const List *list1, const List *list2);
+static bool list_is_equal_impl(const List *list1, const List *list2);
+static bool list_is_less_or_equal_impl(const List *list1, const List *list2);
+static bool list_is_greater_or_equal_impl(const List *list1, const List *list2);
+static bool list_is_not_equal_impl(const List *list1, const List *list2);
 
 List *list_create(size_t itemSize, CompareFunction compare) 
 {
@@ -78,7 +84,12 @@ List *list_create(size_t itemSize, CompareFunction compare)
     list->splice = list_splice_impl;
     list->swap = list_swap_impl;
     list->unique = list_unique_impl;
-
+    list->is_less = list_is_less_impl;
+    list->is_greater = list_is_greater_impl;
+    list->is_equal = list_is_equal_impl;
+    list->is_less_or_equal = list_is_less_or_equal_impl;
+    list->is_greater_or_equal = list_is_greater_or_equal_impl;
+    list->is_not_equal = list_is_not_equal_impl;
 
     return list;
 }
@@ -653,4 +664,67 @@ static void list_merge_impl(List *list1, List *list2)
 
     list2->head = list2->tail = NULL;
     list2->size = 0;
+}
+
+static bool list_is_less_impl(const List *list1, const List *list2) 
+{
+    if (list1->size != list2->size)
+        return list1->size < list2->size;
+
+    Node *node1 = list1->head;
+    Node *node2 = list2->head;
+
+    while (node1 != NULL && node2 != NULL) 
+    {
+        int val1 = *(int *)(node1->value);
+        int val2 = *(int *)(node2->value);
+
+        if (val1 != val2)
+            return val1 < val2;
+
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+
+    return false; // Lists are equal
+}
+
+static bool list_is_greater_impl(const List *list1, const List *list2) 
+{
+    return list_is_less_impl(list2, list1);
+}
+
+static bool list_is_equal_impl(const List *list1, const List *list2) 
+{
+    if (list1->size != list2->size)
+        return false;
+
+    Node *node1 = list1->head;
+    Node *node2 = list2->head;
+
+    while (node1 != NULL && node2 != NULL) 
+    {
+        if (list1->compare(node1->value, node2->value) != 0)
+            return false;
+
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+
+    return true;
+}
+
+static bool list_is_less_or_equal_impl(const List *list1, const List *list2) 
+{
+    return list1->is_less(list1, list2) || list1->is_equal(list1, list2);
+}
+
+static bool list_is_greater_or_equal_impl(const List *list1, const List *list2) 
+{
+    return list1->is_greater(list1, list2) || list1->is_equal(list1, list2);
+}
+
+static bool list_is_not_equal_impl(const List *list1, const List *list2) 
+{
+    return !list1->is_equal(list1, list2);
 }

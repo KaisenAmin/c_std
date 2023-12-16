@@ -55,50 +55,9 @@ bool conditionToRemove(void *value) {
 }
 
 
-static int compare_strings(const void* a, const void* b) 
-{
-    String* strA = *(String**)a;
-    String* strB = *(String**)b;
-    return strA->is_less(strA, strB) ? -1 : strA->is_greater(strA, strB);
-}
-
-static bool filter_short_strings(void* value) 
-{
-    String* str = *(String**)value;
-    return str->length(str) < 5;
-}
-
 int main(int argc, char** argv)
 {
 
-        List* stringList = list_create(sizeof(String*), NULL);
-
-    // Add strings to the list
-    String* str1 = string_create("Apple");
-    String* str2 = string_create("Banana");
-    String* str3 = string_create("Kiwi");
-
-    stringList->push_back(stringList, &str1);
-    stringList->push_back(stringList, &str2);
-    stringList->push_back(stringList, &str3);
-
-    // Remove short strings
-    stringList->remove_if(stringList, filter_short_strings);
-
-    // Iterate and print remaining strings
-    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next) 
-    {
-        String* str = *(String**)node->value;
-        printf("%s\n", str->c_str(str));
-    }
-
-    // Deallocate and clean up
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-    str3->deallocate(str3);
-
-    stringList->deallocate(stringList);
-    
     // size_t keySize = sizeof(int);
     // size_t valueSize = sizeof(int);
     // Map *intMap = map_create(keySize, valueSize, int_compare);
