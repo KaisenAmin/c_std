@@ -58,42 +58,6 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
-    // PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
-
-    // if (!pq) 
-    // {
-    //     fprintf(stderr, "Failed to create priority queue.\n");
-    //     return EXIT_FAILURE;
-    // }
-
-    // // Push some integers onto the priority queue
-    // int values[] = {5, 10, 3, 7, 4};
-    // for (int i = 0; i < 5; ++i) {
-    //     pq->push(pq, &values[i]);
-    // }
-
-    // // Print the size of the priority queue
-    // printf("Priority Queue size: %zu\n", pq->size(pq));
-
-    // // Check if the priority queue is empty
-    // printf("Is the priority queue empty? %s\n", pq->empty(pq) ? "Yes" : "No");
-
-    // // Access the top element
-    // int* top = pq->top(pq);
-    // if (top) {
-    //     printf("Top element: %d\n", *top);
-    // }
-
-    // // Pop the top element and access the new top
-    // pq->pop(pq);
-    // top = pq->top(pq);
-    // if (top) {
-    //     printf("New top element after pop: %d\n", *top);
-    // }
-
-    // // Deallocate the priority queue
-    // pq->deallocate(pq);
-
     // size_t keySize = sizeof(int);
     // size_t valueSize = sizeof(int);
     // Map *intMap = map_create(keySize, valueSize, int_compare);
