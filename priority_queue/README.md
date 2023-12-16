@@ -160,3 +160,181 @@ if (top)
 pq->deallocate(pq);
 
 ```
+
+
+## Example 5 : Sorting Integers in Desc orders 
+
+```c
+#include "priority_queue/priority_queue.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+static int compare_ints_desc(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+
+    // For descending order, reverse the comparison logic
+    return (int_b > int_a) - (int_b < int_a);
+}
+
+int main() 
+{
+    PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints_desc);
+
+    if (!pq) 
+    {
+        fprintf(stderr, "Failed to create priority queue.\n");
+        return EXIT_FAILURE;
+    }
+
+    // Push some integers onto the priority queue
+    int values[] = {5, 10, 3, 7, 4, 15, 8};
+    for (int i = 0; i < sizeof(values) / sizeof(values[0]); ++i) 
+        pq->push(pq, &values[i]);
+
+    printf("Sorted elements in descending order:\n");
+    while (!pq->empty(pq)) 
+    {
+        int* top = pq->top(pq);
+        if (top)
+            printf("%d ", *top);
+        pq->pop(pq);
+    }
+    printf("\n");
+
+    pq->deallocate(pq);
+
+    return EXIT_SUCCESS;
+}
+
+```
+
+## Example 6: Merging Two Priority Queues
+
+```c
+
+#include "priority_queue/priority_queue.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+
+    return (int_a > int_b) - (int_a < int_b);
+}
+
+void merge_priority_queues(PriorityQueue* destination, PriorityQueue* source) 
+{
+    while (!source->empty(source)) 
+    {
+        int* top = source->top(source);
+
+        destination->push(destination, top);
+        source->pop(source);
+    }
+}
+
+int main() 
+{
+    PriorityQueue* pq1 = priority_queue_create(sizeof(int), compare_ints);
+    PriorityQueue* pq2 = priority_queue_create(sizeof(int), compare_ints);
+    PriorityQueue* mergedPQ = priority_queue_create(sizeof(int), compare_ints);
+
+    if (!pq1 || !pq2 || !mergedPQ) 
+    {
+        fprintf(stderr, "Failed to create priority queues.\n");
+        return EXIT_FAILURE;
+    }
+
+    int values1[] = {1, 3, 5, 7, 9};
+    for (int i = 0; i < sizeof(values1) / sizeof(values1[0]); ++i)
+        pq1->push(pq1, &values1[i]);
+
+    int values2[] = {2, 4, 6, 8, 10};
+    for (int i = 0; i < sizeof(values2) / sizeof(values2[0]); ++i)
+        pq2->push(pq2, &values2[i]);
+
+    // Merge both queues into the third one
+    merge_priority_queues(mergedPQ, pq1);
+    merge_priority_queues(mergedPQ, pq2);
+
+    printf("Merged Priority Queue:\n");
+    while (!mergedPQ->empty(mergedPQ)) 
+    {
+        int* top = mergedPQ->top(mergedPQ);
+        printf("%d ", *top);
+
+        mergedPQ->pop(mergedPQ);
+    }
+
+    printf("\n");
+
+    pq1->deallocate(pq1);
+    pq2->deallocate(pq2);
+    mergedPQ->deallocate(mergedPQ);
+
+    return EXIT_SUCCESS;
+}
+
+```
+
+## Example 7: Using Priority Queue for Task Scheduling
+
+```c
+#include "priority_queue/priority_queue.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Task Task;
+
+struct Task
+{
+    int taskID;
+    int priority;
+
+};
+
+static int compare_tasks(const void* a, const void* b) 
+{
+    const Task* taskA = a;
+    const Task* taskB = b;
+
+    return (taskA->priority > taskB->priority) - (taskA->priority < taskB->priority);
+}
+
+int main() 
+{
+    PriorityQueue* taskQueue = priority_queue_create(sizeof(Task), compare_tasks);
+
+    if (!taskQueue) 
+    {
+        fprintf(stderr, "Failed to create task queue.\n");
+        return EXIT_FAILURE;
+    }
+
+    // Define some tasks with different priorities
+    Task tasks[] = {
+        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2}
+    };
+
+    for (int i = 0; i < sizeof(tasks) / sizeof(tasks[0]); ++i) 
+        taskQueue->push(taskQueue, &tasks[i]);
+
+    printf("Executing tasks in priority order:\n");
+    while (!taskQueue->empty(taskQueue)) 
+    {
+        Task* topTask = taskQueue->top(taskQueue);
+        printf("Executing Task ID: %d, Priority: %d\n", topTask->taskID, topTask->priority);
+        taskQueue->pop(taskQueue);
+    }
+
+    taskQueue->deallocate(taskQueue);
+
+    return EXIT_SUCCESS;
+}
+
+
+```

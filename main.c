@@ -58,6 +58,8 @@ bool conditionToRemove(void *value) {
 int main(int argc, char** argv)
 {
 
+    
+
     // size_t keySize = sizeof(int);
     // size_t valueSize = sizeof(int);
     // Map *intMap = map_create(keySize, valueSize, int_compare);
