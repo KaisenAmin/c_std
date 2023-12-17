@@ -8,6 +8,10 @@ This project aims to reimplement the C++ standard library functionality using th
 
 I undertake this project out of a deep affection for the C programming language. It is my belief that C remains an essential tool for any computer engineer or programmer, providing the foundation necessary to build efficient and robust software. My love for C drives this endeavor, aiming to enrich the language with the familiar conveniences found in C++.
 
+## tip 
+
+You're aware that in C, we don't have many features that object-oriented languages offer, like templates, inheritance, abstraction .. and for almost everything, we have to turn to functions. Therefore, the syntax might seem a bit strange, but it's something we need to accept. The important thing is, it's still C :))
+
 ## Project Structure
 
 The project is organized into several subdirectories, each representing a different module of the standard library:
