@@ -9,7 +9,7 @@ static bool string_is_greater_impl(String* str1, String* str2);
 static bool string_is_less_or_equal_impl(String* str1, String* str2);
 static bool string_is_greater_or_equal_impl(String* str1, String* str2);
 static bool string_is_not_equal_impl(String* str1, String* str2);
-static bool string_empty_impl(String* str);
+inline static bool string_empty_impl(String* str);
 static int string_compare_impl(String* str1, String* str2);
 static void string_resize_impl(String* str, size_t newSize);
 static void string_shrink_to_fit_impl(String* str);
@@ -23,9 +23,9 @@ static void string_swap_impl(String* str1, String* str2);
 static void string_pop_back_impl(String* str);
 static void string_deallocate_impl(String* str);
 static void string_clear_impl(String* str);
-static size_t string_length_impl(String* str);
-static size_t string_capacity_impl(String* str);
-static size_t string_max_size_impl(String* str);
+inline static size_t string_length_impl(String* str);
+inline static size_t string_capacity_impl(String* str);
+inline static size_t string_max_size_impl(String* str);
 static size_t string_copy_impl(String* str, char* buffer, size_t pos, size_t len);
 static int string_find_impl(String* str, const char* buffer, size_t pos);
 static int string_rfind_impl(String* str, const char* buffer, size_t pos);
@@ -47,13 +47,50 @@ static const char string_at_impl(String* str, size_t index);
 static char* string_back_impl(String* str);
 static char* string_front_impl(String* str);
 
+static bool useSmallStringOptimization(size_t size) 
+{
+    return size < SMALL_STRING_SIZE;
+}
+
 String* string_create(const char* initialStr) 
 {
     String* str = (String*)malloc(sizeof(String));
-
     if (!str) 
-        return NULL; // Allocation failed
-    
+    {
+        perror("Allocation failed in string_create");
+        return NULL;
+    }
+
+    size_t initialSize = initialStr ? strlen(initialStr) : 0;
+    str->size = initialSize;
+
+    if (!useSmallStringOptimization(initialSize)) 
+    {
+        // Using SSO
+        str->capacitySize = SMALL_STRING_SIZE;
+
+        if (initialStr) 
+            strcpy(str->smallString, initialStr);
+        else 
+            str->smallString[0] = '\0';
+        
+        str->dataStr = NULL; // Not using dynamic memory
+    } 
+    else 
+    {
+        str->capacitySize = SMALL_STRING_SIZE;
+        str->dataStr = (char*)malloc(str->capacitySize);
+
+        if (!str->dataStr) 
+        {
+            free(str);
+            perror("Allocation failed in string_create");
+            return NULL;
+        }
+        if (initialStr) 
+            strcpy(str->dataStr, initialStr);
+    }
+
     str->substr = string_substr_impl;
     str->is_equal = string_is_equal_impl;
     str->is_less = string_is_less_impl;
@@ -99,31 +136,6 @@ String* string_create(const char* initialStr)
     str->back = string_back_impl;
     str->front = string_front_impl;
 
-    size_t initialCapacity = 16;  // Default initial capacity
-    size_t initialSize = 0;
-
-    if (initialStr) 
-    {
-        initialSize = strlen(initialStr);
-        initialCapacity = initialSize + 1;  // Include space for null terminator
-    }
-
-    str->dataStr = (char*)malloc(initialCapacity * sizeof(char));
-
-    if (!str->dataStr) 
-    {
-        free(str); // Free the String struct if data allocation fails
-        return NULL;
-    }
-
-    if (initialStr) 
-        strcpy(str->dataStr, initialStr);  // Copy initial string into data
-    else 
-        str->dataStr[0] = '\0';  // If no initial string, start with empty string
-    
-    str->size = initialSize;
-    str->capacitySize = initialCapacity;
-
     return str;
 }
 
@@ -156,12 +168,9 @@ static String* string_substr_impl(String* str, size_t pos, size_t len)
     return substr;
 }
 
-static bool string_empty_impl(String* str) 
+inline static bool string_empty_impl(String* str) 
 {
-    if (str == NULL) 
-        return true;  // A NULL string is considered empty
-    
-    return str->size == 0;
+    return (str == NULL) ? true : (str->size == 0);
 }
 
 static int string_compare_impl(String* str1, String* str2) 
@@ -277,26 +286,27 @@ static void string_append_impl(String *str, const char *strItem)
     str->size += strItemLength;
 }
 
-static void string_push_back_impl(String *str, char chItem)
+void string_push_back_impl(String* str, char chItem) 
 {
-    if (str == NULL) 
-        return;
+    if (!str) return;
 
     if (str->size + 1 >= str->capacitySize) 
     {
-        size_t newCapacity = (str->capacitySize == 0) ? 1 : str->capacitySize * 2;
+        size_t newCapacity = str->capacitySize > 0 ? str->capacitySize * 2 : SMALL_STRING_SIZE;
         char* newData = realloc(str->dataStr, newCapacity);
-
         if (!newData) 
-            return;  // Handle allocation error
-        
+        {
+            perror("Allocation failed in string_push_back_impl");
+            return;
+        }
+
         str->dataStr = newData;
         str->capacitySize = newCapacity;
     }
 
     str->dataStr[str->size] = chItem;
-    str->dataStr[str->size + 1] = '\0';  // Null-terminate the string
     str->size++;
+    str->dataStr[str->size] = '\0';
 }
 
 static void string_assign_impl(String *str, const char *newStr) 
@@ -452,17 +462,17 @@ static char* string_front_impl(String *str)
 }
 
 
-static size_t string_length_impl(String* str) 
+inline static size_t string_length_impl(String* str) 
 {
     return (str != NULL) ? str->size : 0;
 }
 
-static size_t string_capacity_impl(String* str) 
+inline static size_t string_capacity_impl(String* str) 
 {
     return (str != NULL) ? str->capacitySize : 0;
 }
 
-static size_t string_max_size_impl(String* str) 
+inline static size_t string_max_size_impl(String* str) 
 {
     return (size_t)-1;
 }

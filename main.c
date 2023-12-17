@@ -1,11 +1,12 @@
-#include "deque/deque.h"
+#include "string/string.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
 
 int main() 
 {
+
     
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-

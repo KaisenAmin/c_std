@@ -1,6 +1,8 @@
 #ifndef STRING_H_
 #define STRING_H_
 
+#define GROWTH_FACTOR 1.5
+#define SMALL_STRING_SIZE 101
 typedef struct String String;
 
 #include <stdio.h>
@@ -8,10 +10,14 @@ typedef struct String String;
 
 struct String 
 {
-    char* dataStr;
+    // char* dataStr;
     size_t size;
     size_t capacitySize;
-
+    union {
+        char *dataStr;
+        char smallString[SMALL_STRING_SIZE];
+    };
+    
     String* (*substr)(String* str, size_t pos, size_t len);
     bool (*is_equal)(String* str1, String* str2);
     bool (*is_less)(String* str1, String* str2);

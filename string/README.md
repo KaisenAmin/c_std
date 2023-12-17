@@ -347,3 +347,202 @@ str1->deallocate(str1);
 str2->deallocate(str2);
 
 ```
+
+## Example 17: Manipulate Multiple String 
+
+```c
+
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    // Creating string objects
+    String* greeting = string_create("Hello");
+    String* name = string_create("Alice");
+    String* sentence = string_create("");
+
+    // Concatenate 'greeting' and ', '
+    greeting->append(greeting, ", ");
+    printf("Greeting: %s\n", greeting->dataStr);
+
+    // Append 'name' to 'greeting'
+    greeting->append(greeting, name->dataStr);
+    printf("Greeting with name: %s\n", greeting->dataStr);
+
+    // Create a substring of 'greeting' and assign it to 'sentence'
+    String* tempSubstr = greeting->substr(greeting, 0, 5); // Extract "Hello"
+    sentence->assign(sentence, tempSubstr->dataStr);
+    tempSubstr->deallocate(tempSubstr);
+
+    // Append '!' to 'sentence'
+    sentence->push_back(sentence, '!');
+    printf("Sentence: %s\n", sentence->dataStr);
+
+    // Compare 'greeting' and 'sentence'
+    if (sentence->is_less(sentence, greeting)) 
+        printf("Sentence is less than greeting.\n");
+    else 
+        printf("Sentence is not less than greeting.\n");
+    
+    greeting->deallocate(greeting);
+    name->deallocate(name);
+    sentence->deallocate(sentence);
+
+    return 0;
+}
+
+```
+
+## Example 18: 2D String Array using Custom String Struct
+
+```c
+
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+String*** create_2d_string_array(const size_t rows, const size_t cols) 
+{
+    String*** array = malloc(rows * sizeof(String**));
+
+    for (size_t i = 0; i < rows; ++i) 
+    {
+        array[i] = malloc(cols * sizeof(String*));
+        for (size_t j = 0; j < cols; ++j) 
+            array[i][j] = string_create("");  // Initialize with empty strings
+    }
+
+    return array;
+}
+
+void deallocate_2d_string_array(String*** array, const size_t rows, const size_t cols) 
+{
+    for (size_t i = 0; i < rows; ++i) 
+    {
+        for (size_t j = 0; j < cols; ++j) 
+            array[i][j]->deallocate(array[i][j]);
+        
+        free(array[i]);
+    }
+    free(array);
+}
+
+int main() 
+{
+    const size_t rows = 2;
+    const size_t cols = 3;
+    String*** my2DString = create_2d_string_array(rows, cols);
+
+    // Example usage
+    my2DString[0][0]->assign(my2DString[0][0], "Hello");
+    my2DString[0][1]->assign(my2DString[0][1], "World");
+    my2DString[0][2]->assign(my2DString[0][2], "!");
+
+    my2DString[1][0]->assign(my2DString[1][0], "Goodbye");
+    my2DString[1][1]->assign(my2DString[1][1], "Cruel");
+    my2DString[1][2]->assign(my2DString[1][2], "World");
+
+    // Print the 2D array
+    for (size_t i = 0; i < rows; ++i) 
+    {
+        for (size_t j = 0; j < cols; ++j) 
+            printf("%s ", my2DString[i][j]->c_str(my2DString[i][j]));
+        
+        printf("\n");
+    }
+
+    // Clean up
+    deallocate_2d_string_array(my2DString, rows, cols);
+
+    return 0;
+}
+
+```
+
+## Example 19 : bench mark operation in String and std::string 
+
+gcc -std=c11 -O3 -O2 -o main .\main.c .\string\string.c
+Time taken (Custom String): 0.286000 seconds
+
+```c
+
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define ARRAY_SIZE 1000000
+#define OPERATIONS 100
+
+int main() 
+{
+    clock_t start, end;
+    double cpu_time_used;
+    
+    String** stringArray = malloc(ARRAY_SIZE * sizeof(String*));
+    
+    if (!stringArray) 
+    {
+        perror("Failed to allocate memory for stringArray");
+        return 1; // Or handle error appropriately
+    }
+
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+        stringArray[i] = string_create("");
+    
+    start = clock();
+
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+    {
+        for (int j = 0; j < OPERATIONS; j++) 
+            stringArray[i]->push_back(stringArray[i], 'a'); 
+    }
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+    printf("Time taken (Custom String): %f seconds\n", cpu_time_used);
+
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+        stringArray[i]->deallocate(stringArray[i]);
+    
+    return 0;
+}
+
+```
+
+and in Cpp 
+
+g++ -std=c++14 -O3 -O2 -o main main.cpp                         
+Time taken (std::string): 0.301073 seconds
+
+```c
+#include <iostream>
+#include <string>
+#include <chrono>
+
+#define ARRAY_SIZE 1000000
+#define OPERATIONS 100
+
+int main() 
+{
+    std::string *stringArray = new std::string[ARRAY_SIZE];
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+    {
+        for (int j = 0; j < OPERATIONS; j++) 
+            stringArray[i] += 'a';
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Time taken (std::string): " << elapsed.count() << " seconds\n";
+
+    return 0;
+}
+
+
+```
