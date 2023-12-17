@@ -20,7 +20,6 @@ struct Queue
     void (*emplace)(Queue* queue, void* item, size_t itemSize); // Emplace function
     void (*swap)(Queue* q1, Queue* q2);
     void (*deallocate)(Queue* queue);
-
     bool (*is_equal)(const Queue* queue1, const Queue* queue2);
     bool (*is_less)(const Queue* queue1, const Queue* queue2);
     bool (*is_greater)(const Queue* queue1, const Queue* queue2);
