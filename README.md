@@ -12,14 +12,15 @@ I undertake this project out of a deep affection for the C programming language.
 
 The project is organized into several subdirectories, each representing a different module of the standard library:
 
-- `array`: Implements a dynamic array similar to `std::array`.
-- `forward_list`: Implements a singly-linked list analogous to `std::forward_list`.
-- `list`: Implements a doubly-linked list similar to `std::list`.
-- `queue`: Implements a queue based on `std::queue`.
-- `stack`: Implements a stack akin to `std::stack`.
-- `string`: Implements a basic string class that mimics `std::string`.
-- `vector`: Implements a dynamic array similar to `std::vector`.
-- `priority_queue` : Implements a priority_queue based on `std::priority_queue`
+- `Array`: Implements a dynamic array similar to `std::array`.
+- `ForwardList`: Implements a singly-linked list analogous to `std::forward_list`.
+- `List`: Implements a doubly-linked list similar to `std::list`.
+- `Queue`: Implements a queue based on `std::queue`.
+- `Stack`: Implements a stack akin to `std::stack`.
+- `String`: Implements a basic string class that mimics `std::string`.
+- `Vector`: Implements a dynamic array similar to `std::vector`.
+- `PriorityQueue` : Implements a priority_queue based on `std::priority_queue`
+- `Dqueue` : Implements a priority_queue based on `std::deque`
 
 Each module comes with a `.c` source file and a `.h` header file, along with a `README.md` file that provides information on how to use that specific module.
 
