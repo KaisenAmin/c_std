@@ -664,7 +664,7 @@ int main()
 
 ```
 
-## Example 18 : Conver example in this url 'https://www.geeksforgeeks.org/deque-cpp-stl/' to Deque 
+## Example 18 : Convert example in this url 'https://www.geeksforgeeks.org/deque-cpp-stl/' to Deque 
 
 ```c
 #include "deque/deque.h"
