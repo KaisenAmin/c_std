@@ -33,13 +33,13 @@ Each module comes with a `.c` source file and a `.h` header file, along with a `
 The modules in this project are standalone and do not have any external dependencies other than the GCC compiler. To compile any module, navigate to the desired directory and use the following command:
 
 ```
-gcc -o module_name module_name.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o module_name module_name.c
 ```
 
 Replace `module_name` with the appropriate file names for the module you are compiling. For example, to compile the `vector` module, you would use:
 
 ```
-gcc -o vector vector.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o vector vector.c
 ```
 
 ## Usage
@@ -57,7 +57,7 @@ int main() {
 And compile with:
 
 ```
-gcc -o your_program your_program.c vector.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o your_program your_program.c vector.c
 ```
 
 ## Individual READMEs for Libraries
