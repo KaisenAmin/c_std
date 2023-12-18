@@ -46,7 +46,7 @@ Vector* vector_create(size_t itemSize)
         return NULL;
     
     vec->size = 0;
-    vec->capacitySize = 4; // Initial capacity
+    vec->capacitySize = 32; // Initial capacity
     vec->itemSize = itemSize;
     vec->items = malloc(vec->capacitySize * itemSize);
 
@@ -143,14 +143,6 @@ static bool vector_is_greater_or_equal_impl(const Vector* vec1, const Vector* ve
 static bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) 
 {
     return !vector_is_greater_impl(vec1, vec2);
-}
-
-static bool vector_is_empty_impl_impl(Vector* vec) 
-{
-    if (!vec) 
-        return true;
-
-    return vec->size == 0;
 }
 
 static bool vector_is_empty_impl(Vector *vec) 
@@ -275,7 +267,6 @@ static void vector_swap_impl(Vector *vec1, Vector *vec2)
     vec2->itemSize = tempItemSize;
 }
 
-
 static void vector_assign_impl(Vector *vec, size_t pos, void *item) 
 {
     if (vec == NULL || pos >= vec->size)
@@ -319,12 +310,16 @@ static void vector_push_back_impl(Vector *vec, void *item)
 {
     if (vec->size >= vec->capacitySize) 
     {
-        size_t newCapacity = vec->capacitySize * 2;
-        void *newItems = realloc(vec->items, newCapacity * vec->itemSize);
+        // Implement a more gradual growth strategy (1.5x)
+        size_t newCapacity = vec->capacitySize + (vec->capacitySize * 2);
+        if (newCapacity < vec->capacitySize + 1) {
+            newCapacity = vec->capacitySize + 1; // Ensure at least one more item can fit
+        }
 
+        void *newItems = realloc(vec->items, newCapacity * vec->itemSize);
         if (!newItems) 
         {
-            perror("can not push_back new item");
+            perror("Cannot push back new item");
             return;
         }
 

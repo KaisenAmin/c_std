@@ -1,8 +1,8 @@
 #ifndef STRING_H_
 #define STRING_H_
 
-#define GROWTH_FACTOR 1.5
-#define SMALL_STRING_SIZE 101
+#define SMALL_STRING_SIZE 110
+
 typedef struct String String;
 
 #include <stdio.h>

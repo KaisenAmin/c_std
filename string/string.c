@@ -47,7 +47,7 @@ static const char string_at_impl(String* str, size_t index);
 static char* string_back_impl(String* str);
 static char* string_front_impl(String* str);
 
-static bool useSmallStringOptimization(size_t size) 
+inline static bool useSmallStringOptimization(size_t size) 
 {
     return size < SMALL_STRING_SIZE;
 }
@@ -72,7 +72,7 @@ String* string_create(const char* initialStr)
         if (initialStr) 
             strcpy(str->smallString, initialStr);
         else 
-            str->smallString[0] = '\0';
+            str->smallString[0] = '\0'; 
         
         str->dataStr = NULL; // Not using dynamic memory
     } 
@@ -87,6 +87,7 @@ String* string_create(const char* initialStr)
             perror("Allocation failed in string_create");
             return NULL;
         }
+
         if (initialStr) 
             strcpy(str->dataStr, initialStr);
     }
@@ -259,7 +260,6 @@ static void string_shrink_to_fit_impl(String *str)
     str->capacitySize = str->size + 1;
 }
 
-
 static void string_append_impl(String *str, const char *strItem) 
 {
     if (str == NULL || strItem == NULL) 
@@ -288,7 +288,8 @@ static void string_append_impl(String *str, const char *strItem)
 
 void string_push_back_impl(String* str, char chItem) 
 {
-    if (!str) return;
+    if (!str) 
+        return;
 
     if (str->size + 1 >= str->capacitySize) 
     {
@@ -419,7 +420,6 @@ static void string_pop_back_impl(String *str)
     str->size--;
 }
 
-
 void string_deallocate_impl(String *str)
 {
     if (str == NULL) 
@@ -461,7 +461,6 @@ static char* string_front_impl(String *str)
     return &str->dataStr[0];
 }
 
-
 inline static size_t string_length_impl(String* str) 
 {
     return (str != NULL) ? str->size : 0;
@@ -492,7 +491,6 @@ static size_t string_copy_impl(String *str, char *buffer, size_t pos, size_t len
 
     return copyLen;  // Return the number of characters copied
 }
-
 
 static int string_find_impl(String *str, const char *buffer, size_t pos) 
 {

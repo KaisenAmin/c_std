@@ -8,7 +8,7 @@ To compile the String library along with your main program, use the following GC
 if you need other lib just you can add name of libs .c 
 
 ```bash
-gcc -std=c11 -O3 -o main ./main.c ./string/string.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./string/string.c
 ```
 
 Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
@@ -462,7 +462,7 @@ int main()
 
 ## Example 19 : bench mark operation in String and std::string 
 
-gcc -std=c11 -O3 -O2 -o main .\main.c .\string\string.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main .\main.c .\string\string.c
 Time taken (Custom String): 0.286000 seconds
 
 ```c
@@ -487,11 +487,10 @@ int main()
         perror("Failed to allocate memory for stringArray");
         return 1; // Or handle error appropriately
     }
-
+    start = clock();
     for (int i = 0; i < ARRAY_SIZE; i++) 
         stringArray[i] = string_create("");
-    
-    start = clock();
+
 
     for (int i = 0; i < ARRAY_SIZE; i++) 
     {
@@ -514,7 +513,7 @@ int main()
 
 and in Cpp 
 
-g++ -std=c++14 -O3 -O2 -o main main.cpp                         
+g++ -std=c++14 -O3 -o main main.cpp                         
 Time taken (std::string): 0.301073 seconds
 
 ```c

@@ -9,7 +9,7 @@ To compile the List library along with your main program, use the following GCC 
 if you need other lib just you can add name of libs .c 
 
 ```bash
-gcc -std=c11 -O3 -o main ./main.c list/list.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c list/list.c
 ```
 
 Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.

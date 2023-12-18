@@ -9,7 +9,7 @@ To compile the Vector library along with your main program, use the following GC
 if you need other lib just you can add name of libs .c 
 
 ```bash
-gcc -std=c11 -O3 -o main ./main.c ./vector/vector.c ./string/string.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c ./string/string.c
 ```
 
 Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
@@ -569,6 +569,85 @@ if (vector1->is_greater(vector1, vector2))
 
 vector1->deallocate(vector1);
 vector2->deallocate(vector2);
+
+```
+
+## Example 22 : bench 
+
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c
+Average Custom Vector Time: 0.006084 seconds
+
+```c 
+
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define NUM_ELEMENTS 1000000
+#define NUM_ITERATIONS 100
+
+int main() 
+{
+    struct timespec start, end;
+    double time_sum = 0;
+
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) 
+    {
+        Vector* vec = vector_create(sizeof(int));
+        if (!vec) 
+        {
+            perror("Vector creation failed");
+            return EXIT_FAILURE;
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        
+        for (int i = 0; i < NUM_ELEMENTS; i++) 
+            vec->push_back(vec, &i);
+        
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+        vec->deallocate(vec);
+    }
+
+    double average_time = time_sum / NUM_ITERATIONS;
+    printf("Average Custom Vector Time: %f seconds\n", average_time);
+
+    return EXIT_SUCCESS;
+}
+
+
+```
+
+and in c++ 
+g++ -std=c++14 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.cpp
+std::vector Time: 0.0019915 seconds
+
+```c
+#include <iostream>
+#include <vector>
+#include <chrono>
+
+#define NUM_ELEMENTS 1000000
+
+int main() 
+{
+    std::vector<int> vec;
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    for (int i = 0; i < NUM_ELEMENTS; i++) 
+        vec.push_back(i);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_spent = end - start;
+
+    std::cout << "std::vector Time: " << time_spent.count() << " seconds\n";
+
+    return 0;
+}
+
 
 ```
 ## Contribution
