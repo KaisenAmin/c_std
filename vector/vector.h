@@ -6,50 +6,57 @@
 
 typedef struct Vector Vector;
 
+typedef struct MemoryPool 
+{
+    void *pool;        // Pointer to the memory pool
+    size_t poolSize;   // Total size of the pool
+    size_t used;       // Memory used so far
+} MemoryPool;
+
 struct Vector 
 {
     void* items;
     size_t size;
     size_t capacitySize;
     size_t itemSize;
-
-    bool (*is_empty)(Vector* vec);
-    bool (*is_equal)(const Vector* vec1, const Vector* vec2);
-    bool (*is_less)(const Vector* vec1, const Vector* vec2);
-    bool (*is_greater)(const Vector* vec1, const Vector* vec2);
-    bool (*is_not_equal)(const Vector* vec1, const Vector* vec2);
-    bool (*is_greater_or_equal)(const Vector* vec1, const Vector* vec2);
-    bool (*is_less_or_equal)(const Vector* vec1, const Vector* vec2);
-    void (*erase)(Vector* vec, size_t pos, size_t len);
-    void (*insert)(Vector* vec, size_t pos, void* item);
-    void (*reserve)(Vector* vec, size_t size);
-    void (*resize)(Vector* vec, size_t size);
-    void (*shrink_to_fit)(Vector* vec);
-    void (*swap)(Vector* vec1, Vector* vec2);
-    void (*assign)(Vector* vec, size_t pos, void* item);
-    void (*emplace)(Vector* vec, size_t pos, void* item, size_t sizeItem);
-    void (*emplace_back)(Vector* vec, void*, size_t);
-    void (*push_back)(Vector*, void*);
-    void (*clear)(Vector* vec);
-    void (*deallocate)(Vector* vec);
-    void* (*at)(Vector* vec, size_t pos);
-    void* (*rbegin)(Vector* vec);
-    void* (*rend)(Vector* vec);
-    const void* (*cbegin)(Vector* vec);
-    const void* (*cend)(Vector* vec);
-    const void* (*crbegin)(Vector* vec);
-    const void* (*crend)(Vector* vec);
-    void* (*begin)(Vector* vec);
-    void* (*end)(Vector* vec);
-    void* (*pop_back)(Vector* vec);
-    void* (*front)(Vector* vec);
-    void* (*back)(Vector* vec);
-    void* (*data)(Vector* vec);
-    size_t (*length)(Vector* vec);
-    size_t (*capacity)(Vector* vec);
-    size_t (*max_size)(Vector* vec);
+    MemoryPool *pool;
 };
 
 Vector* vector_create(size_t itemSize);
+bool vector_is_equal(const Vector* vec1, const Vector* vec2);
+bool vector_is_less(const Vector* vec1, const Vector* vec2);
+bool vector_is_greater(const Vector* vec1, const Vector* vec2);
+bool vector_is_not_equal(const Vector* vec1, const Vector* vec2);
+bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2);
+bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2);
+bool vector_is_empty(Vector* vec);
+void vector_erase(Vector* vec, size_t pos, size_t len);
+void vector_insert(Vector* vec, size_t pos, void* item);
+void vector_reserve(Vector* vec, size_t size);
+void vector_resize(Vector* vec, size_t size);
+void vector_shrink_to_fit(Vector* vec);
+void vector_clear(Vector* vec);
+void vector_swap(Vector* vec1, Vector* vec2);
+void vector_assign(Vector* vec, size_t pos, void* item);
+void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize);
+void vector_emplace_back(Vector *vec, void *item, size_t itemSize);
+void vector_push_back(Vector* vec, void* item);
+void vector_deallocate(Vector *vec);
+void* vector_at(Vector* vec, size_t pos);
+void* vector_rbegin(Vector* vec);
+void* vector_rend(Vector* vec);
+const void* vector_cbegin(Vector* vec);
+const void* vector_cend(Vector* vec);
+const void* vector_crbegin(Vector* vec);
+const void* vector_crend(Vector* vec);
+void* vector_begin(Vector* vec);
+void* vector_end(Vector* vec);
+void* vector_pop_back(Vector* vec);
+void* vector_front(Vector* vec);
+void* vector_back(Vector* vec);
+void* vector_data(Vector* vec);
+size_t vector_size(Vector* vec);
+size_t vector_capacity(Vector* vec);
+size_t vector_max_size(Vector* vec);
 
 #endif 

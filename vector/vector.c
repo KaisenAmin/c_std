@@ -2,41 +2,81 @@
 #include <stdlib.h>
 #include <string.h>
 
-static bool vector_is_equal_impl(const Vector* vec1, const Vector* vec2);
-static bool vector_is_less_impl(const Vector* vec1, const Vector* vec2);
-static bool vector_is_greater_impl(const Vector* vec1, const Vector* vec2);
-static bool vector_is_not_equal_impl(const Vector* vec1, const Vector* vec2);
-static bool vector_is_greater_or_equal_impl(const Vector* vec1, const Vector* vec2);
-static bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2);
-static bool vector_is_empty_impl(Vector* vec);
-static void vector_erase_impl(Vector* vec, size_t pos, size_t len);
-static void vector_insert_impl(Vector* vec, size_t pos, void* item);
-static void vector_reserve_impl(Vector* vec, size_t size);
-static void vector_resize_impl(Vector* vec, size_t size);
-static void vector_shrink_to_fit_impl(Vector* vec);
-static void vector_clear_impl(Vector* vec);
-static void vector_swap_impl(Vector* vec1, Vector* vec2);
-static void vector_assign_impl(Vector* vec, size_t pos, void* item);
-static void vector_emplace_impl(Vector* vec, size_t pos, void* item, size_t itemSize);
-static void vector_emplace_back_impl(Vector *vec, void *item, size_t itemSize);
-static void vector_push_back_impl(Vector* vec, void* item);
-static void vector_deallocate_impl(Vector *vec);
-static void* vector_at_impl(Vector* vec, size_t pos);
-static void* vector_rbegin_impl(Vector* vec);
-static void* vector_rend_impl(Vector* vec);
-static const void* vector_cbegin_impl(Vector* vec);
-static const void* vector_cend_impl(Vector* vec);
-static const void* vector_crbegin_impl(Vector* vec);
-static const void* vector_crend_impl(Vector* vec);
-static void* vector_begin_impl(Vector* vec);
-static void* vector_end_impl(Vector* vec);
-static void* vector_pop_back_impl(Vector* vec);
-static void* vector_front_impl(Vector* vec);
-static void* vector_back_impl(Vector* vec);
-static void* vector_data_impl(Vector* vec);
-static size_t vector_size_impl(Vector* vec);
-static size_t vector_capacity_impl(Vector* vec);
-static size_t vector_max_size_impl(Vector* vec);
+// bool vector_is_equal(const Vector* vec1, const Vector* vec2);
+// bool vector_is_less(const Vector* vec1, const Vector* vec2);
+// bool vector_is_greater(const Vector* vec1, const Vector* vec2);
+// bool vector_is_not_equal(const Vector* vec1, const Vector* vec2);
+// bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2);
+// bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2);
+// bool vector_is_empty(Vector* vec);
+// void vector_erase(Vector* vec, size_t pos, size_t len);
+// void vector_insert(Vector* vec, size_t pos, void* item);
+// void vector_reserve(Vector* vec, size_t size);
+// void vector_resize(Vector* vec, size_t size);
+// void vector_shrink_to_fit(Vector* vec);
+// void vector_clear(Vector* vec);
+// void vector_swap(Vector* vec1, Vector* vec2);
+// void vector_assign(Vector* vec, size_t pos, void* item);
+// void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize);
+// void vector_emplace_back(Vector *vec, void *item, size_t itemSize);
+// void vector_push_back(Vector* vec, void* item);
+// void vector_deallocate(Vector *vec);
+// void* vector_at(Vector* vec, size_t pos);
+// void* vector_rbegin(Vector* vec);
+// void* vector_rend(Vector* vec);
+// const void* vector_cbegin(Vector* vec);
+// const void* vector_cend(Vector* vec);
+// const void* vector_crbegin(Vector* vec);
+// const void* vector_crend(Vector* vec);
+// void* vector_begin(Vector* vec);
+// void* vector_end(Vector* vec);
+// void* vector_pop_back(Vector* vec);
+// void* vector_front(Vector* vec);
+// void* vector_back(Vector* vec);
+// void* vector_data(Vector* vec);
+// size_t vector_size(Vector* vec);
+// size_t vector_capacity(Vector* vec);
+// size_t vector_max_size(Vector* vec);
+static MemoryPool *memory_pool_create(size_t size);
+static void *memory_pool_allocate(MemoryPool *pool, size_t size);
+static void memory_pool_destroy(MemoryPool *pool);
+
+static MemoryPool *memory_pool_create(size_t size) 
+{
+    MemoryPool *pool = malloc(sizeof(MemoryPool));
+    if (pool) 
+    {
+        pool->pool = malloc(size);
+        if (!pool->pool) 
+        {
+            free(pool);
+            return NULL;
+        }
+        pool->poolSize = size;
+        pool->used = 0;
+    }
+    return pool;
+}
+
+static void *memory_pool_allocate(MemoryPool *pool, size_t size) 
+{
+    if (pool->used + size > pool->poolSize) 
+        return NULL; // Pool is out of memory
+    
+    void *mem = (char *)pool->pool + pool->used;
+    pool->used += size;
+
+    return mem;
+}
+
+static void memory_pool_destroy(MemoryPool *pool) 
+{
+    if (pool) 
+    {
+        free(pool->pool);
+        free(pool);
+    }
+}
 
 Vector* vector_create(size_t itemSize) 
 {
@@ -56,46 +96,27 @@ Vector* vector_create(size_t itemSize)
         return NULL; 
     }
 
-    vec->is_equal = vector_is_equal_impl;
-    vec->is_less = vector_is_less_impl;
-    vec->is_greater = vector_is_greater_impl;
-    vec->is_greater_or_equal = vector_is_greater_or_equal_impl;
-    vec->is_less_or_equal = vector_is_less_or_equal;
-    vec->is_not_equal = vector_is_not_equal_impl;
-    vec->is_empty = vector_is_empty_impl;
-    vec->erase = vector_erase_impl;
-    vec->insert = vector_insert_impl;
-    vec->reserve = vector_reserve_impl;
-    vec->resize = vector_resize_impl;
-    vec->shrink_to_fit = vector_shrink_to_fit_impl;
-    vec->swap = vector_swap_impl;
-    vec->assign = vector_assign_impl;
-    vec->emplace = vector_emplace_impl;
-    vec->emplace_back = vector_emplace_back_impl;
-    vec->push_back = vector_push_back_impl;
-    vec->deallocate = vector_deallocate_impl;
-    vec->at = vector_at_impl;
-    vec->rbegin = vector_rbegin_impl;
-    vec->rend = vector_rend_impl;
-    vec->cbegin = vector_cbegin_impl;
-    vec->cend = vector_cend_impl;
-    vec->crbegin = vector_crbegin_impl;
-    vec->crend = vector_crend_impl;
-    vec->begin = vector_begin_impl;
-    vec->end = vector_end_impl;
-    vec->pop_back = vector_pop_back_impl;
-    vec->clear = vector_clear_impl;
-    vec->front = vector_front_impl;
-    vec->back = vector_back_impl;
-    vec->data = vector_data_impl;
-    vec->length = vector_size_impl;
-    vec->capacity = vector_capacity_impl;
-    vec->max_size = vector_max_size_impl;
+    size_t initialPoolSize = 1000000;
+    vec->pool = memory_pool_create(initialPoolSize);
+    if (!vec->pool) 
+    {
+        free(vec);
+        return NULL;
+    }
+
+    // Instead of malloc, use memory pool for initial allocation
+    vec->items = memory_pool_allocate(vec->pool, vec->capacitySize * itemSize);
+    if (!vec->items) 
+    {
+        memory_pool_destroy(vec->pool);
+        free(vec);
+        return NULL;
+    }
 
     return vec;
 }
 
-static bool vector_is_equal_impl(const Vector* vec1, const Vector* vec2) 
+bool vector_is_equal(const Vector* vec1, const Vector* vec2) 
 {
     if (vec1 == NULL || vec2 == NULL || vec1->size != vec2->size) 
         return false;
@@ -103,7 +124,7 @@ static bool vector_is_equal_impl(const Vector* vec1, const Vector* vec2)
     return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) == 0;
 }
 
-static bool vector_is_less_impl(const Vector* vec1, const Vector* vec2) 
+bool vector_is_less(const Vector* vec1, const Vector* vec2) 
 {
     if (!vec1 || !vec2) 
         return false;
@@ -114,7 +135,7 @@ static bool vector_is_less_impl(const Vector* vec1, const Vector* vec2)
     return cmp < 0 || (cmp == 0 && vec1->size < vec2->size);
 }
 
-static bool vector_is_greater_impl(const Vector* vec1, const Vector* vec2) 
+bool vector_is_greater(const Vector* vec1, const Vector* vec2) 
 {
     if (!vec1 || !vec2) 
         return false;
@@ -125,7 +146,7 @@ static bool vector_is_greater_impl(const Vector* vec1, const Vector* vec2)
     return cmp > 0 || (cmp == 0 && vec1->size > vec2->size);
 }
 
-static bool vector_is_not_equal_impl(const Vector* vec1, const Vector* vec2) 
+bool vector_is_not_equal(const Vector* vec1, const Vector* vec2) 
 {
     if (!vec1 || !vec2) 
         return true;
@@ -135,17 +156,17 @@ static bool vector_is_not_equal_impl(const Vector* vec1, const Vector* vec2)
     return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) != 0;
 }
 
-static bool vector_is_greater_or_equal_impl(const Vector* vec1, const Vector* vec2) 
+bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2) 
 {
-    return !vector_is_less_impl(vec1, vec2);
+    return !vector_is_less(vec1, vec2);
 }
 
-static bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) 
+bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) 
 {
-    return !vector_is_greater_impl(vec1, vec2);
+    return !vector_is_greater(vec1, vec2);
 }
 
-static bool vector_is_empty_impl(Vector *vec) 
+bool vector_is_empty(Vector *vec) 
 {
     if (vec == NULL) 
     {
@@ -156,12 +177,11 @@ static bool vector_is_empty_impl(Vector *vec)
     return vec->size == 0;
 }
 
-static void vector_erase_impl(Vector *vec, size_t pos, size_t len)
+void vector_erase(Vector *vec, size_t pos, size_t len)
 {
     if (vec == NULL || pos >= vec->size || pos + len > vec->size) 
         return; // Vector is NULL, position is out of bounds, or len is too large
     
-
     char *base = (char *)vec->items;
 
     memmove(base + pos * vec->itemSize, 
@@ -171,81 +191,101 @@ static void vector_erase_impl(Vector *vec, size_t pos, size_t len)
     vec->size -= len;
 }
 
-static void vector_insert_impl(Vector *vec, size_t pos, void *item)
+void vector_insert(Vector *vec, size_t pos, void *item) 
 {
     if (vec == NULL || pos > vec->size) 
         return;
     
     if (vec->size == vec->capacitySize) 
-        vector_reserve_impl(vec, vec->capacitySize * 2); // Double the capacity
-    
-    char *base = (char *)vec->items;
-    memmove(base + (pos + 1) * vec->itemSize, 
-            base + pos * vec->itemSize, 
-            (vec->size - pos) * vec->itemSize);
+    {
+        // Allocate new space from the memory pool
+        size_t newCapacity = vec->capacitySize * 2; // Double the capacity
+        void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
 
-    memcpy(base + pos * vec->itemSize, item, vec->itemSize);
+        if (!newItems) 
+            return; // Handle allocation failure, maybe by resizing the pool
+        
 
+        // Copy existing items to the new space
+        memcpy(newItems, vec->items, pos * vec->itemSize); // Copy elements before insertion position
+        memcpy((char *)newItems + (pos + 1) * vec->itemSize, 
+               (char *)vec->items + pos * vec->itemSize, 
+               (vec->size - pos) * vec->itemSize); // Copy elements after insertion position
+
+        vec->items = newItems;
+        vec->capacitySize = newCapacity;
+    } 
+    else 
+    {
+        char *base = (char *)vec->items;  // Shift elements to make space for the new element
+        memmove(base + (pos + 1) * vec->itemSize, 
+                base + pos * vec->itemSize, 
+                (vec->size - pos) * vec->itemSize);
+    }
+
+    // Insert the new element
+    memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
     vec->size++;
 }
 
-static void vector_reserve_impl(Vector *vec, size_t size)
+void vector_reserve(Vector *vec, size_t size) 
 {
     if (vec == NULL || vec->capacitySize >= size) 
         return; // No need to reserve if the capacity is already sufficient
-    
-    void *newItems = realloc(vec->items, size * vec->itemSize);
-    if (newItems == NULL) 
-        return;
+
+    // Allocate new space from the memory pool
+    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
+    if (!newItems) 
+        return; // Handle allocation failure, maybe by resizing the pool
+
+    if (vec->size > 0)  // Copy existing items to the new space if there are any
+        memcpy(newItems, vec->items, vec->size * vec->itemSize);
 
     vec->items = newItems;
     vec->capacitySize = size;
 }
 
-static void vector_resize_impl(Vector *vec, size_t size) 
+void vector_resize(Vector *vec, size_t size) 
 {
     if (vec == NULL) 
         return; // Vector is NULL
-     
+
     if (size > vec->capacitySize) 
-        vector_reserve_impl(vec, size); // Resize capacity if new size exceeds current capacity
+        vector_reserve(vec, size); // Resize capacity if new size exceeds current capacity
     
     if (vec->size < size) 
-        // Initialize new elements to 0 if size is increased
-        memset((char *)vec->items + vec->size * vec->itemSize, 0, (size - vec->size) * vec->itemSize);
+        memset((char *)vec->items + vec->size * vec->itemSize, 0, (size - vec->size) * vec->itemSize);  // Initialize new elements to 0 if size is increased
     
     vec->size = size;
 }
 
-
-static void vector_shrink_to_fit_impl(Vector *vec) 
+void vector_shrink_to_fit(Vector *vec) 
 {
     if (vec == NULL || vec->size == vec->capacitySize) 
         return;
     
     if (vec->size == 0) 
     {
-        free(vec->items); // If the vector is empty, free the memory
+        free(vec->items); // Assuming this memory is not part of the pool
         vec->items = NULL;
         vec->capacitySize = 0;
 
         return;
     }
 
-    void *newItems = realloc(vec->items, vec->size * vec->itemSize);  // Reallocate the memory to match the size
-    
+    void *newItems = memory_pool_allocate(vec->pool, vec->size * vec->itemSize);
     if (newItems == NULL) 
         return;
     
+    memcpy(newItems, vec->items, vec->size * vec->itemSize);
     vec->items = newItems;
     vec->capacitySize = vec->size;
 }
 
-static void vector_swap_impl(Vector *vec1, Vector *vec2) 
+void vector_swap(Vector *vec1, Vector *vec2) 
 {
     if (vec1 == NULL || vec2 == NULL)
-     {
-        // One or both vectors are NULL
+    {
         fprintf(stderr, "Error: One or both vectors are NULL in vector_swap_impl.\n");
         return;
     }
@@ -267,7 +307,7 @@ static void vector_swap_impl(Vector *vec1, Vector *vec2)
     vec2->itemSize = tempItemSize;
 }
 
-static void vector_assign_impl(Vector *vec, size_t pos, void *item) 
+void vector_assign(Vector *vec, size_t pos, void *item) 
 {
     if (vec == NULL || pos >= vec->size)
         return;
@@ -275,13 +315,13 @@ static void vector_assign_impl(Vector *vec, size_t pos, void *item)
     memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
 }
 
-static void vector_emplace_impl(Vector *vec, size_t pos, void *item, size_t itemSize) 
+void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) 
 {
     if (vec == NULL || pos > vec->size || itemSize != vec->itemSize) 
         return;
     
     if (vec->size == vec->capacitySize) 
-        vector_reserve_impl(vec, vec->capacitySize * 2); // Double the capacity
+        vector_reserve(vec, vec->capacitySize * 2); // Use the modified version
 
     char *base = (char *)vec->items;
 
@@ -294,58 +334,55 @@ static void vector_emplace_impl(Vector *vec, size_t pos, void *item, size_t item
     vec->size++;
 }
 
-static void vector_emplace_back_impl(Vector *vec, void *item, size_t itemSize) 
+void vector_emplace_back(Vector *vec, void *item, size_t itemSize) 
 {
     if (vec == NULL || itemSize != vec->itemSize) 
         return;
     
     if (vec->size >= vec->capacitySize) 
-        vector_reserve_impl(vec, vec->capacitySize * 2); // Double the capacity
+        vector_reserve(vec, vec->capacitySize * 2); // Use the modified version
     
     memcpy((char *)vec->items + vec->size * vec->itemSize, item, vec->itemSize);
     vec->size++;
 }
 
-static void vector_push_back_impl(Vector *vec, void *item) 
+void vector_push_back(Vector *vec, void *item) 
 {
     if (vec->size >= vec->capacitySize) 
     {
-        // Implement a more gradual growth strategy (1.5x)
-        size_t newCapacity = vec->capacitySize + (vec->capacitySize * 2);
-        if (newCapacity < vec->capacitySize + 1) {
-            newCapacity = vec->capacitySize + 1; // Ensure at least one more item can fit
-        }
-
-        void *newItems = realloc(vec->items, newCapacity * vec->itemSize);
+        size_t newCapacity = vec->capacitySize * 2; // Example growth strategy
+        // Allocate new space from the memory pool
+        void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
         if (!newItems) 
-        {
-            perror("Cannot push back new item");
-            return;
-        }
-
+            return; // Handle allocation failure, maybe by resizing the pool
+        
+        memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items to the new space
         vec->items = newItems;
         vec->capacitySize = newCapacity;
     }
-
-    // Copy the item into the vector
+    // Proceed with adding the new item
     memcpy((char *)vec->items + (vec->size * vec->itemSize), item, vec->itemSize);
     vec->size++;
 }
 
-static void vector_deallocate_impl(Vector *vec) 
+void vector_deallocate(Vector *vec) 
 {
     if (vec == NULL) 
-        return;  
+        return;
     
-    if (vec->items != NULL) 
+    if (vec->pool != NULL) 
     {
-        free(vec->items);
-        vec->items = NULL;  // Set to NULL to prevent use-after-free errors
-        free(vec);
+        memory_pool_destroy(vec->pool);
+        vec->pool = NULL;
     }
+
+    if (vec->items != NULL) 
+        vec->items = NULL;   // The items are part of the pool, so no need to free them separately
+    
+    free(vec);
 }
 
-static void *vector_at_impl(Vector *vec, size_t pos)
+void *vector_at(Vector *vec, size_t pos)
 {
     if (pos < vec->size) 
         return (char *)vec->items + (pos * vec->itemSize); // Calculate the address of the item at position 'pos'
@@ -353,7 +390,7 @@ static void *vector_at_impl(Vector *vec, size_t pos)
         return NULL; // Position is out of bounds
 }
 
-static void *vector_rbegin_impl(Vector *vec)
+void *vector_rbegin(Vector *vec)
 {
     if (vec == NULL || vec->size == 0)
         return NULL;
@@ -361,7 +398,7 @@ static void *vector_rbegin_impl(Vector *vec)
     return (void *)((char *)vec->items + (vec->size - 1) * vec->itemSize); // Last element
 }
 
-static void *vector_rend_impl(Vector *vec)
+void *vector_rend(Vector *vec)
 {
     if (vec == NULL) 
         return NULL;
@@ -369,7 +406,7 @@ static void *vector_rend_impl(Vector *vec)
     return (void *)((char *)vec->items - vec->itemSize); // One before the first element
 }
 
-static const void *vector_cbegin_impl(Vector *vec)
+const void *vector_cbegin(Vector *vec)
 {
     if (vec == NULL || vec->size == 0)
         return NULL;
@@ -377,16 +414,15 @@ static const void *vector_cbegin_impl(Vector *vec)
     return (const void *)vec->items;
 }
 
-static const void *vector_cend_impl(Vector *vec)
+const void *vector_cend(Vector *vec)
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
-
-    // One past the last element, as a read-only pointer
-    return (const void *)((char *)vec->items + (vec->size * vec->itemSize));
+    
+    return (const void *)((char *)vec->items + (vec->size * vec->itemSize)); // One past the last element, as a read-only pointer
 }
 
-static const void *vector_crbegin_impl(Vector *vec)
+const void *vector_crbegin(Vector *vec)
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
@@ -394,7 +430,7 @@ static const void *vector_crbegin_impl(Vector *vec)
     return (const void *)((char *)vec->items + (vec->size - 1) * vec->itemSize); // Last element, as a read-only pointer
 }
 
-static const void *vector_crend_impl(Vector *vec)
+const void *vector_crend(Vector *vec)
 {
     if (vec == NULL) 
         return NULL;
@@ -402,7 +438,7 @@ static const void *vector_crend_impl(Vector *vec)
     return (const void *)((char *)vec->items - vec->itemSize); // One before the first element, as a read-only pointer
 }
 
-static void *vector_begin_impl(Vector *vec) 
+void *vector_begin(Vector *vec) 
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
@@ -410,7 +446,7 @@ static void *vector_begin_impl(Vector *vec)
     return vec->items; // Pointer to the first element
 }
 
-static void *vector_end_impl(Vector *vec)
+void *vector_end(Vector *vec)
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
@@ -418,7 +454,7 @@ static void *vector_end_impl(Vector *vec)
     return (char *)vec->items + (vec->size * vec->itemSize); // One past the last element
 }
 
-static void *vector_pop_back_impl(Vector *vec)
+void *vector_pop_back(Vector *vec)
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
@@ -428,7 +464,7 @@ static void *vector_pop_back_impl(Vector *vec)
     return (char *)vec->items + (vec->size * vec->itemSize);
 }
 
-static void vector_clear_impl(Vector *vec) 
+void vector_clear(Vector *vec) 
 {
     if (vec == NULL) 
     {
@@ -437,20 +473,22 @@ static void vector_clear_impl(Vector *vec)
     }
 
     vec->size = 0;
-    size_t initialCapacity = 4;
-    void *newItems = realloc(vec->items, initialCapacity * vec->itemSize);
-
-    if (newItems != NULL || initialCapacity == 0) 
+    // Optionally reduce capacity. Choose an appropriate size for your use case.
+    size_t reducedCapacity = 4; // Or some other small size
+    if (vec->capacitySize > reducedCapacity) 
     {
-        vec->items = newItems;
-        vec->capacitySize = initialCapacity;
-    } 
-    else 
-        fprintf(stderr, "Cannot reallocate the Vector\n");
-    
+        void *newItems = memory_pool_allocate(vec->pool, reducedCapacity * vec->itemSize);
+        if (newItems != NULL || reducedCapacity == 0) 
+        {
+            vec->items = newItems;
+            vec->capacitySize = reducedCapacity;
+        } 
+        else 
+            fprintf(stderr, "Cannot reallocate the Vector\n");
+    }
 }
 
-static void *vector_front_impl(Vector *vec) 
+void *vector_front(Vector *vec) 
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
@@ -458,16 +496,15 @@ static void *vector_front_impl(Vector *vec)
     return vec->items; // The first element is at the beginning of the items array
 }
 
-static void *vector_back_impl(Vector *vec) 
+void *vector_back(Vector *vec) 
 {
     if (vec == NULL || vec->size == 0) 
         return NULL;
     
-    // The last element is at (size - 1) * itemSize offset from the beginning
-    return (char *)vec->items + (vec->size - 1) * vec->itemSize;
+    return (char *)vec->items + (vec->size - 1) * vec->itemSize; // The last element is at (size - 1) * itemSize offset from the beginning
 }
 
-static void *vector_data_impl(Vector *vec) 
+void *vector_data(Vector *vec) 
 {
     if (vec == NULL) 
         return NULL; 
@@ -475,17 +512,17 @@ static void *vector_data_impl(Vector *vec)
     return vec->items; // The underlying array
 }
 
-size_t vector_size_impl(Vector *vec)
+size_t vector_size(Vector *vec)
 {
     return vec->size;
 }
 
-size_t vector_capacity_impl(Vector *vec)
+size_t vector_capacity(Vector *vec)
 {
     return vec->capacitySize;
 }
 
-size_t vector_max_size_impl(Vector *vec)
+size_t vector_max_size(Vector *vec)
 {
     return vec->itemSize;
 }
