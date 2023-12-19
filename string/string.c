@@ -2,145 +2,126 @@
 #include <stdlib.h>
 #include <string.h>
 
-static String* string_substr_impl(String* str, size_t pos, size_t len);
-static bool string_is_equal_impl(String* str1, String* str2);
-static bool string_is_less_impl(String* str1, String* str2);
-static bool string_is_greater_impl(String* str1, String* str2);
-static bool string_is_less_or_equal_impl(String* str1, String* str2);
-static bool string_is_greater_or_equal_impl(String* str1, String* str2);
-static bool string_is_not_equal_impl(String* str1, String* str2);
-inline static bool string_empty_impl(String* str);
-static int string_compare_impl(String* str1, String* str2);
-static void string_resize_impl(String* str, size_t newSize);
-static void string_shrink_to_fit_impl(String* str);
-static void string_append_impl(String* str, const char* strItem);
-static void string_push_back_impl(String* str, const char chItem); 
-static void string_assign_impl(String* str, const char* newStr);
-static void string_insert_impl(String* str, size_t pos, const char* strItem);
-static void string_erase_impl(String* str, size_t pos, size_t len);
-static void string_replace_impl(String* str1, const char* oldStr, const char* newStr);
-static void string_swap_impl(String* str1, String* str2);
-static void string_pop_back_impl(String* str);
-static void string_deallocate_impl(String* str);
-static void string_clear_impl(String* str);
-inline static size_t string_length_impl(String* str);
-inline static size_t string_capacity_impl(String* str);
-inline static size_t string_max_size_impl(String* str);
-static size_t string_copy_impl(String* str, char* buffer, size_t pos, size_t len);
-static int string_find_impl(String* str, const char* buffer, size_t pos);
-static int string_rfind_impl(String* str, const char* buffer, size_t pos);
-static int string_find_first_of_impl(String* str, const char* buffer, size_t pos);
-static int string_find_last_of_impl(String* str, const char* buffer, size_t pos);
-static int string_find_first_not_of_impl(String* str, const char* buffer, size_t pos);
-static int string_find_last_not_of_impl(String* str, const char* buffer, size_t pos);
-static const char* string_data_impl(String* str);
-static const char* string_c_str_impl(String* str);
-static char* string_begin_impl(String* str);
-static char* string_end_impl(String* str);
-static char* string_rbegin_impl(String* str);
-static char* string_rend_impl(String* str);
-static const char* string_cbegin_impl(String* str);
-static const char* string_cend_impl(String* str);
-static const char* string_crbegin_impl(String* str);
-static const char* string_crend_impl(String* str);
-static const char string_at_impl(String* str, size_t index);
-static char* string_back_impl(String* str);
-static char* string_front_impl(String* str);
 
-inline static bool useSmallStringOptimization(size_t size) 
+static MemoryPoolString *memory_pool_create(size_t size);
+static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
+static void memory_pool_destroy(MemoryPoolString *pool);
+
+
+MemoryPoolString* global_pool = NULL;
+
+static void init_global_memory_pool(size_t size) 
 {
-    return size < SMALL_STRING_SIZE;
+    if (global_pool == NULL) 
+        global_pool = memory_pool_create(size);
+}
+
+static void destroy_global_memory_pool() 
+{
+    if (global_pool != NULL) 
+    {
+        memory_pool_destroy(global_pool);
+        global_pool = NULL;
+    }
+}
+
+static MemoryPoolString *memory_pool_create(size_t size) 
+{
+    MemoryPoolString *pool = malloc(sizeof(MemoryPoolString));
+    if (pool) 
+    {
+        pool->pool = malloc(size);
+        if (!pool->pool) 
+        {
+            free(pool);
+            return NULL;
+        }
+        pool->poolSize = size;
+        pool->used = 0;
+    }
+    return pool;
+}
+
+static void *memory_pool_allocate(MemoryPoolString *pool, size_t size) 
+{
+    if (pool->used + size > pool->poolSize) 
+        return NULL; // Pool is out of memory
+    
+    void *mem = (char *)pool->pool + pool->used;
+    pool->used += size;
+
+    return mem;
+}
+
+static void memory_pool_destroy(MemoryPoolString *pool) 
+{
+    if (pool) 
+    {
+        free(pool->pool);
+        free(pool);
+    }
 }
 
 String* string_create(const char* initialStr) 
 {
     String* str = (String*)malloc(sizeof(String));
     if (!str) 
-    {
-        perror("Allocation failed in string_create");
         return NULL;
-    }
 
     size_t initialSize = initialStr ? strlen(initialStr) : 0;
     str->size = initialSize;
+    str->capacitySize = initialSize + 1; // +1 for null terminator
 
-    if (!useSmallStringOptimization(initialSize)) 
-    {
-        // Using SSO
-        str->capacitySize = SMALL_STRING_SIZE;
-
-        if (initialStr) 
-            strcpy(str->smallString, initialStr);
-        else 
-            str->smallString[0] = '\0'; 
-        
-        str->dataStr = NULL; // Not using dynamic memory
-    } 
-    else 
-    {
-        str->capacitySize = SMALL_STRING_SIZE;
-        str->dataStr = (char*)malloc(str->capacitySize);
-
-        if (!str->dataStr) 
-        {
-            free(str);
-            perror("Allocation failed in string_create");
-            return NULL;
-        }
-
-        if (initialStr) 
-            strcpy(str->dataStr, initialStr);
+    // Initialize memory pool for strings with a smaller size
+    size_t initialPoolSize = 1024; // 1KB
+    str->pool = memory_pool_create(initialPoolSize);
+    if (!str->pool) {
+        free(str);
+        return NULL;
     }
 
-    str->substr = string_substr_impl;
-    str->is_equal = string_is_equal_impl;
-    str->is_less = string_is_less_impl;
-    str->is_greater = string_is_greater_impl;
-    str->is_less_or_equal = string_is_less_or_equal_impl;
-    str->is_greater_or_equal = string_is_greater_or_equal_impl;
-    str->is_not_equal = string_is_not_equal_impl;
-    str->empty = string_empty_impl;
-    str->compare = string_compare_impl;
-    str->resize = string_resize_impl;
-    str->shrink_to_fit = string_shrink_to_fit_impl;
-    str->append = string_append_impl;
-    str->push_back = string_push_back_impl;
-    str->assign = string_assign_impl;
-    str->insert = string_insert_impl;
-    str->erase = string_erase_impl;
-    str->replace = string_replace_impl;
-    str->swap = string_swap_impl;
-    str->pop_back = string_pop_back_impl;
-    str->deallocate = string_deallocate_impl;
-    str->clear = string_clear_impl;
-    str->length = string_length_impl;
-    str->capacity = string_capacity_impl;
-    str->max_size = string_max_size_impl;
-    str->copy = string_copy_impl;
-    str->find = string_find_impl;
-    str->rfind = string_rfind_impl;
-    str->find_first_of = string_find_first_of_impl;
-    str->find_last_of = string_find_last_of_impl;
-    str->find_first_not_of = string_find_first_not_of_impl;
-    str->find_last_not_of = string_find_last_not_of_impl;
-    str->data = string_data_impl;
-    str->c_str = string_c_str_impl;
-    str->begin = string_begin_impl;
-    str->end = string_end_impl;
-    str->rbegin = string_rbegin_impl;
-    str->rend = string_rend_impl;
-    str->cbegin = string_cbegin_impl;
-    str->cend = string_cend_impl;
-    str->crbegin = string_crbegin_impl;
-    str->crend = string_crend_impl;
-    str->at = string_at_impl;
-    str->back = string_back_impl;
-    str->front = string_front_impl;
+    str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
+    if (!str->dataStr) {
+        memory_pool_destroy(str->pool);
+        free(str);
+        return NULL;
+    }
+
+    if (initialStr) 
+        strcpy(str->dataStr, initialStr);
 
     return str;
 }
 
-static String* string_substr_impl(String* str, size_t pos, size_t len) 
+String* string_create_with_pool(size_t size) 
+{
+    static int counter = 0;
+
+    if (!counter)
+    {
+        init_global_memory_pool(size);
+        counter++;
+    }
+    // Ensure global memory pool is initialized
+    if (global_pool == NULL) 
+    {
+        perror("Global memory pool not initialized");
+        exit(EXIT_FAILURE);
+    }
+
+    String* str = (String*)malloc(sizeof(String));
+    if (!str) 
+    return NULL;
+
+    str->size = 0;
+    str->capacitySize = 1;
+    str->dataStr = NULL; // Data is not allocated yet (lazy allocation)
+    str->pool = global_pool; // Use the global pool
+
+    return str;
+}
+
+String* string_substr(String* str, size_t pos, size_t len) 
 {
     if (str == NULL || pos >= str->size) 
         return NULL;
@@ -169,12 +150,12 @@ static String* string_substr_impl(String* str, size_t pos, size_t len)
     return substr;
 }
 
-inline static bool string_empty_impl(String* str) 
+bool string_empty(String* str) 
 {
     return (str == NULL) ? true : (str->size == 0);
 }
 
-static int string_compare_impl(String* str1, String* str2) 
+int string_compare(String* str1, String* str2) 
 {
     if (str1 == NULL || str2 == NULL) 
     {
@@ -187,37 +168,37 @@ static int string_compare_impl(String* str1, String* str2)
     return strcmp(str1->dataStr, str2->dataStr);
 }
 
-static bool string_is_equal_impl(String* str1, String* str2) 
+bool string_is_equal(String* str1, String* str2) 
 {
-    return string_compare_impl(str1, str2) == 0;
+    return string_compare(str1, str2) == 0;
 }
 
-static bool string_is_less_impl(String* str1, String* str2) 
+bool string_is_less(String* str1, String* str2) 
 {
-    return string_compare_impl(str1, str2) < 0;
+    return string_compare(str1, str2) < 0;
 }
 
-static bool string_is_greater_impl(String* str1, String* str2) 
+bool string_is_greater(String* str1, String* str2) 
 {
-    return string_compare_impl(str1, str2) > 0;
+    return string_compare(str1, str2) > 0;
 }
 
-static bool string_is_less_or_equal_impl(String* str1, String* str2) 
+bool string_is_less_or_equal(String* str1, String* str2) 
 {
-    return string_compare_impl(str1, str2) <= 0;
+    return string_compare(str1, str2) <= 0;
 }
 
-static bool string_is_greater_or_equal_impl(String* str1, String* str2) 
+bool string_is_greater_or_equal(String* str1, String* str2) 
 {
-    return string_compare_impl(str1, str2) >= 0;
+    return string_compare(str1, str2) >= 0;
 }
 
-static bool string_is_not_equal_impl(String* str1, String* str2) 
+bool string_is_not_equal(String* str1, String* str2) 
 {
-    return string_compare_impl(str1, str2) != 0;
+    return string_compare(str1, str2) != 0;
 }
 
-static void string_resize_impl(String *str, size_t newSize) 
+void string_resize(String *str, size_t newSize) 
 {
     if (str == NULL) 
         return;
@@ -232,11 +213,12 @@ static void string_resize_impl(String *str, size_t newSize)
         if (newSize >= str->capacitySize) 
         {
             size_t newCapacity = newSize + 1;
-            char *newData = realloc(str->dataStr, newCapacity);
+            char *newData = memory_pool_allocate(str->pool, newCapacity);
 
             if (!newData) 
                 return;  // Handle allocation error
             
+            memcpy(newData, str->dataStr, str->size);
             str->dataStr = newData;
             str->capacitySize = newCapacity;
         }
@@ -246,38 +228,48 @@ static void string_resize_impl(String *str, size_t newSize)
     }
 }
 
-static void string_shrink_to_fit_impl(String *str) 
+void string_shrink_to_fit(String *str) 
 {
     if (str == NULL || str->size + 1 == str->capacitySize) 
-        return;
-    
-    char *newData = realloc(str->dataStr, str->size + 1);
+        return; // No need to shrink if already at optimal size
 
-    if (!newData && str->size > 0) 
-        return;  // Handle allocation error
-    
-    str->dataStr = newData;
-    str->capacitySize = str->size + 1;
+    if (str->dataStr != NULL)  // Check if the string is using the memory pool
+    {
+        // Allocate new space from the memory pool
+        size_t newCapacity = str->size + 1; // +1 for null terminator
+        char *newData = memory_pool_allocate(str->pool, newCapacity);
+
+        if (newData == NULL) 
+            return; // Handle allocation error or memory pool limit
+
+        // Copy existing data to the new space
+        memcpy(newData, str->dataStr, str->size);
+        newData[str->size] = '\0'; // Null-terminate the string
+
+        // Update the string's metadata
+        str->dataStr = newData;
+        str->capacitySize = newCapacity;
+    }
 }
 
-static void string_append_impl(String *str, const char *strItem) 
+void string_append(String *str, const char *strItem) 
 {
     if (str == NULL || strItem == NULL) 
         return;
 
     size_t strItemLength = strlen(strItem);
-
     if (strItemLength == 0) 
         return;
 
     if (str->size + strItemLength >= str->capacitySize) 
     {
         size_t newCapacity = str->size + strItemLength + 1;
-        char *newData = realloc(str->dataStr, newCapacity);
+        char *newData = memory_pool_allocate(str->pool, newCapacity);
 
         if (!newData) 
             return;  // Handle allocation error
-        
+
+        memcpy(newData, str->dataStr, str->size);
         str->dataStr = newData;
         str->capacitySize = newCapacity;
     }
@@ -286,40 +278,48 @@ static void string_append_impl(String *str, const char *strItem)
     str->size += strItemLength;
 }
 
-void string_push_back_impl(String* str, char chItem) 
+void string_push_back(String* str, char chItem) 
 {
     if (!str) 
-        return;
+        return; 
 
     if (str->size + 1 >= str->capacitySize) 
     {
-        size_t newCapacity = str->capacitySize > 0 ? str->capacitySize * 2 : SMALL_STRING_SIZE;
-        char* newData = realloc(str->dataStr, newCapacity);
+        static int counter = 0;
+        size_t newCapacity = str->capacitySize * 2;
+        // printf("%zu\n%zu\n-----\n", str->capacitySize, newCapacity);
+        char* newData = memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
+        counter++;
         if (!newData) 
         {
+            printf("%zu\n%zu\n%d\n", str->capacitySize, newCapacity, counter);
             perror("Allocation failed in string_push_back_impl");
-            return;
+            exit(-1);
         }
+
+        // Copy existing string to the new space
+        if (str->dataStr) 
+            memcpy(newData, str->dataStr, str->size);
 
         str->dataStr = newData;
         str->capacitySize = newCapacity;
     }
 
+    // Append the character
     str->dataStr[str->size] = chItem;
     str->size++;
-    str->dataStr[str->size] = '\0';
+    str->dataStr[str->size] = '\0'; // Null-terminate the string
 }
 
-static void string_assign_impl(String *str, const char *newStr) 
+void string_assign(String *str, const char *newStr) 
 {
     if (str == NULL || newStr == NULL) 
         return;
     
     size_t newStrLength = strlen(newStr);
-
     if (newStrLength + 1 > str->capacitySize) 
     {
-        char *newData = realloc(str->dataStr, newStrLength + 1);
+        char *newData = memory_pool_allocate(str->pool, newStrLength + 1);
         if (!newData) 
             return;  // Handle allocation error
         
@@ -331,7 +331,8 @@ static void string_assign_impl(String *str, const char *newStr)
     str->size = newStrLength;
 }
 
-static void string_insert_impl(String *str, size_t pos, const char *strItem) 
+
+void string_insert(String *str, size_t pos, const char *strItem) 
 {
     if (str == NULL || strItem == NULL || pos > str->size) 
         return;
@@ -342,21 +343,23 @@ static void string_insert_impl(String *str, size_t pos, const char *strItem)
     if (newTotalLength + 1 > str->capacitySize) 
     {
         size_t newCapacity = newTotalLength + 1;
-        char *newData = realloc(str->dataStr, newCapacity);
-
+        char *newData = memory_pool_allocate(str->pool, newCapacity);
         if (!newData) 
             return;  // Handle allocation error
         
+        memcpy(newData, str->dataStr, pos);
+        memcpy(newData + pos + strItemLength, str->dataStr + pos, str->size - pos);
         str->dataStr = newData;
         str->capacitySize = newCapacity;
-    }
-
-    memmove(str->dataStr + pos + strItemLength, str->dataStr + pos, str->size - pos + 1);
+    } 
+    else 
+        memmove(str->dataStr + pos + strItemLength, str->dataStr + pos, str->size - pos);
+    
     memcpy(str->dataStr + pos, strItem, strItemLength);
     str->size = newTotalLength;
 }
 
-static void string_erase_impl(String *str, size_t pos, size_t len) 
+void string_erase(String *str, size_t pos, size_t len) 
 {
     if (str == NULL || pos >= str->size) 
         return;
@@ -368,16 +371,14 @@ static void string_erase_impl(String *str, size_t pos, size_t len)
     str->size -= len;
 }
 
-static void string_replace_impl(String *str1, const char *oldStr, const char *newStr) 
+void string_replace(String *str1, const char *oldStr, const char *newStr) 
 {
     if (str1 == NULL || oldStr == NULL || newStr == NULL) 
         return;
     
     char *position = strstr(str1->dataStr, oldStr);
-
     if (position == NULL) 
         return;  // oldStr not found in str1
-    
 
     size_t oldLen = strlen(oldStr);
     size_t newLen = strlen(newStr);
@@ -387,21 +388,23 @@ static void string_replace_impl(String *str1, const char *oldStr, const char *ne
     if (newSize + 1 > str1->capacitySize) 
     {
         size_t newCapacity = newSize + 1;
-        char *newData = realloc(str1->dataStr, newCapacity);
-
+        char *newData = memory_pool_allocate(str1->pool, newCapacity);
         if (!newData) 
             return;  // Handle allocation error
         
+        memcpy(newData, str1->dataStr, position - str1->dataStr);
+        memcpy(newData + (position - str1->dataStr) + newLen, position + oldLen, tailLen);
         str1->dataStr = newData;
         str1->capacitySize = newCapacity;
-    }
+    } 
+    else 
+        memmove(position + newLen, position + oldLen, tailLen);
 
-    memmove(position + newLen, position + oldLen, tailLen + 1); // +1 for null terminator
     memcpy(position, newStr, newLen);
     str1->size = newSize;
 }
 
-static void string_swap_impl(String *str1, String *str2) 
+void string_swap(String *str1, String *str2) 
 {
     if (str1 == NULL || str2 == NULL) 
         return;
@@ -411,7 +414,7 @@ static void string_swap_impl(String *str1, String *str2)
     *str2 = temp;
 }
 
-static void string_pop_back_impl(String *str) 
+void string_pop_back(String *str) 
 {
     if (str == NULL || str->size == 0) 
         return;
@@ -420,21 +423,24 @@ static void string_pop_back_impl(String *str)
     str->size--;
 }
 
-void string_deallocate_impl(String *str)
+void string_deallocate(String *str) 
 {
     if (str == NULL) 
-        return; 
+        return;
 
-    if (str->dataStr != NULL)  // Free the dataStr if it's not NULL
+    // Destroy the memory pool associated with the string
+    if (str->pool != NULL) 
     {
-        free(str->dataStr);
-        str->dataStr = NULL;
-
-        free(str);
+        memory_pool_destroy(str->pool);
+        str->pool = NULL;
     }
+
+    // Since dataStr is managed by the memory pool, no separate free call is needed for it
+    free(str);
+    destroy_global_memory_pool();
 }
 
-static char string_at_impl(String* str, size_t index)
+char string_at(String* str, size_t index)
 {
     if (str == NULL || index >= str->size) 
     {
@@ -442,10 +448,10 @@ static char string_at_impl(String* str, size_t index)
         exit(-1);
     }
 
-    return str->dataStr[index];
+    return (const char)str->dataStr[index];
 }
 
-static char* string_back_impl(String *str) 
+char* string_back(String *str) 
 {
     if (str == NULL || str->size == 0) 
         return NULL; 
@@ -453,7 +459,7 @@ static char* string_back_impl(String *str)
     return &str->dataStr[str->size - 1];
 }
 
-static char* string_front_impl(String *str) 
+char* string_front(String *str) 
 {
     if (str == NULL || str->size == 0) 
         return NULL;  
@@ -461,22 +467,27 @@ static char* string_front_impl(String *str)
     return &str->dataStr[0];
 }
 
-inline static size_t string_length_impl(String* str) 
+size_t string_length(String* str) 
 {
     return (str != NULL) ? str->size : 0;
 }
 
-inline static size_t string_capacity_impl(String* str) 
+size_t string_capacity(String* str) 
 {
     return (str != NULL) ? str->capacitySize : 0;
 }
 
-inline static size_t string_max_size_impl(String* str) 
+size_t string_max_size(String* str) 
 {
+    if (!str)
+    {
+        perror("Object is null");
+        exit(-1);
+    }
     return (size_t)-1;
 }
 
-static size_t string_copy_impl(String *str, char *buffer, size_t pos, size_t len) 
+size_t string_copy(String *str, char *buffer, size_t pos, size_t len) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL || pos >= str->size) 
         return 0;  // Return 0 for invalid input or position out of bounds
@@ -492,7 +503,7 @@ static size_t string_copy_impl(String *str, char *buffer, size_t pos, size_t len
     return copyLen;  // Return the number of characters copied
 }
 
-static int string_find_impl(String *str, const char *buffer, size_t pos) 
+int string_find(String *str, const char *buffer, size_t pos) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL || pos >= str->size) 
         return -1;  // Return -1 for invalid input or position out of bounds
@@ -504,7 +515,7 @@ static int string_find_impl(String *str, const char *buffer, size_t pos)
     return (int)(found - str->dataStr);  // Return the position of the substring
 }
 
-static int string_rfind_impl(String *str, const char *buffer, size_t pos) 
+int string_rfind(String *str, const char *buffer, size_t pos) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL) 
         return -1;  // Return -1 for invalid input
@@ -522,7 +533,7 @@ static int string_rfind_impl(String *str, const char *buffer, size_t pos)
     return -1;  // Substring not found
 }
 
-static int string_find_first_of_impl(String *str, const char *buffer, size_t pos) 
+int string_find_first_of(String *str, const char *buffer, size_t pos) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL || pos >= str->size) 
         return -1;  // Return -1 for invalid input or position out of bounds
@@ -536,7 +547,7 @@ static int string_find_first_of_impl(String *str, const char *buffer, size_t pos
 }
 
 
-static int string_find_last_of_impl(String *str, const char *buffer, size_t pos) 
+int string_find_last_of(String *str, const char *buffer, size_t pos) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL || pos >= str->size) 
         return -1;  // Return -1 for invalid input or position out of bounds
@@ -553,7 +564,7 @@ static int string_find_last_of_impl(String *str, const char *buffer, size_t pos)
     return lastFound;
 }
 
-static int string_find_first_not_of_impl(String *str, const char *buffer, size_t pos) 
+int string_find_first_not_of(String *str, const char *buffer, size_t pos) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL || pos >= str->size) 
         return -1;
@@ -570,7 +581,7 @@ static int string_find_first_not_of_impl(String *str, const char *buffer, size_t
     return -1;  // No non-matching position found
 }
 
-static int string_find_last_not_of_impl(String *str, const char *buffer, size_t pos) 
+int string_find_last_not_of(String *str, const char *buffer, size_t pos) 
 {
     if (str == NULL || str->dataStr == NULL || buffer == NULL) 
         return -1;
@@ -589,7 +600,7 @@ static int string_find_last_not_of_impl(String *str, const char *buffer, size_t 
     return -1;
 }
 
-static const char *string_data_impl(String *str) 
+const char *string_data(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;
@@ -597,7 +608,7 @@ static const char *string_data_impl(String *str)
     return str->dataStr;
 }
 
-static const char *string_c_str_impl(String *str) 
+const char *string_c_str(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return "";  // Return empty string for null or uninitialized String
@@ -605,7 +616,7 @@ static const char *string_c_str_impl(String *str)
     return str->dataStr;
 }
 
-static char *string_begin_impl(String *str) 
+char *string_begin(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;  // Return NULL for null or uninitialized String
@@ -613,7 +624,7 @@ static char *string_begin_impl(String *str)
     return str->dataStr;  // The beginning of the string
 }
 
-static char *string_end_impl(String *str) 
+char *string_end(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;  // Return NULL for null or uninitialized String
@@ -621,7 +632,7 @@ static char *string_end_impl(String *str)
     return str->dataStr + str->size;  // The end of the string
 }
 
-static char *string_rbegin_impl(String *str)
+char *string_rbegin(String *str)
 {
     if (str == NULL || str->dataStr == NULL || str->size == 0) 
         return NULL; 
@@ -629,7 +640,7 @@ static char *string_rbegin_impl(String *str)
     return str->dataStr + str->size - 1;
 }
 
-static char *string_rend_impl(String *str)
+char *string_rend(String *str)
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;
@@ -637,7 +648,7 @@ static char *string_rend_impl(String *str)
     return str->dataStr - 1; 
 }
 
-static const char *string_cbegin_impl(String *str) 
+const char *string_cbegin(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;  // Return NULL for null or uninitialized String
@@ -645,7 +656,7 @@ static const char *string_cbegin_impl(String *str)
     return str->dataStr;  // The beginning of the string
 }
 
-static const char *string_cend_impl(String *str) 
+const char *string_cend(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;  // Return NULL for null or uninitialized String
@@ -653,7 +664,7 @@ static const char *string_cend_impl(String *str)
     return str->dataStr + str->size;  // The end of the string
 }
 
-static const char *string_crbegin_impl(String *str) 
+const char *string_crbegin(String *str) 
 {
     if (str == NULL || str->dataStr == NULL || str->size == 0) 
         return NULL;  // Return NULL for null, uninitialized, or empty String
@@ -661,7 +672,7 @@ static const char *string_crbegin_impl(String *str)
     return str->dataStr + str->size - 1;  // Pointer to the last character
 }
 
-static const char *string_crend_impl(String *str) 
+const char *string_crend(String *str) 
 {
     if (str == NULL || str->dataStr == NULL) 
         return NULL;  // Return NULL for null or uninitialized String
@@ -669,11 +680,48 @@ static const char *string_crend_impl(String *str)
     return str->dataStr - 1;  // Pointer to one before the first character
 }
 
-static void string_clear_impl(String* str) 
+void string_clear(String* str) 
 {
     if (str != NULL) 
     {
-        str->size = 0;
-        str->dataStr[0] = '\0'; // Set first character to null terminator
+        str->size = 0;  // Reset the size to 0, indicating the string is now empty
+
+        // Set the first character to the null terminator.
+        // This ensures that the string is considered empty when accessed.
+        if (str->dataStr != NULL) 
+            str->dataStr[0] = '\0';
     }
+}
+
+
+bool string_set_pool_size(String* str, size_t newSize) 
+{
+    if (!str || newSize == 0) 
+        return false; // Return false for invalid input
+
+    // If a memory pool already exists, destroy it first
+    if (str->pool) {
+        memory_pool_destroy(str->pool);
+        str->pool = NULL;
+    }
+
+    // Create a new memory pool with the specified size
+    str->pool = memory_pool_create(newSize);
+    if (!str->pool) 
+        return false; // Return false if memory pool creation fails
+
+    // If the string already has data, reallocate it in the new pool
+    if (str->size > 0 && str->dataStr) {
+        char* newData = memory_pool_allocate(str->pool, str->size + 1); // +1 for null terminator
+        if (!newData) {
+            memory_pool_destroy(str->pool);
+            str->pool = NULL;
+            return false; // Return false if allocation fails
+        }
+        memcpy(newData, str->dataStr, str->size);
+        newData[str->size] = '\0';
+        str->dataStr = newData;
+    }
+
+    return true; // Return true on successful pool resize
 }

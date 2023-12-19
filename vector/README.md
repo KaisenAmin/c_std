@@ -49,6 +49,7 @@ int main()
     return EXIT_SUCCESS;
 }
 
+
 ```
 
 ### Example 2: Strings

@@ -2,48 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// bool vector_is_equal(const Vector* vec1, const Vector* vec2);
-// bool vector_is_less(const Vector* vec1, const Vector* vec2);
-// bool vector_is_greater(const Vector* vec1, const Vector* vec2);
-// bool vector_is_not_equal(const Vector* vec1, const Vector* vec2);
-// bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2);
-// bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2);
-// bool vector_is_empty(Vector* vec);
-// void vector_erase(Vector* vec, size_t pos, size_t len);
-// void vector_insert(Vector* vec, size_t pos, void* item);
-// void vector_reserve(Vector* vec, size_t size);
-// void vector_resize(Vector* vec, size_t size);
-// void vector_shrink_to_fit(Vector* vec);
-// void vector_clear(Vector* vec);
-// void vector_swap(Vector* vec1, Vector* vec2);
-// void vector_assign(Vector* vec, size_t pos, void* item);
-// void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize);
-// void vector_emplace_back(Vector *vec, void *item, size_t itemSize);
-// void vector_push_back(Vector* vec, void* item);
-// void vector_deallocate(Vector *vec);
-// void* vector_at(Vector* vec, size_t pos);
-// void* vector_rbegin(Vector* vec);
-// void* vector_rend(Vector* vec);
-// const void* vector_cbegin(Vector* vec);
-// const void* vector_cend(Vector* vec);
-// const void* vector_crbegin(Vector* vec);
-// const void* vector_crend(Vector* vec);
-// void* vector_begin(Vector* vec);
-// void* vector_end(Vector* vec);
-// void* vector_pop_back(Vector* vec);
-// void* vector_front(Vector* vec);
-// void* vector_back(Vector* vec);
-// void* vector_data(Vector* vec);
-// size_t vector_size(Vector* vec);
-// size_t vector_capacity(Vector* vec);
-// size_t vector_max_size(Vector* vec);
-static MemoryPool *memory_pool_create(size_t size);
-static void *memory_pool_allocate(MemoryPool *pool, size_t size);
-static void memory_pool_destroy(MemoryPool *pool);
+static MemoryPoolVector *memory_pool_create(size_t size);
+static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size);
+static void memory_pool_destroy(MemoryPoolVector *pool);
 
-static MemoryPool *memory_pool_create(size_t size) 
+static MemoryPoolVector *memory_pool_create(size_t size) 
 {
-    MemoryPool *pool = malloc(sizeof(MemoryPool));
+    MemoryPoolVector *pool = malloc(sizeof(MemoryPoolVector));
     if (pool) 
     {
         pool->pool = malloc(size);
@@ -58,7 +23,7 @@ static MemoryPool *memory_pool_create(size_t size)
     return pool;
 }
 
-static void *memory_pool_allocate(MemoryPool *pool, size_t size) 
+static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) 
 {
     if (pool->used + size > pool->poolSize) 
         return NULL; // Pool is out of memory
@@ -69,7 +34,7 @@ static void *memory_pool_allocate(MemoryPool *pool, size_t size)
     return mem;
 }
 
-static void memory_pool_destroy(MemoryPool *pool) 
+static void memory_pool_destroy(MemoryPoolVector *pool) 
 {
     if (pool) 
     {
@@ -96,7 +61,7 @@ Vector* vector_create(size_t itemSize)
         return NULL; 
     }
 
-    size_t initialPoolSize = 1000000;
+    size_t initialPoolSize = 10000000000;
     vec->pool = memory_pool_create(initialPoolSize);
     if (!vec->pool) 
     {

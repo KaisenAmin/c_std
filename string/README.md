@@ -421,7 +421,7 @@ void deallocate_2d_string_array(String*** array, const size_t rows, const size_t
     for (size_t i = 0; i < rows; ++i) 
     {
         for (size_t j = 0; j < cols; ++j) 
-            array[i][j]->deallocate(array[i][j]);
+            string_deallocate(array[i][j]);
         
         free(array[i]);
     }
@@ -435,19 +435,19 @@ int main()
     String*** my2DString = create_2d_string_array(rows, cols);
 
     // Example usage
-    my2DString[0][0]->assign(my2DString[0][0], "Hello");
-    my2DString[0][1]->assign(my2DString[0][1], "World");
-    my2DString[0][2]->assign(my2DString[0][2], "!");
+    string_assign(my2DString[0][0], "Hello");
+    string_assign(my2DString[0][1], "World");
+    string_assign(my2DString[0][2], "!");
 
-    my2DString[1][0]->assign(my2DString[1][0], "Goodbye");
-    my2DString[1][1]->assign(my2DString[1][1], "Cruel");
-    my2DString[1][2]->assign(my2DString[1][2], "World");
+    string_assign(my2DString[1][0], "Goodbye");
+    string_assign(my2DString[1][1], "Cruel");
+    string_assign(my2DString[1][2], "World");
 
     // Print the 2D array
     for (size_t i = 0; i < rows; ++i) 
     {
         for (size_t j = 0; j < cols; ++j) 
-            printf("%s ", my2DString[i][j]->c_str(my2DString[i][j]));
+            printf("%s ", string_c_str(my2DString[i][j]));
         
         printf("\n");
     }
@@ -472,49 +472,47 @@ Time taken (Custom String): 0.286000 seconds
 #include <stdlib.h>
 #include <time.h>
 
-#define ARRAY_SIZE 1000000
+#define ARRAY_SIZE 100000
 #define OPERATIONS 100
 
 int main() 
 {
-    clock_t start, end;
-    double cpu_time_used;
-    
+    struct timespec start, end;
     String** stringArray = malloc(ARRAY_SIZE * sizeof(String*));
-    
+
     if (!stringArray) 
     {
         perror("Failed to allocate memory for stringArray");
         return 1; // Or handle error appropriately
     }
-    start = clock();
-    for (int i = 0; i < ARRAY_SIZE; i++) 
-        stringArray[i] = string_create("");
 
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (int i = 0; i < ARRAY_SIZE; i++) 
     {
+        // stringArray[i] = string_create_with_pool(100000000); // if you use this method for largeArray speed efficient but need to large memory
+        stringArray[i] = string_create(""); // but this one is more slower than create_pool
+    }
+    
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+    {
         for (int j = 0; j < OPERATIONS; j++) 
-            stringArray[i]->push_back(stringArray[i], 'a'); 
+            string_push_back(stringArray[i], 'a'); 
     }
 
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double time_in_sec = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
 
-    printf("Time taken (Custom String): %f seconds\n", cpu_time_used);
+    printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
 
     for (int i = 0; i < ARRAY_SIZE; i++) 
-        stringArray[i]->deallocate(stringArray[i]);
+        string_deallocate(stringArray[i]);
     
     return 0;
 }
-
 ```
 
 and in Cpp 
-
-g++ -std=c++14 -O3 -o main main.cpp                         
-Time taken (std::string): 0.301073 seconds
 
 ```c
 #include <iostream>
@@ -533,6 +531,84 @@ int main()
     {
         for (int j = 0; j < OPERATIONS; j++) 
             stringArray[i] += 'a';
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Time taken (std::string): " << elapsed.count() << " seconds\n";
+
+    return 0;
+}
+
+
+```
+
+## Example 20 : benchmark of String and std::string
+
+create pool
+Average Custom Vector Time: 0.001507 seconds
+
+```c
+
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define ARRAY_SIZE 1000000
+#define OPERATIONS 100
+
+int main() 
+{
+    struct timespec start, end;
+    String* stringArray = string_create("");
+    
+    if (!stringArray) 
+    {
+        perror("Failed to allocate memory for stringArray");
+        return 1; // Or handle error appropriately
+    }
+    
+    if (string_set_pool_size(stringArray, 10000000))
+        printf("create pool\n");
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+        string_push_back(stringArray, 'a'); 
+
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double time_in_sec = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+    printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
+
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+        string_deallocate(stringArray);
+    
+    return 0;
+}
+
+```
+
+Time taken (std::string): 0.0051607 seconds
+
+```cpp 
+#include <iostream>
+#include <string>
+#include <chrono>
+
+#define ARRAY_SIZE 1000000
+#define OPERATIONS 100
+
+int main() 
+{
+    std::string *stringArray = new std::string[ARRAY_SIZE];
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < ARRAY_SIZE; i++) 
+    {
+        stringArray[i] += 'a';
     }
 
     auto end = std::chrono::high_resolution_clock::now();

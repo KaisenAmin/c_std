@@ -6,12 +6,12 @@
 
 typedef struct Vector Vector;
 
-typedef struct MemoryPool 
+typedef struct MemoryPoolVector 
 {
     void *pool;        // Pointer to the memory pool
     size_t poolSize;   // Total size of the pool
     size_t used;       // Memory used so far
-} MemoryPool;
+} MemoryPoolVector;
 
 struct Vector 
 {
@@ -19,7 +19,7 @@ struct Vector
     size_t size;
     size_t capacitySize;
     size_t itemSize;
-    MemoryPool *pool;
+    MemoryPoolVector *pool;
 };
 
 Vector* vector_create(size_t itemSize);
