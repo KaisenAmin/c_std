@@ -575,7 +575,7 @@ vector2->deallocate(vector2);
 ## Example 22 : bench 
 
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c
-Average Custom Vector Time: 0.006084 seconds
+Average Custom Vector Time: 0.008564 seconds
 
 ```c 
 
@@ -584,36 +584,33 @@ Average Custom Vector Time: 0.006084 seconds
 #include <stdlib.h>
 #include <time.h>
 
-#define NUM_ELEMENTS 1000000
-#define NUM_ITERATIONS 100
+#define NUM_ELEMENTS 100000000
 
 int main() 
 {
     struct timespec start, end;
     double time_sum = 0;
 
-    for (int iter = 0; iter < NUM_ITERATIONS; iter++) 
+
+    Vector* vec = vector_create(sizeof(int));
+    if (!vec) 
     {
-        Vector* vec = vector_create(sizeof(int));
-        if (!vec) 
-        {
-            perror("Vector creation failed");
-            return EXIT_FAILURE;
-        }
-
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        
-        for (int i = 0; i < NUM_ELEMENTS; i++) 
-            vec->push_back(vec, &i);
-        
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-
-        vec->deallocate(vec);
+        perror("Vector creation failed");
+        return EXIT_FAILURE;
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+        
+    for (int i = 0; i < NUM_ELEMENTS; i++) 
+        vec->push_back(vec, &i);
+        
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
     double average_time = time_sum / NUM_ITERATIONS;
     printf("Average Custom Vector Time: %f seconds\n", average_time);
+
+    vec->deallocate(vec);
 
     return EXIT_SUCCESS;
 }
@@ -623,14 +620,14 @@ int main()
 
 and in c++ 
 g++ -std=c++14 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.cpp
-std::vector Time: 0.0019915 seconds
+std::vector Time: 0.344828 seconds
 
 ```c
 #include <iostream>
 #include <vector>
 #include <chrono>
 
-#define NUM_ELEMENTS 1000000
+#define NUM_ELEMENTS 100000000
 
 int main() 
 {

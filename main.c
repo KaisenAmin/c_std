@@ -1,32 +1,35 @@
-#include "bitset/bitset.h"
+#include "vector/vector.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
+#define NUM_ELEMENTS 100000000
 
 int main() 
 {
-    Bitset* myBitset = bitset_create(8);
-    if (!myBitset) 
+    struct timespec start, end;
+    double time_sum = 0;
+
+
+    Vector* vec = vector_create(sizeof(int));
+    if (!vec) 
     {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
+        perror("Vector creation failed");
+        return EXIT_FAILURE;
     }
 
-    int pos;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+        
+    for (int i = 0; i < NUM_ELEMENTS; i++) 
+        vec->push_back(vec, &i);
+        
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf("Enter a position to set (0-7): ");
-    scanf("%d", &pos);
+    double average_time = time_sum / NUM_ITERATIONS;
+    printf("Average Custom Vector Time: %f seconds\n", average_time);
 
-    if (pos >= 0 && pos < 8) 
-    {
-        myBitset->set(myBitset, pos, true);
+    vec->deallocate(vec);
 
-        printf("Bitset after setting position %d: ", pos);
-        myBitset->print(myBitset);
-    }
-    else 
-        printf("Invalid position!\n");
-    
-    myBitset->deallocate(myBitset);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
