@@ -283,38 +283,38 @@ int main()
             sprintf(buffer, "String %d-%d", i, j);
 
             String* str = string_create(buffer);
-            stringQueue->emplace(stringQueue, &str, sizeof(String*));
+            queue_emplace(stringQueue, &str, sizeof(String*));
         }
 
         // Add the inner Queue to the 2D Queue
-        queue2D->emplace(queue2D, &stringQueue, sizeof(Queue*));
+        queue_emplace(queue2D, &stringQueue, sizeof(Queue*));
     }
 
     // Iterate over each inner Queue and process its Strings
-    while (!queue2D->empty(queue2D)) 
+    while (!queue_empty(queue2D)) 
     {
-        Queue** innerQueuePtr = (Queue**)queue2D->front(queue2D);
+        Queue** innerQueuePtr = (Queue**)queue_front(queue2D);
         Queue* innerQueue = *innerQueuePtr;
 
-        while (!innerQueue->empty(innerQueue)) 
+        while (!queue_empty(innerQueue)) 
         {
-            String** strPtr = (String**)innerQueue->front(innerQueue);
+            String** strPtr = (String**)queue_front(innerQueue);
             String* str = *strPtr;
             
-            printf("Processing: %s\n", str->c_str(str));
+            printf("Processing: %s\n", string_c_str(str));
 
             // Pop the processed String
-            innerQueue->pop(innerQueue);
-            str->deallocate(str);
+            queue_pop(innerQueue);
+            string_deallocate(str);
         }
 
         // Pop the processed inner Queue
-        queue2D->pop(queue2D);
-        innerQueue->deallocate(innerQueue);
+        queue_pop(queue2D);
+        queue_deallocate(innerQueue);
     }
 
     // Deallocate the outer Queue
-    queue2D->deallocate(queue2D);
+    queue_deallocate(queue2D);
 
     return 0;
 }

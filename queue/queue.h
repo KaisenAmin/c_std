@@ -10,25 +10,23 @@ typedef struct Queue Queue;
 struct Queue 
 {
     Vector* vec;
-
-    bool (*empty)(const Queue* queue);
-    size_t (*size)(const Queue* queue);
-    void (*push)(Queue* queue, void* item);
-    void* (*front)(const Queue* queue);
-    void* (*back)(const Queue* queue);
-    void (*pop)(Queue* queue);
-    void (*emplace)(Queue* queue, void* item, size_t itemSize); // Emplace function
-    void (*swap)(Queue* q1, Queue* q2);
-    void (*deallocate)(Queue* queue);
-    bool (*is_equal)(const Queue* queue1, const Queue* queue2);
-    bool (*is_less)(const Queue* queue1, const Queue* queue2);
-    bool (*is_greater)(const Queue* queue1, const Queue* queue2);
-    bool (*is_not_equal)(const Queue* queue1, const Queue* queue2);
-    bool (*is_less_or_equal)(const Queue* queue1, const Queue* queue2);
-    bool (*is_greater_or_equal)(const Queue* queue1, const Queue* queue2);
 };
 
 Queue* queue_create(size_t itemSize);
-
+bool queue_empty(const Queue* q);
+size_t queue_size(const Queue* q);
+void queue_push(Queue* q, void* item);
+void* queue_front(const Queue* q);
+void* queue_back(const Queue* q);
+void queue_pop(Queue* q);
+void queue_emplace(Queue* q, void* item, size_t itemSize); // Emplace function
+void queue_swap(Queue* q1, Queue* q2);
+void queue_deallocate(Queue* q); 
+bool queue_is_equal(const Queue* q1, const Queue* q2);
+bool queue_is_less(const Queue* q1, const Queue* q2);
+bool queue_is_greater(const Queue* q1, const Queue* q2);
+bool queue_is_not_equal(const Queue* q1, const Queue* q2);
+bool queue_is_less_or_equal(const Queue* q1, const Queue* q2);
+bool queue_is_greater_or_equal(const Queue* q1, const Queue* q2);
 
 #endif 

@@ -1,35 +1,57 @@
-#include "stack/stack.h"
-#include "string/string.h"
 #include <stdio.h>
-#include <stdlib.h>
-
+#include "queue/queue.h"
+#include "string/string.h"
 
 int main() 
 {
-    Stack* stk1 = stack_create(sizeof(int));
-    Stack* stk2 = stack_create(sizeof(int));
+    // Create a Queue of String Queues (2D Queue)
+    Queue* queue2D = queue_create(sizeof(Queue*));
 
-    if (stack_is_equal(stk1, stk2))
-        printf("stk1 is equal to stk2\n");
-        
-    if (stack_is_less(stk1, stk2)) 
-        printf("stk1 is less than stk2\n");
+    // Create and populate inner Queues
+    for (int i = 0; i < 3; ++i) 
+    { 
+        Queue* stringQueue = queue_create(sizeof(String*));
 
-    if (stack_is_greater(stk1, stk2)) 
-        printf("stk1 is greater than stk2\n");
+        // Add Strings to the inner Queue
+        for (int j = 0; j < 5; ++j) 
+        { 
+            // Each inner Queue has 5 Strings
+            char buffer[50];
+            sprintf(buffer, "String %d-%d", i, j);
 
-    if (stack_is_less_or_equal(stk1, stk2)) 
-        printf("stk1 is less than or equal to stk2\n");
-        
-    if (stack_is_greater_or_equal(stk1, stk2)) 
-        printf("stk1 is greater than or equal to stk2\n");
+            String* str = string_create(buffer);
+            queue_emplace(stringQueue, &str, sizeof(String*));
+        }
 
-    if (stack_is_not_equal(stk1, stk2)) 
-        printf("stk1 is not equal to stk2\n");
+        // Add the inner Queue to the 2D Queue
+        queue_emplace(queue2D, &stringQueue, sizeof(Queue*));
+    }
 
-    // Clean up the stacks...
-    stack_deallocate(stk1);
-    stack_deallocate(stk2);
+    // Iterate over each inner Queue and process its Strings
+    while (!queue_empty(queue2D)) 
+    {
+        Queue** innerQueuePtr = (Queue**)queue_front(queue2D);
+        Queue* innerQueue = *innerQueuePtr;
 
-    return EXIT_SUCCESS;
+        while (!queue_empty(innerQueue)) 
+        {
+            String** strPtr = (String**)queue_front(innerQueue);
+            String* str = *strPtr;
+            
+            printf("Processing: %s\n", string_c_str(str));
+
+            // Pop the processed String
+            queue_pop(innerQueue);
+            string_deallocate(str);
+        }
+
+        // Pop the processed inner Queue
+        queue_pop(queue2D);
+        queue_deallocate(innerQueue);
+    }
+
+    // Deallocate the outer Queue
+    queue_deallocate(queue2D);
+
+    return 0;
 }
