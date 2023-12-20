@@ -8,20 +8,19 @@ Queue* queue_create(size_t itemSize)
     if (!queue) 
     {
        perror("Can not allocate memory for queue");
-       exit(-1); // Handle allocation failure
+       return NULL; // Handle allocation failure
     }
         
-    
     queue->vec = vector_create(itemSize);
     if (!queue->vec) 
     {
+        perror("Can not allocate memory for queue->vec in queue");
         free(queue);
-        exit(-1); 
+        return NULL;
     }
 
     return queue;
 }
-
 
 bool queue_empty(const Queue* q) 
 {
