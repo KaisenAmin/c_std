@@ -1,35 +1,33 @@
-#include "string/string.h"
 #include "vector/vector.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
 
 int main() 
 {
-    Vector* vec = vector_create(sizeof(String*));
+    Vector *stringVector = vector_create(sizeof(char*));
+    char* values[] = {"Hello", "World", "Vector", "Example"};
 
-    String* myString1 = string_create("Hello");
-    String* myString2 = string_create("World");
-    String* myString3 = string_create("Example");
-    String** strPtr = NULL;
+    for (int i = 0; i < 4; ++i) 
+        vector_push_back(stringVector, &values[i]);
+        
+    char* newValue = "NewString";
+    vector_assign(stringVector, 1, &newValue);
 
-    vector_push_back(vec, &myString1);
-    vector_push_back(vec, &myString2);
-    vector_push_back(vec, &myString3);
+    char* emplaceValue = "EmplacedString";
+    vector_emplace(stringVector, 2, &emplaceValue, sizeof(char*));
 
-    for (size_t i = 0; i < vector_size(vec); ++i) 
+    char* emplaceBackValue = "EmplacedBackString";
+    vector_emplace_back(stringVector, &emplaceBackValue, sizeof(char*));
+
+    for (size_t i = 0; i < vector_size(stringVector); ++i) 
     {
-        strPtr = (String**) vector_at(vec, i);
-        if (strPtr && *strPtr) 
-            printf("%s\n", (*strPtr)->dataStr); 
+        char** item = (char **)vector_at(stringVector, i);
+        printf("%s\n", *item);
     }
 
-    string_deallocate(myString1);
-    string_deallocate(myString2);
-    string_deallocate(myString3);
+    vector_deallocate(stringVector);
 
-    vector_deallocate(vec);
-
-    // free(strPtr);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
