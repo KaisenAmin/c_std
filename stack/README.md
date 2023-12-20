@@ -41,57 +41,78 @@ stack->deallocate(stack);
 
 ## Example 2 : use 'top', 'pop' and 'empty' methods 
 
+ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\vector\vector.c .\stack\stack.c
+
 ```c
 
-Stack* stack = stack_create(sizeof(int));
-int arr[] = {10, 20, 30, 40, 50};
+#include "stack/stack.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-for (int i = 0; i < 5; i++)
-    stack->push(stack, &arr[i]);
 
-printf("Size of stack is %d\n", stack->size(stack));
-
-if (!stack->empty(stack))
+int main() 
 {
-    int topValue = *(int*)stack->top(stack);
-    printf("Top Element is %d\n", topValue);
+    Stack* stack = stack_create(sizeof(int));
+    int arr[] = {10, 20, 30, 40, 50};
 
-    int pop = *(int*)stack->pop(stack);
-    printf("Pop value is %d\n", pop);
-    printf("After Pop size is %d\n", stack->size(stack));
+    for (int i = 0; i < 5; i++)
+        stack_push(stack, &arr[i]);
+
+    printf("Size of stack is %zu\n", stack_size(stack));
+
+    if (!stack_empty(stack))
+    {
+        int topValue = *(int*)stack_top(stack);
+        printf("Top Element is %d\n", topValue);
+
+        int pop = *(int*)stack_pop(stack);
+        printf("Pop value is %d\n", pop);
+        printf("After Pop size is %zu\n", stack_size(stack));
+    }
+
+    stack_deallocate(stack);
+
+    return EXIT_SUCCESS;
 }
-
-stack->deallocate(stack);
 
 ```
 
 ## Example 3 : how to use String Object in Stack 
 
 ```c
+#include "stack/stack.h"
 #include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-String* myString = string_create("");
-Stack* stack = stack_create(sizeof(char*));
 
-char* value1 = "Amin";
-myString->append(myString, value1);
-stack->push(stack, &myString);
+int main() 
+{
+    String* myString = string_create("");
+    Stack* stack = stack_create(sizeof(char*));
 
-char* value2 = "Tahmasebi";
-myString->append(myString, value2);
-stack->push(stack, &myString);
+    char* value1 = "Amin";
+    string_append(myString, value1);
+    stack_push(stack, &myString);
 
-char* value3 = "C Programming";
-myString->append(myString, value3);
-stack->push(stack, &myString);
+    char* value2 = "Tahmasebi";
+    string_append(myString, value2);
+    stack_push(stack, &myString);
 
-printf("Size of Stack is %d\n", stack->size(stack));
+    char* value3 = "C Programming";
+    string_append(myString, value3);
+    stack_push(stack, &myString);
 
-String** str1 = (String**)stack->pop(stack);
-printf("%s", (*str1)->c_str(*str1));
+    printf("Size of Stack is %zu\n", stack_size(stack));
 
-(*str1)->deallocate(*str1);
-stack->deallocate(stack);
+    String** str1 = (String**)stack_pop(stack);
+    printf("%s", string_c_str(*str1));
+
+    string_deallocate(*str1);
+    stack_deallocate(stack);
+
+    return EXIT_SUCCESS;
+}
 
 ```
 
@@ -99,29 +120,40 @@ stack->deallocate(stack);
 
 ```c
 
-Stack* stk1 = stack_create(sizeof(int));
-Stack* stk2 = stack_create(sizeof(int));
+#include "stack/stack.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-if (stk1->is_equal(stk1, stk2))
-    printf("stk1 is equal to stk2\n");
-    
-if (stk1->is_less(stk1, stk2)) 
-    printf("stk1 is less than stk2\n");
 
-if (stk1->is_greater(stk1, stk2)) 
-    printf("stk1 is greater than stk2\n");
+int main() 
+{
+    Stack* stk1 = stack_create(sizeof(int));
+    Stack* stk2 = stack_create(sizeof(int));
 
-if (stk1->is_less_or_equal(stk1, stk2)) 
-    printf("stk1 is less than or equal to stk2\n");
-    
-if (stk1->is_greater_or_equal(stk1, stk2)) 
-    printf("stk1 is greater than or equal to stk2\n");
+    if (stack_is_equal(stk1, stk2))
+        printf("stk1 is equal to stk2\n");
+        
+    if (stack_is_less(stk1, stk2)) 
+        printf("stk1 is less than stk2\n");
 
-if (stk1->is_not_equal(stk1, stk2)) 
-    printf("stk1 is not equal to stk2\n");
+    if (stack_is_greater(stk1, stk2)) 
+        printf("stk1 is greater than stk2\n");
 
-// Clean up the stacks...
-stk1->deallocate(stk1);
-stk2->deallocate(stk2);
+    if (stack_is_less_or_equal(stk1, stk2)) 
+        printf("stk1 is less than or equal to stk2\n");
+        
+    if (stack_is_greater_or_equal(stk1, stk2)) 
+        printf("stk1 is greater than or equal to stk2\n");
+
+    if (stack_is_not_equal(stk1, stk2)) 
+        printf("stk1 is not equal to stk2\n");
+
+    // Clean up the stacks...
+    stack_deallocate(stk1);
+    stack_deallocate(stk2);
+
+    return EXIT_SUCCESS;
+}
 
 ```

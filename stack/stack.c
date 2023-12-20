@@ -1,154 +1,121 @@
 #include "stack.h"
-
 #include <stdlib.h>
-
-static bool stack_is_equal_impl(const Stack* stk1, const Stack* stk2);
-static bool stack_is_less_impl(const Stack* stk1, const Stack* stk2);
-static bool stack_is_greater_impl(const Stack* stk1, const Stack* stk2);
-static bool stack_is_less_or_equal_impl(const Stack* stk1, const Stack* stk2);
-static bool stack_is_greater_or_equal_impl(const Stack* stk1, const Stack* stk2);
-static bool stack_is_not_equal_impl(const Stack* stk1, const Stack* stk2);
-static bool stack_empty_impl(Stack* stk);
-static size_t stack_size_impl(Stack* stk);
-static void* stack_top_impl(Stack* stk);
-static void* stack_pop_impl(Stack* stk);
-static void stack_push_impl(Stack* stk, void* item);
-static void stack_emplace_impl(Stack* stk, void* item);
-static void stack_clear_impl(Stack* stk);
-static void stack_swap_impl(Stack* stk1, Stack* stk2);
-static void stack_deallocate_impl(Stack* stk);
-
 
 Stack* stack_create(size_t itemSize) 
 {
     Stack* stk = (Stack*)malloc(sizeof(Stack));
-    if (!stk) 
-        return NULL; // Allocation failed
+    if (!stk)
+    {
+        perror("Allocation failed in Stack");
+        exit(-1);
+    }
     
     stk->vec = vector_create(itemSize);
 
     if (!stk->vec) 
     {
         free(stk);
-        return NULL; // Vector creation failed
+        exit(-1); // vector creation failed
     }
-
-    // Assign function pointers
-    stk->is_equal = stack_is_equal_impl;
-    stk->is_less = stack_is_less_impl;
-    stk->is_greater = stack_is_greater_impl;
-    stk->is_less_or_equal = stack_is_less_or_equal_impl;
-    stk->is_greater_or_equal = stack_is_greater_or_equal_impl;
-    stk->is_not_equal = stack_is_not_equal_impl;
-    stk->empty = stack_empty_impl;
-    stk->size = stack_size_impl;
-    stk->top = stack_top_impl;
-    stk->pop = stack_pop_impl;
-    stk->push = stack_push_impl;
-    stk->emplace = stack_emplace_impl;
-    stk->clear = stack_clear_impl;
-    stk->swap = stack_swap_impl;
-    stk->deallocate = stack_deallocate_impl;
-
     return stk;
 }
 
-static bool stack_is_equal_impl(const Stack* stk1, const Stack* stk2) 
+bool stack_is_equal(const Stack* stk1, const Stack* stk2) 
 {
     if (!stk1 || !stk2) 
         return false;
 
-    return stk1->vec->is_equal(stk1->vec, stk2->vec);
+    return vector_is_equal(stk1->vec, stk2->vec);
 }
 
-static bool stack_is_less_impl(const Stack* stk1, const Stack* stk2) 
+bool stack_is_less(const Stack* stk1, const Stack* stk2) 
 {
     if (!stk1 || !stk2) 
         return false;
 
-    return stk1->vec->is_less(stk1->vec, stk2->vec);
+    return vector_is_less(stk1->vec, stk2->vec);
 }
 
-static bool stack_is_greater_impl(const Stack* stk1, const Stack* stk2) 
+bool stack_is_greater(const Stack* stk1, const Stack* stk2) 
 {
     if (!stk1 || !stk2) 
         return false;
 
-    return stk1->vec->is_greater(stk1->vec, stk2->vec);
+    return vector_is_greater(stk1->vec, stk2->vec);
 }
 
-static bool stack_is_less_or_equal_impl(const Stack* stk1, const Stack* stk2) 
+bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2) 
 {
-    return stk1->is_less(stk1, stk2) || stk1->is_equal(stk1, stk2);
+    return stack_is_less(stk1, stk2) || stack_is_equal(stk1, stk2);
 }
 
-static bool stack_is_greater_or_equal_impl(const Stack* stk1, const Stack* stk2) 
+bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2) 
 {
-    return stk1->is_greater(stk1, stk2) || stk1->is_equal(stk1, stk2);
+    return stack_is_greater(stk1, stk2) || stack_is_equal(stk1, stk2);
 }
 
-static bool stack_is_not_equal_impl(const Stack* stk1, const Stack* stk2) 
+bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) 
 {
-    return !stk1->is_equal(stk1, stk2);
+    return !stack_is_equal(stk1, stk2);
 }
 
-static void stack_push_impl(Stack* stk, void* item) 
+void stack_push(Stack* stk, void* item) 
 {
     if (stk == NULL || item == NULL) 
         return; // Invalid input
     
-    stk->vec->push_back(stk->vec, item);
+    vector_push_back(stk->vec, item);
 }
 
-static void* stack_pop_impl(Stack* stk) 
+void* stack_pop(Stack* stk) 
 {
-    if (stk == NULL || stk->vec->is_empty(stk->vec)) 
+    if (stk == NULL || vector_is_empty(stk->vec)) 
         return NULL; // Stack is empty or NULL
     
-    return stk->vec->pop_back(stk->vec);
+    return vector_pop_back(stk->vec);
 }
 
-static void* stack_top_impl(Stack* stk) 
+void* stack_top(Stack* stk) 
 {
-    if (stk == NULL || stk->vec->is_empty(stk->vec)) 
+    if (stk == NULL || vector_is_empty(stk->vec)) 
         return NULL; // Stack is empty or NULL
     
-    return stk->vec->back(stk->vec);
+    return vector_back(stk->vec);
 }
 
-static size_t stack_size_impl(Stack* stk) 
+size_t stack_size(Stack* stk) 
 {
     if (stk == NULL) 
         return 0;
     
-    return stk->vec->length(stk->vec);
+    return vector_size(stk->vec);
 }
 
-static bool stack_empty_impl(Stack* stk) 
+bool stack_empty(Stack* stk) 
 {
     if (stk == NULL) 
         return true; // Consider a NULL stack as empty
     
-    return stk->vec->is_empty(stk->vec);
+    return vector_is_empty(stk->vec);
 }
 
-static void stack_emplace_impl(Stack* stk, void* item) 
+void stack_emplace(Stack* stk, void* item) 
 {
     if (stk == NULL || item == NULL) 
         return; // Invalid input
     
-    stk->vec->emplace_back(stk->vec, item, stk->vec->itemSize);
+    vector_emplace_back(stk->vec, item, stk->vec->itemSize);
 }
 
-static void stack_clear_impl(Stack* stk) 
+void stack_clear(Stack* stk) 
 {
     if (stk == NULL) 
         return; // Nothing to clear if stack is NULL
     
-    stk->vec->clear(stk->vec);
+    vector_clear(stk->vec);
 }
 
-static void stack_swap_impl(Stack* stk1, Stack* stk2) 
+void stack_swap(Stack* stk1, Stack* stk2) 
 {
     if (stk1 == NULL || stk2 == NULL) 
         return; // Cannot swap NULL stacks
@@ -158,13 +125,13 @@ static void stack_swap_impl(Stack* stk1, Stack* stk2)
     stk2->vec = tempVec;
 }
 
-static void stack_deallocate_impl(Stack* stk) 
+void stack_deallocate(Stack* stk) 
 {
     if (stk == NULL) 
         return; // No need to deallocate a NULL stack
     
     if (stk->vec != NULL) 
-        stk->vec->deallocate(stk->vec); // Deallocate the underlying vector
+        vector_deallocate(stk->vec); // Deallocate the underlying vector
     
     free(stk); // Free the stack itself
 }

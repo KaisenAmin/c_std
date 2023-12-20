@@ -1,33 +1,35 @@
-#include "vector/vector.h"
+#include "stack/stack.h"
+#include "string/string.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 
 int main() 
 {
-    Vector *stringVector = vector_create(sizeof(char*));
-    char* values[] = {"Hello", "World", "Vector", "Example"};
+    Stack* stk1 = stack_create(sizeof(int));
+    Stack* stk2 = stack_create(sizeof(int));
 
-    for (int i = 0; i < 4; ++i) 
-        vector_push_back(stringVector, &values[i]);
+    if (stack_is_equal(stk1, stk2))
+        printf("stk1 is equal to stk2\n");
         
-    char* newValue = "NewString";
-    vector_assign(stringVector, 1, &newValue);
+    if (stack_is_less(stk1, stk2)) 
+        printf("stk1 is less than stk2\n");
 
-    char* emplaceValue = "EmplacedString";
-    vector_emplace(stringVector, 2, &emplaceValue, sizeof(char*));
+    if (stack_is_greater(stk1, stk2)) 
+        printf("stk1 is greater than stk2\n");
 
-    char* emplaceBackValue = "EmplacedBackString";
-    vector_emplace_back(stringVector, &emplaceBackValue, sizeof(char*));
+    if (stack_is_less_or_equal(stk1, stk2)) 
+        printf("stk1 is less than or equal to stk2\n");
+        
+    if (stack_is_greater_or_equal(stk1, stk2)) 
+        printf("stk1 is greater than or equal to stk2\n");
 
-    for (size_t i = 0; i < vector_size(stringVector); ++i) 
-    {
-        char** item = (char **)vector_at(stringVector, i);
-        printf("%s\n", *item);
-    }
+    if (stack_is_not_equal(stk1, stk2)) 
+        printf("stk1 is not equal to stk2\n");
 
-    vector_deallocate(stringVector);
+    // Clean up the stacks...
+    stack_deallocate(stk1);
+    stack_deallocate(stk2);
 
     return EXIT_SUCCESS;
 }
