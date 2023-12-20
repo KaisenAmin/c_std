@@ -1,59 +1,43 @@
 #include "string/string.h"
+#include "vector/vector.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-String*** create_2d_string_array(const size_t rows, const size_t cols) 
-{
-    String*** array = malloc(rows * sizeof(String**));
-
-    for (size_t i = 0; i < rows; ++i) 
-    {
-        array[i] = malloc(cols * sizeof(String*));
-        for (size_t j = 0; j < cols; ++j) 
-            array[i][j] = string_create("");  // Initialize with empty strings
-    }
-
-    return array;
-}
-
-void deallocate_2d_string_array(String*** array, const size_t rows, const size_t cols) 
-{
-    for (size_t i = 0; i < rows; ++i) 
-    {
-        for (size_t j = 0; j < cols; ++j) 
-            string_deallocate(array[i][j]);
-        
-        free(array[i]);
-    }
-    free(array);
-}
-
 int main() 
 {
-    const size_t rows = 2;
-    const size_t cols = 3;
-    String*** my2DString = create_2d_string_array(rows, cols);
+    Vector* vec = vector_create(sizeof(String*));
 
-    // Example usage
-    string_assign(my2DString[0][0], "Hello");
-    string_assign(my2DString[0][1], "World");
-    string_assign(my2DString[0][2], "!");
+    String* myString1 = string_create("Hello");
+    String* myString2 = string_create("World");
+    String* myString3 = string_create("Example");
 
-    string_assign(my2DString[1][0], "Goodbye");
-    string_assign(my2DString[1][1], "Cruel");
-    string_assign(my2DString[1][2], "World");
+    vector_push_back(vec, &myString1);
+    vector_push_back(vec, &myString2);
+    vector_push_back(vec, &myString3);
 
-    // Print the 2D array
-    for (size_t i = 0; i < rows; ++i) 
+    for (size_t i = 0; i < vector_size(vec); ++i) 
     {
-        for (size_t j = 0; j < cols; ++j) 
-            printf("%s ", string_c_str(my2DString[i][j]));
-        
-        printf("\n");
+        String** strPtr = (String**) vector_at(vec, i);
+        if (strPtr && *strPtr) 
+            printf("%s\n", (*strPtr)->dataStr); 
     }
 
-    // Clean up
-    deallocate_2d_string_array(my2DString, rows, cols);
+    for (size_t i = 0; i < vector_size(vec); ++i) 
+    {
+        String** strPtr = (String**) vector_at(vec, i);
+
+        if (strPtr && *strPtr) 
+        {
+            string_deallocate(*strPtr);
+            free(*strPtr);
+        }
+    }
+
+    vector_deallocate(vec);
+
+    string_deallocate(myString1);
+    string_deallocate(myString2);
+    string_deallocate(myString3);
 
     return 0;
 }

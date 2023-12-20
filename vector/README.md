@@ -702,44 +702,49 @@ int main()
 
 ```c
 
-#include "vector/vector.h"
 #include "string/string.h"
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-
-Vector* vec = vector_create(sizeof(String*));
-
-String* myString1 = string_create("Hello");
-String* myString2 = string_create("World");
-String* myString3 = string_create("Example");
-
-vec->push_back(vec, &myString1);
-vec->push_back(vec, &myString2);
-vec->push_back(vec, &myString3);
-
-for (size_t i = 0; i < vec->length(vec); ++i) 
+int main() 
 {
-    String** strPtr = (String**) vec->at(vec, i);
-    if (strPtr && *strPtr) 
-        printf("%s\n", (*strPtr)->dataStr); 
-}
+    Vector* vec = vector_create(sizeof(String*));
 
-for (size_t i = 0; i < vec->length(vec); ++i) 
-{
-    String** strPtr = (String**) vec->at(vec, i);
+    String* myString1 = string_create("Hello");
+    String* myString2 = string_create("World");
+    String* myString3 = string_create("Example");
 
-    if (strPtr && *strPtr) 
+    vector_push_back(vec, &myString1);
+    vector_push_back(vec, &myString2);
+    vector_push_back(vec, &myString3);
+
+    for (size_t i = 0; i < vector_size(vec); ++i) 
     {
-        (*strPtr)->deallocate(*strPtr);
-        free(*strPtr);
+        String** strPtr = (String**) vector_at(vec, i);
+        if (strPtr && *strPtr) 
+            printf("%s\n", (*strPtr)->dataStr); 
     }
+
+    for (size_t i = 0; i < vector_size(vec); ++i) 
+    {
+        String** strPtr = (String**) vector_at(vec, i);
+
+        if (strPtr && *strPtr) 
+        {
+            string_deallocate(*strPtr);
+            free(*strPtr);
+        }
+    }
+
+    vector_deallocate(vec);
+
+    string_deallocate(myString1);
+    string_deallocate(myString2);
+    string_deallocate(myString3);
+
+    return 0;
 }
-
-vec->deallocate(vec);
-
-myString1->deallocate(myString1);
-myString2->deallocate(myString2);
-myString3->deallocate(myString3);
-
 ```
 
 ## Example 21 : how to use relationals operators in Vector 

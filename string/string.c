@@ -285,14 +285,14 @@ void string_push_back(String* str, char chItem)
 
     if (str->size + 1 >= str->capacitySize) 
     {
-        static int counter = 0;
+        // static int counter = 0;
         size_t newCapacity = str->capacitySize * 2;
         // printf("%zu\n%zu\n-----\n", str->capacitySize, newCapacity);
         char* newData = memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
-        counter++;
+        // counter++;
         if (!newData) 
         {
-            printf("%zu\n%zu\n%d\n", str->capacitySize, newCapacity, counter);
+            // printf("%zu\n%zu\n%d\n", str->capacitySize, newCapacity, counter);
             perror("Allocation failed in string_push_back_impl");
             exit(-1);
         }

@@ -26,30 +26,38 @@ To use the String library in your project, include the `string.h` header file in
 
 ```c
 
-String* myString = string_create("");
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* myString = string_create("");
    
-// Push back a new character
-myString->push_back(myString, '!');
-printf("String after push_back: %s\n", myString->dataStr);
+    // Push back a new character
+    string_push_back(myString, '!');
+    printf("String after push_back: %s\n", myString->dataStr);
 
-// Access a character
-char ch = myString->at(myString, 0);
-printf("Character at index 1: %c\n", ch);
+    // Access a character
+    char ch = string_at(myString, 0);
+    printf("Character at index 1: %c\n", ch);
 
-// Print length and capacity
-printf("Length: %zu, Capacity: %zu\n", myString->length(myString), myString->capacity(myString));
+    // Print length and capacity
+    printf("Length: %zu, Capacity: %zu\n", string_length(myString), string_capacity(myString));
 
-// Clear the string
-myString->clear(myString);
-printf("String after clear: %s\n", myString->dataStr);
+    // Clear the string
+    string_clear(myString);
+    printf("String after clear: %s\n", myString->dataStr);
 
-// Clean up
-myString->clear(myString);
-myString->append(myString, "Hello C Programmers");
-    
-printf("%s\n", myString->c_str(myString));
+    // Clean up
+    string_clear(myString);
+    string_append(myString, "Hello C Programmers");
+        
+    printf("%s\n", string_c_str(myString));
 
-myString->deallocate(myString);
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -57,47 +65,62 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello");
+#include "string/string.h"
+#include <stdio.h>
 
-// Append a string
-myString->append(myString, ", World!");
-printf("String after append: %s\n", myString->dataStr);
+int main() 
+{
+    String *myString = string_create("Hello");
 
-// Resize the string
-myString->resize(myString, 5);  // Resize to "Hello"
-printf("String after resize: %s\n", myString->dataStr);
+    // Append a string
+    string_append(myString, ", World!");
+    printf("String after append: %s\n", myString->dataStr);
 
-// Shrink to fit
-myString->shrink_to_fit(myString);
-printf("String capacity after shrink to fit: %zu\n", myString->capacity(myString));
+    // Resize the string
+    string_resize(myString, 5);  // Resize to "Hello"
+    printf("String after resize: %s\n", myString->dataStr);
 
-// clean up and dellocate
-myString->clear(myString);
-myString->deallocate(myString);
+    // Shrink to fit
+    string_shrink_to_fit(myString);
+    printf("String capacity after shrink to fit: %zu\n", string_capacity(myString));
 
+    // clean up and dellocate
+    string_clear(myString);
+    string_deallocate(myString);
+
+    return 0;
+}
 ```
 
 ## Example 3: how to 'assign' new string and 'erase' some part of String obj also 'insert' new ...  
 
 ```c
 
-String *myString = string_create("Hello World");
+#include "string/string.h"
+#include <stdio.h>
 
-// Assign a new string
-myString->assign(myString, "New String");
-printf("String after assign: %s\n", myString->dataStr);
+int main() 
+{
+    String *myString = string_create("Hello World");
 
-// Insert a string
-myString->insert(myString, 4, "Test ");
-printf("String after insert: %s\n", myString->dataStr);
+    // Assign a new string
+    string_assign(myString, "New String");
+    printf("String after assign: %s\n", myString->dataStr);
 
-// Erase a portion of the string
-myString->erase(myString, 0, 5);  // Erase "New T"
-printf("String after erase: %s\n", myString->dataStr);
+    // Insert a string
+    string_insert(myString, 4, "Test ");
+    printf("String after insert: %s\n", myString->dataStr);
 
-// Deallocate and clean up
-myString->clear(myString);
-myString->deallocate(myString);
+    // Erase a portion of the string
+    string_erase(myString, 0, 5);  // Erase "New T"
+    printf("String after erase: %s\n", myString->dataStr);
+
+    // Deallocate and clean up
+    string_clear(myString);
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -105,12 +128,20 @@ myString->deallocate(myString);
 
 ```c
 
-String *str1 = string_create("Hello World");
-str1->replace(str1, "World", "There");
-    
-printf("After replace: %s\n", str1->dataStr);
+#include "string/string.h"
+#include <stdio.h>
 
-str1->deallocate(str1);
+int main() 
+{
+    String *str1 = string_create("Hello World");
+    string_replace(str1, "World", "There");
+        
+    printf("After replace: %s\n", str1->dataStr);
+
+    string_deallocate(str1);
+
+    return 0;
+}
 
 ```
 
@@ -119,23 +150,31 @@ str1->deallocate(str1);
 
 ```c
 
-String *str1 = string_create("Hello World");
-str1->replace(str1, "World", "There");
-    
-printf("After replace: %s\n", str1->dataStr);
+#include "string/string.h"
+#include <stdio.h>
 
-// Swap example
-String *str2 = string_create("Sample Text");
-str2->swap(str1, str2);
+int main() 
+{
+    String *str1 = string_create("Hello World");
+    string_replace(str1, "World", "There");
+        
+    printf("After replace: %s\n", str1->dataStr);
 
-printf("After swap, str1: %s, str2: %s\n", str1->dataStr, str2->dataStr);
+    // Swap example
+    String *str2 = string_create("Sample Text");
+    string_swap(str1, str2);
 
-// Pop back example
-str2->pop_back(str2);
-printf("After pop back: %s\n", str2->dataStr);
+    printf("After swap, str1: %s, str2: %s\n", str1->dataStr, str2->dataStr);
 
-str1->deallocate(str1);
-str2->deallocate(str2);
+    // Pop back example
+    string_pop_back(str2);
+    printf("After pop back: %s\n", str2->dataStr);
+
+    string_deallocate(str1);
+    string_deallocate(str2);
+
+    return 0;
+}
 
 ```
 
@@ -144,25 +183,33 @@ str2->deallocate(str2);
 
 ```c
 
-String *myString = string_create("Hello World");
+#include "string/string.h"
+#include <stdio.h>
 
-// Get the last character
-char lastChar = *(char*)myString->back(myString);
+int main() 
+{
+   String *myString = string_create("Hello World");
 
-printf("Last character : %c\n", lastChar);
-// its just syntax !!!
-*(char*)myString->back(myString) = 'a';
+    // Get the last character
+    char lastChar = *(char*)string_back(myString);
 
-printf("Wowww: %c\n", *(char*)myString->back(myString));
+    printf("Last character : %c\n", lastChar);
+    // its just syntax !!!
+    *(char*)string_back(myString) = 'a';
 
-// Get the first character
-char firstChar = *(char*)myString->front(myString);
-printf("First character: %c\n", firstChar);
-printf("Max size is %zu\n", myString->max_size(myString));
-    
-// Deallocate and clean up
-myString->clear(myString);
-myString->deallocate(myString);
+    printf("Wowww: %c\n", *(char*)string_back(myString));
+
+    // Get the first character
+    char firstChar = *(char*)string_front(myString);
+    printf("First character: %c\n", firstChar);
+    printf("Max size is %zu\n", string_max_size(myString));
+        
+    // Deallocate and clean up
+    string_clear(myString);
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -170,14 +217,22 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello, World!");
+#include "string/string.h"
+#include <stdio.h>
 
-// Copy example
-char buffer[50];
-size_t copied = myString->copy(myString, buffer, 7, 5);
-printf("Copied '%s' (%zu characters)\n", buffer, copied);
+int main() 
+{
+    String *myString = string_create("Hello, World!");
 
-myString->deallocate(myString);
+    // Copy example
+    char buffer[50];
+    size_t copied = string_copy(myString, buffer, 7, 5);
+    printf("Copied '%s' (%zu characters)\n", buffer, copied);
+
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -185,36 +240,51 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello, World!");
+#include "string/string.h"
+#include <stdio.h>
 
-// Find example
-int findPos = myString->find(myString, "World", 0);
-printf("Found 'World' at position: %d\n", findPos);
+int main() 
+{
+    String *myString = string_create("Hello, World!");
 
-myString->deallocate(myString);
+    // Find example
+    int findPos = string_find(myString, "World", 0);
+    printf("Found 'World' at position: %d\n", findPos);
 
+    string_deallocate(myString);
+
+    return 0;
+}
 ```
 
 ## Example 9 : how to use 'rfind', 'find_first_of', 'find_last_of'
 
 ```c
 
-String *myString = string_create("Hello, World!");
+#include "string/string.h"
+#include <stdio.h>
 
-// rfind example
-int rfindPos = myString->rfind(myString, "o,", myString->length(myString) - 1);
-printf("Last 'o' found at position: %d\n", rfindPos);
+int main() 
+{
+    String *myString = string_create("Hello, World!");
 
-int findFirstOfPos = myString->find_first_of(myString, "World", 0);
-printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
+    // rfind example
+    int rfindPos = string_rfind(myString, "o,", string_length(myString) - 1);
+    printf("Last 'o' found at position: %d\n", rfindPos);
 
-// find_last_of example
-int findLastOfPos = myString->find_last_of(myString, "World", myString->length(myString) - 1);
-printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
+    int findFirstOfPos = string_find_first_of(myString, "World", 0);
+    printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
 
-// Deallocate and clean up
-myString->clear(myString);
-myString->deallocate(myString);
+    // find_last_of example
+    int findLastOfPos = string_find_last_of(myString, "World", string_length(myString) - 1);
+    printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
+
+    // Deallocate and clean up
+    string_clear(myString);
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -222,17 +292,25 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello, World!");
+#include "string/string.h"
+#include <stdio.h>
 
-// find_first_not_of example
-int firstNotOfPos = myString->find_first_not_of(myString, "Hello", 0);
-printf("First position not matching 'Hello': %d\n", firstNotOfPos);
+int main() 
+{
+    String *myString = string_create("Hello, World!");
 
-// find_last_not_of example
-int lastNotOfPos = myString->find_last_not_of(myString, "World", myString->length(myString) - 1);
-printf("Last position not matching 'World': %d\n", lastNotOfPos);
+    // find_first_not_of example
+    int firstNotOfPos = string_find_first_not_of(myString, "Hello", 0);
+    printf("First position not matching 'Hello': %d\n", firstNotOfPos);
 
-myString->deallocate(myString);
+    // find_last_not_of example
+    int lastNotOfPos = string_find_last_not_of(myString, "World", string_length(myString) - 1);
+    printf("Last position not matching 'World': %d\n", lastNotOfPos);
+
+    string_deallocate(myString);
+    
+    return 0;
+}
 
 ```
 
@@ -240,15 +318,23 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello, World!");
-    
-// Data example
-const char *data = myString->data(myString);
-printf("Data: %s\n", data);
+#include "string/string.h"
+#include <stdio.h>
 
-// Deallocate and clean up
-myString->clear(myString);
-myString->deallocate(myString);
+int main() 
+{
+    String *myString = string_create("Hello, World!");
+        
+    // Data example
+    const char *data = string_data(myString);
+    printf("Data: %s\n", data);
+
+    // Deallocate and clean up
+    string_clear(myString);
+    string_deallocate(myString);
+    
+    return 0;
+}
 
 ```
 
@@ -257,13 +343,21 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello amin");
+#include "string/string.h"
+#include <stdio.h>
 
-for (char* it = myString->begin(myString); it != myString->end(myString); it++)
-    printf("%c", *it);
-    
-myString->clear(myString);
-myString->deallocate(myString);
+int main() 
+{
+    String *myString = string_create("Hello amin");
+
+    for (char* it = string_begin(myString); it != string_end(myString); it++)
+        printf("%c", *it);
+        
+    string_clear(myString);
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -271,18 +365,25 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello amin");
+#include "string/string.h"
+#include <stdio.h>
 
-// Reverse iteration using rbegin and rend
-printf("String in reverse: ");
-for (char* it = myString->rbegin(myString); it != myString->rend(myString); --it) 
-    printf("%c", *it);
-    
-printf("\n");
+int main() 
+{
+    String *myString = string_create("Hello amin");
 
-// Clean up
-myString->clear(myString);
-myString->deallocate(myString);
+    // Reverse iteration using rbegin and rend
+    printf("String in reverse: ");
+    for (char* it = string_rbegin(myString); it != string_rend(myString); --it) 
+        printf("%c", *it);
+        
+    printf("\n");
+
+    // Clean up
+    string_clear(myString);
+    string_deallocate(myString);
+    return 0;
+}
 
 ```
 
@@ -290,16 +391,23 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello, World!");
+#include "string/string.h"
+#include <stdio.h>
 
-// Iterate using cbegin and cend
-printf("String using cbegin and cend: ");
-for (const char* it = myString->cbegin(myString); it != myString->cend(myString); ++it) 
-    printf("%c", *it);
+int main() 
+{
+    String *myString = string_create("Hello, World!");
 
-printf("\n");
+    // Iterate using cbegin and cend
+    printf("String using cbegin and cend: ");
+    for (const char* it = string_cbegin(myString); it != string_cend(myString); ++it) 
+        printf("%c", *it);
 
-myString->deallocate(myString);
+    printf("\n");
+
+    string_deallocate(myString);
+    return 0;
+}
 
 ```
 
@@ -307,17 +415,25 @@ myString->deallocate(myString);
 
 ```c
 
-String *myString = string_create("Hello, World!");
+#include "string/string.h"
+#include <stdio.h>
 
-// Reverse iterate using crbegin and crend
-printf("String in reverse using crbegin and crend: ");
-for (const char* it = myString->crbegin(myString); it != myString->crend(myString); --it) 
-    printf("%c", *it);
-    
-printf("\n");
+int main() 
+{
+    String *myString = string_create("Hello, World!");
 
-// Clean up
-myString->deallocate(myString);
+    // Reverse iterate using crbegin and crend
+    printf("String in reverse using crbegin and crend: ");
+    for (const char* it = string_crbegin(myString); it != string_crend(myString); --it) 
+        printf("%c", *it);
+        
+    printf("\n");
+
+    // Clean up
+    string_deallocate(myString);
+
+    return 0;
+}
 
 ```
 
@@ -325,27 +441,35 @@ myString->deallocate(myString);
 
 ```c
 
-String* str1 = string_create("Hello");
-String* str2 = string_create("World");
+#include "string/string.h"
+#include <stdio.h>
 
-if (str1->is_equal(str1, str2)) 
-    printf("Strings are equal\n");
-    
-if (str1->is_less(str1, str2)) 
-    printf("String 1 is less than String 2\n");
+int main() 
+{
+    String* str1 = string_create("Hello");
+    String* str2 = string_create("World");
 
-if (str1->is_greater(str1, str2))
-    printf("String1 is greater that String2\n");
+    if (string_is_equal(str1, str2)) 
+        printf("Strings are equal\n");
+        
+    if (string_is_less(str1, str2)) 
+        printf("String 1 is less than String 2\n");
 
-if (str1->is_less_or_equal(str1, str2))
-    printf("String1 is less than or equal String2\n");
+    if (string_is_greater(str1, str2))
+        printf("String1 is greater that String2\n");
 
-if (str1->is_greater_or_equal(str1, str2))
-    printf("String1 is greater than or equal String2\n");
-                
-str1->deallocate(str1);
-str2->deallocate(str2);
+    if (string_is_less_or_equal(str1, str2))
+        printf("String1 is less than or equal String2\n");
 
+    if (string_is_greater_or_equal(str1, str2))
+        printf("String1 is greater than or equal String2\n");
+                    
+    string_deallocate(str1);
+    string_deallocate(str2);
+
+
+    return 0;
+}
 ```
 
 ## Example 17: Manipulate Multiple String 
@@ -363,31 +487,31 @@ int main()
     String* sentence = string_create("");
 
     // Concatenate 'greeting' and ', '
-    greeting->append(greeting, ", ");
+    string_append(greeting, ", ");
     printf("Greeting: %s\n", greeting->dataStr);
 
     // Append 'name' to 'greeting'
-    greeting->append(greeting, name->dataStr);
+    string_append(greeting, name->dataStr);
     printf("Greeting with name: %s\n", greeting->dataStr);
 
     // Create a substring of 'greeting' and assign it to 'sentence'
-    String* tempSubstr = greeting->substr(greeting, 0, 5); // Extract "Hello"
-    sentence->assign(sentence, tempSubstr->dataStr);
-    tempSubstr->deallocate(tempSubstr);
+    String* tempSubstr = string_substr(greeting, 0, 5); // Extract "Hello"
+    string_assign(sentence, tempSubstr->dataStr);
+    string_deallocate(tempSubstr);
 
     // Append '!' to 'sentence'
-    sentence->push_back(sentence, '!');
+    string_push_back(sentence, '!');
     printf("Sentence: %s\n", sentence->dataStr);
 
     // Compare 'greeting' and 'sentence'
-    if (sentence->is_less(sentence, greeting)) 
+    if (string_is_less(sentence, greeting)) 
         printf("Sentence is less than greeting.\n");
     else 
         printf("Sentence is not less than greeting.\n");
     
-    greeting->deallocate(greeting);
-    name->deallocate(name);
-    sentence->deallocate(sentence);
+    string_deallocate(greeting);
+    string_deallocate(name);
+    string_deallocate(sentence);
 
     return 0;
 }
