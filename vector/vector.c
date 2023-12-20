@@ -47,26 +47,23 @@ Vector* vector_create(size_t itemSize)
 {
     Vector* vec = (Vector*)malloc(sizeof(Vector));
 
-    if (!vec) 
-        return NULL;
-    
+    if (!vec)
+    {
+        perror("can not allocate memory for vec->pool");
+        exit(-1);
+    } 
+        
     vec->size = 0;
     vec->capacitySize = 32; // Initial capacity
     vec->itemSize = itemSize;
-    vec->items = malloc(vec->capacitySize * itemSize);
-
-    if (!vec->items) 
-    {
-        free(vec);
-        return NULL; 
-    }
-
+    
     size_t initialPoolSize = 1024;
     vec->pool = memory_pool_create(initialPoolSize);
     if (!vec->pool) 
     {
         free(vec);
-        return NULL;
+        perror("can not allocate memory for vec->pool");
+        exit(-1);
     }
 
     // Instead of malloc, use memory pool for initial allocation
@@ -75,7 +72,8 @@ Vector* vector_create(size_t itemSize)
     {
         memory_pool_destroy(vec->pool);
         free(vec);
-        return NULL;
+        perror("can not allocate memory for vec->pool");
+        exit(-1);
     }
 
     return vec;
@@ -341,7 +339,7 @@ void vector_deallocate(Vector *vec)
         vec->pool = NULL;
     }
 
-    if (vec->items != NULL) 
+    if (vec->items != NULL)
         vec->items = NULL;   // The items are part of the pool, so no need to free them separately
     
     free(vec);

@@ -6,19 +6,21 @@
 static MemoryPoolString *memory_pool_create(size_t size);
 static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolString *pool);
-
-
+bool memoryPoolCreated = false;
 MemoryPoolString* global_pool = NULL;
 
 static void init_global_memory_pool(size_t size) 
 {
     if (global_pool == NULL) 
+    {
         global_pool = memory_pool_create(size);
+        memoryPoolCreated = true;
+    }   
 }
 
 static void destroy_global_memory_pool() 
 {
-    if (global_pool != NULL) 
+    if (global_pool != NULL && memoryPoolCreated) 
     {
         memory_pool_destroy(global_pool);
         global_pool = NULL;
@@ -73,7 +75,7 @@ String* string_create(const char* initialStr)
     str->capacitySize = initialSize + 1; // +1 for null terminator
 
     // Initialize memory pool for strings with a smaller size
-    size_t initialPoolSize = 1024; // 1KB
+    size_t initialPoolSize = str->capacitySize * 2; // 1KB
     str->pool = memory_pool_create(initialPoolSize);
     if (!str->pool) {
         free(str);
@@ -437,7 +439,8 @@ void string_deallocate(String *str)
 
     // Since dataStr is managed by the memory pool, no separate free call is needed for it
     free(str);
-    destroy_global_memory_pool();
+    if (memoryPoolCreated)
+        destroy_global_memory_pool();
 }
 
 char string_at(String* str, size_t index)

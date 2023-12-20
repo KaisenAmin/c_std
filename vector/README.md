@@ -761,7 +761,7 @@ int main()
 int main() 
 {
     Vector *vector1 = vector_create(sizeof(int));
-Vector *vector2 = vector_create(sizeof(int));
+    Vector *vector2 = vector_create(sizeof(int));
 
     int value1 = 10, value2 = 20;
     vector_push_back(vector1, &value1);
@@ -807,14 +807,7 @@ int main()
 {
     struct timespec start, end;
     double time_sum = 0;
-
-
     Vector* vec = vector_create(sizeof(int));
-    if (!vec) 
-    {
-        perror("Vector creation failed");
-        return EXIT_FAILURE;
-    }
 
     clock_gettime(CLOCK_MONOTONIC, &start);
         
