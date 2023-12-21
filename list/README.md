@@ -131,74 +131,199 @@ list2->deallocate(list2);
 ### Example 10: Reverse a List
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->push_back(myList, &value);
-myList->reverse(myList); // Reverse the list
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int values[] = {50, 40, 30, 20, 10};
+
+    for (int i = 0; i < 5; ++i) 
+        list_push_back(myList, &values[i]);
+        
+    list_reverse(myList); // Reverse the list_
+    
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
+    {
+        int* value = (int*)node->value;
+        printf("%d\n", *value);
+    }
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 11: Sort a List
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int values[] = {50, 40, 30, 20, 10};
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-for (int i = 0; i < 5; ++i) 
-    myList->push_back(myList, &values[i]);
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->sort(myList); // Sort the list
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int values[] = {50, 40, 30, 20, 10};
 
-myList->deallocate(myList);
+    for (int i = 0; i < 5; ++i) 
+        list_push_back(myList, &values[i]);
+
+    list_sort(myList); // Sort the list
+    
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
+    {
+        int* value = (int*)node->value;
+        printf("%d\n", *value);
+    }
+
+    list_deallocate(myList);
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 12: Check if List is Empty
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-bool isEmpty = myList->empty(myList); // Check if list is empty
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->deallocate(myList);
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
+
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    bool isEmpty = list_empty(myList); // Check if list is empty
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 13: Get the Length of the List
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->push_back(myList, &value);
-size_t length = myList->length(myList); // Get the length of the list
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int value = 100;
+
+    list_push_back(myList, &value);
+    size_t length = list_length(myList); // Get the length of the list
+
+    printf("Size of List %zu\n", length);
+    
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 14: Assign Values to List
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int values[] = {1, 2, 3, 4, 5};
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->assign(myList, values, 5); // Assign values to list
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int values[] = {1, 2, 3, 4, 5};
+
+    list_assign(myList, values, 5); // Assign values to list
+
+    // Print values
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
+    {
+        int* value = (int*)node->value;
+        printf("%d\n", *value);
+    }
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 15: Merge Two Lists
 
 ```c
-List *list1 = list_create(sizeof(int), compare_ints);
-List *list2 = list_create(sizeof(int), compare_ints);
-int value1 = 10, value2 = 20;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-list1->push_back(list1, &value1);
-list2->push_back(list2, &value2);
-list1->merge(list1, list2); // Merge list2 into list1
 
-list1->deallocate(list1);
-list2->deallocate(list2);
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
+
+int main() 
+{
+    List *list1 = list_create(sizeof(int), compare_ints);
+    List *list2 = list_create(sizeof(int), compare_ints);
+    int value1 = 10, value2 = 20;
+
+    list_push_back(list1, &value1);
+    list_push_back(list2, &value2);
+    list_merge(list1, list2); // Merge list2 into list1
+
+    list_deallocate(list1);
+    list_deallocate(list2);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 16 : Storing Strings in a List and Sorting

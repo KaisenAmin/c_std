@@ -2,46 +2,39 @@
 #include <string.h>
 #include <stdlib.h>
 #include "list/list.h"
-#include "string/string.h"
 
-
-static int compare_strings(const void* a, const void* b) 
+static int compare_ints(const void* a, const void* b) 
 {
-    String* strA = *(String**)a;
-    String* strB = *(String**)b;
-
-    return string_is_less(strA, strB) ? -1 : string_is_greater(strA, strB);
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
 }
 
 int main() 
 {
-    List* stringList = list_create(sizeof(String*), compare_strings);
 
-    // Add strings to the list
-    String* str1 = string_create("Apple");
-    String* str2 = string_create("Banana");
-    String* str3 = string_create("Cherry");
+    List *list1 = list_create(sizeof(int), compare_ints);
+    List *list2 = list_create(sizeof(int), compare_ints);
 
-    list_push_back(stringList, &str1);
-    list_push_back(stringList, &str2);
-    list_push_back(stringList, &str3);
+    int values[] = {50, 40, 30, 20, 10};
+    for (int i = 0; i < 5; ++i) 
+        list_push_back(list1, &values[i]);
 
-    // Sort the list of strings
-    list_sort(stringList);
+    int values2[] = {100, 200, 300, 400, 500};
+    for (int i = 0; i < 5; ++i) 
+        list_push_back(list2, &values2[i]);
 
-    // Iterate and print strings
-    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) 
+    list_swap(list1, list2); // Swap list1 and list2
+
+    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next)
     {
-        String* str = *(String**)node->value;
-        printf("%s\n", string_c_str(str));
+        int* value = (int*)node->value;
+        printf("%d\n", *value);
     }
 
-    // Deallocate and clean up
-    string_deallocate(str1);
-    string_deallocate(str2);
-    string_deallocate(str3);
 
-    list_deallocate(stringList);
+    list_deallocate(list1);
+    list_deallocate(list2);
 
     return EXIT_SUCCESS;
 }

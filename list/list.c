@@ -641,7 +641,7 @@ void list_merge(List *list1, List *list2)
 
     if (current2 != NULL) 
     {
-        perror("Attaching remaining nodes from list2 to the end of list1...\n");
+        // perror("Attaching remaining nodes from list2 to the end of list1...\n");
         list1->tail->next = current2;
         current2->prev = list1->tail;
         list1->tail = list2->tail;
