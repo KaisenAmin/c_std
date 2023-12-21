@@ -1,45 +1,47 @@
 #include "list.h"
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <stdio.h>
 
-static void *list_front_impl(const List *list);
-static void *list_back_impl(const List *list);
-static void *list_insert_impl(List *list, size_t index, void *value);
-static void *list_erase_impl(List *list, size_t index);
-static void list_resize_impl(List *list, size_t newSize, void *defaultValue);
-static void list_swap_impl(List *list1, List *list2);
-static void list_reverse_impl(List *list);
-static void list_sort_impl(List* list);
-static void list_push_front_impl(List *list, void *value);
-static void list_push_back_impl(List *list, void *value);
-static void list_pop_front_impl(List *list);
-static void list_pop_back_impl(List *list);
-static void list_clear_impl(List *list);
-static bool list_empty_impl(const List *list);
-static size_t list_length_impl(const List *list);
-static void list_deallocate_impl(List *list);
-static Node *list_begin_impl(const List *list);
-static Node *list_end_impl(const List *list);
-static Node *list_rbegin_impl(const List *list);  // Only for doubly linked lists
-static Node *list_rend_impl(const List *list); 
-static const Node *list_cbegin_impl(const List *list);
-static const Node *list_cend_impl(const List* list);
-static const Node *list_crbegin_impl(const List* list);
-static const Node *list_crend_impl(const List* list);
-static void list_assign_impl(List *list, void *values, size_t numValues);
-static void list_emplace_front_impl(List *list, void *value);
-static void list_emplace_back_impl(List *list, void *value);
-static void list_splice_impl(List *dest, List *src, Node *pos);
-static void list_remove_impl(List *list, void *value);
-static void list_remove_if_impl(List *list, ConditionFunction cond);
-static void list_unique_impl(List *list);
-static void list_merge_impl(List *list1, List *list2);
-static bool list_is_less_impl(const List *list1, const List *list2);
-static bool list_is_greater_impl(const List *list1, const List *list2);
-static bool list_is_equal_impl(const List *list1, const List *list2);
-static bool list_is_less_or_equal_impl(const List *list1, const List *list2);
-static bool list_is_greater_or_equal_impl(const List *list1, const List *list2);
-static bool list_is_not_equal_impl(const List *list1, const List *list2);
+void *list_front(const List *list);
+void *list_back(const List *list);
+void *list_insert(List *list, size_t index, void *value);
+void *list_erase(List *list, size_t index);
+void list_resize(List *list, size_t newSize, void *defaultValue);
+void list_swap(List *list1, List *list2);
+void list_reverse(List *list);
+void list_sort(List* list);
+void list_push_front(List *list, void *value);
+void list_push_back(List *list, void *value);
+void list_pop_front(List *list);
+void list_pop_back(List *list);
+void list_clear(List *list);
+bool list_empty(const List *list);
+size_t list_length(const List *list);
+void list_deallocate(List *list);
+Node *list_begin(const List *list);
+Node *list_end(const List *list);
+Node *list_rbegin(const List *list);  // Only for doubly linked lists
+Node *list_rend(const List *list); 
+const Node *list_cbegin(const List *list);
+const Node *list_cend(const List* list);
+const Node *list_crbegin(const List* list);
+const Node *list_crend(const List* list);
+void list_assign(List *list, void *values, size_t numValues);
+void list_emplace_front(List *list, void *value);
+void list_emplace_back(List *list, void *value);
+void list_splice(List *dest, List *src, Node *pos);
+void list_remove(List *list, void *value);
+void list_remove_if(List *list, ConditionFunction cond);
+void list_unique(List *list);
+void list_merge(List *list1, List *list2);
+bool list_is_less(const List *list1, const List *list2);
+bool list_is_greater(const List *list1, const List *list2);
+bool list_is_equal(const List *list1, const List *list2);
+bool list_is_less_or_equal(const List *list1, const List *list2);
+bool list_is_greater_or_equal(const List *list1, const List *list2);
+bool list_is_not_equal(const List *list1, const List *list2);
 
 List *list_create(size_t itemSize, CompareFunction compare) 
 {
@@ -51,50 +53,10 @@ List *list_create(size_t itemSize, CompareFunction compare)
     list->itemSize = itemSize;
     list->compare = compare; 
 
-    // Assign function pointers
-    list->assign = list_assign_impl;
-    list->back = list_back_impl;
-    list->begin = list_begin_impl;
-    list->cbegin = list_cbegin_impl;
-    list->cend = list_cend_impl;
-    list->clear = list_clear_impl;
-    list->crbegin = list_crbegin_impl;
-    list->crend = list_crend_impl;
-    list->deallocate = list_deallocate_impl;
-    list->emplace_back = list_emplace_back_impl;
-    list->emplace_front = list_emplace_front_impl;
-    list->empty = list_empty_impl;
-    list->end = list_end_impl;
-    list->erase = list_erase_impl;
-    list->front = list_front_impl;
-    list->push_front = list_push_front_impl;
-    list->push_back = list_push_back_impl;
-    list->pop_front = list_pop_front_impl;
-    list->pop_back = list_pop_back_impl;
-    list->length = list_length_impl;
-    list->insert = list_insert_impl;
-    list->merge = list_merge_impl;
-    list->rbegin = list_rbegin_impl;
-    list->remove = list_remove_impl;
-    list->remove_if = list_remove_if_impl;
-    list->rend = list_rend_impl;
-    list->resize = list_resize_impl;
-    list->reverse = list_reverse_impl;
-    list->sort = list_sort_impl;
-    list->splice = list_splice_impl;
-    list->swap = list_swap_impl;
-    list->unique = list_unique_impl;
-    list->is_less = list_is_less_impl;
-    list->is_greater = list_is_greater_impl;
-    list->is_equal = list_is_equal_impl;
-    list->is_less_or_equal = list_is_less_or_equal_impl;
-    list->is_greater_or_equal = list_is_greater_or_equal_impl;
-    list->is_not_equal = list_is_not_equal_impl;
-
     return list;
 }
 
-static void *list_front_impl(const List *list) 
+void *list_front(const List *list) 
 {
     if (list->head == NULL) 
         return NULL; // The list is empty
@@ -102,7 +64,7 @@ static void *list_front_impl(const List *list)
     return list->head->value;
 }
 
-static void *list_back_impl(const List *list) 
+void *list_back(const List *list) 
 {
     if (list->tail == NULL) 
         return NULL;
@@ -110,19 +72,19 @@ static void *list_back_impl(const List *list)
     return list->tail->value;
 }
 
-static void *list_insert_impl(List *list, size_t index, void *value) 
+void *list_insert(List *list, size_t index, void *value) 
 {
     if (index > list->size) 
         return NULL; // Index out of bounds
     
     if (index == 0) 
     {
-        list_push_front_impl(list, value);
+        list_push_front(list, value);
         return list->head->value;
     } 
     else if (index == list->size) 
     {
-        list_push_back_impl(list, value);
+        list_push_back(list, value);
         return list->tail->value;
     }
 
@@ -156,7 +118,7 @@ static void *list_insert_impl(List *list, size_t index, void *value)
     return newNode->value;
 }
 
-static void *list_erase_impl(List *list, size_t index) 
+void *list_erase(List *list, size_t index) 
 {
     if (index >= list->size) 
         return NULL;
@@ -196,16 +158,16 @@ static void *list_erase_impl(List *list, size_t index)
     return removedValue;
 }
 
-static void list_resize_impl(List *list, size_t newSize, void *defaultValue) 
+void list_resize(List *list, size_t newSize, void *defaultValue) 
 {
     while (list->size > newSize) 
-        list_pop_back_impl(list);  
+        list_pop_back(list);  
 
     while (list->size < newSize) 
-        list_push_back_impl(list, defaultValue);
+        list_push_back(list, defaultValue);
 }
 
-static void list_swap_impl(List *list1, List *list2) 
+void list_swap(List *list1, List *list2) 
 {
     Node *tempHead = list1->head; // Swap the heads
     list1->head = list2->head;
@@ -224,7 +186,7 @@ static void list_swap_impl(List *list1, List *list2)
     list2->itemSize = tempItemSize;
 }
 
-static void list_reverse_impl(List *list) 
+void list_reverse(List *list) 
 {
     Node *current = list->head;
     Node *temp = NULL;
@@ -242,7 +204,7 @@ static void list_reverse_impl(List *list)
     list->tail = temp;
 }
 
-static void list_sort_impl(List* list) 
+void list_sort(List* list) 
 {
     if (list->size < 2 || list->compare == NULL) 
         return;
@@ -269,7 +231,7 @@ static void list_sort_impl(List* list)
     } while (swapped);
 }
 
-static void list_push_front_impl(List *list, void *value) 
+void list_push_front(List *list, void *value) 
 {
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) 
@@ -298,7 +260,7 @@ static void list_push_front_impl(List *list, void *value)
     list->size++;
 }
 
-static void list_push_back_impl(List *list, void *value) 
+void list_push_back(List *list, void *value) 
 {
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) 
@@ -327,7 +289,7 @@ static void list_push_back_impl(List *list, void *value)
     list->size++;
 }
 
-static void list_pop_front_impl(List *list) 
+void list_pop_front(List *list) 
 {
     if (list->head == NULL) 
         return;  // The list is empty, nothing to pop
@@ -346,7 +308,7 @@ static void list_pop_front_impl(List *list)
     list->size--;
 }
 
-static void list_pop_back_impl(List *list) 
+void list_pop_back(List *list) 
 {
     if (list->head == NULL) 
         return;  // The list is empty, nothing to pop
@@ -371,7 +333,7 @@ static void list_pop_back_impl(List *list)
     list->size--;
 }
 
-static void list_clear_impl(List *list) 
+void list_clear(List *list) 
 {
     Node *current = list->head;
 
@@ -387,77 +349,83 @@ static void list_clear_impl(List *list)
     list->size = 0;
 }
 
-static bool list_empty_impl(const List *list) 
+bool list_empty(const List *list) 
 {
     return list->head == NULL;
 }
 
-static size_t list_length_impl(const List *list) 
+size_t list_length(const List *list) 
 {
     return list->size;
 }
 
-static void list_deallocate_impl(List *list) 
+void list_deallocate(List *list) 
 {
     if (list == NULL) 
         return;
     
-    list_clear_impl(list); // First, clear the list
+    list_clear(list); // First, clear the list
     free(list);            // Then, free the list structure itself
 }
 
-static Node *list_begin_impl(const List *list) 
+Node *list_begin(const List *list) 
 {
     return list->head;
 }
 
-static Node *list_end_impl(const List *list) 
+Node *list_end(const List *list) 
 {   
+    assert(list != NULL);
     return NULL; // In a singly linked list, the end is represented by NULL
 }
 
-static Node *list_rbegin_impl(const List *list) 
+Node *list_rbegin(const List *list) 
 {
     return list->tail;
 }
 
-static Node *list_rend_impl(const List *list) 
+Node *list_rend(const List *list) 
 {
+    assert(list != NULL);
     return NULL;  // In a doubly linked list, the end is still represented by NULL
 }
 
-static const Node *list_cbegin_impl(const List *list)
+const Node *list_cbegin(const List *list)
 {
+    assert(list != NULL);
     return list->head;
 }
 
-static const Node *list_cend_impl(const List* list)
+const Node *list_cend(const List* list)
 {
+    assert(list != NULL);
     return NULL;
 }
 
-static const Node *list_crbegin_impl(const List* list)
+const Node *list_crbegin(const List* list)
 {
+    // assert(list != NULL);
     return list->tail;
 }
 
-static const Node *list_crend_impl(const List* list)
+const Node *list_crend(const List* list)
 {
+    assert(list != NULL);
     return NULL;
 }
 
-static void list_assign_impl(List *list, void *values, size_t numValues) 
+void list_assign(List *list, void *values, size_t numValues) 
 {
-    list_clear_impl(list); // Clear the existing content
+    list_clear(list); // Clear the existing content
 
     for (size_t i = 0; i < numValues; ++i) 
     {
         void *currentValue = (char *)values + i * list->itemSize;
-        list_push_back_impl(list, currentValue);
+        list_push_back(list, currentValue);
     }
 }
 
-static void list_emplace_front_impl(List *list, void *value) 
+void list_emplace_front(List *list, void *value) 
 {
     Node *newNode = malloc(sizeof(Node));
 
@@ -479,7 +447,7 @@ static void list_emplace_front_impl(List *list, void *value)
     list->size++;
 }
 
-static void list_emplace_back_impl(List *list, void *value) 
+void list_emplace_back(List *list, void *value) 
 {
     Node *newNode = malloc(sizeof(Node));
 
@@ -499,7 +467,7 @@ static void list_emplace_back_impl(List *list, void *value)
     list->size++;
 }
 
-static void list_splice_impl(List *dest, List *src, Node *pos) 
+void list_splice(List *dest, List *src, Node *pos) 
 {
     if (src->head == NULL || dest == src) 
         return;
@@ -535,7 +503,7 @@ static void list_splice_impl(List *dest, List *src, Node *pos)
     src->size = 0;
 }
 
-static void list_remove_impl(List *list, void *value) 
+void list_remove(List *list, void *value) 
 {
     Node *current = list->head;
 
@@ -564,7 +532,7 @@ static void list_remove_impl(List *list, void *value)
     }
 }
 
-static void list_remove_if_impl(List *list, ConditionFunction cond) 
+void list_remove_if(List *list, ConditionFunction cond) 
 {
     Node *current = list->head;
 
@@ -593,7 +561,7 @@ static void list_remove_if_impl(List *list, ConditionFunction cond)
     }
 }
 
-static void list_unique_impl(List *list) 
+void list_unique(List *list) 
 {
     if (list->size < 2) 
         return;
@@ -622,17 +590,34 @@ static void list_unique_impl(List *list)
     }
 }
 
-static void list_merge_impl(List *list1, List *list2) 
+void list_merge(List *list1, List *list2) 
 {
+
     if (list1 == list2 || list2->size == 0) 
+    {
+        perror("No merge needed");
         return;
+    }
+
+    if (list1->size == 0) 
+    {
+        list1->head = list2->head;
+        list1->tail = list2->tail;
+        list1->size = list2->size;
+        list2->head = list2->tail = NULL;
+        list2->size = 0;
+        perror("List1 was empty, transferred all nodes from list2.\n");
+
+        return;
+    }
 
     Node *current1 = list1->head;
     Node *current2 = list2->head;
 
-    while (current1 != NULL && current2 != NULL) 
+    while (current1 != NULL && current2 != NULL)
     {
-        if (list1->compare(current1->value, current2->value) > 0) 
+        
+        if (list1->compare && list1->compare(current1->value, current2->value) > 0) 
         {
             Node *next2 = current2->next; // Insert current2 before current1
             
@@ -656,6 +641,7 @@ static void list_merge_impl(List *list1, List *list2)
 
     if (current2 != NULL) 
     {
+        perror("Attaching remaining nodes from list2 to the end of list1...\n");
         list1->tail->next = current2;
         current2->prev = list1->tail;
         list1->tail = list2->tail;
@@ -666,7 +652,7 @@ static void list_merge_impl(List *list1, List *list2)
     list2->size = 0;
 }
 
-static bool list_is_less_impl(const List *list1, const List *list2) 
+bool list_is_less(const List *list1, const List *list2) 
 {
     if (list1->size != list2->size)
         return list1->size < list2->size;
@@ -689,12 +675,12 @@ static bool list_is_less_impl(const List *list1, const List *list2)
     return false; // Lists are equal
 }
 
-static bool list_is_greater_impl(const List *list1, const List *list2) 
+bool list_is_greater(const List *list1, const List *list2) 
 {
-    return list_is_less_impl(list2, list1);
+    return list_is_less(list2, list1);
 }
 
-static bool list_is_equal_impl(const List *list1, const List *list2) 
+bool list_is_equal(const List *list1, const List *list2) 
 {
     if (list1->size != list2->size)
         return false;
@@ -714,17 +700,17 @@ static bool list_is_equal_impl(const List *list1, const List *list2)
     return true;
 }
 
-static bool list_is_less_or_equal_impl(const List *list1, const List *list2) 
+bool list_is_less_or_equal(const List *list1, const List *list2) 
 {
-    return list1->is_less(list1, list2) || list1->is_equal(list1, list2);
+    return list_is_less(list1, list2) || list_is_equal(list1, list2);
 }
 
-static bool list_is_greater_or_equal_impl(const List *list1, const List *list2) 
+bool list_is_greater_or_equal(const List *list1, const List *list2) 
 {
-    return list1->is_greater(list1, list2) || list1->is_equal(list1, list2);
+    return list_is_greater(list1, list2) || list_is_equal(list1, list2);
 }
 
-static bool list_is_not_equal_impl(const List *list1, const List *list2) 
+bool list_is_not_equal(const List *list1, const List *list2) 
 {
-    return !list1->is_equal(list1, list2);
+    return !list_is_equal(list1, list2);
 }

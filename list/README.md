@@ -252,6 +252,13 @@ int main()
 #include "string/string.h"
 
 ```c
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
+#include "string/string.h"
+
+
 int main() 
 {
     List* list1 = list_create(sizeof(String*), NULL);
@@ -262,29 +269,29 @@ int main()
     String* str3 = string_create("Example");
     String* str4 = string_create("Text");
 
-    list1->push_back(list1, &str1);
-    list1->push_back(list1, &str2);
-    list2->push_back(list2, &str3);
-    list2->push_back(list2, &str4);
+    list_push_back(list1, &str1);
+    list_push_back(list1, &str2);
+    list_push_back(list2, &str3);
+    list_push_back(list2, &str4);
 
     // Merge list2 into list1
-    list1->merge(list1, list2);
+    list_merge(list1, list2);
 
     // Iterate and print strings from merged list
-    for (Node* node = list1->begin(list1); node != list1->end(list1); node = node->next) 
+    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next) 
     {
         String* str = *(String**)node->value;
-        printf("%s\n", str->c_str(str));
+        printf("%s\n", string_c_str(str));
     }
 
     // Deallocate and clean up
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-    str3->deallocate(str3);
-    str4->deallocate(str4);
+    string_deallocate(str1);
+    string_deallocate(str2);
+    string_deallocate(str3);
+    string_deallocate(str4);
 
-    list1->deallocate(list1);
-    list2->deallocate(list2);
+    list_deallocate(list1);
+    list_deallocate(list2);
 
     return EXIT_SUCCESS;
 }
@@ -293,13 +300,17 @@ int main()
 ### Example 18: Filtering Strings from a List
 
 ```c
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 #include "string/string.h"
 
 // Condition function to filter out short strings
 static bool filter_short_strings(void* value) 
 {
     String* str = *(String**)value;
-    return str->length(str) < 5;
+    return string_length(str) < 5;
 }
 
 int main() 
@@ -311,26 +322,26 @@ int main()
     String* str2 = string_create("Banana");
     String* str3 = string_create("Kiwi");
 
-    stringList->push_back(stringList, &str1);
-    stringList->push_back(stringList, &str2);
-    stringList->push_back(stringList, &str3);
+    list_push_back(stringList, &str1);
+    list_push_back(stringList, &str2);
+    list_push_back(stringList, &str3);
 
     // Remove short strings
-    stringList->remove_if(stringList, filter_short_strings);
+    list_remove_if(stringList, filter_short_strings);
 
     // Iterate and print remaining strings
-    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next) 
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) 
     {
         String* str = *(String**)node->value;
-        printf("%s\n", str->c_str(str));
+        printf("%s\n", string_c_str(str));
     }
 
     // Deallocate and clean up
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-    str3->deallocate(str3);
+    string_deallocate(str1);
+    string_deallocate(str2);
+    string_deallocate(str3);
 
-    stringList->deallocate(stringList);
+    list_deallocate(stringList);
 
     return EXIT_SUCCESS;
 }
@@ -339,9 +350,13 @@ int main()
 ### Example 19: Concatenating All Strings in a List
 
 ```c
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 #include "string/string.h"
 
-int main() 
+int main()
 {
     List* stringList = list_create(sizeof(String*), NULL);
     String* concatenated = string_create("");
@@ -351,26 +366,26 @@ int main()
     String* str2 = string_create("world");
     String* str3 = string_create("!");
 
-    stringList->push_back(stringList, &str1);
-    stringList->push_back(stringList, &str2);
-    stringList->push_back(stringList, &str3);
+    list_push_back(stringList, &str1);
+    list_push_back(stringList, &str2);
+    list_push_back(stringList, &str3);
 
     // Concatenate all strings
-    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next)
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next)
     {
         String* str = *(String**)node->value;
-        concatenated->append(concatenated, str->c_str(str));
+        string_append(concatenated, string_c_str(str));
     }
 
-    printf("Concatenated String: %s\n", concatenated->c_str(concatenated));
+    printf("Concatenated String: %s\n", string_c_str(concatenated));
 
     // Deallocate and clean up
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-    str3->deallocate(str3);
+    string_deallocate(str1);
+    string_deallocate(str2);
+    string_deallocate(str3); 
 
-    concatenated->deallocate(concatenated);
-    stringList->deallocate(stringList);
+    string_deallocate(concatenated);
+    list_deallocate(stringList);
 
     return EXIT_SUCCESS;
 }
@@ -379,6 +394,10 @@ int main()
 ### Example 20: Reversing Each String in a List
 
 ```c
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 #include "string/string.h"
 
 int main() 
@@ -390,37 +409,44 @@ int main()
     String* str2 = string_create("World");
     String* str3 = string_create("Example");
 
-    stringList->push_back(stringList, &str1);
-    stringList->push_back(stringList, &str2);
-    stringList->push_back(stringList, &str3);
+    list_push_back(stringList, &str1);
+    list_push_back(stringList, &str2);
+    list_push_back(stringList, &str3);
 
     // Reverse each string
-    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next)
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next)
     {
         String* str = *(String**)node->value;
-        String* reversed = string_create(str->c_str(str));
+        String* reversed = string_create(""); 
 
-        for (int i = str->length(str) - 1; i >= 0; --i) 
-            reversed->push_back(reversed, str->c_str(str)[i]);
+        for (int i = string_length(str) - 1; i >= 0; --i) 
+            string_push_back(reversed, string_c_str(str)[i]);
         
-        printf("Reversed String: %s\n", reversed->c_str(reversed));
+        printf("Reversed String: %s\n", string_c_str(reversed));
 
-        reversed->deallocate(reversed);
+        string_deallocate(reversed);
     }
 
     // Deallocate and clean up
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-    str3->deallocate(str3);
-    stringList->deallocate(stringList);
+    string_deallocate(str1);
+    string_deallocate(str2);
+    string_deallocate(str3);
+
+    list_deallocate(stringList);
 
     return EXIT_SUCCESS;
 }
+
 ```
 
 ## Example 21 : Relational operators in List 
 
 ```c
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
 // Function to compare integers for the list
 static int int_compare(const void* a, const void* b) 
@@ -434,7 +460,7 @@ static int int_compare(const void* a, const void* b)
 void add_elements_to_list(List* list, int* elements, size_t numElements) 
 {
     for (size_t i = 0; i < numElements; ++i) 
-        list->push_back(list, &elements[i]);
+        list_push_back(list, &elements[i]);
     
 }
 
@@ -451,16 +477,16 @@ int main()
     add_elements_to_list(list2, elements2, 5);
 
     // Perform relational comparisons
-    printf("List 1 is less than List 2: %s\n", list1->is_less(list1, list2) ? "true" : "false");
-    printf("List 1 is greater than List 2: %s\n", list1->is_greater(list1, list2) ? "true" : "false");
-    printf("List 1 is equal to List 2: %s\n", list1->is_equal(list1, list2) ? "true" : "false");
-    printf("List 1 is less than or equal to List 2: %s\n", list1->is_less_or_equal(list1, list2) ? "true" : "false");
-    printf("List 1 is greater than or equal to List 2: %s\n", list1->is_greater_or_equal(list1, list2) ? "true" :"false");
-    printf("List 1 is not equal to List 2: %s\n", list1->is_not_equal(list1, list2) ? "true" : "false");
+    printf("List 1 is less than List 2: %s\n", list_is_less(list1, list2) ? "true" : "false");
+    printf("List 1 is greater than List 2: %s\n", list_is_greater(list1, list2) ? "true" : "false");
+    printf("List 1 is equal to List 2: %s\n", list_is_equal(list1, list2) ? "true" : "false");
+    printf("List 1 is less than or equal to List 2: %s\n", list_is_less_or_equal(list1, list2) ? "true" : "false");
+    printf("List 1 is greater than or equal to List 2: %s\n", list_is_greater_or_equal(list1, list2) ? "true" :"false");
+    printf("List 1 is not equal to List 2: %s\n", list_is_not_equal(list1, list2) ? "true" : "false");
 
     // Deallocate and clean up
-    list1->deallocate(list1);
-    list2->deallocate(list2);
+    list_deallocate(list1);
+    list_deallocate(list2);
 
     return EXIT_SUCCESS;
 }
