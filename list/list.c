@@ -158,14 +158,32 @@ void *list_erase(List *list, size_t index)
     return removedValue;
 }
 
-void list_resize(List *list, size_t newSize, void *defaultValue) 
-{
-    while (list->size > newSize) 
-        list_pop_back(list);  
+void list_resize(List *list, size_t newSize, void *defaultValue) {
+    while (list->size > newSize) {
+        list_pop_back(list);
+    }
 
-    while (list->size < newSize) 
-        list_push_back(list, defaultValue);
+    while (list->size < newSize) {
+        void *newValue = malloc(list->itemSize);
+        if (!newValue) {
+            // Handle memory allocation failure if needed
+            return;
+        }
+
+        if (defaultValue != NULL) {
+            // Use the provided default value
+            memcpy(newValue, defaultValue, list->itemSize);
+        } else {
+            // If defaultValue is NULL, initialize the space to zero
+            memset(newValue, 0, list->itemSize);
+        }
+
+        list_push_back(list, newValue);
+        free(newValue); // Free the temporary allocation after pushing back
+    }
 }
+
+
 
 void list_swap(List *list1, List *list2) 
 {
