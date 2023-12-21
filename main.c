@@ -5,26 +5,32 @@
 #include "string/string.h"
 
 
+static int compare_strings(const void* a, const void* b) 
+{
+    String* strA = *(String**)a;
+    String* strB = *(String**)b;
+
+    return string_is_less(strA, strB) ? -1 : string_is_greater(strA, strB);
+}
+
 int main() 
 {
-    List* list1 = list_create(sizeof(String*), NULL);
-    List* list2 = list_create(sizeof(String*), NULL);
+    List* stringList = list_create(sizeof(String*), compare_strings);
 
-    String* str1 = string_create("Hello");
-    String* str2 = string_create("World");
-    String* str3 = string_create("Example");
-    String* str4 = string_create("Text");
+    // Add strings to the list
+    String* str1 = string_create("Apple");
+    String* str2 = string_create("Banana");
+    String* str3 = string_create("Cherry");
 
-    list_push_back(list1, &str1);
-    list_push_back(list1, &str2);
-    list_push_back(list2, &str3);
-    list_push_back(list2, &str4);
+    list_push_back(stringList, &str1);
+    list_push_back(stringList, &str2);
+    list_push_back(stringList, &str3);
 
-    // Merge list2 into list1
-    list_merge(list1, list2);
+    // Sort the list of strings
+    list_sort(stringList);
 
-    // Iterate and print strings from merged list
-    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next) 
+    // Iterate and print strings
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) 
     {
         String* str = *(String**)node->value;
         printf("%s\n", string_c_str(str));
@@ -34,10 +40,8 @@ int main()
     string_deallocate(str1);
     string_deallocate(str2);
     string_deallocate(str3);
-    string_deallocate(str4);
 
-    list_deallocate(list1);
-    list_deallocate(list2);
+    list_deallocate(stringList);
 
     return EXIT_SUCCESS;
 }

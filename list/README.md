@@ -205,12 +205,19 @@ list2->deallocate(list2);
 
 ```c
 // Function to compare two strings in the list
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
+#include "string/string.h"
+
+
 static int compare_strings(const void* a, const void* b) 
 {
     String* strA = *(String**)a;
     String* strB = *(String**)b;
 
-    return strA->is_less(strA, strB) ? -1 : strA->is_greater(strA, strB);
+    return string_is_less(strA, strB) ? -1 : string_is_greater(strA, strB);
 }
 
 int main() 
@@ -222,26 +229,26 @@ int main()
     String* str2 = string_create("Banana");
     String* str3 = string_create("Cherry");
 
-    stringList->push_back(stringList, &str1);
-    stringList->push_back(stringList, &str2);
-    stringList->push_back(stringList, &str3);
+    list_push_back(stringList, &str1);
+    list_push_back(stringList, &str2);
+    list_push_back(stringList, &str3);
 
     // Sort the list of strings
-    stringList->sort(stringList);
+    list_sort(stringList);
 
     // Iterate and print strings
-    for (Node* node = stringList->begin(stringList); node != stringList->end(stringList); node = node->next) 
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) 
     {
         String* str = *(String**)node->value;
-        printf("%s\n", str->c_str(str));
+        printf("%s\n", string_c_str(str));
     }
 
     // Deallocate and clean up
-    str1->deallocate(str1);
-    str2->deallocate(str2);
-    str3->deallocate(str3);
+    string_deallocate(str1);
+    string_deallocate(str2);
+    string_deallocate(str3);
 
-    stringList->deallocate(stringList);
+    list_deallocate(stringList);
 
     return EXIT_SUCCESS;
 }
