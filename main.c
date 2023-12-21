@@ -2,25 +2,36 @@
 #include <string.h>
 #include <stdlib.h>
 #include "queue/queue.h"
+#include "array/array.h"
 
 int main() 
 {
-    Queue* myQueue = queue_create(sizeof(int));
+    Array* intArray = array_create(sizeof(int), 5);
 
-    if (!myQueue) 
+    if (intArray == NULL) 
     {
-        fprintf(stderr, "Failed to create queue.\n");
-        return EXIT_FAILURE;
+        printf("Failed to create array.\n");
+        return 1;
     }
 
-    // Push some integers onto the queue
-    int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
-        queue_push(myQueue, &values[i]);
-        
-    // Print the size of the queue
-    printf("Queue size: %zu\n", queue_size(myQueue));
-    queue_deallocate(myQueue);
+    int valueToFill = 42;
+    array_fill(intArray, &valueToFill);
+
+    for (int i = 0; i < array_size(intArray); i++)
+        printf("Number is %d\n", *(int*)array_at(intArray, i));
+
+    printf("-----------\n");
+
+    for (size_t i = 0; i < array_size(intArray); ++i) 
+    {
+        int* element = (int*)array_at(intArray, i);
+
+        if (element != NULL) 
+            printf("Element %zu: %d\n", i, *element);
+    }
+
+    array_deallocate(intArray);
+
 
     return EXIT_SUCCESS;
 }
