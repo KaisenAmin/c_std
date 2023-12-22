@@ -2,49 +2,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct Task Task;
-
-struct Task
+static int compare_ints(const void* a, const void* b) 
 {
-    int taskID;
-    int priority;
-};
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
 
-static int compare_tasks(const void* a, const void* b) 
-{
-    const Task* taskA = a;
-    const Task* taskB = b;
-
-    return (taskA->priority > taskB->priority) - (taskA->priority < taskB->priority);
+    return (int_a > int_b) - (int_a < int_b);
 }
 
 int main() 
 {
-    PriorityQueue* taskQueue = priority_queue_create(sizeof(Task), compare_tasks);
+    PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
-    if (!taskQueue) 
+    if (!pq) 
     {
-        fprintf(stderr, "Failed to create task queue.\n");
+        fprintf(stderr, "Failed to create priority queue.\n");
         return EXIT_FAILURE;
     }
 
-    // Define some tasks with different priorities
-    Task tasks[] = {
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2}
-    };
+    // Push some integers onto the priority queue
+    int values[] = {5, 10, 3, 7, 4};
+    for (int i = 0; i < 5; ++i) 
+        priority_queue_push(pq, &values[i]);
 
-    for (size_t i = 0; i < sizeof(tasks) / sizeof(tasks[0]); ++i) 
-        priority_queue_push(taskQueue, &tasks[i]);
-
-    printf("Executing tasks in priority order:\n");
-    while (!priority_queue_empty(taskQueue)) 
-    {
-        Task* topTask = priority_queue_top(taskQueue);
-        printf("Executing Task ID: %d, Priority: %d\n", topTask->taskID, topTask->priority);
-        priority_queue_pop(taskQueue);
-    }
-
-    priority_queue_deallocate(taskQueue);
+    printf("Priority Queue size: %zu\n", priority_queue_size(pq));
+    printf("Is the priority queue empty? %s\n", priority_queue_empty(pq) ? "Yes" : "No");
+    
+    priority_queue_deallocate(pq);
 
     return EXIT_SUCCESS;
 }

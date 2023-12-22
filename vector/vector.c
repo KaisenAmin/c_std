@@ -57,7 +57,7 @@ Vector* vector_create(size_t itemSize)
     vec->capacitySize = 32; // Initial capacity
     vec->itemSize = itemSize;
     
-    size_t initialPoolSize = 10000;
+    size_t initialPoolSize = 10000000;
     vec->pool = memory_pool_create(initialPoolSize);
     if (!vec->pool) 
     {
