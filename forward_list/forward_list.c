@@ -1,38 +1,7 @@
 #include "forward_list.h"
 #include <stdlib.h>
 #include <string.h>
-
-static void forward_list_push_front_impl(ForwardList *list, void *value);
-static void forward_list_pop_front_impl(ForwardList *list);
-static void *forward_list_front_impl(const ForwardList *list);
-static void forward_list_clear_impl(ForwardList *list);
-static bool forward_list_empty_impl(const ForwardList *list);
-static size_t forward_list_length_impl(const ForwardList *list);
-static void forward_list_deallocate_impl(ForwardList *list);
-static void forward_list_assign_impl(ForwardList *list, void *values, size_t numValues);
-static ForwardListNode *forward_list_before_begin_impl(ForwardList *list);
-static ForwardListNode *forward_list_begin_impl(ForwardList *list);
-static ForwardListNode *forward_list_end_impl(ForwardList *list);
-static size_t forward_list_max_size_impl(const ForwardList *list);
-static void forward_list_emplace_front_impl(ForwardList *list, void *value);
-static void forward_list_emplace_after_impl(ForwardList *list, ForwardListNode *pos, void *value);
-static void forward_list_insert_after_impl(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues);
-static void forward_list_erase_after_impl(ForwardList *list, ForwardListNode *pos);
-static void forward_list_swap_impl(ForwardList *list1, ForwardList *list2);
-static void forward_list_resize_impl(ForwardList *list, size_t newSize);
-static void forward_list_splice_after_impl(ForwardList *list, ForwardListNode *pos, ForwardList *other);
-static void forward_list_remove_impl(ForwardList *list, void *value);
-static void forward_list_remove_if_impl(ForwardList *list, bool (*condition)(void*));
-static void forward_list_unique_impl(ForwardList *list);
-static void forward_list_merge_impl(ForwardList *list1, ForwardList *list2);
-static void forward_list_sort_impl(ForwardList *list);
-static void forward_list_reverse_impl(ForwardList *list);
-static bool forward_list_is_less_impl(const ForwardList *list1, const ForwardList *list2);
-static bool forward_list_is_greater_impl(const ForwardList *list1, const ForwardList *list2);
-static bool forward_list_is_equal_impl(const ForwardList *list1, const ForwardList *list2);
-static bool forward_list_is_less_or_equal_impl(const ForwardList *list1, const ForwardList *list2);
-static bool forward_list_is_greater_or_equal_impl(const ForwardList *list1, const ForwardList *list2);
-static bool forward_list_is_not_equal_impl(const ForwardList *list1, const ForwardList *list2);
+#include <assert.h>
 
 
 ForwardList *forward_list_create(size_t itemSize) 
@@ -45,38 +14,6 @@ ForwardList *forward_list_create(size_t itemSize)
     list->head = NULL;
     list->itemSize = itemSize;
     list->size = 0;
-
-    list->push_front = forward_list_push_front_impl;
-    list->pop_front = forward_list_pop_front_impl;
-    list->front = forward_list_front_impl;
-    list->clear = forward_list_clear_impl;
-    list->empty = forward_list_empty_impl;
-    list->length = forward_list_length_impl;
-    list->deallocate = forward_list_deallocate_impl;
-    list->assign = forward_list_assign_impl;
-    list->before_begin = forward_list_before_begin_impl;
-    list->begin = forward_list_begin_impl;
-    list->end = forward_list_end_impl;
-    list->max_size = forward_list_max_size_impl;
-    list->emplace_front = forward_list_emplace_front_impl;
-    list->emplace_after = forward_list_emplace_after_impl;
-    list->insert_after = forward_list_insert_after_impl;
-    list->erase_after = forward_list_erase_after_impl;
-    list->swap = forward_list_swap_impl;
-    list->resize = forward_list_resize_impl;
-    list->splice_after = forward_list_splice_after_impl;
-    list->remove = forward_list_remove_impl;
-    list->remove_if = forward_list_remove_if_impl;
-    list->unique = forward_list_unique_impl;
-    list->merge = forward_list_merge_impl;
-    list->sort = forward_list_sort_impl;
-    list->reverse = forward_list_reverse_impl;
-    list->is_less = forward_list_is_less_impl;
-    list->is_greater = forward_list_is_greater_impl;
-    list->is_equal = forward_list_is_equal_impl;
-    list->is_less_or_equal = forward_list_is_less_or_equal_impl;
-    list->is_greater_or_equal = forward_list_is_greater_or_equal_impl;
-    list->is_not_equal = forward_list_is_not_equal_impl;
 
     return list;
 }
@@ -126,19 +63,19 @@ static ForwardListNode *merge_sorted_lists(ForwardListNode *a, ForwardListNode *
 }
 
 // Recursive merge sort implementation
-static ForwardListNode *merge_sort_impl(ForwardListNode *head, size_t itemSize) 
+static ForwardListNode *merge_sort(ForwardListNode *head, size_t itemSize) 
 {
     if (head == NULL || head->next == NULL) 
         return head;
 
     ForwardListNode *middle = split_list_for_sort(head);
-    ForwardListNode *left = merge_sort_impl(head, itemSize);
-    ForwardListNode *right = merge_sort_impl(middle, itemSize);
+    ForwardListNode *left = merge_sort(head, itemSize);
+    ForwardListNode *right = merge_sort(middle, itemSize);
 
     return merge_sorted_lists(left, right, itemSize);
 }
 
-static void forward_list_push_front_impl(ForwardList *list, void *value) 
+void forward_list_push_front(ForwardList *list, void *value) 
 {
     if (list == NULL || value == NULL) 
         return;
@@ -162,7 +99,7 @@ static void forward_list_push_front_impl(ForwardList *list, void *value)
     list->size++;
 }
 
-static void forward_list_pop_front_impl(ForwardList *list) 
+void forward_list_pop_front(ForwardList *list) 
 {
     if (list == NULL || list->head == NULL) 
         return;
@@ -175,7 +112,7 @@ static void forward_list_pop_front_impl(ForwardList *list)
     list->size--;
 }
 
-static void *forward_list_front_impl(const ForwardList *list)
+void *forward_list_front(const ForwardList *list)
 {
     if (list == NULL || list->head == NULL) 
         return NULL;
@@ -183,7 +120,7 @@ static void *forward_list_front_impl(const ForwardList *list)
     return list->head->value;
 }
 
-static void forward_list_clear_impl(ForwardList *list)
+void forward_list_clear(ForwardList *list)
 {
     if (list == NULL) 
         return;
@@ -204,7 +141,7 @@ static void forward_list_clear_impl(ForwardList *list)
     list->size = 0;
 }
 
-static bool forward_list_empty_impl(const ForwardList *list)
+bool forward_list_empty(const ForwardList *list)
 {
     if (list == NULL) 
         return true;  // Consider a NULL list as empty
@@ -212,7 +149,7 @@ static bool forward_list_empty_impl(const ForwardList *list)
     return list->head == NULL;
 }
 
-static size_t forward_list_length_impl(const ForwardList *list)
+size_t forward_list_length(const ForwardList *list)
 {
     if (list == NULL) 
         return 0;
@@ -220,35 +157,36 @@ static size_t forward_list_length_impl(const ForwardList *list)
     return list->size;
 }
 
-static void forward_list_deallocate_impl(ForwardList *list)
+void forward_list_deallocate(ForwardList *list)
 {
     if (list == NULL) 
         return;
 
-    forward_list_clear_impl(list);  // Clear all nodes
+    forward_list_clear(list);  // Clear all nodes
     free(list);
 }
 
-static void forward_list_assign_impl(ForwardList *list, void *values, size_t numValues) {
+void forward_list_assign(ForwardList *list, void *values, size_t numValues) {
     if (list == NULL || values == NULL) 
         return;
 
-    forward_list_clear_impl(list);  // Clear existing contents
+    forward_list_clear(list);  // Clear existing contents
     for (size_t i = 0; i < numValues; ++i) 
     {
         void *value = (char *)values + i * list->itemSize; // Calculate the address of the value to be copied
-        forward_list_push_front_impl(list, value);  // Add each new value to the front
+        forward_list_push_front(list, value);  // Add each new value to the front
     }
     
-    forward_list_reverse_impl(list); // Reverse the list to maintain the correct order
+    forward_list_reverse(list); // Reverse the list to maintain the correct order
 }
 
-static ForwardListNode *forward_list_before_begin_impl(ForwardList *list) 
+ForwardListNode *forward_list_before_begin(ForwardList *list) 
 {
+    assert(list != NULL);
     return NULL; // In a singly linked list, there is no node before the beginning
 }
 
-static ForwardListNode *forward_list_begin_impl(ForwardList *list) 
+ForwardListNode *forward_list_begin(ForwardList *list) 
 {
     if (list == NULL) 
         return NULL;
@@ -256,17 +194,19 @@ static ForwardListNode *forward_list_begin_impl(ForwardList *list)
     return list->head;
 }
 
-static ForwardListNode *forward_list_end_impl(ForwardList *list) 
+ForwardListNode *forward_list_end(ForwardList *list) 
 {
+    assert(list != NULL);
     return NULL; // In a singly linked list, the end is represented by NULL
 }
 
-static size_t forward_list_max_size_impl(const ForwardList *list) 
+size_t forward_list_max_size(const ForwardList *list) 
 {
+    assert(list != NULL);
     return (size_t)-1;
 }
 
-static void forward_list_emplace_front_impl(ForwardList *list, void *value) 
+void forward_list_emplace_front(ForwardList *list, void *value) 
 {
     if (list == NULL || value == NULL) 
         return;
@@ -282,7 +222,7 @@ static void forward_list_emplace_front_impl(ForwardList *list, void *value)
     list->size++;
 }
 
-static void forward_list_emplace_after_impl(ForwardList *list, ForwardListNode *pos, void *value) 
+void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *value) 
 {
     if (list == NULL || pos == NULL || value == NULL) 
         return;
@@ -298,7 +238,7 @@ static void forward_list_emplace_after_impl(ForwardList *list, ForwardListNode *
     list->size++;
 }
 
-static void forward_list_insert_after_impl(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues) 
+void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues) 
 {
     if (list == NULL || pos == NULL || value == NULL) 
         return;
@@ -327,7 +267,7 @@ static void forward_list_insert_after_impl(ForwardList *list, ForwardListNode *p
     }
 }
 
-static void forward_list_erase_after_impl(ForwardList *list, ForwardListNode *pos) 
+void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) 
 {
     if (list == NULL || pos == NULL || pos->next == NULL) 
         return;
@@ -340,7 +280,7 @@ static void forward_list_erase_after_impl(ForwardList *list, ForwardListNode *po
     list->size--;
 }
 
-static void forward_list_swap_impl(ForwardList *list1, ForwardList *list2) 
+void forward_list_swap(ForwardList *list1, ForwardList *list2) 
 {
     if (list1 == NULL || list2 == NULL) 
         return;
@@ -356,22 +296,22 @@ static void forward_list_swap_impl(ForwardList *list1, ForwardList *list2)
     list2->size = tempSize;
 }
 
-static void forward_list_resize_impl(ForwardList *list, size_t newSize) 
+void forward_list_resize(ForwardList *list, size_t newSize) 
 {
     if (list == NULL) 
         return;
 
     while (list->size > newSize) 
-        forward_list_pop_front_impl(list);
+        forward_list_pop_front(list);
     
     while (list->size < newSize) 
     {
         void *nullValue = NULL; // Assuming that a null value is acceptable to add
-        forward_list_emplace_front_impl(list, nullValue);
+        forward_list_emplace_front(list, nullValue);
     }
 }
 
-static void forward_list_splice_after_impl(ForwardList *list, ForwardListNode *pos, ForwardList *other) 
+void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other) 
 {
     if (list == NULL || other == NULL || pos == NULL) 
         return;
@@ -394,13 +334,13 @@ static void forward_list_splice_after_impl(ForwardList *list, ForwardListNode *p
     other->size = 0;
 }
 
-static void forward_list_remove_impl(ForwardList *list, void *value) 
+void forward_list_remove(ForwardList *list, void *value) 
 {
     if (list == NULL || value == NULL) 
         return;
 
     while (list->head != NULL && memcmp(list->head->value, value, list->itemSize) == 0) 
-        forward_list_pop_front_impl(list);
+        forward_list_pop_front(list);
     
     ForwardListNode *current = list->head;
 
@@ -419,13 +359,13 @@ static void forward_list_remove_impl(ForwardList *list, void *value)
     }
 }
 
-static void forward_list_remove_if_impl(ForwardList *list, bool (*condition)(void*)) 
+void forward_list_remove_if(ForwardList *list, bool (*condition)(void*)) 
 {
     if (list == NULL || condition == NULL) 
         return;
 
     while (list->head != NULL && condition(list->head->value)) 
-        forward_list_pop_front_impl(list);
+        forward_list_pop_front(list);
     
     ForwardListNode *current = list->head;
 
@@ -444,7 +384,7 @@ static void forward_list_remove_if_impl(ForwardList *list, bool (*condition)(voi
     }
 }
 
-static void forward_list_unique_impl(ForwardList *list) 
+void forward_list_unique(ForwardList *list) 
 {
     if (list == NULL || list->head == NULL || list->head->next == NULL) 
         return;
@@ -466,7 +406,7 @@ static void forward_list_unique_impl(ForwardList *list)
     }
 }
 
-static void forward_list_merge_impl(ForwardList *list1, ForwardList *list2) 
+void forward_list_merge(ForwardList *list1, ForwardList *list2) 
 {
     if (list1 == NULL || list2 == NULL || list2->head == NULL) 
         return;
@@ -499,15 +439,15 @@ static void forward_list_merge_impl(ForwardList *list1, ForwardList *list2)
     list1->head = dummy.next; // Update list1's head
 }
 
-static void forward_list_sort_impl(ForwardList *list) 
+void forward_list_sort(ForwardList *list) 
 {
     if (list == NULL || list->head == NULL) 
         return;
 
-    list->head = merge_sort_impl(list->head, list->itemSize);
+    list->head = merge_sort(list->head, list->itemSize);
 }
 
-static void forward_list_reverse_impl(ForwardList *list) 
+void forward_list_reverse(ForwardList *list) 
 {
     if (list == NULL || list->head == NULL || list->head->next == NULL) 
         return;
@@ -532,7 +472,7 @@ static int compare_node_values(const void *a, const void *b, size_t size)
     return memcmp(a, b, size);
 }
 
-static bool forward_list_is_less_impl(const ForwardList *list1, const ForwardList *list2) 
+bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2) 
 {
     ForwardListNode *node1 = list1->head, *node2 = list2->head;
 
@@ -547,12 +487,12 @@ static bool forward_list_is_less_impl(const ForwardList *list1, const ForwardLis
     return node1 == NULL && node2 != NULL;
 }
 
-static bool forward_list_is_greater_impl(const ForwardList *list1, const ForwardList *list2) 
+bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2) 
 {
-    return forward_list_is_less_impl(list2, list1); // Just invert list1 and list2 for is_greater
+    return forward_list_is_less(list2, list1); // Just invert list1 and list2 for is_greater
 }
 
-static bool forward_list_is_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2) 
 {
     ForwardListNode *node1 = list1->head, *node2 = list2->head;
 
@@ -568,17 +508,17 @@ static bool forward_list_is_equal_impl(const ForwardList *list1, const ForwardLi
     return node1 == NULL && node2 == NULL;
 }
 
-static bool forward_list_is_less_or_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *list2) 
 {
-    return forward_list_is_less_impl(list1, list2) || forward_list_is_equal_impl(list1, list2);
+    return forward_list_is_less(list1, list2) || forward_list_is_equal(list1, list2);
 }
 
-static bool forward_list_is_greater_or_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2) 
 {
-    return forward_list_is_greater_impl(list1, list2) || forward_list_is_equal_impl(list1, list2);
+    return forward_list_is_greater(list1, list2) || forward_list_is_equal(list1, list2);
 }
 
-static bool forward_list_is_not_equal_impl(const ForwardList *list1, const ForwardList *list2) 
+bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2) 
 {
-    return !forward_list_is_equal_impl(list1, list2);
+    return !forward_list_is_equal(list1, list2);
 }
