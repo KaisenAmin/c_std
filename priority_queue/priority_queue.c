@@ -3,13 +3,7 @@
 #include <string.h>
 
 // static int priority_queue_compare_impl(const void* a, const void* b); 
-static bool priority_queue_empty_impl(const PriorityQueue* pq);
-static size_t priority_queue_size_impl(const PriorityQueue* pq);
-static void priority_queue_push_impl(PriorityQueue* pq, void* item);
-static void* priority_queue_top_impl(const PriorityQueue* pq);
-static void priority_queue_pop_impl(PriorityQueue* pq);
-static void priority_queue_deallocate_impl(PriorityQueue* pq);
-static void priority_queue_swap_impl(PriorityQueue* pq1, PriorityQueue* pq2);
+
 
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*)) 
 {
@@ -27,13 +21,7 @@ PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*
     }
 
     pq->compare = compare;
-    pq->empty = priority_queue_empty_impl;
-    pq->size = priority_queue_size_impl;
-    pq->push = priority_queue_push_impl;
-    pq->top = priority_queue_top_impl;
-    pq->pop = priority_queue_pop_impl;
-    pq->deallocate = priority_queue_deallocate_impl;
-    pq->swap = priority_queue_swap_impl;
+
 
     return pq;
 }
@@ -61,8 +49,8 @@ static void heapify_up(Vector* vec, size_t index, int (*compare)(const void*, co
     while (index > 0) 
     {
         size_t parent_index = (index - 1) / 2;
-        void* parent = vec->at(vec, parent_index);
-        void* current = vec->at(vec, index);
+        void* parent = vector_at(vec, parent_index);
+        void* current = vector_at(vec, index);
 
         if (compare(current, parent) > 0) 
         {  // Assuming a max heap
@@ -77,7 +65,7 @@ static void heapify_up(Vector* vec, size_t index, int (*compare)(const void*, co
 // Function to maintain the heap property from top to bottom
 static void heapify_down(Vector* vec, size_t index, int (*compare)(const void*, const void*)) 
 {
-    size_t size = vec->length(vec);
+    size_t size = vector_size(vec);
     size_t left_child_index, right_child_index, largest_index;
 
     while (index < size) 
@@ -86,9 +74,9 @@ static void heapify_down(Vector* vec, size_t index, int (*compare)(const void*, 
         left_child_index = 2 * index + 1;
         right_child_index = 2 * index + 2;
 
-        void* largest = vec->at(vec, largest_index);
-        void* left_child = left_child_index < size ? vec->at(vec, left_child_index) : NULL;
-        void* right_child = right_child_index < size ? vec->at(vec, right_child_index) : NULL;
+        void* largest = vector_at(vec, largest_index);
+        void* left_child = left_child_index < size ? vector_at(vec, left_child_index) : NULL;
+        void* right_child = right_child_index < size ? vector_at(vec, right_child_index) : NULL;
 
         if (left_child && compare(left_child, largest) > 0) 
         {
@@ -109,57 +97,57 @@ static void heapify_down(Vector* vec, size_t index, int (*compare)(const void*, 
     }
 }
 
-static bool priority_queue_empty_impl(const PriorityQueue* pq) 
+bool priority_queue_empty(const PriorityQueue* pq) 
 {
-    return pq->vec->is_empty(pq->vec);
+    return vector_is_empty(pq->vec);
 }
 
-static size_t priority_queue_size_impl(const PriorityQueue* pq) 
+size_t priority_queue_size(const PriorityQueue* pq) 
 {
-    return pq->vec->length(pq->vec);
+    return vector_size(pq->vec);
 }
 
-static void priority_queue_push_impl(PriorityQueue* pq, void* item) 
+void priority_queue_push(PriorityQueue* pq, void* item) 
 {
-    pq->vec->push_back(pq->vec, item);
+    vector_push_back(pq->vec, item);
     // Correctly calling the size method
-    size_t currentSize = pq->vec->length(pq->vec);
+    size_t currentSize = vector_size(pq->vec);
     heapify_up(pq->vec, currentSize - 1, pq->compare);
 }
 
-static void* priority_queue_top_impl(const PriorityQueue* pq) 
+void* priority_queue_top(const PriorityQueue* pq) 
 {
-    if (pq->empty(pq)) 
+    if (priority_queue_empty(pq)) 
         return NULL; // Handle empty queue
     
-    return pq->vec->front(pq->vec);
+    return vector_front(pq->vec);
 }
 
-static void priority_queue_pop_impl(PriorityQueue* pq) 
+void priority_queue_pop(PriorityQueue* pq) 
 {
-    if (pq->empty(pq)) 
+    if (priority_queue_empty(pq)) 
         return; // Handle empty queue
     
-    size_t currentSize = pq->vec->length(pq->vec);
+    size_t currentSize = vector_size(pq->vec);
 
     element_swap(pq->vec, 0, currentSize - 1);
-    pq->vec->pop_back(pq->vec);
+    vector_pop_back(pq->vec);
 
     heapify_down(pq->vec, 0, pq->compare);
 }
 
-static void priority_queue_deallocate_impl(PriorityQueue* pq) 
+void priority_queue_deallocate(PriorityQueue* pq) 
 {
     if (pq) 
     {
         if (pq->vec) 
-            pq->vec->deallocate(pq->vec);
+            vector_deallocate(pq->vec);
     
         free(pq);
     }
 }
 
-static void priority_queue_swap_impl(PriorityQueue* pq1, PriorityQueue* pq2) 
+void priority_queue_swap(PriorityQueue* pq1, PriorityQueue* pq2) 
 {
     if (!pq1 || !pq2) 
         return;

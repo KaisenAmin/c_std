@@ -11,15 +11,15 @@ struct PriorityQueue
     Vector* vec;
     int (*compare)(const void* a, const void* b); // Comparison function
 
-    bool (*empty)(const PriorityQueue* pq);
-    size_t (*size)(const PriorityQueue* pq);
-    void (*push)(PriorityQueue* pq, void* item);
-    void* (*top)(const PriorityQueue* pq);
-    void (*pop)(PriorityQueue* pq);
-    void (*deallocate)(PriorityQueue* pq);
-    void (*swap)(PriorityQueue* pq1, PriorityQueue* pq2);
 };
 
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*));
+bool priority_queue_empty(const PriorityQueue* pq);
+size_t priority_queue_size(const PriorityQueue* pq);
+void priority_queue_push(PriorityQueue* pq, void* item);
+void* priority_queue_top(const PriorityQueue* pq);
+void priority_queue_pop(PriorityQueue* pq);
+void priority_queue_deallocate(PriorityQueue* pq);
+void priority_queue_swap(PriorityQueue* pq1, PriorityQueue* pq2);
 
 #endif 
