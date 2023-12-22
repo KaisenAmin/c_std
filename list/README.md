@@ -25,84 +25,209 @@ To use the List library in your project, include the `list.h` header file in you
 ### Example 1: Create List and Add Elements Using `push_back`
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int values[] = {10, 20, 30, 40, 50};
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-for (int i = 0; i < 5; ++i) 
-    myList->push_back(myList, &values[i]);
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int values[] = {10, 20, 30, 40, 50};
+
+    for (int i = 0; i < 5; ++i) 
+        list_push_back(myList, &values[i]);
+
+    list_deallocate(myList);
+
+    list_deallocate(myList);
+    return EXIT_SUCCESS;
+}
+
 ```
 
 ### Example 2: Add Elements Using `push_front`
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int values[] = {10, 20, 30, 40, 50};
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-for (int i = 0; i < 5; ++i) 
-    myList->push_front(myList, &values[i]);
+static bool compare_string(const void* a, const void* b)
+{
+    const char* str_a = *(const char**)a;
+    const char* str_b = *(const char**)b;
+    return strcmp(str_a, str_b) == 0;
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(char*), compare_string);
+    char* values[] = {"c++", "C", "Python", "Golang", "Rust"};
+
+    for (int i = 0; i < 5; ++i) 
+        list_push_front(myList, &values[i]);
+
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
+    {
+        char* value = *(char**)node->value;
+        printf("%s\n", value);
+    }
+
+    list_deallocate(myList);
+    return EXIT_SUCCESS;
+}
+
 ```
 
 ### Example 3: Pop Elements from Front
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->push_front(myList, &value);
-myList->pop_front(myList);
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int value = 100;
+
+    list_push_front(myList, &value);
+    list_pop_front(myList);
+
+    list_deallocate(myList);
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 4: Pop Elements from Back
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->push_back(myList, &value);
-myList->pop_back(myList);
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int value = 100;
+
+    list_push_back(myList, &value);
+    list_pop_back(myList);
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 5: Insert Element at Specific Position
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->insert(myList, 0, &value); // Insert at the beginning
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int value = 100;
+
+    list_insert(myList, 0, &value); // Insert at the beginning
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 6: Erase Element at Specific Position
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->push_back(myList, &value);
-myList->erase(myList, 0); // Erase the first element
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int value = 100;
+
+    list_push_back(myList, &value);
+    list_erase(myList, 0); // Erase the first element
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 7: Clearing the List
 
 ```c
-List *myList = list_create(sizeof(int), compare_ints);
-int value = 100;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "list/list.h"
 
-myList->push_back(myList, &value);
-myList->clear(myList); // Clear the list
+static int compare_ints(const void* a, const void* b) 
+{
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
+}
 
-myList->deallocate(myList);
+int main() 
+{
+    List *myList = list_create(sizeof(int), compare_ints);
+    int value = 100;
+
+    list_push_back(myList, &value);
+
+    list_deallocate(myList);
+
+    return EXIT_SUCCESS;
+}
 ```
 
 ### Example 8: Resize the List

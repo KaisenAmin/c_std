@@ -12,22 +12,14 @@ static int compare_ints(const void* a, const void* b)
 
 int main() 
 {
-    List *list1 = list_create(sizeof(int), compare_ints);
+    List *myList = list_create(sizeof(int), compare_ints);
+    int values[] = {10, 20, 30, 40, 50};
 
-    int values[] = {50, 40, 30, 20, 10};
     for (int i = 0; i < 5; ++i) 
-        list_push_back(list1, &values[i]);
+        list_push_back(myList, &values[i]);
 
-    list_resize(list1, 10, 0);
+    list_deallocate(myList);
 
-    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next)
-    {
-        int* value = (int*)node->value;
-        printf("%d\n", *value);
-    }
-
-
-    list_deallocate(list1);
-
+    list_deallocate(myList);
     return EXIT_SUCCESS;
 }
