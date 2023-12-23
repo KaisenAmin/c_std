@@ -29,18 +29,15 @@ int main()
 {
     const char *filename = "test.csv"; // Replace with your CSV file's path
     char delimiter = ','; // Specify the delimiter used in your CSV file
+    CsvFile* myCSV = csv_file_create(delimiter);  // Create a new CsvFile instance
 
-    // Create a new CSVFile instance
-    CSVFile* myCSV = csv_file_create(delimiter);
-    if (!myCSV) {
+    if (!myCSV) 
+    {
         fprintf(stderr, "Failed to create CSV file structure.\n");
         return 1;
     }
-
-    // Read the CSV file
-    csv_file_read(myCSV, filename);
+    csv_file_read(myCSV, filename); // Read the CSV file
     
-    // Print the contents of the CSV file
     printf("Contents of the CSV file:\n");
     csv_print(myCSV);
 
@@ -57,13 +54,13 @@ int main()
 - `void csv_row_destroy(CSVRow *row)`: Destroy a CSV row and free memory.
 - `void csv_row_append_cell(CSVRow *row, const char *value)`: Append a cell to a CSV row.
 - `char* csv_row_get_cell(const CSVRow *row, size_t index)`: Get a cell value from a CSV row.
-- `CSVFile* csv_file_create(char delimiter)`: Create a new CSV file structure.
-- `void csv_file_destroy(CSVFile *file)`: Destroy a CSV file structure and free memory.
-- `void csv_file_read(CSVFile *file, const char *filename)`: Read a CSV file.
-- `void csv_file_write(const CSVFile *file, const char *filename)`: Write to a CSV file.
-- `void csv_file_append_row(CSVFile *file, CSVRow *row)`: Append a row to a CSV file.
-- `CSVRow* csv_file_get_row(const CSVFile *file, size_t index)`: Get a row from a CSV file.
-- `void csv_file_remove_row(CSVFile *file, size_t index)`: Remove a row from a CSV file.
+- `CsvFile* csv_file_create(char delimiter)`: Create a new CSV file structure.
+- `void csv_file_destroy(CsvFile *file)`: Destroy a CSV file structure and free memory.
+- `void csv_file_read(CsvFile *file, const char *filename)`: Read a CSV file.
+- `void csv_file_write(const CsvFile *file, const char *filename)`: Write to a CSV file.
+- `void csv_file_append_row(CsvFile *file, CSVRow *row)`: Append a row to a CSV file.
+- `CSVRow* csv_file_get_row(const CsvFile *file, size_t index)`: Get a row from a CSV file.
+- `void csv_file_remove_row(CsvFile *file, size_t index)`: Remove a row from a CSV file.
 - Additional utility functions are provided for column insertion, JSON export, etc.
 
 
@@ -100,22 +97,19 @@ Below is a simple example of how to use this library to read a CSV file and prin
 
 int main() 
 {
-    const char *filename = "test.csv"; // Replace with your CSV file's path
+    const char *filename = "sources/test.csv"; // Replace with your CSV file's path
     char delimiter = ','; // Specify the delimiter used in your CSV file
+    CsvFile* myCSV = csv_file_create(delimiter);  // Create a new CsvFile instance
 
-    // Create a new CSVFile instance
-    CSVFile* myCSV = csv_file_create(delimiter);
     if (!myCSV) 
     {
         fprintf(stderr, "Failed to create CSV file structure.\n");
         return 1;
     }
 
-    // Read the CSV file
-    csv_file_read(myCSV, filename);
-    
-    // Print the contents of the CSV file
-    printf("Contents of the CSV file:\n");
+    csv_file_read(myCSV, filename); // Read the CSV file
+
+    printf("Contents of the CSV file:\n"); // Print the contents of the CSV file
     csv_print(myCSV);
 
     // Clean up and free memory
@@ -133,7 +127,7 @@ int main()
 
 int main() 
 {
-    CSVFile* csv = csv_file_create(',');
+    CsvFile* csv = csv_file_create(',');
 
     // Create a new row and add some cells to it
     CSVRow* newRow = csv_row_create();
@@ -141,11 +135,8 @@ int main()
     csv_row_append_cell(newRow, "New Cell 2");
     csv_row_append_cell(newRow, "New Cell 3");
 
-    // Append the new row to the CSV file
-    csv_file_append_row(csv, newRow);
-
-    // Write the updated CSV file to a new file
-    csv_file_write(csv, "updated_file.csv");
+    csv_file_append_row(csv, newRow); // Append the new row to the CSV file
+    csv_file_write(csv, "sources/updated_file.csv");   // Write the updated CSV file to a new file
 
     // Clean up
     csv_file_destroy(csv);
@@ -162,16 +153,11 @@ int main()
 
 int main() 
 {
-    CSVFile* csv = csv_file_create(',');
+    CsvFile* csv = csv_file_create(',');
 
-    // Read an existing CSV file
-    csv_file_read(csv, "test.csv");
-
-    // Remove the second row (index 1)
-    csv_file_remove_row(csv, 1);
-
-    // Write the updated CSV file to a new file
-    csv_file_write(csv, "reduced_file.csv");
+    csv_file_read(csv, "sources/test.csv"); // Read an existing CSV file
+    csv_file_remove_row(csv, 1); // Remove the second row (index 1)
+    csv_file_write(csv, "sources/reduced_file.csv"); // Write the updated CSV file to a new file
 
     // Clean up
     csv_file_destroy(csv);
@@ -189,11 +175,11 @@ int main()
 
 int main() 
 {
-    CSVFile* csv = csv_file_create(',');
+    CsvFile* csv = csv_file_create(',');
 
     if (csv)  // Read an existing CSV file
     {
-        csv_file_read(csv, "test.csv");
+        csv_file_read(csv, "sources/test.csv");
         if (csv->size == 0) 
             fprintf(stderr, "Error: No data read from CSV file.\n");
         else 
@@ -224,10 +210,8 @@ int main()
 
 int main() 
 {
-    CSVFile* csv = csv_file_create(',');
-
-    // Read an existing CSV file
-    csv_file_read(csv, "test.csv");
+    CsvFile* csv = csv_file_create(',');
+    csv_file_read(csv, "sources/test.csv"); // Read an existing CSV file
 
     // Create a column to be inserted
     CSVRow* newColumn = csv_row_create();
@@ -236,11 +220,9 @@ int main()
     csv_row_append_cell(newColumn, "Data 2");
     // ... add more cells as needed
 
-    // Insert the column at index 2
-    csv_file_insert_column(csv, 2, newColumn);
-
-    // Write the updated CSV file to a new file
-    csv_file_write(csv, "file_with_new_column.csv");
+   
+    csv_file_insert_column(csv, 2, newColumn);  // Insert the column at index 2
+    csv_file_write(csv, "file_with_new_column.csv"); // Write the updated CSV file to a new file
 
     // Clean up
     csv_row_destroy(newColumn);
@@ -248,4 +230,247 @@ int main()
 
     return 0;
 }
+```
+
+### Example 5 : Concatenate two file 
+```c
+#include "csv/csv.h"
+#include <stdio.h>
+
+int main()
+{
+    CsvFile* file1 = csv_file_create(',');
+    CsvFile* file2 = csv_file_create(',');
+
+    csv_file_read(file1, "sources/test_10.csv"); // Read the first CSV file
+    csv_file_read(file2, "sources/test_100.csv"); // Read the second CSV file
+
+    csv_file_concatenate(file1, file2); // Join file2 rows to file1
+    csv_file_write(file1, "sources/merged_file.csv"); // Write the merged data to a new CSV file
+
+    // Clean up
+    csv_file_destroy(file1);
+    csv_file_destroy(file2);
+
+    return 0;
+}
+
+```
+
+### Example 6 : find value in rows 
+```c
+#include "csv/csv.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main()
+{
+    CsvFile* csv = csv_file_create(',');
+
+    csv_file_read(csv, "sources/test_10.csv"); // Read a CSV file
+
+    const char* searchTerm = "Air"; // Define the search term
+    CSVRow** foundRows = csv_file_find_rows(csv, searchTerm); // Search for rows
+
+    // Print found rows
+    for (size_t i = 0; foundRows[i] != NULL; i++)
+    {
+        printf("Found Row %zu:\n", i);
+        for (size_t j = 0; j < foundRows[i]->size; j++)
+            printf("%s ", foundRows[i]->cells[j]);
+        printf("\n");
+    }
+
+    csv_file_destroy(csv);
+
+    return 0;
+}
+
+```
+
+### Example 7 :  If the string from the cell can be converted to an integer and back to a string without changing its content, it's considered valid. 
+
+```c
+#include "csv/csv.h"
+#include <stdio.h>
+#include <stdlib.h> 
+#include <string.h>
+
+int main()
+{
+    CsvFile* csv = csv_file_create(',');
+
+    csv_file_read(csv, "sources/test_10.csv"); 
+
+    for (size_t i = 0; i < csv->size; ++i)    // Iterate through each row in the CSV file
+    {
+        CSVRow* row = csv_file_get_row(csv, i);
+        if (row != NULL)
+        {
+            char* cell = csv_row_get_cell(row, 2); // Get the third cell (Quantity Ordered)
+            int value = atoi(cell); // Attempt to convert the cell to an integer
+            char buffer[50];  // Check if the original cell content is the same as the integer conversion
+
+            sprintf(buffer, "%d", value);
+            bool isValid = strcmp(buffer, cell) == 0;
+
+            printf("Row %zu - Quantity Ordered '%s' is %s\n", i + 1, cell, isValid ? "valid" : "invalid");
+        }
+    }
+
+    csv_file_destroy(csv);
+
+    return 0;
+}
+```
+
+### Example 8 : Just how header work 
+```c
+#include "csv/csv.h"
+#include <stdio.h>
+
+int main()
+{
+    CsvFile* csv = csv_file_create(',');
+
+    // Create and set a header row
+    CSVRow* header = csv_row_create();
+    csv_row_append_cell(header, "Column1");
+    csv_row_append_cell(header, "Column2");
+    csv_row_append_cell(header, "Column3");
+    csv_file_set_header(csv, header);
+
+    csv_file_read(csv, "sources/test_10.csv"); // Read an existing CSV file (excluding the header)
+    
+    CSVRow* retrievedHeader = csv_file_get_header(csv); // Get and print the header row
+    printf("Header Row:\n");
+
+    for (size_t i = 0; i < retrievedHeader->size; ++i) 
+        printf("%s ", retrievedHeader->cells[i]);
+    printf("\n");
+
+    csv_file_destroy(csv);
+
+    return 0;
+}
+
+```
+
+### Example 9 : Finding cell value and convert it to Integer 
+```c
+
+#include "csv/csv.h"
+#include <stdio.h>
+
+int main()
+{
+    CsvFile* csv = csv_file_create(',');
+    csv_file_read(csv, "sources/test_10.csv"); // Read a CSV file
+
+    CSVRow* row = csv_file_get_row(csv, 2); // Get the third row (index 2)
+    if (row != NULL)
+    {
+        int value = csv_row_get_cell_as_int(row, 0);  // Convert the value of the first cell to an integer
+        printf("Value of the first cell in third row as integer: %d\n", value);
+    }
+
+    csv_file_destroy(csv);
+
+    return 0;
+}
+
+```
+
+### Example 10 : Printgin CSV file to Console 
+```c
+#include "csv/csv.h"
+#include <stdio.h>
+
+int main()
+{
+    CsvFile* csv = csv_file_create(',');
+
+    csv_file_read(csv, "sources/test.csv");  // Read an existing CSV file
+    csv_print(csv); // Print the contents of the CSV file to the console
+
+    csv_file_destroy(csv); 
+
+    return 0;
+}
+
+```
+
+### Example 11 : Using String lib with Csv 
+
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\csv\csv.c
+
+```c
+
+#include "csv/csv.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+
+// Function to convert a string to uppercase using the String library
+void to_uppercase(String *str) 
+{
+    char* data = (char*) malloc(string_length(str) * sizeof(char));
+
+    if (!data)
+    {
+        perror("Can not allocate Memory");
+        exit(-1);
+    }
+
+    for (size_t i = 0; i < string_length(str); ++i) 
+    {
+        char ch = string_at(str, i); 
+        data[i] = toupper(ch);
+    }
+    string_replace(str, string_c_str(str), data);
+    free(data);
+}
+
+int main() 
+{
+    const char *input_filename = "sources/test_10.csv"; // Replace with your CSV file's path
+    const char *output_filename = "sources/output.csv"; // Output CSV file's path
+    char delimiter = ','; // Specify the delimiter used in your CSV file
+    CsvFile* myCSV = csv_file_create(delimiter);
+
+    if (!myCSV) 
+    {
+        fprintf(stderr, "Failed to create CSV file structure.\n");
+        return 1;
+    }
+
+    csv_file_read(myCSV, input_filename);
+
+    for (size_t rowIndex = 0; rowIndex < myCSV->size; ++rowIndex)   // Iterate through each row and cell
+    {
+        CsvRow* row = csv_file_get_row(myCSV, rowIndex);
+
+        for (size_t cellIndex = 0; cellIndex < row->size; ++cellIndex) 
+        {
+            char* cellValue = csv_row_get_cell(row, cellIndex);
+            String* cellString = string_create(cellValue); // Create a String object from the cell value
+
+            to_uppercase(cellString);   // Convert to uppercase and append text
+            string_append(cellString, " MODIFIED");
+
+            free(row->cells[cellIndex]); // Free the original cell value
+            row->cells[cellIndex] = strdup(string_c_str(cellString));
+
+            string_deallocate(cellString);  // Deallocate the String object
+        }
+    }
+    csv_file_write(myCSV, output_filename); // Write the modified CSV to a new file
+    csv_file_destroy(myCSV); 
+  
+
+    return 0;
+}
+
 ```

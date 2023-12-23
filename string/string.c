@@ -72,18 +72,20 @@ String* string_create(const char* initialStr)
 
     size_t initialSize = initialStr ? strlen(initialStr) : 0;
     str->size = initialSize;
-    str->capacitySize = 10000000; // +1 for null terminator
+    str->capacitySize = 1024; // +1 for null terminator
 
     // Initialize memory pool for strings with a smaller size
-    size_t initialPoolSize = str->capacitySize * 2; // 1KB
+    size_t initialPoolSize = 10000000; // 1KB
     str->pool = memory_pool_create(initialPoolSize);
-    if (!str->pool) {
+    if (!str->pool) 
+    {
         free(str);
         return NULL;
     }
 
     str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
-    if (!str->dataStr) {
+    if (!str->dataStr) 
+    {
         memory_pool_destroy(str->pool);
         free(str);
         return NULL;
@@ -113,7 +115,7 @@ String* string_create_with_pool(size_t size)
 
     String* str = (String*)malloc(sizeof(String));
     if (!str) 
-    return NULL;
+        return NULL;
 
     str->size = 0;
     str->capacitySize = 1;
@@ -289,12 +291,9 @@ void string_push_back(String* str, char chItem)
     {
         // static int counter = 0;
         size_t newCapacity = str->capacitySize * 2;
-        // printf("%zu\n%zu\n-----\n", str->capacitySize, newCapacity);
         char* newData = memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
-        // counter++;
         if (!newData) 
         {
-            // printf("%zu\n%zu\n%d\n", str->capacitySize, newCapacity, counter);
             perror("Allocation failed in string_push_back_impl");
             exit(-1);
         }

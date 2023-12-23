@@ -3,9 +3,9 @@
 #include <string.h> // For string manipulation
 #include <stdio.h>
 
-CSVRow* csv_row_create() 
+CsvRow* csv_row_create() 
 {
-    CSVRow* row = malloc(sizeof(CSVRow));
+    CsvRow* row = malloc(sizeof(CsvRow));
     if (!row) 
         return NULL;
 
@@ -16,7 +16,7 @@ CSVRow* csv_row_create()
     return row;
 }
 
-void csv_row_destroy(CSVRow *row) 
+void csv_row_destroy(CsvRow *row) 
 {
     if (!row) 
         return;
@@ -25,10 +25,10 @@ void csv_row_destroy(CSVRow *row)
         free(row->cells[i]);
 
     free(row->cells); // Free the array of cell pointers
-    free(row);  // Free the CSVRow itself
+    free(row);  // Free the CsvRow itself
 }
 
-void csv_row_append_cell(CSVRow *row, const char *value) 
+void csv_row_append_cell(CsvRow *row, const char *value) 
 {
     if (!row || !value) 
     {
@@ -61,7 +61,7 @@ void csv_row_append_cell(CSVRow *row, const char *value)
     row->size++;
 }
 
-char* csv_row_get_cell(const CSVRow *row, size_t index) 
+char* csv_row_get_cell(const CsvRow *row, size_t index) 
 {
     if (row == NULL || index >= row->size) 
     {
@@ -72,10 +72,9 @@ char* csv_row_get_cell(const CSVRow *row, size_t index)
     return row->cells[index];
 }
 
-
-CSVFile* csv_file_create(char delimiter) 
+CsvFile* csv_file_create(char delimiter) 
 {
-    CSVFile* file = malloc(sizeof(CSVFile));
+    CsvFile* file = malloc(sizeof(CsvFile));
     if (!file) 
         return NULL;
 
@@ -87,7 +86,7 @@ CSVFile* csv_file_create(char delimiter)
     return file;
 }
 
-void csv_file_destroy(CSVFile *file) 
+void csv_file_destroy(CsvFile *file) 
 {
     if (!file) 
         return;
@@ -98,36 +97,59 @@ void csv_file_destroy(CSVFile *file)
     free(file);
 }
 
-void csv_file_read(CSVFile *file, const char *filename) 
+static void parse_csv_line(const char *line, char delimiter, CsvRow *row) 
+{
+    bool inQuotes = false;
+    size_t start = 0;
+
+    for (size_t i = 0; line[i] != '\0'; ++i) 
+    {
+        if (line[i] == '"') 
+            inQuotes = !inQuotes;
+        else if (line[i] == delimiter && !inQuotes) 
+        {
+            size_t len = i - start;
+            char *cell = (char *)malloc(len + 1);
+
+            if (cell) 
+            {
+                strncpy(cell, line + start, len);
+                cell[len] = '\0';
+                csv_row_append_cell(row, cell);
+                free(cell);
+            }
+            start = i + 1;
+        }
+    }
+    // Add the last cell
+    char *cell = strdup(line + start);
+    csv_row_append_cell(row, cell);
+    free(cell);
+}
+
+void csv_file_read(CsvFile *file, const char *filename) 
 {
     FILE *fp = fopen(filename, "r");
-    if (!fp) 
-    {
+    if (!fp) {
         perror("Unable to open file");
         return;
     }
 
     char buffer[BUFFER_SIZE];
 
-    while (fgets(buffer, BUFFER_SIZE, fp)) 
-    {
-        CSVRow *row = csv_row_create(); // Assuming csv_row_create allocates and initializes a CSVRow
+    while (fgets(buffer, BUFFER_SIZE, fp)) {
+        CsvRow *row = csv_row_create();
 
-        buffer[strcspn(buffer, "\r\n")] = 0; // Replace newline character with null terminator
-        char *token = strtok(buffer, &file->delimiter); // Tokenize the line using the specified delimiter
-        
-        while (token) 
-        {
-            csv_row_append_cell(row, token); // Append each cell to the row
-            token = strtok(NULL, &file->delimiter);
-        }
-        csv_file_append_row(file, row); // Append the row to the CSV file
+        buffer[strcspn(buffer, "\r\n")] = 0; // Remove newline character
+        parse_csv_line(buffer, file->delimiter, row); // Use the custom parsing function
+
+        csv_file_append_row(file, row);
     }
 
     fclose(fp);
 }
 
-void csv_file_write(const CSVFile *file, const char *filename)
+void csv_file_write(const CsvFile *file, const char *filename)
 {
     FILE *fp = fopen(filename, "w");
     if (!fp) 
@@ -139,7 +161,7 @@ void csv_file_write(const CSVFile *file, const char *filename)
     // Iterate over each row in the CSV file
     for (size_t i = 0; i < file->size; ++i) 
     {
-        CSVRow *row = file->rows[i];
+        CsvRow *row = file->rows[i];
 
         for (size_t j = 0; j < row->size; ++j)  // Iterate over each cell in the row
         {
@@ -154,18 +176,21 @@ void csv_file_write(const CSVFile *file, const char *filename)
     fclose(fp);
 }
 
-
-void csv_file_append_row(CSVFile *file, CSVRow *row) {
-    if (!file || !row) {
+void csv_file_append_row(CsvFile *file, CsvRow *row) 
+{
+    if (!file || !row) 
+    {
         fprintf(stderr, "Error: NULL parameter passed to csv_file_append_row.\n");
         return;
     }
 
-    // Resize the rows array if necessary
-    if (file->size >= file->capacity) {
+    if (file->size >= file->capacity)  // Resize the rows array if necessary
+    {
         size_t newCapacity = file->capacity == 0 ? 1 : file->capacity * 2;
-        CSVRow **newRows = realloc(file->rows, newCapacity * sizeof(CSVRow *));
-        if (!newRows) {
+        CsvRow **newRows = realloc(file->rows, newCapacity * sizeof(CsvRow *));
+
+        if (!newRows) 
+        {
             perror("Unable to allocate memory for new rows");
             return;
         }
@@ -173,11 +198,10 @@ void csv_file_append_row(CSVFile *file, CSVRow *row) {
         file->capacity = newCapacity;
     }
 
-    // Append the row
-    file->rows[file->size++] = row;
+    file->rows[file->size++] = row; // Append the row
 }
 
-CSVRow* csv_file_get_row(const CSVFile *file, size_t index) 
+CsvRow* csv_file_get_row(const CsvFile *file, size_t index) 
 {
     if (!file || index >= file->size) 
     {
@@ -188,7 +212,7 @@ CSVRow* csv_file_get_row(const CSVFile *file, size_t index)
     return file->rows[index]; // Retrieve the row at the specified index
 }
 
-void csv_file_remove_row(CSVFile *file, size_t index) 
+void csv_file_remove_row(CsvFile *file, size_t index) 
 {
     if (!file || index >= file->size) 
     {
@@ -205,7 +229,7 @@ void csv_file_remove_row(CSVFile *file, size_t index)
     file->size--;
 }
 
-void csv_print(const CSVFile *file) 
+void csv_print(const CsvFile *file) 
 {
     if (!file) 
     {
@@ -215,7 +239,7 @@ void csv_print(const CSVFile *file)
 
     for (size_t i = 0; i < file->size; ++i) 
     {
-        CSVRow *row = file->rows[i];
+        CsvRow *row = file->rows[i];
 
         for (size_t j = 0; j < row->size; ++j) 
         {
@@ -227,7 +251,7 @@ void csv_print(const CSVFile *file)
     }
 }
 
-CSVRow* csv_row_read_next(FILE *file, char delimiter) 
+CsvRow* csv_row_read_next(FILE *file, char delimiter) 
 {
     char buffer[BUFFER_SIZE];
     if (!fgets(buffer, BUFFER_SIZE, file)) 
@@ -235,7 +259,7 @@ CSVRow* csv_row_read_next(FILE *file, char delimiter)
 
     buffer[strcspn(buffer, "\r\n")] = 0; // Remove newline character
 
-    CSVRow *row = csv_row_create();
+    CsvRow *row = csv_row_create();
     char *token = strtok(buffer, &delimiter);
 
     while (token) 
@@ -247,16 +271,17 @@ CSVRow* csv_row_read_next(FILE *file, char delimiter)
     return row;
 }
 
-void csv_file_insert_column(CSVFile *file, size_t colIndex, const CSVRow *colData) 
+void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colData) 
 {
-    if (!file || !colData || colIndex > colData->size) {
+    if (!file || !colData || colIndex > colData->size) 
+    {
         fprintf(stderr, "Error: Invalid parameters in csv_file_insert_column.\n");
         return;
     }
 
     for (size_t i = 0; i < file->size; ++i)
     {
-        CSVRow *row = file->rows[i];
+        CsvRow *row = file->rows[i];
         char *cellValue = NULL;
 
         if (i < colData->size) 
@@ -296,7 +321,7 @@ void csv_file_insert_column(CSVFile *file, size_t colIndex, const CSVRow *colDat
     }
 }
 
-CSVRow* csv_file_get_header(const CSVFile *file) 
+CsvRow* csv_file_get_header(const CsvFile *file) 
 {
     if (!file || file->size == 0) 
     {
@@ -307,7 +332,7 @@ CSVRow* csv_file_get_header(const CSVFile *file)
     return file->rows[0]; // Return the first row as the header
 }
 
-void csv_file_set_header(CSVFile *file, CSVRow *header) 
+void csv_file_set_header(CsvFile *file, CsvRow *header) 
 {
     if (!file || !header) 
     {
@@ -323,7 +348,7 @@ void csv_file_set_header(CSVFile *file, CSVRow *header)
         if (file->size == file->capacity) 
         {
             size_t newCapacity = file->capacity == 0 ? 1 : file->capacity * 2;
-            CSVRow **newRows = realloc(file->rows, newCapacity * sizeof(CSVRow *));
+            CsvRow **newRows = realloc(file->rows, newCapacity * sizeof(CsvRow *));
             
             if (!newRows) 
             {
@@ -340,7 +365,7 @@ void csv_file_set_header(CSVFile *file, CSVRow *header)
     file->size = (file->size > 0) ? file->size : 1;
 }
 
-int csv_row_get_cell_as_int(const CSVRow *row, size_t index) 
+int csv_row_get_cell_as_int(const CsvRow *row, size_t index) 
 {
     if (!row || index >= row->size) 
     {
@@ -351,7 +376,7 @@ int csv_row_get_cell_as_int(const CSVRow *row, size_t index)
     return atoi(row->cells[index]); // Convert the string to an integer
 }
 
-CSVRow** csv_file_find_rows(const CSVFile *file, const char* searchTerm) 
+CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) 
 {
     if (!file || !searchTerm) 
     {
@@ -360,7 +385,7 @@ CSVRow** csv_file_find_rows(const CSVFile *file, const char* searchTerm)
     }
 
     size_t foundCount = 0;
-    CSVRow **foundRows = malloc(file->size * sizeof(CSVRow *)); // Assuming worst case, all rows match
+    CsvRow **foundRows = malloc((file->size + 1) * sizeof(CsvRow *)); // Allocate one extra for null termination
     
     if (!foundRows) 
     {
@@ -370,7 +395,7 @@ CSVRow** csv_file_find_rows(const CSVFile *file, const char* searchTerm)
 
     for (size_t i = 0; i < file->size; ++i) 
     {
-        CSVRow* row = file->rows[i];
+        CsvRow* row = file->rows[i];
         for (size_t j = 0; j < row->size; ++j) 
         {
             if (strstr(row->cells[j], searchTerm)) 
@@ -381,19 +406,22 @@ CSVRow** csv_file_find_rows(const CSVFile *file, const char* searchTerm)
         }
     }
 
-    CSVRow **resizedFoundRows = realloc(foundRows, foundCount * sizeof(CSVRow *)); // Optional: resize foundRows to match foundCount
+    foundRows[foundCount] = NULL; // Null-terminate the array
+
+    // Optional: resize foundRows to match foundCount + 1 for null termination
+    CsvRow **resizedFoundRows = realloc(foundRows, (foundCount + 1) * sizeof(CsvRow *));
     if (!resizedFoundRows) 
     {
-        free(foundRows);
+        // If realloc fails, foundRows is still valid and contains the data
         perror("Memory allocation failed for resizedFoundRows");
-
-        return NULL;
+        return foundRows; // Return the original foundRows to avoid memory leak
     }
 
     return resizedFoundRows; // Return the array of found rows
 }
 
-bool csv_validate_cell_format(const CSVRow *row, size_t index, const char *format) 
+
+bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *format) 
 {
     if (!row || !format || index >= row->size) 
     {
@@ -409,43 +437,27 @@ bool csv_validate_cell_format(const CSVRow *row, size_t index, const char *forma
     return strcmp(cell, buffer) == 0;
 }
 
-void csv_file_join(const CSVFile *file1, const CSVFile *file2, size_t keyColumnIndex) 
+void csv_file_concatenate(CsvFile *file1, const CsvFile *file2) 
 {
     if (!file1 || !file2) 
     {
-        fprintf(stderr, "Error: Null parameters in csv_file_join.\n");
+        fprintf(stderr, "Error: Null parameters in csv_file_concatenate.\n");
         return;
     }
 
-    for (size_t i = 0; i < file1->size; ++i) 
+    for (size_t i = 0; i < file2->size; ++i) 
     {
-        CSVRow* row1 = file1->rows[i];
-        if (keyColumnIndex >= row1->size) 
-            continue;
-
-        char* key = row1->cells[keyColumnIndex];
-        for (size_t j = 0; j < file2->size; ++j) 
-        {
-            CSVRow* row2 = file2->rows[j];
-
-            if (keyColumnIndex >= row2->size) 
-                continue;
-
-            char* key2 = row2->cells[keyColumnIndex];
-            if (strcmp(key, key2) == 0) 
-            {
-                for (size_t k = 0; k < row2->size; ++k) // Append cells from row2 to row1
-                {
-                    if (k != keyColumnIndex) 
-                        csv_row_append_cell(row1, row2->cells[k]);
-                }
-                break; // Break after finding the first match
-            }
-        }
+        CsvRow *row2 = file2->rows[i];
+        CsvRow *newRow = csv_row_create();   // Create a new row for file1 and copy each cell of row2 into it
+        
+        for (size_t j = 0; j < row2->size; ++j) 
+            csv_row_append_cell(newRow, row2->cells[j]);
+    
+        csv_file_append_row(file1, newRow);    // Append the new row to file1
     }
 }
 
-int csv_column_sum(const CSVFile *file, size_t columnIndex) 
+int csv_column_sum(const CsvFile *file, size_t columnIndex) 
 {
     if (!file) 
     {
@@ -456,11 +468,12 @@ int csv_column_sum(const CSVFile *file, size_t columnIndex)
     int sum = 0;
     for (size_t i = 0; i < file->size; ++i) 
     {
-        CSVRow *row = file->rows[i];
+        CsvRow *row = file->rows[i];
         if (columnIndex < row->size) 
         {
             char *cell = row->cells[columnIndex];
-            sum += atoi(cell); // Convert the cell value to an integer and add to sum
+            int cellValue = atoi(cell);
+            sum += cellValue;
         }
         else 
             fprintf(stderr, "Warning: Column index out of range in row %zu.\n", i);
@@ -469,11 +482,11 @@ int csv_column_sum(const CSVFile *file, size_t columnIndex)
     return sum;
 }
 
-char* csv_export_to_json(const CSVFile *file) 
+char* csv_export_to_json(const CsvFile *file) 
 {
     if (!file) 
     {
-        fprintf(stderr, "Error: Null CSVFile passed to csv_export_to_json.\n");
+        fprintf(stderr, "Error: Null CsvFile passed to csv_export_to_json.\n");
         return NULL;
     }
 
@@ -487,7 +500,7 @@ char* csv_export_to_json(const CSVFile *file)
     strcpy(json, "[\n");
     for (size_t i = 0; i < file->size; ++i) 
     {
-        CSVRow *row = file->rows[i];
+        CsvRow *row = file->rows[i];
         strcat(json, "  {\n");
         
         for (size_t j = 0; j < row->size; ++j) 
