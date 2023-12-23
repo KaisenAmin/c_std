@@ -74,13 +74,13 @@ int main()
     printf("Please, enter a binary number: ");
     scanf("%16s", input); // Read up to 16 characters
 
-    foo->set_from_string(foo, input);     // Set the Bitset from the string input
+    bitset_set_from_string(foo, input);     // Set the Bitset from the string input
 
-    if (foo->none(foo))  // Check if any bit is set and print the corresponding message
+    if (bitset_none(foo))  // Check if any bit is set and print the corresponding message
     {
         printf("Bitset: ");
         for (size_t i = 0; i < foo->size; ++i) 
-            printf("%d", foo->test(foo, i) ? 1 : 0);
+            printf("%d", bitset_test(foo, i) ? 1 : 0);
         
         printf(" has no bits set.\n");
     } 
@@ -88,18 +88,17 @@ int main()
     {
         printf("Bitset: ");
         for (size_t i = 0; i < foo->size; ++i) 
-            printf("%d", foo->test(foo, i) ? 1 : 0);
+            printf("%d", bitset_test(foo, i) ? 1 : 0);
 
-        printf(" has %zu bits set.\n", foo->count(foo));
+        printf(" has %zu bits set.\n", bitset_count(foo));
     }
 
-    foo->deallocate(foo);
+    bitset_deallocate(foo);
 
     return 0;
 }
 
 ```
-
 
 ## Example 2 : 'size', 'flip'
 
@@ -117,18 +116,18 @@ int main()
     if (!bi1 || !bi2)
         return -1;
 
-    bi1->set_from_string(bi1, "0001");
+    bitset_set_from_string(bi1, "0001");
 
-    printf("%llu\n", bi2->to_ullong(bi2));
-    printf("%zu\n%zu\n", bi1->get_size(bi1), bi2->get_size(bi2));
+    printf("%llu\n", bitset_to_ullong(bi2));
+    printf("%zu\n%zu\n", bitset_size(bi1), bitset_size(bi2));
 
-    bi1->flip(bi1, 2);
+    bitset_flip(bi1, 2);
 
-    for (size_t i = 0; i < bi1->get_size(bi1); i++)
-        printf("%d", bi1->test(bi1, i));
+    for (size_t i = 0; i < bitset_size(bi1); i++)
+        printf("%d", bitset_test(bi1, i));
 
-    bi1->deallocate(bi1);
-    bi2->deallocate(bi2);
+    bitset_deallocate(bi1);
+    bitset_deallocate(bi2);
 
     return 0;
 }
@@ -162,18 +161,17 @@ int main()
     printf("Please, enter an 8-bit binary number: ");
     scanf("%8s", input);
 
-    foo->set_from_string(foo, input);
+    bitset_set_from_string(foo, input);
 
-    printf("all: %s\n", foo->all(foo) ? "true" : "false");
-    printf("any: %s\n", foo->any(foo) ? "true" : "false");
-    printf("none: %s\n", foo->none(foo) ? "true" : "false");
+    printf("all: %s\n", bitset_all(foo) ? "true" : "false");
+    printf("any: %s\n", bitset_any(foo) ? "true" : "false");
+    printf("none: %s\n", bitset_none(foo) ? "true" : "false");
 
     // Deallocate the bitset
-    foo->deallocate(foo);
+    bitset_deallocate(foo);
 
     return 0;
 }
-
 ```
 
 ```cpp
@@ -225,30 +223,29 @@ int main()
     printf("Please, enter a binary number: ");
     scanf("%16s", input);
 
-    foo->set_from_string(foo, input);
+    bitset_set_from_string(foo, input);
 
-    if (foo->any(foo)) 
+    if (bitset_any(foo)) 
     {
         printf("Bitset: ");
         for (size_t i = 0; i < foo->size; ++i) 
-            printf("%d", foo->test(foo, i) ? 1 : 0);
+            printf("%d", bitset_test(foo, i) ? 1 : 0);
     
-        printf(" has %zu bits set.\n", foo->count(foo));
+        printf(" has %zu bits set.\n", bitset_count(foo));
     } 
     else
     {
         printf("Bitset: ");
         for (size_t i = 0; i < foo->size; ++i) 
-            printf("%d", foo->test(foo, i) ? 1 : 0);
+            printf("%d", bitset_test(foo, i) ? 1 : 0);
     
         printf(" has no bits set.\n");
     }
 
-    foo->deallocate(foo);
+    bitset_deallocate(foo);
 
     return 0;
 }
-
 ```
 
 ```cpp
@@ -291,23 +288,23 @@ int main()
     }
 
     // // Manually set the bits to match "10110011"
-    foo->set(foo, 0, true);  // MSB
-    foo->set(foo, 1, false);
-    foo->set(foo, 2, true);
-    foo->set(foo, 3, true);
-    foo->set(foo, 4, false);
-    foo->set(foo, 5, false);
-    foo->set(foo, 6, true);
-    foo->set(foo, 7, true);  // LSB
+    bitset_set(foo, 0, true);  // MSB
+    bitset_set(foo, 1, false);
+    bitset_set(foo, 2, true);
+    bitset_set(foo, 3, true);
+    bitset_set(foo, 4, false);
+    bitset_set(foo, 5, false);
+    bitset_set(foo, 6, true);
+    bitset_set(foo, 7, true);  // LSB
 
     // Print the bitset, count of ones, and count of zeros
     printf("Bitset: ");
     for (size_t i = 0; i < foo->size; ++i) 
-        printf("%d", foo->test(foo, i) ? 1 : 0);
+        printf("%d", bitset_test(foo, i) ? 1 : 0);
     
-    printf(" has %zu ones and %zu zeros.\n", foo->count(foo), foo->size - foo->count(foo));
+    printf(" has %zu ones and %zu zeros.\n", bitset_count(foo), foo->size - bitset_count(foo));
 
-    foo->deallocate(foo);
+    bitset_deallocate(foo);
 
     return 0;
 }
@@ -331,16 +328,16 @@ int main()
         return 1;
     }
 
-    myBitset->set_from_string(myBitset, "11010010");
+    bitset_set_from_string(myBitset, "11010010");
 
     printf("Original bitset: ");
-    myBitset->print(myBitset);
-    myBitset->flip_all(myBitset);
+    bitset_print(myBitset);
+    bitset_flip_all(myBitset);
 
     printf("After toggling: ");
-    myBitset->print(myBitset);
+    bitset_print(myBitset);
 
-    myBitset->deallocate(myBitset);
+    bitset_deallocate(myBitset);
 
     return 0;
 }
@@ -397,19 +394,18 @@ int main()
 
     if (pos >= 0 && pos < 8) 
     {
-        myBitset->set(myBitset, pos, true);
+        bitset_set(myBitset, pos, true);
 
         printf("Bitset after setting position %d: ", pos);
-        myBitset->print(myBitset);
+        bitset_print(myBitset);
     }
     else 
         printf("Invalid position!\n");
     
-    myBitset->deallocate(myBitset);
+    bitset_deallocate(myBitset);
 
     return 0;
 }
-
 ```
 
 ```cpp 

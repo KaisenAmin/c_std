@@ -27,14 +27,22 @@ Creating 20 different examples to demonstrate the usage of all methods in your `
 
 ### Example 1: Create a ForwardList and Push Front
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int value = 10;
 
-    list->push_front(list, &value);
+    forward_list_push_front(list, &value);
 
-    list->deallocate(list);
+    for (ForwardListNode* node = forward_list_begin(list); node != NULL; node = node->next) 
+        printf("%d ", *(int*)(node->value));
+    printf("\n");
+    
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -42,15 +50,19 @@ int main()
 
 ### Example 2: Pop Front Element
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int value = 10;
 
-    list->push_front(list, &value);
-    list->pop_front(list);
+    forward_list_push_front(list, &value);
+    forward_list_pop_front(list);
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -58,17 +70,21 @@ int main()
 
 ### Example 3: Access Front Element
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int value = 10;
 
-    list->push_front(list, &value);
-    int *frontValue = list->front(list);
+    forward_list_push_front(list, &value);
+    int *frontValue = forward_list_front(list);
 
     printf("Front value: %d\n", *frontValue);
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -76,15 +92,28 @@ int main()
 
 ### Example 4: Clear List
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int values[] = {10, 20, 30};
 
-    list->assign(list, values, 3);
-    list->clear(list);
+    forward_list_assign(list, values, 3);
 
-    list->deallocate(list);
+    for (ForwardListNode* node = forward_list_begin(list); node != NULL; node = node->next) 
+        printf("%d ", *(int*)(node->value));
+    printf("\n");
+
+    forward_list_clear(list);
+
+    for (ForwardListNode* node = forward_list_begin(list); node != NULL; node = node->next) 
+        printf("%d ", *(int*)(node->value));
+    printf("\n");
+    
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -92,13 +121,17 @@ int main()
 
 ### Example 5: Check if List is Empty
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
 
-    printf("Is list empty? %s\n", list->empty(list) ? "Yes" : "No");
+    printf("Is list empty? %s\n", forward_list_empty(list) ? "Yes" : "No");
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -106,15 +139,19 @@ int main()
 
 ### Example 6: Get List Length
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int values[] = {10, 20, 30};
 
-    list->assign(list, values, 3);
-    printf("List length: %zu\n", list->length(list));
+    forward_list_assign(list, values, 3);
+    printf("List length: %zu\n", forward_list_length(list));
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -122,29 +159,43 @@ int main()
 
 ### Example 7: Assign Values to List
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int values[] = {10, 20, 30};
 
-    list->assign(list, values, 3);
+    forward_list_assign(list, values, 3);
 
-    list->deallocate(list);
+    for (ForwardListNode* node = forward_list_begin(list); node != NULL; node = node->next) 
+        printf("%d ", *(int*)(node->value));
+    printf("\n");
+
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
+
 ```
 
 ### Example 8: Get before_begin Iterator
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
-    ForwardListNode *node = list->before_begin(list);
+    ForwardListNode *node = forward_list_before_begin(list);
 
-    printf("Node: %p\n", node);
+    printf("Node: %p\n", (void*)node);
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -152,17 +203,22 @@ int main()
 
 ### Example 9: Get begin and end Iterator
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int values[] = {10, 20, 30};
 
-    list->assign(list, values, 3);
+    forward_list_assign(list, values, 3);
 
-    for (ForwardListNode *node = list->begin(list); node != list->end(list); node = node->next) 
+    for (ForwardListNode *node = forward_list_begin(list); node != forward_list_end(list); node = node->next) 
         printf("%d\n", *(int *)node->value);
     
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -170,13 +226,18 @@ int main()
 
 ### Example 10: Get max_size
 ```c
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
 
-    printf("Max size: %zu\n", list->max_size(list));
+    printf("Max size: %zu\n", forward_list_max_size(list));
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -186,20 +247,25 @@ int main()
 ```c
 #include <stdio.h>
 
+#include "forward_list/forward_list.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int value = 10;
 
-    list->emplace_front(list, &value);
+    forward_list_emplace_front(list, &value);
 
     // Print list after emplace_front
-    for (ForwardListNode* node = list->begin(list); node != list->end(list); node = node->next) 
+    for (ForwardListNode* node = forward_list_begin(list); node != forward_list_end(list); node = node->next) 
         printf("%d ", *(int*)(node->value));
     
     printf("\n");
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
@@ -208,27 +274,29 @@ int main()
 
 ### Example 12: Emplace After
 ```c
+#include "forward_list/forward_list.h"
 #include <stdio.h>
+#include <stdlib.h>
+
 
 int main() 
 {
     ForwardList* list = forward_list_create(sizeof(int));
     int value = 10;
 
-    list->emplace_front(list, &value);
-    list->emplace_after(list, list->before_begin(list), &value);
+    forward_list_emplace_front(list, &value);
+    forward_list_emplace_after(list, forward_list_before_begin(list), &value);
 
     // Print list after emplace_after
-    for (ForwardListNode* node = list->begin(list); node != list->end(list); node = node->next) 
+    for (ForwardListNode* node = forward_list_begin(list); node != forward_list_end(list); node = node->next) 
         printf("%d ", *(int*)(node->value));
     
     printf("\n");
 
-    list->deallocate(list);
+    forward_list_deallocate(list);
 
     return EXIT_SUCCESS;
 }
-
 ```
 
 ### Example 13: Insert After

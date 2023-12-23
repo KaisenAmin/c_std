@@ -338,26 +338,42 @@ void forward_list_resize(ForwardList *list, size_t newSize)
 
 void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other) 
 {
-    if (list == NULL || other == NULL || pos == NULL) 
+    if (list == NULL || other == NULL) 
         return;
 
-    ForwardListNode *otherCurrent = other->head;
+    if (pos == NULL) 
+    {
+        // Special case: if pos is NULL, splice at the beginning
+        if (other->head != NULL) 
+        {
+            ForwardListNode *otherCurrent = other->head;
+            while (otherCurrent->next != NULL)  // Find the last node of the other list
+                otherCurrent = otherCurrent->next;
 
-    if (otherCurrent == NULL) 
+            otherCurrent->next = list->head;
+            list->head = other->head;
+            list->size += other->size;
+            other->head = NULL;
+            other->size = 0;
+        }
         return;
+    }
 
-    while (otherCurrent->next != NULL)  // Find the last node of the other list
-        otherCurrent = otherCurrent->next;
+    // Regular splicing after a given node
+    if (other->head != NULL) 
+    {
+        ForwardListNode *otherCurrent = other->head;
+        while (otherCurrent->next != NULL)  // Find the last node of the other list
+            otherCurrent = otherCurrent->next;
 
-    // Splice
-    otherCurrent->next = pos->next;
-    pos->next = other->head;
-    
-    // Adjust size
-    list->size += other->size;
-    other->head = NULL;
-    other->size = 0;
+        otherCurrent->next = pos->next;
+        pos->next = other->head;
+        list->size += other->size;
+        other->head = NULL;
+        other->size = 0;
+    }
 }
+
 
 void forward_list_remove(ForwardList *list, void *value) 
 {
