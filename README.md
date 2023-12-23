@@ -47,6 +47,10 @@ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 To use a module in your project, include the corresponding header file in your C source files and compile them with the module's implementation. For instance:
 
+## License
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+
 ```c
 #include "vector.h"
 
