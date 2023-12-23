@@ -756,10 +756,10 @@ int main()
 int main() 
 {
     String* str = string_create("Hello World");
-    char* toUpper = string_to_upper(str);
-    char* toLower = string_to_lower(str);
+    char* toUpper = string_to_upper(str); // convert str to upper case and return as char*
+    char* toLower = string_to_lower(str); // convert str to lower case and return as char* 
 
-    if (toUpper)
+    if (toUpper) 
     {   
         printf("To Upper is -> %s\n", toUpper);
         free(toUpper);
@@ -789,7 +789,7 @@ int main()
 {
     String* str = string_create("Hello World");
 
-    if (string_contains(str, "Hello"))
+    if (string_contains(str, "Hello")) // check str contains substr 
         printf("Yes 'Hello' exists in str\n");
     
     string_reverse(str); // reverse String 
@@ -799,5 +799,6 @@ int main()
    
     return 0;
 }
+
 ```
 
