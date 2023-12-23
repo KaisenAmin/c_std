@@ -24,93 +24,123 @@ To use the Deque library in your project, include the `Deque.h` header file in y
 
 ### Example 1: Basic Push and Pop Operations
 ```c
-Deque* myDeque = deque_create(sizeof(int));
-int val1 = 10, val2 = 20;
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
 
-// Pushing elements
-myDeque->push_back(myDeque, &val1); // Add to back
-printf("Pushed %d to back\n", val1);
 
-myDeque->push_front(myDeque, &val2); // Add to front
-printf("Pushed %d to front\n", val2);
 
-// Accessing elements
-int* frontVal = (int*)myDeque->front(myDeque); // Access front element
-int* backVal = (int*)myDeque->back(myDeque); // Access back element
+int main() 
+{
+    Deque* myDeque = deque_create(sizeof(int));
+    int val1 = 10, val2 = 20;
 
-printf("Front: %d, Back: %d\n", *frontVal, *backVal);
+    // Pushing elements
+    deque_push_back(myDeque, &val1); // Add to back
+    printf("Pushed %d to back\n", val1);
 
-// Popping elements
-myDeque->pop_front(myDeque); // Remove from front
-printf("Popped from front\n");
+    deque_push_front(myDeque, &val2); // Add to front
+    printf("Pushed %d to front\n", val2);
 
-myDeque->pop_back(myDeque); // Remove from back
-printf("Popped from back\n");
+    // Accessing elements
+    int* frontVal = (int*)deque_front(myDeque); // Access front element
+    int* backVal = (int*)deque_back(myDeque); // Access back element
 
-myDeque->deallocate(myDeque);
+    printf("Front: %d, Back: %d\n", *frontVal, *backVal);
+
+    // Popping elements
+    deque_pop_front(myDeque); // Remove from front
+    printf("Popped from front\n");
+
+    deque_pop_back(myDeque); // Remove from back
+    printf("Popped from back\n");
+
+    deque_deallocate(myDeque);
+
+    return 0;
+}
 ```
 
 ### Example 2: Using `deque_at` to Access Elements
 ```c
-Deque* myDeque = deque_create(sizeof(int));
-int nums[] = {1, 2, 3, 4, 5};
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
 
-// Pushing elements
-for (int i = 0; i < 5; ++i) 
+
+
+int main() 
 {
-    myDeque->push_back(myDeque, &nums[i]);
-    printf("Pushed %d to back\n", nums[i]);
+    Deque* myDeque = deque_create(sizeof(int));
+    int nums[] = {1, 2, 3, 4, 5};
+
+    // Pushing elements
+    for (int i = 0; i < 5; ++i) 
+    {
+        deque_push_back(myDeque, &nums[i]);
+        printf("Pushed %d to back\n", nums[i]);
+    }
+
+    // Accessing elements using deque_at
+    printf("Deque elements: ");
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        printf("%d ", *(int*)deque_at(myDeque, i));
+
+    printf("\n");
+
+    deque_deallocate(myDeque);
+
+    return 0;
 }
-
-// Accessing elements using deque_at
-printf("Deque elements: ");
-for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-    printf("%d ", *(int*)myDeque->at(myDeque, i));
-
-printf("\n");
-
-myDeque->deallocate(myDeque);
 ```
 
 ### Example 3: Resizing Deque
 ```c
-
-#include <stdlib.h>
+#include "deque/deque.h" // Include your bitset header file
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-Deque* myDeque = deque_create(sizeof(int));
 
-for (int i = 0; i < 10; ++i) 
+
+int main() 
 {
-    int* ptr = malloc(sizeof(int)); 
-    if (ptr == NULL) 
+    Deque* myDeque = deque_create(sizeof(int));
+
+    for (int i = 0; i < 10; ++i) 
     {
-        fprintf(stderr, "Failed to allocate memory\n");
-        free(ptr);
-        break; // Exit the loop or return from function
+        int* ptr = malloc(sizeof(int)); 
+        if (ptr == NULL) 
+        {
+            fprintf(stderr, "Failed to allocate memory\n");
+            free(ptr);
+            break; // Exit the loop or return from function
+        }
+
+        *ptr = i; // Set the allocated integer to the value of i
+        deque_push_back(myDeque, ptr); // Push the pointer onto the deque
+
+        printf("Pushed %d to back\n", i);
     }
 
-    *ptr = i; // Set the allocated integer to the value of i
-    myDeque->push_back(myDeque, ptr); // Push the pointer onto the deque
+    printf("Size before resize: %zu\n", deque_length(myDeque));
 
-    printf("Pushed %d to back\n", i);
+    // Resizing the deque
+    deque_resize(myDeque, 5); // Resize to smaller size
+    printf("Resized deque to 5 elements\n");
+    printf("Size after resize: %zu\n", deque_length(myDeque));
+
+    // Printing resized deque
+    printf("Elements in resized deque: ");
+    for (size_t i = 0; i < deque_length(myDeque); ++i) {
+        printf("%d ", *(int*)deque_at(myDeque, i));
+    }
+    printf("\n");
+
+    deque_deallocate(myDeque);
+    return 0;
 }
 
-printf("Size before resize: %zu\n", myDeque->length(myDeque));
-
-// Resizing the deque
-myDeque->resize(myDeque, 5); // Resize to smaller size
-printf("Resized deque to 5 elements\n");
-printf("Size after resize: %zu\n", myDeque->length(myDeque));
-
-// Printing resized deque
-printf("Elements in resized deque: ");
-for (size_t i = 0; i < myDeque->length(myDeque); ++i) {
-    printf("%d ", *(int*)myDeque->at(myDeque, i));
-}
-printf("\n");
-
-myDeque->deallocate(myDeque);
 
 ```
 
@@ -121,6 +151,13 @@ myDeque->deallocate(myDeque);
 #include "deque/deque.h"
 #include <stdio.h>
 
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+
+
 typedef struct 
 {
     int id;
@@ -129,18 +166,18 @@ typedef struct
 } Person;
 
 
-int main(int argc, char** argv)
+int main()
 {
     Deque* personDeque = deque_create(sizeof(Person));
     Person p1 = {1, "Alice"}, p2 = {2, "Bob"};
 
-    personDeque->push_back(personDeque, &p1);
-    personDeque->push_back(personDeque, &p2);
+    deque_push_back(personDeque, &p1);
+    deque_push_back(personDeque, &p2);
 
-    Person* frontPerson = (Person*)personDeque->front(personDeque);
+    Person* frontPerson = (Person*)deque_front(personDeque);
     printf("Front person: %d, %s\n", frontPerson->id, frontPerson->name);
 
-    personDeque->deallocate(personDeque);
+    deque_deallocate(personDeque);
 
     return EXIT_SUCCESS;
 }
@@ -150,17 +187,36 @@ int main(int argc, char** argv)
 ## Example 5: Storing char Elements
 
 ```c
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-Deque* charDeque = deque_create(sizeof(char));
-char a = 'A', b = 'B';
 
-charDeque->push_back(charDeque, &a);
-charDeque->push_back(charDeque, &b);
 
-char* frontChar = (char*)charDeque->front(charDeque);
-printf("Front char: %c\n", *frontChar);
+typedef struct 
+{
+    int id;
+    char name[50];
 
-charDeque->deallocate(charDeque);
+} Person;
+
+
+int main()
+{
+    Deque* charDeque = deque_create(sizeof(char));
+    char a = 'A', b = 'B';
+
+    deque_push_back(charDeque, &a);
+    deque_push_back(charDeque, &b);
+
+    char* frontChar = (char*)deque_front(charDeque);
+    printf("Front char: %c\n", *frontChar);
+
+    deque_deallocate(charDeque);
+
+    return EXIT_SUCCESS;
+}
 
 ```
 
@@ -168,16 +224,26 @@ charDeque->deallocate(charDeque);
 
 ```c
 
-Deque* floatDeque = deque_create(sizeof(float));
-float num1 = 1.5f, num2 = 2.5f;
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-floatDeque->push_back(floatDeque, &num1);
-floatDeque->push_back(floatDeque, &num2);
+int main()
+{
+    Deque* floatDeque = deque_create(sizeof(float));
+    float num1 = 1.5f, num2 = 2.5f;
 
-float* backFloat = (float*)floatDeque->back(floatDeque);
-printf("Back float: %f\n", *backFloat);
+    deque_push_back(floatDeque, &num1);
+    deque_push_back(floatDeque, &num2);
 
-floatDeque->deallocate(floatDeque);
+    float* backFloat = (float*)deque_back(floatDeque);
+    printf("Back float: %f\n", *backFloat);
+
+    deque_deallocate(floatDeque);
+    
+    return EXIT_SUCCESS;
+}
 
 ```
 
@@ -185,11 +251,12 @@ floatDeque->deallocate(floatDeque);
 
 ```c
 
-#include "deque/deque.h"
+#include "deque/deque.h" // Include your bitset header file
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
-int main(int argc, char** argv)
+int main()
 {
     Deque* reverseDeque = deque_create(sizeof(int));
 
@@ -206,15 +273,15 @@ int main(int argc, char** argv)
         }
 
         *ptr = i;
-        reverseDeque->push_back(reverseDeque, ptr);
+        deque_push_back(reverseDeque, ptr);
     }
 
     printf("Reversed Deque: ");
 
     // Iterate using the length of the deque
-    for (size_t i = 0; i < reverseDeque->length(reverseDeque); ++i)
+    for (size_t i = 0; i < deque_length(reverseDeque); ++i)
     {
-        int* valPtr = (int*)reverseDeque->at(reverseDeque, reverseDeque->length(reverseDeque) - 1 - i);
+        int* valPtr = (int*)deque_at(reverseDeque, deque_length(reverseDeque) - 1 - i);
 
         printf("%d ", *valPtr);
         free(valPtr); // Free the memory
@@ -222,7 +289,7 @@ int main(int argc, char** argv)
 
     printf("\n");
 
-    reverseDeque->deallocate(reverseDeque);
+    deque_deallocate(reverseDeque);
 
     getchar();
     return EXIT_SUCCESS;
@@ -233,12 +300,17 @@ int main(int argc, char** argv)
 
 ```c
 
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
 #include "deque/deque.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
-int main(int argc, char** argv)
+int main()
 {
     Deque* outerDeque = deque_create(sizeof(Deque*));
 
@@ -258,29 +330,29 @@ int main(int argc, char** argv)
                 exit(EXIT_FAILURE);
             }
             *valPtr = i * 3 + j;
-            innerDeque->push_back(innerDeque, valPtr);
+            deque_push_back(innerDeque, valPtr);
         }
 
-        outerDeque->push_back(outerDeque, &innerDeque);
+        deque_push_back(outerDeque, &innerDeque);
     }
 
     // Access and print elements
-    for (size_t i = 0; i < outerDeque->length(outerDeque); ++i) 
+    for (size_t i = 0; i < deque_length(outerDeque); ++i) 
     {
-        Deque* innerDeque = *(Deque**)outerDeque->at(outerDeque, i);
+        Deque* innerDeque = *(Deque**)deque_at(outerDeque, i);
 
-        for (size_t j = 0; j < innerDeque->length(innerDeque); ++j) 
+        for (size_t j = 0; j < deque_length(innerDeque); ++j) 
         {
-            int* valPtr = (int*)innerDeque->at(innerDeque, j);
+            int* valPtr = (int*)deque_at(innerDeque, j);
 
             printf("%d ", *valPtr);
             free(valPtr); // Free the memory allocated for each integer
         }
         printf("\n");
-        innerDeque->deallocate(innerDeque);
+        deque_deallocate(innerDeque);
     }
 
-    outerDeque->deallocate(outerDeque);
+    deque_deallocate(outerDeque);
 
     return EXIT_SUCCESS;
 }
@@ -296,7 +368,12 @@ int main(int argc, char** argv)
 #include <stdlib.h>
 
 
-int main(int argc, char** argv)
+#include "deque/deque.h" // Include your bitset header file
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+int main()
 {
     Deque* original = deque_create(sizeof(int));
 
@@ -312,26 +389,26 @@ int main(int argc, char** argv)
         }
 
         *ptr = i;
-        original->push_back(original, ptr);
+        deque_push_back(original, ptr);
     }
 
     // Copying the deque
     Deque* copy = deque_create(sizeof(int));
-    for (size_t i = 0; i < original->length(original); ++i) 
+    for (size_t i = 0; i < deque_length(original); ++i) 
     {
-        int* val = (int*)original->at(original, i);
-        copy->push_back(copy, val);
+        int* val = (int*)deque_at(original, i);
+        deque_push_back(copy, val);
     }
 
     // Print copied deque
     printf("Copied Deque: ");
-    for (size_t i = 0; i < copy->length(copy); ++i) 
-        printf("%d ", *(int*)copy->at(copy, i));
+    for (size_t i = 0; i < deque_length(copy); ++i) 
+        printf("%d ", *(int*)deque_at(copy, i));
     
     printf("\n");
 
-    original->deallocate(original);
-    copy->deallocate(copy);
+    deque_deallocate(original);
+    deque_deallocate(copy);
 
     getchar();
     return EXIT_SUCCESS;
@@ -367,20 +444,20 @@ int main()
         p->name = strdup(names[i]);  // Duplicate the name string
         p->age = ages[i];
 
-        people->push_back(people, p);  // Add the Person pointer to the deque
+        deque_push_back(people, p);  // Add the Person pointer to the deque
     }
 
     // Access and print people
-    for (size_t i = 0; i < people->length(people); ++i) 
+    for (size_t i = 0; i < deque_length(people); ++i) 
     {
-        Person* p = (Person*)people->at(people, i);
+        Person* p = (Person*)deque_at(people, i);
         printf("Name: %s, Age: %d\n", p->name, p->age);
 
         free(p->name);  // Free the dynamically allocated name
         free(p);
     }
 
-    people->deallocate(people);
+    deque_deallocate(people);
 
     return EXIT_SUCCESS;
 }
@@ -410,20 +487,20 @@ int main()
         }
 
         *ptr = i; // Set the allocated integer to the value of i
-        myDeque->push_back(myDeque, ptr); // Push the pointer onto the deque
+        deque_push_back(myDeque, ptr); // Push the pointer onto the deque
     }
 
     // Shrinking the deque
-    myDeque->resize(myDeque, 10);
-    myDeque->shrink_to_fit(myDeque);
+    deque_resize(myDeque, 10);
+    deque_shrink_to_fit(myDeque);
 
-    printf("Deque after shrink to fit (Size: %zu):\n", myDeque->length(myDeque));
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        printf("%d ", *(int*)myDeque->at(myDeque, i));
+    printf("Deque after shrink to fit (Size: %zu):\n", deque_length(myDeque));
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        printf("%d ", *(int*)deque_at(myDeque, i));
     
     printf("\n");
 
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
     
     return EXIT_SUCCESS;
 }
@@ -454,20 +531,20 @@ int main()
         }
 
         *ptr = i; // Set the allocated integer to the value of i
-        myDeque->push_back(myDeque, ptr); // Push the pointer onto the deque
+        deque_push_back(myDeque, ptr); // Push the pointer onto the deque
     }
 
     // Inserting an element and erase
-    myDeque->insert(myDeque, 2, &insertVal);
-    myDeque->erase(myDeque, 1);
+    deque_insert(myDeque, 2, &insertVal);
+    deque_erase(myDeque, 1);
 
     printf("Deque after insert and erase:\n");
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        printf("%d ", *(int*)myDeque->at(myDeque, i));
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        printf("%d ", *(int*)deque_at(myDeque, i));
     
     printf("\n");
 
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
     return EXIT_SUCCESS;
 }
 
@@ -487,18 +564,18 @@ int main()
     int val = 10;
 
     // Emplacing elements
-    myDeque->emplace_back(myDeque, &val);
-    myDeque->emplace_front(myDeque, &val);
-    myDeque->emplace(myDeque, 1, &val);
+    deque_emplace_back(myDeque, &val);
+    deque_emplace_front(myDeque, &val);
+    deque_emplace(myDeque, 1, &val);
 
-    printf("Size of myQueue %zu\n", myDeque->length(myDeque));
+    printf("Size of myQueue %zu\n", deque_length(myDeque));
     printf("Deque after emplace operations:\n");
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        printf("%d ", *(int*)myDeque->at(myDeque, i));
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        printf("%d ", *(int*)deque_at(myDeque, i));
     
     printf("\n");
 
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
     return EXIT_SUCCESS;
 }
 ```
@@ -522,25 +599,25 @@ int main()
     {
         int *newInt1 = malloc(sizeof(int));
         *newInt1 = i;
-        deque1->push_back(deque1, newInt1);
+        deque_push_back(deque1, newInt1);
 
         int *newInt2 = malloc(sizeof(int));
         *newInt2 = val;
-        deque2->push_back(deque2, newInt2);
+        deque_push_back(deque2, newInt2);
     }
 
     // Comparing deques
-    if (deque1->is_less(deque1, deque2)) 
+    if (deque_is_less(deque1, deque2)) 
         printf("Deque1 is less than Deque2\n");
     
     for (size_t i = 0; i < 3; ++i) 
     {
-        free(deque1->at(deque1, i));
-        free(deque2->at(deque2, i));
+        free(deque_at(deque1, i));
+        free(deque_at(deque2, i));
     }
 
-    deque1->deallocate(deque1);
-    deque2->deallocate(deque2);
+    deque_deallocate(deque1);
+    deque_deallocate(deque2);
     return EXIT_SUCCESS;
 }
 ```
@@ -562,26 +639,26 @@ int main()
         int* newInt = malloc(sizeof(int));
         *newInt = i;
 
-        myDeque->push_back(myDeque, newInt);
+        deque_push_back(myDeque, newInt);
     }
 
-    DequeIterator it = myDeque->begin(myDeque);
-    DequeIterator end = myDeque->end(myDeque);
+    DequeIterator it = deque_begin(myDeque);
+    DequeIterator end = deque_end(myDeque);
 
     printf("Deque elements: ");
     
-    while (!end.equals(&it, &end)) 
+    while (!iterator_equals(&it, &end)) 
     {
-        printf("%d ", *(int*)it.get(&it));
-        it.increment(&it);
+        printf("%d ", *(int*)iterator_get(&it));
+        iterator_increment(&it);
     }
     printf("\n");
 
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        free(myDeque->at(myDeque, i));
+    // Free the dynamically allocated integers
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        free(deque_at(myDeque, i));
     
-
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
 
     return EXIT_SUCCESS;
 }
@@ -605,27 +682,27 @@ int main()
         int* newInt = malloc(sizeof(int));
 
         *newInt = i;
-        myDeque->push_back(myDeque, newInt);
+        deque_push_back(myDeque, newInt);
     }
 
     // Reverse iteration
-    DequeIterator rit = myDeque->rbegin(myDeque);
-    DequeIterator rend = myDeque->rend(myDeque);
+    DequeIterator rit = deque_rbegin(myDeque);
+    DequeIterator rend = deque_rend(myDeque);
 
     printf("Deque elements in reverse: ");
-    while (!rend.equals(&rit, &rend)) 
+    while (!iterator_equals(&rit, &rend)) 
     {
-        printf("%d ", *(int*)rit.get(&rit));
-        rit.decrement(&rit);
+        printf("%d ", *(int*)iterator_get(&rit));
+        iterator_decrement(&rit);
     }
     
     printf("\n");
 
     // Freeing allocated memory
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        free(myDeque->at(myDeque, i));
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        free(deque_at(myDeque, i));
 
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
 
     return EXIT_SUCCESS;
 }
@@ -645,19 +722,19 @@ int main()
     Deque* myDeque = deque_create(sizeof(int));
     int val = 42;
 
-    myDeque->emplace_back(myDeque, &val);
-    myDeque->emplace_back(myDeque, &val);
+    deque_emplace_back(myDeque, &val);
+    deque_emplace_back(myDeque, &val);
 
     printf("Deque after emplacing elements: ");
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        printf("%d ", *(int*)myDeque->at(myDeque, i));
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        printf("%d ", *(int*)deque_at(myDeque, i));
 
     printf("\n");
 
-    myDeque->clear(myDeque);
-    printf("Deque after clearing: Length = %zu\n", myDeque->length(myDeque));
+    deque_clear(myDeque);
+    printf("Deque after clearing: Length = %zu\n", deque_length(myDeque));
 
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
 
     return EXIT_SUCCESS;
 }
@@ -673,9 +750,9 @@ int main()
 
 void showdq(Deque* dq) 
 {
-    for (size_t i = 0; i < dq->length(dq); ++i) 
+    for (size_t i = 0; i < deque_length(dq); ++i) 
     {
-        int* elem = (int*)dq->at(dq, i);
+        int* elem = (int*)deque_at(dq, i);
         printf("\t%d", *elem);
     }
     
@@ -688,29 +765,29 @@ int main()
 
     // Push elements
     int val1 = 10, val2 = 20, val3 = 30, val4 = 15;
-    gquiz->push_back(gquiz, &val1);
-    gquiz->push_front(gquiz, &val2);
-    gquiz->push_back(gquiz, &val3);
-    gquiz->push_front(gquiz, &val4);
+    deque_push_back(gquiz, &val1);
+    deque_push_front(gquiz, &val2);
+    deque_push_back(gquiz, &val3);
+    deque_push_front(gquiz, &val4);
 
     printf("The deque gquiz is : ");
     showdq(gquiz);
 
-    printf("\ngquiz.max_size() : %zu", gquiz->max_size(gquiz));
-    printf("\ngquiz.at(2) : %d", *(int*)gquiz->at(gquiz, 2));
-    printf("\ngquiz.front() : %d", *(int*)gquiz->front(gquiz));
-    printf("\ngquiz.back() : %d", *(int*)gquiz->back(gquiz));
+    printf("\ngquiz.max_size() : %zu", deque_max_size(gquiz));
+    printf("\ngquiz.at(2) : %d", *(int*)deque_at(gquiz, 2));
+    printf("\ngquiz.front() : %d", *(int*)deque_front(gquiz));
+    printf("\ngquiz.back() : %d", *(int*)deque_back(gquiz));
 
     printf("\ngquiz.pop_front() : ");
-    gquiz->pop_front(gquiz);
+    deque_pop_front(gquiz);
     showdq(gquiz);
 
     printf("\ngquiz.pop_back() : ");
-    gquiz->pop_back(gquiz);
+    deque_pop_back(gquiz);
     showdq(gquiz);
 
     // Free the deque
-    gquiz->deallocate(gquiz);
+    deque_deallocate(gquiz);
 
     return 0;
 }
@@ -733,24 +810,24 @@ int main()
     {
         int* newInt = malloc(sizeof(int));
         *newInt = i;
-        myDeque->push_back(myDeque, newInt);
+        deque_push_back(myDeque, newInt);
     }
 
     // Constant reverse iteration
-    const DequeIterator crit = myDeque->crbegin(myDeque);
-    const DequeIterator crend = myDeque->crend(myDeque);
+    const DequeIterator crit = *deque_crbegin(myDeque);
+    const DequeIterator crend = *deque_crend(myDeque);
 
     printf("Constant reverse iteration: ");
-    for (DequeIterator it = crit; !crend.equals(&it, &crend); it.increment(&it)) 
-        printf("%d ", *(const int*)it.get(&it));
+    for (DequeIterator it = crit; !iterator_equals(&it, &crend); iterator_increment(&it)) 
+        printf("%d ", *(const int*)iterator_get(&it));
     
     printf("\n");
 
     // Freeing allocated memory
-    for (size_t i = 0; i < myDeque->length(myDeque); ++i) 
-        free(myDeque->at(myDeque, i));
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        free(deque_at(myDeque, i));
 
-    myDeque->deallocate(myDeque);
+    deque_deallocate(myDeque);
 
     return EXIT_SUCCESS;
 }

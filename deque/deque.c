@@ -4,54 +4,6 @@
 #include <string.h>
 #include <stdio.h>
 
-// Core Deque Functions
-static bool deque_empty_impl(const Deque* deque);
-static size_t deque_length_impl(const Deque* deque);
-static void deque_push_front_impl(Deque* deque, void* item);
-static void deque_push_back_impl(Deque* deque, void* item);
-static void* deque_front_impl(const Deque* deque);
-static void* deque_back_impl(const Deque* deque);
-static void deque_pop_front_impl(Deque* deque);
-static void deque_pop_back_impl(Deque* deque);
-static void* deque_at_impl(const Deque* deque, size_t index);
-static void deque_clear_impl(Deque* deque);
-static void deque_deallocate_impl(Deque* deque);
-
-// Additional Deque Functions
-static void deque_shrink_to_fit_impl(Deque* deque);
-static void deque_insert_impl(Deque* deque, size_t index, void* item);
-static void deque_erase_impl(Deque* deque, size_t index);
-static void deque_resize_impl(Deque* deque, size_t newSize);
-static void deque_swap_impl(Deque* deque, Deque* otherDeque);
-static void deque_assign_impl(Deque* deque, size_t n, void* val);
-static void deque_emplace_back_impl(Deque* deque, void* item);
-static void deque_emplace_front_impl(Deque* deque, void* item);
-static void deque_emplace_impl(Deque* deque, size_t index, void* item);
-static size_t deque_max_size_impl(const Deque* deque);
-
-// Relational Operators
-static bool deque_is_equal_impl(const Deque* deque1, const Deque* deque2);
-static bool deque_is_less_impl(const Deque* deque1, const Deque* deque2);
-static bool deque_is_greater_impl(const Deque* deque1, const Deque* deque2);
-static bool deque_is_not_equal_impl(const Deque* deque1, const Deque* deque2);
-static bool deque_is_less_or_equal_impl(const Deque* deque1, const Deque* deque2);
-static bool deque_is_greater_or_equal_impl(const Deque* deque1, const Deque* deque2);
-
-// Iterator Functions
-static DequeIterator deque_begin_impl(const Deque* deque);
-static DequeIterator deque_end_impl(const Deque* deque);
-static DequeIterator deque_rbegin_impl(const Deque* deque);
-static DequeIterator deque_rend_impl(const Deque* deque);
-static const DequeIterator deque_cbegin_impl(const Deque* deque);
-static const DequeIterator deque_cend_impl(const Deque* deque);
-static const DequeIterator deque_crbegin_impl(const Deque* deque);
-static const DequeIterator deque_crend_impl(const Deque* deque);
-
-// Iterator Operations
-static void iterator_increment_impl(DequeIterator* it);
-static void iterator_decrement_impl(DequeIterator* it);
-static bool iterator_equals_impl(const DequeIterator* it1, const DequeIterator* it2);
-static void* iterator_get_impl(const DequeIterator* it);
 
 
 Deque* deque_create(size_t itemSize) 
@@ -67,7 +19,8 @@ Deque* deque_create(size_t itemSize)
     deque->blockCount = 1; // Start with one block
     deque->frontIndex = DEFAULT_BLOCK_SIZE / 2; // Middle of the block
     deque->backIndex = deque->frontIndex - 1;
-    
+    deque->itemSize = itemSize;
+
     // Allocate memory for the blocks array
     deque->blocks = (void***)malloc(sizeof(void**) * deque->blockCount);
     if (!deque->blocks) 
@@ -85,47 +38,10 @@ Deque* deque_create(size_t itemSize)
         return NULL; // Handle allocation failure
     }
 
-    // Set function pointers
-    deque->empty = deque_empty_impl;
-    deque->length = deque_length_impl;
-    deque->push_front = deque_push_front_impl;
-    deque->push_back = deque_push_back_impl;
-    deque->front = deque_front_impl;
-    deque->back = deque_back_impl;
-    deque->pop_front = deque_pop_front_impl;
-    deque->pop_back = deque_pop_back_impl;
-    deque->at = deque_at_impl;
-    deque->clear = deque_clear_impl;
-    deque->deallocate = deque_deallocate_impl;
-    deque->shrink_to_fit = deque_shrink_to_fit_impl;
-    deque->insert = deque_insert_impl;
-    deque->erase = deque_erase_impl;
-    deque->resize = deque_resize_impl;
-    deque->swap = deque_swap_impl;
-    deque->assign = deque_assign_impl;
-    deque->emplace_back = deque_emplace_back_impl;
-    deque->emplace_front = deque_emplace_front_impl;
-    deque->emplace = deque_emplace_impl;
-    deque->max_size = deque_max_size_impl;
-    deque->is_equal = deque_is_equal_impl;
-    deque->is_less = deque_is_less_impl;
-    deque->is_greater = deque_is_greater_impl;
-    deque->is_not_equal = deque_is_not_equal_impl;
-    deque->is_less_or_equal = deque_is_less_or_equal_impl;
-    deque->is_greater_or_equal = deque_is_greater_or_equal_impl;
-    deque->begin = deque_begin_impl;
-    deque->end = deque_end_impl;
-    deque->rbegin = deque_rbegin_impl;
-    deque->rend = deque_rend_impl;
-    deque->cbegin = deque_cbegin_impl;
-    deque->cend = deque_cend_impl;
-    deque->crbegin = deque_crbegin_impl;
-    deque->crend = deque_crend_impl;
-
     return deque;
 }
 
-static bool deque_empty_impl(const Deque* deque) 
+bool deque_empty(const Deque* deque) 
 {
     if (!deque) 
         return true; 
@@ -133,7 +49,7 @@ static bool deque_empty_impl(const Deque* deque)
     return deque->size == 0;
 }
 
-static size_t deque_length_impl(const Deque* deque) 
+size_t deque_length(const Deque* deque) 
 {
     if (!deque) 
         return 0; 
@@ -141,7 +57,7 @@ static size_t deque_length_impl(const Deque* deque)
     return deque->size;
 }
 
-static void deque_push_front_impl(Deque* deque, void* item) 
+void deque_push_front(Deque* deque, void* item) 
 {
     if (!deque || !item) 
         return; 
@@ -171,39 +87,46 @@ static void deque_push_front_impl(Deque* deque, void* item)
     deque->size++;
 }
 
-static void deque_push_back_impl(Deque* deque, void* item) 
+void deque_push_back(Deque* deque, const void* item) 
 {
     if (!deque || !item) 
-        return; 
+        return;
 
     // Check if a new block is needed at the back
     if (deque->backIndex == deque->blockSize - 1) 
     {
-        void*** newBlocks = realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1)); 
+        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
         if (!newBlocks) 
-            return; // Handle allocation failure
+            return;
 
-        newBlocks[deque->blockCount] = (void**)malloc(sizeof(void*) * deque->blockSize); // Allocate the new back block
-        if (!newBlocks[deque->blockCount]) 
-            return; // Handle allocation failure
+        newBlocks[deque->blockCount] = (void**)malloc(sizeof(void*) * deque->blockSize);
+        if (!newBlocks[deque->blockCount])
+        {
+            free(newBlocks);
+            return;
+        }
 
-        // Update deque properties
         deque->blocks = newBlocks;
         deque->blockCount++;
-        deque->backIndex = -1; // Reset back index to new block start
+        deque->backIndex = -1;
     }
 
-    // Insert item at the back
-    deque->backIndex++;
-    deque->blocks[deque->blockCount - 1][deque->backIndex] = item;
-    deque->size++;
+    // Allocate memory for the new item and copy the item contents
+    void* newItem = malloc(deque->itemSize);
+    if (!newItem)
+        return;
 
-    // printf("Pushed %d to deque.\n", *(int*)item);
+    memcpy(newItem, item, deque->itemSize);
+
+    // Insert the new item at the back
+    deque->backIndex++;
+    deque->blocks[deque->blockCount - 1][deque->backIndex] = newItem;
+    deque->size++;
 }
 
-static void* deque_front_impl(const Deque* deque) 
+void* deque_front(const Deque* deque) 
 {
-    if (!deque || deque_empty_impl(deque)) 
+    if (!deque || deque_empty(deque)) 
         return NULL; // Handle empty or NULL deque
 
     // Calculate the block and index for the front element
@@ -213,9 +136,9 @@ static void* deque_front_impl(const Deque* deque)
     return deque->blocks[blockIndex][indexInBlock];
 }
 
-static void* deque_back_impl(const Deque* deque) 
+void* deque_back(const Deque* deque) 
 {
-    if (!deque || deque_empty_impl(deque)) 
+    if (!deque || deque_empty(deque)) 
         return NULL; // Handle empty or NULL deque
 
     // Calculate the block and index for the back element
@@ -225,12 +148,12 @@ static void* deque_back_impl(const Deque* deque)
     return deque->blocks[blockIndex][indexInBlock];
 }
 
-static void deque_pop_front_impl(Deque* deque) 
+void deque_pop_front(Deque* deque) 
 {
     if (!deque) 
         return;
     
-    if (deque_empty_impl(deque)) 
+    if (deque_empty(deque)) 
         return;
 
     deque->frontIndex++;
@@ -247,24 +170,27 @@ static void deque_pop_front_impl(Deque* deque)
     deque->size--;
 }
 
-static void deque_pop_back_impl(Deque* deque) 
-{
-    if (!deque || deque_empty_impl(deque)) 
-        return; // Handle empty or NULL deque
+void deque_pop_back(Deque* deque) {
+    if (!deque || deque_empty(deque)) 
+        return;
 
-    deque->size--;
-    deque->backIndex--;
+    // Free the memory of the item being popped
+    free(deque->blocks[deque->blockCount - 1][deque->backIndex]);
 
-    // Adjusting the backIndex when crossing block boundaries
-    if (deque->backIndex < 0 && deque->blockCount > 1) 
-    {
+    // Normal decrement
+    if (deque->backIndex > 0) {
+        deque->backIndex--;
+    } else if (deque->blockCount > 1) {
         free(deque->blocks[deque->blockCount - 1]);
         deque->blockCount--;
-        deque->backIndex = deque->blockSize - 1; // Set backIndex to the end of the new last block
+        deque->backIndex = deque->blockSize - 1;
     }
+
+    deque->size--;
 }
 
-static void* deque_at_impl(const Deque* deque, size_t index) 
+
+void* deque_at(const Deque* deque, size_t index) 
 {
     if (!deque || index >= deque->size) 
         return NULL; // Validate input
@@ -282,39 +208,44 @@ static void* deque_at_impl(const Deque* deque, size_t index)
     return deque->blocks[blockIndex][indexInBlock];
 }
 
-static void deque_clear_impl(Deque* deque) 
+void deque_clear(Deque* deque) 
 {
     if (!deque) 
-        return; 
+        return;
 
-    for (size_t i = 0; i < deque->blockCount; ++i)  // Iterate over each block and free it
-        free(deque->blocks[i]);
-    
-    free(deque->blocks);  // Reset the block array and deque properties
+    for (size_t i = 0; i < deque->blockCount; ++i) 
+    {
+        for (size_t j = 0; j < (i == deque->blockCount - 1 ? deque->backIndex + 1 : deque->blockSize); ++j) 
+            free(deque->blocks[i][j]);  // Free each item
+        
+        free(deque->blocks[i]);  // Free each block
+    }
 
-    deque->blocks = (void***)malloc(sizeof(void**) * 1); // Allocate one block
-    deque->blocks[0] = (void**)malloc(sizeof(void*) * deque->blockSize); // Allocate the first block
+    // Reallocate one block to reset the deque
+    deque->blocks = (void***)realloc(deque->blocks, sizeof(void**));
+    deque->blocks[0] = (void**)malloc(sizeof(void*) * deque->blockSize);
     deque->blockCount = 1;
     deque->size = 0;
     deque->frontIndex = deque->blockSize / 2;
     deque->backIndex = deque->frontIndex - 1;
-
 }
 
-static void deque_deallocate_impl(Deque* deque) 
-{
+
+void deque_deallocate(Deque* deque) {
     if (!deque) 
-        return; // Validate input
+        return;
 
-    for (size_t i = 0; i < deque->blockCount; ++i)   // Iterate over each block and free it
-        free(deque->blocks[i]);
-    
-    // Free the block array and the deque itself
-    free(deque->blocks);
-    free(deque);
+    for (size_t i = 0; i < deque->blockCount; ++i) {
+        for (size_t j = 0; j < (i == deque->blockCount - 1 ? deque->backIndex + 1 : deque->blockSize); ++j) {
+            free(deque->blocks[i][j]);  // Free each item
+        }
+        free(deque->blocks[i]);  // Free each block
+    }
+    free(deque->blocks);  // Free the blocks array
+    free(deque);  // Free the deque structure
 }
 
-static void deque_shrink_to_fit_impl(Deque* deque) 
+void deque_shrink_to_fit(Deque* deque) 
 {
     if (!deque || deque->size == 0) 
         return; // Validate input or handle empty deque
@@ -342,20 +273,20 @@ static void deque_shrink_to_fit_impl(Deque* deque)
     }
 }
 
-static void deque_insert_impl(Deque* deque, size_t index, void* item) 
+void deque_insert(Deque* deque, size_t index, void* item) 
 {
     if (!deque || index > deque->size || !item) 
         return; // Validate input
 
     if (index == deque->size) 
     {
-        deque_push_back_impl(deque, item);
+        deque_push_back(deque, item);
         return;
     }
 
     if (index == 0) 
     {
-        deque_push_front_impl(deque, item);
+        deque_push_front(deque, item);
         return;
     }
 
@@ -393,7 +324,7 @@ static void deque_insert_impl(Deque* deque, size_t index, void* item)
     deque->size++;
 }
 
-static void deque_erase_impl(Deque* deque, size_t index) 
+void deque_erase(Deque* deque, size_t index) 
 {
     if (!deque) 
         return;
@@ -420,7 +351,7 @@ static void deque_erase_impl(Deque* deque, size_t index)
     }
 }
 
-static void deque_resize_impl(Deque* deque, size_t newSize) 
+void deque_resize(Deque* deque, size_t newSize) 
 {
     if (!deque) 
         return; // Validate input
@@ -428,11 +359,11 @@ static void deque_resize_impl(Deque* deque, size_t newSize)
     while (deque->size < newSize)  // Resize larger: add default-initialized elements to the back
     {
         void* defaultItem = NULL; // Default item (could be customized as needed)
-        deque_push_back_impl(deque, defaultItem);
+        deque_push_back(deque, defaultItem);
     }
     
     while (deque->size > newSize)  // Resize smaller: remove elements from the back
-        deque_pop_back_impl(deque);
+        deque_pop_back(deque);
 
     // Optimize memory usage if the new size is much smaller than the current size
     // This could involve reallocating the blocks array to a smaller size
@@ -451,7 +382,7 @@ static void deque_resize_impl(Deque* deque, size_t newSize)
     }
 }
 
-static void deque_swap_impl(Deque* deque, Deque* otherDeque) 
+void deque_swap(Deque* deque, Deque* otherDeque) 
 {
     if (!deque || !otherDeque) 
         return; // Validate input
@@ -462,12 +393,12 @@ static void deque_swap_impl(Deque* deque, Deque* otherDeque)
     *otherDeque = temp;
 }
 
-static void deque_assign_impl(Deque* deque, size_t n, void* val) 
+void deque_assign(Deque* deque, size_t n, void* val) 
 {
     if (!deque) 
         return; // Validate input
 
-    deque_clear_impl(deque); // Clear the current contents of the deque
+    deque_clear(deque); // Clear the current contents of the deque
 
     // Resize the deque to have 'n' elements
     for (size_t i = 0; i < n; ++i) {
@@ -498,7 +429,7 @@ static void deque_assign_impl(Deque* deque, size_t n, void* val)
     }
 }
 
-static void deque_emplace_back_impl(Deque* deque, void* item) 
+void deque_emplace_back(Deque* deque, void* item) 
 {
     if (!deque || !item) 
         return;
@@ -524,7 +455,7 @@ static void deque_emplace_back_impl(Deque* deque, void* item)
     deque->size++;
 }
 
-static void deque_emplace_front_impl(Deque* deque, void* item) 
+void deque_emplace_front(Deque* deque, void* item) 
 {
     if (!deque || !item) 
         return;
@@ -553,20 +484,20 @@ static void deque_emplace_front_impl(Deque* deque, void* item)
     deque->size++;
 }
 
-static void deque_emplace_impl(Deque* deque, size_t index, void* item) 
+void deque_emplace(Deque* deque, size_t index, void* item) 
 {
     if (!deque || index > deque->size || !item) 
         return;
 
     if (index == deque->size) 
     {
-        deque_emplace_back_impl(deque, item);
+        deque_emplace_back(deque, item);
         return;
     }
 
     if (index == 0) 
     {
-        deque_emplace_front_impl(deque, item);
+        deque_emplace_front(deque, item);
         return;
     }
 
@@ -603,7 +534,7 @@ static void deque_emplace_impl(Deque* deque, size_t index, void* item)
     deque->size++;
 }
 
-static size_t deque_max_size_impl(const Deque* deque) 
+size_t deque_max_size(const Deque* deque) 
 {
     if (!deque) 
         return 0; 
@@ -611,7 +542,7 @@ static size_t deque_max_size_impl(const Deque* deque)
     return SIZE_MAX;
 }
 
-static bool deque_is_equal_impl(const Deque* deque1, const Deque* deque2) 
+bool deque_is_equal(const Deque* deque1, const Deque* deque2) 
 {
     if (deque1 == deque2) 
         return true; // Same deque or both NULL
@@ -623,50 +554,50 @@ static bool deque_is_equal_impl(const Deque* deque1, const Deque* deque2)
     // Compare elements
     for (size_t i = 0; i < deque1->size; ++i) 
     {
-        if (deque_at_impl(deque1, i) != deque_at_impl(deque2, i)) 
+        if (deque_at(deque1, i) != deque_at(deque2, i)) 
             return false;
     }
 
     return true;
 }
 
-static bool deque_is_less_impl(const Deque* deque1, const Deque* deque2) 
+bool deque_is_less(const Deque* deque1, const Deque* deque2) 
 {
     if (!deque1 || !deque2) 
         return false; // Invalid input
 
     for (size_t i = 0; i < deque1->size && i < deque2->size; ++i) 
     {
-        if (deque_at_impl(deque1, i) < deque_at_impl(deque2, i)) 
+        if (deque_at(deque1, i) < deque_at(deque2, i)) 
             return true;
-        if (deque_at_impl(deque1, i) > deque_at_impl(deque2, i)) 
+        if (deque_at(deque1, i) > deque_at(deque2, i)) 
             return false;
     }
 
     return deque1->size < deque2->size;
 }
 
-static bool deque_is_greater_impl(const Deque* deque1, const Deque* deque2)
+bool deque_is_greater(const Deque* deque1, const Deque* deque2)
 {
-    return deque_is_less_impl(deque2, deque1);
+    return deque_is_less(deque2, deque1);
 }
 
-static bool deque_is_not_equal_impl(const Deque* deque1, const Deque* deque2)
+bool deque_is_not_equal(const Deque* deque1, const Deque* deque2)
 {
-    return !deque_is_equal_impl(deque1, deque2);
+    return !deque_is_equal(deque1, deque2);
 }
 
-static bool deque_is_less_or_equal_impl(const Deque* deque1, const Deque* deque2) 
+bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2) 
 {
-    return deque_is_less_impl(deque1, deque2) || deque_is_equal_impl(deque1, deque2);
+    return deque_is_less(deque1, deque2) || deque_is_equal(deque1, deque2);
 }
 
-static bool deque_is_greater_or_equal_impl(const Deque* deque1, const Deque* deque2) 
+bool deque_is_greater_or_equal(const Deque* deque1, const Deque* deque2) 
 {
-    return deque_is_greater_impl(deque1, deque2) || deque_is_equal_impl(deque1, deque2);
+    return deque_is_greater(deque1, deque2) || deque_is_equal(deque1, deque2);
 }
 
-static DequeIterator deque_begin_impl(const Deque* deque) 
+DequeIterator deque_begin(const Deque* deque) 
 {
     DequeIterator it = {0};
 
@@ -677,18 +608,18 @@ static DequeIterator deque_begin_impl(const Deque* deque)
         it.blockIndex = deque->frontIndex / deque->blockSize;
         it.indexInBlock = deque->frontIndex % deque->blockSize;
 
-        // Set function pointers for iterator
-        it.increment = iterator_increment_impl;
-        it.decrement = iterator_decrement_impl;
-        it.equals = iterator_equals_impl;
-        it.get = iterator_get_impl;
-        it.isReverse = false;
+        // // Set function pointers for iterator
+        // it.increment = iterator_increment_impl;
+        // it.decrement = iterator_decrement_impl;
+        // it.equals = iterator_equals_impl;
+        // it.get = iterator_get_impl;
+        // it.isReverse = false;
     }
 
     return it;
 }
 
-static DequeIterator deque_end_impl(const Deque* deque) 
+DequeIterator deque_end(const Deque* deque) 
 {
     DequeIterator it = {0};
 
@@ -702,18 +633,18 @@ static DequeIterator deque_end_impl(const Deque* deque)
         it.blockIndex = totalElements / deque->blockSize;
         it.indexInBlock = totalElements % deque->blockSize;
 
-        // Set function pointers for iterator
-        it.increment = iterator_increment_impl;
-        it.decrement = iterator_decrement_impl;
-        it.equals = iterator_equals_impl;
-        it.get = iterator_get_impl;
-        it.isReverse = false;
+        // // Set function pointers for iterator
+        // it.increment = iterator_increment_impl;
+        // it.decrement = iterator_decrement_impl;
+        // it.equals = iterator_equals_impl;
+        // it.get = iterator_get_impl;
+        // it.isReverse = false;
     }
 
     return it;
 }
 
-static DequeIterator deque_rbegin_impl(const Deque* deque) 
+DequeIterator deque_rbegin(const Deque* deque) 
 {
     DequeIterator it = {0};
 
@@ -728,16 +659,16 @@ static DequeIterator deque_rbegin_impl(const Deque* deque)
         it.indexInBlock = indexInLastBlock;
         it.isReverse = true; // Set isReverse to true for reverse iterator
 
-        it.increment = iterator_increment_impl;
-        it.decrement = iterator_decrement_impl;
-        it.equals = iterator_equals_impl;
-        it.get = iterator_get_impl;
+        // it.increment = iterator_increment_impl;
+        // it.decrement = iterator_decrement_impl;
+        // it.equals = iterator_equals_impl;
+        // it.get = iterator_get_impl;
     }
 
     return it;
 }
 
-static DequeIterator deque_rend_impl(const Deque* deque) 
+DequeIterator deque_rend(const Deque* deque) 
 {
     DequeIterator it = {0};
 
@@ -749,36 +680,61 @@ static DequeIterator deque_rend_impl(const Deque* deque)
         it.indexInBlock = SIZE_MAX; // Representing an invalid position
         it.isReverse = true; // Set isReverse to true for reverse iterator
 
-        it.increment = iterator_increment_impl;
-        it.decrement = iterator_decrement_impl;
-        it.equals = iterator_equals_impl;
-        it.get = iterator_get_impl;
+        // it.increment = iterator_increment_impl;
+        // it.decrement = iterator_decrement_impl;
+        // it.equals = iterator_equals_impl;
+        // it.get = iterator_get_impl;
     }
 
     return it;
 }
 
-static const DequeIterator deque_cbegin_impl(const Deque* deque) 
+const DequeIterator* deque_cbegin(const Deque* deque) 
 {
-    return deque_begin_impl(deque);
+    static DequeIterator temp_iterator; // static to ensure it persists after the function returns
+
+    if (deque) {
+        temp_iterator = deque_begin(deque); // Copy the iterator into the temporary variable
+        return &temp_iterator;
+    }
+    return NULL;
 }
 
-static const DequeIterator deque_cend_impl(const Deque* deque) 
+
+const DequeIterator* deque_cend(const Deque* deque) 
 {
-    return deque_end_impl(deque);
+    static DequeIterator temp_iterator;
+    if (deque) {
+        temp_iterator = deque_end(deque);
+        return &temp_iterator;
+    }
+    return NULL;
 }
 
-static const DequeIterator deque_crbegin_impl(const Deque* deque) 
+const DequeIterator* deque_crbegin(const Deque* deque) 
 {
-    return deque_rbegin_impl(deque);
+    static DequeIterator temp_iterator;
+    if (deque) 
+    {
+        temp_iterator = deque_rbegin(deque);
+        return &temp_iterator;
+    }
+    return NULL;
 }
 
-static const DequeIterator deque_crend_impl(const Deque* deque) 
+const DequeIterator* deque_crend(const Deque* deque) 
 {
-    return deque_rend_impl(deque);
+    static DequeIterator temp_iterator;
+    if (deque) 
+    {
+        temp_iterator = deque_rend(deque);
+        return &temp_iterator;
+    }
+    return NULL;
 }
 
-static void iterator_increment_impl(DequeIterator* it) 
+
+void iterator_increment(DequeIterator* it) 
 {
     if (!it || !it->deque) 
         return;
@@ -821,7 +777,7 @@ static void iterator_increment_impl(DequeIterator* it)
     }
 }
 
-static void iterator_decrement_impl(DequeIterator* it) 
+void iterator_decrement(DequeIterator* it) 
 {
     if (!it || !it->deque || it->deque->size == 0) 
         return;
@@ -867,7 +823,7 @@ static void iterator_decrement_impl(DequeIterator* it)
     it->current = it->deque->blocks[it->blockIndex][it->indexInBlock]; // Update the current pointer
 }
 
-static bool iterator_equals_impl(const DequeIterator* it1, const DequeIterator* it2) 
+bool iterator_equals(const DequeIterator* it1, const DequeIterator* it2) 
 {
     if (!it1 || !it2) 
         return false;
@@ -884,7 +840,7 @@ static bool iterator_equals_impl(const DequeIterator* it1, const DequeIterator* 
     return isEqual;
 }
 
-static void* iterator_get_impl(const DequeIterator* it) 
+void* iterator_get(const DequeIterator* it) 
 {
     if (!it || !it->deque) 
         return NULL;

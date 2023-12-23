@@ -1,44 +1,34 @@
-#include "bitset/bitset.h" // Include your bitset header file
+#include "deque/deque.h"
 #include <stdio.h>
-#include <string.h>
-
-#define MAX_INPUT_SIZE 16 // Define the maximum input size
+#include <stdlib.h>
 
 int main() 
 {
-    // Create a Bitset with 16 bits
-    Bitset* foo = bitset_create(16);
-    if (!foo) 
+    Deque* myDeque = deque_create(sizeof(int));
+
+    // Adding elements
+    for (int i = 0; i < 5; ++i) 
     {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
+        int* newInt = malloc(sizeof(int));
+        *newInt = i;
+        deque_push_back(myDeque, newInt);
     }
 
-    char input[MAX_INPUT_SIZE + 1]; // +1 for the null terminator
+    // Constant reverse iteration
+    const DequeIterator crit = *deque_crbegin(myDeque);
+    const DequeIterator crend = *deque_crend(myDeque);
+
+    printf("Constant reverse iteration: ");
+    for (DequeIterator it = crit; !iterator_equals(&it, &crend); iterator_increment(&it)) 
+        printf("%d ", *(const int*)iterator_get(&it));
     
-    printf("Please, enter a binary number: ");
-    scanf("%16s", input); // Read up to 16 characters
+    printf("\n");
 
-    bitset_set_from_string(foo, input);     // Set the Bitset from the string input
+    // Freeing allocated memory
+    for (size_t i = 0; i < deque_length(myDeque); ++i) 
+        free(deque_at(myDeque, i));
 
-    if (bitset_none(foo))  // Check if any bit is set and print the corresponding message
-    {
-        printf("Bitset: ");
-        for (size_t i = 0; i < foo->size; ++i) 
-            printf("%d", bitset_test(foo, i) ? 1 : 0);
-        
-        printf(" has no bits set.\n");
-    } 
-    else 
-    {
-        printf("Bitset: ");
-        for (size_t i = 0; i < foo->size; ++i) 
-            printf("%d", bitset_test(foo, i) ? 1 : 0);
+    deque_deallocate(myDeque);
 
-        printf(" has %zu bits set.\n", bitset_count(foo));
-    }
-
-    bitset_deallocate(foo);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
