@@ -1,24 +1,28 @@
 #ifndef CSV_H_
 #define CSV_H_
 
-#include "../vector/vector.h"
+
 #include <stdio.h>
 #include <stdbool.h>
+
+#define BUFFER_SIZE 1024
 
 // Forward declarations
 typedef struct CSVRow CSVRow;
 typedef struct CSVFile CSVFile;
 
-struct CSVRow 
-{
-    Vector *cells; // Each cell is a String
-};
+typedef struct CSVRow {
+    char **cells; // Array of strings
+    size_t size;  // Current number of cells
+    size_t capacity; // Total capacity of the cells array
+} CSVRow;
 
-struct CSVFile 
-{
-    Vector *rows; // Each row is a CSVRow
-    char delimiter; // Delimiter for CSV parsing
-};
+typedef struct CSVFile {
+    CSVRow **rows; // Array of pointers to CSVRow
+    size_t size;   // Current number of rows
+    size_t capacity; // Total capacity of the rows array
+    char delimiter; // Delimiter character
+} CSVFile;
 
 // CSV Row functions
 CSVRow* csv_row_create();
@@ -42,7 +46,7 @@ void csv_file_insert_column(CSVFile *file, size_t colIndex, const CSVRow *colDat
 CSVRow* csv_file_get_header(const CSVFile *file); // Header Handling
 void csv_file_set_header(CSVFile *file, CSVRow *header);
 int csv_row_get_cell_as_int(const CSVRow *row, size_t index); // Type Conversion
-Vector* csv_file_find_rows(const CSVFile *file, const char* searchTerm); // Search and Filter
+CSVRow** csv_file_find_rows(const CSVFile *file, const char* searchTerm); // Search and Filter
 bool csv_validate_cell_format(const CSVRow *row, size_t index, const char *format); // Data Validation
 void csv_file_join(const CSVFile *file1, const CSVFile *file2, size_t keyColumnIndex); // Join and Merge Operations
 int csv_column_sum(const CSVFile *file, size_t columnIndex); // Data Aggregation
