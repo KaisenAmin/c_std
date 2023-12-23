@@ -46,6 +46,8 @@ void string_swap(String* str1, String* str2);
 void string_pop_back(String* str);
 void string_deallocate(String* str);
 void string_clear(String* str);
+char* string_to_upper(String* str);
+char* string_to_lower(String* str);
 size_t string_length(String* str);
 size_t string_capacity(String* str);
 size_t string_max_size(String* str);

@@ -1,7 +1,7 @@
 #include "string.h"
 #include <stdlib.h>
 #include <string.h>
-
+#include <ctype.h>
 
 static MemoryPoolString *memory_pool_create(size_t size);
 static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
@@ -693,6 +693,52 @@ void string_clear(String* str)
         if (str->dataStr != NULL) 
             str->dataStr[0] = '\0';
     }
+}
+
+char* string_to_upper(String* str)
+{
+    if (str != NULL)
+    {
+        char* upper = (char*) malloc(sizeof(char) * (str->size + 1));
+        if (!upper)
+        {
+            perror("Can not allocate memory for string_to_upper function");
+            exit(-1);
+        }
+        for (size_t index = 0; index < str->size; index++)
+        {
+            if (isalpha(str->dataStr[index]) && (str->dataStr[index] >= 'a' && str->dataStr[index] <= 'z'))
+                upper[index] = toupper(str->dataStr[index]);
+            else 
+                upper[index] = str->dataStr[index];
+        }
+        upper[str->size] = '\0';
+        return upper;
+    }
+    return NULL;
+}
+
+char* string_to_lower(String* str)
+{
+    if (str != NULL)
+    {
+        char* lower = (char*) malloc(sizeof(char) * (str->size + 1));
+        if (!lower)
+        {
+            perror("Can not allocate memory for string_to_lower function");
+            exit(-1);
+        }
+        for (size_t index = 0; index < str->size; index++)
+        {
+            if (isalpha(str->dataStr[index]) && (str->dataStr[index] >= 'A' && str->dataStr[index] <= 'Z'))
+                lower[index] = tolower(str->dataStr[index]);
+            else 
+                lower[index] = str->dataStr[index];
+        }
+        lower[str->size] = '\0';
+        return lower;
+    }
+    return NULL;
 }
 
 
