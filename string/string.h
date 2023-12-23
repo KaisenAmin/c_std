@@ -34,6 +34,7 @@ bool string_is_greater_or_equal(String* str1, String* str2);
 bool string_is_not_equal(String* str1, String* str2);
 bool string_empty(String* str);
 int string_compare(String* str1, String* str2);
+void string_reverse(String* str);
 void string_resize(String* str, size_t newSize);
 void string_shrink_to_fit(String* str);
 void string_append(String* str, const char* strItem);

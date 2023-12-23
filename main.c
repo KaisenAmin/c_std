@@ -19,6 +19,11 @@ int main()
         printf("To Lower is -> %s\n", toLower);
         free(toLower);
     }
+
+    string_reverse(str);
+
+    printf("Reverse String is %s\n", string_c_str(str));
+    
     string_deallocate(str);
    
     return 0;

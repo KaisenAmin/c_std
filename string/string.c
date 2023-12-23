@@ -202,6 +202,32 @@ bool string_is_not_equal(String* str1, String* str2)
     return string_compare(str1, str2) != 0;
 }
 
+void string_reverse(String* str)
+{
+    if (str != NULL && str->dataStr != NULL)
+    {
+        char* reverse = (char*) malloc(sizeof(char) * (str->size + 1));
+        if (!reverse)
+        {
+            perror("reverse Object in string_reverse is NULL");
+            exit(-1);
+        }
+
+        for (int index = str->size - 1, j = 0; index >= 0; index--, j++)
+            reverse[j] = str->dataStr[index];
+
+        reverse[str->size] = '\0';
+        string_replace(str, string_c_str(str), reverse);
+        
+        free(reverse);
+    }
+    else 
+    {
+        perror("String object is NULL");
+        exit(-1);
+    }
+}
+
 void string_resize(String *str, size_t newSize) 
 {
     if (str == NULL) 
