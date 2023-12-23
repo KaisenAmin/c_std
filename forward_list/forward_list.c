@@ -224,11 +224,17 @@ void forward_list_emplace_front(ForwardList *list, void *value)
 
 void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *value) 
 {
-    if (list == NULL || pos == NULL || value == NULL) 
+    if (list == NULL || value == NULL) 
         return;
 
-    ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
+    if (pos == NULL) 
+    {
+        // Special case: if pos is NULL, insert at the beginning
+        forward_list_emplace_front(list, value);
+        return;
+    }
 
+    ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
     if (newNode == NULL) 
         return;
 
@@ -240,19 +246,28 @@ void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *v
 
 void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues) 
 {
-    if (list == NULL || pos == NULL || value == NULL) 
+    if (list == NULL || value == NULL) 
         return;
 
+    if (pos == NULL) {
+        // Special case: insert at the beginning if pos is NULL
+        for (size_t i = 0; i < numValues; ++i) 
+        {
+            void *currentValue = (char *)value + i * list->itemSize;
+            forward_list_push_front(list, currentValue);
+        }
+        return;
+    }
+
+    // Regular insertion after a given node
     for (size_t i = 0; i < numValues; ++i) 
     {
         void *currentValue = (char *)value + i * list->itemSize;
         ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
-
         if (newNode == NULL) 
             return;
 
         newNode->value = malloc(list->itemSize);
-
         if (newNode->value == NULL) 
         {
             free(newNode);
@@ -262,10 +277,11 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
 
         newNode->next = pos->next;
         pos->next = newNode;
-        pos = newNode;  // Update pos to the last inserted node
+        pos = newNode;
         list->size++;
     }
 }
+
 
 void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) 
 {
@@ -306,10 +322,19 @@ void forward_list_resize(ForwardList *list, size_t newSize)
     
     while (list->size < newSize) 
     {
-        void *nullValue = NULL; // Assuming that a null value is acceptable to add
-        forward_list_emplace_front(list, nullValue);
+        // Allocate memory for a new value and initialize it to zero
+        void *newValue = calloc(1, list->itemSize);  // Use calloc to zero-initialize
+        if (newValue == NULL) 
+            break; // In case of allocation failure, exit the loop
+        
+        // Add the new value to the front of the list
+        forward_list_push_front(list, newValue);
+
+        // Free the allocated memory as it's already copied
+        free(newValue);
     }
 }
+
 
 void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other) 
 {
