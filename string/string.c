@@ -159,6 +159,13 @@ bool string_empty(String* str)
     return (str == NULL) ? true : (str->size == 0);
 }
 
+bool string_contains(String* str, const char* substr) 
+{
+    if (str != NULL && substr != NULL) 
+        return strstr(str->dataStr, substr) != NULL;
+    return false;
+}
+
 int string_compare(String* str1, String* str2) 
 {
     if (str1 == NULL || str2 == NULL) 
