@@ -780,7 +780,6 @@ int main()
 ### Example 22 : Reverse String with string_reverse 
 
 ```c
-#include "csv/csv.h"
 #include "string/string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -802,3 +801,46 @@ int main()
 
 ```
 
+### Example 23 : string_is_digit 
+
+```c
+
+#include "string/string.h" 
+
+int main() 
+{
+    String* myString = string_create("123456");
+
+    if (string_is_digit(myString)) 
+        printf("The string contains only digits.\n");
+    else 
+        printf("The string contains non-digit characters or is not a string.\n");
+    
+    string_deallocate(myString);
+    return 0;
+}
+```
+
+### Example 24 : string_is_lower 
+
+```c
+#include "string/string.h" 
+#include <stdlib.h>
+
+int main() 
+{
+    String* myString = string_create("Hello World");
+
+    char* upper = string_to_upper(myString);
+    printf("Uppercase: %s\n", upper);
+    free(upper); // Remember to free the memory allocated by string_to_upper
+
+    char* lower = string_to_lower(myString);
+    printf("Lowercase: %s\n", lower);
+    free(lower); // Remember to free the memory allocated by string_to_lower
+
+    string_deallocate(myString);
+    return 0;
+}
+
+```

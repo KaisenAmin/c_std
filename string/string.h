@@ -7,14 +7,13 @@
 #define SMALL_STRING_SIZE 16
 
 typedef struct String String;
-typedef struct MemoryPoolString MemoryPoolString;
 
-typedef struct
-{
+
+typedef struct MemoryPoolString {
     void *pool;        // Pointer to the memory pool
     size_t poolSize;   // Total size of the pool
     size_t used;       // Memory used so far
-};
+} MemoryPoolString;
 
 struct String 
 {
@@ -33,6 +32,10 @@ bool string_is_greater(String* str1, String* str2);
 bool string_is_less_or_equal(String* str1, String* str2);
 bool string_is_greater_or_equal(String* str1, String* str2);
 bool string_is_not_equal(String* str1, String* str2);
+bool string_is_alpha(String* str);
+bool string_is_digit(String* str);
+bool string_is_lower(String* str);
+bool string_is_upper(String* str);
 bool string_empty(String* str);
 bool string_contains(String* str, const char* substr);
 int string_compare(String* str1, String* str2);

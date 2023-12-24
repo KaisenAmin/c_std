@@ -3,11 +3,12 @@
 #include <string.h>
 #include <ctype.h>
 
+MemoryPoolString* global_pool = NULL;
 static MemoryPoolString *memory_pool_create(size_t size);
 static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolString *pool);
 bool memoryPoolCreated = false;
-MemoryPoolString* global_pool = NULL;
+
 
 static void init_global_memory_pool(size_t size) 
 {
@@ -207,6 +208,61 @@ bool string_is_greater_or_equal(String* str1, String* str2)
 bool string_is_not_equal(String* str1, String* str2) 
 {
     return string_compare(str1, str2) != 0;
+}
+
+bool string_is_alpha(String* str)
+{
+    if (str != NULL)
+    {
+        for (size_t index = 0; index < str->size; index++)
+        {
+            if (!(str->dataStr[index] >= 'a' && str->dataStr[index] <= 'z') && 
+                !(str->dataStr[index] >= 'A' && str->dataStr[index] <= 'Z'))
+                return false;
+        }
+
+        return true;
+    }
+    return false;
+}
+
+bool string_is_digit(String* str)
+{
+    if (str != NULL)
+    {
+        for (size_t index = 0; index < str->size; index++)
+            if (!(str->dataStr[index] >= '0' && str->dataStr[index] <= '9'))
+                return false;
+        
+        return true;
+    }
+    return false;
+}
+
+bool string_is_upper(String* str)
+{
+    if (str != NULL)
+    {
+        for (size_t index = 0; index < str->size; index++)
+            if (str->dataStr[index] >= 'a' && str->dataStr[index] <= 'z')
+                return false;
+        
+        return true;
+    }
+    return false;
+}
+
+bool string_is_lower(String* str)
+{
+    if (str != NULL)
+    {
+        for (size_t index = 0; index < str->size; index++)
+            if (str->dataStr[index] >= 'A' && str->dataStr[index] <= 'Z')
+                return false;
+        
+        return true;
+    }
+    return false;
 }
 
 void string_reverse(String* str)
