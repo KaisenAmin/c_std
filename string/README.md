@@ -844,3 +844,119 @@ int main()
 }
 
 ```
+
+### Example 25 : concatenate two String with string_concatenate 
+```c
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() 
+{
+    String* str1 = string_create("Hello");
+    String* str2 = string_create(" World");
+
+    string_concatenate(str1, str2);
+    printf("Concatenated string: %s\n", string_c_str(str1));
+
+    string_deallocate(str1);
+    string_deallocate(str2);
+    return 0;
+}
+```
+
+### Example 26 : trim String from start, end or both 
+```c
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() 
+{
+    String* str = string_create("   Hello World   ");
+
+    string_trim_start(str);
+    printf("Trimmed Start: '%s'\n", string_c_str(str));
+
+    string_trim_end(str);
+    printf("Trimmed End: '%s'\n", string_c_str(str));
+
+    string_clear(str);
+    string_assign(str, "   Hello World   ");
+    string_trim(str);
+    
+    printf("Trimmed Both: '%s'\n", string_c_str(str));
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 27 : split String with string_split 
+```c
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
+int main() 
+{
+    String* str = string_create("Hello,World,This,Is,A,Test");
+    int count = 0;
+    String** splits = string_split(str, ",", &count);
+
+    for (int i = 0; i < count; i++) {
+        printf("Split %d: %s\n", i, string_c_str(splits[i]));
+        string_deallocate(splits[i]);
+    }
+    free(splits);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 28 : joins several String objects with string_join 
+```c
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
+int main() 
+{
+    String* parts[3];
+
+    parts[0] = string_create("Hello");
+    parts[1] = string_create("World");
+    parts[2] = string_create("Again");
+
+    String* joined = string_join(parts, 3, " ");
+    printf("Joined string: %s\n", string_c_str(joined));
+
+    for (int i = 0; i < 3; i++) 
+        string_deallocate(parts[i]);
+    
+    string_deallocate(joined);
+    return 0;
+}
+```
+
+### Example 29 : replace_all 
+```c
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() 
+{
+    String* str = string_create("This is a test. This is only a test.");
+
+    string_replace_all(str, "test", "example");
+    printf("Replaced string: %s\n", string_c_str(str));
+
+    string_deallocate(str);
+    return 0;
+}
+
+```

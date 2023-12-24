@@ -10,6 +10,18 @@ static void memory_pool_destroy(MemoryPoolString *pool);
 bool memoryPoolCreated = false;
 
 
+static char* my_strdup(const char* s) 
+{
+    if (s == NULL) 
+        return NULL;
+        
+    char* new_str = malloc(strlen(s) + 1);
+    if (new_str) 
+        strcpy(new_str, s);
+
+    return new_str;
+}
+
 static void init_global_memory_pool(size_t size) 
 {
     if (global_pool == NULL) 
@@ -861,4 +873,130 @@ bool string_set_pool_size(String* str, size_t newSize)
     }
 
     return true; // Return true on successful pool resize
+}
+
+void string_concatenate(String *str1, const String *str2) 
+{
+    if (str1 == NULL || str2 == NULL) 
+        return;
+
+    string_append(str1, str2->dataStr);
+}
+
+void string_trim_start(String *str) 
+{
+    if (str == NULL || str->size == 0) 
+        return;
+
+    size_t i = 0;
+    while (i < str->size && isspace((unsigned char)str->dataStr[i]))
+        i++;
+
+    if (i > 0) 
+    {
+        memmove(str->dataStr, str->dataStr + i, str->size - i);
+        str->size -= i;
+        str->dataStr[str->size] = '\0';
+    }
+}
+
+void string_trim_end(String *str) 
+{
+    if (str == NULL || str->size == 0) 
+        return;
+
+    size_t i = str->size;
+    while (i > 0 && isspace((unsigned char)str->dataStr[i - 1])) 
+        i--;
+
+    if (i < str->size) 
+    {
+        str->dataStr[i] = '\0';
+        str->size = i;
+    }
+}
+
+void string_trim(String *str) 
+{
+    string_trim_start(str);
+    string_trim_end(str);
+}
+
+String** string_split(String *str, const char *delimiter, int *count) 
+{
+    if (str == NULL || delimiter == NULL) 
+        return NULL;
+
+    size_t num_splits = 0;
+    char *temp = my_strdup(str->dataStr);
+    char *token = strtok(temp, delimiter);
+
+    while (token != NULL) 
+    {
+        num_splits++;
+        token = strtok(NULL, delimiter);
+    }
+
+    free(temp);
+
+    if (num_splits == 0) 
+        return NULL;
+
+    String **splits = malloc(sizeof(String*) * num_splits);
+    if (splits == NULL) 
+        return NULL;
+
+    temp = my_strdup(str->dataStr);
+    token = strtok(temp, delimiter);
+
+    size_t index = 0;
+    while (token != NULL && index < num_splits) 
+    {
+        splits[index++] = string_create(token);
+        token = strtok(NULL, delimiter);
+    }
+
+    free(temp);
+    *count = num_splits;
+
+    return splits;
+}
+
+String* string_join(String **strings, int count, const char *delimiter) 
+{
+    if (strings == NULL || count <= 0) 
+        return NULL;
+
+    String *result = string_create("");
+    for (int i = 0; i < count; i++) 
+    {
+        string_append(result, strings[i]->dataStr);
+        if (i < count - 1) 
+            string_append(result, delimiter);
+    }
+
+    return result;
+}
+
+void string_replace_all(String *str, const char *oldStr, const char *newStr) 
+{
+    if (str == NULL || oldStr == NULL || newStr == NULL) 
+        return;
+
+    String *temp = string_create("");
+    char *start = str->dataStr;
+    char *end;
+
+    while ((end = strstr(start, oldStr)) != NULL) 
+    {
+        *end = '\0';
+        string_append(temp, start);
+        string_append(temp, newStr);
+        start = end + strlen(oldStr);
+    }
+
+    string_append(temp, start);
+    string_assign(str, temp->dataStr);
+
+    string_deallocate(temp);
 }

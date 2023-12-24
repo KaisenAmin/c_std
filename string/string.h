@@ -79,5 +79,12 @@ char* string_back(String* str);
 char* string_front(String* str);
 void string_deallocate(String *str);
 bool string_set_pool_size(String* str, size_t newSize);
+void string_concatenate(String *str1, const String *str2);
+void string_trim_start(String *str);
+void string_trim_end(String *str);
+void string_trim(String *str);
+String** string_split(String *str, const char *delimiter, int *count);
+String* string_join(String **strings, int count, const char *delimiter);
+void string_replace_all(String *str, const char *oldStr, const char *newStr);
 
 #endif 
