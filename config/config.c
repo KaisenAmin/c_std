@@ -121,29 +121,31 @@ ConfigFile *config_create(const char *filename)
 }
 
 // Saves the current state of the configuration structure to a file
-void config_save(const ConfigFile *config, const char *filename) {
+void config_save(const ConfigFile *config, const char *filename) 
+{
     FILE *file = fopen(filename, "w");
-    if (!file) {
+    if (!file) 
+    {
         perror("Error opening file for writing");
         return;
     }
 
-    for (size_t i = 0; i < config->section_count; i++) {
+    for (size_t i = 0; i < config->section_count; i++) 
+    {
         ConfigSection *section = config->sections[i];
-
-        // Write the section name
-        fprintf(file, "[%s]\n", section->section_name);
+        
+        fprintf(file, "[%s]\n", section->section_name); // Write the section name
 
         // Write all entries within the section
-        for (size_t j = 0; j < section->entry_count; j++) {
+        for (size_t j = 0; j < section->entry_count; j++) 
+        {
             ConfigEntry *entry = &section->entries[j];
-            if (entry->isComment) {
+            if (entry->isComment) 
                 fprintf(file, "%s\n", entry->value);
-            } else {
-                // Ensure both key and value are written
-                if (entry->key && entry->value) {
+            else 
+            {
+                if (entry->key && entry->value) // Ensure both key and value are written
                     fprintf(file, "%s=%s\n", entry->key, entry->value);
-                }
             }
         }
 
@@ -179,20 +181,24 @@ const char *config_get_value(const ConfigFile *config, const char *section, cons
 
 
 // Sets the value for a given key in a specified section
-void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value) {
+void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value) 
+{
     if (!config || !section || !key || !value) 
         return;
 
     // Find or create the section
     ConfigSection *sec = NULL;
-    for (size_t i = 0; i < config->section_count; ++i) {
-        if (strcmp(config->sections[i]->section_name, section) == 0) {
+    for (size_t i = 0; i < config->section_count; ++i) 
+    {
+        if (strcmp(config->sections[i]->section_name, section) == 0) 
+        {
             sec = config->sections[i];
             break;
         }
     }
 
-    if (!sec) {
+    if (!sec) 
+    {
         sec = malloc(sizeof(ConfigSection));
         if (!sec)
             return; // Memory allocation failed
@@ -201,7 +207,8 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         sec->entry_count = 0;
 
         config->sections = realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
-        if (!config->sections) {
+        if (!config->sections) 
+        {
             free(sec->section_name);
             free(sec);
             return; // Memory allocation failed
@@ -210,17 +217,21 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
     }
 
     // Update existing key or add new key-value pair
-    for (size_t j = 0; j < sec->entry_count; ++j) {
-        if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) {
+    for (size_t j = 0; j < sec->entry_count; ++j) 
+    {
+        if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) 
+        {
             free(sec->entries[j].value);
             sec->entries[j].key = my_strdup(key);
             sec->entries[j].value = my_strdup(value);
+
             return;
         }
     }
 
     sec->entries = realloc(sec->entries, (sec->entry_count + 1) * sizeof(ConfigEntry));
-    if (!sec->entries) {
+    if (!sec->entries) 
+    {
         perror("Failed to allocate memory for new entry");
         return; // Handle allocation error
     }
@@ -262,36 +273,36 @@ void config_remove_section(ConfigFile *config, const char *section)
 }
 
 // Removes a specific key-value pair from a section in the configuration
-void config_remove_key(ConfigFile *config, const char *section, const char *key) {
-    printf("Attempting to remove key '%s' from section '%s'.\n", key, section);
-
-    if (!config || !section || !key) {
+void config_remove_key(ConfigFile *config, const char *section, const char *key) 
+{
+    if (!config || !section || !key) 
+    {
         printf("Invalid input provided.\n");
         return;
     }
 
-    for (size_t i = 0; i < config->section_count; ++i) {
-        if (strcmp(config->sections[i]->section_name, section) == 0) {
+    for (size_t i = 0; i < config->section_count; ++i) 
+    {
+        if (strcmp(config->sections[i]->section_name, section) == 0) 
+        {
             ConfigSection *sec = config->sections[i];
 
-            for (size_t j = 0; j < sec->entry_count; ++j) {
-                if (strcmp(sec->entries[j].key, key) == 0) {
-                    printf("Key '%s' found. Removing...\n", key);
-
+            for (size_t j = 0; j < sec->entry_count; ++j) 
+            {
+                if (strcmp(sec->entries[j].key, key) == 0) 
+                {
                     free(sec->entries[j].key);
                     free(sec->entries[j].value);
 
-                    for (size_t k = j; k < sec->entry_count - 1; ++k) {
+                    for (size_t k = j; k < sec->entry_count - 1; ++k) 
                         sec->entries[k] = sec->entries[k + 1];
-                    }
 
                     sec->entry_count--;
                     sec->entries = realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
-                    printf("Key '%s' removed successfully.\n", key);
+                   
                     return;
                 }
             }
-            printf("Key '%s' not found in section '%s'.\n", key, section);
             break;
         }
     }
@@ -560,19 +571,17 @@ void config_set_array(ConfigFile *config, const char *section, const char *key, 
         return;
 
     size_t total_length = strlen(key) + 2; // +2 for '=' and '\0'
-    for (size_t i = 0; i < array_size; i++) {
+    for (size_t i = 0; i < array_size; i++) 
         total_length += strlen(array[i]) + ((i < array_size - 1) ? 1 : 0); // +1 for comma, if not the last element
-    }
-
+    
     char *combined = malloc(total_length);
     if (!combined) 
         return; // Memory allocation failed
 
     char *ptr = combined;
     ptr += sprintf(ptr, "%s=", key);
-    for (size_t i = 0; i < array_size; i++) {
+    for (size_t i = 0; i < array_size; i++) 
         ptr += sprintf(ptr, "%s%s", array[i], (i < array_size - 1) ? ", " : "");
-    }
 
     config_set_value(config, section, key, combined);
     free(combined);
