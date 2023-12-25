@@ -535,7 +535,7 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
 
     // Split the string into array
     char *value_copy = my_strdup(value);
-    char *token = strtok(value_copy, ",");
+    char *token = strtok(value_copy, ", ");
     size_t idx = 0;
 
     while (token) 
@@ -549,25 +549,27 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
 }
 
 // Sets an array of strings for a given key in a section
-void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size) 
-{
+void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size) {
     if (!config || !section || !key || !array || array_size == 0) 
         return;
 
-    size_t total_length = 0; // Estimate the total length of the combined string
-    for (size_t i = 0; i < array_size; i++) 
-        total_length += strlen(array[i]) + 1; // +1 for comma or null terminator
+    size_t total_length = strlen(key) + 2; // +2 for '=' and '\0'
+    for (size_t i = 0; i < array_size; i++) {
+        total_length += strlen(array[i]) + ((i < array_size - 1) ? 1 : 0); // +1 for comma, if not the last element
+    }
 
-    char *combined = malloc(total_length); // Allocate memory for the combined string
+    char *combined = malloc(total_length);
     if (!combined) 
         return; // Memory allocation failed
 
     char *ptr = combined;
-    for (size_t i = 0; i < array_size; i++) 
-        ptr += sprintf(ptr, "%s%s", array[i], (i < array_size - 1) ? "," : "");
+    ptr += sprintf(ptr, "%s=", key);
+    for (size_t i = 0; i < array_size; i++) {
+        ptr += sprintf(ptr, "%s%s", array[i], (i < array_size - 1) ? ", " : "");
+    }
 
-    config_set_value(config, section, key, combined);  // Set the combined string as the value
-    free(combined);  // Free the allocated memory
+    config_set_value(config, section, key, combined);
+    free(combined);
 }
 
 // Retrieves an encrypted value for a given key in a section
@@ -598,6 +600,7 @@ void config_set_encrypted_value(ConfigFile *config, const char *section, const c
     char *encrypted_value = malloc(value_size + 1);
     if (!encrypted_value) 
         return;
+
     xor_encrypt_decrypt(value, encrypted_value, encryption_key[0], value_size);
     encrypted_value[value_size] = '\0';
 

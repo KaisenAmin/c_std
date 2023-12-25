@@ -160,3 +160,88 @@ int main()
 }
 
 ```
+
+### Example 5: Handling Arrays of Values
+This example demonstrates how to store and retrieve an array of strings for a given key in a configuration section.
+
+```c
+#include "config/config.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
+int main() 
+{
+    ConfigFile *config = config_create("sources/config.ini");
+
+    if (!config) 
+    {
+        printf("Failed to load configuration.\n");
+        return 1;
+    }
+
+    // Define an array of values to store
+    const char *server_ips[] = {"192.168.1.1", "192.168.1.2", "192.168.1.3"};
+    config_set_array(config, "network", "server_ips", server_ips, 3);
+
+    // Retrieve the array of values
+    size_t array_size;
+    char **retrieved_ips = config_get_array(config, "network", "server_ips", &array_size);
+
+    if (retrieved_ips) 
+    {
+        printf("Server IPs:\n");
+        for (size_t i = 0; i < array_size; ++i) 
+        {
+            printf("- %s\n", retrieved_ips[i]);
+            free(retrieved_ips[i]); // Free each string in the array
+        }
+        free(retrieved_ips); // Free the array itself
+    }
+
+    config_save(config, "sources/modified_config.ini");
+    config_deallocate(config);
+    
+    return 0;
+}
+```
+
+### Example 6: Validating Configuration Structure
+This example shows how to validate the configuration structure against an expected template, ensuring that required sections are present.
+
+```c
+#include "config/config.h"
+#include <stdio.h>
+
+int main() 
+{
+    ConfigFile *config = config_create("sources/config.ini");
+
+    if (!config) 
+    {
+        printf("Failed to load configuration.\n");
+        return 1;
+    }
+
+    // Expected structure
+    const ConfigSection expected_structure[] = {
+        {"global", NULL, 0, NULL},
+        {"user_preferences", NULL, 0, NULL},
+        {"network", NULL, 0, NULL}
+    };
+
+    // Validate the structure
+    config_validate_structure(config, expected_structure, sizeof(expected_structure) / sizeof(ConfigSection));
+    
+    // Iterate through the expected structure and check for each section
+    for (size_t i = 0; i < sizeof(expected_structure) / sizeof(ConfigSection); ++i) 
+    {
+        if (!config_has_section(config, expected_structure[i].section_name)) 
+            printf("Section '%s' is missing in the configuration.\n", expected_structure[i].section_name);
+    }
+
+    config_deallocate(config);
+    return 0;
+}
+
+```
