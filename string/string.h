@@ -90,5 +90,7 @@ int string_to_int(String *str);
 float string_to_float(String *str);
 void string_pad_start(String *str, size_t totalLength, char padChar);
 void string_pad_end(String *str, size_t totalLength, char padChar);
+String* string_to_hex(String *str);
+String* hex_to_string(String *hexStr);
 
 #endif 

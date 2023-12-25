@@ -1063,3 +1063,37 @@ void string_pad_end(String *str, size_t totalLength, char padChar)
     str->size = newSize;
     str->capacitySize = newSize + 1;
 }
+
+String* string_to_hex(String *str) 
+{
+    if (str == NULL || string_empty(str)) 
+        return NULL;
+
+    String *hexStr = string_create("");
+    for (size_t i = 0; i < str->size; ++i) 
+    {
+        char buffer[3];  // Each char can be represented by max 2 hex digits + null terminator
+
+        sprintf(buffer, "%02x", (unsigned char)str->dataStr[i]);
+        string_append(hexStr, buffer);
+    }
+
+    return hexStr;
+}
+
+String* hex_to_string(String *hexStr) 
+{
+    if (hexStr == NULL || string_empty(hexStr) || (hexStr->size % 2) != 0) 
+        return NULL; // Hex string should have an even number of characters
+
+    String *str = string_create("");
+    for (size_t i = 0; i < hexStr->size; i += 2) 
+    {
+        char buffer[3] = {hexStr->dataStr[i], hexStr->dataStr[i + 1], '\0'};
+        char ch = (char)strtol(buffer, NULL, 16);
+        
+        string_push_back(str, ch);
+    }
+
+    return str;
+}

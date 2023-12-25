@@ -1036,3 +1036,47 @@ int main()
     return 0;
 }
 ```
+
+### Example 34 : string_to_hex 
+converts a regular string to its hexadecimal representation.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String *originalStr = string_create("Hello");
+    String *hexStr = string_to_hex(originalStr);
+
+    printf("Original String: %s\n", originalStr->dataStr);
+    printf("Hexadecimal Representation: %s\n", hexStr->dataStr);
+
+    string_deallocate(originalStr);
+    string_deallocate(hexStr);
+    return 0;
+}
+
+```
+
+### Example 35 : hex_to_string 
+converts a hexadecimal string back to the original string.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String *hexStr = string_create("48656c6c6f"); // Hexadecimal representation of "Hello"
+    String *convertedStr = hex_to_string(hexStr);
+
+    printf("Hexadecimal String: %s\n", hexStr->dataStr);
+    printf("Converted String: %s\n", convertedStr->dataStr);
+
+    string_deallocate(hexStr);
+    string_deallocate(convertedStr);
+    return 0;
+}
+
+```
