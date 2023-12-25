@@ -71,7 +71,7 @@ void config_set_comment(ConfigFile *config, const char *section, const char *com
 ConfigIterator config_get_iterator(const ConfigFile *config); // Get an iterator for the config file
 bool config_next_entry(ConfigIterator *iterator, const char **section, const char **key, const char **value); // Iterate over entries
 
-void config_reload(ConfigFile *config); // Reload configuration from file
+void config_reload(ConfigFile **config); // Reload configuration from file
 void config_register_modification_callback(ConfigFile *config, void (*callback)(const char *section, const char *key, const char *value));
 void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size);
 char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size);

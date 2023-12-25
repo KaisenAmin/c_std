@@ -121,39 +121,38 @@ ConfigFile *config_create(const char *filename)
 }
 
 // Saves the current state of the configuration structure to a file
-void config_save(const ConfigFile *config, const char *filename) 
-{
+void config_save(const ConfigFile *config, const char *filename) {
     FILE *file = fopen(filename, "w");
-    if (!file) 
-    {
+    if (!file) {
         perror("Error opening file for writing");
         return;
     }
 
-    for (size_t i = 0; i < config->section_count; i++) 
-    {
+    for (size_t i = 0; i < config->section_count; i++) {
         ConfigSection *section = config->sections[i];
-        // printf("%d\n", section->entries->isComment);
-        // if (section->comment)  // Write the comment for the section if it exists
-        //     fprintf(file, "# %s\n", section->comment);
 
-        fprintf(file, "[%s]\n", section->section_name); // Write the section name
+        // Write the section name
+        fprintf(file, "[%s]\n", section->section_name);
 
-        for (size_t j = 0; j < section->entry_count; j++) 
-        {
+        // Write all entries within the section
+        for (size_t j = 0; j < section->entry_count; j++) {
             ConfigEntry *entry = &section->entries[j];
-            if (entry->isComment) 
-                fprintf(file, "%s\n", entry->value); // Write the comment
-            else 
-                fprintf(file, "%s=%s\n", entry->key, entry->value);
+            if (entry->isComment) {
+                fprintf(file, "%s\n", entry->value);
+            } else {
+                // Ensure both key and value are written
+                if (entry->key && entry->value) {
+                    fprintf(file, "%s=%s\n", entry->key, entry->value);
+                }
+            }
         }
 
-        fprintf(file, "\n");
-        free(section);
+        fprintf(file, "\n"); // New line after each section for better readability
     }
 
     fclose(file);
 }
+
 
 // Retrieves the value for a given key in a specified section
 const char *config_get_value(const ConfigFile *config, const char *section, const char *key) 
@@ -180,51 +179,57 @@ const char *config_get_value(const ConfigFile *config, const char *section, cons
 
 
 // Sets the value for a given key in a specified section
-void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value) 
-{
+void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value) {
     if (!config || !section || !key || !value) 
         return;
 
+    // Find or create the section
     ConfigSection *sec = NULL;
-    for (size_t i = 0; i < config->section_count; ++i) 
-    {
-        if (strcmp(config->sections[i]->section_name, section) == 0) 
-        {
+    for (size_t i = 0; i < config->section_count; ++i) {
+        if (strcmp(config->sections[i]->section_name, section) == 0) {
             sec = config->sections[i];
             break;
         }
     }
 
-    if (!sec) 
-    {
-        // Section not found, create a new one
+    if (!sec) {
         sec = malloc(sizeof(ConfigSection));
+        if (!sec)
+            return; // Memory allocation failed
         sec->section_name = my_strdup(section);
         sec->entries = NULL;
         sec->entry_count = 0;
-        sec->comment = NULL;
 
         config->sections = realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
+        if (!config->sections) {
+            free(sec->section_name);
+            free(sec);
+            return; // Memory allocation failed
+        }
         config->sections[config->section_count++] = sec;
     }
 
-    for (size_t j = 0; j < sec->entry_count; ++j) 
-    {
-        if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) 
-        {
+    // Update existing key or add new key-value pair
+    for (size_t j = 0; j < sec->entry_count; ++j) {
+        if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) {
             free(sec->entries[j].value);
+            sec->entries[j].key = my_strdup(key);
             sec->entries[j].value = my_strdup(value);
-
             return;
         }
     }
 
-    // Key not found, add a new key-value pair
     sec->entries = realloc(sec->entries, (sec->entry_count + 1) * sizeof(ConfigEntry));
-    sec->entries[sec->entry_count].key = my_strdup(key);
-    sec->entries[sec->entry_count].value = my_strdup(value);
+    if (!sec->entries) {
+        perror("Failed to allocate memory for new entry");
+        return; // Handle allocation error
+    }
+
+    sec->entries[sec->entry_count].key = my_strdup(key); // Allocate and set key
+    sec->entries[sec->entry_count].value = my_strdup(value); // Allocate and set value
     sec->entry_count++;
 }
+
 
 // Removes an entire section from the configuration
 void config_remove_section(ConfigFile *config, const char *section) 
@@ -257,35 +262,41 @@ void config_remove_section(ConfigFile *config, const char *section)
 }
 
 // Removes a specific key-value pair from a section in the configuration
-void config_remove_key(ConfigFile *config, const char *section, const char *key) 
-{
-    if (!config || !section || !key) 
-        return;
+void config_remove_key(ConfigFile *config, const char *section, const char *key) {
+    printf("Attempting to remove key '%s' from section '%s'.\n", key, section);
 
-    for (size_t i = 0; i < config->section_count; ++i) 
-    {
-        if (strcmp(config->sections[i]->section_name, section) == 0) 
-        {
+    if (!config || !section || !key) {
+        printf("Invalid input provided.\n");
+        return;
+    }
+
+    for (size_t i = 0; i < config->section_count; ++i) {
+        if (strcmp(config->sections[i]->section_name, section) == 0) {
             ConfigSection *sec = config->sections[i];
-            for (size_t j = 0; j < sec->entry_count; ++j) 
-            {
-                if (strcmp(sec->entries[j].key, key) == 0) 
-                {
+
+            for (size_t j = 0; j < sec->entry_count; ++j) {
+                if (strcmp(sec->entries[j].key, key) == 0) {
+                    printf("Key '%s' found. Removing...\n", key);
+
                     free(sec->entries[j].key);
                     free(sec->entries[j].value);
-                    for (size_t k = j; k < sec->entry_count - 1; ++k) // Shift remaining entries
+
+                    for (size_t k = j; k < sec->entry_count - 1; ++k) {
                         sec->entries[k] = sec->entries[k + 1];
-                        
+                    }
+
                     sec->entry_count--;
                     sec->entries = realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
-
+                    printf("Key '%s' removed successfully.\n", key);
                     return;
                 }
             }
+            printf("Key '%s' not found in section '%s'.\n", key, section);
             break;
         }
     }
 }
+
 
 // Frees all memory associated with the configuration structure
 void config_deallocate(ConfigFile *config) 
@@ -461,21 +472,16 @@ bool config_next_entry(ConfigIterator *iterator, const char **section, const cha
 }
 
 // Reloads the configuration from the file, updating the in-memory representation
-void config_reload(ConfigFile *config) 
+void config_reload(ConfigFile **config_ptr) 
 {
-    if (!config || !config->filename) 
+    if (!config_ptr || !(*config_ptr) || !(*config_ptr)->filename) 
         return;
 
-    ConfigFile *new_config = config_create(config->filename);
+    ConfigFile *new_config = config_create((*config_ptr)->filename);
     if (new_config) 
     {
-        config_deallocate(config); // Replace old configuration data with new data
-        memcpy(config, new_config, sizeof(ConfigFile));
-
-        new_config->sections = NULL; // Prevent deallocation of new data when new_config is deallocated
-        new_config->default_section = NULL;
-        new_config->filename = NULL;
-        free(new_config);
+        config_deallocate(*config_ptr); // Free the old configuration
+        *config_ptr = new_config; // Point to the new configuration
     }
 }
 

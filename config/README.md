@@ -245,3 +245,91 @@ int main()
 }
 
 ```
+
+## Example 7 : Dynamic Configuration Management 
+
+This example demonstrates how to dynamically manage a configuration by adding and removing sections and keys, and reloading the configuration from the file.
+
+```c
+#include "config/config.h"
+#include <stdio.h>
+
+int main() 
+{
+    ConfigFile *config = config_create("sources/config.ini");
+
+    if (!config) 
+    {
+        printf("Failed to load configuration.\n");
+        return 1;
+    }
+
+    printf("Adding new section and keys...\n");
+    config_set_value(config, "new_section", "new_key", "new_value");
+    config_set_value(config, "new_section", "another_key", "another_value");
+
+    printf("Saving to dynamic_config.ini...\n");
+    config_save(config, "sources/dynamic_config.ini");
+    printf("Save operation completed.\n");
+
+    printf("Removing key 'another_key'...\n");
+    config_remove_key(config, "new_section", "another_key");
+
+    printf("Saving to dynamic_config_modified.ini...\n");
+    config_save(config, "sources/dynamic_config_modified.ini");
+    printf("Save operation completed.\n");
+
+    printf("Reloading configuration...\n");
+    config_reload(&config);
+
+    if (!config_has_key(config, "new_section", "another_key")) 
+        printf("Key 'another_key' successfully removed.\n");
+    else 
+        printf("Key 'another_key' still exists.\n");
+
+    config_deallocate(config);
+    return 0;
+}
+
+```
+
+## Example 8 : Handling Multiple Configuration Files 
+
+This example shows how to work with multiple configuration files, such as loading different configurations based on certain conditions and merging them
+
+```c
+#include "config/config.h"
+#include <stdio.h>
+
+int main() 
+{
+    ConfigFile *config1 = config_create("sources/config.ini");
+    ConfigFile *config2 = config_create("sources/dynamic_config.ini");
+
+    if (!config1 || !config2) 
+    {
+        printf("Failed to load configurations.\n");
+        if (config1) config_deallocate(config1);
+        if (config2) config_deallocate(config2);
+        return 1;
+    }
+
+    // Merge configuration from config2 into config1
+    ConfigIterator it = config_get_iterator(config2);
+    const char *section, *key, *value;
+
+    while (config_next_entry(&it, &section, &key, &value)) 
+    {
+        if (!config_has_key(config1, section, key)) 
+            config_set_value(config1, section, key, value); // If the key does not exist in config1, add it
+    }
+
+    config_save(config1, "sources/merged_config.ini");
+
+    config_deallocate(config1);
+    config_deallocate(config2);
+    
+    return 0;
+}
+
+```

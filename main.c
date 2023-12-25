@@ -3,31 +3,31 @@
 
 int main() 
 {
-    ConfigFile *config = config_create("sources/config.ini");
+    ConfigFile *config1 = config_create("sources/config.ini");
+    ConfigFile *config2 = config_create("sources/dynamic_config.ini");
 
-    if (!config) 
+    if (!config1 || !config2) 
     {
-        printf("Failed to load configuration.\n");
+        printf("Failed to load configurations.\n");
+        if (config1) config_deallocate(config1);
+        if (config2) config_deallocate(config2);
         return 1;
     }
 
-    // Expected structure
-    const ConfigSection expected_structure[] = {
-        {"global", NULL, 0, NULL},
-        {"user_preferences", NULL, 0, NULL},
-        {"network", NULL, 0, NULL}
-    };
+    // Merge configuration from config2 into config1
+    ConfigIterator it = config_get_iterator(config2);
+    const char *section, *key, *value;
 
-    // Validate the structure
-    config_validate_structure(config, expected_structure, sizeof(expected_structure) / sizeof(ConfigSection));
-    
-    // Iterate through the expected structure and check for each section
-    for (size_t i = 0; i < sizeof(expected_structure) / sizeof(ConfigSection); ++i) 
+    while (config_next_entry(&it, &section, &key, &value)) 
     {
-        if (!config_has_section(config, expected_structure[i].section_name)) 
-            printf("Section '%s' is missing in the configuration.\n", expected_structure[i].section_name);
+        if (!config_has_key(config1, section, key)) 
+            config_set_value(config1, section, key, value); // If the key does not exist in config1, add it
     }
 
-    config_deallocate(config);
+    config_save(config1, "sources/merged_config.ini");
+
+    config_deallocate(config1);
+    config_deallocate(config2);
+    
     return 0;
 }
