@@ -9,7 +9,6 @@ static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolString *pool);
 bool memoryPoolCreated = false;
 
-
 static char* my_strdup(const char* s) 
 {
     if (s == NULL) 
