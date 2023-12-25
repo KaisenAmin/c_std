@@ -960,3 +960,79 @@ int main()
 }
 
 ```
+
+### Example 30: string_to_int
+Convert a string to an integer.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String *str = string_create("12345");
+    int intValue = string_to_int(str);
+
+    printf("Integer value: %d\n", intValue);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 31: string_to_float
+Convert a string to a float.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String *str = string_create("123.45");
+    float floatValue = string_to_float(str);
+
+    printf("Float value: %.2f\n", floatValue);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 32: string_pad_start
+Pad a string at the start to reach a specified length.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String *str = string_create("hello");
+    string_pad_start(str, 10, '*'); // Pads with '*' to a total length of 10
+
+    printf("Padded String (Start): '%s'\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 33: string_pad_end
+Pad a string at the end to reach a specified length.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String *str = string_create("world");
+    string_pad_end(str, 10, '-'); // Pads with '-' to a total length of 10
+
+    printf("Padded String (End): '%s'\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```

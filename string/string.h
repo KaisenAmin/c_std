@@ -86,5 +86,9 @@ void string_trim(String *str);
 String** string_split(String *str, const char *delimiter, int *count);
 String* string_join(String **strings, int count, const char *delimiter);
 void string_replace_all(String *str, const char *oldStr, const char *newStr);
+int string_to_int(String *str);
+float string_to_float(String *str);
+void string_pad_start(String *str, size_t totalLength, char padChar);
+void string_pad_end(String *str, size_t totalLength, char padChar);
 
 #endif 

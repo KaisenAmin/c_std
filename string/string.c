@@ -999,3 +999,67 @@ void string_replace_all(String *str, const char *oldStr, const char *newStr)
 
     string_deallocate(temp);
 }
+
+int string_to_int(String *str) 
+{
+    if (str == NULL || string_empty(str)) 
+        return 0;
+
+    return atoi(str->dataStr);
+}
+
+float string_to_float(String *str) 
+{
+    if (str == NULL || string_empty(str)) 
+        return 0.0f;
+
+    return atof(str->dataStr);
+}
+
+void string_pad_start(String *str, size_t totalLength, char padChar) 
+{
+    if (str == NULL || str->size >= totalLength) 
+        return;
+
+    size_t padSize = totalLength - str->size;
+    size_t newSize = str->size + padSize;
+    char *newData = (char *)malloc(newSize + 1); // +1 for null terminator
+
+    if (newData == NULL) 
+    {
+        perror("Failed to allocate memory in string_pad_start");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(newData, padChar, padSize);
+    memcpy(newData + padSize, str->dataStr, str->size);
+    newData[newSize] = '\0';
+
+    free(str->dataStr);
+    str->dataStr = newData;
+    str->size = newSize;
+    str->capacitySize = newSize + 1;
+}
+
+void string_pad_end(String *str, size_t totalLength, char padChar) 
+{
+    if (str == NULL || str->size >= totalLength) 
+        return;
+
+    size_t padSize = totalLength - str->size;
+    size_t newSize = str->size + padSize;
+    char *newData = (char *)realloc(str->dataStr, newSize + 1); // +1 for null terminator
+
+    if (newData == NULL) 
+    {
+        perror("Failed to allocate memory in string_pad_end");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(newData + str->size, padChar, padSize);
+    newData[newSize] = '\0';
+
+    str->dataStr = newData;
+    str->size = newSize;
+    str->capacitySize = newSize + 1;
+}
