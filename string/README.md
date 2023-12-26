@@ -1009,7 +1009,7 @@ Pad a string at the start to reach a specified length.
 int main() 
 {
     String *str = string_create("hello");
-    string_pad_start(str, 10, '*'); // Pads with '*' to a total length of 10
+    string_pad_left(str, 10, '*'); // Pads with '*' to a total length of 10
 
     printf("Padded String (Start): '%s'\n", str->dataStr);
 
@@ -1028,7 +1028,7 @@ Pad a string at the end to reach a specified length.
 int main() 
 {
     String *str = string_create("world");
-    string_pad_end(str, 10, '-'); // Pads with '-' to a total length of 10
+    string_pad_right(str, 10, '-'); // Pads with '-' to a total length of 10
 
     printf("Padded String (End): '%s'\n", str->dataStr);
 

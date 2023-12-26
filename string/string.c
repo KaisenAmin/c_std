@@ -1016,7 +1016,7 @@ float string_to_float(String *str)
     return atof(str->dataStr);
 }
 
-void string_pad_start(String *str, size_t totalLength, char padChar) 
+void string_pad_left(String *str, size_t totalLength, char padChar) 
 {
     if (str == NULL || str->size >= totalLength) 
         return;
@@ -1041,7 +1041,7 @@ void string_pad_start(String *str, size_t totalLength, char padChar)
     str->capacitySize = newSize + 1;
 }
 
-void string_pad_end(String *str, size_t totalLength, char padChar) 
+void string_pad_right(String *str, size_t totalLength, char padChar) 
 {
     if (str == NULL || str->size >= totalLength) 
         return;
