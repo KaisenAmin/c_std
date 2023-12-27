@@ -92,5 +92,9 @@ void string_pad_left(String *str, size_t totalLength, char padChar);
 void string_pad_right(String *str, size_t totalLength, char padChar);
 String* string_to_hex(String *str);
 String* hex_to_string(String *hexStr);
+size_t string_count(String* str, const char* substr);
+void string_remove(String* str, const char* substr);
+String* string_from_int(int value);
+String* string_from_float(float value);
 
 #endif 

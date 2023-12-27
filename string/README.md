@@ -1080,3 +1080,78 @@ int main()
 }
 
 ```
+
+### Example 36 : string_count
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("Hello World, World!");
+    const char* substr = "World";
+
+    size_t count = string_count(str, substr);
+    printf("The substring '%s' appears %zu times in '%s'.\n", substr, count, str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 37 : string_remove
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("Hello World, World!");
+    const char* substr = "World";
+
+    printf("Original string: %s\n", str->dataStr);
+    string_remove(str, substr);
+    printf("String after removal: %s\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 38 : string_from_int
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    int value = 123;
+    String* str = string_from_int(value);
+
+    printf("Integer %d converted to string: %s\n", value, str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 39 : string_from_float
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    float value = 123.456;
+    String* str = string_from_float(value);
+
+    printf("Float %.3f converted to string: %s\n", value, str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```

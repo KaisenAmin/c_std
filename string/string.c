@@ -1097,3 +1097,50 @@ String* hex_to_string(String *hexStr)
 
     return str;
 }
+
+size_t string_count(String* str, const char* substr) 
+{
+    if (str == NULL || substr == NULL) 
+        return 0;
+
+    size_t count = 0;
+    const char* temp = str->dataStr;
+    const char* found;
+
+    while ((found = strstr(temp, substr)) != NULL) 
+    {
+        count++;
+        temp = found + strlen(substr);
+    }
+
+    return count;
+}
+
+void string_remove(String* str, const char* substr) 
+{
+    if (str == NULL || substr == NULL) 
+        return;
+
+    size_t len = strlen(substr);
+    char* p = str->dataStr;
+
+    while ((p = strstr(p, substr)) != NULL) 
+        memmove(p, p + len, strlen(p + len) + 1);
+}
+
+String* string_from_int(int value) 
+{
+    char buffer[12]; // Enough to hold any 32-bit integer
+    sprintf(buffer, "%d", value);
+
+    return string_create(buffer);
+}
+
+String* string_from_float(float value) 
+{
+    char buffer[32]; // A general buffer size for a float
+    sprintf(buffer, "%f", value);
+
+    return string_create(buffer);
+}
+
