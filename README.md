@@ -26,6 +26,8 @@ The project is organized into several subdirectories, each representing a differ
 - `PriorityQueue` : Implements a priority_queue based on `std::priority_queue`
 - `Dqueue` : Implements a priority_queue based on `std::deque`
 - `CsvFile, CsvRow`: for read, write and etc ... operations on csv file . 
+- `ConfigFile` : The ConfigFile library provides a flexible and easy-to-use solution for handling configuration files in C.
+- `Map` : This C library provides a generic implementation of a map, also known as an associative array.
 
 Each module comes with a `.c` source file and a `.h` header file, along with a `README.md` file that provides information on how to use that specific module.
 
