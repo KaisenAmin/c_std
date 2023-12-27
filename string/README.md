@@ -1,4 +1,4 @@
-# String Library
+# String Library in C
 
 The String library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::string` in C++.
 

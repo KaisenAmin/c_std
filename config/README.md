@@ -1,4 +1,4 @@
-# README for ConfigFile Library
+# Config Library in C
 
 ## Overview
 

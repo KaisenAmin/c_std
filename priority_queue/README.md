@@ -1,5 +1,5 @@
 
-# Queue Library
+# Queue Library in C
 
 The Priority_Queue library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size Priority_Queues, offering similar functionality to `std::priority_queue` in C++.
 

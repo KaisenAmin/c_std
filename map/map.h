@@ -16,6 +16,16 @@ typedef void* ValueType;
 typedef int (*CompareFunc)(const KeyType, const KeyType);
 typedef void (*ValueDeallocFunc)(void*);
 
+struct MapNode 
+{
+    void* key;
+    void* value;
+    struct MapNode* left;
+    struct MapNode* right;
+    struct MapNode* parent;
+    int color;
+};
+
 // Map entry structure
 typedef struct MapEntry 
 {
@@ -27,7 +37,8 @@ typedef struct MapEntry
 // Example definition of MapIterator
 typedef struct MapIterator 
 {
-    int dummy;
+
+    MapNode* node;
     // Implementation details, e.g., pointers to map nodes
 } MapIterator;
 
@@ -77,5 +88,9 @@ size_t map_count(const Map* map, KeyType key);
 MapIterator map_lower_bound(const Map* map, KeyType key);
 MapIterator map_upper_bound(const Map* map, KeyType key);
 MapIteratorPair map_equal_range(const Map* map, KeyType key);
+KeyType map_node_get_key(MapNode* node);
+ValueType map_node_get_value(MapNode* node);
+void map_iterator_increment(MapIterator* it);
+void map_iterator_decrement(MapIterator* it);
 
 #endif // MAP_H_
