@@ -1155,3 +1155,129 @@ int main()
     return 0;
 }
 ```
+
+### Example 40 : string_tokenize 
+This function splits a string into tokens based on multiple delimiters.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() 
+{
+    String* str = string_create("Hello,World-This.Is;A-Test");
+    int count = 0;
+    String** tokens = string_tokenize(str, ",.-;", &count);
+
+    for (int i = 0; i < count; i++) 
+    {
+        printf("Token %d: %s\n", i, tokens[i]->dataStr);
+        string_deallocate(tokens[i]);
+    }
+
+    free(tokens);
+    string_deallocate(str);
+
+    return 0;
+}
+
+```
+
+### Example 40 : string_to_double 
+Converts a string to a double value.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("123.456");
+    double value = string_to_double(str);
+
+    printf("Double value: %f\n", value);
+    
+    string_deallocate(str);
+
+    return 0;
+}
+
+```
+
+### Example 41 : string_from_double 
+Create a 'string' Object from a double Value.
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    double value = 123.456;
+    String* str = string_from_double(value);
+
+    printf("String from double: %s\n", str->dataStr);
+
+    string_deallocate(str);
+
+    return 0;
+}
+
+```
+
+### Example 42 : string_compare_ignore_case
+Compare two strings ignoring case difference 
+
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str1 = string_create("Hello");
+    String* str2 = string_create("hello");
+
+    if (string_compare_ignore_case(str1, str2) == 0) 
+        printf("Strings are equal (ignoring case)\n");
+    else 
+        printf("Strings are not equal\n");
+    
+    string_deallocate(str1);
+    string_deallocate(str2);
+
+    return 0;
+}
+
+```
+
+### Example 43 : string_base64_encode and string_base64_decode 
+
+These two functions converts string to base64 or return a base64 ascii to String Object 
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    const char* sampleText = "Hello, World!";
+    
+    String* originalStr = string_create(sampleText);
+    printf("Original String: %s\n", originalStr->dataStr);
+
+    // Encode the string
+    String* encodedStr = string_base64_encode(originalStr);
+    printf("Base64 Encoded: %s\n", encodedStr->dataStr);
+
+    // Decode the string back
+    String* decodedStr = string_base64_decode(encodedStr);
+    printf("Base64 Decoded: %s\n", decodedStr->dataStr);
+
+    string_deallocate(originalStr);
+    string_deallocate(encodedStr);
+    string_deallocate(decodedStr);
+
+    return 0;
+}
+
+```

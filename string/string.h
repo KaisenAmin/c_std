@@ -88,6 +88,7 @@ String* string_join(String **strings, int count, const char *delimiter);
 void string_replace_all(String *str, const char *oldStr, const char *newStr);
 int string_to_int(String *str);
 float string_to_float(String *str);
+double string_to_double(String* str);
 void string_pad_left(String *str, size_t totalLength, char padChar);
 void string_pad_right(String *str, size_t totalLength, char padChar);
 String* string_to_hex(String *str);
@@ -96,5 +97,10 @@ size_t string_count(String* str, const char* substr);
 void string_remove(String* str, const char* substr);
 String* string_from_int(int value);
 String* string_from_float(float value);
+String* string_from_double(double value);
+String** string_tokenize(String* str, const char* delimiters, int* count);
+int string_compare_ignore_case(String* str1, String* str2);
+String* string_base64_encode(const String *input);
+String* string_base64_decode(const String* input);
 
 #endif 

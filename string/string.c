@@ -9,6 +9,12 @@ static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolString *pool);
 bool memoryPoolCreated = false;
 
+static const char *base64_chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789+/";
+
+
 static char* my_strdup(const char* s) 
 {
     if (s == NULL) 
@@ -1016,6 +1022,14 @@ float string_to_float(String *str)
     return atof(str->dataStr);
 }
 
+double string_to_double(String* str) 
+{
+    if (str == NULL || string_empty(str)) 
+        return 0.0;
+
+    return strtod(str->dataStr, NULL);
+}
+
 void string_pad_left(String *str, size_t totalLength, char padChar) 
 {
     if (str == NULL || str->size >= totalLength) 
@@ -1144,3 +1158,146 @@ String* string_from_float(float value)
     return string_create(buffer);
 }
 
+String* string_from_double(double value) 
+{
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%f", value);
+
+    return string_create(buffer);
+}
+
+String** string_tokenize(String* str, const char* delimiters, int* count) 
+{
+    if (str == NULL || delimiters == NULL) 
+        return NULL;
+
+    // Count tokens
+    size_t num_tokens = 0;
+    char* temp_str = strdup(str->dataStr);
+    char* token = strtok(temp_str, delimiters);
+
+    while (token != NULL) 
+    {
+        num_tokens++;
+        token = strtok(NULL, delimiters);
+    }
+
+    free(temp_str);
+
+    // Allocate array of String pointers
+    String** tokens = malloc(num_tokens * sizeof(String*));
+    if (tokens == NULL) 
+        return NULL;
+
+    // Tokenize again to fill the array
+    temp_str = strdup(str->dataStr);
+    token = strtok(temp_str, delimiters);
+    size_t idx = 0;
+
+    while (token != NULL && idx < num_tokens) 
+    {
+        tokens[idx++] = string_create(token);
+        token = strtok(NULL, delimiters);
+    }
+
+    free(temp_str);
+    *count = num_tokens;
+
+    return tokens;
+}
+
+int string_compare_ignore_case(String* str1, String* str2) 
+{
+    if (str1 == NULL || str2 == NULL) 
+    {
+        if (str1 == str2) 
+            return 0;
+        return (str1 == NULL) ? -1 : 1;
+    }
+
+    return strcasecmp(str1->dataStr, str2->dataStr);
+}
+
+String* string_base64_encode(const String *input) 
+{
+    if (input == NULL || input->dataStr == NULL) 
+        return NULL;
+
+    String *encoded = string_create("");
+    int val = 0, valb = -6;
+    size_t i;
+
+    for (i = 0; i < input->size; i++) 
+    {
+        unsigned char c = input->dataStr[i];
+        val = (val << 8) + c;
+        valb += 8;
+
+        while (valb >= 0) 
+        {
+            string_push_back(encoded, base64_chars[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+
+    if (valb > -6) 
+        string_push_back(encoded, base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+    
+    while (encoded->size % 4) 
+        string_push_back(encoded, '=');
+    
+    return encoded;
+}
+
+String* string_base64_decode(const String* encodedStr) 
+{
+    if (encodedStr == NULL || encodedStr->dataStr == NULL) 
+        return NULL;
+
+    char* decodedStr = (char*)malloc(encodedStr->size * 3 / 4 + 1); 
+
+    if (decodedStr == NULL) 
+    {
+        perror("Failed to allocate memory for base64 decoding");
+        return NULL;
+    }
+
+    int val = 0, valb = -8;
+    size_t i = 0;
+    size_t j = 0;
+
+    for (i = 0; i < encodedStr->size; i++) 
+    {
+        char c = encodedStr->dataStr[i];
+        if (c == '=') 
+            break;
+
+        if (c >= 'A' && c <= 'Z') 
+            c -= 'A';
+        else if (c >= 'a' && c <= 'z') 
+            c = c - 'a' + 26;
+        else if (c >= '0' && c <= '9') 
+            c = c - '0' + 52;
+        else if (c == '+') 
+            c = 62;
+        else if (c == '/') 
+            c = 63;
+        else 
+            continue;
+
+        val = (val << 6) | c;
+        valb += 6;
+
+        if (valb >= 0) 
+        {
+            decodedStr[j++] = (char)((val >> valb) & 0xFF);
+            valb -= 8;
+        }
+    }
+    decodedStr[j] = '\0';
+
+    String* decodedStringObject = string_create(decodedStr);
+    free(decodedStr); 
+
+    return decodedStringObject;
+}

@@ -475,7 +475,6 @@ int main()
     map_insert(myMap, &key1, &value1);
     map_insert(myMap, &key2, &value2);
 
-    // Display all elements in the map
     printf("Map contents:\n");
     for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) 
     {
