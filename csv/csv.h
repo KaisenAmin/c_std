@@ -55,5 +55,4 @@ void csv_file_concatenate(CsvFile *file1, const CsvFile *file2); // Join and Mer
 int csv_column_sum(const CsvFile *file, size_t columnIndex); // Data Aggregation
 char* csv_export_to_json(const CsvFile *file); // Export to Other Formats
 
-
 #endif
