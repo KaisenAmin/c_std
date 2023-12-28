@@ -119,8 +119,8 @@ static void map_right_rotate(Map* map, MapNode* y)
 }
 
 
-static void map_transplant(Map* map, MapNode* u, MapNode* v)
- {
+static void map_transplant(Map* map, MapNode* u, MapNode* v) 
+{
     if (u->parent == NULL) 
         map->root = v;
     else if (u == u->parent->left) 
@@ -136,16 +136,19 @@ static MapNode* map_minimum(MapNode* node)
 {
     while (node->left != NULL) 
         node = node->left;
-    
+
     return node;
 }
 
 static void map_erase_fixup(Map* map, MapNode* x) 
 {
+
     while (x != map->root && (x == NULL || x->color == BLACK)) 
     {
+
         if (x == x->parent->left) 
         {
+      
             MapNode* w = x->parent->right;
             if (w->color == RED) 
             {
@@ -161,22 +164,25 @@ static void map_erase_fixup(Map* map, MapNode* x)
             } 
             else 
             {
+                
                 if (w->right == NULL || w->right->color == BLACK) 
                 {
                     if (w->left != NULL) 
                         w->left->color = BLACK;
-
+                    
                     w->color = RED;
                     map_right_rotate(map, w);
                     w = x->parent->right;
                 }
+                
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
-                if (w->right != NULL) w->right->color = BLACK;
+                if (w->right != NULL) 
+                    w->right->color = BLACK;
                 map_left_rotate(map, x->parent);
                 x = map->root;
             }
-        }
+        } 
         else 
         {
             MapNode* w = x->parent->left;
@@ -184,7 +190,6 @@ static void map_erase_fixup(Map* map, MapNode* x)
             {
                 w->color = BLACK;
                 x->parent->color = RED;
-
                 map_right_rotate(map, x->parent);
                 w = x->parent->left;
             }
@@ -192,21 +197,23 @@ static void map_erase_fixup(Map* map, MapNode* x)
                 (w->left == NULL || w->left->color == BLACK)) {
                 w->color = RED;
                 x = x->parent;
-            }
+            } 
             else 
             {
+                
                 if (w->left == NULL || w->left->color == BLACK) 
                 {
+                    
                     if (w->right != NULL) 
                         w->right->color = BLACK;
-
+                    
                     w->color = RED;
                     map_left_rotate(map, w);
                     w = x->parent->left;
                 }
+
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
-
                 if (w->left != NULL) 
                     w->left->color = BLACK;
                 map_right_rotate(map, x->parent);
@@ -599,7 +606,7 @@ bool map_erase(Map* map, KeyType key)
 {
     if (map == NULL || map->root == NULL) 
         return false;
-
+    
     MapNode* z = map->root;
     while (z != NULL) 
     {
@@ -608,13 +615,13 @@ bool map_erase(Map* map, KeyType key)
             break; // Key found
         if (cmp < 0) 
             z = z->left;
-        else 
+        else
             z = z->right;
     }
 
     if (z == NULL) 
         return false; // Key not found
-
+    
     MapNode* y = z;
     int y_original_color = y->color;
     MapNode* x;
@@ -631,6 +638,7 @@ bool map_erase(Map* map, KeyType key)
     } 
     else 
     {
+
         y = map_minimum(z->right);
         y_original_color = y->color;
         x = y->right;
@@ -654,6 +662,7 @@ bool map_erase(Map* map, KeyType key)
 
     if (map->deallocKey) 
         map->deallocKey(z->key);
+
     if (map->deallocValue) 
         map->deallocValue(z->value);
 
@@ -665,6 +674,7 @@ bool map_erase(Map* map, KeyType key)
     map->size--;
     return true;
 }
+
 
 MapIterator map_find(const Map* map, KeyType key) 
 {
