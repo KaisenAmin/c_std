@@ -8,7 +8,6 @@
 #define RED 1
 #define BLACK 0
 
-
 // Map structure definition
 struct Map 
 {

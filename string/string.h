@@ -95,6 +95,7 @@ String* string_to_hex(String *str);
 String* hex_to_string(String *hexStr);
 size_t string_count(String* str, const char* substr);
 void string_remove(String* str, const char* substr);
+void string_remove_range(String* str, size_t startPos, size_t endPos);
 String* string_from_int(int value);
 String* string_from_float(float value);
 String* string_from_double(double value);
@@ -102,5 +103,16 @@ String** string_tokenize(String* str, const char* delimiters, int* count);
 int string_compare_ignore_case(String* str1, String* str2);
 String* string_base64_encode(const String *input);
 String* string_base64_decode(const String* input);
+void string_format(String* str, const char* format, ...);
+String* string_repeat(const String* str, size_t count);
+String* string_join_variadic(size_t count, ...); // Where ... are String* arguments
+void string_trim_characters(String* str, const char* chars);
+void string_shuffle(String* str);
+void string_to_title(String* str);
+void string_to_capitalize(String* str);
+void string_to_casefold(String* str);
+bool string_starts_with(const String* str, const char* substr);
+bool string_ends_with(const String* str, const char* substr);
+void string_swap_case(String* str);
 
 #endif 

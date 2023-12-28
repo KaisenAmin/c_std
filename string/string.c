@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdarg.h>
+#include <time.h>
 
 MemoryPoolString* global_pool = NULL;
 static MemoryPoolString *memory_pool_create(size_t size);
@@ -1142,6 +1144,17 @@ void string_remove(String* str, const char* substr)
         memmove(p, p + len, strlen(p + len) + 1);
 }
 
+void string_remove_range(String* str, size_t startPos, size_t endPos) 
+{
+    if (str == NULL || str->dataStr == NULL || startPos >= endPos || endPos > str->size) 
+        return;
+
+    size_t length = endPos - startPos;
+
+    memmove(str->dataStr + startPos, str->dataStr + endPos, str->size - endPos + 1); // +1 for null terminator
+    str->size -= length;
+}
+
 String* string_from_int(int value) 
 {
     char buffer[12]; // Enough to hold any 32-bit integer
@@ -1300,4 +1313,226 @@ String* string_base64_decode(const String* encodedStr)
     free(decodedStr); 
 
     return decodedStringObject;
+}
+
+void string_format(String* str, const char* format, ...) 
+{
+    if (str == NULL || format == NULL) 
+        return;
+
+    // Start variadic argument processing
+    va_list args;
+    va_start(args, format);
+
+    // Calculate the required length of the result string
+    int length = vsnprintf(NULL, 0, format, args);
+    if (length < 0) 
+    {
+        va_end(args);
+        return;
+    }
+
+    // Allocate memory for the formatted string
+    char* buffer = (char*)malloc(length + 1);
+    if (!buffer)
+    {
+        perror("Failed to allocate memory in string_format");
+        va_end(args);
+        return;
+    }
+
+    // Actually format the string
+    vsnprintf(buffer, length + 1, format, args);
+
+    // Assign the formatted string to the String object
+    // Assuming you have a function like string_assign to replace the string's content
+    string_assign(str, buffer);
+
+    // Clean up
+    free(buffer);
+    va_end(args);
+}
+
+String* string_repeat(const String* str, size_t count) 
+{
+    if (str == NULL || str->dataStr == NULL) 
+        return NULL;
+
+    size_t newLength = str->size * count;
+    char* repeatedStr = (char*)malloc(newLength + 1);
+
+    if (repeatedStr == NULL) 
+    {
+        perror("Failed to allocate memory in string_repeat");
+        return NULL;
+    }
+
+    char* current = repeatedStr;
+    for (size_t i = 0; i < count; ++i) 
+    {
+        memcpy(current, str->dataStr, str->size);
+        current += str->size;
+    }
+    *current = '\0';
+
+    String* result = string_create(repeatedStr);
+    free(repeatedStr);
+    return result;
+}
+
+String* string_join_variadic(size_t count, ...) 
+{
+    va_list args;
+    va_start(args, count);
+
+    size_t totalLength = 0;
+    for (size_t i = 0; i < count; ++i) 
+    {
+        String* str = va_arg(args, String*);
+        totalLength += str->size;
+    }
+
+    va_end(args);
+
+    char* joinedStr = (char*)malloc(totalLength + 1);
+    if (joinedStr == NULL) 
+    {
+        perror("Failed to allocate memory in string_join_variadic");
+        return NULL;
+    }
+
+    char* current = joinedStr;
+    va_start(args, count);
+    for (size_t i = 0; i < count; ++i) 
+    {
+        String* str = va_arg(args, String*);
+
+        memcpy(current, str->dataStr, str->size);
+        current += str->size;
+    }
+    *current = '\0';
+
+    va_end(args);
+
+    String* result = string_create(joinedStr);
+    free(joinedStr);
+    return result;
+}
+
+void string_trim_characters(String* str, const char* chars) 
+{
+    if (str == NULL || str->dataStr == NULL || chars == NULL) 
+        return;
+
+    char* start = str->dataStr;
+    char* end = str->dataStr + str->size - 1;
+
+    while (start <= end && strchr(chars, *start)) 
+        start++;
+    while (end > start && strchr(chars, *end)) 
+        end--;
+
+    size_t newLength = end - start + 1;
+
+    memmove(str->dataStr, start, newLength);
+    str->dataStr[newLength] = '\0';
+    str->size = newLength;
+}
+
+void string_shuffle(String* str)
+{
+    srand(time(NULL)); 
+
+    if (str == NULL || str->dataStr == NULL) 
+        return;
+
+    size_t length = strlen(str->dataStr);
+    for (size_t i = length - 1; i > 0; i--) 
+    {
+        size_t j = rand() % (i + 1);
+
+        // Swap characters at positions i and j
+        char temp = str->dataStr[i];
+        str->dataStr[i] = str->dataStr[j];
+        str->dataStr[j] = temp;
+    }
+}
+
+void string_to_title(String* str) 
+{
+    if (str == NULL || str->dataStr == NULL) 
+        return;
+
+    bool capitalize = true;
+    for (size_t i = 0; i < str->size; i++) 
+    {
+        if (capitalize && isalpha(str->dataStr[i])) 
+        {
+            str->dataStr[i] = toupper(str->dataStr[i]);
+            capitalize = false;
+        } 
+        else if (!isalpha(str->dataStr[i])) 
+        {
+            capitalize = true;
+        } 
+        else 
+            str->dataStr[i] = tolower(str->dataStr[i]);
+    }
+}
+
+void string_to_capitalize(String* str) 
+{
+    if (str == NULL || str->dataStr == NULL || str->size == 0) 
+        return;
+
+    str->dataStr[0] = toupper(str->dataStr[0]);
+}
+
+void string_to_casefold(String* str) 
+{
+    if (str == NULL || str->dataStr == NULL) 
+        return;
+
+    for (size_t i = 0; i < str->size; i++) 
+        str->dataStr[i] = tolower(str->dataStr[i]);
+}
+
+bool string_starts_with(const String* str, const char* substr) 
+{
+    if (str == NULL || str->dataStr == NULL || substr == NULL) 
+        return false;
+
+    size_t substrLen = strlen(substr);
+    if (substrLen > str->size) 
+        return false;
+
+    return strncmp(str->dataStr, substr, substrLen) == 0;
+}
+
+bool string_ends_with(const String* str, const char* substr) 
+{
+    if (str == NULL || str->dataStr == NULL || substr == NULL) 
+        return false;
+
+    size_t substrLen = strlen(substr);
+    size_t strLen = str->size;
+
+    if (substrLen > strLen) 
+        return false;
+
+    return strncmp(str->dataStr + strLen - substrLen, substr, substrLen) == 0;
+}
+
+void string_swap_case(String* str) 
+{
+    if (str == NULL || str->dataStr == NULL) 
+        return;
+
+    for (size_t i = 0; i < str->size; i++) 
+    {
+        if (islower(str->dataStr[i])) 
+            str->dataStr[i] = toupper(str->dataStr[i]);
+        else if (isupper(str->dataStr[i])) 
+            str->dataStr[i] = tolower(str->dataStr[i]);
+    }
 }

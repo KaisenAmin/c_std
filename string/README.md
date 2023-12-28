@@ -1281,3 +1281,245 @@ int main()
 }
 
 ```
+
+### Example 44 : string_format 
+
+This 'string_format' function works similarly to sprintf, but it writes the formatted string into a String.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("");
+    
+    // Format the string with some arguments
+    string_format(str, "Hello, %s! You have %d new messages.", "Alice", 5);
+    printf("%s\n", str->dataStr);
+
+    string_deallocate(str);
+
+    return 0;
+}
+
+```
+
+### Example 45 : string_repeat 
+
+This function repeats the given string a specified number of times.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* original = string_create("Hello ");
+    String* repeated = string_repeat(original, 3);
+
+    printf("Repeated String: %s\n", repeated->dataStr);
+
+    string_deallocate(original);
+    string_deallocate(repeated);
+    
+    return 0;
+}
+```
+
+### Example 46 : string_join_variadic
+
+This function concatenates multiple strings.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* part1 = string_create("Hello");
+    String* part2 = string_create(", ");
+    String* part3 = string_create("World!");
+
+    String* joined = string_join_variadic(3, part1, part2, part3);
+    printf("Joined String: %s\n", joined->dataStr);
+
+    string_deallocate(part1);
+    string_deallocate(part2);
+    string_deallocate(part3);
+    string_deallocate(joined);
+
+    return 0;
+}
+```
+
+### Example 47 : string_trim_characters
+
+This function trims specified characters from both ends of a string.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("##Hello, World!##");
+    
+    string_trim_characters(str, "#");
+    printf("Trimmed String: %s\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+
+```
+
+### Example 48 : string_shuffle 
+
+This function shuffle the String object randomly based on time. 
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* myStr = string_create("Hello, World!");
+    printf("Original String: %s\n", myStr->dataStr);
+
+    string_shuffle(myStr);
+    printf("Shuffled String: %s\n", myStr->dataStr);
+
+    string_deallocate(myStr);
+
+    return 0;
+}
+```
+
+### Example 49 : string_to_title 
+
+This function converts each word in the string to title case (the first letter capitalized).
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("hello world");
+
+    string_to_title(str);
+    printf("Title Case: %s\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 50 : string_to_casefold
+
+This function converts a string to a case-insensitive form, typically used for comparisons.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("HeLLo WoRLd");
+
+    string_to_casefold(str);
+    printf("Casefolded: %s\n", str->dataStr);
+    
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 51 : string_remove_range 
+
+This function removes a range of characters from a string, given a start position and an end position.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("Hello, World!");
+
+    string_remove_range(str, 5, 7); 
+    printf("After removal: %s\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 52 : string_starts_with 
+
+This function checks if a String Object starts with a specified substring.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("Hello, World!");
+    bool startsWithHello = string_starts_with(str, "Hello");
+
+    printf("Starts with 'Hello': %s\n", startsWithHello ? "true" : "false");
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 53 : string_ends_with 
+
+This function checks if a String Object ends with a specified substring.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("Hello, World!");
+    bool endsWithWorld = string_ends_with(str, "World!");
+
+    printf("Ends with 'World!': %s\n", endsWithWorld ? "true" : "false");
+    
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 54 : string_to_capitalize 
+
+This function converts the first character of a String to upper case.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("hello world");
+
+    string_to_capitalize(str);
+    printf("Capitalized: %s\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
+
+### Example 55 : string_swap_case 
+
+This function swaps the case of each character in the String. Lower case characters become upper case and vice versa.
+```c
+#include "string/string.h"
+#include <stdio.h>
+
+int main() 
+{
+    String* str = string_create("Hello World");
+
+    string_swap_case(str);
+    printf("Swapped Case: %s\n", str->dataStr);
+
+    string_deallocate(str);
+    return 0;
+}
+```
