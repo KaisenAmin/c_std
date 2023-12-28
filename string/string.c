@@ -95,7 +95,7 @@ String* string_create(const char* initialStr)
     str->capacitySize = 64; // +1 for null terminator
 
     // Initialize memory pool for strings with a smaller size
-    size_t initialPoolSize = 10000000; // 1KB
+    size_t initialPoolSize = 10000; // 1KB
     str->pool = memory_pool_create(initialPoolSize);
     if (!str->pool) 
     {

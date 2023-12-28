@@ -854,13 +854,27 @@ Your contributions to this project are welcome! If you have suggestions or impro
 
 ### Example 23 : how to use vector_begin and vector_end with String Object 
 
+just you should now we can do this in lots of way by String ..
+also don't use printf in loop because it is not optimal.
+
+Apple
+Banana
+Cherry
+Lemon
+Watermelon
+Time taken: 0.000010 seconds
+
 ```c
 #include "string/string.h"
 #include "vector/vector.h"
 #include <stdio.h>
+#include <time.h>
 
 int main() 
 {
+    struct timespec start, end;
+    double time_elapsed;
+
     Vector *vec = vector_create(sizeof(String*));
     String *fruits[5] = {
         string_create("Apple"),
@@ -869,21 +883,75 @@ int main()
         string_create("Lemon"),
         string_create("Watermelon")
     };
+    String *concat = string_create("");
 
     for (size_t index = 0; index < 5; index++)
         vector_push_back(vec, &fruits[index]);
 
-    for (String **it = (String**)vector_begin(vec); it != (String**)vector_end(vec); it++) 
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    for (size_t index = 0; index < vector_size(vec); ++index) 
     {
-        String *currentString = *it;
-        if (currentString) 
-            printf("%s\n", string_c_str(currentString));
+        String **strPtr = (String**)vector_at(vec, index);
+        string_push_back(*strPtr, '\n');
+        string_concatenate(concat, *strPtr);
     }
     
     for (size_t index = 0; index < 5; index++) 
         string_deallocate(fruits[index]);
 
     vector_deallocate(vec);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    time_elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    printf("%s", string_c_str(concat));
+    printf("Time taken: %f seconds\n", time_elapsed);
+
+    string_deallocate(concat);
     return 0;
 }
+
+```
+
+also result in Cpp 
+
+Apple
+Banana
+Cherry
+Lemon
+Watermelon
+Time taken: 1.1523e-05 seconds
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <chrono>
+
+int main() 
+{
+    // Initialize the vector with some fruits
+    std::vector<std::string> fruits = {"Apple", "Banana", "Cherry", "Lemon", "Watermelon"};
+    std::stringstream buffer;
+
+    // Start timing
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Concatenate processed strings
+    for (const auto& fruit : fruits) 
+        buffer << fruit << "\n";
+    
+    // Stop timing
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+
+    // Output the concatenated string and the elapsed time
+    std::cout << buffer.str(); // Single print call
+    std::cout << "Time taken: " << elapsed.count() << " seconds\n";
+
+    return 0;
+}
+
 ```
