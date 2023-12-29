@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdio.h>
 
-
 Bitset* bitset_create(size_t num_bits) 
 {
     Bitset* bs = (Bitset*)malloc(sizeof(Bitset));
@@ -24,23 +23,6 @@ Bitset* bitset_create(size_t num_bits)
     memset(bs->bits, 0, num_bytes); // Initialize the bit array to 0
     bs->size = num_bits; // Set the size
 
-    // // Assign function pointers
-    // bs->deallocate = bitset_deallocate_impl;
-    // bs->test = bitset_test_impl;
-    // bs->set = bitset_set_impl;
-    // bs->reset = bitset_reset_impl;
-    // bs->flip = bitset_flip_impl;
-    // bs->all = bitset_all_impl;
-    // bs->any = bitset_any_impl;
-    // bs->none = bitset_none_impl;
-    // bs->count = bitset_count_impl;
-    // bs->get_size = bitset_size_impl;
-    // bs->to_ulong = bitset_to_ulong_impl;
-    // bs->to_ullong = bitset_to_ullong_impl;
-    // bs->set_from_string = bitset_set_from_string_impl;
-    // bs->flip_all = bitset_flip_all_impl;
-    // bs->print = bitset_print_impl;
-
     return bs;
 }
 
@@ -53,16 +35,15 @@ void bitset_deallocate(Bitset *bs)
     }
 }
 
-void bitset_print(const Bitset* bs)
+void bitset_print(const Bitset* bs) 
 {
     if (!bs)
         return;
-    
-    for (size_t i = 0; i < bitset_size(bs); i++)
-        printf("%d", bitset_test(bs, i)? 1 : 0);
+
+    for (int i = (int)bitset_size(bs) - 1; i >= 0; i--)
+        printf("%d", bitset_test(bs, i) ? 1 : 0);
     printf("\n");
 }
-
 
 void bitset_set_from_string(Bitset* bs, const char* str) 
 {
@@ -74,21 +55,22 @@ void bitset_set_from_string(Bitset* bs, const char* str)
 
     for (bit_pos = 0; bit_pos < str_len; ++bit_pos) 
     {
-        bool bit_value = (str[bit_pos] == '1');
-        size_t pos = bs->size - str_len + bit_pos;
+        bool bit_value = (str[str_len - 1 - bit_pos] == '1'); // Start from the rightmost character
+        size_t pos = bit_pos;
 
         if (pos < bs->size) 
         {
-            size_t byte_index = pos / 8; // Calculate the byte position
-            size_t bit_index = pos % 8;  // Calculate the bit position within that byte
+            size_t byte_index = pos / 8; 
+            size_t bit_index = pos % 8;
 
             if (bit_value) 
-                bs->bits[byte_index] |= (1 << bit_index);  // Set the bit
+                bs->bits[byte_index] |= (1 << bit_index);
             else 
-                bs->bits[byte_index] &= ~(1 << bit_index);  // Clear the bit
+                bs->bits[byte_index] &= ~(1 << bit_index);
         }
     }
 }
+
 
 bool bitset_test(const Bitset *bs, size_t pos) 
 {
@@ -108,29 +90,12 @@ Bitset* bitset_set(Bitset* bs, size_t pos, bool value)
     if (bs && pos < bs->size) 
     {
         size_t byte_index = pos / 8; // Calculate the byte position
-        size_t bit_index = 7 - (pos % 8); // Calculate the bit position within that byte
-
-        // printf("Setting bit at position %zu (byte %zu, bit %zu) to %d\n", pos, byte_index, bit_index, value);
-
-        // // Print the bit array before setting
-        // printf("Before setting: ");
-        // for (size_t i = 0; i < bs->size; i++) {
-        //     printf("%d", (bs->bits[i / 8] & (1 << (i % 8))) ? 1 : 0);
-        // }
-        // printf("\n");
+        size_t bit_index = (pos % 8); // Calculate the bit position within that byte
 
         if (value) 
             bs->bits[byte_index] |= (1 << bit_index); // Set the bit
         else 
             bs->bits[byte_index] &= ~(1 << bit_index); // Clear the bit
-        
-
-        // Print the bit array after setting
-        // printf("After setting: ");
-        // for (size_t i = 0; i < bs->size; i++) {
-        //     printf("%d", (bs->bits[i / 8] & (1 << (i % 8))) ? 1 : 0);
-        // }
-        // printf("\n");
     }
     return bs;
 }
@@ -235,21 +200,22 @@ size_t bitset_count(const Bitset* bs)
 }
 
 // Returns the size of the bitset
-size_t bitset_size(const Bitset* bs) 
-{
+size_t bitset_size(const Bitset* bs) {
     return bs ? bs->size : 0;
 }
 
 unsigned long bitset_to_ulong(const Bitset* bs) 
 {
     unsigned long value = 0;
-    if (bs) {
-       
-        for (size_t i = 0; i < bs->size; ++i)  // Iterate over each bit from LSB to MSB
-        { 
-            size_t actual_bit_index = bs->size - 1 - i;
-            if (bs->bits[i / 8] & (1 << (i % 8))) 
-                value |= (1UL << actual_bit_index); // Set the corresponding bit in the unsigned long value
+    if (bs) 
+    {
+        for (size_t i = 0; i < bs->size; ++i) 
+        {
+            size_t byte_index = i / 8;
+            size_t bit_index = i % 8;
+
+            if (bs->bits[byte_index] & (1 << bit_index)) 
+                value |= (1UL << i); // Set the corresponding bit in the unsigned long value
         }
     }
 
@@ -261,13 +227,32 @@ unsigned long long bitset_to_ullong(const Bitset* bs)
     unsigned long long value = 0;
     if (bs) 
     {
-        for (size_t i = 0; i < bs->size; ++i) // Iterate over each bit from LSB to MSB
-        { 
-            size_t actual_bit_index = bs->size - 1 - i;
-            if (bs->bits[i / 8] & (1 << (i % 8))) 
-                value |= (1ULL << actual_bit_index); // Set the corresponding bit in the unsigned long long value
+        for (size_t i = 0; i < bs->size; ++i) 
+        {
+            size_t bit_index = i % 8;
+            size_t byte_index = i / 8;
+
+            if (bs->bits[byte_index] & (1 << bit_index)) 
+                value |= (1ULL << i); 
         }
     }
 
     return value;
+}
+
+char* bitset_to_string(const Bitset* bs) 
+{
+    if (!bs) 
+        return NULL;
+
+    char* str = (char*)malloc(bs->size + 1); // +1 for the null terminator
+    if (!str) 
+        return NULL;
+
+    for (size_t i = 0; i < bs->size; ++i) 
+        str[bs->size - 1 - i] = bitset_test(bs, i) ? '1' : '0';
+
+    str[bs->size] = '\0'; 
+
+    return str;
 }
