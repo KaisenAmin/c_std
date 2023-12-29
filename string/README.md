@@ -127,7 +127,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_to_title(String*)`: Converts each word in the String to title case.
 - `string_to_capitalize(String*)`: Capitalizes the first character of a String.
 - `string_to_casefold(String*)`: Converts a String to a case-insensitive form for comparisons.
-- `string_remove_range(String*, size_t, size_t)`: Removes a range of characters from a String.
+- `string_remove_range(String* str, size_t startPos, size_t endPos)`: Removes a range of characters from a String object, starting from startPos and ending at endPos.
 - `string_starts_with(String*, const char*)`: Checks if a String starts with a specified substring.
 - `string_ends_with(String*, const char*)`: Checks if a String ends with a specified substring.
 - `string_base64_encode(const String*)`: Encodes a String to base64 format.

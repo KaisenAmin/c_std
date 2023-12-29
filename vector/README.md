@@ -18,6 +18,51 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 To use the Vector library in your project, include the `vector.h` header file in your source code.
 
+### Function Descriptions for Vector Library
+
+- `vector_create(size_t itemSize)`: Initializes and returns a new vector with specified item size.
+- `vector_is_equal(const Vector* vec1, const Vector* vec2)`: Checks if two vectors are equal in content.
+- `vector_is_less(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically less than `vec2`.
+- `vector_is_greater(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically greater than `vec2`.
+
+- `vector_is_not_equal(const Vector* vec1, const Vector* vec2)`: Checks if two vectors are not equal.
+- `vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically greater than or equal to `vec2`.
+
+- `vector_is_less_or_equal(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically less than or equal to `vec2`.
+
+- `vector_is_empty(Vector* vec)`: Determines if the vector is empty.
+- `vector_erase(Vector* vec, size_t pos, size_t len)`: Erases a range of elements from the vector.
+- `vector_insert(Vector* vec, size_t pos, void* item)`: Inserts an item into the vector at a specified position.
+- `vector_reserve(Vector* vec, size_t size)`: Reserves memory to enhance vector capacity.
+- `vector_resize(Vector* vec, size_t size)`: Resizes the vector to contain a specific number of elements.
+- `vector_shrink_to_fit(Vector* vec)`: Reduces the capacity of the vector to fit its size.
+- `vector_clear(Vector* vec)`: Clears the contents of the vector.
+- `vector_swap(Vector* vec1, Vector* vec2)`: Swaps the contents of two vectors.
+- `vector_assign(Vector* vec, size_t pos, void* item)`: Assigns a new value to an element at a specified position.
+- `vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize)`: Constructs an element in-place at a specified position.
+- `vector_emplace_back(Vector* vec, void* item, size_t itemSize)`: Constructs an element in-place at the end of the vector.
+
+- `vector_push_back(Vector* vec, void* item)`: Adds an element to the end of the vector.
+- `vector_deallocate(Vector* vec)`: Frees the memory occupied by the vector.
+- `vector_at(Vector* vec, size_t pos)`: Accesses an element at a specific position.
+- `vector_rbegin(Vector* vec)`: Returns a pointer to the beginning of the reversed vector.
+- `vector_rend(Vector* vec)`: Returns a pointer to the end of the reversed vector.
+- `vector_cbegin(Vector* vec)`: Returns a constant pointer to the beginning of the vector.
+- `vector_cend(Vector* vec)`: Returns a constant pointer to the end of the vector.
+- `vector_crbegin(Vector* vec)`: Returns a constant pointer to the beginning of the reversed vector.
+- `vector_crend(Vector* vec)`: Returns a constant pointer to the end of the reversed vector.
+- `vector_begin(Vector* vec)`: Returns a pointer to the first element.
+- `vector_end(Vector* vec)`: Returns a pointer to the element following the last element.
+- `vector_pop_back(Vector* vec)`: Removes the last element and returns a pointer to it.
+- `vector_front(Vector* vec)`: Accesses the first element.
+- `vector_back(Vector* vec)`: Accesses the last element.
+- `vector_data(Vector* vec)`: Returns a pointer to the underlying array.
+- `vector_size(Vector* vec)`: Returns the number of elements.
+- `vector_capacity(Vector* vec)`: Returns the capacity of the vector.
+- `vector_max_size(Vector* vec)`: Returns the maximum number of elements the vector can hold.
+
+
+
 ```c
 #include "vector/vector.h"
 ```
@@ -948,6 +993,191 @@ int main()
     std::cout << "Time taken: " << elapsed.count() << " seconds\n";
 
     return 0;
+}
+
+```
+
+### Example 24 :Vector of Vectors (2D Vector)
+
+This example creates a two-dimensional vector, where each element of the main vector is another vector. This can be useful for matrix-like structures or grid representations.
+```c
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() 
+{
+    // Create a vector of vectors (2D vector)
+    Vector* vec2D = vector_create(sizeof(Vector*));
+
+    for (int i = 0; i < 3; i++) 
+    {
+        Vector* subVec = vector_create(sizeof(int));
+        for (int j = 0; j < 3; j++) 
+        {
+            int value = i * 3 + j;
+            vector_push_back(subVec, &value);
+        }
+        vector_push_back(vec2D, &subVec);
+    }
+
+    for (size_t i = 0; i < vector_size(vec2D); i++) 
+    {
+        Vector** subVecPtr = (Vector**)vector_at(vec2D, i);
+        Vector* subVec = *subVecPtr;
+        for (size_t j = 0; j < vector_size(subVec); j++) 
+        {
+            int* valPtr = (int*)vector_at(subVec, j);
+            printf("%d ", *valPtr);
+        }
+        printf("\n");
+    }
+
+    // Cleanup
+    for (size_t i = 0; i < vector_size(vec2D); i++) 
+    {
+        Vector** subVecPtr = (Vector**)vector_at(vec2D, i);
+        vector_deallocate(*subVecPtr);
+    }
+    
+    vector_deallocate(vec2D);
+    return EXIT_SUCCESS;
+}
+```
+
+### Example 25 : Vector of Structs with Dynamic String Fields
+
+This example demonstrates how to use the Vector library to store a collection of structs, where each struct contains dynamically allocated string fields (using the String library).
+```c
+#include "vector/vector.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct 
+{
+    String* name;
+    String* description;
+    
+} Item;
+
+int main() 
+{
+    Vector* items = vector_create(sizeof(Item));
+    char* names[] = {"Item1", "Item2", "Item3"};
+    char* descriptions[] = {"Description1", "Description2", "Description3"};
+
+    for (int i = 0; i < 3; i++) 
+    {
+        Item item;
+        item.name = string_create(names[i]);
+        item.description = string_create(descriptions[i]);
+
+        vector_push_back(items, &item);
+    }
+
+    for (size_t i = 0; i < vector_size(items); i++) 
+    {
+        Item* itemPtr = (Item*)vector_at(items, i);
+        printf("Name: %s, Description: %s\n", 
+               string_c_str(itemPtr->name), 
+               string_c_str(itemPtr->description));
+    }
+
+    for (size_t i = 0; i < vector_size(items); i++) 
+    {
+        Item* itemPtr = (Item*)vector_at(items, i);
+        string_deallocate(itemPtr->name);
+        string_deallocate(itemPtr->description);
+    }
+
+    vector_deallocate(items);
+    return EXIT_SUCCESS;
+}
+
+```
+
+### Example 26 : Vector of Vectors (2D Vector) of Custom Structs 
+
+```c
+#include "vector/vector.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct 
+{
+    String* name;
+    int age;
+
+} Person;
+
+Person* create_person(int group, int index) 
+{
+    Person* p = (Person*)malloc(sizeof(Person));
+    p->name = string_create("");
+    string_format(p->name, "Person_%d_%d", group, index);
+    p->age = group * 10 + index;
+
+    return p;
+}
+
+void deallocate_person(Person* p) 
+{
+    if (p) 
+    {
+        string_deallocate(p->name);
+        free(p);
+    }
+}
+
+int main() 
+{
+    Vector* vec2D = vector_create(sizeof(Vector*));
+
+    // Populate the 2D vector with vectors of Persons
+    for (int i = 0; i < 2; i++) 
+    {
+        Vector* peopleVec = vector_create(sizeof(Person*));
+
+        for (int j = 0; j < 3; j++) 
+        {
+            Person* person = create_person(i, j);
+            vector_push_back(peopleVec, &person);
+        }
+        vector_push_back(vec2D, &peopleVec);
+    }
+
+    // Iterate and print each person's details
+    for (size_t i = 0; i < vector_size(vec2D); i++) 
+    {
+        Vector** peopleVecPtr = (Vector**)vector_at(vec2D, i);
+        Vector* peopleVec = *peopleVecPtr;
+
+        for (size_t j = 0; j < vector_size(peopleVec); j++) 
+        {
+            Person** personPtr = (Person**)vector_at(peopleVec, j);
+            Person* person = *personPtr;
+            printf("Name: %s, Age: %d\n", string_c_str(person->name), person->age);
+        }
+    }
+
+    // Cleanup
+    for (size_t i = 0; i < vector_size(vec2D); i++) 
+    {
+        Vector** peopleVecPtr = (Vector**)vector_at(vec2D, i);
+        Vector* peopleVec = *peopleVecPtr;
+
+        for (size_t j = 0; j < vector_size(peopleVec); j++) 
+        {
+            Person** personPtr = (Person**)vector_at(peopleVec, j);
+            deallocate_person(*personPtr);
+        }
+        vector_deallocate(peopleVec);
+    }
+    vector_deallocate(vec2D);
+
+    return EXIT_SUCCESS;
 }
 
 ```
