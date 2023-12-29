@@ -17,10 +17,42 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 To use the Stack library in your project, include the `stack.h` header file in your source code.
 
+
 ```c
 #include "stack/stack.h"
 ```
 
+---
+
+## Function Descriptions
+
+### Stack Creation and Management
+- `stack_create(size_t itemSize)`: Creates a new Stack object. It takes the size of the item type as a parameter.
+
+### Relational Operators
+- `stack_is_equal(const Stack* stk1, const Stack* stk2)`: Checks if two stacks are equal.
+- `stack_is_less(const Stack* stk1, const Stack* stk2)`: Checks if the first stack is less than the second.
+- `stack_is_greater(const Stack* stk1, const Stack* stk2)`: Checks if the first stack is greater than the second.
+- `stack_is_less_or_equal(const Stack* stk1, const Stack* stk2)`: Checks if the first stack is less than or equal to the second.
+- `stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2)`: Checks if the first stack is greater than or equal to the second.
+- `stack_is_not_equal(const Stack* stk1, const Stack* stk2)`: Checks if two stacks are not equal.
+
+### Stack Operations
+- `stack_push(Stack* stk, void* item)`: Pushes an item onto the stack.
+- `stack_pop(Stack* stk)`: Removes the top item from the stack and returns it.
+- `stack_top(Stack* stk)`: Returns the top item of the stack without removing it.
+- `stack_empty(Stack* stk)`: Checks if the stack is empty.
+- `stack_size(Stack* stk)`: Returns the number of items in the stack.
+- `stack_clear(Stack* stk)`: Removes all items from the stack.
+
+### Advanced Stack Operations
+- `stack_emplace(Stack* stk, void* item)`: Adds a new item to the top of the stack without copying.
+- `stack_swap(Stack* stk1, Stack* stk2)`: Swaps the contents of two stacks.
+
+### Cleanup
+- `stack_deallocate(Stack* stk)`: Deallocates the stack and frees up the memory used.
+
+---
 
 ## Example 1 : create Stack Obj and 'push_back' and get 'size'
 
@@ -154,6 +186,220 @@ int main()
     stack_deallocate(stk2);
 
     return EXIT_SUCCESS;
+}
+
+```
+
+## Example 5 : Using Stack with String Objects for Expression Evaluation
+
+This example demonstrates how to use the Stack and String libraries to evaluate a simple expression. It's a basic implementation and works with single-digit numbers and basic operators (+, -, *, /).
+```c
+#include "stack/stack.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+int performOperation(int op1, int op2, char operator) 
+{
+    switch (operator) 
+    {
+        case '+': 
+            return op1 + op2;
+        case '-': 
+            return op1 - op2;
+        case '*': 
+            return op1 * op2;
+        case '/': 
+            return op1 / op2;
+        default: 
+            return 0;
+    }
+}
+
+int evaluateExpression(String* expression) 
+{
+    Stack* values = stack_create(sizeof(int));
+    Stack* operators = stack_create(sizeof(char));
+
+    for (size_t i = 0; i < string_length(expression); i++) 
+    {
+        char ch = string_at(expression, i);
+
+        if (isdigit(ch)) 
+        {
+            int val = ch - '0';
+            stack_push(values, &val);
+        } 
+        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') 
+        {
+            while (!stack_empty(operators)) 
+            {
+                char topOp = *(char*)stack_top(operators);
+                if (topOp == '*' || topOp == '/') 
+                {
+                    stack_pop(operators);
+                    int op2 = *(int*)stack_pop(values);
+                    int op1 = *(int*)stack_pop(values);
+                    int result = performOperation(op1, op2, topOp);
+                    stack_push(values, &result);
+                } 
+                else 
+                    break;
+            }
+            stack_push(operators, &ch);
+        }
+    }
+
+    while (!stack_empty(operators)) 
+    {
+        char operator = *(char*)stack_pop(operators);
+        int op2 = *(int*)stack_pop(values);
+        int op1 = *(int*)stack_pop(values);
+        int result = performOperation(op1, op2, operator);
+        stack_push(values, &result);
+    }
+
+    int finalResult = *(int*)stack_pop(values);
+
+    stack_deallocate(values);
+    stack_deallocate(operators);
+
+    return finalResult;
+}
+
+int main() 
+{
+    String* expr = string_create("3+2*2+1-8");
+    int result = evaluateExpression(expr);
+
+    printf("Result: %d\n", result);
+
+    string_deallocate(expr);
+    return EXIT_SUCCESS;
+}
+```
+
+### Example 6 :Stack of Vectors for Multi-level Undo Functionality
+
+This example shows how a stack of vectors can be used to implement a multi-level undo functionality. Each vector represents a snapshot of a particular state, and we can push and pop these states from the stack to perform undo and redo operations.
+```c
+#include "stack/stack.h"
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct 
+{
+    int x;
+    int y;
+
+} Point;
+
+void printVector(Vector* vec) 
+{
+    for (size_t i = 0; i < vector_size(vec); i++) 
+    {
+        Point* p = (Point*)vector_at(vec, i);
+        printf("(%d, %d) ", p->x, p->y);
+    }
+    printf("\n");
+}
+
+int main() 
+{
+    Stack* history = stack_create(sizeof(Vector*));
+
+    // Initial state
+    Vector* state1 = vector_create(sizeof(Point));
+    Point p1 = {1, 2};
+    
+    vector_push_back(state1, &p1);
+    stack_push(history, &state1);
+
+    // Second state
+    Vector* state2 = vector_create(sizeof(Point));
+    Point p2 = {3, 4};
+
+    vector_push_back(state2, &p1);
+    vector_push_back(state2, &p2);
+    stack_push(history, &state2);
+
+    // Perform Undo
+    Vector** currentState = (Vector**)stack_pop(history);
+
+    printf("Current State After Undo: ");
+    printVector(*currentState);
+
+    // Cleanup
+    vector_deallocate(state1);
+    vector_deallocate(state2);
+    stack_deallocate(history);
+
+    return EXIT_SUCCESS;
+}
+
+```
+
+### Example 7 : Checking for Balanced Parentheses
+
+The program will take an input string and use a stack to keep track of opening parentheses. For each closing parenthesis, it will check if there is a corresponding opening parenthesis in the stack. If the stack is empty or the parentheses are mismatched, the string is not balanced.
+```c
+#include "stack/stack.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+bool isBalanced(String* input) 
+{
+    Stack* stack = stack_create(sizeof(char));
+    size_t length = string_length(input);
+
+    for (size_t i = 0; i < length; i++) 
+    {
+        char currentChar = string_at(input, i);
+
+        if (currentChar == '(' || currentChar == '[' || currentChar == '{') 
+            stack_push(stack, &currentChar);
+        else if (currentChar == ')' || currentChar == ']' || currentChar == '}') 
+        {
+            if (stack_empty(stack)) 
+            {
+                stack_deallocate(stack);
+                return false;
+            }
+
+            char topChar = *(char*)stack_top(stack);
+            stack_pop(stack);
+
+            if ((currentChar == ')' && topChar != '(') ||
+                (currentChar == ']' && topChar != '[') ||
+                (currentChar == '}' && topChar != '{')) {
+                stack_deallocate(stack);
+                return false;
+            }
+        }
+    }
+
+    bool balanced = stack_empty(stack);
+    stack_deallocate(stack);
+
+    return balanced;
+}
+
+int main() 
+{
+    String* str = string_create("{[()]}");
+
+    if (isBalanced(str)) 
+        printf("The string %s is balanced.\n", str->dataStr);
+    else 
+        printf("The string %s is not balanced.\n", str->dataStr);
+
+    string_deallocate(str);
+
+    return 0;
 }
 
 ```

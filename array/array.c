@@ -244,3 +244,53 @@ const void* array_crend(Array* arr)
 
     return (const char*)arr->vec->items - arr->vec->itemSize;  
 }
+
+void array_clear(Array* arr) 
+{
+    if (arr == NULL || arr->vec == NULL) 
+        return;
+
+    vector_clear(arr->vec);
+}
+
+void array_reverse(Array* arr) 
+{
+    if (arr == NULL || arr->vec == NULL) 
+        return;
+
+    size_t start = 0;
+    size_t end = arr->vec->size - 1;
+
+    // Allocate memory for the temporary storage
+    char* temp = (char*)malloc(arr->vec->itemSize);
+    if (!temp) 
+        return; // Check for allocation failure
+
+    while (start < end) 
+    {
+        memcpy(temp, (char*)arr->vec->items + (start * arr->vec->itemSize), arr->vec->itemSize);
+        memcpy((char*)arr->vec->items + (start * arr->vec->itemSize), (char*)arr->vec->items + (end * arr->vec->itemSize), arr->vec->itemSize);
+        memcpy((char*)arr->vec->items + (end * arr->vec->itemSize), temp, arr->vec->itemSize);
+        start++;
+        end--;
+    }
+
+    free(temp);
+}
+
+void array_sort(Array* arr, int (*compare)(const void*, const void*)) 
+{
+    if (arr == NULL || arr->vec == NULL || compare == NULL) 
+        return;
+
+    qsort(arr->vec->items, arr->vec->size, arr->vec->itemSize, compare);
+}
+
+void array_copy(Array* dest, const Array* src) 
+{
+    if (src == NULL || dest == NULL) 
+        return;
+
+    vector_resize(dest->vec, src->vec->size);
+    memcpy(dest->vec->items, src->vec->items, src->vec->size * src->vec->itemSize);
+}

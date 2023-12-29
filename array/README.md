@@ -22,13 +22,61 @@ To use the Array library in your project, include the `array.h` header file in y
 #include "array/array.h"
 ```
 
+## Function Descriptions
+
+### Array Creation and Management
+- `array_create(size_t element_size, size_t size)`: Creates a new Array with a specified element size and initial size.
+- `array_deallocate(Array* arr)`: Frees the memory allocated for the Array.
+
+### Relational Operators
+- `array_is_equal(const Array* arr1, const Array* arr2)`: Checks if two Arrays are equal.
+- `array_is_less(const Array* arr1, const Array* arr2)`: Determines if the first Array is less than the second.
+- `array_is_greater(const Array* arr1, const Array* arr2)`: Determines if the first Array is greater than the second.
+- `array_is_not_equal(const Array* arr1, const Array* arr2)`: Checks if two Arrays are not equal.
+- `array_is_less_or_equal(const Array* arr1, const Array* arr2)`: Checks if the first Array is less than or equal to the second.
+- `array_is_greater_or_equal(const Array* arr1, const Array* arr2)`: Checks if the first Array is greater than or equal to the second.
+
+### Array Operations
+- `array_set(Array* arr, size_t index, const void* value)`: Sets the value at a specific index in the Array.
+- `array_insert(Array* mainArr, const Array* otherArr, size_t index)`: Inserts elements of another Array into the main Array at a specified index.
+- `array_fill(Array* arr, const void* value)`: Fills the Array with a specified value.
+- `array_swap(Array* arr1, Array* arr2)`: Swaps the contents of two Arrays.
+- `array_copy(Array* dest, const Array* src)`: Copies all elements from the source array src to the destination array dest.
+- `array_reverse(Array* arr)`: Reverses the order of the elements in the array.
+- `array_sort(Array* arr, int (*compare)(const void*, const void*))`: Sorts the array using the provided comparison function.
+- `array_clear(Array* arr)`: Removes all elements from the array without deallocating the memory, effectively setting the size to zero.
+
+
+### Array Access
+- `array_at(Array* arr, size_t index)`: Returns a pointer to the element at a specified index.
+- `array_begin(Array* arr)`: Returns a pointer to the beginning of the Array.
+- `array_end(Array* arr)`: Returns a pointer to the end of the Array.
+- `array_rbegin(Array* arr)`: Returns a reverse iterator pointing to the end of the Array.
+- `array_rend(Array* arr)`: Returns a reverse iterator pointing to the beginning of the Array.
+- `array_front(Array* arr)`: Returns a pointer to the first element of the Array.
+- `array_back(Array* arr)`: Returns a pointer to the last element of the Array.
+- `array_data(Array* arr)`: Returns a pointer to the underlying data of the Array.
+
+### Array Properties
+- `array_size(Array* arr)`: Returns the number of elements in the Array.
+- `array_max_size(Array* arr)`: Returns the maximum number of elements that the Array can hold.
+
+### Const Array Iterators
+- `array_cbegin(Array* arr)`: Returns a constant iterator to the beginning of the Array.
+- `array_cend(Array* arr)`: Returns a constant iterator to the end of the Array.
+- `array_crbegin(Array* arr)`: Returns a constant reverse iterator to the end of the Array.
+- `array_crend(Array* arr)`: Returns a constant reverse iterator to the beginning of the Array.
+
+### Empty Check
+- `array_empty(Array* arr)`: Checks if the Array is empty.
+
+
 ## Example 1 : how to create Array object and 'fill' array with value then get them with 'at' method
 
 ```c
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -71,7 +119,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -108,7 +155,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -148,7 +194,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -192,7 +237,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -227,7 +271,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -262,7 +305,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -298,8 +340,6 @@ int main()
 ```c
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -334,7 +374,6 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
@@ -389,13 +428,10 @@ int main()
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue/queue.h"
 #include "array/array.h"
 
 int main() 
 {
-    #include "string/string.h"
-
     const size_t numStrings = 3; 
     Array* stringArray = array_create(sizeof(String*), numStrings);
 
@@ -429,6 +465,278 @@ int main()
 
     return EXIT_SUCCESS;
 }
+```
+
+### Example 11: String Concatenation using Array and String Libraries
+
+This example creates an array of strings and concatenates them into a single string.
+```c
+#include "array/array.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() 
+{
+    Array* stringArray = array_create(sizeof(String*), 3);
+    char* words[] = {"Hello", "World", "Array"};
+
+    // Initialize each string in the array
+    for (size_t i = 0; i < 3; ++i) 
+    {
+        String* str = string_create(words[i]);
+        array_set(stringArray, i, &str);
+    }
+
+    // Concatenate all strings
+    String* concatenated = string_create("");
+    for (size_t i = 0; i < array_size(stringArray); ++i)
+    {
+        String** strPtr = (String**)array_at(stringArray, i);
+        string_append(concatenated, string_c_str(*strPtr));
+
+        if (i < array_size(stringArray) - 1) 
+            string_append(concatenated, " "); // Add space between words
+    }
+
+    printf("Concatenated String: %s\n", string_c_str(concatenated));
+
+    for (size_t i = 0; i < array_size(stringArray); ++i) 
+    {
+        String** strPtr = (String**)array_at(stringArray, i);
+        string_deallocate(*strPtr);
+    }
+
+    array_deallocate(stringArray);
+    string_deallocate(concatenated);
+
+    return EXIT_SUCCESS;
+}
+```
+
+### Example 12 : A Simple Card Game
+
+We will define a standard deck of cards using enum for suits and ranks. Then, we'll create a struct to represent a card. We'll use the Array library to create and manipulate a deck of cards.
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "array/array.h"
+
+typedef enum 
+{
+    CLUBS,
+    DIAMONDS,
+    HEARTS,
+    SPADES
+
+} Suit;
+
+typedef enum 
+{
+    TWO = 2,
+    THREE,
+    FOUR,
+    FIVE,
+    SIX,
+    SEVEN,
+    EIGHT,
+    NINE,
+    TEN,
+    JACK,
+    QUEEN,
+    KING,
+    ACE
+
+} Rank;
+
+typedef struct 
+{
+    Suit suit;
+    Rank rank;
+    
+} Card;
+
+Array* initializeDeck() 
+{
+    Array* deck = array_create(sizeof(Card), 52);
+    if (!deck) 
+    {
+        perror("Failed to create deck");
+        exit(EXIT_FAILURE);
+    }
+
+    int index = 0;
+    for (Suit suit = CLUBS; suit <= SPADES; suit++) 
+    {
+        for (Rank rank = TWO; rank <= ACE; rank++) 
+        {
+            Card card = { suit, rank };
+            array_set(deck, index++, &card);
+        }
+    }
+    return deck;
+}
+
+void printCard(const Card* card) 
+{
+    const char* suits[] = { "Clubs", "Diamonds", "Hearts", "Spades" };
+    const char* ranks[] = { "", "", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace" };
+
+    printf("%s of %s\n", ranks[card->rank], suits[card->suit]);
+}
+
+int main() 
+{
+    Array* deck = initializeDeck();
+
+    // Example: Print the first and last card
+    printCard((Card*)array_front(deck));
+    printCard((Card*)array_back(deck));
+
+    array_deallocate(deck);
+    return EXIT_SUCCESS;
+}
+
+```
+
+### Example 13 : `array_copy`
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "array/array.h"
+
+int main() 
+{
+    Array* src = array_create(sizeof(int), 5);
+    Array* dest = array_create(sizeof(int), 5);
+
+    for (size_t i = 0; i < array_size(src); ++i) 
+    {
+        int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
+        array_set(src, i, &value);
+    }
+
+    array_copy(dest, src);
+
+    printf("Source Array: ");
+    for (size_t i = 0; i < array_size(src); ++i) 
+    {
+        int* element = (int*)array_at(src, i);
+        printf("%d ", *element);
+    }
+    printf("\n");
+
+    printf("Destination Array: ");
+    for (size_t i = 0; i < array_size(dest); ++i) 
+    {
+        int* element = (int*)array_at(dest, i);
+        printf("%d ", *element);
+    }
+    printf("\n");
+
+    array_deallocate(src);
+    array_deallocate(dest);
+
+    return 0;
+}
+```
+
+## Example 14 : `array_sort`
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "array/array.h"
+
+int compare_ints(const void* a, const void* b) {
+    return (*(int*)a - *(int*)b);
+}
+
+int main() 
+{
+    Array* arr = array_create(sizeof(int), 5);
+
+    for (size_t i = 0; i < array_size(arr); ++i) 
+    {
+        int value = (int)(50 - i * 10); // Example values: 50, 40, 30, 20, 10
+        array_set(arr, i, &value);
+    }
+
+    array_sort(arr, compare_ints);
+
+    printf("Sorted Array: ");
+    for (size_t i = 0; i < array_size(arr); ++i) 
+    {
+        int* element = (int*)array_at(arr, i);
+        printf("%d ", *element);
+    }
+    printf("\n");
+    array_deallocate(arr);
+    
+    return 0;
+}
+```
+
+## Example 15 : `array_reverse`
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "array/array.h"
+
+int compare_ints(const void* a, const void* b) {
+    return (*(int*)a - *(int*)b);
+}
+
+int main() 
+{
+    Array* arr = array_create(sizeof(int), 5);
+
+    for (size_t i = 0; i < array_size(arr); ++i) 
+    {
+        int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
+        array_set(arr, i, &value);
+    }
+
+    array_reverse(arr);
+
+    printf("Reversed Array: ");
+    for (size_t i = 0; i < array_size(arr); ++i) 
+    {
+        int* element = (int*)array_at(arr, i);
+        printf("%d ", *element);
+    }
+    printf("\n");
+    array_deallocate(arr);
+    
+    return 0;
+}
+```
+
+### Example 16 : `array_clear`
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "array/array.h"
 
 
+int main() 
+{
+    Array* arr = array_create(sizeof(int), 5);
+
+    for (size_t i = 0; i < array_size(arr); ++i) 
+    {
+        int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
+        array_set(arr, i, &value);
+    }
+
+    array_clear(arr);
+    printf("Array Size After Clear: %zu\n", array_size(arr));
+    
+    array_deallocate(arr);
+
+    return 0;
+}
 ```
