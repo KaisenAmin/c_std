@@ -510,3 +510,184 @@ int main()
 }
 
 ```
+
+### Example 10: Merging Two Maps
+
+**C Implementation:**
+
+```c
+#include "map/map.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int compare_ints(const KeyType a, const KeyType b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+void int_deallocator(void* data) {
+    free(data);
+}
+
+void map_merge(Map* dest, Map* src) 
+{
+    for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) 
+    {
+        int* key = malloc(sizeof(int));
+        int* value = malloc(sizeof(int));
+
+        *key = *(int*)map_node_get_key(it.node);
+        *value = *(int*)map_node_get_value(it.node);
+        map_insert(dest, key, value);
+    }
+}
+
+int main() 
+{
+    Map* map1 = map_create(compare_ints, int_deallocator, int_deallocator);
+    Map* map2 = map_create(compare_ints, int_deallocator, int_deallocator);
+
+    // Populate map1
+    for (int i = 0; i < 3; ++i) 
+    {
+        int* key = malloc(sizeof(int));
+        int* value = malloc(sizeof(int));
+        *key = i;
+        *value = i * 100;
+        map_insert(map1, key, value);
+    }
+
+    for (int i = 2; i < 5; ++i) 
+    {
+        int* key = malloc(sizeof(int));
+        int* value = malloc(sizeof(int));
+        *key = i;
+        *value = i * 200;
+        map_insert(map2, key, value);
+    }
+
+    map_merge(map1, map2);
+
+    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) 
+        printf("%d: %d\n", *(int*)map_node_get_key(it.node), *(int*)map_node_get_value(it.node));
+    
+    map_deallocate(map1);
+    map_deallocate(map2);
+
+    return 0;
+}
+```
+
+**C++ Implementation:**
+
+```cpp
+#include <iostream>
+#include <map>
+
+int main() 
+{
+    std::map<int, int> map1, map2;
+
+    for (int i = 0; i < 3; ++i) 
+        map1[i] = i * 100;
+    
+    for (int i = 2; i < 5; ++i) 
+        map2[i] = i * 200;
+    
+    map1.insert(map2.begin(), map2.end());
+
+    for (const auto& pair : map1) 
+        std::cout << pair.first << ": " << pair.second << std::endl;
+
+    return 0;
+}
+```
+
+### Example 11: Filtering a Map Based on a Condition
+
+**C Implementation:**
+
+```c
+#include "map/map.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int compare_ints(const KeyType a, const KeyType b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+void int_deallocator(void* data) {
+    free(data);
+}
+
+void map_filter(Map* map, bool (*filter_func)(KeyType key, ValueType value)) 
+{
+    MapIterator it = map_begin(map);
+
+    while (it.node != map_end(map).node) 
+    {
+        MapIterator current = it;
+        map_iterator_increment(&it);
+
+        if (!filter_func(map_node_get_key(current.node), map_node_get_value(current.node))) 
+            map_erase(map, map_node_get_key(current.node));
+    }
+}
+
+bool filter_even_keys(KeyType key, ValueType value) {
+    return (*(int*)key) % 2 == 0;
+}
+
+int main() 
+{
+    Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
+
+    for (int i = 0; i < 5; ++i) 
+    {
+        int* key = malloc(sizeof(int));
+        int* value = malloc(sizeof(int));
+        *key = i;
+        *value = i * 100;
+        map_insert(myMap, key, value);
+    }
+    map_filter(myMap, filter_even_keys);
+
+    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) 
+        printf("%d: %d\n", *(int*)map_node_get_key(it.node), *(int*)map_node_get_value(it.node));
+
+    map_deallocate(myMap);
+
+    return 0;
+}
+```
+
+**C++ Implementation:**
+
+```cpp
+#include <iostream>
+#include <map>
+
+bool filter_even_keys(const std::pair<const int, int>& pair) {
+    return pair.first % 2 == 0;
+}
+
+int main() 
+{
+    std::map<int, int> myMap;
+
+    for (int i = 0; i < 5; ++i) 
+        myMap[i] = i * 100;
+
+    for (auto it = myMap.begin(); it != myMap.end(); ) 
+    {
+        if (!filter_even_keys(*it)) 
+            it = myMap.erase(it);
+        else 
+            ++it;
+    }
+
+    for (const auto& pair : myMap) 
+        std::cout << pair.first << ": " << pair.second << std::endl;
+    
+    return 0;
+}
+```
