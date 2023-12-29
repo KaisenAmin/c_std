@@ -80,8 +80,8 @@ char* string_front(String* str);
 void string_deallocate(String *str);
 bool string_set_pool_size(String* str, size_t newSize);
 void string_concatenate(String *str1, const String *str2);
-void string_trim_start(String *str);
-void string_trim_end(String *str);
+void string_trim_left(String *str);
+void string_trim_right(String *str);
 void string_trim(String *str);
 String** string_split(String *str, const char *delimiter, int *count);
 String* string_join(String **strings, int count, const char *delimiter);
@@ -92,7 +92,7 @@ double string_to_double(String* str);
 void string_pad_left(String *str, size_t totalLength, char padChar);
 void string_pad_right(String *str, size_t totalLength, char padChar);
 String* string_to_hex(String *str);
-String* hex_to_string(String *hexStr);
+String* string_from_hex(String *hexStr);
 size_t string_count(String* str, const char* substr);
 void string_remove(String* str, const char* substr);
 void string_remove_range(String* str, size_t startPos, size_t endPos);
@@ -116,5 +116,5 @@ bool string_ends_with(const String* str, const char* substr);
 void string_swap_case(String* str);
 wchar_t* string_to_unicode(const char* str);
 String* string_from_unicode(const wchar_t* wstr);
- 
+
 #endif 

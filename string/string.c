@@ -891,7 +891,7 @@ void string_concatenate(String *str1, const String *str2)
     string_append(str1, str2->dataStr);
 }
 
-void string_trim_start(String *str) 
+void string_trim_left(String *str) 
 {
     if (str == NULL || str->size == 0) 
         return;
@@ -908,7 +908,7 @@ void string_trim_start(String *str)
     }
 }
 
-void string_trim_end(String *str) 
+void string_trim_right(String *str) 
 {
     if (str == NULL || str->size == 0) 
         return;
@@ -926,8 +926,8 @@ void string_trim_end(String *str)
 
 void string_trim(String *str) 
 {
-    string_trim_start(str);
-    string_trim_end(str);
+    string_trim_left(str);
+    string_trim_right(str);
 }
 
 String** string_split(String *str, const char *delimiter, int *count) 
@@ -1098,7 +1098,7 @@ String* string_to_hex(String *str)
     return hexStr;
 }
 
-String* hex_to_string(String *hexStr) 
+String* string_from_hex(String *hexStr) 
 {
     if (hexStr == NULL || string_empty(hexStr) || (hexStr->size % 2) != 0) 
         return NULL; // Hex string should have an even number of characters

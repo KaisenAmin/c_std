@@ -17,6 +17,128 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 To use the String library in your project, include the `string.h` header file in your source code.
 
+Absolutely, adding a brief description for each function at the top of your README can greatly enhance its clarity and usability. Here's how you might structure this section:
+
+---
+
+## Function Descriptions
+
+## String Creation and Management
+- `string_create(const char*)`: Creates a new String object with an initial value.
+- `string_create_with_pool(size_t)`: Creates a new String object with a specified memory pool size.
+- `string_deallocate(String*)`: Deallocates the memory used by a String object.
+- `string_clear(String*)`: Clears the contents of a String object.
+
+## String Manipulation
+- `string_push_back(String*, char)`: Appends a character to the end of a String.
+- `string_append(String*, const char*)`: Appends a string to the end of a String.
+- `string_assign(String*, const char*)`: Assigns a new value to a String.
+- `string_insert(String*, size_t, const char*)`: Inserts a string at a specified position.
+- `string_erase(String*, size_t, size_t)`: Erases a portion of a String.
+- `string_replace(String*, const char*, const char*)`: Replaces occurrences of a substring.
+- `string_concatenate(String*, const String*)`: Concatenates two String objects.
+- `string_swap(String*, String*)`: Swaps the contents of two String objects.
+- `string_reverse(String*)`: Reverses the content of a String.
+- `string_substr(String*, size_t, size_t)`: Creates a substring from a String object.
+- `string_pop_back(String*)`: Removes the last character of a String.
+- `string_resize(String*, size_t)`: Resizes a String to a specified size.
+- `string_shrink_to_fit(String*)`: Reduces the capacity of a String to fit its size.
+- `string_replace_all(String *, const char *, const char *)`: Replace occurrences of all substr in String object.
+- `string_trim_left(String *str)`: This function trims leading whitespace characters from the beginning of the String object str.
+- `string_trim_right(String *str)`: This function trims trailing whitespace characters from the end of the String object str
+## String Comparison
+- `string_is_equal(String*, String*)`: Checks if two Strings are equal.
+- `string_is_less(String*, String*)`: Checks if the first String is less than the second.
+- `string_is_greater(String*, String*)`: Checks if the first String is greater than the second.
+- `string_is_less_or_equal(String*, String*)`: Checks if the first String is less than or equal to the second.
+- `string_is_greater_or_equal(String*, String*)`: Checks if the first String is greater than or equal to the second.
+- `string_is_not_equal(String*, String*)`: Checks if two Strings are not equal.
+- `string_compare(String*, String*)`: Compares two Strings.
+- `string_compare_ignore_case(String*, String*)`: Compares two Strings, ignoring case differences.
+
+## String Information and Properties
+- `string_length(String*)`: Returns the length of a String.
+- `string_capacity(String*)`: Returns the capacity of a String.
+- `string_max_size(String*)`: Returns the maximum size of a String.
+- `string_empty(String*)`: Checks if a String is empty.
+- `string_contains(String*, const char*)`: Checks if a String contains a specific substring.
+
+## String Characteristics
+- `string_is_alpha(String*)`: Checks if a String contains only alphabetic characters.
+- `string_is_digit(String*)`: Checks if a String contains only digits.
+- `string_is_lower(String*)`: Checks if all characters in a String are lowercase.
+- `string_is_upper(String*)`: Checks if all characters in a String are uppercase.
+
+## String Access and Iteration
+- `string_begin(String*)`: Returns an iterator to the beginning.
+- `string_end(String*)`: Returns an iterator to the end.
+- `string_rbegin(String*)`: Returns a reverse iterator to the beginning.
+- `string_rend(String*)`: Returns a reverse iterator to the end.
+- `string_cbegin(String*)`: Returns a constant iterator to the beginning.
+- `string_cend(String*)`: Returns a constant iterator to the end.
+- `string_crbegin(String*)`: Returns a constant reverse iterator to the beginning.
+- `string_crend(String*)`: Returns a constant reverse iterator to the end.
+
+## String Data Access
+- `string_data(String*)`: Returns a pointer to the data stored in a String.
+- `string_c_str(String*)`: Returns a pointer to the null-terminated sequence of characters.
+- `string_at(String*, size_t)`: Returns a reference to the character at a specified index.
+- `string_back(String*)`: Returns a reference to the last character.
+- `string_front(String*)`: Returns a reference to the first character.
+
+## String Conversion Functions
+- `string_to_int(String*)`: Converts a String to an integer.
+- `string_to_float(String*)`: Converts a String to a float.
+- `string_to_double(String*)`: Converts a String to a double.
+- `string_from_int(int)`: Creates a String from an integer.
+- `string_from_float(float)`: Creates a String from a float.
+- `string_from_double(double)`: Creates a String from a double.
+
+## Unicode Handling
+- `string_to_unicode(const char*)`: Converts a regular string to a wide string.
+- `string_from_unicode(const wchar_t*)`: Converts a wide string back to a regular string.
+
+## String Case and Encoding Operations
+- `string_to_upper(String*)`: Converts a String to uppercase.
+- `string_to_lower(String*)`: Converts a String to lowercase.
+- `string_to_casefold(String*)`: Converts a String to casefolded form.
+- `string_swap_case(String*)`: Swaps the case of each character in a String.
+
+## String Search and Replace
+- `string_find_first_of(String*, const char*, size_t)`: Finds the first occurrence of any of the characters in the given string.
+- `string_find_last_of(String*, const char*, size_t)`: Finds the last occurrence of any of the characters in the given string.
+- `string_find_first_not_of(String*, const char*, size_t)`: Finds the first character that does not match any of the characters in the given string.
+- `string_find_last_not_of(String*, const char*, size_t)`: Finds the last character that does not match any of the characters in the given string.
+- `string_replace_all(String*, const char*, const char*)`: Replaces all occurrences of a substring.
+- `string_remove(String*, const char*)`: Removes all occurrences of a substring.
+
+## Advanced String Operations
+- `string_split(String*, const char*, int*)`: Splits a String into an array of String objects.
+- `string_join(String**, int, const char*)`: Joins several String objects into one.
+- `string_trim(String*)`: Trims whitespace from both ends of a String.
+- `string_pad_left(String*, size_t, char)`: Pads a String from the left.
+- `string_pad_right(String*, size_t, char)`: Pads a String from the right.
+- `string_repeat(const String*, size_t)`: Creates a new String by repeating the original String a specified number of times.
+- `string_join_variadic(size_t, ...)`: Concatenates multiple Strings (variadic function).
+- `string_trim_characters(String*, const char*)`: Trims specified characters from both ends of a String.
+- `string_shuffle(String*)`: Randomly shuffle character of String object
+- `string_format(String*, const char*, ...)`: Formats a String using given format specifiers.
+- `string_to_title(String*)`: Converts each word in the String to title case.
+- `string_to_capitalize(String*)`: Capitalizes the first character of a String.
+- `string_to_casefold(String*)`: Converts a String to a case-insensitive form for comparisons.
+- `string_remove_range(String*, size_t, size_t)`: Removes a range of characters from a String.
+- `string_starts_with(String*, const char*)`: Checks if a String starts with a specified substring.
+- `string_ends_with(String*, const char*)`: Checks if a String ends with a specified substring.
+- `string_base64_encode(const String*)`: Encodes a String to base64 format.
+- `string_base64_decode(const String*)`: Decodes a base64 encoded String.
+- `string_remove(String*, const char*)`: Removes all occurrences of a substring.
+- `string_set_pool_size(String*, size_t)`: Sets the size of the memory pool for a String.
+- `string_tokenize(String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
+---
+
+## String Encoding Functions
+- `string_to_hex(String*)`: Converts a String to its hexadecimal representation.
+- `string_from_hex(String*)`: Converts a hexadecimal String back to the original string.
 ```c
 #include "string/string.h"
 ```
@@ -875,10 +997,10 @@ int main()
 {
     String* str = string_create("   Hello World   ");
 
-    string_trim_start(str);
+    string_trim_left(str);
     printf("Trimmed Start: '%s'\n", string_c_str(str));
 
-    string_trim_end(str);
+    string_trim_right(str);
     printf("Trimmed End: '%s'\n", string_c_str(str));
 
     string_clear(str);
@@ -1059,7 +1181,7 @@ int main()
 
 ```
 
-### Example 35 : `hex_to_string`
+### Example 35 : `string_from_hex`
 converts a hexadecimal string back to the original string.
 
 ```c
@@ -1069,7 +1191,7 @@ converts a hexadecimal string back to the original string.
 int main() 
 {
     String *hexStr = string_create("48656c6c6f"); // Hexadecimal representation of "Hello"
-    String *convertedStr = hex_to_string(hexStr);
+    String *convertedStr = string_from_hex(hexStr);
 
     printf("Hexadecimal String: %s\n", hexStr->dataStr);
     printf("Converted String: %s\n", convertedStr->dataStr);

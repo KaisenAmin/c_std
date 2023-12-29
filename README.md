@@ -77,6 +77,5 @@ Contributions to this project are welcome. Whether it's extending the existing l
 
 ## License
 
-This project is open-source and available under [MIT](LICENSE). 
-
+This project is open-source and available under [GNU/GPL3](LICENSE). 
 
