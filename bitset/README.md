@@ -737,5 +737,3 @@ int main()
     return 0;
 }
 ```
-
-In the first program, we demonstrate how to perform a bitwise AND operation on two bitsets. The second program showcases bit shifting, specifically shifting bits to the left in a bitset. The C implementations use functions that work with the `Bitset` type, while the C++ implementations leverage the `std::bitset` standard library features for similar operations.
