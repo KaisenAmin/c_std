@@ -847,10 +847,6 @@ int main()
 
 
 ```
-## Contribution
-
-Your contributions to this project are welcome! If you have suggestions or improvements, feel free to fork the repository, make your changes, and submit a pull request.
-
 
 ### Example 23 : how to use vector_begin and vector_end with String Object 
 
