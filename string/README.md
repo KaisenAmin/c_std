@@ -62,6 +62,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_max_size(String*)`: Returns the maximum size of a String.
 - `string_empty(String*)`: Checks if a String is empty.
 - `string_contains(String*, const char*)`: Checks if a String contains a specific substring.
+- `string_count(Strin*, char*)` : count number of substr appears in String object 'str'.
 
 ## String Characteristics
 - `string_is_alpha(String*)`: Checks if a String contains only alphabetic characters.
