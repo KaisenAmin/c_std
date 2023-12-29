@@ -584,7 +584,7 @@ int main()
 
 ```
 
-## Example 19 : bench mark operation in String and std::string 
+## Example 19 : bench mark operation in `String` and `std::string` 
 
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main .\main.c .\string\string.c
 Time taken (Custom String): 0.286000 seconds
@@ -668,7 +668,7 @@ int main()
 
 ```
 
-## Example 20 : benchmark of String and std::string
+## Example 20 : benchmark of `String` and `std::string`
 
 create pool
 Average Custom Vector Time: 0.001507 seconds
@@ -777,7 +777,7 @@ int main()
 
 ```
 
-### Example 22 : Reverse String with string_reverse 
+### Example 22 : Reverse String with `string_reverse`
 
 ```c
 #include "string/string.h"
@@ -801,7 +801,7 @@ int main()
 
 ```
 
-### Example 23 : string_is_digit 
+### Example 23 : `string_is_digit`
 
 ```c
 
@@ -821,7 +821,7 @@ int main()
 }
 ```
 
-### Example 24 : string_is_lower 
+### Example 24 : `string_is_lower`
 
 ```c
 #include "string/string.h" 
@@ -845,7 +845,7 @@ int main()
 
 ```
 
-### Example 25 : concatenate two String with string_concatenate 
+### Example 25 : concatenate two String with `string_concatenate`
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -892,7 +892,7 @@ int main()
 }
 ```
 
-### Example 27 : split String with string_split 
+### Example 27 : split String with `string_split`
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -916,7 +916,7 @@ int main()
 }
 ```
 
-### Example 28 : joins several String objects with string_join 
+### Example 28 : joins several String objects with `string_join` 
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -942,7 +942,7 @@ int main()
 }
 ```
 
-### Example 29 : replace_all 
+### Example 29 : `replace_all` 
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -961,7 +961,7 @@ int main()
 
 ```
 
-### Example 30: string_to_int
+### Example 30: `string_to_int`
 Convert a string to an integer.
 
 ```c
@@ -980,7 +980,7 @@ int main()
 }
 ```
 
-### Example 31: string_to_float
+### Example 31: `string_to_float`
 Convert a string to a float.
 
 ```c
@@ -999,7 +999,7 @@ int main()
 }
 ```
 
-### Example 32: string_pad_start
+### Example 32: `string_pad_start`
 Pad a string at the start to reach a specified length.
 
 ```c
@@ -1018,7 +1018,7 @@ int main()
 }
 ```
 
-### Example 33: string_pad_end
+### Example 33: `string_pad_end`
 Pad a string at the end to reach a specified length.
 
 ```c
@@ -1037,7 +1037,7 @@ int main()
 }
 ```
 
-### Example 34 : string_to_hex 
+### Example 34 : `string_to_hex`
 converts a regular string to its hexadecimal representation.
 
 ```c
@@ -1059,7 +1059,7 @@ int main()
 
 ```
 
-### Example 35 : hex_to_string 
+### Example 35 : `hex_to_string`
 converts a hexadecimal string back to the original string.
 
 ```c
@@ -1081,7 +1081,7 @@ int main()
 
 ```
 
-### Example 36 : string_count
+### Example 36 : `string_count`
 
 ```c
 #include "string/string.h"
@@ -1100,7 +1100,7 @@ int main()
 }
 ```
 
-### Example 37 : string_remove
+### Example 37 : `string_remove`
 
 ```c
 #include "string/string.h"
@@ -1120,7 +1120,7 @@ int main()
 }
 ```
 
-### Example 38 : string_from_int
+### Example 38 : `string_from_int`
 
 ```c
 #include "string/string.h"
@@ -1138,7 +1138,7 @@ int main()
 }
 ```
 
-### Example 39 : string_from_float
+### Example 39 : `string_from_float`
 
 ```c
 #include "string/string.h"
@@ -1156,7 +1156,7 @@ int main()
 }
 ```
 
-### Example 40 : string_tokenize 
+### Example 40 : `string_tokenize` 
 This function splits a string into tokens based on multiple delimiters.
 
 ```c
@@ -1184,7 +1184,7 @@ int main()
 
 ```
 
-### Example 40 : string_to_double 
+### Example 40 : `string_to_double` 
 Converts a string to a double value.
 
 ```c
@@ -1205,7 +1205,7 @@ int main()
 
 ```
 
-### Example 41 : string_from_double 
+### Example 41 : `string_from_double` 
 Create a 'string' Object from a double Value.
 
 ```c
@@ -1226,7 +1226,7 @@ int main()
 
 ```
 
-### Example 42 : string_compare_ignore_case
+### Example 42 : `string_compare_ignore_case`
 Compare two strings ignoring case difference 
 
 ```c
@@ -1251,7 +1251,7 @@ int main()
 
 ```
 
-### Example 43 : string_base64_encode and string_base64_decode 
+### Example 43 : `string_base64_encode` and `string_base64_decode`
 
 These two functions converts string to base64 or return a base64 ascii to String Object 
 ```c
@@ -1282,7 +1282,7 @@ int main()
 
 ```
 
-### Example 44 : string_format 
+### Example 44 : `string_format` 
 
 This 'string_format' function works similarly to sprintf, but it writes the formatted string into a String.
 ```c
@@ -1304,7 +1304,7 @@ int main()
 
 ```
 
-### Example 45 : string_repeat 
+### Example 45 : `string_repeat`
 
 This function repeats the given string a specified number of times.
 ```c
@@ -1325,7 +1325,7 @@ int main()
 }
 ```
 
-### Example 46 : string_join_variadic
+### Example 46 : `string_join_variadic`
 
 This function concatenates multiple strings.
 ```c
@@ -1350,7 +1350,7 @@ int main()
 }
 ```
 
-### Example 47 : string_trim_characters
+### Example 47 : `string_trim_characters`
 
 This function trims specified characters from both ends of a string.
 ```c
@@ -1370,7 +1370,7 @@ int main()
 
 ```
 
-### Example 48 : string_shuffle 
+### Example 48 : `string_shuffle`
 
 This function shuffle the String object randomly based on time. 
 ```c
@@ -1391,7 +1391,7 @@ int main()
 }
 ```
 
-### Example 49 : string_to_title 
+### Example 49 : `string_to_title` 
 
 This function converts each word in the string to title case (the first letter capitalized).
 ```c
@@ -1410,7 +1410,7 @@ int main()
 }
 ```
 
-### Example 50 : string_to_casefold
+### Example 50 : `string_to_casefold`
 
 This function converts a string to a case-insensitive form, typically used for comparisons.
 ```c
@@ -1429,7 +1429,7 @@ int main()
 }
 ```
 
-### Example 51 : string_remove_range 
+### Example 51 : `string_remove_range` 
 
 This function removes a range of characters from a string, given a start position and an end position.
 ```c
@@ -1448,7 +1448,7 @@ int main()
 }
 ```
 
-### Example 52 : string_starts_with 
+### Example 52 : `string_starts_with`
 
 This function checks if a String Object starts with a specified substring.
 ```c
@@ -1467,7 +1467,7 @@ int main()
 }
 ```
 
-### Example 53 : string_ends_with 
+### Example 53 : `string_ends_with`
 
 This function checks if a String Object ends with a specified substring.
 ```c
@@ -1486,7 +1486,7 @@ int main()
 }
 ```
 
-### Example 54 : string_to_capitalize 
+### Example 54 : `string_to_capitalize` 
 
 This function converts the first character of a String to upper case.
 ```c
