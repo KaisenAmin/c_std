@@ -1505,7 +1505,7 @@ int main()
 }
 ```
 
-### Example 55 : string_swap_case 
+### Example 55 : `string_swap_case` 
 
 This function swaps the case of each character in the String. Lower case characters become upper case and vice versa.
 ```c
