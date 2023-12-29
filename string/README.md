@@ -134,7 +134,6 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_remove(String*, const char*)`: Removes all occurrences of a substring.
 - `string_set_pool_size(String*, size_t)`: Sets the size of the memory pool for a String.
 - `string_tokenize(String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
----
 
 ## String Encoding Functions
 - `string_to_hex(String*)`: Converts a String to its hexadecimal representation.
@@ -968,6 +967,7 @@ int main()
 ```
 
 ### Example 25 : concatenate two String with `string_concatenate`
+
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -988,6 +988,7 @@ int main()
 ```
 
 ### Example 26 : trim String from start, end or both 
+
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1015,6 +1016,7 @@ int main()
 ```
 
 ### Example 27 : split String with `string_split`
+
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1039,6 +1041,7 @@ int main()
 ```
 
 ### Example 28 : joins several String objects with `string_join` 
+
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1065,6 +1068,7 @@ int main()
 ```
 
 ### Example 29 : `replace_all` 
+
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1084,7 +1088,6 @@ int main()
 ```
 
 ### Example 30: `string_to_int`
-Convert a string to an integer.
 
 ```c
 #include "string/string.h"
@@ -1103,7 +1106,6 @@ int main()
 ```
 
 ### Example 31: `string_to_float`
-Convert a string to a float.
 
 ```c
 #include "string/string.h"
@@ -1121,8 +1123,7 @@ int main()
 }
 ```
 
-### Example 32: `string_pad_start`
-Pad a string at the start to reach a specified length.
+### Example 32: `string_pad_left`
 
 ```c
 #include "string/string.h"
@@ -1140,8 +1141,7 @@ int main()
 }
 ```
 
-### Example 33: `string_pad_end`
-Pad a string at the end to reach a specified length.
+### Example 33: `string_pad_right`
 
 ```c
 #include "string/string.h"
@@ -1160,7 +1160,6 @@ int main()
 ```
 
 ### Example 34 : `string_to_hex`
-converts a regular string to its hexadecimal representation.
 
 ```c
 #include "string/string.h"
@@ -1182,7 +1181,6 @@ int main()
 ```
 
 ### Example 35 : `string_from_hex`
-converts a hexadecimal string back to the original string.
 
 ```c
 #include "string/string.h"
@@ -1279,7 +1277,6 @@ int main()
 ```
 
 ### Example 40 : `string_tokenize` 
-This function splits a string into tokens based on multiple delimiters.
 
 ```c
 #include "string/string.h"
@@ -1307,7 +1304,6 @@ int main()
 ```
 
 ### Example 40 : `string_to_double` 
-Converts a string to a double value.
 
 ```c
 #include "string/string.h"
@@ -1328,7 +1324,6 @@ int main()
 ```
 
 ### Example 41 : `string_from_double` 
-Create a 'string' Object from a double Value.
 
 ```c
 #include "string/string.h"
@@ -1349,7 +1344,6 @@ int main()
 ```
 
 ### Example 42 : `string_compare_ignore_case`
-Compare two strings ignoring case difference 
 
 ```c
 #include "string/string.h"
@@ -1375,7 +1369,6 @@ int main()
 
 ### Example 43 : `string_base64_encode` and `string_base64_decode`
 
-These two functions converts string to base64 or return a base64 ascii to String Object 
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1406,7 +1399,6 @@ int main()
 
 ### Example 44 : `string_format` 
 
-This 'string_format' function works similarly to sprintf, but it writes the formatted string into a String.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1428,7 +1420,6 @@ int main()
 
 ### Example 45 : `string_repeat`
 
-This function repeats the given string a specified number of times.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1449,7 +1440,6 @@ int main()
 
 ### Example 46 : `string_join_variadic`
 
-This function concatenates multiple strings.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1474,7 +1464,6 @@ int main()
 
 ### Example 47 : `string_trim_characters`
 
-This function trims specified characters from both ends of a string.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1494,7 +1483,6 @@ int main()
 
 ### Example 48 : `string_shuffle`
 
-This function shuffle the String object randomly based on time. 
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1515,7 +1503,6 @@ int main()
 
 ### Example 49 : `string_to_title` 
 
-This function converts each word in the string to title case (the first letter capitalized).
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1534,7 +1521,6 @@ int main()
 
 ### Example 50 : `string_to_casefold`
 
-This function converts a string to a case-insensitive form, typically used for comparisons.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1553,7 +1539,6 @@ int main()
 
 ### Example 51 : `string_remove_range` 
 
-This function removes a range of characters from a string, given a start position and an end position.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1572,7 +1557,6 @@ int main()
 
 ### Example 52 : `string_starts_with`
 
-This function checks if a String Object starts with a specified substring.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1591,7 +1575,6 @@ int main()
 
 ### Example 53 : `string_ends_with`
 
-This function checks if a String Object ends with a specified substring.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1610,7 +1593,6 @@ int main()
 
 ### Example 54 : `string_to_capitalize` 
 
-This function converts the first character of a String to upper case.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1629,7 +1611,6 @@ int main()
 
 ### Example 55 : `string_swap_case` 
 
-This function swaps the case of each character in the String. Lower case characters become upper case and vice versa.
 ```c
 #include "string/string.h"
 #include <stdio.h>
@@ -1648,9 +1629,6 @@ int main()
 
 ### Example 56 : `string_to_unicode` and `string_from_unicode`
 
-string_to_unicode function converts a regular string (char*) to a wide string (wchar_t*), which can represent Unicode characters.
-
-string_from_unicode function converts a wide string (wchar_t*) back to a regular string (char*).
 ```c
 #include "string/string.h"
 #include <stdio.h>
