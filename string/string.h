@@ -114,5 +114,7 @@ void string_to_casefold(String* str);
 bool string_starts_with(const String* str, const char* substr);
 bool string_ends_with(const String* str, const char* substr);
 void string_swap_case(String* str);
-
+wchar_t* string_to_unicode(const char* str);
+String* string_from_unicode(const wchar_t* wstr);
+ 
 #endif 

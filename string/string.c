@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <time.h>
+#include <wchar.h>
 
 MemoryPoolString* global_pool = NULL;
 static MemoryPoolString *memory_pool_create(size_t size);
@@ -1535,4 +1536,42 @@ void string_swap_case(String* str)
         else if (isupper(str->dataStr[i])) 
             str->dataStr[i] = tolower(str->dataStr[i]);
     }
+}
+
+wchar_t* string_to_unicode(const char* str) 
+{
+    if (str == NULL) 
+        return NULL;
+
+    // Calculate the length of the wide string
+    size_t len = mbstowcs(NULL, str, 0) + 1;
+
+    wchar_t* wstr = malloc(len * sizeof(wchar_t));
+    if (!wstr) 
+        return NULL;
+
+    mbstowcs(wstr, str, len);
+    return wstr;
+}
+
+String* string_from_unicode(const wchar_t* wstr) 
+{
+    if (wstr == NULL) 
+        return NULL;
+
+    // Calculate the length of the string
+    size_t len = wcstombs(NULL, wstr, 0);
+    if (len == (size_t)-1) 
+        return NULL; // Handle conversion error
+
+    char* str = malloc(len + 1); // +1 for null terminator
+    if (!str) 
+        return NULL;
+
+    wcstombs(str, wstr, len + 1); // Convert and include the null terminator
+
+    String* stringObj = string_create(str);
+    free(str); // Free the temporary char* buffer
+
+    return stringObj;
 }
