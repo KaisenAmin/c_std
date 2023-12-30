@@ -61,9 +61,12 @@ bool stack_is_not_equal(const Stack* stk1, const Stack* stk2)
 
 void stack_push(Stack* stk, void* item) 
 {
-    if (stk == NULL || item == NULL) 
-        return; // Invalid input
-    
+    if (stk == NULL || item == NULL)
+    {
+        perror("stack or item is null");
+        exit(-1);
+    }
+        
     vector_push_back(stk->vec, item);
 }
 

@@ -62,18 +62,20 @@ void map_iterator_decrement(MapIterator* it)
     }
 }
 
-
 static MapNode* create_node(KeyType key, ValueType value) 
 {
     MapNode* node = (MapNode*)malloc(sizeof(MapNode));
-    if (node) 
+    
+    if (!node)
     {
-        node->key = key;
-        node->value = value;
-        node->left = node->right = node->parent = NULL;
-        node->color = RED;  // All new nodes are red in a Red-Black Tree
+        perror("Can not allocate memory for node in create_node");
+        return NULL;
     }
-
+    node->key = key;
+    node->value = value;
+    node->left = node->right = node->parent = NULL;
+    node->color = RED;  // All new nodes are red in a Red-Black Tree
+    
     return node;
 }
 
@@ -308,10 +310,20 @@ static void map_insert_fixup(Map* map, MapNode* newNode)
 
 Map* map_create(CompareFunc comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) 
 {
+    if (!comp) 
+    {
+        perror("Compare function is null can not create map");
+        return NULL;
+    }
+
     Map* map = (Map*)malloc(sizeof(Map));
 
     if (!map) 
+    {
+        perror("Can not allocate memory for map");
         return NULL;
+    }
+        
 
     map->root = NULL;
     map->compFunc = comp;
@@ -324,9 +336,12 @@ Map* map_create(CompareFunc comp, ValueDeallocFunc deallocKey, ValueDeallocFunc 
 
 void map_deallocate(Map* map) 
 {
-    if (!map) 
+    if (!map)
+    {
+        perror("Map is null or empty there is nothing to deallocate");
         return;
-
+    }
+        
     map_free_nodes(map->root, map->deallocKey, map->deallocValue); // Use map_free_nodes to recursively free all nodes
 
     free(map);
@@ -356,8 +371,11 @@ size_t map_max_size(const Map* map)
 
 bool map_insert(Map* map, KeyType key, ValueType value) 
 {
-    if (map == NULL) 
-        return false;
+    if (map == NULL)
+    {
+        perror("map is null cannot insert");
+        exit(-1);
+    }
 
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
@@ -376,9 +394,9 @@ bool map_insert(Map* map, KeyType key, ValueType value)
     }
 
     MapNode* newNode = create_node(key, value);
-    if (!newNode) 
+    if (!newNode)
         return false;
-
+    
     *curr = newNode;
     newNode->parent = parent;
     map->size++;
@@ -391,11 +409,13 @@ bool map_insert(Map* map, KeyType key, ValueType value)
 
 ValueType map_at(const Map* map, KeyType key) 
 {
-    if (map == NULL) 
+    if (map == NULL)
+    {
+        perror("map is null cannot get element at position");
         return NULL;
+    }
 
     MapNode* curr = map->root;
-
     while (curr) 
     {
         int cmp = map->compFunc(key, curr->key);
@@ -413,8 +433,11 @@ ValueType map_at(const Map* map, KeyType key)
 void map_clear(Map* map) 
 {
     if (map == NULL) 
+    {
+        perror("Map is empty or Null there is nothing to clear");
         return;
-
+    }
+    
     // Use map_free_nodes to recursively free all nodes in the tree
     map_free_nodes(map->root, map->deallocKey, map->deallocValue);
 
@@ -454,8 +477,12 @@ void map_swap(Map* map1, Map* map2)
 
 size_t map_count(const Map* map, KeyType key) 
 {
-    if (map == NULL) 
+    if (map == NULL)
+    {
+        perror("map is null there is nothing to count");
         return 0;
+    }
+        
 
     MapNode* current = map->root;
     while (current != NULL) 
@@ -474,8 +501,11 @@ size_t map_count(const Map* map, KeyType key)
 
 bool map_emplace(Map* map, KeyType key, ValueType value) 
 {
-    if (map == NULL) 
-        return false;
+    if (map == NULL || !key)
+    {
+        perror("map or key is null cannot emplace");
+        exit(-1);
+    }
 
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
@@ -516,8 +546,11 @@ CompareFunc map_key_comp(const Map* map)
 
 bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
 {
-    if (map == NULL) 
-        return false;
+    if (map == NULL || !key) 
+    {
+        perror("map or key is null cannot emplace");
+        exit(-1);
+    }
 
     MapNode* newNode = create_node(key, value);
     if (newNode == NULL) 
@@ -604,7 +637,10 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value)
 bool map_erase(Map* map, KeyType key) 
 {
     if (map == NULL || map->root == NULL) 
+    {
+        perror("map or map root is null ther is nothing to be erase");
         return false;
+    }
     
     MapNode* z = map->root;
     while (z != NULL) 
@@ -619,7 +655,10 @@ bool map_erase(Map* map, KeyType key)
     }
 
     if (z == NULL) 
-        return false; // Key not found
+    {
+        perror("Key not found");
+        return false;
+    }
     
     MapNode* y = z;
     int y_original_color = y->color;
@@ -860,3 +899,48 @@ ValueType map_node_get_value(MapNode* node)
     
     return NULL;
 }
+
+void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType)) 
+{
+    if (map == NULL || map->root == NULL) 
+    {
+        printf("Map is empty\n");
+        return;
+    }
+
+    if (!printKey || !printValue) 
+    {
+        printf("Print functions are NULL\n");
+        return;
+    }
+
+    for (MapIterator it = map_begin(map); it.node != map_end(map).node; map_iterator_increment(&it)) 
+    {
+        printKey(map_node_get_key(it.node));
+        printf(": ");
+        printValue(map_node_get_value(it.node));
+        printf("\n");
+    }
+}
+
+Map* map_copy(const Map* src) 
+{
+    if (src == NULL)
+    {
+        perror("source is null can not copy!!!");
+        return NULL;
+    }
+        
+    Map* newMap = map_create(src->compFunc, src->deallocKey, src->deallocValue);
+
+    if (!newMap) 
+    {
+        perror("Can not allocate memory for newMap");    
+        return NULL;
+    }
+    for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) 
+        map_insert(newMap, map_node_get_key(it.node), map_node_get_value(it.node));
+
+    return newMap;
+}
+

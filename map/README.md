@@ -13,6 +13,42 @@ This C library provides a generic implementation of a map, also known as an asso
 ## Usage
 Include the `map.h` header file in your C program to use the map functionality. The `map.c` file contains the implementation and should be compiled with your program.
 
+## Function Explanations
+
+- `map_create`: Initializes a new map with the provided comparison and deallocation functions.
+- `map_deallocate`: Frees all memory associated with the map.
+- `map_begin`: Returns an iterator to the first element of the map.
+- `map_end`: Returns an iterator to the end of the map (after the last element).
+- `map_rbegin`: Returns a reverse iterator to the last element of the map.
+- `map_rend`: Returns a reverse iterator to the position before the first element of the map.
+- `map_cbegin`: Returns a constant iterator to the first element of the map.
+- `map_cend`: Returns a constant iterator to the end of the map.
+- `map_crbegin`: Returns a constant reverse iterator to the last element of the map.
+- `map_crend`: Returns a constant reverse iterator to the position before the first element of the map.
+- `map_empty`: Checks if the map is empty.
+- `map_size`: Returns the number of elements in the map.
+- `map_max_size`: Returns the maximum possible number of elements in the map.
+- `map_at`: Accesses the value associated with a key in the map.
+- `map_insert`: Inserts a key-value pair into the map.
+- `map_erase`: Removes the element with the specified key from the map.
+- `map_swap`: Exchanges the contents of two maps.
+- `map_clear`: Removes all elements from the map.
+- `map_emplace`: Inserts a new element into the map if the key does not exist.
+- `map_emplace_hint`: Inserts a new element into the map with a hint on the position.
+- `map_key_comp`: Returns the comparison function used by the map.
+- `map_find`: Finds an element with a specific key.
+- `map_count`: Returns the number of elements matching a specific key.
+- `map_lower_bound`: Returns an iterator to the first element not less than a given key.
+- `map_upper_bound`: Returns an iterator to the first element greater than a given key.
+- `map_equal_range`: Returns a range of elements matching a specific key.
+- `map_node_get_key`: Retrieves the key of a map node.
+- `map_node_get_value`: Retrieves the value of a map node.
+- `map_iterator_increment`: Advances the iterator to the next element.
+- `map_iterator_decrement`: Moves the iterator to the previous element.
+- `map_print`: Prints all elements of the map using provided print functions.
+- `map_copy`: Creates a copy of the given map.
+
+---
 
 ## Example 1 : insert and get value by Key 
 ```c
@@ -689,5 +725,92 @@ int main()
         std::cout << pair.first << ": " << pair.second << std::endl;
     
     return 0;
+}
+```
+
+## Example 12 : `map_print` 
+
+```c
+#include "map/map.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+
+int compare_ints(const KeyType a, const KeyType b) {
+    return *(int*)a - *(int*)b;
+}
+
+void int_deallocator(void* data) {
+    free(data);
+}
+
+void print_int(const KeyType key) {
+    printf("%d", *(const int*)key);
+}
+
+void print_string(const ValueType value) {
+    printf("%s", (const char*)value);
+}
+
+int main() 
+{
+    Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
+    char* value = strdup("Hello, World");
+    int key = 5;
+
+    map_insert(myMap, &key, value);
+    map_print(myMap, print_int, print_string);
+
+    map_deallocate(myMap);
+    free(value);
+
+    return 0;
+}
+
+```
+
+## Example 13 : `map_copy`
+
+```c
+#include "map/map.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+
+int compare_ints(const KeyType a, const KeyType b) {
+    return *(int*)a - *(int*)b;
+}
+
+void int_deallocator(void* data) {
+    free(data);
+}
+
+void print_key(const KeyType key) {
+    printf("%d", *(const int*)key);
+}
+
+void print_value(const ValueType value) {
+    printf("%d", *(const int*)value);
+}
+
+int main() 
+{
+    Map* originalMap = map_create(compare_ints, int_deallocator, int_deallocator);
+    int key = 10;
+    int value = 20;
+
+    map_insert(originalMap, &key, &value);
+    Map* copiedMap = map_copy(originalMap);
+
+    map_print(copiedMap, print_key, print_value);
+    printf("Size of the copied map: %zu\n", map_size(copiedMap));
+
+    map_deallocate(originalMap);
+    map_deallocate(copiedMap);
+
+    return 0;
+
 }
 ```

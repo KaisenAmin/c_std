@@ -37,7 +37,6 @@ typedef struct MapEntry
 // Example definition of MapIterator
 typedef struct MapIterator 
 {
-
     MapNode* node;
     // Implementation details, e.g., pointers to map nodes
 } MapIterator;
@@ -92,5 +91,8 @@ KeyType map_node_get_key(MapNode* node);
 ValueType map_node_get_value(MapNode* node);
 void map_iterator_increment(MapIterator* it);
 void map_iterator_decrement(MapIterator* it);
+
+void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType));
+Map* map_copy(const Map* src);
 
 #endif // MAP_H_

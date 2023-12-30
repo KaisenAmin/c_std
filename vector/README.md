@@ -18,7 +18,7 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 To use the Vector library in your project, include the `vector.h` header file in your source code.
 
-### Function Descriptions for Vector Library
+### Function Descriptions
 
 - `vector_create(size_t itemSize)`: Initializes and returns a new vector with specified item size.
 - `vector_is_equal(const Vector* vec1, const Vector* vec2)`: Checks if two vectors are equal in content.
