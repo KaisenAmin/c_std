@@ -5,7 +5,7 @@ int main()
 {
     int array[] = {10, 20, 30, 40, 50};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
-    Span *span = span_create(array, arraySize * sizeof(int), sizeof(int));
+    Span *span = span_create(array, arraySize, sizeof(int));
 
     Span firstThree = span_first(span, 3);
     printf("First three elements: ");
@@ -14,6 +14,6 @@ int main()
 
     printf("\n");
     span_destroy(span);
-    
+
     return 0;
 }

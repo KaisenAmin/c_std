@@ -65,7 +65,6 @@ static void* memory_pool_span_allocate(size_t size)
 
 Span* span_create(void* data, size_t elemCount, size_t elemSize) 
 {
-
     if (!data) 
     {
         perror("Null data provided to span_create");
@@ -82,15 +81,15 @@ Span* span_create(void* data, size_t elemCount, size_t elemSize)
         exit(-1);
     }
 
-    newSpan->data = memory_pool_span_allocate(elemCount);
+    newSpan->data = memory_pool_span_allocate(elemCount * elemSize);
     if (!newSpan->data) 
     {
         perror("Failed to allocate memory for Span data");
         exit(-1);
     }
 
-    memcpy(newSpan->data, data, elemCount);
-    newSpan->size = elemCount;
+    memcpy(newSpan->data, data, elemCount * elemSize);
+    newSpan->size = elemCount * elemSize;
     newSpan->elemSize = elemSize;
 
     return newSpan;
@@ -215,6 +214,6 @@ Span span_subspan(Span* span, size_t offset, size_t count)
     result.data = (char*)span->data + offset * span->elemSize;
     result.size = count * span->elemSize;
     result.elemSize = span->elemSize;
-    
+
     return result;
 }

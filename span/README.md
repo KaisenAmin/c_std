@@ -58,7 +58,7 @@ int main()
     size_t arraySize = sizeof(array) / sizeof(array[0]);
 
     // Create a span and copy the data from the array
-    Span* mySpan = span_create(array, arraySize * sizeof(int), sizeof(int));
+    Span* mySpan = span_create(array, arraySize, sizeof(int));
 
     // Access elements in the span
     int* spanData = (int*)mySpan->data;
@@ -92,7 +92,7 @@ int main()
 
     // Create a Span from the Vector's data
     int* data = (int*) vector_data(intVector);
-    Span* span = span_create(data, vector_size(intVector) * sizeof(int), sizeof(int));
+    Span* span = span_create(data, vector_size(intVector), sizeof(int));
 
     printf("Elements in Span:\n");
     for (size_t i = 0; i < span_size(span) / sizeof(int); ++i) 
@@ -121,7 +121,7 @@ int main()
     size_t arraySize = sizeof(array) / sizeof(array[0]);
 
     // Create a span and copy the data from the array
-    Span* mySpan = span_create(array, arraySize * sizeof(char*), sizeof(char*));
+    Span* mySpan = span_create(array, arraySize, sizeof(char*));
 
     // Access elements in the span
     char** spanData = (char**)mySpan->data;
@@ -146,7 +146,7 @@ int main()
 {
     int array[] = {10, 20, 30, 40, 50};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
-    Span* span = span_create(array, arraySize * sizeof(int), sizeof(int));
+    Span* span = span_create(array, arraySize, sizeof(int));
 
     // Access the first and last elements
     int* firstElement = (int*)span_front(span);
@@ -172,7 +172,7 @@ int main()
 int main() {
     char* strings[] = {"Hello", "World", "Example", "C Programming"};
     size_t arraySize = sizeof(strings) / sizeof(strings[0]);
-    Span* span = span_create(strings, arraySize * sizeof(char*), sizeof(char*));
+    Span* span = span_create(strings, arraySize, sizeof(char*));
 
     char** firstString = (char**)span_front(span);
     char** lastString = (char**)span_back(span);
@@ -198,7 +198,7 @@ int main()
 {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
-    Span* span = span_create(array, arraySize * sizeof(int), sizeof(int));
+    Span* span = span_create(array, arraySize, sizeof(int));
 
     int* data = (int*)span_data(span);
     printf("Original data: ");
@@ -272,7 +272,7 @@ int main()
 {
     int array[] = {10, 20, 30, 40, 50};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
-    Span *span = span_create(array, arraySize * sizeof(int), sizeof(int));
+    Span *span = span_create(array, arraySize, sizeof(int));
 
     Span firstThree = span_first(span, 3);
     printf("First three elements: ");
