@@ -217,3 +217,4 @@ Span span_subspan(Span* span, size_t offset, size_t count)
 
     return result;
 }
+

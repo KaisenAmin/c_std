@@ -286,3 +286,50 @@ int main()
 }
 
 ```
+
+## Example 10 : Using `span_last`
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() 
+{
+    int array[] = {10, 20, 30, 40, 50};
+    Span *span = span_create(array, 5, sizeof(int));
+
+    Span lastTwo = span_last(span, 2);
+    printf("Last two elements: ");
+    for (size_t i = 0; i < lastTwo.size / sizeof(int); ++i) 
+        printf("%d ", ((int*)lastTwo.data)[i]);
+    
+    printf("\n");
+    span_destroy(span);
+
+    return 0;
+}
+
+```
+
+## Example 11 : Using `span_subspan`
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() 
+{
+    int array[] = {10, 20, 30, 40, 50};
+    Span *span = span_create(array, 5, sizeof(int));
+
+    Span middleSpan = span_subspan(span, 1, 3);
+    printf("Middle three elements: ");
+    for (size_t i = 0; i < middleSpan.size / sizeof(int); ++i) 
+        printf("%d ", ((int*)middleSpan.data)[i]);
+    
+    printf("\n");
+    span_destroy(span);
+    
+    return 0;
+}
+```
