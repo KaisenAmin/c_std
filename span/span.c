@@ -142,3 +142,79 @@ void* span_back(Span* span)
 
     return (char*)span->data + (span->size - span->elemSize);// Calculate the address of the last element
 }
+
+void* span_data(Span* span) 
+{
+    if (!span) 
+    {
+        perror("span_data: Span is NULL");
+        return NULL;
+    }
+    return span->data;
+}
+
+const void* span_cdata(const Span* span) 
+{
+    if (!span) 
+    {
+        perror("span_cdata: Span is NULL");
+        return NULL;
+    }
+    return span->data;
+}
+
+bool span_empty(const Span* span) {
+    return (span == NULL || span->size == 0);
+}
+
+size_t span_size_bytes(const Span* span) 
+{
+    if (!span) 
+    {
+        perror("span_size_bytes: Span is NULL");
+        return 0;
+    }
+    return span->size * span->elemSize;
+}
+
+Span span_first(Span* span, size_t count) 
+{
+    Span result = {NULL, 0, 0};
+
+    if (!span || count == 0 || span->size == 0) 
+        return result;
+
+    result.data = span->data;
+    result.size = count * span->elemSize;
+    result.elemSize = span->elemSize;
+
+    return result;
+}
+
+Span span_last(Span* span, size_t count) 
+{
+    Span result = {NULL, 0, 0};
+
+    if (!span || count == 0 || span->size == 0) 
+        return result;
+
+    result.data = (char*)span->data + (span->size - count * span->elemSize);
+    result.size = count * span->elemSize;
+    result.elemSize = span->elemSize;
+
+    return result;
+}
+
+Span span_subspan(Span* span, size_t offset, size_t count) 
+{
+    Span result = {NULL, 0, 0};
+
+    if (!span || offset * span->elemSize >= span->size || count == 0) 
+        return result;
+
+    result.data = (char*)span->data + offset * span->elemSize;
+    result.size = count * span->elemSize;
+    result.elemSize = span->elemSize;
+    
+    return result;
+}

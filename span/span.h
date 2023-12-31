@@ -30,13 +30,10 @@ const void* span_crend(const Span* span);
 void* span_front(Span* span);
 void* span_back(Span* span);
 void* span_at(Span* span, size_t index);
-void* span_operator_index(Span* span, size_t index);
-void* span_data(Span* span);
 const void* span_cdata(const Span* span);
 
 size_t span_size(const Span* span);
 void* span_data(Span* span);
-const void* span_cdata(const Span* span);
 
 bool span_is_equal(const Span* span1, const Span* span2);
 bool span_is_less(const Span* span1, const Span* span2);

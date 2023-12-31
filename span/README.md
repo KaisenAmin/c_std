@@ -187,3 +187,102 @@ int main() {
     return 0;
 }
 ```
+
+## Example 6 : Using `span_data`` and `span_cdata`
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() 
+{
+    int array[] = {1, 2, 3, 4, 5};
+    size_t arraySize = sizeof(array) / sizeof(array[0]);
+    Span* span = span_create(array, arraySize * sizeof(int), sizeof(int));
+
+    int* data = (int*)span_data(span);
+    printf("Original data: ");
+    for (size_t i = 0; i < arraySize; ++i) 
+        printf("%d ", data[i]);
+    
+    printf("\n");
+    data[0] = 10; // Modifying the first element
+
+    const int* constData = (const int*)span_cdata(span);
+    printf("Modified data: ");
+    for (size_t i = 0; i < arraySize; ++i) 
+        printf("%d ", constData[i]);
+
+    printf("\n");
+
+    span_destroy(span);
+    return 0;
+}
+
+```
+
+## Example 7 : Using `span_empty`
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() 
+{
+    Span* span = span_create(NULL, 0, 0); // Creating an empty span
+
+    if (span_empty(span)) 
+        printf("Span is empty\n");
+    else 
+        printf("Span is not empty\n");
+    
+    span_destroy(span);
+    return 0;
+}
+
+```
+
+## Example 8 : Using `span_size_bytes`
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() 
+{
+    int array[] = {1, 2, 3, 4, 5};
+    size_t arraySize = sizeof(array) / sizeof(array[0]);
+    Span* span = span_create(array, arraySize, sizeof(int));
+
+    printf("Size of span in bytes: %zu\n", span_size_bytes(span));
+
+    span_destroy(span);
+    return 0;
+}
+
+```
+
+## Example 9 : Using `span_first`
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() 
+{
+    int array[] = {10, 20, 30, 40, 50};
+    size_t arraySize = sizeof(array) / sizeof(array[0]);
+    Span *span = span_create(array, arraySize * sizeof(int), sizeof(int));
+
+    Span firstThree = span_first(span, 3);
+    printf("First three elements: ");
+    for (size_t i = 0; i < firstThree.size / sizeof(int); ++i) 
+        printf("%d ", ((int*)firstThree.data)[i]);
+
+    printf("\n");
+    span_destroy(span);
+    
+    return 0;
+}
+
+```
