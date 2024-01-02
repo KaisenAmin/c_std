@@ -25,6 +25,8 @@ void* span_rbegin(Span* span);
 const void* span_crbegin(const Span* span);
 void* span_rend(Span* span);
 const void* span_crend(const Span* span);
+void* span_increment(Span* span, void* ptr);
+void* span_decrement(Span* span, void* ptr);
 
 // Element access
 void* span_front(Span* span);

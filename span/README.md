@@ -333,3 +333,60 @@ int main()
     return 0;
 }
 ```
+
+## Example 12 : Using relation operators in Span 
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() {
+    int array1[] = {1, 2, 3, 4, 5};
+    int array2[] = {1, 2, 3, 4, 6};
+
+    Span* span1 = span_create(array1, 5, sizeof(int));
+    Span* span2 = span_create(array2, 5, sizeof(int));
+
+    printf("Span1 is equal to Span2: %s\n", span_is_equal(span1, span2) ? "true" : "false");
+    printf("Span1 is less than Span2: %s\n", span_is_less(span1, span2) ? "true" : "false");
+    printf("Span1 is greater than Span2: %s\n", span_is_greater(span1, span2) ? "true" : "false");
+    printf("Span1 is not equal to Span2: %s\n", span_is_not_equal(span1, span2) ? "true" : "false");
+    printf("Span1 is greater or equal to Span2: %s\n", span_is_greater_or_equal(span1, span2) ? "true" : "false");
+    printf("Span1 is less or equal to Span2: %s\n", span_is_less_or_equal(span1, span2) ? "true" : "false");
+
+    span_destroy(span1);
+    span_destroy(span2);
+
+    return 0;
+}
+```
+
+## Example 13 : Using Iterations functoins like `span_begin`, `span_end` 
+
+```c
+#include "span/span.h"
+#include <stdio.h>
+
+int main() {
+    int array[] = {10, 20, 30, 40, 50};
+    Span* span = span_create(array, 5, sizeof(int));
+
+    for (int* ptr = span_begin(span); ptr != span_end(span); ptr = span_increment(span, ptr)) {
+        if (ptr) {
+            printf("%d ", *ptr);
+        }
+    }
+    printf("\n");
+
+    for (int* ptr = span_rbegin(span); ptr != span_rend(span); ptr = (int*)span_decrement(span, ptr)) {
+        if (ptr) {
+            printf("%d ", *ptr);
+        }
+    }
+    printf("\n");
+
+    span_destroy(span);
+    return 0;
+}
+
+```

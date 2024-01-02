@@ -218,3 +218,81 @@ Span span_subspan(Span* span, size_t offset, size_t count)
     return result;
 }
 
+bool span_is_equal(const Span* span1, const Span* span2) {
+    if (span1->size != span2->size) {
+        return false;
+    }
+    else {
+        return memcmp(span1->data, span2->data, span1->size) == 0;
+    }
+}
+
+bool span_is_less(const Span* span1, const Span* span2) {
+    size_t minSize = (span1->size < span2->size) ? span1->size : span2->size;
+    int result = memcmp(span1->data, span2->data, minSize);
+
+    return result < 0 || (result == 0 && span1->size < span2->size);
+}
+
+bool span_is_greater(const Span* span1, const Span* span2) {
+    return span_is_less(span2, span1);
+}
+
+bool span_is_not_equal(const Span* span1, const Span* span2) {
+    return !span_is_equal(span1, span2);    
+}
+
+bool span_is_greater_or_equal(const Span* span1, const Span* span2) {
+    return span_is_greater(span1, span2) || span_is_equal(span1, span2);
+}
+
+bool span_is_less_or_equal(const Span* span1, const Span* span2) {
+    return span_is_less(span1, span2) || span_is_equal(span1, span2);
+}
+
+void* span_begin(Span* span) {
+    return span ? span->data : NULL;
+}
+
+const void* span_cbegin(const Span* span){
+    return span_begin((Span*)span);
+}
+
+void* span_end(Span* span) {
+    return span ? (char*)span->data + span->size: NULL;
+}
+
+const void* span_cend(const Span* span) {
+    return span_end((Span*)span);
+}
+
+void* span_rbegin(Span* span) {
+    return span ? (char*)span->data + span->size - span->elemSize: NULL;
+}
+
+const void* span_crbegin(const Span* span) {
+    return span_rbegin((Span*)span);
+}
+
+void* span_rend(Span* span) {
+    return span? (char*)span->data - span->elemSize: NULL;
+}
+
+const void* span_crend(const Span* span) {
+    return span_rend((Span*)span);
+}
+
+void* span_increment(Span* span, void* ptr) {
+    if (!span || !ptr || (char*)ptr + span->elemSize > (char*)span->data + span->size) {
+        return NULL; // Out of bounds or invalid arguments
+    }
+    return (char*)ptr + span->elemSize;
+}
+
+void* span_decrement(Span* span, void* ptr) {
+    if (!span || !ptr || (char*)ptr <= (char*)span->data - span->elemSize) {
+        return NULL; // Out of bounds or invalid arguments
+    }
+    return (char*)ptr - span->elemSize;
+}
+
