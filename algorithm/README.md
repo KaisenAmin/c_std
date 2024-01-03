@@ -57,8 +57,6 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### Reduction and Comparison
 - `algorithm_reduce`: Reduces elements in a range to a single value using a specified operation.
-Here's a one-line explanation for each of the functions you've listed:
-
 - `algorithm_adjacent_find`: Finds the first pair of adjacent elements in a range that satisfy a comparison function.
 - `algorithm_count`: Counts the number of elements in a range that are equal to a specified value, as determined by a comparison function.
 - `algorithm_count_if`: Counts the elements in a range that satisfy a specified boolean predicate function.
