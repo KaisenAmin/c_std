@@ -288,3 +288,39 @@ void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberG
         free(temp);
     }
 }
+
+void *algorithm_lower_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    size_t low = 0;
+    size_t high = num;
+
+    while (low < high) {
+        size_t mid = low + (high - low) / 2;
+        const void *mid_elem = (const char *)base + mid * size;
+
+        if (comp(mid_elem, val) < 0) {
+            low = mid + 1;
+        } 
+        else {
+            high = mid;
+        }
+    }
+    return (void *)((const char *)base + low * size);
+}
+
+void *algorithm_upper_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    size_t low = 0;
+    size_t high = num;
+
+    while (low < high) {
+        size_t mid = low + (high - low) / 2;
+        const void *mid_elem = (const char *)base + mid * size;
+
+        if (comp(mid_elem, val) <= 0) {
+            low = mid + 1;
+        } 
+        else {
+            high = mid;
+        }
+    }
+    return (void *)((const char *)base + low * size);
+}

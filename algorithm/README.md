@@ -1587,3 +1587,84 @@ int main() {
 }
 
 ```
+
+#### Example 57: Find Lower Bound in an Array of Integers `algorithm_lower_bound`
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_ints(const void *a, const void *b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+int main() {
+    int arr[] = {1, 3, 5, 7, 9};
+    int val = 4;
+
+    int *lb = (int *)algorithm_lower_bound(arr, 5, sizeof(int), &val, compare_ints);
+    printf("Lower bound of 4 is at index: %lld\n", lb - arr);
+
+    return 0;
+}
+```
+
+#### Example 58: Find Upper Bound in an Array of Integers `algorithm_upper_bound`
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_ints(const void *a, const void *b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+int main() {
+    int arr[] = {1, 3, 5, 7, 9};
+    int val = 6;
+
+    int *ub = (int *)algorithm_upper_bound(arr, 5, sizeof(int), &val, compare_ints);
+    printf("Upper bound of 6 is at index: %lld\n", ub - arr);
+
+    return 0;
+}
+```
+
+#### Example 59: Lower Bound in an Array of Doubles `algorithm_lower_bound`
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_doubles(const void *a, const void *b) {
+    const double diff = *(const double*)a - *(const double*)b;
+    return (diff < 0) ? -1 : (diff > 0);
+}
+
+int main() {
+    double arr[] = {1.1, 3.3, 5.5, 7.7, 9.9};
+    double val = 4.4;
+
+    double *lb = (double *)algorithm_lower_bound(arr, 5, sizeof(double), &val, compare_doubles);
+    printf("Lower bound of 4.4 is at index: %lld\n", lb - arr);
+
+    return 0;
+}
+```
+
+#### Example 60: Upper Bound in an Array of Characters `algorithm_upper_bound`
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_chars(const void *a, const void *b) {
+    return *(const char*)a - *(const char*)b;
+}
+
+int main() {
+    char arr[] = {'a', 'c', 'e', 'g', 'i'};
+    char val = 'f';
+
+    char *ub = (char *)algorithm_upper_bound(arr, 5, sizeof(char), &val, compare_chars);
+    printf("Upper bound of 'f' is at index: %lld\n", ub - arr);
+
+    return 0;
+}
+```
