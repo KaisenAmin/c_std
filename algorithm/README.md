@@ -1588,7 +1588,7 @@ int main() {
 
 ```
 
-#### Example 57: Find Lower Bound in an Array of Integers `algorithm_lower_bound`
+## Example 57: Find Lower Bound in an Array of Integers `algorithm_lower_bound`
 ```c
 #include "algorithm/algorithm.h"
 #include <stdio.h>
@@ -1608,7 +1608,7 @@ int main() {
 }
 ```
 
-#### Example 58: Find Upper Bound in an Array of Integers `algorithm_upper_bound`
+## Example 58: Find Upper Bound in an Array of Integers `algorithm_upper_bound`
 ```c
 #include "algorithm/algorithm.h"
 #include <stdio.h>
@@ -1628,7 +1628,7 @@ int main() {
 }
 ```
 
-#### Example 59: Lower Bound in an Array of Doubles `algorithm_lower_bound`
+## Example 59: Lower Bound in an Array of Doubles `algorithm_lower_bound`
 ```c
 #include "algorithm/algorithm.h"
 #include <stdio.h>
@@ -1649,7 +1649,7 @@ int main() {
 }
 ```
 
-#### Example 60: Upper Bound in an Array of Characters `algorithm_upper_bound`
+## Example 60: Upper Bound in an Array of Characters `algorithm_upper_bound`
 ```c
 #include "algorithm/algorithm.h"
 #include <stdio.h>
