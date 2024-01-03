@@ -119,7 +119,7 @@ int main()
 }
 ```
 
-### Example 2: Appending Rows to CSV
+## Example 2: Appending Rows to CSV
 
 ```c
 #include "csv/csv.h"
@@ -145,7 +145,7 @@ int main()
 }
 ```
 
-### Example 2: Removing Rows from CSV
+## Example 2: Removing Rows from CSV
 
 ```c
 #include "csv/csv.h"
@@ -166,7 +166,7 @@ int main()
 }
 ```
 
-### Example 3: Exporting CSV to JSON
+## Example 3: Exporting CSV to JSON
 
 ```c
 #include "csv/csv.h"
@@ -202,7 +202,7 @@ int main()
 }
 ```
 
-### Example 4: Inserting Columns into CSV
+## Example 4: Inserting Columns into CSV
 
 ```c
 #include "csv/csv.h"
@@ -232,7 +232,7 @@ int main()
 }
 ```
 
-### Example 5 : Concatenate two file 
+## Example 5 : Concatenate two file 
 ```c
 #include "csv/csv.h"
 #include <stdio.h>
@@ -257,7 +257,7 @@ int main()
 
 ```
 
-### Example 6 : find value in rows 
+## Example 6 : find value in rows 
 ```c
 #include "csv/csv.h"
 #include <stdio.h>
@@ -288,7 +288,7 @@ int main()
 
 ```
 
-### Example 7 :  If the string from the cell can be converted to an integer and back to a string without changing its content, it's considered valid. 
+## Example 7 :  If the string from the cell can be converted to an integer and back to a string without changing its content, it's considered valid. 
 
 ```c
 #include "csv/csv.h"
@@ -324,7 +324,7 @@ int main()
 }
 ```
 
-### Example 8 : Just how header work 
+## Example 8 : Just how header work 
 ```c
 #include "csv/csv.h"
 #include <stdio.h>
@@ -356,7 +356,7 @@ int main()
 
 ```
 
-### Example 9 : Finding cell value and convert it to Integer 
+## Example 9 : Finding cell value and convert it to Integer 
 ```c
 
 #include "csv/csv.h"
@@ -381,7 +381,7 @@ int main()
 
 ```
 
-### Example 10 : Printgin CSV file to Console 
+## Example 10 : Printgin CSV file to Console 
 ```c
 #include "csv/csv.h"
 #include <stdio.h>
@@ -400,7 +400,7 @@ int main()
 
 ```
 
-### Example 11 : Using String lib with Csv 
+## Example 11 : Using String lib with Csv 
 
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\csv\csv.c
 

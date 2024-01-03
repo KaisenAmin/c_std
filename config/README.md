@@ -57,7 +57,7 @@ int main()
 }
 ```
 
-### Example 2: Using Comments and Checking for Sections/Keys
+## Example 2: Using Comments and Checking for Sections/Keys
 
 ```c
 #include "config/config.h"
@@ -89,7 +89,7 @@ int main()
 
 ```
 
-### Example 3: Handling Encrypted Values
+## Example 3: Handling Encrypted Values
 
 In this example, we'll demonstrate how to store and retrieve encrypted configuration values. This is particularly useful for sensitive data like passwords or API keys.
 
@@ -129,7 +129,7 @@ int main()
 
 ```
 
-### Example 4: Iterating Through Configuration Entries
+## Example 4: Iterating Through Configuration Entries
 
 This example demonstrates how to use the `ConfigIterator` to iterate through all entries in the configuration file.
 
@@ -161,7 +161,7 @@ int main()
 
 ```
 
-### Example 5: Handling Arrays of Values
+## Example 5: Handling Arrays of Values
 This example demonstrates how to store and retrieve an array of strings for a given key in a configuration section.
 
 ```c
@@ -206,7 +206,7 @@ int main()
 }
 ```
 
-### Example 6: Validating Configuration Structure
+## Example 6: Validating Configuration Structure
 This example shows how to validate the configuration structure against an expected template, ensuring that required sections are present.
 
 ```c

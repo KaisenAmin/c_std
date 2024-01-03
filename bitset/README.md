@@ -442,7 +442,7 @@ int main()
 
 ```
 
-### Example 8: Set specific bits and convert to unsigned long long
+## Example 8: Set specific bits and convert to unsigned long long
 
 **C Implementation:**
 
@@ -504,7 +504,7 @@ int main()
 }
 ```
 
-### Example 9: Check bit status and count set bits
+## Example 9: Check bit status and count set bits
 
 **C Implementation:**
 
@@ -558,7 +558,7 @@ int main()
 }
 ```
 
-### Example 10: Converts Bitset Object to String (char*)
+## Example 10: Converts Bitset Object to String (char*)
 
 **C Implementation:**
 
@@ -605,7 +605,7 @@ int main()
 
 ```
 
-### Example 11: Bitwise Operations on Two Bitsets
+## Example 11: Bitwise Operations on Two Bitsets
 
 **C Implementation:**
 
@@ -680,7 +680,7 @@ int main()
 }
 ```
 
-### Example 13: Shifting Bits in a Bitset
+## Example 13: Shifting Bits in a Bitset
 
 **C Implementation:**
 

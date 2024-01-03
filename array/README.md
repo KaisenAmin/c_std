@@ -467,7 +467,7 @@ int main()
 }
 ```
 
-### Example 11: String Concatenation using Array and String Libraries
+## Example 11: String Concatenation using Array and String Libraries
 
 This example creates an array of strings and concatenates them into a single string.
 ```c
@@ -514,7 +514,7 @@ int main()
 }
 ```
 
-### Example 12 : A Simple Card Game
+## Example 12 : A Simple Card Game
 
 We will define a standard deck of cards using enum for suits and ranks. Then, we'll create a struct to represent a card. We'll use the Array library to create and manipulate a deck of cards.
 ```c
@@ -599,7 +599,7 @@ int main()
 
 ```
 
-### Example 13 : `array_copy`
+## Example 13 : `array_copy`
 
 ```c
 #include <stdio.h>
@@ -714,7 +714,7 @@ int main()
 }
 ```
 
-### Example 16 : `array_clear`
+## Example 16 : `array_clear`
 
 ```c
 #include <stdio.h>

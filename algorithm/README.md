@@ -100,7 +100,7 @@ int main() {
 }
 ```
 
-### Example 2: Sorting a Vector of Integers
+## Example 2: Sorting a Vector of Integers
 
 In this example, we'll create a Vector of integers, sort them using `algorithm_sort`, and then print the sorted integers.
 
@@ -144,7 +144,7 @@ int main() {
 }
 ```
 
-### Example 3: Sorting a Vector of Custom Structures
+## Example 3: Sorting a Vector of Custom Structures
 
 In this example, we'll create a Vector of custom structures, sort them using `algorithm_sort`, and then print the sorted structures.
 
@@ -257,7 +257,7 @@ int main() {
 }
 ```
 
-### Example 6: `algorithm_find` with Strings
+## Example 6: `algorithm_find` with Strings
 
 ```c
 #include "algorithm/algorithm.h"
@@ -288,7 +288,7 @@ int main() {
 }
 ```
 
-### Example 7: `algorithm_find_if` with Custom Struct
+## Example 7: `algorithm_find_if` with Custom Struct
 
 ```c
 #include "algorithm/algorithm.h"
@@ -320,7 +320,7 @@ int main() {
 }
 ```
 
-### Example 8: `algorithm_find_if_not` with Integers
+## Example 8: `algorithm_find_if_not` with Integers
 
 ```c
 #include "algorithm/algorithm.h"
@@ -346,7 +346,7 @@ int main() {
 }
 ```
 
-### Example 9: `algorithm_find` with Doubles
+## Example 9: `algorithm_find` with Doubles
 
 ```c
 #include "algorithm/algorithm.h"
@@ -381,7 +381,7 @@ int main() {
 }
 ```
 
-### Example 10: `algorithm_find_if_not` with Characters
+## Example 10: `algorithm_find_if_not` with Characters
 
 ```c
 #include "algorithm/algorithm.h"
@@ -408,7 +408,7 @@ int main() {
 }
 ```
 
-### Example 11: Using `algorithm_find_end` with Integers
+## Example 11: Using `algorithm_find_end` with Integers
 
 ```c
 #include "algorithm/algorithm.h"
@@ -433,7 +433,7 @@ int main() {
 }
 ```
 
-### Example 12: Using `algorithm_find_first_of` with Characters
+## Example 12: Using `algorithm_find_first_of` with Characters
 
 ```c
 #include "algorithm/algorithm.h"
@@ -459,7 +459,7 @@ int main() {
 }
 ```
 
-### Example 13: `algorithm_find_end` with Double Arrays
+## Example 13: `algorithm_find_end` with Double Arrays
 
 ```c
 #include "algorithm/algorithm.h"
@@ -491,7 +491,7 @@ int main() {
 }
 ```
 
-### Example 14: `algorithm_find_first_of` with Integer Arrays
+## Example 14: `algorithm_find_first_of` with Integer Arrays
 
 ```c
 #include "algorithm/algorithm.h"
@@ -515,7 +515,7 @@ int main() {
 }
 ```
 
-### Example 15: Binary Search on Integer Array `algorithm_binary_search`
+## Example 15: Binary Search on Integer Array `algorithm_binary_search`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -540,7 +540,7 @@ int main() {
 }
 ```
 
-### Example 16: Binary Search on Double Array `algorithm_binary_search`
+## Example 16: Binary Search on Double Array `algorithm_binary_search`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -571,7 +571,7 @@ int main() {
     return 0;
 }
 ```
-### Example 17: Max Element in Integer Array
+## Example 17: Max Element in Integer Array
 
 ```c
 #include "algorithm/algorithm.h"
@@ -591,7 +591,7 @@ int main() {
 }
 ```
 
-### Example 18: Min Element in Double Array
+## Example 18: Min Element in Double Array
 
 ```c
 #include "algorithm/algorithm.h"
@@ -620,7 +620,7 @@ int main() {
 }
 ```
 
-### Example 19: Max Element in Char Array
+## Example 19: Max Element in Char Array
 
 ```c
 #include "algorithm/algorithm.h"
@@ -642,7 +642,7 @@ int main() {
 }
 ```
 
-### Example 20: Min Element in Custom Struct Array
+## Example 20: Min Element in Custom Struct Array
 
 ```c
 #include "algorithm/algorithm.h"
@@ -976,7 +976,7 @@ int main() {
 
 ```
 
-#### Example 34: Check if All Integers are Positive `algorithm_all_of`
+## Example 34: Check if All Integers are Positive `algorithm_all_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -999,7 +999,7 @@ int main() {
 }
 ```
 
-#### Example 35: Check if All Characters are Uppercase `algorithm_all_of`
+## Example 35: Check if All Characters are Uppercase `algorithm_all_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1023,7 +1023,7 @@ int main() {
 }
 ```
 
-#### Example 36: Check if All Values in a Custom Struct Array are Above a Threshold `algorithm_all_of`
+## Example 36: Check if All Values in a Custom Struct Array are Above a Threshold `algorithm_all_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1052,7 +1052,7 @@ int main() {
 }
 ```
 
-#### Example 37: Check if Any Integer is Negative `algorithm_any_of`
+## Example 37: Check if Any Integer is Negative `algorithm_any_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1075,7 +1075,7 @@ int main() {
 }
 ```
 
-#### Example 38: Check if Any Character is a Digit `algorithm_any_of`
+## Example 38: Check if Any Character is a Digit `algorithm_any_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1099,7 +1099,7 @@ int main() {
 }
 ```
 
-#### Example 39: Check if Any Element in a Custom Struct Array Has a Specific ID `algorithm_any_of`
+## Example 39: Check if Any Element in a Custom Struct Array Has a Specific ID `algorithm_any_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1128,7 +1128,7 @@ int main() {
 }
 ```
 
-#### Example 40: Check if No Integer is Negative `algorithm_none_of`
+## Example 40: Check if No Integer is Negative `algorithm_none_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1151,7 +1151,7 @@ int main() {
 }
 ```
 
-#### Example 41: Check if No Character is a Vowel `algorithm_none_of`
+## Example 41: Check if No Character is a Vowel `algorithm_none_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1175,7 +1175,7 @@ int main() {
 }
 ```
 
-#### Example 42: Check if No Element in an Array is Zero `algorithm_none_of`
+## Example 42: Check if No Element in an Array is Zero `algorithm_none_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1198,7 +1198,7 @@ int main() {
 }
 ```
 
-#### Example 43: Check if No Struct Has a Specific Value `algorithm_none_of`
+## Example 43: Check if No Struct Has a Specific Value `algorithm_none_of`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1303,7 +1303,7 @@ int main() {
 }
 ```
  
-### Example 45: Filling an Array of Integers `algorithm_fill`
+## Example 45: Filling an Array of Integers `algorithm_fill`
 
 ```c
 #include "algorithm.h"
@@ -1324,7 +1324,7 @@ int main() {
 }
 ```
 
-### Example 46: Partially Filling an Array of Doubles `algorithm_fill_n`
+## Example 46: Partially Filling an Array of Doubles `algorithm_fill_n`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1345,7 +1345,7 @@ int main() {
 }
 ```
 
-### Example 47: Filling a String with a Character `algorithm_fill`
+## Example 47: Filling a String with a Character `algorithm_fill`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1364,7 +1364,7 @@ int main() {
 }
 ```
 
-### Example 48: Filling a Struct Array `algorithm_fill`
+## Example 48: Filling a Struct Array `algorithm_fill`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1389,7 +1389,7 @@ int main() {
 }
 ```
 
-### Example 49: Partially Filling an Array of Chars with Different Characters `algorithm_fill_n`
+## Example 49: Partially Filling an Array of Chars with Different Characters `algorithm_fill_n`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1412,7 +1412,7 @@ int main() {
 }
 ```
 
-#### Example 50: Counting Integers Equal to a Given Value `algorithm_count`
+## Example 50: Counting Integers Equal to a Given Value `algorithm_count`
 
 ```c
 #include <stdio.h>
@@ -1432,7 +1432,7 @@ int main() {
 }
 ```
 
-#### Example 51: Counting Characters in a String `algorithm_count`
+## Example 51: Counting Characters in a String `algorithm_count`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1453,7 +1453,7 @@ int main() {
 }
 ```
 
-#### Example 52: Counting Even Numbers in an Array `algorithm_count_if`
+## Example 52: Counting Even Numbers in an Array `algorithm_count_if`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1474,7 +1474,7 @@ int main() {
 }
 ```
 
-#### Example 53: Counting Elements Greater Than a Certain Value `algorithm_count_if`
+## Example 53: Counting Elements Greater Than a Certain Value `algorithm_count_if`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1495,7 +1495,7 @@ int main() {
 }
 ```
 
-### Example 54: Shuffling an Array of Characters `algorithm_shuffle`
+## Example 54: Shuffling an Array of Characters `algorithm_shuffle`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1520,7 +1520,7 @@ int main() {
 }
 ```
 
-### Example 55: Shuffling an Array of Structs `algorithm_shuffle`
+## Example 55: Shuffling an Array of Structs `algorithm_shuffle`
 
 ```c
 #include "algorithm/algorithm.h"
