@@ -1229,7 +1229,7 @@ int main() {
 ```
 
 ## Example 44 : Using `algorithm_sort` for benchmarking with C++
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\algorithm\algorithm.c
+`gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\algorithm\algorithm.c`
 C Algorithm sort time: 0.004748 seconds
 
 ```c
