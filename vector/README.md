@@ -100,8 +100,7 @@ int main() {
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector* stringVector = vector_create(sizeof(char*));
     char *str = "Hello, World!";
 
@@ -1088,7 +1087,7 @@ int main() {
         }
         vector_deallocate(peopleVec);
     }
-    
+
     vector_deallocate(vec2D);
     return EXIT_SUCCESS;
 }
