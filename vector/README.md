@@ -74,23 +74,19 @@ To use the Vector library in your project, include the `vector.h` header file in
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{   
+int main() {   
     Vector* intVector = vector_create(sizeof(int));
     int value = 10;
     vector_push_back(intVector, &value);
 
     // Iterate over the vector
-    for (size_t i = 0; i < vector_size(intVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*)vector_at(intVector, i);
         printf("%d\n", *item);
     }
 
     // Cleanup
     vector_deallocate(intVector);
-
     return EXIT_SUCCESS;
 }
 
@@ -104,7 +100,6 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
 int main() 
 {   
     Vector* stringVector = vector_create(sizeof(char*));
@@ -113,15 +108,13 @@ int main()
     vector_push_back(stringVector, &str);
 
     // Iterate over the vector
-    for (size_t i = 0; i < vector_size(stringVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(stringVector); ++i) {
         char** item = (char**)vector_at(stringVector, i);
         printf("%s\n", *item);
     }
 
     // Cleanup
     vector_deallocate(stringVector);
-
     return EXIT_SUCCESS;
 }
 
@@ -134,28 +127,25 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct 
-{
+typedef struct {
     int id;
     double value;
 
 } MyStruct;
 
-int main() 
-{   
+int main() {   
     Vector* structVector = vector_create(sizeof(MyStruct));
     MyStruct s = {1, 10.5};
 
     vector_push_back(structVector, &s);
 
     // Iterate over the vector
-    for (size_t i = 0; i < vector_size(structVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(structVector); ++i) {
         MyStruct* item = (MyStruct*)vector_at(structVector, i);
         printf("ID: %d, Value: %.2f\n", item->id, item->value);
     }
 
-        
+    vector_deallocate(structVector);   
     return EXIT_SUCCESS;
 }
 
@@ -169,29 +159,32 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector* vec1 = vector_create(sizeof(int));
     Vector* vec2 = vector_create(sizeof(int));
-
     int items1[] = {1, 2, 3};
-    for (int i = 0; i < 3; i++) 
-        vector_push_back(vec1, &items1[i]);
-
     int items2[] = {1, 2, 4};
-    for (int i = 0; i < 3; i++) 
+
+    for (int i = 0; i < 3; i++) {
+        vector_push_back(vec1, &items1[i]);
+    }
+    for (int i = 0; i < 3; i++) {
         vector_push_back(vec2, &items2[i]);
+    }
 
-    if (vector_is_equal(vec1, vec2)) 
+    if (vector_is_equal(vec1, vec2)) { 
         printf("vec1 is equal to vec2\n");
-    else 
+    }
+    else {
         printf("vec1 is not equal to vec2\n");
+    }
 
-    if (vector_is_less(vec1, vec2)) 
+    if (vector_is_less(vec1, vec2)) { 
         printf("vec1 is less than vec2\n");
-    if (vector_is_greater(vec2, vec1)) 
+    }
+    if (vector_is_greater(vec2, vec1)) {
         printf("vec2 is greater than vec2\n");
-
+    }
     // Cleanup
     vector_deallocate(vec1);
     vector_deallocate(vec2);
@@ -209,23 +202,20 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
     int value1 = 10, value2 = 20, value3 = 30;
+
     vector_push_back(intVector, &value1);
     vector_push_back(intVector, &value2);
     vector_push_back(intVector, &value3);
 
-    for (size_t i = 0; i < (vector_size(intVector)); ++i) 
-    {
+    for (size_t i = 0; i < (vector_size(intVector)); ++i) {
         int* item = (int*)vector_at(intVector, i);
         printf("%d\n", *item);
     }
 
     Vector *stringVector = vector_create(sizeof(char*));
-
     char *str1 = "Hello";
     char *str2 = "World";
     char *str3 = "Example";
@@ -234,8 +224,7 @@ int main()
     vector_push_back(stringVector, &str2);
     vector_push_back(stringVector, &str3);
 
-    for (size_t i = 0; i < vector_size(stringVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(stringVector); ++i) {
         char **item = (char**) vector_at(stringVector, i);
         printf("%s\n", *item);
     }
@@ -257,12 +246,11 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *vector1 = vector_create(sizeof(int));
     Vector *vector2 = vector_create(sizeof(int));
-
     int value1 = 10, value2 = 20;
+
     vector_push_back(vector1, &value1);
     vector_push_back(vector1, &value2);
 
@@ -273,15 +261,13 @@ int main()
     vector_swap(vector1, vector2);
 
     printf("Contents of vector1 after swap:\n");
-    for (size_t i = 0; i < vector_size(vector1); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(vector1); ++i) {
         int* item = (int*) vector_at(vector1, i);
         printf("%d\n", *item);
     }
 
     printf("Contents of vector2 after swap:\n");
-    for (size_t i = 0; i < vector_size(vector2); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(vector2); ++i) {
         int* item = (int*)vector_at(vector2, i);
         printf("%d\n", *item);
     }
@@ -305,19 +291,19 @@ int main()
 int main() 
 {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements to the vector
     int values[] = {10, 20, 30, 40};
-    for (int i = 0; i < 4; ++i) 
+
+    for (int i = 0; i < 4; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     // Pop the last element and access it
     int *poppedItem = (int *)vector_pop_back(intVector);
-    if (poppedItem) 
+    if (poppedItem) {
         printf("Popped item: %d\n", *poppedItem);
-        
-    vector_deallocate(intVector);
-            
+    }
+
+    vector_deallocate(intVector);       
     return EXIT_SUCCESS;
 }
 
@@ -331,20 +317,20 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     int *frontItem = (int *)vector_front(intVector);
-    if (frontItem) 
+    if (frontItem) {
         printf("First item: %d\n", *frontItem);
-        
-    vector_deallocate(intVector);
-            
+    }
+
+    vector_deallocate(intVector);        
     return EXIT_SUCCESS;
 }
 
@@ -358,20 +344,20 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) {
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     int *backItem = (int *)vector_back(intVector);
-    if (backItem) 
+    if (backItem) { 
         printf("Last item: %d\n", *backItem);
-        
-    vector_deallocate(intVector);
-            
+    }
+
+    vector_deallocate(intVector);        
     return EXIT_SUCCESS;
 }
 
@@ -383,25 +369,23 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements to the vector
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     // Accessing the underlying array
     int *data = (int *)vector_data(intVector);
-    if (data)
-    {
-        for (size_t i = 0; i < vector_size(intVector); ++i) 
+    if (data){
+        for (size_t i = 0; i < vector_size(intVector); ++i) { 
             printf("Item %zu: %d\n", i, data[i]);
+        }
     }
         
     vector_deallocate(intVector);
-        
     return EXIT_SUCCESS;
 }
 
@@ -415,22 +399,19 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
     // Using begin and end to iterate over the vector
-    for (int *it = (int *)vector_begin(intVector); it != (int *)vector_end(intVector); ++it) 
+    for (int *it = (int *)vector_begin(intVector); it != (int *)vector_end(intVector); ++it) { 
         printf("%d\n", *it);
+    }
         
     vector_deallocate(intVector);
-    
-    
     return EXIT_SUCCESS;
 }
 
@@ -443,22 +424,19 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
     // Using cbegin and cend for read-only iteration over the vector
-    for (const int *it = (const int *)vector_cbegin(intVector); it != (const int *)vector_cend(intVector); ++it)
+    for (const int *it = (const int *)vector_cbegin(intVector); it != (const int *)vector_cend(intVector); ++it) {
         printf("%d\n", *it);
+    }
         
     vector_deallocate(intVector);
-    
-    
     return EXIT_SUCCESS;
 }
 
@@ -470,21 +448,19 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
     // Using crbegin and crend for reverse read-only iteration over the vector
-    for (const int *it = (const int *)vector_crbegin(intVector); it != (const int *)vector_crend(intVector); --it) 
+    for (const int *it = (const int *)vector_crbegin(intVector); it != (const int *)vector_crend(intVector); --it) {
         printf("%d\n", *it);
+    }
         
     vector_deallocate(intVector);
-    
     return EXIT_SUCCESS;
 }
 
@@ -498,24 +474,21 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
-        vector_push_back(intVector, &values[i]);
 
+    for (int i = 0; i < 3; ++i) { 
+        vector_push_back(intVector, &values[i]);
+    }
     // Using rbegin and rend for reverse iteration over the vector
-    for (int *it = (int *)vector_rbegin(intVector); it != (int *)vector_rend(intVector); --it) 
+    for (int *it = (int *)vector_rbegin(intVector); it != (int *)vector_rend(intVector); --it) { 
         printf("%d\n", *it);
+    }
 
     vector_deallocate(intVector);
-
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -526,29 +499,26 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{   
-
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     // Insert a new element
     int newElement = 25;
     vector_insert(intVector, 0, &newElement); // Inserts 25 at position 0
-    // Print elements after insertion
-    for (size_t i = 0; i < vector_size(intVector); ++i) 
-    {
+    
+    for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
         printf("%d\n", *item);
     }
-    vector_deallocate(intVector);
 
+    vector_deallocate(intVector);
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -560,22 +530,17 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements to the vector
     int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+
+    for (int i = 0; i < 5; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
     // Erase elements from position 1, removing 2 elements
     vector_erase(intVector, 1, 2); // Should remove 20 and 30
 
-    // Print elements after erasure
-    for (size_t i = 0; i < vector_size(intVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
         printf("%d\n", *item);
     }
@@ -583,7 +548,6 @@ int main()
     vector_deallocate(intVector);
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -594,28 +558,20 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{
-   Vector *intVector = vector_create(sizeof(int));
+int main() {
+    Vector *intVector = vector_create(sizeof(int));
 
     // Reserve capacity for at least 10 elements
     vector_reserve(intVector, 10);
-
-    // Add elements and observe no need for reallocation until the 11th element
-    for (int i = 0; i < 11; ++i) 
-    {
+    for (int i = 0; i < 11; ++i) {
         int value = i * 10;
         vector_push_back(intVector, &value);
     }
-
     printf("Vector size: %zu, Vector capacity: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     vector_deallocate(intVector);
-
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -627,22 +583,19 @@ int main()
 #include <stdlib.h>
 #include <time.h>
 
-
-int main() 
-{
+int main() {
     Vector *intVector = vector_create(sizeof(int));
-
-    // Adding elements to the vector
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+
+    for (int i = 0; i < 3; ++i) { 
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     // Resize to a larger size (5)
     vector_resize(intVector, 5);
-
     printf("After resizing to larger size:\n");
-    for (size_t i = 0; i < vector_size(intVector); ++i) 
-    {
+
+    for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
         printf("%d\n", *item); // The last two elements will be zero-initialized
     }
@@ -651,8 +604,7 @@ int main()
     vector_resize(intVector, 2);
 
     printf("After resizing to smaller size:\n");
-    for (size_t i = 0; i < vector_size(intVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
         printf("%d\n", *item); // Only the first two elements remain
     }
@@ -674,31 +626,26 @@ int main()
 #include <stdlib.h>
 #include <time.h>
 
-
-int main() 
-{
+int main() {
     Vector *intVector = vector_create(sizeof(int));
 
     // Reserve larger capacity
     vector_reserve(intVector, 10);
 
-    // Adding a few elements
     int values[] = {10, 20, 30};
-    for (int i = 0; i < 3; ++i) 
+    for (int i = 0; i < 3; ++i) {
         vector_push_back(intVector, &values[i]);
-        
+    }
+
     printf("Size before shrink_to_fit: %zu, Capacity before shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     // Shrink to fit the actual number of elements
-    vector_shrink_to_fit(intVector);
-        
+    vector_shrink_to_fit(intVector);    
     printf("Size after shrink_to_fit: %zu, Capacity after shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     vector_deallocate(intVector);
-
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -711,15 +658,14 @@ int main()
 #include <stdlib.h>
 #include <time.h>
 
-
-int main() 
-{
+int main() {
     Vector *stringVector = vector_create(sizeof(char*));
     char* values[] = {"Hello", "World", "Vector", "Example"};
 
-    for (int i = 0; i < 4; ++i) 
+    for (int i = 0; i < 4; ++i) { 
         vector_push_back(stringVector, &values[i]);
-        
+    }
+
     char* newValue = "NewString";
     vector_assign(stringVector, 1, &newValue);
 
@@ -729,14 +675,12 @@ int main()
     char* emplaceBackValue = "EmplacedBackString";
     vector_emplace_back(stringVector, &emplaceBackValue, sizeof(char*));
 
-    for (size_t i = 0; i < vector_size(stringVector); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(stringVector); ++i) {
         char** item = (char **)vector_at(stringVector, i);
         printf("%s\n", *item);
     }
 
     vector_deallocate(stringVector);
-
     return EXIT_SUCCESS;
 }
 
@@ -751,10 +695,8 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     Vector* vec = vector_create(sizeof(String*));
-
     String* myString1 = string_create("Hello");
     String* myString2 = string_create("World");
     String* myString3 = string_create("Example");
@@ -764,11 +706,11 @@ int main()
     vector_push_back(vec, &myString2);
     vector_push_back(vec, &myString3);
 
-    for (size_t i = 0; i < vector_size(vec); ++i) 
-    {
+    for (size_t i = 0; i < vector_size(vec); ++i) {
         strPtr = (String**) vector_at(vec, i);
-        if (strPtr && *strPtr) 
+        if (strPtr && *strPtr) {
             printf("%s\n", (*strPtr)->dataStr); 
+        }
     }
 
     string_deallocate(myString1);
@@ -776,7 +718,6 @@ int main()
     string_deallocate(myString3);
 
     vector_deallocate(vec);
-
     return 0;
 }
 
@@ -793,8 +734,7 @@ int main()
 
 #define NUM_ELEMENTS 100000000
 
-int main() 
-{
+int main() {
     Vector *vector1 = vector_create(sizeof(int));
     Vector *vector2 = vector_create(sizeof(int));
 
@@ -806,21 +746,21 @@ int main()
     vector_push_back(vector2, &value3);
     vector_push_back(vector2, &value4);
     
-    if (vector_is_equal(vector1, vector2))
+    if (vector_is_equal(vector1, vector2)) {
         printf("Vector1 is equal with Vector2\n");
-
-    if (vector_is_less(vector1, vector2))
+    }
+    if (vector_is_less(vector1, vector2)) {
         printf("Vector1 is less than Vector2\n");
-
-    if (vector_is_greater(vector1, vector2))
+    }
+    if (vector_is_greater(vector1, vector2)) {
         printf("Vector1 is greater than Vector2\n");
+    }
 
     vector_deallocate(vector1);
     vector_deallocate(vector2);
 
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -838,16 +778,16 @@ Average Custom Vector Time: 0.008564 seconds
 
 #define NUM_ELEMENTS 100000000
 
-int main() 
-{
+int main() {
     struct timespec start, end;
     double time_sum = 0;
     Vector* vec = vector_create(sizeof(int));
 
     clock_gettime(CLOCK_MONOTONIC, &start);
-        
-    for (int i = 0; i < NUM_ELEMENTS; i++) 
+
+    for (int i = 0; i < NUM_ELEMENTS; i++) {
         vector_push_back(vec, &i);
+    }
         
     clock_gettime(CLOCK_MONOTONIC, &end);
     time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -856,7 +796,6 @@ int main()
     printf("Average Custom Vector Time: %f seconds\n", average_time);
 
     vector_deallocate(vec);
-
     return EXIT_SUCCESS;
 }
 
@@ -874,13 +813,13 @@ std::vector Time: 0.344828 seconds
 
 #define NUM_ELEMENTS 100000000
 
-int main() 
-{
+int main() {
     std::vector<int> vec;
     auto start = std::chrono::high_resolution_clock::now();
     
-    for (int i = 0; i < NUM_ELEMENTS; i++) 
+    for (int i = 0; i < NUM_ELEMENTS; i++) {
         vec.push_back(i);
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> time_spent = end - start;
@@ -889,7 +828,6 @@ int main()
 
     return 0;
 }
-
 
 ```
 
@@ -911,8 +849,7 @@ Time taken: 0.000010 seconds
 #include <stdio.h>
 #include <time.h>
 
-int main() 
-{
+int main() {
     struct timespec start, end;
     double time_elapsed;
 
@@ -926,20 +863,21 @@ int main()
     };
     String *concat = string_create("");
 
-    for (size_t index = 0; index < 5; index++)
+    for (size_t index = 0; index < 5; index++) {
         vector_push_back(vec, &fruits[index]);
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    for (size_t index = 0; index < vector_size(vec); ++index) 
-    {
+    for (size_t index = 0; index < vector_size(vec); ++index) {
         String **strPtr = (String**)vector_at(vec, index);
         string_push_back(*strPtr, '\n');
         string_concatenate(concat, *strPtr);
     }
     
-    for (size_t index = 0; index < 5; index++) 
+    for (size_t index = 0; index < 5; index++) {
         string_deallocate(fruits[index]);
+    }
 
     vector_deallocate(vec);
 
@@ -971,24 +909,19 @@ Time taken: 1.1523e-05 seconds
 #include <sstream>
 #include <chrono>
 
-int main() 
-{
-    // Initialize the vector with some fruits
+int main() {
     std::vector<std::string> fruits = {"Apple", "Banana", "Cherry", "Lemon", "Watermelon"};
     std::stringstream buffer;
 
     // Start timing
     auto start = std::chrono::high_resolution_clock::now();
-
-    // Concatenate processed strings
-    for (const auto& fruit : fruits) 
+    for (const auto& fruit : fruits) { 
         buffer << fruit << "\n";
-    
+    }
     // Stop timing
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
 
-    // Output the concatenated string and the elapsed time
     std::cout << buffer.str(); // Single print call
     std::cout << "Time taken: " << elapsed.count() << " seconds\n";
 
@@ -1005,28 +938,24 @@ This example creates a two-dimensional vector, where each element of the main ve
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     // Create a vector of vectors (2D vector)
     Vector* vec2D = vector_create(sizeof(Vector*));
 
-    for (int i = 0; i < 3; i++) 
-    {
+    for (int i = 0; i < 3; i++) {
         Vector* subVec = vector_create(sizeof(int));
-        for (int j = 0; j < 3; j++) 
-        {
+        for (int j = 0; j < 3; j++) {
             int value = i * 3 + j;
             vector_push_back(subVec, &value);
         }
         vector_push_back(vec2D, &subVec);
     }
 
-    for (size_t i = 0; i < vector_size(vec2D); i++) 
-    {
+    for (size_t i = 0; i < vector_size(vec2D); i++) {
         Vector** subVecPtr = (Vector**)vector_at(vec2D, i);
         Vector* subVec = *subVecPtr;
-        for (size_t j = 0; j < vector_size(subVec); j++) 
-        {
+
+        for (size_t j = 0; j < vector_size(subVec); j++) {
             int* valPtr = (int*)vector_at(subVec, j);
             printf("%d ", *valPtr);
         }
@@ -1034,8 +963,7 @@ int main()
     }
 
     // Cleanup
-    for (size_t i = 0; i < vector_size(vec2D); i++) 
-    {
+    for (size_t i = 0; i < vector_size(vec2D); i++) {
         Vector** subVecPtr = (Vector**)vector_at(vec2D, i);
         vector_deallocate(*subVecPtr);
     }
@@ -1054,21 +982,18 @@ This example demonstrates how to use the Vector library to store a collection of
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct 
-{
+typedef struct {
     String* name;
     String* description;
     
 } Item;
 
-int main() 
-{
+int main() {
     Vector* items = vector_create(sizeof(Item));
     char* names[] = {"Item1", "Item2", "Item3"};
     char* descriptions[] = {"Description1", "Description2", "Description3"};
 
-    for (int i = 0; i < 3; i++) 
-    {
+    for (int i = 0; i < 3; i++) {
         Item item;
         item.name = string_create(names[i]);
         item.description = string_create(descriptions[i]);
@@ -1076,16 +1001,14 @@ int main()
         vector_push_back(items, &item);
     }
 
-    for (size_t i = 0; i < vector_size(items); i++) 
-    {
+    for (size_t i = 0; i < vector_size(items); i++) {
         Item* itemPtr = (Item*)vector_at(items, i);
         printf("Name: %s, Description: %s\n", 
                string_c_str(itemPtr->name), 
                string_c_str(itemPtr->description));
     }
 
-    for (size_t i = 0; i < vector_size(items); i++) 
-    {
+    for (size_t i = 0; i < vector_size(items); i++) {
         Item* itemPtr = (Item*)vector_at(items, i);
         string_deallocate(itemPtr->name);
         string_deallocate(itemPtr->description);
@@ -1105,15 +1028,13 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct 
-{
+typedef struct {
     String* name;
     int age;
 
 } Person;
 
-Person* create_person(int group, int index) 
-{
+Person* create_person(int group, int index) {
     Person* p = (Person*)malloc(sizeof(Person));
     p->name = string_create("");
     string_format(p->name, "Person_%d_%d", group, index);
@@ -1122,26 +1043,21 @@ Person* create_person(int group, int index)
     return p;
 }
 
-void deallocate_person(Person* p) 
-{
-    if (p) 
-    {
+void deallocate_person(Person* p) {
+    if (p) {
         string_deallocate(p->name);
         free(p);
     }
 }
 
-int main() 
-{
+int main() {
     Vector* vec2D = vector_create(sizeof(Vector*));
 
     // Populate the 2D vector with vectors of Persons
-    for (int i = 0; i < 2; i++) 
-    {
+    for (int i = 0; i < 2; i++) {
         Vector* peopleVec = vector_create(sizeof(Person*));
 
-        for (int j = 0; j < 3; j++) 
-        {
+        for (int j = 0; j < 3; j++) {
             Person* person = create_person(i, j);
             vector_push_back(peopleVec, &person);
         }
@@ -1149,34 +1065,31 @@ int main()
     }
 
     // Iterate and print each person's details
-    for (size_t i = 0; i < vector_size(vec2D); i++) 
-    {
+    for (size_t i = 0; i < vector_size(vec2D); i++) {
         Vector** peopleVecPtr = (Vector**)vector_at(vec2D, i);
         Vector* peopleVec = *peopleVecPtr;
 
-        for (size_t j = 0; j < vector_size(peopleVec); j++) 
-        {
+        for (size_t j = 0; j < vector_size(peopleVec); j++) {
             Person** personPtr = (Person**)vector_at(peopleVec, j);
             Person* person = *personPtr;
+
             printf("Name: %s, Age: %d\n", string_c_str(person->name), person->age);
         }
     }
 
     // Cleanup
-    for (size_t i = 0; i < vector_size(vec2D); i++) 
-    {
+    for (size_t i = 0; i < vector_size(vec2D); i++) {
         Vector** peopleVecPtr = (Vector**)vector_at(vec2D, i);
         Vector* peopleVec = *peopleVecPtr;
 
-        for (size_t j = 0; j < vector_size(peopleVec); j++) 
-        {
+        for (size_t j = 0; j < vector_size(peopleVec); j++) {
             Person** personPtr = (Person**)vector_at(peopleVec, j);
             deallocate_person(*personPtr);
         }
         vector_deallocate(peopleVec);
     }
+    
     vector_deallocate(vec2D);
-
     return EXIT_SUCCESS;
 }
 
