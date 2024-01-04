@@ -6,11 +6,9 @@
 
 typedef struct PriorityQueue PriorityQueue;
 
-struct PriorityQueue
-{
+struct PriorityQueue{
     Vector* vec;
     int (*compare)(const void* a, const void* b); // Comparison function
-
 };
 
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*));
