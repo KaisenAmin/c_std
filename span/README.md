@@ -52,8 +52,7 @@ This example demonstrates how to create a span from an array of integers and acc
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
 
@@ -62,13 +61,13 @@ int main()
 
     // Access elements in the span
     int* spanData = (int*)mySpan->data;
-    for (size_t i = 0; i < arraySize; ++i) 
+    for (size_t i = 0; i < arraySize; ++i) { 
         printf("%d ", spanData[i]);
+    }
     printf("\n");
 
     // Clean up
     span_destroy(mySpan);
-
     return 0;
 }
 ```
@@ -82,21 +81,19 @@ in this example a Vector of integers is created and populated
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     Vector* intVector = vector_create(sizeof(int));
     int array[] = {15, 20, 30, 40, 50};
 
-    for (int i = 0; i < 5; i++) 
+    for (int i = 0; i < 5; i++) {
         vector_push_back(intVector, &array[i]);
-
+    }
     // Create a Span from the Vector's data
     int* data = (int*) vector_data(intVector);
     Span* span = span_create(data, vector_size(intVector), sizeof(int));
 
     printf("Elements in Span:\n");
-    for (size_t i = 0; i < span_size(span) / sizeof(int); ++i) 
-    {
+    for (size_t i = 0; i < span_size(span) / sizeof(int); ++i) {
         int* value = (int*) span_at(span, i);
         printf("%d ", *value);
     }
@@ -115,23 +112,21 @@ int main()
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     char *array[] = {"Vector", "String", "Map", "Csv", "Array"};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
 
     // Create a span and copy the data from the array
     Span* mySpan = span_create(array, arraySize, sizeof(char*));
-
-    // Access elements in the span
     char** spanData = (char**)mySpan->data;
-    for (size_t i = 0; i < arraySize; ++i) 
+
+    for (size_t i = 0; i < arraySize; ++i) { 
         printf("%s ", spanData[i]);
+    }
     printf("\n");
 
     // Clean up
     span_destroy(mySpan);
-
     return 0;
 }
 ```
@@ -142,8 +137,7 @@ int main()
 #include "span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {10, 20, 30, 40, 50};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span* span = span_create(array, arraySize, sizeof(int));
@@ -152,8 +146,7 @@ int main()
     int* firstElement = (int*)span_front(span);
     int* lastElement = (int*)span_back(span);
 
-    if (firstElement != NULL && lastElement != NULL) 
-    {
+    if (firstElement != NULL && lastElement != NULL) {
         printf("First element: %d\n", *firstElement);
         printf("Last element: %d\n", *lastElement);
     }
@@ -177,8 +170,7 @@ int main() {
     char** firstString = (char**)span_front(span);
     char** lastString = (char**)span_back(span);
 
-    if (firstString != NULL && lastString != NULL) 
-    {
+    if (firstString != NULL && lastString != NULL) {
         printf("First string: %s\n", *firstString);
         printf("Last string: %s\n", *lastString);
     }
@@ -194,25 +186,24 @@ int main() {
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span* span = span_create(array, arraySize, sizeof(int));
 
     int* data = (int*)span_data(span);
     printf("Original data: ");
-    for (size_t i = 0; i < arraySize; ++i) 
+    for (size_t i = 0; i < arraySize; ++i) { 
         printf("%d ", data[i]);
-    
+    }
     printf("\n");
     data[0] = 10; // Modifying the first element
 
     const int* constData = (const int*)span_cdata(span);
     printf("Modified data: ");
-    for (size_t i = 0; i < arraySize; ++i) 
+    for (size_t i = 0; i < arraySize; ++i) { 
         printf("%d ", constData[i]);
-
+    }
     printf("\n");
 
     span_destroy(span);
@@ -227,15 +218,16 @@ int main()
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     Span* span = span_create(NULL, 0, 0); // Creating an empty span
 
-    if (span_empty(span)) 
+    if (span_empty(span)) {
         printf("Span is empty\n");
-    else 
+    }
+    else { 
         printf("Span is not empty\n");
-    
+    }
+
     span_destroy(span);
     return 0;
 }
@@ -248,8 +240,7 @@ int main()
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span* span = span_create(array, arraySize, sizeof(int));
@@ -268,20 +259,19 @@ int main()
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {10, 20, 30, 40, 50};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span *span = span_create(array, arraySize, sizeof(int));
 
     Span firstThree = span_first(span, 3);
     printf("First three elements: ");
-    for (size_t i = 0; i < firstThree.size / sizeof(int); ++i) 
+    for (size_t i = 0; i < firstThree.size / sizeof(int); ++i) { 
         printf("%d ", ((int*)firstThree.data)[i]);
-
+    }
     printf("\n");
-    span_destroy(span);
     
+    span_destroy(span);
     return 0;
 }
 
@@ -293,19 +283,18 @@ int main()
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span *span = span_create(array, 5, sizeof(int));
 
     Span lastTwo = span_last(span, 2);
     printf("Last two elements: ");
-    for (size_t i = 0; i < lastTwo.size / sizeof(int); ++i) 
+    for (size_t i = 0; i < lastTwo.size / sizeof(int); ++i) { 
         printf("%d ", ((int*)lastTwo.data)[i]);
-    
+    }
     printf("\n");
+    
     span_destroy(span);
-
     return 0;
 }
 
@@ -317,19 +306,18 @@ int main()
 #include "span/span.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span *span = span_create(array, 5, sizeof(int));
 
     Span middleSpan = span_subspan(span, 1, 3);
     printf("Middle three elements: ");
-    for (size_t i = 0; i < middleSpan.size / sizeof(int); ++i) 
+    for (size_t i = 0; i < middleSpan.size / sizeof(int); ++i) { 
         printf("%d ", ((int*)middleSpan.data)[i]);
-    
+    }
     printf("\n");
-    span_destroy(span);
     
+    span_destroy(span);
     return 0;
 }
 ```

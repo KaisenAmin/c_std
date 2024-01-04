@@ -4,31 +4,27 @@
 #include <string.h>
 
 
-typedef struct MemoryPoolSpan 
-{
+typedef struct MemoryPoolSpan {
     void *pool;
     size_t poolSize;
     size_t used;
-
 } MemoryPoolSpan;
 
 static MemoryPoolSpan *global_span_pool = NULL;
 
-static void initialize_span_memory_pool(size_t size) 
-{
-    if (global_span_pool != NULL) 
+static void initialize_span_memory_pool(size_t size) {
+    if (global_span_pool != NULL) {
         return; // Already initialized
+    }
 
     global_span_pool = (MemoryPoolSpan*)malloc(sizeof(MemoryPoolSpan));
-    if (!global_span_pool) 
-    {
+    if (!global_span_pool) {
         perror("Failed to allocate memory for span pool");
         exit(-1);
     }
 
     global_span_pool->pool = malloc(size);
-    if (!global_span_pool->pool) 
-    {
+    if (!global_span_pool->pool) {
         free(global_span_pool);
         perror("Failed to allocate memory for span pool data");
         exit(-1);
@@ -38,10 +34,8 @@ static void initialize_span_memory_pool(size_t size)
     global_span_pool->used = 0;
 }
 
-static void destroy_span_memory_pool() 
-{
-    if (global_span_pool) 
-    {
+static void destroy_span_memory_pool() {
+    if (global_span_pool) {
         free(global_span_pool->pool);
         free(global_span_pool);
 
@@ -49,41 +43,35 @@ static void destroy_span_memory_pool()
     }
 }
 
-static void* memory_pool_span_allocate(size_t size) 
-{
-    if (!global_span_pool || global_span_pool->used + size > global_span_pool->poolSize) 
-    {
+static void* memory_pool_span_allocate(size_t size) {
+    if (!global_span_pool || global_span_pool->used + size > global_span_pool->poolSize) {
         perror("Not enough space in span pool");
         return NULL;
     }
-
     void *allocated = (char*)global_span_pool->pool + global_span_pool->used;
     global_span_pool->used += size;
 
     return allocated;
 }
 
-Span* span_create(void* data, size_t elemCount, size_t elemSize) 
-{
-    if (!data) 
-    {
+Span* span_create(void* data, size_t elemCount, size_t elemSize) {
+    if (!data) {
         perror("Null data provided to span_create");
         return NULL;
     }
 
-    if (!global_span_pool) 
+    if (!global_span_pool) {
         initialize_span_memory_pool(10 * 10); // For example, initialize with 1MB
+    }
 
     Span *newSpan = (Span*)malloc(sizeof(Span));
-    if (!newSpan) 
-    {
+    if (!newSpan) {
         perror("Failed to allocate memory for Span structure");
         exit(-1);
     }
 
     newSpan->data = memory_pool_span_allocate(elemCount * elemSize);
-    if (!newSpan->data) 
-    {
+    if (!newSpan->data) {
         perror("Failed to allocate memory for Span data");
         exit(-1);
     }
@@ -95,10 +83,8 @@ Span* span_create(void* data, size_t elemCount, size_t elemSize)
     return newSpan;
 }
 
-void span_destroy(Span* span) 
-{
-    if (span) 
-    {
+void span_destroy(Span* span) {
+    if (span) {
         // Reset the Span structure
         span->data = NULL;
         span->size = 0;
@@ -108,54 +94,45 @@ void span_destroy(Span* span)
     }
 }
 
-void* span_at(Span* span, size_t index) 
-{
-    if (span && index < span->size / span->elemSize) 
+void* span_at(Span* span, size_t index) {
+    if (span && index < span->size / span->elemSize) {
         return (char*)span->data + (index * span->elemSize);
-
+    }
     return NULL; // Index out of bounds or span is NULL
 }
 
-size_t span_size(const Span* span) 
-{
-    if (!span) 
-    {
+size_t span_size(const Span* span) {
+    if (!span) {
         perror("span_size: Span is NULL");
         return 0;
     }
     return span->size;
 }
 
-void* span_front(Span* span) 
-{
-    if (span == NULL || span->size == 0) 
+void* span_front(Span* span) {
+    if (span == NULL || span->size == 0) { 
         return NULL; // Span is empty or NULL
-    
+    }
     return span->data; // The first element is at the start of data
 }
 
-void* span_back(Span* span) 
-{
-    if (span == NULL || span->size == 0) 
+void* span_back(Span* span) {
+    if (span == NULL || span->size == 0) { 
         return NULL; // Span is empty or NULL
-
+    }
     return (char*)span->data + (span->size - span->elemSize);// Calculate the address of the last element
 }
 
-void* span_data(Span* span) 
-{
-    if (!span) 
-    {
+void* span_data(Span* span) {
+    if (!span) {
         perror("span_data: Span is NULL");
         return NULL;
     }
     return span->data;
 }
 
-const void* span_cdata(const Span* span) 
-{
-    if (!span) 
-    {
+const void* span_cdata(const Span* span) {
+    if (!span) {
         perror("span_cdata: Span is NULL");
         return NULL;
     }
@@ -166,23 +143,20 @@ bool span_empty(const Span* span) {
     return (span == NULL || span->size == 0);
 }
 
-size_t span_size_bytes(const Span* span) 
-{
-    if (!span) 
-    {
+size_t span_size_bytes(const Span* span) {
+    if (!span) {
         perror("span_size_bytes: Span is NULL");
         return 0;
     }
     return span->size * span->elemSize;
 }
 
-Span span_first(Span* span, size_t count) 
-{
+Span span_first(Span* span, size_t count) {
     Span result = {NULL, 0, 0};
 
-    if (!span || count == 0 || span->size == 0) 
+    if (!span || count == 0 || span->size == 0) { 
         return result;
-
+    }
     result.data = span->data;
     result.size = count * span->elemSize;
     result.elemSize = span->elemSize;
@@ -190,13 +164,12 @@ Span span_first(Span* span, size_t count)
     return result;
 }
 
-Span span_last(Span* span, size_t count) 
-{
+Span span_last(Span* span, size_t count) {
     Span result = {NULL, 0, 0};
 
-    if (!span || count == 0 || span->size == 0) 
+    if (!span || count == 0 || span->size == 0) { 
         return result;
-
+    }
     result.data = (char*)span->data + (span->size - count * span->elemSize);
     result.size = count * span->elemSize;
     result.elemSize = span->elemSize;
@@ -204,13 +177,12 @@ Span span_last(Span* span, size_t count)
     return result;
 }
 
-Span span_subspan(Span* span, size_t offset, size_t count) 
-{
+Span span_subspan(Span* span, size_t offset, size_t count) {
     Span result = {NULL, 0, 0};
 
-    if (!span || offset * span->elemSize >= span->size || count == 0) 
+    if (!span || offset * span->elemSize >= span->size || count == 0) { 
         return result;
-
+    }
     result.data = (char*)span->data + offset * span->elemSize;
     result.size = count * span->elemSize;
     result.elemSize = span->elemSize;
