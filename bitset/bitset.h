@@ -8,8 +8,7 @@
 
 typedef struct Bitset Bitset;
 
-struct Bitset 
-{
+struct Bitset {
     unsigned char* bits;
     size_t size;
 };
