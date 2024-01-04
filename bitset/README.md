@@ -56,17 +56,18 @@ Please, enter a binary number: 11010111
 #include <iostream>       // std::cin, std::cout
 #include <bitset>         // std::bitset
 
-int main ()
-{
+int main (){
   std::bitset<16> foo;
 
   std::cout << "Please, enter a binary number: ";
   std::cin >> foo;
 
-  if (foo.none())
+  if (foo.none()) {
     std::cout << foo << " has no bits set.\n";
-  else
+  }
+  else {
     std::cout << foo << " has " << foo.count() << " bits set.\n";
+  }
 
   return 0;
 }
@@ -79,12 +80,10 @@ int main ()
 
 #define MAX_INPUT_SIZE 16 // Define the maximum input size
 
-int main() 
-{
+int main() {
     // Create a Bitset with 16 bits
     Bitset* foo = bitset_create(16);
-    if (!foo) 
-    {
+    if (!foo) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -96,21 +95,19 @@ int main()
 
     bitset_set_from_string(foo, input);     // Set the Bitset from the string input
 
-    if (bitset_none(foo))  // Check if any bit is set and print the corresponding message
-    {
+    // Check if any bit is set and print the corresponding message
+    if (bitset_none(foo)) {
         printf("Bitset: ");
         bitset_print(foo);
         printf(" has no bits set.\n");
     } 
-    else 
-    {
+    else {
         printf("Bitset: ");
         bitset_print(foo);
         printf(" has %zu bits set.\n", bitset_count(foo));
     }
 
     bitset_deallocate(foo);
-
     return 0;
 }
 
@@ -124,14 +121,13 @@ int main()
 #include <stdio.h>
 #include <string.h>
 
-int main()
-{
+int main(){
     Bitset* bi1 = bitset_create(4);
     Bitset* bi2 = bitset_create(8);
 
-    if (!bi1 || !bi2)
+    if (!bi1 || !bi2) {
         return -1;
-
+    }
     bitset_set_from_string(bi1, "0001");
 
     printf("%llu\n", bitset_to_ullong(bi2));
@@ -160,12 +156,10 @@ none: false
 #include <stdio.h>
 #include <string.h>
 
-int main() 
-{
+int main() {
     Bitset* foo = bitset_create(8);
 
-    if (!foo)
-    {
+    if (!foo){
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -183,7 +177,6 @@ int main()
 
     // Deallocate the bitset
     bitset_deallocate(foo);
-
     return 0;
 }
 ```
@@ -192,8 +185,7 @@ int main()
 #include <iostream>       // std::cin, std::cout, std::boolalpha
 #include <bitset>         // std::bitset
 
-int main ()
-{
+int main (){
   std::bitset<8> foo;
 
   std::cout << "Please, enter an 8-bit binary number: ";
@@ -222,12 +214,10 @@ Please, enter a binary number: 10110
 
 #define MAX_INPUT_SIZE 16
 
-int main() 
-{
+int main() {
     Bitset* foo = bitset_create(16);
 
-    if (!foo) 
-    {
+    if (!foo) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -239,21 +229,18 @@ int main()
 
     bitset_set_from_string(foo, input);
 
-    if (bitset_any(foo)) 
-    {
+    if (bitset_any(foo)) {
         printf("Bitset: ");
         bitset_print(foo);
         printf("\bhas %zu bits set.\n", bitset_count(foo));
     } 
-    else
-    {
+    else {
         printf("Bitset: ");
         bitset_print(foo);
         printf(" has no bits set.\n");
     }
 
     bitset_deallocate(foo);
-
     return 0;
 }
 ```
@@ -263,17 +250,18 @@ int main()
 #include <iostream>       // std::cin, std::cout
 #include <bitset>         // std::bitset
 
-int main ()
-{
+int main (){
   std::bitset<16> foo;
 
   std::cout << "Please, enter a binary number: ";
   std::cin >> foo;
 
-  if (foo.any())
+  if (foo.any()) {
     std::cout << foo << " has " << foo.count() << " bits set.\n";
-  else
+  }
+  else {
     std::cout << foo << " has no bits set.\n";
+  }
 
   return 0;
 }
@@ -286,13 +274,11 @@ int main ()
 #include <stdio.h>
 #include "bitset/bitset.h" 
 
-int main() 
-{
+int main() {
     // Create a Bitset with 8 bits
     Bitset* foo = bitset_create(8);
 
-    if (!foo) 
-    {
+    if (!foo) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -326,11 +312,9 @@ After toggling: 00101101
 #include <stdio.h>
 #include <string.h>
 
-int main() 
-{
+int main() {
     Bitset* myBitset = bitset_create(8);
-    if (!myBitset) 
-    {
+    if (!myBitset) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -345,7 +329,6 @@ int main()
     bitset_print(myBitset);
 
     bitset_deallocate(myBitset);
-
     return 0;
 }
 ```
@@ -354,15 +337,13 @@ int main()
 #include <iostream>
 #include <bitset>
 
-int main() 
-{
+int main() {
     std::bitset<8> myBitset("11010010");
 
     std::cout << "Original bitset: " << myBitset << std::endl;
 
     // Toggle all bits
     myBitset.flip();
-
     std::cout << "After toggling: " << myBitset << std::endl;
 
     return 0;
@@ -385,11 +366,9 @@ Bitset after setting position 1: 00000010
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     Bitset* myBitset = bitset_create(8);
-    if (!myBitset) 
-    {
+    if (!myBitset) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -399,18 +378,17 @@ int main()
     printf("Enter a position to set (0-7): ");
     scanf("%d", &pos);
 
-    if (pos >= 0 && pos < 8) 
-    {
+    if (pos >= 0 && pos < 8) {
         bitset_set(myBitset, pos, true);
 
         printf("Bitset after setting position %d: ", pos);
         bitset_print(myBitset);
     }
-    else 
+    else {
         printf("Invalid position!\n");
-    
-    bitset_deallocate(myBitset);
+    }
 
+    bitset_deallocate(myBitset);
     return 0;
 }
 ```
@@ -420,25 +398,23 @@ int main()
 #include <iostream>
 #include <bitset>
 
-int main() 
-{
+int main() {
     std::bitset<8> myBitset;
     int pos;
 
     std::cout << "Enter a position to set (0-7): ";
     std::cin >> pos;
 
-    if (pos >= 0 && pos < 8) 
-    {
+    if (pos >= 0 && pos < 8) {
         myBitset.set(pos);
         std::cout << "Bitset after setting position " << pos << ": " << myBitset << std::endl;
     } 
-    else 
+    else {
         std::cout << "Invalid position!" << std::endl;
+    }
 
     return 0;
 }
-
 
 ```
 
@@ -450,12 +426,10 @@ int main()
 #include "bitset/bitset.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     Bitset* myBitset = bitset_create(64);
 
-    if (!myBitset) 
-    {
+    if (!myBitset) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -485,8 +459,7 @@ int main()
 #include <iostream>
 #include <bitset>
 
-int main() 
-{
+int main() {
     std::bitset<64> myBitset;
 
     // Set specific bits
@@ -512,12 +485,10 @@ int main()
 #include "bitset/bitset.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     Bitset* myBitset = bitset_create(8);
 
-    if (!myBitset) 
-    {
+    if (!myBitset) {
         fprintf(stderr, "Failed to create bitset\n");
         return 1;
     }
@@ -525,12 +496,13 @@ int main()
     bitset_set(myBitset, 2, true);
     bitset_set(myBitset, 4, true);
 
-    for (size_t i = 0; i < bitset_size(myBitset); i++) 
+    for (size_t i = 0; i < bitset_size(myBitset); i++) {
         printf("Bit %zu is %s\n", i, bitset_test(myBitset, i) ? "set" : "not set");
+    }
 
     printf("Number of set bits: %zu\n", bitset_count(myBitset));
+    
     bitset_deallocate(myBitset);
-
     return 0;
 }
 ```
@@ -541,19 +513,18 @@ int main()
 #include <iostream>
 #include <bitset>
 
-int main() 
-{
+int main() {
     std::bitset<8> myBitset;
 
     // Set a few bits
     myBitset.set(2);
     myBitset.set(4);
 
-    for (size_t i = 0; i < myBitset.size(); i++) 
+    for (size_t i = 0; i < myBitset.size(); i++) {
         std::cout << "Bit " << i << " is " << (myBitset.test(i) ? "set" : "not set") << std::endl;
-
+    }
     std::cout << "Number of set bits: " << myBitset.count() << std::endl;
-
+    
     return 0;
 }
 ```
@@ -566,8 +537,7 @@ int main()
 #include "bitset/bitset.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     Bitset *bit = bitset_create(8);
 
     bitset_set(bit, 1, true);
@@ -577,7 +547,6 @@ int main()
     printf("Bitset in string is %s\n", bitsetString);
 
     bitset_deallocate(bit);
-
     return 0;
 }
 
@@ -590,8 +559,7 @@ int main()
 #include <bitset>
 #include <string>
 
-int main() 
-{
+int main() {
     std::bitset<8> myBitset;
 
     myBitset.set(1);
@@ -614,17 +582,14 @@ int main()
 #include <stdio.h>
 
 // Function to perform bitwise AND on two bitsets and print the result
-void bitwise_and_print(Bitset* bs1, Bitset* bs2) 
-{
-    if (!bs1 || !bs2 || bs1->size != bs2->size) 
-    {
+void bitwise_and_print(Bitset* bs1, Bitset* bs2) {
+    if (!bs1 || !bs2 || bs1->size != bs2->size) {
         fprintf(stderr, "Bitsets are not compatible for operation.\n");
         return;
     }
 
     Bitset* result = bitset_create(bs1->size);
-    for (size_t i = 0; i < bs1->size; ++i) 
-    {
+    for (size_t i = 0; i < bs1->size; ++i) {
         bool bit1 = bitset_test(bs1, i);
         bool bit2 = bitset_test(bs2, i);
 
@@ -636,8 +601,7 @@ void bitwise_and_print(Bitset* bs1, Bitset* bs2)
     bitset_deallocate(result);
 }
 
-int main() 
-{
+int main() {
     Bitset* bs1 = bitset_create(8);
     bitset_set_from_string(bs1, "10101010");
 
@@ -665,8 +629,7 @@ int main()
 #include <iostream>
 #include <bitset>
 
-int main() 
-{
+int main() {
     std::bitset<8> bs1("10101010");
     std::bitset<8> bs2("11001100");
 
@@ -688,25 +651,24 @@ int main()
 #include "bitset/bitset.h"
 #include <stdio.h>
 
-void shift_left_and_print(Bitset* bs, size_t shift) 
-{
-    if (!bs) 
+void shift_left_and_print(Bitset* bs, size_t shift) {
+    if (!bs) {
         return;
+    }
 
     Bitset* shifted = bitset_create(bs->size);
-    for (size_t i = 0; i < bs->size - shift; ++i) 
-    {
+    for (size_t i = 0; i < bs->size - shift; ++i) {
         if (bitset_test(bs, i)) 
             bitset_set(shifted, i + shift, true);
     }
 
     printf("Shifted Left by %zu: ", shift);
     bitset_print(shifted);
+
     bitset_deallocate(shifted);
 }
 
-int main() 
-{
+int main() {
     Bitset* bs = bitset_create(8);
     bitset_set_from_string(bs, "10011001");
 
