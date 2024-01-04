@@ -30,28 +30,25 @@ To use the Queue library in your project, include the `queue.h` header file in y
 #include <stdlib.h>
 #include "queue/queue.h"
 
-int main() 
-{
+int main() {
     Queue* myQueue = queue_create(sizeof(int));
 
-    if (!myQueue) 
-    {
+    if (!myQueue) {
         fprintf(stderr, "Failed to create queue.\n");
         return EXIT_FAILURE;
     }
 
     // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
-        
+    }
     // Print the size of the queue
     printf("Queue size: %zu\n", queue_size(myQueue));
+    
     queue_deallocate(myQueue);
-
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -63,28 +60,24 @@ int main()
 #include <stdlib.h>
 #include "queue/queue.h"
 
-int main() 
-{
+int main() {
     Queue* myQueue = queue_create(sizeof(int));
 
-    if (!myQueue) 
-    {
+    if (!myQueue) {
         fprintf(stderr, "Failed to create queue.\n");
         return EXIT_FAILURE;
     }
 
     // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
-        
+    }
     printf("Is the queue empty? %s\n", queue_empty(myQueue) ? "Yes" : "No");
 
     queue_deallocate(myQueue);
-    
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -96,27 +89,24 @@ int main()
 #include <stdlib.h>
 #include "queue/queue.h"
 
-int main() 
-{
+int main() {
     Queue* myQueue = queue_create(sizeof(int));
 
-    if (!myQueue) 
-    {
+    if (!myQueue) {
         fprintf(stderr, "Failed to create queue.\n");
         return EXIT_FAILURE;
     }
 
     // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
-        
-        // Access the front and back elements
+    }
+    // Access the front and back elements
     int* front = queue_front(myQueue);
     int* back = queue_back(myQueue);
 
-    if (front && back) 
-    {
+    if (front && back) {
         printf("Front element: %d\n", *front);
         printf("Back element: %d\n", *back);
 
@@ -128,7 +118,6 @@ int main()
     return EXIT_SUCCESS;
 }
 
-
 ```
 
 ## Example 4 : 'pop' element
@@ -139,31 +128,29 @@ int main()
 #include <stdlib.h>
 #include "queue/queue.h"
 
-int main() 
-{
+int main() {
     Queue* myQueue = queue_create(sizeof(int));
 
-    if (!myQueue) 
-    {
+    if (!myQueue) {
         fprintf(stderr, "Failed to create queue.\n");
         return EXIT_FAILURE;
     }
 
     // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
-
+    }
     queue_pop(myQueue);
     int* front = queue_front(myQueue);
 
-    if (front) 
+    if (front) {
         printf("New front element after pop: %d\n", *front);
+    }
 
     queue_deallocate(myQueue);
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -175,26 +162,25 @@ int main()
 #include <stdlib.h>
 #include "queue/queue.h"
 
-int main() 
-{
+int main() {
     Queue* myQueue1 = queue_create(sizeof(int));
     Queue* myQueue2 = queue_create(sizeof(int));
 
-    if (!myQueue1 || !myQueue2) 
-    {
+    if (!myQueue1 || !myQueue2) {
         printf("Failed to create queue\n");
         return EXIT_FAILURE;
     }
 
     // Push some integers onto the first queue
     int values1[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) {
         queue_push(myQueue1, &values1[i]);
-        
+    }
+
     int values2[] = {15, 25, 35, 45, 55};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         queue_emplace(myQueue2, &values2[i], sizeof(int));
-        
+    }
     // // Compare the two queues
     printf("Are the queues equal? %s\n", queue_is_equal(myQueue1, myQueue2) ? "Yes" : "No");
     printf("Is myQueue1 less than myQueue2? %s\n", queue_is_less(myQueue1, myQueue2) ? "Yes" : "No");
@@ -215,35 +201,33 @@ int main()
 #include <stdlib.h>
 #include "queue/queue.h"
 
-
-int main() 
-{
+int main() {
     Queue* myQueue1 = queue_create(sizeof(int));
     Queue* myQueue2 = queue_create(sizeof(int));
 
-    if (!myQueue1 || !myQueue2) 
-    {
+    if (!myQueue1 || !myQueue2) {
         printf("Failed to create queue\n");
         return EXIT_FAILURE;
     }
 
     // Push some integers onto the first queue
     int values1[] = {10, 20, 30, 40, 50};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) {
         queue_push(myQueue1, &values1[i]);
-        
+    }
+
     int values2[] = {15, 25, 35, 45, 55};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         queue_emplace(myQueue2, &values2[i], sizeof(int));
-        
+    }
     // Swap the two queues
     queue_swap(myQueue1, myQueue2);
 
     // Check the front element of the swapped queues
     int* front1 = queue_front(myQueue1);
     int* front2 = queue_front(myQueue2);
-    if (front1 && front2) 
-    {
+
+    if (front1 && front2) {
         printf("Front element of myQueue1 after swap: %d\n", *front1);
         printf("Front element of myQueue2 after swap: %d\n", *front2);
     }
@@ -253,7 +237,6 @@ int main()
 
     return EXIT_SUCCESS;
 }
-
 
 ```
 
@@ -266,16 +249,13 @@ int main()
 #include <stdlib.h>
 #include "queue/queue.h"
 
-typedef struct Task 
-{
+typedef struct Task {
     int id;
     char description[100];
     int priority;
-
 } Task;
 
-void addTask(Queue* queue, int id, const char* desc, int priority) 
-{
+void addTask(Queue* queue, int id, const char* desc, int priority) {
     Task task;
     task.id = id;
 
@@ -284,20 +264,16 @@ void addTask(Queue* queue, int id, const char* desc, int priority)
     queue_emplace(queue, &task, sizeof(Task));
 }
 
-void processTasks(Queue* queue) 
-{
-    while (!queue_empty(queue)) 
-    {
+void processTasks(Queue* queue) {
+    while (!queue_empty(queue)) {
         Task* task = (Task*)queue_front(queue);
         printf("Processing Task ID %d: %s\n", task->id, task->description);
-
         // Simulate task processing
         queue_pop(queue);
     }
 }
 
-int main() 
-{
+int main() {
     Queue* taskQueue = queue_create(sizeof(Task));
 
     addTask(taskQueue, 1, "Fix bug in code", 5);
@@ -309,7 +285,6 @@ int main()
     printf("Task queue size after processing: %zu\n", queue_size(taskQueue));
 
     queue_deallocate(taskQueue);
-
     return EXIT_SUCCESS;
 }
 
@@ -323,19 +298,16 @@ int main()
 #include "queue/queue.h"
 #include "string/string.h"
 
-int main() 
-{
+int main() {
     // Create a Queue of String Queues (2D Queue)
     Queue* queue2D = queue_create(sizeof(Queue*));
 
     // Create and populate inner Queues
-    for (int i = 0; i < 3; ++i) 
-    { 
+    for (int i = 0; i < 3; ++i) { 
         Queue* stringQueue = queue_create(sizeof(String*));
 
         // Add Strings to the inner Queue
-        for (int j = 0; j < 5; ++j) 
-        { 
+        for (int j = 0; j < 5; ++j) { 
             // Each inner Queue has 5 Strings
             char buffer[50];
             sprintf(buffer, "String %d-%d", i, j);
@@ -349,13 +321,11 @@ int main()
     }
 
     // Iterate over each inner Queue and process its Strings
-    while (!queue_empty(queue2D)) 
-    {
+    while (!queue_empty(queue2D)) {
         Queue** innerQueuePtr = (Queue**)queue_front(queue2D);
         Queue* innerQueue = *innerQueuePtr;
 
-        while (!queue_empty(innerQueue)) 
-        {
+        while (!queue_empty(innerQueue)) {
             String** strPtr = (String**)queue_front(innerQueue);
             String* str = *strPtr;
             
@@ -373,9 +343,7 @@ int main()
 
     // Deallocate the outer Queue
     queue_deallocate(queue2D);
-
     return 0;
 }
-
 
 ```

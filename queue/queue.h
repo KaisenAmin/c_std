@@ -7,8 +7,7 @@
 
 typedef struct Queue Queue;
 
-struct Queue 
-{
+struct Queue {
     Vector* vec;
 };
 
