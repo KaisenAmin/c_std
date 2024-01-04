@@ -57,17 +57,23 @@ To use the Stack library in your project, include the `stack.h` header file in y
 ## Example 1 : create Stack Obj and 'push_back' and get 'size'
 
 ```c
+#include "stack/stack.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-Stack* stack = stack_create(sizeof(int));
-int arr[] = {10, 20, 30, 40, 50};
 
-for (int i = 0; i < 5; i++)
-    stack->push(stack, &arr[i]);
+int main() {
+    Stack* stack = stack_create(sizeof(int));
+    int arr[] = {10, 20, 30, 40, 50};
 
-printf("Size of stack is %d\n", stack->size(stack));
+    for (int i = 0; i < 5; i++) {
+        stack->push(stack, &arr[i]);
+    }
+    printf("Size of stack is %d\n", stack->size(stack));
 
-stack->deallocate(stack);
-
+    stack->deallocate(stack);
+    return 0;
+}
 ```
 
 
@@ -81,19 +87,16 @@ stack->deallocate(stack);
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{
+int main() {
     Stack* stack = stack_create(sizeof(int));
     int arr[] = {10, 20, 30, 40, 50};
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++) {
         stack_push(stack, &arr[i]);
-
+    }
     printf("Size of stack is %zu\n", stack_size(stack));
 
-    if (!stack_empty(stack))
-    {
+    if (!stack_empty(stack)) {
         int topValue = *(int*)stack_top(stack);
         printf("Top Element is %d\n", topValue);
 
@@ -103,7 +106,6 @@ int main()
     }
 
     stack_deallocate(stack);
-
     return EXIT_SUCCESS;
 }
 
@@ -117,9 +119,7 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{
+int main() {
     String* myString = string_create("");
     Stack* stack = stack_create(sizeof(char*));
 
@@ -142,7 +142,7 @@ int main()
 
     string_deallocate(*str1);
     stack_deallocate(stack);
-
+    
     return EXIT_SUCCESS;
 }
 
@@ -157,30 +157,28 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{
+int main() {
     Stack* stk1 = stack_create(sizeof(int));
     Stack* stk2 = stack_create(sizeof(int));
 
-    if (stack_is_equal(stk1, stk2))
+    if (stack_is_equal(stk1, stk2)) {
         printf("stk1 is equal to stk2\n");
-        
-    if (stack_is_less(stk1, stk2)) 
+    }
+    if (stack_is_less(stk1, stk2)) { 
         printf("stk1 is less than stk2\n");
-
-    if (stack_is_greater(stk1, stk2)) 
+    }
+    if (stack_is_greater(stk1, stk2)) {
         printf("stk1 is greater than stk2\n");
-
-    if (stack_is_less_or_equal(stk1, stk2)) 
+    }
+    if (stack_is_less_or_equal(stk1, stk2)) {
         printf("stk1 is less than or equal to stk2\n");
-        
-    if (stack_is_greater_or_equal(stk1, stk2)) 
+    }
+    if (stack_is_greater_or_equal(stk1, stk2)) { 
         printf("stk1 is greater than or equal to stk2\n");
-
-    if (stack_is_not_equal(stk1, stk2)) 
+    }
+    if (stack_is_not_equal(stk1, stk2)) { 
         printf("stk1 is not equal to stk2\n");
-
+    }
     // Clean up the stacks...
     stack_deallocate(stk1);
     stack_deallocate(stk2);
@@ -200,10 +198,8 @@ This example demonstrates how to use the Stack and String libraries to evaluate 
 #include <stdlib.h>
 #include <ctype.h>
 
-int performOperation(int op1, int op2, char operator) 
-{
-    switch (operator) 
-    {
+int performOperation(int op1, int op2, char operator) {
+    switch (operator) {
         case '+': 
             return op1 + op2;
         case '-': 
@@ -217,42 +213,37 @@ int performOperation(int op1, int op2, char operator)
     }
 }
 
-int evaluateExpression(String* expression) 
-{
+int evaluateExpression(String* expression) {
     Stack* values = stack_create(sizeof(int));
     Stack* operators = stack_create(sizeof(char));
 
-    for (size_t i = 0; i < string_length(expression); i++) 
-    {
+    for (size_t i = 0; i < string_length(expression); i++) {
         char ch = string_at(expression, i);
 
-        if (isdigit(ch)) 
-        {
+        if (isdigit(ch)) {
             int val = ch - '0';
             stack_push(values, &val);
         } 
-        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') 
-        {
-            while (!stack_empty(operators)) 
-            {
+        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            while (!stack_empty(operators)) {
                 char topOp = *(char*)stack_top(operators);
-                if (topOp == '*' || topOp == '/') 
-                {
+
+                if (topOp == '*' || topOp == '/') {
                     stack_pop(operators);
                     int op2 = *(int*)stack_pop(values);
                     int op1 = *(int*)stack_pop(values);
                     int result = performOperation(op1, op2, topOp);
                     stack_push(values, &result);
                 } 
-                else 
+                else {
                     break;
+                }
             }
             stack_push(operators, &ch);
         }
     }
 
-    while (!stack_empty(operators)) 
-    {
+    while (!stack_empty(operators)) {
         char operator = *(char*)stack_pop(operators);
         int op2 = *(int*)stack_pop(values);
         int op1 = *(int*)stack_pop(values);
@@ -268,8 +259,7 @@ int evaluateExpression(String* expression)
     return finalResult;
 }
 
-int main() 
-{
+int main() {
     String* expr = string_create("3+2*2+1-8");
     int result = evaluateExpression(expr);
 
@@ -289,25 +279,20 @@ This example shows how a stack of vectors can be used to implement a multi-level
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct 
-{
+typedef struct {
     int x;
     int y;
-
 } Point;
 
-void printVector(Vector* vec) 
-{
-    for (size_t i = 0; i < vector_size(vec); i++) 
-    {
+void printVector(Vector* vec) {
+    for (size_t i = 0; i < vector_size(vec); i++) {
         Point* p = (Point*)vector_at(vec, i);
         printf("(%d, %d) ", p->x, p->y);
     }
     printf("\n");
 }
 
-int main() 
-{
+int main() {
     Stack* history = stack_create(sizeof(Vector*));
 
     // Initial state
@@ -351,21 +336,18 @@ The program will take an input string and use a stack to keep track of opening p
 #include <stdlib.h>
 #include <stdbool.h>
 
-bool isBalanced(String* input) 
-{
+bool isBalanced(String* input) {
     Stack* stack = stack_create(sizeof(char));
     size_t length = string_length(input);
 
-    for (size_t i = 0; i < length; i++) 
-    {
+    for (size_t i = 0; i < length; i++) {
         char currentChar = string_at(input, i);
 
-        if (currentChar == '(' || currentChar == '[' || currentChar == '{') 
+        if (currentChar == '(' || currentChar == '[' || currentChar == '{') {
             stack_push(stack, &currentChar);
-        else if (currentChar == ')' || currentChar == ']' || currentChar == '}') 
-        {
-            if (stack_empty(stack)) 
-            {
+        }
+        else if (currentChar == ')' || currentChar == ']' || currentChar == '}') {
+            if (stack_empty(stack)) {
                 stack_deallocate(stack);
                 return false;
             }
@@ -388,18 +370,17 @@ bool isBalanced(String* input)
     return balanced;
 }
 
-int main() 
-{
+int main() {
     String* str = string_create("{[()]}");
 
-    if (isBalanced(str)) 
+    if (isBalanced(str)) {
         printf("The string %s is balanced.\n", str->dataStr);
-    else 
+    }
+    else {
         printf("The string %s is not balanced.\n", str->dataStr);
+    }
 
     string_deallocate(str);
-
     return 0;
 }
-
 ```

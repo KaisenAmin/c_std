@@ -5,8 +5,7 @@
 
 typedef struct Stack Stack;
 
-struct Stack 
-{   
+struct Stack {   
     Vector* vec;
 };
 
