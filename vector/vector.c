@@ -74,7 +74,6 @@ bool vector_is_equal(const Vector* vec1, const Vector* vec2) {
     if (vec1 == NULL || vec2 == NULL || vec1->size != vec2->size) {
         return false;
     }
-
     return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) == 0;
 }
 
@@ -107,7 +106,6 @@ bool vector_is_not_equal(const Vector* vec1, const Vector* vec2) {
     if (vec1->size != vec2->size) { 
         return true;
     }
-
     return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) != 0;
 }
 
@@ -124,7 +122,6 @@ bool vector_is_empty(Vector *vec) {
         fprintf(stderr, "Error: Vector is NULL in vector_is_empty_impl.\n");
         return true; // or handle the error as per your application's needs
     }
-
     return vec->size == 0;
 }
 
@@ -180,14 +177,13 @@ void vector_reserve(Vector *vec, size_t size) {
     if (vec == NULL || vec->capacitySize >= size) {
         return; // No need to reserve if the capacity is already sufficient
     }
-    // Allocate new space from the memory pool
-    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
+
+    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize); // Allocate new space from the memory pool
     if (!newItems) { 
         return; // Handle allocation failure, maybe by resizing the pool
     }
     if (vec->size > 0) {
-          // Copy existing items to the new space if there are any
-        memcpy(newItems, vec->items, vec->size * vec->itemSize);
+        memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items to the new space if there are any
     }
 
     vec->items = newItems;
@@ -256,7 +252,6 @@ void vector_assign(Vector *vec, size_t pos, void *item) {
     if (vec == NULL || pos >= vec->size) {
         return;
     }
-    
     memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
 }
 
