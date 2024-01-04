@@ -151,8 +151,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* myString = string_create("");
    
     // Push back a new character
@@ -177,7 +176,6 @@ int main()
     printf("%s\n", string_c_str(myString));
 
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -190,8 +188,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello");
 
     // Append a string
@@ -209,7 +206,6 @@ int main()
     // clean up and dellocate
     string_clear(myString);
     string_deallocate(myString);
-
     return 0;
 }
 ```
@@ -221,8 +217,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello World");
 
     // Assign a new string
@@ -240,7 +235,6 @@ int main()
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -253,15 +247,13 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *str1 = string_create("Hello World");
     string_replace(str1, "World", "There");
         
     printf("After replace: %s\n", str1->dataStr);
 
     string_deallocate(str1);
-
     return 0;
 }
 
@@ -275,8 +267,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *str1 = string_create("Hello World");
     string_replace(str1, "World", "There");
         
@@ -294,7 +285,6 @@ int main()
 
     string_deallocate(str1);
     string_deallocate(str2);
-
     return 0;
 }
 
@@ -308,17 +298,13 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
-   String *myString = string_create("Hello World");
-
-    // Get the last character
-    char lastChar = *(char*)string_back(myString);
+int main() {
+    String *myString = string_create("Hello World");
+    char lastChar = *(char*)string_back(myString); // Get the last character
 
     printf("Last character : %c\n", lastChar);
     // its just syntax !!!
     *(char*)string_back(myString) = 'a';
-
     printf("Wowww: %c\n", *(char*)string_back(myString));
 
     // Get the first character
@@ -329,7 +315,6 @@ int main()
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -342,8 +327,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
 
     // Copy example
@@ -352,7 +336,6 @@ int main()
     printf("Copied '%s' (%zu characters)\n", buffer, copied);
 
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -365,8 +348,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
 
     // Find example
@@ -374,7 +356,6 @@ int main()
     printf("Found 'World' at position: %d\n", findPos);
 
     string_deallocate(myString);
-
     return 0;
 }
 ```
@@ -386,8 +367,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
 
     // rfind example
@@ -404,7 +384,6 @@ int main()
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -417,8 +396,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
 
     // find_first_not_of example
@@ -430,7 +408,6 @@ int main()
     printf("Last position not matching 'World': %d\n", lastNotOfPos);
 
     string_deallocate(myString);
-    
     return 0;
 }
 
@@ -443,8 +420,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
         
     // Data example
@@ -454,12 +430,10 @@ int main()
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
-    
     return 0;
 }
 
 ```
-
 
 ## Example 12 : 'begin', 'end' return iterator pointer from begin and end of String sequence
 
@@ -468,16 +442,15 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello amin");
 
-    for (char* it = string_begin(myString); it != string_end(myString); it++)
+    for (char* it = string_begin(myString); it != string_end(myString); it++) {
         printf("%c", *it);
+    }
         
     string_clear(myString);
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -490,15 +463,14 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello amin");
 
     // Reverse iteration using rbegin and rend
     printf("String in reverse: ");
-    for (char* it = string_rbegin(myString); it != string_rend(myString); --it) 
+    for (char* it = string_rbegin(myString); it != string_rend(myString); --it) { 
         printf("%c", *it);
-        
+    }   
     printf("\n");
 
     // Clean up
@@ -516,15 +488,14 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
 
     // Iterate using cbegin and cend
     printf("String using cbegin and cend: ");
-    for (const char* it = string_cbegin(myString); it != string_cend(myString); ++it) 
+    for (const char* it = string_cbegin(myString); it != string_cend(myString); ++it) { 
         printf("%c", *it);
-
+    }
     printf("\n");
 
     string_deallocate(myString);
@@ -540,20 +511,18 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *myString = string_create("Hello, World!");
 
     // Reverse iterate using crbegin and crend
     printf("String in reverse using crbegin and crend: ");
-    for (const char* it = string_crbegin(myString); it != string_crend(myString); --it) 
+    for (const char* it = string_crbegin(myString); it != string_crend(myString); --it) { 
         printf("%c", *it);
-        
+    }
     printf("\n");
 
     // Clean up
     string_deallocate(myString);
-
     return 0;
 }
 
@@ -566,30 +535,28 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str1 = string_create("Hello");
     String* str2 = string_create("World");
 
-    if (string_is_equal(str1, str2)) 
+    if (string_is_equal(str1, str2)) {
         printf("Strings are equal\n");
-        
-    if (string_is_less(str1, str2)) 
+    }   
+    if (string_is_less(str1, str2)) { 
         printf("String 1 is less than String 2\n");
-
-    if (string_is_greater(str1, str2))
+    }
+    if (string_is_greater(str1, str2)) {
         printf("String1 is greater that String2\n");
-
-    if (string_is_less_or_equal(str1, str2))
+    }
+    if (string_is_less_or_equal(str1, str2)) {
         printf("String1 is less than or equal String2\n");
-
-    if (string_is_greater_or_equal(str1, str2))
+    }
+    if (string_is_greater_or_equal(str1, str2)) {
         printf("String1 is greater than or equal String2\n");
-                    
+    }
+
     string_deallocate(str1);
     string_deallocate(str2);
-
-
     return 0;
 }
 ```
@@ -601,8 +568,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     // Creating string objects
     String* greeting = string_create("Hello");
     String* name = string_create("Alice");
@@ -626,15 +592,16 @@ int main()
     printf("Sentence: %s\n", sentence->dataStr);
 
     // Compare 'greeting' and 'sentence'
-    if (string_is_less(sentence, greeting)) 
-        printf("Sentence is less than greeting.\n");
-    else 
+    if (string_is_less(sentence, greeting)) {
+        printf("Sentence is less than greeting.\n"); 
+    }
+    else {
         printf("Sentence is not less than greeting.\n");
-    
+    }
+
     string_deallocate(greeting);
     string_deallocate(name);
     string_deallocate(sentence);
-
     return 0;
 }
 
@@ -648,34 +615,30 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-String*** create_2d_string_array(const size_t rows, const size_t cols) 
-{
+String*** create_2d_string_array(const size_t rows, const size_t cols) {
     String*** array = malloc(rows * sizeof(String**));
 
-    for (size_t i = 0; i < rows; ++i) 
-    {
+    for (size_t i = 0; i < rows; ++i) {
         array[i] = malloc(cols * sizeof(String*));
-        for (size_t j = 0; j < cols; ++j) 
-            array[i][j] = string_create("");  // Initialize with empty strings
-    }
 
+        for (size_t j = 0; j < cols; ++j) { 
+            array[i][j] = string_create("");  // Initialize with empty strings
+        }
+    }
     return array;
 }
 
-void deallocate_2d_string_array(String*** array, const size_t rows, const size_t cols) 
-{
-    for (size_t i = 0; i < rows; ++i) 
-    {
-        for (size_t j = 0; j < cols; ++j) 
+void deallocate_2d_string_array(String*** array, const size_t rows, const size_t cols) {
+    for (size_t i = 0; i < rows; ++i) {
+        for (size_t j = 0; j < cols; ++j) {
             string_deallocate(array[i][j]);
-        
+        }
         free(array[i]);
     }
     free(array);
 }
 
-int main() 
-{
+int main() {
     const size_t rows = 2;
     const size_t cols = 3;
     String*** my2DString = create_2d_string_array(rows, cols);
@@ -690,17 +653,14 @@ int main()
     string_assign(my2DString[1][2], "World");
 
     // Print the 2D array
-    for (size_t i = 0; i < rows; ++i) 
-    {
-        for (size_t j = 0; j < cols; ++j) 
+    for (size_t i = 0; i < rows; ++i) {
+        for (size_t j = 0; j < cols; ++j) {
             printf("%s ", string_c_str(my2DString[i][j]));
-        
+        }
         printf("\n");
     }
-
     // Clean up
     deallocate_2d_string_array(my2DString, rows, cols);
-
     return 0;
 }
 
@@ -721,39 +681,33 @@ Time taken (Custom String): 0.286000 seconds
 #define ARRAY_SIZE 100000
 #define OPERATIONS 100
 
-int main() 
-{
+int main() {
     struct timespec start, end;
     String** stringArray = malloc(ARRAY_SIZE * sizeof(String*));
 
-    if (!stringArray) 
-    {
+    if (!stringArray) {
         perror("Failed to allocate memory for stringArray");
         return 1; // Or handle error appropriately
     }
 
     clock_gettime(CLOCK_MONOTONIC, &start);
-
-    for (int i = 0; i < ARRAY_SIZE; i++) 
-    {
+    for (int i = 0; i < ARRAY_SIZE; i++) {
         // stringArray[i] = string_create_with_pool(100000000); // if you use this method for largeArray speed efficient but need to large memory
         stringArray[i] = string_create(""); // but this one is more slower than create_pool
     }
     
-    for (int i = 0; i < ARRAY_SIZE; i++) 
-    {
-        for (int j = 0; j < OPERATIONS; j++) 
-            string_push_back(stringArray[i], 'a'); 
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        for (int j = 0; j < OPERATIONS; j++) { 
+            string_push_back(stringArray[i], 'a');
+        } 
     }
-
     clock_gettime(CLOCK_MONOTONIC, &end);
     double time_in_sec = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
-
     printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
 
-    for (int i = 0; i < ARRAY_SIZE; i++) 
+    for (int i = 0; i < ARRAY_SIZE; i++) { 
         string_deallocate(stringArray[i]);
-    
+    }
     return 0;
 }
 ```
@@ -768,20 +722,18 @@ and in Cpp
 #define ARRAY_SIZE 1000000
 #define OPERATIONS 100
 
-int main() 
-{
+int main() {
     std::string *stringArray = new std::string[ARRAY_SIZE];
     
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < ARRAY_SIZE; i++) 
-    {
-        for (int j = 0; j < OPERATIONS; j++) 
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        for (int j = 0; j < OPERATIONS; j++) {
             stringArray[i] += 'a';
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-
     std::cout << "Time taken (std::string): " << elapsed.count() << " seconds\n";
 
     return 0;
@@ -805,33 +757,31 @@ Average Custom Vector Time: 0.001507 seconds
 #define ARRAY_SIZE 1000000
 #define OPERATIONS 100
 
-int main() 
-{
+int main() {
     struct timespec start, end;
     String* stringArray = string_create("");
     
-    if (!stringArray) 
-    {
+    if (!stringArray) {
         perror("Failed to allocate memory for stringArray");
         return 1; // Or handle error appropriately
     }
     
-    if (string_set_pool_size(stringArray, 10000000))
+    if (string_set_pool_size(stringArray, 10000000)) {
         printf("create pool\n");
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &start);
-    for (int i = 0; i < ARRAY_SIZE; i++) 
+    for (int i = 0; i < ARRAY_SIZE; i++) {
         string_push_back(stringArray, 'a'); 
-
-
+    }
     clock_gettime(CLOCK_MONOTONIC, &end);
+    
     double time_in_sec = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
-
     printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
 
-    for (int i = 0; i < ARRAY_SIZE; i++) 
+    for (int i = 0; i < ARRAY_SIZE; i++) {
         string_deallocate(stringArray);
-    
+    }
     return 0;
 }
 
@@ -847,55 +797,46 @@ Time taken (std::string): 0.0051607 seconds
 #define ARRAY_SIZE 1000000
 #define OPERATIONS 100
 
-int main() 
-{
+int main() {
     std::string *stringArray = new std::string[ARRAY_SIZE];
     
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < ARRAY_SIZE; i++) 
-    {
+    for (int i = 0; i < ARRAY_SIZE; i++) {
         stringArray[i] += 'a';
     }
-
     auto end = std::chrono::high_resolution_clock::now();
+    
     std::chrono::duration<double> elapsed = end - start;
-
     std::cout << "Time taken (std::string): " << elapsed.count() << " seconds\n";
 
     return 0;
 }
 
-
 ```
 
 ### Example 21 : string to Lower or Upper 
 ```c
-#include "csv/csv.h"
 #include "string/string.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello World");
     char* toUpper = string_to_upper(str); // convert str to upper case and return as char*
     char* toLower = string_to_lower(str); // convert str to lower case and return as char* 
 
-    if (toUpper) 
-    {   
+    if (toUpper) {   
         printf("To Upper is -> %s\n", toUpper);
         free(toUpper);
     }
-    if (toLower)
-    {
+    if (toLower) {
         printf("To Lower is -> %s\n", toLower);
         free(toLower);
     }
+
     string_deallocate(str);
-   
     return 0;
 }
-
 
 ```
 
@@ -906,18 +847,17 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello World");
 
-    if (string_contains(str, "Hello")) // check str contains substr 
+    if (string_contains(str, "Hello")) { 
         printf("Yes 'Hello' exists in str\n");
+    }
     
     string_reverse(str); // reverse String 
     printf("Reverse String is %s\n", string_c_str(str));
 
     string_deallocate(str);
-   
     return 0;
 }
 
@@ -928,16 +868,18 @@ int main()
 ```c
 
 #include "string/string.h" 
+#include <stdio.h>
 
-int main() 
-{
+int main() {
     String* myString = string_create("123456");
 
-    if (string_is_digit(myString)) 
+    if (string_is_digit(myString)) {
         printf("The string contains only digits.\n");
-    else 
+    }
+    else {
         printf("The string contains non-digit characters or is not a string.\n");
-    
+    }
+
     string_deallocate(myString);
     return 0;
 }
@@ -948,11 +890,11 @@ int main()
 ```c
 #include "string/string.h" 
 #include <stdlib.h>
+#include <stdio.h>
 
-int main() 
-{
+int main() {
     String* myString = string_create("Hello World");
-
+    
     char* upper = string_to_upper(myString);
     printf("Uppercase: %s\n", upper);
     free(upper); // Remember to free the memory allocated by string_to_upper
@@ -974,8 +916,7 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     String* str1 = string_create("Hello");
     String* str2 = string_create(" World");
 
@@ -995,8 +936,7 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("   Hello World   ");
 
     string_trim_left(str);
@@ -1024,8 +964,7 @@ int main()
 #include <stdlib.h>
 
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello,World,This,Is,A,Test");
     int count = 0;
     String** splits = string_split(str, ",", &count);
@@ -1048,9 +987,7 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main() 
-{
+int main() {
     String* parts[3];
 
     parts[0] = string_create("Hello");
@@ -1060,9 +997,10 @@ int main()
     String* joined = string_join(parts, 3, " ");
     printf("Joined string: %s\n", string_c_str(joined));
 
-    for (int i = 0; i < 3; i++) 
+    for (int i = 0; i < 3; i++) {
         string_deallocate(parts[i]);
-    
+    }
+
     string_deallocate(joined);
     return 0;
 }
@@ -1075,8 +1013,7 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("This is a test. This is only a test.");
 
     string_replace_all(str, "test", "example");
@@ -1094,8 +1031,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *str = string_create("12345");
     int intValue = string_to_int(str);
 
@@ -1112,8 +1048,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *str = string_create("123.45");
     float floatValue = string_to_float(str);
 
@@ -1130,8 +1065,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *str = string_create("hello");
     string_pad_left(str, 10, '*'); // Pads with '*' to a total length of 10
 
@@ -1148,8 +1082,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *str = string_create("world");
     string_pad_right(str, 10, '-'); // Pads with '-' to a total length of 10
 
@@ -1166,8 +1099,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *originalStr = string_create("Hello");
     String *hexStr = string_to_hex(originalStr);
 
@@ -1187,8 +1119,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String *hexStr = string_create("48656c6c6f"); // Hexadecimal representation of "Hello"
     String *convertedStr = string_from_hex(hexStr);
 
@@ -1208,8 +1139,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello World, World!");
     const char* substr = "World";
 
@@ -1227,8 +1157,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello World, World!");
     const char* substr = "World";
 
@@ -1247,8 +1176,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     int value = 123;
     String* str = string_from_int(value);
 
@@ -1265,8 +1193,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     float value = 123.456;
     String* str = string_from_float(value);
 
@@ -1284,21 +1211,18 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello,World-This.Is;A-Test");
     int count = 0;
     String** tokens = string_tokenize(str, ",.-;", &count);
 
-    for (int i = 0; i < count; i++) 
-    {
+    for (int i = 0; i < count; i++) {
         printf("Token %d: %s\n", i, tokens[i]->dataStr);
         string_deallocate(tokens[i]);
     }
-
     free(tokens);
-    string_deallocate(str);
 
+    string_deallocate(str);
     return 0;
 }
 
@@ -1310,15 +1234,13 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("123.456");
     double value = string_to_double(str);
 
     printf("Double value: %f\n", value);
     
     string_deallocate(str);
-
     return 0;
 }
 
@@ -1330,15 +1252,13 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     double value = 123.456;
     String* str = string_from_double(value);
 
     printf("String from double: %s\n", str->dataStr);
 
     string_deallocate(str);
-
     return 0;
 }
 
@@ -1350,19 +1270,19 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str1 = string_create("Hello");
     String* str2 = string_create("hello");
 
-    if (string_compare_ignore_case(str1, str2) == 0) 
+    if (string_compare_ignore_case(str1, str2) == 0) { 
         printf("Strings are equal (ignoring case)\n");
-    else 
+    }
+    else { 
         printf("Strings are not equal\n");
-    
+    }
+
     string_deallocate(str1);
     string_deallocate(str2);
-
     return 0;
 }
 
@@ -1374,8 +1294,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     const char* sampleText = "Hello, World!";
     
     String* originalStr = string_create(sampleText);
@@ -1392,7 +1311,6 @@ int main()
     string_deallocate(originalStr);
     string_deallocate(encodedStr);
     string_deallocate(decodedStr);
-
     return 0;
 }
 
@@ -1404,8 +1322,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("");
     
     // Format the string with some arguments
@@ -1413,7 +1330,6 @@ int main()
     printf("%s\n", str->dataStr);
 
     string_deallocate(str);
-
     return 0;
 }
 
@@ -1425,8 +1341,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* original = string_create("Hello ");
     String* repeated = string_repeat(original, 3);
 
@@ -1434,7 +1349,6 @@ int main()
 
     string_deallocate(original);
     string_deallocate(repeated);
-    
     return 0;
 }
 ```
@@ -1445,8 +1359,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* part1 = string_create("Hello");
     String* part2 = string_create(", ");
     String* part3 = string_create("World!");
@@ -1469,8 +1382,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("##Hello, World!##");
     
     string_trim_characters(str, "#");
@@ -1488,8 +1400,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* myStr = string_create("Hello, World!");
     printf("Original String: %s\n", myStr->dataStr);
 
@@ -1497,7 +1408,6 @@ int main()
     printf("Shuffled String: %s\n", myStr->dataStr);
 
     string_deallocate(myStr);
-
     return 0;
 }
 ```
@@ -1508,8 +1418,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("hello world");
 
     string_to_title(str);
@@ -1526,8 +1435,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("HeLLo WoRLd");
 
     string_to_casefold(str);
@@ -1544,8 +1452,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello, World!");
 
     string_remove_range(str, 5, 7); 
@@ -1562,8 +1469,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello, World!");
     bool startsWithHello = string_starts_with(str, "Hello");
 
@@ -1580,8 +1486,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello, World!");
     bool endsWithWorld = string_ends_with(str, "World!");
 
@@ -1598,8 +1503,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("hello world");
 
     string_to_capitalize(str);
@@ -1616,8 +1520,7 @@ int main()
 #include "string/string.h"
 #include <stdio.h>
 
-int main() 
-{
+int main() {
     String* str = string_create("Hello World");
 
     string_swap_case(str);
@@ -1636,14 +1539,12 @@ int main()
 #include <wchar.h>
 #include <stdlib.h>
 
-int main() 
-{
+int main() {
     char* originalStr = u8"Привет, мир! مرحبا بالعالم"; // "Hello, world!" in Russian and Arabic
 
     // Convert to wide string (Unicode)
     wchar_t* unicodeStr = string_to_unicode(originalStr);
-    if (unicodeStr == NULL) 
-    {
+    if (unicodeStr == NULL) {
         printf("Conversion to wide string failed.\n");
         return 1;
     }
@@ -1652,8 +1553,7 @@ int main()
 
     // Convert back to String object
     String* convertedStr = string_from_unicode(unicodeStr);
-    if (convertedStr == NULL) 
-    {
+    if (convertedStr == NULL) {
         printf("Conversion from wide string failed.\n");
         free(unicodeStr);
         return 1;
@@ -1663,7 +1563,7 @@ int main()
     // Clean up
     free(unicodeStr);
     string_deallocate(convertedStr);
-
+    
     return 0;
 }
 ```

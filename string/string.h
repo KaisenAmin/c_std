@@ -4,11 +4,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define SMALL_STRING_SIZE 16
-
 typedef struct String String;
-
-
 typedef struct MemoryPoolString {
     void *pool;        // Pointer to the memory pool
     size_t poolSize;   // Total size of the pool
