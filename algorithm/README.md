@@ -2393,3 +2393,318 @@ int main() {
 }
 
 ```
+
+## Example 86: Generating Random Numbers `algorithm_generate`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+// Generator function to fill with random numbers
+void random_number_generator(void *output) {
+    *(int *)output = rand() % 100; // Generate a random number between 0 and 99
+}
+
+int main() {
+    int array[10];
+    algorithm_generate(array, array + 10, sizeof(int), random_number_generator);
+
+    printf("Random numbers: ");
+    for (int i = 0; i < 10; ++i) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+## Example 87: Generating Sequential Numbers `algorithm_generate`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+
+// Generator function for sequential numbers
+struct sequential_number {
+    int current;
+};
+
+void sequential_number_generator(void *output) {
+    static struct sequential_number seq = {0};
+    *(int *)output = seq.current++;
+}
+
+int main() {
+    Vector *vec = vector_create(sizeof(int));
+
+    vector_resize(vec, 10);
+    // Fill vector with sequential numbers
+    algorithm_generate(vector_begin(vec), vector_end(vec), sizeof(int), sequential_number_generator);
+
+    printf("Sequential numbers: ");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        printf("%d ", *(int *)vector_at(vec, i));
+    }
+    printf("\n");
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+
+### Example 88: Filling a Vector with Constant Value `algorithm_generate`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+
+// Generator function to fill with a constant value
+void constant_generator(void *output) {
+    static const int constant_value = 5;
+    *(int *)output = constant_value;
+}
+
+int main() {
+    Vector *vec = vector_create(sizeof(int));
+    vector_resize(vec, 10); // Resize vector to hold 10 elements
+
+    algorithm_generate(vector_begin(vec), vector_end(vec), sizeof(int), constant_generator);
+
+    printf("Constant values: ");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        printf("%d ", *(int *)vector_at(vec, i));
+    }
+    printf("\n");
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+
+### Example 89: Generating a Fixed Number of Random Integers `algorithm_generate_n`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+void random_int_generator(void *output) {
+    *(int *)output = rand() % 100;
+}
+
+int main() {
+    int array[5];
+    algorithm_generate_n(array, 5, sizeof(int), random_int_generator);
+
+    printf("Random integers: ");
+    for (int i = 0; i < 5; ++i) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 90: Generating a Sequence of Characters `algorithm_generate_n`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void char_sequence_generator(void *output) {
+    static char current = 'A';
+    *(char *)output = current++;
+
+    if (current > 'Z') {
+        current = 'A';
+    }
+}
+
+int main() {
+    char sequence[10];
+    algorithm_generate_n(sequence, 10, sizeof(char), char_sequence_generator);
+
+    printf("Character sequence: ");
+    for (int i = 0; i < 10; ++i) {
+        printf("%c ", sequence[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 91: Generating a String Array `algorithm_generate_n`
+
+```c
+#include "algorithm/algorithm.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+void string_generator(void *output) {
+    static int counter = 1;
+    char buffer[30];
+
+    sprintf(buffer, "String %d", counter++);
+    *(String **)output = string_create(buffer);
+}
+
+int main() {
+    String *stringArray[3];
+    algorithm_generate_n(stringArray, 3, sizeof(String *), string_generator);
+
+    printf("Generated strings: \n");
+    for (int i = 0; i < 3; ++i) {
+        printf("%s\n", stringArray[i]->dataStr);
+        string_deallocate(stringArray[i]);
+    }
+
+    return 0;
+}
+```
+
+### Example 92: Generating Floats in a Vector `algorithm_generate_n`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+
+void float_generator(void *output) {
+    static float value = 0.5;
+    *(float *)output = value;
+    value += 0.5;
+}
+
+int main() {
+    Vector *vec = vector_create(sizeof(float));
+    vector_resize(vec, 5);
+
+    algorithm_generate_n(vector_begin(vec), 5, sizeof(float), float_generator);
+
+    printf("Generated floats: ");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        printf("%.2f ", *(float *)vector_at(vec, i));
+    }
+    printf("\n");
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+
+## Example 93 : `algorithm_copy_backward` how to use it 
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int array[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t array_size = sizeof(array) / sizeof(array[0]);
+
+    // Copy elements in the middle of the array to the end
+    // The result pointer should point just past the last element of the array
+    algorithm_copy_backward(array + 3, array + 7, sizeof(int), array + array_size);
+
+    // Print the array
+    printf("Array after copy_backward: ");
+    for (size_t i = 0; i < array_size; ++i) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```
+
+## Example 94 : use Vector with `algorithm_copy_backward`
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void print_vector(Vector *vec) {
+    printf("Destination vector after copy_backward: ");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        int *value = (int *)vector_at(vec, i);
+        printf("%d ", *value);
+    }
+    printf("\n");
+}
+
+int main() {
+    Vector *source = vector_create(sizeof(int));
+    Vector *destination = vector_create(sizeof(int));
+    int zero = 0;
+
+    for (int i = 1; i <= 5; i++) {
+        vector_push_back(source, &i);
+    }
+    for (int i = 0; i < 5; i++) {
+        vector_push_back(destination, &zero);
+    }
+
+    algorithm_copy_backward(vector_begin(source), vector_end(source), sizeof(int), vector_end(destination));
+    print_vector(destination);
+    
+    vector_deallocate(source);
+    vector_deallocate(destination);
+    return 0;
+}
+
+```
+
+## Example 95 : Using `algorithm_copy_backward` with a Struct 
+We'll define a simple struct, say Person, with a couple of fields, and then use `algorithm_copy_backward` to copy elements of an array of Person structs.
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char name[50];
+    int age;
+} Person;
+
+void print_people_array(Person *people, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        printf("Name: %s, Age: %d\n", people[i].name, people[i].age);
+    }
+}
+
+int main() {
+    Person people[] = {
+        {"Alice", 30},
+        {"Bob", 25},
+        {"Carol", 27},
+        {"Dave", 32},
+        {"Eve", 29}
+    };
+    size_t people_size = sizeof(people) / sizeof(people[0]);
+    Person destination[5];
+
+    memset(destination, 0, sizeof(destination));  // Initialize to zero
+    // Copy people to destination in reverse order
+    algorithm_copy_backward(people, people + people_size, sizeof(Person), destination + people_size);
+
+    // Print the destination array
+    printf("Destination array after copy_backward:\n");
+    print_people_array(destination, people_size);
+
+    return 0;
+}
+
+```

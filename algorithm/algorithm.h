@@ -15,6 +15,7 @@ typedef uint32_t (*UniformRandomNumberGenerator)(void);
 typedef void (*TransformFunc)(void *, const void *);
 typedef void (*ReduceFunc)(void*, const void*);
 typedef bool (*PredicateFunc)(const void *);
+typedef void (*GeneratorFunc)(void *);
 
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp);
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
@@ -36,7 +37,6 @@ bool algorithm_binary_search(const void *base, size_t num, size_t size, const vo
 void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op);
 void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op);
 void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred);
-void algorithm_nth_element(void *base, size_t num, size_t size, size_t n, CompareFunc comp);
 size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp);
 void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t num2, size_t size, void *result, CompareFunc comp);
 void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size, CompareFunc comp);
@@ -53,5 +53,8 @@ void algorithm_fill_n(void *first, size_t n, size_t size, const void *val);
 void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng);
 bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp);
 bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp);
+void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen);
+void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen);
+void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result);
 
 #endif // ALGORITHM_H_

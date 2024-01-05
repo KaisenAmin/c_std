@@ -487,3 +487,31 @@ void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc
     }
     return first;
 }
+
+void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen) {
+    char *current = (char *)first;
+    while (current != last) {
+        gen(current);
+        current += size;
+    }
+}
+
+void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen) {
+    char *current = (char *)first;
+    for (size_t i = 0; i < n; ++i) {
+        gen(current);
+        current += size;
+    }
+}
+
+void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result) {
+    const char *src = (const char *)last;
+    char *dest = (char *)result;
+
+    while (src != (const char *)first) {
+        src -= size;  // Move source pointer backwards
+        dest -= size; // Move destination pointer backwards
+        memcpy(dest, src, size); // Copy element
+    }
+}
+
