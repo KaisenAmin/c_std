@@ -7,12 +7,14 @@
 
 // Function pointer types for comparison and operations
 typedef int (*CompareFunc)(const void *, const void *);
+typedef bool (*CompareFuncBool)(const void *, const void *);
 typedef void (*ForEachOpFunc)(void *);
-typedef void (*TransformFunc)(void*);
-typedef void (*ReduceFunc)(void*);
 typedef void (*AccumulateOpFunc)(void *, const void *);
 typedef bool (*BoolPredicateFunc)(const void *);
 typedef uint32_t (*UniformRandomNumberGenerator)(void);
+typedef void (*TransformFunc)(void *, const void *);
+typedef void (*ReduceFunc)(void*, const void*);
+typedef bool (*PredicateFunc)(const void *);
 
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp);
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
@@ -49,5 +51,7 @@ void *algorithm_search_n(const void *base, size_t num, size_t size, size_t count
 void algorithm_fill(void *first, void *last, size_t size, const void *val);
 void algorithm_fill_n(void *first, size_t n, size_t size, const void *val);
 void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng);
+bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp);
+bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp);
 
 #endif // ALGORITHM_H_

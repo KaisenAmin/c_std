@@ -658,8 +658,9 @@ void shift_left_and_print(Bitset* bs, size_t shift) {
 
     Bitset* shifted = bitset_create(bs->size);
     for (size_t i = 0; i < bs->size - shift; ++i) {
-        if (bitset_test(bs, i)) 
+        if (bitset_test(bs, i)) {
             bitset_set(shifted, i + shift, true);
+        }
     }
 
     printf("Shifted Left by %zu: ", shift);
@@ -688,8 +689,7 @@ int main() {
 #include <iostream>
 #include <bitset>
 
-int main() 
-{
+int main() {
     std::bitset<8> bs("10011001");
     std::cout << "Original Bitset: " << bs << std::endl;
 

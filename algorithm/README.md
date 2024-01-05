@@ -1668,3 +1668,728 @@ int main() {
     return 0;
 }
 ```
+
+## Example 61 : `algorithm_transform`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void square(void *output, const void *input) {
+    int inputValue = *(const int *)input;
+    *(int *)output = inputValue * inputValue;
+}
+
+int main() {
+    int inputArray[] = {1, 2, 3, 4, 5};
+    int outputArray[5];
+    size_t numElements = sizeof(inputArray) / sizeof(inputArray[0]);
+
+    algorithm_transform(inputArray, numElements, sizeof(int), outputArray, square);
+
+    for (size_t i = 0; i < numElements; ++i) {
+        printf("%d ", outputArray[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+## Example 62: Negating Integers `algorithm_transform`
+
+This example negates each integer in an array.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void negate(void *output, const void *input) {
+    int inputValue = *(const int *)input;
+    *(int *)output = -inputValue;
+}
+
+int main() {
+    int inputArray[] = {1, -2, 3, -4, 5};
+    int outputArray[5];
+    size_t numElements = sizeof(inputArray) / sizeof(inputArray[0]);
+
+    algorithm_transform(inputArray, numElements, sizeof(int), outputArray, negate);
+
+    for (size_t i = 0; i < numElements; ++i) {
+        printf("%d ", outputArray[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 63: Converting Floats to Integers `algorithm_transform`
+
+This example converts floating-point numbers to integers by truncating the decimal part.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void float_to_int(void *output, const void *input) {
+    float inputValue = *(const float *)input;
+    *(int *)output = (int)inputValue;
+}
+
+int main() {
+    float inputArray[] = {1.2f, -2.8f, 3.5f, -4.9f, 5.0f};
+    int outputArray[5];
+    size_t numElements = sizeof(inputArray) / sizeof(inputArray[0]);
+
+    algorithm_transform(inputArray, numElements, sizeof(float), outputArray, float_to_int);
+
+    for (size_t i = 0; i < numElements; ++i) {
+        printf("%d ", outputArray[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 64: Computing Lengths of Strings `algorithm_transform`
+
+This example computes the length of each string in an array of strings.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <string.h>
+
+void string_length(void *output, const void *input) {
+    const char *inputStr = *(const char **)input;
+    *(size_t *)output = strlen(inputStr);
+}
+
+int main() {
+    const char *inputArray[] = {"hello", "world", "example", "C", "programming"};
+    size_t outputArray[5];
+    size_t numElements = sizeof(inputArray) / sizeof(inputArray[0]);
+
+    algorithm_transform(inputArray, numElements, sizeof(const char *), outputArray, string_length);
+
+    for (size_t i = 0; i < numElements; ++i) {
+        printf("%zu ", outputArray[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+## Example 65 : sum numbers with `algorithm_reduce`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void sum(void *result, const void *element) {
+    *(int *)result += *(const int *)element;
+}
+
+int main() {
+    int array[] = {1, 2, 3, 4, 5};
+    int sum_result = 0;
+    size_t numElements = sizeof(array) / sizeof(array[0]);
+
+    algorithm_reduce(array, numElements, sizeof(int), &sum_result, sum);
+    printf("Sum: %d\n", sum_result);
+    
+    return 0;
+}
+```
+
+## Example 66: Finding the Maximum Value in an Array of Integers `algorithm_reduce`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <limits.h>
+
+void max_int(void *result, const void *element) {
+    int *currentMax = (int *)result;
+    int value = *(const int *)element;
+    if (value > *currentMax) {
+        *currentMax = value;
+    }
+}
+
+int main() {
+    int array[] = {4, 1, 7, 3, 9, 5};
+    size_t numElements = sizeof(array) / sizeof(array[0]);
+    int maxResult = INT_MIN;
+
+    algorithm_reduce(array, numElements, sizeof(int), &maxResult, max_int);
+
+    printf("Maximum Value: %d\n", maxResult);
+
+    return 0;
+}
+```
+
+### Example 67: Concatenating Strings `algorithm_reduce`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <string.h>
+
+void concatenate_strings(void *result, const void *element) {
+    strcat((char *)result, *(const char **)element);
+}
+
+int main() {
+    const char *strings[] = {"Hello", ", ", "world", "!"};
+    size_t numElements = sizeof(strings) / sizeof(strings[0]);
+    char concatenated[50] = "";
+
+    algorithm_reduce(strings, numElements, sizeof(char *), concatenated, concatenate_strings);
+
+    printf("Concatenated String: %s\n", concatenated);
+
+    return 0;
+}
+```
+
+### Example 68: Computing the Logical AND of Boolean Values `algorithm_reduce`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+void logical_and(void *result, const void *element) {
+    bool *res = (bool *)result;
+    bool val = *(const bool *)element;
+    *res = *res && val;
+}
+
+int main() {
+    bool flags[] = {true, true, false, true};
+    size_t numElements = sizeof(flags) / sizeof(flags[0]);
+    bool andResult = true;
+
+    algorithm_reduce(flags, numElements, sizeof(bool), &andResult, logical_and);
+
+    printf("Logical AND of flags: %s\n", andResult ? "true" : "false");
+
+    return 0;
+}
+```
+
+### Example 69: Unique Integers in an Array `algorithm_unique`
+
+This example demonstrates removing consecutive duplicates in an array of integers.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_ints(const void *a, const void *b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+int main() {
+    int arr[] = {1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4};
+    size_t arrSize = sizeof(arr) / sizeof(arr[0]);
+
+    size_t newSize = algorithm_unique(arr, arrSize, sizeof(int), compare_ints);
+
+    printf("Unique elements: ");
+    for (size_t i = 0; i < newSize; i++) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 70: Unique Characters in a String `algorithm_unique`
+
+This example focuses on removing consecutive duplicate characters in a string.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_chars(const void *a, const void *b) {
+    return *(const char*)a - *(const char*)b;
+}
+
+int main() {
+    char str[] = "aabbbcdddeeeffg";
+    size_t strSize = sizeof(str) - 1; // Exclude null terminator
+
+    size_t newSize = algorithm_unique(str, strSize, sizeof(char), compare_chars);
+
+    printf("Unique characters: ");
+    for (size_t i = 0; i < newSize; i++) {
+        printf("%c", str[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 71: Unique Floats in an Array `algorithm_unique`
+
+This example demonstrates the removal of consecutive duplicate floating-point numbers in an array.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_floats(const void *a, const void *b) {
+    const float diff = *(const float*)a - *(const float*)b;
+    if (diff == 0.0f) {
+        return 0;
+    }
+    return diff < 0 ? -1 : 1;
+}
+
+int main() {
+    float arr[] = {1.1f, 1.1f, 2.2f, 3.3f, 3.3f, 3.3f, 4.4f, 5.5f};
+    size_t arrSize = sizeof(arr) / sizeof(arr[0]);
+
+    size_t newSize = algorithm_unique(arr, arrSize, sizeof(float), compare_floats);
+
+    printf("Unique floats: ");
+    for (size_t i = 0; i < newSize; i++) {
+        printf("%.1f ", arr[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+## Example 72: Comparing Integer Arrays `algorithm_equal`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_ints(const void *a, const void *b) {
+    int arg1 = *(const int *)a;
+    int arg2 = *(const int *)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+    int arr1[] = {1, 2, 3, 4, 5};
+    int arr2[] = {1, 2, 3, 4, 5};
+    int arr3[] = {1, 2, 3, 4, 6};
+
+    bool isEqual = algorithm_equal(arr1, 5, sizeof(int), arr2, 5, sizeof(int), compare_ints);
+    printf("Arr1 is equal to Arr2: %s\n", isEqual ? "true" : "false");
+
+    isEqual = algorithm_equal(arr1, 5, sizeof(int), arr3, 5, sizeof(int), compare_ints);
+    printf("Arr1 is equal to Arr3: %s\n", isEqual ? "true" : "false");
+
+    return 0;
+}
+```
+
+### Example 73: Comparing Character Arrays `algorithm_equal`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_chars(const void *a, const void *b) {
+    char arg1 = *(const char *)a;
+    char arg2 = *(const char *)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+    char str1[] = "hello";
+    char str2[] = "hello";
+    char str3[] = "world";
+
+    bool isEqual = algorithm_equal(str1, 5, sizeof(char), str2, 5, sizeof(char), compare_chars);
+    printf("Str1 is equal to Str2: %s\n", isEqual ? "true" : "false");
+
+    isEqual = algorithm_equal(str1, 5, sizeof(char), str3, 5, sizeof(char), compare_chars);
+    printf("Str1 is equal to Str3: %s\n", isEqual ? "true" : "false");
+
+    return 0;
+}
+```
+
+### Example 74: Comparing Double Arrays `algorithm_equal`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_doubles(const void *a, const void *b) {
+    double arg1 = *(const double *)a;
+    double arg2 = *(const double *)b;
+    if (arg1 < arg2) {
+        return -1;
+    }
+    if (arg1 > arg2) {
+        return 1;
+    }
+    return 0;
+}
+
+int main() {
+    double arr1[] = {1.1, 2.2, 3.3};
+    double arr2[] = {1.1, 2.2, 3.3};
+    double arr3[] = {1.1, 2.2, 4.4};
+
+    bool isEqual = algorithm_equal(arr1, 3, sizeof(double), arr2, 3, sizeof(double), compare_doubles);
+    printf("Arr1 is equal to Arr2: %s\n", isEqual ? "true" : "false");
+
+    isEqual = algorithm_equal(arr1, 3, sizeof(double), arr3, 3, sizeof(double), compare_doubles);
+    printf("Arr1 is equal to Arr3: %s\n", isEqual ? "true" : "false");
+
+    return 0;
+}
+```
+
+## Example 75 : Next Permutation of Integer Array `algorithm_next_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+bool less_int(const void *a, const void *b) {
+    return *(int *)a < *(int *)b;
+}
+
+int main() {
+    int arr[] = {1, 2, 3};
+    size_t size = sizeof(arr) / sizeof(arr[0]);
+
+    do {
+        for (size_t i = 0; i < size; ++i) {
+            printf("%d ", arr[i]);
+        }
+        printf("\n");
+    } while (algorithm_next_permutation(arr, arr + size, sizeof(arr[0]), less_int));
+
+    return 0;
+}
+```
+
+## Example 76 : Using with Character `algorithm_next_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <string.h>
+
+bool less_char(const void *a, const void *b) {
+    return *(char *)a < *(char *)b;
+}
+
+int main() {
+    char str[] = "abc";
+    size_t size = strlen(str);
+
+    do {
+        printf("%s\n", str);
+    } while (algorithm_next_permutation(str, str + size, sizeof(char), less_char));
+
+    return 0;
+}
+
+```
+
+## Example 77 : With Custom Structures `algorithm_next_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    double value;
+} MyStruct;
+
+bool less_mystruct(const void *a, const void *b) {
+    return ((MyStruct *)a)->id < ((MyStruct *)b)->id;
+}
+
+int main() {
+    MyStruct arr[] = {{1, 10.5}, {2, 20.5}, {3, 30.5}};
+    size_t size = sizeof(arr) / sizeof(arr[0]);
+
+    do {
+        for (size_t i = 0; i < size; ++i) {
+            printf("{%d, %.1f} ", arr[i].id, arr[i].value);
+        }
+        printf("\n");
+    } while (algorithm_next_permutation(arr, arr + size, sizeof(MyStruct), less_mystruct));
+
+    return 0;
+}
+
+```
+
+## Example 78 : Using with Vector Lib `algorithm_next_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+
+bool less_int(const void *a, const void *b) {
+    return *(int *)a < *(int *)b;
+}
+
+int main() {
+    Vector *vec = vector_create(sizeof(int));
+    int values[] = {1, 2, 3};
+
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        vector_push_back(vec, &values[i]);
+    }
+
+    do {
+        for (size_t i = 0; i < vector_size(vec); ++i) {
+            int *item = vector_at(vec, i);
+            printf("%d ", *item);
+        }
+        printf("\n");
+    } while (algorithm_next_permutation(vector_begin(vec), vector_end(vec), sizeof(int), less_int));
+
+    vector_deallocate(vec);
+    return 0;
+}
+
+```
+
+### Example 79: Prev Permutation of Integer Array `algorithm_prev_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+bool less_int(const void *a, const void *b) {
+    return *(int *)a < *(int *)b;
+}
+
+int main() {
+    int arr[] = {3, 2, 1};
+    size_t size = sizeof(arr) / sizeof(arr[0]);
+
+    do {
+        for (size_t i = 0; i < size; ++i) {
+            printf("%d ", arr[i]);
+        }
+        printf("\n");
+    } while (algorithm_prev_permutation(arr, arr + size, sizeof(int), less_int));
+
+    return 0;
+}
+```
+
+### Example 80: Prev Permutation with Characters `algorithm_prev_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <string.h>
+
+bool less_char(const void *a, const void *b) {
+    return *(char *)a < *(char *)b;
+}
+
+int main() {
+    char str[] = "cba";
+    size_t size = strlen(str);
+
+    do {
+        printf("%s\n", str);
+    } while (algorithm_prev_permutation(str, str + size, sizeof(char), less_char));
+
+    return 0;
+}
+```
+
+### Example 81: Using with Vector Library `algorithm_prev_permutation`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+
+bool less_int(const void *a, const void *b) {
+    return *(int *)a < *(int *)b;
+}
+
+int main() {
+    Vector *vec = vector_create(sizeof(int));
+    int values[] = {3, 2, 1};
+
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        vector_push_back(vec, &values[i]);
+    }
+
+    do {
+        for (size_t i = 0; i < vector_size(vec); ++i) {
+            int *item = vector_at(vec, i);
+            printf("%d ", *item);
+        }
+        printf("\n");
+    } while (algorithm_prev_permutation(vector_begin(vec), vector_end(vec), sizeof(int), less_int));
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+
+## Example 82 : Partitioning an Array of Integers `algorithm_partition`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+bool is_odd(const void *a) {
+    return (*(int *)a) % 2 != 0;
+}
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    size_t size = sizeof(arr) / sizeof(arr[0]);
+
+    char *partition_point = (char *)algorithm_partition(arr, size, sizeof(arr[0]), is_odd);
+
+    printf("Odd elements: ");
+    for (char *ptr = (char *)arr; ptr != partition_point; ptr += sizeof(arr[0])) {
+        printf("%d ", *(int *)ptr);
+    }
+    printf("\n");
+
+    printf("Even elements: ");
+    for (char *ptr = partition_point; ptr != (char *)arr + size * sizeof(arr[0]); ptr += sizeof(arr[0])) {
+        printf("%d ", *(int *)ptr);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+```cpp
+#include <iostream>     // std::cout
+#include <algorithm>    // std::partition
+#include <vector>       // std::vector
+
+bool IsOdd (int i) {
+    return (i%2)==1; 
+}
+
+int main () {
+  std::vector<int> myvector;
+
+  // set some values:
+  for (int i=1; i<10; ++i) {
+    myvector.push_back(i); // 1 2 3 4 5 6 7 8 9
+  }
+  std::vector<int>::iterator bound;
+  bound = std::partition (myvector.begin(), myvector.end(), IsOdd);
+
+  // print out content:
+  std::cout << "odd elements:";
+  for (std::vector<int>::iterator it=myvector.begin(); it!=bound; ++it) {
+    std::cout << ' ' << *it;
+  }
+  std::cout << '\n';
+
+  std::cout << "even elements:";
+  for (std::vector<int>::iterator it=bound; it!=myvector.end(); ++it) {
+    std::cout << ' ' << *it;
+  }
+  std::cout << '\n';
+
+  return 0;
+}
+```
+
+## Example 83 : Partitioning a String Based on Uppercase Characters `algorithm_partition`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <ctype.h>
+
+bool is_uppercase(const void *a) {
+    return isupper(*(char *)a);
+}
+
+int main() {
+    char str[] = "HelloWorld";
+    size_t size = sizeof(str) - 1;
+
+    char *partition_point = (char *)algorithm_partition(str, size, sizeof(char), is_uppercase);
+
+    printf("Uppercase characters: ");
+    for (char *ptr = str; ptr != partition_point; ptr += sizeof(char)) {
+        printf("%c", *ptr);
+    }
+    printf("\n");
+
+    printf("Other characters: ");
+    for (char *ptr = partition_point; ptr != str + size * sizeof(char); ptr += sizeof(char)) {
+        printf("%c", *ptr);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```
+
+## Example 85 : Partitioning an Array of Structures Based on a Positive Value `algorithm_partition`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    double value;
+} MyStruct;
+
+bool is_positive_value(const void *a) {
+    return ((MyStruct *)a)->value > 0;
+}
+
+int main() {
+    MyStruct arr[] = {{1, -10.5}, {2, 20.5}, {3, -30.5}, {4, 40.5}};
+    size_t size = sizeof(arr) / sizeof(arr[0]);
+
+    char *partition_point = (char *)algorithm_partition(arr, size, sizeof(MyStruct), is_positive_value);
+
+    printf("Positive values: ");
+    for (char *ptr = (char *)arr; ptr != partition_point; ptr += sizeof(MyStruct)) {
+        MyStruct *ms = (MyStruct *)ptr;
+        printf("{%d, %.1f} ", ms->id, ms->value);
+    }
+    printf("\n");
+
+    printf("Non-positive values: ");
+    for (char *ptr = partition_point; ptr != (char *)arr + size * sizeof(MyStruct); ptr += sizeof(MyStruct)) {
+        MyStruct *ms = (MyStruct *)ptr;
+        printf("{%d, %.1f} ", ms->id, ms->value);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```

@@ -1,6 +1,31 @@
 #include "algorithm.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+static void swap(void *a, void *b, size_t size) {
+    char *temp = (char*) malloc(sizeof(char) * size);
+    if (temp) {
+        memcpy(temp, a, size);
+        memcpy(a, b, size);
+        memcpy(b, temp, size);
+        free(temp);  // Free the allocated memory
+    } 
+    else {
+        perror("Can not allocate memory for swap");
+        exit(-1);
+    }
+}
+
+static void reverse(void *first, void *last, size_t size) {
+    char *a = (char *)first;
+    char *b = (char *)last - size;
+    while (a < b) {
+        swap(a, b, size);
+        a += size;
+        b -= size;
+    }
+}
 
 static void quickSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
     if (low < high) {
@@ -323,4 +348,142 @@ void *algorithm_upper_bound(const void *base, size_t num, size_t size, const voi
         }
     }
     return (void *)((const char *)base + low * size);
+}
+
+void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op) {
+    const char *input_ptr = (const char *)base;
+    char *output_ptr = (char *)result;
+
+    for (size_t i = 0; i < num; ++i) {
+        op(output_ptr + i * size, input_ptr + i * size);
+    }
+}
+
+void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op) {
+    const char *ptr = (const char *)base;
+    char *result = (char *)init;
+
+    for (size_t i = 0; i < num; ++i) {
+        op(result, ptr + i * size);
+    }
+    return result;
+}
+
+size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp) {
+    if (num == 0) {
+        return 0;
+    }
+
+    size_t uniqueCount = 1; // First element is always unique
+    char *array = (char *)base;
+
+    for (size_t i = 1; i < num; ++i) {
+        // Compare current element with the last unique element
+        if (comp(array + (uniqueCount - 1) * size, array + i * size) != 0) {
+            // If different, move it to the next unique position
+            if (uniqueCount != i) {
+                memcpy(array + uniqueCount * size, array + i * size, size);
+            }
+            uniqueCount++;
+        }
+    }
+    return uniqueCount;
+}
+
+bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, 
+                     CompareFunc comp) {
+    // If the number of elements or sizes differ, the ranges are not equal
+    if (num1 != num2 || size1 != size2) {
+        return false;
+    }
+
+    const char *ptr1 = (const char *)base1;
+    const char *ptr2 = (const char *)base2;
+
+    for (size_t i = 0; i < num1; ++i) {
+        if (comp(ptr1 + i * size1, ptr2 + i * size2) != 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp) {
+    if (first == last) {
+        return false;
+    }
+
+    char *i = (char *)last - size;
+    while (i != (char *)first) {
+        char *j = i;
+        i -= size;
+
+        if (comp(i, j)) {
+            char *k = (char *)last - size;
+            while (!comp(i, k)) {
+                k -= size;
+            }
+            swap(i, k, size);
+            reverse(j, last, size);
+
+            return true;
+        }
+
+        if (i == (char *)first) {
+            reverse(first, last, size);
+            return false;
+        }
+    }
+    return false; // This should not be reached
+}
+
+bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp) {
+    if (first == last) {
+        return false;
+    }
+
+    char *i = (char *)last - size;
+    while (i != (char *)first) {
+        char *j = i;
+        i -= size;
+
+        if (comp(j, i)) {
+            char *k = (char *)last - size;
+            while (!comp(k, i)) {
+                k -= size;
+            }
+            swap(i, k, size);
+            reverse(j, last, size);
+            return true;
+        }
+
+        if (i == (char *)first) {
+            reverse(first, last, size);
+            return false;
+        }
+    }
+    return false;
+}
+
+void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred) {
+    char *first = (char *)base;
+    char *last = first + num * size;
+
+    while (first != last) {
+        while (first != last && pred(first)) {
+            first += size;
+        }
+        do {
+            last -= size;
+            if (first == last) 
+                break;
+        } while (!pred(last));
+
+        if (first != last) {
+            swap(first, last, size);
+            first += size;
+        }
+    }
+    return first;
 }
