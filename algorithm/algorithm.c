@@ -140,7 +140,7 @@ void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, cons
     return NULL;
 }
 
-bool algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+size_t algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     size_t low = 0;
     size_t high = num;
 
@@ -156,10 +156,10 @@ bool algorithm_binary_search(const void *base, size_t num, size_t size, const vo
             high = mid;
         } 
         else {
-            return true; // Element found
+            return (size_t)mid; // Element found, return index
         }
     }
-    return false; // Element not found
+    return (size_t)-1; // Element not found
 }
 
 void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFunc comp) {
@@ -515,3 +515,33 @@ void algorithm_copy_backward(const void *first, const void *last, size_t size, v
     }
 }
 
+void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred) {
+    const char *src = (const char *)first;
+    char *dest = (char *)result;
+
+    while (src != (const char *)last) {
+        if (pred(src)) {
+            memcpy(dest, src, size);
+            dest += size;
+        }
+        src += size;
+    }
+}
+
+void algorithm_copy_n(const void *first, size_t n, size_t size, void *result) {
+    const char *src = (const char *)first;
+    char *dest = (char *)result;
+
+    for (size_t i = 0; i < n; ++i) {
+        memcpy(dest, src, size);
+        src += size;
+        dest += size;
+    }
+}
+
+Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    Pair range;
+    range.first = algorithm_lower_bound(base, num, size, val, comp);
+    range.second = algorithm_upper_bound(range.first, num, size, val, comp);
+    return range;
+}

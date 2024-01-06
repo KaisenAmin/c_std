@@ -5,6 +5,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef struct {
+    void *first;
+    void *second;
+} Pair;
+
 // Function pointer types for comparison and operations
 typedef int (*CompareFunc)(const void *, const void *);
 typedef bool (*CompareFuncBool)(const void *, const void *);
@@ -16,6 +21,7 @@ typedef void (*TransformFunc)(void *, const void *);
 typedef void (*ReduceFunc)(void*, const void*);
 typedef bool (*PredicateFunc)(const void *);
 typedef void (*GeneratorFunc)(void *);
+typedef bool (*UnaryPredicateFunc)(const void *);
 
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp);
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
@@ -33,7 +39,7 @@ bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFu
 bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
 void *algorithm_lower_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 void *algorithm_upper_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
-bool algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
+size_t algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op);
 void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op);
 void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred);
@@ -56,5 +62,8 @@ bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFun
 void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen);
 void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen);
 void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result);
+void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred);
+void algorithm_copy_n(const void *first, size_t n, size_t size, void *result);
+Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 
 #endif // ALGORITHM_H_

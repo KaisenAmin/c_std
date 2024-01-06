@@ -317,7 +317,7 @@ void vector_deallocate(Vector *vec) {
     free(vec);
 }
 
-void *vector_at(Vector *vec, size_t pos) {
+void *vector_at(const Vector *vec, size_t pos) {
     if (pos < vec->size) {
         return (char *)vec->items + (pos * vec->itemSize); // Calculate the address of the item at position 'pos'
     }
@@ -433,7 +433,7 @@ void *vector_data(Vector *vec) {
     return vec->items; // The underlying array
 }
 
-size_t vector_size(Vector *vec) {
+size_t vector_size(const Vector *vec) {
     return vec->size;
 }
 
@@ -444,3 +444,4 @@ size_t vector_capacity(Vector *vec) {
 size_t vector_max_size(Vector *vec) {
     return vec->itemSize;
 }
+

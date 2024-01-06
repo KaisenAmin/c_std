@@ -5,10 +5,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+
 typedef struct Array Array;
 
-struct Array 
-{
+struct Array {
     Vector* vec;
 };
 
@@ -43,5 +43,6 @@ void array_clear(Array* arr);
 void array_reverse(Array* arr);
 void array_sort(Array* arr, int (*compare)(const void*, const void*));
 void array_copy(Array* dest, const Array* src);
+
 
 #endif 

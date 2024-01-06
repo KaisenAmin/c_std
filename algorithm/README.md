@@ -529,9 +529,9 @@ int main() {
     int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     int value = 7;
 
-    bool found = algorithm_binary_search(arr, 10, sizeof(int), &value, compare_ints);
+    size_t found = algorithm_binary_search(arr, 10, sizeof(int), &value, compare_ints);
     if (found) {
-        printf("Value %d found in the array.\n", value);
+        printf("Value %d found in the array at index %zu.\n", value, found);
     } else {
         printf("Value %d not found in the array.\n", value);
     }
@@ -561,9 +561,9 @@ int main() {
     double arr[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9};
     double value = 4.4;
 
-    bool found = algorithm_binary_search(arr, 9, sizeof(double), &value, compare_doubles);
+    size_t found = algorithm_binary_search(arr, 9, sizeof(double), &value, compare_doubles);
     if (found) {
-        printf("Value %.1f found in the array.\n", value);
+        printf("Value %.1f found in the array at index %zu.\n", value, found);
     } else {
         printf("Value %.1f not found in the array.\n", value);
     }
@@ -2704,6 +2704,335 @@ int main() {
     printf("Destination array after copy_backward:\n");
     print_people_array(destination, people_size);
 
+    return 0;
+}
+
+```
+
+## Example 96 : Using `algorithm_copy_if` with Integer Array 
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+bool is_positive(const void *element) {
+    const int *value = (const int *)element;
+    return *value > 0;
+}
+
+int main() {
+    int source[] = {1, -2, 3, -4, 5};
+    int dest[5] = {0}; // should be initialize 
+    size_t num_elements = sizeof(source) / sizeof(source[0]);
+
+    algorithm_copy_if(source, source + num_elements, sizeof(int), dest, is_positive);
+
+    for (size_t i = 0; i < num_elements; ++i) {
+        printf("%d ", dest[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+## Example 97 : Check number is_even `algorithm_copy_if`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+bool is_even(const void *element) {
+    const int *value = (const int *)element;
+    return (*value % 2) == 0;
+}
+
+int main() {
+    int source[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int dest[10] = {0}; 
+    size_t num_elements = sizeof(source) / sizeof(source[0]);
+
+    algorithm_copy_if(source, source + num_elements, sizeof(int), dest, is_even);
+
+    printf("Even numbers: ");
+    for (size_t i = 0; i < num_elements; ++i) {
+        if (dest[i] != 0) {
+            printf("%d ", dest[i]);
+        }
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```
+
+## Example 98 : Using `algorithm_generate` and `algorithm_copy_if` with Vector
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
+void int_generator(void *output) {
+    static int value = 0;
+   *(int *)output = value++;
+}
+
+bool greater_than_five(const void *element) {
+    const int *value = (const int *)element;
+    return *value > 5;
+}
+
+void print_vector(Vector *vec) {
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        int *value = (int *)vector_at(vec, i);
+        if (*value != 0) {
+            printf("%d ", *value);
+        }
+    }
+    printf("\n");
+}
+
+int main() {
+    Vector *source = vector_create(sizeof(int));
+    Vector *destination = vector_create(sizeof(int));
+
+    vector_resize(source, 10);
+    vector_resize(destination, 10);
+
+    algorithm_generate(vector_begin(source), vector_end(source), sizeof(int), int_generator);
+    algorithm_generate(vector_begin(destination), vector_end(destination), sizeof(int), int_generator);
+    algorithm_copy_if(vector_begin(source), vector_end(source), sizeof(int), vector_begin(destination), greater_than_five);
+
+    printf("Elements greater than 5: ");
+    print_vector(destination);
+
+    vector_deallocate(source);
+    vector_deallocate(destination);
+
+    return 0;
+}
+
+```
+
+## Example 99 : Using `algorithm_copy_n` with Integer Array
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
+int main() {
+    int source[] = {10, 20, 30, 40, 50, 60, 70};
+    int dest[7] = {0};
+
+    algorithm_copy_n(source, 7, sizeof(int), dest);
+
+    printf("dest array contains:");
+    for (size_t i = 0; i < 7; ++i) {
+        printf(" %d", dest[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 100: Using `algorithm_copy_n` with an Integer Array
+This example copies a specified number of elements from one integer array to another using `algorithm_copy_n`.
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int main() {
+    int source[] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+    int dest[5]; // Destination array for the first 5 elements
+
+    algorithm_copy_n(source, 5, sizeof(int), dest);
+
+    printf("First 5 elements of source: ");
+    for (size_t i = 0; i < 5; ++i) {
+        printf("%d ", dest[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+```
+
+### Example 101: Using `algorithm_copy_n` with `Vector`
+In this example, we will use `algorithm_copy_n` to copy a specified number of elements from one `Vector` to another.
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void print_vector(Vector *vec) {
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        int *value = (int *)vector_at(vec, i);
+        printf("%d ", *value);
+    }
+    printf("\n");
+}
+
+int main() {
+    Vector *source = vector_create(sizeof(int));
+    Vector *destination = vector_create(sizeof(int));
+
+    for (int i = 1; i <= 10; ++i) {
+        vector_push_back(source, &i);
+    }
+
+    vector_resize(destination, 5); // Allocate space for 5 elements
+    algorithm_copy_n(vector_begin(source), 5, sizeof(int), vector_begin(destination));
+
+    printf("First 5 elements from source: ");
+    print_vector(destination);
+
+    vector_deallocate(source);
+    vector_deallocate(destination);
+
+    return 0;
+}
+```
+
+## Example 102 : Using `algorithm_equal_range` with Integer Array 
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_ints(const void *a, const void *b) {
+    const int arg1 = *(const int *)a;
+    const int arg2 = *(const int *)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int greater_int(const void* a, const void* b) {
+    const int arg1 = *(const int*)a;
+    const int arg2 = *(const int*)b;
+
+    return (arg1 < arg2) - (arg1 > arg2);
+}
+
+int main() {
+    int array[] = {10, 20, 30, 30, 20, 10, 10, 20};
+    size_t num_elements = sizeof(array) / sizeof(array[0]);
+    int val = 20;
+
+    algorithm_sort(array, num_elements, sizeof(int), compare_ints);
+    Pair bounds = algorithm_equal_range(array, num_elements, sizeof(int), &val, compare_ints);
+
+    algorithm_sort(array, num_elements, sizeof(int), greater_int);
+    bounds = algorithm_equal_range(array, num_elements, sizeof(int), &val, greater_int);
+    
+    size_t lower_bound_index = ((int *)bounds.first - array);
+    size_t upper_bound_index = ((int *)bounds.second - array);
+
+    printf("Bounds at positions %zu and %zu\n", lower_bound_index, upper_bound_index);
+
+    return 0;
+}
+```
+`Cpp code`
+
+```cpp 
+#include <iostream>     
+#include <algorithm>    
+#include <vector>       
+
+bool mygreater (int i,int j) { 
+    return (i>j); 
+}
+
+int main () {
+  int myints[] = {10,20,30,30,20,10,10,20};
+  std::vector<int> v(myints,myints+8);                         // 10 20 30 30 20 10 10 20
+  std::pair<std::vector<int>::iterator,std::vector<int>::iterator> bounds;
+
+  // using default comparison:
+  std::sort (v.begin(), v.end());                              // 10 10 10 20 20 20 30 30
+  bounds=std::equal_range (v.begin(), v.end(), 20);            //          ^        ^
+
+  // using "mygreater" as comp:
+  std::sort (v.begin(), v.end(), mygreater);                   // 30 30 20 20 20 10 10 10
+  bounds=std::equal_range (v.begin(), v.end(), 20, mygreater); //       ^        ^
+
+  std::cout << "bounds at positions " << (bounds.first - v.begin());
+  std::cout << " and " << (bounds.second - v.begin()) << '\n';
+
+  return 0;
+}
+```
+
+## Example 103 : `algorithm_equal_range` with Array of Doubles 
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_doubles(const void *a, const void *b) {
+    double arg1 = *(const double *)a;
+    double arg2 = *(const double *)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+    double array[] = {1.5, 2.5, 3.5, 3.5, 2.5, 1.5, 1.5, 2.5};
+    size_t num_elements = sizeof(array) / sizeof(array[0]);
+    double val = 2.5;
+
+    algorithm_sort(array, num_elements, sizeof(double), compare_doubles);
+    Pair bounds = algorithm_equal_range(array, num_elements, sizeof(double), &val, compare_doubles);
+
+    size_t lower_bound_index = ((double *)bounds.first - array);
+    size_t upper_bound_index = ((double *)bounds.second - array);
+
+    printf("Bounds for 2.5 in double array: %zu and %zu\n", lower_bound_index, upper_bound_index);
+
+    return 0;
+}
+```
+
+## Example 104 : Using Array and Vector lib in `algorithm_equal_range`
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+int compare_chars(const void *a, const void *b) {
+    char arg1 = *(const char *)a;
+    char arg2 = *(const char *)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+    char myChars[] =  {'a', 'b', 'c', 'c', 'b', 'a', 'a', 'b'};
+    size_t numElements = sizeof(myChars) / sizeof(char);
+    Vector *vec = vector_create(sizeof(char));
+    char val = 'b';
+    
+    vector_resize(vec, numElements);
+    algorithm_copy(myChars, numElements, sizeof(char), vector_begin(vec));
+    algorithm_sort(vector_begin(vec), vector_size(vec), sizeof(char), compare_chars);
+
+    Pair bounds = algorithm_equal_range(vector_begin(vec), vector_size(vec), sizeof(char), &val, compare_chars);
+    size_t lower_bound_index = ((char *)bounds.first - (char *)vector_begin(vec));
+    size_t upper_bound_index = ((char *)bounds.second - (char *)vector_begin(vec));
+
+    printf("Bounds for 'b' in char array: %zu and %zu\n", lower_bound_index, upper_bound_index);
+
+    vector_deallocate(vec);
     return 0;
 }
 

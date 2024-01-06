@@ -71,103 +71,73 @@ To use the Array library in your project, include the `array.h` header file in y
 - `array_empty(Array* arr)`: Checks if the Array is empty.
 
 
-## Example 1 : how to create Array object and 'fill' array with value then get them with 'at' method
+## Example 1 : how to create Array object and `array_fill` array with value then get them with `array_at` method
 
 ```c
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* intArray = array_create(sizeof(int), 5);
-
-    if (intArray == NULL) 
-    {
-        printf("Failed to create array.\n");
-        return 1;
-    }
-
     int valueToFill = 42;
+
     array_fill(intArray, &valueToFill);
 
-    for (int i = 0; i < array_size(intArray); i++)
+    for (size_t i = 0; i < array_size(intArray); i++) {
         printf("Number is %d\n", *(int*)array_at(intArray, i));
-
+    }
     printf("-----------\n");
 
-    for (size_t i = 0; i < array_size(intArray); ++i) 
-    {
+    for (size_t i = 0; i < array_size(intArray); ++i) {
         int* element = (int*)array_at(intArray, i);
-
-        if (element != NULL) 
+        if (element != NULL) {
             printf("Element %zu: %d\n", i, *element);
+        }
     }
 
     array_deallocate(intArray);
-
-
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
 
-## Example 2 : check array is 'empty' or not 
+## Example 2 : check array is `array_empty` or not 
 
 ```c
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* intArray = array_create(sizeof(int), 5);
-
-    if (intArray == NULL) 
-    {
-        printf("Failed to create array.\n");
-        return 1;
-    }
-
     int valueToFill = 42;
+
     array_fill(intArray, &valueToFill);
 
     // Check if the array is empty
-    if (array_empty(intArray)) 
+    if (array_empty(intArray)) {
         printf("Array is empty.\n");
-    else 
+    }
+    else {
         printf("Array is not empty.\n");
-        
+    }
+
     array_deallocate(intArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 
 ```
 
-## Example 3 : 'front', 'back' return ref to first and end of the Array
+## Example 3 : `array_front`, `array_back` return ref to first and end of the Array
 
 ```c
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* intArray = array_create(sizeof(int), 5);
-
-    if (intArray == NULL) 
-    {
-        printf("Failed to create array.\n");
-        return 1;
-    }
-
     int valueToFill = 42;
+
     array_fill(intArray, &valueToFill);
 
     *(int*)array_front(intArray) = 1563;
@@ -176,125 +146,90 @@ int main()
     int* frontElement = (int*)array_front(intArray);
     int* backElement = (int*)array_back(intArray);
 
-    if (frontElement != NULL && backElement != NULL) 
+    if (frontElement != NULL && backElement != NULL) { 
         printf("Front element: %d, Back element: %d\n", *frontElement, *backElement);
+    }
 
     array_deallocate(intArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 
 ```
 
-## Example 4 : how to set data in position with 'set' 
+## Example 4 : how to set data in position with `array_set` 
 
 ```c
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* intArray = array_create(sizeof(int), 5);
-
-    if (intArray == NULL) 
-    {
-        printf("Failed to create array.\n");
-        return 1;
-    }
-
     int valueToFill = 42;
+
     array_fill(intArray, &valueToFill);
 
-    for (size_t i = 0; i < array_size(intArray); ++i) 
-    {
+    for (size_t i = 0; i < array_size(intArray); ++i) {
         int value = i * 2; 
         array_set(intArray, i, &value);
         int* element = (int*)array_at(intArray, i);
 
-        if (element != NULL) 
+        if (element != NULL) {
             printf("Element %zu: %d\n", i, *element);
-            
+        }            
     }
-    // Deallocate the array
+
     array_deallocate(intArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
 
 ```
 
-
-## Example 5: Iterating with 'begin' and end with 'double'
+## Example 5: Iterating with `array_begin` and end with Doubles
 
 
 ```c
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* doubleArray = array_create(sizeof(double), 5);
-
-    if (doubleArray == NULL) 
-    {
-        printf("Failed to create double array.\n");
-        return 1;
-    }
-
     double values[] = {1.5, 2.5, 3.5, 4.5, 5.5};
-    for (size_t i = 0; i < array_size(doubleArray); ++i) 
+
+    for (size_t i = 0; i < array_size(doubleArray); ++i) { 
         array_set(doubleArray, i, &values[i]);
-        
-    for (double* it = (double*)array_begin(doubleArray); it != (double*)array_end(doubleArray); ++it) 
+    }
+    for (double* it = (double*)array_begin(doubleArray); it != (double*)array_end(doubleArray); ++it) {
         printf("Element: %f\n", *it);
+    }
 
     array_deallocate(doubleArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 
 ```
 
-## Example 6 : Using 'cbegin' and 'cend' with char*
+## Example 6 : Using `array_cbegin` and 'cend' with char*
 
 ```c
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* stringArray = array_create(sizeof(char*), 3);
+    char* strings[] = {"Hello", "World", "Array"};
 
-    if (stringArray == NULL) 
-    {
-        printf("Failed to create string array.\n");
-        return 1;
+    for (size_t i = 0; i < array_size(stringArray); ++i) { 
+        array_set(stringArray, i, &strings[i]);
+    }
+    for (const char** it = (const char**)array_cbegin(stringArray); it != (const char**)array_cend(stringArray); ++it) { 
+        printf("String: %s\n", *it);
     }
 
-    char* strings[] = {"Hello", "World", "Array"};
-    for (size_t i = 0; i < array_size(stringArray); ++i) 
-        array_set(stringArray, i, &strings[i]);
-        
-    for (const char** it = (const char**)array_cbegin(stringArray); it != (const char**)array_cend(stringArray); ++it) 
-        printf("String: %s\n", *it);
-        
     array_deallocate(stringArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 
 ```
 
@@ -303,68 +238,54 @@ int main()
 ```c
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* arr1 = array_create(sizeof(int), 3);
     Array* arr2 = array_create(sizeof(int), 3);
-
     int arr1Values[] = {1, 2, 3};
     int arr2Values[] = {1, 2, 3};
 
-    for (size_t i = 0; i < 3; ++i) 
-    {
+    for (size_t i = 0; i < 3; ++i) {
         array_set(arr1, i, &arr1Values[i]);
         array_set(arr2, i, &arr2Values[i]);
     }
 
-    if (array_is_equal(arr1, arr2))
+    if (array_is_equal(arr1, arr2)) {
         printf("Arrays are equal.\n");
-    else
+    }
+    else {
         printf("Arrays are not equal.\n");
+    }
 
     array_deallocate(arr1);
     array_deallocate(arr2);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 
 ```
 
-## Example 8 : Using 'rbegin' and 'rend' with float
+## Example 8 : Using `array_rbegin` and `array_rend` with float
 
 ```c
 #include <stdio.h>
-#include <string.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* floatArray = array_create(sizeof(float), 4);
+    float floatValues[] = {1.1f, 2.2f, 3.3f, 4.4f};
 
-    if (floatArray == NULL) 
-    {
-        printf("Failed to create float array.\n");
-        return 1;
+    for (size_t i = 0; i < array_size(floatArray); ++i) { 
+        array_set(floatArray, i, &floatValues[i]);
+    }
+    for (float* it = (float*)array_rbegin(floatArray); it != (float*)array_rend(floatArray); --it) { 
+        printf("Element: %f\n", *it);
     }
 
-    float floatValues[] = {1.1f, 2.2f, 3.3f, 4.4f};
-    for (size_t i = 0; i < array_size(floatArray); ++i) 
-        array_set(floatArray, i, &floatValues[i]);
-
-    for (float* it = (float*)array_rbegin(floatArray); it != (float*)array_rend(floatArray); --it) 
-        printf("Element: %f\n", *it);
-
     array_deallocate(floatArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
 
 ```
 
@@ -372,12 +293,9 @@ int main()
 
 ```c
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     const size_t rows = 3;
     const size_t cols = 4;
 
@@ -385,8 +303,7 @@ int main()
     Array* array2D = array_create(sizeof(Array*), rows);
 
     // Step 3: Initialize Each Row Array
-    for (size_t i = 0; i < rows; ++i) 
-    {
+    for (size_t i = 0; i < rows; ++i) {
         Array* row = array_create(sizeof(int), cols);
         int valueToFill = i; // Example value to fill
 
@@ -395,11 +312,9 @@ int main()
     }
 
     // Step 4: Use the 2D Array
-    for (size_t i = 0; i < rows; ++i) 
-    {
+    for (size_t i = 0; i < rows; ++i) {
         Array* row = *(Array**)array_at(array2D, i);
-        for (size_t j = 0; j < cols; ++j) 
-        {
+        for (size_t j = 0; j < cols; ++j) {
             int* element = (int*)array_at(row, j);
             printf("%d ", *element);
         }
@@ -407,17 +322,14 @@ int main()
     }
 
     // Step 5: Clean Up
-    for (size_t i = 0; i < rows; ++i) 
-    {
+    for (size_t i = 0; i < rows; ++i) {
         Array* row = *(Array**)array_at(array2D, i);
         array_deallocate(row);
     }
 
     array_deallocate(array2D);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 
 ```
 
@@ -426,25 +338,21 @@ int main()
 ```c
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "array/array.h"
+#include "string/string.h"
 
-int main() 
-{
+int main() {
     const size_t numStrings = 3; 
     Array* stringArray = array_create(sizeof(String*), numStrings);
 
     // Initialize each String in the Array
-    for (size_t i = 0; i < numStrings; ++i) 
-    {
+    for (size_t i = 0; i < numStrings; ++i) {
         String* str = string_create("Initial Text");
         array_set(stringArray, i, &str);
     }
 
     // Example manipulation: Append text to each string
-    for (size_t i = 0; i < numStrings; ++i) 
-    {
+    for (size_t i = 0; i < numStrings; ++i) {
         String** strPtr = (String**)array_at(stringArray, i);
         String* str = *strPtr;
 
@@ -453,8 +361,7 @@ int main()
     }
 
     // Clean up: Deallocate each String and the Array
-    for (size_t i = 0; i < numStrings; ++i) 
-    {
+    for (size_t i = 0; i < numStrings; ++i) {
         String** strPtr = (String**)array_at(stringArray, i);
         String* str = *strPtr;
 
@@ -462,8 +369,7 @@ int main()
     }
         
     array_deallocate(stringArray);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -474,35 +380,31 @@ This example creates an array of strings and concatenates them into a single str
 #include "array/array.h"
 #include "string/string.h"
 #include <stdio.h>
-#include <stdlib.h>
 
-int main() 
-{
+int main() {
     Array* stringArray = array_create(sizeof(String*), 3);
     char* words[] = {"Hello", "World", "Array"};
 
     // Initialize each string in the array
-    for (size_t i = 0; i < 3; ++i) 
-    {
+    for (size_t i = 0; i < 3; ++i) {
         String* str = string_create(words[i]);
         array_set(stringArray, i, &str);
     }
 
     // Concatenate all strings
     String* concatenated = string_create("");
-    for (size_t i = 0; i < array_size(stringArray); ++i)
-    {
+    for (size_t i = 0; i < array_size(stringArray); ++i) {
         String** strPtr = (String**)array_at(stringArray, i);
         string_append(concatenated, string_c_str(*strPtr));
 
-        if (i < array_size(stringArray) - 1) 
+        if (i < array_size(stringArray) - 1) {
             string_append(concatenated, " "); // Add space between words
+        }
     }
 
     printf("Concatenated String: %s\n", string_c_str(concatenated));
 
-    for (size_t i = 0; i < array_size(stringArray); ++i) 
-    {
+    for (size_t i = 0; i < array_size(stringArray); ++i) {
         String** strPtr = (String**)array_at(stringArray, i);
         string_deallocate(*strPtr);
     }
@@ -510,7 +412,7 @@ int main()
     array_deallocate(stringArray);
     string_deallocate(concatenated);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -519,20 +421,16 @@ int main()
 We will define a standard deck of cards using enum for suits and ranks. Then, we'll create a struct to represent a card. We'll use the Array library to create and manipulate a deck of cards.
 ```c
 #include <stdio.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-typedef enum 
-{
+typedef enum {
     CLUBS,
     DIAMONDS,
     HEARTS,
     SPADES
-
 } Suit;
 
-typedef enum 
-{
+typedef enum {
     TWO = 2,
     THREE,
     FOUR,
@@ -546,30 +444,19 @@ typedef enum
     QUEEN,
     KING,
     ACE
-
 } Rank;
 
-typedef struct 
-{
+typedef struct {
     Suit suit;
     Rank rank;
-    
 } Card;
 
-Array* initializeDeck() 
-{
+Array* initializeDeck() {
     Array* deck = array_create(sizeof(Card), 52);
-    if (!deck) 
-    {
-        perror("Failed to create deck");
-        exit(EXIT_FAILURE);
-    }
-
     int index = 0;
-    for (Suit suit = CLUBS; suit <= SPADES; suit++) 
-    {
-        for (Rank rank = TWO; rank <= ACE; rank++) 
-        {
+
+    for (Suit suit = CLUBS; suit <= SPADES; suit++) {
+        for (Rank rank = TWO; rank <= ACE; rank++) {
             Card card = { suit, rank };
             array_set(deck, index++, &card);
         }
@@ -577,16 +464,14 @@ Array* initializeDeck()
     return deck;
 }
 
-void printCard(const Card* card) 
-{
+void printCard(const Card* card) {
     const char* suits[] = { "Clubs", "Diamonds", "Hearts", "Spades" };
     const char* ranks[] = { "", "", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace" };
 
     printf("%s of %s\n", ranks[card->rank], suits[card->suit]);
 }
 
-int main() 
-{
+int main() {
     Array* deck = initializeDeck();
 
     // Example: Print the first and last card
@@ -594,7 +479,7 @@ int main()
     printCard((Card*)array_back(deck));
 
     array_deallocate(deck);
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
@@ -603,33 +488,27 @@ int main()
 
 ```c
 #include <stdio.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-int main() 
-{
+int main() {
     Array* src = array_create(sizeof(int), 5);
     Array* dest = array_create(sizeof(int), 5);
 
-    for (size_t i = 0; i < array_size(src); ++i) 
-    {
+    for (size_t i = 0; i < array_size(src); ++i) {
         int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
         array_set(src, i, &value);
     }
-
     array_copy(dest, src);
 
     printf("Source Array: ");
-    for (size_t i = 0; i < array_size(src); ++i) 
-    {
+    for (size_t i = 0; i < array_size(src); ++i) {
         int* element = (int*)array_at(src, i);
         printf("%d ", *element);
     }
     printf("\n");
 
     printf("Destination Array: ");
-    for (size_t i = 0; i < array_size(dest); ++i) 
-    {
+    for (size_t i = 0; i < array_size(dest); ++i) {
         int* element = (int*)array_at(dest, i);
         printf("%d ", *element);
     }
@@ -646,7 +525,6 @@ int main()
 
 ```c
 #include <stdio.h>
-#include <stdlib.h>
 #include "array/array.h"
 
 int compare_ints(const void* a, const void* b) {
@@ -657,23 +535,20 @@ int main()
 {
     Array* arr = array_create(sizeof(int), 5);
 
-    for (size_t i = 0; i < array_size(arr); ++i) 
-    {
+    for (size_t i = 0; i < array_size(arr); ++i) {
         int value = (int)(50 - i * 10); // Example values: 50, 40, 30, 20, 10
         array_set(arr, i, &value);
     }
-
     array_sort(arr, compare_ints);
 
     printf("Sorted Array: ");
-    for (size_t i = 0; i < array_size(arr); ++i) 
-    {
+    for (size_t i = 0; i < array_size(arr); ++i) {
         int* element = (int*)array_at(arr, i);
         printf("%d ", *element);
     }
     printf("\n");
+
     array_deallocate(arr);
-    
     return 0;
 }
 ```
@@ -682,34 +557,29 @@ int main()
 
 ```c
 #include <stdio.h>
-#include <stdlib.h>
 #include "array/array.h"
 
 int compare_ints(const void* a, const void* b) {
     return (*(int*)a - *(int*)b);
 }
 
-int main() 
-{
+int main() {
     Array* arr = array_create(sizeof(int), 5);
 
-    for (size_t i = 0; i < array_size(arr); ++i) 
-    {
+    for (size_t i = 0; i < array_size(arr); ++i) {
         int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
         array_set(arr, i, &value);
     }
-
     array_reverse(arr);
 
     printf("Reversed Array: ");
-    for (size_t i = 0; i < array_size(arr); ++i) 
-    {
+    for (size_t i = 0; i < array_size(arr); ++i) {
         int* element = (int*)array_at(arr, i);
         printf("%d ", *element);
     }
     printf("\n");
+
     array_deallocate(arr);
-    
     return 0;
 }
 ```
@@ -718,16 +588,12 @@ int main()
 
 ```c
 #include <stdio.h>
-#include <stdlib.h>
 #include "array/array.h"
 
-
-int main() 
-{
+int main() {
     Array* arr = array_create(sizeof(int), 5);
 
-    for (size_t i = 0; i < array_size(arr); ++i) 
-    {
+    for (size_t i = 0; i < array_size(arr); ++i) {
         int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
         array_set(arr, i, &value);
     }
@@ -736,7 +602,6 @@ int main()
     printf("Array Size After Clear: %zu\n", array_size(arr));
     
     array_deallocate(arr);
-
     return 0;
 }
 ```
