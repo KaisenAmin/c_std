@@ -51,6 +51,55 @@ static void quickSortInternal(void *base, size_t low, size_t high, size_t size, 
     }
 }
 
+static void merge(void *base, size_t low, size_t mid, size_t high, size_t size, CompareFunc comp, void *temp) {
+    size_t i = low, j = mid, k = 0;
+
+    while (i < mid && j < high) {
+        if (comp((char*)base + i * size, (char*)base + j * size) <= 0) {
+            memcpy((char*)temp + k * size, (char*)base + i * size, size);
+            i++;
+        } else {
+            memcpy((char*)temp + k * size, (char*)base + j * size, size);
+            j++;
+        }
+        k++;
+    }
+
+    while (i < mid) {
+        memcpy((char*)temp + k * size, (char*)base + i * size, size);
+        i++; k++;
+    }
+
+    while (j < high) {
+        memcpy((char*)temp + k * size, (char*)base + j * size, size);
+        j++; k++;
+    }
+
+    memcpy((char*)base + low * size, temp, k * size);
+}
+
+static void mergeSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
+    if (high - low > 1) {
+        size_t mid = low + (high - low) / 2;
+        mergeSortInternal(base, low, mid, size, comp, temp);
+        mergeSortInternal(base, mid, high, size, comp, temp);
+        merge(base, low, mid, high, size, comp, temp);
+    }
+}
+
+void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp) {
+    if (num > 1) {
+        void* temp = malloc(num * size);
+        if (temp) {
+            mergeSortInternal(base, 0, num, size, comp, temp);
+            free(temp);
+        } else {
+            perror("Failed to allocate memory for stable sorting");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp) {
     if (num > 1) {
         void* temp = malloc(size);
@@ -544,4 +593,129 @@ Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void
     range.first = algorithm_lower_bound(base, num, size, val, comp);
     range.second = algorithm_upper_bound(range.first, num, size, val, comp);
     return range;
+}
+
+bool algorithm_includes(const void *first1, size_t num1, size_t size1, const void *first2, size_t num2, size_t size2, 
+                        CompareFunc comp) {
+    const char *ptr1 = (const char *)first1;
+    const char *ptr2 = (const char *)first2;
+    const char *last1 = ptr1 + num1 * size1;
+    const char *last2 = ptr2 + num2 * size2;
+
+    while (ptr2 != last2) {
+        if ((ptr1 == last1) || comp(ptr2, ptr1) < 0) {
+            return false;
+        }
+        if (!comp(ptr1, ptr2)) {
+            ptr2 += size2;
+        }
+        ptr1 += size1;
+    }
+    return true;
+}
+
+size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp) {
+    if (num == 0) {
+        return 0;
+    }
+
+    const char *src = (const char *)first;
+    char *dst = (char *)result;
+    memcpy(dst, src, size); // Copy first element
+    size_t count = 1;
+
+    for (size_t i = 1; i < num; ++i) {
+        if (comp(dst + (count - 1) * size, src + i * size) != 0) {
+            memcpy(dst + count * size, src + i * size, size);
+            ++count;
+        }
+    }
+    return count;
+}
+
+void algorithm_swap(void *a, void *b, size_t size) {
+    void *temp = malloc(size);
+    if (!temp) {
+        perror("Failed to allocate memory for swap");
+        exit(EXIT_FAILURE);
+    }
+
+    memcpy(temp, a, size);
+    memcpy(a, b, size);
+    memcpy(b, temp, size);
+
+    free(temp);
+}
+
+void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size) {
+    char *ptr1 = (char *)first1;
+    char *ptr2 = (char *)first2;
+
+    for (size_t i = 0; i < num; ++i) {
+        algorithm_swap(ptr1 + i * size, ptr2 + i * size, size);
+    }
+}
+
+bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp) {
+    if (num < 2) {
+        return true; // A range with less than two elements is always sorted.
+    }
+
+    const char *ptr = (const char *)base;
+    for (size_t i = 0; i < num - 1; ++i) {
+        if (comp(ptr + i * size, ptr + (i + 1) * size) > 0) {
+            return false; // Found an element that is greater than the next element.
+        }
+    }
+    return true; // All elements are in sorted order.
+}
+
+void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp) {
+    if (num < 2) {
+        return (void *)((char *)base + num * size); // Entire range is sorted
+    }
+
+    const char *ptr = (const char *)base;
+    for (size_t i = 0; i < num - 1; ++i) {
+        if (comp(ptr + i * size, ptr + (i + 1) * size) > 0) {
+            return (void *)(ptr + (i + 1) * size); // Found unsorted element
+        }
+    }
+    return (void *)((char *)base + num * size); // Entire range is sorted
+}
+
+void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
+    char *next = (char *)middle;
+
+    while ((char *)first != next) {
+        swap(first, next, size);
+        first = (char *)first + size;
+        next = (char *)next + size;
+        if (next == (char *)last) {
+            next = (char *)middle;
+        } else if (first == (char *)middle) {
+            middle = next;
+        }
+    }
+}
+
+void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result) {
+    const char *first_ptr = (const char *)first;
+    const char *middle_ptr = (const char *)middle;
+    const char *last_ptr = (const char *)last;
+    char *result_ptr = (char *)result;
+
+    // Copy from middle to last into result
+    while (middle_ptr != last_ptr) {
+        memcpy(result_ptr, middle_ptr, size);
+        result_ptr += size;
+        middle_ptr += size;
+    }
+
+    // Copy from first to middle into result
+    while (first_ptr != (const char *)middle) {
+        memcpy(result_ptr, first_ptr, size);
+        result_ptr += size;
+        first_ptr += size;
+    }
 }

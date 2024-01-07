@@ -1,17 +1,20 @@
+#include "encoding/encoding.h"
+#include "string/string.h"
 #include <stdio.h>
-#include "array/array.h"
+#include <stdlib.h>
 
 int main() {
-    Array* arr = array_create(sizeof(int), 5);
+    String *text_to_encode = string_create("salam salam/ halet chetore");
+    char* encoded = encoding_url_encode(string_c_str(text_to_encode), string_length(text_to_encode));
 
-    for (size_t i = 0; i < array_size(arr); ++i) {
-        int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
-        array_set(arr, i, &value);
+    if (encoded) {
+        printf("Original: %s\n", string_c_str(text_to_encode));
+        printf("URL Encoded: %s\n", encoded);
+        free(encoded);
+    } else {
+        printf("Failed to encode URL.\n");
     }
 
-    array_clear(arr);
-    printf("Array Size After Clear: %zu\n", array_size(arr));
-    
-    array_deallocate(arr);
+    string_deallocate(text_to_encode);
     return 0;
 }

@@ -24,6 +24,7 @@ typedef void (*GeneratorFunc)(void *);
 typedef bool (*UnaryPredicateFunc)(const void *);
 
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp);
+void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp);
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
 void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
@@ -65,5 +66,13 @@ void algorithm_copy_backward(const void *first, const void *last, size_t size, v
 void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred);
 void algorithm_copy_n(const void *first, size_t n, size_t size, void *result);
 Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
+bool algorithm_includes(const void *first1, size_t num1, size_t size1, const void *first2, size_t num2, size_t size2, CompareFunc comp);
+size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp);
+void algorithm_swap(void *a, void *b, size_t size);
+void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size);
+bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp);
+void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp);
+void algorithm_rotate(void *first, void *middle, void *last, size_t size);
+void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result);
 
 #endif // ALGORITHM_H_
