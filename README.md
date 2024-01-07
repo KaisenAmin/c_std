@@ -27,7 +27,8 @@ The project is organized into several subdirectories, each representing a differ
 - `Map` : This C library provides a generic implementation of a map, also known as an associative array.
 - `Span` : This C library provides a generic implementation of span container in C++ for working with contiguous memory.
 - `Algorithm` : This C Library provies wide range of functionality in genecit mode like std::algorithm in cpp.
-
+- `Encoding`: The Encoding library in C is a versatile tool designed for efficient and user-friendly encoding and decoding operations.
+- `Numbers`: The Numbers library in C provides constants for common mathematical values, analogous to the `<numbers>` header introduced in C++20.
 Each module comes with a `.c` source file and a `.h` header file, along with a `README.md` file that provides information on how to use that specific module.
 
 ## Compilation

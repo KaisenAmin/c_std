@@ -34,6 +34,17 @@ Certainly! Here are brief explanations for the URL encode and decode functions t
 
 - `encoding_url_decode`: Decodes a percent-encoded URL string back to its original format. It interprets percent-encoded characters and converts them back to their original representations, taking a pointer to the encoded string and its length, and returns a dynamically allocated decoded string.
 
+### Base32 Encoding and Decoding
+- `encoding_base32_encode`: This function encodes a given string into Base32 format. It takes a pointer to the input string and its length. The function returns a dynamically allocated string containing the Base32 encoded representation. Base32 encoding is useful for cases where case-insensitive encoding is beneficial, such as in email and URL encoding.
+
+- `encoding_base32_decode`: Decodes a Base32 encoded string back to its original format. It takes a pointer to the encoded string and its length, returning a dynamically allocated decoded string. The function handles the Base32 decoding process, converting the encoded characters back to the original binary data.
+
+### Base16 (Hex) Encoding and Decoding
+- `encoding_base16_encode`: Encodes a given string into Base16 (hexadecimal) format. It accepts a pointer to the input string and its length, returning a dynamically allocated string with the Base16 encoded representation. Base16 encoding represents binary data in an ASCII string format by translating each byte of data into two hexadecimal digits.
+
+- `encoding_base16_decode`: Decodes a Base16 (hexadecimal) encoded string back to its original binary form. It requires a pointer to the encoded string and its length, and returns a dynamically allocated decoded string. This function is useful for converting data encoded in hex back to its original binary state.
+
+
 ## Example 1: Base64 Encoding and Decoding
 This example demonstrates encoding a string to Base64 and then decoding it back to its original format.
 
@@ -106,6 +117,171 @@ int main() {
         printf("Failed to decode URL.\n");
     }
 
+    return 0;
+}
+```
+
+## Examples 4 : use `encoding_base32_encode`
+
+```c
+#include "encoding/encoding.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    const char* text_to_encode = "Hello, World!";
+    char* encoded = encoding_base32_encode(text_to_encode, strlen(text_to_encode));
+
+    if (encoded) {
+        printf("Original: %s\n", text_to_encode);
+        printf("Base32 Encoded: %s\n", encoded);
+        free(encoded);
+    } else {
+        printf("Failed to encode in Base32.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 5 : use `encoding_base32_decode`
+
+```c
+int main() {
+    const char* text_to_decode = "ORSXG5A=";  // Base32 encoded version of "test"
+    char* decoded = encoding_base32_decode(text_to_decode, strlen(text_to_decode));
+
+    if (decoded) {
+        printf("Base32 Encoded: %s\n", text_to_decode);
+        printf("Decoded: %s\n", decoded);
+        free(decoded);
+    } else {
+        printf("Failed to decode from Base32.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 6 : use `encoding_base16_encode`
+
+```c
+#include "encoding/encoding.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    const char* text = "Hello, World!";
+    char* encoded = encoding_base16_encode(text, strlen(text));
+    if (encoded) {
+        printf("Original: %s\n", text);
+        printf("Base16 Encoded: %s\n", encoded);
+        free(encoded);
+    }
+
+    return 0;
+}
+```
+
+## Example 7 : use `encoding_base32_decode`
+
+```c
+#include "encoding/encoding.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    const char* encodedText = "48656C6C6F2C20576F726C6421";
+    char* decoded = encoding_base16_decode(encodedText, strlen(encodedText));
+    
+    if (decoded) {
+        printf("Base16 Encoded: %s\n", encodedText);
+        printf("Decoded: %s\n", decoded);
+        free(decoded);
+    }
+
+    return 0;
+}
+```
+
+## Example 8 : use `encoding_utf32_to_utf16`
+
+```c
+#include "encoding/encoding.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+int main() {
+    // UTF-32 string containing emojis
+    uint32_t utf32_string[] = {0x1F600, 0x1F603, 0x1F604, 0x1F606, 0x1F609, 0x1F60A, 0x0000}; // Null-terminated
+
+    // Calculate length of UTF-32 string
+    size_t length = 0;
+    while (utf32_string[length] != 0) {
+        length++;
+    }
+
+    uint16_t* utf16_string = encoding_utf32_to_utf16(utf32_string, length);
+
+    // Print UTF-16 string as hexadecimal values
+    printf("UTF-16 String: ");
+    for (size_t i = 0; utf16_string[i] != 0; i++) {
+        printf("%04X ", utf16_string[i]);
+    }
+    printf("\\n");
+
+    // Free the allocated memory
+    free(utf16_string);
+    return 0;
+}
+```
+
+## Example 9 : convert utf16 to utf32 with `encoding_utf16_to_utf32`
+
+```c
+#include "encoding/encoding.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+int main() {
+    // UTF-32 string containing emojis
+    uint32_t utf32_string[] = {0x1F600, 0x1F603, 0x1F604, 0x1F606, 0x1F609, 0x1F60A, 0x0000}; // Null-terminated
+
+    // Calculate length of UTF-32 string
+    size_t length = 0;
+    while (utf32_string[length] != 0) {
+        length++;
+    }
+
+    uint16_t* utf16_string = encoding_utf32_to_utf16(utf32_string, length);
+    size_t index = 0;
+
+    while (utf16_string[index] != 0)
+        index++;
+
+    // Print UTF-16 string as hexadecimal values
+    printf("UTF-16 String: ");
+    for (size_t i = 0; utf16_string[i] != 0; i++) {
+        printf("%04X ", utf16_string[i]);
+    }
+    printf("\n");
+
+    uint32_t* calc = encoding_utf16_to_utf32(utf16_string, index);
+
+    printf("UTF-32 String: ");
+    for (size_t i = 0; calc[i] != 0; i++) {
+        printf("%0X ", calc[i]);
+    }
+
+    // Free the allocated memory
+    free(utf16_string);
     return 0;
 }
 ```

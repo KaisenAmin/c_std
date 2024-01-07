@@ -4,24 +4,23 @@
 #include <stdio.h>
 
 static void swap(void *a, void *b, size_t size) {
-    char *temp = (char*) malloc(sizeof(char) * size);
-    if (temp) {
-        memcpy(temp, a, size);
-        memcpy(a, b, size);
-        memcpy(b, temp, size);
-        free(temp);  // Free the allocated memory
-    } 
-    else {
-        perror("Can not allocate memory for swap");
-        exit(-1);
-    }
+    // Using a stack-allocated buffer for small elements
+    unsigned char temp[size];
+    memcpy(temp, a, size);
+    memcpy(a, b, size);
+    memcpy(b, temp, size);
 }
 
 static void reverse(void *first, void *last, size_t size) {
     char *a = (char *)first;
     char *b = (char *)last - size;
     while (a < b) {
-        swap(a, b, size);
+        // Inlining the swap logic
+        for (size_t i = 0; i < size; ++i) {
+            char temp = a[i];
+            a[i] = b[i];
+            b[i] = temp;
+        }
         a += size;
         b -= size;
     }

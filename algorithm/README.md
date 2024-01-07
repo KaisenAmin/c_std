@@ -2185,6 +2185,7 @@ int main() {
             printf("%d ", *item);
         }
         printf("\n");
+        
     } while (algorithm_next_permutation(vector_begin(vec), vector_end(vec), sizeof(int), less_int));
 
     vector_deallocate(vec);
