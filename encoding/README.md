@@ -220,7 +220,6 @@ int main() {
     // UTF-32 string containing emojis
     uint32_t utf32_string[] = {0x1F600, 0x1F603, 0x1F604, 0x1F606, 0x1F609, 0x1F60A, 0x0000}; // Null-terminated
 
-    // Calculate length of UTF-32 string
     size_t length = 0;
     while (utf32_string[length] != 0) {
         length++;
@@ -235,7 +234,7 @@ int main() {
     }
     printf("\\n");
 
-    // Free the allocated memory
+
     free(utf16_string);
     return 0;
 }
@@ -254,7 +253,6 @@ int main() {
     // UTF-32 string containing emojis
     uint32_t utf32_string[] = {0x1F600, 0x1F603, 0x1F604, 0x1F606, 0x1F609, 0x1F60A, 0x0000}; // Null-terminated
 
-    // Calculate length of UTF-32 string
     size_t length = 0;
     while (utf32_string[length] != 0) {
         length++;
@@ -280,7 +278,6 @@ int main() {
         printf("%0X ", calc[i]);
     }
 
-    // Free the allocated memory
     free(utf16_string);
     return 0;
 }
