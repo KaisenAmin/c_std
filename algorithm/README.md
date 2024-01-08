@@ -3823,3 +3823,121 @@ int main () {
   return 0;
 }
 ```
+
+## Example 124 : How to use `algorithm_merge`
+C Algorithm sort time: 0.000002 seconds
+
+```c
+#include "algorithm/algorithm.h"
+#include "array/array.h"
+#include <stdio.h>
+#include <time.h>
+
+int compare_ints(const void* a, const void* b) {
+	int one = *(const int*)a;
+	int two = *(const int*)b;
+
+	return (one > two) - (one < two);
+}
+
+void print_int(void* number) {
+	printf("%d ", *(int*)number);
+}
+
+int main() {
+	struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+	int first[] = {5,10,15,20,25};
+  	int second[] = {50,40,30,20,10};
+	size_t size_first = sizeof(first) / sizeof(first[0]);
+	size_t size_second = sizeof(second) / sizeof(first[0]);
+	Array* arr = array_create(sizeof(int), 10);
+
+	algorithm_sort(first, size_first, sizeof(int), compare_ints);
+	algorithm_sort(second, size_second, sizeof(int), compare_ints);
+	algorithm_merge(first, size_first, second, size_second, sizeof(int), array_begin(arr), compare_ints);
+	
+	clock_gettime(CLOCK_MONOTONIC, &end);
+
+    double timeTaken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("C Algorithm sort time: %f seconds\n", timeTaken);
+
+	array_deallocate(arr);
+    return 0;
+}
+```
+
+`C++ Time Take : 4.375e-06 seconds`
+
+```cpp
+#include <iostream>     // For std::cout
+#include <algorithm>    // For std::merge, std::sort
+#include <vector>       // For std::vector
+#include <chrono>       // For std::chrono
+
+int main () {
+    auto start = std::chrono::high_resolution_clock::now();
+    int first[] = {5,10,15,20,25};
+    int second[] = {50,40,30,20,10};
+    std::vector<int> v(10);
+
+    std::sort (first, first + 5);
+    std::sort (second, second + 5);
+    std::merge (first, first + 5, second, second + 5, v.begin());
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = stop - start;
+    std::cout << "Time taken: " << duration.count() << " seconds\n";
+
+    return 0;
+}
+
+```
+
+## Example 125 : Point Struct with Using `algorithm_merge`
+
+```c
+#include "algorithm/algorithm.h"
+#include "array/array.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+int compare_points(const void* a, const void* b) {
+    Point point1 = *(const Point*)a;
+    Point point2 = *(const Point*)b;
+
+    return (point1.x > point2.x) - (point1.x < point2.x);
+}
+
+void print_point(void* p) {
+    Point* point = (Point*)p;
+    printf("(%d, %d) ", point->x, point->y);
+}
+
+int main() {
+    Point first[] = {{1, 2}, {3, 4}, {5, 6}};
+    Point second[] = {{7, 8}, {9, 10}, {11, 12}};
+    size_t size_first = sizeof(first) / sizeof(first[0]);
+    size_t size_second = sizeof(second) / sizeof(second[0]);
+    Array* arr = array_create(sizeof(Point), size_first + size_second);
+
+    algorithm_sort(first, size_first, sizeof(Point), compare_points);
+    algorithm_sort(second, size_second, sizeof(Point), compare_points);
+    algorithm_merge(first, size_first, second, size_second, sizeof(Point), array_begin(arr), compare_points);
+
+    for (size_t i = 0; i < array_size(arr); i++) {
+        print_point(array_at(arr, i));
+    }
+
+    array_deallocate(arr);
+    return 0;
+}
+
+```

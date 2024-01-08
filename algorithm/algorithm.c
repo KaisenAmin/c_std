@@ -694,7 +694,7 @@ void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
         swap(first, next, size);
         first = (char *)first + size;
         next = (char *)next + size;
-        
+
         if (next == (char *)last) {
             next = (char *)middle;
         } 
@@ -722,5 +722,36 @@ void algorithm_rotate_copy(const void *first, const void *middle, const void *la
         memcpy(result_ptr, first_ptr, size);
         result_ptr += size;
         first_ptr += size;
+    }
+}
+
+void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t num2, size_t size, void *result, CompareFunc comp) {
+    size_t i = 0, j = 0, k = 0;
+    const char *a = (const char *)base1;
+    const char *b = (const char *)base2;
+    char *res = (char *)result;
+
+    while (i < num1 && j < num2) {
+        if (comp(a + i * size, b + j * size) <= 0) {
+            memcpy(res + k * size, a + i * size, size);
+            i++;
+        } 
+        else {
+            memcpy(res + k * size, b + j * size, size);
+            j++;
+        }
+        k++;
+    }
+
+    while (i < num1) {
+        memcpy(res + k * size, a + i * size, size);
+        i++;
+        k++;
+    }
+
+    while (j < num2) {
+        memcpy(res + k * size, b + j * size, size);
+        j++;
+        k++;
     }
 }
