@@ -182,7 +182,7 @@ bool string_contains(String* str, const char* substr) {
     return false;
 }
 
-int string_compare(String* str1, String* str2) {
+int string_compare(const String* str1, const String* str2) {
     if (str1 == NULL || str2 == NULL) {
         if (str1 == str2) {
             return 0;  // Both are NULL, considered equal
@@ -674,7 +674,7 @@ const char *string_data(String *str) {
     return str->dataStr;
 }
 
-const char *string_c_str(String *str) {
+const char *string_c_str(const String *str) {
     if (str == NULL || str->dataStr == NULL) { 
         return "";  // Return empty string for null or uninitialized String
     }
@@ -1473,4 +1473,36 @@ String* string_from_unicode(const wchar_t* wstr) {
     free(str); // Free the temporary char* buffer
 
     return stringObj;
+}
+
+String** string_create_from_initializer(size_t count, ...) {
+    va_list args;
+    va_start(args, count);
+
+    // Allocate memory for the array of String pointers
+    String** strings = (String**)malloc(sizeof(String*) * (count + 1)); // +1 for NULL termination
+    if (!strings) {
+        return NULL;
+    }
+
+    // Create each string and add it to the array
+    for (size_t i = 0; i < count; i++) {
+        char* str = va_arg(args, char*);
+        strings[i] = string_create(str);
+        if (!strings[i]) {
+            // Handle allocation failure: cleanup and exit
+            for (size_t j = 0; j < i; j++) {
+                string_deallocate(strings[j]);
+            }
+            free(strings);
+            va_end(args);
+            return NULL;
+        }
+    }
+
+    // Null-terminate the array
+    strings[count] = NULL;
+
+    va_end(args);
+    return strings;
 }

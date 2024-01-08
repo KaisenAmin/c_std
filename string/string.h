@@ -41,7 +41,7 @@ bool string_is_lower(String* str);
 bool string_is_upper(String* str);
 bool string_empty(String* str);
 bool string_contains(String* str, const char* substr);
-int string_compare(String* str1, String* str2);
+int string_compare(const String* str1, const String* str2);
 void string_reverse(String* str);
 void string_resize(String* str, size_t newSize);
 void string_shrink_to_fit(String* str);
@@ -68,7 +68,7 @@ int string_find_last_of(String* str, const char* buffer, size_t pos);
 int string_find_first_not_of(String* str, const char* buffer, size_t pos);
 int string_find_last_not_of(String* str, const char* buffer, size_t pos);
 const char* string_data(String* str);
-const char* string_c_str(String* str);
+const char* string_c_str(const String* str);
 char* string_begin(String* str);
 char* string_end(String* str);
 char* string_rbegin(String* str);
@@ -119,5 +119,6 @@ bool string_ends_with(const String* str, const char* substr);
 void string_swap_case(String* str);
 wchar_t* string_to_unicode(const char* str);
 String* string_from_unicode(const wchar_t* wstr);
+String** string_create_from_initializer(size_t count, ...);
 
 #endif 

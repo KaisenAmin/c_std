@@ -777,3 +777,13 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
         }
     }
 }
+
+void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp) {
+    const char *ptr = (const char *)base;
+    for (size_t i = 0; i < num - 1; ++i) {
+        if (comp(ptr + i * size, ptr + (i + 1) * size) == 0) {
+            return (void *)(ptr + i * size);
+        }
+    }
+    return NULL;
+}

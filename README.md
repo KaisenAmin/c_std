@@ -66,7 +66,7 @@ python compile.py b
 or
 
 ```
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o your_program your_program.c vector.c
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o your_program your_program.c vector.c
 ```
 
 ## Individual READMEs for Libraries

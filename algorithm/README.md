@@ -4065,3 +4065,84 @@ int main() {
 }
 
 ```
+
+## Example 128 : Using String object with `algorithm_adjacent_find`
+
+```c
+#include "string/string.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <string.h>
+
+int compare_strings(const void *a, const void *b) {
+    const String *str1 = *(const String **)a;
+    const String *str2 = *(const String **)b;
+
+    return string_compare(str1, str2);
+}
+
+int main() {
+    String** mystrings = string_create_from_initializer(9, "apple", "banana", "banana", "cherry", 
+                                                        "cherry", "date", "elderberry", "fig", "fig");
+    size_t num_elements = 9;
+
+    const String** it = (const String**)algorithm_adjacent_find((const void**)mystrings, num_elements, sizeof(String*),compare_strings);
+    if (it != NULL) {
+        printf("The first pair of repeated elements are: %s\n", string_c_str(*it));
+        it++;
+    } 
+	else {
+        printf("No first pair of repeated elements found.\n");
+        return 0;
+    }
+
+    size_t remaining_elements = num_elements - ((String**)it - mystrings);
+    const String** it2 = (const String**)algorithm_adjacent_find((const void**)it, remaining_elements, sizeof(String*), compare_strings);
+    if (it2 != NULL) {
+        printf("The second pair of repeated elements are: %s\n", string_c_str(*it2));
+    } 
+	else {
+        printf("No second pair of repeated elements found.\n");
+    }
+    
+    for (size_t i = 0; i < num_elements; i++) {
+        string_deallocate(mystrings[i]);
+    }
+    return 0;
+}
+```
+
+## Example 129 : Using Intger Array with `algorithm_adjacent_find`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+
+int compare_ints(const void *a, const void *b) {
+    int arg1 = *(const int *)a;
+    int arg2 = *(const int *)b;
+
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+    int myints[] = {5, 20, 5, 30, 30, 20, 10, 10, 20};
+    size_t num_elements = sizeof(myints) / sizeof(myints[0]);
+
+    int* it = algorithm_adjacent_find(myints, num_elements, sizeof(int), compare_ints);
+    if (it != NULL) {
+        printf("The first pair of repeated elements are: %d\n", *it);
+		it++;
+    }
+
+    int* it2 = algorithm_adjacent_find(it, num_elements - (it - myints), sizeof(int), compare_ints);
+    if (it2 != NULL) {
+        printf("The second pair of repeated elements are: %d\n", *it2);
+    }
+
+    return 0;
+}
+
+```
