@@ -3902,7 +3902,6 @@ int main () {
 #include "array/array.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 typedef struct {
     int x;
@@ -3935,6 +3934,131 @@ int main() {
     for (size_t i = 0; i < array_size(arr); i++) {
         print_point(array_at(arr, i));
     }
+
+    array_deallocate(arr);
+    return 0;
+}
+
+```
+
+## Example 126 : How to use `algorithm_inplace_merge`
+
+```c
+#include "algorithm/algorithm.h"
+#include "array/array.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int compare_ints(const void* a, const void* b) {
+    int arg1 = *(const int*)a;
+    int arg2 = *(const int*)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+    int first[] = {5, 10, 15, 20, 25};
+    int second[] = {50, 40, 30, 20, 10};
+    size_t size_first = sizeof(first) / sizeof(first[0]);
+    size_t size_second = sizeof(second) / sizeof(second[0]);
+    size_t total_size = size_first + size_second;
+    Array* arr = array_create(sizeof(int), total_size);
+
+    // Sort both arrays in ascending order
+    algorithm_sort(first, size_first, sizeof(int), compare_ints);
+    algorithm_sort(second, size_second, sizeof(int), compare_ints);
+
+    // Copy sorted arrays into `arr`
+    algorithm_copy(first, size_first, sizeof(int), array_begin(arr));
+    algorithm_copy(second, size_second, sizeof(int), array_at(arr, size_first));
+
+    // Inplace merge within `arr`
+    algorithm_inplace_merge(array_begin(arr), size_first, total_size, sizeof(int), compare_ints);
+
+    printf("The resulting array contains:");
+    for (size_t i = 0; i < total_size; i++) {
+        int* p = (int*)array_at(arr, i);
+        printf(" %d", *p);
+    }
+    printf("\n");
+
+    array_deallocate(arr);
+    return 0;
+}
+
+```
+
+`C++ Version`
+
+```c
+#include <iostream>     // std::cout
+#include <algorithm>    // std::inplace_merge, std::sort, std::copy
+#include <vector>       // std::vector
+
+int main () {
+  int first[] = {5,10,15,20,25};
+  int second[] = {50,40,30,20,10};
+  std::vector<int> v(10);
+  std::vector<int>::iterator it;
+
+  std::sort (first,first+5);
+  std::sort (second,second+5);
+
+  it=std::copy (first, first+5, v.begin());
+     std::copy (second,second+5,it);
+
+  std::inplace_merge (v.begin(),v.begin()+5,v.end());
+
+  std::cout << "The resulting vector contains:";
+  for (it=v.begin(); it!=v.end(); ++it)
+    std::cout << ' ' << *it;
+  std::cout << '\n';
+
+  return 0;
+}
+```
+
+## Example 127 : inplace_merge with struct `algorithm_inplace_merge`
+
+```c
+#include "algorithm/algorithm.h"
+#include "array/array.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+int compare_points(const void* a, const void* b) {
+    Point* point1 = (Point*)a;
+    Point* point2 = (Point*)b;
+
+    return (point1->x > point2->x) - (point1->x < point2->x);
+}
+
+void print_point(void* p) {
+    Point* point = (Point*)p;
+    printf("(%d, %d) ", point->x, point->y);
+}
+
+int main() {
+    Point first[] = {{3, 1}, {1, 2}, {4, 3}};
+    Point second[] = {{6, 4}, {5, 5}, {7, 6}};
+    size_t size_first = sizeof(first) / sizeof(first[0]);
+    size_t size_second = sizeof(second) / sizeof(second[0]);
+    size_t total_size = size_first + size_second;
+
+    Array* arr = array_create(sizeof(Point), total_size);
+
+    algorithm_sort(first, size_first, sizeof(Point), compare_points);
+    algorithm_sort(second, size_second, sizeof(Point), compare_points);
+
+    algorithm_copy(first, size_first, sizeof(Point), array_begin(arr));
+    algorithm_copy(second, size_second, sizeof(Point), array_at(arr, size_first));
+
+    algorithm_inplace_merge(array_begin(arr), size_first, total_size, sizeof(Point), compare_points);
+	algorithm_for_each(array_begin(arr), total_size, sizeof(Point), print_point);
 
     array_deallocate(arr);
     return 0;

@@ -13,14 +13,12 @@
 typedef struct ForwardListNode ForwardListNode;
 typedef struct ForwardList ForwardList;
 
-struct ForwardListNode 
-{
+struct ForwardListNode {
     void *value;
     ForwardListNode *next;
 };
 
-struct ForwardList 
-{
+struct ForwardList {
     ForwardListNode *head;
     size_t itemSize;
     size_t size;
@@ -58,6 +56,5 @@ bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2);
 bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *list2);
 bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2);
 bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2);
-
 
 #endif 

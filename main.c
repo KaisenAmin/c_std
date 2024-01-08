@@ -1,41 +1,35 @@
-#include "algorithm/algorithm.h"
-#include "array/array.h"
+#include "forward_list/forward_list.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-typedef struct {
-    int x;
-    int y;
-} Point;
-
-int compare_points(const void* a, const void* b) {
-    Point point1 = *(const Point*)a;
-    Point point2 = *(const Point*)b;
-
-    return (point1.x > point2.x) - (point1.x < point2.x);
-}
-
-void print_point(void* p) {
-    Point* point = (Point*)p;
-    printf("(%d, %d) ", point->x, point->y);
-}
 
 int main() {
-    Point first[] = {{1, 2}, {3, 4}, {5, 6}};
-    Point second[] = {{7, 8}, {9, 10}, {11, 12}};
-    size_t size_first = sizeof(first) / sizeof(first[0]);
-    size_t size_second = sizeof(second) / sizeof(second[0]);
-    Array* arr = array_create(sizeof(Point), size_first + size_second);
-
-    algorithm_sort(first, size_first, sizeof(Point), compare_points);
-    algorithm_sort(second, size_second, sizeof(Point), compare_points);
-    algorithm_merge(first, size_first, second, size_second, sizeof(Point), array_begin(arr), compare_points);
-
-    for (size_t i = 0; i < array_size(arr); i++) {
-        print_point(array_at(arr, i));
+    ForwardList *list1 = forward_list_create(sizeof(int));
+    ForwardList *list2 = forward_list_create(sizeof(int));
+    
+    int values1[] = {1, 2, 3, 4, 5};
+    for (size_t i = 0; i < sizeof(values1) / sizeof(values1[0]); i++) {
+        forward_list_push_front(list1, &values1[i]);
+    }
+    
+    int values2[] = {1, 2, 3, 4, 5, 6}; 
+    for (size_t i = 0; i < sizeof(values2) / sizeof(values2[0]); i++) {
+        forward_list_push_front(list2, &values2[i]);
+    }
+    
+    if (forward_list_is_less(list1, list2)) { 
+        printf("List1 is less than List2\n");
+    }
+    else if (forward_list_is_greater(list1, list2)) {
+        printf("List1 is greater than List2\n");
+    }
+    else if (forward_list_is_equal(list1, list2)) {
+        printf("List1 is equal to List2\n");
+    }
+    if (forward_list_is_not_equal(list1, list2)) { 
+        printf("List1 is not equal to List2\n");
     }
 
-    array_deallocate(arr);
+    forward_list_deallocate(list1);
+    forward_list_deallocate(list2);
+
     return 0;
 }

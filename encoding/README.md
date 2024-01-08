@@ -563,7 +563,7 @@ int main() {
 
 ```
 
-## Example 19 : encode and decode data Using `encoding_base91_encode` and `encodign_base91_decode`
+## Example 19 : encode and decode data Using `encoding_base91_encode` and `encodinل_base91_decode`
 
 ```c
 #include <stdint.h>

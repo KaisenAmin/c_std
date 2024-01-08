@@ -755,3 +755,25 @@ void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t n
         k++;
     }
 }
+
+void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size, CompareFunc comp) {
+    size_t i = 0, j = middle, k;
+    char *arr = (char *)base;
+    char temp[size];
+
+    while (i < middle && j < num) {
+        if (comp(arr + i * size, arr + j * size) <= 0) {
+            i++;
+        } else {
+            memcpy(temp, arr + j * size, size);
+            for (k = j; k > i; k--) {
+                memcpy(arr + k * size, arr + (k - 1) * size, size);
+            }
+            memcpy(arr + i * size, temp, size);
+
+            i++;
+            middle++;
+            j++;
+        }
+    }
+}
