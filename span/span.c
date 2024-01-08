@@ -1,3 +1,10 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Span
+*/
+
+
 #include "span.h"
 #include <stdlib.h>
 #include <stdio.h>

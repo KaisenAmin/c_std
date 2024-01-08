@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class CsvFile, CsvRow
+*/
+
 #include "csv.h"
 #include <stdlib.h> // For dynamic memory allocation
 #include <string.h> // For string manipulation

@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Config
+*/
+
 #ifndef CONFIG_H_
 #define CONFIG_H_
 

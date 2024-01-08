@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class CsvFile, CsvRow
+*/
+
 #ifndef CSV_H_
 #define CSV_H_
 

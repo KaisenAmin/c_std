@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class ForwardList
+*/
+
 #ifndef FORWARD_LIST_H_
 #define FORWARD_LIST_H_
 

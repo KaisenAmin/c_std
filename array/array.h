@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Array
+*/
+
 #ifndef ARRAY_H_
 #define ARRAY_H_
 

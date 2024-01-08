@@ -1,3 +1,10 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class String
+*/
+
+
 #ifndef STRING_H_
 #define STRING_H_
 

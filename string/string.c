@@ -1,3 +1,10 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class String
+*/
+
+
 #include "string.h"
 #include <stdlib.h>
 #include <string.h>

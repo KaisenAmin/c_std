@@ -1,8 +1,36 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024 
+ * @class Encoding
+*/
+
 #ifndef ENCODING_H
 #define ENCODING_H
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
+
+
+enum ascii85_errs_e {
+    ascii85_err_out_buf_too_small = -255,
+    ascii85_err_in_buf_too_large,
+    ascii85_err_bad_decode_char,
+    ascii85_err_decode_overflow
+};
+
+typedef enum {
+    conversionOK,      /* Conversion successful */
+    sourceExhausted,   /* Partial character in source, but hit end */
+    targetExhausted,   /* Insufficient room in target for conversion */
+    sourceIllegal      /* Source sequence is illegal/malformed */
+} ConversionResult;
+
+typedef enum {
+    strictConversion,
+    lenientConversion
+} ConversionFlags;
+
 
 char* encoding_base64_encode(const char* input, size_t length);
 char* encoding_base64_decode(const char* input, size_t length);
@@ -14,6 +42,19 @@ char* encoding_base16_encode(const char* input, size_t length);
 char* encoding_base16_decode(const char* input, size_t length);
 uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length);
 uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length);
+uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length);
+uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length);
+uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length);
+uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length);
+char* encododing_base85_encode(const uint8_t* input, size_t length);
+uint8_t* encododing_base85_decode(const char* input, size_t length);
+char* encoding_base58_encode(const void *data, size_t binsz);
+char* encoding_base58_decode(const char *b58, size_t *binszp);
+char* encoding_base91_encode(const uint8_t* data, size_t length);
+uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length);
 
+bool encoding_is_utf8(const uint8_t* input, size_t length);
+bool encoding_is_utf8_string(const uint8_t** input, size_t length);
+void encoding_hex_dump(const void *data, size_t size);
 
 #endif // ENCODING_H

@@ -1,3 +1,10 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class PriorityQueue
+*/
+
+
 #include "priority_queue.h"
 #include <stdlib.h>
 #include <string.h>

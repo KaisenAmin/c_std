@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class PriorityQueue
+*/
+
 #ifndef PRIORITY_QUEUE_H_
 #define PRIORITY_QUEUE_H_
 

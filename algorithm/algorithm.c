@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Algorithm
+*/
+
 #include "algorithm.h"
 #include <string.h>
 #include <stdlib.h>
@@ -5,6 +11,7 @@
 
 static void swap(void *a, void *b, size_t size) {
     // Using a stack-allocated buffer for small elements
+    
     unsigned char temp[size];
     memcpy(temp, a, size);
     memcpy(a, b, size);
@@ -14,17 +21,14 @@ static void swap(void *a, void *b, size_t size) {
 static void reverse(void *first, void *last, size_t size) {
     char *a = (char *)first;
     char *b = (char *)last - size;
+
     while (a < b) {
-        // Inlining the swap logic
-        for (size_t i = 0; i < size; ++i) {
-            char temp = a[i];
-            a[i] = b[i];
-            b[i] = temp;
-        }
+        swap(a, b, size);
         a += size;
         b -= size;
     }
 }
+
 
 static void quickSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
     if (low < high) {
@@ -690,9 +694,11 @@ void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
         swap(first, next, size);
         first = (char *)first + size;
         next = (char *)next + size;
+        
         if (next == (char *)last) {
             next = (char *)middle;
-        } else if (first == (char *)middle) {
+        } 
+        else if (first == (char *)middle) {
             middle = next;
         }
     }

@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class ForwardList
+*/
+
 #include "forward_list.h"
 #include <stdlib.h>
 #include <string.h>

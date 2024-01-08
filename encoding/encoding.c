@@ -1,17 +1,18 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Encoding
+*/
+
 #include "encoding.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
 
-static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const char base32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
-static const char base16_chars[] = "0123456789ABCDEF";
-static const int halfShift  = 10; /* used for shifting by 10 bits */
-// static const uint8_t firstByteMark[7] = { 0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC };
-
-static const unsigned int halfBase = 0x0010000UL;
-static const unsigned int halfMask = 0x3FFUL;
+bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
 #define UNI_REPLACEMENT_CHAR (uint32_t)0x0000FFFD
 #define UNI_SUR_HIGH_START  (unsigned int)0xD800
@@ -22,8 +23,442 @@ static const unsigned int halfMask = 0x3FFUL;
 #define UNI_MAX_UTF16 (unsigned int)0x0010FFFF
 #define UNI_MAX_UTF32 (unsigned int)0x7FFFFFFF
 #define UNI_MAX_LEGAL_UTF32 (unsigned int)0x0010FFFF
-#define false      0
-#define true        1
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define b58_almostmaxint_bits (sizeof(uint32_t) * 8)
+
+static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char base32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+static const char base16_chars[] = "0123456789ABCDEF";
+static const int halfShift  = 10; /* used for shifting by 10 bits */
+static const uint8_t firstByteMark[7] = { 0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC };
+static const char trailingBytesForUTF8[256] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5
+};
+static const uint32_t offsetsFromUTF8[6] = { 0x00000000UL, 0x00003080UL, 0x000E2080UL, 
+                     0x03C82080UL, 0xFA082080UL, 0x82082080UL };
+static const unsigned int halfBase = 0x0010000UL;
+static const unsigned int halfMask = 0x3FFUL;
+static const char b58digits_ordered[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+static const int8_t b58digits_map[] = {
+	-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+	-1, 0, 1, 2, 3, 4, 5, 6,  7, 8,-1,-1,-1,-1,-1,-1,
+	-1, 9,10,11,12,13,14,15, 16,-1,17,18,19,20,21,-1,
+	22,23,24,25,26,27,28,29, 30,31,32,-1,-1,-1,-1,-1,
+	-1,33,34,35,36,37,38,39, 40,41,42,43,-1,44,45,46,
+	47,48,49,50,51,52,53,54, 55,56,57,-1,-1,-1,-1,-1,
+};
+static const char BASE91_ALPHABET[] = 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    "!#$%&()*+,./:;<=>?@[]^_`{|}~\"";
+
+static int base91_decode_value(char c) {
+    for (int i = 0; i < 91; ++i) {
+        if (BASE91_ALPHABET[i] == c) {
+            return i;
+        }
+    }
+    return -1; // Character not found
+}
+
+bool encoding_is_utf8(const uint8_t* input, size_t length) {
+    uint8_t a;
+    const uint8_t *srcptr = input+length;
+
+    switch (length) {
+    default: 
+        return false;
+        /* Everything else falls through when "true"... */
+    case 4: 
+        if ((a = (*--srcptr)) < 0x80 || a > 0xBF) {
+            return false;
+        }
+    /* fall through */
+    case 3: 
+        if ((a = (*--srcptr)) < 0x80 || a > 0xBF) {
+            return false;
+        }
+   /* fall through */
+    case 2: 
+        if ((a = (*--srcptr)) < 0x80 || a > 0xBF) {
+            return false;
+        }
+    /* fall through */
+    
+
+        switch (*input) {
+            case 0xE0: 
+                if (a < 0xA0) {
+                    return false;
+                } 
+                break;
+            case 0xED: 
+                if (a > 0x9F) {
+                    return false;
+                } 
+                break;
+            case 0xF0: 
+                if (a < 0x90) {
+                    return false;
+                } 
+                break;
+            case 0xF4: 
+                if (a > 0x8F) {
+                    return false;
+                } 
+                break;
+            default:   
+                if (a < 0x80) {
+                    return false;
+                }
+            /* fall through */
+        }
+    /* fall through */
+    case 1: 
+        if (*input >= 0x80 && *input < 0xC2) {
+            return false;
+        }
+    }
+
+    if (*input > 0xF4) {
+        return false;
+    }
+    return true;
+}
+
+static ConversionResult ConvertUTF16toUTF8 (
+        const uint16_t** sourceStart, const uint16_t* sourceEnd, 
+        uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
+
+    ConversionResult result = conversionOK;
+    const uint16_t* source = *sourceStart;
+    uint8_t* target = *targetStart;
+
+    while (source < sourceEnd) {
+        uint32_t ch;
+        unsigned short bytesToWrite = 0;
+        const uint32_t byteMask = 0xBF;
+        const uint32_t byteMark = 0x80; 
+        const uint16_t* oldSource = source; /* In case we have to back up because of target overflow. */
+        ch = *source++;
+        /* If we have a surrogate pair, convert to UTF32 first. */
+        if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_HIGH_END) {
+            /* If the 16 bits following the high surrogate are in the source buffer... */
+            if (source < sourceEnd) {
+                uint32_t ch2 = *source;
+                /* If it's a low surrogate, convert to UTF32. */
+                if (ch2 >= UNI_SUR_LOW_START && ch2 <= UNI_SUR_LOW_END) {
+                    ch = ((ch - UNI_SUR_HIGH_START) << halfShift)
+                        + (ch2 - UNI_SUR_LOW_START) + halfBase;
+                    ++source;
+                } 
+                else if (flags == strictConversion) { /* it's an unpaired high surrogate */
+                    --source; /* return to the illegal value itself */
+                    result = sourceIllegal;
+                    break;
+                }
+            } 
+            else { /* We don't have the 16 bits following the high surrogate. */
+                --source; /* return to the high surrogate */
+                result = sourceExhausted;
+                break;
+            }
+        } 
+        else if (flags == strictConversion) {
+            /* UTF-16 surrogate values are illegal in UTF-32 */
+            if (ch >= UNI_SUR_LOW_START && ch <= UNI_SUR_LOW_END) {
+                --source; /* return to the illegal value itself */
+                result = sourceIllegal;
+                break;
+            }
+        }
+        /* Figure out how many bytes the result will require */
+        if (ch < (uint32_t)0x80) {      
+            bytesToWrite = 1;
+        } 
+        else if (ch < (uint32_t)0x800) {     
+            bytesToWrite = 2;
+        } 
+        else if (ch < (uint32_t)0x10000) {   
+            bytesToWrite = 3;
+        } 
+        else if (ch < (uint32_t)0x110000) {  
+            bytesToWrite = 4;
+        } 
+        else {                            
+            bytesToWrite = 3;
+            ch = UNI_REPLACEMENT_CHAR;
+        }
+
+        target += bytesToWrite;
+        if (target > targetEnd) {
+            source = oldSource; /* Back up source pointer! */
+            target -= bytesToWrite; result = targetExhausted; break;
+        }
+        switch (bytesToWrite) { /* note: everything falls through. */
+            case 4: 
+            *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
+            // fall through
+            case 3: 
+            *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
+            // fall through
+            case 2: 
+            *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
+            // fall through
+            case 1: 
+            *--target =  (uint8_t)(ch | firstByteMark[bytesToWrite]);
+            // fall through
+        }
+        target += bytesToWrite;
+    }
+    *sourceStart = source;
+    *targetStart = target;
+
+    return result;
+}
+
+static ConversionResult ConvertUTF32toUTF8 (
+        const uint32_t** sourceStart, const uint32_t* sourceEnd, 
+        uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
+
+    ConversionResult result = conversionOK;
+    const uint32_t* source = *sourceStart;
+    uint8_t* target = *targetStart;
+
+    while (source < sourceEnd) {
+        uint32_t ch;
+        unsigned short bytesToWrite = 0;
+        const uint32_t byteMask = 0xBF;
+        const uint32_t byteMark = 0x80; 
+        ch = *source++;
+        if (flags == strictConversion ) {
+            /* UTF-16 surrogate values are illegal in UTF-32 */
+            if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END) {
+                --source; /* return to the illegal value itself */
+                result = sourceIllegal;
+                break;
+            }
+        }
+        /*
+         * Figure out how many bytes the result will require. Turn any
+         * illegally large UTF32 things (> Plane 17) into replacement chars.
+         */
+        if (ch < (uint32_t)0x80) {      
+            bytesToWrite = 1;
+        } 
+        else if (ch < (uint32_t)0x800) {     
+            bytesToWrite = 2;
+        } 
+        else if (ch < (uint32_t)0x10000) {   
+            bytesToWrite = 3;
+        } 
+        else if (ch <= UNI_MAX_LEGAL_UTF32) {  
+            bytesToWrite = 4;
+        } 
+        else {                            
+            bytesToWrite = 3;
+            ch = UNI_REPLACEMENT_CHAR;
+            result = sourceIllegal;
+        }
+        
+        target += bytesToWrite;
+        if (target > targetEnd) {
+            --source; /* Back up source pointer! */
+            target -= bytesToWrite; result = targetExhausted; break;
+        }
+        switch (bytesToWrite) { /* note: everything falls through. */
+            case 4: 
+                *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
+            // fall through
+            case 3: 
+                *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
+            // fall through
+            case 2: 
+                *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
+            // fall through
+            case 1: 
+                *--target = (uint8_t) (ch | firstByteMark[bytesToWrite]);
+            // fall through
+        }
+        target += bytesToWrite;
+    }
+    *sourceStart = source;
+    *targetStart = target;
+
+    return result;
+}
+
+static ConversionResult ConvertUTF8toUTF16 (
+        const uint8_t** sourceStart, const uint8_t* sourceEnd, 
+        uint16_t** targetStart, uint16_t* targetEnd, ConversionFlags flags) {
+    ConversionResult result = conversionOK;
+    const uint8_t* source = *sourceStart;
+    uint16_t* target = *targetStart;
+
+    while (source < sourceEnd) {
+        uint32_t ch = 0;
+        unsigned short extraBytesToRead = trailingBytesForUTF8[*source];
+        
+        if (extraBytesToRead >= sourceEnd - source) {
+            result = sourceExhausted; break;
+        }
+        /* Do this check whether lenient or strict */
+        if (!encoding_is_utf8(source, extraBytesToRead+1)) {
+            result = sourceIllegal;
+            break;
+        }
+        /*
+         * The cases all fall through. See "Note A" below.
+         */
+        switch (extraBytesToRead) {
+            case 5: 
+                ch += *source++; ch <<= 6; /* remember, illegal UTF-8 */
+            // fall through
+            case 4: 
+                ch += *source++; ch <<= 6; /* remember, illegal UTF-8 */
+                // fall through
+            case 3: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 2: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 1: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 0: 
+                ch += *source++;
+                // fall through
+        }
+        ch -= offsetsFromUTF8[extraBytesToRead];
+
+        if (target >= targetEnd) {
+            source -= (extraBytesToRead+1); /* Back up source pointer! */
+            result = targetExhausted; break;
+        }
+        if (ch <= UNI_MAX_BMP) { /* Target is a character <= 0xFFFF */
+            /* UTF-16 surrogate values are illegal in UTF-32 */
+            if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END) {
+                if (flags == strictConversion) {
+                    source -= (extraBytesToRead+1); /* return to the illegal value itself */
+                    result = sourceIllegal;
+                    break;
+                } 
+                else {
+                    *target++ = UNI_REPLACEMENT_CHAR;
+                }
+            } 
+            else {
+                *target++ = (uint16_t)ch; /* normal case */
+            }
+        } 
+        else if (ch > UNI_MAX_UTF16) {
+            if (flags == strictConversion) {
+                result = sourceIllegal;
+                source -= (extraBytesToRead+1); /* return to the start */
+                break; /* Bail out; shouldn't continue */
+            } 
+            else {
+                *target++ = UNI_REPLACEMENT_CHAR;
+            }
+        } 
+        else {
+            /* target is a character in range 0xFFFF - 0x10FFFF. */
+            if (target + 1 >= targetEnd) {
+                source -= (extraBytesToRead+1); /* Back up source pointer! */
+                result = targetExhausted; break;
+            }
+            ch -= halfBase;
+            *target++ = (uint16_t)((ch >> halfShift) + UNI_SUR_HIGH_START);
+            *target++ = (uint16_t)((ch & halfMask) + UNI_SUR_LOW_START);
+        }
+    }
+    *sourceStart = source;
+    *targetStart = target;
+
+    return result;
+}
+
+ConversionResult ConvertUTF8toUTF32 (
+        const uint8_t** sourceStart, const uint8_t* sourceEnd, 
+        uint32_t** targetStart, uint32_t* targetEnd, ConversionFlags flags) {
+    ConversionResult result = conversionOK;
+    const uint8_t* source = *sourceStart;
+    uint32_t* target = *targetStart;
+    
+    while (source < sourceEnd) {
+        uint32_t ch = 0;
+        unsigned short extraBytesToRead = trailingBytesForUTF8[*source];
+        if (extraBytesToRead >= sourceEnd - source) {
+            result = sourceExhausted; break;
+        }
+        /* Do this check whether lenient or strict */
+        if (!encoding_is_utf8(source, extraBytesToRead+1)) {
+            result = sourceIllegal;
+            break;
+        }
+        /*
+         * The cases all fall through. See "Note A" below.
+         */
+        switch (extraBytesToRead) {
+            case 5: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 4: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 3: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 2: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 1: 
+                ch += *source++; ch <<= 6;
+                // fall through
+            case 
+                0: ch += *source++;
+                // fall through
+        }
+        ch -= offsetsFromUTF8[extraBytesToRead];
+
+        if (target >= targetEnd) {
+            source -= (extraBytesToRead+1); /* Back up the source pointer! */
+            result = targetExhausted; break;
+        }
+        if (ch <= UNI_MAX_LEGAL_UTF32) {
+            /*
+             * UTF-16 surrogate values are illegal in UTF-32, and anything
+             * over Plane 17 (> 0x10FFFF) is illegal.
+             */
+            if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END) {
+                if (flags == strictConversion) {
+                    source -= (extraBytesToRead+1); /* return to the illegal value itself */
+                    result = sourceIllegal;
+                    break;
+                } else {
+                    *target++ = UNI_REPLACEMENT_CHAR;
+                }
+            } else {
+                *target++ = ch;
+            }
+        } else { /* i.e., ch > UNI_MAX_LEGAL_UTF32 */
+            result = sourceIllegal;
+            *target++ = UNI_REPLACEMENT_CHAR;
+        }
+    }
+    *sourceStart = source;
+    *targetStart = target;
+    return result;
+}
 
 static int decode_char(unsigned char c) {
 	char retval = -1;
@@ -416,7 +851,8 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
         if (ch <= UNI_MAX_BMP) {
             // Character can be directly converted to single UTF-16 unit
             output[j++] = (uint16_t)ch;
-        } else if (ch > UNI_MAX_BMP && ch <= UNI_MAX_UTF16) {
+        } 
+        else if (ch > UNI_MAX_BMP && ch <= UNI_MAX_UTF16) {
             // Convert character to surrogate pair
             ch -= halfBase;
             output[j++] = (uint16_t)((ch >> halfShift) + UNI_SUR_HIGH_START);
@@ -451,18 +887,19 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
                 if (ch2 >= UNI_SUR_LOW_START && ch2 <= UNI_SUR_LOW_END) {
                     ch = ((ch - UNI_SUR_HIGH_START) << 10) + (ch2 - UNI_SUR_LOW_START) + 0x10000;
                     i++; // Skip the low surrogate
-                } else {
+                } 
+                else {
                     // Invalid sequence, you might want to handle the error differently
                     free(output);
                     return NULL;
                 }
-            } else {
+            } 
+            else {
                 // High surrogate without a following low surrogate
                 free(output);
                 return NULL;
             }
         }
-
         output[j++] = ch;
     }
 
@@ -471,3 +908,522 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     return output;
 }
 
+uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
+    if (input == NULL || length == 0) {
+        return NULL;
+    }
+
+    // Estimate maximum output size (4 bytes per UTF-16 character)
+    size_t maxOutLength = length * 4;
+    uint8_t* output = (uint8_t*)malloc(maxOutLength);
+    if (!output) {
+        return NULL; // Memory allocation failed
+    }
+
+    const uint16_t* sourceStart = input;
+    const uint16_t* sourceEnd = input + length;
+    uint8_t* targetStart = output;
+    uint8_t* targetEnd = output + maxOutLength;
+
+    ConversionResult result = ConvertUTF16toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+
+    if (result != conversionOK) {
+        free(output);
+        return NULL;
+    }
+
+    // Resize the output to the actual UTF-8 string length
+    size_t actualLength = targetStart - output;
+    uint8_t* resizedOutput = (uint8_t*)realloc(output, actualLength + 1);
+    if (resizedOutput) {
+        resizedOutput[actualLength] = '\0';
+        return resizedOutput;
+    }
+
+    return output;
+}
+
+uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
+    if (input == NULL || length == 0) {
+        return NULL;
+    }
+
+    // Estimate maximum output size (4 bytes per UTF-32 character)
+    size_t maxOutLength = length * 4;
+    uint8_t* output = (uint8_t*)malloc(maxOutLength);
+    if (!output) {
+        return NULL; // Memory allocation failed
+    }
+
+    const uint32_t* sourceStart = input;
+    const uint32_t* sourceEnd = input + length;
+    uint8_t* targetStart = output;
+    uint8_t* targetEnd = output + maxOutLength;
+
+    ConversionResult result = ConvertUTF32toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+
+    if (result != conversionOK) {
+        free(output);
+        return NULL;
+    }
+
+    // Resize the output to the actual UTF-8 string length
+    size_t actualLength = targetStart - output;
+    uint8_t* resizedOutput = (uint8_t*)realloc(output, actualLength + 1);
+    if (resizedOutput) {
+        resizedOutput[actualLength] = '\0';
+        return resizedOutput;
+    }
+
+    return output;
+}
+
+bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
+    const uint8_t* source = *input;
+    const uint8_t* sourceEnd = source + length;
+
+    while (source < sourceEnd) {
+        int trailLength = trailingBytesForUTF8[*source] + 1;
+        if (trailLength > sourceEnd - source || !encoding_is_utf8(source, trailLength))
+            return false;
+        source += trailLength;
+    }
+
+    *input = source; // Update the input pointer to the end of the string
+    return true;
+}
+
+uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
+    if (input == NULL || length == 0) {
+        return NULL;
+    }
+
+    // Estimate maximum output size (each UTF-8 character can be at most 4 bytes, 
+    // but can translate to at most 2 UTF-16 characters)
+    size_t maxOutLength = length * 2;
+    uint16_t* output = (uint16_t*)malloc(maxOutLength * sizeof(uint16_t));
+    if (!output) {
+        return NULL; // Memory allocation failed
+    }
+
+    const uint8_t* sourceStart = input;
+    const uint8_t* sourceEnd = input + length;
+    uint16_t* targetStart = output;
+    uint16_t* targetEnd = output + maxOutLength;
+
+    ConversionResult result = ConvertUTF8toUTF16(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+
+    if (result != conversionOK) {
+        free(output);
+        return NULL;
+    }
+
+    // Resize the output to the actual UTF-16 string length
+    size_t actualLength = targetStart - output;
+    uint16_t* resizedOutput = (uint16_t*)realloc(output, actualLength * sizeof(uint16_t) + 1);
+    if (resizedOutput) {
+        resizedOutput[actualLength] = 0; // Null-terminate the UTF-16 string
+        return resizedOutput;
+    }
+
+    return output;
+}
+
+uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
+    if (input == NULL || length == 0) {
+        return NULL;
+    }
+
+    // Estimate maximum output size (each UTF-8 character can be at most 4 bytes, 
+    // translating to a single UTF-32 character)
+    size_t maxOutLength = length;
+    uint32_t* output = (uint32_t*)malloc(maxOutLength * sizeof(uint32_t));
+    if (!output) {
+        return NULL; // Memory allocation failed
+    }
+
+    const uint8_t* sourceStart = input;
+    const uint8_t* sourceEnd = input + length;
+    uint32_t* targetStart = output;
+    uint32_t* targetEnd = output + maxOutLength;
+
+    ConversionResult result = ConvertUTF8toUTF32(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+
+    if (result != conversionOK) {
+        free(output);
+        return NULL;
+    }
+
+    // Resize the output to the actual UTF-32 string length
+    size_t actualLength = targetStart - output;
+    uint32_t* resizedOutput = (uint32_t*)realloc(output, (actualLength + 1) * sizeof(uint32_t));
+    if (resizedOutput) {
+        resizedOutput[actualLength] = 0; // Null-terminate the UTF-32 string
+        return resizedOutput;
+    }
+
+    return output;
+}
+
+void encoding_hex_dump(const void *data, size_t size) {
+    const unsigned char *byte = (const unsigned char *)data;
+    size_t i, j;
+
+    for (i = 0; i < size; i += 16) {
+        printf("%08zx  ", i); // Print the offset
+
+        // Print hex values
+        for (j = 0; j < 16; j++) {
+            if (i + j < size) {
+                printf("%02x ", byte[i + j]);
+            } 
+            else {
+                printf("   "); // Fill space if less than 16 bytes in a line
+            }
+        }
+        printf(" |");
+
+        // Print ASCII representation
+        for (j = 0; j < 16; j++) {
+            if (i + j < size) {
+                printf("%c", isprint(byte[i + j]) ? byte[i + j] : '.');
+            }
+        }
+
+        printf("|\n");
+    }
+}
+
+char* encododing_base85_encode(const uint8_t* input, size_t length) {
+    if (input == NULL || length == 0) {
+        return NULL;
+    }
+
+    // Calculate the maximum possible length of the encoded string
+    size_t encoded_max_length = ((length + 3) / 4) * 5 + 2; // +2 for potential padding and null terminator
+    char* encoded = malloc(encoded_max_length);
+    if (!encoded) {
+        perror("Cannot allocate memory for encoded string");
+        return NULL;
+    }
+
+    size_t input_index = 0;
+    size_t encoded_index = 0;
+    while (input_index < length) {
+        uint32_t acc = 0;
+        size_t chunk_len = (length - input_index < 4) ? (length - input_index) : 4;
+
+        for (size_t i = 0; i < chunk_len; ++i) {
+            acc = (acc << 8) | input[input_index++];
+        }
+
+        if (chunk_len < 4) {
+            acc <<= (4 - chunk_len) * 8; // Padding
+        }
+        if (acc == 0 && chunk_len == 4) {
+            encoded[encoded_index++] = 'z';
+        } 
+        else {
+            for (int i = 4; i >= 0; --i) {
+                encoded[encoded_index + i] = (acc % 85) + 33;
+                acc /= 85;
+            }
+            encoded_index += 5;
+
+            if (chunk_len < 4) {
+                encoded_index -= (4 - chunk_len);  // Adjust for padding
+                break;
+            }
+        }
+    }
+
+    encoded[encoded_index] = '\0';
+    return encoded;
+}
+
+uint8_t* encododing_base85_decode(const char* input, size_t length) {
+    if (input == NULL || length == 0) {
+        return NULL;
+    }
+
+    // Calculate the maximum possible length of the decoded string
+    size_t decoded_max_length = (length / 5) * 4;
+    uint8_t* decoded = malloc(decoded_max_length);
+    if (!decoded) {
+        perror("Cannot allocate memory for decoded string");
+        return NULL;
+    }
+
+    size_t input_index = 0;
+    size_t decoded_index = 0;
+    while (input_index < length) {
+        if (isspace(input[input_index])) {
+            input_index++;   // Skip whitespace
+            continue;
+        }
+        if (input[input_index] == 'z') {
+            // Special case: 'z' represents four zero bytes
+            memset(decoded + decoded_index, 0, 4);
+            decoded_index += 4;
+            input_index++;
+            continue;
+        }
+
+        uint32_t acc = 0;
+        int count = 0;
+        for (int i = 0; i < 5 && input_index < length; ++i) {
+            if (isspace(input[input_index])) {
+                // Skip whitespace within the group
+                input_index++;
+                continue;
+            }
+
+            char ch = input[input_index++];
+            if (ch < 33 || ch > 117) {
+                free(decoded);
+                return NULL; // Invalid character
+            }
+
+            acc = acc * 85 + (ch - 33);
+            count++;
+        }
+
+        int padding = 0;
+        if (count < 5) {
+            padding = 5 - count;
+            for (int i = 0; i < padding; i++) {
+                acc = acc * 85 + 84; // Assume 'u' for padding, which is the highest value (84)
+            }
+        }
+
+        for (int i = 3; i >= 0; --i) {
+            if (i < padding) {
+                break; // Ignore padding bytes
+            }
+            decoded[decoded_index++] = (acc >> (i * 8)) & 0xFF;
+        }
+
+        if (count < 5) {
+            break; // End of data
+        }
+    }
+
+    // Resize the output buffer to the actual decoded data length
+    uint8_t* resized_decoded = realloc(decoded, decoded_index + 1); // +1 for null terminator, if needed
+    if (!resized_decoded) {
+        free(decoded);
+        return NULL;
+    }
+    resized_decoded[decoded_index] = '\0'; // Null-terminate if treating as a C-style string
+
+    return resized_decoded;
+}
+
+char *encoding_base58_encode(const void *data, size_t binsz) {
+    const uint8_t *bin = data;
+    int carry;
+    size_t i, j, high, zcount = 0;
+    size_t size;
+
+    while (zcount < binsz && !bin[zcount])
+        ++zcount;
+
+    size = (binsz - zcount) * 138 / 100 + 1;
+    uint8_t *buf = malloc(size * sizeof(uint8_t));
+    if (!buf) {
+        return NULL; // Memory allocation failed
+    }
+    memset(buf, 0, size);
+
+    for (i = zcount, high = size - 1; i < binsz; ++i, high = j) {
+        for (carry = bin[i], j = size - 1; (j > high) || carry; --j) {
+            carry += 256 * buf[j];
+            buf[j] = carry % 58;
+            carry /= 58;
+
+            if (!j) {
+                break;
+            }
+        }
+    }
+
+    for (j = 0; j < size && !buf[j]; ++j) {
+        // Skip leading zeros in binary
+    }
+
+    size_t b58sz = zcount + size - j + 1;
+    char *b58 = malloc(b58sz);
+    if (!b58) {
+        free(buf);
+        return NULL; // Memory allocation failed
+    }
+
+    if (zcount)
+        memset(b58, '1', zcount);
+
+    for (i = zcount; j < size; ++i, ++j) {
+        b58[i] = b58digits_ordered[buf[j]];
+    }
+    b58[i] = '\0';
+
+    free(buf);
+    return b58;
+}
+
+char *encoding_base58_decode(const char *b58, size_t *binszp) {
+    if (b58 == NULL || binszp == NULL) {
+        return NULL;
+    }
+
+    size_t b58sz = strlen(b58);
+    size_t binsz = b58sz * 733 / 1000 + 1; // Rough estimate of binary size
+    uint8_t *bin = malloc(binsz);
+    if (!bin) {
+        return NULL;
+    }
+    memset(bin, 0, binsz);
+
+    size_t i, j;
+    int carry;
+    size_t high = binsz - 1;
+
+    // Process the Base58 string
+    for (i = 0; i < b58sz; ++i) {
+        if (b58[i] & 0x80 || b58digits_map[(unsigned char)b58[i]] == -1) {
+            // Invalid Base58 character
+            free(bin);
+            return NULL;
+        }
+
+        for (carry = b58digits_map[(unsigned char)b58[i]], j = binsz - 1; (j > high) || carry; --j) {
+            carry += 58 * bin[j];
+            bin[j] = carry % 256;
+            carry /= 256;
+
+            if (!j) {
+                break; // Avoid wraparound
+            }
+        }
+        high = j;
+    }
+
+    for (j = 0; j < binsz && !bin[j]; ++j) {
+        // Skip leading zeros in binary
+    }
+
+    *binszp = binsz - j;
+    char *result = malloc(*binszp);
+
+    if (!result) {
+        free(bin);
+        return NULL;
+    }
+    memcpy(result, bin + j, *binszp);
+
+    free(bin);
+    return result;
+}
+
+uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
+    if (!encoded || !decoded_length) {
+        return NULL;
+    }
+
+    size_t len = strlen(encoded);
+    *decoded_length = 0;
+    uint8_t* decoded = malloc(len); // Max possible size
+    if (!decoded) {
+        return NULL;
+    }
+
+    int v = -1;
+    int b = 0;
+    int n = 0;
+    size_t index = 0;
+
+    for (size_t i = 0; i < len; ++i) {
+        int c = base91_decode_value(encoded[i]);
+        if (c == -1) {
+            free(decoded);
+            return NULL; // Invalid character
+        }
+
+        if (v < 0) {
+            v = c;
+        } 
+        else {
+            v += c * 91;
+            b |= v << n;
+            n += (v & 8191) > 88 ? 13 : 14;
+
+            while (n > 7) {
+                decoded[index++] = (uint8_t)(b & 255);
+                b >>= 8;
+                n -= 8;
+            }
+            v = -1;
+        }
+    }
+
+    if (v != -1) {
+        decoded[index++] = (uint8_t)((b | v << n) & 255);
+    }
+
+    *decoded_length = index;
+    return decoded;
+}
+
+char* encoding_base91_encode(const uint8_t* data, size_t length) {
+    if (!data || length == 0) {
+        return NULL;
+    }
+
+    size_t estimated_length = length * 1.23 + 2; // +2 for padding and null terminator
+    char* encoded = malloc(estimated_length);
+    if (!encoded) {
+        return NULL;
+    }
+
+    size_t index = 0;
+    int b = 0;
+    int n = 0;
+    int v;
+
+    for (size_t i = 0; i < length; ++i) {
+        b |= (data[i] << n);
+        n += 8;
+
+        if (n > 13) {
+            v = b & 8191;
+
+            if (v > 88) {
+                b >>= 13;
+                n -= 13;
+            } 
+            else {
+                v = b & 16383;
+                b >>= 14;
+                n -= 14;
+            }
+
+            if (index + 2 < estimated_length) {
+                encoded[index++] = BASE91_ALPHABET[v % 91];
+                encoded[index++] = BASE91_ALPHABET[v / 91];
+            }
+        }
+    }
+
+    if (n) {
+        if (index + 1 < estimated_length) {
+            encoded[index++] = BASE91_ALPHABET[b % 91];
+        }
+        if (n > 7 || b > 90) {
+            if (index + 1 < estimated_length) {
+                encoded[index++] = BASE91_ALPHABET[b / 91];
+            }
+        }
+    }
+
+    encoded[index] = '\0';
+    return encoded;
+}

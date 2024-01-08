@@ -1,3 +1,10 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Stack
+*/
+
+
 #ifndef STACK_H_
 #define STACK_H_
 

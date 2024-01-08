@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Array
+*/
+
 #include "array.h"
 #include <string.h>
 #include <stdlib.h>

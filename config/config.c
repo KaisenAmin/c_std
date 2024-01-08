@@ -1,3 +1,8 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Config
+*/
 #include "config.h"
 #include "../string/string.h"
 #include <stdio.h>

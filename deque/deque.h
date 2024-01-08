@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Deque
+*/
+
 #ifndef DEQUE_H_
 #define DEQUE_H_
 

@@ -1,22 +1,42 @@
-
 # Vector Library in C
 
-The Vector library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::vector` in C++.
+Author: amin tahmasebi
+Release Date: 2023
+License: GNU General Public License v3.0
 
-## Compilation
+## Overview
 
-To compile the Vector library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
+This Vector library, written in C, is an implementation that mimics the functionality of the C++ `std::vector`. It aims to provide dynamic array capabilities to C programs. This library is part of a project to reimplement features of the C++ standard library in C, making it useful for developers familiar with C++ but working in C environments.
+
+The Vector library allows for creating dynamic arrays that can resize automatically when elements are added or removed. It supports various operations such as inserting, deleting, and accessing elements, as well as more advanced functionalities like memory pooling for efficient allocation and deallocation of elements.
+
+## Key Features
+
+- **Dynamic Resizing:** Automatically adjust size when elements are added or removed.
+- **Memory Efficiency:** Incorporates a memory pool mechanism to manage memory allocation efficiently.
+- **Generic Container:** Can store elements of any data type, including structures.
+- **Various Utility Functions:** Functions for comparison, swapping, and checking the state of the vector.
+
+## Installation and Compilation
+
+To use this library, include `vector.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
 
 ```bash
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c ./string/string.c
 ```
 
-Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
+## Documentation
 
-## Usage
+The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like creating a vector, adding and removing elements, as well as more complex functionalities such as memory pooling and vector comparison.
 
-To use the Vector library in your project, include the `vector.h` header file in your source code.
+## Examples
+
+Several examples are provided to demonstrate the usage of the Vector library in various scenarios, including handling primitive data types, strings, and custom structures. These examples also show how to perform operations like iteration, sorting, and comparison on vectors.
+
+## License
+
+This library is distributed under the GNU General Public License v3.0, which allows for free use, modification, and distribution under the same license.
+
 
 ### Function Descriptions
 

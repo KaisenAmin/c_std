@@ -1,5 +1,10 @@
-#include "bitset.h"
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Bitset
+*/
 
+#include "bitset.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

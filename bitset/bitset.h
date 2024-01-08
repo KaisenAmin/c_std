@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Bitset
+*/
+
 #ifndef BITSET_H_
 #define BITSET_H_
 

@@ -1,3 +1,10 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Stack
+*/
+
+
 #include "stack.h"
 #include <stdlib.h>
 

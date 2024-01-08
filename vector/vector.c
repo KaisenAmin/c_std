@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Vector
+*/
+
 #include "vector.h"
 #include <stdlib.h>
 #include <string.h>

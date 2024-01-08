@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Map
+*/
+
 #include "map.h"
 #include <stdlib.h>
 #include <stdio.h>

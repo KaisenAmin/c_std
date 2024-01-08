@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class List
+*/
+
 #ifndef LIST_H_
 #define LIST_H_
 

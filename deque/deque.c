@@ -1,5 +1,10 @@
-#include "deque.h"
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Deque
+*/
 
+#include "deque.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

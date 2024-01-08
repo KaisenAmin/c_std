@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Map
+*/
+
 #ifndef MAP_H_
 #define MAP_H_
 

@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Algorithm
+*/
+
 #ifndef ALGORITHM_H_
 #define ALGORITHM_H_
 
