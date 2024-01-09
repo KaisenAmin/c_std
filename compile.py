@@ -13,9 +13,9 @@ def find_c_files(directory):
 
 def compile_project(run_after_compile=False):
     source_directories = [
-        "numeric",
-        "algorithm",
-        "array",
+        # "numeric",
+        # "algorithm",
+        # "array",
         # "bitset",
         # "config",
         # "csv",
@@ -29,7 +29,8 @@ def compile_project(run_after_compile=False):
         # "span",
         # "stack",
         # "string",
-        "vector",
+        # "vector",
+        "crypto",
         # Add other directories containing your .c files
     ]
 
@@ -41,7 +42,7 @@ def compile_project(run_after_compile=False):
     openssl_lib_path = "C:/msys64/mingw64/lib"         # Update with your OpenSSL lib path
 
     # Compiler flags
-    flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s"
+    flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s"
     flags += f" -I{openssl_include_path}"  # Include path for OpenSSL headers
     flags += f" -L{openssl_lib_path}"      # Library path for OpenSSL libraries
 
