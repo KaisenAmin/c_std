@@ -40,7 +40,9 @@ Detailed documentation is provided within the header files, outlining the purpos
 - `crypto_hash_data(const uint8_t*, size_t, enum HashAlgorithm, size_t*)`: Computes a hash digest based on the selected algorithm for the provided data.
 - `crypto_print_hash(const uint8_t*, size_t)`: Prints the hash digest in a hexadecimal format.
 
-### Supported Algorithms
+To include the additional hash algorithms you've implemented in your Crypto library documentation, you can expand the "Supported Algorithms" section as follows:
+
+### Supported Algorithms for hashing
 - `CRYPTO_MD4`: Computes an MD4 hash digest.
 - `CRYPTO_MD5`: Computes an MD5 hash digest.
 - `CRYPTO_SHA1`: Computes an SHA-1 hash digest.
@@ -48,14 +50,17 @@ Detailed documentation is provided within the header files, outlining the purpos
 - `CRYPTO_SHA256`: Computes an SHA-256 hash digest.
 - `CRYPTO_SHA384`: Computes an SHA-384 hash digest.
 - `CRYPTO_SHA512`: Computes an SHA-512 hash digest.
-- `CRYPTO_SHA3_224`: Placeholder for an SHA3-224 hash digest.
-- `CRYPTO_SHA3_256`: Placeholder for an SHA3-256 hash digest.
-- `CRYPTO_SHA3_384`: Placeholder for an SHA3-384 hash digest.
-- `CRYPTO_SHA3_512`: Placeholder for an SHA3-512 hash digest.
-- `CRYPTO_KECCAK_224`: Placeholder for a Keccak-224 hash digest.
-- `CRYPTO_KECCAK_256`: Placeholder for a Keccak-256 hash digest.
-- `CRYPTO_KECCAK_384`: Placeholder for a Keccak-384 hash digest.
-- `CRYPTO_KECCAK_512`: Placeholder for a Keccak-512 hash digest.
+- `CRYPTO_SHA3_224`: Computes an SHA3-224 hash digest.
+- `CRYPTO_SHA3_256`: Computes an SHA3-256 hash digest.
+- `CRYPTO_SHA3_384`: Computes an SHA3-384 hash digest.
+- `CRYPTO_SHA3_512`: Computes an SHA3-512 hash digest.
+- `CRYPTO_SHAKE_128`: Computes a SHAKE-128 hash digest.
+- `CRYPTO_SHAKE_256`: Computes a SHAKE-256 hash digest.
+- `CRYPTO_BLAKE2B_512`: Computes a BLAKE2b-512 hash digest.
+- `CRYPTO_BLAKE2S_256`: Computes a BLAKE2s-256 hash digest.
+- `CRYPTO_MDC2`: Computes an MDC2 hash digest.
+- `CRYPTO_RIPEMD_160`: Computes an RIPEMD-160 hash digest.
+- `CRYPTO_SHA512_224`: Computes an SHA-512/224 hash digest.
 
 ### Compilation
 ```bash
