@@ -290,7 +290,7 @@ void vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
     vec->size++;
 }
 
-void vector_push_back(Vector *vec, void *item) {
+void vector_push_back(Vector *vec, const void *item) {
     if (vec->size >= vec->capacitySize) {
         size_t newCapacity = vec->capacitySize * 2; // Example growth strategy
         // Allocate new space from the memory pool

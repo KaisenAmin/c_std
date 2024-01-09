@@ -1,5 +1,10 @@
 # Span Library in C
 
+Author: amin tahmasebi
+Release Date: 2023
+License: GNU General Public License v3.0
+
+
 The Span library is a custom C implementation inspired by the C++ `std::span` container. It provides a view over a contiguous sequence of elements, allowing for efficient and safe access without owning the underlying data.
 
 ## Features

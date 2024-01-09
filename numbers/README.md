@@ -1,5 +1,10 @@
 # Numbers Library in C
 
+Author: amin tahmasebi
+Release Date: 2024
+License: GNU General Public License v3.0
+
+
 The Numbers library in C provides constants for common mathematical values, analogous to the `<numbers>` header introduced in C++20. It offers a simple way to access important mathematical constants in C programming, enhancing the precision and readability of mathematical computations.
 
 ## Compilation

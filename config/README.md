@@ -1,5 +1,10 @@
 # Config Library in C
 
+Author: amin tahmasebi
+Release Date: 2023
+License: GNU General Public License v3.0
+
+
 ## Overview
 
 The ConfigFile library provides a flexible and easy-to-use solution for handling configuration files in C. It allows reading, modifying, and saving configurations in a standard INI file format. The library supports sections, key-value pairs, and comments, enabling comprehensive management of configuration data.

@@ -1,5 +1,10 @@
 # Algorithm Library in C
 
+Author: amin tahmasebi
+Release Date: 2024
+License: GNU General Public License v3.0
+
+
 The Algorithm library is a versatile collection of functions designed to bring the power and flexibility of C++ STL `<algorithm>` functionality to C programming. It provides a suite of generic algorithms for a variety of operations on arrays and other data structures, ranging from searching and sorting to transforming and accumulating elements.
 
 ## Compilation
@@ -7,7 +12,7 @@ The Algorithm library is a versatile collection of functions designed to bring t
 To compile the Algorithm library with your main program, use a GCC command similar to the one below. Add any additional library files as needed:
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./algorithm/algorithm.c 
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./algorithm/algorithm.c 
 ```
 
 Ensure the GCC compiler is installed on your system and that all source files are in the correct directory structure as indicated in the project.
@@ -232,7 +237,8 @@ int main() {
 
     if (found != NULL) {
         printf("Found %d\n", *found);
-    } else {
+    } 
+    else {
         printf("Not found\n");
     }
 
@@ -263,14 +269,16 @@ int main() {
 
     if (found != NULL) {
         printf("Found %d\n", *found);
-    } else {
+    } 
+    else {
         printf("Not found\n");
     }
 
     int *found_even = (int *)algorithm_find_if(arr, arraySize, sizeof(int), is_even);
     if (found_even != NULL) {
         printf("First even number in Array: %d\n", *found_even);
-    } else {
+    } 
+    else {
         printf("No even arraySizeber found\n");
     }
 
@@ -301,7 +309,8 @@ int main() {
     const char **found = (const char **)algorithm_find(arr, arraySize, sizeof(char*), &key, compare_strings);
     if (found != NULL) {
         printf("Found %s\n", *found);
-    } else {
+    } 
+    else {
         printf("Not found\n");
     }
 
@@ -333,7 +342,8 @@ int main() {
     MyStruct *found = (MyStruct *)algorithm_find_if(arr, arraySize, sizeof(MyStruct), is_high_value);
     if (found != NULL) {
         printf("Found struct with ID: %d and Value: %.2f\n", found->id, found->value);
-    } else {
+    } 
+    else {
         printf("No matching struct found\n");
     }
     
@@ -359,7 +369,8 @@ int main() {
     int *found = (int *)algorithm_find_if_not(arr, arraySize, sizeof(int), is_positive);
     if (found != NULL) {
         printf("First non-positive number: %d\n", *found);
-    } else {
+    } 
+    else {
         printf("All numbers are positive\n");
     }
 
@@ -394,7 +405,8 @@ int main() {
     double *found = (double *)algorithm_find(arr, arraySize, sizeof(double), &key, compare_doubles);
     if (found != NULL) {
         printf("Found %f\n", *found);
-    } else {
+    } 
+    else {
         printf("Not found\n");
     }
 
@@ -421,7 +433,8 @@ int main() {
     char *found = (char *)algorithm_find_if_not(arr, arraySize, sizeof(char), is_vowel);
     if (found != NULL) {
         printf("First consonant: %c\n", *found);
-    } else {
+    } 
+    else {
         printf("All are vowels\n");
     }
 
@@ -447,7 +460,8 @@ int main() {
     int *found = (int *)algorithm_find_end(arr, 10, sizeof(int), sub, 2, sizeof(int), compare_ints);
     if (found != NULL) {
         printf("Last occurrence of subsequence found at index: %ld\n", found - arr);
-    } else {
+    } 
+    else {
         printf("Subsequence not found\n");
     }
     return 0;
@@ -472,7 +486,8 @@ int main() {
     char *found = (char *)algorithm_find_first_of(str, strlen(str), sizeof(char), chars, 5, sizeof(char), compare_chars);
     if (found != NULL) {
         printf("First vowel found: %c\n", *found);
-    } else {
+    } 
+    else {
         printf("No vowels found\n");
     }
 
@@ -529,7 +544,8 @@ int main() {
     int *found = (int *)algorithm_find_first_of(arr, 10, sizeof(int), elements, 3, sizeof(int), compare_ints);
     if (found != NULL) {
         printf("First matching element: %d\n", *found);
-    } else {
+    }
+    else {
         printf("No matching elements found\n");
     }
     return 0;
@@ -553,7 +569,8 @@ int main() {
     size_t found = algorithm_binary_search(arr, 10, sizeof(int), &value, compare_ints);
     if (found) {
         printf("Value %d found in the array at index %zu.\n", value, found);
-    } else {
+    } 
+    else {
         printf("Value %d not found in the array.\n", value);
     }
 
@@ -585,7 +602,8 @@ int main() {
     size_t found = algorithm_binary_search(arr, 9, sizeof(double), &value, compare_doubles);
     if (found) {
         printf("Value %.1f found in the array at index %zu.\n", value, found);
-    } else {
+    } 
+    else {
         printf("Value %.1f not found in the array.\n", value);
     }
 
@@ -1012,7 +1030,8 @@ int main() {
 
     if (algorithm_all_of(arr, 5, sizeof(int), is_positive)) {
         printf("All elements are positive.\n");
-    } else {
+    } 
+    else {
         printf("Not all elements are positive.\n");
     }
 
@@ -1036,7 +1055,8 @@ int main() {
 
     if (algorithm_all_of(str, sizeof(str) - 1, sizeof(char), is_uppercase)) {
         printf("All characters are uppercase.\n");
-    } else {
+    } 
+    else {
         printf("Not all characters are uppercase.\n");
     }
 
@@ -1065,7 +1085,8 @@ int main() {
 
     if (algorithm_all_of(arr, 3, sizeof(MyStruct), is_above_threshold)) {
         printf("All struct elements have values above 10.0.\n");
-    } else {
+    } 
+    else {
         printf("Not all struct elements have values above 10.0.\n");
     }
 
@@ -1088,7 +1109,8 @@ int main() {
 
     if (algorithm_any_of(arr, 5, sizeof(int), is_negative)) {
         printf("At least one element is negative.\n");
-    } else {
+    } 
+    else {
         printf("No negative elements found.\n");
     }
 
@@ -1112,7 +1134,8 @@ int main() {
 
     if (algorithm_any_of(str, sizeof(str) - 1, sizeof(char), is_digit)) {
         printf("At least one character is a digit.\n");
-    } else {
+    } 
+    else {
         printf("No digits found.\n");
     }
 
@@ -1141,7 +1164,8 @@ int main() {
 
     if (algorithm_any_of(arr, 3, sizeof(MyStruct), has_id_3)) {
         printf("At least one struct element has ID 3.\n");
-    } else {
+    } 
+    else {
         printf("No struct element with ID 3 found.\n");
     }
 
@@ -1188,7 +1212,8 @@ int main() {
 
     if (algorithm_none_of(str, sizeof(str) - 1, sizeof(char), is_vowel)) {
         printf("No vowels in the string.\n");
-    } else {
+    } 
+    else {
         printf("There are vowels in the string.\n");
     }
 
@@ -1211,7 +1236,8 @@ int main() {
 
     if (algorithm_none_of(arr, 5, sizeof(int), is_zero)) {
         printf("No elements are zero.\n");
-    } else {
+    } 
+    else {
         printf("There are zero elements.\n");
     }
 
@@ -1241,7 +1267,8 @@ int main() {
 
     if (algorithm_none_of(arr, 3, sizeof(MyStruct), has_value_10)) {
         printf("No struct elements have the value 10.0.\n");
-    } else {
+    } 
+    else {
         printf("Some struct elements have the value 10.0.\n");
     }
 
@@ -1848,7 +1875,6 @@ int main() {
     int maxResult = INT_MIN;
 
     algorithm_reduce(array, numElements, sizeof(int), &maxResult, max_int);
-
     printf("Maximum Value: %d\n", maxResult);
 
     return 0;
@@ -1898,7 +1924,6 @@ int main() {
     bool andResult = true;
 
     algorithm_reduce(flags, numElements, sizeof(bool), &andResult, logical_and);
-
     printf("Logical AND of flags: %s\n", andResult ? "true" : "false");
 
     return 0;
@@ -4145,4 +4170,88 @@ int main() {
     return 0;
 }
 
+```
+
+## Example 130 : implement `algorithm_mismatch`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+bool mypredicate(const void *i, const void *j) {
+    return (*(const int *)i != *(const int *)j);
+}
+
+int main() {
+	Vector* vec = vector_create(sizeof(int));
+	int myints[] = {10, 20, 80, 320, 1024};
+	size_t myints_size = sizeof(myints) / sizeof(myints[0]);
+	Pair mypair;
+
+	for (size_t index = 1; index < 6; index++) {
+		int value = index * 10;
+		vector_push_back(vec, &index);
+	}
+
+    mypair = algorithm_mismatch(vector_begin(vec), vector_size(vec), sizeof(int), myints, myints_size, sizeof(int), mypredicate);
+    if (mypair.first != NULL && mypair.second != NULL) {
+        printf("First mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
+    }
+
+    // Move iterators to the next elements
+    if (mypair.first != NULL) {
+        mypair.first = (char *)mypair.first + sizeof(int);
+    }
+    if (mypair.second != NULL) {
+        mypair.second = (char *)mypair.second + sizeof(int);
+    }
+
+    mypair = algorithm_mismatch(mypair.first, vector_size(vec), sizeof(int), mypair.second, myints_size, sizeof(int), mypredicate);
+    if (mypair.first != NULL && mypair.second != NULL) {
+        printf("Second mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
+    }
+
+    return 0;
+}
+
+```
+
+## Example 131 : `algorithm_is_sequence`
+
+```c
+#include "array/array.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+void random_number_generator(void *output) {
+    *(int *)output = (rand() % 5) + 1; 
+}
+
+int compare_ints(const void *a, const void *b) {
+    const int arg1 = *(const int *)a;
+    const int arg2 = *(const int *)b;
+    return (arg1 > arg2) - (arg1 < arg2);
+}
+
+int main() {
+	srand(time(NULL));
+    Array* foo = array_create(sizeof(int), 5);
+	Array* bar = array_create(sizeof(int), 5);
+
+	algorithm_generate(array_begin(foo), array_end(foo), sizeof(int), random_number_generator);
+	algorithm_generate(array_begin(bar), array_end(bar), sizeof(int), random_number_generator);
+
+	if (algorithm_is_permutation(array_begin(foo), array_size(foo), sizeof(int), 
+									array_begin(bar), array_size(bar), sizeof(int), compare_ints)) {
+			printf("foo and bar contain the same elements");
+	}
+
+	array_deallocate(foo);
+	array_deallocate(bar);
+    return EXIT_SUCCESS;
+}
 ```

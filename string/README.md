@@ -1,5 +1,10 @@
 # String Library in C
 
+Author: amin tahmasebi
+Release Date: 2023
+License: GNU General Public License v3.0
+
+
 The String library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::string` in C++.
 
 ## Compilation
@@ -135,7 +140,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_remove(String*, const char*)`: Removes all occurrences of a substring.
 - `string_set_pool_size(String*, size_t)`: Sets the size of the memory pool for a String.
 - `string_tokenize(String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
-
+- `string_create_from_initializer` : The string_create_from_initializer function dynamically creates an array of String pointers, each initialized with a string passed as a variadic argument.
 ## String Encoding Functions
 - `string_to_hex(String*)`: Converts a String to its hexadecimal representation.
 - `string_from_hex(String*)`: Converts a hexadecimal String back to the original string.

@@ -1,5 +1,10 @@
 # Map Library in C
 
+Author: amin tahmasebi
+Release Date: 2023
+License: GNU General Public License v3.0
+
+
 ## Overview
 This C library provides a generic implementation of a map, also known as an associative array. The map is implemented as a Red-Black Tree, which is a self-balancing binary search tree. This ensures efficient operations such as insertion, deletion, and lookup.
 

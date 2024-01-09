@@ -56,7 +56,7 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
 void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp);
 size_t algorithm_count(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
-void *algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp);
+Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp);
 bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp);
 bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp);
 void *algorithm_search(const void *base, size_t num, size_t size, const void *sub, size_t sub_num, size_t sub_size, CompareFunc comp);

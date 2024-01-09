@@ -156,21 +156,24 @@ void* array_end(Array* arr) {
     if (arr == NULL || arr->vec == NULL || arr->vec->size == 0) {
         return NULL;  
     }
-    return (char*)arr->vec->items + (arr->vec->size * arr->vec->itemSize);  
+    // return (char*)arr->vec->items + (arr->vec->size * arr->vec->itemSize);  
+    return vector_end(arr->vec);  
 }
 
 void* array_rbegin(Array* arr) {
     if (arr == NULL || arr->vec == NULL || arr->vec->size == 0) { 
         return NULL; 
     }
-    return (char*)arr->vec->items + ((arr->vec->size - 1) * arr->vec->itemSize);  
+    // return (char*)arr->vec->items + ((arr->vec->size - 1) * arr->vec->itemSize);  
+    return vector_rbegin(arr->vec);
 }
 
 void* array_rend(Array* arr) {
     if (arr == NULL || arr->vec == NULL) { 
         return NULL; 
     }
-    return (char*)arr->vec->items - arr->vec->itemSize; 
+    // return (char*)arr->vec->items - arr->vec->itemSize; 
+    return vector_rend(arr->vec);
 }
 
 void* array_front(Array* arr) {
@@ -203,28 +206,32 @@ const void* array_cbegin(Array* arr) {
     if (arr == NULL || arr->vec == NULL || arr->vec->size == 0) { 
         return NULL; 
     }
-    return arr->vec->items; 
+    // return arr->vec->items;
+    return vector_cbegin(arr->vec); 
 }
 
 const void* array_cend(Array* arr) {
     if (arr == NULL || arr->vec == NULL || arr->vec->size == 0) { 
         return NULL;  
     }
-    return (const char*)arr->vec->items + (arr->vec->size * arr->vec->itemSize); 
+    // return (const char*)arr->vec->items + (arr->vec->size * arr->vec->itemSize); 
+    return vector_cend(arr->vec);
 }
 
 const void* array_crbegin(Array* arr) {
     if (arr == NULL || arr->vec == NULL || arr->vec->size == 0) { 
         return NULL;  
     }
-    return (const char*)arr->vec->items + ((arr->vec->size - 1) * arr->vec->itemSize); 
+    // return (const char*)arr->vec->items + ((arr->vec->size - 1) * arr->vec->itemSize); 
+    return vector_crbegin(arr->vec);
 }
 
 const void* array_crend(Array* arr) {
     if (arr == NULL || arr->vec == NULL) { 
         return NULL;  
     }
-    return (const char*)arr->vec->items - arr->vec->itemSize;  
+    // return (const char*)arr->vec->items - arr->vec->itemSize;  
+    return vector_crend(arr->vec);
 }
 
 void array_clear(Array* arr) {

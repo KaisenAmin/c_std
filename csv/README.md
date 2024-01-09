@@ -1,6 +1,11 @@
 
 # CSV Library in C
 
+Author: amin tahmasebi
+Release Date: 2023
+License: GNU General Public License v3.0
+
+
 ## Overview
 
 This library provides a simple and efficient way to read, manipulate, and write CSV (Comma-Separated Values) files in C. It offers functions for creating and destroying CSV rows and files, reading and writing CSV files, and performing various operations like appending rows, inserting columns, and exporting data in JSON format.

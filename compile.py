@@ -13,21 +13,22 @@ def find_c_files(directory):
 
 def compile_project(run_after_compile=False):
     source_directories = [
+        "numeric",
         "algorithm",
         "array",
-        "bitset",
-        "config",
-        "csv",
-        "deque",
-        "encoding",
-        "forward_list",
-        "list",
-        "map",
-        "priority_queue",
-        "queue",
-        "span",
-        "stack",
-        "string",
+        # "bitset",
+        # "config",
+        # "csv",
+        # "deque",
+        # "encoding",
+        # "forward_list",
+        # "list",
+        # "map",
+        # "priority_queue",
+        # "queue",
+        # "span",
+        # "stack",
+        # "string",
         "vector",
         # Add other directories containing your .c files
     ]
@@ -36,19 +37,25 @@ def compile_project(run_after_compile=False):
     for directory in source_directories:
         source_files.extend(find_c_files(directory))
 
+    openssl_include_path = "C:/msys64/mingw64/include"  # Update with your OpenSSL include path
+    openssl_lib_path = "C:/msys64/mingw64/lib"         # Update with your OpenSSL lib path
+
+    # Compiler flags
     flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s"
+    flags += f" -I{openssl_include_path}"  # Include path for OpenSSL headers
+    flags += f" -L{openssl_lib_path}"      # Library path for OpenSSL libraries
+
     build_dir = "./build"
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
     output = os.path.join(build_dir, "main.exe" if platform.system() == "Windows" else "main")
 
-    # Clean up old build files
     if os.path.exists(output):
         os.remove(output)
 
-    # Compile the project
-    command = f"gcc {flags} -o {output} " + " ".join(source_files)
+    # Compile the project with OpenSSL flags
+    command = f"gcc {flags} -o {output} " + " ".join(source_files) + " -lssl -lcrypto"
     result = subprocess.run(command, shell=True)
 
     if result.returncode != 0:

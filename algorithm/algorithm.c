@@ -29,7 +29,6 @@ static void reverse(void *first, void *last, size_t size) {
     }
 }
 
-
 static void quickSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
     if (low < high) {
         char* pivot = (char*)base + high * size;
@@ -786,4 +785,52 @@ void *algorithm_adjacent_find(const void *base, size_t num, size_t size, Compare
         }
     }
     return NULL;
+}
+
+Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp) {
+    const char *ptr1 = (const char *)base1;
+    const char *ptr2 = (const char *)base2;
+
+    size_t min_num = num1 < num2 ? num1 : num2;
+
+    for (size_t i = 0; i < min_num; i++) {
+        if (comp(ptr1 + i * size1, ptr2 + i * size2) != 0) {
+            Pair mismatch;
+            mismatch.first = (void *)(ptr1 + i * size1);
+            mismatch.second = (void *)(ptr2 + i * size2);
+            return mismatch;
+        }
+    }
+
+    Pair mismatch = {NULL, NULL};
+    return mismatch;
+}
+
+bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
+    // Check if both arrays have the same number of elements
+    if (num1 != num2 || size1 != size2) {
+        return false;
+    }
+
+    // Temporary arrays to mark elements as found
+    bool found1[num1], found2[num2];
+    memset(found1, 0, sizeof(found1));
+    memset(found2, 0, sizeof(found2));
+
+    for (size_t i = 0; i < num1; ++i) {
+        for (size_t j = 0; j < num2; ++j) {
+            // Check if elements match and neither has been paired before
+            if (!found1[i] && !found2[j] && comp((char *)base1 + i * size1, (char *)base2 + j * size2)) {
+                found1[i] = true;
+                found2[j] = true;
+                break;
+            }
+        }
+        // If an element in base1 does not have a match in base2
+        if (!found1[i]) {
+            return false;
+        }
+    }
+
+    return true;
 }

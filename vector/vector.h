@@ -46,7 +46,7 @@ void vector_swap(Vector* vec1, Vector* vec2);
 void vector_assign(Vector* vec, size_t pos, void* item);
 void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize);
 void vector_emplace_back(Vector *vec, void *item, size_t itemSize);
-void vector_push_back(Vector* vec, void* item);
+void vector_push_back(Vector* vec, const void* item);
 void vector_deallocate(Vector *vec);
 void* vector_at(const Vector* vec, size_t pos);
 void* vector_rbegin(Vector* vec);
