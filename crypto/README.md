@@ -307,3 +307,156 @@ int main() {
     return 0;
 }
 ```
+
+## Example 12 : How to use `OFB` mode with `crypto_des_encrypt`
+
+```c
+#include "crypto/crypto.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+int main() {
+    const uint8_t key[8] = "yourkey"; // 8 bytes key, assuming it is padded with zeros if less than 8 bytes
+    const uint8_t plaintext[] = "Hello World"; // Your plaintext
+    const uint8_t iv[DES_BLOCK_SIZE] = {0}; // The IV, if required by the mode
+    size_t lenPlain = strlen((const char *)plaintext);
+    size_t outLen;
+
+    // Encrypt
+    uint8_t* encrypted = (uint8_t*)crypto_des_encrypt(plaintext, lenPlain, key, iv, CRYPTO_MODE_OFB, &outLen);
+    if (!encrypted) {
+        perror("Encryption failed");
+        return 1;
+    }
+
+    printf("Encrypted text: ");
+    crypto_print_hash(encrypted, outLen);
+
+    // Decrypt
+    uint8_t* decrypted = (uint8_t*)crypto_des_decrypt(encrypted, outLen, key, iv, CRYPTO_MODE_OFB, &outLen);
+    if (!decrypted) {
+        perror("Decryption failed");
+        free(encrypted); // Remember to free the allocated memory
+        return 1;
+    }
+
+    printf("Decrypted text: ");
+    for (size_t i = 0; i < outLen; i++) {
+        putchar(decrypted[i]);
+    }
+    putchar('\n');
+
+    // Cleanup
+    free(encrypted);
+    free(decrypted);
+    return 0;
+}
+
+```
+
+## Example 13 : How to use `ECB` mode with `crypto_des_encrypt`
+
+```c
+#include "crypto/crypto.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+int main() {
+    const uint8_t key[8] = "yourkey"; // 8 bytes key
+    const uint8_t plaintext[] = "Hello World"; 
+    size_t outLen;
+
+    // Encrypt with ECB
+    uint8_t* encrypted_ecb = (uint8_t*)crypto_des_encrypt(plaintext, strlen((const char *)plaintext), key, NULL, CRYPTO_MODE_ECB, &outLen);
+    printf("ECB Encrypted: ");
+    crypto_print_hash(encrypted_ecb, outLen);
+
+    // Decrypt with ECB
+    uint8_t* decrypted_ecb = (uint8_t*)crypto_des_decrypt(encrypted_ecb, outLen, key, NULL, CRYPTO_MODE_ECB, &outLen);
+    printf("ECB Decrypted: %s\n", decrypted_ecb);
+
+    free(encrypted_ecb);
+    free(decrypted_ecb);
+    return 0;
+}
+```
+
+## Example 14 : Generate random IV for `CBC` mode `crypto_des_encrypt`
+
+```c
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+// Include your crypto header here
+#include "crypto/crypto.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
+#include <Wincrypt.h>
+
+void generate_random_iv(uint8_t *iv, size_t length) {
+    HCRYPTPROV hCryptProv;
+    if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+        fprintf(stderr, "CryptAcquireContext failed: %lu\n", GetLastError());
+        exit(EXIT_FAILURE);
+    }
+    if (!CryptGenRandom(hCryptProv, length, iv)) {
+        fprintf(stderr, "CryptGenRandom failed: %lu\n", GetLastError());
+        CryptReleaseContext(hCryptProv, 0);
+        exit(EXIT_FAILURE);
+    }
+    CryptReleaseContext(hCryptProv, 0);
+}
+
+#else
+#include <fcntl.h>
+#include <unistd.h>
+
+void generate_random_iv(uint8_t *iv, size_t length) {
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd == -1) {
+        perror("open /dev/urandom");
+        exit(EXIT_FAILURE);
+    }
+    ssize_t read_bytes = read(fd, iv, length);
+    if (read_bytes != (ssize_t)length) {
+        perror("read from /dev/urandom");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+    close(fd);
+}
+
+#endif
+
+int main() {
+    const uint8_t key[8] = "yourkey"; // 8 bytes key
+    uint8_t iv[DES_BLOCK_SIZE]; // IV for CBC mode
+    generate_random_iv(iv, DES_BLOCK_SIZE); // Generate a random IV for testing
+    
+    const uint8_t plaintext[] = "Hello World"; // Your plaintext
+    size_t outLen;
+
+    // Encrypt with CBC
+    uint8_t* encrypted_cbc = (uint8_t*)crypto_des_encrypt(plaintext, strlen((const char *)plaintext), key, iv, CRYPTO_MODE_CBC, &outLen);
+    printf("CBC Encrypted: ");
+    crypto_print_hash(encrypted_cbc, outLen);
+
+    // Decrypt with CBC
+    uint8_t* decrypted_cbc = (uint8_t*)crypto_des_decrypt(encrypted_cbc, outLen, key, iv, CRYPTO_MODE_CBC, &outLen);
+    printf("CBC Decrypted: %s\n", decrypted_cbc);
+
+    // Cleanup
+    free(encrypted_cbc);
+    free(decrypted_cbc);
+
+    return 0;
+}
+
+```

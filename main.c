@@ -4,12 +4,12 @@
 #include <string.h>
 
 int main() {
-    const char* exampleData = "Hello, World!";
+    const char* exampleData = "امین طهماسبی";
     size_t dataLength = strlen(exampleData);
     size_t hashLength = 0;
-    uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_BLAKE2S_256, &hashLength);
+    uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA512, &hashLength);
 
-    printf("CRYPTO_RIPEMD160(\"%s\") = ", exampleData);
+    printf("SHA-512(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);

@@ -7,8 +7,14 @@
 #include <openssl/sha.h>
 #include <openssl/ripemd.h>
 #include <openssl/mdc2.h>
+#include <openssl/des.h>
+#include <openssl/err.h>
 
-uint8_t* crypto_hash_data(const uint8_t* data, size_t length, enum HashAlgorithm algorithm, size_t *outLength) {
+#ifndef DES_BLOCK_SIZE
+#define DES_BLOCK_SIZE 8
+#endif
+
+uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algorithm, size_t *outLength) {
     // Ensure outLength is a valid pointer
     if (!outLength) {
         return NULL;
@@ -217,4 +223,114 @@ void crypto_print_hash(const uint8_t* hash, size_t length) {
         printf("%02x", hash[i]);
     }
     printf("\n");
+}
+
+void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len) {
+    if (!out_len || !key || !plaintext) return NULL;
+
+    // Pad length to 8 byte boundary
+    size_t padded_len = (len + DES_BLOCK_SIZE - 1) & ~(DES_BLOCK_SIZE - 1);
+    *out_len = padded_len;
+    uint8_t* padded_plaintext = calloc(padded_len, sizeof(uint8_t));
+    if (!padded_plaintext) return NULL;
+    memcpy(padded_plaintext, plaintext, len);
+
+    uint8_t* ciphertext = malloc(padded_len);
+    if (!ciphertext) {
+        free(padded_plaintext);
+        return NULL;
+    }
+
+    DES_cblock keyBlock;
+    memcpy(keyBlock, key, DES_BLOCK_SIZE);
+    DES_key_schedule keysched;
+    DES_set_odd_parity(&keyBlock);
+    DES_set_key_checked(&keyBlock, &keysched);
+
+    DES_cblock ivec;
+    if (iv) {
+        memcpy(ivec, iv, DES_BLOCK_SIZE);
+    } 
+    else {
+        memset(ivec, 0, DES_BLOCK_SIZE); // Default IV to all zeros if none provided
+    }
+
+    for (size_t i = 0; i < padded_len; i += DES_BLOCK_SIZE) {
+        DES_cblock block;
+        memcpy(block, padded_plaintext + i, DES_BLOCK_SIZE);
+        switch (mode) {
+            case CRYPTO_MODE_ECB:
+                DES_ecb_encrypt(&block, (DES_cblock*)(ciphertext + i), &keysched, DES_ENCRYPT);
+                break;
+            case CRYPTO_MODE_CBC:
+                DES_ncbc_encrypt(block, ciphertext + i, DES_BLOCK_SIZE, &keysched, &ivec, DES_ENCRYPT);
+                break;
+            case CRYPTO_MODE_CFB:{
+                // Initialize IV to all zeros
+                DES_cblock ivec = {0};
+                DES_cfb_encrypt(padded_plaintext, ciphertext, 8, padded_len, &keysched, &ivec, DES_ENCRYPT);
+            }
+            break;
+            case CRYPTO_MODE_OFB:
+                DES_ofb_encrypt(block, ciphertext + i, 8, DES_BLOCK_SIZE, &keysched, &ivec);
+                break;
+            default:
+                free(ciphertext);
+                free(padded_plaintext);
+                return NULL;
+        }
+    }
+
+    free(padded_plaintext);
+    return ciphertext; // Caller is responsible for freeing this memory
+}
+
+void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len) {
+    if (!out_len || !key || !ciphertext) return NULL;
+
+    // In decryption, padding isn't removed here. It should be handled after decryption.
+    *out_len = len;
+    uint8_t* plaintext = malloc(len);
+    if (!plaintext) return NULL;
+
+    DES_cblock keyBlock;
+    memcpy(keyBlock, key, DES_BLOCK_SIZE);
+    DES_key_schedule keysched;
+    DES_set_odd_parity(&keyBlock);
+    DES_set_key_checked(&keyBlock, &keysched);
+
+    DES_cblock ivec;
+    if (iv) {
+        memcpy(ivec, iv, DES_BLOCK_SIZE);
+    } 
+    else {
+        memset(ivec, 0, DES_BLOCK_SIZE); // Default IV to all zeros if none provided
+    }
+
+    for (size_t i = 0; i < len; i += DES_BLOCK_SIZE) {
+        DES_cblock block;
+        memcpy(block, ciphertext + i, DES_BLOCK_SIZE);
+        switch (mode) {
+            case CRYPTO_MODE_ECB:
+                DES_ecb_encrypt(&block, (DES_cblock*)(plaintext + i), &keysched, DES_DECRYPT);
+                break;
+            case CRYPTO_MODE_CBC:
+                DES_ncbc_encrypt(block, plaintext + i, DES_BLOCK_SIZE, &keysched, &ivec, DES_DECRYPT);
+                break;
+            case CRYPTO_MODE_CFB:{
+                // For CFB, decryption is the same as encryption
+                DES_cfb_encrypt(ciphertext, plaintext, 8, len, &keysched, &ivec, DES_ENCRYPT);
+            }
+            break;
+            case CRYPTO_MODE_OFB:
+                // OFB mode decryption is the same as encryption
+                DES_ofb_encrypt(block, plaintext + i, 8, DES_BLOCK_SIZE, &keysched, &ivec);
+                break;
+            default:
+                free(plaintext);
+                return NULL;
+        }
+    }
+
+    return plaintext; // Caller is responsible for freeing this memory
 }

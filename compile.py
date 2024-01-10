@@ -38,8 +38,8 @@ def compile_project(run_after_compile=False):
     for directory in source_directories:
         source_files.extend(find_c_files(directory))
 
-    openssl_include_path = "C:/msys64/mingw64/include"  # Update with your OpenSSL include path
-    openssl_lib_path = "C:/msys64/mingw64/lib"         # Update with your OpenSSL lib path
+    openssl_include_path = "./dependency/include"  # No longer pointing to C:/msys64...
+    openssl_lib_path = "./dependency/lib"   
 
     # Compiler flags
     flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s"
@@ -56,7 +56,10 @@ def compile_project(run_after_compile=False):
         os.remove(output)
 
     # Compile the project with OpenSSL flags
-    command = f"gcc {flags} -o {output} " + " ".join(source_files) + " -lssl -lcrypto"
+    command = f"gcc {flags} -o {output} " + " ".join(source_files) + f" -I{openssl_include_path} -L{openssl_lib_path} -lssl -lcrypto"
+    if platform.system() == "Windows":
+        command += " -lAdvapi32"  # Add Windows-specific library
+
     result = subprocess.run(command, shell=True)
 
     if result.returncode != 0:

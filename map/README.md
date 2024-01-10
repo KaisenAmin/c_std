@@ -162,41 +162,36 @@ int main()
 #include <stdlib.h>
 #include <string.h>
 
-char* my_strdup(const char* s) 
-{
-    if (s == NULL) 
+char* my_strdup(const char* s) {
+    if (s == NULL){
         return NULL;
-        
-    char* new_str = malloc(strlen(s) + 1);
-    if (new_str) 
-        strcpy(new_str, s);
+    }
 
+    char* new_str = malloc(strlen(s) + 1);
+    if (new_str) { 
+        strcpy(new_str, s);
+    }
     return new_str;
 }
 
-int compare_ints(const KeyType a, const KeyType b) 
-{
+int compare_ints(const KeyType a, const KeyType b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
-
     return (*ia - *ib);
 }
 
 
-int main() 
-{
+int main() {
     Map* map1 = map_create(compare_ints, NULL, free);
     int key1 = 1;
     char* value1 = my_strdup("Hello");
 
     map_insert(map1, &key1, value1);
 
-    // Use and demonstration of map functions
     printf("Size: %zu\n", map_size(map1));
     printf("Value for key 1: %s\n", (char*)map_at(map1, &key1));
 
     map_deallocate(map1);
-
     return 0;
 }
 
