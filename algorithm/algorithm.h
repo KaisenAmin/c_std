@@ -81,5 +81,6 @@ void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, Compa
 void algorithm_rotate(void *first, void *middle, void *last, size_t size);
 void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result);
 void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp);
+void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp);
 
 #endif // ALGORITHM_H_

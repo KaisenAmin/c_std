@@ -898,6 +898,17 @@ void *algorithm_remove(void *base, size_t num, size_t size, const void *val, Com
             ++new_num;
         }
     }
-
     return ptr + new_num * size; // Pointer to the new end of the array
+}
+
+void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp) {
+    const char *src = (const char *)source;
+    char *dst = (char *)result;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (comp(src + i * size, val) != 0) {
+            memcpy(dst, src + i * size, size);
+            dst += size;
+        }
+    }
 }

@@ -4456,3 +4456,39 @@ int main () {
   return 0;
 }
 ```
+
+## Example 136 : using `algorithm_remove_copy`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+int int_compare(const void *a, const void *b) {
+    const int *ia = (const int *)a;
+    const int *ib = (const int *)b;
+    return (*ia > *ib) - (*ia < *ib);
+}
+
+int main() {
+    int myints[] = {10, 20, 30, 30, 20, 10, 10, 20};
+    Vector *vec = vector_create(sizeof(int));
+    Vector *resultVec = vector_create(sizeof(int));
+    int value = 20;
+
+    vector_resize(vec, 8);
+    algorithm_copy(myints, 8, sizeof(int), vec->items);
+    vector_resize(resultVec, 8); 
+    algorithm_remove_copy(vector_begin(vec), vector_size(vec), sizeof(int), vector_begin(resultVec), &value, int_compare);
+    
+    for (int *begin = (int*)vector_begin(resultVec); begin != (int*)vector_end(resultVec); ++begin) {
+        printf("%d ", *begin);
+    }
+
+    vector_deallocate(vec);
+    vector_deallocate(resultVec);
+    return 0;
+}
+
+```
