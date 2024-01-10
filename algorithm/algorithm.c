@@ -834,3 +834,33 @@ bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, cons
 
     return true;
 }
+
+const void* algorithm_search(const void* first1, const void* last1, size_t size1,
+                             const void* first2, const void* last2, size_t size2,
+                             bool (*comp)(const void*, const void*)) {
+    const char* ptr1 = (const char*)first1;
+    const char* ptr2 = (const char*)first2;
+    const char* end1 = (const char*)last1;
+
+    if (ptr2 == last2) {
+        return first1; // If the second sequence is empty, return the start of the first
+    }
+
+    while (ptr1 != end1) {
+        const char* it1 = ptr1;
+        const char* it2 = ptr2;
+
+        while (comp(it1, it2)) { // Compare elements
+            it1 += size1;
+            it2 += size2;
+            if (it2 == last2) {
+                return ptr1; // Found a match
+            }
+            if (it1 == end1) {
+                return last1; // Reached the end of the first sequence
+            }
+        }
+        ptr1 += size1;
+    }
+    return last1; // No match found
+}

@@ -14,7 +14,7 @@ def find_c_files(directory):
 def compile_project(run_after_compile=False):
     source_directories = [
         # "numeric",
-        # "algorithm",
+        "algorithm",
         # "array",
         # "bitset",
         # "config",
