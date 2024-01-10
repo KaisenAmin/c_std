@@ -1,31 +1,34 @@
 #include "algorithm/algorithm.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 
-typedef struct {
-    char name[50];
-    int age;
-}Person;
-
-bool is_equal(const void* a, const void* b) {
-    const Person* arg1 = (const Person*)a;
-    const Person* arg2 = (const Person*)b;
-    return (strcmp(arg1->name, arg2->name) == 0) && (arg1->age == arg2->age);
+bool int_equal(const void* a, const void* b) {
+    return *(const int*)a == *(const int*)b;
 }
 
 int main() {
-    Person information[] = {{"amin", 27}, {"omid", 28}, {"ali", 25}, {"milad", 27}};
-    Person person[] = {{"omid", 28}, {"ali", 25}};
+    int myints[] = {10, 20, 30, 30, 20, 10, 10, 20};
+    size_t n = sizeof(myints) / sizeof(myints[0]);
+    int val = 30;
 
-    if (algorithm_search(information, information + 4, sizeof(person), 
-                        person, person + 2, sizeof(person), is_equal)) {
-        printf("its equal");
-    }
+    const int* result = (const int*)algorithm_search_n(myints, myints + n, sizeof(int), 2, &val, int_equal);
+
+    if (result != myints + n) {
+        printf("Two 30s found at position %lld\n", result - myints);
+    } 
     else {
-        printf("its not equal");
+        printf("Match not found\n");
     }
     
+    val = 10;
+    const int* new_result = (const int*)algorithm_search_n(myints, myints + n, sizeof(int), 2, &val, int_equal);
+
+    if (new_result != myints + n) {
+        printf("Two 10 found at %lld", new_result - myints);
+    }
+    else {
+        printf("Match not found");
+    }
+
     return 0;
 }

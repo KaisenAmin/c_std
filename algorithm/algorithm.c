@@ -835,9 +835,7 @@ bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, cons
     return true;
 }
 
-const void* algorithm_search(const void* first1, const void* last1, size_t size1,
-                             const void* first2, const void* last2, size_t size2,
-                             bool (*comp)(const void*, const void*)) {
+const void* algorithm_search(const void* first1, const void* last1, size_t size1,const void* first2, const void* last2, size_t size2, CompareFuncBool comp) {
     const char* ptr1 = (const char*)first1;
     const char* ptr2 = (const char*)first2;
     const char* end1 = (const char*)last1;
@@ -863,4 +861,27 @@ const void* algorithm_search(const void* first1, const void* last1, size_t size1
         ptr1 += size1;
     }
     return last1; // No match found
+}
+
+const void *algorithm_search_n(const void *first, const void* last, size_t size, size_t count, const void *val, CompareFuncBool comp) {
+    const char* ptr = (const char*)first;
+    const char* end = (const char*)last;
+
+    while (ptr + size * count <= end) { // Ensure there's enough room for 'count' elements
+        size_t matched = 0;
+        for (size_t i = 0; i < count; ++i) {
+            if (comp(ptr + i * size, val)) {
+                matched++;
+            } 
+            else {
+                break;
+            }
+        }
+
+        if (matched == count) {
+            return ptr; // Found the subsequence
+        }
+        ptr += size; // Move to the next element
+    }
+    return last; // Subsequence not found
 }

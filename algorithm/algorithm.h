@@ -59,10 +59,8 @@ size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredica
 Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp);
 bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp);
 bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp);
-const void* algorithm_search(const void* first1, const void* last1, size_t size1,
-                            const void* first2, const void* last2, size_t size2,
-                            CompareFuncBool comp);
-void *algorithm_search_n(const void *base, size_t num, size_t size, size_t count, const void *val, CompareFunc comp);
+const void* algorithm_search(const void* first1, const void* last1, size_t size1,const void* first2, const void* last2, size_t size2, CompareFuncBool comp);
+const void *algorithm_search_n(const void *first, const void* last1, size_t size, size_t count, const void *val, CompareFuncBool comp);
 void algorithm_fill(void *first, void *last, size_t size, const void *val);
 void algorithm_fill_n(void *first, size_t n, size_t size, const void *val);
 void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng);

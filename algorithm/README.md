@@ -4320,3 +4320,77 @@ int main() {
     return 0;
 }
 ```
+
+## Example 134 : Use Integer Array with `algorithm_search_n`
+
+```c
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+bool int_equal(const void* a, const void* b) {
+    return *(const int*)a == *(const int*)b;
+}
+
+int main() {
+    int myints[] = {10, 20, 30, 30, 20, 10, 10, 20};
+    size_t n = sizeof(myints) / sizeof(myints[0]);
+    int val = 30;
+
+    const int* result = (const int*)algorithm_search_n(myints, myints + n, sizeof(int), 2, &val, int_equal);
+
+    if (result != myints + n) {
+        printf("Two 30s found at position %lld\n", result - myints);
+    } 
+    else {
+        printf("Match not found\n");
+    }
+    
+    val = 10;
+    const int* new_result = (const int*)algorithm_search_n(myints, myints + n, sizeof(int), 2, &val, int_equal);
+
+    if (new_result != myints + n) {
+        printf("Two 10 found at %lld", new_result - myints);
+    }
+    else {
+        printf("Match not found");
+    }
+
+    return 0;
+}
+```
+`C++ Same Code`
+```cpp
+#include <iostream>     // std::cout
+#include <algorithm>    // std::search_n
+#include <vector>       // std::vector
+
+bool mypredicate (int i, int j) {
+  return (i==j);
+}
+
+int main () {
+  int myints[]={10,20,30,30,20,10,10,20};
+  std::vector<int> myvector (myints,myints+8);
+
+  std::vector<int>::iterator it;
+
+  // using default comparison:
+  it = std::search_n (myvector.begin(), myvector.end(), 2, 30);
+
+  if (it!=myvector.end())
+    std::cout << "two 30s found at position " << (it-myvector.begin()) << '\n';
+  else
+    std::cout << "match not found\n";
+
+  // using predicate comparison:
+  it = std::search_n (myvector.begin(), myvector.end(), 2, 10, mypredicate);
+
+  if (it!=myvector.end())
+    std::cout << "two 10s found at position " << int(it-myvector.begin()) << '\n';
+  else
+    std::cout << "match not found\n";
+
+  return 0;
+}
+```
