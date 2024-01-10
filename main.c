@@ -4,23 +4,28 @@
 #include <string.h>
 #include <stdbool.h>
 
+typedef struct {
+    char name[50];
+    int age;
+}Person;
 
-bool int_equal(const void* a, const void* b) {
-    return *(const int*)a == *(const int*)b;
+bool is_equal(const void* a, const void* b) {
+    const Person* arg1 = (const Person*)a;
+    const Person* arg2 = (const Person*)b;
+    return (strcmp(arg1->name, arg2->name) == 0) && (arg1->age == arg2->age);
 }
 
 int main() {
-    int haystack[] = {10, 20, 30, 40, 50, 60, 70, 80, 90};
-    int needle[] = {40, 50, 60, 70};
+    Person information[] = {{"amin", 27}, {"omid", 28}, {"ali", 25}, {"milad", 27}};
+    Person person[] = {{"omid", 28}, {"ali", 25}};
 
-    const int* result = (const int* )algorithm_search(haystack, haystack + 9, sizeof(int), needle, needle + 4, sizeof(int), int_equal);
-
-    if (result != haystack + 9) {
-        printf("Subsequence found at position %lld\n", result - haystack);
-    } 
-    else {
-        printf("Subsequence not found\n");
+    if (algorithm_search(information, information + 4, sizeof(person), 
+                        person, person + 2, sizeof(person), is_equal)) {
+        printf("its equal");
     }
-
+    else {
+        printf("its not equal");
+    }
+    
     return 0;
 }
