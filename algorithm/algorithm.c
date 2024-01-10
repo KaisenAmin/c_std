@@ -885,3 +885,19 @@ const void *algorithm_search_n(const void *first, const void* last, size_t size,
     }
     return last; // Subsequence not found
 }
+
+void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    char *ptr = (char *)base;
+    size_t new_num = 0;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (comp(ptr + i * size, val) != 0) {
+            if (i != new_num) {
+                memcpy(ptr + new_num * size, ptr + i * size, size);
+            }
+            ++new_num;
+        }
+    }
+
+    return ptr + new_num * size; // Pointer to the new end of the array
+}

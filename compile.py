@@ -29,8 +29,8 @@ def compile_project(run_after_compile=False):
         # "span",
         # "stack",
         # "string",
-        # "vector",
-        "crypto",
+        "vector",
+        # "crypto",
         # Add other directories containing your .c files
     ]
 

@@ -4394,3 +4394,65 @@ int main () {
   return 0;
 }
 ```
+
+## Example 135 : Use `algorithm_remove`
+
+```c
+#include "algorithm/algorithm.h"
+#include "vector/vector.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+int int_compare(const void *a, const void *b) {
+    const int *ia = (const int *)a;
+    const int *ib = (const int *)b;
+    return (*ia > *ib) - (*ia < *ib);
+}
+
+
+int main() {
+    int myints[] = {10,20,30,30,20,10,10,20}; 
+    Vector* vec = vector_create(sizeof(int));
+    int value = 20;
+
+    vector_resize(vec, 8);
+    algorithm_copy(myints, 8, sizeof(int), vec->items);
+
+    for (int *begin = (int*)vector_begin(vec); begin != (int*)vector_end(vec); begin++) {
+        printf("%d ", *begin);
+    }
+    printf("\n");
+    
+    int *ptr = (int*)algorithm_remove((int*)vector_begin(vec), vector_size(vec), sizeof(int), &value, int_compare);
+
+    for (int *begin = (int*)vector_begin(vec); begin != ptr; begin++) {
+        printf("%d ", *begin);
+    }
+
+    return 0;
+}
+```
+
+`c++ same code`
+
+```c
+#include <iostream>     // std::cout
+#include <algorithm>    // std::remove
+
+int main () {
+  int myints[] = {10,20,30,30,20,10,10,20};      // 10 20 30 30 20 10 10 20
+
+  // bounds of range:
+  int* pbegin = myints;                          // ^
+  int* pend = myints+sizeof(myints)/sizeof(int); // ^                       ^
+
+  pend = std::remove (pbegin, pend, 20);         // 10 30 30 10 10 ?  ?  ?
+                                                 // ^              ^
+  std::cout << "range contains:";
+  for (int* p=pbegin; p!=pend; ++p)
+    std::cout << ' ' << *p;
+  std::cout << '\n';
+
+  return 0;
+}
+```
