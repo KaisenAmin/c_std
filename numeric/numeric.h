@@ -27,9 +27,11 @@ typedef enum {
 
 typedef void (*IncrementFunc)(void*);
 
+void* numeric_midpoint(void* a, void* b, NumericType type, size_t element_size);
 void numeric_iota(void *first, const void* last, size_t size, void* element, IncrementFunc func);
+
 int numeric_gcd(int a, int b);
 int numeric_lcm(int a, int b);
-void* numeric_midpoint(void* a, void* b, NumericType type, size_t element_size);
+
 
 #endif 

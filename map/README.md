@@ -61,11 +61,9 @@ Include the `map.h` header file in your C program to use the map functionality. 
 #include <stdio.h>
 #include <stdlib.h>
 
-int compare_ints(const KeyType a, const KeyType b) 
-{
+int compare_ints(const KeyType a, const KeyType b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
-
     return (*ia - *ib);
 }
 
@@ -73,8 +71,7 @@ void int_deallocator(void* data) {
     free(data);
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
     int key = 5, value = 10;
     int lookupKey = 5;
@@ -83,14 +80,14 @@ int main()
     
     int *foundValue = map_at(myMap, &lookupKey);
     // int foundValue = *(int*)map_at(myMap, &lookupKey);
-
-    if (foundValue) 
+    if (foundValue) {
         printf("Found value: %d\n", *foundValue);
-    else 
+    }
+    else {
         printf("Key not found.\n");
-    
-    map_deallocate(myMap);
+    }
 
+    map_deallocate(myMap);
     return 0;
 }
 ```
@@ -103,20 +100,19 @@ int main()
 #include <stdlib.h>
 #include <string.h>
 
-char* my_strdup(const char* s) 
-{
-    if (s == NULL) 
+char* my_strdup(const char* s) {
+    if (s == NULL) {
         return NULL;
-        
+    }
     char* new_str = malloc(strlen(s) + 1);
-    if (new_str) 
+    
+    if (new_str) {
         strcpy(new_str, s);
-
+    }
     return new_str;
 }
 
-int compare_ints(const KeyType a, const KeyType b) 
-{
+int compare_ints(const KeyType a, const KeyType b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
     return (*ia - *ib);
@@ -126,16 +122,15 @@ void string_deallocator(void* data) {
     free(data);
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_ints, free, string_deallocator);
-
     int* key1 = malloc(sizeof(int));
     *key1 = 1;
-    char* value1 = my_strdup("Alice");
 
+    char* value1 = my_strdup("Alice");
     int* key2 = malloc(sizeof(int));
     *key2 = 2;
+
     char* value2 = my_strdup("Bob");
 
     map_insert(myMap, key1, value1);
@@ -144,13 +139,14 @@ int main()
     int lookupKey = 1;
     char* foundValue = (char*)map_at(myMap, &lookupKey);
 
-    if (foundValue)
+    if (foundValue) {
         printf("Found value for %d: %s\n", lookupKey, foundValue);
-    else
+    }
+    else {
         printf("Key not found.\n");
+    }
 
     map_deallocate(myMap);
-
     return 0;
 }
 ```
@@ -166,8 +162,8 @@ char* my_strdup(const char* s) {
     if (s == NULL){
         return NULL;
     }
-
     char* new_str = malloc(strlen(s) + 1);
+    
     if (new_str) { 
         strcpy(new_str, s);
     }
@@ -179,7 +175,6 @@ int compare_ints(const KeyType a, const KeyType b) {
     const int* ib = (const int*)b;
     return (*ia - *ib);
 }
-
 
 int main() {
     Map* map1 = map_create(compare_ints, NULL, free);
@@ -204,16 +199,13 @@ int main() {
 #include <stdlib.h>
 #include <string.h>
 
-int compare_ints(const KeyType a, const KeyType b) 
-{
+int compare_ints(const KeyType a, const KeyType b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
-
     return (*ia - *ib);
 }
 
-int main()
-{
+int main() {
     Map* map3a = map_create(compare_ints, NULL, NULL);
     int key3a = 1, value3a = 100;
 
@@ -221,9 +213,8 @@ int main()
 
     Map* map3b = map_create(compare_ints, NULL, NULL);
     int key3b = 2, value3b = 200;
-    
-    map_insert(map3b, &key3b, &value3b);
 
+    map_insert(map3b, &key3b, &value3b);
     map_swap(map3a, map3b);
 
     // After swap, map3a should have the contents of map3b and vice versa
@@ -232,7 +223,7 @@ int main()
 
     map_deallocate(map3a);
     map_deallocate(map3b);
-
+    return 0;
 }
 
 ```
@@ -251,13 +242,11 @@ void int_deallocator(void* data) {
     free(data);
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
 
     // Insert elements
-    for (int i = 0; i < 5; ++i) 
-    {
+    for (int i = 0; i < 5; ++i) {
         int* key = malloc(sizeof(int));
         int* value = malloc(sizeof(int));
         *key = i;
@@ -268,17 +257,20 @@ int main()
     // Search for a key
     int searchKey = 3;
     int* foundValue = (int*)map_at(myMap, &searchKey);
-    if (foundValue) 
+    if (foundValue) {
         printf("Found value: %d\n", *foundValue);
-    else 
+    }
+    else {
         printf("Key not found.\n");
-
+    }
     // Delete a key
     int deleteKey = 2;
-    if (map_erase(myMap, &deleteKey)) 
+    if (map_erase(myMap, &deleteKey)) {
         printf("Key %d erased.\n", deleteKey);
-    else 
+    }
+    else { 
         printf("Key not found for deletion.\n");
+    }
 
     map_deallocate(myMap);
     return 0;
@@ -302,17 +294,16 @@ void string_deallocator(void* data){
     free(data);
 }
 
-char* my_strdup(const char* s) 
-{
+char* my_strdup(const char* s) {
     char* new_str = malloc(strlen(s) + 1);
-    if (new_str) 
+    
+    if (new_str) {
         strcpy(new_str, s);
-
+    }
     return new_str;
 }
 
-int main() 
-{
+int main() {
     Map* map1 = map_create(compare_strings, string_deallocator, string_deallocator);
     map_insert(map1, my_strdup("apple"), my_strdup("red"));
     map_insert(map1, my_strdup("banana"), my_strdup("yellow"));
@@ -322,20 +313,16 @@ int main()
     map_insert(map2, my_strdup("grape"), my_strdup("green"));
 
     printf("Size of Map1 before swap: %zu\n", map_size(map1));
-
-
     printf("Map1 before swap:\n");
-    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) 
-    {
+
+    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) {
         MapNode* node = it.node;
         printf("%s: %s\n", (char*)node->key, (char*)node->value);
     }
-
     map_swap(map1, map2);
 
     printf("Map1 after swap:\n");
-    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) 
-    {
+    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) {
         MapNode* node = it.node;
         printf("%s: %s\n", (char*)node->key, (char*)node->value);
     }
@@ -353,7 +340,6 @@ int main()
 
     map_deallocate(map1);
     map_deallocate(map2);
-
     return 0;
 }
 
@@ -366,31 +352,31 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int compare_doubles(const KeyType a, const KeyType b) 
-{
+int compare_doubles(const KeyType a, const KeyType b) {
     const double* da = (const double*)a;
     const double* db = (const double*)b;
 
-    if (*da < *db) 
+    if (*da < *db) {
         return -1;
-    else if (*da > *db) 
+    }
+    else if (*da > *db) { 
         return 1;
-    else 
+    }
+    else { 
         return 0;
+    }
 }
 
 void double_deallocator(void* data) {
     free(data);
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_doubles, double_deallocator, double_deallocator);
 
     // Insert elements
     double keys[] = {1.1, 2.2, 3.3, 4.4, 5.5};
-    for (int i = 0; i < 5; ++i) 
-    {
+    for (int i = 0; i < 5; ++i) {
         double* key = malloc(sizeof(double));
         double* value = malloc(sizeof(double));
         *key = keys[i];
@@ -419,29 +405,29 @@ int main()
 #include <stdio.h>
 #include <stdlib.h>
 
-int compare_doubles(const KeyType a, const KeyType b) 
-{
+int compare_doubles(const KeyType a, const KeyType b) {
     const double* da = (const double*)a;
     const double* db = (const double*)b;
 
-    if (*da < *db) 
+    if (*da < *db) {
         return -1;
-    else if (*da > *db) 
+    }
+    else if (*da > *db) { 
         return 1;
-    else 
+    }
+    else {
         return 0;
+    }
 }
 
 void double_deallocator(void* data) {
     free(data);
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_doubles, double_deallocator, double_deallocator);
-
-    // Insert elements
     double keys[] = {1.1, 2.2, 3.3, 4.4, 5.5};
+
     for (int i = 0; i < 5; ++i)
     {
         double* key = malloc(sizeof(double));
@@ -452,13 +438,13 @@ int main()
     }
 
     // Iterate over the map and print keys and values
-    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) 
-    {
+    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) {
         double* key = (double*)map_node_get_key(it.node);
         double* value = (double*)map_node_get_value(it.node);
         
-        if (key && value) 
+        if (key && value) {
             printf("%f: %f\n", *key, *value);
+        }
     }
 
     map_deallocate(myMap);
@@ -476,33 +462,26 @@ int main()
 #include <string.h>
 
 // Compare function for String keys
-int compare_strings(const KeyType a, const KeyType b) 
-{
+int compare_strings(const KeyType a, const KeyType b) {
     String* strA = *(String**)a;
     String* strB = *(String**)b;
-
     return strcmp(string_c_str(strA), string_c_str(strB));
 }
 
-void string_deallocator(void* data) 
-{
-    if (data != NULL) 
-    {
+void string_deallocator(void* data) {
+    if (data != NULL) {
         String** strPtr = (String**)data;
-        if (*strPtr != NULL) 
-        {
+        
+        if (*strPtr != NULL) {
             string_deallocate(*strPtr);
             *strPtr = NULL;  // Set the pointer to NULL after deallocating
         }
     }
 }
 
-int main() 
-{
+int main() {
     // Create a map with String keys and String values
     Map* myMap = map_create(compare_strings, string_deallocator, string_deallocator);
-
-    // Insert elements into the map
     String* key1 = string_create("key1");
     String* value1 = string_create("Hello");
     String* key2 = string_create("key2");
@@ -512,36 +491,38 @@ int main()
     map_insert(myMap, &key2, &value2);
 
     printf("Map contents:\n");
-    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) 
-    {
+    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) {
         String* key = *(String**)map_node_get_key(it.node);
         String* value = *(String**)map_node_get_value(it.node);
         printf("%s: %s\n", string_c_str(key), string_c_str(value));
     }
 
-    if (map_erase(myMap, &key2)) 
+    if (map_erase(myMap, &key2)) {
         printf("Removed 'key2' from the map.\n");
-    else 
+    }
+    else {
         printf("Key 'key2' not found for removal.\n");
-    
-    if (map_erase(myMap, &key2)) 
+    }
+
+    if (map_erase(myMap, &key2)) { 
         printf("Removed 'key2' from the map.\n");
-    else 
+    }
+    else { 
         printf("Key 'key2' not found for removal.\n");
-    
+    }
     // Search for a key
     String* searchKey = string_create("key1");
     String** foundValue = map_at(myMap, &searchKey);
 
-    if (foundValue) 
+    if (foundValue) {
         printf("Found value for 'key1': %s\n", string_c_str(*foundValue));
-    else 
+    }
+    else { 
         printf("Key 'key1' not found.\n");
-    
-    // Cleanup
+    }
+
     string_deallocate(searchKey);
     map_deallocate(myMap);
-
     return 0;
 }
 
@@ -564,10 +545,8 @@ void int_deallocator(void* data) {
     free(data);
 }
 
-void map_merge(Map* dest, Map* src) 
-{
-    for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) 
-    {
+void map_merge(Map* dest, Map* src) {
+    for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) {
         int* key = malloc(sizeof(int));
         int* value = malloc(sizeof(int));
 
@@ -577,38 +556,33 @@ void map_merge(Map* dest, Map* src)
     }
 }
 
-int main() 
-{
+int main() {
     Map* map1 = map_create(compare_ints, int_deallocator, int_deallocator);
     Map* map2 = map_create(compare_ints, int_deallocator, int_deallocator);
 
     // Populate map1
-    for (int i = 0; i < 3; ++i) 
-    {
+    for (int i = 0; i < 3; ++i) {
         int* key = malloc(sizeof(int));
         int* value = malloc(sizeof(int));
         *key = i;
         *value = i * 100;
         map_insert(map1, key, value);
     }
-
-    for (int i = 2; i < 5; ++i) 
-    {
+    for (int i = 2; i < 5; ++i) {
         int* key = malloc(sizeof(int));
         int* value = malloc(sizeof(int));
         *key = i;
         *value = i * 200;
         map_insert(map2, key, value);
     }
-
     map_merge(map1, map2);
 
-    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) 
+    for (MapIterator it = map_begin(map1); it.node != map_end(map1).node; map_iterator_increment(&it)) {
         printf("%d: %d\n", *(int*)map_node_get_key(it.node), *(int*)map_node_get_value(it.node));
+    }
     
     map_deallocate(map1);
     map_deallocate(map2);
-
     return 0;
 }
 ```
@@ -619,21 +593,20 @@ int main()
 #include <iostream>
 #include <map>
 
-int main() 
-{
+int main() {
     std::map<int, int> map1, map2;
 
-    for (int i = 0; i < 3; ++i) 
+    for (int i = 0; i < 3; ++i) { 
         map1[i] = i * 100;
-    
-    for (int i = 2; i < 5; ++i) 
+    }
+    for (int i = 2; i < 5; ++i) { 
         map2[i] = i * 200;
-    
+    }
     map1.insert(map2.begin(), map2.end());
 
-    for (const auto& pair : map1) 
+    for (const auto& pair : map1) {
         std::cout << pair.first << ": " << pair.second << std::endl;
-
+    }
     return 0;
 }
 ```
@@ -655,17 +628,16 @@ void int_deallocator(void* data) {
     free(data);
 }
 
-void map_filter(Map* map, bool (*filter_func)(KeyType key, ValueType value)) 
-{
+void map_filter(Map* map, bool (*filter_func)(KeyType key, ValueType value)) {
     MapIterator it = map_begin(map);
 
-    while (it.node != map_end(map).node) 
-    {
+    while (it.node != map_end(map).node) {
         MapIterator current = it;
         map_iterator_increment(&it);
 
-        if (!filter_func(map_node_get_key(current.node), map_node_get_value(current.node))) 
+        if (!filter_func(map_node_get_key(current.node), map_node_get_value(current.node))) { 
             map_erase(map, map_node_get_key(current.node));
+        }
     }
 }
 
@@ -673,12 +645,10 @@ bool filter_even_keys(KeyType key, ValueType value) {
     return (*(int*)key) % 2 == 0;
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
 
-    for (int i = 0; i < 5; ++i) 
-    {
+    for (int i = 0; i < 5; ++i) {
         int* key = malloc(sizeof(int));
         int* value = malloc(sizeof(int));
         *key = i;
@@ -687,11 +657,11 @@ int main()
     }
     map_filter(myMap, filter_even_keys);
 
-    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) 
+    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) {
         printf("%d: %d\n", *(int*)map_node_get_key(it.node), *(int*)map_node_get_value(it.node));
+    }
 
     map_deallocate(myMap);
-
     return 0;
 }
 ```
@@ -706,24 +676,23 @@ bool filter_even_keys(const std::pair<const int, int>& pair) {
     return pair.first % 2 == 0;
 }
 
-int main() 
-{
+int main() {
     std::map<int, int> myMap;
 
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         myMap[i] = i * 100;
-
-    for (auto it = myMap.begin(); it != myMap.end(); ) 
-    {
-        if (!filter_even_keys(*it)) 
-            it = myMap.erase(it);
-        else 
-            ++it;
     }
-
-    for (const auto& pair : myMap) 
+    for (auto it = myMap.begin(); it != myMap.end(); ) {
+        if (!filter_even_keys(*it)) {
+            it = myMap.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    for (const auto& pair : myMap) { 
         std::cout << pair.first << ": " << pair.second << std::endl;
-    
+    }
     return 0;
 }
 ```
@@ -753,8 +722,7 @@ void print_string(const ValueType value) {
     printf("%s", (const char*)value);
 }
 
-int main() 
-{
+int main() {
     Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
     char* value = strdup("Hello, World");
     int key = 5;
@@ -795,8 +763,7 @@ void print_value(const ValueType value) {
     printf("%d", *(const int*)value);
 }
 
-int main() 
-{
+int main() {
     Map* originalMap = map_create(compare_ints, int_deallocator, int_deallocator);
     int key = 10;
     int value = 20;
@@ -809,8 +776,6 @@ int main()
 
     map_deallocate(originalMap);
     map_deallocate(copiedMap);
-
     return 0;
-
 }
 ```

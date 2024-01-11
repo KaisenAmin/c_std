@@ -35,24 +35,23 @@ To use the List library in your project, include the `list.h` header file in you
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int values[] = {10, 20, 30, 40, 50};
 
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         list_push_back(myList, &values[i]);
+    }
 
     list_deallocate(myList);
-
     list_deallocate(myList);
+    
     return EXIT_SUCCESS;
 }
 
@@ -66,23 +65,20 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static bool compare_string(const void* a, const void* b)
-{
+static bool compare_string(const void* a, const void* b){
     const char* str_a = *(const char**)a;
     const char* str_b = *(const char**)b;
     return strcmp(str_a, str_b) == 0;
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(char*), compare_string);
     char* values[] = {"c++", "C", "Python", "Golang", "Rust"};
 
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         list_push_front(myList, &values[i]);
-
-    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
-    {
+    }
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next){
         char* value = *(char**)node->value;
         printf("%s\n", value);
     }
@@ -101,15 +97,13 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int value = 100;
 
@@ -129,15 +123,13 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int value = 100;
 
@@ -145,7 +137,6 @@ int main()
     list_pop_back(myList);
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -158,22 +149,19 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int value = 100;
 
     list_insert(myList, 0, &value); // Insert at the beginning
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -186,15 +174,13 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int value = 100;
 
@@ -202,7 +188,6 @@ int main()
     list_erase(myList, 0); // Erase the first element
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -215,22 +200,19 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int value = 100;
 
     list_push_back(myList, &value);
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -243,32 +225,27 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *list1 = list_create(sizeof(int), compare_ints);
 
     int values[] = {50, 40, 30, 20, 10};
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         list_push_back(list1, &values[i]);
-
+    }
     list_resize(list1, 10, 0);
 
-    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next)
-    {
+    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next){
         int* value = (int*)node->value;
         printf("%d\n", *value);
     }
 
-
     list_deallocate(list1);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -281,35 +258,30 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
-
+int main() {
     List *list1 = list_create(sizeof(int), compare_ints);
     List *list2 = list_create(sizeof(int), compare_ints);
-
     int values[] = {50, 40, 30, 20, 10};
-    for (int i = 0; i < 5; ++i) 
-        list_push_back(list1, &values[i]);
-
     int values2[] = {100, 200, 300, 400, 500};
-    for (int i = 0; i < 5; ++i) 
-        list_push_back(list2, &values2[i]);
 
+    for (int i = 0; i < 5; ++i) { 
+        list_push_back(list1, &values[i]);
+    }
+    for (int i = 0; i < 5; ++i) { 
+        list_push_back(list2, &values2[i]);
+    }
     list_swap(list1, list2); // Swap list1 and list2
 
-    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next)
-    {
+    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next){
         int* value = (int*)node->value;
         printf("%d\n", *value);
     }
-
 
     list_deallocate(list1);
     list_deallocate(list2);
@@ -326,31 +298,27 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int values[] = {50, 40, 30, 20, 10};
 
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         list_push_back(myList, &values[i]);
-        
+    }
     list_reverse(myList); // Reverse the list_
     
-    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
-    {
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next) {
         int* value = (int*)node->value;
         printf("%d\n", *value);
     }
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -363,25 +331,22 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int values[] = {50, 40, 30, 20, 10};
 
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 5; ++i) { 
         list_push_back(myList, &values[i]);
-
+    }
     list_sort(myList); // Sort the list
     
-    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
-    {
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next) {
         int* value = (int*)node->value;
         printf("%d\n", *value);
     }
@@ -399,20 +364,17 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     bool isEmpty = list_empty(myList); // Check if list is empty
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -425,15 +387,13 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int value = 100;
 
@@ -443,7 +403,6 @@ int main()
     printf("Size of List %zu\n", length);
     
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -456,29 +415,23 @@ int main()
 #include <stdlib.h>
 #include "list/list.h"
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int values[] = {1, 2, 3, 4, 5};
 
     list_assign(myList, values, 5); // Assign values to list
-
-    // Print values
-    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next)
-    {
+    for (Node* node = list_begin(myList); node != list_end(myList); node = node->next){
         int* value = (int*)node->value;
         printf("%d\n", *value);
     }
 
     list_deallocate(myList);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -492,15 +445,13 @@ int main()
 #include "list/list.h"
 
 
-static int compare_ints(const void* a, const void* b) 
-{
+static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
-int main() 
-{
+int main() {
     List *list1 = list_create(sizeof(int), compare_ints);
     List *list2 = list_create(sizeof(int), compare_ints);
     int value1 = 10, value2 = 20;
@@ -511,7 +462,6 @@ int main()
 
     list_deallocate(list1);
     list_deallocate(list2);
-
     return EXIT_SUCCESS;
 }
 ```
@@ -526,20 +476,15 @@ int main()
 #include "list/list.h"
 #include "string/string.h"
 
-
-static int compare_strings(const void* a, const void* b) 
-{
+static int compare_strings(const void* a, const void* b) {
     String* strA = *(String**)a;
     String* strB = *(String**)b;
 
     return string_is_less(strA, strB) ? -1 : string_is_greater(strA, strB);
 }
 
-int main() 
-{
+int main() {
     List* stringList = list_create(sizeof(String*), compare_strings);
-
-    // Add strings to the list
     String* str1 = string_create("Apple");
     String* str2 = string_create("Banana");
     String* str3 = string_create("Cherry");
@@ -547,22 +492,16 @@ int main()
     list_push_back(stringList, &str1);
     list_push_back(stringList, &str2);
     list_push_back(stringList, &str3);
+    list_sort(stringList); // Sort the list of strings
 
-    // Sort the list of strings
-    list_sort(stringList);
-
-    // Iterate and print strings
-    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) 
-    {
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
         String* str = *(String**)node->value;
         printf("%s\n", string_c_str(str));
     }
 
-    // Deallocate and clean up
     string_deallocate(str1);
     string_deallocate(str2);
     string_deallocate(str3);
-
     list_deallocate(stringList);
 
     return EXIT_SUCCESS;
@@ -580,12 +519,9 @@ int main()
 #include "list/list.h"
 #include "string/string.h"
 
-
-int main() 
-{
+int main() {
     List* list1 = list_create(sizeof(String*), NULL);
     List* list2 = list_create(sizeof(String*), NULL);
-
     String* str1 = string_create("Hello");
     String* str2 = string_create("World");
     String* str3 = string_create("Example");
@@ -595,23 +531,17 @@ int main()
     list_push_back(list1, &str2);
     list_push_back(list2, &str3);
     list_push_back(list2, &str4);
+    list_merge(list1, list2); // Merge list2 into list1
 
-    // Merge list2 into list1
-    list_merge(list1, list2);
-
-    // Iterate and print strings from merged list
-    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next) 
-    {
+    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next) {
         String* str = *(String**)node->value;
         printf("%s\n", string_c_str(str));
     }
 
-    // Deallocate and clean up
     string_deallocate(str1);
     string_deallocate(str2);
     string_deallocate(str3);
     string_deallocate(str4);
-
     list_deallocate(list1);
     list_deallocate(list2);
 
@@ -629,17 +559,13 @@ int main()
 #include "string/string.h"
 
 // Condition function to filter out short strings
-static bool filter_short_strings(void* value) 
-{
+static bool filter_short_strings(void* value) {
     String* str = *(String**)value;
     return string_length(str) < 5;
 }
 
-int main() 
-{
+int main() {
     List* stringList = list_create(sizeof(String*), NULL);
-
-    // Add strings to the list
     String* str1 = string_create("Apple");
     String* str2 = string_create("Banana");
     String* str3 = string_create("Kiwi");
@@ -647,22 +573,16 @@ int main()
     list_push_back(stringList, &str1);
     list_push_back(stringList, &str2);
     list_push_back(stringList, &str3);
+    list_remove_if(stringList, filter_short_strings); // Remove short strings
 
-    // Remove short strings
-    list_remove_if(stringList, filter_short_strings);
-
-    // Iterate and print remaining strings
-    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) 
-    {
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
         String* str = *(String**)node->value;
         printf("%s\n", string_c_str(str));
     }
 
-    // Deallocate and clean up
     string_deallocate(str1);
     string_deallocate(str2);
     string_deallocate(str3);
-
     list_deallocate(stringList);
 
     return EXIT_SUCCESS;
@@ -678,12 +598,9 @@ int main()
 #include "list/list.h"
 #include "string/string.h"
 
-int main()
-{
+int main(){
     List* stringList = list_create(sizeof(String*), NULL);
     String* concatenated = string_create("");
-
-    // Add strings to the list
     String* str1 = string_create("Hello, ");
     String* str2 = string_create("world");
     String* str3 = string_create("!");
@@ -692,20 +609,15 @@ int main()
     list_push_back(stringList, &str2);
     list_push_back(stringList, &str3);
 
-    // Concatenate all strings
-    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next)
-    {
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next){
         String* str = *(String**)node->value;
         string_append(concatenated, string_c_str(str));
     }
-
     printf("Concatenated String: %s\n", string_c_str(concatenated));
 
-    // Deallocate and clean up
     string_deallocate(str1);
     string_deallocate(str2);
     string_deallocate(str3); 
-
     string_deallocate(concatenated);
     list_deallocate(stringList);
 
@@ -722,11 +634,8 @@ int main()
 #include "list/list.h"
 #include "string/string.h"
 
-int main() 
-{
+int main() {
     List* stringList = list_create(sizeof(String*), NULL);
-
-    // Add strings to the list
     String* str1 = string_create("Hello");
     String* str2 = string_create("World");
     String* str3 = string_create("Example");
@@ -736,24 +645,20 @@ int main()
     list_push_back(stringList, &str3);
 
     // Reverse each string
-    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next)
-    {
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
         String* str = *(String**)node->value;
         String* reversed = string_create(""); 
 
-        for (int i = string_length(str) - 1; i >= 0; --i) 
+        for (int i = string_length(str) - 1; i >= 0; --i) {
             string_push_back(reversed, string_c_str(str)[i]);
-        
+        }
         printf("Reversed String: %s\n", string_c_str(reversed));
-
         string_deallocate(reversed);
     }
 
-    // Deallocate and clean up
     string_deallocate(str1);
     string_deallocate(str2);
     string_deallocate(str3);
-
     list_deallocate(stringList);
 
     return EXIT_SUCCESS;
@@ -771,27 +676,22 @@ int main()
 #include "list/list.h"
 
 // Function to compare integers for the list
-static int int_compare(const void* a, const void* b) 
-{
+static int int_compare(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
     return (int_a > int_b) - (int_a < int_b);
 }
 
 // Function to add elements to a list
-void add_elements_to_list(List* list, int* elements, size_t numElements) 
-{
-    for (size_t i = 0; i < numElements; ++i) 
+void add_elements_to_list(List* list, int* elements, size_t numElements) {
+    for (size_t i = 0; i < numElements; ++i) {
         list_push_back(list, &elements[i]);
-    
+    }
 }
 
-int main() 
-{
+int main() {
     List* list1 = list_create(sizeof(int), int_compare);
     List* list2 = list_create(sizeof(int), int_compare);
-
-    // Add elements to the lists
     int elements1[] = {1, 2, 3, 4, 5};
     int elements2[] = {1, 2, 3, 4, 6};
 
@@ -806,12 +706,10 @@ int main()
     printf("List 1 is greater than or equal to List 2: %s\n", list_is_greater_or_equal(list1, list2) ? "true" :"false");
     printf("List 1 is not equal to List 2: %s\n", list_is_not_equal(list1, list2) ? "true" : "false");
 
-    // Deallocate and clean up
     list_deallocate(list1);
     list_deallocate(list2);
 
     return EXIT_SUCCESS;
 }
-
 
 ```

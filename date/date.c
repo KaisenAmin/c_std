@@ -184,3 +184,99 @@ Date* date_add_years(const Date* orig_date, int nyears) {
 
     return new_date;
 }
+
+void date_get_date(const Date* date, int *year, int *month, int *day) {
+    if (date == NULL || year == NULL || month == NULL || day == NULL) {
+        perror("Invalid argument passed to date_get_date");
+        return;
+    }
+
+    *year = date->year;
+    *month = date->month;
+    *day = date->day;
+}
+
+int date_day(const Date* date) {
+    if (date == NULL || !date_is_valid(date)) {
+        // Handle the error, as the date is NULL
+        perror("Date is null in date_day or date is not valid");
+        return -1; // Return an invalid day
+    }
+    return date->day;
+}
+
+int date_month(const Date* date) {
+    if (date == NULL || !date_is_valid(date)) {
+        // Handle the error, as the date is NULL
+        perror("Date is null in date_month or date is not valid");
+        return -1; // Return an invalid month
+    }
+    return date->month;
+}
+
+int date_year(const Date* date) {
+    if (date == NULL) {
+        // Handle the error, as the date is NULL
+        perror("Date is null in date_year or date is not valid");
+        return -1; // Return an invalid year
+    }
+    return date->year;
+}
+
+int date_day_of_week(const Date* date) {
+    if (date == NULL) {
+        perror("Date is null in date_day_of_week");
+        return -1; // Indicate an error
+    }
+
+    // Zeller's Congruence Algorithm to calculate day of week
+    int h, q, m, k, j;
+    q = date->day;
+    m = (date->month < 3) ? date->month + 12 : date->month;
+    k = date->year % 100;
+    j = date->year / 100;
+
+    // Adjust months for January and February
+    if (m > 12) {
+        k--;
+    }
+
+    h = (q + (13*(m + 1))/5 + k + k/4 + j/4 + 5*j) % 7;
+    int dayOfWeek = ((h + 5) % 7) + 1; // Convert to 1 (Monday) to 7 (Sunday)
+
+    return dayOfWeek;
+}
+
+int date_day_of_year(const Date* date) {
+    if (date == NULL) {
+        perror("Date is null in date_day_of_year");
+        return -1; // Indicate an error
+    }
+
+    static const int daysBeforeMonth[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
+    int dayOfYear = daysBeforeMonth[date->month - 1] + date->day;
+
+    // Add one day if it's a leap year and after February
+    if (date->month > 2 && ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0))) {
+        dayOfYear++;
+    }
+
+    return dayOfYear;
+}
+
+int date_days_in_month(const Date* date) {
+    if (date == NULL) {
+        perror("Date is null in date_days_in_month");
+        return -1; // Indicate an error
+    }
+
+    static const int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int days = daysInMonth[date->month - 1];
+
+    // Check for leap year in February
+    if (date->month == 2 && ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0))) {
+        days++;
+    }
+
+    return days;
+}
