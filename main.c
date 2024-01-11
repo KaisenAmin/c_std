@@ -1,31 +1,17 @@
+#include "date/date.h"
 #include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
-#include "time/time.h"
 
-int main ()
-{
-    Time* test = time_current_time();
+int main() {
+    // Create a new date: 15th March 2021
+    Date* date = date_create_ymd(2021, 3, 15);
 
-    printf("%d %d %d %d\n", test->hour, test->minute, test->second, test->msec);
-    
-    time_add_msecs(test, 1500000);
-    printf("%d %d %d %d\n", test->hour, test->minute, test->second, test->msec);
+    printf("Created date: %d-%02d-%02d\n", date->year, date->month, date->day);
 
-    time_add_secs(test, 120);
-    printf("%d %d %d %d\n", test->hour, test->minute, test->second, test->msec);
+    Date* new_date = date_add_days(date, 30);
+    printf("New date after adding 30 days: %d-%02d-%02d\n", new_date->year, new_date->month, new_date->day);
 
-    printf("%d\n", time_msecs_since_start_of_day());
-
-    Time t1 = {10, 30, 15, 500}; // 10:30:15.500
-    Time t2 = {11, 45, 20, 750}; // 11:45:20.750
-
-    int diff = time_msecs_to(&t1, &t2);
-    printf("Milliseconds difference: %d\n", diff);
-
-    char * message = time_to_string(test);
-    printf("%s", message);
-
-    free(message);
+    free(date);
+    free(new_date);
     return 0;
 }

@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Vector
+*/
+
 #ifndef TIME_H
 #define TIME_H
 
@@ -29,11 +35,11 @@ Time* time_current_time(void);
 Time* time_from_msecs_since_start_of_day(int msecs);
 bool time_is_valid_time(int h, int m, int s, int ms);
 
-bool time_equals(const Time* lhs, const Time* rhs);
-bool time_less_than(const Time lhs, const Time* rhs);
-bool time_less_than_or_equal(const Time* lhs, const Time* rhs);
-bool time_greater_than(const Time* lhs, const Time* rhs);
-bool time_greater_than_or_equal(const Time* lhs, const Time* rhs);
+bool time_is_equal(const Time* lhs, const Time* rhs);
+bool time_is_less_than(const Time* lhs, const Time* rhs);
+bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs);
+bool time_is_greater_than(const Time* lhs, const Time* rhs);
+bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs);
 bool time_is_not_equal(const Time* lhs, const Time* rhs);
 
 #endif // QTIME_H

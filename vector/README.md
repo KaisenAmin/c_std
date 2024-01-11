@@ -22,7 +22,7 @@ The Vector library allows for creating dynamic arrays that can resize automatica
 To use this library, include `vector.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c ./string/string.c
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c ./string/string.c
 ```
 
 ## Documentation

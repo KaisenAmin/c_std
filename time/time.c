@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023 
+ * @class Vector
+*/
+
 #include "time.h"
 #include <time.h>
 #include <windows.h>
@@ -227,4 +233,71 @@ char* time_to_string(const Time* t) {
     }
     sprintf(time, "(%d:%02d:%02d:%03d)", t->hour, t->minute, t->second, t->msec);
     return time;
+}
+
+bool time_is_valid_time(int h, int m, int s, int ms) {
+    if ((h < 0 || h > 23) || (m < 0 || m > 59) || (s < 0 || s > 59) || (ms < 0 || ms > 999)) {
+        return false;
+    } 
+    return true;
+}
+
+Time* time_from_msecs_since_start_of_day(int msecs) {
+    int seconds = msecs / 1000;
+    int minutes = seconds / 60;
+    int hours = minutes / 60;
+    msecs = msecs % 1000;
+    seconds = seconds % 60;
+    minutes = minutes % 60;
+
+    Time* my_time = time_create(hours, minutes, seconds, msecs);
+    return my_time;
+}
+
+bool time_is_equal(const Time* lhs, const Time* rhs) {
+    if (!time_is_valid(lhs) || lhs == NULL) {
+        perror("lhs is null or not valid time");
+        return false;
+    }
+    if (!time_is_valid(rhs) || rhs == NULL) {
+        perror("rhs is null or not valid time");
+        return false;
+    }
+    if (lhs->hour == rhs->hour && lhs->minute  == rhs->minute && lhs->second == rhs->second && lhs->msec == rhs->msec) {
+        return true;
+    }
+
+    return false;
+}
+
+bool time_is_less_than(const Time* lhs, const Time* rhs) {
+    if (!time_is_valid(lhs) || lhs == NULL) {
+        perror("lhs is null or not valid time");
+        return false;
+    }
+    if (!time_is_valid(rhs) || rhs == NULL) {
+        perror("rhs is null or not valid time");
+        return false;
+    }
+    if ((lhs->hour) < (rhs->hour) || (lhs->minute) < (rhs->minute) || (lhs->second) < (rhs->second) || (lhs->msec) < (rhs->msec)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs) {
+    return (time_is_equal(lhs, rhs) || time_is_less_than(lhs, rhs))? true: false;
+}
+
+bool time_is_greater_than(const Time* lhs, const Time* rhs) {
+    return time_is_less_than(rhs, lhs);
+}
+
+bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs) {
+    return (time_is_greater_than(lhs, rhs) || time_is_equal(rhs, lhs))? true: false;
+}
+
+bool time_is_not_equal(const Time* lhs, const Time* rhs) {
+    return !time_is_equal(lhs, rhs);
 }
