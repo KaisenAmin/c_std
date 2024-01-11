@@ -33,5 +33,4 @@ void numeric_iota(void *first, const void* last, size_t size, void* element, Inc
 int numeric_gcd(int a, int b);
 int numeric_lcm(int a, int b);
 
-
 #endif 

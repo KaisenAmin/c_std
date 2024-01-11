@@ -30,7 +30,7 @@ Date* date_solar_to_gregorian(const Date* solar_date);
 
 bool date_is_null(const Date* date);
 bool date_is_valid(const Date* date);
-bool date_is_equals(const Date* lhs, const Date* rhs);
+bool date_is_equal(const Date* lhs, const Date* rhs);
 bool date_is_less_than(const Date* lhs, const Date* rhs);
 bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs);
 bool date_is_greater_than(const Date* lhs, const Date* rhs);

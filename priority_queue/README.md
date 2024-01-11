@@ -198,9 +198,8 @@ int main() {
 static int compare_ints_desc(const void* a, const void* b) {
     int int_a = *(const int*)a;
     int int_b = *(const int*)b;
-
-    // For descending order, reverse the comparison logic
-    return (int_b > int_a) - (int_b < int_a);
+    
+    return (int_b > int_a) - (int_b < int_a);  // For descending order, reverse the comparison logic
 }
 
 int main() {
