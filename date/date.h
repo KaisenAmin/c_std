@@ -36,7 +36,7 @@ bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs);
 bool date_is_greater_than(const Date* lhs, const Date* rhs);
 bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs);
 bool date_is_not_equals(const Date* lhs, const Date* rhs);
-bool date_is_leap_year(int year);
+bool date_is_leap_year_y(int year);
 bool date_is_leap_year(const Date* date);
 bool date_set_date(Date* date, int year, int month, int day);
 
@@ -50,10 +50,13 @@ int date_days_in_year(const Date* date);
 int date_week_number(const Date* date, int* yearNumber);
 int date_days_to(const Date* from, const Date* to);
 
-long date_days_to(const Date* from, const Date* to);
 long date_to_julian_day(const Date* date);
 
 char* date_to_string(const Date* date, const char* format);
 char* date_to_string_format(const Date* date, const char* format);
+
+#if defined(_WIN32) || defined(_WIN64)
+char* win_strptime(const char *buf, const char *fmt, struct tm *tm);
+#endif
 
 #endif // DATE_H
