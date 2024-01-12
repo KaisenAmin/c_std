@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdint.h>
+#include "../time/time.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 static const unsigned char *conv_num(const unsigned char *, int *, unsigned int, unsigned int);
@@ -636,7 +637,8 @@ out:
             tm->tm_yday =  start_of_month[isleap_sum(tm->tm_year,
                 TM_YEAR_BASE)][tm->tm_mon] + (tm->tm_mday - 1);
             state |= S_YDAY;
-        } else if (day_offset != -1) {
+        } 
+        else if (day_offset != -1) {
             /*
              * Set the date to the first Sunday (or Monday)
              * of the specified week of the year.
@@ -706,8 +708,9 @@ conv_num(const unsigned char *buf, int *dest, unsigned int llim, unsigned int ul
     unsigned int rulim = ulim;
 
     ch = *buf;
-    if (ch < '0' || ch > '9')
+    if (ch < '0' || ch > '9') {
         return NULL;
+    }
 
     do {
         result *= 10;
@@ -716,8 +719,9 @@ conv_num(const unsigned char *buf, int *dest, unsigned int llim, unsigned int ul
         ch = *++buf;
     } while ((result <= ulim) && rulim && ch >= '0' && ch <= '9');
 
-    if (result < llim || result > ulim)
+    if (result < llim || result > ulim) {
         return NULL;
+    }
 
     *dest = result;
     return buf;
@@ -746,71 +750,111 @@ find_string(const unsigned char *bp, int *tgt, const char * const *n1,
 }
 #endif
 
-static bool date_is_valid_ymd(int y, int m, int d) {
-    // Year 0 is invalid
+static bool is_persian_leap_year(int year) { // winner (Musa Akrami method) ! ;D
+	const double QUARTER_DAY = 0.24219858156;
+	double testLeap = (year + 2346) * QUARTER_DAY;
+	testLeap -= (int)(testLeap);
+
+	if (testLeap < QUARTER_DAY) {
+        return true;
+    }
+	else return false;
+}
+
+static int persian_days_in_month(int year, int month) {
+    if (month <= 6) {
+        return 31; // The first six months have 31 days
+    } 
+    else if (month <= 11) {
+        return 30; // The next five months have 30 days
+    } 
+    else {
+        // The last month has 29 or 30 days depending on leap year
+        return is_persian_leap_year(year) ? 30 : 29;
+    }
+}
+
+static bool date_is_valid_ymd(int y, int m, int d, CalendarType type) {
     if (y == 0 || m <= 0 || m > 12 || d <= 0) {
         return false;
     }
 
-    // Array to hold the number of days in each month
-    int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-    // Check for leap year
-    if (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) {
-        days_in_month[2] = 29; // February has 29 days in a leap year
+    if (type == Gregorian) {
+        // Existing Gregorian logic...
+        int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        if (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) {
+            days_in_month[2] = 29; // February in a leap year
+        }
+        return d <= days_in_month[m];
+    } 
+    else if (type == Persian) {
+        return d <= persian_days_in_month(y, m);
     }
 
-    return d <= days_in_month[m];
+    return false;
 }
 
-static int days_in_month(int year, int month) {
-    int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-    // Adjust for leap year
-    if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0)) {
-        return 29;
+static int days_in_month(int year, int month, CalendarType type) {
+    if (type == Gregorian) {
+        // Existing Gregorian logic...
+        int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0)) {
+            return 29;
+        } 
+        else {
+            return days_in_month[month];
+        }
     } 
-    else {
-        return days_in_month[month];
+    else if (type == Persian) {
+        return persian_days_in_month(year, month);
     }
+
+    return 0; // Default case for unsupported calendar types
 }
 
 bool date_is_valid(const Date* date) {
     if (date == NULL) {
         perror("date is null");
     }
-    return date_is_valid_ymd(date->year, date->month, date->month);
+    return date_is_valid_ymd(date->year, date->month, date->day, date->calendarType);
 }
 
-Date* date_create() {
+Date* date_create(CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (date) {
-        // Setting invalid values to signify a null (invalid) date
+        // Initialize with invalid values to signify a null (invalid) date
         date->year = -1;
         date->month = -1;
         date->day = -1;
-    }
-    if (date == NULL) {
-        perror("can not allocate memory for date");
+        date->calendarType = type;
+    } 
+    else {
+        perror("Cannot allocate memory for date");
         exit(-1);
     }
     return date;
 }
 
-Date* date_create_ymd(int y, int m, int d) {
+Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (date) {
-        if (date_is_valid_ymd(y, m, d)) {
+        if (date_is_valid_ymd(y, m, d, type)) {
             date->year = y;
             date->month = m;
             date->day = d;
+            date->calendarType = type;
         } 
         else {
             // Setting invalid values for an invalid date
             date->year = -1;
             date->month = -1;
             date->day = -1;
+            date->calendarType = type; // Still set the calendar type
         }
+    } 
+    else {
+        perror("Cannot allocate memory for date");
+        exit(-1);
     }
     return date;
 }
@@ -824,7 +868,7 @@ bool date_is_null(const Date* date) {
 }
 
 Date* date_add_days(const Date* orig_date, int ndays) {
-    if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day)) {
+    if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         perror("date is null or not valid");
         exit(-1);
     }
@@ -835,17 +879,16 @@ Date* date_add_days(const Date* orig_date, int ndays) {
         exit(-1);
     }
 
-    // Copy original date to the new date
     *new_date = *orig_date;
 
     while (ndays != 0) {
         if (ndays > 0) {
             // Adding days
-            int days_this_month = days_in_month(new_date->year, new_date->month);
+            int days_this_month = days_in_month(new_date->year, new_date->month, new_date->calendarType);
             if (new_date->day + ndays > days_this_month) {
                 ndays -= (days_this_month - new_date->day + 1);
                 new_date->day = 1;
-                if (++new_date->month > 12) {
+                if (++new_date->month > (new_date->calendarType == Persian && new_date->year % 33 == 1 ? 13 : 12)) {
                     new_date->month = 1;
                     new_date->year++;
                 }
@@ -860,10 +903,10 @@ Date* date_add_days(const Date* orig_date, int ndays) {
             if (new_date->day + ndays < 1) {
                 ndays += new_date->day;
                 if (--new_date->month < 1) {
-                    new_date->month = 12;
+                    new_date->month = (new_date->calendarType == Persian && (new_date->year - 1) % 33 == 1 ? 13 : 12);
                     new_date->year--;
                 }
-                new_date->day = days_in_month(new_date->year, new_date->month);
+                new_date->day = days_in_month(new_date->year, new_date->month, new_date->calendarType);
             } 
             else {
                 new_date->day += ndays;
@@ -876,7 +919,7 @@ Date* date_add_days(const Date* orig_date, int ndays) {
 }
 
 Date* date_add_months(const Date* orig_date, int nmonths) {
-    if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day)) {
+    if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         perror("date is null or not valid");
         exit(-1);
     }
@@ -894,21 +937,22 @@ Date* date_add_months(const Date* orig_date, int nmonths) {
     new_date->year += years_to_add;
     new_date->month += nmonths;
 
-    if (new_date->month > 12) {
+    // Adjust the number of months based on calendar type
+    int totalMonthsInYear = (orig_date->calendarType == Persian && new_date->year % 33 == 1) ? 13 : 12;
+    if (new_date->month > totalMonthsInYear) {
         new_date->year++;
-        new_date->month -= 12;
+        new_date->month -= totalMonthsInYear;
     }
 
-    int days_this_month = days_in_month(new_date->year, new_date->month);
+    int days_this_month = days_in_month(new_date->year, new_date->month, orig_date->calendarType);
     if (new_date->day > days_this_month) {
         new_date->day = days_this_month;
     }
-
     return new_date;
 }
 
 Date* date_add_years(const Date* orig_date, int nyears) {
-    if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day)) {
+    if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         perror("date is null or not valid");
         exit(-1);
     }
@@ -922,8 +966,17 @@ Date* date_add_years(const Date* orig_date, int nyears) {
     *new_date = *orig_date;
     new_date->year += nyears;
 
-    if (new_date->month == 2 && new_date->day == 29 && !date_is_valid_ymd(new_date->year, new_date->month, new_date->day)) {
-        new_date->day = 28; // Adjust for non-leap year
+    // Adjust for leap years
+    if (orig_date->calendarType == Gregorian) {
+        if (new_date->month == 2 && new_date->day == 29 && !date_is_leap_year_y(new_date->year, Gregorian)) {
+            new_date->day = 28; // Adjust for non-leap year
+        }
+    } 
+    else if (orig_date->calendarType == Persian) {
+        // Check if the original date is the extra day in a leap year
+        if (new_date->month == 12 && new_date->day == 30 && !date_is_leap_year_y(new_date->year, Persian)) {
+            new_date->day = 29; // Adjust for non-leap year
+        }
     }
 
     return new_date;
@@ -967,6 +1020,29 @@ int date_year(const Date* date) {
     return date->year;
 }
 
+static long gregorian_to_jdn(int year, int month, int day) {
+    if (month < 3) {
+        year--;
+        month += 12;
+    }
+    return day + (153 * (month - 3) + 2) / 5 + 365 * year + year / 4 - year / 100 + year / 400 - 32045;
+}
+
+// Helper function to convert Persian date to Julian Day Number
+static long persian_to_jdn(int year, int month, int day) {
+    int epbase, epyear;
+
+    epbase = year - ((year >= 0) ? 474 : 473);
+    epyear = 474 + (epbase % 2820);
+
+    return day +
+           ((month <= 7) ? ((month - 1) * 31) : (((month - 1) * 30) + 6)) +
+           ((epyear * 682) - 110) / 2816 +
+           (epyear - 1) * 365 +
+           (epbase / 2820) * 1029983 +
+           (1948320 - 1);
+}
+
 // This function returns the day of the week for the given date, where Monday is 1 and Sunday is 7.
 int date_day_of_week(const Date* date) {
     if (date == NULL) {
@@ -974,22 +1050,19 @@ int date_day_of_week(const Date* date) {
         return -1; // Indicate an error
     }
 
-    // Zeller's Congruence Algorithm to calculate day of week
-    int h, q, m, k, j;
-    q = date->day;
-    m = (date->month < 3) ? date->month + 12 : date->month;
-    k = date->year % 100;
-    j = date->year / 100;
-
-    // Adjust months for January and February
-    if (m > 12) {
-        k--;
+    long jdn;
+    if (date->calendarType == Gregorian) {
+        jdn = gregorian_to_jdn(date->year, date->month, date->day);
+    } 
+    else if (date->calendarType == Persian) {
+        jdn = persian_to_jdn(date->year, date->month, date->day);
+    } 
+    else {
+        perror("Unsupported calendar type in date_day_of_week");
+        return -1; // Indicate an error for unsupported calendar types
     }
-
-    h = (q + (13*(m + 1))/5 + k + k/4 + j/4 + 5*j) % 7;
-    int dayOfWeek = ((h + 5) % 7) + 1; // Convert to 1 (Monday) to 7 (Sunday)
-
-    return dayOfWeek;
+    // Calculate the day of the week (Monday = 1, ..., Sunday = 7)
+    return (jdn + 1) % 7 + 1;
 }
 
 // This function calculates the day of the year, from 1 to 365 or 366 in a leap year.
@@ -999,17 +1072,32 @@ int date_day_of_year(const Date* date) {
         return -1; // Indicate an error
     }
 
-    static const int daysBeforeMonth[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
-    int dayOfYear = daysBeforeMonth[date->month - 1] + date->day;
+    int dayOfYear;
+    if (date->calendarType == Gregorian) {
+        static const int daysBeforeMonthGregorian[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
+        dayOfYear = daysBeforeMonthGregorian[date->month - 1] + date->day;
 
-    // Add one day if it's a leap year and after February
-    if (date->month > 2 && ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0))) {
-        dayOfYear++;
+        // Add one day if it's a leap year and after February
+        if (date->month > 2 && ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0))) {
+            dayOfYear++;
+        }
+    } else if (date->calendarType == Persian) {
+        static const int daysBeforeMonthPersian[] = {0, 31, 62, 93, 124, 155, 186, 216, 246, 276, 306, 336, 365};
+        dayOfYear = daysBeforeMonthPersian[date->month - 1] + date->day;
+        // Adjust for leap year
+        if (date->month > 11 || (date->month == 11 && date->day == 30)) {
+            if (is_persian_leap_year(date->year)) {
+                dayOfYear++;
+            }
+        }
+    } 
+    else {
+        perror("Unsupported calendar type in date_day_of_year");
+        return -1; // Indicate an error for unsupported calendar types
     }
 
     return dayOfYear;
 }
-
 // This function returns the number of days in the given month of the specified year.
 int date_days_in_month(const Date* date) {
     if (date == NULL) {
@@ -1017,30 +1105,60 @@ int date_days_in_month(const Date* date) {
         return -1; // Indicate an error
     }
 
-    static const int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    int days = daysInMonth[date->month - 1];
-
-    // Check for leap year in February
-    if (date->month == 2 && ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0))) {
-        days++;
+    int days;
+    if (date->calendarType == Gregorian) {
+        static const int daysInMonthGregorian[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        days = daysInMonthGregorian[date->month - 1];
+        // Check for leap year in February
+        if (date->month == 2 && ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0))) {
+            days++;
+        }
+    } 
+    else if (date->calendarType == Persian) {
+        // Persian calendar months: 6 months of 31 days, 5 months of 30 days, and 29 or 30 days in the last month
+        if (date->month <= 6) {
+            days = 31;
+        } 
+        else if (date->month <= 11) {
+            days = 30;
+        } 
+        else { // 12th month
+            days = is_persian_leap_year(date->year) ? 30 : 29;
+        }
+    } 
+    else {
+        perror("Unsupported calendar type in date_days_in_month");
+        return -1; // Indicate an error for unsupported calendar types
     }
 
     return days;
 }
 
 // This function returns the total number of days in the year of the given date.
-int date_days_in_year(const Date* date) 
-{
+int date_days_in_year(const Date* date) {
     if (date == NULL) {
         perror("Date is null in date_days_in_year");
-        return -1;
+        return -1; // Indicate an error
     }
 
-    if ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0)) {
-        return 366; // Leap year
+    if (date->calendarType == Gregorian) {
+        if ((date->year % 4 == 0 && date->year % 100 != 0) || (date->year % 400 == 0)) {
+            return 366; // Gregorian leap year
+        } 
+        else {
+            return 365; // Gregorian non-leap year
+        }
+    } else if (date->calendarType == Persian) {
+        if (is_persian_leap_year(date->year)) {
+            return 366; // Persian leap year
+        } 
+        else {
+            return 365; // Persian non-leap year
+        }
     } 
     else {
-        return 365; // Non-leap year
+        perror("Unsupported calendar type in date_days_in_year");
+        return -1; // Indicate an error for unsupported calendar types
     }
 }
 
@@ -1051,21 +1169,46 @@ int date_week_number(const Date* date, int* yearNumber) {
         return -1;
     }
 
-    // Algorithm to find ISO week number
     int dayOfYear = date_day_of_year(date);
     int wday = date_day_of_week(date);
-    int week = ((dayOfYear - wday + 10) / 7);
 
-    if (yearNumber != NULL) {
-        if (week < 1) {
-            *yearNumber = date->year - 1;
-        } 
-        else if (week == 53 && (date_day_of_year(&(Date){date->year, 12, 31}) - wday) < 28) {
-            *yearNumber = date->year + 1;
-        } 
-        else {
-            *yearNumber = date->year;
+    // Determine the week number based on the calendar type
+    int week;
+    if (date->calendarType == Gregorian) {
+        // ISO week number calculation for Gregorian calendar
+        week = ((dayOfYear - wday + 10) / 7);
+
+        if (yearNumber != NULL) {
+            if (week < 1) {
+                *yearNumber = date->year - 1;
+            } 
+            else if (week == 53 && (date_day_of_year(&(Date){date->year, 12, 31, Gregorian}) - wday) < 28) {
+                *yearNumber = date->year + 1;
+            } 
+            else {
+                *yearNumber = date->year;
+            }
         }
+    } 
+    else if (date->calendarType == Persian) {
+        // Simplified week number calculation for Persian calendar
+        week = (dayOfYear + 6) / 7;
+
+        if (yearNumber != NULL) {
+            if (week < 1) {
+                *yearNumber = date->year - 1;
+            } 
+            else if (week >= 53 && dayOfYear < 7) {
+                *yearNumber = date->year + 1;
+            } 
+            else {
+                *yearNumber = date->year;
+            }
+        }
+    } 
+    else {
+        perror("Unsupported calendar type in date_week_number");
+        return -1; // Indicate an error for unsupported calendar types
     }
 
     return week;
@@ -1073,7 +1216,7 @@ int date_week_number(const Date* date, int* yearNumber) {
 
 // This function calculates the number of days between two dates.
 int date_days_to(const Date* from, const Date* to) {
-    if (from == NULL || to == NULL) {
+    if (from == NULL || to == NULL || (from->calendarType != to->calendarType) || !date_is_valid(from) || !date_is_valid(to)) {
         perror("One or both dates are null in date_days_to");
         return -1;
     }
@@ -1086,7 +1229,7 @@ int date_days_to(const Date* from, const Date* to) {
 }
 
 bool date_is_equal(const Date* lhs, const Date* rhs) {
-    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs)) {
+    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         perror("One or both dates are null in date_is_equals");
         return false;  // Consider unequal if either date is NULL
     }
@@ -1095,7 +1238,7 @@ bool date_is_equal(const Date* lhs, const Date* rhs) {
 }
 
 bool date_is_less_than(const Date* lhs, const Date* rhs) {
-    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs)) {
+    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         perror("One or both dates are null or invalid in date_is_less_than");
         return false;  // Cannot determine if invalid or NULL
     }
@@ -1110,7 +1253,7 @@ bool date_is_less_than(const Date* lhs, const Date* rhs) {
 }
 
 bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs) {
-    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs)) {
+    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         perror("One or both dates are null or invalid in date_is_less_than_or_equal");
         return false;  // Cannot determine if invalid or NULL
     }
@@ -1119,7 +1262,7 @@ bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs) {
 }
 
 bool date_is_greater_than(const Date* lhs, const Date* rhs) {
-    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs)) {
+    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         perror("One or both dates are null or invalid in date_is_greater_than");
         return false;  // Cannot determine if invalid or NULL
     }
@@ -1134,7 +1277,7 @@ bool date_is_greater_than(const Date* lhs, const Date* rhs) {
 }
 
 bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs) {
-    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs)) {
+    if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         perror("One or both dates are null or invalid in date_is_greater_than_or_equal");
         return false;  // Cannot determine if invalid or NULL
     }
@@ -1146,81 +1289,349 @@ bool date_is_not_equals(const Date* lhs, const Date* rhs) {
     return !date_is_equal(lhs, rhs);
 }
 
-bool date_is_leap_year_y(int year) {
-    // A year is a leap year if it is divisible by 4,
-    // except for end-of-century years, which must be divisible by 400.
-    if (year % 4 == 0) {
-        if (year % 100 == 0) {
-            return year % 400 == 0;
+bool date_is_leap_year_y(int year, CalendarType type) {
+    if (type == Gregorian) {
+        // Gregorian leap year calculation
+        if (year % 4 == 0) {
+            if (year % 100 == 0) {
+                return year % 400 == 0;
+            }
+            return true;
         }
-        return true;
+        return false;
+    } 
+    else if (type == Persian) {
+        // Persian leap year calculation
+        return is_persian_leap_year(year);
     }
-    return false;
+    return false; // Default case
 }
 
 bool date_is_leap_year(const Date* date) {
-    if (date == NULL || !date_is_valid(date)) {
+    if (date == NULL ) {
         perror("Date is null in date_is_leap_year");
         return false;  // Cannot determine if the date is NULL
     }
-    return date_is_leap_year_y(date->year);
+    return date_is_leap_year_y(date->year, date->calendarType);
 }
 
-bool date_set_date(Date* date, int year, int month, int day) {
-    if (date == NULL || !date_is_valid(date)) {
+bool date_set_date(Date* date, int year, int month, int day, CalendarType type) {
+    if (date == NULL) {
         perror("Date is null in date_set_date");
-        return false;  // Cannot set date if the date pointer is NULL
+        return false;
     }
-    if (year <= 0 || month <= 0 || month > 12 || day <= 0 || day > days_in_month(year, month)) {
-        perror("year or month or both or all of them are not valid");
-        return false;  // Invalid date
+    if (year <= 0 || month <= 0 || month > 12 || day <= 0) {
+        perror("Year, month, or day are not valid");
+        return false;
     }
+
+    // Check validity based on calendar type
+    if ((type == Gregorian && day > days_in_month(year, month, Gregorian)) ||
+        (type == Persian && day > days_in_month(year, month, Persian))) {
+        perror("Day is not valid for the given month and year");
+        return false;
+    }
+
     date->year = year;
     date->month = month;
     date->day = day;
-    
+    date->calendarType = type;
+
     return true;
 }
 
-Date* date_current_date() {
+Date* date_current_date(CalendarType type) {
     // Get the current time
     time_t now = time(NULL);
     struct tm *current = localtime(&now);
 
     // Allocate memory for a new Date
     Date* currentDate = (Date*)malloc(sizeof(Date));
-    if (currentDate) {
-        // Set the year, month, and day
-        currentDate->year = current->tm_year + 1900;  // tm_year is years since 1900
-        currentDate->month = current->tm_mon + 1;     // tm_mon is months since January (0-11)
+    if (currentDate == NULL) {
+        perror("Cannot allocate memory for date");
+        return NULL;
+    }
+    if (type == Gregorian) {
+        currentDate->year = current->tm_year + 1900; // tm_year is years since 1900
+        currentDate->month = current->tm_mon + 1;    // tm_mon is months since January (0-11)
         currentDate->day = current->tm_mday;
+        currentDate->calendarType = Gregorian;
+    } 
+    else if (type == Persian) {
+        // Convert Gregorian date to Persian date
+        Date gregorianDate = {current->tm_year + 1900, current->tm_mon + 1, current->tm_mday, Gregorian};
+        Date* persianDate = date_gregorian_to_solar(&gregorianDate);
+        if (persianDate) {
+            *currentDate = *persianDate;
+            free(persianDate);
+            currentDate->calendarType = Persian;
+        } 
+        else {
+            free(currentDate);
+            return NULL;
+        }
+    } 
+    else {
+        perror("Unsupported calendar type in date_current_date");
+        free(currentDate);
+        return NULL;
     }
 
     return currentDate;
 }
 
-Date* date_from_string(const char* string, const char* format) {
+Date* date_from_string(const char* string, const char* format, CalendarType type) {
+    if (string == NULL || format == NULL) {
+        perror("Invalid argument passed to date_from_string");
+        return NULL;
+    }
+
     struct tm tm;
     memset(&tm, 0, sizeof(struct tm));
 
-    #if defined(_WIN32) || defined(_WIN64)
-    if (win_strptime(string, format, &tm) == NULL) {
-        return NULL; // Failed to parse string
-    }
-    #else 
-    if (strptime(string, format, &tm) == NULL) {
-        return NULL; // Failed to parse string
-    }
-    #endif
-
     // Allocate memory for a new Date
     Date* date = (Date*)malloc(sizeof(Date));
-    if (date) {
-        // Set the year, month, and day
+    if (date == NULL) {
+        perror("Cannot allocate memory for date");
+        return NULL;
+    }
+
+    date->calendarType = type;
+
+    if (type == Gregorian) {
+        #if defined(_WIN32) || defined(_WIN64)
+        if (win_strptime(string, format, &tm) == NULL) {
+            free(date);
+            return NULL; // Failed to parse string
+        }
+        #else 
+        if (strptime(string, format, &tm) == NULL) {
+            free(date);
+            return NULL; // Failed to parse string
+        }
+        #endif
+
         date->year = tm.tm_year + 1900; // tm_year is years since 1900
         date->month = tm.tm_mon + 1;    // tm_mon is months since January (0-11)
         date->day = tm.tm_mday;
+    } 
+    else if (type == Persian) {
+        // Basic parsing for a Persian date in "YYYY-MM-DD" format
+        if (sscanf(string, "%d-%d-%d", &date->year, &date->month, &date->day) != 3) {
+            free(date);
+            return NULL; // Failed to parse string
+        }
+
+        // Additional validation can be added here for Persian dates
+    } 
+    else {
+        perror("Unsupported calendar type in date_from_string");
+        free(date);
+        return NULL;
     }
 
     return date;
+}
+
+char* date_to_string(const Date* date, const char* format) {
+    if (date == NULL || format == NULL) {
+        perror("Invalid argument passed to date_to_string");
+        return NULL;
+    }
+
+    // Allocate buffer for the formatted date string
+    char* date_str = (char*)malloc(80 * sizeof(char));  // Adjust size as necessary
+    if (date_str == NULL) {
+        perror("Cannot allocate memory for date string");
+        return NULL;
+    }
+
+    if (date->calendarType == Gregorian) {
+        // Prepare a struct tm from the Date struct for Gregorian calendar
+        struct tm tm_date = {
+            .tm_year = date->year - 1900,  // tm_year expects years since 1900
+            .tm_mon = date->month - 1,     // tm_mon expects months from 0 to 11
+            .tm_mday = date->day,
+            .tm_isdst = -1  // Let the function determine whether DST is in effect
+        };
+        // Format the date using strftime
+        if (strftime(date_str, 80, format, &tm_date) == 0) {
+            perror("Failed to format date");
+            free(date_str);
+            return NULL;
+        }
+    } 
+    else if (date->calendarType == Persian) {
+        int result = snprintf(date_str, 80, "%04d-%02d-%02d", date->year, date->month, date->day);
+        if (result < 0 || result >= 80) {
+            perror("Failed to format Persian date");
+            free(date_str);
+            return NULL;
+        }
+    } 
+    else {
+        perror("Unsupported calendar type in date_to_string");
+        free(date_str);
+        return NULL;
+    }
+
+    return date_str;
+}
+
+long date_to_julian_day(const Date* date) {
+    if (date == NULL || !date_is_valid(date)) {
+        perror("Invalid date in date_to_julian_day");
+        return -1;
+    }
+
+    int a = (14 - date->month) / 12;
+    int y = date->year + 4800 - a;
+    int m = date->month + 12 * a - 3;
+
+    long jd = date->day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045;
+
+    return jd;
+}
+
+Date* date_from_julian_day(long jd) {
+    if (jd < 0) {
+        perror("Invalid Julian Day Number");
+        return NULL;
+    }
+
+    long j = jd + 32044;
+    long g = j / 146097;
+    long dg = j % 146097;
+    long c = (dg / 36524 + 1) * 3 / 4;
+    long dc = dg - c * 36524;
+    long b = dc / 1461;
+    long db = dc % 1461;
+    long a = (db / 365 + 1) * 3 / 4;
+    long da = db - a * 365;
+    long y = g * 400 + c * 100 + b * 4 + a;
+    long m = (da * 5 + 308) / 153 - 2;
+    long d = da - (m + 4) * 153 / 5 + 122;
+
+    Date* date = (Date*)malloc(sizeof(Date));
+    if (date == NULL) {
+        perror("Cannot allocate memory for date");
+        return NULL;
+    }
+
+    date->year = y - 4800 + (m + 2) / 12;
+    date->month = (m + 2) % 12 + 1;
+    date->day = d + 1;
+
+    return date;
+}
+
+Date* date_gregorian_to_solar(const Date* gregorian_date) {
+    long gy = gregorian_date->year;
+    long gm = gregorian_date->month;
+
+    long gd = gregorian_date->day;
+    long jalali_date[3];
+    long days;
+    
+    // Calculate number of days
+    long gy2 = (gm > 2) ? (gy + 1) : gy;
+    long g_d_m[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+    days = 355666 + (365 * gy) + ((gy2 + 3) / 4) - ((gy2 + 99) / 100) + ((gy2 + 399) / 400) + gd + g_d_m[gm - 1];
+    
+    // Convert to Jalali
+    long jy = -1595 + (33 * (days / 12053));
+    days %= 12053;
+    jy += 4 * (days / 1461);
+    days %= 1461;
+
+    if (days > 365) {
+        jy += (days - 1) / 365;
+        days = (days - 1) % 365;
+    }
+
+    jalali_date[0] = jy;
+    if (days < 186) {
+        jalali_date[1] = 1 + (days / 31);
+        jalali_date[2] = 1 + (days % 31);
+    } 
+    else {
+        jalali_date[1] = 7 + ((days - 186) / 30);
+        jalali_date[2] = 1 + ((days - 186) % 30);
+    }
+
+    // Create new Date for Jalali
+    Date* solar_date = (Date*)malloc(sizeof(Date));
+    solar_date->year = jalali_date[0];
+    solar_date->month = jalali_date[1];
+    solar_date->day = jalali_date[2];
+
+    return solar_date;
+}
+
+Date* date_solar_to_gregorian(const Date* solar_date) {
+    long jy = solar_date->year;
+    long jm = solar_date->month;
+    long jd = solar_date->day;
+  
+    if (solar_date->month == 12 && solar_date->day > 29 && !is_persian_leap_year(solar_date->year)) {
+        perror("the date is not valid because year is not leap year");
+        exit(-1);
+    }
+    if (jm == 12 && jd == 30 && date_is_leap_year(solar_date)) {
+        jd = 29; // Adjust the day for calculation
+    }
+    // Adjust for Persian calendar specifics
+    jy += 1595;
+    long days = -355668 + (365 * jy) + ((jy / 33) * 8) + (((jy % 33) + 3) / 4);
+
+    // Adjust for months
+    if (jm < 7) {
+        days += (jm - 1) * 31;
+    } 
+    else {
+        days += ((jm - 7) * 30) + 186;
+    }
+
+    // Adjust for leap years and days in month
+    if (jm == 12 && is_persian_leap_year(solar_date->year) && jd > 29) {
+        jd = 29; // Adjust the day in a leap year
+    }
+    days += jd;
+
+    // Convert to Gregorian
+    long gy = 400 * (days / 146097);
+    days %= 146097;
+    if (days > 36524) {
+        gy += 100 * (--days / 36524);
+        days %= 36524;
+        if (days >= 365) days++;
+    }
+
+    gy += 4 * (days / 1461);
+    days %= 1461;
+    if (days > 365) {
+        gy += (days - 1) / 365;
+        days = (days - 1) % 365;
+    }
+
+    long gd = days + 1;
+    long gm;
+    long sal_a[13] = {0, 31, (gy % 4 == 0 && (gy % 100 != 0 || gy % 400 == 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    for (gm = 0; gm < 13 && gd > sal_a[gm]; gm++) {
+        gd -= sal_a[gm];
+    }
+
+    Date* gregorian_new_date = (Date*)malloc(sizeof(Date));
+    if (!gregorian_new_date) {
+        perror("Memory allocation failed for gregorian_new_date");
+        return NULL;
+    }
+    gregorian_new_date->year = gy;
+    gregorian_new_date->month = gm;
+    gregorian_new_date->day = gd;
+
+    if (jm == 12 && is_persian_leap_year(solar_date->year) && solar_date->day == 30) {
+        gregorian_new_date->day += 1;
+    }
+    return gregorian_new_date;
 }

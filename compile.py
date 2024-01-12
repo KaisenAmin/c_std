@@ -30,7 +30,7 @@ def compile_project(run_after_compile=False):
         # "stack",
         # "string",
         # "vector",
-        # "time",
+        "time",
         "date",
         # "crypto",
         # Add other directories containing your .c files
