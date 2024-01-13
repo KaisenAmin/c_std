@@ -1635,3 +1635,9 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
     }
     return gregorian_new_date;
 }
+
+void date_deallocate(Date* date) {
+    if (date != NULL) {
+        free(date);
+    }
+}

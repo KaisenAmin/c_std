@@ -17,6 +17,7 @@ typedef struct {
 } Date;
 
 void date_get_date(const Date* date, int *year, int *month, int *day);
+void date_deallocate(Date* date);
 
 // Constructors
 Date* date_create(CalendarType type);

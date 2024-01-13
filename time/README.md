@@ -66,7 +66,8 @@ int main ()
     printf("Time create and to string: %s\n", str1);
 
     free(str1);
-    free(t1);
+    time_deallocate(t1);
+    
     return 0;
 }
 ```
@@ -86,7 +87,7 @@ int main()
     printf("Add milliseconds: %s\n", str2);
 
     free(str2);
-    free(t2);
+    time_deallocate(t2);
     return 0;
 }
 ```
@@ -106,7 +107,7 @@ int main()
     printf("Add seconds: %s\n", str3);
     
     free(str3);
-    free(t3);
+    time_deallocate(t3);
     return 0;
 }
 ```
@@ -125,7 +126,7 @@ int main()
     printf("Current time: %s\n", str4);
     
     free(str4);
-    free(t4);
+    time_deallocate(t4);
     return 0;
 }
 ```
@@ -158,6 +159,9 @@ int main()
     int diffMsecs = time_msecs_to(&t5, &t6);
 
     printf("Milliseconds difference: %d\n", diffMsecs);
+    
+    time_deallocate(t5);
+    time_deallocate(t6);
     return 0;
 }
 ```
@@ -175,6 +179,9 @@ int main()
     int diffSecs = time_secs_to(&t7, &t8);
     
     printf("Seconds difference: %d\n", diffSecs);
+    
+    time_deallocate(t7);
+    time_deallocate(t8);
     return 0;
 }   
 ```
@@ -192,8 +199,8 @@ int main()
     
     printf("Times are equal: %s\n", time_is_equal(t9, t10) ? "true" : "false");
 
-    free(t9);
-    free(t10);
+    time_deallocate(t9);
+    time_deallocate(t10);
     return 0;
 }
 ```
@@ -212,8 +219,8 @@ int main()
     printf("Time t11 is less than t12: %s\n", time_is_less_than(t11, t12) ? "true" : "false");
     printf("Time t12 is greater than t11: %s\n", time_is_greater_than(t12, t11) ? "true" : "false");
     
-    free(t11);
-    free(t12);
+    time_deallocate(t11);
+    time_deallocate(t12);
     return 0;
 }
 ```
@@ -231,8 +238,7 @@ int main()
     printf("Time from msecs since start of day: %s\n", str13);
     
     free(str13);
-    free(t13);
+    time_deallocate(t13);
     return 0;
 }    
 ```
-

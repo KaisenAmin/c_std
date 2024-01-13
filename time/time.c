@@ -301,3 +301,9 @@ bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs) {
 bool time_is_not_equal(const Time* lhs, const Time* rhs) {
     return !time_is_equal(lhs, rhs);
 }
+
+void time_deallocate(Time* t) {
+    if (t != NULL) {
+        free(t);
+    }
+}

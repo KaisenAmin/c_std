@@ -24,6 +24,7 @@ Time* time_from_msecs_since_start_of_day(int msecs);
 
 void time_add_msecs(Time *t, int ms);
 void time_add_secs(Time* t, int s);
+void time_deallocate(Time* t);
 
 int time_hour(const Time* t);
 int time_minute(const Time* t);

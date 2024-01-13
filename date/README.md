@@ -72,6 +72,8 @@ int main() {
         printf("Current Gregorian Date: %d-%d-%d\n", current_gregorian->year, current_gregorian->month, current_gregorian->day);
         free(current_gregorian);
     }
+    
+    date_deallocate(current_gregorian);
     return 0;
 }
 ```
@@ -89,6 +91,7 @@ int main() {
         free(current_persian);
     }
 
+    date_deallocate(current_persian);
     return 0;
 }
 ```
@@ -106,8 +109,9 @@ int main() {
         printf("New Gregorian Date: %d-%d-%d\n", new_date->year, new_date->month, new_date->day);
         free(new_date);
     }
-    free(specific_date);
-
+    
+    date_deallocate(specific_date);   
+    date_deallocate(new_date);
     return 0;
 }
 ```
@@ -125,8 +129,9 @@ int main() {
         printf("New Persian Date: %d-%d-%d\n", new_persian_date->year, new_persian_date->month, new_persian_date->day);
         free(new_persian_date);
     }
-    free(persian_date);
 
+    date_deallocate(persian_date);    
+    date_deallocate(new_persian_date);
     return 0;
 }
 ```
@@ -144,8 +149,9 @@ int main() {
         printf("Subtracted Gregorian Date: %d-%d-%d\n", subtracted_date->year, subtracted_date->month, subtracted_date->day);
         free(subtracted_date);
     }
-    free(date_to_subtract);
 
+    date_deallocate(date_to_subtract);    
+    date_deallocate(subtracted_date);
     return 0;
 }
 ```
@@ -163,8 +169,9 @@ int main() {
         printf("Converted to Persian: %d-%d-%d\n", converted_persian->year, converted_persian->month, converted_persian->day);
         free(converted_persian);
     }
-    free(gregorian_for_conversion);
 
+    date_deallocate(gregorian_for_conversion);
+    date_deallocate(converted_persian);
     return 0;
 }
 ```
@@ -180,9 +187,9 @@ int main() {
     Date* converted_gregorian = date_solar_to_gregorian(persian_for_conversion);
     if (converted_gregorian) {
         printf("Converted to Gregorian: %d-%d-%d\n", converted_gregorian->year, converted_gregorian->month, converted_gregorian->day);
-        free(converted_gregorian);
+        date_deallocate(converted_gregorian);
     }
-    free(persian_for_conversion);
+    date_deallocate(persian_for_conversion);
     return 0;
 }
 ```
@@ -201,8 +208,8 @@ int main() {
         printf("Persian Date String: %s\n", date_str);
         free(date_str);
     }
-    free(persian_date_string);
-    
+
+    date_deallocate(persian_date_string);
     return 0;
 }
 ```
@@ -221,8 +228,8 @@ int main() {
     else {
         printf("2024 is not a leap year in Gregorian calendar.\n");
     }
-    free(leap_year_gregorian);
 
+    date_deallocate(leap_year_gregorian);
     return 0;
 }
 ```
@@ -241,8 +248,8 @@ int main() {
     else {
         printf("1403 is not a leap year in Persian calendar.\n");
     }
-    free(leap_year_persian);
 
+    date_deallocate(leap_year_persian);
     return 0;
 }
 ```
@@ -258,7 +265,7 @@ int main() {
     Date* parsed_gregorian_date = date_from_string(gregorian_string, "%Y-%m-%d", Gregorian);
     if (parsed_gregorian_date) {
         printf("Parsed Gregorian Date: %d-%d-%d\n", parsed_gregorian_date->year, parsed_gregorian_date->month, parsed_gregorian_date->day);
-        free(parsed_gregorian_date);
+        date_deallocate(parsed_gregorian_date);
     }
 
     return 0;
@@ -276,7 +283,7 @@ int main() {
     Date* parsed_persian_date = date_from_string(persian_string, "%Y-%m-%d", Persian);
     if (parsed_persian_date) {
         printf("Parsed Persian Date: %d-%d-%d\n", parsed_persian_date->year, parsed_persian_date->month, parsed_persian_date->day);
-        free(parsed_persian_date);
+        date_deallocate(parsed_persian_date);
     }
 
     return 0;
@@ -298,8 +305,8 @@ int main() {
     else {
         printf("The dates are not equal.\n");
     }
-    free(date1);
-    free(date2);
+    date_deallocate(date1);
+    date_deallocate(date2);
 
     return 0;
 }
@@ -320,8 +327,8 @@ int main() {
     else {
         printf("Early date is not less than later date.\n");
     }
-    free(early_date);
-    free(later_date);
+    date_deallocate(early_date);
+    date_deallocate(later_date);
 
     return 0;
 }
@@ -342,8 +349,8 @@ int main() {
     else {
         printf("Date3 is not greater than date4.\n");
     }
-    free(date3);
-    free(date4);
+    date_deallocate(date3);
+    date_deallocate(date4);
 
     return 0;
 }
@@ -360,7 +367,7 @@ int main() {
     int day_of_week = date_day_of_week(weekday_date);
 
     printf("Day of the week for 2024-02-29: %d (1=Monday, 7=Sunday)\n", day_of_week);
-    free(weekday_date);
+    date_deallocate(weekday_date);
 
     return 0;
 }
@@ -377,8 +384,8 @@ int main() {
     int day_of_year = date_day_of_year(day_of_year_date);
 
     printf("Day of the year for 1402-12-01: %d\n", day_of_year);
-    free(day_of_year_date);
-
+    
+    date_deallocate(day_of_year_date);
     return 0;
 }
 ```
@@ -395,8 +402,8 @@ int main() {
     int week_number = date_week_number(week_number_date, &week_number_year);
 
     printf("Week number for 2024-04-15: %d, Year: %d\n", week_number, week_number_year);
-    free(week_number_date);
-
+    
+    date_deallocate(week_number_date);
     return 0;
 }
 ```
@@ -415,8 +422,8 @@ int main() {
     else {
         printf("The date is invalid.\n");
     }
-    free(invalid_date);
 
+    date_deallocate(invalid_date);
     return 0;
 }
 ```
@@ -436,7 +443,7 @@ int main() {
                gregorianDate->year, 
                gregorianDate->month, 
                gregorianDate->day);
-        free(gregorianDate);
+        date_deallocate(gregorianDate);
     } 
     else {
         printf("Conversion failed.\n");
