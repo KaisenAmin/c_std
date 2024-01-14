@@ -1427,3 +1427,52 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
     encoded[index] = '\0';
     return encoded;
 }
+
+
+#if defined(_WIN32) || defined(_WIN64)
+// Function to convert UTF-8 string to wchar_t string (Windows only)
+wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, NULL, 0);
+    wchar_t* wstr = (wchar_t*)malloc(size_needed * sizeof(wchar_t));
+    if (!wstr) {
+        perror("Can not allocate memory for wchar");
+        return NULL;
+    }
+    int result = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, wstr, size_needed);
+    if (result == 0) {
+        perror("Conversion failed");
+        free(wstr);
+        return NULL;
+    }
+    return wstr;
+}
+
+char* encoding_wchar_to_utf8(const wchar_t* wstr) {
+    if (wstr == NULL) {
+        return NULL;
+    }
+
+    // Get the length of the required buffer
+    int utf8Length = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
+    if (utf8Length == 0) {
+        return NULL;
+    }
+
+    char* utf8Str = malloc(utf8Length * sizeof(char));
+    if (utf8Str == NULL) {
+        return NULL;
+    }
+
+    // Convert the wide-character string to UTF-8
+    if (WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8Str, utf8Length, NULL, NULL) == 0) {
+        free(utf8Str);
+        return NULL;
+    }
+
+    return utf8Str;
+}
+#endif
+
+void encoding_initialize(void) {
+    setlocale(LC_ALL, "");
+}

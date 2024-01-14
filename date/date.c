@@ -850,6 +850,8 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
             date->month = -1;
             date->day = -1;
             date->calendarType = type; // Still set the calendar type
+            printf("date is not valid");
+            exit(-1);
         }
     } 
     else {
@@ -1564,6 +1566,7 @@ Date* date_gregorian_to_solar(const Date* gregorian_date) {
     solar_date->year = jalali_date[0];
     solar_date->month = jalali_date[1];
     solar_date->day = jalali_date[2];
+    solar_date->calendarType = Persian;
 
     return solar_date;
 }
@@ -1572,7 +1575,7 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
     long jy = solar_date->year;
     long jm = solar_date->month;
     long jd = solar_date->day;
-  
+    
     if (solar_date->month == 12 && solar_date->day > 29 && !is_persian_leap_year(solar_date->year)) {
         perror("the date is not valid because year is not leap year");
         exit(-1);
@@ -1633,6 +1636,7 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
     if (jm == 12 && is_persian_leap_year(solar_date->year) && solar_date->day == 30) {
         gregorian_new_date->day += 1;
     }
+    gregorian_new_date->calendarType = Gregorian;
     return gregorian_new_date;
 }
 

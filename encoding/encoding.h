@@ -10,7 +10,13 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <locale.h>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <wchar.h>
+#endif
 
 enum ascii85_errs_e {
     ascii85_err_out_buf_too_small = -255,
@@ -32,6 +38,12 @@ typedef enum {
 } ConversionFlags;
 
 void encoding_hex_dump(const void *data, size_t size);
+void encoding_initialize(void);
+
+#if defined(_WIN32) || defined(_WIN64)
+wchar_t* encoding_utf8_to_wchar(const char* utf8Str);
+char* encoding_wchar_to_utf8(const wchar_t* wstr);
+#endif 
 
 char* encoding_base64_encode(const char* input, size_t length);
 char* encoding_base64_decode(const char* input, size_t length);

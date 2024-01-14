@@ -91,6 +91,7 @@ int main() {
 ## Example 2 : how to use `MD5`
 
 ```c
+
 #include "crypto/crypto.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,6 +109,7 @@ int main() {
     free(hash);
     return 0;
 }
+
 ```
 
 ## Example 3 : How to Use `SHA-1`
@@ -359,6 +361,7 @@ int main() {
 ## Example 13 : How to use `ECB` mode with `crypto_des_encrypt`
 
 ```c
+
 #include "crypto/crypto.h"
 #include <stdio.h>
 #include <string.h>
@@ -383,6 +386,7 @@ int main() {
     free(decrypted_ecb);
     return 0;
 }
+
 ```
 
 ## Example 14 : Generate random IV for `CBC` mode `crypto_des_encrypt`

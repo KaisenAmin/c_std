@@ -20,7 +20,7 @@ def compile_project(run_after_compile=False):
         # "config",
         # "csv",
         # "deque",
-        # "encoding",
+        "encoding",
         # "forward_list",
         # "list",
         # "map",
@@ -30,8 +30,9 @@ def compile_project(run_after_compile=False):
         # "stack",
         # "string",
         # "vector",
-        "time",
+        # "time",
         "date",
+        "dir",
         # "crypto",
         # Add other directories containing your .c files
     ]
@@ -61,6 +62,9 @@ def compile_project(run_after_compile=False):
     command = f"gcc {flags} -o {output} " + " ".join(source_files) + f" -I{openssl_include_path} -L{openssl_lib_path} -lssl -lcrypto"
     if platform.system() == "Windows":
         command += " -lAdvapi32"  # Add Windows-specific library
+
+        if "dir" in source_directories:
+            command += " -lshlwapi"
 
     result = subprocess.run(command, shell=True)
 
