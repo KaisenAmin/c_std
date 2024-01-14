@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include "../encoding/encoding.h"
+#include "../crypto/crypto.h"
 #include "dir.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #include <direct.h>
 #include <shlwapi.h>
+#include <shlobj.h> 
 
 #define getcwd _getcwd
 #define change_directory _wchdir
@@ -126,9 +128,9 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option) {
             if (wcscmp(findFileData.cFileName, L".") != 0 && wcscmp(findFileData.cFileName, L"..") != 0) {
                 bool isDirectory = (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
-                if ((option == LIST_FILES && !isDirectory) || 
-                    (option == LIST_DIRECTORIES && isDirectory) || 
-                    (option == LIST_ALL)) {
+                if ((option == DIR_LIST_FILES && !isDirectory) || 
+                    (option == DIR_LIST_DIRECTORIES && isDirectory) || 
+                    (option == DIR_LIST_ALL)) {
                     wprintf(L"%ls\n", findFileData.cFileName); // Print only the file or directory name
                 }
             }
@@ -147,6 +149,8 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option) {
 #include <errno.h>
 #include <libgen.h>
 #include <dirent.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #define change_directory chdir
 #define remove_directory rmdir
@@ -255,6 +259,53 @@ void dir_list_contents_posix(const char* dirPath, DirListOption option) {
 }
 #endif 
 
+// Function to read the entire contents of a file
+static uint8_t* read_file(const char* filePath, size_t* length) {
+    FILE* file = fopen(filePath, "rb");
+    if (!file) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    *length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    uint8_t* data = (uint8_t*)malloc(*length);
+    if (!data) {
+        fclose(file);
+        return NULL;
+    }
+
+    fread(data, 1, *length, file);
+    fclose(file);
+    return data;
+}
+
+// Function to write data to a file
+static bool write_file(const char* filePath, const uint8_t* data, size_t length) {
+    FILE* file = fopen(filePath, "wb");
+    if (!file) {
+        return false;
+    }
+    fwrite(data, 1, length, file);
+    fclose(file);
+    return true;
+}
+
+static void derive_key_from_password(const char* password, uint8_t* key) {
+    size_t pass_len = strlen(password);
+    size_t key_len = 8;  // DES key size is 8 bytes
+
+    if (pass_len > key_len) {
+        // Truncate the password if it's longer than the key size
+        memcpy(key, password, key_len);
+    } 
+    else {
+        // Pad the key with zeros if the password is shorter than the key size
+        memcpy(key, password, pass_len);
+        memset(key + pass_len, 0, key_len - pass_len);
+    }
+}
 
 static char* my_strdup(const char* s) 
 {
@@ -1014,4 +1065,132 @@ char* dir_get_creation_time(const char* dirPath) {
     printf("POSIX systems typically don't have a creation time.You can use get_last_modified_time\n");
     return NULL; 
     #endif 
+}
+
+char* dir_get_home_directory() {
+    char* homeDir = NULL;
+
+    #if defined(_WIN32) || defined(_WIN64)
+    wchar_t wPath[MAX_PATH];
+    if (SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, wPath) == S_OK) {
+        homeDir = encoding_wchar_to_utf8(wPath); // Convert from wchar_t to UTF-8
+    }
+    #else
+    const char* homeEnv = getenv("HOME");
+    if (homeEnv != NULL) {
+        homeDir = my_strdup(homeEnv);
+    } 
+    else {
+        struct passwd *pw = getpwuid(getuid());
+        if (pw != NULL) {
+            homeDir = my_strdup(pw->pw_dir);
+        }
+    }
+    #endif
+
+    return homeDir; // Caller responsible for freeing this memory
+}
+
+DirFileType dir_get_file_type(const char* filePath) {
+    if (filePath == NULL) {
+        return DIR_FILE_TYPE_UNKNOWN;
+    }
+
+    #if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(filePath);
+    if (wPath == NULL) {
+        return DIR_FILE_TYPE_UNKNOWN;
+    }
+
+    DWORD attribs = GetFileAttributesW(wPath);
+    free(wPath);
+
+    if (attribs == INVALID_FILE_ATTRIBUTES) {
+        return DIR_FILE_TYPE_UNKNOWN;
+    }
+
+    if (attribs & FILE_ATTRIBUTE_DIRECTORY) {
+        return DIR_FILE_TYPE_DIRECTORY;
+    } else if (attribs & FILE_ATTRIBUTE_REPARSE_POINT) {
+        return DIR_FILE_TYPE_SYMLINK;
+    } else {
+        return DIR_FILE_TYPE_REGULAR;
+    }
+
+    #else
+    struct stat path_stat;
+    if (lstat(filePath, &path_stat) != 0) {
+        return FILE_TYPE_UNKNOWN;
+    }
+
+    if (S_ISREG(path_stat.st_mode)) {
+        return FILE_TYPE_REGULAR;
+    } else if (S_ISDIR(path_stat.st_mode)) {
+        return FILE_TYPE_DIRECTORY;
+    } else if (S_ISLNK(path_stat.st_mode)) {
+        return FILE_TYPE_SYMLINK;
+    } else {
+        return FILE_TYPE_UNKNOWN;
+    }
+    #endif
+}
+
+bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
+    size_t fileLen;
+    uint8_t* fileData = read_file(filePath, &fileLen);
+
+    if (!fileData) 
+        return false;
+
+    size_t outLen;
+    
+    if (strlen(password) > 8) {
+        perror("password should be 8 byte");
+        return false;
+    }
+    
+    uint8_t key[8]; // DES key size
+    derive_key_from_password(password, key);
+
+    uint8_t* encryptedData = (uint8_t*)crypto_des_encrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
+    free(fileData);
+
+    if (!encryptedData) 
+        return false;
+
+    bool writeStatus = write_file(filePath, encryptedData, outLen);
+    free(encryptedData);
+    return writeStatus;
+}
+
+bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
+    size_t fileLen;
+    uint8_t* fileData = read_file(filePath, &fileLen);
+
+    if (!fileData) 
+        return false;
+
+    size_t outLen;
+    // Again, derive key and iv from the password
+
+    if (strlen(password) > 8) {
+        perror("password should be 8 byte");
+        return false;
+    }
+
+    uint8_t key[8]; // DES key size
+    derive_key_from_password(password, key);
+
+    
+    uint8_t* decryptedData = (uint8_t*)crypto_des_decrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
+    free(fileData);
+
+    if (!decryptedData) {
+        perror("can not decrypt date in dir_decrypt_file");
+        return false;
+    }
+
+    bool writeStatus = write_file(filePath, decryptedData, outLen);
+    free(decryptedData);
+    return writeStatus;
 }

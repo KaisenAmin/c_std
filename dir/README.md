@@ -393,13 +393,13 @@ int main() {
     const char* dirPath = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std"; 
 
     printf("Listing all files and directories:\n");
-    dir_list_contents(dirPath, LIST_ALL);
+    dir_list_contents(dirPath, DIR_LIST_ALL);
 
     printf("\nListing only files:\n");
-    dir_list_contents(dirPath, LIST_FILES);
+    dir_list_contents(dirPath, DIR_LIST_FILES);
 
     printf("\nListing only directories:\n");
-    dir_list_contents(dirPath, LIST_DIRECTORIES);
+    dir_list_contents(dirPath, DIR_LIST_DIRECTORIES);
 
     return 0;
 }
@@ -477,4 +477,83 @@ int main() {
     return 0;
 }
 
+```
+
+## Example 22 : get home dir with `dir_get_home_directory`
+
+```c
+#include "dir/dir.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    char* homeDirectory = dir_get_home_directory();
+
+    if (homeDirectory != NULL) {
+        printf("Home Directory: %s\n", homeDirectory);
+        free(homeDirectory);
+    } 
+    else {
+        printf("Failed to get home directory.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 22 : get file type with `dir_get_file_type`
+
+```c
+#include "dir/dir.h"
+#include <stdio.h>
+
+int main() {
+    DirFileType type = dir_get_file_type("./dir/dir.h");
+    switch (type) {
+        case DIR_FILE_TYPE_REGULAR:
+            printf("Regular File\n");
+            break;
+        case DIR_FILE_TYPE_DIRECTORY:
+            printf("Directory\n");
+            break;
+        case DIR_FILE_TYPE_SYMLINK:
+            printf("Symbolic Link\n");
+            break;
+        default:
+            printf("Unknown Type\n");
+    }
+    return 0;
+}
+```
+## Example 23 : encrypt and decrypt file with des mode cbc `dir_encrypt_file` and `dir_decrypt_file`
+
+```c
+#include "dir/dir.h"
+#include "crypto/crypto.h"
+#include <stdio.h>
+#include <stdint.h>
+
+int main() {
+    const char* filePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
+    const char* password = "aminamin";
+    uint8_t iv[DES_BLOCK_SIZE]; // IV for CBC mode
+    
+    crypto_generate_random_iv(iv, DES_BLOCK_SIZE); 
+
+    if (dir_encrypt_file(filePath, password, iv)) {
+        printf("File encrypted successfully.\n");
+    } 
+    else {
+        printf("Failed to encrypt the file.\n");
+    }
+
+    if (dir_decrypt_file(filePath, password, iv)) {
+        printf("File decrypted successfully.\n");
+    } 
+    else {
+        printf("Failed to decrypt the file.\n");
+    }
+
+    return 0;
+}
 ```

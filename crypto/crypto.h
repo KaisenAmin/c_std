@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifndef DES_BLOCK_SIZE
 #define DES_BLOCK_SIZE 8
@@ -36,9 +37,13 @@ typedef enum {
 } CryptoMode;
 
 uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algorithm, size_t *outLength);
+
 void crypto_print_hash(const uint8_t* hash, size_t length);
+void crypto_generate_random_iv(uint8_t *iv, size_t length);
+
 void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len);
 void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len);
+
 
 
 #endif 

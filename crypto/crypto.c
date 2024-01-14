@@ -340,3 +340,42 @@ void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* k
 
     return plaintext; // Caller is responsible for freeing this memory
 }
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
+#include <Wincrypt.h>
+
+void crypto_generate_random_iv(uint8_t *iv, size_t length) {
+    HCRYPTPROV hCryptProv;
+    if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+        fprintf(stderr, "CryptAcquireContext failed: %lu\n", GetLastError());
+        exit(EXIT_FAILURE);
+    }
+    if (!CryptGenRandom(hCryptProv, length, iv)) {
+        fprintf(stderr, "CryptGenRandom failed: %lu\n", GetLastError());
+        CryptReleaseContext(hCryptProv, 0);
+        exit(EXIT_FAILURE);
+    }
+    CryptReleaseContext(hCryptProv, 0);
+}
+
+#else
+#include <fcntl.h>
+#include <unistd.h>
+
+void crypto_generate_random_iv(uint8_t *iv, size_t length) {
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd == -1) {
+        perror("open /dev/urandom");
+        exit(EXIT_FAILURE);
+    }
+    ssize_t read_bytes = read(fd, iv, length);
+    if (read_bytes != (ssize_t)length) {
+        perror("read from /dev/urandom");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+    close(fd);
+}
+
+#endif

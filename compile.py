@@ -31,9 +31,9 @@ def compile_project(run_after_compile=False):
         # "string",
         # "vector",
         # "time",
-        "date",
+        # "date",
         "dir",
-        # "crypto",
+        "crypto",
         # Add other directories containing your .c files
     ]
 

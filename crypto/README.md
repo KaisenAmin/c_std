@@ -396,53 +396,12 @@ int main() {
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-// Include your crypto header here
 #include "crypto/crypto.h"
-
-#if defined(_WIN32) || defined(_WIN64)
-#include <Windows.h>
-#include <Wincrypt.h>
-
-void generate_random_iv(uint8_t *iv, size_t length) {
-    HCRYPTPROV hCryptProv;
-    if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-        fprintf(stderr, "CryptAcquireContext failed: %lu\n", GetLastError());
-        exit(EXIT_FAILURE);
-    }
-    if (!CryptGenRandom(hCryptProv, length, iv)) {
-        fprintf(stderr, "CryptGenRandom failed: %lu\n", GetLastError());
-        CryptReleaseContext(hCryptProv, 0);
-        exit(EXIT_FAILURE);
-    }
-    CryptReleaseContext(hCryptProv, 0);
-}
-
-#else
-#include <fcntl.h>
-#include <unistd.h>
-
-void generate_random_iv(uint8_t *iv, size_t length) {
-    int fd = open("/dev/urandom", O_RDONLY);
-    if (fd == -1) {
-        perror("open /dev/urandom");
-        exit(EXIT_FAILURE);
-    }
-    ssize_t read_bytes = read(fd, iv, length);
-    if (read_bytes != (ssize_t)length) {
-        perror("read from /dev/urandom");
-        close(fd);
-        exit(EXIT_FAILURE);
-    }
-    close(fd);
-}
-
-#endif
 
 int main() {
     const uint8_t key[8] = "yourkey"; // 8 bytes key
     uint8_t iv[DES_BLOCK_SIZE]; // IV for CBC mode
-    generate_random_iv(iv, DES_BLOCK_SIZE); // Generate a random IV for testing
+    crypto_generate_random_iv(iv, DES_BLOCK_SIZE); // Generate a random IV for testing
     
     const uint8_t plaintext[] = "Hello World"; // Your plaintext
     size_t outLen;
