@@ -1,7 +1,64 @@
+# Dir Library in C
 
+Author: Amin Tahmasebi
+Release Date: 2024
+License: GNU General Public License v3.0
 
+## Overview
+This C library is dedicated to directory and file operations, offering comprehensive functionality to manage and manipulate files and directories on the filesystem. It is designed to provide a straightforward and efficient way to interact with the filesystem in C programming.
 
+## Key Features
+- **Directory Operations**: Create, delete, rename, and navigate through directories.
+- **File Operations**: Handle file creation, deletion, renaming, encryption, decryption, and more.
+- **Directory Listing**: Retrieve lists of files and directories, including recursive searches.
+- **File Information**: Obtain details about files and directories, such as size, type, owner, and timestamps.
+- **Path Manipulation**: Work with absolute and relative paths, and convert between them.
+- **File and Directory Search**: Search for files and directories based on patterns and conditions.
+- **Error Handling**: Includes robust error handling for reliable file system operations.
+- **Cross Platform**: Work in Windows and linux.
+- **Support Unicode**: work with differnt kind of name file.
 
+## Function Explanations
+
+- `dir_make_directory`: Creates a new directory.
+- `dir_dir_name`: Retrieves the name of a directory.
+- `dir_current_path`: Gets the current working directory path.
+- `dir_count`: Counts the number of items (files and directories) in a given path.
+- `dir_absolute_file_path`: Converts a relative file path to an absolute path.
+- `dir_cd` and `dir_cd_up`: Changes the current directory and moves up one directory.
+- `dir_remove_directory` and `dir_is_empty`: Deletes a directory if it's empty and checks if a directory is empty.
+- `dir_remove_directory_recursive`: Removes a directory and its contents recursively.
+- `dir_rename`: Renames a file or directory.
+- `dir_is_file_exists` and `dir_is_directory_exists`: Checks if a file or directory exists.
+- `dir_copy_directory` and `dir_copy_file`: Copies a directory or a file to a new location.
+- `dir_get_directory_size` and `dir_get_file_size`: Calculates the size of a directory or a file.
+- `dir_list_contents`: Lists the contents of a directory.
+- `dir_is_file` and `dir_is_directory`: Checks if a path is a file or a directory.
+- `dir_move_directory` and `dir_move_file`: Moves a directory or a file to a new location.
+- `dir_get_modified_time` and `dir_get_creation_time`: Gets the last modified or creation time of a file or directory.
+- `dir_get_home_directory`: Retrieves the path of the user's home directory.
+- `dir_get_file_type`: Determines the type of a file (regular, directory, symbolic link).
+- `dir_encrypt_file`
+
+and `dir_decrypt_file`: Encrypts and decrypts a file using DES mode CBC.
+- `dir_get_file_owner` and `dir_get_directory_owner`: Retrieves the owner of a file or directory.
+- `dir_search`: Searches for files or directories based on a pattern.
+- `dir_get_file_type`: Identifies the type of a file (regular, directory, symlink, etc.).
+- `dir_list_contents`: Retrieves a list of files and directories in a specified path.
+- `dir_is_file` or `dir_is_directory`: Checks if a given path is a file or a directory.
+- `dir_move_directory` or `dir_move_file`: Moves a directory or file to a new location.
+- `dir_get_modified_time` and `dir_get_creation_time`: Fetches the last modified or creation time of a file or directory.
+- `dir_get_home_directory`: Obtains the path to the user's home directory.
+- `dir_get_file_type`: Determines the type of a file (e.g., regular file, directory, symbolic link).
+
+## Compilation
+To compile a program using the Dir library, include all necessary source files in your compilation command. For example:
+
+```bash
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./dir/dir.c
+```
+
+This command compiles with GCC using the C17 standard and enables various optimizations and warnings for better performance and code quality.
 
 
 ## Example 1 : create directory with `dir_make_directory`
@@ -388,21 +445,22 @@ int main() {
 ```c
 #include "dir/dir.h"
 #include <stdio.h>
+#include <stdlib.h>
+int main(){
+    const char *dirPath = "C:\\Users\\Science\\Desktop\\";
+    Vector *foundItems = vector_create(sizeof(char *));
 
-int main() {
-    const char* dirPath = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std"; 
+    dir_list_contents(dirPath, DIR_LIST_ALL, foundItems);
 
-    printf("Listing all files and directories:\n");
-    dir_list_contents(dirPath, DIR_LIST_ALL);
-
-    printf("\nListing only files:\n");
-    dir_list_contents(dirPath, DIR_LIST_FILES);
-
-    printf("\nListing only directories:\n");
-    dir_list_contents(dirPath, DIR_LIST_DIRECTORIES);
-
+    for (size_t i = 0; i < vector_size(foundItems); ++i){
+        char **item = (char **)vector_at(foundItems, i);
+        printf("%s\n", *item);
+        free(*item); // Remember to free the duplicated string 
+    }
+    vector_deallocate(foundItems);
     return 0;
 }
+
 ```
 
 ## Example 18 : check path is dir or file with `dir_is_file` or `dir_is_directory`
@@ -537,7 +595,7 @@ int main() {
     const char* filePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
     const char* password = "aminamin";
     uint8_t iv[DES_BLOCK_SIZE]; // IV for CBC mode
-    
+
     crypto_generate_random_iv(iv, DES_BLOCK_SIZE); 
 
     if (dir_encrypt_file(filePath, password, iv)) {
@@ -556,4 +614,111 @@ int main() {
 
     return 0;
 }
+```
+
+## Example 24 : get file owner with `dir_get_file_owner`
+
+```c
+#include "dir/dir.h"
+#include <stdio.h>
+
+int main() {
+    const char* filePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
+    char ownerBuffer[256];  // Buffer to store the owner's name
+
+    if (dir_get_file_owner(filePath, ownerBuffer, sizeof(ownerBuffer))) {
+        printf("The owner of '%s' is: %s\n", filePath, ownerBuffer);
+    } 
+    else {
+        printf("Failed to retrieve the file owner for '%s'\n", filePath);
+    }
+    return 0;
+}
+```
+
+## Example 25 : get dir owner with `dir_get_directory_owner`
+
+```c
+#include "dir/dir.h"
+#include <stdio.h>
+
+int main() {
+    const char* dirPath = "C:\\Users\\Science\\Desktop\\one";
+    char ownerBuffer[256];  // Buffer to store the owner's name
+
+    if (dir_get_directory_owner(dirPath, ownerBuffer, sizeof(ownerBuffer))) {
+        printf("The owner of '%s' is: %s\n", dirPath, ownerBuffer);
+    } 
+    else {
+        printf("Failed to retrieve the file owner for '%s'\n", dirPath);
+    }
+    return 0;
+}
+```
+
+## Example 26 : search file in path `dir_search`
+
+```c
+#include "dir/dir.h"
+#include "vector/vector.h"
+#include "string/string.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+bool append_file_name_to_vector(const char* filePath, void* userData) {
+    Vector* vector = (Vector*)userData;
+    char* filePathCopy = string_strdup(filePath); // Duplicate the file path
+
+    if (!filePathCopy) {
+        perror("Failed to duplicate file path");
+        return false;
+    }
+    vector_push_back(vector, &filePathCopy);
+    return true; // Continue the search
+}
+
+int main() {
+    const char* dirPath = "C:\\Users\\Science\\Desktop\\"; // Replace with your directory path
+    const char* pattern = "*.txt"; // Search pattern, e.g., all .txt files 
+    Vector* foundFiles = vector_create(sizeof(char*)); 
+
+    if (!dir_search(dirPath, pattern, append_file_name_to_vector, foundFiles)) {
+        printf("An error occurred during the search.\n");
+    } 
+    else {
+        for (size_t i = 0; i < vector_size(foundFiles); ++i) {
+            char** filePath = (char**)vector_at(foundFiles, i);
+            printf("Found file: %s\n", *filePath);
+            free(*filePath); // Free the duplicated file path
+        }
+    }
+
+    vector_deallocate(foundFiles);
+    return 0;
+}
+```
+
+## Example 27 : get list of contents `dir_list_contents`
+
+```c
+#include "dir/dir.h"
+#include "algorithm/algorithm.h"
+#include <stdio.h>
+
+void print_char(void *element) {
+    char** strPtr = (char**)element;
+    printf("%s\n", *strPtr);
+}
+
+int main(){
+    const char *dirPath = "C:\\Users\\Science\\Desktop\\";
+    Vector *foundItems = vector_create(sizeof(char *));
+
+    dir_list_contents(dirPath, DIR_LIST_ALL, foundItems);
+    algorithm_for_each(vector_begin(foundItems), vector_size(foundItems), sizeof(char*), print_char);
+    
+    vector_deallocate(foundItems);
+    return 0;
+}
+
 ```

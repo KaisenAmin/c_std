@@ -1,9 +1,18 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Dir
+*/
+
 #ifndef DIR_H_ 
 #define DIR_H_
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "../vector/vector.h"
+
+typedef bool (*DirCompareFunc)(const char* filePath, void* userData);
 
 typedef enum {
     DIR_LIST_FILES,
@@ -35,6 +44,9 @@ bool dir_move_file(const char* srcPath, const char* destPath);
 bool dir_move_directory(const char* srcPath, const char* destPath);
 bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv);
 bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv);
+bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize);
+bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize);
+bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData);
 
 char* dir_get_creation_time(const char* dirPath);
 char* dir_get_modified_time(const char* dirPath);
@@ -44,7 +56,7 @@ char* dir_absolute_file_path(const char* relative_path);
 char* dir_get_home_directory();
 
 int dir_count(const char* dirpath);
-void dir_list_contents(const char* dirPath, DirListOption option);
+void dir_list_contents(const char* dirPath, DirListOption option, Vector* result);
 DirFileType dir_get_file_type(const char* filePath);
 
 long long dir_get_directory_size(const char* dirPath);

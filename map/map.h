@@ -19,7 +19,7 @@ typedef void* KeyType;
 typedef void* ValueType;
 
 // Function pointer types for comparison, deallocation, and iteration
-typedef int (*CompareFunc)(const KeyType, const KeyType);
+typedef int (*CompareFuncMap)(const KeyType, const KeyType);
 typedef void (*ValueDeallocFunc)(void*);
 
 struct MapNode {
@@ -50,11 +50,11 @@ typedef struct MapIteratorPair {
     
 } MapIteratorPair;
 
-CompareFunc map_key_comp(const Map* map);
+CompareFuncMap map_key_comp(const Map* map);
 MapIteratorPair map_equal_range(const Map* map, KeyType key);
 KeyType map_node_get_key(MapNode* node);
 
-Map* map_create(CompareFunc comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue);
+Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue);
 Map* map_copy(const Map* src);
 
 void map_deallocate(Map* map);

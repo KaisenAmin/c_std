@@ -17,7 +17,7 @@
 // Map structure definition
 struct Map {
     MapNode* root;
-    CompareFunc compFunc;
+    CompareFuncMap compFunc;
     ValueDeallocFunc deallocKey;
     ValueDeallocFunc deallocValue;
     size_t size;
@@ -290,7 +290,7 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
     map->root->color = BLACK;
 }
 
-Map* map_create(CompareFunc comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
+Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (!comp) {
         perror("Compare function is null can not create map");
         return NULL;
@@ -424,7 +424,7 @@ void map_swap(Map* map1, Map* map2) {
     map2->size = tempSize;
 
     // Optionally, swap comparison and deallocation functions
-    CompareFunc tempCompFunc = map1->compFunc;
+    CompareFuncMap tempCompFunc = map1->compFunc;
     map1->compFunc = map2->compFunc;
     map2->compFunc = tempCompFunc;
 
@@ -494,7 +494,7 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
     return true;
 }
 
-CompareFunc map_key_comp(const Map* map) {
+CompareFuncMap map_key_comp(const Map* map) {
     if (map == NULL) {
         return NULL;  // Return NULL if the map is not initialized
     }

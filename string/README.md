@@ -28,6 +28,15 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 ## Function Descriptions
 
+## Constants 
+- `STRING_ASCII_LETTERS`
+- `STRING_ASCII_LOWERCASE`
+- `STRING_ASCII_UPPERCASE`
+- `STRING_DIGITS`
+- `STRING_HEXDIGITS`
+- `STRING_WHITESPACE`
+- `STRING_PUNCTUATION`
+
 ## String Creation and Management
 - `string_create(const char*)`: Creates a new String object with an initial value.
 - `string_create_with_pool(size_t)`: Creates a new String object with a specified memory pool size.
@@ -1569,6 +1578,20 @@ int main() {
     free(unicodeStr);
     string_deallocate(convertedStr);
     
+    return 0;
+}
+```
+
+## Example 57 : define different kind of constants strings 
+
+```c
+#include <stdio.h>
+#include "string/string.h"
+
+int main() {
+    printf("ASCII Letters: %s\n", STRING_ASCII_LETTERS);
+    printf("ASCII Lowercase: %s\n", STRING_ASCII_LOWERCASE);
+
     return 0;
 }
 ```

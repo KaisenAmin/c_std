@@ -1,8 +1,15 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Dir
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "../encoding/encoding.h"
 #include "../crypto/crypto.h"
+#include "../string/string.h"
 #include "dir.h"
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -10,6 +17,8 @@
 #include <direct.h>
 #include <shlwapi.h>
 #include <shlobj.h> 
+#include "accctrl.h"
+#include "aclapi.h"
 
 #define getcwd _getcwd
 #define change_directory _wchdir
@@ -114,7 +123,7 @@ static long long get_file_size_win(const wchar_t* filePath) {
     return size.QuadPart;
 }
 
-void dir_list_contents_win(const wchar_t* dirPath, DirListOption option) {
+void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector* resultVector) {
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
     wchar_t searchPath[MAX_PATH];
@@ -131,7 +140,9 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option) {
                 if ((option == DIR_LIST_FILES && !isDirectory) || 
                     (option == DIR_LIST_DIRECTORIES && isDirectory) || 
                     (option == DIR_LIST_ALL)) {
-                    wprintf(L"%ls\n", findFileData.cFileName); // Print only the file or directory name
+                        char* utf8FileName = encoding_wchar_to_utf8(findFileData.cFileName);
+                        vector_push_back(resultVector, &utf8FileName);
+                    // wprintf(L"%ls\n", findFileData.cFileName); // Print only the file or directory name
                 }
             }
         } while (FindNextFileW(hFind, &findFileData) != 0);
@@ -151,6 +162,7 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option) {
 #include <dirent.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <fnmatch.h>
 
 #define change_directory chdir
 #define remove_directory rmdir
@@ -231,7 +243,7 @@ static long long get_file_size_posix(const char* filePath) {
     return statbuf.st_size;
 }
 
-void dir_list_contents_posix(const char* dirPath, DirListOption option) {
+void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* resultVector) {
     DIR* dir;
     struct dirent* entry;
     struct stat statbuf;
@@ -252,6 +264,13 @@ void dir_list_contents_posix(const char* dirPath, DirListOption option) {
                 printf("%s\n", entry->d_name);
             } else if (option == LIST_ALL) {
                 printf("%s\n", entry->d_name);
+            }
+
+            if ((option == LIST_FILES && !S_ISDIR(statbuf.st_mode)) ||
+                (option == LIST_DIRECTORIES && S_ISDIR(statbuf.st_mode)) ||
+                (option == LIST_ALL)) {
+                char* entryNameCopy = string_strdup(entry->d_name);
+                vector_push_back(resultVector, &entryNameCopy);
             }
         }
         closedir(dir);
@@ -631,7 +650,7 @@ bool dir_is_file_exists(const char* filePath) {
         return false;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
     if (wPath == NULL) {
         return false;
@@ -641,10 +660,10 @@ bool dir_is_file_exists(const char* filePath) {
     free(wPath);
 
     return (attribs != INVALID_FILE_ATTRIBUTES);
-    #else
+#else
     struct stat statbuf;
     return (stat(filePath, &statbuf) == 0);
-    #endif
+#endif
 }
 
 bool dir_copy_file(const char* srcPath, const char* destPath) {
@@ -654,7 +673,7 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     }
 
     // On Windows, use wide character APIs for Unicode support
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wSrcPath = encoding_utf8_to_wchar(srcPath);
     wchar_t* wDestPath = encoding_utf8_to_wchar(destPath);
 
@@ -670,7 +689,7 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     free(wDestPath);
 
     return result;
-    #else
+#else
     // POSIX implementation
     FILE* srcFile = fopen(srcPath, "rb");
     if (srcFile == NULL) {
@@ -698,7 +717,7 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     fclose(destFile);
 
     return success;
-    #endif
+#endif
 }
 
 bool dir_copy_directory(const char* srcDir, const char* destDir) {
@@ -707,7 +726,7 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
         return false;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wSrcDir = encoding_utf8_to_wchar(srcDir);
     wchar_t* wDestDir = encoding_utf8_to_wchar(destDir);
 
@@ -774,7 +793,7 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
     free(wDestDir);
 
     return success;
-    #else 
+#else 
     DIR *dir;
     struct dirent *entry;
 
@@ -821,7 +840,7 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
     closedir(dir);
     return true;
 
-    #endif 
+#endif 
 }
 
 long long dir_get_directory_size(const char* dirPath) {
@@ -830,15 +849,15 @@ long long dir_get_directory_size(const char* dirPath) {
         return -1;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
     long long size = dir_get_size_win(wPath);
 
     free(wPath);
     return size;
-    #else
+#else
     return dir_get_size_posix(dirPath);
-    #endif
+#endif
 }
 
 long long dir_get_file_size(const char* filePath) {
@@ -847,31 +866,30 @@ long long dir_get_file_size(const char* filePath) {
         return -1;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
     long long size = get_file_size_win(wPath);
 
     free(wPath);
     return size;
-    #else
+#else
     return get_file_size_posix(filePath);
-    #endif
+#endif
 }
 
-void dir_list_contents(const char* dirPath, DirListOption option) {
+void dir_list_contents(const char* dirPath, DirListOption option, Vector* resultVector) {
     if (dirPath == NULL) {
         perror("dirPath is null in dir_list_contents");
         return;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
-
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
-    dir_list_contents_win(wPath, option);
+    dir_list_contents_win(wPath, option, resultVector);
     free(wPath);
-    #else
-    dir_list_contents_posix(dirPath, option);
-    #endif
+#else
+    dir_list_contents_posix(dirPath, option, resultVector);
+#endif
 }
 
 bool dir_is_file(const char *filePath) {
@@ -880,7 +898,7 @@ bool dir_is_file(const char *filePath) {
         return false;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
     DWORD attribs = GetFileAttributesW(wPath);
 
@@ -890,13 +908,13 @@ bool dir_is_file(const char *filePath) {
     bool result = (attribs & FILE_ATTRIBUTE_DIRECTORY) == 0;
     free(wPath);
     return result;
-    #else 
+#else 
     struct stat path_stat;
     if (stat(filePath, &path_stat) != 0) {
         return false; // The path does not exist or error
     }
     return S_ISREG(path_stat.st_mode);
-    #endif 
+#endif 
 }
 
 bool dir_is_directory(const char* dirPath) {
@@ -905,7 +923,7 @@ bool dir_is_directory(const char* dirPath) {
         return false;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
     DWORD attribs = GetFileAttributesW(wPath);
     if (attribs == INVALID_FILE_ATTRIBUTES) {
@@ -914,13 +932,13 @@ bool dir_is_directory(const char* dirPath) {
     bool result = (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
     free(wPath);
     return result;
-    #else 
+#else 
     struct stat path_stat;
     if (stat(filePath, &path_stat) != 0) {
         return false; // The path does not exist or error
     }
     return S_ISDIR(path_stat.st_mode);
-    #endif 
+#endif 
 }
 
 bool dir_move_file(const char* srcPath, const char* destPath) {
@@ -933,7 +951,7 @@ bool dir_move_file(const char* srcPath, const char* destPath) {
         return false;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* source = encoding_utf8_to_wchar(srcPath);
     wchar_t* destination = encoding_utf8_to_wchar(destPath);
     bool result = MoveFileW(source, destination) != 0;
@@ -941,9 +959,9 @@ bool dir_move_file(const char* srcPath, const char* destPath) {
     free(source);
     free(destination);
     return result;
-    #else 
+#else 
     return rename(srcPath, destPath) == 0;
-    #endif
+#endif
 }
 
 bool dir_move_directory(const char* srcPath, const char* destPath) {
@@ -956,7 +974,7 @@ bool dir_move_directory(const char* srcPath, const char* destPath) {
         return false;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* source = encoding_utf8_to_wchar(srcPath);
     wchar_t* destination = encoding_utf8_to_wchar(destPath);
     SHFILEOPSTRUCTW fileOp = {
@@ -974,9 +992,9 @@ bool dir_move_directory(const char* srcPath, const char* destPath) {
     free(source);
     free(destination);
     return result;
-    #else 
+#else 
     return rename(srcPath, destPath) == 0;
-    #endif
+#endif
 }
 
 char* dir_get_modified_time(const char* dirPath) {
@@ -985,7 +1003,7 @@ char* dir_get_modified_time(const char* dirPath) {
         return NULL;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     // Convert to wide-character string
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
     if (wPath == NULL) {
@@ -1014,7 +1032,7 @@ char* dir_get_modified_time(const char* dirPath) {
     free(wPath); // Free the wide-character string
     return lastTime;
 
-    #else // POSIX
+#else // POSIX
     struct stat fileInfo;
     if (stat(dirPath, &fileInfo) != 0) {
         return NULL;
@@ -1030,7 +1048,7 @@ char* dir_get_modified_time(const char* dirPath) {
 
     strftime(timeString, 256, "%Y-%m-%d %H:%M:%S", timeinfo);
     return timeString;
-    #endif
+#endif
 }
 
 char* dir_get_creation_time(const char* dirPath) {
@@ -1038,8 +1056,7 @@ char* dir_get_creation_time(const char* dirPath) {
         return NULL;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
-
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
     WIN32_FILE_ATTRIBUTE_DATA fileInfo;
     if (!GetFileAttributesExW(wPath, GetFileExInfoStandard, &fileInfo)) {
@@ -1061,21 +1078,21 @@ char* dir_get_creation_time(const char* dirPath) {
     char* lastTime = encoding_wchar_to_utf8(timeString);
     free(wPath);
     return lastTime;
-    #else 
+#else 
     printf("POSIX systems typically don't have a creation time.You can use get_last_modified_time\n");
     return NULL; 
-    #endif 
+#endif 
 }
 
 char* dir_get_home_directory() {
     char* homeDir = NULL;
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t wPath[MAX_PATH];
     if (SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, wPath) == S_OK) {
         homeDir = encoding_wchar_to_utf8(wPath); // Convert from wchar_t to UTF-8
     }
-    #else
+#else
     const char* homeEnv = getenv("HOME");
     if (homeEnv != NULL) {
         homeDir = my_strdup(homeEnv);
@@ -1086,8 +1103,7 @@ char* dir_get_home_directory() {
             homeDir = my_strdup(pw->pw_dir);
         }
     }
-    #endif
-
+#endif
     return homeDir; // Caller responsible for freeing this memory
 }
 
@@ -1096,7 +1112,7 @@ DirFileType dir_get_file_type(const char* filePath) {
         return DIR_FILE_TYPE_UNKNOWN;
     }
 
-    #if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
     if (wPath == NULL) {
         return DIR_FILE_TYPE_UNKNOWN;
@@ -1111,13 +1127,15 @@ DirFileType dir_get_file_type(const char* filePath) {
 
     if (attribs & FILE_ATTRIBUTE_DIRECTORY) {
         return DIR_FILE_TYPE_DIRECTORY;
-    } else if (attribs & FILE_ATTRIBUTE_REPARSE_POINT) {
+    } 
+    else if (attribs & FILE_ATTRIBUTE_REPARSE_POINT) {
         return DIR_FILE_TYPE_SYMLINK;
-    } else {
+    } 
+    else {
         return DIR_FILE_TYPE_REGULAR;
     }
 
-    #else
+#else
     struct stat path_stat;
     if (lstat(filePath, &path_stat) != 0) {
         return FILE_TYPE_UNKNOWN;
@@ -1125,22 +1143,26 @@ DirFileType dir_get_file_type(const char* filePath) {
 
     if (S_ISREG(path_stat.st_mode)) {
         return FILE_TYPE_REGULAR;
-    } else if (S_ISDIR(path_stat.st_mode)) {
+    }
+    else if (S_ISDIR(path_stat.st_mode)) {
         return FILE_TYPE_DIRECTORY;
-    } else if (S_ISLNK(path_stat.st_mode)) {
+    } 
+    else if (S_ISLNK(path_stat.st_mode)) {
         return FILE_TYPE_SYMLINK;
-    } else {
+    } 
+    else {
         return FILE_TYPE_UNKNOWN;
     }
-    #endif
+#endif
 }
 
 bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     size_t fileLen;
     uint8_t* fileData = read_file(filePath, &fileLen);
 
-    if (!fileData) 
+    if (!fileData) { 
         return false;
+    }
 
     size_t outLen;
     
@@ -1155,8 +1177,9 @@ bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     uint8_t* encryptedData = (uint8_t*)crypto_des_encrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
     free(fileData);
 
-    if (!encryptedData) 
+    if (!encryptedData) { 
         return false;
+    }
 
     bool writeStatus = write_file(filePath, encryptedData, outLen);
     free(encryptedData);
@@ -1167,8 +1190,9 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     size_t fileLen;
     uint8_t* fileData = read_file(filePath, &fileLen);
 
-    if (!fileData) 
+    if (!fileData) {
         return false;
+    }
 
     size_t outLen;
     // Again, derive key and iv from the password
@@ -1180,7 +1204,6 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
 
     uint8_t key[8]; // DES key size
     derive_key_from_password(password, key);
-
     
     uint8_t* decryptedData = (uint8_t*)crypto_des_decrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
     free(fileData);
@@ -1193,4 +1216,220 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     bool writeStatus = write_file(filePath, decryptedData, outLen);
     free(decryptedData);
     return writeStatus;
+}
+
+bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize) {
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wFilePath = encoding_utf8_to_wchar(filePath);
+    if (wFilePath == NULL) {
+        return false;
+    }
+
+    SECURITY_INFORMATION si = OWNER_SECURITY_INFORMATION;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    PSID ownerSid = NULL;
+
+    HANDLE hFile = CreateFileW(wFilePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        free(wFilePath);
+        return false;
+    }
+
+    if (GetSecurityInfo(hFile, SE_FILE_OBJECT, si, &ownerSid, NULL, NULL, NULL, &pSD) != ERROR_SUCCESS) {
+        CloseHandle(hFile);
+        free(wFilePath);
+        return false;
+    }
+
+    CloseHandle(hFile);
+
+    wchar_t name[512], domain[512];
+    DWORD nameSize = 512, domainSize = 512;
+    SID_NAME_USE sidUse;
+
+    if (!LookupAccountSidW(NULL, ownerSid, name, &nameSize, domain, &domainSize, &sidUse)) {
+        free(wFilePath);
+        if (pSD) {
+            LocalFree(pSD);
+        }
+        return false;
+    }
+
+    char* utf8OwnerName = encoding_wchar_to_utf8(name);
+    if (utf8OwnerName == NULL) {
+        free(wFilePath);
+        if (pSD) {
+            LocalFree(pSD);
+        }
+        return false;
+    }
+
+    strncpy(ownerBuffer, utf8OwnerName, bufferSize - 1);
+    ownerBuffer[bufferSize - 1] = '\0';
+
+    free(wFilePath);
+    free(utf8OwnerName);
+    if (pSD) {
+        LocalFree(pSD);
+    }
+    return true;
+#else
+    struct stat fileInfo;
+    if (stat(filePath, &fileInfo) != 0) {
+        return false;
+    }
+
+    struct passwd *pwd = getpwuid(fileInfo.st_uid);
+    if (pwd == NULL) {
+        return false;
+    }
+
+    strncpy(ownerBuffer, pwd->pw_name, bufferSize - 1);
+    ownerBuffer[bufferSize - 1] = '\0';
+    return true;
+#endif
+}
+
+bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize) {
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wDirPath = encoding_utf8_to_wchar(dirPath);
+    if (wDirPath == NULL) {
+        return false;
+    }
+
+    SECURITY_INFORMATION si = OWNER_SECURITY_INFORMATION;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    PSID ownerSid = NULL;
+
+    HANDLE hDir = CreateFileW(wDirPath, READ_CONTROL, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    if (hDir == INVALID_HANDLE_VALUE) {
+        free(wDirPath);
+        return false;
+    }
+
+    if (GetSecurityInfo(hDir, SE_FILE_OBJECT, si, &ownerSid, NULL, NULL, NULL, &pSD) != ERROR_SUCCESS) {
+        CloseHandle(hDir);
+        free(wDirPath);
+        return false;
+    }
+
+    CloseHandle(hDir);
+
+    wchar_t name[512], domain[512];
+    DWORD nameSize = 512, domainSize = 512;
+    SID_NAME_USE sidUse;
+
+    if (!LookupAccountSidW(NULL, ownerSid, name, &nameSize, domain, &domainSize, &sidUse)) {
+        free(wDirPath);
+        if (pSD) {
+            LocalFree(pSD);
+        }
+        return false;
+    }
+
+    char* utf8OwnerName = encoding_wchar_to_utf8(name);
+    if (utf8OwnerName == NULL) {
+        free(wDirPath);
+        if (pSD) {
+            LocalFree(pSD);
+        }
+        return false;
+    }
+
+    strncpy(ownerBuffer, utf8OwnerName, bufferSize - 1);
+    ownerBuffer[bufferSize - 1] = '\0';
+
+    free(wDirPath);
+    free(utf8OwnerName);
+    if (pSD) {
+        LocalFree(pSD);
+    }
+    return true;
+#else
+    struct stat dirInfo;
+    if (stat(dirPath, &dirInfo) != 0) {
+        return false;
+    }
+
+    struct passwd *pwd = getpwuid(dirInfo.st_uid);
+    if (pwd == NULL) {
+        return false;
+    }
+
+    strncpy(ownerBuffer, pwd->pw_name, bufferSize - 1);
+    ownerBuffer[bufferSize - 1] = '\0';
+    return true;
+#endif
+}
+
+bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData) {
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wDirPath = encoding_utf8_to_wchar(dirPath);
+    wchar_t* wPattern = encoding_utf8_to_wchar(pattern);
+    if (wDirPath == NULL || wPattern == NULL) {
+        free(wDirPath);
+        free(wPattern);
+        return false;
+    }
+
+    // Allocate memory for the combined path and pattern
+    size_t combinedSize = wcslen(wDirPath) + wcslen(wPattern) + 1; // +1 for null terminator
+    wchar_t* wSearchPath = (wchar_t*)malloc(combinedSize * sizeof(wchar_t));
+    if (wSearchPath == NULL) {
+        free(wDirPath);
+        free(wPattern);
+        return false;
+    }
+
+    // Combine dirPath and pattern
+    wcscpy_s(wSearchPath, combinedSize, wDirPath);
+    wcscat_s(wSearchPath, combinedSize, wPattern);
+
+    WIN32_FIND_DATAW findFileData;
+    HANDLE hFind = FindFirstFileW(wSearchPath, &findFileData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        free(wDirPath);
+        free(wPattern);
+        free(wSearchPath);
+        return false;
+    }
+
+    do {
+        if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // Skip directories if you only want files
+            continue;
+        }
+
+        char* utf8FileName = encoding_wchar_to_utf8(findFileData.cFileName);
+        if (!callback(utf8FileName, userData)) {
+            free(utf8FileName);
+            break;
+        }
+        free(utf8FileName);
+    } while (FindNextFileW(hFind, &findFileData) != 0);
+
+    FindClose(hFind);
+    free(wDirPath);
+    free(wPattern);
+    free(wSearchPath);
+    return true;
+#else
+    DIR* dir = opendir(dirPath);
+    if (!dir) {
+        return false;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (fnmatch(pattern, entry->d_name, 0) == 0) {
+            if (!callback(entry->d_name, userData)) {
+                break;
+            }
+        }
+    }
+
+    closedir(dir);
+    return true;
+#endif
+    
 }

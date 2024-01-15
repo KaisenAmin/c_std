@@ -11,6 +11,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+extern const char* STRING_ASCII_LETTERS;
+extern const char* STRING_ASCII_LOWERCASE;
+extern const char* STRING_ASCII_UPPERCASE;
+extern const char* STRING_DIGITS;
+extern const char* STRING_HEXDIGITS;
+extern const char* STRING_WHITESPACE;
+extern const char* STRING_PUNCTUATION;
+
 typedef struct String String;
 typedef struct MemoryPoolString {
     void *pool;        // Pointer to the memory pool
@@ -97,6 +105,7 @@ char* string_rbegin(String* str);
 char* string_rend(String* str);
 char* string_back(String* str);
 char* string_front(String* str);
+char* string_strdup(const char* s);
 
 size_t string_length(String* str);
 size_t string_capacity(String* str);

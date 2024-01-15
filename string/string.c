@@ -13,6 +13,15 @@
 #include <time.h>
 #include <wchar.h>
 
+const char* STRING_ASCII_LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const char* STRING_ASCII_LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
+const char* STRING_ASCII_UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const char* STRING_DIGITS = "0123456789";
+const char* STRING_HEXDIGITS = "0123456789abcdefABCDEF";
+const char* STRING_WHITESPACE = " \t\n\r\f\v";
+const char* STRING_PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+
 MemoryPoolString* global_pool = NULL;
 static MemoryPoolString *memory_pool_create(size_t size);
 static void *memory_pool_allocate(MemoryPoolString *pool, size_t size);
@@ -1505,4 +1514,17 @@ String** string_create_from_initializer(size_t count, ...) {
 
     va_end(args);
     return strings;
+}
+
+char* string_strdup(const char* s) 
+{
+    if (s == NULL) {
+        perror("parm is null in string_strdup");
+        return NULL;   
+    }
+    char* new_str = malloc(strlen(s) + 1);
+    if (new_str) {
+        strcpy(new_str, s);
+    }
+    return new_str;
 }

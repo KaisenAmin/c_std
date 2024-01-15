@@ -1,6 +1,6 @@
 # Vector Library in C
 
-Author: amin tahmasebi
+Author: Amin Tahmasebi
 Release Date: 2023
 License: GNU General Public License v3.0
 
