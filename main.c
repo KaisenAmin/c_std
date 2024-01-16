@@ -1,19 +1,33 @@
-#include "string/string.h"
+#include "bitset/bitset.h"
 #include <stdio.h>
-#include <stdlib.h>
 
+void shift_left_and_print(Bitset* bs, size_t shift) {
+    if (!bs) {
+        return;
+    }
+
+    Bitset* shifted = bitset_create(bs->size);
+    for (size_t i = 0; i < bs->size - shift; ++i) {
+        if (bitset_test(bs, i)) {
+            bitset_set(shifted, i + shift, true);
+        }
+    }
+
+    printf("Shifted Left by %zu: ", shift);
+    bitset_print(shifted);
+
+    bitset_deallocate(shifted);
+}
 
 int main() {
-    String* str = string_create("Hello,World,This,Is,A,Test");
-    int count = 0;
-    String** splits = string_split(str, ",", &count);
+    Bitset* bs = bitset_create(8);
+    bitset_set_from_string(bs, "10011001");
 
-    for (int i = 0; i < count; i++) {
-        printf("Split %d: %s\n", i, string_c_str(splits[i]));
-        string_deallocate(splits[i]);
-    }
-    free(splits);
+    printf("Original Bitset: ");
+    bitset_print(bs);
 
-    string_deallocate(str);
+    shift_left_and_print(bs, 2);
+
+    bitset_deallocate(bs);
     return 0;
 }

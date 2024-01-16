@@ -16,7 +16,7 @@ def compile_project(run_after_compile=False):
         # "numeric",
         "algorithm",
         "array",
-        # "bitset",
+        "bitset",
         # "config",
         # "csv",
         # "deque",
