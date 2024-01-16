@@ -1432,8 +1432,22 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
 #if defined(_WIN32) || defined(_WIN64)
 // Function to convert UTF-8 string to wchar_t string (Windows only)
 wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
+    if (utf8Str == NULL) {
+        printf("Debug: Input string is NULL\n");
+        return NULL;
+    }
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, NULL, 0);
+    if (size_needed == 0) {
+        printf("Debug: MultiByteToWideChar failed to calculate size. Error: %lu\n", GetLastError());
+        return NULL;
+    }
+
     wchar_t* wstr = (wchar_t*)malloc(size_needed * sizeof(wchar_t));
+    if (!wstr) {
+        perror("Debug: Can not allocate memory for wchar");
+        return NULL;
+    }
+
     if (!wstr) {
         perror("Can not allocate memory for wchar");
         return NULL;

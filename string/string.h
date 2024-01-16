@@ -106,6 +106,7 @@ char* string_rend(String* str);
 char* string_back(String* str);
 char* string_front(String* str);
 char* string_strdup(const char* s);
+char* string_from_int_cstr(int value);
 
 size_t string_length(String* str);
 size_t string_capacity(String* str);

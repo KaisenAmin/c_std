@@ -1408,6 +1408,18 @@ String* string_from_int(int value) {
     return string_create(buffer);
 }
 
+char* string_from_int_cstr(int value) {
+    char buffer[12]; // Enough to hold any 32-bit integer
+    sprintf(buffer, "%d", value);
+
+    char* result = malloc(strlen(buffer) + 1); // +1 for null-terminator
+    if (result) {
+        strcpy(result, buffer);
+    }
+
+    return result;
+}
+
 String* string_from_float(float value) {
     char buffer[32]; // A general buffer size for a float
     sprintf(buffer, "%f", value);

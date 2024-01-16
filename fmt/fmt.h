@@ -1,0 +1,19 @@
+#ifndef FMT_H_
+#define FMT_H_
+
+#include <stddef.h>
+#include <stdarg.h>
+
+#define FMT_END_ARGS (NULL)
+
+void fmt_print(const char* format, ...);
+void fmt_println(const char* format, ...);
+void fmt_printf(const char* format, ...);
+
+char* fmt_sprintln(const char* first_arg, ...);
+char* fmt_sprint(const char* first_arg, ...);
+char* fmt_sprintf(const char* format, ...);
+
+int fmt_scan(char** output);
+
+#endif 
