@@ -364,13 +364,3 @@ int fmt_scanf(const char* format, ...) {
     va_end(args);
     return items_scanned;
 }
-
-int fmt_fscan(FILE* stream, const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    int items_scanned = vfscanf(stream, format, args);
-
-    va_end(args);
-    return items_scanned;
-}

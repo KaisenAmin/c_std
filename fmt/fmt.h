@@ -19,6 +19,5 @@ int fmt_scan(char** output);
 int fmt_scanln(char** output);
 int fmt_scanf(const char* format, ...);
 
-int fmt_fscan(FILE* stream, const char* format, ...);
 
 #endif 

@@ -21,6 +21,7 @@ typedef enum {
 FileWriter* file_writer_open(const char* filename, const WriteMode mode);
 bool file_writer_close(FileWriter* writer);
 
+size_t file_writer_tell_position(FileWriter* writer);
 size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer);
 bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer);
 
