@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 #define FMT_END_ARGS (NULL)
 
@@ -15,5 +16,9 @@ char* fmt_sprint(const char* first_arg, ...);
 char* fmt_sprintf(const char* format, ...);
 
 int fmt_scan(char** output);
+int fmt_scanln(char** output);
+int fmt_scanf(const char* format, ...);
+
+int fmt_fscan(FILE* stream, const char* format, ...);
 
 #endif 

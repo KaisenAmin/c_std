@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
@@ -284,16 +283,21 @@ char* fmt_sprintf(const char* format, ...) {
 
 int fmt_scan(char** output) {
     char buffer[1024];
+    int result = 0;
 
-    // Read from standard input
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-        return -1; // Error or end of file
+    // Read from standard input character by character
+    size_t i = 0;
+    for (; i < sizeof(buffer) - 1; ++i) {
+        int ch = getchar();
+        if (ch == EOF || ch == '\n' || ch == ' ') {
+            break;
+        }
+        buffer[i] = (char)ch;
     }
+    buffer[i] = '\0'; // Null-terminate the string
 
-    // Remove newline character if present
-    size_t len = strlen(buffer);
-    if (len > 0 && buffer[len - 1] == '\n') {
-        buffer[len - 1] = '\0';
+    if (i == 0) {
+        return (feof(stdin)) ? 0 : -1; // Handle EOF or error
     }
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -309,6 +313,64 @@ int fmt_scan(char** output) {
     *output = string_strdup(buffer);
 #endif
 
-    return (*output != NULL) ? 0 : -1;
+    return result; // Return the result of the reading process
 }
 
+int fmt_scanln(char** output) {
+    char buffer[1024];
+    int result = 0;
+
+    // Read from standard input character by character
+    size_t i = 0;
+    for (; i < sizeof(buffer) - 1; ++i) {
+        int ch = getchar();
+        if (ch == EOF || ch == '\n' || ch == ' ') {
+            if (ch == ' ') {
+                // Consume the rest of the line
+                while ((ch = getchar()) != '\n' && ch != EOF);
+            }
+            break;
+        }
+        buffer[i] = (char)ch;
+    }
+    buffer[i] = '\0'; // Null-terminate the string
+
+    if (i == 0) {
+        return (feof(stdin)) ? 0 : -1; // Handle EOF or error
+    }
+
+#if defined(_WIN32) || defined(_WIN64)
+    // Convert input from console's encoding to UTF-8
+    wchar_t* wbuffer = encoding_utf8_to_wchar(buffer);
+    if (!wbuffer) {
+        return -1; // Conversion error
+    }
+    *output = encoding_wchar_to_utf8(wbuffer);
+    free(wbuffer);
+#else
+    // On non-Windows platforms, assume the input is already UTF-8
+    *output = string_strdup(buffer);
+#endif
+
+    return result; // Return the result of the reading process
+}
+
+int fmt_scanf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    int items_scanned = vscanf(format, args);
+
+    va_end(args);
+    return items_scanned;
+}
+
+int fmt_fscan(FILE* stream, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    int items_scanned = vfscanf(stream, format, args);
+
+    va_end(args);
+    return items_scanned;
+}

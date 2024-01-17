@@ -260,3 +260,76 @@ int main() {
     return 0;
 }
 ```
+
+## Example 10 : Using `fmt_scan`
+
+```c
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    char* input = NULL;
+    fmt_print("Enter a string (fmt_scan): ", FMT_END_ARGS);
+
+    if (fmt_scan(&input) == 0) {
+        fmt_print("You entered: ", FMT_END_ARGS);
+        fmt_println(input, FMT_END_ARGS);
+        free(input);
+    } 
+    else {
+        fmt_println("Error reading input.", FMT_END_ARGS);
+    }
+    return 0;
+}
+
+```
+
+## Example 11 : Using `fmt_scanln`
+
+```c
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    char* input = NULL;
+    fmt_print("Enter a string (fmt_scanln): ", FMT_END_ARGS);
+
+    if (fmt_scanln(&input) == 0 && input != NULL) {
+        char* message = fmt_sprintf("You entered: %s", input);
+        if (message) {
+            fmt_printf("%s\n", message);
+            free(message);
+        }
+        free(input);
+    } 
+    else {
+        fmt_println("Error or end of input.", FMT_END_ARGS);
+    }
+    return 0;
+}
+
+```
+
+## Example 12 : how to use `fmt_scanf`
+
+```c
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    int age;
+    float salary;
+    char name[50];
+
+    fmt_print("Enter your name, age, and salary: ", FMT_END_ARGS);
+    fmt_scanf("%s %d %f", name, &age, &salary);
+
+    char* message = fmt_sprintf("Name: %s, Age: %d, Salary: %.2f", name, age, salary);
+    if (message) {
+        fmt_printf("Scanned data: %s\n", message);
+        free(message);
+    } 
+    return 0;
+}
+
+```
