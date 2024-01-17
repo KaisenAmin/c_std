@@ -50,7 +50,7 @@ int main() {
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
-    String* buffer = string_create("Hello World\n"); // in future this problem will be solve that String object work with unicode also.
+    String* buffer = string_create("سلام به همه دوستان و برنامه نویسان عزیز\n"); 
 
     // or you can use file_writer_is_open(writer)
     if (writer->is_open) { 
@@ -69,4 +69,6 @@ int main() {
     }
     return 0;
 }
+
+
 ```
