@@ -72,6 +72,7 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
         return NULL;
     }
     writer->mode = mode;
+    writer->is_open = true;
     return writer;
 }
 
@@ -85,10 +86,27 @@ bool file_writer_close(FileWriter *writer)
         fprintf(stderr, "Error: Failed to close file in file_writer_close.\n");
         return false;
     }
+    writer->is_open = false;
     return true;
-} 
+}
 
-size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer) {
+size_t file_writer_get_position(FileWriter *writer)
+{
+    if (writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_position.\n");
+        return (size_t)-1;
+    }
+
+    long cursor_position = ftell(writer->file_writer);
+    if (cursor_position == -1L) {
+        fprintf(stderr, "Error: Could not determine file position.\n");
+        return (size_t)-1;
+    }
+    return (size_t)cursor_position;
+}
+
+size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *writer)
+{
     if (!writer || !writer->file_writer || !buffer) {
         fprintf(stderr, "Error: Invalid argument in file_writer_write.\n");
         return 0;
@@ -116,4 +134,66 @@ size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* wr
     #endif
 
     return written;
+}
+
+bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
+    if (writer->file_writer == NULL || !writer) {
+        fprintf(stderr, "Error: FileWriter object is NULL and not valid in file_writer_write_line.\n");
+        return false;
+    }
+    if (buffer == NULL) {
+        fprintf(stderr, "Error: Invalid arg 'buffer is NULL' in file_writer_write_line.\n");
+        return false;
+    }
+
+    size_t written = 0;
+    size_t elementToWriteSize = size;
+
+    #if defined(_WIN32) || defined(_WIN64)
+    if (writer->mode == WRITE_UNICODE) {
+        wchar_t* wBuffer = encoding_utf8_to_wchar(buffer);
+        if (!wBuffer) {
+            fprintf(stderr, "Error: Can not convert buffer to wchar in file_writer_write_line.\n");
+            return false;
+        }
+
+        elementToWriteSize = wcslen(wBuffer);
+        written = fwrite(wBuffer, sizeof(wchar_t), elementToWriteSize, writer->file_writer);
+        free(wBuffer);
+    }
+    else {
+        written = fwrite(buffer, sizeof(char), elementToWriteSize, writer->file_writer);
+    }
+    #else 
+    written = fwrite(buffer, sizeof(char), size, writer->file_writer);
+    #endif 
+
+    if (written < elementToWriteSize) {
+        fprintf(stderr, "Error: could not write entire buffer in file in file_writer_write_line.\n");
+        return false;
+    }
+
+    #if defined(_WIN32) || defined(_WIN64)
+    if (writer->mode == WRITE_UNICODE) {
+        wchar_t newLine[] = L"\n";
+        written = fwrite(newLine, sizeof(wchar_t), 1, writer->file_writer);
+    }
+    else {
+        char newLine[] = "\n";
+        written = fwrite(newLine, sizeof(char), 1, writer->file_writer);
+    }
+    #else 
+    char newLine[] = "\n";
+    written = fwrite(newLine, sizeof(char), 1, writer->file_writer);
+    #endif 
+
+    return written == 1;
+}
+
+bool file_writer_is_open(FileWriter* writer) {
+    if (writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is NULL and its not open.\n");
+        return false;
+    }
+    return writer->is_open;
 }

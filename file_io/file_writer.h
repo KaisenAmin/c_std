@@ -17,12 +17,15 @@ typedef enum {
 typedef struct {
     FILE* file_writer;
     WriteMode mode;
+    bool is_open;
+    
 } FileWriter;
 
 
 
 FileWriter* file_writer_open(const char* filename, const WriteMode mode);
 bool file_writer_close(FileWriter* writer);
+bool file_writer_is_open(FileWriter* writer);
 
 size_t file_writer_get_position(FileWriter* writer);
 size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer);
