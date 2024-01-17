@@ -21,7 +21,7 @@ typedef enum {
 FilerReader* file_reader_open(const char* filename, const ReadMode mode);
 bool file_reader_close(FilerReader* reader);
 
-size_t file_reader_tell_position(FilerReader* reader);
+size_t file_reader_get_position(FilerReader* reader);
 size_t file_reader_read(void* buffer, size_t size, size_t count, FilerReader* reader);
 char* file_reader_read_line(char* buffer, size_t size, FilerReader* reader);
 

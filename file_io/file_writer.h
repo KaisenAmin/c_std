@@ -5,10 +5,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-typedef struct {
-    FILE* file_writer;
-} FileWriter;
-
 typedef enum {
     WRITE_TEXT,          // Open for writing in text mode
     WRITE_BINARY,        // Open for writing in binary mode
@@ -18,10 +14,17 @@ typedef enum {
     WRITE_LINE,          // Open for line-by-line writing (useful for text files)
 } WriteMode;
 
+typedef struct {
+    FILE* file_writer;
+    WriteMode mode;
+} FileWriter;
+
+
+
 FileWriter* file_writer_open(const char* filename, const WriteMode mode);
 bool file_writer_close(FileWriter* writer);
 
-size_t file_writer_tell_position(FileWriter* writer);
+size_t file_writer_get_position(FileWriter* writer);
 size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer);
 bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer);
 
