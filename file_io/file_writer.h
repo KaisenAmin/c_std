@@ -26,6 +26,7 @@ typedef struct {
     WriteMode mode;
     bool is_open;
     EncodingType encoding;
+    char* file_path;
 } FileWriter;
 
 
@@ -35,6 +36,7 @@ FileWriter* file_writer_append(const char* filename, const WriteMode mode);
 size_t file_writer_get_position(FileWriter* writer);
 size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer);
 size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...);
+size_t file_writer_get_size(FileWriter* writer);
 
 bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer);
 bool file_writer_close(FileWriter* writer);

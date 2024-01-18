@@ -1,6 +1,8 @@
 #include "file_writer.h"
 #include "../encoding/encoding.h"
 #include "../fmt/fmt.h"
+#include "../dir/dir.h"
+#include "../string/string.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -82,6 +84,8 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     writer->mode = mode;
     writer->is_open = true;
     writer->encoding = ENCODING_UTF16;
+    fmt_printf("%s\n", dir_absolute_file_path(filename));
+    writer->file_path = string_strdup(dir_absolute_file_path(filename));
     return writer;
 }
 
@@ -159,6 +163,8 @@ FileWriter *file_writer_append(const char *filename, const WriteMode mode) {
     writer->mode = mode;
     writer->is_open = true;
     writer->encoding = ENCODING_UTF16;
+    fmt_printf("%s\n", dir_absolute_file_path(filename));
+    writer->file_path = string_strdup(dir_absolute_file_path(filename));
 
     return writer;
 }
@@ -354,4 +360,25 @@ size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
     va_end(args);
 
     return written;
+}
+
+size_t file_writer_get_size(FileWriter* writer) {
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is not valid and NULL in file_writer_get_size.\n");
+        return 0;
+    }
+
+    if (!file_writer_flush(writer)) {
+        fprintf(stderr, "Error: Failed in flushing the data in file_writer_get_size.\n");
+        return 0;
+    }
+    size_t current_positon = file_writer_get_position(writer);
+
+    fseek(writer->file_writer, 0, SEEK_END);
+
+    size_t size = file_writer_get_position(writer);
+
+    fseek(writer->file_writer, current_positon, SEEK_SET);
+
+    return size;
 }

@@ -8,16 +8,10 @@ int main() {
         fmt_printf("Error: failed to open file for appending text.\n");
         return -1;
     }
-
-    size_t write = file_writer_write_fmt(writer, "Hello %s your age is %d and programming in %s", "امین", 27, "C");
-    
-    if (write > 0) {
-        fmt_printf("Its Correct %zu\n", write);
-    }
-    else {
-        fmt_printf("Failed to write formated str\n");
-    }
+    size_t file_size = file_writer_get_size(writer);
+    fmt_printf("Size of file is %zu", file_size);
 
     file_writer_close(writer);
     return 0;
 }
+
