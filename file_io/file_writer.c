@@ -341,6 +341,43 @@ bool file_writer_set_encoding(FileWriter* writer, const EncodingType encoding) {
     return true;
 }
 
+// get absolute path of FileWriter object 
+const char *file_writer_get_file_name(FileWriter *writer){
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_file_name.\n");
+        return NULL;
+    }
+    if (!writer->file_path) {
+        fprintf(stderr, "Error: file path for FileWriter is null in file_writer_get_file_name.\n");
+        return NULL;
+    }
+    return (const char*)writer->file_path;
+}
+
+// get encoding type of FileWriter
+const char* file_writer_get_encoding(FileWriter *writer) {
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_encoding.\n");
+        return NULL;
+    }
+
+    if (!(writer->encoding >= ENCODING_UTF16 && writer->encoding <= ENCODING_UTF32)) {
+        fprintf(stderr, "Error: Encoding type is Invalid in file_writer_get_encoding.\n");
+        return NULL;
+    }
+
+    char *encoding = NULL;
+    switch (writer->encoding){
+        case ENCODING_UTF16:
+            encoding = string_strdup("ENCODING_UTF16");
+            break;
+        case ENCODING_UTF32:
+            encoding = string_strdup("ENCODING_UTF32");
+            break;
+    }
+    return encoding;
+}
+
 // Write formatted data to the file, similar to `fprintf`.
 size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
     if (!writer || !writer->file_writer || !format) {
@@ -358,7 +395,6 @@ size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
     size_t written = file_writer_write(buffer, strlen(buffer), 1, writer);
 
     va_end(args);
-
     return written;
 }
 
@@ -373,11 +409,9 @@ size_t file_writer_get_size(FileWriter* writer) {
         return 0;
     }
     size_t current_positon = file_writer_get_position(writer);
-
     fseek(writer->file_writer, 0, SEEK_END);
 
     size_t size = file_writer_get_position(writer);
-
     fseek(writer->file_writer, current_positon, SEEK_SET);
 
     return size;

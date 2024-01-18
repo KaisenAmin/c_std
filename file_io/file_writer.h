@@ -44,4 +44,7 @@ bool file_writer_is_open(FileWriter* writer);
 bool file_writer_flush(FileWriter* writer);
 bool file_writer_set_encoding(FileWriter* writer, const EncodingType encoding);
 
+const char* file_writer_get_file_name(FileWriter* writer);
+const char* file_writer_get_encoding(FileWriter* writer);
+
 #endif 
