@@ -8,6 +8,10 @@
 
 #if defined(_WIN32) || defined(_WIN64) 
 #include <windows.h>
+#include <io.h> // _get_osfhandle
+#else
+#include <fcntl.h>
+#include <errno.h>
 #endif 
 
 
@@ -84,7 +88,6 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     writer->mode = mode;
     writer->is_open = true;
     writer->encoding = ENCODING_UTF16;
-    fmt_printf("%s\n", dir_absolute_file_path(filename));
     writer->file_path = string_strdup(dir_absolute_file_path(filename));
     return writer;
 }
@@ -163,7 +166,6 @@ FileWriter *file_writer_append(const char *filename, const WriteMode mode) {
     writer->mode = mode;
     writer->is_open = true;
     writer->encoding = ENCODING_UTF16;
-    fmt_printf("%s\n", dir_absolute_file_path(filename));
     writer->file_path = string_strdup(dir_absolute_file_path(filename));
 
     return writer;
@@ -341,6 +343,47 @@ bool file_writer_set_encoding(FileWriter* writer, const EncodingType encoding) {
     return true;
 }
 
+// Copy content from one file to another.
+bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer){
+    if (!src_writer || src_writer->file_writer == NULL || src_writer->file_path == NULL) {
+        fprintf(stderr, "Error: src_writer object or file_path or both them are null and not valid in file_writer_copy.\n");
+        return false;
+    }
+    if (!src_writer || src_writer->file_writer == NULL || src_writer->file_path == NULL) {
+        fprintf(stderr, "Error: des_writer object or file_path or both them are null and not valid in file_writer_copy.\n");
+        return false;
+    }
+
+    FILE* src_file = fopen(src_writer->file_path, "rb");
+    if (!src_file) {
+        fprintf(stderr, "Error: Can not reopen source file for reading in file_writer_copy.\n");
+        return false;
+    }
+
+    FILE* dest_file = fopen(dest_writer->file_path, "wb");
+    if (!dest_file) {
+        fprintf(stderr, "Error: Can not reopen destination file for writing in file_writer_copy.\n");
+        return false;
+    }
+
+    char buffer[4096];
+    size_t bytes_read;
+
+    while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), src_file))) {
+        if (fwrite(buffer, sizeof(char), bytes_read, dest_file) != bytes_read) {
+            fprintf(stderr, "Error: Write Error occured in file_writer_copy.\n");
+            
+            fclose(src_file);
+            fclose(dest_file);
+            return false;
+        }
+    }
+    fclose(src_file);
+    fclose(dest_file);
+
+    return true;
+}
+
 // get absolute path of FileWriter object 
 const char *file_writer_get_file_name(FileWriter *writer){
     if (!writer || writer->file_writer == NULL) {
@@ -415,4 +458,60 @@ size_t file_writer_get_size(FileWriter* writer) {
     fseek(writer->file_writer, current_positon, SEEK_SET);
 
     return size;
+}
+
+// Lock the file to prevent other processes from modifying it while it's being written to
+bool file_writer_lock(FileWriter* writer) {
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is NULL in file_writer_lock.\n");
+        return false;
+    }
+
+    #if defined(_WIN32) || defined(_WIN64)
+    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(writer->file_writer));
+    OVERLAPPED overlapped = {0};
+    if (LockFileEx(hFile, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
+        fprintf(stderr, "Error: Unable to lock file in Windows.\n");
+        return false;
+    }
+    #else
+    struct flock fl = {0};
+    fl.l_type = F_WRLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0; // Lock the whole file
+    if (fcntl(fileno(writer->file_writer), F_SETLKW, &fl) == -1) {
+        fprintf(stderr, "Error: Unable to lock file in Unix.\n");
+        return false;
+    }
+    #endif
+    return true;
+}
+
+// Unlock the file once operations are done.
+bool file_writer_unlock(FileWriter* writer) {
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is NULL in file_writer_unlock.\n");
+        return false;
+    }
+
+    #if defined(_WIN32) || defined(_WIN64)
+    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(writer->file_writer));
+    OVERLAPPED overlapped = {0};
+    if (UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
+        fprintf(stderr, "Error: Unable to unlock file in Windows.\n");
+        return false;
+    }
+    #else
+    struct flock fl = {0};
+    fl.l_type = F_UNLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0; // Unlock the whole file
+    if (fcntl(fileno(writer->file_writer), F_SETLK, &fl) == -1) {
+        fprintf(stderr, "Error: Unable to unlock file in Unix.\n");
+        return false;
+    }
+    #endif
+    return true;
 }

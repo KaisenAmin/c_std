@@ -164,7 +164,8 @@ int main() {
     Time* current_time = time_current_time();
     Date* current_date = date_current_date(Persian);
 
-    char* datetime = fmt_sprintf("Current Date and Time: %s %s", time_to_string(current_time), date_to_string(current_date, format));
+    char* datetime = fmt_sprintf("Current Date and Time: %s %s", time_to_string(current_time), 
+                                            date_to_string(current_date, format));
     if (datetime) {
         fmt_printf("%s", datetime);
         free(datetime);

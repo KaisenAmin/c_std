@@ -209,3 +209,78 @@ int main() {
     return 0;
 }
 ```
+
+## Example 8 : how to copy inforamation of file to an other file in `FileWriter` with `file_writer_copy`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+
+int main() {
+    // We must open the source file in append mode so that the information we want to copy is not deleted.
+    FileWriter* src_writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
+    if (!src_writer) {
+        fmt_printf("Error: Failed to open source file.\n");
+        return -1;
+    }
+
+    FileWriter* dest_writer = file_writer_open("./sources/destination_file.txt", WRITE_UNICODE);
+    if (!dest_writer) {
+        fmt_printf("Error: Failed to open destination file.\n");
+        file_writer_close(src_writer); // Ensure the source file is closed
+        return -1;
+    }
+
+    if (file_writer_copy(src_writer, dest_writer)) {
+        fmt_printf("File copy successful.\n");
+    } 
+    else {
+        fmt_printf("File copy failed.\n");
+    }
+
+    file_writer_close(src_writer);
+    file_writer_close(dest_writer);
+    return 0;
+}
+
+```
+
+## Example 9 : how to lock and unlock file for prevent other proccess to modifying it with `file_writer_lock & unlock`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include <string.h>
+
+int main() {
+    FileWriter* writer = file_writer_open("./sources/locked_file.txt", WRITE_APPEND);
+    if (!writer) {
+        fmt_printf("Error: failed to open file.\n");
+        return -1;
+    }
+
+    // Attempt to lock the file
+    if (!file_writer_lock(writer)) {
+        fmt_printf("Error: failed to lock the file.\n");
+        file_writer_close(writer);
+        return -1;
+    }
+
+    const char* content = "This is a test content.\n";
+    if (!file_writer_write((void*)content, strlen(content), sizeof(char), writer)) {
+        fmt_printf("Error: failed to write to the file.\n");
+    }
+
+    // Unlock the file after writing
+    if (!file_writer_unlock(writer)) {
+        fmt_printf("Error: failed to unlock the file.\n");
+    }
+
+    if (!file_writer_close(writer)) {
+        fmt_printf("Error: failed to close the file writer.\n");
+    }
+
+    return 0;
+}
+
+```
