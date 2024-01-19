@@ -1,2 +1,2 @@
-﻿سلام به همه دوستان و اشنایان 
-Hello to all friends.
+﻿Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
+This is another line with number: 123.456000

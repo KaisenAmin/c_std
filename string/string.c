@@ -1972,3 +1972,27 @@ char* string_strdup(const char* s)
     strcpy(new_str, s);
     return new_str;
 }
+
+size_t string_length_cstr(const char* str) {
+    if (!str) {
+        fprintf(stderr, "Error: str is null in string_length_cstr.\n");
+        return 0;
+    }
+    return (size_t)strlen(str);
+}
+
+size_t string_length_utf8(const char* str) {
+    if (!str) {
+        fprintf(stderr, "Error: str is null in string_length_cstr.\n");
+        return 0;
+    }
+    size_t length = 0;
+
+    while (*str) {
+        if ((*str & 0xC0) != 0x80) {
+            length++;
+        }
+        str++;
+    }
+    return length;
+}

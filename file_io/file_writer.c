@@ -11,6 +11,7 @@
 #include <io.h> // _get_osfhandle
 #else
 #include <fcntl.h>
+#include <unistd.h>
 #include <errno.h>
 #endif 
 
@@ -514,4 +515,158 @@ bool file_writer_unlock(FileWriter* writer) {
     }
     #endif
     return true;
+}
+
+// Move the file pointer to a specific location for random access writing
+bool file_writer_seek(FileWriter *writer, long offset, const CursorPosition cursor_pos) {
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is null and invalid in file_writer_seek.\n");
+        return false;
+    }
+    int pos;
+
+    switch (cursor_pos) {
+        case POS_BEGIN:
+            pos = SEEK_SET;
+            break;
+        case POS_END:
+            pos = SEEK_END;
+            break;
+        case POS_CURRENT:
+            pos = SEEK_CUR;
+            break;
+        default:
+            fprintf(stderr,"Warning: Cursor position is Invalid defailt pos is POS_BEGIN in file_writer_seek.\n");
+            pos = SEEK_SET;
+            break;
+    }
+    
+    if (fseek(writer->file_writer, offset, pos) != 0) {
+        fprintf(stderr, "Error: fseek failed in file_writer_seek.\n");
+        return false;
+    }
+    return true;
+}
+
+
+bool file_writer_truncate(FileWriter *writer, size_t size) {
+    if (!writer || writer->file_writer == NULL) {
+        fprintf(stderr, "Error: FileWriter object is null and invalid in file_writer_truncate.\n");
+        return false;
+    }
+    if (!file_writer_flush(writer)) {
+        fprintf(stderr, "Error: Failed to flush the file in file_writer_truncate.\n");
+        return false;
+    }
+    int fd;
+
+    #if defined(_WIN32) || defined(_WIN64)
+    fd = _fileno(writer->file_writer);
+    if (_chsize_s(fd, size) != 0) {
+        fprintf(stderr, "Error: Could not truncate file in file_writer_truncate.\n");
+        return false;
+    }
+    #else 
+    fd = fileno(writer->file_writer);
+    if (ftruncate(fd, size) == -1) {
+        fprintf(stderr, "Error: Could not truncate file in file_writer_truncate.\n");
+        return false;
+    }
+    #endif 
+
+    return true;
+}
+
+// Allows writing multiple buffers in a single operation, potentially optimizing I/O operations by reducing the number of system calls
+bool file_writer_write_batch(FileWriter* writer, const void** buffers, const size_t* sizes, size_t count) {
+    if (!writer || !writer->file_writer || !buffers || !sizes) {
+        fprintf(stderr, "Error: Invalid arguments in file_writer_write_batch.\n");
+        return false;
+    }
+
+    size_t all_bytes = 0;
+    size_t total_written = 0;
+    for (size_t i = 0; i < count; ++i) {
+        const void* buffer = buffers[i];
+        size_t size = sizes[i];
+        all_bytes += size;
+        if (!buffer || size == 0) {
+            fprintf(stderr, "Error: Invalid buffer or size in file_writer_write_batch at index %zu.\n", i);
+            continue;
+        }
+
+        size_t written = 0;
+        void* convertedBuffer = NULL; // Pointer for holding converted data
+        size_t convertedSize = 0;     // Size of the converted data
+
+        // Convert buffer based on encoding
+        switch (writer->encoding) {
+            case ENCODING_UTF32: {
+                uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size);
+                if (!utf32Buffer) {
+                    fprintf(stderr, "Error: Conversion to UTF-32 failed in file_writer_write_batch.\n");
+                    continue;
+                }
+                convertedBuffer = utf32Buffer;
+                convertedSize = wcslen((wchar_t*)utf32Buffer) * sizeof(uint32_t);
+                break;
+            }
+            default: // Default case is ENCODING_UTF16
+            case ENCODING_UTF16: {
+                #if defined(_WIN32) || defined(_WIN64)
+                wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
+                if (!wBuffer) {
+                    fprintf(stderr, "Error: Conversion to wchar_t failed in file_writer_write_batch.\n");
+                    continue;
+                }
+                convertedBuffer = wBuffer;
+                convertedSize = wcslen(wBuffer) * sizeof(wchar_t);
+                #else
+                uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size);
+                if (!utf16Buffer) {
+                    fprintf(stderr, "Error: Conversion to UTF-16 failed in file_writer_write_batch.\n");
+                    continue;
+                }
+                convertedBuffer = utf16Buffer;
+                convertedSize = wcslen((wchar_t*)utf16Buffer) * sizeof(uint16_t);
+                #endif
+                break;
+            }
+        }
+
+        // Write the buffer to the file
+        written = fwrite(convertedBuffer, 1, convertedSize, writer->file_writer);
+        free(convertedBuffer);
+
+        if (written != convertedSize) {
+            fprintf(stderr, "Error: Partial or failed write in file_writer_write_batch at index %zu.\n", i);
+            return false;
+        }
+
+        total_written += written;
+    }
+    return total_written == all_bytes;
+}
+
+// Similar to file_writer_write_fmt, but specifically for appending formatted text to a file.
+bool file_writer_append_fmt(FileWriter* writer, const char* format, ...) {
+    if (!writer || !writer->file_writer || !format) {
+        fprintf(stderr, "Error: Invalid argument in file_writer_append_fmt.\n");
+        return false;
+    }
+    if (writer->mode != WRITE_APPEND) {
+        fprintf(stderr, "Error: FileWriter object must be in append mode in file_writer_write_fmt.\n");
+        return false;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    char buffer[2048]; // Adjust the buffer size as necessary
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
+    size_t written = file_writer_write(buffer, strlen(buffer), 1, writer);
+
+    va_end(args);
+    return written > 0;
 }

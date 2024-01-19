@@ -139,7 +139,7 @@ int main() {
 ### Example 4: Using `span_front` and `span_back` with an Array of Integers
 
 ```c
-#include "span.h"
+#include "span/span.h"
 #include <stdio.h>
 
 int main() {
@@ -164,7 +164,7 @@ int main() {
 ### Example 5: Using `span_front` and `span_back` with an Array of Strings
 
 ```c
-#include "span.h"
+#include "span/span.h"
 #include <stdio.h>
 
 int main() {
@@ -214,7 +214,6 @@ int main() {
     span_destroy(span);
     return 0;
 }
-
 ```
 
 ## Example 7 : Using `span_empty`
@@ -250,7 +249,7 @@ int main() {
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span* span = span_create(array, arraySize, sizeof(int));
 
-    printf("Size of span in bytes: %zu\n", span_size_bytes(span));
+    printf("Size of span in bytes: %zu\n", span_size_bits(span));
 
     span_destroy(span);
     return 0;

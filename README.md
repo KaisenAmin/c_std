@@ -32,6 +32,9 @@ The project is organized into several subdirectories, each representing a differ
 - `Date`: The Date library in C offers a robust solution for handling and manipulating dates in both Gregorian and Persian calendars. This library is particularly useful for applications requiring operations on dates, such as calculations, conversions, and comparisons. Its comprehensive set of functions simplifies complex date-related tasks in C programming.
 - `Dir`: Dir  is used to manipulate path names, access information regarding paths and files, and manipulate the underlying file system.
 - `Tuple`: implement tuple similar to std::tuple in c++.
+- `FileWriter`: The FileWriter library is a versatile tool designed for file writing operations in C. It provides functionalities similar to higher-level languages, offering various modes for writing text and binary files, including support for Unicode (UTF-8 and UTF-16).
+- `FileReader`: The FileReader library is a versatile tool designed for file writing operations in C.
+- `fmt`: The fmt library is a comprehensive formatting and I/O library for C, inspired by fmt package in `golang`. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
 
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 

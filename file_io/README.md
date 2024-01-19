@@ -219,17 +219,7 @@ int main() {
 int main() {
     // We must open the source file in append mode so that the information we want to copy is not deleted.
     FileWriter* src_writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
-    if (!src_writer) {
-        fmt_printf("Error: Failed to open source file.\n");
-        return -1;
-    }
-
     FileWriter* dest_writer = file_writer_open("./sources/destination_file.txt", WRITE_UNICODE);
-    if (!dest_writer) {
-        fmt_printf("Error: Failed to open destination file.\n");
-        file_writer_close(src_writer); // Ensure the source file is closed
-        return -1;
-    }
 
     if (file_writer_copy(src_writer, dest_writer)) {
         fmt_printf("File copy successful.\n");
@@ -254,10 +244,6 @@ int main() {
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/locked_file.txt", WRITE_APPEND);
-    if (!writer) {
-        fmt_printf("Error: failed to open file.\n");
-        return -1;
-    }
 
     // Attempt to lock the file
     if (!file_writer_lock(writer)) {
@@ -283,4 +269,112 @@ int main() {
     return 0;
 }
 
+```
+
+## Example 10 : how to move cursor position in `FileWriter` with `file_writer_seek`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+
+int main() {
+    FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
+    
+    if (file_writer_seek(writer, 10, POS_BEGIN)) {
+        fmt_printf("Successfully moved the file cursor.\n");
+    }
+    else {
+        fmt_printf("Failed to move the file cursor.\n");
+    }
+
+    file_writer_close(writer);
+    return 0;
+}
+```
+
+## Example 11 : how to truncate the file in `FileWriter` with `file_writer_truncate`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include <string.h>
+
+int main() {
+    FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_TEXT);
+    char* message = "Hello C/C++ Programmers in all over the world.";
+
+    if (!file_writer_write_line(message, strlen(message), writer)) {
+        fmt_printf("Failed to write line in file\n");
+        return -1;
+    }
+
+    size_t trunc_size = 10;
+    if (file_writer_truncate(writer, trunc_size)) {
+        fmt_printf("File Successfully truncated to %zu bytes.\n", trunc_size);
+    }
+    else {
+        fmt_printf("Failed to truncate the file.\n");
+    }
+
+    file_writer_close(writer);
+    return 0;
+}
+```
+
+## Example 12 : how to write multiple buffer in `FileWriter` with `file_writer_write_batch`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "string/string.h"
+
+int main() {
+    const char* englishText = "Hello, this is a test text.";
+    const char* persianText = "سلام، این یک متن آزمایشی است."; // Unicode content
+    const void* buffers[2] = { englishText, persianText };
+    size_t sizes[2] = { string_length_cstr(englishText), string_length_utf8(persianText) };
+    FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
+
+    // Write both buffers in a single batch operation
+    if (!file_writer_write_batch(writer, buffers, sizes, 2)) {
+        fmt_printf("Failed to write buffers to file.\n");
+        file_writer_close(writer);
+        return -1;
+    }
+    fmt_printf("Successfully wrote buffers to file.\n");
+
+    file_writer_close(writer);
+    return 0;
+}
+```
+
+## Example 13 : append formated text to file in `FileWriter` with `file_writer_append_fmt`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+
+int main() {
+    FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
+    if (!writer) {
+        fmt_printf("Failed to open file for appending.\n");
+        return -1;
+    }
+
+    // Append formatted text to the file for appending with fmt writer must be in WRITE_APPEND mode
+    if (!file_writer_append_fmt(writer, "Name: %s, Age: %d, Occupation: %s\n", "John Doe", 30, "Software Developer")) {
+        fmt_printf("Failed to append formatted text to the file.\n");
+        file_writer_close(writer);
+        return -1;
+    }
+    if (!file_writer_append_fmt(writer, "This is another line with number: %f\n", 123.456)) {
+        fmt_printf("Failed to append second line to the file.\n");
+        file_writer_close(writer);
+        return -1;
+    }
+    fmt_printf("Successfully appended formatted text to the file.\n");
+
+    file_writer_close(writer);
+    return 0;
+}
 ```

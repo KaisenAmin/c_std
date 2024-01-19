@@ -7,6 +7,12 @@
 #include <stdarg.h>
 
 typedef enum {
+    POS_BEGIN,
+    POS_END,
+    POS_CURRENT,
+} CursorPosition;
+
+typedef enum {
     ENCODING_UTF16,
     ENCODING_UTF32,
 } EncodingType;
@@ -46,6 +52,10 @@ bool file_writer_set_encoding(FileWriter* writer, const EncodingType encoding);
 bool file_writer_copy(FileWriter* src_writer, FileWriter* dest_writer);
 bool file_writer_lock(FileWriter* writer);
 bool file_writer_unlock(FileWriter* writer);
+bool file_writer_seek(FileWriter* writer, long offset, const CursorPosition cursor_pos);
+bool file_writer_truncate(FileWriter* writer, size_t size);
+bool file_writer_write_batch(FileWriter* writer, const void** buffers, const size_t* sizes, size_t count);
+bool file_writer_append_fmt(FileWriter* writer, const char* format, ...);
 
 const char* file_writer_get_file_name(FileWriter* writer);
 const char* file_writer_get_encoding(FileWriter* writer);

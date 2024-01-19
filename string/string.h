@@ -108,6 +108,8 @@ char* string_front(String* str);
 char* string_strdup(const char* s);
 char* string_from_int_cstr(int value);
 
+size_t string_length_cstr(const char* str);
+size_t string_length_utf8(const char* str);
 size_t string_length(String* str);
 size_t string_capacity(String* str);
 size_t string_max_size(String* str);

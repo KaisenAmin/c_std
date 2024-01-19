@@ -49,7 +49,7 @@ bool span_is_greater_or_equal(const Span* span1, const Span* span2);
 bool span_is_less_or_equal(const Span* span1, const Span* span2);
 bool span_empty(const Span* span);
 
-size_t span_size_bytes(const Span* span);
+size_t span_size_bits(const Span* span);
 size_t span_size(const Span* span);
 
 #endif // SPAN_H_
