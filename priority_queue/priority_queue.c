@@ -4,23 +4,31 @@
  * @class PriorityQueue
 */
 
-
 #include "priority_queue.h"
 #include <stdlib.h>
 #include <string.h>
 
-// static int priority_queue_compare_impl(const void* a, const void* b); 
-
 
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*)) {
-    PriorityQueue* pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
+    if (itemSize == 0) {
+        fprintf(stderr, "Error: Item size cannot be zero in priority_queue_create.\n");
+        return NULL;
+    }
 
+    if (!compare) {
+        fprintf(stderr, "Error: Comparison function cannot be NULL in priority_queue_create.\n");
+        return NULL;
+    }
+
+    PriorityQueue* pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
     if (!pq) {
+        fprintf(stderr, "Error: Memory allocation failed for PriorityQueue in priority_queue_create.\n");
         return NULL; // Allocation failure
     }
 
     pq->vec = vector_create(itemSize);
     if (!pq->vec) {
+        fprintf(stderr, "Error: Vector creation failed in priority_queue_create.\n");
         free(pq);
         return NULL; // Vector creation failure
     }
@@ -31,14 +39,22 @@ PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*
 
 // Helper function to swap two elements in the same vector
 static void element_swap(Vector* vec, size_t index1, size_t index2) {
+    if (!vec) {
+        fprintf(stderr, "Error: NULL Vector pointer in element_swap.\n");
+        return;
+    }
+
     if (index1 >= vec->size || index2 >= vec->size) {
+        fprintf(stderr, "Error: Index out of bounds in element_swap.\n");
         return; // Out of bounds check
     }
 
     void* temp = malloc(vec->itemSize);
-    if (!temp) { 
+    if (!temp) {
+        fprintf(stderr, "Error: Memory allocation failed for temporary element in element_swap.\n");
         return; 
     }
+
     // Swap elements at index1 and index2
     memcpy(temp, (char*)vec->items + index1 * vec->itemSize, vec->itemSize);
     memcpy((char*)vec->items + index1 * vec->itemSize, (char*)vec->items + index2 * vec->itemSize, vec->itemSize);
@@ -48,11 +64,20 @@ static void element_swap(Vector* vec, size_t index1, size_t index2) {
 }
 // Function to maintain the heap property from bottom to top
 static void heapify_up(Vector* vec, size_t index, int (*compare)(const void*, const void*)) {
+    if (!vec || !compare) {
+        fprintf(stderr, "Error: NULL vector or comparison function in heapify_up.\n");
+        return;
+    }
+
     while (index > 0) {
         size_t parent_index = (index - 1) / 2;
         void* parent = vector_at(vec, parent_index);
         void* current = vector_at(vec, index);
 
+        if (!parent || !current) {
+            fprintf(stderr, "Error: Invalid index in vector in heapify_up.\n");
+            break;
+        }
         if (compare(current, parent) > 0) {  // Assuming a max heap
             element_swap(vec, index, parent_index);
             index = parent_index;
@@ -65,6 +90,11 @@ static void heapify_up(Vector* vec, size_t index, int (*compare)(const void*, co
 
 // Function to maintain the heap property from top to bottom
 static void heapify_down(Vector* vec, size_t index, int (*compare)(const void*, const void*)) {
+    if (!vec || !compare) {
+        fprintf(stderr, "Error: NULL vector or comparison function in heapify_down.\n");
+        return;
+    }
+
     size_t size = vector_size(vec);
     size_t left_child_index, right_child_index, largest_index;
 
@@ -96,14 +126,31 @@ static void heapify_down(Vector* vec, size_t index, int (*compare)(const void*, 
 }
 
 bool priority_queue_empty(const PriorityQueue* pq) {
+    if (!pq) {
+        fprintf(stderr, "Error: NULL PriorityQueue pointer in priority_queue_empty.\n");
+        return true; // Treat NULL PriorityQueue as empty.
+    }
     return vector_is_empty(pq->vec);
 }
 
 size_t priority_queue_size(const PriorityQueue* pq) {
+    if (!pq) {
+        fprintf(stderr, "Error: NULL PriorityQueue pointer in priority_queue_size.\n");
+        return 0; // Return 0 for NULL PriorityQueue.
+    }
     return vector_size(pq->vec);
 }
 
 void priority_queue_push(PriorityQueue* pq, void* item) {
+    if (!pq) {
+        fprintf(stderr, "Error: NULL PriorityQueue pointer in priority_queue_push.\n");
+        return;
+    }
+
+    if (!item) {
+        fprintf(stderr, "Error: NULL item pointer in priority_queue_push.\n");
+        return;
+    }
     vector_push_back(pq->vec, item);
     // Correctly calling the size method
     size_t currentSize = vector_size(pq->vec);
@@ -111,42 +158,55 @@ void priority_queue_push(PriorityQueue* pq, void* item) {
 }
 
 void* priority_queue_top(const PriorityQueue* pq) {
+    if (!pq) {
+        fprintf(stderr, "Error: priority_queue_top called with NULL PriorityQueue pointer.\n");
+        return NULL;
+    }
     if (priority_queue_empty(pq)) {
+        fprintf(stderr, "Error: Attempted to access top element of an empty PriorityQueue.\n");
         return NULL; // Handle empty queue
     }
     return vector_front(pq->vec);
 }
 
 void priority_queue_pop(PriorityQueue* pq) {
+    if (!pq) {
+        fprintf(stderr, "Error: priority_queue_pop called with NULL PriorityQueue pointer.\n");
+        return;
+    }
+
     if (priority_queue_empty(pq)) {
+        fprintf(stderr, "Warning: Attempted to pop an element from an empty PriorityQueue.\n");
         return; // Handle empty queue
     }
-    size_t currentSize = vector_size(pq->vec);
 
+    size_t currentSize = vector_size(pq->vec);
     element_swap(pq->vec, 0, currentSize - 1);
     vector_pop_back(pq->vec);
     heapify_down(pq->vec, 0, pq->compare);
 }
 
 void priority_queue_deallocate(PriorityQueue* pq) {
-    if (pq) {
-        if (pq->vec) { 
-            vector_deallocate(pq->vec);
-        }
-        free(pq);
+    if (!pq) {
+        fprintf(stderr, "Warning: Attempted to deallocate a NULL PriorityQueue pointer.\n");
+        return;
     }
+    if (pq->vec) { 
+        vector_deallocate(pq->vec);
+    }
+    free(pq);
 }
 
 void priority_queue_swap(PriorityQueue* pq1, PriorityQueue* pq2) {
     if (!pq1 || !pq2) {
+        fprintf(stderr, "Error: priority_queue_swap called with NULL PriorityQueue pointer(s).\n");
         return;
     }
-    // Swap the internal Vector pointers
+
     Vector* tempVec = pq1->vec;
     pq1->vec = pq2->vec;
     pq2->vec = tempVec;
 
-    // Swap the comparison functions (if different priority queues might have different comparison logic)
     int (*tempCompare)(const void*, const void*) = pq1->compare;
     pq1->compare = pq2->compare;
     pq2->compare = tempCompare;

@@ -18,7 +18,16 @@
 #endif 
 
 Time* time_create(int h, int m, int s, int ms) {
+    if (!time_is_valid_time(h, m, s, ms)) {
+        fprintf(stderr, "Error: Invalid time parameters in time_create.\n");
+        return NULL;
+    }
+
     Time* my_time = (Time*)malloc(sizeof(Time));
+    if (!my_time) {
+        fprintf(stderr, "Error: Memory allocation failed in time_create.\n");
+        return NULL;
+    }
     my_time->hour = h;
     my_time->minute = m;
     my_time->second = s;
@@ -48,7 +57,7 @@ Time* time_current_time(void) {
 
 bool time_is_valid(const Time* t) {
     if (t == NULL) {
-        perror("time is null");
+        fprint(stderr, "Error: Time object is null and invalid in time_is_valid.\n");
         return false;
     }
 
@@ -69,8 +78,12 @@ bool time_is_valid(const Time* t) {
 } 
 
 void time_add_msecs(Time *t, int ms) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_add_msecs.\n");
+        return;
+    }
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid time in time_add_msecs.\n");
         return;
     }
     t->msec += ms;  // Add milliseconds
@@ -98,8 +111,12 @@ void time_add_msecs(Time *t, int ms) {
 }
 
 void time_add_secs(Time* t, int s) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_add_secs.\n");
+        return;
+    }
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid time in time_add_secs.\n");
         return;
     }
     t->second += s;
@@ -123,32 +140,48 @@ bool time_is_null(const Time* t) {
 }
 
 int time_hour(const Time* t) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_hour.\n");
         return -1;
     } 
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid Time object in time_hour.\n");
+        return -1;
+    }
     return t->hour;
 }
 
 int time_minute(const Time* t) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_minute.\n");
+        return -1;
+    }
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid Time object in time_minute.\n");
         return -1;
     }
     return t->minute;
 }
 
 int time_second(const Time* t) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_second.\n");
+        return -1;
+    }
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid Time object in time_second.\n");
         return -1;
     }
     return t->second;
 }
 
 int time_msec(const Time* t) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_msec.\n");
+        return -1;
+    }
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid Time object in time_msec.\n");
         return -1;
     }
     return t->msec;
@@ -156,19 +189,23 @@ int time_msec(const Time* t) {
 
 int time_msecs_since_start_of_day() {
     Time* t = time_current_time();
-
-    if (t == NULL) {
-        perror("time is null");
+    if (!t) {
+        fprintf(stderr, "Error: Failed to retrieve current time in time_msecs_since_start_of_day.\n");
         return -1;
     }
-    int msec_day = t->msec + (t->second * 1000) + (t->minute * 60 * 1000) + (t->hour * 60 * 60 * 1000);
 
+    int msec_day = t->msec + (t->second * 1000) + (t->minute * 60 * 1000) + (t->hour * 60 * 60 * 1000);
     free(t);
     return msec_day;
 }
 
 int time_msecs_to(Time* from, Time* to) {
-    if (from == NULL || to == NULL || !time_is_valid(from) || !time_is_valid(to)) {
+    if (!from || !to) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_msecs_to.\n");
+        return 0;
+    }
+    if (!time_is_valid(from) || !time_is_valid(to)) {
+        fprintf(stderr, "Error: Invalid Time object(s) in time_msecs_to.\n");
         return 0;
     }
 
@@ -186,8 +223,14 @@ int time_msecs_to(Time* from, Time* to) {
     }
     return diff;
 }
+
 int time_secs_to(Time* from, Time* to) {
-    if (from == NULL || to == NULL || !time_is_valid(from) || !time_is_valid(to)) {
+    if (!from || !to) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_secs_to.\n");
+        return 0;
+    }
+    if (!time_is_valid(from) || !time_is_valid(to)) {
+        fprintf(stderr, "Error: Invalid Time object(s) in time_secs_to.\n");
         return 0;
     }
 
@@ -207,8 +250,12 @@ int time_secs_to(Time* from, Time* to) {
 }
 
 bool time_set_hms(Time *t, int h, int m, int s, int ms) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null or not valid");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_set_hms.\n");
+        return false;
+    }
+    if (!time_is_valid_time(h, m, s, ms)) {
+        fprintf(stderr, "Error: Invalid time parameters in time_set_hms.\n");
         return false;
     }
 
@@ -221,28 +268,39 @@ bool time_set_hms(Time *t, int h, int m, int s, int ms) {
 }
 
 char* time_to_string(const Time* t) {
-    if (t == NULL || !time_is_valid(t)) {
-        perror("time is null or not valid");
+    if (!t) {
+        fprintf(stderr, "Error: NULL Time pointer in time_to_string.\n");
         return NULL;
     }
-    char* time = (char*) malloc(sizeof(char) * 16);
+    if (!time_is_valid(t)) {
+        fprintf(stderr, "Error: Invalid Time object in time_to_string.\n");
+        return NULL;
+    }
 
-    if (!time) {
-        perror("Can not allocate memory");
+    char* time_str = (char*) malloc(sizeof(char) * 16);
+    if (!time_str) {
+        fprintf(stderr, "Error: Memory allocation failed in time_to_string.\n");
         return NULL;
     }
-    sprintf(time, "(%d:%02d:%02d:%03d)", t->hour, t->minute, t->second, t->msec);
-    return time;
+    
+    sprintf(time_str, "(%d:%02d:%02d:%03d)", t->hour, t->minute, t->second, t->msec);
+    return time_str;
 }
 
 bool time_is_valid_time(int h, int m, int s, int ms) {
     if ((h < 0 || h > 23) || (m < 0 || m > 59) || (s < 0 || s > 59) || (ms < 0 || ms > 999)) {
+        fprintf(stderr, "Error: is not valid time with this params in time_is_valid_time.\n");
         return false;
     } 
     return true;
 }
 
 Time* time_from_msecs_since_start_of_day(int msecs) {
+    if (msecs < 0 || msecs >= 86400000) { // 24 hours * 60 minutes * 60 seconds * 1000 ms
+        fprintf(stderr, "Error: Invalid milliseconds value in time_from_msecs_since_start_of_day.\n");
+        return NULL;
+    }
+
     int seconds = msecs / 1000;
     int minutes = seconds / 60;
     int hours = minutes / 60;
@@ -251,16 +309,19 @@ Time* time_from_msecs_since_start_of_day(int msecs) {
     minutes = minutes % 60;
 
     Time* my_time = time_create(hours, minutes, seconds, msecs);
+    if (!my_time) {
+        fprintf(stderr, "Error: time_create failed in time_from_msecs_since_start_of_day.\n");
+    }
     return my_time;
 }
 
 bool time_is_equal(const Time* lhs, const Time* rhs) {
-    if (!time_is_valid(lhs) || lhs == NULL) {
-        perror("lhs is null or not valid time");
+    if (!lhs || !rhs) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_is_equal.\n");
         return false;
     }
-    if (!time_is_valid(rhs) || rhs == NULL) {
-        perror("rhs is null or not valid time");
+    if (!time_is_valid(lhs) || !time_is_valid(rhs)) {
+        fprintf(stderr, "Error: Invalid Time object(s) in time_is_equal.\n");
         return false;
     }
     if (lhs->hour == rhs->hour && lhs->minute  == rhs->minute && lhs->second == rhs->second && lhs->msec == rhs->msec) {
@@ -271,12 +332,12 @@ bool time_is_equal(const Time* lhs, const Time* rhs) {
 }
 
 bool time_is_less_than(const Time* lhs, const Time* rhs) {
-    if (!time_is_valid(lhs) || lhs == NULL) {
-        perror("lhs is null or not valid time");
+    if (!lhs || !rhs) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_is_less_than.\n");
         return false;
     }
-    if (!time_is_valid(rhs) || rhs == NULL) {
-        perror("rhs is null or not valid time");
+    if (!time_is_valid(lhs) || !time_is_valid(rhs)) {
+        fprintf(stderr, "Error: Invalid Time object(s) in time_is_less_than.\n");
         return false;
     }
     if ((lhs->hour) < (rhs->hour) || (lhs->minute) < (rhs->minute) || (lhs->second) < (rhs->second) || (lhs->msec) < (rhs->msec)) {
@@ -287,23 +348,45 @@ bool time_is_less_than(const Time* lhs, const Time* rhs) {
 }
 
 bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs) {
-    return (time_is_equal(lhs, rhs) || time_is_less_than(lhs, rhs))? true: false;
+    if (!lhs || !rhs) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_is_less_than_or_equal.\n");
+        return false;
+    }
+    if (!time_is_valid(lhs) || !time_is_valid(rhs)) {
+        fprintf(stderr, "Error: Invalid Time object(s) in time_is_less_than_or_equal.\n");
+        return false;
+    }
+    return time_is_equal(lhs, rhs) || time_is_less_than(lhs, rhs);
 }
 
 bool time_is_greater_than(const Time* lhs, const Time* rhs) {
+    if (!lhs || !rhs) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_is_greater_than.\n");
+        return false;
+    }
     return time_is_less_than(rhs, lhs);
 }
 
 bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs) {
+    if (!lhs || !rhs) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_is_greater_than_or_equal.\n");
+        return false;
+    }
     return (time_is_greater_than(lhs, rhs) || time_is_equal(rhs, lhs))? true: false;
 }
 
 bool time_is_not_equal(const Time* lhs, const Time* rhs) {
+    if (!lhs || !rhs) {
+        fprintf(stderr, "Error: NULL Time pointer(s) in time_is_not_equal.\n");
+        return true; // If one is NULL and the other is not, they are not equal.
+    }
     return !time_is_equal(lhs, rhs);
 }
 
 void time_deallocate(Time* t) {
-    if (t != NULL) {
-        free(t);
+    if (!t) {
+        fprintf(stderr, "Warning: Attempted to deallocate a NULL Time pointer in time_deallocate.\n");
+        return;
     }
+    free(t);
 }
