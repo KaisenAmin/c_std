@@ -1,18 +1,34 @@
-#include "forward_list/forward_list.h"
+#include "bitset/bitset.h"
 #include "fmt/fmt.h"
 
-int main() {
-    ForwardList* list = forward_list_create(sizeof(int));
-    int value = 10;
-
-    forward_list_emplace_front(list, &value);
-    forward_list_emplace_after(list, forward_list_before_begin(list), &value);
-
-    for (ForwardListNode* node = forward_list_begin(list); node != forward_list_end(list); node = node->next) { 
-        fmt_printf("%d ", *(int*)(node->value));
+void shift_left_and_print(Bitset* bs, size_t shift) {
+    if (!bs) {
+        fmt_fprintf(stderr, "Error: Bitset object is null and invalid in shift_left_and_print.\n");
+        return;
     }
-    fmt_printf("\n");
 
-    forward_list_deallocate(list);
+    Bitset* shifted = bitset_create(bs->size);
+    for (size_t i = 0; i < bs->size - shift; ++i) {
+        if (bitset_test(bs, i)) {
+            bitset_set(shifted, i + shift, true);
+        }
+    }
+
+    fmt_printf("Shifted Left by %zu: ", shift);
+    bitset_print(shifted);
+
+    bitset_deallocate(shifted);
+}
+
+int main() {
+    Bitset* bs = bitset_create(8);
+    bitset_set_from_string(bs, "10011001");
+
+    fmt_printf("Original Bitset: ");
+    bitset_print(bs);
+
+    shift_left_and_print(bs, 2);
+
+    bitset_deallocate(bs);
     return 0;
 }

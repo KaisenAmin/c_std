@@ -52,7 +52,7 @@ represents a binary number.
 - `bitset_to_ullong(const Bitset* bs)`: Converts the bitset to an `unsigned long long` value, assuming the bitset represents a binary number.
 - `bitset_to_string` : This function will convert the bitset to a string representation.
 
-## Example 1 : 'none', 'count'
+## Example 1 : how to use `bitset_none` and `bitset_count`
 
 Please, enter a binary number: 11010111
 0000000011010111 has 6 bits set.
@@ -80,8 +80,7 @@ int main (){
 
 ```c
 #include "bitset/bitset.h" // Include your bitset header file
-#include <stdio.h>
-#include <string.h>
+#include "fmt/fmt.h"
 
 #define MAX_INPUT_SIZE 16 // Define the maximum input size
 
@@ -95,36 +94,33 @@ int main() {
 
     char input[MAX_INPUT_SIZE + 1]; // +1 for the null terminator
     
-    printf("Please, enter a binary number: ");
+    fmt_printf("Please, enter a binary number: ");
     scanf("%16s", input); // Read up to 16 characters
 
     bitset_set_from_string(foo, input);     // Set the Bitset from the string input
 
     // Check if any bit is set and print the corresponding message
     if (bitset_none(foo)) {
-        printf("Bitset: ");
+        fmt_printf("Bitset: ");
         bitset_print(foo);
-        printf(" has no bits set.\n");
+        fmt_printf(" has no bits set.\n");
     } 
     else {
-        printf("Bitset: ");
+        fmt_printf("Bitset: ");
         bitset_print(foo);
-        printf(" has %zu bits set.\n", bitset_count(foo));
+        fmt_printf(" has %zu bits set.\n", bitset_count(foo));
     }
 
     bitset_deallocate(foo);
     return 0;
 }
-
 ```
 
-## Example 2 : 'size', 'flip'
-
+## Example 2 : how to get size of bitset with `bitset_size` and flip it with `bitset_flip`
+ 
 ```c
-
 #include "bitset/bitset.h"
-#include <stdio.h>
-#include <string.h>
+#include "fmt/fmt.h"
 
 int main(){
     Bitset* bi1 = bitset_create(4);
@@ -135,8 +131,8 @@ int main(){
     }
     bitset_set_from_string(bi1, "0001");
 
-    printf("%llu\n", bitset_to_ullong(bi2));
-    printf("%zu\n%zu\n", bitset_size(bi1), bitset_size(bi2));
+    fmt_printf("%llu\n", bitset_to_ullong(bi2));
+    fmt_printf("%zu\n%zu\n", bitset_size(bi1), bitset_size(bi2));
 
     bitset_flip(bi1, 2);
     bitset_print(bi1);
@@ -146,10 +142,9 @@ int main(){
 
     return 0;
 }
-
 ```
 
-## Example 3 : 'all', 'any', 'none'
+## Example 3 : Using `bitset_all` and `bitset_none` and `bitset_any`
 
 Please, enter an 8-bit binary number: 11111111
 all: true
@@ -158,8 +153,8 @@ none: false
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
-#include <string.h>
+#include "fmt/fmt.h"
+
 
 int main() {
     Bitset* foo = bitset_create(8);
@@ -171,14 +166,14 @@ int main() {
 
     char input[9]; // 8 bits + null terminator
     
-    printf("Please, enter an 8-bit binary number: ");
+    fmt_printf("Please, enter an 8-bit binary number: ");
     scanf("%8s", input);
 
     bitset_set_from_string(foo, input);
 
-    printf("all: %s\n", bitset_all(foo) ? "true" : "false");
-    printf("any: %s\n", bitset_any(foo) ? "true" : "false");
-    printf("none: %s\n", bitset_none(foo) ? "true" : "false");
+    fmt_printf("all: %s\n", bitset_all(foo) ? "true" : "false");
+    fmt_printf("any: %s\n", bitset_any(foo) ? "true" : "false");
+    fmt_printf("none: %s\n", bitset_none(foo) ? "true" : "false");
 
     // Deallocate the bitset
     bitset_deallocate(foo);
@@ -206,7 +201,7 @@ int main (){
 
 ```
 
-## Example 4 : 'any', 'count'
+## Example 4 : Using `bitset_any` and `bitset_count`
 
 
 Please, enter a binary number: 10110
@@ -214,35 +209,28 @@ Please, enter a binary number: 10110
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
-#include <string.h>
+#include "fmt/fmt.h"
 
 #define MAX_INPUT_SIZE 16
 
 int main() {
     Bitset* foo = bitset_create(16);
-
-    if (!foo) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
-
     char input[MAX_INPUT_SIZE + 1]; // +1 for the null terminator
 
-    printf("Please, enter a binary number: ");
+    fmt_printf("Please, enter a binary number: ");
     scanf("%16s", input);
 
     bitset_set_from_string(foo, input);
 
     if (bitset_any(foo)) {
-        printf("Bitset: ");
+        fmt_printf("Bitset: ");
         bitset_print(foo);
-        printf("\bhas %zu bits set.\n", bitset_count(foo));
+        fmt_printf("\bhas %zu bits set.\n", bitset_count(foo));
     } 
     else {
-        printf("Bitset: ");
+        fmt_printf("Bitset: ");
         bitset_print(foo);
-        printf(" has no bits set.\n");
+        fmt_printf(" has no bits set.\n");
     }
 
     bitset_deallocate(foo);
@@ -273,10 +261,10 @@ int main (){
 
 ```
 
-## Example 5 : Manually set bits 
+## Example 5 : Manually set bits with `bitset_set`
 
 ```c
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include "bitset/bitset.h" 
 
 int main() {
@@ -299,9 +287,9 @@ int main() {
     bitset_set(foo, 7, true);  // LSB
 
     // Print the bitset, count of ones, and count of zeros
-    printf("Bitset: ");
+    fmt_printf("Bitset: ");
     bitset_print(foo);
-    printf(" has %zu ones and %zu zeros.\n", bitset_count(foo), foo->size - bitset_count(foo));
+    fmt_printf(" has %zu ones and %zu zeros.\n", bitset_count(foo), foo->size - bitset_count(foo));
 
     bitset_deallocate(foo);
     return 0;
@@ -309,28 +297,23 @@ int main() {
 
 ```
 
-## Example 6 : use 'print' in Bitset also flip 
+## Example 6 : use `bitset_print` in Bitset also flip 
 Original bitset: 11010010
 After toggling: 00101101 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
-#include <string.h>
+#include "fmt/fmt.h"
 
 int main() {
     Bitset* myBitset = bitset_create(8);
-    if (!myBitset) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
 
     bitset_set_from_string(myBitset, "11010010");
 
-    printf("Original bitset: ");
+    fmt_printf("Original bitset: ");
     bitset_print(myBitset);
     bitset_flip_all(myBitset);
 
-    printf("After toggling: ");
+    fmt_printf("After toggling: ");
     bitset_print(myBitset);
 
     bitset_deallocate(myBitset);
@@ -353,8 +336,6 @@ int main() {
 
     return 0;
 }
-
-
 ```
 
 ## Example 7 : set and print 
@@ -368,29 +349,22 @@ Bitset after setting position 1: 00000010
 ```c
 
 #include "bitset/bitset.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     Bitset* myBitset = bitset_create(8);
-    if (!myBitset) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
-
     int pos;
 
-    printf("Enter a position to set (0-7): ");
+    fmt_printf("Enter a position to set (0-7): ");
     scanf("%d", &pos);
 
     if (pos >= 0 && pos < 8) {
         bitset_set(myBitset, pos, true);
-
-        printf("Bitset after setting position %d: ", pos);
+        fmt_printf("Bitset after setting position %d: ", pos);
         bitset_print(myBitset);
     }
     else {
-        printf("Invalid position!\n");
+        fmt_printf("Invalid position!\n");
     }
 
     bitset_deallocate(myBitset);
@@ -429,15 +403,10 @@ int main() {
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Bitset* myBitset = bitset_create(64);
-
-    if (!myBitset) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
 
     // Set specific bits
     bitset_set(myBitset, 1, true);
@@ -445,13 +414,12 @@ int main() {
     bitset_set(myBitset, 5, true);
     bitset_set(myBitset, 7, true);
 
-    // Print the bitset
-    printf("Bitset: ");
+    fmt_printf("Bitset: ");
     bitset_print(myBitset);
 
     // Convert to unsigned long long and print
     unsigned long long value = bitset_to_ullong(myBitset);
-    printf("Converted to unsigned long long: %llu\n", value);
+    fmt_printf("Converted to unsigned long long: %llu\n", value);
 
     bitset_deallocate(myBitset);
     return 0;
@@ -488,24 +456,19 @@ int main() {
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Bitset* myBitset = bitset_create(8);
-
-    if (!myBitset) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
 
     bitset_set(myBitset, 2, true);
     bitset_set(myBitset, 4, true);
 
     for (size_t i = 0; i < bitset_size(myBitset); i++) {
-        printf("Bit %zu is %s\n", i, bitset_test(myBitset, i) ? "set" : "not set");
+        fmt_printf("Bit %zu is %s\n", i, bitset_test(myBitset, i) ? "set" : "not set");
     }
 
-    printf("Number of set bits: %zu\n", bitset_count(myBitset));
+    fmt_printf("Number of set bits: %zu\n", bitset_count(myBitset));
     
     bitset_deallocate(myBitset);
     return 0;
@@ -540,7 +503,7 @@ int main() {
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Bitset *bit = bitset_create(8);
@@ -549,7 +512,7 @@ int main() {
     bitset_set(bit, 3, true);
 
     char *bitsetString = bitset_to_string(bit);
-    printf("Bitset in string is %s\n", bitsetString);
+    fmt_printf("Bitset in string is %s\n", bitsetString);
 
     bitset_deallocate(bit);
     return 0;
@@ -584,7 +547,7 @@ int main() {
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 // Function to perform bitwise AND on two bitsets and print the result
 void bitwise_and_print(Bitset* bs1, Bitset* bs2) {
@@ -601,7 +564,7 @@ void bitwise_and_print(Bitset* bs1, Bitset* bs2) {
         bitset_set(result, i, bit1 && bit2);
     }
 
-    printf("Bitwise AND: ");
+    fmt_printf("Bitwise AND: ");
     bitset_print(result);
     bitset_deallocate(result);
 }
@@ -613,10 +576,10 @@ int main() {
     Bitset* bs2 = bitset_create(8);
     bitset_set_from_string(bs2, "11001100");
 
-    printf("Bitset 1: ");
+    fmt_printf("Bitset 1: ");
     bitset_print(bs1);
 
-    printf("Bitset 2: ");
+    fmt_printf("Bitset 2: ");
     bitset_print(bs2);
 
     bitwise_and_print(bs1, bs2);
@@ -654,10 +617,11 @@ int main() {
 
 ```c
 #include "bitset/bitset.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void shift_left_and_print(Bitset* bs, size_t shift) {
     if (!bs) {
+        fmt_fprintf(stderr, "Error: Bitset object is null and invalid in shift_left_and_print.\n");
         return;
     }
 
@@ -668,7 +632,7 @@ void shift_left_and_print(Bitset* bs, size_t shift) {
         }
     }
 
-    printf("Shifted Left by %zu: ", shift);
+    fmt_printf("Shifted Left by %zu: ", shift);
     bitset_print(shifted);
 
     bitset_deallocate(shifted);
@@ -678,7 +642,7 @@ int main() {
     Bitset* bs = bitset_create(8);
     bitset_set_from_string(bs, "10011001");
 
-    printf("Original Bitset: ");
+    fmt_printf("Original Bitset: ");
     bitset_print(bs);
 
     shift_left_and_print(bs, 2);
