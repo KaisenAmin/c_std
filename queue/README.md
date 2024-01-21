@@ -319,7 +319,7 @@ int main() {
             String** strPtr = (String**)queue_front(innerQueue);
             String* str = *strPtr;
             
-            printf("Processing: %s\n", string_c_str(str));
+            fmt_printf("Processing: %s\n", string_c_str(str));
 
             // Pop the processed String
             queue_pop(innerQueue);
