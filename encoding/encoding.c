@@ -5,12 +5,11 @@
 */
 
 #include "encoding.h"
+#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdio.h>
 #include <assert.h>
-#include <stdbool.h>
 
 bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
@@ -555,9 +554,8 @@ static int decode_sequence(const unsigned char *coded, unsigned char *plain) {
 char* encoding_base64_encode(const char* input, size_t length) {
     size_t output_length = 4 * ((length + 2) / 3);
     char* encoded = malloc(output_length + 1); // +1 for null terminator
-
     if (!encoded) {
-        perror("Can not allocate memory for encoded");
+        fmt_fprintf(stderr, "Error: Can not allocate memory for encoded in encoding_base64_encode.\n");
         return NULL;
     }
 
@@ -584,6 +582,7 @@ char* encoding_base64_encode(const char* input, size_t length) {
 
 char* encoding_base64_decode(const char* input, size_t length) {
     if (length % 4 != 0) {
+        fmt_fprintf(stderr, "Error: Invalid input length in encoding_base64_decode. Length must be a multiple of 4.\n");
         return NULL;
     }
 
@@ -597,7 +596,7 @@ char* encoding_base64_decode(const char* input, size_t length) {
 
     char* decoded = malloc(output_length + 1);
     if (!decoded) {
-        perror("Can not allocate memory for decoded");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base64_decode.\n");
         return NULL;
     }
     static const unsigned char d[] = {
@@ -632,7 +631,7 @@ char* encoding_base64_decode(const char* input, size_t length) {
 char* encoding_url_encode(const char* input, size_t length) {
     char* result = malloc(3 * length + 1); // Worst case scenario, every character needs encoding
     if (!result) {
-        perror("Can not allocate memory for URL encoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_url_encode.\n");
         return NULL;
     }
 
@@ -641,7 +640,8 @@ char* encoding_url_encode(const char* input, size_t length) {
         char ch = input[i];
         if (isalnum(ch) || ch == '-' || ch == '.' || ch == '_' || ch == '~') {
             result[result_index++] = ch;
-        } else {
+        } 
+        else {
             static const char hex[] = "0123456789ABCDEF";
             result[result_index++] = '%';
             result[result_index++] = hex[(ch >> 4) & 0x0F];
@@ -655,7 +655,7 @@ char* encoding_url_encode(const char* input, size_t length) {
 char* encoding_url_decode(const char* input, size_t length) {
     char* result = malloc(length + 1); // Decoded string will be equal or smaller in size
     if (!result) {
-        perror("Can not allocate memory for URL decoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_url_decode.\n");
         return NULL;
     }
 
@@ -664,6 +664,7 @@ char* encoding_url_decode(const char* input, size_t length) {
         char ch = input[i];
         if (ch == '%') {
             if (i + 2 >= length) {
+                fmt_fprintf(stderr, "Error: Incomplete percent-encoding in encoding_url_decode.\n");
                 free(result);
                 return NULL;
             }
@@ -675,14 +676,17 @@ char* encoding_url_decode(const char* input, size_t length) {
             int lo_index = strchr(hex, toupper(lo)) - hex;
 
             if (hi_index < 0 || hi_index >= 16 || lo_index < 0 || lo_index >= 16) {
+                fmt_fprintf(stderr, "Error: Invalid hex characters in percent-encoding in encoding_url_decode.\n");
                 free(result);
                 return NULL;
             }
 
             result[result_index++] = (char)((hi_index << 4) + lo_index);
-        } else if (ch == '+') {
+        } 
+        else if (ch == '+') {
             result[result_index++] = ' ';
-        } else {
+        } 
+        else {
             result[result_index++] = ch;
         }
     }
@@ -695,7 +699,7 @@ char* encoding_base32_encode(const char* input, size_t length) {
     char* encoded = malloc(output_length + 1);
 
     if (!encoded) {
-        perror("Cannot allocate memory for encoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base32_encode.\n");
         return NULL;
     }
 
@@ -732,13 +736,14 @@ char* encoding_base32_encode(const char* input, size_t length) {
 
 char* encoding_base32_decode(const char* input, size_t length) {
     if (length % 8 != 0) {
-        return NULL; // Invalid input length
+        fmt_fprintf(stderr, "Error: Invalid input length in encoding_base32_decode. Length must be a multiple of 8.\n");
+        return NULL;
     }
 
     size_t olength = (length / 8) * 5;
     unsigned char* result = malloc(olength + 1);
     if (!result) {
-        perror("Cannot allocate memory for Base32 decoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base32_decode.\n");
         return NULL;
     }
 
@@ -767,7 +772,7 @@ char* encoding_base16_encode(const char* input, size_t length) {
     char* encoded = malloc(output_length + 1);
 
     if (!encoded) {
-        perror("Cannot allocate memory for Base16 encoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base16_encode.\n");
         return NULL;
     }
 
@@ -782,6 +787,10 @@ char* encoding_base16_encode(const char* input, size_t length) {
 }
 
 char* encoding_base16_decode(const char* input, size_t length) {
+    if (input == NULL) {
+        fmt_fprintf(stderr, "Error: Invalid input param in encoding_base16_decode.\n");
+        return NULL;
+    }
     static const unsigned char base16_decode[128] ={
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -802,6 +811,7 @@ char* encoding_base16_decode(const char* input, size_t length) {
      };
 
     if (length % 2 != 0) {
+        fmt_fprintf(stderr, "Error: Invalid input length in encoding_base16_decode.\n");
         return NULL; // Invalid input length
     }
 
@@ -809,7 +819,7 @@ char* encoding_base16_decode(const char* input, size_t length) {
     char* decoded = malloc(olength + 1);
 
     if (!decoded) {
-        perror("Cannot allocate memory for Base16 decoded string");
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for Base16 decoded string in encoding_base16_decode.\n");
         return NULL;
     }
 
@@ -818,6 +828,7 @@ char* encoding_base16_decode(const char* input, size_t length) {
         uint8_t b = base16_decode[(unsigned char)input[i++]];
         
         if (a == 0xFF || b == 0xFF) {
+            fmt_fprintf(stderr, "Error: Invalid Character in encoding_base16_decode.\n");
             free(decoded);
             return NULL; // Invalid character
         }
@@ -831,19 +842,23 @@ char* encoding_base16_decode(const char* input, size_t length) {
 
 uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encoding_utf32_to_utf16.\n");
         return NULL;
     }
 
     // Allocate maximum possible size (each UTF-32 character might become two UTF-16 characters)
     uint16_t* output = malloc(sizeof(uint16_t) * (length * 2 + 1));
-    if (!output) return NULL;
+    if (!output) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_utf32_to_utf16.\n");
+        return NULL;
+    }
 
     size_t j = 0;
     for (size_t i = 0; i < length; ++i) {
         uint32_t ch = input[i];
 
         if (ch > UNI_MAX_LEGAL_UTF32) {
-            // Handling invalid character
+            fmt_fprintf(stderr, "Error: Invalid Character in encoding_utf32_to_utf16.\n");
             free(output);
             return NULL;
         }
@@ -867,12 +882,16 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
 
 uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encoding_utf16_to_utf32.\n");
         return NULL;
     }
 
     // Allocate memory for the worst-case scenario (all characters are non-surrogates)
     uint32_t* output = malloc(sizeof(uint32_t) * (length + 1));
-    if (!output) return NULL;
+    if (!output) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_utf16_to_utf32.\n");
+        return NULL;
+    }
 
     size_t j = 0;
     for (size_t i = 0; i < length; ++i) {
@@ -889,13 +908,13 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
                     i++; // Skip the low surrogate
                 } 
                 else {
-                    // Invalid sequence, you might want to handle the error differently
+                    fmt_fprintf(stderr, "Error: Invalid surrogate pair in encoding_utf16_to_utf32.\n");
                     free(output);
                     return NULL;
                 }
             } 
             else {
-                // High surrogate without a following low surrogate
+                fmt_fprintf(stderr, "Error: Lone high surrogate without a low surrogate in encoding_utf16_to_utf32.\n");
                 free(output);
                 return NULL;
             }
@@ -910,14 +929,15 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
 
 uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encoding_utf16_to_utf8.\n");
         return NULL;
     }
-
     // Estimate maximum output size (4 bytes per UTF-16 character)
     size_t maxOutLength = length * 4;
     uint8_t* output = (uint8_t*)malloc(maxOutLength);
     if (!output) {
-        return NULL; // Memory allocation failed
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_utf16_to_utf8.\n");
+        return NULL;
     }
 
     const uint16_t* sourceStart = input;
@@ -928,6 +948,7 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     ConversionResult result = ConvertUTF16toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
 
     if (result != conversionOK) {
+        fmt_fprintf(stderr, "Error: Conversion from UTF-16 to UTF-8 failed in encoding_utf16_to_utf8.\n");
         free(output);
         return NULL;
     }
@@ -935,16 +956,26 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     // Resize the output to the actual UTF-8 string length
     size_t actualLength = targetStart - output;
     uint8_t* resizedOutput = (uint8_t*)realloc(output, actualLength + 1);
-    if (resizedOutput) {
-        resizedOutput[actualLength] = '\0';
-        return resizedOutput;
-    }
+    // if (resizedOutput) {
+    //     resizedOutput[actualLength] = '\0';
+    //     return resizedOutput;
+    // }
 
-    return output;
+    // return output;
+
+    if (!resizedOutput) {
+        fmt_fprintf(stderr, "Error: Reallocation failed in encoding_utf16_to_utf8.\n");
+        free(output);
+        return NULL;
+    }
+    resizedOutput[actualLength] = '\0';
+
+    return resizedOutput;
 }
 
 uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encoding_utf32_to_utf8.\n");
         return NULL;
     }
 
@@ -952,7 +983,8 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     size_t maxOutLength = length * 4;
     uint8_t* output = (uint8_t*)malloc(maxOutLength);
     if (!output) {
-        return NULL; // Memory allocation failed
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_utf32_to_utf8.\n");
+        return NULL;
     }
 
     const uint32_t* sourceStart = input;
@@ -963,6 +995,7 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     ConversionResult result = ConvertUTF32toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
 
     if (result != conversionOK) {
+        fmt_fprintf(stderr, "Error: Conversion from UTF-32 to UTF-8 failed in encoding_utf32_to_utf8.\n");
         free(output);
         return NULL;
     }
@@ -970,22 +1003,38 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     // Resize the output to the actual UTF-8 string length
     size_t actualLength = targetStart - output;
     uint8_t* resizedOutput = (uint8_t*)realloc(output, actualLength + 1);
-    if (resizedOutput) {
-        resizedOutput[actualLength] = '\0';
-        return resizedOutput;
-    }
+    // if (resizedOutput) {
+    //     resizedOutput[actualLength] = '\0';
+    //     return resizedOutput;
+    // }
 
-    return output;
+    // return output;
+
+    if (!resizedOutput) {
+        fmt_fprintf(stderr, "Error: Reallocation failed in encoding_utf32_to_utf8.\n");
+        free(output);
+        return NULL;
+    }
+    resizedOutput[actualLength] = '\0';
+
+    return resizedOutput;
 }
 
 bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
+    if (input == NULL || *input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encoding_is_utf8_string.\n");
+        return false;
+    }
+
     const uint8_t* source = *input;
     const uint8_t* sourceEnd = source + length;
 
     while (source < sourceEnd) {
         int trailLength = trailingBytesForUTF8[*source] + 1;
-        if (trailLength > sourceEnd - source || !encoding_is_utf8(source, trailLength))
+        if (trailLength > sourceEnd - source || !encoding_is_utf8(source, trailLength)) {
+            fmt_fprintf(stderr, "Error: Invalid UTF-8 encoding detected in encoding_is_utf8_string.\n");
             return false;
+        }
         source += trailLength;
     }
 
@@ -995,15 +1044,16 @@ bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
 
 uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encoding_utf8_to_utf16.\n");
         return NULL;
     }
-
     // Estimate maximum output size (each UTF-8 character can be at most 4 bytes, 
     // but can translate to at most 2 UTF-16 characters)
     size_t maxOutLength = length * 2;
     uint16_t* output = (uint16_t*)malloc(maxOutLength * sizeof(uint16_t));
     if (!output) {
-        return NULL; // Memory allocation failed
+        fmt_fprintf(stderr, "Error: Memory allocation failed for output in encoding_utf8_to_utf16.\n");
+        return NULL;
     }
 
     const uint8_t* sourceStart = input;
@@ -1014,23 +1064,26 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
     ConversionResult result = ConvertUTF8toUTF16(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
 
     if (result != conversionOK) {
+        fmt_fprintf(stderr, "Error: Conversion from UTF-8 to UTF-16 failed in encoding_utf8_to_utf16.\n");
         free(output);
         return NULL;
     }
-
     // Resize the output to the actual UTF-16 string length
     size_t actualLength = targetStart - output;
     uint16_t* resizedOutput = (uint16_t*)realloc(output, actualLength * sizeof(uint16_t) + 1);
-    if (resizedOutput) {
-        resizedOutput[actualLength] = 0; // Null-terminate the UTF-16 string
-        return resizedOutput;
+    if (!resizedOutput) {
+        fmt_fprintf(stderr, "Error: Reallocation failed in encoding_utf8_to_utf16.\n");
+        free(output);
+        return NULL;
     }
+    resizedOutput[actualLength] = '\0'; // Null-terminate the UTF-16 string
 
-    return output;
+    return resizedOutput;
 }
 
 uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encododing_utf8_to_utf32.\n");
         return NULL;
     }
 
@@ -1039,6 +1092,7 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     size_t maxOutLength = length;
     uint32_t* output = (uint32_t*)malloc(maxOutLength * sizeof(uint32_t));
     if (!output) {
+        fmt_fprintf(stderr, "Error: Can not Allocate memory in encoding_utf8_to_utf32.\n");
         return NULL; // Memory allocation failed
     }
 
@@ -1050,6 +1104,7 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     ConversionResult result = ConvertUTF8toUTF32(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
 
     if (result != conversionOK) {
+        fmt_fprintf(stderr, "Error: Failed Convertion to UTF32 in encoding_utf8_to_utf32.\n");
         free(output);
         return NULL;
     }
@@ -1061,7 +1116,6 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
         resizedOutput[actualLength] = 0; // Null-terminate the UTF-32 string
         return resizedOutput;
     }
-
     return output;
 }
 
@@ -1070,32 +1124,32 @@ void encoding_hex_dump(const void *data, size_t size) {
     size_t i, j;
 
     for (i = 0; i < size; i += 16) {
-        printf("%08zx  ", i); // Print the offset
+        fmt_printf("%08zx  ", i); // Print the offset
 
         // Print hex values
         for (j = 0; j < 16; j++) {
             if (i + j < size) {
-                printf("%02x ", byte[i + j]);
+                fmt_printf("%02x ", byte[i + j]);
             } 
             else {
-                printf("   "); // Fill space if less than 16 bytes in a line
+                fmt_printf("   "); // Fill space if less than 16 bytes in a line
             }
         }
-        printf(" |");
+        fmt_printf(" |");
 
         // Print ASCII representation
         for (j = 0; j < 16; j++) {
             if (i + j < size) {
-                printf("%c", isprint(byte[i + j]) ? byte[i + j] : '.');
+                fmt_printf("%c", isprint(byte[i + j]) ? byte[i + j] : '.');
             }
         }
-
-        printf("|\n");
+        fmt_printf("|\n");
     }
 }
 
 char* encododing_base85_encode(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encododing_base85_encode.\n");
         return NULL;
     }
 
@@ -1103,7 +1157,7 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
     size_t encoded_max_length = ((length + 3) / 4) * 5 + 2; // +2 for potential padding and null terminator
     char* encoded = malloc(encoded_max_length);
     if (!encoded) {
-        perror("Cannot allocate memory for encoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed for encoded string in encododing_base85_encode.\n");
         return NULL;
     }
 
@@ -1143,6 +1197,7 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
 
 uint8_t* encododing_base85_decode(const char* input, size_t length) {
     if (input == NULL || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input or length in encododing_base85_decode.\n");
         return NULL;
     }
 
@@ -1150,7 +1205,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
     size_t decoded_max_length = (length / 5) * 4;
     uint8_t* decoded = malloc(decoded_max_length);
     if (!decoded) {
-        perror("Cannot allocate memory for decoded string");
+        fmt_fprintf(stderr, "Error: Memory allocation failed for decoded string in encododing_base85_decode.\n");
         return NULL;
     }
 
@@ -1180,6 +1235,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
 
             char ch = input[input_index++];
             if (ch < 33 || ch > 117) {
+                fmt_fprintf(stderr, "Error: Invalid character encountered in encododing_base85_decode.\n");
                 free(decoded);
                 return NULL; // Invalid character
             }
@@ -1211,27 +1267,36 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
     // Resize the output buffer to the actual decoded data length
     uint8_t* resized_decoded = realloc(decoded, decoded_index + 1); // +1 for null terminator, if needed
     if (!resized_decoded) {
+        fmt_fprintf(stderr, "Error: Reallocation failed in encododing_base85_decode.\n");
         free(decoded);
         return NULL;
     }
+
     resized_decoded[decoded_index] = '\0'; // Null-terminate if treating as a C-style string
 
     return resized_decoded;
 }
 
 char *encoding_base58_encode(const void *data, size_t binsz) {
+    if (!data) {
+        fmt_fprintf(stderr, "Error: Invalid input data in encoding_base58_encode.\n");
+        return NULL;
+    }
+
     const uint8_t *bin = data;
     int carry;
     size_t i, j, high, zcount = 0;
     size_t size;
 
-    while (zcount < binsz && !bin[zcount])
+    while (zcount < binsz && !bin[zcount]) {
         ++zcount;
+    }
 
     size = (binsz - zcount) * 138 / 100 + 1;
     uint8_t *buf = malloc(size * sizeof(uint8_t));
     if (!buf) {
-        return NULL; // Memory allocation failed
+        fmt_fprintf(stderr, "Error: Memory allocation failed for buffer in encoding_base58_encode.\n");
+        return NULL;
     }
     memset(buf, 0, size);
 
@@ -1254,13 +1319,13 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
     size_t b58sz = zcount + size - j + 1;
     char *b58 = malloc(b58sz);
     if (!b58) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed for Base58 encoding in encoding_base58_encode.\n");
         free(buf);
-        return NULL; // Memory allocation failed
+        return NULL;
     }
-
-    if (zcount)
+    if (zcount) {
         memset(b58, '1', zcount);
-
+    }
     for (i = zcount; j < size; ++i, ++j) {
         b58[i] = b58digits_ordered[buf[j]];
     }
@@ -1272,6 +1337,7 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
 
 char *encoding_base58_decode(const char *b58, size_t *binszp) {
     if (b58 == NULL || binszp == NULL) {
+        fmt_fprintf(stderr, "Error: Invalid input or binszp pointer in encoding_base58_decode.\n");
         return NULL;
     }
 
@@ -1279,6 +1345,7 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     size_t binsz = b58sz * 733 / 1000 + 1; // Rough estimate of binary size
     uint8_t *bin = malloc(binsz);
     if (!bin) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base58_decode.\n");
         return NULL;
     }
     memset(bin, 0, binsz);
@@ -1290,9 +1357,9 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     // Process the Base58 string
     for (i = 0; i < b58sz; ++i) {
         if (b58[i] & 0x80 || b58digits_map[(unsigned char)b58[i]] == -1) {
-            // Invalid Base58 character
+            fmt_fprintf(stderr, "Error: Invalid Base58 character encountered in encoding_base58_decode.\n");
             free(bin);
-            return NULL;
+            return NULL; // Invalid Base58 character
         }
 
         for (carry = b58digits_map[(unsigned char)b58[i]], j = binsz - 1; (j > high) || carry; --j) {
@@ -1315,6 +1382,7 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     char *result = malloc(*binszp);
 
     if (!result) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed for result in encoding_base58_decode.\n");
         free(bin);
         return NULL;
     }
@@ -1326,6 +1394,7 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
 
 uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     if (!encoded || !decoded_length) {
+        fmt_fprintf(stderr, "Error: Invalid input or decoded_length pointer in encoding_base91_decode.\n");
         return NULL;
     }
 
@@ -1333,6 +1402,7 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     *decoded_length = 0;
     uint8_t* decoded = malloc(len); // Max possible size
     if (!decoded) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base91_decode.\n");
         return NULL;
     }
 
@@ -1344,6 +1414,7 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     for (size_t i = 0; i < len; ++i) {
         int c = base91_decode_value(encoded[i]);
         if (c == -1) {
+            fmt_fprintf(stderr, "Error: Invalid character encountered in encoding_base91_decode.\n");
             free(decoded);
             return NULL; // Invalid character
         }
@@ -1366,6 +1437,11 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     }
 
     if (v != -1) {
+        if (index >= len) {
+            fmt_fprintf(stderr, "Error: Decoded index out of bounds in encoding_base91_decode.\n");
+            free(decoded);
+            return NULL;
+        }
         decoded[index++] = (uint8_t)((b | v << n) & 255);
     }
 
@@ -1375,12 +1451,14 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
 
 char* encoding_base91_encode(const uint8_t* data, size_t length) {
     if (!data || length == 0) {
+        fmt_fprintf(stderr, "Error: Invalid input data or length in encoding_base91_encode.\n");
         return NULL;
     }
 
     size_t estimated_length = length * 1.23 + 2; // +2 for padding and null terminator
     char* encoded = malloc(estimated_length);
     if (!encoded) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in encoding_base91_encode.\n");
         return NULL;
     }
 
@@ -1409,6 +1487,11 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
             if (index + 2 < estimated_length) {
                 encoded[index++] = BASE91_ALPHABET[v % 91];
                 encoded[index++] = BASE91_ALPHABET[v / 91];
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: Encoding index out of bounds in encoding_base91_encode.\n");
+                free(encoded);
+                return NULL;
             }
         }
     }
@@ -1428,33 +1511,29 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
     return encoded;
 }
 
-
 #if defined(_WIN32) || defined(_WIN64)
 // Function to convert UTF-8 string to wchar_t string (Windows only)
 wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
     if (utf8Str == NULL) {
-        printf("Debug: Input string is NULL\n");
+        fmt_fprintf(stderr, "Error: Input string is NULL\n");
         return NULL;
     }
+
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, NULL, 0);
     if (size_needed == 0) {
-        printf("Debug: MultiByteToWideChar failed to calculate size. Error: %lu\n", GetLastError());
+        fmt_fprintf(stderr, "Error: MultiByteToWideChar failed to calculate size. Error: %lu\n", GetLastError());
         return NULL;
     }
 
     wchar_t* wstr = (wchar_t*)malloc(size_needed * sizeof(wchar_t));
     if (!wstr) {
-        perror("Debug: Can not allocate memory for wchar");
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for wchar\n");
         return NULL;
     }
 
-    if (!wstr) {
-        perror("Can not allocate memory for wchar");
-        return NULL;
-    }
     int result = MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, wstr, size_needed);
     if (result == 0) {
-        perror("Conversion failed");
+        fmt_fprintf(stderr, "Error: Conversion from UTF-8 to wchar failed\n");
         free(wstr);
         return NULL;
     }
@@ -1463,22 +1542,25 @@ wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
 
 char* encoding_wchar_to_utf8(const wchar_t* wstr) {
     if (wstr == NULL) {
+        fmt_fprintf(stderr, "Error: Input wchar string is NULL\n");
         return NULL;
     }
 
     // Get the length of the required buffer
     int utf8Length = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
     if (utf8Length == 0) {
+        fmt_fprintf(stderr, "Error: WideCharToMultiByte failed to calculate length\n");
         return NULL;
     }
 
     char* utf8Str = malloc(utf8Length * sizeof(char));
-    if (utf8Str == NULL) {
+    if (!utf8Str) {
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for UTF-8 string\n");
         return NULL;
     }
-
     // Convert the wide-character string to UTF-8
     if (WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8Str, utf8Length, NULL, NULL) == 0) {
+        fmt_fprintf(stderr, "Error: Conversion from wchar to UTF-8 failed\n");
         free(utf8Str);
         return NULL;
     }

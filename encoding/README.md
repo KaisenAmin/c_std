@@ -55,24 +55,23 @@ This example demonstrates encoding a string to Base64 and then decoding it back 
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <string.h>
 
 int main() {
     const char* text = "Hello, World!";
     char* encoded = encoding_base64_encode(text, strlen(text));
+    
     if (encoded) {
-        printf("Encoded: %s\n", encoded);
+        fmt_printf("Encoded: %s\n", encoded);
 
         char* decoded = encoding_base64_decode(encoded, strlen(encoded));
         if (decoded) {
-            printf("Decoded: %s\n", decoded);
+            fmt_printf("Decoded: %s\n", decoded);
             free(decoded);
         }
         free(encoded);
     }
-
     return 0;
 }
 ```
@@ -83,7 +82,7 @@ In this example, we will encode a URL or a string with special characters using 
 ```c
 #include "encoding/encoding.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -91,12 +90,12 @@ int main() {
     char* encoded = encoding_url_encode(string_c_str(text_to_encode), string_length(text_to_encode));
 
     if (encoded) {
-        printf("Original: %s\n", string_c_str(text_to_encode));
-        printf("URL Encoded: %s\n", encoded);
+        fmt_printf("Original: %s\n", string_c_str(text_to_encode));
+        fmt_printf("URL Encoded: %s\n", encoded);
         free(encoded);
     } 
     else {
-        printf("Failed to encode URL.\n");
+        fmt_printf("Failed to encode URL.\n");
     }
 
     string_deallocate(text_to_encode);
@@ -107,21 +106,20 @@ int main() {
 ### Example 3: URL Decoding `encoding_url_decode`
 
 ```c
-#include "encoding.h"
-#include <stdio.h>
+#include "encoding/encoding.h"
+#include "fmt/fmt.h"
 
 int main() {
     const char* text_to_decode = "Hello%20World%21%20This%20is%20a%20test%2Fexample%3F";
     char* decoded = encoding_url_decode(text_to_decode, strlen(text_to_decode));
     if (decoded) {
-        printf("URL Encoded: %s\n", text_to_decode);
-        printf("Decoded: %s\n", decoded);
+        fmt_printf("URL Encoded: %s\n", text_to_decode);
+        fmt_printf("Decoded: %s\n", decoded);
         free(decoded);
     } 
     else {
-        printf("Failed to decode URL.\n");
+        fmt_printf("Failed to decode URL.\n");
     }
-
     return 0;
 }
 ```
@@ -130,22 +128,21 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <string.h>
 
 int main() {
     const char* text_to_encode = "Hello, World!";
     char* encoded = encoding_base32_encode(text_to_encode, strlen(text_to_encode));
 
     if (encoded) {
-        printf("Original: %s\n", text_to_encode);
-        printf("Base32 Encoded: %s\n", encoded);
+        fmt_printf("Original: %s\n", text_to_encode);
+        fmt_printf("Base32 Encoded: %s\n", encoded);
         free(encoded);
-    } else {
-        printf("Failed to encode in Base32.\n");
+    } 
+    else {
+        fmt_printf("Failed to encode in Base32.\n");
     }
-
     return 0;
 }
 ```
@@ -153,18 +150,21 @@ int main() {
 ## Example 5 : use `encoding_base32_decode`
 
 ```c
+#include "encoding/encoding.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
 int main() {
     const char* text_to_decode = "ORSXG5A=";  // Base32 encoded version of "test"
     char* decoded = encoding_base32_decode(text_to_decode, strlen(text_to_decode));
 
     if (decoded) {
-        printf("Base32 Encoded: %s\n", text_to_decode);
-        printf("Decoded: %s\n", decoded);
+        fmt_printf("Base32 Encoded: %s\n", text_to_decode);
+        fmt_printf("Decoded: %s\n", decoded);
         free(decoded);
     } else {
-        printf("Failed to decode from Base32.\n");
+        fmt_printf("Failed to decode from Base32.\n");
     }
-
     return 0;
 }
 ```
@@ -173,19 +173,18 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <string.h>
 
 int main() {
     const char* text = "Hello, World!";
     char* encoded = encoding_base16_encode(text, strlen(text));
+
     if (encoded) {
-        printf("Original: %s\n", text);
-        printf("Base16 Encoded: %s\n", encoded);
+        fmt_printf("Original: %s\n", text);
+        fmt_printf("Base16 Encoded: %s\n", encoded);
         free(encoded);
     }
-
     return 0;
 }
 ```
@@ -194,20 +193,18 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <string.h>
 
 int main() {
     const char* encodedText = "48656C6C6F2C20576F726C6421";
     char* decoded = encoding_base16_decode(encodedText, strlen(encodedText));
     
     if (decoded) {
-        printf("Base16 Encoded: %s\n", encodedText);
-        printf("Decoded: %s\n", decoded);
+        fmt_printf("Base16 Encoded: %s\n", encodedText);
+        fmt_printf("Decoded: %s\n", decoded);
         free(decoded);
     }
-
     return 0;
 }
 ```
@@ -216,10 +213,8 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
 
 int main() {
     // UTF-32 string containing emojis
@@ -233,12 +228,11 @@ int main() {
     uint16_t* utf16_string = encoding_utf32_to_utf16(utf32_string, length);
 
     // Print UTF-16 string as hexadecimal values
-    printf("UTF-16 String: ");
+    fmt_printf("UTF-16 String: ");
     for (size_t i = 0; utf16_string[i] != 0; i++) {
-        printf("%04X ", utf16_string[i]);
+        fmt_printf("%04X ", utf16_string[i]);
     }
-    printf("\\n");
-
+    fmt_printf("\\n");
 
     free(utf16_string);
     return 0;
@@ -249,10 +243,9 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
+
 
 int main() {
     // UTF-32 string containing emojis
@@ -265,22 +258,21 @@ int main() {
 
     uint16_t* utf16_string = encoding_utf32_to_utf16(utf32_string, length);
     size_t index = 0;
-
-    while (utf16_string[index] != 0)
+    while (utf16_string[index] != 0) {
         index++;
-
-    // Print UTF-16 string as hexadecimal values
-    printf("UTF-16 String: ");
-    for (size_t i = 0; utf16_string[i] != 0; i++) {
-        printf("%04X ", utf16_string[i]);
     }
-    printf("\n");
+    // Print UTF-16 string as hexadecimal values
+    fmt_printf("UTF-16 String: ");
+    for (size_t i = 0; utf16_string[i] != 0; i++) {
+        fmt_printf("%04X ", utf16_string[i]);
+    }
+    fmt_printf("\n");
 
     uint32_t* calc = encoding_utf16_to_utf32(utf16_string, index);
 
-    printf("UTF-32 String: ");
+    fmt_printf("UTF-32 String: ");
     for (size_t i = 0; calc[i] != 0; i++) {
-        printf("%0X ", calc[i]);
+        fmt_printf("%0X ", calc[i]);
     }
 
     free(utf16_string);
@@ -292,24 +284,22 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <stdint.h>
 
 int main() {
     // UTF-16 encoded string (Example: "Hello World")
     const uint16_t utf16_string[] = {0x0048, 0x0065, 0x006C, 0x006C, 0x006F, 0x0020, 0x0057, 0x006F, 0x0072, 0x006C, 0x0064, 0x0000};
     size_t length = sizeof(utf16_string) / sizeof(uint16_t) - 1; // Exclude null terminator
-
     uint8_t* utf8_string = encoding_utf16_to_utf8(utf16_string, length);
 
     if (utf8_string) {
-        printf("UTF-8 Encoded String: %s\n", utf8_string);
+        fmt_printf("UTF-8 Encoded String: %s\n", utf8_string);
         free(utf8_string); 
-    } else {
-        printf("Failed to encode UTF-16 to UTF-8.\n");
+    } 
+    else {
+        fmt_printf("Failed to encode UTF-16 to UTF-8.\n");
     }
-
     return 0;
 }
 ```
@@ -318,24 +308,22 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <stdint.h>
 
 int main() {
     // UTF-32 encoded string (Example: "Hello World")
     const uint32_t utf32_string[] = {0x0000048, 0x0000065, 0x000006C, 0x000006C, 0x000006F, 0x0000020, 0x0000057, 0x000006F, 0x0000072, 0x000006C, 0x0000064, 0x0000000};
     size_t length = sizeof(utf32_string) / sizeof(uint32_t) - 1; // Exclude null terminator
-
     uint8_t* utf8_string = encoding_utf32_to_utf8(utf32_string, length);
 
     if (utf8_string) {
-        printf("UTF-8 Encoded String: %s\n", utf8_string);
+        fmt_printf("UTF-8 Encoded String: %s\n", utf8_string);
         free(utf8_string); 
-    } else {
-        printf("Failed to encode UTF-32 to UTF-8.\n");
+    } 
+    else {
+        fmt_printf("Failed to encode UTF-32 to UTF-8.\n");
     }
-
     return 0;
 }
 ```
@@ -344,10 +332,8 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <stdint.h>
-
 
 int main() {
     // Example 1: Valid UTF-8 string
@@ -355,9 +341,10 @@ int main() {
     size_t length1 = sizeof(valid_utf8);
 
     if (encoding_is_utf8(valid_utf8, length1)) {
-        printf("String 1 is valid UTF-8.\n");
-    } else {
-        printf("String 1 is not valid UTF-8.\n");
+        fmt_printf("String 1 is valid UTF-8.\n");
+    } 
+    else {
+        fmt_printf("String 1 is not valid UTF-8.\n");
     }
 
     // Example 2: Invalid UTF-8 string
@@ -365,9 +352,10 @@ int main() {
     size_t length2 = sizeof(invalid_utf8);
 
     if (encoding_is_utf8(invalid_utf8, length2)) {
-        printf("String 2 is valid UTF-8.\n");
-    } else {
-        printf("String 2 is not valid UTF-8.\n");
+        fmt_printf("String 2 is valid UTF-8.\n");
+    } 
+    else {
+        fmt_printf("String 2 is not valid UTF-8.\n");
     }
 
     // Example 3: ASCII string (also valid UTF-8)
@@ -375,11 +363,11 @@ int main() {
     size_t length3 = sizeof(ascii_utf8) - 1; // Exclude null terminator
 
     if (encoding_is_utf8(ascii_utf8, length3)) {
-        printf("String 3 is valid UTF-8.\n");
-    } else {
-        printf("String 3 is not valid UTF-8.\n");
+        fmt_printf("String 3 is valid UTF-8.\n");
+    } 
+    else {
+        fmt_printf("String 3 is not valid UTF-8.\n");
     }
-
     return 0;
 }
 ```
@@ -387,11 +375,7 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-
-bool encoding_is_utf8_string(const uint8_t** input, size_t length);
+#include "fmt/fmt.h"
 
 int main() {
     // Example 1: Valid UTF-8 string
@@ -399,9 +383,10 @@ int main() {
     const uint8_t* valid_ptr = valid_utf8;
 
     if (encoding_is_utf8_string(&valid_ptr, sizeof(valid_utf8))) {
-        printf("Example 1 is valid UTF-8.\n");
-    } else {
-        printf("Example 1 is not valid UTF-8.\n");
+        fmt_printf("Example 1 is valid UTF-8.\n");
+    } 
+    else {
+        fmt_printf("Example 1 is not valid UTF-8.\n");
     }
 
     // Example 2: Invalid UTF-8 string
@@ -409,9 +394,10 @@ int main() {
     const uint8_t* invalid_ptr = invalid_utf8;
 
     if (encoding_is_utf8_string(&invalid_ptr, sizeof(invalid_utf8))) {
-        printf("Example 2 is valid UTF-8.\n");
-    } else {
-        printf("Example 2 is not valid UTF-8.\n");
+        fmt_printf("Example 2 is valid UTF-8.\n");
+    } 
+    else {
+        fmt_printf("Example 2 is not valid UTF-8.\n");
     }
 
     // Example 3: ASCII string (also valid UTF-8)
@@ -419,11 +405,11 @@ int main() {
     const uint8_t* ascii_ptr = ascii_utf8;
 
     if (encoding_is_utf8_string(&ascii_ptr, sizeof(ascii_utf8) - 1)) { // -1 to exclude null terminator
-        printf("Example 3 is valid UTF-8.\n");
-    } else {
-        printf("Example 3 is not valid UTF-8.\n");
+        fmt_printf("Example 3 is valid UTF-8.\n");
+    } 
+    else {
+        fmt_printf("Example 3 is not valid UTF-8.\n");
     }
-
     return 0;
 }
 ```
@@ -432,10 +418,8 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-#include <stdint.h>
-
 
 int main() {
     // UTF-8 encoded string
@@ -444,15 +428,15 @@ int main() {
     uint16_t* utf_16_string = encoding_utf8_to_utf16(utf_8_string, utf_8_length);
 
     if (utf_16_string) {
-        printf("UTF-16 Encoded String: ");
+        fmt_printf("UTF-16 Encoded String: ");
         for (size_t i = 0; utf_16_string[i] != 0; ++i) {
-            printf("%04X ", utf_16_string[i]);
+            fmt_printf("%04X ", utf_16_string[i]);
         }
-        printf("\n");
+        fmt_printf("\n");
         free(utf_16_string);
     } 
     else {
-        printf("Failed to convert to UTF-16.\n");
+        fmt_printf("Failed to convert to UTF-16.\n");
     }
     return 0;
 }
@@ -462,7 +446,7 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -472,15 +456,15 @@ int main() {
     uint32_t* utf_32_string = encoding_utf8_to_utf32(utf_8_string, utf_8_length);
     
     if (utf_32_string) {
-        printf("UTF-32 Encoded String: ");
+        fmt_printf("UTF-32 Encoded String: ");
         for (size_t i = 0; utf_32_string[i] != 0; ++i) {
-            printf("%08X ", utf_32_string[i]);
+            fmt_printf("%08X ", utf_32_string[i]);
         }
-        printf("\n");
+        fmt_printf("\n");
         free(utf_32_string);
     } 
     else {
-        printf("Failed to convert to UTF-32.\n");
+        fmt_printf("Failed to convert to UTF-32.\n");
     }
     return 0;
 }
@@ -490,7 +474,6 @@ int main() {
 
 ```c
 #include "encoding/encoding.h"
-#include <stdio.h>
 
 int main() {
     const char *data = "amin";
@@ -505,10 +488,8 @@ int main() {
 ## Example 17 : encode and decode data with Using `encoding_base85_encode` and `encoding_base85_decode`
 
 ```c
-#include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
+#include "fmt/fmt.h"
 #include "encoding/encoding.h"
 
 int main() {
@@ -517,64 +498,57 @@ int main() {
     char* encoded = encododing_base85_encode(data, data_size);
 
     if (encoded) {
-        printf("Encoded ASCII85: %s\n", encoded);
+        fmt_printf("Encoded ASCII85: %s\n", encoded);
 
         const size_t input_len = strlen(encoded);
         uint8_t* decoded_result = encododing_base85_decode(encoded, input_len);
         if (decoded_result) {
-            printf("Decoded: %s\n", decoded_result);
+            fmt_printf("Decoded: %s\n", decoded_result);
             free(decoded_result);
         } 
         else {
-            printf("Decoding failed.\n");
+            fmt_printf("Decoding failed.\n");
         }
         free(encoded);
     } 
     else {
-        printf("Encoding failed.\n");
+        fmt_printf("Encoding failed.\n");
     }
-
     return 0;
 }
-
 ```
 
 ## Example 18 : encode and decode data with `encoding_base58_encode` and `encode_base58_decode`
 
 ```c
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include "encoding/encoding.h"
+#include "fmt/fmt.h"
 
 int main() {
     const char *data = "Hello, World!";
     size_t binsz = strlen(data);
     char *b58 = encoding_base58_encode(data, binsz);
 	
-    printf("Base58 Encoded: %s\n", b58);
+    fmt_printf("Base58 Encoded: %s\n", b58);
 
     size_t decoded_size;
     char *decoded = encoding_base58_decode(b58, &decoded_size);
     if (decoded) {
-        printf("Decoded Data: %.*s\n", (int)decoded_size, decoded);
+        fmt_printf("Decoded Data: %.*s\n", (int)decoded_size, decoded);
         free(decoded);
     }
 
     free(b58);
     return 0;
 }
-
 ```
 
 ## Example 19 : encode and decode data Using `encoding_base91_encode` and `encodinل_base91_decode`
 
 ```c
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include "fmt/fmt.h"
 #include "encoding/encoding.h"
 
 
@@ -585,21 +559,21 @@ int main() {
     // Encoding
     char* encoded = encoding_base91_encode((const uint8_t*)input, input_length);
     if (!encoded) {
-        fprintf(stderr, "Encoding failed.\n");
+        fmt_fprintf(stderr, "Encoding failed.\n");
         return 1;
     }
 
-    printf("Encoded: %s\n", encoded);
+    fmt_printf("Encoded: %s\n", encoded);
 
     // Decoding
     size_t decoded_length;
     uint8_t* decoded = encoding_base91_decode(encoded, &decoded_length);
     if (!decoded) {
-        fprintf(stderr, "Decoding failed.\n");
+        fmt_fprintf(stderr, "Decoding failed.\n");
         free(encoded);
         return 1;
 	}
-    printf("Decoded: %.*s\n", (int)decoded_length, decoded);
+    fmt_printf("Decoded: %.*s\n", (int)decoded_length, decoded);
 
     free(encoded);
     free(decoded);

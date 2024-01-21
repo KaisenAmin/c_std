@@ -33,8 +33,8 @@ def compile_project(run_after_compile=False):
         # "vector",
         # "time",
         # "date",
-        "file_io",
-        "dir",
+        # "file_io",
+        # "dir",
         # "crypto",
         # "tuple",
         # Add other directories containing your .c files
