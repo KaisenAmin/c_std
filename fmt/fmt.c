@@ -364,3 +364,105 @@ int fmt_scanf(const char* format, ...) {
     va_end(args);
     return items_scanned;
 }
+
+int fmt_fprint(FILE* stream, ...) {
+    if (!stream) {
+        fprintf(stderr, "Error: Invalid stream object.\n");
+        return -1;
+    }
+    va_list args;
+    va_start(args, stream);
+
+    int bytes_written = 0;
+    int result;
+
+    for (const char* arg = va_arg(args, const char*); arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
+        result = fwrite(arg, sizeof(char), strlen(arg), stream);
+        if (result < 0) {
+            fprintf(stderr, "Error writing to stream.\n");
+            va_end(args);
+            return -1;
+        }
+        bytes_written += result;
+    }
+
+    va_end(args);
+    return bytes_written;
+}
+
+
+int fmt_fprintln(FILE* stream, ...) {
+    if (!stream) {
+        fprintf(stderr, "Error: Invalid stream object.\n");
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, stream);
+
+    int bytes_written = 0;
+    int result;
+
+    for (const char* arg = va_arg(args, const char*); arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
+        // Write the argument
+        result = fwrite(arg, sizeof(char), strlen(arg), stream);
+        if (result < 0) {
+            fprintf(stderr, "Error writing to stream.\n");
+            va_end(args);
+            return -1;
+        }
+        bytes_written += result;
+
+        // Write a space after the argument
+        const char* space = " ";
+        result = fwrite(space, sizeof(char), strlen(space), stream);
+        if (result < 0) {
+            fprintf(stderr, "Error writing space to stream.\n");
+            va_end(args);
+            return -1;
+        }
+        bytes_written += result;
+    }
+
+    // Write a newline at the end
+    const char* newline = "\n";
+    result = fwrite(newline, sizeof(char), strlen(newline), stream);
+    if (result < 0) {
+        fprintf(stderr, "Error writing newline to stream.\n");
+        va_end(args);
+        return -1;
+    }
+    bytes_written += result;
+
+    va_end(args);
+    return bytes_written;
+}
+
+int fmt_fprintf(FILE* stream, const char* format, ...) {
+    if (!stream || !format) {
+        fprintf(stderr, "Error: Invalid arguments for fmt_fprintf.\n");
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    char buffer[2048]; // Define a suitable buffer size for formatted output
+    int formatted_bytes = vsnprintf(buffer, sizeof(buffer), format, args);
+    if (formatted_bytes < 0) {
+        fprintf(stderr, "Error formatting string for fmt_fprintf.\n");
+        va_end(args);
+        return -1;
+    }
+
+    int bytes_written = fwrite(buffer, sizeof(char), formatted_bytes, stream);
+    if (bytes_written < formatted_bytes) {
+        fprintf(stderr, "Error writing to file in fmt_fprintf.\n");
+        va_end(args);
+        return -1;
+    }
+
+    va_end(args);
+    return bytes_written;
+}
+

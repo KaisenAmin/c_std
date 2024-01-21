@@ -77,6 +77,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_empty(String*)`: Checks if a String is empty.
 - `string_contains(String*, const char*)`: Checks if a String contains a specific substring.
 - `string_count(Strin*, char*)` : count number of substr appears in String object 'str'.
+- `string_length_cstr(const char*)` : Returns the length of a char*.
+- `string_length_utf(const char*)` : Return the length of utf-8 char*.
 
 ## String Characteristics
 - `string_is_alpha(String*)`: Checks if a String contains only alphabetic characters.
@@ -158,64 +160,62 @@ Absolutely, adding a brief description for each function at the top of your READ
 ```
 
 
-### Example 1: how to create String obj and use 'push_back', 'append', 'at', 'clear', 'length', 'capacity' also 'deallocate'
+### Example 1: how to create String obj and use `string_push_back`, `string_append`, `string_at`, `string_clear`, `string_length`, `string_capacity` also `string_deallocate`
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* myString = string_create("");
    
     // Push back a new character
     string_push_back(myString, '!');
-    printf("String after push_back: %s\n", myString->dataStr);
+    fmt_printf("String after push_back: %s\n", myString->dataStr);
 
     // Access a character
     char ch = string_at(myString, 0);
-    printf("Character at index 1: %c\n", ch);
+    fmt_printf("Character at index 1: %c\n", ch);
 
     // Print length and capacity
-    printf("Length: %zu, Capacity: %zu\n", string_length(myString), string_capacity(myString));
+    fmt_printf("Length: %zu, Capacity: %zu\n", string_length(myString), string_capacity(myString));
 
     // Clear the string
     string_clear(myString);
-    printf("String after clear: %s\n", myString->dataStr);
+    fmt_printf("String after clear: %s\n", myString->dataStr);
 
     // Clean up
     string_clear(myString);
     string_append(myString, "Hello C Programmers");
         
-    printf("%s\n", string_c_str(myString));
+    fmt_printf("%s\n", string_c_str(myString));
 
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 2: 'shrink_to_fit', 'resize'
+## Example 2: `string_shrink_to_fit`, `string_resize`
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello");
 
     // Append a string
     string_append(myString, ", World!");
-    printf("String after append: %s\n", myString->dataStr);
+    fmt_printf("String after append: %s\n", myString->dataStr);
 
     // Resize the string
     string_resize(myString, 5);  // Resize to "Hello"
-    printf("String after resize: %s\n", myString->dataStr);
+    fmt_printf("String after resize: %s\n", myString->dataStr);
 
     // Shrink to fit
     string_shrink_to_fit(myString);
-    printf("String capacity after shrink to fit: %zu\n", string_capacity(myString));
+    fmt_printf("String capacity after shrink to fit: %zu\n", string_capacity(myString));
 
     // clean up and dellocate
     string_clear(myString);
@@ -224,122 +224,112 @@ int main() {
 }
 ```
 
-## Example 3: how to 'assign' new string and 'erase' some part of String obj also 'insert' new ...  
+## Example 3: how to `string_assign` new string and `string_erase` some part of String obj also `string_insert` new ...  
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello World");
 
     // Assign a new string
     string_assign(myString, "New String");
-    printf("String after assign: %s\n", myString->dataStr);
+    fmt_printf("String after assign: %s\n", myString->dataStr);
 
     // Insert a string
     string_insert(myString, 4, "Test ");
-    printf("String after insert: %s\n", myString->dataStr);
+    fmt_printf("String after insert: %s\n", myString->dataStr);
 
     // Erase a portion of the string
     string_erase(myString, 0, 5);  // Erase "New T"
-    printf("String after erase: %s\n", myString->dataStr);
+    fmt_printf("String after erase: %s\n", myString->dataStr);
 
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 4: 'replace' Strings 
+## Example 4: `string_replace` Strings 
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *str1 = string_create("Hello World");
     string_replace(str1, "World", "There");
         
-    printf("After replace: %s\n", str1->dataStr);
+    fmt_printf("After replace: %s\n", str1->dataStr);
 
     string_deallocate(str1);
     return 0;
 }
-
 ```
 
 
-## Example 5: 'swap' two String obj and also 'pop_back'
+## Example 5: `string_swap` two String obj and also `string_pop_back`
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *str1 = string_create("Hello World");
     string_replace(str1, "World", "There");
         
-    printf("After replace: %s\n", str1->dataStr);
+    fmt_printf("After replace: %s\n", str1->dataStr);
 
     // Swap example
     String *str2 = string_create("Sample Text");
     string_swap(str1, str2);
 
-    printf("After swap, str1: %s, str2: %s\n", str1->dataStr, str2->dataStr);
+    fmt_printf("After swap, str1: %s, str2: %s\n", str1->dataStr, str2->dataStr);
 
     // Pop back example
     string_pop_back(str2);
-    printf("After pop back: %s\n", str2->dataStr);
+    fmt_printf("After pop back: %s\n", str2->dataStr);
 
     string_deallocate(str1);
     string_deallocate(str2);
     return 0;
 }
-
 ```
 
-
-## Example 6: 'back' and 'front' return ref to front and last char of String 
+## Example 6: `string_back` and `string_front` return ref to front and last char of String 
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello World");
     char lastChar = *(char*)string_back(myString); // Get the last character
 
-    printf("Last character : %c\n", lastChar);
+    fmt_printf("Last character : %c\n", lastChar);
     // its just syntax !!!
     *(char*)string_back(myString) = 'a';
-    printf("Wowww: %c\n", *(char*)string_back(myString));
+    fmt_printf("Wowww: %c\n", *(char*)string_back(myString));
 
     // Get the first character
     char firstChar = *(char*)string_front(myString);
-    printf("First character: %c\n", firstChar);
-    printf("Max size is %zu\n", string_max_size(myString));
+    fmt_printf("First character: %c\n", firstChar);
+    fmt_printf("Max size is %zu\n", string_max_size(myString));
         
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 7 : 'copy' how to copy some part of String 
+## Example 7 : `string_copy` how to copy some part of String 
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
@@ -347,53 +337,51 @@ int main() {
     // Copy example
     char buffer[50];
     size_t copied = string_copy(myString, buffer, 7, 5);
-    printf("Copied '%s' (%zu characters)\n", buffer, copied);
+    fmt_printf("Copied '%s' (%zu characters)\n", buffer, copied);
 
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 8 : 'find' find string in String and return position
+## Example 8 : `string_find` find string in String and return position
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
 
     // Find example
     int findPos = string_find(myString, "World", 0);
-    printf("Found 'World' at position: %d\n", findPos);
+    fmt_printf("Found 'World' at position: %d\n", findPos);
 
     string_deallocate(myString);
     return 0;
 }
 ```
 
-## Example 9 : how to use 'rfind', 'find_first_of', 'find_last_of'
+## Example 9 : how to use `string_rfind`, `string_find_first_of`, `string_find_last_of`
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
 
     // rfind example
     int rfindPos = string_rfind(myString, "o,", string_length(myString) - 1);
-    printf("Last 'o' found at position: %d\n", rfindPos);
+    fmt_printf("Last 'o' found at position: %d\n", rfindPos);
 
     int findFirstOfPos = string_find_first_of(myString, "World", 0);
-    printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
+    fmt_printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
 
     // find_last_of example
     int findLastOfPos = string_find_last_of(myString, "World", string_length(myString) - 1);
-    printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
+    fmt_printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
 
     // Deallocate and clean up
     string_clear(myString);
@@ -403,64 +391,62 @@ int main() {
 
 ```
 
-## Example 10 : 'find_first_not_of', 'find_last_not_of'
+## Example 10 : `string_find_first_not_of`, `string_find_last_not_of`
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
 
     // find_first_not_of example
     int firstNotOfPos = string_find_first_not_of(myString, "Hello", 0);
-    printf("First position not matching 'Hello': %d\n", firstNotOfPos);
+    fmt_printf("First position not matching 'Hello': %d\n", firstNotOfPos);
 
     // find_last_not_of example
     int lastNotOfPos = string_find_last_not_of(myString, "World", string_length(myString) - 1);
-    printf("Last position not matching 'World': %d\n", lastNotOfPos);
+    fmt_printf("Last position not matching 'World': %d\n", lastNotOfPos);
 
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 11 : 'data' return pointer to String sequence 
+## Example 11 : `string_data` return pointer to String sequence 
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
         
     // Data example
     const char *data = string_data(myString);
-    printf("Data: %s\n", data);
+    fmt_printf("Data: %s\n", data);
 
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 12 : 'begin', 'end' return iterator pointer from begin and end of String sequence
+## Example 12 : `string_begin`, `string_end` return iterator pointer from begin and end of String sequence
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello amin");
 
     for (char* it = string_begin(myString); it != string_end(myString); it++) {
-        printf("%c", *it);
+        fmt_printf("%c", *it);
     }
         
     string_clear(myString);
@@ -470,47 +456,46 @@ int main() {
 
 ```
 
-## Example 13 : 'rbeing', 'rend' return reverse iterator 
+## Example 13 : `string_rbeing`, `string_rend` return reverse iterator 
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello amin");
 
     // Reverse iteration using rbegin and rend
-    printf("String in reverse: ");
+    fmt_printf("String in reverse: ");
     for (char* it = string_rbegin(myString); it != string_rend(myString); --it) { 
-        printf("%c", *it);
+        fmt_printf("%c", *it);
     }   
-    printf("\n");
+    fmt_printf("\n");
 
     // Clean up
     string_clear(myString);
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
-## Example 14 : 'cbegin', 'cend'
+## Example 14 : `string_cbegin`, `string_cend`
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
 
     // Iterate using cbegin and cend
-    printf("String using cbegin and cend: ");
+    fmt_printf("String using cbegin and cend: ");
     for (const char* it = string_cbegin(myString); it != string_cend(myString); ++it) { 
-        printf("%c", *it);
+        fmt_printf("%c", *it);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     string_deallocate(myString);
     return 0;
@@ -518,22 +503,22 @@ int main() {
 
 ```
 
-## Example 15 : 'crbegin', 'crend' 
+## Example 15 : `string_crbegin`, `string_crend` 
 
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *myString = string_create("Hello, World!");
 
     // Reverse iterate using crbegin and crend
-    printf("String in reverse using crbegin and crend: ");
+    fmt_printf("String in reverse using crbegin and crend: ");
     for (const char* it = string_crbegin(myString); it != string_crend(myString); --it) { 
-        printf("%c", *it);
+        fmt_printf("%c", *it);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     // Clean up
     string_deallocate(myString);
@@ -547,26 +532,26 @@ int main() {
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str1 = string_create("Hello");
     String* str2 = string_create("World");
 
     if (string_is_equal(str1, str2)) {
-        printf("Strings are equal\n");
+        fmt_printf("Strings are equal\n");
     }   
     if (string_is_less(str1, str2)) { 
-        printf("String 1 is less than String 2\n");
+        fmt_printf("String 1 is less than String 2\n");
     }
     if (string_is_greater(str1, str2)) {
-        printf("String1 is greater that String2\n");
+        fmt_printf("String1 is greater that String2\n");
     }
     if (string_is_less_or_equal(str1, str2)) {
-        printf("String1 is less than or equal String2\n");
+        fmt_printf("String1 is less than or equal String2\n");
     }
     if (string_is_greater_or_equal(str1, str2)) {
-        printf("String1 is greater than or equal String2\n");
+        fmt_printf("String1 is greater than or equal String2\n");
     }
 
     string_deallocate(str1);
@@ -580,7 +565,7 @@ int main() {
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     // Creating string objects
@@ -590,11 +575,11 @@ int main() {
 
     // Concatenate 'greeting' and ', '
     string_append(greeting, ", ");
-    printf("Greeting: %s\n", greeting->dataStr);
+    fmt_printf("Greeting: %s\n", greeting->dataStr);
 
     // Append 'name' to 'greeting'
     string_append(greeting, name->dataStr);
-    printf("Greeting with name: %s\n", greeting->dataStr);
+    fmt_printf("Greeting with name: %s\n", greeting->dataStr);
 
     // Create a substring of 'greeting' and assign it to 'sentence'
     String* tempSubstr = string_substr(greeting, 0, 5); // Extract "Hello"
@@ -603,14 +588,14 @@ int main() {
 
     // Append '!' to 'sentence'
     string_push_back(sentence, '!');
-    printf("Sentence: %s\n", sentence->dataStr);
+    fmt_printf("Sentence: %s\n", sentence->dataStr);
 
     // Compare 'greeting' and 'sentence'
     if (string_is_less(sentence, greeting)) {
-        printf("Sentence is less than greeting.\n"); 
+        fmt_printf("Sentence is less than greeting.\n"); 
     }
     else {
-        printf("Sentence is not less than greeting.\n");
+        fmt_printf("Sentence is not less than greeting.\n");
     }
 
     string_deallocate(greeting);
@@ -626,7 +611,7 @@ int main() {
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 String*** create_2d_string_array(const size_t rows, const size_t cols) {
@@ -669,15 +654,14 @@ int main() {
     // Print the 2D array
     for (size_t i = 0; i < rows; ++i) {
         for (size_t j = 0; j < cols; ++j) {
-            printf("%s ", string_c_str(my2DString[i][j]));
+            fmt_printf("%s ", string_c_str(my2DString[i][j]));
         }
-        printf("\n");
+        fmt_printf("\n");
     }
     // Clean up
     deallocate_2d_string_array(my2DString, rows, cols);
     return 0;
 }
-
 ```
 
 ## Example 19 : bench mark operation in `String` and `std::string` 
@@ -688,7 +672,7 @@ Time taken (Custom String): 0.286000 seconds
 ```c
 
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -700,7 +684,7 @@ int main() {
     String** stringArray = malloc(ARRAY_SIZE * sizeof(String*));
 
     if (!stringArray) {
-        perror("Failed to allocate memory for stringArray");
+        fmt_fprintf(stderr, "Failed to allocate memory for stringArray");
         return 1; // Or handle error appropriately
     }
 
@@ -717,7 +701,7 @@ int main() {
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     double time_in_sec = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
+    fmt_printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
 
     for (int i = 0; i < ARRAY_SIZE; i++) { 
         string_deallocate(stringArray[i]);
@@ -752,8 +736,6 @@ int main() {
 
     return 0;
 }
-
-
 ```
 
 ## Example 20 : benchmark of `String` and `std::string`
@@ -762,10 +744,8 @@ create pool
 Average Custom Vector Time: 0.001507 seconds
 
 ```c
-
 #include "string/string.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include <time.h>
 
 #define ARRAY_SIZE 1000000
@@ -776,12 +756,12 @@ int main() {
     String* stringArray = string_create("");
     
     if (!stringArray) {
-        perror("Failed to allocate memory for stringArray");
+        fmt_fprintf(stderr, "Failed to allocate memory for stringArray.\n");
         return 1; // Or handle error appropriately
     }
     
     if (string_set_pool_size(stringArray, 10000000)) {
-        printf("create pool\n");
+        fmt_printf("create pool\n");
     }
 
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -791,14 +771,13 @@ int main() {
     clock_gettime(CLOCK_MONOTONIC, &end);
     
     double time_in_sec = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
-    printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
+    fmt_printf("Average Custom Vector Time: %f seconds\n", time_in_sec);
 
     for (int i = 0; i < ARRAY_SIZE; i++) {
         string_deallocate(stringArray);
     }
     return 0;
 }
-
 ```
 
 Time taken (std::string): 0.0051607 seconds
@@ -831,7 +810,7 @@ int main() {
 ### Example 21 : string to Lower or Upper 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -840,58 +819,55 @@ int main() {
     char* toLower = string_to_lower(str); // convert str to lower case and return as char* 
 
     if (toUpper) {   
-        printf("To Upper is -> %s\n", toUpper);
+        fmt_printf("To Upper is -> %s\n", toUpper);
         free(toUpper);
     }
     if (toLower) {
-        printf("To Lower is -> %s\n", toLower);
+        fmt_printf("To Lower is -> %s\n", toLower);
         free(toLower);
     }
 
     string_deallocate(str);
     return 0;
 }
-
 ```
 
 ### Example 22 : Reverse String with `string_reverse`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
     String* str = string_create("Hello World");
 
     if (string_contains(str, "Hello")) { 
-        printf("Yes 'Hello' exists in str\n");
+        fmt_printf("Yes 'Hello' exists in str\n");
     }
     
     string_reverse(str); // reverse String 
-    printf("Reverse String is %s\n", string_c_str(str));
+    fmt_printf("Reverse String is %s\n", string_c_str(str));
 
     string_deallocate(str);
     return 0;
 }
-
 ```
 
 ### Example 23 : `string_is_digit`
 
 ```c
-
 #include "string/string.h" 
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* myString = string_create("123456");
 
     if (string_is_digit(myString)) {
-        printf("The string contains only digits.\n");
+        fmt_printf("The string contains only digits.\n");
     }
     else {
-        printf("The string contains non-digit characters or is not a string.\n");
+        fmt_printf("The string contains non-digit characters or is not a string.\n");
     }
 
     string_deallocate(myString);
@@ -902,32 +878,31 @@ int main() {
 ### Example 24 : `string_is_lower`
 
 ```c
-#include "string/string.h" 
+#include "string/string.h"
+#include "fmt/fmt.h" 
 #include <stdlib.h>
-#include <stdio.h>
 
 int main() {
     String* myString = string_create("Hello World");
     
     char* upper = string_to_upper(myString);
-    printf("Uppercase: %s\n", upper);
+    fmt_printf("Uppercase: %s\n", upper);
     free(upper); // Remember to free the memory allocated by string_to_upper
 
     char* lower = string_to_lower(myString);
-    printf("Lowercase: %s\n", lower);
+    fmt_printf("Lowercase: %s\n", lower);
     free(lower); // Remember to free the memory allocated by string_to_lower
 
     string_deallocate(myString);
     return 0;
 }
-
 ```
 
 ### Example 25 : concatenate two String with `string_concatenate`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -935,7 +910,7 @@ int main() {
     String* str2 = string_create(" World");
 
     string_concatenate(str1, str2);
-    printf("Concatenated string: %s\n", string_c_str(str1));
+    fmt_printf("Concatenated string: %s\n", string_c_str(str1));
 
     string_deallocate(str1);
     string_deallocate(str2);
@@ -947,23 +922,23 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
     String* str = string_create("   Hello World   ");
 
     string_trim_left(str);
-    printf("Trimmed Start: '%s'\n", string_c_str(str));
+    fmt_printf("Trimmed Start: '%s'\n", string_c_str(str));
 
     string_trim_right(str);
-    printf("Trimmed End: '%s'\n", string_c_str(str));
+    fmt_printf("Trimmed End: '%s'\n", string_c_str(str));
 
     string_clear(str);
     string_assign(str, "   Hello World   ");
     string_trim(str);
     
-    printf("Trimmed Both: '%s'\n", string_c_str(str));
+    fmt_printf("Trimmed Both: '%s'\n", string_c_str(str));
 
     string_deallocate(str);
     return 0;
@@ -974,9 +949,8 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
-
 
 int main() {
     String* str = string_create("Hello,World,This,Is,A,Test");
@@ -984,7 +958,7 @@ int main() {
     String** splits = string_split(str, ",", &count);
 
     for (int i = 0; i < count; i++) {
-        printf("Split %d: %s\n", i, string_c_str(splits[i]));
+        fmt_printf("Split %d: %s\n", i, string_c_str(splits[i]));
         string_deallocate(splits[i]);
     }
     free(splits);
@@ -998,7 +972,7 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -1009,7 +983,7 @@ int main() {
     parts[2] = string_create("Again");
 
     String* joined = string_join(parts, 3, " ");
-    printf("Joined string: %s\n", string_c_str(joined));
+    fmt_printf("Joined string: %s\n", string_c_str(joined));
 
     for (int i = 0; i < 3; i++) {
         string_deallocate(parts[i]);
@@ -1024,32 +998,31 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
     String* str = string_create("This is a test. This is only a test.");
 
     string_replace_all(str, "test", "example");
-    printf("Replaced string: %s\n", string_c_str(str));
+    fmt_printf("Replaced string: %s\n", string_c_str(str));
 
     string_deallocate(str);
     return 0;
 }
-
 ```
 
 ### Example 30: `string_to_int`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *str = string_create("12345");
     int intValue = string_to_int(str);
 
-    printf("Integer value: %d\n", intValue);
+    fmt_printf("Integer value: %d\n", intValue);
 
     string_deallocate(str);
     return 0;
@@ -1060,13 +1033,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *str = string_create("123.45");
     float floatValue = string_to_float(str);
 
-    printf("Float value: %.2f\n", floatValue);
+    fmt_printf("Float value: %.2f\n", floatValue);
 
     string_deallocate(str);
     return 0;
@@ -1077,13 +1050,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *str = string_create("hello");
     string_pad_left(str, 10, '*'); // Pads with '*' to a total length of 10
 
-    printf("Padded String (Start): '%s'\n", str->dataStr);
+    fmt_printf("Padded String (Start): '%s'\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1094,13 +1067,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *str = string_create("world");
     string_pad_right(str, 10, '-'); // Pads with '-' to a total length of 10
 
-    printf("Padded String (End): '%s'\n", str->dataStr);
+    fmt_printf("Padded String (End): '%s'\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1111,54 +1084,52 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *originalStr = string_create("Hello");
     String *hexStr = string_to_hex(originalStr);
 
-    printf("Original String: %s\n", originalStr->dataStr);
-    printf("Hexadecimal Representation: %s\n", hexStr->dataStr);
+    fmt_printf("Original String: %s\n", originalStr->dataStr);
+    fmt_printf("Hexadecimal Representation: %s\n", hexStr->dataStr);
 
     string_deallocate(originalStr);
     string_deallocate(hexStr);
     return 0;
 }
-
 ```
 
 ### Example 35 : `string_from_hex`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *hexStr = string_create("48656c6c6f"); // Hexadecimal representation of "Hello"
     String *convertedStr = string_from_hex(hexStr);
 
-    printf("Hexadecimal String: %s\n", hexStr->dataStr);
-    printf("Converted String: %s\n", convertedStr->dataStr);
+    fmt_printf("Hexadecimal String: %s\n", hexStr->dataStr);
+    fmt_printf("Converted String: %s\n", convertedStr->dataStr);
 
     string_deallocate(hexStr);
     string_deallocate(convertedStr);
     return 0;
 }
-
 ```
 
-### Example 36 : `string_count`
+## Example 36 : `string_count`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("Hello World, World!");
     const char* substr = "World";
 
     size_t count = string_count(str, substr);
-    printf("The substring '%s' appears %zu times in '%s'.\n", substr, count, str->dataStr);
+    fmt_printf("The substring '%s' appears %zu times in '%s'.\n", substr, count, str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1169,15 +1140,15 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("Hello World, World!");
     const char* substr = "World";
 
-    printf("Original string: %s\n", str->dataStr);
+    fmt_printf("Original string: %s\n", str->dataStr);
     string_remove(str, substr);
-    printf("String after removal: %s\n", str->dataStr);
+    fmt_printf("String after removal: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1188,13 +1159,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int value = 123;
     String* str = string_from_int(value);
 
-    printf("Integer %d converted to string: %s\n", value, str->dataStr);
+    fmt_printf("Integer %d converted to string: %s\n", value, str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1205,13 +1176,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     float value = 123.456;
     String* str = string_from_float(value);
 
-    printf("Float %.3f converted to string: %s\n", value, str->dataStr);
+    fmt_printf("Float %.3f converted to string: %s\n", value, str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1222,7 +1193,7 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -1231,7 +1202,7 @@ int main() {
     String** tokens = string_tokenize(str, ",.-;", &count);
 
     for (int i = 0; i < count; i++) {
-        printf("Token %d: %s\n", i, tokens[i]->dataStr);
+        fmt_printf("Token %d: %s\n", i, tokens[i]->dataStr);
         string_deallocate(tokens[i]);
     }
     free(tokens);
@@ -1246,13 +1217,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("123.456");
     double value = string_to_double(str);
 
-    printf("Double value: %f\n", value);
+    fmt_printf("Double value: %f\n", value);
     
     string_deallocate(str);
     return 0;
@@ -1264,13 +1235,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     double value = 123.456;
     String* str = string_from_double(value);
 
-    printf("String from double: %s\n", str->dataStr);
+    fmt_printf("String from double: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1282,45 +1253,44 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str1 = string_create("Hello");
     String* str2 = string_create("hello");
 
     if (string_compare_ignore_case(str1, str2) == 0) { 
-        printf("Strings are equal (ignoring case)\n");
+        fmt_printf("Strings are equal (ignoring case)\n");
     }
     else { 
-        printf("Strings are not equal\n");
+        fmt_printf("Strings are not equal\n");
     }
 
     string_deallocate(str1);
     string_deallocate(str2);
     return 0;
 }
-
 ```
 
 ### Example 43 : `string_base64_encode` and `string_base64_decode`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* sampleText = "Hello, World!";
     
     String* originalStr = string_create(sampleText);
-    printf("Original String: %s\n", originalStr->dataStr);
+    fmt_printf("Original String: %s\n", originalStr->dataStr);
 
     // Encode the string
     String* encodedStr = string_base64_encode(originalStr);
-    printf("Base64 Encoded: %s\n", encodedStr->dataStr);
+    fmt_printf("Base64 Encoded: %s\n", encodedStr->dataStr);
 
     // Decode the string back
     String* decodedStr = string_base64_decode(encodedStr);
-    printf("Base64 Decoded: %s\n", decodedStr->dataStr);
+    fmt_printf("Base64 Decoded: %s\n", decodedStr->dataStr);
 
     string_deallocate(originalStr);
     string_deallocate(encodedStr);
@@ -1334,14 +1304,14 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("");
     
     // Format the string with some arguments
     string_format(str, "Hello, %s! You have %d new messages.", "Alice", 5);
-    printf("%s\n", str->dataStr);
+    fmt_printf("%s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1353,13 +1323,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* original = string_create("Hello ");
     String* repeated = string_repeat(original, 3);
 
-    printf("Repeated String: %s\n", repeated->dataStr);
+    fmt_printf("Repeated String: %s\n", repeated->dataStr);
 
     string_deallocate(original);
     string_deallocate(repeated);
@@ -1371,7 +1341,7 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* part1 = string_create("Hello");
@@ -1379,7 +1349,7 @@ int main() {
     String* part3 = string_create("World!");
 
     String* joined = string_join_variadic(3, part1, part2, part3);
-    printf("Joined String: %s\n", joined->dataStr);
+    fmt_printf("Joined String: %s\n", joined->dataStr);
 
     string_deallocate(part1);
     string_deallocate(part2);
@@ -1390,36 +1360,35 @@ int main() {
 }
 ```
 
-### Example 47 : `string_trim_characters`
+## Example 47 : `string_trim_characters`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("##Hello, World!##");
     
     string_trim_characters(str, "#");
-    printf("Trimmed String: %s\n", str->dataStr);
+    fmt_printf("Trimmed String: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
 }
-
 ```
 
-### Example 48 : `string_shuffle`
+## Example 48 : `string_shuffle`
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* myStr = string_create("Hello, World!");
-    printf("Original String: %s\n", myStr->dataStr);
+    fmt_printf("Original String: %s\n", myStr->dataStr);
 
     string_shuffle(myStr);
-    printf("Shuffled String: %s\n", myStr->dataStr);
+    fmt_printf("Shuffled String: %s\n", myStr->dataStr);
 
     string_deallocate(myStr);
     return 0;
@@ -1430,13 +1399,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("hello world");
 
     string_to_title(str);
-    printf("Title Case: %s\n", str->dataStr);
+    fmt_printf("Title Case: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1447,13 +1416,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("HeLLo WoRLd");
 
     string_to_casefold(str);
-    printf("Casefolded: %s\n", str->dataStr);
+    fmt_printf("Casefolded: %s\n", str->dataStr);
     
     string_deallocate(str);
     return 0;
@@ -1464,13 +1433,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("Hello, World!");
 
     string_remove_range(str, 5, 7); 
-    printf("After removal: %s\n", str->dataStr);
+    fmt_printf("After removal: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1481,13 +1450,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("Hello, World!");
     bool startsWithHello = string_starts_with(str, "Hello");
 
-    printf("Starts with 'Hello': %s\n", startsWithHello ? "true" : "false");
+    fmt_printf("Starts with 'Hello': %s\n", startsWithHello ? "true" : "false");
 
     string_deallocate(str);
     return 0;
@@ -1498,13 +1467,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("Hello, World!");
     bool endsWithWorld = string_ends_with(str, "World!");
 
-    printf("Ends with 'World!': %s\n", endsWithWorld ? "true" : "false");
+    fmt_printf("Ends with 'World!': %s\n", endsWithWorld ? "true" : "false");
     
     string_deallocate(str);
     return 0;
@@ -1515,13 +1484,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("hello world");
 
     string_to_capitalize(str);
-    printf("Capitalized: %s\n", str->dataStr);
+    fmt_printf("Capitalized: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1532,13 +1501,13 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* str = string_create("Hello World");
 
     string_swap_case(str);
-    printf("Swapped Case: %s\n", str->dataStr);
+    fmt_printf("Swapped Case: %s\n", str->dataStr);
 
     string_deallocate(str);
     return 0;
@@ -1549,7 +1518,7 @@ int main() {
 
 ```c
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <wchar.h>
 #include <stdlib.h>
 
@@ -1563,16 +1532,16 @@ int main() {
         return 1;
     }
 
-    wprintf(L"Unicode String: %ls\n", unicodeStr);
+    fmt_printf("Unicode String: %ls\n", unicodeStr);
 
     // Convert back to String object
     String* convertedStr = string_from_unicode(unicodeStr);
     if (convertedStr == NULL) {
-        printf("Conversion from wide string failed.\n");
+        fmt_fprintf(stderr, "Conversion from wide string failed.\n");
         free(unicodeStr);
         return 1;
     }
-    printf("Converted String: %s\n", convertedStr->dataStr);
+    fmt_printf("Converted String: %s\n", convertedStr->dataStr);
 
     // Clean up
     free(unicodeStr);
@@ -1585,12 +1554,12 @@ int main() {
 ## Example 57 : define different kind of constants strings 
 
 ```c
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include "string/string.h"
 
 int main() {
-    printf("ASCII Letters: %s\n", STRING_ASCII_LETTERS);
-    printf("ASCII Lowercase: %s\n", STRING_ASCII_LOWERCASE);
+    fmt_printf("ASCII Letters: %s\n", STRING_ASCII_LETTERS);
+    fmt_printf("ASCII Lowercase: %s\n", STRING_ASCII_LOWERCASE);
 
     return 0;
 }

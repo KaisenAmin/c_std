@@ -27,13 +27,12 @@ To use the Priority_Queue library in your project, include the `priority_queue.h
 ```
 
 
-## Example 1 : How to create pq and 'push'
+## Example 1 : How to create pq and `priority_queuepush`
 
 ```c
 
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -46,8 +45,8 @@ int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
     if (!pq) {
-        fprintf(stderr, "Failed to create priority queue.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create priority queue.\n");
+        return -1;
     }
 
     // Push some integers onto the priority queue
@@ -55,21 +54,19 @@ int main() {
     for (int i = 0; i < 5; ++i) { 
         priority_queue_push(pq, &values[i]);
     }
-    printf("Priority Queue size: %zu\n", priority_queue_size(pq));
+    fmt_printf("Priority Queue size: %zu\n", priority_queue_size(pq));
     
     priority_queue_deallocate(pq);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 2 : get 'size' and check is 'empty' or not 
+## Example 2 : get size with `priority_queue_size` and check is pq is empty or not with `priority_queue_empty`  
 
 ```c
 
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -82,8 +79,8 @@ int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
     if (!pq) {
-        fprintf(stderr, "Failed to create priority queue.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create priority queue.\n");
+        return -1;
     }
 
     // Push some integers onto the priority queue
@@ -92,22 +89,21 @@ int main() {
         priority_queue_push(pq, &values[i]);
     }
 
-    printf("Priority Queue size: %zu\n", priority_queue_size(pq));
-    printf("Is the priority queue empty? %s\n", priority_queue_empty(pq) ? "Yes" : "No");
+    fmt_printf("Priority Queue size: %zu\n", priority_queue_size(pq));
+    fmt_printf("Is the priority queue empty? %s\n", priority_queue_empty(pq) ? "Yes" : "No");
     
     priority_queue_deallocate(pq);
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
 
-## Example 3 : get 'top' element
+## Example 3 : get top element with `priority_queue_top`
 
 ```c
 
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -120,8 +116,8 @@ int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
     if (!pq) {
-        fprintf(stderr, "Failed to create priority queue.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create priority queue.\n");
+        return -1;
     }
 
     // Push some integers onto the priority queue
@@ -132,11 +128,11 @@ int main() {
 
     int* top = priority_queue_top(pq);
     if (top) {
-        printf("Top element: %d\n", *top);
+        fmt_printf("Top element: %d\n", *top);
     }
 
     priority_queue_deallocate(pq);
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
@@ -146,8 +142,7 @@ int main() {
 ```c
 
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -160,8 +155,8 @@ int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
     if (!pq) {
-        fprintf(stderr, "Failed to create priority queue.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create priority queue.\n");
+        return -1;
     }
 
     // Push some integers onto the priority queue
@@ -172,28 +167,26 @@ int main() {
 
     int* top = priority_queue_top(pq);
     if (top) {
-        printf("Top element: %d\n", *top);
+        fmt_printf("Top element: %d\n", *top);
     }
     // Pop the top element and access the new top
     priority_queue_pop(pq);
     top = priority_queue_top(pq);
 
     if (top) {
-        printf("New top element after pop: %d\n", *top);
+        fmt_printf("New top element after pop: %d\n", *top);
     }
 
     priority_queue_deallocate(pq);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ## Example 5 : Sorting Integers in Desc orders 
 
 ```c
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 static int compare_ints_desc(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -206,8 +199,8 @@ int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints_desc);
  
     if (!pq) {
-        fprintf(stderr, "Failed to create priority queue.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create priority queue.\n");
+        return -1;
     }
 
     // Push some integers onto the priority queue
@@ -216,29 +209,26 @@ int main() {
         priority_queue_push(pq, &values[i]);
     }
 
-    printf("Sorted elements in descending order:\n");
+    fmt_printf("Sorted elements in descending order:\n");
     while (!priority_queue_empty(pq)) {
         int* top = priority_queue_top(pq);
         if (top) {
-            printf("%d ", *top);
+            fmt_printf("%d ", *top);
         }
         priority_queue_pop(pq);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     priority_queue_deallocate(pq);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ## Example 6: Merging Two Priority Queues
 
 ```c
-
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -262,8 +252,8 @@ int main() {
     PriorityQueue* mergedPQ = priority_queue_create(sizeof(int), compare_ints);
 
     if (!pq1 || !pq2 || !mergedPQ) {
-        fprintf(stderr, "Failed to create priority queues.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create priority queues.\n");
+        return -1;
     }
 
     int values1[] = {1, 3, 5, 7, 9};
@@ -280,21 +270,21 @@ int main() {
     merge_priority_queues(mergedPQ, pq1);
     merge_priority_queues(mergedPQ, pq2);
 
-    printf("Merged Priority Queue:\n");
+    fmt_printf("Merged Priority Queue:\n");
     while (!priority_queue_empty(mergedPQ)) {
         int* top = priority_queue_top(mergedPQ);
-        printf("%d ", *top);
+        fmt_printf("%d ", *top);
 
         priority_queue_pop(mergedPQ);
     }
 
-    printf("\n");
+    fmt_printf("\n");
 
     priority_queue_deallocate(pq1);
     priority_queue_deallocate(pq2);
     priority_queue_deallocate(mergedPQ);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
@@ -303,8 +293,7 @@ int main() {
 
 ```c
 #include "priority_queue/priority_queue.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 typedef struct Task Task;
 
@@ -324,8 +313,8 @@ int main() {
     PriorityQueue* taskQueue = priority_queue_create(sizeof(Task), compare_tasks);
 
     if (!taskQueue) {
-        fprintf(stderr, "Failed to create task queue.\n");
-        return EXIT_FAILURE;
+        fmt_fprintf(stderr, "Failed to create task queue.\n");
+        return -1;
     }
 
     // Define some tasks with different priorities
@@ -344,15 +333,15 @@ int main() {
         priority_queue_push(taskQueue, &tasks[i]);
     }
 
-    printf("Executing tasks in priority order:\n");
+    fmt_printf("Executing tasks in priority order:\n");
     while (!priority_queue_empty(taskQueue)) {
         Task* topTask = priority_queue_top(taskQueue);
-        printf("Executing Task ID: %d, Priority: %d\n", topTask->taskID, topTask->priority);
+        fmt_printf("Executing Task ID: %d, Priority: %d\n", topTask->taskID, topTask->priority);
         priority_queue_pop(taskQueue);
     }
 
     priority_queue_deallocate(taskQueue);
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```

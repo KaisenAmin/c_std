@@ -39,11 +39,11 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 This command uses GCC with C17 standard, optimizing for speed (`-O3`) and the native architecture (`-march=native`). The `-flto` and `-funroll-loops` flags enable further optimizations, while `-Wall`, `-Wextra`, and `-pedantic` enable a wide range of warnings for better code quality. The `-s` flag strips the binary to reduce size.
 
 
-## Example 1 : create tuple with type int and float 
+## Example 1 : create `tuple` with type int and float 
 
 ```c
 #include "tuple/tuple.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Tuple* myTuple = tuple_create(2);
@@ -57,26 +57,25 @@ int main() {
 
     int* retrievedInt = (int*)tuple_get(myTuple, 0, &size);
     if (retrievedInt) {
-        printf("Int: %d\n", *retrievedInt);
+        fmt_printf("Int: %d\n", *retrievedInt);
     }
 
     float* retrievedFloat = (float*)tuple_get(myTuple, 1, &size);
     if (retrievedFloat) {
-        printf("Float: %f\n", *retrievedFloat);
+        fmt_printf("Float: %f\n", *retrievedFloat);
     }
 
     tuple_deallocate(myTuple);
     return 0;
 }
-
 ```
 
-## Example 2: Tuple with Int, Float, and Vector
+## Example 2: `Tuple` with Int, Float, and Vector
 
 ```c
 #include "tuple/tuple.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Tuple* myTuple = tuple_create(3);
@@ -97,21 +96,20 @@ int main() {
     Vector** retrievedVector = (Vector**)tuple_get(myTuple, 2, &size);
 
     if (retrievedInt) {
-        printf("Int: %d\n", *retrievedInt);
+        fmt_printf("Int: %d\n", *retrievedInt);
     }
     if (retrievedFloat) {
-        printf("Float: %f\n", *retrievedFloat);
+        fmt_printf("Float: %f\n", *retrievedFloat);
     }
     if (retrievedVector) {
         int* item = (int*)vector_at(*retrievedVector, 0);
-        printf("Vector item: %d\n", *item);
+        fmt_printf("Vector item: %d\n", *item);
     }
 
     tuple_deallocate(myTuple);
     vector_deallocate(vectorValue);
     return 0;
 }
-
 ```
 
 ## Example 3: Tuple with String, Array, and Queue
@@ -122,7 +120,7 @@ int main() {
 #include "array/array.h"
 #include "queue/queue.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Tuple *myTuple = tuple_create(3);
@@ -149,15 +147,15 @@ int main() {
     Queue **retrievedQueue = (Queue **)tuple_get(myTuple, 2, &size);
 
     if (retrievedString){
-        printf("String: %s\n", string_c_str(*retrievedString));
+        fmt_printf("String: %s\n", string_c_str(*retrievedString));
     }
     if (retrievedArray){
         int *element = (int *)array_at(*retrievedArray, 1);
-        printf("Array first element: %d\n", *element);
+        fmt_printf("Array first element: %d\n", *element);
     }
     if (retrievedQueue){
         int *queueFront = (int *)queue_front(*retrievedQueue);
-        printf("Queue front element: %d\n", *queueFront);
+        fmt_printf("Queue front element: %d\n", *queueFront);
     }
 
     tuple_deallocate(myTuple);
@@ -173,7 +171,7 @@ int main() {
 
 ```c
 #include "tuple/tuple.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int intValue = 42;
@@ -189,13 +187,13 @@ int main() {
         char* retrievedChar = (char*)tuple_get(myTuple, 2, &size);
 
         if (retrievedInt) {
-            printf("Int: %d\n", *retrievedInt);
+            fmt_printf("Int: %d\n", *retrievedInt);
         }
         if (retrievedFloat) { 
-            printf("Float: %f\n", *retrievedFloat);
+            fmt_printf("Float: %f\n", *retrievedFloat);
         }
         if (retrievedChar) { 
-            printf("Char: %c\n", *retrievedChar);
+            fmt_printf("Char: %c\n", *retrievedChar);
         }
 
         tuple_deallocate(myTuple);
@@ -209,7 +207,7 @@ int main() {
 ```c
 #include "tuple/tuple.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 Tuple* create_person_tuple(int age, float grade, const char* name) {
     Tuple* personTuple = tuple_create(3); // Create a tuple with 3 elements
@@ -230,17 +228,17 @@ int main() {
 
         int* age = (int*)tuple_get(person, 0, &size);
         if (age) {
-            printf("Age: %d\n", *age);
+            fmt_printf("Age: %d\n", *age);
         }
 
         float* grade = (float*)tuple_get(person, 1, &size);
         if (grade) {
-            printf("Grade: %.2f\n", *grade);
+            fmt_printf("Grade: %.2f\n", *grade);
         }
 
         String** name = (String**)tuple_get(person, 2, &size);
         if (name) {
-            printf("Name: %s\n", string_c_str(*name));
+            fmt_printf("Name: %s\n", string_c_str(*name));
         }
         tuple_deallocate(person);
     }
@@ -255,7 +253,7 @@ int main() {
 #include "string/string.h"
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 void process_person_data(Tuple* personData) {
@@ -312,7 +310,7 @@ int main() {
 
 ```c
 #include "tuple/tuple.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int intValue = 42;
@@ -328,13 +326,13 @@ int main() {
         char** retrievedChar = (char**)tuple_get(myTuple, 2, &size);
 
         if (retrievedInt) {
-            printf("Int: %d\n", **retrievedInt);
+            fmt_printf("Int: %d\n", **retrievedInt);
         }
         if (retrievedFloat) { 
-            printf("Float: %f\n", **retrievedFloat);
+            fmt_printf("Float: %f\n", **retrievedFloat);
         }
         if (retrievedChar) { 
-            printf("Char: %c\n", **retrievedChar);
+            fmt_printf("Char: %c\n", **retrievedChar);
         }
 
         // Modifying the original variables through the tuple
@@ -342,9 +340,9 @@ int main() {
         **retrievedFloat = 9.99f;
         **retrievedChar = 'Z';
 
-        printf("Modified Int: %d\n", intValue);
-        printf("Modified Float: %f\n", floatValue);
-        printf("Modified Char: %c\n", charValue);
+        fmt_printf("Modified Int: %d\n", intValue);
+        fmt_printf("Modified Float: %f\n", floatValue);
+        fmt_printf("Modified Char: %c\n", charValue);
 
         tuple_deallocate(myTuple);
     }
@@ -358,7 +356,7 @@ int main() {
 #include "tuple/tuple.h"
 #include "vector/vector.h"
 #include "queue/queue.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector* intVector = vector_create(sizeof(int));
@@ -377,20 +375,20 @@ int main() {
         Vector** retrievedVector = (Vector**)tuple_get(myTuple, 0, &size);
         if (retrievedVector && *retrievedVector) {
             int* item = (int*)vector_at(*retrievedVector, 0);
-            printf("Vector item: %d\n", *item);
+            fmt_printf("Vector item: %d\n", *item);
         }
 
         Queue** retrievedQueue = (Queue**)tuple_get(myTuple, 1, &size);
         if (retrievedQueue && *retrievedQueue) {
             char** frontItem = (char**)queue_front(*retrievedQueue);
             if (frontItem) {
-                printf("Queue front item: %s\n", *frontItem);
+                fmt_printf("Queue front item: %s\n", *frontItem);
             }
         }
 
         int* retrievedInt = (int*)tuple_get(myTuple, 2, &size);
         if (retrievedInt) {
-            printf("Simple Integer: %d\n", *retrievedInt);
+            fmt_printf("Simple Integer: %d\n", *retrievedInt);
         }
 
         tuple_deallocate(myTuple);
@@ -399,14 +397,13 @@ int main() {
     }
     return 0;
 }
-
 ```
 
 ## Example 9 : swap tuple with `tuple_swap`
 
 ```c
 #include "tuple/tuple.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     size_t size1, size2;
@@ -419,15 +416,15 @@ int main() {
     int intValue2 = 100;
     tuple_set(tuple2, 0, &intValue2, sizeof(int));
 
-    printf("Before swap:\n");
-    printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
-    printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
+    fmt_printf("Before swap:\n");
+    fmt_printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
+    fmt_printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
 
     tuple_swap(tuple1, tuple2);
 
-    printf("After swap:\n");
-    printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
-    printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
+    fmt_printf("After swap:\n");
+    fmt_printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
+    fmt_printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
 
     tuple_deallocate(tuple1);
     tuple_deallocate(tuple2);
@@ -440,14 +437,14 @@ int main() {
 ```c
 #include "tuple/tuple.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_back(Tuple* tuple) {
     size_t size;
     String** retrievedString = (String**)tuple_get(tuple, 0, &size);
     int* retrievedAge = (int*)tuple_get(tuple, 1, &size);
     
-    printf("Name is %s and age is %d\n", string_c_str(*retrievedString), *retrievedAge);
+    fmt_printf("Name is %s and age is %d\n", string_c_str(*retrievedString), *retrievedAge);
 
     tuple_deallocate(tuple);
 }
@@ -461,7 +458,6 @@ int main() {
     string_deallocate(name);
     return 0;
 }
-
 ```
 
 `C++ Same Code`
@@ -487,7 +483,7 @@ int main() {
 
 ```c
 #include "tuple/tuple.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Tuple* tuple1 = tuple_create(2);
@@ -501,14 +497,14 @@ int main() {
     tuple_set(tuple2, 0, &value2, sizeof(int));
     tuple_set(tuple2, 1, &value1, sizeof(int));
 
-    printf("Tuple1 is less than Tuple2: %s\n", tuple_is_less(tuple1, tuple2) ? "true" : "false");
-    printf("Tuple1 is greater than Tuple2: %s\n", tuple_is_greater(tuple1, tuple2) ? "true" : "false");
-    printf("Tuple1 is equal to Tuple2: %s\n", tuple_is_equal(tuple1, tuple2) ? "true" : "false");
-    printf("Tuple1 is not equal to Tuple2: %s\n", tuple_is_not_equal(tuple1, tuple2) ? "true" : "false");
-    printf("Tuple1 is greater or equal to Tuple2: %s\n", tuple_is_greater_or_equal(tuple1, tuple2) ? "true" : "false");
-    printf("Tuple1 is less or equal to Tuple2: %s\n", tuple_is_less_or_equal(tuple1, tuple2) ? "true" : "false");
-    printf("Tuple1 is empty: %s\n", tuple_is_empty(tuple1) ? "true" : "false");
-    printf("Empty Tuple is empty: %s\n", tuple_is_empty(emptyTuple) ? "true" : "false");
+    fmt_printf("Tuple1 is less than Tuple2: %s\n", tuple_is_less(tuple1, tuple2) ? "true" : "false");
+    fmt_printf("Tuple1 is greater than Tuple2: %s\n", tuple_is_greater(tuple1, tuple2) ? "true" : "false");
+    fmt_printf("Tuple1 is equal to Tuple2: %s\n", tuple_is_equal(tuple1, tuple2) ? "true" : "false");
+    fmt_printf("Tuple1 is not equal to Tuple2: %s\n", tuple_is_not_equal(tuple1, tuple2) ? "true" : "false");
+    fmt_printf("Tuple1 is greater or equal to Tuple2: %s\n", tuple_is_greater_or_equal(tuple1, tuple2) ? "true" : "false");
+    fmt_printf("Tuple1 is less or equal to Tuple2: %s\n", tuple_is_less_or_equal(tuple1, tuple2) ? "true" : "false");
+    fmt_printf("Tuple1 is empty: %s\n", tuple_is_empty(tuple1) ? "true" : "false");
+    fmt_printf("Empty Tuple is empty: %s\n", tuple_is_empty(emptyTuple) ? "true" : "false");
 
     tuple_deallocate(tuple1);
     tuple_deallocate(tuple2);

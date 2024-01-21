@@ -8,7 +8,6 @@
 #define PRIORITY_QUEUE_H_
 
 #include "../vector/vector.h"
-#include <stdbool.h>
 
 typedef struct PriorityQueue PriorityQueue;
 

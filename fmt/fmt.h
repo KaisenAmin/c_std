@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "../file_io/file_writer.h"
+#include "../file_io/file_reader.h"
 
 #define FMT_END_ARGS (NULL)
 
@@ -19,5 +21,8 @@ int fmt_scan(char** output);
 int fmt_scanln(char** output);
 int fmt_scanf(const char* format, ...);
 
+int fmt_fprint(FILE* stream, ...);
+int fmt_fprintln(FILE* stream, ...);
+int fmt_fprintf(FILE* stream, const char* format, ...);
 
 #endif 

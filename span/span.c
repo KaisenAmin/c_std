@@ -4,10 +4,9 @@
  * @class Span
 */
 
-
 #include "span.h"
+#include "../fmt/fmt.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 typedef struct MemoryPoolSpan {
@@ -25,14 +24,14 @@ static void initialize_span_memory_pool(size_t size) {
 
     global_span_pool = (MemoryPoolSpan*)malloc(sizeof(MemoryPoolSpan));
     if (!global_span_pool) {
-        fprintf(stderr, "Error: Failed to allocate memory for span pool\n");
+        fmt_fprintf(stderr, "Error: Failed to allocate memory for span pool\n");
         exit(-1); // Consider a more graceful exit strategy
     }
 
     global_span_pool->pool = malloc(size);
     if (!global_span_pool->pool) {
         free(global_span_pool);
-        fprintf(stderr, "Error: Failed to allocate memory for span pool data\n");
+        fmt_fprintf(stderr, "Error: Failed to allocate memory for span pool data\n");
         exit(-1); // Consider a more graceful exit strategy
     }
 
@@ -42,7 +41,7 @@ static void initialize_span_memory_pool(size_t size) {
 
 static void destroy_span_memory_pool() {
     if (!global_span_pool) {
-        fprintf(stderr, "Error: Span memory pool is NULL in destroy_span_memory_pool\n");
+        fmt_fprintf(stderr, "Error: Span memory pool is NULL in destroy_span_memory_pool\n");
         return;
     }
     free(global_span_pool->pool);
@@ -52,11 +51,11 @@ static void destroy_span_memory_pool() {
 
 static void* memory_pool_span_allocate(size_t size) {
     if (!global_span_pool) {
-        fprintf(stderr, "Error: Span memory pool is not initialized in memory_pool_span_allocate\n");
+        fmt_fprintf(stderr, "Error: Span memory pool is not initialized in memory_pool_span_allocate\n");
         return NULL;
     }
     if (global_span_pool->used + size > global_span_pool->poolSize) {
-        fprintf(stderr, "Error: Not enough space in span pool\n");
+        fmt_fprintf(stderr, "Error: Not enough space in span pool\n");
         return NULL;
     }
     void *allocated = (char*)global_span_pool->pool + global_span_pool->used;
@@ -67,11 +66,11 @@ static void* memory_pool_span_allocate(size_t size) {
 
 Span* span_create(void* data, size_t elemCount, size_t elemSize) {
     if (!data) {
-        fprintf(stderr, "Error: Null data provided to span_create\n");
+        fmt_fprintf(stderr, "Error: Null data provided to span_create\n");
         return NULL;
     }
     if (elemCount == 0 || elemSize == 0) {
-        fprintf(stderr, "Error: Element count or size is zero in span_create\n");
+        fmt_fprintf(stderr, "Error: Element count or size is zero in span_create\n");
         return NULL;
     }
 
@@ -81,13 +80,13 @@ Span* span_create(void* data, size_t elemCount, size_t elemSize) {
 
     Span *newSpan = (Span*)malloc(sizeof(Span));
     if (!newSpan) {
-        fprintf(stderr, "Error: Failed to allocate memory for Span structure\n");
+        fmt_fprintf(stderr, "Error: Failed to allocate memory for Span structure\n");
         exit(-1); // Consider a more graceful exit strategy
     }
 
     newSpan->data = memory_pool_span_allocate(elemCount * elemSize);
     if (!newSpan->data) {
-        fprintf(stderr, "Error: Failed to allocate memory for Span data\n");
+        fmt_fprintf(stderr, "Error: Failed to allocate memory for Span data\n");
         free(newSpan); // Free allocated Span structure
         exit(-1); // Consider a more graceful exit strategy
     }
@@ -101,7 +100,7 @@ Span* span_create(void* data, size_t elemCount, size_t elemSize) {
 
 void span_destroy(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_destroy\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_destroy\n");
         return;
     }
     // Reset the Span structure
@@ -115,7 +114,7 @@ void span_destroy(Span* span) {
 
 void* span_at(Span* span, size_t index) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_at\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_at\n");
         return NULL; // Handle NULL span pointer
     }
     if (span && index < span->size / span->elemSize) {
@@ -126,7 +125,7 @@ void* span_at(Span* span, size_t index) {
 
 size_t span_size(const Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span is NULL in span_size.\n");
+        fmt_fprintf(stderr, "Error: Span is NULL in span_size.\n");
         return 0;
     }
     return span->size;
@@ -134,11 +133,11 @@ size_t span_size(const Span* span) {
 
 void* span_front(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_front.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_front.\n");
         return NULL; // Handle NULL span pointer
     }
     if (span->size == 0) {
-        fprintf(stderr, "Error: Span is empty in span_front.\n");
+        fmt_fprintf(stderr, "Error: Span is empty in span_front.\n");
         return NULL; // Handle empty span
     }
     return span->data; // The first element is at the start of data
@@ -146,11 +145,11 @@ void* span_front(Span* span) {
 
 void* span_back(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_back.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_back.\n");
         return NULL; // Handle NULL span pointer
     }
     if (span->size == 0) {
-        fprintf(stderr, "Error: Span is empty in span_back.\n");
+        fmt_fprintf(stderr, "Error: Span is empty in span_back.\n");
         return NULL; // Handle empty span
     }
     return (char*)span->data + (span->size - span->elemSize);// Calculate the address of the last element
@@ -158,7 +157,7 @@ void* span_back(Span* span) {
 
 void* span_data(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_data.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_data.\n");
         return NULL; // Handle NULL span pointer
     }
     return span->data;
@@ -166,7 +165,7 @@ void* span_data(Span* span) {
 
 const void* span_cdata(const Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_cdata.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_cdata.\n");
         return NULL; // Handle NULL span pointer
     }
     return span->data;
@@ -174,7 +173,7 @@ const void* span_cdata(const Span* span) {
 
 bool span_empty(const Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_empty.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_empty.\n");
         return true; // Treat NULL span as empty
     }
     return span->size == 0;
@@ -192,15 +191,15 @@ Span span_first(Span* span, size_t count) {
     Span result = {NULL, 0, 0};
 
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_first.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_first.\n");
         return result; // Handle NULL span pointer
     }
     if (count == 0 || span->size == 0) {
-        fprintf(stderr, "Error: Count is zero or Span is empty in span_first.\n");
+        fmt_fprintf(stderr, "Error: Count is zero or Span is empty in span_first.\n");
         return result; // Handle zero count or empty span
     }
     if (count * span->elemSize > span->size) {
-        fprintf(stderr, "Error: Count exceeds Span size in span_first.\n");
+        fmt_fprintf(stderr, "Error: Count exceeds Span size in span_first.\n");
         return result; // Handle out-of-bounds count
     }
 
@@ -215,15 +214,15 @@ Span span_last(Span* span, size_t count) {
     Span result = {NULL, 0, 0};
 
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_last.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_last.\n");
         return result; // Handle NULL span pointer
     }
     if (count == 0 || span->size == 0) {
-        fprintf(stderr, "Error: Count is zero or Span is empty in span_last.\n");
+        fmt_fprintf(stderr, "Error: Count is zero or Span is empty in span_last.\n");
         return result; // Handle zero count or empty span
     }
     if (count * span->elemSize > span->size) {
-        fprintf(stderr, "Error: Count exceeds Span size in span_last.\n");
+        fmt_fprintf(stderr, "Error: Count exceeds Span size in span_last.\n");
         return result; // Handle out-of-bounds count
     }
 
@@ -238,15 +237,15 @@ Span span_subspan(Span* span, size_t offset, size_t count) {
     Span result = {NULL, 0, 0};
 
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_subspan.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_subspan.\n");
         return result; // Handle NULL span pointer
     }
     if (offset * span->elemSize >= span->size || count == 0) {
-        fprintf(stderr, "Error: Offset out of bounds or count is zero in span_subspan.\n");
+        fmt_fprintf(stderr, "Error: Offset out of bounds or count is zero in span_subspan.\n");
         return result; // Handle out-of-bounds offset or zero count
     }
     if (offset * span->elemSize + count * span->elemSize > span->size) {
-        fprintf(stderr, "Error: Subspan exceeds Span bounds in span_subspan.\n");
+        fmt_fprintf(stderr, "Error: Subspan exceeds Span bounds in span_subspan.\n");
         return result; // Handle subspan exceeding span bounds
     }
 
@@ -259,7 +258,7 @@ Span span_subspan(Span* span, size_t offset, size_t count) {
 
 bool span_is_equal(const Span* span1, const Span* span2) {
     if (!span1 || !span2) {
-        fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_equal.\n");
+        fmt_fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_equal.\n");
         return false; // Handle NULL span pointers
     }
     if (span1->size != span2->size) {
@@ -270,7 +269,7 @@ bool span_is_equal(const Span* span1, const Span* span2) {
 
 bool span_is_less(const Span* span1, const Span* span2) {
     if (!span1 || !span2) {
-        fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_less.\n");
+        fmt_fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_less.\n");
         return false; // Handle NULL span pointers
     }
 
@@ -282,7 +281,7 @@ bool span_is_less(const Span* span1, const Span* span2) {
 
 bool span_is_greater(const Span* span1, const Span* span2) {
     if (!span1 || !span2) {
-        fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_greater.\n");
+        fmt_fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_greater.\n");
         return false; // Handle NULL span pointers
     }
     return span_is_less(span2, span1);
@@ -290,7 +289,7 @@ bool span_is_greater(const Span* span1, const Span* span2) {
 
 bool span_is_not_equal(const Span* span1, const Span* span2) {
     if (!span1 || !span2) {
-        fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_not_equal.\n");
+        fmt_fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_not_equal.\n");
         return span1 != span2; // If one is NULL and the other is not, they are not equal
     }
     return !span_is_equal(span1, span2);    
@@ -298,7 +297,7 @@ bool span_is_not_equal(const Span* span1, const Span* span2) {
 
 bool span_is_greater_or_equal(const Span* span1, const Span* span2) {
     if (!span1 || !span2) {
-        fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_greater_or_equal.\n");
+        fmt_fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_greater_or_equal.\n");
         return false; // Handle NULL span pointers
     }
     return span_is_greater(span1, span2) || span_is_equal(span1, span2);
@@ -306,7 +305,7 @@ bool span_is_greater_or_equal(const Span* span1, const Span* span2) {
 
 bool span_is_less_or_equal(const Span* span1, const Span* span2) {
     if (!span1 || !span2) {
-        fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_less_or_equal.\n");
+        fmt_fprintf(stderr, "Error: One or both Span pointers are NULL in span_is_less_or_equal.\n");
         return false; // Handle NULL span pointers
     }
     return span_is_less(span1, span2) || span_is_equal(span1, span2);
@@ -314,7 +313,7 @@ bool span_is_less_or_equal(const Span* span1, const Span* span2) {
 
 void* span_begin(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_begin.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_begin.\n");
         return NULL; // Handle NULL span pointer
     }
     return span ? span->data : NULL;
@@ -322,7 +321,7 @@ void* span_begin(Span* span) {
 
 const void* span_cbegin(const Span* span){
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_cbegin.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_cbegin.\n");
         return NULL; // Handle NULL span pointer
     }
     return span_begin((Span*)span);
@@ -330,7 +329,7 @@ const void* span_cbegin(const Span* span){
 
 void* span_end(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_end.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_end.\n");
         return NULL; // Handle NULL span pointer
     }
     return span ? (char*)span->data + span->size: NULL;
@@ -338,7 +337,7 @@ void* span_end(Span* span) {
 
 const void* span_cend(const Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_cend.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_cend.\n");
         return NULL; // Handle NULL span pointer
     }
     return span_end((Span*)span);
@@ -346,11 +345,11 @@ const void* span_cend(const Span* span) {
 
 void* span_rbegin(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_rbegin.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_rbegin.\n");
         return NULL; // Handle NULL span pointer
     }
     if (span->size == 0) {
-        fprintf(stderr, "Error: Span is empty in span_rbegin.\n");
+        fmt_fprintf(stderr, "Error: Span is empty in span_rbegin.\n");
         return NULL; // Handle empty span
     }
     return span ? (char*)span->data + span->size - span->elemSize: NULL;
@@ -358,7 +357,7 @@ void* span_rbegin(Span* span) {
 
 const void* span_crbegin(const Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_crbegin.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_crbegin.\n");
         return NULL; // Handle NULL span pointer
     }
     return span_rbegin((Span*)span);
@@ -366,7 +365,7 @@ const void* span_crbegin(const Span* span) {
 
 void* span_rend(Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_rend.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_rend.\n");
         return NULL; // Handle NULL span pointer
     }
     return span? (char*)span->data - span->elemSize: NULL;
@@ -374,7 +373,7 @@ void* span_rend(Span* span) {
 
 const void* span_crend(const Span* span) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_crend.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_crend.\n");
         return NULL; // Handle NULL span pointer
     }
     return span_rend((Span*)span);
@@ -382,15 +381,15 @@ const void* span_crend(const Span* span) {
 
 void* span_increment(Span* span, void* ptr) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_increment.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_increment.\n");
         return NULL; // Handle NULL span pointer
     }
     if (!ptr) {
-        fprintf(stderr, "Error: Pointer is NULL in span_increment.\n");
+        fmt_fprintf(stderr, "Error: Pointer is NULL in span_increment.\n");
         return NULL; // Handle NULL pointer
     }
     if ((char*)ptr + span->elemSize > (char*)span->data + span->size) {
-        fprintf(stderr, "Error: Incrementing would move pointer out of Span bounds in span_increment.\n");
+        fmt_fprintf(stderr, "Error: Incrementing would move pointer out of Span bounds in span_increment.\n");
         return NULL; // Prevent going out of bounds
     }
     return (char*)ptr + span->elemSize;
@@ -398,15 +397,15 @@ void* span_increment(Span* span, void* ptr) {
 
 void* span_decrement(Span* span, void* ptr) {
     if (!span) {
-        fprintf(stderr, "Error: Span pointer is NULL in span_decrement.\n");
+        fmt_fprintf(stderr, "Error: Span pointer is NULL in span_decrement.\n");
         return NULL; // Handle NULL span pointer
     }
     if (!ptr) {
-        fprintf(stderr, "Error: Pointer is NULL in span_decrement.\n");
+        fmt_fprintf(stderr, "Error: Pointer is NULL in span_decrement.\n");
         return NULL; // Handle NULL pointer
     }
     if ((char*)ptr <= (char*)span->data - span->elemSize) {
-        fprintf(stderr, "Error: Decrementing would move pointer before Span in span_decrement.\n");
+        fmt_fprintf(stderr, "Error: Decrementing would move pointer before Span in span_decrement.\n");
         return NULL; // Out of bounds or invalid arguments
     }
     return (char*)ptr - span->elemSize;

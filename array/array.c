@@ -5,6 +5,7 @@
 */
 
 #include "array.h"
+#include "../fmt/fmt.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -12,13 +13,13 @@ Array* array_create(size_t element_size, size_t size) {
     Array* arr = (Array*)malloc(sizeof(Array));
 
     if (!arr) {
-        fprintf(stderr, "Error: Cannot allocate memory for Array object in array_create\n");
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for Array object in array_create\n");
         exit(-1);
     }
 
     arr->vec = vector_create(element_size);
     if (!arr->vec) {
-        fprintf(stderr, "Error: Cannot allocate memory for internal Vector in array_create\n");
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for internal Vector in array_create\n");
         free(arr);
         return NULL;
     }
@@ -103,19 +104,19 @@ void array_deallocate(Array* arr) {
 
 void array_set(Array* arr, size_t index, const void* value) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_set.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_set.\n");
         return;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Array's vector is NULL in array_set.\n");
+        fmt_fprintf(stderr, "Error: Array's vector is NULL in array_set.\n");
         return;
     }
     if (index >= arr->vec->size) {
-        fprintf(stderr, "Error: Index out of bounds in array_set.\n");
+        fmt_fprintf(stderr, "Error: Index out of bounds in array_set.\n");
         return;
     }
     if (value == NULL) {
-        fprintf(stderr, "Error: Value is NULL in array_set.\n");
+        fmt_fprintf(stderr, "Error: Value is NULL in array_set.\n");
         return;
     }
 
@@ -124,19 +125,19 @@ void array_set(Array* arr, size_t index, const void* value) {
 
 void array_insert(Array* mainArr, const Array* otherArr, size_t index) {
     if (mainArr == NULL) {
-        fprintf(stderr, "Error: Main array is NULL in array_insert.\n");
+        fmt_fprintf(stderr, "Error: Main array is NULL in array_insert.\n");
         return;
     }
     if (mainArr->vec == NULL) {
-        fprintf(stderr, "Error: Main array's vector is NULL in array_insert.\n");
+        fmt_fprintf(stderr, "Error: Main array's vector is NULL in array_insert.\n");
         return;
     }
     if (otherArr == NULL) {
-        fprintf(stderr, "Error: Other array is NULL in array_insert.\n");
+        fmt_fprintf(stderr, "Error: Other array is NULL in array_insert.\n");
         return;
     }
     if (otherArr->vec == NULL) {
-        fprintf(stderr, "Error: Other array's vector is NULL in array_insert.\n");
+        fmt_fprintf(stderr, "Error: Other array's vector is NULL in array_insert.\n");
         return;
     }
 
@@ -153,15 +154,15 @@ void array_insert(Array* mainArr, const Array* otherArr, size_t index) {
 
 void array_fill(Array* arr, const void* value) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_fill.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_fill.\n");
         return;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Array's vector is NULL in array_fill.\n");
+        fmt_fprintf(stderr, "Error: Array's vector is NULL in array_fill.\n");
         return;
     }
     if (value == NULL) {
-        fprintf(stderr, "Error: 'value' is NULL in array_fill.\n");
+        fmt_fprintf(stderr, "Error: 'value' is NULL in array_fill.\n");
         return;
     }
 
@@ -172,19 +173,19 @@ void array_fill(Array* arr, const void* value) {
 
 void array_swap(Array* arr1, Array* arr2) {
     if (arr1 == NULL) {
-        fprintf(stderr, "Error: arr1 is NULL in array_swap.\n");
+        fmt_fprintf(stderr, "Error: arr1 is NULL in array_swap.\n");
         return;
     }
     if (arr2 == NULL) {
-        fprintf(stderr, "Error: arr2 is NULL in array_swap.\n");
+        fmt_fprintf(stderr, "Error: arr2 is NULL in array_swap.\n");
         return;
     }
     if (arr1->vec == NULL) {
-        fprintf(stderr, "Error: arr1's vector is NULL in array_swap.\n");
+        fmt_fprintf(stderr, "Error: arr1's vector is NULL in array_swap.\n");
         return;
     }
     if (arr2->vec == NULL) {
-        fprintf(stderr, "Error: arr2's vector is NULL in array_swap.\n");
+        fmt_fprintf(stderr, "Error: arr2's vector is NULL in array_swap.\n");
         return;
     }
 
@@ -195,15 +196,15 @@ void array_swap(Array* arr1, Array* arr2) {
 
 void* array_at(Array* arr, size_t index) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_at.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_at.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Array's vector is NULL in array_at.\n");
+        fmt_fprintf(stderr, "Error: Array's vector is NULL in array_at.\n");
         return NULL;
     }
     if (index >= arr->vec->size) {
-        fprintf(stderr, "Error: Index out of bounds in array_at.\n");
+        fmt_fprintf(stderr, "Error: Index out of bounds in array_at.\n");
         return NULL;
     }
     return vector_at(arr->vec, index);
@@ -211,15 +212,15 @@ void* array_at(Array* arr, size_t index) {
 
 void* array_begin(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_begin.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_begin.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_begin.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_begin.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Array is empty in array_begin.\n");
+        fmt_fprintf(stderr, "Error: Array is empty in array_begin.\n");
         return NULL;
     }
     return arr->vec->items;
@@ -227,15 +228,15 @@ void* array_begin(Array* arr) {
 
 void* array_end(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_end.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_end.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_end.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_end.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Array is empty in array_end.\n");
+        fmt_fprintf(stderr, "Error: Array is empty in array_end.\n");
         return NULL;
     }
     return vector_end(arr->vec);
@@ -243,15 +244,15 @@ void* array_end(Array* arr) {
 
 void* array_rbegin(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_rbegin.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_rbegin.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_rbegin.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_rbegin.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Array is empty in array_rbegin.\n");
+        fmt_fprintf(stderr, "Error: Array is empty in array_rbegin.\n");
         return NULL;
     }
     return vector_rbegin(arr->vec);
@@ -259,11 +260,11 @@ void* array_rbegin(Array* arr) {
 
 void* array_rend(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_rend.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_rend.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_rend.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_rend.\n");
         return NULL;
     }
     return vector_rend(arr->vec);
@@ -271,15 +272,15 @@ void* array_rend(Array* arr) {
 
 void* array_front(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_front.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_front.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_front.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_front.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Array is empty in array_front.\n");
+        fmt_fprintf(stderr, "Error: Array is empty in array_front.\n");
         return NULL;
     }
     return vector_at(arr->vec, 0);  // First element
@@ -287,15 +288,15 @@ void* array_front(Array* arr) {
 
 void* array_back(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_back.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_back.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_back.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_back.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Array is empty in array_back.\n");
+        fmt_fprintf(stderr, "Error: Array is empty in array_back.\n");
         return NULL;
     }
     return vector_at(arr->vec, arr->vec->size - 1);
@@ -303,11 +304,11 @@ void* array_back(Array* arr) {
 
 void* array_data(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_data.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_data.\n");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_data.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_data.\n");
         return NULL;
     }
     return arr->vec->items;
@@ -315,11 +316,11 @@ void* array_data(Array* arr) {
 
 size_t array_size(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_size.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_size.\n");
         return 0;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_size.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_size.\n");
         return 0;
     }
     return arr->vec->size;
@@ -327,11 +328,11 @@ size_t array_size(Array* arr) {
 
 size_t array_max_size(Array* arr) {
     if (arr == NULL) {
-        fprintf(stderr, "Error: Array is NULL in array_max_size.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_max_size.\n");
         return 0;
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_max_size.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_max_size.\n");
         return 0;
     }
     return vector_max_size(arr->vec);
@@ -339,15 +340,15 @@ size_t array_max_size(Array* arr) {
 
 const void* array_cbegin(Array* arr) {
     if (arr == NULL) { 
-        fprintf(stderr, "Error: Array is NULL in array_cbegin.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_cbegin.\n");
         return NULL; 
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_cbegin.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_cbegin.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Vector size is 0 in array_cbegin.\n");
+        fmt_fprintf(stderr, "Error: Vector size is 0 in array_cbegin.\n");
         return NULL;
     }
     // return arr->vec->items;
@@ -356,15 +357,15 @@ const void* array_cbegin(Array* arr) {
 
 const void* array_cend(Array* arr) {
     if (arr == NULL) { 
-        fprintf(stderr, "Error: Array is NULL in array_cend.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_cend.\n");
         return NULL;  
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_cend.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_cend.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Vector size is 0 in array_cend.\n");
+        fmt_fprintf(stderr, "Error: Vector size is 0 in array_cend.\n");
         return NULL;
     }
     // return (const char*)arr->vec->items + (arr->vec->size * arr->vec->itemSize); 
@@ -373,15 +374,15 @@ const void* array_cend(Array* arr) {
 
 const void* array_crbegin(Array* arr) {
     if (arr == NULL) { 
-        fprintf(stderr, "Error: Array is NULL in array_crbegin.\n");
+        fmt_fprintf(stderr, "Error: Array is NULL in array_crbegin.\n");
         return NULL;  
     }
     if (arr->vec == NULL) {
-        fprintf(stderr, "Error: Vector is NULL in array_crbegin.\n");
+        fmt_fprintf(stderr, "Error: Vector is NULL in array_crbegin.\n");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fprintf(stderr, "Error: Vector size is 0 in array_crbegin.\n");
+        fmt_fprintf(stderr, "Error: Vector size is 0 in array_crbegin.\n");
         return NULL;
     }
     // return (const char*)arr->vec->items + ((arr->vec->size - 1) * arr->vec->itemSize); 
@@ -390,7 +391,7 @@ const void* array_crbegin(Array* arr) {
 
 const void* array_crend(Array* arr) {
     if (arr == NULL || arr->vec == NULL) { 
-        fprintf(stderr, "Error: Invalid input in array_crend.\n");
+        fmt_fprintf(stderr, "Error: Invalid input in array_crend.\n");
         return NULL;  
     }
     // return (const char*)arr->vec->items - arr->vec->itemSize;  
@@ -399,7 +400,7 @@ const void* array_crend(Array* arr) {
 
 void array_clear(Array* arr) {
     if (arr == NULL || arr->vec == NULL) { 
-        fprintf(stderr, "Error: Invalid input in array_clear.\n");
+        fmt_fprintf(stderr, "Error: Invalid input in array_clear.\n");
         return;
     }
     vector_clear(arr->vec);
@@ -407,7 +408,7 @@ void array_clear(Array* arr) {
 
 void array_reverse(Array* arr) {
     if (arr == NULL || arr->vec == NULL) { 
-        fprintf(stderr, "Error: Invalid input in array_reverse.\n");
+        fmt_fprintf(stderr, "Error: Invalid input in array_reverse.\n");
         return;
     }
     if (arr->vec->size <= 1) {
@@ -420,7 +421,7 @@ void array_reverse(Array* arr) {
     // Allocate memory for the temporary storage
     char* temp = (char*)malloc(arr->vec->itemSize);
     if (!temp) {
-        fprintf(stderr, "Error: Memory allocation failed in array_reverse.\n");
+        fmt_fprintf(stderr, "Error: Memory allocation failed in array_reverse.\n");
         return; // Exit the function if memory allocation fails
     }
 
@@ -436,7 +437,7 @@ void array_reverse(Array* arr) {
 
 void array_sort(Array* arr, int (*compare)(const void*, const void*)) {
     if (arr == NULL || arr->vec == NULL || compare == NULL) {
-        fprintf(stderr, "Error: Invalid input in array_sort.\n");
+        fmt_fprintf(stderr, "Error: Invalid input in array_sort.\n");
         return;
     }
     if (arr->vec->size <= 1) {
@@ -448,7 +449,7 @@ void array_sort(Array* arr, int (*compare)(const void*, const void*)) {
 
 void array_copy(Array* dest, const Array* src) {
     if (src == NULL || dest == NULL) {
-        fprintf(stderr, "Error: One or both of them are null in array_copy.\n");
+        fmt_fprintf(stderr, "Error: One or both of them are null in array_copy.\n");
         return;
     }
     vector_resize(dest->vec, src->vec->size);

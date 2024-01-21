@@ -58,13 +58,11 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 ---
 
-## Example 1 : create Stack Obj and 'push_back' and get 'size'
+## Example 1 : create Stack Obj and `stack_push_back` and get `stack_size`
 
 ```c
 #include "stack/stack.h"
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "fmt/fmt.h"
 
 int main() {
     Stack* stack = stack_create(sizeof(int));
@@ -73,23 +71,21 @@ int main() {
     for (int i = 0; i < 5; i++) {
         stack->push(stack, &arr[i]);
     }
-    printf("Size of stack is %d\n", stack->size(stack));
+    fmt_printf("Size of stack is %d\n", stack->size(stack));
 
     stack->deallocate(stack);
     return 0;
 }
 ```
 
-
-## Example 2 : use 'top', 'pop' and 'empty' methods 
+## Example 2 : use `stack_top`, `stack_pop` and `stack_empty` methods 
 
  gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\vector\vector.c .\stack\stack.c
 
 ```c
 
 #include "stack/stack.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     Stack* stack = stack_create(sizeof(int));
@@ -98,19 +94,19 @@ int main() {
     for (int i = 0; i < 5; i++) {
         stack_push(stack, &arr[i]);
     }
-    printf("Size of stack is %zu\n", stack_size(stack));
+    fmt_printf("Size of stack is %zu\n", stack_size(stack));
 
     if (!stack_empty(stack)) {
         int topValue = *(int*)stack_top(stack);
-        printf("Top Element is %d\n", topValue);
+        fmt_printf("Top Element is %d\n", topValue);
 
         int pop = *(int*)stack_pop(stack);
-        printf("Pop value is %d\n", pop);
-        printf("After Pop size is %zu\n", stack_size(stack));
+        fmt_printf("Pop value is %d\n", pop);
+        fmt_printf("After Pop size is %zu\n", stack_size(stack));
     }
 
     stack_deallocate(stack);
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
@@ -120,8 +116,7 @@ int main() {
 ```c
 #include "stack/stack.h"
 #include "string/string.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     String* myString = string_create("");
@@ -139,57 +134,53 @@ int main() {
     string_append(myString, value3);
     stack_push(stack, &myString);
 
-    printf("Size of Stack is %zu\n", stack_size(stack));
+    fmt_printf("Size of Stack is %zu\n", stack_size(stack));
 
     String** str1 = (String**)stack_pop(stack);
-    printf("%s", string_c_str(*str1));
+    fmt_printf("%s", string_c_str(*str1));
 
     string_deallocate(*str1);
     stack_deallocate(stack);
     
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ## Example 4 : all relationals operators as methods in Stack 
 
 ```c
-
 #include "stack/stack.h"
 #include "string/string.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     Stack* stk1 = stack_create(sizeof(int));
     Stack* stk2 = stack_create(sizeof(int));
 
     if (stack_is_equal(stk1, stk2)) {
-        printf("stk1 is equal to stk2\n");
+        fmt_printf("stk1 is equal to stk2\n");
     }
     if (stack_is_less(stk1, stk2)) { 
-        printf("stk1 is less than stk2\n");
+        fmt_printf("stk1 is less than stk2\n");
     }
     if (stack_is_greater(stk1, stk2)) {
-        printf("stk1 is greater than stk2\n");
+        fmt_printf("stk1 is greater than stk2\n");
     }
     if (stack_is_less_or_equal(stk1, stk2)) {
-        printf("stk1 is less than or equal to stk2\n");
+        fmt_printf("stk1 is less than or equal to stk2\n");
     }
     if (stack_is_greater_or_equal(stk1, stk2)) { 
-        printf("stk1 is greater than or equal to stk2\n");
+        fmt_printf("stk1 is greater than or equal to stk2\n");
     }
     if (stack_is_not_equal(stk1, stk2)) { 
-        printf("stk1 is not equal to stk2\n");
+        fmt_printf("stk1 is not equal to stk2\n");
     }
     // Clean up the stacks...
     stack_deallocate(stk1);
     stack_deallocate(stk2);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ## Example 5 : Using Stack with String Objects for Expression Evaluation
@@ -198,8 +189,7 @@ This example demonstrates how to use the Stack and String libraries to evaluate 
 ```c
 #include "stack/stack.h"
 #include "string/string.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include <ctype.h>
 
 int performOperation(int op1, int op2, char operator) {
@@ -270,7 +260,7 @@ int main() {
     printf("Result: %d\n", result);
 
     string_deallocate(expr);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -280,8 +270,7 @@ This example shows how a stack of vectors can be used to implement a multi-level
 ```c
 #include "stack/stack.h"
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int x;
@@ -291,9 +280,9 @@ typedef struct {
 void printVector(Vector* vec) {
     for (size_t i = 0; i < vector_size(vec); i++) {
         Point* p = (Point*)vector_at(vec, i);
-        printf("(%d, %d) ", p->x, p->y);
+        fmt_printf("(%d, %d) ", p->x, p->y);
     }
-    printf("\n");
+    fmt_printf("\n");
 }
 
 int main() {
@@ -317,7 +306,7 @@ int main() {
     // Perform Undo
     Vector** currentState = (Vector**)stack_pop(history);
 
-    printf("Current State After Undo: ");
+    fmt_printf("Current State After Undo: ");
     printVector(*currentState);
 
     // Cleanup
@@ -325,9 +314,8 @@ int main() {
     vector_deallocate(state2);
     stack_deallocate(history);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ### Example 7 : Checking for Balanced Parentheses
@@ -336,9 +324,7 @@ The program will take an input string and use a stack to keep track of opening p
 ```c
 #include "stack/stack.h"
 #include "string/string.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#include "fmt/fmt.h"
 
 bool isBalanced(String* input) {
     Stack* stack = stack_create(sizeof(char));
@@ -378,10 +364,10 @@ int main() {
     String* str = string_create("{[()]}");
 
     if (isBalanced(str)) {
-        printf("The string %s is balanced.\n", str->dataStr);
+        fmt_printf("The string %s is balanced.\n", str->dataStr);
     }
     else {
-        printf("The string %s is not balanced.\n", str->dataStr);
+        fmt_printf("The string %s is not balanced.\n", str->dataStr);
     }
 
     string_deallocate(str);

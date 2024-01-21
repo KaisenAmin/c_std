@@ -55,7 +55,7 @@ This example demonstrates how to create a span from an array of integers and acc
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {1, 2, 3, 4, 5};
@@ -67,9 +67,9 @@ int main() {
     // Access elements in the span
     int* spanData = (int*)mySpan->data;
     for (size_t i = 0; i < arraySize; ++i) { 
-        printf("%d ", spanData[i]);
+        fmt_printf("%d ", spanData[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     // Clean up
     span_destroy(mySpan);
@@ -83,8 +83,7 @@ in this example a Vector of integers is created and populated
 ```c
 #include "vector/vector.h"
 #include "span/span.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector* intVector = vector_create(sizeof(int));
@@ -97,17 +96,17 @@ int main() {
     int* data = (int*) vector_data(intVector);
     Span* span = span_create(data, vector_size(intVector), sizeof(int));
 
-    printf("Elements in Span:\n");
+    fmt_printf("Elements in Span:\n");
     for (size_t i = 0; i < span_size(span) / sizeof(int); ++i) {
         int* value = (int*) span_at(span, i);
-        printf("%d ", *value);
+        fmt_printf("%d ", *value);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     span_destroy(span);
     vector_deallocate(intVector);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -115,7 +114,7 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     char *array[] = {"Vector", "String", "Map", "Csv", "Array"};
@@ -126,9 +125,9 @@ int main() {
     char** spanData = (char**)mySpan->data;
 
     for (size_t i = 0; i < arraySize; ++i) { 
-        printf("%s ", spanData[i]);
+        fmt_printf("%s ", spanData[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     // Clean up
     span_destroy(mySpan);
@@ -140,7 +139,7 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
@@ -152,8 +151,8 @@ int main() {
     int* lastElement = (int*)span_back(span);
 
     if (firstElement != NULL && lastElement != NULL) {
-        printf("First element: %d\n", *firstElement);
-        printf("Last element: %d\n", *lastElement);
+        fmt_printf("First element: %d\n", *firstElement);
+        fmt_printf("Last element: %d\n", *lastElement);
     }
 
     span_destroy(span);
@@ -165,7 +164,7 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     char* strings[] = {"Hello", "World", "Example", "C Programming"};
@@ -176,8 +175,8 @@ int main() {
     char** lastString = (char**)span_back(span);
 
     if (firstString != NULL && lastString != NULL) {
-        printf("First string: %s\n", *firstString);
-        printf("Last string: %s\n", *lastString);
+        fmt_printf("First string: %s\n", *firstString);
+        fmt_printf("Last string: %s\n", *lastString);
     }
 
     span_destroy(span);
@@ -189,7 +188,7 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {1, 2, 3, 4, 5};
@@ -197,19 +196,19 @@ int main() {
     Span* span = span_create(array, arraySize, sizeof(int));
 
     int* data = (int*)span_data(span);
-    printf("Original data: ");
+    fmt_printf("Original data: ");
     for (size_t i = 0; i < arraySize; ++i) { 
-        printf("%d ", data[i]);
+        fmt_printf("%d ", data[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
     data[0] = 10; // Modifying the first element
 
     const int* constData = (const int*)span_cdata(span);
-    printf("Modified data: ");
+    fmt_printf("Modified data: ");
     for (size_t i = 0; i < arraySize; ++i) { 
-        printf("%d ", constData[i]);
+        fmt_printf("%d ", constData[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     span_destroy(span);
     return 0;
@@ -220,16 +219,16 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Span* span = span_create(NULL, 0, 0); // Creating an empty span
 
     if (span_empty(span)) {
-        printf("Span is empty\n");
+        fmt_printf("Span is empty\n");
     }
     else { 
-        printf("Span is not empty\n");
+        fmt_printf("Span is not empty\n");
     }
 
     span_destroy(span);
@@ -242,26 +241,25 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span* span = span_create(array, arraySize, sizeof(int));
 
-    printf("Size of span in bytes: %zu\n", span_size_bits(span));
+    fmt_printf("Size of span in bytes: %zu\n", span_size_bits(span));
 
     span_destroy(span);
     return 0;
 }
-
 ```
 
 ## Example 9 : Using `span_first`
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
@@ -269,34 +267,33 @@ int main() {
     Span *span = span_create(array, arraySize, sizeof(int));
 
     Span firstThree = span_first(span, 3);
-    printf("First three elements: ");
+    fmt_printf("First three elements: ");
     for (size_t i = 0; i < firstThree.size / sizeof(int); ++i) { 
-        printf("%d ", ((int*)firstThree.data)[i]);
+        fmt_printf("%d ", ((int*)firstThree.data)[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
     
     span_destroy(span);
     return 0;
 }
-
 ```
 
 ## Example 10 : Using `span_last`
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span *span = span_create(array, 5, sizeof(int));
 
     Span lastTwo = span_last(span, 2);
-    printf("Last two elements: ");
+    fmt_printf("Last two elements: ");
     for (size_t i = 0; i < lastTwo.size / sizeof(int); ++i) { 
-        printf("%d ", ((int*)lastTwo.data)[i]);
+        fmt_printf("%d ", ((int*)lastTwo.data)[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
     
     span_destroy(span);
     return 0;
@@ -308,18 +305,18 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span *span = span_create(array, 5, sizeof(int));
 
     Span middleSpan = span_subspan(span, 1, 3);
-    printf("Middle three elements: ");
+    fmt_printf("Middle three elements: ");
     for (size_t i = 0; i < middleSpan.size / sizeof(int); ++i) { 
-        printf("%d ", ((int*)middleSpan.data)[i]);
+        fmt_printf("%d ", ((int*)middleSpan.data)[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
     
     span_destroy(span);
     return 0;
@@ -330,7 +327,7 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array1[] = {1, 2, 3, 4, 5};
@@ -339,12 +336,12 @@ int main() {
     Span* span1 = span_create(array1, 5, sizeof(int));
     Span* span2 = span_create(array2, 5, sizeof(int));
 
-    printf("Span1 is equal to Span2: %s\n", span_is_equal(span1, span2) ? "true" : "false");
-    printf("Span1 is less than Span2: %s\n", span_is_less(span1, span2) ? "true" : "false");
-    printf("Span1 is greater than Span2: %s\n", span_is_greater(span1, span2) ? "true" : "false");
-    printf("Span1 is not equal to Span2: %s\n", span_is_not_equal(span1, span2) ? "true" : "false");
-    printf("Span1 is greater or equal to Span2: %s\n", span_is_greater_or_equal(span1, span2) ? "true" : "false");
-    printf("Span1 is less or equal to Span2: %s\n", span_is_less_or_equal(span1, span2) ? "true" : "false");
+    fmt_printf("Span1 is equal to Span2: %s\n", span_is_equal(span1, span2) ? "true" : "false");
+    fmt_printf("Span1 is less than Span2: %s\n", span_is_less(span1, span2) ? "true" : "false");
+    fmt_printf("Span1 is greater than Span2: %s\n", span_is_greater(span1, span2) ? "true" : "false");
+    fmt_printf("Span1 is not equal to Span2: %s\n", span_is_not_equal(span1, span2) ? "true" : "false");
+    fmt_printf("Span1 is greater or equal to Span2: %s\n", span_is_greater_or_equal(span1, span2) ? "true" : "false");
+    fmt_printf("Span1 is less or equal to Span2: %s\n", span_is_less_or_equal(span1, span2) ? "true" : "false");
 
     span_destroy(span1);
     span_destroy(span2);
@@ -357,7 +354,7 @@ int main() {
 
 ```c
 #include "span/span.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
@@ -365,17 +362,17 @@ int main() {
 
     for (int* ptr = span_begin(span); ptr != span_end(span); ptr = span_increment(span, ptr)) {
         if (ptr) {
-            printf("%d ", *ptr);
+            fmt_printf("%d ", *ptr);
         }
     }
-    printf("\n");
+    fmt_printf("\n");
 
     for (int* ptr = span_rbegin(span); ptr != span_rend(span); ptr = (int*)span_decrement(span, ptr)) {
         if (ptr) {
-            printf("%d ", *ptr);
+            fmt_printf("%d ", *ptr);
         }
     }
-    printf("\n");
+    fmt_printf("\n");
 
     span_destroy(span);
     return 0;

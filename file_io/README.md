@@ -378,3 +378,105 @@ int main() {
     return 0;
 }
 ```
+
+## Example 14 : how to reade from file in `FileReader` with `file_reader_open` and `file_reader_read`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+
+int main() {
+    FileReader* reader = file_reader_open("./sources/text_uni.txt", READ_UNICODE);
+    char buffer[1024] = {0};
+    size_t read = file_reader_read(buffer, sizeof(char), sizeof(buffer) - 1, reader);
+
+    if (read > 0) {
+        fmt_printf("Read %zu bytes from Unicode file.\n", read);
+        fmt_printf("Content:\n%s\n", buffer);
+    } 
+    else {
+        fmt_printf("No data read from the file.\n");
+    }
+
+    file_reader_close(reader);
+    return 0;
+}
+```
+
+## Example 15 : how to read line by line in `FileReader` with `file_reader_read_line`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+
+int main() {
+    FileReader* reader = file_reader_open("./sources/text_uni.txt", READ_UNICODE);
+    char buffer[1024];
+    
+    while (file_reader_read_line(buffer, sizeof(buffer), reader)) {
+        fmt_printf("Line: %s\n", buffer);
+    }
+
+    file_reader_close(reader);
+    return 0;
+}
+```
+
+## Example 16 : how to read line as formated text in `FileReader` with `file_reader_read_fmt`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+
+int main() {
+    FileReader* reader = file_reader_open("./sources/text_uni.txt", READ_UNICODE);
+    int intValue;
+    double doubleValue;
+    char strValue[100];
+
+    // Assuming the file contains a line formatted like "int: %d, double: %lf, string: %s"
+    size_t itemsRead = file_reader_read_fmt(reader, "int: %d, double: %lf, string: %99s", &intValue, &doubleValue, strValue);
+    if (itemsRead > 0) {
+        fmt_printf("Read values: int = %d, double = %lf, string = %s\n", intValue, doubleValue, strValue);
+    } 
+    else {
+        fmt_printf("Failed to read formatted data from file.\n");
+    }
+
+    file_reader_close(reader);
+    return 0;
+}
+```
+
+## Example : how to read number of lines from file in `FileReader` with `file_reader_read_lines`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    FileReader* reader = file_reader_open("./sources/text_uni.txt", READ_UNICODE);
+    if (!reader) {
+        fmt_printf("Failed to open file.\n");
+        return -1;
+    }
+
+    char** lines;
+    size_t num_lines = 5; // Number of lines to read
+
+    if (file_reader_read_lines(reader, &lines, num_lines)) {
+        for (size_t i = 0; i < num_lines; ++i) {
+            fmt_printf("Line %zu: %s\n", i + 1, lines[i]);
+            free(lines[i]); // Free each line
+        }
+        free(lines); // Free the array of lines
+    } 
+    else {
+        fmt_printf("Failed to read lines.\n");
+    }
+
+    file_reader_close(reader);
+    return 0;
+}
+```

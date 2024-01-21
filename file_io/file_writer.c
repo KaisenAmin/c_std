@@ -59,6 +59,11 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
         break;
     default:
         fprintf(stdout, "Warning: Not Valid mode for writing in file_writer_open i initialize default mode that is 'w'.\n");
+        #if defined(_WIN32) || defined(_WIN64)
+        modeStr = "w, ccs=UTF-8";
+        #else
+        modeStr = "w";
+        #endif 
         break;
     }
 
@@ -88,7 +93,7 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     }
     writer->mode = mode;
     writer->is_open = true;
-    writer->encoding = ENCODING_UTF16;
+    writer->encoding = WRITE_ENCODING_UTF16;
     writer->file_path = string_strdup(dir_absolute_file_path(filename));
     return writer;
 }
@@ -166,14 +171,13 @@ FileWriter *file_writer_append(const char *filename, const WriteMode mode) {
     }
     writer->mode = mode;
     writer->is_open = true;
-    writer->encoding = ENCODING_UTF16;
+    writer->encoding = WRITE_ENCODING_UTF16;
     writer->file_path = string_strdup(dir_absolute_file_path(filename));
 
     return writer;
 }
 
-bool file_writer_close(FileWriter *writer)
-{
+bool file_writer_close(FileWriter *writer) {
     if (writer->file_writer == NULL) {
         fprintf(stdout, "Warning: Right now the file is NULL no need to close it in file_writer_close.\n");
         return false;
@@ -186,8 +190,7 @@ bool file_writer_close(FileWriter *writer)
     return true;
 }
 
-size_t file_writer_get_position(FileWriter *writer)
-{
+size_t file_writer_get_position(FileWriter *writer) {
     if (writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_position.\n");
         return (size_t)-1;
@@ -210,7 +213,7 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
     size_t written = 0;
 
     switch (writer->encoding) {
-        case ENCODING_UTF32: {
+        case WRITE_ENCODING_UTF32: {
             // Convert UTF-8 to UTF-32 and then write
             uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size * count);
             if (!utf32Buffer) {
@@ -223,16 +226,22 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
         }
 
         default: // Default case is ENCODING_UTF16
-        case ENCODING_UTF16: {
+        case WRITE_ENCODING_UTF16: {
             #if defined(_WIN32) || defined(_WIN64)
             // On Windows, UTF-16 is native, so use your UTF-8 to wchar_t conversion
-            wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
-            if (!wBuffer) {
-                fprintf(stderr, "Error: Conversion to wchar_t failed in file_writer_write.\n");
-                return 0;
+            if (writer->mode == WRITE_UNICODE || writer->mode == WRITE_APPEND) {
+                wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
+                if (!wBuffer) {
+                    fprintf(stderr, "Error: Conversion to wchar_t failed in file_writer_write.\n");
+                    return 0;
+                }
+                written = fwrite(wBuffer, sizeof(wchar_t), wcslen(wBuffer), writer->file_writer);
+                free(wBuffer);
             }
-            written = fwrite(wBuffer, sizeof(wchar_t), wcslen(wBuffer), writer->file_writer);
-            free(wBuffer);
+            else if (writer->mode == WRITE_TEXT || writer->mode == WRITE_BINARY || writer->mode == WRITE_BUFFERED || writer->mode == WRITE_UNBUFFERED) {
+                written = fwrite(buffer, size, count, writer->file_writer);
+                break;
+            }
             #else
             // On other systems, convert UTF-8 to UTF-16 and then write
             uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size * count);
@@ -305,8 +314,12 @@ bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
 }
 
 bool file_writer_is_open(FileWriter* writer) {
+    if (!writer) {
+        fprintf(stderr, "Error: FileWriter pointer is NULL in file_writer_is_open.\n");
+        return false;
+    }
     if (writer->file_writer == NULL) {
-        fprintf(stderr, "Error: FileWriter object is NULL and its not open.\n");
+        fprintf(stderr, "Error: FileWriter object is NULL and its not open in file_writer_is_open.\n");
         return false;
     }
     return writer->is_open;
@@ -331,12 +344,12 @@ bool file_writer_flush(FileWriter* writer) {
 }
 
 // Set the character encoding for writing to the file.
-bool file_writer_set_encoding(FileWriter* writer, const EncodingType encoding) {
+bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: Filewriter object is invalid or NULL in file_writer_set_encoding.\n");
         return false;
     }
-    if (!(encoding >= ENCODING_UTF16 && encoding <= ENCODING_UTF32)) {
+    if (!(encoding >= WRITE_ENCODING_UTF16 && encoding <= WRITE_ENCODING_UTF32)) {
         fprintf(stderr, "Error: Encoding type is Invalid in file_writer_set_encoding.\n");
         return false;
     }
@@ -405,17 +418,17 @@ const char* file_writer_get_encoding(FileWriter *writer) {
         return NULL;
     }
 
-    if (!(writer->encoding >= ENCODING_UTF16 && writer->encoding <= ENCODING_UTF32)) {
+    if (!(writer->encoding >= WRITE_ENCODING_UTF16 && writer->encoding <= WRITE_ENCODING_UTF32)) {
         fprintf(stderr, "Error: Encoding type is Invalid in file_writer_get_encoding.\n");
         return NULL;
     }
 
     char *encoding = NULL;
     switch (writer->encoding){
-        case ENCODING_UTF16:
+        case WRITE_ENCODING_UTF16:
             encoding = string_strdup("ENCODING_UTF16");
             break;
-        case ENCODING_UTF32:
+        case WRITE_ENCODING_UTF32:
             encoding = string_strdup("ENCODING_UTF32");
             break;
     }
@@ -452,12 +465,16 @@ size_t file_writer_get_size(FileWriter* writer) {
         fprintf(stderr, "Error: Failed in flushing the data in file_writer_get_size.\n");
         return 0;
     }
-    size_t current_positon = file_writer_get_position(writer);
-    fseek(writer->file_writer, 0, SEEK_END);
+    size_t current_position = file_writer_get_position(writer);
+    if (fseek(writer->file_writer, 0, SEEK_END) != 0) {
+        fprintf(stderr, "Error: fseek failed to seek to end of file in file_writer_get_size.\n");
+        return 0;
+    }
 
     size_t size = file_writer_get_position(writer);
-    fseek(writer->file_writer, current_positon, SEEK_SET);
-
+    if (fseek(writer->file_writer, current_position, SEEK_SET) != 0) {
+        fprintf(stderr, "Error: fseek failed to return to original position in file_writer_get_position.\n");
+    }
     return size;
 }
 
@@ -601,7 +618,7 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
 
         // Convert buffer based on encoding
         switch (writer->encoding) {
-            case ENCODING_UTF32: {
+            case WRITE_ENCODING_UTF32: {
                 uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size);
                 if (!utf32Buffer) {
                     fprintf(stderr, "Error: Conversion to UTF-32 failed in file_writer_write_batch.\n");
@@ -612,7 +629,7 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
                 break;
             }
             default: // Default case is ENCODING_UTF16
-            case ENCODING_UTF16: {
+            case WRITE_ENCODING_UTF16: {
                 #if defined(_WIN32) || defined(_WIN64)
                 wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
                 if (!wBuffer) {

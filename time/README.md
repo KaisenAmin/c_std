@@ -54,16 +54,15 @@ To test the functionality of your `Time` library, you can create a series of exa
 
 ## Example 1: `time_create` and `time_to_string`
 ```c
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "time/time.h"
+#include <stdlib.h>
 
-int main ()
-{
+int main () {
     Time* t1 = time_create(14, 30, 45, 500);
     char* str1 = time_to_string(t1);
     
-    printf("Time create and to string: %s\n", str1);
+    fmt_printf("Time create and to string: %s\n", str1);
 
     free(str1);
     time_deallocate(t1);
@@ -74,17 +73,16 @@ int main ()
 
 ## Example 2 : Testing `time_add_msecs`
 ```c
-#include <stdio.h>
 #include <stdlib.h>
 #include "time/time.h"
+#include "fmt/fmt.h"
 
-int main()
-{
+int main() {
     Time *t2 = time_create(23, 59, 59, 500);
     time_add_msecs(t2, 1500); // Adds 1.5 seconds
 
     char *str2 = time_to_string(t2);
-    printf("Add milliseconds: %s\n", str2);
+    fmt_printf("Add milliseconds: %s\n", str2);
 
     free(str2);
     time_deallocate(t2);
@@ -94,17 +92,16 @@ int main()
 
 ## Example 3 :Testing `time_add_secs`
 ```c
-#include <stdio.h>
 #include <stdlib.h>
 #include "time/time.h"
+#include "fmt/fmt.h"
 
-int main()
-{
+int main() {
     Time *t3 = time_create(1, 2, 3, 0);
     time_add_secs(t3, 3600); // Adds 1 hour
 
     char *str3 = time_to_string(t3);
-    printf("Add seconds: %s\n", str3);
+    fmt_printf("Add seconds: %s\n", str3);
     
     free(str3);
     time_deallocate(t3);
@@ -114,16 +111,15 @@ int main()
 
 ## Example 4: Testing `time_current_time`
 ```c
-#include <stdio.h>
 #include <stdlib.h>
 #include "time/time.h"
+#include "fmt/fmt.h"
 
-int main()
-{
+int main() {
     Time *t4 = time_current_time();
     char *str4 = time_to_string(t4);
 
-    printf("Current time: %s\n", str4);
+    fmt_printf("Current time: %s\n", str4);
     
     free(str4);
     time_deallocate(t4);
@@ -133,14 +129,12 @@ int main()
 
 ## Example 5: Testing `time_msecs_since_start_of_day`
 ```c
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "time/time.h"
 
-int main()
-{
+int main() {
     int msecs = time_msecs_since_start_of_day();
-    printf("Milliseconds since start of day: %d\n", msecs);
+    fmt_printf("Milliseconds since start of day: %d\n", msecs);
     
     return 0;
 }   
@@ -148,56 +142,46 @@ int main()
 
 ## Example 6: Testing `time_msecs_to`
 ```c
-#include <stdio.h>
-#include <stdlib.h>
 #include "time/time.h"
+#include "fmt/fmt.h"
 
-int main()
-{
+int main() {
     Time t5 = {10, 0, 0, 0};
     Time t6 = {11, 0, 0, 0};
     int diffMsecs = time_msecs_to(&t5, &t6);
 
-    printf("Milliseconds difference: %d\n", diffMsecs);
-    
-    time_deallocate(t5);
-    time_deallocate(t6);
+    fmt_printf("Milliseconds difference: %d\n", diffMsecs);
+
     return 0;
 }
 ```
 
 ## Example 7: Testing `time_secs_to`
 ```c
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "time/time.h"
 
-int main()
-{
+int main() {
     Time t7 = {10, 0, 0, 0};
     Time t8 = {11, 0, 0, 0};
     int diffSecs = time_secs_to(&t7, &t8);
     
-    printf("Seconds difference: %d\n", diffSecs);
-    
-    time_deallocate(t7);
-    time_deallocate(t8);
+    fmt_printf("Seconds difference: %d\n", diffSecs);
+
     return 0;
 }   
 ```
 
 ## Example 8: Testing `time_is_equal`
 ```c
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "time/time.h"
 
-int main()
-{
+int main() {
     Time *t9 = time_create(12, 0, 0, 0);
     Time *t10 = time_create(12, 0, 0, 0);
     
-    printf("Times are equal: %s\n", time_is_equal(t9, t10) ? "true" : "false");
+    fmt_printf("Times are equal: %s\n", time_is_equal(t9, t10) ? "true" : "false");
 
     time_deallocate(t9);
     time_deallocate(t10);
@@ -207,17 +191,15 @@ int main()
 
 ## Example 9: Testing `time_is_greater_than` and `time_is_less_than`
 ```c
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "time/time.h"
 
-int main()
-{
+int main() {
     Time *t11 = time_create(14, 0, 0, 0);
     Time *t12 = time_create(15, 0, 0, 0);
 
-    printf("Time t11 is less than t12: %s\n", time_is_less_than(t11, t12) ? "true" : "false");
-    printf("Time t12 is greater than t11: %s\n", time_is_greater_than(t12, t11) ? "true" : "false");
+    fmt_printf("Time t11 is less than t12: %s\n", time_is_less_than(t11, t12) ? "true" : "false");
+    fmt_printf("Time t12 is greater than t11: %s\n", time_is_greater_than(t12, t11) ? "true" : "false");
     
     time_deallocate(t11);
     time_deallocate(t12);
@@ -227,15 +209,14 @@ int main()
 
 ## Example 10: Testing `time_from_msecs_since_start_of_day`
 ```c
-#include <stdio.h>
 #include <stdlib.h>
 #include "time/time.h"
+#include "fmt/fmt.h"
 
-int main()
-{
+int main() {
     Time *t13 = time_from_msecs_since_start_of_day(45000000); // Arbitrary milliseconds
     char *str13 = time_to_string(t13);
-    printf("Time from msecs since start of day: %s\n", str13);
+    fmt_printf("Time from msecs since start of day: %s\n", str13);
     
     free(str13);
     time_deallocate(t13);

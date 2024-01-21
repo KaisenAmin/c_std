@@ -210,7 +210,7 @@ int main() {
 }
 ```
 
-## Example 8 : how much fmt_printf is fast ? 
+## Example 8 : how much `fmt_printf` is fast ? 
 
 ```c
 #include "fmt/fmt.h"
@@ -333,4 +333,117 @@ int main() {
     return 0;
 }
 
+```
+
+## Example 13 : how to write stream with `fmt_fprint`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+
+int main() {
+    FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
+    if (!writer || !writer->file_writer) {
+        fprintf(stderr, "Failed to open file.\n");
+        return -1;
+    }
+
+    fmt_fprint(writer->file_writer, "This is text in a file", FMT_END_ARGS);
+    fmt_fprint(stdout, "Hello, World! ", "こんにちは ", "سلام دنیا", FMT_END_ARGS);
+    fmt_fprint(stderr, "This is an error message on stderr", FMT_END_ARGS);
+
+    file_writer_close(writer);
+    return 0;
+}
+```
+
+## Example 14 : how to write on stream with `fmt_fprintln`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+
+int main() {
+    FileWriter* writer = file_writer_open("./sources/output.txt", WRITE_TEXT);
+    if (!writer || !writer->file_writer) {
+        fmt_fprintf(stderr, "Failed to open file.\n");
+        return -1;
+    }
+
+    fmt_fprintln(writer->file_writer, "This is a line in a file", FMT_END_ARGS);
+    fmt_fprintln(stdout, "This is a line on stdout", FMT_END_ARGS);
+    fmt_fprintln(stderr, "This is a line on stderr", FMT_END_ARGS);
+
+    file_writer_close(writer);
+    return 0;
+}
+
+```
+
+## Example 15 : how to write formatted text to file with `fmt_fprintf`
+
+```c
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+
+
+int main() {
+    FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
+    const char* name = "Amin";
+    int age = 27;
+
+    int bytes_written = fmt_fprintf(writer->file_writer, "%s is %d years old.\n", name, age);
+    if (bytes_written < 0) {
+        fprintf(stderr, "Error occurred during writing with fmt_fprintf.\n");
+    }
+    else {
+        printf("%d bytes written.\n", bytes_written);
+    }
+
+    file_writer_close(writer);
+    return 0;
+}
+```
+
+## Example 16 : writing error messatge in stderr using `fmt_fprintf`
+
+```c
+#include "fmt/fmt.h"
+
+int main() {
+    int errorCode = 404;
+    const char* errorMessage = "Not Found";
+
+    // Write the error message to stderr
+    int bytes_written = fmt_fprintf(stderr, "Error %d: %s\n", errorCode, errorMessage);
+    if (bytes_written < 0) {
+        fprintf(stderr, "Error occurred during writing to stderr.\n");
+    } 
+    else {
+        printf("%d bytes written to stderr.\n", bytes_written);
+    }
+
+    return 0;
+}
+```
+
+## Example 17 : Writing message in console using `stdout` and `fmt_fprintf`
+
+```c
+#include "fmt/fmt.h"
+
+int main() {
+    const char* name = "Amin";
+    int age = 27;
+
+    int bytes_written = fmt_fprintf(stdout, "%s is %d years old.\n", name, age); 
+    if (bytes_written < 0) {
+        fprintf(stderr, "Error occurred during writing with fmt_fprintf.\n");
+    }
+    else {
+        printf("%d bytes written.\n", bytes_written);
+    }
+
+    return 0;
+}
 ```

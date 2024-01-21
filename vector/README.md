@@ -91,8 +91,7 @@ This library is distributed under the GNU General Public License v3.0, which all
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector* intVector = vector_create(sizeof(int));
@@ -102,23 +101,20 @@ int main() {
     // Iterate over the vector
     for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*)vector_at(intVector, i);
-        printf("%d\n", *item);
+        fmt_printf("%d\n", *item);
     }
 
     // Cleanup
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
 ```
 
 ### Example 2: Strings
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector* stringVector = vector_create(sizeof(char*));
@@ -129,22 +125,20 @@ int main() {
     // Iterate over the vector
     for (size_t i = 0; i < vector_size(stringVector); ++i) {
         char** item = (char**)vector_at(stringVector, i);
-        printf("%s\n", *item);
+        fmt_printf("%s\n", *item);
     }
 
     // Cleanup
     vector_deallocate(stringVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ### Example 3: User-Defined Structures
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -161,22 +155,19 @@ int main() {
     // Iterate over the vector
     for (size_t i = 0; i < vector_size(structVector); ++i) {
         MyStruct* item = (MyStruct*)vector_at(structVector, i);
-        printf("ID: %d, Value: %.2f\n", item->id, item->value);
+        fmt_printf("ID: %d, Value: %.2f\n", item->id, item->value);
     }
 
     vector_deallocate(structVector);   
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ### Example 4: Use relational operators
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector* vec1 = vector_create(sizeof(int));
@@ -208,18 +199,15 @@ int main() {
     vector_deallocate(vec1);
     vector_deallocate(vec2);
         
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ## Example 5: Use at and char*
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -231,7 +219,7 @@ int main() {
 
     for (size_t i = 0; i < (vector_size(intVector)); ++i) {
         int* item = (int*)vector_at(intVector, i);
-        printf("%d\n", *item);
+        fmt_printf("%d\n", *item);
     }
 
     Vector *stringVector = vector_create(sizeof(char*));
@@ -245,7 +233,7 @@ int main() {
 
     for (size_t i = 0; i < vector_size(stringVector); ++i) {
         char **item = (char**) vector_at(stringVector, i);
-        printf("%s\n", *item);
+        fmt_printf("%s\n", *item);
     }
 
     vector_clear(intVector);
@@ -253,17 +241,14 @@ int main() {
     vector_clear(stringVector);
     vector_deallocate(stringVector);
     
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 ## Example 6: how to use 'swap'
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *vector1 = vector_create(sizeof(int));
@@ -279,33 +264,30 @@ int main() {
 
     vector_swap(vector1, vector2);
 
-    printf("Contents of vector1 after swap:\n");
+    fmt_println("Contents of vector1 after swap:", FMT_END_ARGS);
     for (size_t i = 0; i < vector_size(vector1); ++i) {
         int* item = (int*) vector_at(vector1, i);
-        printf("%d\n", *item);
+        fmt_printf("%d\n", *item);
     }
 
-    printf("Contents of vector2 after swap:\n");
+    fmt_println("Contents of vector2 after swap:", FMT_END_ARGS);
     for (size_t i = 0; i < vector_size(vector2); ++i) {
         int* item = (int*)vector_at(vector2, i);
-        printf("%d\n", *item);
+        fmt_printf("%d\n", *item);
     }
 
     vector_deallocate(vector1);
-    vector_deallocate(vector2);
-                
-    return EXIT_SUCCESS;
+    vector_deallocate(vector2);   
+    return 0;
 }
-
 
 ```
 
-## Example 6: how to use 'pop_back' 
+## Example 7: how to use `vector_pop_back`
 
 ```c 
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() 
 {   
@@ -319,22 +301,19 @@ int main()
     // Pop the last element and access it
     int *poppedItem = (int *)vector_pop_back(intVector);
     if (poppedItem) {
-        printf("Popped item: %d\n", *poppedItem);
+        fmt_printf("Popped item: %d\n", *poppedItem);
     }
 
     vector_deallocate(intVector);       
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 7: how to use 'front' 
+## Example 8: how to use `vector_front`
 
 ```c 
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -346,22 +325,19 @@ int main() {
 
     int *frontItem = (int *)vector_front(intVector);
     if (frontItem) {
-        printf("First item: %d\n", *frontItem);
+        fmt_printf("First item: %d\n", *frontItem);
     }
 
     vector_deallocate(intVector);        
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
 ```
 
-## Example 8: how to use 'back'
+## Example 9: how to use `vector_back`
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -373,20 +349,18 @@ int main() {
 
     int *backItem = (int *)vector_back(intVector);
     if (backItem) { 
-        printf("Last item: %d\n", *backItem);
+        fmt_printf("Last item: %d\n", *backItem);
     }
 
     vector_deallocate(intVector);        
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 9: use 'data' Returns pointer to the underlying array serving as element storage
+## Example 10: use `vector_data` Returns pointer to the underlying array serving as element storage
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -400,23 +374,20 @@ int main() {
     int *data = (int *)vector_data(intVector);
     if (data){
         for (size_t i = 0; i < vector_size(intVector); ++i) { 
-            printf("Item %zu: %d\n", i, data[i]);
+            fmt_printf("Item %zu: %d\n", i, data[i]);
         }
     }
         
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
 ```
 
-## Example 10: 'begin', 'end' Return pointer to the first and last element
+## Example 11: `vector_begin`, `vector_end` Return pointer to the first and last element
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -427,21 +398,19 @@ int main() {
     }
     // Using begin and end to iterate over the vector
     for (int *it = (int *)vector_begin(intVector); it != (int *)vector_end(intVector); ++it) { 
-        printf("%d\n", *it);
+        fmt_printf("%d\n", *it);
     }
         
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 11: 'cbegin', 'cend' Return const pointer to first and last element
+## Example 12: `vector_cbegin`, `vector_cend` Return const pointer to first and last element
 
 ```c 
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -452,20 +421,18 @@ int main() {
     }
     // Using cbegin and cend for read-only iteration over the vector
     for (const int *it = (const int *)vector_cbegin(intVector); it != (const int *)vector_cend(intVector); ++it) {
-        printf("%d\n", *it);
+        fmt_printf("%d\n", *it);
     }
         
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 12 : 'crbegin', 'crend' Return reverse read-only iteration over the vector
+## Example 13 : `vector_crbegin`, `vector_crend` Return reverse read-only iteration over the vector
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -476,22 +443,19 @@ int main() {
     }
     // Using crbegin and crend for reverse read-only iteration over the vector
     for (const int *it = (const int *)vector_crbegin(intVector); it != (const int *)vector_crend(intVector); --it) {
-        printf("%d\n", *it);
+        fmt_printf("%d\n", *it);
     }
         
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
-
 ```
 
-## Example 13: Using 'rbegin' and 'rend' for reverse iteration over the vector
+## Example 14: Using `vector_rbegin` and `vector_rend` for reverse iteration over the vector
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -502,21 +466,19 @@ int main() {
     }
     // Using rbegin and rend for reverse iteration over the vector
     for (int *it = (int *)vector_rbegin(intVector); it != (int *)vector_rend(intVector); --it) { 
-        printf("%d\n", *it);
+        fmt_printf("%d\n", *it);
     }
 
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 14: 'insert' New element to vector 
+## Example 15: `vector_insert` New element to vector 
 
 ```c 
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -532,22 +494,19 @@ int main() {
     
     for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
-        printf("%d\n", *item);
+        fmt_printf("%d\n", *item);
     }
 
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 15: 'erase' element from vector
+## Example 16: `vector_erase` element from vector
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {   
     Vector *intVector = vector_create(sizeof(int));
@@ -561,21 +520,19 @@ int main() {
 
     for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
-        printf("%d\n", *item);
+        fmt_printf("%d\n", *item);
     }
 
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 16: 'reserve'
+## Example 17: `vector_reserve`
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *intVector = vector_create(sizeof(int));
@@ -586,21 +543,18 @@ int main() {
         int value = i * 10;
         vector_push_back(intVector, &value);
     }
-    printf("Vector size: %zu, Vector capacity: %zu\n", vector_size(intVector), vector_capacity(intVector));
+    fmt_printf("Vector size: %zu, Vector capacity: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 17: 'resize' 
+## Example 18: resize size of the vector with `vector_resize` 
 
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *intVector = vector_create(sizeof(int));
@@ -631,19 +585,15 @@ int main() {
     vector_clear(intVector);
     vector_deallocate(intVector);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 18 : 'shrink_to_fit' fixed capacity
+## Example 19 : `vector_shrink_to_fit` fixed capacity
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *intVector = vector_create(sizeof(int));
@@ -663,19 +613,15 @@ int main() {
     printf("Size after shrink_to_fit: %zu, Capacity after shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     vector_deallocate(intVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 19 : use 'emplace' and 'emplace_back' insert new element at positin and at the end of 
+## Example 20 : use `vector_emplace` and `vector_emplace_back` insert new element at positin and at the end of 
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *stringVector = vector_create(sizeof(char*));
@@ -700,19 +646,16 @@ int main() {
     }
 
     vector_deallocate(stringVector);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-## Example 20 : how to use 'String' object in Vector
+## Example 21 : how to use `String` object in Vector
 
 ```c
-
 #include "string/string.h"
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector* vec = vector_create(sizeof(String*));
@@ -728,7 +671,7 @@ int main() {
     for (size_t i = 0; i < vector_size(vec); ++i) {
         strPtr = (String**) vector_at(vec, i);
         if (strPtr && *strPtr) {
-            printf("%s\n", (*strPtr)->dataStr); 
+            fmt_printf("%s\n", (*strPtr)->dataStr); 
         }
     }
 
@@ -739,19 +682,13 @@ int main() {
     vector_deallocate(vec);
     return 0;
 }
-
 ```
 
-## Example 21 : how to use relationals operators in Vector 
+## Example 22 : how to use relationals operators in `Vector` 
 
 ```c
-
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#define NUM_ELEMENTS 100000000
+#include "fmt/fmt.h"
 
 int main() {
     Vector *vector1 = vector_create(sizeof(int));
@@ -766,91 +703,23 @@ int main() {
     vector_push_back(vector2, &value4);
     
     if (vector_is_equal(vector1, vector2)) {
-        printf("Vector1 is equal with Vector2\n");
+        fmt_printf("Vector1 is equal with Vector2\n");
     }
     if (vector_is_less(vector1, vector2)) {
-        printf("Vector1 is less than Vector2\n");
+        fmt_printf("Vector1 is less than Vector2\n");
     }
     if (vector_is_greater(vector1, vector2)) {
-        printf("Vector1 is greater than Vector2\n");
+        fmt_printf("Vector1 is greater than Vector2\n");
     }
 
     vector_deallocate(vector1);
     vector_deallocate(vector2);
 
-    return EXIT_SUCCESS;
-}
-
-```
-
-## Example 22 : bench 
-
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c
-Average Custom Vector Time: 0.008564 seconds
-
-```c 
-
-#include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#define NUM_ELEMENTS 100000000
-
-int main() {
-    struct timespec start, end;
-    double time_sum = 0;
-    Vector* vec = vector_create(sizeof(int));
-
-    clock_gettime(CLOCK_MONOTONIC, &start);
-
-    for (int i = 0; i < NUM_ELEMENTS; i++) {
-        vector_push_back(vec, &i);
-    }
-        
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-
-    double average_time = time_sum / NUM_ITERATIONS;
-    printf("Average Custom Vector Time: %f seconds\n", average_time);
-
-    vector_deallocate(vec);
-    return EXIT_SUCCESS;
-}
-
-
-```
-
-and in c++ 
-g++ -std=c++14 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.cpp
-std::vector Time: 0.344828 seconds
-
-```c
-#include <iostream>
-#include <vector>
-#include <chrono>
-
-#define NUM_ELEMENTS 100000000
-
-int main() {
-    std::vector<int> vec;
-    auto start = std::chrono::high_resolution_clock::now();
-    
-    for (int i = 0; i < NUM_ELEMENTS; i++) {
-        vec.push_back(i);
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_spent = end - start;
-
-    std::cout << "std::vector Time: " << time_spent.count() << " seconds\n";
-
     return 0;
 }
-
 ```
 
-### Example 23 : how to use vector_begin and vector_end with String Object 
+### Example 23 : how to use `vector_begin` and `vector_end` with String Object 
 
 just you should now we can do this in lots of way by String ..
 also don't use printf in loop because it is not optimal.
@@ -865,7 +734,7 @@ Time taken: 0.000010 seconds
 ```c
 #include "string/string.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <time.h>
 
 int main() {
@@ -903,13 +772,12 @@ int main() {
     clock_gettime(CLOCK_MONOTONIC, &end);
     time_elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf("%s", string_c_str(concat));
-    printf("Time taken: %f seconds\n", time_elapsed);
+    fmt_printf("%s", string_c_str(concat));
+    fmt_printf("Time taken: %f seconds\n", time_elapsed);
 
     string_deallocate(concat);
     return 0;
 }
-
 ```
 
 also result in Cpp 
@@ -954,8 +822,7 @@ int main() {
 This example creates a two-dimensional vector, where each element of the main vector is another vector. This can be useful for matrix-like structures or grid representations.
 ```c
 #include "vector/vector.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     // Create a vector of vectors (2D vector)
@@ -976,9 +843,9 @@ int main() {
 
         for (size_t j = 0; j < vector_size(subVec); j++) {
             int* valPtr = (int*)vector_at(subVec, j);
-            printf("%d ", *valPtr);
+            fmt_printf("%d ", *valPtr);
         }
-        printf("\n");
+        fmt_printf("\n");
     }
 
     // Cleanup
@@ -988,7 +855,7 @@ int main() {
     }
     
     vector_deallocate(vec2D);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -998,13 +865,11 @@ This example demonstrates how to use the Vector library to store a collection of
 ```c
 #include "vector/vector.h"
 #include "string/string.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     String* name;
     String* description;
-    
 } Item;
 
 int main() {
@@ -1034,9 +899,8 @@ int main() {
     }
 
     vector_deallocate(items);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
 ### Example 26 : Vector of Vectors (2D Vector) of Custom Structs 
@@ -1044,13 +908,12 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 typedef struct {
     String* name;
     int age;
-
 } Person;
 
 Person* create_person(int group, int index) {
@@ -1092,7 +955,7 @@ int main() {
             Person** personPtr = (Person**)vector_at(peopleVec, j);
             Person* person = *personPtr;
 
-            printf("Name: %s, Age: %d\n", string_c_str(person->name), person->age);
+            fmt_printf("Name: %s, Age: %d\n", string_c_str(person->name), person->age);
         }
     }
 
@@ -1109,7 +972,6 @@ int main() {
     }
 
     vector_deallocate(vec2D);
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```

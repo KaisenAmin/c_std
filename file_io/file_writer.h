@@ -13,9 +13,9 @@ typedef enum {
 } CursorPosition;
 
 typedef enum {
-    ENCODING_UTF16,
-    ENCODING_UTF32,
-} EncodingType;
+    WRITE_ENCODING_UTF16,
+    WRITE_ENCODING_UTF32,
+} WriteEncodingType;
 
 typedef enum {
     WRITE_TEXT,          // Open for writing in text mode
@@ -31,7 +31,7 @@ typedef struct {
     FILE* file_writer;
     WriteMode mode;
     bool is_open;
-    EncodingType encoding;
+    WriteEncodingType encoding;
     char* file_path;
 } FileWriter;
 
@@ -48,7 +48,7 @@ bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer);
 bool file_writer_close(FileWriter* writer);
 bool file_writer_is_open(FileWriter* writer);
 bool file_writer_flush(FileWriter* writer);
-bool file_writer_set_encoding(FileWriter* writer, const EncodingType encoding);
+bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding);
 bool file_writer_copy(FileWriter* src_writer, FileWriter* dest_writer);
 bool file_writer_lock(FileWriter* writer);
 bool file_writer_unlock(FileWriter* writer);

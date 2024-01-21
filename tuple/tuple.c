@@ -5,22 +5,22 @@
 */
 
 #include "tuple.h"
+#include "../fmt/fmt.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <errno.h>
+
 
 Tuple* tuple_create(size_t size) {
     Tuple* tuple = (Tuple*)malloc(sizeof(Tuple));
     if (!tuple) {
-        fprintf(stderr, "Error: Memory allocation failed for tuple - %s\n", strerror(errno));
+        fmt_fprintf(stderr, "Error: Memory allocation failed for tuple in tuple_create\n");
         return NULL;
     }
 
     tuple->size = size;
     tuple->elements = (TupleElement*)calloc(size, sizeof(TupleElement));
     if (!tuple->elements) {
-        fprintf(stderr, "Error: Memory allocation failed for tuple elements - %s\n", strerror(errno));
+        fmt_fprintf(stderr, "Error: Memory allocation failed for tuple elements in tuple_create\n");
         free(tuple);
         return NULL;
     }
@@ -29,7 +29,7 @@ Tuple* tuple_create(size_t size) {
 
 void tuple_deallocate(Tuple* tuple) {
     if (!tuple) {
-        fprintf(stderr, "Info: tuple is NULL can't deallocate\n");
+        fmt_fprintf(stderr, "Info: tuple is NULL can't deallocate\n");
         return;
     }
     for (size_t i = 0; i < tuple->size; ++i) {
@@ -41,21 +41,21 @@ void tuple_deallocate(Tuple* tuple) {
 
 bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size) {
     if (!tuple) {
-        fprintf(stderr, "Error: data is null in tuple_set\n");
+        fmt_fprintf(stderr, "Error: data is null in tuple_set\n");
         return false;
     }
     if (index >= tuple->size) {
-        fprintf(stderr, "Error: index is bigger or equal than tuple->size in tuple_set");
+        fmt_fprintf(stderr, "Error: index is bigger or equal than tuple->size in tuple_set");
         return false;
     }
     if (!data) {
-        fprintf(stderr, "Error: date is null in tuple_set\n");
+        fmt_fprintf(stderr, "Error: date is null in tuple_set\n");
         return false;
     }
 
     void* newData = malloc(size);
     if (!newData) {
-        fprintf(stderr, "Error: Memory allocattion failed for newData in tuple_set - %s\n", strerror(errno));
+        fmt_fprintf(stderr, "Error: Memory allocattion failed for newData in tuple_set\n");
         return false;
     }
 
@@ -69,15 +69,15 @@ bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size) {
 
 void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize) {
     if (!tuple) {
-        fprintf(stderr, "Error: tuple is null in tuple_get\n");
+        fmt_fprintf(stderr, "Error: tuple is null in tuple_get\n");
         return NULL;
     }
     if (index >= tuple->size) {
-        fprintf(stderr, "Error: index is bigger or equal than tuple->size in tuple_get\n");
+        fmt_fprintf(stderr, "Error: index is bigger or equal than tuple->size in tuple_get\n");
         return NULL;
     }
     if(!outSize) {
-        fprintf(stderr, "Error: outSize is null in tuple_get please give valid address\n");
+        fmt_fprintf(stderr, "Error: outSize is null in tuple_get please give valid address\n");
         return NULL;
     }
 
@@ -88,7 +88,7 @@ void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize) {
 Tuple* tuple_make_tuple(size_t num, ...) {
     Tuple* tuple = tuple_create(num);
     if (!tuple) {
-        fprintf(stderr, "Error: Creation of tuple failed in tuple_make_tuple - %s\n", strerror(errno));
+        fmt_fprintf(stderr, "Error: Creation of tuple failed in tuple_make_tuple\n");
         return NULL;
     }
 
@@ -99,7 +99,7 @@ Tuple* tuple_make_tuple(size_t num, ...) {
         void* data = va_arg(args, void*);
         size_t size = va_arg(args, size_t);
         if (!tuple_set(tuple, i, data, size)) {
-            fprintf(stderr, "Error: failed to set data in tuple_make_tuple - %s\n", strerror(errno));
+            fmt_fprintf(stderr, "Error: failed to set data in tuple_make_tuple\n");
             tuple_deallocate(tuple);
             va_end(args);
             return NULL;
@@ -113,7 +113,7 @@ Tuple* tuple_make_tuple(size_t num, ...) {
 Tuple* tuple_tie(size_t num, ...) {
     Tuple* tuple = tuple_create(num);
     if (!tuple) {
-        fprintf(stderr, "Error: Creation of tuple failed in tuple_tie - %s\n", strerror(errno));
+        fmt_fprintf(stderr, "Error: Creation of tuple failed in tuple_tie\n");
         return NULL;
     }
 
@@ -123,7 +123,7 @@ Tuple* tuple_tie(size_t num, ...) {
     for (size_t i = 0; i < num; ++i) {
         void** pointer = va_arg(args, void**);
         if (!tuple_set(tuple, i, &pointer, sizeof(void*))) {
-            fprintf(stderr, "Error: failed to set data in tuple_tie - %s\n", strerror(errno));
+            fmt_fprintf(stderr, "Error: failed to set data in tuple_tie\n");
             tuple_deallocate(tuple);
             va_end(args);
             return NULL;
@@ -135,11 +135,11 @@ Tuple* tuple_tie(size_t num, ...) {
 
 void tuple_swap(Tuple* a, Tuple* b) {
     if (a == NULL) {
-        fprintf(stderr, "Error: Param 'a' is null in tuple_swap\n");
+        fmt_fprintf(stderr, "Error: Param 'a' is null in tuple_swap\n");
         return;
     }
     if (b == NULL) {
-        fprintf(stderr, "Error: Param 'b' is null in tuple_swap\n");
+        fmt_fprintf(stderr, "Error: Param 'b' is null in tuple_swap\n");
         return;
     }
     // Swap the sizes
@@ -156,7 +156,7 @@ void tuple_swap(Tuple* a, Tuple* b) {
 Tuple* tuple_forward_as_tuple(size_t num, ...) {
     Tuple* tuple = tuple_create(num);
     if (!tuple) {
-        fprintf(stderr, "Error: Creation of tuple failed in tuple_forward_as_tuple - %s\n", strerror(errno));
+        fmt_fprintf(stderr, "Error: Creation of tuple failed in tuple_forward_as_tuple\n");
         return NULL;
     }
 
@@ -175,7 +175,7 @@ Tuple* tuple_forward_as_tuple(size_t num, ...) {
 
 size_t tuple_size(const Tuple* tuple) {
     if (tuple == NULL) {
-        fprintf(stderr, "Error: tuple is null in tuple_size\n");
+        fmt_fprintf(stderr, "Error: tuple is null in tuple_size\n");
         return 0;
     }
     return tuple->size;
@@ -183,11 +183,11 @@ size_t tuple_size(const Tuple* tuple) {
 
 bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
     if (t1 == NULL) {
-        fprintf(stderr, "Error: Param 't1' is null in tuple_is_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_equal\n");
         return false;
     }
     if (t2 == NULL) {
-        fprintf(stderr, "Error: Param 't2' is null in tuple_is_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_equal\n");
         return false;
     }
     if (tuple_size(t1) != tuple_size(t2)) {
@@ -204,11 +204,11 @@ bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
 
 bool tuple_is_less(const Tuple* t1, const Tuple* t2) {
     if (t1 == NULL) {
-        fprintf(stderr, "Error: Param 't1' is null in tuple_is_less\n");
+        fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_less\n");
         return false;
     }
     if (t2 == NULL) {
-        fprintf(stderr, "Error: Param 't2' is null in tuple_is_less\n");
+        fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_less\n");
         return false;
     }
     size_t minSize = (tuple_size(t1) < tuple_size(t2)) ? tuple_size(t1) : tuple_size(t2);
@@ -235,11 +235,11 @@ bool tuple_is_less(const Tuple* t1, const Tuple* t2) {
 
 bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
     if (t1 == NULL) {
-        fprintf(stderr, "Error: Param 't1' is null in tuple_is_greater\n");
+        fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_greater\n");
         return false;
     }
     if (t2 == NULL) {
-        fprintf(stderr, "Error: Param 't2' is null in tuple_is_greater\n");
+        fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_greater\n");
         return false;
     }
 
@@ -266,11 +266,11 @@ bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
 
 bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2) {
     if (t1 == NULL) {
-        fprintf(stderr, "Error: Param 't1' is null in tuple_is_not_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_not_equal\n");
         return false;
     }
     if (t2 == NULL) {
-        fprintf(stderr, "Error: Param 't2' is null in tuple_is_not_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_not_equal\n");
         return false;
     }
     return !tuple_is_equal(t1, t2);
@@ -278,11 +278,11 @@ bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2) {
 
 bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2) {
     if (t1 == NULL) {
-        fprintf(stderr, "Error: Param 't1' is null in tuple_is_greater_or_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_greater_or_equal\n");
         return false;
     }
     if (t2 == NULL) {
-        fprintf(stderr, "Error: Param 't2' is null in tuple_is_greater_or_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_greater_or_equal\n");
         return false;
     }
     return tuple_is_greater(t1, t2) || tuple_is_equal(t1, t2);
@@ -290,11 +290,11 @@ bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2) {
 
 bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2) {
     if (t1 == NULL) {
-        fprintf(stderr, "Error: Param 't1' is null in tuple_is_less_or_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_less_or_equal\n");
         return false;
     }
     if (t2 == NULL) {
-        fprintf(stderr, "Error: Param 't2' is null in tuple_is_less_or_equal\n");
+        fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_less_or_equal\n");
         return false;
     }
     return tuple_is_less(t1, t2) || tuple_is_equal(t1, t2);

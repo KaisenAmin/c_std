@@ -8,7 +8,7 @@
 #ifndef STRING_H_
 #define STRING_H_
 
-#include <stdio.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 extern const char* STRING_ASCII_LETTERS;
