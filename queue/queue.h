@@ -8,8 +8,6 @@
 #define QUEUE_H_
 
 #include "../vector/vector.h"
-#include <stdio.h>
-#include <stdbool.h>
 
 typedef struct Queue Queue;
 

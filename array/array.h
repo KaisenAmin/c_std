@@ -8,9 +8,6 @@
 #define ARRAY_H_
 
 #include "../vector/vector.h"
-#include <stddef.h>
-#include <stdbool.h>
-
 
 typedef struct Array Array;
 

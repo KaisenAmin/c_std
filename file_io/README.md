@@ -16,7 +16,6 @@ int main() {
     file_writer_close(writer);
     return 0;
 }
-
 ```
 
 ## Example 2 : how to get cursor position of file with `file_writer_get_position`
@@ -69,7 +68,6 @@ int main() {
     }
     return 0;
 }
-
 ```
 
 ## Example 4 : Using most of the FileWriter functions 
@@ -146,12 +144,6 @@ int main() {
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
-
-    if (!writer) {
-        fmt_printf("Error: failed to open file for appending text.\n");
-        return -1;
-    }
-
     size_t write = file_writer_write_fmt(writer, "Hello %s your age is %d and programming in %s", "امین", 27, "C");
     
     if (write > 0) {
@@ -175,17 +167,12 @@ int main() {
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
 
-    if (!writer) {
-        fmt_printf("Error: failed to open file for appending text.\n");
-        return -1;
-    }
     size_t file_size = file_writer_get_size(writer);
     fmt_printf("Size of file is %zu", file_size);
 
     file_writer_close(writer);
     return 0;
 }
-
 ```
 
 ## Example 7 : get file_path in `FileWriter` with `file_writer_get_file_name` also file encoding with `file_writer_get_encoding`
@@ -197,11 +184,6 @@ int main() {
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
 
-    if (!writer) {
-        fmt_printf("Error: failed to open file for appending text.\n");
-        return -1;
-    }
-    
     fmt_printf("filePath is : %s\n", file_writer_get_file_name(writer)); // or writer->file_path
     fmt_printf("Encoding Type is : %s\n", file_writer_get_encoding(writer));
 
@@ -232,7 +214,6 @@ int main() {
     file_writer_close(dest_writer);
     return 0;
 }
-
 ```
 
 ## Example 9 : how to lock and unlock file for prevent other proccess to modifying it with `file_writer_lock & unlock`
@@ -268,7 +249,6 @@ int main() {
 
     return 0;
 }
-
 ```
 
 ## Example 10 : how to move cursor position in `FileWriter` with `file_writer_seek`
@@ -329,12 +309,13 @@ int main() {
 #include "string/string.h"
 
 int main() {
+    FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
+
     const char* englishText = "Hello, this is a test text.";
     const char* persianText = "سلام، این یک متن آزمایشی است."; // Unicode content
     const void* buffers[2] = { englishText, persianText };
     size_t sizes[2] = { string_length_cstr(englishText), string_length_utf8(persianText) };
-    FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
-
+    
     // Write both buffers in a single batch operation
     if (!file_writer_write_batch(writer, buffers, sizes, 2)) {
         fmt_printf("Failed to write buffers to file.\n");
@@ -356,10 +337,6 @@ int main() {
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
-    if (!writer) {
-        fmt_printf("Failed to open file for appending.\n");
-        return -1;
-    }
 
     // Append formatted text to the file for appending with fmt writer must be in WRITE_APPEND mode
     if (!file_writer_append_fmt(writer, "Name: %s, Age: %d, Occupation: %s\n", "John Doe", 30, "Software Developer")) {
@@ -457,11 +434,6 @@ int main() {
 
 int main() {
     FileReader* reader = file_reader_open("./sources/text_uni.txt", READ_UNICODE);
-    if (!reader) {
-        fmt_printf("Failed to open file.\n");
-        return -1;
-    }
-
     char** lines;
     size_t num_lines = 5; // Number of lines to read
 
