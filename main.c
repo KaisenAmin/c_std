@@ -1,35 +1,33 @@
-#include "map/map.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
-
-int compare_ints(const KeyType a, const KeyType b) {
-    return *(int*)a - *(int*)b;
-}
-
-void int_deallocator(void* data) {
-    free(data);
-}
-
-void print_key(const KeyType key) {
-    fmt_printf("%d", *(const int*)key);
-}
-
-void print_value(const ValueType value) {
-    fmt_printf("%d", *(const int*)value);
-}
+#include "list/list.h"
+#include "string/string.h"
 
 int main() {
-    Map* originalMap = map_create(compare_ints, int_deallocator, int_deallocator);
-    int key = 10;
-    int value = 20;
+    List* stringList = list_create(sizeof(String*), NULL);
+    String* str1 = string_create("Hello");
+    String* str2 = string_create("World");
+    String* str3 = string_create("Example");
 
-    map_insert(originalMap, &key, &value);
-    Map* copiedMap = map_copy(originalMap);
+    list_push_back(stringList, &str1);
+    list_push_back(stringList, &str2);
+    list_push_back(stringList, &str3);
 
-    map_print(copiedMap, print_key, print_value);
-    fmt_printf("Size of the copied map: %zu\n", map_size(copiedMap));
+    // Reverse each string
+    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
+        String* str = *(String**)node->value;
+        String* reversed = string_create(""); 
 
-    map_deallocate(originalMap);
-    map_deallocate(copiedMap);
+        for (int i = string_length(str) - 1; i >= 0; --i) {
+            string_push_back(reversed, string_c_str(str)[i]);
+        }
+        fmt_printf("Reversed String: %s\n", string_c_str(reversed));
+        string_deallocate(reversed);
+    }
+
+    string_deallocate(str1);
+    string_deallocate(str2);
+    string_deallocate(str3);
+    list_deallocate(stringList);
+
     return 0;
 }

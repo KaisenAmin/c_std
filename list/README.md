@@ -27,12 +27,9 @@ To use the List library in your project, include the `list.h` header file in you
 #include "list/list.h"
 ```
 
-### Example 1: Create List and Add Elements Using `push_back`
+## Example 1: Create List and Add Elements Using `list_push_back`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -52,17 +49,15 @@ int main() {
     list_deallocate(myList);
     list_deallocate(myList);
     
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```
 
-### Example 2: Add Elements Using `push_front`
+## Example 2: Add Elements Using `list_push_front`
 
 ```c
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static bool compare_string(const void* a, const void* b){
@@ -80,21 +75,18 @@ int main() {
     }
     for (Node* node = list_begin(myList); node != list_end(myList); node = node->next){
         char* value = *(char**)node->value;
-        printf("%s\n", value);
+        fmt_printf("%s\n", value);
     }
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
 
-### Example 3: Pop Elements from Front
+## Example 3: Pop Elements from Front `list_pop_front`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -111,16 +103,13 @@ int main() {
     list_pop_front(myList);
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 4: Pop Elements from Back
+## Example 4: Pop Elements from Back with `list_pop_back`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -137,16 +126,13 @@ int main() {
     list_pop_back(myList);
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 5: Insert Element at Specific Position
+## Example 5: Insert Element at Specific Position with `list_insert`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -162,16 +148,13 @@ int main() {
     list_insert(myList, 0, &value); // Insert at the beginning
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 6: Erase Element at Specific Position
+## Example 6: Erase Element at Specific Position with `list_erase`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -188,16 +171,13 @@ int main() {
     list_erase(myList, 0); // Erase the first element
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 7: Clearing the List
+## Example 7: Clearing the List 
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -213,16 +193,14 @@ int main() {
     list_push_back(myList, &value);
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 8: Resize the List
+## Example 8: Resize the List with `list_resize`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -242,20 +220,18 @@ int main() {
 
     for (Node* node = list_begin(list1); node != list_end(list1); node = node->next){
         int* value = (int*)node->value;
-        printf("%d\n", *value);
+        fmt_printf("%d\n", *value);
     }
 
     list_deallocate(list1);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 9: Swap Two Lists
+## Example 9: Swap Two Lists with `list_swap`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -280,22 +256,20 @@ int main() {
 
     for (Node* node = list_begin(list1); node != list_end(list1); node = node->next){
         int* value = (int*)node->value;
-        printf("%d\n", *value);
+        fmt_printf("%d\n", *value);
     }
 
     list_deallocate(list1);
     list_deallocate(list2);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 10: Reverse a List
+## Example 10: Reverse a List with `list_reverse`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -315,20 +289,18 @@ int main() {
     
     for (Node* node = list_begin(myList); node != list_end(myList); node = node->next) {
         int* value = (int*)node->value;
-        printf("%d\n", *value);
+        fmt_printf("%d\n", *value);
     }
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 11: Sort a List
+## Example 11: Sort a List with `list_sort`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -348,20 +320,18 @@ int main() {
     
     for (Node* node = list_begin(myList); node != list_end(myList); node = node->next) {
         int* value = (int*)node->value;
-        printf("%d\n", *value);
+        fmt_printf("%d\n", *value);
     }
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 12: Check if List is Empty
+## Example 12: Check if List is Empty with `list_empty`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -374,17 +344,17 @@ int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     bool isEmpty = list_empty(myList); // Check if list is empty
 
+    fmt_printf("%s\n", isEmpty? "Yes its empty": "No its not empty");
+
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 13: Get the Length of the List
+## Example 13: Get the Length of the List with `list_length`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -400,19 +370,17 @@ int main() {
     list_push_back(myList, &value);
     size_t length = list_length(myList); // Get the length of the list
 
-    printf("Size of List %zu\n", length);
+    fmt_printf("Size of List %zu\n", length);
     
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 14: Assign Values to List
+### Example 14: Assign Values to List with `list_assign`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 static int compare_ints(const void* a, const void* b) {
@@ -428,20 +396,17 @@ int main() {
     list_assign(myList, values, 5); // Assign values to list
     for (Node* node = list_begin(myList); node != list_end(myList); node = node->next){
         int* value = (int*)node->value;
-        printf("%d\n", *value);
+        fmt_printf("%d\n", *value);
     }
 
     list_deallocate(myList);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
-### Example 15: Merge Two Lists
+### Example 15: Merge Two Lists with `list_merge`
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include "list/list.h"
 
 
@@ -462,7 +427,7 @@ int main() {
 
     list_deallocate(list1);
     list_deallocate(list2);
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -470,9 +435,7 @@ int main() {
 
 ```c
 // Function to compare two strings in the list
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 #include "string/string.h"
 
@@ -496,7 +459,7 @@ int main() {
 
     for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
         String* str = *(String**)node->value;
-        printf("%s\n", string_c_str(str));
+        fmt_printf("%s\n", string_c_str(str));
     }
 
     string_deallocate(str1);
@@ -504,7 +467,7 @@ int main() {
     string_deallocate(str3);
     list_deallocate(stringList);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
@@ -513,9 +476,7 @@ int main() {
 #include "string/string.h"
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 #include "string/string.h"
 
@@ -535,7 +496,7 @@ int main() {
 
     for (Node* node = list_begin(list1); node != list_end(list1); node = node->next) {
         String* str = *(String**)node->value;
-        printf("%s\n", string_c_str(str));
+        fmt_printf("%s\n", string_c_str(str));
     }
 
     string_deallocate(str1);
@@ -545,16 +506,14 @@ int main() {
     list_deallocate(list1);
     list_deallocate(list2);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
 ### Example 18: Filtering Strings from a List
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 #include "string/string.h"
 
@@ -577,7 +536,7 @@ int main() {
 
     for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
         String* str = *(String**)node->value;
-        printf("%s\n", string_c_str(str));
+        fmt_printf("%s\n", string_c_str(str));
     }
 
     string_deallocate(str1);
@@ -585,16 +544,14 @@ int main() {
     string_deallocate(str3);
     list_deallocate(stringList);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
 ### Example 19: Concatenating All Strings in a List
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 #include "string/string.h"
 
@@ -613,7 +570,7 @@ int main(){
         String* str = *(String**)node->value;
         string_append(concatenated, string_c_str(str));
     }
-    printf("Concatenated String: %s\n", string_c_str(concatenated));
+    fmt_printf("Concatenated String: %s\n", string_c_str(concatenated));
 
     string_deallocate(str1);
     string_deallocate(str2);
@@ -621,16 +578,14 @@ int main(){
     string_deallocate(concatenated);
     list_deallocate(stringList);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 ```
 
 ### Example 20: Reversing Each String in a List
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 #include "string/string.h"
 
@@ -652,7 +607,7 @@ int main() {
         for (int i = string_length(str) - 1; i >= 0; --i) {
             string_push_back(reversed, string_c_str(str)[i]);
         }
-        printf("Reversed String: %s\n", string_c_str(reversed));
+        fmt_printf("Reversed String: %s\n", string_c_str(reversed));
         string_deallocate(reversed);
     }
 
@@ -661,7 +616,7 @@ int main() {
     string_deallocate(str3);
     list_deallocate(stringList);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 ```
@@ -669,10 +624,7 @@ int main() {
 ## Example 21 : Relational operators in List 
 
 ```c
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 #include "list/list.h"
 
 // Function to compare integers for the list
@@ -699,17 +651,16 @@ int main() {
     add_elements_to_list(list2, elements2, 5);
 
     // Perform relational comparisons
-    printf("List 1 is less than List 2: %s\n", list_is_less(list1, list2) ? "true" : "false");
-    printf("List 1 is greater than List 2: %s\n", list_is_greater(list1, list2) ? "true" : "false");
-    printf("List 1 is equal to List 2: %s\n", list_is_equal(list1, list2) ? "true" : "false");
-    printf("List 1 is less than or equal to List 2: %s\n", list_is_less_or_equal(list1, list2) ? "true" : "false");
-    printf("List 1 is greater than or equal to List 2: %s\n", list_is_greater_or_equal(list1, list2) ? "true" :"false");
-    printf("List 1 is not equal to List 2: %s\n", list_is_not_equal(list1, list2) ? "true" : "false");
+    fmt_printf("List 1 is less than List 2: %s\n", list_is_less(list1, list2) ? "true" : "false");
+    fmt_printf("List 1 is greater than List 2: %s\n", list_is_greater(list1, list2) ? "true" : "false");
+    fmt_printf("List 1 is equal to List 2: %s\n", list_is_equal(list1, list2) ? "true" : "false");
+    fmt_printf("List 1 is less than or equal to List 2: %s\n", list_is_less_or_equal(list1, list2) ? "true" : "false");
+    fmt_printf("List 1 is greater than or equal to List 2: %s\n", list_is_greater_or_equal(list1, list2) ? "true" :"false");
+    fmt_printf("List 1 is not equal to List 2: %s\n", list_is_not_equal(list1, list2) ? "true" : "false");
 
     list_deallocate(list1);
     list_deallocate(list2);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
-
 ```

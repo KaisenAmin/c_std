@@ -8,7 +8,6 @@
 #define LIST_H_
 
 #include <stdbool.h>
-#include <stdio.h>
 #include <stddef.h>
 
 typedef struct Node Node;
