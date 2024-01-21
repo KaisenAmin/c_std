@@ -1,33 +1,18 @@
+#include "forward_list/forward_list.h"
 #include "fmt/fmt.h"
-#include "list/list.h"
-#include "string/string.h"
 
 int main() {
-    List* stringList = list_create(sizeof(String*), NULL);
-    String* str1 = string_create("Hello");
-    String* str2 = string_create("World");
-    String* str3 = string_create("Example");
+    ForwardList* list = forward_list_create(sizeof(int));
+    int value = 10;
 
-    list_push_back(stringList, &str1);
-    list_push_back(stringList, &str2);
-    list_push_back(stringList, &str3);
+    forward_list_emplace_front(list, &value);
+    forward_list_emplace_after(list, forward_list_before_begin(list), &value);
 
-    // Reverse each string
-    for (Node* node = list_begin(stringList); node != list_end(stringList); node = node->next) {
-        String* str = *(String**)node->value;
-        String* reversed = string_create(""); 
-
-        for (int i = string_length(str) - 1; i >= 0; --i) {
-            string_push_back(reversed, string_c_str(str)[i]);
-        }
-        fmt_printf("Reversed String: %s\n", string_c_str(reversed));
-        string_deallocate(reversed);
+    for (ForwardListNode* node = forward_list_begin(list); node != forward_list_end(list); node = node->next) { 
+        fmt_printf("%d ", *(int*)(node->value));
     }
+    fmt_printf("\n");
 
-    string_deallocate(str1);
-    string_deallocate(str2);
-    string_deallocate(str3);
-    list_deallocate(stringList);
-
+    forward_list_deallocate(list);
     return 0;
 }
