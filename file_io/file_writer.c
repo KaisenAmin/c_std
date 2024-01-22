@@ -18,13 +18,13 @@
 FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     if (!filename) {
         fmt_fprintf(stderr, "Error: filename is null in file_writer_open.\n");
-        return NULL;
+        exit(-1);
     }
 
     FileWriter* writer = (FileWriter*) malloc(sizeof(FileWriter));
     if (!writer) {
         fmt_fprintf(stderr, "Error: Can not allocate memory for FileWriter in file_writer_open.\n");
-        return NULL;
+        exit(-1);
     }
 
     const char* modeStr = NULL;
@@ -71,11 +71,11 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
 
     if (!wMode) {
         fmt_fprintf(stderr, "Error: Can not convert mode to wchar in file_writer_open.\n");
-        return NULL;
+        exit(-1);
     }
     if (!wFileName) {
         fmt_fprintf(stderr, "Error: Can not convert filename to wchar in file_writer_open.\n");
-        return NULL;
+        exit(-1);
     }
     writer->file_writer = _wfopen(wFileName, wMode);
     free(wMode);
@@ -87,7 +87,7 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     if (writer->file_writer == NULL) {
         fmt_fprintf(stderr, "Error: Can not open file in file_writer_open.\n");
         free(writer);
-        return NULL;
+        exit(-1);
     }
     writer->mode = mode;
     writer->is_open = true;

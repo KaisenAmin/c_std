@@ -19,13 +19,13 @@
 Time* time_create(int h, int m, int s, int ms) {
     if (!time_is_valid_time(h, m, s, ms)) {
         fmt_fprintf(stderr, "Error: Invalid time parameters in time_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     Time* my_time = (Time*)malloc(sizeof(Time));
     if (!my_time) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in time_create.\n");
-        return NULL;
+        exit(-1);
     }
     my_time->hour = h;
     my_time->minute = m;

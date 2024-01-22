@@ -67,11 +67,11 @@ static void* memory_pool_span_allocate(size_t size) {
 Span* span_create(void* data, size_t elemCount, size_t elemSize) {
     if (!data) {
         fmt_fprintf(stderr, "Error: Null data provided to span_create\n");
-        return NULL;
+        exit(-1);
     }
     if (elemCount == 0 || elemSize == 0) {
         fmt_fprintf(stderr, "Error: Element count or size is zero in span_create\n");
-        return NULL;
+        exit(-1);
     }
 
     if (!global_span_pool) {

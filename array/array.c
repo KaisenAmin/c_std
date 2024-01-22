@@ -21,7 +21,7 @@ Array* array_create(size_t element_size, size_t size) {
     if (!arr->vec) {
         fmt_fprintf(stderr, "Error: Cannot allocate memory for internal Vector in array_create\n");
         free(arr);
-        return NULL;
+        exit(-1);
     }
     vector_resize(arr->vec, size);
 

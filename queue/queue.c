@@ -12,20 +12,20 @@
 Queue* queue_create(size_t itemSize) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size must be greater than zero in queue_create.\n");
-        return NULL; // Handle invalid item size
+        exit(-1); // Handle invalid item size
     }
 
     Queue* queue = (Queue*)malloc(sizeof(Queue));
     if (!queue) {
-        perror("Error: Cannot allocate memory for queue in queue_create.");
-        return NULL; // Handle allocation failure
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for queue in queue_create.");
+        exit(-1); // Handle allocation failure
     }
         
     queue->vec = vector_create(itemSize);
     if (!queue->vec) {
-        perror("Error: Cannot allocate memory for queue->vec in queue_create.");
+        fmt_fprintf(stderr, "Error: Cannot allocate memory for queue->vec in queue_create.");
         free(queue);
-        return NULL; // Handle allocation failure in vector creation
+        exit(-1); // Handle allocation failure in vector creation
     }
     return queue;
 }

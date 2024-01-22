@@ -13,13 +13,13 @@
 List *list_create(size_t itemSize, CompareFunction compare) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size must be greater than 0 in list_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     List *list = malloc(sizeof(List));
     if (!list) {
         fmt_fprintf(stderr, "Error: Cannot allocate memory for list in list_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     list->head = list->tail = NULL;

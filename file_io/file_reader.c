@@ -8,13 +8,13 @@
 FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     if (!filename) {
         fmt_fprintf(stderr, "Error: filename is null in file_reader_open.\n");
-        return NULL;
+        exit(-1);
     }
 
     FileReader* reader = (FileReader*) malloc(sizeof(FileReader));
     if (!reader) {
         fmt_fprintf(stderr, "Error: Can not allocate memory for FileReader in file_reader_open.\n");
-        return NULL;
+        exit(-1);
     }
     const char* modeStr = NULL;
 
@@ -54,11 +54,11 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
 
     if (!wMode) {
         fmt_fprintf(stderr, "Error: Can not convert mode to wchar in file_reader_open.\n");
-        return NULL;
+        exit(-1);
     }
     if (!wFileName) {
         fmt_fprintf(stderr, "Error: Can not convert filename to wchar in file_reader_open.\n");
-        return NULL;
+        exit(-1);
     }
     reader->file_reader = _wfopen(wFileName, wMode);
     free(wMode);
@@ -70,7 +70,7 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     if (reader->file_reader == NULL) {
         fmt_fprintf(stderr, "Error: Can not open file in file_reader_open.\n");
         free(reader);
-        return NULL;
+        exit(-1);
     }
     reader->mode = mode;
     reader->is_open = true;

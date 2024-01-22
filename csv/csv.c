@@ -15,7 +15,7 @@ CsvRow* csv_row_create() {
     CsvRow* row = malloc(sizeof(CsvRow));
     if (!row) {
         fmt_fprintf(stderr, "Error: Mamory allocation failed in csv_row_create.\n");
-        return NULL;
+        exit(-1);
     }
     row->cells = NULL;
     row->size = 0;
@@ -78,7 +78,7 @@ CsvFile* csv_file_create(char delimiter) {
     CsvFile* file = malloc(sizeof(CsvFile));
     if (!file) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in csv_file_create.\n");
-        return NULL;
+        exit(-1);
     }
     file->rows = NULL;
     file->size = 0;
@@ -163,32 +163,6 @@ void csv_file_read(CsvFile *file, const char *filename) {
     file_reader_close(fr);
 }
 
-// void csv_file_read(CsvFile *file, const char *filename) {
-//     if (!file || !filename) {
-//         fmt_fprintf(stderr, "Error: NULL parameter passed to csv_file_read.\n");
-//         return;
-//     }
-
-//     FILE *fp = fopen(filename, "r");
-//     if (!fp) {
-//         fmt_fprintf(stderr, "Error: Unable to open file '%s' in csv_file_read.\n", filename);
-//         return;
-//     }
-
-//     char buffer[BUFFER_SIZE];
-
-//     while (fgets(buffer, BUFFER_SIZE, fp)) {
-//         CsvRow *row = csv_row_create();
-
-//         buffer[strcspn(buffer, "\r\n")] = 0; // Remove newline character
-//         parse_csv_line(buffer, file->delimiter, row); // Use the custom parsing function
-
-//         csv_file_append_row(file, row);
-//     }
-
-//     fclose(fp);
-// }
-
 void csv_file_write(const CsvFile *file, const char *filename) {
     if (!file || !filename) {
         fmt_fprintf(stderr, "Error: NULL parameter passed to csv_file_write.\n");
@@ -208,58 +182,6 @@ void csv_file_write(const CsvFile *file, const char *filename) {
     }
     file_writer_close(fw);
 }
-
-
-// void csv_file_write(const CsvFile *file, const char *filename) {
-//     if (!file || !filename) {
-//         fmt_fprintf(stderr, "Error: NULL parameter passed to csv_file_write.\n");
-//         return;
-//     }
-
-//     FILE *fp = fopen(filename, "w");
-//     if (!fp) {
-//         fmt_fprintf(stderr, "Error: Unable to open file '%s' for writing in csv_file_write.\n", filename);
-//         return;
-//     }
-
-//     // Iterate over each row in the CSV file
-//     for (size_t i = 0; i < file->size; ++i) {
-//         CsvRow *row = file->rows[i];
-
-//         // Iterate over each cell in the row
-//         for (size_t j = 0; j < row->size; ++j)  {
-//             fmt_printf(fp, "%s", row->cells[j]);
-//             if (j < row->size - 1) 
-//                 fputc(file->delimiter, fp); // Delimiter between cells
-//         }
-
-//         fputc('\n', fp); // Newline at the end of each row
-//     }
-
-//     fclose(fp);
-// }
-
-// void csv_file_append_row(CsvFile *file, CsvRow *row) {
-//     if (!file || !row) {
-//         fmt_fprintf(stderr, "Error: NULL parameter passed to csv_file_append_row.\n");
-//         return;
-//     }
-
-//     // Resize the rows array if necessary
-//     if (file->size >= file->capacity) {
-//         size_t newCapacity = file->capacity == 0 ? 1 : file->capacity * 2;
-//         CsvRow **newRows = realloc(file->rows, newCapacity * sizeof(CsvRow *));
-//         if (!newRows) {
-//             fmt_fprintf(stderr, "Error: Unable to allocate memory for new rows in csv_file_append_row.\n");
-//             return;
-//         }
-
-//         file->rows = newRows;
-//         file->capacity = newCapacity;
-//     }
-
-//     file->rows[file->size++] = row; // Append the row
-// }
 
 void csv_file_append_row(CsvFile *file, CsvRow *row) {
     if (!file || !row) {
@@ -321,28 +243,6 @@ void csv_print(const CsvFile *file) {
         fmt_printf("\n");
     }
 }
-
-// CsvRow* csv_row_read_next(FILE *file, char delimiter) {
-//     if (!file) {
-//         fmt_fprintf(stderr, "Error: file pointer is Null and Invalid in csv_row_read_next.\n");
-//         return NULL;
-//     }
-//     char buffer[BUFFER_SIZE];
-//     if (!fgets(buffer, BUFFER_SIZE, file)) {
-//         return NULL; // No more lines to read or error occurred
-//     }
-
-//     buffer[strcspn(buffer, "\r\n")] = 0; // Remove newline character
-
-//     CsvRow *row = csv_row_create();
-//     char *token = strtok(buffer, &delimiter);
-
-//     while (token) {
-//         csv_row_append_cell(row, token);
-//         token = strtok(NULL, &delimiter);
-//     }
-//     return row;
-// }
 
 CsvRow* csv_row_read_next(FileReader *reader, char delimiter) {
     if (!reader || !file_reader_is_open(reader)) {

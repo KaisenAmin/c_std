@@ -18,7 +18,7 @@ def compile_project(run_after_compile=False):
         # "array",
         "fmt",
         # "bitset",
-        # "config",
+        "config",
         # "csv",
         # "deque",
         "encoding",

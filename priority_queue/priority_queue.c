@@ -13,25 +13,25 @@
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*)) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size cannot be zero in priority_queue_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     if (!compare) {
         fmt_fprintf(stderr, "Error: Comparison function cannot be NULL in priority_queue_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     PriorityQueue* pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
     if (!pq) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for PriorityQueue in priority_queue_create.\n");
-        return NULL; // Allocation failure
+        exit(-1); // Allocation failure
     }
 
     pq->vec = vector_create(itemSize);
     if (!pq->vec) {
         fmt_fprintf(stderr, "Error: Vector creation failed in priority_queue_create.\n");
         free(pq);
-        return NULL; // Vector creation failure
+        exit(-1); // Vector creation failure
     }
     pq->compare = compare;
 

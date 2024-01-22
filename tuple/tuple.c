@@ -14,7 +14,7 @@ Tuple* tuple_create(size_t size) {
     Tuple* tuple = (Tuple*)malloc(sizeof(Tuple));
     if (!tuple) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for tuple in tuple_create\n");
-        return NULL;
+        exit(-1);
     }
 
     tuple->size = size;
@@ -22,7 +22,7 @@ Tuple* tuple_create(size_t size) {
     if (!tuple->elements) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for tuple elements in tuple_create\n");
         free(tuple);
-        return NULL;
+        exit(-1);
     }
     return tuple;
 }

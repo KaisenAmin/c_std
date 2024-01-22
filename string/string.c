@@ -92,7 +92,7 @@ String* string_create(const char* initialStr) {
     String* str = (String*)malloc(sizeof(String));
     if (!str) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     size_t initialSize = initialStr ? strlen(initialStr) : 0;
@@ -105,7 +105,7 @@ String* string_create(const char* initialStr) {
     if (!str->pool) {
         fmt_fprintf(stderr, "Error: Memory pool creation failed in string_create.\n");
         free(str);
-        return NULL;
+        exit(-1);
     }
 
     str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
@@ -113,7 +113,7 @@ String* string_create(const char* initialStr) {
         fmt_fprintf(stderr, "Error: Memory pool allocation failed in string_create.\n");
         memory_pool_destroy(str->pool);
         free(str);
-        return NULL;
+        exit(-1);
     }
 
     if (initialStr) {
@@ -132,13 +132,13 @@ String* string_create_with_pool(size_t size) {
     // Ensure global memory pool is initialized
     if (global_pool == NULL) {
         fmt_fprintf(stderr, "Error: Failed to initialize global memory pool in string_create_with_pool.\n");
-        return NULL;  // Consider handling the error without exiting
+        exit(-1);  // Consider handling the error without exiting
     }
 
     String* str = (String*)malloc(sizeof(String));
     if (!str) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create_with_pool.\n");
-        return NULL;
+        exit(-1);
     }
 
     str->size = 0;

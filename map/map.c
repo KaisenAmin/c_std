@@ -331,13 +331,13 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
 Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (!comp) {
         fmt_fprintf(stderr, "Error: Compare function is null, cannot create map.\n");
-        return NULL;
+        exit(-1);
     }
 
     Map* map = (Map*)malloc(sizeof(Map));
     if (!map) {
         fmt_fprintf(stderr, "Error: Cannot allocate memory for map.\n");
-        return NULL;
+        exit(-1);
     }
 
     map->root = NULL;

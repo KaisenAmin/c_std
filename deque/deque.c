@@ -13,13 +13,13 @@
 Deque* deque_create(size_t itemSize) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: itemSize can not be Zero in deque_create.\n");
-        return NULL;
+        exit(-1);
     }
     // Allocate memory for the Deque structure
     Deque* deque = (Deque*)malloc(sizeof(Deque)); 
     if (!deque) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in deque_create.\n");
-        return NULL; // Memory allocation failure
+        exit(-1); // Memory allocation failure
     }
     // Initial values for the Deque structure
     deque->blockSize = DEFAULT_BLOCK_SIZE;
@@ -34,7 +34,7 @@ Deque* deque_create(size_t itemSize) {
     if (!deque->blocks) {
         free(deque);
         fmt_fprintf(stderr, "Error: Memory allocation failed in deque_create.\n");
-        return NULL; // Memory allocation failure
+        exit(-1); // Memory allocation failure
     }
 
     // Allocate memory for the first block
@@ -43,11 +43,10 @@ Deque* deque_create(size_t itemSize) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for the first block in deque_create.\n");
         free(deque->blocks);
         free(deque);
-        return NULL; // Handle allocation failure
+        exit(-1); // Handle allocation failure
     }
     return deque;
 }
-
 
 bool deque_empty(const Deque* deque) {
     if (!deque) {

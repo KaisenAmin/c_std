@@ -12,13 +12,13 @@
 ForwardList *forward_list_create(size_t itemSize) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size cannot be zero in forward_list_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     ForwardList *list = malloc(sizeof(ForwardList));
     if (!list) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for ForwardList in forward_list_create.\n");
-        return NULL;
+        exit(-1);
     }
     // Initialize the list
     list->head = NULL;

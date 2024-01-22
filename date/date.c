@@ -829,7 +829,7 @@ Date* date_create(CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in date_create.\n");
-        return NULL;
+        exit(-1);
     }
 
     // Initialize with invalid values to signify a null (invalid) date
@@ -845,13 +845,13 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in date_create_ymd.\n");
-        return NULL;
+        exit(-1);
     }
 
     if (!date_is_valid_ymd(y, m, d, type)) {
         fmt_fprintf(stderr, "Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         free(date); // Release the allocated memory
-        return NULL;
+        exit(-1);
     }
 
     date->year = y;

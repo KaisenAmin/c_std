@@ -14,7 +14,7 @@ Bitset* bitset_create(size_t num_bits) {
     Bitset* bs = (Bitset*)malloc(sizeof(Bitset));
     if (!bs) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for Bitset structure in bitset_create.\n");
-        return NULL;
+        exit(-1);
     }
     // Calculate the number of bytes needed to store the bits
     size_t num_bytes = (num_bits + 7) / 8; // Each byte can store 8 bits
@@ -23,7 +23,7 @@ Bitset* bitset_create(size_t num_bits) {
     if (!bs->bits) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for bit array in bitset_create.\n");
         free(bs); // Handle memory allocation failure
-        return NULL;
+        exit(-1);
     }
 
     memset(bs->bits, 0, num_bytes); // Initialize the bit array to 0
