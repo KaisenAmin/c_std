@@ -211,49 +211,44 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
         fmt_fprintf(stderr, "Error: Invalid argument in file_reader_read.\n");
         return 0;
     }
-    (void)size;
-    // Allocate a temporary buffer for reading raw UTF-16 data
-    wchar_t* rawBuffer = malloc(sizeof(wchar_t) * (count + 1));  // +1 for potential null-termination
-    if (!rawBuffer) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in file_reader_read.\n");
-        return 0;
+
+    // For binary reading, no encoding conversion is needed
+    if (reader->mode == READ_BINARY || reader->mode == READ_UNBUFFERED || reader->mode == READ_BUFFERED) {
+        return fread(buffer, size, count, reader->file_reader);
     }
 
-    // Read UTF-16 data from the file
-    size_t actualRead = fread(rawBuffer, sizeof(wchar_t), count, reader->file_reader);
-    // Null-terminate the raw buffer if your conversion function requires it
-    rawBuffer[actualRead] = L'\0';
-
-    size_t convertedSize = 0;
-
-    switch (reader->encoding) {
-        case READ_ENCODING_UTF16: {
-            // Convert UTF-16 to UTF-8 using your conversion function
-            char* utf8Buffer = encoding_wchar_to_utf8(rawBuffer);
-
-            if (utf8Buffer) {
-                size_t bytesToCopy = string_length_utf8(utf8Buffer);
-                
-                if (bytesToCopy > count - 1) {
-                    bytesToCopy = count - 1;  // Limit to the size of the output buffer
-                }
-                strcpy(buffer, utf8Buffer);
-                convertedSize = bytesToCopy;
-                free(utf8Buffer);
-            } 
-            else {
-                fmt_fprintf(stderr, "Error: Conversion to UTF-8 failed in file_reader_read.\n");
-            }
-            break;
+    // For text reading, handle UTF-16 to UTF-8 conversion
+    if (reader->mode == READ_TEXT || reader->mode == READ_UNICODE) {
+        wchar_t* rawBuffer = (wchar_t*)malloc(sizeof(wchar_t) * (count + 1));  // +1 for null-termination
+        if (!rawBuffer) {
+            fmt_fprintf(stderr, "Error: Memory allocation failed in file_reader_read.\n");
+            return 0;
         }
-        // Add cases for other encodings if needed
-        default:
-            fmt_fprintf(stderr, "Unsupported encoding in file_reader_read.\n");
-            break;
+
+        size_t actualRead = fread(rawBuffer, sizeof(wchar_t), count, reader->file_reader);
+        rawBuffer[actualRead] = L'\0';  // Null-terminate the buffer
+
+        char* utf8Buffer = encoding_wchar_to_utf8(rawBuffer);
+        free(rawBuffer);  // Free the raw buffer
+
+        if (!utf8Buffer) {
+            fmt_fprintf(stderr, "Error: Conversion to UTF-8 failed in file_reader_read.\n");
+            return 0;
+        }
+
+        size_t bytesToCopy = string_length_utf8(utf8Buffer);
+        if (bytesToCopy > size * count) {
+            bytesToCopy = size * count;  // Limit to the size of the output buffer
+        }
+
+        memcpy(buffer, utf8Buffer, bytesToCopy);
+        free(utf8Buffer);  // Free the UTF-8 buffer
+
+        return bytesToCopy;
     }
 
-    free(rawBuffer);
-    return convertedSize;
+    fmt_fprintf(stderr, "Unsupported read mode in file_reader_read.\n");
+    return 0;
 }
 
 bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {

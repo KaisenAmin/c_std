@@ -10,6 +10,9 @@
 #include "../encoding/encoding.h"
 #include "../crypto/crypto.h"
 #include "../string/string.h"
+#include "../file_io/file_reader.h"
+#include "../file_io/file_writer.h"
+#include "../fmt/fmt.h"
 #include "dir.h"
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -25,35 +28,66 @@
 #define remove_directory _wrmdir
 
 char* get_last_dir_name_win(const wchar_t* wpath) {
+    if (!wpath) {
+        fmt_fprintf(stderr, "Error: Path is NULL in get_last_dir_name_win.\n");
+        return NULL;
+    }
+
     wchar_t* lastSlash = wcsrchr(wpath, L'\\');
     if (lastSlash == NULL) {
         lastSlash = wcsrchr(wpath, L'/');
     }
     if (lastSlash != NULL && lastSlash != wpath) {
-        return encoding_wchar_to_utf8(lastSlash + 1);
+        char* dirName = encoding_wchar_to_utf8(lastSlash + 1);
+        if (!dirName) {
+            fmt_fprintf(stderr, "Error: Failed to convert directory name to UTF-8 in get_last_dir_name_win.\n");
+        }
+        return dirName;
     }
+    fmt_fprintf(stderr, "Error: Last directory name not found in path in get_last_dir_name_win.\n");
+
     return NULL;
 }
 
 // Helper function for Windows to get full path
 static char* get_full_path_win(const char* path) {
-    wchar_t* wpath = encoding_utf8_to_wchar(path);
-    wchar_t wfullpath[_MAX_PATH];
+    if (!path) {
+        fmt_fprintf(stderr, "Error: Path is NULL in get_full_path_win.\n");
+        return NULL;
+    }
 
+    wchar_t* wpath = encoding_utf8_to_wchar(path);
+    if (!wpath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in get_full_path_win.\n");
+        return NULL;
+    }
+
+    wchar_t wfullpath[_MAX_PATH];
     if (_wfullpath(wfullpath, wpath, _MAX_PATH) != NULL) {
         char* fullpath = encoding_wchar_to_utf8(wfullpath);
         free(wpath);
+        if (!fullpath) {
+            fmt_fprintf(stderr, "Error: Conversion from wide-char to UTF-8 failed in get_full_path_win.\n");
+        }
         return fullpath;
     }
-
+    fmt_fprintf(stderr, "Error: Unable to get full path for %s in get_full_path_win.\n", path);
     free(wpath);
     return NULL;
 }
 
 static int remove_directory_recursive_win(const wchar_t* dir) {
+    if (!dir) {
+        fmt_fprintf(stderr, "Error: Directory is NULL in remove_directory_recursive_win.\n");
+        return -1;
+    }
+
     int len = wcslen(dir) + 2;  // Extra space for double null termination
     wchar_t* tempDir = (wchar_t*) malloc(len * sizeof(wchar_t));
-    if (!tempDir) return -1;  // Allocation failed
+    if (!tempDir) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in remove_directory_recursive_win.\n");
+        return -1;
+    }
 
     memset(tempDir, 0, len * sizeof(wchar_t));
     wcscpy(tempDir, dir);
@@ -74,6 +108,11 @@ static int remove_directory_recursive_win(const wchar_t* dir) {
 }
 
 static long long dir_get_size_win(const wchar_t* dirPath) {
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_size_win.\n");
+        return -1;
+    }
+
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
     long long size = 0;
@@ -82,6 +121,11 @@ static long long dir_get_size_win(const wchar_t* dirPath) {
     // Prepare the search path
     wsprintfW(searchPath, L"%s\\*", dirPath);
     hFind = FindFirstFileW(searchPath, &findFileData);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %ls in dir_get_size_win.\n", dirPath);
+        return -1;
+    }
 
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
@@ -100,6 +144,7 @@ static long long dir_get_size_win(const wchar_t* dirPath) {
                     size += fileSize.QuadPart;
                 }
             }
+
         } while (FindNextFileW(hFind, &findFileData) != 0);
         FindClose(hFind);
     }
@@ -107,16 +152,22 @@ static long long dir_get_size_win(const wchar_t* dirPath) {
 }
 
 static long long get_file_size_win(const wchar_t* filePath) {
+    if (!filePath) {
+        fmt_fprintf(stderr, "Error: File path is NULL in get_file_size_win.\n");
+        return -1;
+    }
+
     LARGE_INTEGER size;
     HANDLE hFile = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     
     if (hFile == INVALID_HANDLE_VALUE) {
-        return -1; // Error opening file
+        fmt_fprintf(stderr, "Error: Unable to open file %ls in get_file_size_win.\n", filePath);
+        return -1;
     }
-
     if (!GetFileSizeEx(hFile, &size)) {
+        fmt_fprintf(stderr, "Error: Unable to get file size for %ls in get_file_size_win.\n", filePath);
         CloseHandle(hFile);
-        return -1; // Error getting file size
+        return -1;
     }
 
     CloseHandle(hFile);
@@ -124,6 +175,11 @@ static long long get_file_size_win(const wchar_t* filePath) {
 }
 
 void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector* resultVector) {
+    if (!dirPath || !resultVector) {
+        fmt_fprintf(stderr, "Error: Directory path or result vector is NULL in dir_list_contents_win.\n");
+        return;
+    }
+
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
     wchar_t searchPath[MAX_PATH];
@@ -131,6 +187,11 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector*
     // Create a search pattern
     wsprintfW(searchPath, L"%ls\\*", dirPath);
     hFind = FindFirstFileW(searchPath, &findFileData);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %ls in dir_list_contents_win.\n", dirPath);
+        return;
+    }
 
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
@@ -141,6 +202,10 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector*
                     (option == DIR_LIST_DIRECTORIES && isDirectory) || 
                     (option == DIR_LIST_ALL)) {
                         char* utf8FileName = encoding_wchar_to_utf8(findFileData.cFileName);
+                        if (!utf8FileName) {
+                            fmt_fprintf(stderr, "Error: Failed to convert filename to UTF-8 in dir_list_contents_win.\n");
+                            continue;
+                        }
                         vector_push_back(resultVector, &utf8FileName);
                     // wprintf(L"%ls\n", findFileData.cFileName); // Print only the file or directory name
                 }
@@ -168,18 +233,34 @@ void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector*
 #define remove_directory rmdir
 
 static char* get_full_path_posix(const char* path) {
-    char fullpath[PATH_MAX];
-
-    if (realpath(path, fullpath) != NULL) {
-        return strdup(fullpath);
+    if (!path) {
+        fmt_fprintf(stderr, "Error: Path is NULL in get_full_path_posix.\n");
+        return NULL;
     }
 
-    return NULL;
+    char fullpath[PATH_MAX];
+    if (realpath(path, fullpath) == NULL) {
+        fmt_fprintf(stderr, "Error: Failed to resolve realpath for %s in get_full_path_posix.\n", path);
+        return NULL;
+    }
+
+    char* resolvedPath = strdup(fullpath);
+    if (!resolvedPath) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in get_full_path_posix for path %s.\n", fullpath);
+    }
+    return resolvedPath;
 }
 
 static int remove_directory_recursive_posix(const char* dirPath) {
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in remove_directory_recursive_posix.\n");
+        return -1;
+    }
     DIR* d = opendir(dirPath);
-    if (d == NULL) return -1; // Failed to open directory
+    if (!d) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %s in remove_directory_recursive_posix.\n", dirPath);
+        return -1;
+    }
 
     struct dirent *entry;
     int ret = 0;
@@ -191,22 +272,38 @@ static int remove_directory_recursive_posix(const char* dirPath) {
 
             if (entry->d_type == DT_DIR) {
                 ret = remove_directory_recursive_posix(fullPath);
-            } else {
+            } 
+            else {
                 ret = remove(fullPath);
             }
 
-            if (ret != 0) break; // Error occurred
+            if (ret != 0) {
+                fmt_fprintf(stderr, "Error: Failed to remove %s in remove_directory_recursive_posix.\n", fullPath);
+                break; // Error occurred
+            }
         }
     }
 
     closedir(d);
-    if (ret == 0) ret = rmdir(dirPath); // Delete the directory itself
-
+    if (ret == 0 && rmdir(dirPath) != 0) {
+        fmt_fprintf(stderr, "Error: Failed to remove directory %s in remove_directory_recursive_posix.\n", dirPath);
+        return -1;
+    }
     return ret;
 }
 
 static long long dir_get_size_posix(const char* dirPath) {
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_size_posix.\n");
+        return -1;
+    }
+
     DIR* dir = opendir(dirPath);
+    if (!dir) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %s in dir_get_size_posix.\n", dirPath);
+        return -1;
+    }
+
     struct dirent* entry;
     struct stat statbuf;
     long long size = 0;
@@ -218,13 +315,15 @@ static long long dir_get_size_posix(const char* dirPath) {
                 snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, entry->d_name);
 
                 if (stat(fullPath, &statbuf) == -1) {
-                    continue;
-                }
+                fmt_fprintf(stderr, "Error: Failed to get stats for file %s in dir_get_size_posix.\n", fullPath);
+                continue;
+            }
 
                 if (S_ISDIR(statbuf.st_mode)) {
                     // Recursively calculate the size of directories
                     size += dir_get_size_posix(fullPath);
-                } else {
+                } 
+                else {
                     // Accumulate the size of each file
                     size += statbuf.st_size;
                 }
@@ -236,15 +335,31 @@ static long long dir_get_size_posix(const char* dirPath) {
 }
 
 static long long get_file_size_posix(const char* filePath) {
+    if (!filePath) {
+        fmt_fprintf(stderr, "Error: File path is NULL in get_file_size_posix.\n");
+        return -1;
+    }
+
     struct stat statbuf;
     if (stat(filePath, &statbuf) != 0) {
-        return -1; // Error getting file size
+        fmt_fprintf(stderr, "Error: Failed to get file stats for %s in get_file_size_posix.\n", filePath);
+        return -1;
     }
     return statbuf.st_size;
 }
 
 void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* resultVector) {
+    if (!dirPath || !resultVector) {
+        fmt_fprintf(stderr, "Error: Directory path or result vector is NULL in dir_list_contents_posix.\n");
+        return;
+    }
+
     DIR* dir;
+    if (!dir) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %s in dir_list_contents_posix.\n", dirPath);
+        return;
+    }
+
     struct dirent* entry;
     struct stat statbuf;
     char fullPath[1024];
@@ -255,14 +370,16 @@ void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* 
             snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, entry->d_name);
 
             if (stat(fullPath, &statbuf) == -1) {
+                fmt_fprintf(stderr, "Error: Failed to get stats for file %s in dir_list_contents_posix.\n", fullPath);
                 continue;
             }
-
             if (option == LIST_FILES && !S_ISDIR(statbuf.st_mode)) {
                 printf("%s\n", entry->d_name);
-            } else if (option == LIST_DIRECTORIES && S_ISDIR(statbuf.st_mode)) {
+            } 
+            else if (option == LIST_DIRECTORIES && S_ISDIR(statbuf.st_mode)) {
                 printf("%s\n", entry->d_name);
-            } else if (option == LIST_ALL) {
+            } 
+            else if (option == LIST_ALL) {
                 printf("%s\n", entry->d_name);
             }
 
@@ -278,40 +395,11 @@ void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* 
 }
 #endif 
 
-// Function to read the entire contents of a file
-static uint8_t* read_file(const char* filePath, size_t* length) {
-    FILE* file = fopen(filePath, "rb");
-    if (!file) {
-        return NULL;
-    }
-
-    fseek(file, 0, SEEK_END);
-    *length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    uint8_t* data = (uint8_t*)malloc(*length);
-    if (!data) {
-        fclose(file);
-        return NULL;
-    }
-
-    fread(data, 1, *length, file);
-    fclose(file);
-    return data;
-}
-
-// Function to write data to a file
-static bool write_file(const char* filePath, const uint8_t* data, size_t length) {
-    FILE* file = fopen(filePath, "wb");
-    if (!file) {
-        return false;
-    }
-    fwrite(data, 1, length, file);
-    fclose(file);
-    return true;
-}
-
 static void derive_key_from_password(const char* password, uint8_t* key) {
+    if (!password || !key) {
+        fmt_fprintf(stderr, "Error: Password or key buffer is NULL in derive_key_from_password.\n");
+        return;
+    }
     size_t pass_len = strlen(password);
     size_t key_len = 8;  // DES key size is 8 bytes
 
@@ -326,48 +414,45 @@ static void derive_key_from_password(const char* password, uint8_t* key) {
     }
 }
 
-static char* my_strdup(const char* s) 
-{
-    if (s == NULL) 
-        return NULL;
-        
-    char* new_str = malloc(strlen(s) + 1);
-    if (new_str) 
-        strcpy(new_str, s);
-
-    return new_str;
-}
-
 bool dir_make_directory(const char* dirpath) {
-    if (dirpath == NULL) {
+    if (!dirpath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_make_directory.\n");
         return false;
     }
     
-    encoding_initialize();
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t* dirpath_wchar = encoding_utf8_to_wchar(dirpath);
-    if (dirpath_wchar == NULL) {
+    if (!dirpath_wchar) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_make_directory.\n");
         return false;
     }
 
-    bool result = CreateDirectoryW(dirpath_wchar, NULL) != 0;
-    free(dirpath_wchar);  // Remember to free the allocated memory
-    return result;
+   if (!CreateDirectoryW(dirpath_wchar, NULL)) {
+        fmt_fprintf(stderr, "Error: Unable to create directory %s in dir_make_directory.\n", dirpath);
+        free(dirpath_wchar);
+        return false;
+    }
+    free(dirpath_wchar);
+    return true;
     #else
-    // For POSIX systems, use the input directly
     mode_t mode = 0755; // default permissions
-    return mkdir(dirpath, mode) == 0;
+    if (mkdir(dirpath, mode) != 0) {
+        fmt_fprintf(stderr, "Error: Unable to create directory %s in dir_make_directory.\n", dirpath);
+        return false;
+    }
     #endif
 }
 
 char* dir_dir_name(const char* dirpath) {
-    if (dirpath == NULL) {
+    if (!dirpath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_dir_name.\n");
         return NULL;
     }
 
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wpath = encoding_utf8_to_wchar(dirpath);
-    if (wpath == NULL) {
+    if (!wpath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_dir_name.\n");
         return NULL;
     }
 
@@ -382,7 +467,7 @@ char* dir_dir_name(const char* dirpath) {
     }
 
     free(wpath);
-    return name ? name : my_strdup("");
+    return name ? name : string_strdup("");
 
     #else
     // POSIX systems
@@ -390,12 +475,12 @@ char* dir_dir_name(const char* dirpath) {
         char cwd[1024];
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
             const char* lastSlash = strrchr(cwd, '/');
-            return lastSlash ? my_strdup(lastSlash + 1) : my_strdup(cwd);
+            return lastSlash ? string_strdup(lastSlash + 1) : string_strdup(cwd);
         }
-        return my_strdup("");
+        return string_strdup("");
     } else {
         const char* lastSlash = strrchr(dirpath, '/');
-        return lastSlash ? my_strdup(lastSlash + 1) : my_strdup(dirpath);
+        return lastSlash ? string_strdup(lastSlash + 1) : string_strdup(dirpath);
     }
     #endif
 }
@@ -405,15 +490,24 @@ char* dir_current_path(void) {
 
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t wpath[1024];
-
-    if (_wgetcwd(wpath, sizeof(wpath) / sizeof(wchar_t)) != NULL) {
-        path = encoding_wchar_to_utf8(wpath);
+    if (_wgetcwd(wpath, sizeof(wpath) / sizeof(wchar_t)) == NULL) {
+        fmt_fprintf(stderr, "Error: Unable to get current working directory in dir_current_path on Windows.\n");
+        return NULL;
+    }
+    
+    path = encoding_wchar_to_utf8(wpath);
+    if (!path) {
+        fmt_fprintf(stderr, "Error: Conversion from wide-char to UTF-8 failed in dir_current_path.\n");
     }
     #else 
     char buffer[1024];
-
-    if (getcwd(buffer, sizeof(buffer)) != NULL) {
-        path = my_strdup(buffer);
+    if (getcwd(buffer, sizeof(buffer)) == NULL) {
+        fmt_fprintf(stderr, "Error: Unable to get current working directory in dir_current_path on POSIX.\n");
+        return NULL;
+    }
+    path = string_strdup(buffer);
+    if (!path) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in dir_current_path.\n");
     }
     #endif
 
@@ -421,7 +515,8 @@ char* dir_current_path(void) {
 }
 
 int dir_count(const char* dirpath) {
-    if (dirpath == NULL) {
+    if (!dirpath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_count.\n");
         return -1;
     }
     int count = 0;
@@ -447,7 +542,8 @@ int dir_count(const char* dirpath) {
     }
     #else 
     DIR *dir = opendir(dirpath);
-    if (dir == NULL) {
+    if (!dir) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %s in dir_count.\n", dirpath);
         return -1;
     }
 
@@ -465,7 +561,8 @@ int dir_count(const char* dirpath) {
 }
 
 char* dir_absolute_file_path(const char* relative_path) {
-    if (relative_path == NULL) {
+    if (!relative_path) {
+        fmt_fprintf(stderr, "Error: Relative path is NULL in dir_absolute_file_path.\n");
         return NULL;
     }
 
@@ -483,21 +580,31 @@ char* dir_absolute_file_path(const char* relative_path) {
 }
 
 bool dir_cd(const char* dirName) {
-    if (dirName == NULL) {
+    if (!dirName) {
+        fmt_fprintf(stderr, "Error: Directory name is NULL in dir_cd.\n");
         return false;
     }
 
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wDirName = encoding_utf8_to_wchar(dirName);
-    if (wDirName == NULL) {
+    if (!wDirName) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_cd for directory %s.\n", dirName);
+        return false;
+    }
+    if (change_directory(wDirName) != 0) {
+        fmt_fprintf(stderr, "Error: Change directory failed in dir_cd for directory %s.\n", dirName);
+        free(wDirName);
         return false;
     }
 
-    bool result = change_directory(wDirName) == 0;
     free(wDirName);
-    return result;
+    return true;
     #else
-    return change_directory(dirName) == 0;
+    if (change_directory(dirName) != 0) {
+        fmt_fprintf(stderr, "Error: Change directory failed in dir_cd for directory %s.\n", dirName);
+        return false;
+    }
+    return true;
     #endif
 }
 
@@ -506,42 +613,54 @@ bool dir_cd_up() {
 }
 
 bool dir_remove_directory(const char* dirName) {
-    if (dirName == NULL) {
+    if (!dirName) {
+        fmt_fprintf(stderr, "Error: Directory name is NULL in dir_remove_directory.\n");
         return false;
     }
-
-    // Check if the directory is empty
     if (!dir_is_empty(dirName)) {
-        printf("Directory is not empty.\n");
+        fmt_fprintf(stderr, "Error: Directory %s is not empty in dir_remove_directory.\n", dirName);
         return false;
     }
 
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wDirName = encoding_utf8_to_wchar(dirName);
-    if (wDirName == NULL) {
+    if (!wDirName) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_remove_directory for directory %s.\n", dirName);
         return false;
     }
 
     bool result = remove_directory(wDirName) == 0;
     free(wDirName);
+
+    if (!result) {
+        fmt_fprintf(stderr, "Error: remove_directory failed for directory %s in dir_remove_directory.\n", dirName);
+    }
     return result;
     #else
-    return remove_directory(dirName) == 0;
+    if (remove_directory(dirName) != 0) {
+        fmt_fprintf(stderr, "Error: rmdir failed for directory %s in dir_remove_directory.\n", dirName);
+        return false;
+    }
+    return true;
     #endif
 }
 
 bool dir_is_empty(const char* dirName) {
-    if (dirName == NULL) {
-        printf("Directory name is NULL.\n");
+    if (!dirName) {
+        fmt_fprintf(stderr, "Error: Directory name is NULL in dir_is_empty.\n");
         return false;
     }
 
     #if defined(_WIN32) || defined(_WIN64)
-    return PathIsDirectoryEmptyA(dirName) == TRUE;
+    if (PathIsDirectoryEmptyA(dirName) != TRUE) {
+        fmt_fprintf(stderr, "Error: Directory %s is not empty in dir_is_empty.\n", dirName);
+        return false;
+    }
+    return true;
     #else
     DIR *d = opendir(dirName);
-    if (d == NULL) {
-        printf("Failed to open directory for checking contents.\n");
+    if (!d) {
+        fmt_fprintf(stderr, "Error: Failed to open directory %s for checking contents in dir_is_empty.\n", dirName);
         return false;
     }
 
@@ -560,69 +679,79 @@ bool dir_is_empty(const char* dirName) {
 }
 
 bool dir_remove_directory_recursive(const char* dirPath) {
-    if (dirPath == NULL) {
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_remove_directory_recursive.\n");
         return false;
     }
 
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t wPath[MAX_PATH];
-    MultiByteToWideChar(CP_UTF8, 0, dirPath, -1, wPath, MAX_PATH);
+    // MultiByteToWideChar(CP_UTF8, 0, dirPath, -1, wPath, MAX_PATH);
 
-    return remove_directory_recursive_win(wPath) == 0;
+    if (MultiByteToWideChar(CP_UTF8, 0, dirPath, -1, wPath, MAX_PATH) == 0) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_remove_directory_recursive for directory %s.\n", dirPath);
+        return false;
+    }
+
+    if (remove_directory_recursive_win(wPath) != 0) {
+        fmt_fprintf(stderr, "Error: Recursive directory removal failed in dir_remove_directory_recursive for directory %s.\n", dirPath);
+        return false;
+    }
+    return true;
     #else
-    return remove_directory_recursive_posix(dirPath) == 0;
+    if (remove_directory_recursive_posix(dirPath) != 0) {
+        fmt_fprintf(stderr, "Error: Recursive directory removal failed in dir_remove_directory_recursive for directory %s.\n", dirPath);
+        return false;
+    }
+    return true;
     #endif
 }
 
 bool dir_rename(const char* oldName, const char* newName) {
-    if (oldName == NULL || newName == NULL) {
+    if (!oldName || !newName) {
+        fmt_fprintf(stderr, "Error: Old name or new name is NULL in dir_rename.\n");
         return false;
     }
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t* oldName_wchar = encoding_utf8_to_wchar(oldName);
     wchar_t* newName_wchar = encoding_utf8_to_wchar(newName);
 
-    if (oldName_wchar == NULL || newName_wchar == NULL) {
+    if (!oldName_wchar || !newName_wchar) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_rename.\n");
+        free(oldName_wchar);
+        free(newName_wchar);
+        return false;
+    }
+    if (!MoveFileW(oldName_wchar, newName_wchar)) {
+        fmt_fprintf(stderr, "Error: MoveFileW failed to rename from %s to %s.\n", oldName, newName);
         free(oldName_wchar);
         free(newName_wchar);
         return false;
     }
 
-    bool result = MoveFileW(oldName_wchar, newName_wchar) != 0;
-
     free(oldName_wchar);
     free(newName_wchar);
 
-    return result;
+    return true;
     #else
-    if (oldName == NULL || newName == NULL) {
+    if (rename(oldName, newName) != 0) {
+        fmt_fprintf(stderr, "Error: rename failed to rename from %s to %s.\n", oldName, newName);
         return false;
     }
-
-    int result = rename(oldName, newName);
-
-    if (result != 0) {
-        // If rename fails and errno is EXDEV, try to copy and remove
-        if (errno == EXDEV) {
-            // Implement copy and remove logic here if needed
-            // For example, use a function to copy the file/directory and then remove the old one
-            // This part is system-dependent and can be quite complex
-        }
-        return false;
-    }
-
     return true;
     #endif
 }
 
 bool dir_is_directory_exists(const char* dirPath) {
-    if (dirPath == NULL) {
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_is_directory_exists.\n");
         return false;
     }
 
     #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
     if (wPath == NULL) {
+        fmt_fprintf(stderr, "Error: Failed in converting utf8 to wchar in dir_is_directory_exists.\n");
         return false;
     }
 
@@ -630,6 +759,7 @@ bool dir_is_directory_exists(const char* dirPath) {
     free(wPath);
 
     if (attribs == INVALID_FILE_ATTRIBUTES) {
+        fmt_fprintf(stderr, "Error: GetFileAttributesW failed or file does not exist in dir_is_directory_exists.\n");
         return false;
     }
 
@@ -646,13 +776,15 @@ bool dir_is_directory_exists(const char* dirPath) {
 }
 
 bool dir_is_file_exists(const char* filePath) {
-    if (filePath == NULL) {
+    if (!filePath) {
+        fmt_fprintf(stderr, "Error: File path is NULL in dir_is_file_exists.\n");
         return false;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
     if (wPath == NULL) {
+        fmt_fprintf(stderr, "Error: Failed in converting utf8 to wchar in dir_is_file_exists.\n");
         return false;
     }
 
@@ -667,8 +799,8 @@ bool dir_is_file_exists(const char* filePath) {
 }
 
 bool dir_copy_file(const char* srcPath, const char* destPath) {
-    if (srcPath == NULL || destPath == NULL) {
-        perror("srcPath is null or destPath is null in dir_copy_file");
+    if (!srcPath || !destPath) {
+        fmt_fprintf(stderr, "Error: Source or destination path is NULL in dir_copy_file.\n");
         return false;
     }
 
@@ -677,13 +809,17 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     wchar_t* wSrcPath = encoding_utf8_to_wchar(srcPath);
     wchar_t* wDestPath = encoding_utf8_to_wchar(destPath);
 
-    if (wSrcPath == NULL || wDestPath == NULL) {
+    if (!wSrcPath || !wDestPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_copy_file.\n");
         free(wSrcPath);
         free(wDestPath);
         return false;
     }
 
     bool result = CopyFileW(wSrcPath, wDestPath, FALSE) != 0;
+    if (!result) {
+        fmt_fprintf(stderr, "Error: CopyFileW failed to copy from %s to %s.\n", srcPath, destPath);
+    }
 
     free(wSrcPath);
     free(wDestPath);
@@ -691,14 +827,16 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     return result;
 #else
     // POSIX implementation
-    FILE* srcFile = fopen(srcPath, "rb");
-    if (srcFile == NULL) {
+    FileReader* srcFile = file_reader_open(srcPath, READ_BINARY);
+    if (!srcFile) {
+        fmt_fprintf(stderr, "Error: Unable to open source file %s for reading in dir_copy_file.\n", srcPath);
         return false;
     }
 
-    FILE* destFile = fopen(destPath, "wb");
-    if (destFile == NULL) {
-        fclose(srcFile);
+    FileWriter* destFile = file_writer_open(destPath, WRITE_BINARY);
+    if (!destFile) {
+        file_reader_close(srcFile);
+        fmt_fprintf(stderr, "Error: Unable to open destination file %s for writing in dir_copy_file.\n", destPath);
         return false;
     }
 
@@ -706,23 +844,28 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     size_t bytesRead;
     bool success = true;
 
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), srcFile)) > 0) {
-        if (fwrite(buffer, 1, bytesRead, destFile) != bytesRead) {
+    while (!file_reader_eof(srcFile)) {
+        bytesRead = file_reader_read(buffer, 1, sizeof(buffer), srcFile);
+        if (bytesRead == 0) {
+            break; // No more data to read
+        }
+
+        if (file_writer_write(buffer, 1, bytesRead, destFile) != bytesRead) {
             success = false;
             break;
         }
     }
 
-    fclose(srcFile);
-    fclose(destFile);
+    file_reader_close(srcFile);
+    file_writer_close(destFile);
 
     return success;
 #endif
 }
 
 bool dir_copy_directory(const char* srcDir, const char* destDir) {
-    if (srcDir == NULL || destDir == NULL) {
-        perror("srcDir is null or destDir is null in dir_copy_directory");
+    if (!srcDir || !destDir) {
+        fmt_fprintf(stderr, "Error: Source or destination directory is NULL in dir_copy_directory.\n");
         return false;
     }
 
@@ -844,47 +987,78 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
 }
 
 long long dir_get_directory_size(const char* dirPath) {
-    if (dirPath == NULL) {
-        perror("dirPath is null in dir_get_directory_size");
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_directory_size.\n");
+        return -1;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_get_directory_size.\n");
         return -1;
     }
 
-#if defined(_WIN32) || defined(_WIN64)
-    wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
     long long size = dir_get_size_win(wPath);
+    if (size == -1) {
+        fmt_fprintf(stderr, "Error: Failed to get directory size for %s.\n", dirPath);
+    }
 
     free(wPath);
     return size;
 #else
-    return dir_get_size_posix(dirPath);
+    long long size = dir_get_size_posix(dirPath);
+    if (size == -1) {
+        fmt_fprintf(stderr, "Error: Failed to get directory size for %s.\n", dirPath);
+    }
+    return size;
 #endif
 }
 
 long long dir_get_file_size(const char* filePath) {
-    if (filePath == NULL) {
-        perror("filePath is null in dir_get_file_size");
+    if (!filePath) {
+        fmt_fprintf(stderr, "Error: File path is NULL in dir_get_file_size.\n");
         return -1;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_get_file_size.\n");
+        return -1;
+    }
+
     long long size = get_file_size_win(wPath);
+    if (size == -1) {
+        fmt_fprintf(stderr, "Error: Failed to get file size for %s.\n", filePath);
+    }
 
     free(wPath);
     return size;
 #else
-    return get_file_size_posix(filePath);
+    long long size = get_file_size_posix(filePath);
+    if (size == -1) {
+        fmt_fprintf(stderr, "Error: Failed to get file size for %s.\n", filePath);
+    }
 #endif
 }
 
 void dir_list_contents(const char* dirPath, DirListOption option, Vector* resultVector) {
-    if (dirPath == NULL) {
-        perror("dirPath is null in dir_list_contents");
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_list_contents.\n");
+        return;
+    }
+    if (!resultVector) {
+        fmt_fprintf(stderr, "Error: Result vector is NULL in dir_list_contents.\n");
         return;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_list_contents.\n");
+        return;
+    }
+
     dir_list_contents_win(wPath, option, resultVector);
     free(wPath);
 #else
@@ -893,16 +1067,21 @@ void dir_list_contents(const char* dirPath, DirListOption option, Vector* result
 }
 
 bool dir_is_file(const char *filePath) {
-    if (filePath == NULL) {
-        perror("filePath is null");
+    if (!filePath) {
+        fmt_fprintf(stderr, "Error: File path is NULL in dir_is_file.\n");
         return false;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
-    DWORD attribs = GetFileAttributesW(wPath);
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_is_file.\n");
+        return false;
+    }
 
+    DWORD attribs = GetFileAttributesW(wPath);
     if (attribs == INVALID_FILE_ATTRIBUTES) {
+        fmt_fprintf(stderr, "Error: GetFileAttributesW failed or file does not exist in dir_is_file.\n");
         return false; // The path does not exist or error
     }
     bool result = (attribs & FILE_ATTRIBUTE_DIRECTORY) == 0;
@@ -911,22 +1090,29 @@ bool dir_is_file(const char *filePath) {
 #else 
     struct stat path_stat;
     if (stat(filePath, &path_stat) != 0) {
-        return false; // The path does not exist or error
+        fmt_fprintf(stderr, "Error: stat failed or file does not exist in dir_is_file.\n");
+        return false;
     }
     return S_ISREG(path_stat.st_mode);
 #endif 
 }
 
 bool dir_is_directory(const char* dirPath) {
-    if (dirPath == NULL) {
-        perror("dirPath is null in dir_is_directory");
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_is_directory.\n");
         return false;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_is_directory.\n");
+        return false;
+    }
+
     DWORD attribs = GetFileAttributesW(wPath);
     if (attribs == INVALID_FILE_ATTRIBUTES) {
+        fmt_fprintf(stderr, "Error: GetFileAttributesW failed or directory does not exist in dir_is_directory.\n");
         return false; // The path does not exist or error
     }
     bool result = (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -935,48 +1121,70 @@ bool dir_is_directory(const char* dirPath) {
 #else 
     struct stat path_stat;
     if (stat(filePath, &path_stat) != 0) {
-        return false; // The path does not exist or error
+        fmt_fprintf(stderr, "Error: stat failed or directory does not exist in dir_is_directory.\n");
+        return false;
     }
     return S_ISDIR(path_stat.st_mode);
 #endif 
 }
 
 bool dir_move_file(const char* srcPath, const char* destPath) {
-    if (srcPath == NULL) {
-        perror("srcPath is null in dir_move");
+    if (!srcPath) {
+        fmt_fprintf(stderr, "Error: Source path is NULL in dir_move_file.\n");
         return false;
     }
-    if (destPath == NULL) {
-        perror("destPath is null in dir_move");
+    if (!destPath) {
+        fmt_fprintf(stderr, "Error: Destination path is NULL in dir_move_file.\n");
         return false;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* source = encoding_utf8_to_wchar(srcPath);
     wchar_t* destination = encoding_utf8_to_wchar(destPath);
+    if (!source || !destination) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_move_file.\n");
+        free(source);
+        free(destination);
+        return false;
+    }
+
     bool result = MoveFileW(source, destination) != 0;
+    if (!result) {
+        fmt_fprintf(stderr, "Error: MoveFileW failed in dir_move_file.\n");
+    }
 
     free(source);
     free(destination);
     return result;
 #else 
-    return rename(srcPath, destPath) == 0;
+    if (rename(srcPath, destPath) != 0) {
+        fmt_fprintf(stderr, "Error: rename failed in dir_move_file.\n");
+        return false;
+    }
 #endif
 }
 
 bool dir_move_directory(const char* srcPath, const char* destPath) {
-    if (srcPath == NULL) {
-        perror("srcPath is null in dir_move");
+    if (!srcPath) {
+        fmt_fprintf(stderr, "Error: Source path is NULL in dir_move_directory.\n");
         return false;
     }
-    if (destPath == NULL) {
-        perror("destPath is null in dir_move");
+    if (!destPath) {
+        fmt_fprintf(stderr, "Error: Destination path is NULL in dir_move_directory.\n");
         return false;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* source = encoding_utf8_to_wchar(srcPath);
     wchar_t* destination = encoding_utf8_to_wchar(destPath);
+
+    if (!source || !destination) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_move_directory.\n");
+        free(source);
+        free(destination);
+        return false;
+    }
+
     SHFILEOPSTRUCTW fileOp = {
         NULL,
         FO_MOVE,
@@ -991,27 +1199,35 @@ bool dir_move_directory(const char* srcPath, const char* destPath) {
     bool result = SHFileOperationW(&fileOp) == 0;
     free(source);
     free(destination);
+    if (!result) {
+        fmt_fprintf(stderr, "Error: SHFileOperationW failed in dir_move_directory.\n");
+    }
+
     return result;
 #else 
-    return rename(srcPath, destPath) == 0;
+    if (rename(srcPath, destPath) != 0) {
+        fmt_fprintf(stderr, "Error: rename failed in dir_move_directory for paths %s to %s.\n", srcPath, destPath);
+        return false;
+    }
 #endif
 }
 
 char* dir_get_modified_time(const char* dirPath) {
-    if (dirPath == NULL) {
-        perror("dirPath is null in dir_get_modified_time");
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_modified_time.\n");
         return NULL;
     }
-
 #if defined(_WIN32) || defined(_WIN64)
     // Convert to wide-character string
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
-    if (wPath == NULL) {
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_get_modified_time.\n");
         return NULL;
     }
 
     WIN32_FILE_ATTRIBUTE_DATA fileInfo;
     if (!GetFileAttributesExW(wPath, GetFileExInfoStandard, &fileInfo)) {
+        fmt_fprintf(stderr, "Error: GetFileAttributesExW failed in dir_get_modified_time.\n");
         free(wPath);
         return NULL;
     }
@@ -1030,11 +1246,16 @@ char* dir_get_modified_time(const char* dirPath) {
     // Convert back to UTF-8
     char* lastTime = encoding_wchar_to_utf8(timeString);
     free(wPath); // Free the wide-character string
+
+    if (!lastTime) {
+        fmt_fprintf(stderr, "Error: Conversion from wide-char to UTF-8 failed in dir_get_modified_time.\n");
+    }
     return lastTime;
 
 #else // POSIX
     struct stat fileInfo;
     if (stat(dirPath, &fileInfo) != 0) {
+        fmt_fprintf(stderr, "Error: stat failed in dir_get_modified_time for directory %s.\n", dirPath);
         return NULL;
     }
 
@@ -1043,6 +1264,7 @@ char* dir_get_modified_time(const char* dirPath) {
     char* timeString = malloc(sizeof(char) * 256);
 
     if (timeString == NULL) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in dir_get_modified_time.\n");
         return NULL;
     }
 
@@ -1052,14 +1274,22 @@ char* dir_get_modified_time(const char* dirPath) {
 }
 
 char* dir_get_creation_time(const char* dirPath) {
-    if (dirPath == NULL) {
+    if (!dirPath) {
+        fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_creation_time.\n");
         return NULL;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(dirPath);
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_get_creation_time.\n");
+        return NULL;
+    }
+
     WIN32_FILE_ATTRIBUTE_DATA fileInfo;
     if (!GetFileAttributesExW(wPath, GetFileExInfoStandard, &fileInfo)) {
+        fmt_fprintf(stderr, "Error: GetFileAttributesExW failed in dir_get_creation_time.\n");
+        free(wPath);
         return NULL;
     }
 
@@ -1077,9 +1307,14 @@ char* dir_get_creation_time(const char* dirPath) {
     // Convert back to UTF-8
     char* lastTime = encoding_wchar_to_utf8(timeString);
     free(wPath);
+
+    if (!lastTime) {
+        fmt_fprintf(stderr, "Error: Conversion from wide-char to UTF-8 failed in dir_get_creation_time.\n");
+    }
+
     return lastTime;
 #else 
-    printf("POSIX systems typically don't have a creation time.You can use get_last_modified_time\n");
+    fmt_fprintf(stderr, "Error: POSIX systems typically don't have a creation time. Use dir_get_modified_time instead.\n");
     return NULL; 
 #endif 
 }
@@ -1095,26 +1330,34 @@ char* dir_get_home_directory() {
 #else
     const char* homeEnv = getenv("HOME");
     if (homeEnv != NULL) {
-        homeDir = my_strdup(homeEnv);
+        homeDir = string_strdup(homeEnv);
     } 
     else {
         struct passwd *pw = getpwuid(getuid());
-        if (pw != NULL) {
-            homeDir = my_strdup(pw->pw_dir);
+        if (!pw) {
+            fmt_fprintf(stderr, "Error: Unable to retrieve home directory path on POSIX.\n");
+            return NULL;
         }
+        homeDir = string_strdup(pw->pw_dir);
+    }
+    if (!homeDir) {
+        fmt_fprintf(stderr, "Error: Failed to duplicate home directory string in dir_get_home_directory.\n");
+        return NULL;
     }
 #endif
     return homeDir; // Caller responsible for freeing this memory
 }
 
 DirFileType dir_get_file_type(const char* filePath) {
-    if (filePath == NULL) {
+    if (!filePath) {
+        fmt_fprintf(stderr, "Error: File path is NULL in dir_get_file_type.\n");
         return DIR_FILE_TYPE_UNKNOWN;
     }
 
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wPath = encoding_utf8_to_wchar(filePath);
-    if (wPath == NULL) {
+    if (!wPath) {
+        fmt_fprintf(stderr, "Error: Failed to convert file path to wide-char in dir_get_file_type.\n");
         return DIR_FILE_TYPE_UNKNOWN;
     }
 
@@ -1122,6 +1365,7 @@ DirFileType dir_get_file_type(const char* filePath) {
     free(wPath);
 
     if (attribs == INVALID_FILE_ATTRIBUTES) {
+        fmt_fprintf(stderr, "Error: GetFileAttributesW failed or file does not exist in dir_get_file_type.\n");
         return DIR_FILE_TYPE_UNKNOWN;
     }
 
@@ -1138,90 +1382,162 @@ DirFileType dir_get_file_type(const char* filePath) {
 #else
     struct stat path_stat;
     if (lstat(filePath, &path_stat) != 0) {
-        return FILE_TYPE_UNKNOWN;
+        fmt_fprintf(stderr, "Error: lstat failed in dir_get_file_type for file %s.\n", filePath);
+        return DIR_FILE_TYPE_UNKNOWN;
     }
 
     if (S_ISREG(path_stat.st_mode)) {
-        return FILE_TYPE_REGULAR;
+        return DIR_FILE_TYPE_REGULAR;
     }
     else if (S_ISDIR(path_stat.st_mode)) {
-        return FILE_TYPE_DIRECTORY;
+        return DIR_FILE_TYPE_DIRECTORY;
     } 
     else if (S_ISLNK(path_stat.st_mode)) {
-        return FILE_TYPE_SYMLINK;
+        return DIR_FILE_TYPE_SYMLINK;
     } 
     else {
-        return FILE_TYPE_UNKNOWN;
+        return DIR_FILE_TYPE_UNKNOWN;
     }
 #endif
 }
 
 bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
-    size_t fileLen;
-    uint8_t* fileData = read_file(filePath, &fileLen);
-
-    if (!fileData) { 
+    if (!filePath || !password || !iv) {
+        fmt_fprintf(stderr, "Error: Invalid arguments in dir_encrypt_file. filePath, password, or iv is NULL.\n");
         return false;
     }
 
-    size_t outLen;
-    
+    FileReader* reader = file_reader_open(filePath, READ_BINARY);
+    if (!reader) {
+        fmt_fprintf(stderr, "Error: Failed to open file for reading in dir_encrypt_file.\n");
+        return false;
+    }
+
+    size_t fileLen = file_reader_get_size(reader);
+    uint8_t* fileData = (uint8_t*)malloc(fileLen);
+    if (!fileData) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in dir_encrypt_file.\n");
+        file_reader_close(reader);
+        return false;
+    }
+
+    if (file_reader_read(fileData, sizeof(uint8_t), fileLen, reader) != fileLen) {
+        fmt_fprintf(stderr, "Error: Failed to read file data in dir_encrypt_file.\n");
+        free(fileData);
+        file_reader_close(reader);
+        return false;
+    }
+    file_reader_close(reader);
+
     if (strlen(password) > 8) {
-        perror("password should be 8 byte");
+        fmt_fprintf(stderr, "Error: Password length exceeds 8 bytes in dir_encrypt_file.\n");
+        free(fileData);
         return false;
     }
-    
+
     uint8_t key[8]; // DES key size
     derive_key_from_password(password, key);
 
+    size_t outLen;
     uint8_t* encryptedData = (uint8_t*)crypto_des_encrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
     free(fileData);
 
-    if (!encryptedData) { 
+    if (!encryptedData) {
+        fmt_fprintf(stderr, "Error: Encryption failed in dir_encrypt_file.\n");
         return false;
     }
 
-    bool writeStatus = write_file(filePath, encryptedData, outLen);
+    FileWriter* writer = file_writer_open(filePath, WRITE_BINARY);
+    if (!writer) {
+        fmt_fprintf(stderr, "Error: Failed to open file for writing in dir_encrypt_file.\n");
+        free(encryptedData);
+        return false;
+    }
+
+    if (file_writer_write(encryptedData, sizeof(uint8_t), outLen, writer) != outLen) {
+        fmt_fprintf(stderr, "Error: Failed to write encrypted data in dir_encrypt_file.\n");
+        free(encryptedData);
+        file_writer_close(writer);
+        return false;
+    }
     free(encryptedData);
-    return writeStatus;
+    file_writer_close(writer);
+    return true;
 }
 
 bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
-    size_t fileLen;
-    uint8_t* fileData = read_file(filePath, &fileLen);
-
-    if (!fileData) {
+    if (!filePath || !password || !iv) {
+        fmt_fprintf(stderr, "Error: Invalid arguments in dir_decrypt_file. filePath, password, or iv is NULL.\n");
         return false;
     }
 
-    size_t outLen;
-    // Again, derive key and iv from the password
+    FileReader* reader = file_reader_open(filePath, READ_BINARY);
+    if (!reader) {
+        fmt_fprintf(stderr, "Error: Failed to open file for reading in dir_decrypt_file.\n");
+        return false;
+    }
+
+    size_t fileLen = file_reader_get_size(reader);
+    uint8_t* fileData = (uint8_t*)malloc(fileLen);
+    if (!fileData) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in dir_decrypt_file.\n");
+        file_reader_close(reader);
+        return false;
+    }
+
+    if (file_reader_read(fileData, sizeof(uint8_t), fileLen, reader) != fileLen) {
+        fmt_fprintf(stderr, "Error: Failed to read file data in dir_decrypt_file.\n");
+        free(fileData);
+        file_reader_close(reader);
+        return false;
+    }
+    file_reader_close(reader);
 
     if (strlen(password) > 8) {
-        perror("password should be 8 byte");
+        fmt_fprintf(stderr, "Error: Password length exceeds 8 bytes in dir_decrypt_file.\n");
+        free(fileData);
         return false;
     }
 
     uint8_t key[8]; // DES key size
     derive_key_from_password(password, key);
-    
+
+    size_t outLen;
     uint8_t* decryptedData = (uint8_t*)crypto_des_decrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
     free(fileData);
 
     if (!decryptedData) {
-        perror("can not decrypt date in dir_decrypt_file");
+        fmt_fprintf(stderr, "Error: Decryption failed in dir_decrypt_file.\n");
         return false;
     }
 
-    bool writeStatus = write_file(filePath, decryptedData, outLen);
+    FileWriter* writer = file_writer_open(filePath, WRITE_BINARY);
+    if (!writer) {
+        fmt_fprintf(stderr, "Error: Failed to open file for writing in dir_decrypt_file.\n");
+        free(decryptedData);
+        return false;
+    }
+
+    if (file_writer_write(decryptedData, sizeof(uint8_t), outLen, writer) != outLen) {
+        fmt_fprintf(stderr, "Error: Failed to write decrypted data in dir_decrypt_file.\n");
+        free(decryptedData);
+        file_writer_close(writer);
+        return false;
+    }
     free(decryptedData);
-    return writeStatus;
+    file_writer_close(writer);
+    return true;
 }
 
 bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize) {
+    if (!filePath || !ownerBuffer || bufferSize == 0) {
+        fmt_fprintf(stderr, "Error: Invalid arguments in dir_get_file_owner. filePath, ownerBuffer is NULL, or bufferSize is 0.\n");
+        return false;
+    }
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wFilePath = encoding_utf8_to_wchar(filePath);
     if (wFilePath == NULL) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_get_file_owner.\n");
         return false;
     }
 
@@ -1231,11 +1547,13 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
 
     HANDLE hFile = CreateFileW(wFilePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
+        fmt_fprintf(stderr, "Error: Unable to open file handle in dir_get_file_owner for file %s.\n", filePath);
         free(wFilePath);
         return false;
     }
 
     if (GetSecurityInfo(hFile, SE_FILE_OBJECT, si, &ownerSid, NULL, NULL, NULL, &pSD) != ERROR_SUCCESS) {
+        fmt_fprintf(stderr, "Error: GetSecurityInfo failed in dir_get_file_owner.\n");
         CloseHandle(hFile);
         free(wFilePath);
         return false;
@@ -1248,6 +1566,7 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
     SID_NAME_USE sidUse;
 
     if (!LookupAccountSidW(NULL, ownerSid, name, &nameSize, domain, &domainSize, &sidUse)) {
+        fmt_fprintf(stderr, "Error: LookupAccountSidW failed in dir_get_file_owner.\n");
         free(wFilePath);
         if (pSD) {
             LocalFree(pSD);
@@ -1257,6 +1576,7 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
 
     char* utf8OwnerName = encoding_wchar_to_utf8(name);
     if (utf8OwnerName == NULL) {
+        fmt_fprintf(stderr, "Error: Conversion from wide-char to UTF-8 failed in dir_get_file_owner.\n");
         free(wFilePath);
         if (pSD) {
             LocalFree(pSD);
@@ -1276,11 +1596,13 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
 #else
     struct stat fileInfo;
     if (stat(filePath, &fileInfo) != 0) {
+        fmt_fprintf(stderr, "Error: stat failed in dir_get_file_owner for file %s.\n", filePath);
         return false;
     }
 
     struct passwd *pwd = getpwuid(fileInfo.st_uid);
     if (pwd == NULL) {
+        fmt_fprintf(stderr, "Error: getpwuid failed in dir_get_file_owner for UID %d.\n", fileInfo.st_uid);
         return false;
     }
 
@@ -1291,9 +1613,15 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
 }
 
 bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize) {
+    if (!dirPath || !ownerBuffer || bufferSize == 0) {
+        fmt_fprintf(stderr, "Error: Invalid arguments in dir_get_directory_owner. dirPath, ownerBuffer is NULL or bufferSize is 0.\n");
+        return false;
+    }
+
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wDirPath = encoding_utf8_to_wchar(dirPath);
     if (wDirPath == NULL) {
+        fmt_fprintf(stderr, "Error: Conversion to wide-char failed in dir_get_directory_owner.\n");
         return false;
     }
 
@@ -1303,11 +1631,13 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
 
     HANDLE hDir = CreateFileW(wDirPath, READ_CONTROL, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
     if (hDir == INVALID_HANDLE_VALUE) {
+        fmt_fprintf(stderr, "Error: Unable to open directory handle in dir_get_directory_owner.\n");
         free(wDirPath);
         return false;
     }
 
     if (GetSecurityInfo(hDir, SE_FILE_OBJECT, si, &ownerSid, NULL, NULL, NULL, &pSD) != ERROR_SUCCESS) {
+        fmt_fprintf(stderr, "Error: GetSecurityInfo failed in dir_get_directory_owner.\n");
         CloseHandle(hDir);
         free(wDirPath);
         return false;
@@ -1320,6 +1650,7 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
     SID_NAME_USE sidUse;
 
     if (!LookupAccountSidW(NULL, ownerSid, name, &nameSize, domain, &domainSize, &sidUse)) {
+        fmt_fprintf(stderr, "Error: LookupAccountSidW failed in dir_get_directory_owner.\n");
         free(wDirPath);
         if (pSD) {
             LocalFree(pSD);
@@ -1329,6 +1660,7 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
 
     char* utf8OwnerName = encoding_wchar_to_utf8(name);
     if (utf8OwnerName == NULL) {
+        fmt_fprintf(stderr, "Error: Conversion from wide-char to UTF-8 failed in dir_get_directory_owner.\n");
         free(wDirPath);
         if (pSD) {
             LocalFree(pSD);
@@ -1348,11 +1680,13 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
 #else
     struct stat dirInfo;
     if (stat(dirPath, &dirInfo) != 0) {
+        fmt_fprintf(stderr, "Error: stat failed in dir_get_directory_owner for path %s.\n", dirPath);
         return false;
     }
 
     struct passwd *pwd = getpwuid(dirInfo.st_uid);
     if (pwd == NULL) {
+        fmt_fprintf(stderr, "Error: getpwuid failed in dir_get_directory_owner for UID %d.\n", dirInfo.st_uid);
         return false;
     }
 
@@ -1363,10 +1697,15 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
 }
 
 bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData) {
+    if (!dirPath || !pattern || !callback) {
+        fmt_fprintf(stderr, "Error: Invalid arguments in dir_search. dirPath, pattern, or callback is NULL.\n");
+        return false;
+    }
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* wDirPath = encoding_utf8_to_wchar(dirPath);
     wchar_t* wPattern = encoding_utf8_to_wchar(pattern);
     if (wDirPath == NULL || wPattern == NULL) {
+        fmt_fprintf(stderr, "Error: Failed to convert UTF-8 strings to wide-char in dir_search.\n");
         free(wDirPath);
         free(wPattern);
         return false;
@@ -1376,6 +1715,7 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
     size_t combinedSize = wcslen(wDirPath) + wcslen(wPattern) + 1; // +1 for null terminator
     wchar_t* wSearchPath = (wchar_t*)malloc(combinedSize * sizeof(wchar_t));
     if (wSearchPath == NULL) {
+        fmt_fprintf(stderr, "Error: Failed to allocate memory for search path in dir_search.\n");
         free(wDirPath);
         free(wPattern);
         return false;
@@ -1388,6 +1728,7 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = FindFirstFileW(wSearchPath, &findFileData);
     if (hFind == INVALID_HANDLE_VALUE) {
+        fmt_fprintf(stderr, "Error: FindFirstFileW failed in dir_search.\n");
         free(wDirPath);
         free(wPattern);
         free(wSearchPath);
@@ -1401,7 +1742,7 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
         }
 
         char* utf8FileName = encoding_wchar_to_utf8(findFileData.cFileName);
-        if (!callback(utf8FileName, userData)) {
+        if (!callback(utf8FileName, userData) || !utf8FileName) {
             free(utf8FileName);
             break;
         }
@@ -1416,6 +1757,7 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
 #else
     DIR* dir = opendir(dirPath);
     if (!dir) {
+        fmt_fprintf(stderr, "Error: Failed to open directory '%s' in dir_search.\n", dirPath);
         return false;
     }
 

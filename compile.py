@@ -14,7 +14,7 @@ def find_c_files(directory):
 def compile_project(run_after_compile=False):
     source_directories = [
         # "numeric",
-        # "algorithm",
+        "algorithm",
         # "array",
         "fmt",
         # "bitset",
@@ -29,12 +29,12 @@ def compile_project(run_after_compile=False):
         # "queue",
         # "span",
         # "stack",
-        "string",
-        # "vector",
+        # "string",
+        "vector",
         # "time",
         # "date",
         # "file_io",
-        # "dir",
+        "dir",
         # "crypto",
         # "tuple",
         # Add other directories containing your .c files

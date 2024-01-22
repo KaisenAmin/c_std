@@ -65,18 +65,17 @@ This command compiles with GCC using the C17 standard and enables various optimi
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dir_name_utf8 = "./کایزن";
     bool result = dir_make_directory(dir_name_utf8);
 
     if (result) {
-        printf("Directory '%s' created successfully.\n", dir_name_utf8);
+        fmt_printf("Directory %s created successfully.\n", "کایزن");
     } 
     else {
-        printf("Failed to create directory '%s'.\n", dir_name_utf8);
+        fmt_printf("Failed to create directory '%s'.\n", dir_name_utf8);
     }
     return 0;
 }
@@ -86,7 +85,7 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -94,11 +93,11 @@ int main() {
     char* dirName = dir_dir_name(dir_path);
 
     if (dirName) {
-        printf("Directory name: '%s'\n", dirName);
+        fmt_printf("Directory name: '%s'\n", dirName);
         free(dirName);
     } 
     else {
-        printf("Failed to get directory name.\n");
+        fmt_printf("Failed to get directory name.\n");
     }
     return 0;
 }
@@ -108,20 +107,19 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
     char* currentPath = dir_current_path();
 
     if (currentPath) {
-        printf("Current directory path: '%s'\n", currentPath);
+        fmt_printf("Current directory path: '%s'\n", currentPath);
         free(currentPath);
     } 
     else {
-        printf("Failed to get current directory path.\n");
+        fmt_printf("Failed to get current directory path.\n");
     }
-
     return 0;
 }
 ```
@@ -130,7 +128,7 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -138,12 +136,11 @@ int main() {
     int fileCount = dir_count(dir_path);
 
     if (fileCount >= 0) {
-        printf("Total number of directories and files in '%s': %d\n", dir_path, fileCount);
+        fmt_printf("Total number of directories and files in '%s': %d\n", dir_path, fileCount);
     } 
     else {
-        printf("Failed to count files and directories in '%s'.\n", dir_path);
+        fmt_printf("Failed to count files and directories in '%s'.\n", dir_path);
     }
-
     return 0;
 }
 ```
@@ -152,7 +149,7 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -160,13 +157,12 @@ int main() {
     char* absolutePath = dir_absolute_file_path(relativePath);
 
     if (absolutePath) {
-        printf("Absolute file path: '%s'\n", absolutePath);
+        fmt_printf("Absolute file path: '%s'\n", absolutePath);
         free(absolutePath);
     } 
     else {
-        printf("Failed to get absolute file path.\n");
+        fmt_printf("Failed to get absolute file path.\n");
     }
-
     return 0;
 }
 ```
@@ -175,43 +171,42 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
     const char* cd = "date";
 
     if (dir_cd(cd)) {
-        printf("Changed directory to 'date'\n");
+        fmt_printf("Changed directory to 'date'\n");
         char* currentPath = dir_current_path();
 
         if (currentPath) {
-            printf("Current directory path: '%s'\n", currentPath);
+            fmt_printf("Current directory path: '%s'\n", currentPath);
             free(currentPath);
         } 
         else {
-            printf("Failed to get current directory path.\n");
+            fmt_printf("Failed to get current directory path.\n");
         }
     } 
     else {
-        printf("Failed to change directory.\n");
+        fmt_printf("Failed to change directory.\n");
     }
 
     if (dir_cd_up()) {
-        printf("Moved up one directory.\n");
+        fmt_printf("Moved up one directory.\n");
         char* currentPath = dir_current_path();
         if (currentPath) {
-            printf("Current directory path: '%s'\n", currentPath);
+            fmt_printf("Current directory path: '%s'\n", currentPath);
             free(currentPath);
         } 
         else {
-            printf("Failed to get current directory path.\n");
+            fmt_printf("Failed to get current directory path.\n");
         }
     } 
     else {
-        printf("Failed to move up directory.\n");
+        fmt_printf("Failed to move up directory.\n");
     }
-
     return 0;
 }
 ```
@@ -220,26 +215,24 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirName = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\کایزن";
 
     if (dir_is_empty(dirName)) {
-        printf("Directory '%s' is empty.\n", dirName);
+        fmt_printf("Directory '%s' is empty.\n", dirName);
         
         if (dir_remove_directory(dirName)) {
-            printf("Successfully removed directory '%s'.\n", dirName);
+            fmt_printf("Successfully removed directory '%s'.\n", dirName);
         } 
         else {
-            printf("Failed to remove directory '%s'.\n", dirName);
+            fmt_printf("Failed to remove directory '%s'.\n", dirName);
         }
     } 
     else {
-        printf("Directory '%s' is not empty, cannot remove.\n", dirName);
+        fmt_printf("Directory '%s' is not empty, cannot remove.\n", dirName);
     }
-
     return 0;
 }
 ```
@@ -248,19 +241,17 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirName = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\کایزن";
 
     if (dir_remove_directory_recursive(dirName)) {
-        printf("Successfully removed directory '%s'.\n", dirName);
+        fmt_printf("Successfully removed directory '%s'.\n", dirName);
     } 
     else {
-        printf("Failed to remove directory '%s'.\n", dirName);
+        fmt_printf("Failed to remove directory '%s'.\n", dirName);
     }
-
     return 0;
 }
 ```
@@ -269,62 +260,57 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* oldFileName = "./tester.txt";
     const char* newFileName = "./amin.txt";
 
     if (dir_rename(oldFileName, newFileName)) {
-        printf("File renamed successfully from '%s' to '%s'.\n", oldFileName, newFileName);
+        fmt_printf("File renamed successfully from '%s' to '%s'.\n", oldFileName, newFileName);
     } 
     else {
-        printf("Failed to rename file '%s'.\n", oldFileName);
+        fmt_printf("Failed to rename file '%s'.\n", oldFileName);
     }
-
     return 0;
 }
-
 ```
 
 ## Example 10: Renaming a Directory with `dir_rename`
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* oldDirName = "./one";
     const char* newDirName = "./کایزن";
 
     if (dir_rename(oldDirName, newDirName)) {
-        printf("Directory renamed successfully from '%s' to '%s'.\n", oldDirName, newDirName);
+        fmt_printf("Directory renamed successfully from '%s' to '%s'.\n", oldDirName, newDirName);
     } 
     else {
-        printf("Failed to rename directory '%s'.\n", oldDirName);
+        fmt_printf("Failed to rename directory '%s'.\n", oldDirName);
     }
-
     return 0;
 }
-
 ```
 
 ## Example 11 : check file exists or not `dir_is_file_exists`
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirPath = "./dir/dir.h"; // Replace with the directory path you want to check
 
     if (dir_is_file_exists(dirPath)) {
-        printf("File '%s' exists.\n", dirPath);
+        fmt_printf("File '%s' exists.\n", dirPath);
     } 
     else {
-        printf("File '%s' does not exist.\n", dirPath);
+        fmt_printf("File '%s' does not exist.\n", dirPath);
     }
-
     return 0;
 }
 ```
@@ -333,18 +319,17 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirPath = "./کایزن"; // Replace with the directory path you want to check
 
     if (dir_is_directory_exists(dirPath)) {
-        printf("Directory '%s' exists.\n", dirPath);
+        fmt_printf("Directory '%s' exists.\n", dirPath);
     } 
     else {
-        printf("Directory '%s' does not exist.\n", dirPath);
+        fmt_printf("Directory '%s' does not exist.\n", dirPath);
     }
-
     return 0;
 }
 ```
@@ -353,7 +338,7 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* sourceDir = "./کایزن"; // Replace with your source directory path
@@ -361,16 +346,15 @@ int main() {
 
     if (dir_make_directory("C:\\Users\\Science\\Desktop\\کایزن")) {
         if (dir_copy_directory(sourceDir, destinationDir)) {
-            printf("Directory copied successfully from '%s' to '%s'.\n", sourceDir, destinationDir);
+            fmt_printf("Directory copied successfully from '%s' to '%s'.\n", sourceDir, destinationDir);
         } 
         else {
-            printf("Failed to copy directory from '%s' to '%s'.\n", sourceDir, destinationDir);
+            fmt_printf("Failed to copy directory from '%s' to '%s'.\n", sourceDir, destinationDir);
         }
     } 
     else {
-        printf("Can not create folder");
+        fmt_printf("Can not create folder");
     }
-
     return 0;
 }
 ```
@@ -379,19 +363,18 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* sourceFile = "./کایزن/amin.txt"; // Replace with your source file path
     const char* destinationFile = "C:\\Users\\Science\\Desktop\\amin.txt"; // Replace with your destination file path
 
     if (dir_copy_file(sourceFile, destinationFile)) {
-        printf("File copied successfully from '%s' to '%s'.\n", sourceFile, destinationFile);
+        fmt_printf("File copied successfully from '%s' to '%s'.\n", sourceFile, destinationFile);
     } 
     else {
-        printf("Failed to copy file from '%s' to '%s'.\n", sourceFile, destinationFile);
+        fmt_printf("Failed to copy file from '%s' to '%s'.\n", sourceFile, destinationFile);
     }
-
     return 0;
 }
 ```
@@ -400,19 +383,18 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirPath = "./کایزن"; 
-
     long long size = dir_get_directory_size(dirPath);
 
     // Check for errors
     if (size == -1) {
-        printf("Failed to calculate the size of directory '%s'.\n", dirPath);
+        fmt_printf("Failed to calculate the size of directory '%s'.\n", dirPath);
     } 
     else {
-        printf("Total size of directory '%s' is: %lld bytes.\n", dirPath, size);
+        fmt_printf("Total size of directory '%s' is: %lld bytes.\n", dirPath, size);
     }
     return 0;
 }
@@ -422,19 +404,18 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* filePath = "./کایزن/amin.txt"; 
-
     long long size = dir_get_file_size(filePath);
 
     // Check for errors
     if (size == -1) {
-        printf("Failed to calculate the file size '%s'.\n", filePath);
+        fmt_printf("Failed to calculate the file size '%s'.\n", filePath);
     } 
     else {
-        printf("Total size of file '%s' is: %lld bytes.\n", filePath, size);
+        fmt_printf("Total size of file '%s' is: %lld bytes.\n", filePath, size);
     }
     return 0;
 }
@@ -444,8 +425,9 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
+
 int main(){
     const char *dirPath = "C:\\Users\\Science\\Desktop\\";
     Vector *foundItems = vector_create(sizeof(char *));
@@ -454,30 +436,30 @@ int main(){
 
     for (size_t i = 0; i < vector_size(foundItems); ++i){
         char **item = (char **)vector_at(foundItems, i);
-        printf("%s\n", *item);
+        fmt_printf("%s\n", *item);
         free(*item); // Remember to free the duplicated string 
     }
+
     vector_deallocate(foundItems);
     return 0;
 }
-
 ```
 
 ## Example 18 : check path is dir or file with `dir_is_file` or `dir_is_directory`
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirPath = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\main.c"; 
 
     // also you can set another path for checking dir
     if (dir_is_file(dirPath)) {
-        printf("Yes \"%s\" is path", dirPath);
+        fmt_printf("Yes \"%s\" is path", dirPath);
     }
     else {
-        printf("No it is\n");
+        fmt_printf("No it is\n");
     }
     return 0;
 }
@@ -487,7 +469,7 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* sourcePath = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\کایزن";
@@ -495,27 +477,25 @@ int main() {
 
     // also for moving files you can use "dir_move_file" 
     if (dir_move_directory(sourcePath, destPath)) {
-        printf("Move to new location");
+        fmt_printf("Move to new location");
     }
     else {
-        printf("not Move\n");
+        fmt_printf("not Move\n");
     }
-
     return 0;
 }
-
 ```
 
 ## Example 20 : get last modified file and dir with `dir_get_modified_time`
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* sourcePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
 
-    printf("Last Modified Time is %s\n", dir_get_modified_time(sourcePath));
+    fmt_printf("Last Modified Time is %s\n", dir_get_modified_time(sourcePath));
 
     return 0;
 }
@@ -525,36 +505,34 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* sourcePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
 
-    printf("Last Modified Time is %s\n", dir_get_creation_time(sourcePath));
+    fmt_printf("Creation Time is %s\n", dir_get_creation_time(sourcePath));
 
     return 0;
 }
-
 ```
 
 ## Example 22 : get home dir with `dir_get_home_directory`
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
     char* homeDirectory = dir_get_home_directory();
 
     if (homeDirectory != NULL) {
-        printf("Home Directory: %s\n", homeDirectory);
+        fmt_printf("Home Directory: %s\n", homeDirectory);
         free(homeDirectory);
     } 
     else {
-        printf("Failed to get home directory.\n");
+        fmt_printf("Failed to get home directory.\n");
     }
-
     return 0;
 }
 ```
@@ -563,22 +541,22 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     DirFileType type = dir_get_file_type("./dir/dir.h");
     switch (type) {
         case DIR_FILE_TYPE_REGULAR:
-            printf("Regular File\n");
+            fmt_printf("Regular File\n");
             break;
         case DIR_FILE_TYPE_DIRECTORY:
-            printf("Directory\n");
+            fmt_printf("Directory\n");
             break;
         case DIR_FILE_TYPE_SYMLINK:
-            printf("Symbolic Link\n");
+            fmt_printf("Symbolic Link\n");
             break;
         default:
-            printf("Unknown Type\n");
+            fmt_printf("Unknown Type\n");
     }
     return 0;
 }
@@ -588,8 +566,7 @@ int main() {
 ```c
 #include "dir/dir.h"
 #include "crypto/crypto.h"
-#include <stdio.h>
-#include <stdint.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* filePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
@@ -599,19 +576,18 @@ int main() {
     crypto_generate_random_iv(iv, DES_BLOCK_SIZE); 
 
     if (dir_encrypt_file(filePath, password, iv)) {
-        printf("File encrypted successfully.\n");
+        fmt_printf("File encrypted successfully.\n");
     } 
     else {
-        printf("Failed to encrypt the file.\n");
+        fmt_printf("Failed to encrypt the file.\n");
     }
 
     if (dir_decrypt_file(filePath, password, iv)) {
-        printf("File decrypted successfully.\n");
+        fmt_printf("File decrypted successfully.\n");
     } 
     else {
-        printf("Failed to decrypt the file.\n");
+        fmt_printf("Failed to decrypt the file.\n");
     }
-
     return 0;
 }
 ```
@@ -620,17 +596,17 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* filePath = "C:\\Users\\Science\\Desktop\\new_one.txt";
     char ownerBuffer[256];  // Buffer to store the owner's name
 
     if (dir_get_file_owner(filePath, ownerBuffer, sizeof(ownerBuffer))) {
-        printf("The owner of '%s' is: %s\n", filePath, ownerBuffer);
+        fmt_printf("The owner of '%s' is: %s\n", filePath, ownerBuffer);
     } 
     else {
-        printf("Failed to retrieve the file owner for '%s'\n", filePath);
+        fmt_printf("Failed to retrieve the file owner for '%s'\n", filePath);
     }
     return 0;
 }
@@ -640,17 +616,17 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     const char* dirPath = "C:\\Users\\Science\\Desktop\\one";
     char ownerBuffer[256];  // Buffer to store the owner's name
 
     if (dir_get_directory_owner(dirPath, ownerBuffer, sizeof(ownerBuffer))) {
-        printf("The owner of '%s' is: %s\n", dirPath, ownerBuffer);
+        fmt_printf("The owner of '%s' is: %s\n", dirPath, ownerBuffer);
     } 
     else {
-        printf("Failed to retrieve the file owner for '%s'\n", dirPath);
+        fmt_printf("Failed to retrieve the file owner for '%s'\n", dirPath);
     }
     return 0;
 }
@@ -660,9 +636,8 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include "vector/vector.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 bool append_file_name_to_vector(const char* filePath, void* userData) {
@@ -670,7 +645,7 @@ bool append_file_name_to_vector(const char* filePath, void* userData) {
     char* filePathCopy = string_strdup(filePath); // Duplicate the file path
 
     if (!filePathCopy) {
-        perror("Failed to duplicate file path");
+        fmt_fprintf(stderr, "Failed to duplicate file path");
         return false;
     }
     vector_push_back(vector, &filePathCopy);
@@ -683,12 +658,12 @@ int main() {
     Vector* foundFiles = vector_create(sizeof(char*)); 
 
     if (!dir_search(dirPath, pattern, append_file_name_to_vector, foundFiles)) {
-        printf("An error occurred during the search.\n");
+        fmt_fprintf(stderr, "An error occurred during the search.\n");
     } 
     else {
         for (size_t i = 0; i < vector_size(foundFiles); ++i) {
             char** filePath = (char**)vector_at(foundFiles, i);
-            printf("Found file: %s\n", *filePath);
+            fmt_printf("Found file: %s\n", *filePath);
             free(*filePath); // Free the duplicated file path
         }
     }
@@ -703,11 +678,11 @@ int main() {
 ```c
 #include "dir/dir.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_char(void *element) {
     char** strPtr = (char**)element;
-    printf("%s\n", *strPtr);
+    fmt_printf("%s\n", *strPtr);
 }
 
 int main(){
@@ -720,5 +695,4 @@ int main(){
     vector_deallocate(foundItems);
     return 0;
 }
-
 ```
