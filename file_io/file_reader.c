@@ -257,42 +257,87 @@ bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
         return false;
     }
 
-    wchar_t wBuffer[1024];  // Temporary buffer for reading UTF-16 data
-    char* utf8Buffer = NULL;
-    bool done = false;
-    size_t totalRead = 0;   // Total bytes read in UTF-8
-
-    while (!done) {
-        wchar_t wc = fgetwc(reader->file_reader);
-        if (wc == WEOF || wc == L'\n' || totalRead >= size - 1) {
-            done = true;
-        } else {
-            // Append wchar to the temporary buffer
-            wBuffer[totalRead++] = wc;
-        }
-    }
-    wBuffer[totalRead] = L'\0';  // Null-terminate the wchar buffer
-
-    // Convert the wchar buffer to UTF-8 if necessary
-    switch (reader->encoding) {
-        case READ_ENCODING_UTF16:
-            utf8Buffer = encoding_wchar_to_utf8(wBuffer);
-            if (!utf8Buffer) {
-                fmt_fprintf(stderr, "Error: Conversion to UTF-8 failed in file_reader_read_line.\n");
-                return false;
+    if (reader->encoding == READ_ENCODING_UTF16 && reader->mode == READ_UNICODE) {
+        // For UTF-16 encoded files
+        wchar_t wBuffer[1024];
+        if (fgetws(wBuffer, 1024, reader->file_reader) == NULL) {
+            if (!feof(reader->file_reader)) {
+                fmt_fprintf(stderr, "Error: Failed to read line in UTF-16 mode.\n");
             }
-            strncpy(buffer, utf8Buffer, size - 1);
-            buffer[size - 1] = '\0';  // Ensure null-termination
-            free(utf8Buffer);
-            break;
+            return false;
+        }
 
-        default:
-            // If no conversion is needed, just copy the data
-            wcstombs(buffer, wBuffer, size);
-            break;
+        // Convert wchar buffer to UTF-8
+        char* utf8Buffer = encoding_wchar_to_utf8(wBuffer);
+        if (!utf8Buffer) {
+            fmt_fprintf(stderr, "Error: Conversion to UTF-8 failed in file_reader_read_line.\n");
+            return false;
+        }
+
+        strncpy(buffer, utf8Buffer, size - 1);
+        buffer[size - 1] = '\0';
+        free(utf8Buffer);
+    } else {
+        // For UTF-8 and other encodings
+        if (fgets(buffer, size, reader->file_reader) == NULL) {
+            if (!feof(reader->file_reader)) {
+                fmt_fprintf(stderr, "Error: Failed to read line in non-UTF-16 mode.\n");
+            }
+            return false;
+        }
+
+        // Remove newline characters
+        buffer[strcspn(buffer, "\r\n")] = '\0';
     }
-    return totalRead > 0;
+
+    return true;
 }
+
+// bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
+//     if (!reader || !reader->file_reader || !buffer) {
+//         fmt_fprintf(stderr, "Error: Invalid argument in file_reader_read_line.\n");
+//         return false;
+//     }
+
+//     wchar_t wBuffer[1024];  // Temporary buffer for reading UTF-16 data
+//     char* utf8Buffer = NULL;
+//     bool done = false;
+//     size_t totalRead = 0;   // Total bytes read in UTF-8
+
+//     while (!done) {
+//         wchar_t wc = fgetwc(reader->file_reader);
+//         if (wc == WEOF || wc == L'\n' || totalRead >= size - 1) {
+//             done = true;
+//         } else {
+//             // Append wchar to the temporary buffer
+//             wBuffer[totalRead++] = wc;
+//         }
+//     }
+//     wBuffer[totalRead] = L'\0';  // Null-terminate the wchar buffer
+
+//     // Convert the wchar buffer to UTF-8 if necessary
+//     switch (reader->encoding) {
+//         case READ_ENCODING_UTF16:
+//             fmt_printf("%s\n", wBuffer);
+//             utf8Buffer = encoding_wchar_to_utf8(wBuffer);
+//             if (!utf8Buffer) {
+//                 fmt_fprintf(stderr, "Error: Conversion to UTF-8 failed in file_reader_read_line.\n");
+//                 return false;
+//             }
+//             fmt_printf("%s", buffer);
+//             strncpy(buffer, utf8Buffer, size - 1);
+//             buffer[size - 1] = '\0';  // Ensure null-termination
+            
+//             free(utf8Buffer);
+//             break;
+
+//         default:
+//             // If no conversion is needed, just copy the data
+//             wcstombs(buffer, wBuffer, size);
+//             break;
+//     }
+//     return totalRead > 0;
+// }
 
 size_t file_reader_read_fmt(FileReader* reader, const char* format, ...) {
     if (!reader || !reader->file_reader || !format) {

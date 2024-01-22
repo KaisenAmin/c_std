@@ -95,7 +95,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 ## Example 1 : Sorting array of integer using `algorithm_sort`
 
 ```c
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include "algorithm/algorithm.h"
 
 int compare_ints(const void* a, const void* b) {
@@ -118,9 +118,9 @@ int main() {
     algorithm_sort(arr, arraySize, sizeof(int), compare_ints);
 
     for (size_t i = 0; i < arraySize; i++) {
-        printf("%d ", arr[i]);
+        fmt_printf("%d ", arr[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -133,7 +133,7 @@ In this example, we'll create a Vector of integers, sort them using `algorithm_s
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int compare_ints(const void* a, const void* b) {
@@ -161,9 +161,9 @@ int main() {
 
     for (size_t i = 0; i < vector_size(intVector); i++) {
         int* item = (int*)vector_at(intVector, i);
-        printf("%d ", *item);
+        fmt_printf("%d ", *item);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(intVector);
     return EXIT_SUCCESS;
@@ -177,7 +177,7 @@ In this example, we'll create a Vector of custom structures, sort them using `al
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 typedef struct {
@@ -211,7 +211,7 @@ int main() {
 
     for (size_t i = 0; i < vector_size(structVector); i++) {
         MyStruct* item = (MyStruct*)vector_at(structVector, i);
-        printf("ID: %d, Value: %.2f\n", item->id, item->value);
+        fmt_printf("ID: %d, Value: %.2f\n", item->id, item->value);
     }
 
     vector_deallocate(structVector);
@@ -223,7 +223,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -236,10 +236,10 @@ int main() {
     int *found = (int *)algorithm_find(arr, arraySize, sizeof(int), &key, compare_ints);
 
     if (found != NULL) {
-        printf("Found %d\n", *found);
+        fmt_printf("Found %d\n", *found);
     } 
     else {
-        printf("Not found\n");
+        fmt_printf("Not found\n");
     }
 
     return 0;
@@ -251,7 +251,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -268,18 +268,18 @@ int main() {
     int *found = (int *)algorithm_find(arr, arraySize, sizeof(int), &key, compare_ints);
 
     if (found != NULL) {
-        printf("Found %d\n", *found);
+        fmt_printf("Found %d\n", *found);
     } 
     else {
-        printf("Not found\n");
+        fmt_printf("Not found\n");
     }
 
     int *found_even = (int *)algorithm_find_if(arr, arraySize, sizeof(int), is_even);
     if (found_even != NULL) {
-        printf("First even number in Array: %d\n", *found_even);
+        fmt_printf("First even number in Array: %d\n", *found_even);
     } 
     else {
-        printf("No even arraySizeber found\n");
+        fmt_printf("No even arraySizeber found\n");
     }
 
     return 0;
@@ -290,7 +290,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_strings(const void *a, const void *b) {
@@ -308,10 +308,10 @@ int main() {
     const char *key = "two";
     const char **found = (const char **)algorithm_find(arr, arraySize, sizeof(char*), &key, compare_strings);
     if (found != NULL) {
-        printf("Found %s\n", *found);
+        fmt_printf("Found %s\n", *found);
     } 
     else {
-        printf("Not found\n");
+        fmt_printf("Not found\n");
     }
 
     return 0;
@@ -322,7 +322,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 typedef struct {
@@ -341,10 +341,10 @@ int main() {
 
     MyStruct *found = (MyStruct *)algorithm_find_if(arr, arraySize, sizeof(MyStruct), is_high_value);
     if (found != NULL) {
-        printf("Found struct with ID: %d and Value: %.2f\n", found->id, found->value);
+        fmt_printf("Found struct with ID: %d and Value: %.2f\n", found->id, found->value);
     } 
     else {
-        printf("No matching struct found\n");
+        fmt_printf("No matching struct found\n");
     }
     
     return 0;
@@ -355,7 +355,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 bool is_positive(const void *a) {
@@ -368,10 +368,10 @@ int main() {
 
     int *found = (int *)algorithm_find_if_not(arr, arraySize, sizeof(int), is_positive);
     if (found != NULL) {
-        printf("First non-positive number: %d\n", *found);
+        fmt_printf("First non-positive number: %d\n", *found);
     } 
     else {
-        printf("All numbers are positive\n");
+        fmt_printf("All numbers are positive\n");
     }
 
     return 0;
@@ -382,7 +382,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_doubles(const void *a, const void *b) {
@@ -404,10 +404,10 @@ int main() {
 
     double *found = (double *)algorithm_find(arr, arraySize, sizeof(double), &key, compare_doubles);
     if (found != NULL) {
-        printf("Found %f\n", *found);
+        fmt_printf("Found %f\n", *found);
     } 
     else {
-        printf("Not found\n");
+        fmt_printf("Not found\n");
     }
 
     return 0;
@@ -418,7 +418,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 bool is_vowel(const void *ch) {
@@ -432,10 +432,10 @@ int main() {
 
     char *found = (char *)algorithm_find_if_not(arr, arraySize, sizeof(char), is_vowel);
     if (found != NULL) {
-        printf("First consonant: %c\n", *found);
+        fmt_printf("First consonant: %c\n", *found);
     } 
     else {
-        printf("All are vowels\n");
+        fmt_printf("All are vowels\n");
     }
 
     return 0;
@@ -446,7 +446,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_ints(const void *a, const void *b) {
@@ -459,10 +459,10 @@ int main() {
 
     int *found = (int *)algorithm_find_end(arr, 10, sizeof(int), sub, 2, sizeof(int), compare_ints);
     if (found != NULL) {
-        printf("Last occurrence of subsequence found at index: %ld\n", found - arr);
+        fmt_printf("Last occurrence of subsequence found at index: %ld\n", found - arr);
     } 
     else {
-        printf("Subsequence not found\n");
+        fmt_printf("Subsequence not found\n");
     }
     return 0;
 }
@@ -472,7 +472,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_chars(const void *a, const void *b) {
@@ -485,10 +485,10 @@ int main() {
     
     char *found = (char *)algorithm_find_first_of(str, strlen(str), sizeof(char), chars, 5, sizeof(char), compare_chars);
     if (found != NULL) {
-        printf("First vowel found: %c\n", *found);
+        fmt_printf("First vowel found: %c\n", *found);
     } 
     else {
-        printf("No vowels found\n");
+        fmt_printf("No vowels found\n");
     }
 
     return 0;
@@ -499,7 +499,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_doubles(const void *a, const void *b) {
@@ -519,9 +519,9 @@ int main() {
     double sub[] = {2.2, 3.3};
     double *found = (double *)algorithm_find_end(arr, 8, sizeof(double), sub, 2, sizeof(double), compare_doubles);
     if (found != NULL) {
-        printf("Last occurrence of subsequence found at index: %ld\n", found - arr);
+        fmt_printf("Last occurrence of subsequence found at index: %ld\n", found - arr);
     } else {
-        printf("Subsequence not found\n");
+        fmt_printf("Subsequence not found\n");
     }
     return 0;
 }
@@ -531,7 +531,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_ints(const void *a, const void *b) {
@@ -543,10 +543,10 @@ int main() {
     int elements[] = {3, 6, 9};
     int *found = (int *)algorithm_find_first_of(arr, 10, sizeof(int), elements, 3, sizeof(int), compare_ints);
     if (found != NULL) {
-        printf("First matching element: %d\n", *found);
+        fmt_printf("First matching element: %d\n", *found);
     }
     else {
-        printf("No matching elements found\n");
+        fmt_printf("No matching elements found\n");
     }
     return 0;
 }
@@ -556,7 +556,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -568,10 +568,10 @@ int main() {
 
     size_t found = algorithm_binary_search(arr, 10, sizeof(int), &value, compare_ints);
     if (found) {
-        printf("Value %d found in the array at index %zu.\n", value, found);
+        fmt_printf("Value %d found in the array at index %zu.\n", value, found);
     } 
     else {
-        printf("Value %d not found in the array.\n", value);
+        fmt_printf("Value %d not found in the array.\n", value);
     }
 
     return 0;
@@ -582,7 +582,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_doubles(const void *a, const void *b) {
     const double diff = *(const double*)a - *(const double*)b;
@@ -601,10 +601,10 @@ int main() {
 
     size_t found = algorithm_binary_search(arr, 9, sizeof(double), &value, compare_doubles);
     if (found) {
-        printf("Value %.1f found in the array at index %zu.\n", value, found);
+        fmt_printf("Value %.1f found in the array at index %zu.\n", value, found);
     } 
     else {
-        printf("Value %.1f not found in the array.\n", value);
+        fmt_printf("Value %.1f not found in the array.\n", value);
     }
 
     return 0;
@@ -614,7 +614,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -624,7 +624,7 @@ int main() {
     int arr[] = {1, 5, 3, 7, 9, 2};
     int *max = (int *)algorithm_max_element(arr, 6, sizeof(int), compare_ints);
     if (max) {
-        printf("Max element is: %d\n", *max);
+        fmt_printf("Max element is: %d\n", *max);
     }
     return 0;
 }
@@ -634,7 +634,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_doubles(const void *a, const void *b) {
     const double diff = *(const double*)a - *(const double*)b;
@@ -652,7 +652,7 @@ int main() {
     double *min = (double *)algorithm_min_element(arr, 5, sizeof(double), compare_doubles);
 
     if (min) {
-        printf("Min element is: %.1f\n", *min);
+        fmt_printf("Min element is: %.1f\n", *min);
     }
 
     return 0;
@@ -663,7 +663,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     return *(const char*)a - *(const char*)b;
@@ -674,7 +674,7 @@ int main() {
     char *max = (char *)algorithm_max_element(arr, 4, sizeof(char), compare_chars);
 
     if (max) {
-        printf("Max character is: %c\n", *max);
+        fmt_printf("Max character is: %c\n", *max);
     }
 
     return 0;
@@ -685,7 +685,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -702,7 +702,7 @@ int main() {
     MyStruct *min = (MyStruct *)algorithm_min_element(arr, 3, sizeof(MyStruct), compare_structs_by_value);
 
     if (min) {
-        printf("Min struct value is: %.1f\n", min->value);
+        fmt_printf("Min struct value is: %.1f\n", min->value);
     }
 
     return 0;
@@ -713,7 +713,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 void to_uppercase(void *element) {
@@ -728,7 +728,7 @@ int main() {
     char str[] = "hello world";
 
     algorithm_for_each(str, strlen(str), sizeof(char), to_uppercase);
-    printf("%s\n", str);
+    fmt_printf("%s\n", str);
 
     return 0;
 }
@@ -739,17 +739,17 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_int(void *element) {
-    printf("%d ", *(int *)element);
+    fmt_printf("%d ", *(int *)element);
 }
 
 int main() {
     int arr[] = {1, 2, 3, 4, 5};
 
     algorithm_for_each(arr, 5, sizeof(int), print_int);
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -760,7 +760,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int main() {
@@ -768,7 +768,7 @@ int main() {
     char dest[50];
 
     algorithm_copy(source, strlen(source) + 1, sizeof(char), dest);
-    printf("Copied string: %s\n", dest);
+    fmt_printf("Copied string: %s\n", dest);
 
     return 0;
 }
@@ -778,7 +778,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int source[] = {1, 2, 3, 4, 5};
@@ -787,9 +787,9 @@ int main() {
     algorithm_copy(source, 5, sizeof(int), dest);
     
     for (int i = 0; i < 5; ++i) {
-        printf("%d ", dest[i]);
+        fmt_printf("%d ", dest[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -800,7 +800,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *sourceVec = vector_create(sizeof(int));
@@ -815,9 +815,9 @@ int main() {
     
     for (size_t i = 0; i < vector_size(destVec); ++i) {
         int *item = (int *)vector_at(destVec, i);
-        printf("%d ", *item);
+        fmt_printf("%d ", *item);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(sourceVec);
     vector_deallocate(destVec);
@@ -832,14 +832,14 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     String *source = string_create("Hello C Programmers");
     String *dest = string_create("");
 
     algorithm_copy(source, string_length(source), sizeof(String), dest);
-    printf("Value is %s\n", string_c_str(dest));
+    fmt_printf("Value is %s\n", string_c_str(dest));
 
     string_deallocate(source);
     string_deallocate(dest);
@@ -852,7 +852,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void sum_ints(void *result, const void *element) {
     *(int *)result += *(const int *)element;
@@ -863,7 +863,7 @@ int main() {
     int sum = 0;
 
     algorithm_accumulate(arr, 5, sizeof(int), &sum, sum_ints);
-    printf("Sum of array: %d\n", sum);
+    fmt_printf("Sum of array: %d\n", sum);
 
     return 0;
 }
@@ -874,7 +874,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 void concatenate_strings(void *result, const void *element) {
@@ -891,7 +891,7 @@ int main() {
     char result[50] = "";
 
     algorithm_accumulate(strings, 4, sizeof(char *), result, concatenate_strings);
-    printf("Concatenated string: %s\n", result);
+    fmt_printf("Concatenated string: %s\n", result);
 
     return 0;
 }
@@ -902,7 +902,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void multiply_ints(void *result, const void *element) {
     *(int *)result *= *(const int *)element;
@@ -913,7 +913,7 @@ int main() {
     int product = 1;
 
     algorithm_accumulate(arr, 5, sizeof(int), &product, multiply_ints);
-    printf("Product of array elements: %d\n", product);
+    fmt_printf("Product of array elements: %d\n", product);
 
     return 0;
 }
@@ -924,7 +924,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void max_double(void *result, const void *element) {
     if (*(double *)result < *(const double *)element) {
@@ -937,7 +937,7 @@ int main() {
     double max = 0.0;
 
     algorithm_accumulate(arr, 5, sizeof(double), &max, max_double);
-    printf("Maximum element: %f\n", max);
+    fmt_printf("Maximum element: %f\n", max);
     
     return 0;
 }
@@ -947,7 +947,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void accumulate_floats(void *result, const void *element) {
     *(float *)result += *(const float *)element;
@@ -960,7 +960,7 @@ int main() {
     algorithm_accumulate(arr, 5, sizeof(float), &sum, accumulate_floats);
     float average = sum / 5;
 
-    printf("Average of array elements: %f\n", average);
+    fmt_printf("Average of array elements: %f\n", average);
     return 0;
 }
 ```
@@ -969,7 +969,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void count_occurrences(void *result, const void *element) {
     if (*(const int *)element == 3) {
@@ -982,7 +982,7 @@ int main() {
     int count = 0;
 
     algorithm_accumulate(arr, 7, sizeof(int), &count, count_occurrences);
-    printf("Number of occurrences of 3: %d\n", count);
+    fmt_printf("Number of occurrences of 3: %d\n", count);
 
     return 0;
 }
@@ -993,7 +993,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 void build_string(void *result, const void *element) {
@@ -1008,7 +1008,7 @@ int main() {
     char str[6] = "";
 
     algorithm_accumulate(arr, 5, sizeof(char), str, build_string);
-    printf("Constructed string: %s\n", str);
+    fmt_printf("Constructed string: %s\n", str);
 
     return 0;
 }
@@ -1019,7 +1019,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_positive(const void *a) {
     return *(const int *)a > 0;
@@ -1029,10 +1029,10 @@ int main() {
     int arr[] = {1, 2, 3, 4, 5};
 
     if (algorithm_all_of(arr, 5, sizeof(int), is_positive)) {
-        printf("All elements are positive.\n");
+        fmt_printf("All elements are positive.\n");
     } 
     else {
-        printf("Not all elements are positive.\n");
+        fmt_printf("Not all elements are positive.\n");
     }
 
     return 0;
@@ -1043,7 +1043,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <ctype.h>
 
 bool is_uppercase(const void *ch) {
@@ -1054,10 +1054,10 @@ int main() {
     char str[] = "HELLO WORLD";
 
     if (algorithm_all_of(str, sizeof(str) - 1, sizeof(char), is_uppercase)) {
-        printf("All characters are uppercase.\n");
+        fmt_printf("All characters are uppercase.\n");
     } 
     else {
-        printf("Not all characters are uppercase.\n");
+        fmt_printf("Not all characters are uppercase.\n");
     }
 
     return 0;
@@ -1068,7 +1068,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -1084,10 +1084,10 @@ int main() {
     MyStruct arr[] = {{1, 12.5}, {2, 15.5}, {3, 11.2}};
 
     if (algorithm_all_of(arr, 3, sizeof(MyStruct), is_above_threshold)) {
-        printf("All struct elements have values above 10.0.\n");
+        fmt_printf("All struct elements have values above 10.0.\n");
     } 
     else {
-        printf("Not all struct elements have values above 10.0.\n");
+        fmt_printf("Not all struct elements have values above 10.0.\n");
     }
 
     return 0;
@@ -1098,7 +1098,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_negative(const void *a) {
     return *(const int *)a < 0;
@@ -1108,10 +1108,10 @@ int main() {
     int arr[] = {1, -2, 3, 4, 5};
 
     if (algorithm_any_of(arr, 5, sizeof(int), is_negative)) {
-        printf("At least one element is negative.\n");
+        fmt_printf("At least one element is negative.\n");
     } 
     else {
-        printf("No negative elements found.\n");
+        fmt_printf("No negative elements found.\n");
     }
 
     return 0;
@@ -1122,7 +1122,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <ctype.h>
 
 bool is_digit(const void *ch) {
@@ -1133,10 +1133,10 @@ int main() {
     char str[] = "Hello World 2024";
 
     if (algorithm_any_of(str, sizeof(str) - 1, sizeof(char), is_digit)) {
-        printf("At least one character is a digit.\n");
+        fmt_printf("At least one character is a digit.\n");
     } 
     else {
-        printf("No digits found.\n");
+        fmt_printf("No digits found.\n");
     }
 
     return 0;
@@ -1147,7 +1147,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -1163,10 +1163,10 @@ int main() {
     MyStruct arr[] = {{1, 12.5}, {2, 15.5}, {3, 11.2}};
 
     if (algorithm_any_of(arr, 3, sizeof(MyStruct), has_id_3)) {
-        printf("At least one struct element has ID 3.\n");
+        fmt_printf("At least one struct element has ID 3.\n");
     } 
     else {
-        printf("No struct element with ID 3 found.\n");
+        fmt_printf("No struct element with ID 3 found.\n");
     }
 
     return 0;
@@ -1177,7 +1177,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_negative(const void *a) {
     return *(const int *)a < 0;
@@ -1187,9 +1187,9 @@ int main() {
     int arr[] = {1, 2, 3, 4, 5};
 
     if (algorithm_none_of(arr, 5, sizeof(int), is_negative)) {
-        printf("No elements are negative.\n");
+        fmt_printf("No elements are negative.\n");
     } else {
-        printf("There are negative elements.\n");
+        fmt_printf("There are negative elements.\n");
     }
 
     return 0;
@@ -1200,7 +1200,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_vowel(const void *ch) {
     char c = *(const char *)ch;
@@ -1211,10 +1211,10 @@ int main() {
     char str[] = "bcdfg";
 
     if (algorithm_none_of(str, sizeof(str) - 1, sizeof(char), is_vowel)) {
-        printf("No vowels in the string.\n");
+        fmt_printf("No vowels in the string.\n");
     } 
     else {
-        printf("There are vowels in the string.\n");
+        fmt_printf("There are vowels in the string.\n");
     }
 
     return 0;
@@ -1225,7 +1225,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_zero(const void *a) {
     return *(const int *)a == 0;
@@ -1235,10 +1235,10 @@ int main() {
     int arr[] = {1, 2, 3, 4, 5};
 
     if (algorithm_none_of(arr, 5, sizeof(int), is_zero)) {
-        printf("No elements are zero.\n");
+        fmt_printf("No elements are zero.\n");
     } 
     else {
-        printf("There are zero elements.\n");
+        fmt_printf("There are zero elements.\n");
     }
 
     return 0;
@@ -1249,7 +1249,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -1266,10 +1266,10 @@ int main() {
     MyStruct arr[] = {{1, 11.5}, {2, 15.5}, {3, 11.2}};
 
     if (algorithm_none_of(arr, 3, sizeof(MyStruct), has_value_10)) {
-        printf("No struct elements have the value 10.0.\n");
+        fmt_printf("No struct elements have the value 10.0.\n");
     } 
     else {
-        printf("Some struct elements have the value 10.0.\n");
+        fmt_printf("Some struct elements have the value 10.0.\n");
     }
 
     return 0;
@@ -1282,7 +1282,7 @@ C Algorithm sort time: 0.004748 seconds
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -1298,7 +1298,7 @@ int compareInts(const void *a, const void *b) {
 }
 
 void printInteger(void* number) {
-    printf("%d\n", *(const int*)number);
+    fmt_printf("%d\n", *(const int*)number);
 }
 
 int main() {
@@ -1314,7 +1314,7 @@ int main() {
     clock_gettime(CLOCK_MONOTONIC, &end);
 
     double timeTaken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    printf("C Algorithm sort time: %f seconds\n", timeTaken);
+    fmt_printf("C Algorithm sort time: %f seconds\n", timeTaken);
 
     // algorithm_for_each(data, 100000, sizeof(int), printInteger);
 
@@ -1355,7 +1355,7 @@ int main() {
 
 ```c
 #include "algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int array[10];
@@ -1364,9 +1364,9 @@ int main() {
     algorithm_fill(array, array + 10, sizeof(array[0]), &value);
 
     for (int i = 0; i < 10; ++i) {
-        printf("%d ", array[i]);
+        fmt_printf("%d ", array[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1376,7 +1376,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     double array[10] = {0};
@@ -1385,9 +1385,9 @@ int main() {
     algorithm_fill_n(array, 5, sizeof(array[0]), &value);
 
     for (int i = 0; i < 10; ++i) {
-        printf("%.2f ", array[i]);
+        fmt_printf("%.2f ", array[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1397,7 +1397,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     char str[11];
@@ -1406,7 +1406,7 @@ int main() {
     algorithm_fill(str, str + 10, sizeof(char), &ch);
     str[10] = '\0'; // Null-terminate the string
 
-    printf("%s\n", str);
+    fmt_printf("%s\n", str);
 
     return 0;
 }
@@ -1416,7 +1416,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -1430,7 +1430,7 @@ int main() {
     algorithm_fill(items, items + 5, sizeof(Item), &fillItem);
 
     for (int i = 0; i < 5; ++i) {
-        printf("Item %d: id = %d, value = %.2f\n", i, items[i].id, items[i].value);
+        fmt_printf("Item %d: id = %d, value = %.2f\n", i, items[i].id, items[i].value);
     }
 
     return 0;
@@ -1441,7 +1441,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     char letters[26];
@@ -1452,9 +1452,9 @@ int main() {
     algorithm_fill_n(letters + 13, 13, sizeof(char), &secondHalf);
 
     for (int i = 0; i < 26; ++i) {
-        printf("%c ", letters[i]);
+        fmt_printf("%c ", letters[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1463,7 +1463,7 @@ int main() {
 ## Example 50: Counting Integers Equal to a Given Value `algorithm_count`
 
 ```c
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int *)a - *(const int *)b;
@@ -1474,7 +1474,7 @@ int main() {
     int value = 3;
 
     size_t count = algorithm_count(arr, 7, sizeof(int), &value, compare_ints);
-    printf("Count of 3: %zu\n", count);
+    fmt_printf("Count of 3: %zu\n", count);
 
     return 0;
 }
@@ -1484,7 +1484,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     return *(const char *)a - *(const char *)b;
@@ -1495,7 +1495,7 @@ int main() {
     char ch = 'l';
 
     size_t count = algorithm_count(str, sizeof(str) - 1, sizeof(char), &ch, compare_chars); 
-    printf("Count of 'l': %zu\n", count);
+    fmt_printf("Count of 'l': %zu\n", count);
 
     return 0;
 }
@@ -1505,7 +1505,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 bool is_even(const void *a) {
@@ -1516,7 +1516,7 @@ int main() {
     int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
     size_t count = algorithm_count_if(arr, 10, sizeof(int), is_even);
-    printf("Count of even numbers: %zu\n", count);
+    fmt_printf("Count of even numbers: %zu\n", count);
 
     return 0;
 }
@@ -1526,7 +1526,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 bool is_greater_than_five(const void *a) {
@@ -1537,7 +1537,7 @@ int main() {
     int arr[] = {3, 7, 2, 9, 5, 6};
 
     size_t count = algorithm_count_if(arr, 6, sizeof(int), is_greater_than_five);
-    printf("Count of numbers greater than 5: %zu\n", count);
+    fmt_printf("Count of numbers greater than 5: %zu\n", count);
 
     return 0;
 }
@@ -1547,7 +1547,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -1562,7 +1562,7 @@ int main() {
 
     algorithm_shuffle(str, size, sizeof(char), simple_rng);
 
-    printf("Shuffled String: %s\n", str);
+    fmt_printf("Shuffled String: %s\n", str);
 
     return 0;
 }
@@ -1572,7 +1572,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -1598,9 +1598,9 @@ int main() {
 
     algorithm_shuffle(people, size, sizeof(Person), simple_rng);
 
-    printf("Shuffled People:\n");
+    fmt_printf("Shuffled People:\n");
     for (size_t i = 0; i < size; ++i) {
-        printf("ID: %d, Name: %s\n", people[i].id, people[i].name);
+        fmt_printf("ID: %d, Name: %s\n", people[i].id, people[i].name);
     }
 
     return 0;
@@ -1611,7 +1611,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -1627,9 +1627,9 @@ int main() {
     algorithm_shuffle(data, size, sizeof(data[0]), simple_rng);
 
     for (size_t i = 0; i < size; ++i) {
-        printf("%d ", data[i]);
+        fmt_printf("%d ", data[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1639,7 +1639,7 @@ int main() {
 ## Example 57: Find Lower Bound in an Array of Integers `algorithm_lower_bound`
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -1650,7 +1650,7 @@ int main() {
     int val = 4;
 
     int *lb = (int *)algorithm_lower_bound(arr, 5, sizeof(int), &val, compare_ints);
-    printf("Lower bound of 4 is at index: %lld\n", lb - arr);
+    fmt_printf("Lower bound of 4 is at index: %lld\n", lb - arr);
 
     return 0;
 }
@@ -1659,7 +1659,7 @@ int main() {
 ## Example 58: Find Upper Bound in an Array of Integers `algorithm_upper_bound`
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -1670,7 +1670,7 @@ int main() {
     int val = 6;
 
     int *ub = (int *)algorithm_upper_bound(arr, 5, sizeof(int), &val, compare_ints);
-    printf("Upper bound of 6 is at index: %lld\n", ub - arr);
+    fmt_printf("Upper bound of 6 is at index: %lld\n", ub - arr);
 
     return 0;
 }
@@ -1679,7 +1679,7 @@ int main() {
 ## Example 59: Lower Bound in an Array of Doubles `algorithm_lower_bound`
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_doubles(const void *a, const void *b) {
     const double diff = *(const double*)a - *(const double*)b;
@@ -1691,7 +1691,7 @@ int main() {
     double val = 4.4;
 
     double *lb = (double *)algorithm_lower_bound(arr, 5, sizeof(double), &val, compare_doubles);
-    printf("Lower bound of 4.4 is at index: %lld\n", lb - arr);
+    fmt_printf("Lower bound of 4.4 is at index: %lld\n", lb - arr);
 
     return 0;
 }
@@ -1700,7 +1700,7 @@ int main() {
 ## Example 60: Upper Bound in an Array of Characters `algorithm_upper_bound`
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     return *(const char*)a - *(const char*)b;
@@ -1711,7 +1711,7 @@ int main() {
     char val = 'f';
 
     char *ub = (char *)algorithm_upper_bound(arr, 5, sizeof(char), &val, compare_chars);
-    printf("Upper bound of 'f' is at index: %lld\n", ub - arr);
+    fmt_printf("Upper bound of 'f' is at index: %lld\n", ub - arr);
 
     return 0;
 }
@@ -1721,7 +1721,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void square(void *output, const void *input) {
     int inputValue = *(const int *)input;
@@ -1736,9 +1736,9 @@ int main() {
     algorithm_transform(inputArray, numElements, sizeof(int), outputArray, square);
 
     for (size_t i = 0; i < numElements; ++i) {
-        printf("%d ", outputArray[i]);
+        fmt_printf("%d ", outputArray[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1750,7 +1750,7 @@ This example negates each integer in an array.
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void negate(void *output, const void *input) {
     int inputValue = *(const int *)input;
@@ -1765,9 +1765,9 @@ int main() {
     algorithm_transform(inputArray, numElements, sizeof(int), outputArray, negate);
 
     for (size_t i = 0; i < numElements; ++i) {
-        printf("%d ", outputArray[i]);
+        fmt_printf("%d ", outputArray[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1779,7 +1779,7 @@ This example converts floating-point numbers to integers by truncating the decim
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void float_to_int(void *output, const void *input) {
     float inputValue = *(const float *)input;
@@ -1794,9 +1794,9 @@ int main() {
     algorithm_transform(inputArray, numElements, sizeof(float), outputArray, float_to_int);
 
     for (size_t i = 0; i < numElements; ++i) {
-        printf("%d ", outputArray[i]);
+        fmt_printf("%d ", outputArray[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1808,7 +1808,7 @@ This example computes the length of each string in an array of strings.
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 void string_length(void *output, const void *input) {
@@ -1824,9 +1824,9 @@ int main() {
     algorithm_transform(inputArray, numElements, sizeof(const char *), outputArray, string_length);
 
     for (size_t i = 0; i < numElements; ++i) {
-        printf("%zu ", outputArray[i]);
+        fmt_printf("%zu ", outputArray[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1836,7 +1836,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void sum(void *result, const void *element) {
     *(int *)result += *(const int *)element;
@@ -1848,7 +1848,7 @@ int main() {
     size_t numElements = sizeof(array) / sizeof(array[0]);
 
     algorithm_reduce(array, numElements, sizeof(int), &sum_result, sum);
-    printf("Sum: %d\n", sum_result);
+    fmt_printf("Sum: %d\n", sum_result);
     
     return 0;
 }
@@ -1858,7 +1858,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <limits.h>
 
 void max_int(void *result, const void *element) {
@@ -1875,7 +1875,7 @@ int main() {
     int maxResult = INT_MIN;
 
     algorithm_reduce(array, numElements, sizeof(int), &maxResult, max_int);
-    printf("Maximum Value: %d\n", maxResult);
+    fmt_printf("Maximum Value: %d\n", maxResult);
 
     return 0;
 }
@@ -1885,7 +1885,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 void concatenate_strings(void *result, const void *element) {
@@ -1899,7 +1899,7 @@ int main() {
 
     algorithm_reduce(strings, numElements, sizeof(char *), concatenated, concatenate_strings);
 
-    printf("Concatenated String: %s\n", concatenated);
+    fmt_printf("Concatenated String: %s\n", concatenated);
 
     return 0;
 }
@@ -1909,7 +1909,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 void logical_and(void *result, const void *element) {
@@ -1924,7 +1924,7 @@ int main() {
     bool andResult = true;
 
     algorithm_reduce(flags, numElements, sizeof(bool), &andResult, logical_and);
-    printf("Logical AND of flags: %s\n", andResult ? "true" : "false");
+    fmt_printf("Logical AND of flags: %s\n", andResult ? "true" : "false");
 
     return 0;
 }
@@ -1936,7 +1936,7 @@ This example demonstrates removing consecutive duplicates in an array of integer
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
@@ -1948,11 +1948,11 @@ int main() {
 
     size_t newSize = algorithm_unique(arr, arrSize, sizeof(int), compare_ints);
 
-    printf("Unique elements: ");
+    fmt_printf("Unique elements: ");
     for (size_t i = 0; i < newSize; i++) {
-        printf("%d ", arr[i]);
+        fmt_printf("%d ", arr[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1964,7 +1964,7 @@ This example focuses on removing consecutive duplicate characters in a string.
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     return *(const char*)a - *(const char*)b;
@@ -1976,11 +1976,11 @@ int main() {
 
     size_t newSize = algorithm_unique(str, strSize, sizeof(char), compare_chars);
 
-    printf("Unique characters: ");
+    fmt_printf("Unique characters: ");
     for (size_t i = 0; i < newSize; i++) {
-        printf("%c", str[i]);
+        fmt_printf("%c", str[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -1992,7 +1992,7 @@ This example demonstrates the removal of consecutive duplicate floating-point nu
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_floats(const void *a, const void *b) {
     const float diff = *(const float*)a - *(const float*)b;
@@ -2008,11 +2008,11 @@ int main() {
 
     size_t newSize = algorithm_unique(arr, arrSize, sizeof(float), compare_floats);
 
-    printf("Unique floats: ");
+    fmt_printf("Unique floats: ");
     for (size_t i = 0; i < newSize; i++) {
-        printf("%.1f ", arr[i]);
+        fmt_printf("%.1f ", arr[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2022,7 +2022,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     int arg1 = *(const int *)a;
@@ -2036,10 +2036,10 @@ int main() {
     int arr3[] = {1, 2, 3, 4, 6};
 
     bool isEqual = algorithm_equal(arr1, 5, sizeof(int), arr2, 5, sizeof(int), compare_ints);
-    printf("Arr1 is equal to Arr2: %s\n", isEqual ? "true" : "false");
+    fmt_printf("Arr1 is equal to Arr2: %s\n", isEqual ? "true" : "false");
 
     isEqual = algorithm_equal(arr1, 5, sizeof(int), arr3, 5, sizeof(int), compare_ints);
-    printf("Arr1 is equal to Arr3: %s\n", isEqual ? "true" : "false");
+    fmt_printf("Arr1 is equal to Arr3: %s\n", isEqual ? "true" : "false");
 
     return 0;
 }
@@ -2049,7 +2049,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     char arg1 = *(const char *)a;
@@ -2063,10 +2063,10 @@ int main() {
     char str3[] = "world";
 
     bool isEqual = algorithm_equal(str1, 5, sizeof(char), str2, 5, sizeof(char), compare_chars);
-    printf("Str1 is equal to Str2: %s\n", isEqual ? "true" : "false");
+    fmt_printf("Str1 is equal to Str2: %s\n", isEqual ? "true" : "false");
 
     isEqual = algorithm_equal(str1, 5, sizeof(char), str3, 5, sizeof(char), compare_chars);
-    printf("Str1 is equal to Str3: %s\n", isEqual ? "true" : "false");
+    fmt_printf("Str1 is equal to Str3: %s\n", isEqual ? "true" : "false");
 
     return 0;
 }
@@ -2076,7 +2076,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_doubles(const void *a, const void *b) {
     double arg1 = *(const double *)a;
@@ -2096,10 +2096,10 @@ int main() {
     double arr3[] = {1.1, 2.2, 4.4};
 
     bool isEqual = algorithm_equal(arr1, 3, sizeof(double), arr2, 3, sizeof(double), compare_doubles);
-    printf("Arr1 is equal to Arr2: %s\n", isEqual ? "true" : "false");
+    fmt_printf("Arr1 is equal to Arr2: %s\n", isEqual ? "true" : "false");
 
     isEqual = algorithm_equal(arr1, 3, sizeof(double), arr3, 3, sizeof(double), compare_doubles);
-    printf("Arr1 is equal to Arr3: %s\n", isEqual ? "true" : "false");
+    fmt_printf("Arr1 is equal to Arr3: %s\n", isEqual ? "true" : "false");
 
     return 0;
 }
@@ -2109,7 +2109,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool less_int(const void *a, const void *b) {
     return *(int *)a < *(int *)b;
@@ -2121,9 +2121,9 @@ int main() {
 
     do {
         for (size_t i = 0; i < size; ++i) {
-            printf("%d ", arr[i]);
+            fmt_printf("%d ", arr[i]);
         }
-        printf("\n");
+        fmt_printf("\n");
     } while (algorithm_next_permutation(arr, arr + size, sizeof(arr[0]), less_int));
 
     return 0;
@@ -2134,7 +2134,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 bool less_char(const void *a, const void *b) {
@@ -2146,7 +2146,7 @@ int main() {
     size_t size = strlen(str);
 
     do {
-        printf("%s\n", str);
+        fmt_printf("%s\n", str);
     } while (algorithm_next_permutation(str, str + size, sizeof(char), less_char));
 
     return 0;
@@ -2158,7 +2158,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -2175,9 +2175,9 @@ int main() {
 
     do {
         for (size_t i = 0; i < size; ++i) {
-            printf("{%d, %.1f} ", arr[i].id, arr[i].value);
+            fmt_printf("{%d, %.1f} ", arr[i].id, arr[i].value);
         }
-        printf("\n");
+        fmt_printf("\n");
     } while (algorithm_next_permutation(arr, arr + size, sizeof(MyStruct), less_mystruct));
 
     return 0;
@@ -2190,7 +2190,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool less_int(const void *a, const void *b) {
     return *(int *)a < *(int *)b;
@@ -2207,9 +2207,9 @@ int main() {
     do {
         for (size_t i = 0; i < vector_size(vec); ++i) {
             int *item = vector_at(vec, i);
-            printf("%d ", *item);
+            fmt_printf("%d ", *item);
         }
-        printf("\n");
+        fmt_printf("\n");
         
     } while (algorithm_next_permutation(vector_begin(vec), vector_end(vec), sizeof(int), less_int));
 
@@ -2223,7 +2223,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool less_int(const void *a, const void *b) {
     return *(int *)a < *(int *)b;
@@ -2235,9 +2235,9 @@ int main() {
 
     do {
         for (size_t i = 0; i < size; ++i) {
-            printf("%d ", arr[i]);
+            fmt_printf("%d ", arr[i]);
         }
-        printf("\n");
+        fmt_printf("\n");
     } while (algorithm_prev_permutation(arr, arr + size, sizeof(int), less_int));
 
     return 0;
@@ -2248,7 +2248,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 bool less_char(const void *a, const void *b) {
@@ -2260,7 +2260,7 @@ int main() {
     size_t size = strlen(str);
 
     do {
-        printf("%s\n", str);
+        fmt_printf("%s\n", str);
     } while (algorithm_prev_permutation(str, str + size, sizeof(char), less_char));
 
     return 0;
@@ -2272,7 +2272,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool less_int(const void *a, const void *b) {
     return *(int *)a < *(int *)b;
@@ -2289,9 +2289,9 @@ int main() {
     do {
         for (size_t i = 0; i < vector_size(vec); ++i) {
             int *item = vector_at(vec, i);
-            printf("%d ", *item);
+            fmt_printf("%d ", *item);
         }
-        printf("\n");
+        fmt_printf("\n");
     } while (algorithm_prev_permutation(vector_begin(vec), vector_end(vec), sizeof(int), less_int));
 
     vector_deallocate(vec);
@@ -2303,7 +2303,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_odd(const void *a) {
     return (*(int *)a) % 2 != 0;
@@ -2315,17 +2315,17 @@ int main() {
 
     char *partition_point = (char *)algorithm_partition(arr, size, sizeof(arr[0]), is_odd);
 
-    printf("Odd elements: ");
+    fmt_printf("Odd elements: ");
     for (char *ptr = (char *)arr; ptr != partition_point; ptr += sizeof(arr[0])) {
-        printf("%d ", *(int *)ptr);
+        fmt_printf("%d ", *(int *)ptr);
     }
-    printf("\n");
+    fmt_printf("\n");
 
-    printf("Even elements: ");
+    fmt_printf("Even elements: ");
     for (char *ptr = partition_point; ptr != (char *)arr + size * sizeof(arr[0]); ptr += sizeof(arr[0])) {
-        printf("%d ", *(int *)ptr);
+        fmt_printf("%d ", *(int *)ptr);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2371,7 +2371,7 @@ int main () {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <ctype.h>
 
 bool is_uppercase(const void *a) {
@@ -2384,17 +2384,17 @@ int main() {
 
     char *partition_point = (char *)algorithm_partition(str, size, sizeof(char), is_uppercase);
 
-    printf("Uppercase characters: ");
+    fmt_printf("Uppercase characters: ");
     for (char *ptr = str; ptr != partition_point; ptr += sizeof(char)) {
-        printf("%c", *ptr);
+        fmt_printf("%c", *ptr);
     }
-    printf("\n");
+    fmt_printf("\n");
 
-    printf("Other characters: ");
+    fmt_printf("Other characters: ");
     for (char *ptr = partition_point; ptr != str + size * sizeof(char); ptr += sizeof(char)) {
-        printf("%c", *ptr);
+        fmt_printf("%c", *ptr);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2405,7 +2405,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     int id;
@@ -2422,19 +2422,19 @@ int main() {
 
     char *partition_point = (char *)algorithm_partition(arr, size, sizeof(MyStruct), is_positive_value);
 
-    printf("Positive values: ");
+    fmt_printf("Positive values: ");
     for (char *ptr = (char *)arr; ptr != partition_point; ptr += sizeof(MyStruct)) {
         MyStruct *ms = (MyStruct *)ptr;
-        printf("{%d, %.1f} ", ms->id, ms->value);
+        fmt_printf("{%d, %.1f} ", ms->id, ms->value);
     }
-    printf("\n");
+    fmt_printf("\n");
 
-    printf("Non-positive values: ");
+    fmt_printf("Non-positive values: ");
     for (char *ptr = partition_point; ptr != (char *)arr + size * sizeof(MyStruct); ptr += sizeof(MyStruct)) {
         MyStruct *ms = (MyStruct *)ptr;
-        printf("{%d, %.1f} ", ms->id, ms->value);
+        fmt_printf("{%d, %.1f} ", ms->id, ms->value);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2445,7 +2445,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 // Generator function to fill with random numbers
@@ -2457,11 +2457,11 @@ int main() {
     int array[10];
     algorithm_generate(array, array + 10, sizeof(int), random_number_generator);
 
-    printf("Random numbers: ");
+    fmt_printf("Random numbers: ");
     for (int i = 0; i < 10; ++i) {
-        printf("%d ", array[i]);
+        fmt_printf("%d ", array[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2472,7 +2472,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 // Generator function for sequential numbers
 struct sequential_number {
@@ -2491,11 +2491,11 @@ int main() {
     // Fill vector with sequential numbers
     algorithm_generate(vector_begin(vec), vector_end(vec), sizeof(int), sequential_number_generator);
 
-    printf("Sequential numbers: ");
+    fmt_printf("Sequential numbers: ");
     for (size_t i = 0; i < vector_size(vec); ++i) {
-        printf("%d ", *(int *)vector_at(vec, i));
+        fmt_printf("%d ", *(int *)vector_at(vec, i));
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(vec);
     return 0;
@@ -2507,7 +2507,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 // Generator function to fill with a constant value
 void constant_generator(void *output) {
@@ -2521,11 +2521,11 @@ int main() {
 
     algorithm_generate(vector_begin(vec), vector_end(vec), sizeof(int), constant_generator);
 
-    printf("Constant values: ");
+    fmt_printf("Constant values: ");
     for (size_t i = 0; i < vector_size(vec); ++i) {
-        printf("%d ", *(int *)vector_at(vec, i));
+        fmt_printf("%d ", *(int *)vector_at(vec, i));
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(vec);
     return 0;
@@ -2536,7 +2536,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 void random_int_generator(void *output) {
@@ -2547,11 +2547,11 @@ int main() {
     int array[5];
     algorithm_generate_n(array, 5, sizeof(int), random_int_generator);
 
-    printf("Random integers: ");
+    fmt_printf("Random integers: ");
     for (int i = 0; i < 5; ++i) {
-        printf("%d ", array[i]);
+        fmt_printf("%d ", array[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2561,7 +2561,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void char_sequence_generator(void *output) {
     static char current = 'A';
@@ -2576,11 +2576,11 @@ int main() {
     char sequence[10];
     algorithm_generate_n(sequence, 10, sizeof(char), char_sequence_generator);
 
-    printf("Character sequence: ");
+    fmt_printf("Character sequence: ");
     for (int i = 0; i < 10; ++i) {
-        printf("%c ", sequence[i]);
+        fmt_printf("%c ", sequence[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2591,7 +2591,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "string/string.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 void string_generator(void *output) {
@@ -2606,9 +2606,9 @@ int main() {
     String *stringArray[3];
     algorithm_generate_n(stringArray, 3, sizeof(String *), string_generator);
 
-    printf("Generated strings: \n");
+    fmt_printf("Generated strings: \n");
     for (int i = 0; i < 3; ++i) {
-        printf("%s\n", stringArray[i]->dataStr);
+        fmt_printf("%s\n", stringArray[i]->dataStr);
         string_deallocate(stringArray[i]);
     }
 
@@ -2621,7 +2621,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void float_generator(void *output) {
     static float value = 0.5;
@@ -2635,11 +2635,11 @@ int main() {
 
     algorithm_generate_n(vector_begin(vec), 5, sizeof(float), float_generator);
 
-    printf("Generated floats: ");
+    fmt_printf("Generated floats: ");
     for (size_t i = 0; i < vector_size(vec); ++i) {
-        printf("%.2f ", *(float *)vector_at(vec, i));
+        fmt_printf("%.2f ", *(float *)vector_at(vec, i));
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(vec);
     return 0;
@@ -2650,7 +2650,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -2662,11 +2662,11 @@ int main() {
     algorithm_copy_backward(array + 3, array + 7, sizeof(int), array + array_size);
 
     // Print the array
-    printf("Array after copy_backward: ");
+    fmt_printf("Array after copy_backward: ");
     for (size_t i = 0; i < array_size; ++i) {
-        printf("%d ", array[i]);
+        fmt_printf("%d ", array[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2678,15 +2678,15 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_vector(Vector *vec) {
-    printf("Destination vector after copy_backward: ");
+    fmt_printf("Destination vector after copy_backward: ");
     for (size_t i = 0; i < vector_size(vec); ++i) {
         int *value = (int *)vector_at(vec, i);
-        printf("%d ", *value);
+        fmt_printf("%d ", *value);
     }
-    printf("\n");
+    fmt_printf("\n");
 }
 
 int main() {
@@ -2717,7 +2717,7 @@ We'll define a simple struct, say Person, with a couple of fields, and then use 
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -2728,7 +2728,7 @@ typedef struct {
 
 void print_people_array(Person *people, size_t size) {
     for (size_t i = 0; i < size; ++i) {
-        printf("Name: %s, Age: %d\n", people[i].name, people[i].age);
+        fmt_printf("Name: %s, Age: %d\n", people[i].name, people[i].age);
     }
 }
 
@@ -2748,7 +2748,7 @@ int main() {
     algorithm_copy_backward(people, people + people_size, sizeof(Person), destination + people_size);
 
     // Print the destination array
-    printf("Destination array after copy_backward:\n");
+    fmt_printf("Destination array after copy_backward:\n");
     print_people_array(destination, people_size);
 
     return 0;
@@ -2760,7 +2760,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_positive(const void *element) {
     const int *value = (const int *)element;
@@ -2775,9 +2775,9 @@ int main() {
     algorithm_copy_if(source, source + num_elements, sizeof(int), dest, is_positive);
 
     for (size_t i = 0; i < num_elements; ++i) {
-        printf("%d ", dest[i]);
+        fmt_printf("%d ", dest[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2787,7 +2787,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 bool is_even(const void *element) {
     const int *value = (const int *)element;
@@ -2801,13 +2801,13 @@ int main() {
 
     algorithm_copy_if(source, source + num_elements, sizeof(int), dest, is_even);
 
-    printf("Even numbers: ");
+    fmt_printf("Even numbers: ");
     for (size_t i = 0; i < num_elements; ++i) {
         if (dest[i] != 0) {
-            printf("%d ", dest[i]);
+            fmt_printf("%d ", dest[i]);
         }
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2819,7 +2819,7 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 
@@ -2837,10 +2837,10 @@ void print_vector(Vector *vec) {
     for (size_t i = 0; i < vector_size(vec); ++i) {
         int *value = (int *)vector_at(vec, i);
         if (*value != 0) {
-            printf("%d ", *value);
+            fmt_printf("%d ", *value);
         }
     }
-    printf("\n");
+    fmt_printf("\n");
 }
 
 int main() {
@@ -2854,7 +2854,7 @@ int main() {
     algorithm_generate(vector_begin(destination), vector_end(destination), sizeof(int), int_generator);
     algorithm_copy_if(vector_begin(source), vector_end(source), sizeof(int), vector_begin(destination), greater_than_five);
 
-    printf("Elements greater than 5: ");
+    fmt_printf("Elements greater than 5: ");
     print_vector(destination);
 
     vector_deallocate(source);
@@ -2870,7 +2870,7 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 
@@ -2880,11 +2880,11 @@ int main() {
 
     algorithm_copy_n(source, 7, sizeof(int), dest);
 
-    printf("dest array contains:");
+    fmt_printf("dest array contains:");
     for (size_t i = 0; i < 7; ++i) {
-        printf(" %d", dest[i]);
+        fmt_printf(" %d", dest[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2895,7 +2895,7 @@ This example copies a specified number of elements from one integer array to ano
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int source[] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
@@ -2903,11 +2903,11 @@ int main() {
 
     algorithm_copy_n(source, 5, sizeof(int), dest);
 
-    printf("First 5 elements of source: ");
+    fmt_printf("First 5 elements of source: ");
     for (size_t i = 0; i < 5; ++i) {
-        printf("%d ", dest[i]);
+        fmt_printf("%d ", dest[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -2919,14 +2919,14 @@ In this example, we will use `algorithm_copy_n` to copy a specified number of el
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_vector(Vector *vec) {
     for (size_t i = 0; i < vector_size(vec); ++i) {
         int *value = (int *)vector_at(vec, i);
-        printf("%d ", *value);
+        fmt_printf("%d ", *value);
     }
-    printf("\n");
+    fmt_printf("\n");
 }
 
 int main() {
@@ -2940,7 +2940,7 @@ int main() {
     vector_resize(destination, 5); // Allocate space for 5 elements
     algorithm_copy_n(vector_begin(source), 5, sizeof(int), vector_begin(destination));
 
-    printf("First 5 elements from source: ");
+    fmt_printf("First 5 elements from source: ");
     print_vector(destination);
 
     vector_deallocate(source);
@@ -2955,7 +2955,7 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     const int arg1 = *(const int *)a;
@@ -2984,7 +2984,7 @@ int main() {
     size_t lower_bound_index = ((int *)bounds.first - array);
     size_t upper_bound_index = ((int *)bounds.second - array);
 
-    printf("Bounds at positions %zu and %zu\n", lower_bound_index, upper_bound_index);
+    fmt_printf("Bounds at positions %zu and %zu\n", lower_bound_index, upper_bound_index);
 
     return 0;
 }
@@ -3025,7 +3025,7 @@ int main () {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_doubles(const void *a, const void *b) {
     double arg1 = *(const double *)a;
@@ -3044,7 +3044,7 @@ int main() {
     size_t lower_bound_index = ((double *)bounds.first - array);
     size_t upper_bound_index = ((double *)bounds.second - array);
 
-    printf("Bounds for 2.5 in double array: %zu and %zu\n", lower_bound_index, upper_bound_index);
+    fmt_printf("Bounds for 2.5 in double array: %zu and %zu\n", lower_bound_index, upper_bound_index);
 
     return 0;
 }
@@ -3055,7 +3055,7 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     char arg1 = *(const char *)a;
@@ -3077,7 +3077,7 @@ int main() {
     size_t lower_bound_index = ((char *)bounds.first - (char *)vector_begin(vec));
     size_t upper_bound_index = ((char *)bounds.second - (char *)vector_begin(vec));
 
-    printf("Bounds for 'b' in char array: %zu and %zu\n", lower_bound_index, upper_bound_index);
+    fmt_printf("Bounds for 'b' in char array: %zu and %zu\n", lower_bound_index, upper_bound_index);
 
     vector_deallocate(vec);
     return 0;
@@ -3089,7 +3089,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     int arg1 = *(const int *)a;
@@ -3108,9 +3108,9 @@ int main() {
 
     // Using algorithm_includes
     if (algorithm_includes(container, container_size, sizeof(int), continent, continent_size, sizeof(int), compare_ints)) {
-        printf("container includes continent!\n");
+        fmt_printf("container includes continent!\n");
     } else {
-        printf("container does not include continent.\n");
+        fmt_printf("container does not include continent.\n");
     }
 
     return 0;
@@ -3123,7 +3123,7 @@ This example checks if a subset of characters is included in a larger set of cha
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int compare_chars(const void *a, const void *b) {
@@ -3142,9 +3142,9 @@ int main() {
     algorithm_sort(subset, subset_size, sizeof(char), compare_chars);
 
     if (algorithm_includes(letters, letters_size, sizeof(char), subset, subset_size, sizeof(char), compare_chars)) {
-        printf("letters array includes the subset!\n");
+        fmt_printf("letters array includes the subset!\n");
     } else {
-        printf("letters array does not include the subset.\n");
+        fmt_printf("letters array does not include the subset.\n");
     }
 
     return 0;
@@ -3157,7 +3157,7 @@ This example checks if a set of custom structs contains a subset based on a spec
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -3182,9 +3182,9 @@ int main() {
     algorithm_sort(subset, subset_size, sizeof(Person), compare_person_age);
 
     if (algorithm_includes(people, people_size, sizeof(Person), subset, subset_size, sizeof(Person), compare_person_age)) {
-        printf("people array includes the subset!\n");
+        fmt_printf("people array includes the subset!\n");
     } else {
-        printf("people array does not include the subset.\n");
+        fmt_printf("people array does not include the subset.\n");
     }
 
     return 0;
@@ -3195,14 +3195,14 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     return *(const int*)a - *(const int*)b;
 }
 
 void print_int(void *element) {
-    printf("%d ", *(int *)element);
+    fmt_printf("%d ", *(int *)element);
 }
 
 int main() {
@@ -3212,7 +3212,7 @@ int main() {
 
     size_t newSize = algorithm_unique_copy(arr, arrSize, sizeof(int), result, compare_ints);
 
-    printf("Unique elements: ");
+    fmt_printf("Unique elements: ");
     algorithm_for_each(result, newSize, sizeof(int), print_int);
 
     return 0;
@@ -3224,14 +3224,14 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_chars(const void *a, const void *b) {
     return *(const char*)a - *(const char*)b;
 }
 
 void print_char(void* element) {
-    printf("%c ", *(char*)element);
+    fmt_printf("%c ", *(char*)element);
 }
 
 int main() {
@@ -3241,7 +3241,7 @@ int main() {
 
     size_t newSize = algorithm_unique_copy(str, strSize, sizeof(char), result, compare_chars);
 
-    printf("Unique characters: ");
+    fmt_printf("Unique characters: ");
     algorithm_for_each(result, newSize, sizeof(char), print_char);
 
     return 0;
@@ -3252,14 +3252,14 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int x = 10, y = 20;
-    printf("Before swap: x = %d, y = %d\n", x, y);
+    fmt_printf("Before swap: x = %d, y = %d\n", x, y);
 
     algorithm_swap(&x, &y, sizeof(int));
-    printf("After swap: x = %d, y = %d\n", x, y);
+    fmt_printf("After swap: x = %d, y = %d\n", x, y);
 
     return 0;
 }
@@ -3269,10 +3269,10 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_int(void *element) {
-    printf("%d ", *(int *)element);
+    fmt_printf("%d ", *(int *)element);
 }
 
 int main() {
@@ -3280,18 +3280,18 @@ int main() {
     int arr2[] = {4, 5, 6};
     size_t arrSize = sizeof(arr1) / sizeof(int);
 
-    printf("Before swap:\narr1: ");
+    fmt_printf("Before swap:\narr1: ");
     algorithm_for_each(arr1, arrSize, sizeof(int), print_int);
 
-    printf("\narr2: ");
+    fmt_printf("\narr2: ");
     algorithm_for_each(arr2, arrSize, sizeof(int), print_int);
 
     algorithm_swap(arr1, arr2, arrSize); // swap two array
 
-    printf("\nAfter swap:\narr1: ");
+    fmt_printf("\nAfter swap:\narr1: ");
     algorithm_for_each(arr1, arrSize, sizeof(int), print_int);
 
-    printf("\narr2: ");
+    fmt_printf("\narr2: ");
     algorithm_for_each(arr2, arrSize, sizeof(int), print_int);
 
     return 0;
@@ -3303,10 +3303,10 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 void print_int(void *element) {
-    printf("%d ", *(int *)element);
+    fmt_printf("%d ", *(int *)element);
 }
 
 int main() {
@@ -3314,18 +3314,18 @@ int main() {
     int arr2[] = {10, 20, 30, 40, 50};
     size_t num = 3;
 
-    printf("Before swap:\narr1: ");
+    fmt_printf("Before swap:\narr1: ");
     algorithm_for_each(arr1, num, sizeof(int), print_int);
 
-    printf("\narr2: ");
+    fmt_printf("\narr2: ");
     algorithm_for_each(arr2, num, sizeof(int), print_int);
 
     algorithm_swap_ranges(arr1, arr2, num, sizeof(int)); //swap reanges
 
-    printf("\nAfter swap:\narr1: ");
+    fmt_printf("\nAfter swap:\narr1: ");
     algorithm_for_each(arr1, num, sizeof(int), print_int);
 
-    printf("\narr2: ");
+    fmt_printf("\narr2: ");
     algorithm_for_each(arr2, num, sizeof(int), print_int);
 
     return 0;
@@ -3336,17 +3336,17 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     char str1[] = "Hello";
     char str2[] = "World";
     size_t num = 3; // Swap first three characters
 
-    printf("Before swap:\nstr1: %s\nstr2: %s\n", str1, str2);
+    fmt_printf("Before swap:\nstr1: %s\nstr2: %s\n", str1, str2);
     algorithm_swap_ranges(str1, str2, num, sizeof(char));
 
-    printf("After swap:\nstr1: %s\nstr2: %s\n", str1, str2);
+    fmt_printf("After swap:\nstr1: %s\nstr2: %s\n", str1, str2);
 
     return 0;
 }
@@ -3356,7 +3356,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <math.h>  // For fabs
 
 int compare_doubles(const void *a, const void *b) {
@@ -3375,7 +3375,7 @@ int compare_as_ints(const void *a, const void *b) {
 }
 
 void print_doubles(void* element) {
-    printf("%.2f ", *(double*)element);
+    fmt_printf("%.2f ", *(double*)element);
 }
 
 int main() {
@@ -3385,16 +3385,16 @@ int main() {
 
     algorithm_stable_sort(mydoubles, mydoubles_size, sizeof(double), compare_doubles);
     
-    printf("using default comparison:");
+    fmt_printf("using default comparison:");
     algorithm_for_each(mydoubles, mydoubles_size, sizeof(double), print_doubles);
-    printf("\n");
+    fmt_printf("\n");
 
     algorithm_copy(original, mydoubles_size, sizeof(double), mydoubles);    
     algorithm_stable_sort(mydoubles, mydoubles_size, sizeof(double), compare_as_ints);
     
-    printf("using 'compare_as_ints':");
+    fmt_printf("using 'compare_as_ints':");
     algorithm_for_each(mydoubles, mydoubles_size, sizeof(double), print_doubles);
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -3441,7 +3441,7 @@ int main () {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 typedef struct {
     char name[50];
@@ -3457,7 +3457,7 @@ int compare_persons_by_age(const void *a, const void *b) {
 
 void print_person(void* element) {
     Person *person = (Person*)element;
-    printf("Name: %s, Age: %d\n", person->name, person->age);
+    fmt_printf("Name: %s, Age: %d\n", person->name, person->age);
 }
 
 int main() {
@@ -3475,7 +3475,7 @@ int main() {
 
     algorithm_stable_sort(vector_data(people), vector_size(people), sizeof(Person), compare_persons_by_age);
 
-    printf("People sorted by age:\n");
+    fmt_printf("People sorted by age:\n");
     algorithm_for_each(vector_data(people), vector_size(people), sizeof(Person), print_person);
 
     vector_deallocate(people);
@@ -3488,7 +3488,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     int arg1 = *(const int *)a;
@@ -3501,9 +3501,9 @@ int main() {
     size_t size = sizeof(arr) / sizeof(arr[0]);
 
     if (algorithm_is_sorted(arr, size, sizeof(int), compare_ints)) {
-        printf("Array is sorted.\n");
+        fmt_printf("Array is sorted.\n");
     } else {
-        printf("Array is not sorted.\n");
+        fmt_printf("Array is not sorted.\n");
     }
 
     return 0;
@@ -3515,7 +3515,7 @@ int main() {
 ```c
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_doubles(const void *a, const void *b) {
     double arg1 = *(const double *)a;
@@ -3539,9 +3539,9 @@ int main() {
     }
 
     if (algorithm_is_sorted(vector_begin(vec), vector_size(vec), sizeof(double), compare_doubles)) {
-        printf("Vector is sorted.\n");
+        fmt_printf("Vector is sorted.\n");
     } else {
-        printf("Vector is not sorted.\n");
+        fmt_printf("Vector is not sorted.\n");
     }
 
     vector_deallocate(vec);
@@ -3554,7 +3554,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     int arg1 = *(const int *)a;
@@ -3569,23 +3569,23 @@ bool less_int(const void *a, const void *b) {
 void print_array(void* element) {
     static int counter = 0;
     if (counter % 4 == 0)
-        printf("\n");
+        fmt_printf("\n");
     counter++;
-    printf(" %d", *(int*)element);
+    fmt_printf(" %d", *(int*)element);
 }
 
 int main() {
     int foo[] = {2, 4, 1, 3};
     size_t size = sizeof(foo) / sizeof(foo[0]);
 
-    printf("foo:");
+    fmt_printf("foo:");
     do {
         algorithm_prev_permutation(foo, foo + size, sizeof(int), less_int);
         algorithm_for_each(foo, size, sizeof(int), print_array);
         
     } while (!algorithm_is_sorted(foo, size, sizeof(int), compare_ints));
 
-    printf("\nThe range is sorted!\n");
+    fmt_printf("\nThe range is sorted!\n");
 
     return 0;
 }
@@ -3623,7 +3623,7 @@ int main () {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int compare_ints(const void *a, const void *b) {
     int arg1 = *(const int *)a;
@@ -3641,22 +3641,22 @@ int main() {
 
     void *sorted_until;
 
-    printf("foo:");
+    fmt_printf("foo:");
     do {
         algorithm_prev_permutation(foo, foo + size, sizeof(int), compare_ints);
 
         for (size_t i = 0; i < size; ++i) {
-            printf(" %d", foo[i]);
+            fmt_printf(" %d", foo[i]);
         }
 
         sorted_until = algorithm_is_sorted_until(foo, size, sizeof(int), compare_ints);
         ptrdiff_t sorted_elements = ((char *)sorted_until - (char *)foo) / sizeof(int);
 
-        printf(" (%td elements sorted)\n", sorted_elements);
+        fmt_printf(" (%td elements sorted)\n", sorted_elements);
         
     } while (((char *)sorted_until - (char *)foo) != (ptrdiff_t)(size * sizeof(int)));
 
-    printf("The range is sorted!\n");
+    fmt_printf("The range is sorted!\n");
 
     return 0;
 }
@@ -3697,7 +3697,7 @@ int main () {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 
 int main() {
@@ -3707,11 +3707,11 @@ int main() {
 
     algorithm_rotate(arr, arr + middle_index, arr + size, sizeof(arr[0]));
 
-    printf("Rotated array:");
+    fmt_printf("Rotated array:");
     for (size_t i = 0; i < size; ++i) {
-        printf(" %d", arr[i]);
+        fmt_printf(" %d", arr[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -3722,7 +3722,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *vec = vector_create(sizeof(int));
@@ -3736,12 +3736,12 @@ int main() {
     // Rotate around the 5th element
     algorithm_rotate(vector_begin(vec), vector_at(vec, 3), vector_end(vec), sizeof(int)); // or (int*)vector_begin(vec) + 3
 
-    printf("Rotated vector:");
+    fmt_printf("Rotated vector:");
     for (size_t i = 0; i < vector_size(vec); ++i) {
         int *item = vector_at(vec, i);
-        printf(" %d", *item);
+        fmt_printf(" %d", *item);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(vec);
     return 0;
@@ -3777,7 +3777,7 @@ int main () {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     int arr[] = {1, 2, 3, 4, 5, 6, 7};
@@ -3786,11 +3786,11 @@ int main() {
 
     algorithm_rotate_copy(arr, arr + 3, arr + size, sizeof(arr[0]), result);
 
-    printf("Rotated copied array:");
+    fmt_printf("Rotated copied array:");
     for (size_t i = 0; i < size; ++i) {
-        printf(" %d", result[i]);
+        fmt_printf(" %d", result[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     return 0;
 }
@@ -3801,7 +3801,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     Vector *vec = vector_create(sizeof(int));
@@ -3815,11 +3815,11 @@ int main() {
 
     algorithm_rotate_copy(vector_begin(vec), vector_at(vec, 3), vector_end(vec), sizeof(int), result);
 
-    printf("Rotated copied vector:");
+    fmt_printf("Rotated copied vector:");
     for (size_t i = 0; i < size; ++i) {
-        printf(" %d", result[i]);
+        fmt_printf(" %d", result[i]);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     vector_deallocate(vec);
     return 0;
@@ -3855,7 +3855,7 @@ C Algorithm sort time: 0.000002 seconds
 ```c
 #include "algorithm/algorithm.h"
 #include "array/array.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <time.h>
 
 int compare_ints(const void* a, const void* b) {
@@ -3866,7 +3866,7 @@ int compare_ints(const void* a, const void* b) {
 }
 
 void print_int(void* number) {
-	printf("%d ", *(int*)number);
+	fmt_printf("%d ", *(int*)number);
 }
 
 int main() {
@@ -3886,7 +3886,7 @@ int main() {
 	clock_gettime(CLOCK_MONOTONIC, &end);
 
     double timeTaken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    printf("C Algorithm sort time: %f seconds\n", timeTaken);
+    fmt_printf("C Algorithm sort time: %f seconds\n", timeTaken);
 
 	array_deallocate(arr);
     return 0;
@@ -3925,7 +3925,7 @@ int main () {
 ```c
 #include "algorithm/algorithm.h"
 #include "array/array.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 typedef struct {
@@ -3942,7 +3942,7 @@ int compare_points(const void* a, const void* b) {
 
 void print_point(void* p) {
     Point* point = (Point*)p;
-    printf("(%d, %d) ", point->x, point->y);
+    fmt_printf("(%d, %d) ", point->x, point->y);
 }
 
 int main() {
@@ -3971,7 +3971,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "array/array.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int compare_ints(const void* a, const void* b) {
@@ -3999,12 +3999,12 @@ int main() {
     // Inplace merge within `arr`
     algorithm_inplace_merge(array_begin(arr), size_first, total_size, sizeof(int), compare_ints);
 
-    printf("The resulting array contains:");
+    fmt_printf("The resulting array contains:");
     for (size_t i = 0; i < total_size; i++) {
         int* p = (int*)array_at(arr, i);
-        printf(" %d", *p);
+        fmt_printf(" %d", *p);
     }
-    printf("\n");
+    fmt_printf("\n");
 
     array_deallocate(arr);
     return 0;
@@ -4047,7 +4047,7 @@ int main () {
 ```c
 #include "algorithm/algorithm.h"
 #include "array/array.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 typedef struct {
@@ -4064,7 +4064,7 @@ int compare_points(const void* a, const void* b) {
 
 void print_point(void* p) {
     Point* point = (Point*)p;
-    printf("(%d, %d) ", point->x, point->y);
+    fmt_printf("(%d, %d) ", point->x, point->y);
 }
 
 int main() {
@@ -4096,7 +4096,7 @@ int main() {
 ```c
 #include "string/string.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 
 int compare_strings(const void *a, const void *b) {
@@ -4113,21 +4113,21 @@ int main() {
 
     const String** it = (const String**)algorithm_adjacent_find((const void**)mystrings, num_elements, sizeof(String*),compare_strings);
     if (it != NULL) {
-        printf("The first pair of repeated elements are: %s\n", string_c_str(*it));
+        fmt_printf("The first pair of repeated elements are: %s\n", string_c_str(*it));
         it++;
     } 
 	else {
-        printf("No first pair of repeated elements found.\n");
+        fmt_printf("No first pair of repeated elements found.\n");
         return 0;
     }
 
     size_t remaining_elements = num_elements - ((String**)it - mystrings);
     const String** it2 = (const String**)algorithm_adjacent_find((const void**)it, remaining_elements, sizeof(String*), compare_strings);
     if (it2 != NULL) {
-        printf("The second pair of repeated elements are: %s\n", string_c_str(*it2));
+        fmt_printf("The second pair of repeated elements are: %s\n", string_c_str(*it2));
     } 
 	else {
-        printf("No second pair of repeated elements found.\n");
+        fmt_printf("No second pair of repeated elements found.\n");
     }
     
     for (size_t i = 0; i < num_elements; i++) {
@@ -4141,7 +4141,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 
@@ -4158,13 +4158,13 @@ int main() {
 
     int* it = algorithm_adjacent_find(myints, num_elements, sizeof(int), compare_ints);
     if (it != NULL) {
-        printf("The first pair of repeated elements are: %d\n", *it);
+        fmt_printf("The first pair of repeated elements are: %d\n", *it);
 		it++;
     }
 
     int* it2 = algorithm_adjacent_find(it, num_elements - (it - myints), sizeof(int), compare_ints);
     if (it2 != NULL) {
-        printf("The second pair of repeated elements are: %d\n", *it2);
+        fmt_printf("The second pair of repeated elements are: %d\n", *it2);
     }
 
     return 0;
@@ -4177,7 +4177,7 @@ int main() {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 bool mypredicate(const void *i, const void *j) {
@@ -4197,7 +4197,7 @@ int main() {
 
     mypair = algorithm_mismatch(vector_begin(vec), vector_size(vec), sizeof(int), myints, myints_size, sizeof(int), mypredicate);
     if (mypair.first != NULL && mypair.second != NULL) {
-        printf("First mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
+        fmt_printf("First mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
     }
 
     // Move iterators to the next elements
@@ -4210,7 +4210,7 @@ int main() {
 
     mypair = algorithm_mismatch(mypair.first, vector_size(vec), sizeof(int), mypair.second, myints_size, sizeof(int), mypredicate);
     if (mypair.first != NULL && mypair.second != NULL) {
-        printf("Second mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
+        fmt_printf("Second mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
     }
 
     return 0;
@@ -4223,7 +4223,7 @@ int main() {
 ```c
 #include "array/array.h"
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -4247,7 +4247,7 @@ int main() {
 
 	if (algorithm_is_permutation(array_begin(foo), array_size(foo), sizeof(int), 
 									array_begin(bar), array_size(bar), sizeof(int), compare_ints)) {
-			printf("foo and bar contain the same elements");
+			fmt_printf("foo and bar contain the same elements");
 	}
 
 	array_deallocate(foo);
@@ -4260,7 +4260,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -4275,10 +4275,10 @@ int main() {
     const int* result = (const int* )algorithm_search(haystack, haystack + 9, sizeof(int), needle, needle + 4, sizeof(int), int_equal);
 
     if (result != haystack + 9) {
-        printf("Subsequence found at position %lld\n", result - haystack);
+        fmt_printf("Subsequence found at position %lld\n", result - haystack);
     } 
     else {
-        printf("Subsequence not found\n");
+        fmt_printf("Subsequence not found\n");
     }
 
     return 0;
@@ -4289,7 +4289,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -4311,10 +4311,10 @@ int main() {
 
     if (algorithm_search(information, information + 4, sizeof(person), 
                         person, person + 2, sizeof(person), is_equal)) {
-        printf("its equal");
+        fmt_printf("its equal");
     }
     else {
-        printf("its not equal");
+        fmt_printf("its not equal");
     }
     
     return 0;
@@ -4325,7 +4325,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 bool int_equal(const void* a, const void* b) {
@@ -4340,20 +4340,20 @@ int main() {
     const int* result = (const int*)algorithm_search_n(myints, myints + n, sizeof(int), 2, &val, int_equal);
 
     if (result != myints + n) {
-        printf("Two 30s found at position %lld\n", result - myints);
+        fmt_printf("Two 30s found at position %lld\n", result - myints);
     } 
     else {
-        printf("Match not found\n");
+        fmt_printf("Match not found\n");
     }
     
     val = 10;
     const int* new_result = (const int*)algorithm_search_n(myints, myints + n, sizeof(int), 2, &val, int_equal);
 
     if (new_result != myints + n) {
-        printf("Two 10 found at %lld", new_result - myints);
+        fmt_printf("Two 10 found at %lld", new_result - myints);
     }
     else {
-        printf("Match not found");
+        fmt_printf("Match not found");
     }
 
     return 0;
@@ -4400,7 +4400,7 @@ int main () {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 int int_compare(const void *a, const void *b) {
@@ -4419,14 +4419,14 @@ int main() {
     algorithm_copy(myints, 8, sizeof(int), vec->items);
 
     for (int *begin = (int*)vector_begin(vec); begin != (int*)vector_end(vec); begin++) {
-        printf("%d ", *begin);
+        fmt_printf("%d ", *begin);
     }
-    printf("\n");
+    fmt_printf("\n");
     
     int *ptr = (int*)algorithm_remove((int*)vector_begin(vec), vector_size(vec), sizeof(int), &value, int_compare);
 
     for (int *begin = (int*)vector_begin(vec); begin != ptr; begin++) {
-        printf("%d ", *begin);
+        fmt_printf("%d ", *begin);
     }
 
     return 0;
@@ -4462,7 +4462,7 @@ int main () {
 ```c
 #include "algorithm/algorithm.h"
 #include "vector/vector.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdbool.h>
 
 int int_compare(const void *a, const void *b) {
@@ -4483,7 +4483,7 @@ int main() {
     algorithm_remove_copy(vector_begin(vec), vector_size(vec), sizeof(int), vector_begin(resultVec), &value, int_compare);
     
     for (int *begin = (int*)vector_begin(resultVec); begin != (int*)vector_end(resultVec); ++begin) {
-        printf("%d ", *begin);
+        fmt_printf("%d ", *begin);
     }
 
     vector_deallocate(vec);
