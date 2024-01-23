@@ -3,6 +3,10 @@
 
 #include "../fmt/fmt.h"
 
+#define JSON_ERROR_NONE 0
+#define JSON_ERROR_SYNTAX 1
+#define JSON_ERROR_UNEXPECTED_TOKEN 2
+
 // JSON data types
 typedef enum {
     JSON_NULL,

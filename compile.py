@@ -37,6 +37,7 @@ def compile_project(run_after_compile=False):
         # "dir",
         # "crypto",
         # "tuple",
+        "json",
         # Add other directories containing your .c files
     ]
 
