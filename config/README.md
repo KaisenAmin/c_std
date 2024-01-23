@@ -2,7 +2,7 @@
 
 Author: amin tahmasebi
 Release Date: 2023
-License: GNU General Public License v3.0
+License: ISC License
 
 ## Overview
 

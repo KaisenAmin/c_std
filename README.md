@@ -88,7 +88,7 @@ Contributions are welcome. Whether it's extending existing libraries, improving 
 
 ## License
 
-This project is open-source and available under [GNU/GPL3](LICENSE).
+This project is open-source and available under [ISC License](LICENSE).
 
 ---
 

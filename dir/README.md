@@ -2,7 +2,7 @@
 
 Author: Amin Tahmasebi
 Release Date: 2024
-License: GNU General Public License v3.0
+License: ISC License
 
 ## Overview
 This C library is dedicated to directory and file operations, offering comprehensive functionality to manage and manipulate files and directories on the filesystem. It is designed to provide a straightforward and efficient way to interact with the filesystem in C programming.

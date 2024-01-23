@@ -2,7 +2,7 @@
 
 Author: amin tahmasebi
 Release Date: 2024
-License: GNU General Public License v3.0
+License: ISC License
 
 
 The Encoding library in C is a versatile tool designed for efficient and user-friendly encoding and decoding operations. While it currently supports Base64 encoding and decoding, the library is structured to accommodate additional encoding methods in the future. The Base64 functionality allows for conversion between binary data and a character set comprising 64 different characters, making it ideal for data storage and transfer over media primarily handling textual content. The library's extensible architecture ensures it can be adapted to include other encoding types such as Base16, Base32, and URL encoding, catering to a wide range of applications and data formats.

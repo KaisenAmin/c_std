@@ -3,7 +3,7 @@
 
 Author: amin tahmasebi
 Release Date: 2023
-License: GNU General Public License v3.0
+License: ISC License
 
 
 The Deque library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size Deques, offering similar functionality to `std::deque` in C++.
