@@ -2,6 +2,8 @@
 #define JSON_H_
 
 #include "../fmt/fmt.h"
+#include "../vector/vector.h"
+#include "../map/map.h"
 
 #define JSON_ERROR_NONE 0
 #define JSON_ERROR_SYNTAX 1
@@ -22,8 +24,8 @@ typedef union {
     bool bool_val;
     double number_val;
     char *string_val;
-    struct JsonArray *array_val;
-    struct JsonObject *object_val;
+    Vector *array_val;
+    Map *object_val;
 } JsonValue;
 
 // JSON element struct
@@ -59,6 +61,35 @@ typedef struct {
     int code;
     char message[256];
 } JsonError;
+
+typedef enum {
+    JSON_TOKEN_OBJECT_START,
+    JSON_TOKEN_OBJECT_END,
+    JSON_TOKEN_ARRAY_START,
+    JSON_TOKEN_ARRAY_END,
+    JSON_TOKEN_STRING,
+    JSON_TOKEN_NUMBER,
+    JSON_TOKEN_BOOLEAN,
+    JSON_TOKEN_NULL,
+    JSON_TOKEN_COLON,
+    JSON_TOKEN_COMMA,
+    JSON_TOKEN_EOF,
+    JSON_TOKEN_ERROR,
+} JsonTokenType;
+
+typedef struct {
+    JsonTokenType type;
+    char* value; // for strings, numbers
+} JsonToken;
+
+// Parser state
+typedef struct {
+    const char* input;
+    size_t input_len;
+    size_t position;
+    JsonToken current_token;
+    JsonError error;
+} JsonParserState;
 
 // Function to parse a JSON string into a `JsonElement`.
 JsonElement* json_parse(const char *json_str);

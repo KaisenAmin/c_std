@@ -4,34 +4,33 @@
 #include <ctype.h>
 #include "../string/string.h"
 
-typedef enum {
-    JSON_TOKEN_OBJECT_START,
-    JSON_TOKEN_OBJECT_END,
-    JSON_TOKEN_ARRAY_START,
-    JSON_TOKEN_ARRAY_END,
-    JSON_TOKEN_STRING,
-    JSON_TOKEN_NUMBER,
-    JSON_TOKEN_BOOLEAN,
-    JSON_TOKEN_NULL,
-    JSON_TOKEN_COLON,
-    JSON_TOKEN_COMMA,
-    JSON_TOKEN_EOF,
-    JSON_TOKEN_ERROR,
-} JsonTokenType;
 
-typedef struct {
-    JsonTokenType type;
-    char* value; // for strings, numbers
-} JsonToken;
+static JsonElement* parse_array(JsonParserState* state);
+static JsonElement* parse_string(JsonParserState* state);
+static JsonElement* parse_number(JsonParserState* state);
+static JsonElement* parse_null(JsonParserState* state);
+static JsonElement* parse_boolean(JsonParserState* state);
+static JsonElement* parser_internal(JsonParserState* state);
+static JsonElement* parse_object(JsonParserState* state);
 
-// Parser state
-typedef struct {
-    const char* input;
-    size_t input_len;
-    size_t position;
-    JsonToken current_token;
-    JsonError error;
-} JsonParserState;
+void json_deallocate(JsonElement *element) {
+    free(element->value.string_val);
+    vector_deallocate(element->value.array_val);
+    map_deallocate(element->value.object_val);
+}
+
+void json_element_deallocator(void* data) {
+    JsonElement* element = (JsonElement*)data;
+    json_deallocate(element); // Implement this function based on your JsonElement structure
+}
+
+int compare_strings_json(const KeyType a, const KeyType b) {
+    return strcmp((const char*)a, (const char*)b);
+}
+
+void string_deallocator_json(void *data) {
+    free(data);
+} 
 
 void next_token(JsonParserState* state) {
     while (isspace((unsigned char)state->input[state->position])) {
@@ -59,21 +58,6 @@ void next_token(JsonParserState* state) {
             break;
         case '\"':
             state->current_token.type = JSON_TOKEN_STRING;
-            state->position++; // Skip the opening quote
-
-            while (state->input[state->position] != '\"' || 
-                (state->input[state->position] == '\"' && state->input[state->position - 1] == '\\')) {
-                if (state->input[state->position] == '\0') {
-                    // End of input reached before closing quote - syntax error
-                    state->current_token.type = JSON_TOKEN_ERROR;
-                    snprintf(state->error.message, sizeof(state->error.message), "Unterminated string");
-                    state->error.code = JSON_ERROR_SYNTAX;
-                    return;
-                }
-                state->position++;
-            }
-            // Move past the closing quote
-            state->position++;
             break;
         case ':':
             state->current_token.type = JSON_TOKEN_COLON;
@@ -88,14 +72,6 @@ void next_token(JsonParserState* state) {
         case '+':
         case '0' ... '9':
             state->current_token.type = JSON_TOKEN_NUMBER;
-            size_t start = state->position;
-            while (isdigit((unsigned char)state->input[state->position]) || 
-                state->input[state->position] == '.' || 
-                state->input[state->position] == 'e' || 
-                state->input[state->position] == 'E' || 
-                (state->position != start && (state->input[state->position] == '+' || state->input[state->position] == '-'))) {
-                state->position++;
-            }
             break;
         default:
             if (strncmp(state->input + state->position, "true", 4) == 0) {
@@ -118,21 +94,85 @@ void next_token(JsonParserState* state) {
     state->position++;
 }
 
-
-static JsonElement* parse_object(JsonParserState* state) {
-    // should be implement
-}
-
 static JsonElement* parse_array(JsonParserState* state) {
     // should be implement
 }
 
 static JsonElement* parse_string(JsonParserState* state) {
-    // should be implement
+    if (state->current_token.type != JSON_TOKEN_STRING) {
+        fmt_fprintf(stderr, "Error: Expected string token in parse_string.\n");
+        return NULL;
+    }
+
+    // Skip the opening quote, which next_token already identified
+    size_t start = state->position;
+    while (state->input[state->position] != '\"' || (state->input[state->position] == '\"' && state->input[state->position - 1] == '\\')) {
+        if (state->input[state->position] == '\0') {
+            // End of input reached before closing quote - syntax error
+            state->current_token.type = JSON_TOKEN_ERROR;
+            snprintf(state->error.message, sizeof(state->error.message), "Unterminated string");
+                state->error.code = JSON_ERROR_SYNTAX;
+                return;
+            }
+        state->position++;
+    }
+    size_t length = state->position - start;
+
+    char* str_content = (char*)malloc(length + 1);
+    if (!str_content) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in parse_string.\n");
+        return NULL;
+    }
+
+    strncpy(str_content, state->input + start, length);
+    str_content[length] = '\0';
+    fmt_printf("%s\n", str_content);
+    state->position++;
+
+    // Create a new JsonElement for the string
+    JsonElement* element = json_create(JSON_STRING);
+    if (!element) {
+        free(str_content);
+        return NULL;
+    }
+
+    element->value.string_val = str_content;
+    return element;
 }
 
 static JsonElement* parse_number(JsonParserState* state) {
-    // should be implement
+    if (state->current_token.type != JSON_TOKEN_NUMBER) {
+        fmt_fprintf(stderr, "Error: Expected Number token in parse_number.\n");
+        return NULL;
+    }
+
+    size_t start = state->position - 1;
+    while (isdigit((unsigned char)state->input[state->position]) || state->input[state->position] == '.' || state->input[state->position] == 'e' || 
+        state->input[state->position] == 'E' || (state->position != start && (state->input[state->position] == '+' || state->input[state->position] == '-'))) {
+        state->position++;
+    }
+
+    size_t length = state->position - start;
+    char* number_str = (char*)malloc(length + 1);
+    if (!number_str) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in parse_number.\n");
+        return NULL;
+    }
+
+    strncpy(number_str, state->input + start, length);
+    number_str[length] = '\0';
+    fmt_printf("Number %s\n", number_str);
+    double number_double = atof(number_str);
+    fmt_printf("%f\n", number_double);
+    free(number_str);
+
+    JsonElement* element = json_create(JSON_NUMBER);
+    if (!element) {
+        fmt_fprintf(stderr, "Error: failed in json element creation in parse_number.\n");
+        return NULL;
+    }
+    element->value.number_val = number_double;
+    return element;
 }
 
 static JsonElement* parse_null(JsonParserState* state) {
@@ -145,6 +185,18 @@ static JsonElement* parse_boolean(JsonParserState* state) {
 
 static JsonElement* parser_internal(JsonParserState* state) {
     // should be implement
+}
+
+static JsonElement* parse_object(JsonParserState* state) {
+    Map *objec = map_create(compare_strings_json, string_deallocator_json, json_element_deallocator);
+
+    next_token(state);
+
+    while (state->current_token.type != JSON_TOKEN_OBJECT_END) {
+        if (state->current_token.type == JSON_TOKEN_STRING) {
+            // 
+        }
+    }
 }
 
 JsonElement* json_create(JsonType type) {
@@ -189,7 +241,7 @@ JsonElement* json_parse(const char* json_str) {
     }
 
     JsonParserState state;
-    state.input = string_strdup(json_str);
+    state.input = string_strdup(json_str + 1);
     if (!state.input) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in json_parse.\n");
         return NULL;
@@ -204,31 +256,36 @@ JsonElement* json_parse(const char* json_str) {
         next_token(&state);
 
         switch(state.current_token.type) {
-            case JSON_TOKEN_ARRAY_START:
-                root = parse_array(&state);
-                break;
-            case JSON_TOKEN_OBJECT_START:
-                root = parse_object(&state);
-                break;
-            case JSON_TOKEN_BOOLEAN:
-                root = parse_boolean(&state);
-                break;
+            // case JSON_TOKEN_ARRAY_START:
+            //     root = parse_array(&state);
+            //     break;
+            // case JSON_TOKEN_OBJECT_START:
+            //     root = parse_object(&state);
+            //     break;
+            // case JSON_TOKEN_BOOLEAN:
+            //     root = parse_boolean(&state);
+            //     break;
             case JSON_TOKEN_NUMBER:
                 root = parse_number(&state);
                 break;
             case JSON_TOKEN_STRING:
                 root = parse_string(&state);
                 break;
-            case JSON_TOKEN_NULL:
-                root = parse_null(&state);
+            case JSON_TOKEN_COLON:
                 break;
+            case JSON_TOKEN_COMMA:
+                break;
+            // case JSON_TOKEN_NULL:
+            //     root = parse_null(&state);
+            //     break;
 
             default:
-                fmt_fprintf(stderr, "Error: Unexpected token at root level in json_parse.\n");
-                state.error.code = JSON_ERROR_UNEXPECTED_TOKEN;
-                strcpy(state.error.message, "Unexpected token at root level");
-                free(state.input);
-                return NULL;
+                case JSON_TOKEN_ERROR:
+                    fmt_fprintf(stderr, "Error: Unexpected token at root level in json_parse.\n");
+                    state.error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+                    strcpy(state.error.message, "Unexpected token at root level");
+                    free(state.input);
+                    return NULL;
         }
     }
     return parser_internal(&state);
