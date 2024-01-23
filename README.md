@@ -35,6 +35,8 @@ The project is organized into several subdirectories, each representing a differ
 - `FileWriter`: The FileWriter library is a versatile tool designed for file writing operations in C. It provides functionalities similar to higher-level languages, offering various modes for writing text and binary files, including support for Unicode (UTF-8 and UTF-16).
 - `FileReader`: The FileReader library is a versatile tool designed for file writing operations in C.
 - `fmt`: The fmt library is a comprehensive formatting and I/O library for C, inspired by fmt package in `golang`. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
+- `Json` : The Json library is a comprehensive and efficient tool designed for parsing, generating, and manipulating JSON data in C. It aims to provide a robust and user-friendly interface for handling JSON objects and arrays, enabling seamless integration of JSON functionality into C projects.
+
 
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
