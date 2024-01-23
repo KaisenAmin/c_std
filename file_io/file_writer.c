@@ -1,7 +1,6 @@
 #include "file_writer.h"
 #include "../encoding/encoding.h"
 #include "../fmt/fmt.h"
-#include "../dir/dir.h"
 #include "../string/string.h"
 #include <stdlib.h>
 #include <string.h>
@@ -92,7 +91,7 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     writer->mode = mode;
     writer->is_open = true;
     writer->encoding = WRITE_ENCODING_UTF16;
-    writer->file_path = string_strdup(dir_absolute_file_path(filename));
+    writer->file_path = string_strdup(filename);
     return writer;
 }
 
@@ -169,7 +168,7 @@ FileWriter *file_writer_append(const char *filename, const WriteMode mode) {
     writer->mode = mode;
     writer->is_open = true;
     writer->encoding = WRITE_ENCODING_UTF16;
-    writer->file_path = string_strdup(dir_absolute_file_path(filename));
+    writer->file_path = string_strdup(filename);
 
     return writer;
 }

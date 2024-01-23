@@ -1,4 +1,59 @@
+# Fmt Library in C
 
+Author: Amin Tahmasebi
+Release Date: 2024
+License: GNU General Public License v3.0
+
+## Overview
+
+The Fmt library, developed in C, is inspired by the formatting capabilities commonly found in higher-level languages like Go and Python. It is designed to enhance the C programming experience by providing a set of functions for formatted string manipulation, input/output operations, and string conversions, making it highly suitable for both simple and complex text processing tasks in C.
+
+## Key Features
+
+- **Flexible Formatting:** Rich set of functions for formatted output to console, strings, and files.
+- **Unicode Support:** Handles Unicode characters, enabling internationalization in C applications.
+- **Dynamic Strings:** Simplifies working with dynamic strings in C, including automatic memory management.
+- **Formatted Scanning:** Offers functions for formatted input parsing from various sources, including files and standard input.
+- **Performance:** Optimized for speed and efficiency in both memory and execution time.
+
+## Installation and Compilation
+
+Include `fmt.h` in your project and compile the source files alongside your C project files. For GCC, use:
+
+```bash
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./fmt/fmt.c ./string/string.c
+```
+
+## Documentation
+
+Comprehensive documentation is provided, detailing the functionality and usage of each function in the library. It covers everything from basic string formatting to more advanced features like Unicode processing and file I/O operations.
+
+## Examples
+
+The library includes various examples demonstrating its capabilities. These range from simple formatted console output to complex operations involving dynamic strings and file I/O.
+
+### Function Descriptions
+
+- `void fmt_print(const char* str, ...)`: Prints formatted text to the standard output with variable arguments.
+- `void fmt_println(const char* str, ...)`: Prints formatted text followed by a newline to the standard output.
+- `void fmt_printf(const char* format, ...)`: Outputs formatted text to the standard output, similar to `printf`.
+- `char* fmt_sprintln(const char* first_arg, ...)`: Creates a formatted string with a newline at the end, returning a dynamically allocated string.
+
+- `char* fmt_sprint(const char* first_arg, ...)`: Constructs a formatted string without a newline, returning a dynamically allocated string.
+
+- `char* fmt_sprintf(const char* format, ...)`: Creates a formatted string based on a format string and variable arguments.
+- `int fmt_scan(char** output)`: Scans input from standard input into a dynamically allocated string until space or newline.
+- `int fmt_scanln(char** output)`: Reads a line of input from standard input into a dynamically allocated string.
+- `int fmt_scanf(const char* format, ...)`: Scans formatted input from standard input, similar to `scanf`.
+-`int fmt_fprint(FILE* stream, ...)`: Writes formatted text to the specified file stream.
+- `int fmt_fprintln(FILE* stream, ...)`: Writes formatted text followed by a newline to the specified file stream.
+- `int fmt_fprintf(FILE* stream, const char* format, ...)`: Outputs formatted text to the given file stream, similar to `fprintf`.
+
+- `int fmt_fscan(FILE* stream, const char* format, ...)`: Reads formatted data from the specified file stream.
+- `int fmt_fscanln(FILE* stream, const char* format, ...)`: Reads a line of formatted data from the specified file stream.
+- `int fmt_fscanf(FILE* stream, const char* format, ...)`: Scans formatted input from a file stream, based on the specified format.
+
+Each of these functions offers a versatile approach to handling formatted text in various contexts, greatly enhancing the ease of performing common text operations in C.
 
 ## Example 1 : how to show message with `fmt_println` and `fmt_print`
 
@@ -214,9 +269,8 @@ int main() {
 
 ```c
 #include "fmt/fmt.h"
-#include <stdlib.h>
 #include <time.h>
-#include <stdio.h>
+
 
 int main() {
     struct timespec start, end;
@@ -245,11 +299,10 @@ int main() {
 ```c
 #include "fmt/fmt.h"
 #include <stdlib.h>
-#include <stdio.h>
 
 int main() {
     char* input = NULL;
-    printf("Enter a string: ");
+    fmt_printf("Enter a string: ");
 
     if (fmt_scan(&input) == 0) {
         fmt_printf("You entered: %s\n", input);
@@ -338,15 +391,10 @@ int main() {
 ## Example 13 : how to write stream with `fmt_fprint`
 
 ```c
-#include "file_io/file_reader.h"
 #include "fmt/fmt.h"
 
 int main() {
     FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
-    if (!writer || !writer->file_writer) {
-        fprintf(stderr, "Failed to open file.\n");
-        return -1;
-    }
 
     fmt_fprint(writer->file_writer, "This is text in a file", FMT_END_ARGS);
     fmt_fprint(stdout, "Hello, World! ", "こんにちは ", "سلام دنیا", FMT_END_ARGS);
@@ -360,15 +408,10 @@ int main() {
 ## Example 14 : how to write on stream with `fmt_fprintln`
 
 ```c
-#include "file_io/file_reader.h"
 #include "fmt/fmt.h"
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/output.txt", WRITE_TEXT);
-    if (!writer || !writer->file_writer) {
-        fmt_fprintf(stderr, "Failed to open file.\n");
-        return -1;
-    }
 
     fmt_fprintln(writer->file_writer, "This is a line in a file", FMT_END_ARGS);
     fmt_fprintln(stdout, "This is a line on stdout", FMT_END_ARGS);
@@ -383,9 +426,7 @@ int main() {
 ## Example 15 : how to write formatted text to file with `fmt_fprintf`
 
 ```c
-#include "file_io/file_reader.h"
 #include "fmt/fmt.h"
-
 
 int main() {
     FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
@@ -458,6 +499,82 @@ int main() {
     fmt_println("Haaaa :", "😊🥴", FMT_END_ARGS);
     fmt_print("😡", "🥶", "😎", "🤩", FMT_END_ARGS);
 
+    return 0;
+}
+```
+
+## Example 19 : Scan data from file in formated text with `fmt_fscanf`
+
+```c
+#include "fmt/fmt.h"
+
+int main() {
+    // 25 19.365 hello put these forexample in file 
+    FileReader* stream = file_reader_open("./sources/input.txt", READ_TEXT);
+    int i;
+    double d;
+    char s[100];
+
+    int n = fmt_fscanf(stream->file_reader, "%d %lf %99s", &i, &d, s);
+    if (n != 3) {
+        fmt_fprintf(stderr, "Error or insufficient data read from file\n");
+    } 
+    else {
+        fmt_printf("Read data: %d, %lf, %s\n", i, d, s);
+    }
+
+    file_reader_close(stream);
+    return 0;
+}
+```
+
+## Example 20 : Using `fmt_scanln` with standart input
+
+```c
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    char* input = NULL;
+    fmt_print("Enter a line of text: ", FMT_END_ARGS);
+
+    if (fmt_scanln(&input) == 0 && input != NULL) {
+        fmt_printf("You entered: %s\n", input);
+        free(input);
+    } 
+    else {
+        fmt_println("Error or end of input.", FMT_END_ARGS);
+    }
+    
+    return 0;
+}
+```
+
+## Example 21: Using Emojis with `fmt_fprintf` and `fmt_fprint`
+
+```c
+#include "fmt/fmt.h"
+
+int main() {
+    fmt_fprintf(stdout, "Emoji example: %s %s %s\n", "😀", "🚀", "🌟");
+    fmt_fprint(stdout, "More emojis: ", "🌍", "🌈", "🔥", FMT_END_ARGS);
+    
+    return 0;
+}
+```
+
+## Example 22 : Writing to a file Using `fmt_fprintf` and `fmt_fprint`
+
+```c
+#include "fmt/fmt.h"
+
+int main() {
+    FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
+
+    fmt_fprintf(writer->file_writer, "Writing to a file: %s\n", "Hello, برنامه نویسان");
+    fmt_fprint(writer->file_writer, "More text: ", "This is an example", " using fmt_fprint", FMT_END_ARGS);
+
+    file_writer_close(writer);
     return 0;
 }
 ```

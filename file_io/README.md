@@ -1,3 +1,67 @@
+# FileReader and FileWriter Library in C
+
+Author: Amin Tahmasebi
+Release Date: 2024
+License: GNU General Public License v3.0
+
+## Overview
+
+This library provides a comprehensive set of functions for reading from and writing to files in various modes and encodings. It's designed for flexibility and ease of use in handling both text and binary data, with special support for Unicode (UTF-16 and UTF-32) encoding. The library simplifies file operations in C, offering high-level abstractions for common tasks.
+
+## Key Features
+
+- **Multiple Modes:** Support for reading and writing in text, binary, buffered, unbuffered, and Unicode modes.
+- **Encoding Support:** Handles UTF-16 and UTF-32 encodings, with automatic conversion for Unicode operations.
+- **Utility Functions:** Offers functions for copying data between files, locking files for exclusive access, and more.
+
+## Function Descriptions
+
+### FileWriter Functions
+
+- `file_writer_open(filename, mode)`: Opens a file for writing in the specified mode.
+- `file_writer_append(filename, mode)`: Opens an existing file for appending, or creates it if it doesn't exist.
+- `file_writer_close(writer)`: Closes the given FileWriter.
+- `file_writer_get_position(writer)`: Returns the current position in the file.
+- `file_writer_write(buffer, size, count, writer)`: Writes data to the file.
+- `file_writer_write_line(buffer, size, writer)`: Writes a line of text to the file.
+- `file_writer_is_open(writer)`: Checks if the FileWriter is open.
+- `file_writer_flush(writer)`: Flushes the FileWriter's buffer.
+- `file_writer_set_encoding(writer, encoding)`: Sets the character encoding for writing.
+- `file_writer_copy(src_writer, dest_writer)`: Copies content from one FileWriter to another.
+- `file_writer_get_file_name(writer)`: Retrieves the file path associated with the FileWriter.
+- `file_writer_get_encoding(writer)`: Gets the encoding type of the FileWriter.
+- `file_writer_write_fmt(writer, format, ...)`: Writes formatted data to the file.
+- `file_writer_get_size(writer)`: Gets the size of the file.
+- `file_writer_lock(writer)`: Locks the file to prevent other processes from modifying it.
+- `file_writer_unlock(writer)`: Unlocks the file.
+- `file_writer_seek(writer, offset, cursor_pos)`: Moves the file pointer to a specific location.
+- `file_writer_truncate(writer, size)`: Truncates the file to a specified size.
+- `file_writer_write_batch(writer, buffers, sizes, count)`: Writes multiple buffers in a single operation.
+- `file_writer_append_fmt(writer, format, ...)`: Appends formatted text to a file.
+
+### FileReader Functions
+
+- `file_reader_open(filename, mode)`: Opens a file for reading in the specified mode.
+- `file_reader_close(reader)`: Closes the FileReader.
+- `file_reader_get_position(reader)`: Returns the current position in the file.
+- `file_reader_is_open(reader)`: Checks if the FileReader is open.
+- `file_reader_set_encoding(reader, encoding)`: Sets the character encoding for reading.
+- `file_reader_get_file_name(reader)`: Retrieves the file path associated with the FileReader.
+- `file_reader_seek(reader, offset, cursor_pos)`: Moves the file pointer to a specific location.
+- `file_reader_eof(reader)`: Checks if the end of the file has been reached.
+- `file_reader_get_size(reader)`: Gets the size of the file.
+- `file_reader_read(buffer, size, count, reader)`: Reads data from the file.
+- `file_reader_read_line(buffer, size, reader)`: Reads a line of text from the file.
+- `file_reader_read_fmt(reader, format, ...)`: Reads formatted data from the file.
+- `file_reader_copy(src_reader, dest_writer)`: Copies content from a FileReader to a FileWriter.
+- `file_reader_read_lines(reader, buffer, num_lines)`: Reads a specified number of lines from the file.
+
+
+## Compilation
+
+For compiling C programs using this library, standard C compilation commands apply, ensuring the `file_io`, `fmt`, `encoding`, and `string` modules are correctly referenced.
+
+
 
 ## Example 1 : How to write in file in `unicode mode` with `file_writer_write` and `file_writer_open`
 

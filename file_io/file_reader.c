@@ -1,6 +1,5 @@
 #include "file_reader.h"
 #include "../string/string.h"
-#include "../dir/dir.h"
 #include "../fmt/fmt.h"
 #include "../encoding/encoding.h"
 #include <stdlib.h>
@@ -75,7 +74,7 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     reader->mode = mode;
     reader->is_open = true;
     reader->encoding = READ_ENCODING_UTF16;
-    reader->file_path = string_strdup(dir_absolute_file_path(filename));
+    reader->file_path = string_strdup(filename);
     return reader;
 }
 

@@ -1,9 +1,9 @@
 #ifndef FILE_READER_H_
 #define FILE_READER_H_
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <stddef.h>
+// #include <stdio.h>
+// #include <stdbool.h>
+// #include <stddef.h>
 #include "file_writer.h"
 
 typedef enum {

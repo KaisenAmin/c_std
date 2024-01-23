@@ -18,7 +18,7 @@ def compile_project(run_after_compile=False):
         # "array",
         "fmt",
         # "bitset",
-        "config",
+        # "config",
         # "csv",
         # "deque",
         "encoding",
@@ -34,7 +34,7 @@ def compile_project(run_after_compile=False):
         # "time",
         # "date",
         "file_io",
-        "dir",
+        # "dir",
         # "crypto",
         # "tuple",
         # Add other directories containing your .c files

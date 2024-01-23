@@ -466,3 +466,57 @@ int fmt_fprintf(FILE* stream, const char* format, ...) {
     return bytes_written;
 }
 
+int fmt_fscan(FILE* stream, const char* format, ...) {
+    if (!stream || !format) {
+        fprintf(stderr, "Error: Invalid arguments for fmt_fscan.\n");
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    // Implementation: Use fscanf or a similar function to read and parse the input
+    int items_scanned = vfscanf(stream, format, args);
+
+    va_end(args);
+    return items_scanned;
+}
+
+int fmt_fscanln(FILE* stream, const char* format, ...) {
+    if (!stream || !format) {
+        fprintf(stderr, "Error: Invalid arguments for fmt_fscanln.\n");
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    // Implementation: You'll need a custom implementation to handle newline.
+    // Read the line first, then parse it using sscanf.
+    char line[1024];
+    if (fgets(line, sizeof(line), stream) == NULL) {
+        return (feof(stream)) ? 0 : -1; // EOF or error
+    }
+
+    // Parse the line
+    int items_scanned = vsscanf(line, format, args);
+
+    va_end(args);
+    return items_scanned;
+}
+
+int fmt_fscanf(FILE* stream, const char* format, ...) {
+    if (!stream || !format) {
+        fprintf(stderr, "Error: Invalid arguments for fmt_fscanf.\n");
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    // Use vfscanf to read and parse the input
+    int items_scanned = vfscanf(stream, format, args);
+
+    va_end(args);
+    return items_scanned;
+}

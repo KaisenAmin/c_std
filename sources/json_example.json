@@ -1,0 +1,58 @@
+{
+    "library": "JSON Test Library",
+    "version": 1.0,
+    "unicode_sample": "こんにちは世界 (Hello World in Japanese)",
+    "ascii_sample": "Hello, World!",
+    "supports_unicode": true,
+    "categories": [
+      {
+        "id": 1,
+        "name": "Books",
+        "items": [
+          {
+            "title": "Learning JSON",
+            "author": "John Doe",
+            "published_year": 2020,
+            "available": true
+          },
+          {
+            "title": "Advanced JSON Processing",
+            "author": "Jane Smith",
+            "published_year": 2021,
+            "available": false
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Movies",
+        "items": [
+          {
+            "title": "The JSON Saga",
+            "director": "Alice Johnson",
+            "released_year": 2019,
+            "ratings": {
+              "IMDB": 7.8,
+              "Rotten Tomatoes": "85%"
+            }
+          },
+          {
+            "title": "JSON Unleashed",
+            "director": "Bob Brown",
+            "released_year": 2018,
+            "ratings": {
+              "IMDB": 6.5,
+              "Rotten Tomatoes": "75%"
+            }
+          }
+        ]
+      }
+    ],
+    "notes": null,
+    "additional_info": {
+      "contributors": ["Sam", "Alex", "Maria"],
+      "started": "2023-01-15",
+      "budget": 500000.50
+    }
+  }
+  
