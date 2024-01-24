@@ -76,19 +76,19 @@ void next_token(JsonParserState* state) {
         default:
             if (strncmp(state->input + state->position, "true", 4) == 0) {
                 state->current_token.type = JSON_TOKEN_BOOLEAN;
-                state->position += 3;
+                // state->position += 3;
             }
             else if (strncmp(state->input + state->position, "false", 5) == 0) {
                 state->current_token.type = JSON_TOKEN_BOOLEAN;
-                state->position += 4;
+                // state->position += 4;
             }
-            else if (strncmp(state->input + state->position, "null", 4) == 0) {
+            if (strncmp(state->input + state->position, "null", 4) == 0) {
                 state->current_token.type = JSON_TOKEN_NULL;
                 state->position += 3;
             }
-            else {
-                state->current_token.type = JSON_TOKEN_ERROR;
-            }
+            // else {
+            //     state->current_token.type = JSON_TOKEN_ERROR;
+            // }
             break;
     }
     state->position++;
@@ -180,7 +180,45 @@ static JsonElement* parse_null(JsonParserState* state) {
 }
 
 static JsonElement* parse_boolean(JsonParserState* state) {
-    // should be implement
+    if (state->current_token.type != JSON_TOKEN_BOOLEAN) {
+        fmt_fprintf(stderr, "Error: Expected Boolean token in parse_boolean");
+        return NULL;
+    }
+    fmt_printf("in boolean\n");
+
+    size_t start = state->position;
+    fmt_printf("Amin %c\n", state->input[start]);
+    if (strncmp(state->input + state->position, "true", 4) == 0) {
+        state->current_token.type = JSON_TOKEN_BOOLEAN;
+        state->position += 3;
+    }
+    else if (strncmp(state->input + state->position, "false", 5) == 0) {
+        state->current_token.type = JSON_TOKEN_BOOLEAN;
+        state->position += 4;
+    }
+
+
+    size_t length = state->position - start; 
+    char *boolean_str = (char*) malloc(length);
+    if (!boolean_str) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in parse_boolean.\n");
+        return NULL;
+    } 
+
+    strncpy(boolean_str, state->input + start, length);
+    boolean_str[length] = '\0';
+    fmt_printf("%c boolean %s", state->input[state->position], boolean_str);
+    bool boolean_value = string_to_bool_cstr(boolean_str);
+    fmt_printf("%d\n", boolean_value);
+
+    JsonElement* element = json_create(JSON_BOOL);
+    if (!element) {
+        fmt_fprintf(stderr, "Error: faile to create json bool value in parse_boolean.\n");
+        return NULL;
+    }
+
+    element->value.bool_val = boolean_value;
+    return element;
 }
 
 static JsonElement* parser_internal(JsonParserState* state) {

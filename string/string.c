@@ -1997,3 +1997,19 @@ size_t string_length_utf8(const char* str) {
     }
     return length;
 }
+
+bool string_to_bool_cstr(const char* boolstr) {
+    if (!boolstr) {
+        fmt_fprintf(stderr, "Error: bool str is NULL and invalid in string_to_bool_cstr.\n");
+        return false;
+    }
+
+    if (strcmp(boolstr, "true") == 0) {
+        return true;
+    }
+    else if (strcmp(boolstr, "false") == 0) {
+        return false;
+    }
+
+    return false;
+}
