@@ -76,19 +76,19 @@ void next_token(JsonParserState* state) {
         default:
             if (strncmp(state->input + state->position, "true", 4) == 0) {
                 state->current_token.type = JSON_TOKEN_BOOLEAN;
-                state->position += 3;
+                // state->position += 3;
             }
             else if (strncmp(state->input + state->position, "false", 5) == 0) {
                 state->current_token.type = JSON_TOKEN_BOOLEAN;
-                state->position += 4;
+                // state->position += 4;
             }
-            else if (strncmp(state->input + state->position, "null", 4) == 0) {
+            if (strncmp(state->input + state->position, "null", 4) == 0) {
                 state->current_token.type = JSON_TOKEN_NULL;
                 state->position += 3;
             }
-            else {
-                state->current_token.type = JSON_TOKEN_ERROR;
-            }
+            // else {
+            //     state->current_token.type = JSON_TOKEN_ERROR;
+            // }
             break;
     }
     state->position++;
@@ -126,7 +126,7 @@ static JsonElement* parse_string(JsonParserState* state) {
 
     strncpy(str_content, state->input + start, length);
     str_content[length] = '\0';
-    fmt_printf("%s\n", str_content);
+
     state->position++;
 
     // Create a new JsonElement for the string
@@ -161,9 +161,8 @@ static JsonElement* parse_number(JsonParserState* state) {
 
     strncpy(number_str, state->input + start, length);
     number_str[length] = '\0';
-    fmt_printf("Number %s\n", number_str);
+
     double number_double = atof(number_str);
-    fmt_printf("%f\n", number_double);
     free(number_str);
 
     JsonElement* element = json_create(JSON_NUMBER);
@@ -180,7 +179,40 @@ static JsonElement* parse_null(JsonParserState* state) {
 }
 
 static JsonElement* parse_boolean(JsonParserState* state) {
-    // should be implement
+    if (state->current_token.type != JSON_TOKEN_BOOLEAN) {
+        fmt_fprintf(stderr, "Error: Expected Boolean token in parse_boolean");
+        return NULL;
+    }
+
+    size_t start = state->position - 1;
+    if (strncmp(state->input + start, "true", 4) == 0) {
+        state->current_token.type = JSON_TOKEN_BOOLEAN;
+        state->position += 3;
+    }
+    else if (strncmp(state->input + start, "false", 5) == 0) {
+        state->current_token.type = JSON_TOKEN_BOOLEAN;
+        state->position += 4;
+    }
+
+
+    size_t length = state->position - start; 
+    char *boolean_str = (char*) malloc(length);
+    if (!boolean_str) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in parse_boolean.\n");
+        return NULL;
+    } 
+    strncpy(boolean_str, state->input + start, length);
+    boolean_str[length] = '\0';
+    bool boolean_value = string_to_bool_from_cstr(boolean_str);
+
+    JsonElement* element = json_create(JSON_BOOL);
+    if (!element) {
+        fmt_fprintf(stderr, "Error: faile to create json bool value in parse_boolean.\n");
+        return NULL;
+    }
+
+    element->value.bool_val = boolean_value;
+    return element;
 }
 
 static JsonElement* parser_internal(JsonParserState* state) {
@@ -262,9 +294,9 @@ JsonElement* json_parse(const char* json_str) {
             // case JSON_TOKEN_OBJECT_START:
             //     root = parse_object(&state);
             //     break;
-            // case JSON_TOKEN_BOOLEAN:
-            //     root = parse_boolean(&state);
-            //     break;
+            case JSON_TOKEN_BOOLEAN:
+                root = parse_boolean(&state);
+                break;
             case JSON_TOKEN_NUMBER:
                 root = parse_number(&state);
                 break;

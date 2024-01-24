@@ -72,6 +72,7 @@ bool string_contains(String* str, const char* substr);
 bool string_set_pool_size(String* str, size_t newSize);
 bool string_starts_with(const String* str, const char* substr);
 bool string_ends_with(const String* str, const char* substr);
+bool string_to_bool_from_cstr(const char* boolstr);
 
 int string_compare(const String* str1, const String* str2);
 int string_find(String* str, const char* buffer, size_t pos);
