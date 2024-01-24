@@ -126,7 +126,7 @@ static JsonElement* parse_string(JsonParserState* state) {
 
     strncpy(str_content, state->input + start, length);
     str_content[length] = '\0';
-    fmt_printf("%s\n", str_content);
+
     state->position++;
 
     // Create a new JsonElement for the string
@@ -161,9 +161,8 @@ static JsonElement* parse_number(JsonParserState* state) {
 
     strncpy(number_str, state->input + start, length);
     number_str[length] = '\0';
-    fmt_printf("Number %s\n", number_str);
+
     double number_double = atof(number_str);
-    fmt_printf("%f\n", number_double);
     free(number_str);
 
     JsonElement* element = json_create(JSON_NUMBER);
@@ -184,15 +183,13 @@ static JsonElement* parse_boolean(JsonParserState* state) {
         fmt_fprintf(stderr, "Error: Expected Boolean token in parse_boolean");
         return NULL;
     }
-    fmt_printf("in boolean\n");
 
-    size_t start = state->position;
-    fmt_printf("Amin %c\n", state->input[start]);
-    if (strncmp(state->input + state->position, "true", 4) == 0) {
+    size_t start = state->position - 1;
+    if (strncmp(state->input + start, "true", 4) == 0) {
         state->current_token.type = JSON_TOKEN_BOOLEAN;
         state->position += 3;
     }
-    else if (strncmp(state->input + state->position, "false", 5) == 0) {
+    else if (strncmp(state->input + start, "false", 5) == 0) {
         state->current_token.type = JSON_TOKEN_BOOLEAN;
         state->position += 4;
     }
@@ -204,12 +201,9 @@ static JsonElement* parse_boolean(JsonParserState* state) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in parse_boolean.\n");
         return NULL;
     } 
-
     strncpy(boolean_str, state->input + start, length);
     boolean_str[length] = '\0';
-    fmt_printf("%c boolean %s", state->input[state->position], boolean_str);
-    bool boolean_value = string_to_bool_cstr(boolean_str);
-    fmt_printf("%d\n", boolean_value);
+    bool boolean_value = string_to_bool_from_cstr(boolean_str);
 
     JsonElement* element = json_create(JSON_BOOL);
     if (!element) {

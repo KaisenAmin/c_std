@@ -1998,7 +1998,7 @@ size_t string_length_utf8(const char* str) {
     return length;
 }
 
-bool string_to_bool_cstr(const char* boolstr) {
+bool string_to_bool_from_cstr(const char* boolstr) {
     if (!boolstr) {
         fmt_fprintf(stderr, "Error: bool str is NULL and invalid in string_to_bool_cstr.\n");
         return false;
