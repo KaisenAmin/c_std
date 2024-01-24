@@ -262,9 +262,9 @@ JsonElement* json_parse(const char* json_str) {
             // case JSON_TOKEN_OBJECT_START:
             //     root = parse_object(&state);
             //     break;
-            // case JSON_TOKEN_BOOLEAN:
-            //     root = parse_boolean(&state);
-            //     break;
+            case JSON_TOKEN_BOOLEAN:
+                root = parse_boolean(&state);
+                break;
             case JSON_TOKEN_NUMBER:
                 root = parse_number(&state);
                 break;
