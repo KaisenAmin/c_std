@@ -167,6 +167,7 @@ JsonType json_type_of_element(const JsonElement *element);
 // Function to retrieve the last error occurred during JSON operations.
 JsonError json_last_error();
 
+void json_print(JsonElement* element);
 // Function to deallocate a JSON element and its contents.
 void json_deallocate(JsonElement *element);
 //Function to compare two JSON elements.

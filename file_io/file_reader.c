@@ -225,8 +225,8 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
         }
 
         size_t actualRead = fread(rawBuffer, sizeof(char), count, reader->file_reader);
-        rawBuffer[actualRead] = L'\0';  // Null-terminate the buffer
-
+        
+        rawBuffer[actualRead] = '\0';  // Null-terminate the buffer
         memcpy(buffer, rawBuffer, actualRead);
         free(rawBuffer);  // Free the UTF-8 buffer
 
