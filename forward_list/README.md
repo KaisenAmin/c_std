@@ -1,9 +1,9 @@
 
 # ForwardList Library in C
 
-Author: amin tahmasebi
-Release Date: 2023
-License: ISC License
+**Author:** amin tahmasebi
+**Release Date:** 2023
+**License:** ISC License
 
 
 The ForwardList library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size ForwardList, offering similar functionality to `std::forward_list` in C++.

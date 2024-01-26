@@ -1,8 +1,8 @@
 # Algorithm Library in C
 
-Author: amin tahmasebi
-Release Date: 2024
-License: ISC License
+**Author:** amin tahmasebi
+**Release Date:** 2024
+**License:** ISC License
 
 
 The Algorithm library is a versatile collection of functions designed to bring the power and flexibility of C++ STL `<algorithm>` functionality to C programming. It provides a suite of generic algorithms for a variety of operations on arrays and other data structures, ranging from searching and sorting to transforming and accumulating elements.

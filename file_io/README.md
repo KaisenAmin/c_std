@@ -1,8 +1,8 @@
 # FileReader and FileWriter Library in C
 
-Author: Amin Tahmasebi
-Release Date: 2024
-License: ISC License
+**Author:** Amin Tahmasebi
+**Release Date:** 2024
+**License:** ISC License
 
 ## Overview
 

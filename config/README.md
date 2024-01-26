@@ -1,8 +1,8 @@
 # Config Library in C
 
-Author: amin tahmasebi
-Release Date: 2023
-License: ISC License
+**Author:** amin tahmasebi
+**Release Date:** 2023
+**License:** ISC License
 
 ## Overview
 
