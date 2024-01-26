@@ -12,6 +12,7 @@ static JsonElement* parse_null(JsonParserState* state);
 static JsonElement* parse_boolean(JsonParserState* state);
 static JsonElement* parser_internal(JsonParserState* state);
 static JsonElement* parse_object(JsonParserState* state);
+static JsonElement* json_create(JsonType type);
 
 static void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
@@ -19,7 +20,7 @@ static void print_indent(int indent) {
     }
 }
 
-void json_print_internal(const JsonElement* element, int indent) {
+static void json_print_internal(const JsonElement* element, int indent) {
     if (!element) {
         fmt_printf("null");
         return;
@@ -107,22 +108,22 @@ void json_deallocate(JsonElement *element) {
     free(element);
 }
 
-void json_element_deallocator(void* data) {
+static void json_element_deallocator(void* data) {
     if (!data) 
         return;
     JsonElement* element = (JsonElement*)data;
     json_deallocate(element);
 }
 
-int compare_strings_json(const KeyType a, const KeyType b) {
+static int compare_strings_json(const KeyType a, const KeyType b) {
     return strcmp((const char*)a, (const char*)b);
 }
 
-void string_deallocator_json(void *data) {
+static void string_deallocator_json(void *data) {
     free(data);
 } 
 
-void next_token(JsonParserState* state) {
+static void next_token(JsonParserState* state) {
     while (isspace((unsigned char)state->input[state->position])) {
         state->position++;
     }
@@ -211,7 +212,6 @@ static JsonElement* parse_array(JsonParserState* state) {
         }
         JsonElement* element = parser_internal(state);
         if (!element) {
-            // Propagate the error from the parser_internal
             json_deallocate(array_element);
             return NULL;
         }
@@ -311,7 +311,7 @@ static JsonElement* parse_number(JsonParserState* state) {
     JsonElement* element = json_create(JSON_NUMBER);
     if (!element) {
         snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON number element at position %zu", start);
-        state->error.code = JSON_CREATION_FAILED; // Ensure this error code is defined
+        state->error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
 
@@ -331,7 +331,7 @@ static JsonElement* parse_null(JsonParserState* state) {
     JsonElement* element = json_create(JSON_NULL);
     if (!element) {
         snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON null element at position %zu", state->position - 4);
-        state->error.code = JSON_CREATION_FAILED; // Ensure this error code is defined
+        state->error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
     return element;
@@ -367,7 +367,7 @@ static JsonElement* parse_boolean(JsonParserState* state) {
     JsonElement* element = json_create(JSON_BOOL);
     if (!element) {
         snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON boolean element at position %zu", start);
-        state->error.code = JSON_CREATION_FAILED; // Ensure this error code is defined
+        state->error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
 
@@ -407,7 +407,7 @@ static JsonElement* parse_object(JsonParserState* state) {
     JsonElement* object_element = json_create(JSON_OBJECT);
     if (!object_element) {
         snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON object element at position %zu", state->position);
-        state->error.code = JSON_CREATION_FAILED; // Ensure this error code is defined
+        state->error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
     next_token(state);
@@ -433,7 +433,6 @@ static JsonElement* parse_object(JsonParserState* state) {
         next_token(state);
         JsonElement* value = parser_internal(state);
         if (!value) {
-            // Propagate the error from parser_internal
             free(key);
             json_deallocate(object_element);
             return NULL;
@@ -449,7 +448,7 @@ static JsonElement* parse_object(JsonParserState* state) {
     return object_element;
 }
 
-JsonElement* json_create(JsonType type) {
+static JsonElement* json_create(JsonType type) {
     JsonElement *element = (JsonElement*)malloc(sizeof(JsonElement));
     if (!element) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in json_create.\n");
@@ -501,7 +500,7 @@ JsonElement* json_parse(const char* json_str) {
     }
 
     JsonParserState state;
-    state.input = string_strdup(json_str); // Duplicate the string
+    state.input = string_strdup(json_str); 
 
     if (!state.input) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for duplicating JSON string in json_parse.\n");
@@ -528,13 +527,13 @@ JsonElement* json_parse(const char* json_str) {
     } 
     else {
         fmt_fprintf(stderr, "Error: Root element must be an object or array at position %zu.\n", state.position);
-        free(state.input); // Free the duplicated string
+        free(state.input); 
         return NULL;
     }
 
     if (root == NULL) {
         fmt_fprintf(stderr, "Error while parsing JSON at position %zu: %s\n", state.position, state.error.message);
-        free(state.input); // Free the duplicated string
+        free(state.input); 
         return NULL;
     }
 
@@ -592,5 +591,39 @@ void json_print(const JsonElement* element) {
         return;
     }
     json_print_internal(element, 0);
-    fmt_printf("\n"); // New line after complete JSON data is printed
+    fmt_printf("\n");
+}
+
+JsonElement* json_get_element(const JsonElement *element, const char *key_or_index) {
+    if (!element || !key_or_index) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_get_element.\n");
+        return NULL;
+    }
+
+    switch (element->type) {
+        case JSON_OBJECT: {
+            char* non_const_key = strdup(key_or_index);
+            if (!non_const_key) {
+                fmt_fprintf(stderr, "Error: Memory allocation failed in json_get_element.\n");
+                return NULL;
+            }
+            JsonElement* result = (JsonElement*)map_at(element->value.object_val, non_const_key);
+            free(non_const_key);
+            return result;
+        }
+
+        case JSON_ARRAY: {
+            char *end;
+            long index = strtol(key_or_index, &end, 10);
+            if (end == key_or_index || *end != '\0' || index < 0 || (size_t)index >= vector_size(element->value.array_val)) {
+                fmt_fprintf(stderr, "Error: Invalid index '%s' in json_get_element.\n", key_or_index);
+                return NULL;
+            }
+            return *(JsonElement**)vector_at(element->value.array_val, (size_t)index);
+        }
+
+        default:
+            fmt_fprintf(stderr, "Error: Attempted to access non-object/non-array JSON element in json_get_element.\n");
+            return NULL;
+    }
 }

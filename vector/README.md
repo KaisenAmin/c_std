@@ -1,8 +1,8 @@
 # Vector Library in C
 
-Author: Amin Tahmasebi
-Release Date: 2023
-License: ISC License
+**Author:** Amin Tahmasebi
+**Release Date:** 2023
+**License:** ISC License
 
 ## Overview
 

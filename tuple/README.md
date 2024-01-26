@@ -1,8 +1,8 @@
 # Tuple Library in C
 
-Author: Amin Tahmasebi
-Release Date: 2024
-License: ISC License
+**Author:** Amin Tahmasebi
+**Release Date:** 2024
+**License:** ISC License
 
 ## Overview
 This C library offers a versatile implementation of tuples, structures that can hold a fixed number of elements of potentially different types. It's designed for efficiency and ease of use in a variety of applications, from data structures to systems programming.
