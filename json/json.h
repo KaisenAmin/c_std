@@ -8,7 +8,8 @@
 #define JSON_ERROR_NONE 0
 #define JSON_ERROR_SYNTAX 1
 #define JSON_ERROR_UNEXPECTED_TOKEN 2
-
+#define JSON_ERROR_MEMORY 3
+#define JSON_CREATION_FAILED 4
 // JSON data types
 typedef enum {
     JSON_NULL,
@@ -75,6 +76,7 @@ typedef enum {
     JSON_TOKEN_COMMA,
     JSON_TOKEN_EOF,
     JSON_TOKEN_ERROR,
+    
 } JsonTokenType;
 
 typedef struct {
@@ -84,7 +86,7 @@ typedef struct {
 
 // Parser state
 typedef struct {
-    const char* input;
+    char* input;
     size_t input_len;
     size_t position;
     JsonToken current_token;
@@ -167,7 +169,7 @@ JsonType json_type_of_element(const JsonElement *element);
 // Function to retrieve the last error occurred during JSON operations.
 JsonError json_last_error();
 
-void json_print(JsonElement* element);
+void json_print(const JsonElement* element);
 // Function to deallocate a JSON element and its contents.
 void json_deallocate(JsonElement *element);
 //Function to compare two JSON elements.

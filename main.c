@@ -2,14 +2,16 @@
 #include "json/json.h"
 
 int main() {
-    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
     
     if (jsonElement) {
-        json_print(jsonElement);
-        json_deallocate(jsonElement); // Don't forget to deallocate
+        fmt_printf("Successfully parsed JSON file.\n");
+        json_print(jsonElement); // Print the parsed JSON structure
+        json_deallocate(jsonElement); // Deallocate the JSON structure
     } 
     else {
-        fmt_printf("Failed to parse JSON file.\n");
+        fmt_printf("Failed to parse JSON file '%s'.\n", jsonFilePath);
     }
     
     return 0;
