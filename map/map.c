@@ -385,35 +385,38 @@ size_t map_max_size(const Map* map) {
 bool map_insert(Map* map, KeyType key, ValueType value) {
     if (map == NULL || key == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_insert.\n");
-        return false; // Return false for null pointer
+        return false;
     }
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
 
     while (*curr) {
         parent = *curr;
-        int cmp = map->compFunc(key, (*curr)->key); // Assuming CompareFunc returns < 0 for less, 0 for equal, > 0 for greater
+        int cmp = map->compFunc(key, (*curr)->key);
         
-        if (cmp == 0) { 
-            return false; // Duplicate key found
+        if (cmp == 0) {
+            // Key already exists, replace its value
+            if (map->deallocValue) {
+                map->deallocValue((*curr)->value);
+            }
+            (*curr)->value = value;
+            return true;
         }
-        if (cmp < 0) { 
+        if (cmp < 0) {
             curr = &(*curr)->left;
-        }
-        else {
+        } else {
             curr = &(*curr)->right;
         }
     }
+
     MapNode* newNode = create_node(key, value);
-    
     if (!newNode) {
         return false;
     }
     *curr = newNode;
     newNode->parent = parent;
     map->size++;
-
-    map_insert_fixup(map, newNode); // Additional steps would be needed here to rebalance the tree and repaint nodes
+    map_insert_fixup(map, newNode);
     return true;
 }
 

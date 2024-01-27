@@ -12,7 +12,7 @@ static JsonElement* parse_null(JsonParserState* state);
 static JsonElement* parse_boolean(JsonParserState* state);
 static JsonElement* parser_internal(JsonParserState* state);
 static JsonElement* parse_object(JsonParserState* state);
-static JsonElement* json_create(JsonType type);
+static void json_serialize_internal(const JsonElement* element, String* str);
 
 static void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
@@ -448,7 +448,76 @@ static JsonElement* parse_object(JsonParserState* state) {
     return object_element;
 }
 
-static JsonElement* json_create(JsonType type) {
+static void serialize_string(const char* value, String* str) {
+    string_append(str, "\"");
+    string_append(str, value);
+    string_append(str, "\"");
+}
+
+static void serialize_array(const JsonElement* element, String* str) {
+    string_append(str, "[");
+    for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
+        json_serialize_internal(*(JsonElement**)vector_at(element->value.array_val, i), str);
+        if (i < vector_size(element->value.array_val) - 1) {
+            string_append(str, ", ");
+        }
+    }
+    string_append(str, "]");
+}
+
+static void serialize_object(const JsonElement* element, String* str) {
+    string_append(str, "{");
+    MapIterator it = map_begin(element->value.object_val);
+    MapIterator end = map_end(element->value.object_val);
+    bool first = true;
+    while (it.node != end.node) {
+        if (!first) {
+            string_append(str, ", ");
+        }
+        serialize_string((char*)it.node->key, str);
+        string_append(str, ": ");
+        json_serialize_internal((JsonElement*)it.node->value, str);
+        first = false;
+        map_iterator_increment(&it);
+    }
+    string_append(str, "}");
+}
+
+static void json_serialize_internal(const JsonElement* element, String* str) {
+    if (!element) {
+        string_append(str, "null");
+        return;
+    }
+
+    switch (element->type) {
+        case JSON_OBJECT:
+            serialize_object(element, str);
+            break;
+        case JSON_ARRAY:
+            serialize_array(element, str);
+            break;
+        case JSON_STRING:
+            serialize_string(element->value.string_val, str);
+            break;
+        case JSON_NUMBER:
+            {
+                char buffer[64];
+                snprintf(buffer, sizeof(buffer), "%g", element->value.number_val);
+                string_append(str, buffer);
+            }
+            break;
+        case JSON_BOOL:
+            string_append(str, element->value.bool_val ? "true" : "false");
+            break;
+        case JSON_NULL:
+            string_append(str, "null");
+            break;
+        default:
+            string_append(str, "unknown");
+    }
+}
+
+JsonElement* json_create(JsonType type) {
     JsonElement *element = (JsonElement*)malloc(sizeof(JsonElement));
     if (!element) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in json_create.\n");
@@ -602,7 +671,7 @@ JsonElement* json_get_element(const JsonElement *element, const char *key_or_ind
 
     switch (element->type) {
         case JSON_OBJECT: {
-            char* non_const_key = strdup(key_or_index);
+            char* non_const_key = string_strdup(key_or_index);
             if (!non_const_key) {
                 fmt_fprintf(stderr, "Error: Memory allocation failed in json_get_element.\n");
                 return NULL;
@@ -625,5 +694,244 @@ JsonElement* json_get_element(const JsonElement *element, const char *key_or_ind
         default:
             fmt_fprintf(stderr, "Error: Attempted to access non-object/non-array JSON element in json_get_element.\n");
             return NULL;
+    }
+}
+
+size_t json_array_size(const JsonElement *array) {
+    if (!array) {
+        fmt_fprintf(stderr, "Error: The provided JsonElement is NULL in json_array_size.\n");
+        return 0;
+    }
+
+    if (array->type != JSON_ARRAY) {
+        fmt_fprintf(stderr, "Error: The provided JsonElement is not an array in json_array_size.\n");
+        return 0;
+    }
+
+    return vector_size(array->value.array_val);
+}
+
+size_t json_object_size(const JsonElement* object) {
+    if (!object) {
+        fmt_fprintf(stderr, "Error: The Provided JsonElement is NULL in json_object_size.\n");
+        return 0;
+    }
+    if (object->type != JSON_OBJECT) {
+        fmt_fprintf(stderr, "Error: The provided JsonElement is not object.\n");
+        return 0;
+    }
+
+    return map_size(object->value.object_val);
+}
+
+JsonElement* json_deep_copy(const JsonElement *element) {
+    if (!element) {
+        return NULL;
+    }
+
+    JsonElement *copy = json_create(element->type);
+    if (!copy) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in json_deep_copy.\n");
+        return NULL;
+    }
+
+    switch (element->type) {
+        case JSON_NULL:
+            // Nothing more to do for null
+            break;
+        case JSON_BOOL:
+            copy->value.bool_val = element->value.bool_val;
+            break;
+        case JSON_NUMBER:
+            copy->value.number_val = element->value.number_val;
+            break;
+        case JSON_STRING:
+            copy->value.string_val = string_strdup(element->value.string_val);
+            if (!copy->value.string_val) {
+                fmt_fprintf(stderr, "Error: Memory allocation failed for string in json_deep_copy.\n");
+                json_deallocate(copy);
+                return NULL;
+            }
+            break;
+        case JSON_ARRAY:
+            for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
+                JsonElement *item = json_deep_copy(*(JsonElement **)vector_at(element->value.array_val, i));
+                if (!item) {
+                    json_deallocate(copy);
+                    return NULL;
+                }
+                vector_push_back(copy->value.array_val, &item);
+            }
+            break;
+        case JSON_OBJECT: {
+                MapIterator it = map_begin(element->value.object_val);
+                MapIterator end = map_end(element->value.object_val);
+                while (it.node != end.node) {
+                    char *key = string_strdup((char *)it.node->key);
+                    if (!key) {
+                        fmt_fprintf(stderr, "Error: Memory allocation failed for object key in json_deep_copy.\n");
+                        json_deallocate(copy);
+                        return NULL;
+                    }
+
+                    JsonElement *val_copy = json_deep_copy((JsonElement *)it.node->value);
+                    if (!val_copy) {
+                        free(key);
+                        json_deallocate(copy);
+                        return NULL;
+                    }
+
+                    map_insert(copy->value.object_val, key, val_copy);
+                    map_iterator_increment(&it);
+                }
+            }
+            break;
+        default:
+            fmt_fprintf(stderr, "Error: Unknown JSON type in json_deep_copy.\n");
+            json_deallocate(copy);
+            return NULL;
+    }
+
+    return copy;
+}
+
+JsonType json_type_of_element(const JsonElement *element) {
+    if (!element) {
+        fmt_fprintf(stderr, "Error: The provided JsonElement is NULL in json_type_of_element.\n");
+        return JSON_NULL; // or another designated error value
+    }
+    return element->type;
+}
+
+bool json_write_to_file(const JsonElement *element, const char *filename) {
+    if (!element || !filename) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_write_to_file.\n");
+        return false;
+    }
+
+    char *jsonString = json_serialize(element);
+    if (!jsonString) {
+        fmt_fprintf(stderr, "Error: Failed to serialize JSON element in json_write_to_file.\n");
+        return false;
+    }
+
+    FileWriter* writer = file_writer_open(filename, WRITE_TEXT);
+    if (!writer || !file_writer_is_open(writer)) {
+        fmt_fprintf(stderr, "Error: Failed to open file '%s' for writing in json_write_to_file.\n", filename);
+        free(jsonString);
+        return false;
+    }
+
+    size_t written = file_writer_write(jsonString, sizeof(char), strlen(jsonString), writer);
+    free(jsonString);
+    if (written == 0) {
+        fmt_fprintf(stderr, "Error: Failed to write to file '%s' in json_write_to_file.\n", filename);
+        file_writer_close(writer);
+        return false;
+    }
+
+    file_writer_close(writer);
+    return true;
+}
+
+char* json_serialize(const JsonElement* element) {
+    String* str = string_create("");
+    json_serialize_internal(element, str);
+
+    const char* temp = string_c_str(str);
+    char* serialized = string_strdup(temp); // Use strdup to create a modifiable copy
+
+    string_deallocate(str); // Deallocate the String object
+    return serialized; // Return the duplicated string
+}
+
+bool json_compare(const JsonElement *element1, const JsonElement *element2) {
+    if (element1 == element2) {
+        return true;
+    }
+    if (element1 == NULL || element2 == NULL) {
+        return false;
+    }
+    if (element1->type != element2->type) {
+        return false;
+    }
+
+    switch (element1->type) {
+        case JSON_NULL:
+            return true;
+        case JSON_BOOL:
+            return element1->value.bool_val == element2->value.bool_val;
+        case JSON_NUMBER:
+            return element1->value.number_val == element2->value.number_val;
+        case JSON_STRING:
+            return strcmp(element1->value.string_val, element2->value.string_val) == 0;
+        case JSON_ARRAY:
+            if (vector_size(element1->value.array_val) != vector_size(element2->value.array_val)) {
+                return false;
+            }
+            for (size_t i = 0; i < vector_size(element1->value.array_val); ++i) {
+                JsonElement* item1 = *(JsonElement**)vector_at(element1->value.array_val, i);
+                JsonElement* item2 = *(JsonElement**)vector_at(element2->value.array_val, i);
+                if (!json_compare(item1, item2)) {
+                    return false;
+                }
+            }
+            return true;
+        case JSON_OBJECT:
+            if (map_size(element1->value.object_val) != map_size(element2->value.object_val)) {
+                return false;
+            }
+            MapIterator it1 = map_begin(element1->value.object_val);
+            MapIterator end1 = map_end(element1->value.object_val);
+            while (it1.node != end1.node) {
+                const char* key = (char*)it1.node->key;
+                JsonElement* val1 = (JsonElement*)it1.node->value;
+                JsonElement* val2 = (JsonElement*)map_at(element2->value.object_val, (KeyType)key);
+                if (!val2 || !json_compare(val1, val2)) {
+                    return false;
+                }
+                map_iterator_increment(&it1);
+            }
+            return true;
+        default:
+            fmt_fprintf(stderr, "Error: Unknown JSON type in json_compare.\n");
+            return false;
+    }
+}
+
+bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element) {
+    if (!element || !key_or_index || !new_element) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_set_element.\n");
+        return false;
+    }
+
+    switch (element->type) {
+        case JSON_OBJECT: {
+            // For JSON_OBJECT, key_or_index is the key as a string
+            char* non_const_key = string_strdup(key_or_index);
+            if (!non_const_key) {
+                fmt_fprintf(stderr, "Error: Memory allocation failed in json_set_element.\n");
+                return false;
+            }
+            map_insert(element->value.object_val, non_const_key, new_element);
+            return true;
+        }
+        case JSON_ARRAY: {
+            // For JSON_ARRAY, key_or_index is the index as a string
+            char *end;
+            long index = strtol(key_or_index, &end, 10);
+            if (end == key_or_index || *end != '\0' || index < 0 || (size_t)index >= vector_size(element->value.array_val)) {
+                fmt_fprintf(stderr, "Error: Invalid index '%s' in json_set_element.\n", key_or_index);
+                return false;
+            }
+            // Replace the existing element at the specified index
+            JsonElement **array_element = vector_at(element->value.array_val, (size_t)index);
+            json_deallocate(*array_element); 
+            *array_element = new_element;
+            return true;
+        }
+        default:
+            fmt_fprintf(stderr, "Error: Element is not an object or an array in json_set_element.\n");
+            return false;
     }
 }

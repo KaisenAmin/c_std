@@ -97,10 +97,10 @@ String* string_create(const char* initialStr) {
 
     size_t initialSize = initialStr ? strlen(initialStr) : 0;
     str->size = initialSize;
-    str->capacitySize = 64 + initialSize; // +1 for null terminator
+    str->capacitySize = 32 + initialSize; // +1 for null terminator
 
     // Initialize memory pool for strings with a smaller size
-    size_t initialPoolSize = 10000; // 1KB
+    size_t initialPoolSize = 1000000; // 1KB
     str->pool = memory_pool_create(initialPoolSize);
     if (!str->pool) {
         fmt_fprintf(stderr, "Error: Memory pool creation failed in string_create.\n");

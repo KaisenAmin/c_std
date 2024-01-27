@@ -1,7 +1,7 @@
 # JSON Library in C
 
 **Author:** Amin Tahmasebi  
-**Release Date:** 2023  
+**Release Date:** 2024  
 **License:** ISC License
 
 ## Overview
@@ -141,4 +141,510 @@ int main() {
     }
     return 0;
 }
+```
+
+## Example 4: Getting the Size of the `categories` Array
+
+In this example, we parse your JSON string and then get the size of the `categories` array.
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    if (jsonElement) {
+        JsonElement* categories = json_get_element(jsonElement, "categories");
+
+        if (categories && categories->type == JSON_ARRAY) {
+            size_t size = json_array_size(categories);
+            fmt_printf("The 'categories' array has %zu elements.\n", size);
+        } 
+        else {
+            fmt_printf("The 'categories' element is not an array.\n");
+        }
+
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse the JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 5: Getting the Size of the `contributors` Array in `additional_info`
+
+In this second example, we access the `additional_info` object and then find the size of the `contributors` array within it.
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    if (jsonElement) {
+        JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+
+        if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+            JsonElement* contributors = json_get_element(additionalInfo, "contributors");
+
+            if (contributors && contributors->type == JSON_ARRAY) {
+                size_t size = json_array_size(contributors);
+                fmt_printf("The 'contributors' array has %zu elements.\n", size);
+            } 
+            else {
+                fmt_printf("The 'contributors' element is not an array.\n");
+            }
+        } 
+        else {
+            fmt_printf("The 'additional_info' element is not an object.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse the JSON string.\n");
+    }
+
+    return 0;
+}
+
+```
+
+## Example 6 : Getting size of object in json with `json_object_size` 
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    if (jsonElement) {
+        JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+
+        if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+            size_t size = json_object_size(additionalInfo);
+            fmt_printf("The 'additional_info' object has %zu key-value pairs.\n", size);
+        } 
+        else {
+            fmt_printf("The 'additional_info' element is not an object.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse the JSON string.\n");
+    }
+    return 0;
+}
+
+```
+
+## Example 7 : getting the size of the `ratings` object in movie items 
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    if (jsonElement) {
+        JsonElement* categories = json_get_element(jsonElement, "categories");
+        if (categories && categories->type == JSON_ARRAY) {
+            JsonElement* movies = json_get_element(categories, "1");
+            
+            if (movies && movies->type == JSON_OBJECT) {
+                JsonElement* items = json_get_element(movies, "items");
+
+                if (items && items->type == JSON_ARRAY) {
+                    JsonElement* firstMovie = json_get_element(items, "0");
+
+                    if (firstMovie && firstMovie->type == JSON_OBJECT) {
+                        JsonElement* ratings = json_get_element(firstMovie, "ratings");
+
+                        if (ratings && ratings->type == JSON_OBJECT) {
+                            size_t size = json_object_size(ratings);
+                            fmt_printf("The 'ratings' object of the first movie has %zu key-value pairs.\n", size);
+                        } 
+                        else {
+                            fmt_printf("The 'ratings' element is not an object.\n");
+                        }
+                    }
+                }
+            }
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse the JSON string.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 8 : Deep copying parsed json object with `json_deep_copy`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* originalJsonElement = json_read_from_file(jsonFilePath);
+
+    if (originalJsonElement) {
+        fmt_printf("Successfully parsed JSON file.\n");
+
+        // Deep copying the JSON element
+        JsonElement* deepCopiedElement = json_deep_copy(originalJsonElement);
+        if (deepCopiedElement) {
+            fmt_printf("Deep copy created successfully.\n");
+
+            JsonElement* categories = json_get_element(deepCopiedElement, "categories");
+            if (categories && categories->type == JSON_ARRAY) {
+                size_t arraySize = json_array_size(categories);
+                fmt_printf("Size of 'categories' array in deep copy: %zu\n", arraySize);
+            }
+
+            JsonElement* additionalInfo = json_get_element(deepCopiedElement, "additional_info");
+            if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+                size_t objectSize = json_object_size(additionalInfo);
+                fmt_printf("Size of 'additional_info' object in deep copy: %zu\n", objectSize);
+            }
+
+            json_deallocate(deepCopiedElement);
+        } 
+        else {
+            fmt_printf("Failed to create a deep copy of the JSON element.\n");
+        }
+        json_deallocate(originalJsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON file '%s'.\n", jsonFilePath);
+    }
+    return 0;
+}
+```
+
+## Example 9 : Using `json_type_of_element`` to Determine the Type of a JSON Element 
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // Example JSON string
+    const char* jsonString = "{\"name\": \"John Doe\", \"age\": 30, \"is_student\": false}";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        fmt_printf("Successfully parsed JSON string.\n");
+
+        JsonElement* nameElement = json_get_element(jsonElement, "name");
+        if (nameElement) {
+            JsonType nameType = json_type_of_element(nameElement);
+            fmt_printf("Type of 'name' element: %s\n", nameType == JSON_STRING ? "String" : "Other");
+
+            // Retrieve and check the type of the 'age' element
+            JsonElement* ageElement = json_get_element(jsonElement, "age");
+            if (ageElement) {
+                JsonType ageType = json_type_of_element(ageElement);
+                fmt_printf("Type of 'age' element: %s\n", ageType == JSON_NUMBER ? "Number" : "Other");
+            }
+
+            // Retrieve and check the type of the 'is_student' element
+            JsonElement* studentElement = json_get_element(jsonElement, "is_student");
+            if (studentElement) {
+                JsonType studentType = json_type_of_element(studentElement);
+                fmt_printf("Type of 'is_student' element: %s\n", studentType == JSON_BOOL ? "Boolean" : "Other");
+            }
+        } 
+        else {
+            fmt_printf("Element 'name' not found in JSON.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 10 : how to serialize and write json into the file with `json_write_file`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/output_json_example.json";
+    const char* jsonString = "{\"name\":\"John Doe\",\"age\":30}";
+
+    JsonElement* jsonElement = json_parse(jsonString);
+    if (!jsonElement) {
+        fmt_printf("Failed to parse JSON string.\n");
+        return 1;
+    }
+
+    if (json_write_to_file(jsonElement, jsonFilePath)) {
+        fmt_printf("Successfully wrote JSON to file '%s'.\n", jsonFilePath);
+    } 
+    else {
+        fmt_printf("Failed to write JSON to file '%s'.\n", jsonFilePath);
+    }
+
+    // Deallocate the JSON element
+    json_deallocate(jsonElement);
+    return 0;
+}
+```
+
+## Example 11 : Parsing and serializing json with `json_serialize`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    const char* jsonString = 
+        "{"
+        "  \"name\": \"John Doe\","
+        "  \"age\": 30,"
+        "  \"is_student\": false,"
+        "  \"scores\": [95, 85, 75],"
+        "  \"address\": {"
+        "    \"street\": \"123 Main St\","
+        "    \"city\": \"Anytown\""
+        "  }"
+        "}";
+
+    JsonElement* jsonElement = json_parse(jsonString);
+    if (!jsonElement) {
+        fmt_printf("Failed to parse JSON string.\n");
+        return 1;
+    }
+
+    // Serialize the JSON element back into a string
+    char* serializedJson = json_serialize(jsonElement);
+    if (!serializedJson) {
+        fmt_printf("Failed to serialize JSON element.\n");
+        json_deallocate(jsonElement);
+        return 1;
+    }
+
+    fmt_printf("Serialized JSON:\n%s\n", serializedJson);
+
+    free(serializedJson); 
+    json_deallocate(jsonElement); 
+    return 0;
+}
+```
+
+## Example 12 : how to compare json with `json_compare`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString1 = "{\"name\": \"John Doe\", \"age\": 30}";
+    const char* jsonString2 = "{\"name\": \"John Doe\", \"age\": 30}";
+    const char* jsonString3 = "{\"name\": \"Jane Doe\", \"age\": 25}";
+
+    JsonElement* jsonElement1 = json_parse(jsonString1);
+    JsonElement* jsonElement2 = json_parse(jsonString2);
+    JsonElement* jsonElement3 = json_parse(jsonString3);
+
+    if (!jsonElement1 || !jsonElement2 || !jsonElement3) {
+        fmt_printf("Failed to parse one or more JSON strings.\n");
+
+        json_deallocate(jsonElement1);
+        json_deallocate(jsonElement2);
+        json_deallocate(jsonElement3);
+        return -1;
+    }
+
+    // Compare the first two JSON elements
+    bool areEqual1and2 = json_compare(jsonElement1, jsonElement2);
+    fmt_printf("JSON 1 and JSON 2 are %s.\n", areEqual1and2 ? "equal" : "not equal");
+
+    // Compare the first and third JSON elements
+    bool areEqual1and3 = json_compare(jsonElement1, jsonElement3);
+    fmt_printf("JSON 1 and JSON 3 are %s.\n", areEqual1and3 ? "equal" : "not equal");
+
+    json_deallocate(jsonElement1);
+    json_deallocate(jsonElement2);
+    json_deallocate(jsonElement3);
+
+    return 0;
+}
+```
+
+## Example 13 : how to set element in objects with `json_set_element`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    const char* outputFilePath = "./sources/json_modified.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    // Create a new element for the updated budget
+    JsonElement* newBudgetElement = json_create(JSON_NUMBER);
+    newBudgetElement->value.number_val = 600000.0;  // New budget value
+
+    // Set the new element in the "additional_info" object
+    JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+    if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+        if (!json_set_element(additionalInfo, "budget", newBudgetElement)) {
+            fmt_printf("Failed to set new element in JSON.\n");
+            json_deallocate(jsonElement);
+            return 1;
+        }
+    } 
+    else {
+        fmt_printf("Failed to find 'additional_info' object in JSON.\n");
+        json_deallocate(jsonElement);
+        return 1;
+    }
+
+    // Write the modified JSON data to a new file
+    if (json_write_to_file(jsonElement, outputFilePath)) {
+        fmt_printf("Successfully wrote modified JSON to file '%s'.\n", outputFilePath);
+    } 
+    else {
+        fmt_printf("Failed to write JSON to file '%s'.\n", outputFilePath);
+    }
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+```
+
+## Example 14 : how to set or modify an element within an array in json with `json_set_element`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    const char* outputFilePath = "./sources/json_modified.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    JsonElement* categories = json_get_element(jsonElement, "categories");
+    if (categories && categories->type == JSON_ARRAY) {
+        // Get the first category (Books)
+        JsonElement* booksCategory = json_get_element(categories, "0");
+        if (booksCategory && booksCategory->type == JSON_OBJECT) {
+            // Navigate to the "items" array in the Books category
+            JsonElement* items = json_get_element(booksCategory, "items");
+            if (items && items->type == JSON_ARRAY) {
+                // Create a new element for the updated availability
+                JsonElement* newAvailability = json_create(JSON_BOOL);
+                newAvailability->value.bool_val = false; // Updated availability value
+
+                JsonElement* firstBook = json_get_element(items, "0"); // Get the first book
+                if (firstBook && firstBook->type == JSON_OBJECT) {
+                    // Set the new element in the first book object
+                    if (!json_set_element(firstBook, "available", newAvailability)) {
+                        fmt_printf("Failed to set new element in JSON.\n");
+                        json_deallocate(jsonElement);
+                        return 1;
+                    }
+                } 
+                else {
+                    fmt_printf("Failed to find first book in JSON.\n");
+                    json_deallocate(jsonElement);
+                    return 1;
+                }
+            } 
+            else {
+                fmt_printf("Failed to find 'items' array in JSON.\n");
+                json_deallocate(jsonElement);
+                return 1;
+            }
+        } 
+        else {
+            fmt_printf("Failed to find 'Books' category in JSON.\n");
+            json_deallocate(jsonElement);
+            return 1;
+        }
+    } 
+    else {
+        fmt_printf("Failed to find 'categories' array in JSON.\n");
+        json_deallocate(jsonElement);
+        return 1;
+    }
+
+    // Write the modified JSON data to a new file
+    if (json_write_to_file(jsonElement, outputFilePath)) {
+        fmt_printf("Successfully wrote modified JSON to file '%s'.\n", outputFilePath);
+    } 
+    else {
+        fmt_printf("Failed to write JSON to file '%s'.\n", outputFilePath);
+    }
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+```
+
+## Example 15 : bench mark read and parse json file with python 
+
+`c_std JSON Library Time: 0.00192643 seconds`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <time.h>
+
+int main() {
+    struct timespec start, end;
+    long double time_elapsed;
+    const char* jsonFilePath = "./sources/users_1k.json";
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    time_elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e10;
+    fmt_printf("c_std JSON Library Time: %.8Lf seconds\n", time_elapsed);
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+```
+
+*Python Code*
+
+`Python JSON Library Time: 0.00509940 seconds`
+
+```python
+import json
+import time
+
+json_file_path = r"C:\Users\Science\Desktop\projects\C\c_std\sources\users_1k.json"
+
+start = time.time()
+
+with open(json_file_path, 'r') as file:
+    data = json.load(file)
+
+end = time.time()
+print(f"Python JSON Library Time: {end - start:.8f} seconds")
 ```

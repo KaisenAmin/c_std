@@ -104,6 +104,7 @@ JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void
 JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data);
 JsonElement* json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data);
 JsonElement* json_iterator_value(const JsonIterator *iterator);
+JsonElement* json_create(JsonType type);
 
 char* json_serialize(const JsonElement *element);
 char* json_format(const JsonElement *element);
@@ -114,6 +115,7 @@ bool json_write_to_file(const JsonElement *element, const char *filename);
 bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element);
 bool json_remove_element(JsonElement *element, const char *key_or_index);
 bool json_validate(const JsonElement *element, const char *schema_json);
+bool json_compare(const JsonElement *element1, const JsonElement *element2);
 
 void* json_convert(const JsonElement *element, JsonType type);
 void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data);
@@ -126,10 +128,9 @@ JsonIterator json_iterator_end(const JsonElement *element);
 
 JsonType json_type_of_element(const JsonElement *element);
 JsonError json_last_error();
-int json_compare(const JsonElement *element1, const JsonElement *element2);
+
 
 void json_print(const JsonElement* element);
 void json_deallocate(JsonElement *element);
-
 
 #endif 
