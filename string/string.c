@@ -2013,3 +2013,19 @@ bool string_to_bool_from_cstr(const char* boolstr) {
 
     return false;
 }
+
+size_t string_utf8_char_len(char c) {
+    if ((c & 0x80) == 0) { 
+        return 1;
+    }
+    if ((c & 0xE0) == 0xC0) {
+        return 2;
+    }
+    if ((c & 0xF0) == 0xE0) {
+        return 3;
+    }
+    if ((c & 0xF8) == 0xF0) {
+        return 4;
+    }
+    return 0;
+}

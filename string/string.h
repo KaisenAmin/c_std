@@ -116,6 +116,7 @@ size_t string_capacity(String* str);
 size_t string_max_size(String* str);
 size_t string_copy(String* str, char* buffer, size_t pos, size_t len);
 size_t string_count(String* str, const char* substr);
+size_t string_utf8_char_len(char c);
 
 const char* string_data(String* str);
 const char* string_c_str(const String* str);

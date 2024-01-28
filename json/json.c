@@ -1159,3 +1159,224 @@ char** json_to_string_array(const JsonElement *array, size_t *length) {
 
     return string_array;
 }
+
+void* json_convert(const JsonElement *element, JsonType type) {
+    if (!element) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: The provided JsonElement is NULL in json_convert.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
+        return NULL;
+    }
+
+    switch (type) {
+        case JSON_STRING:
+            if (element->type == JSON_NUMBER) {
+                JsonElement *stringElement = json_create(JSON_STRING);
+                if (!stringElement) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for JSON_STRING element in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    fmt_fprintf(stderr, last_error.message);
+                    return NULL;
+                }
+                char *str = (char*)malloc(64 * sizeof(char));
+                if (!str) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for number to string buffer in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    fmt_fprintf(stderr, last_error.message);
+                    json_deallocate(stringElement);
+                    return NULL;
+                }
+                snprintf(str, 64, "%g", element->value.number_val);
+                stringElement->value.string_val = str;
+                return stringElement;
+            } 
+            else if (element->type == JSON_BOOL) {
+                JsonElement *stringElement = json_create(JSON_STRING);
+                if (!stringElement) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for JSON_BOOL to JSON_STRING conversion in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    fmt_fprintf(stderr, last_error.message);
+                    return NULL;
+                }
+                if (!stringElement->value.string_val) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string duplication in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    fmt_fprintf(stderr, last_error.message);
+                    json_deallocate(stringElement);
+                    return NULL;
+                }
+                stringElement->value.string_val = string_strdup(element->value.bool_val ? "true" : "false");
+                return stringElement;
+            }
+            fmt_fprintf(stderr, "Error: Conversion to string is not supported for the given type in json_convert.\n");
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Conversion to string is not supported for the given type in json_convert.\n");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            return NULL;
+        case JSON_NUMBER:
+            if (element->type == JSON_STRING) {
+                double *num = (double*)malloc(sizeof(double));
+                if (!num) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string to number conversion in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    fmt_fprintf(stderr, last_error.message);
+                    return NULL;
+                }
+                *num = strtod(element->value.string_val, NULL);
+                return num;
+            }
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Conversion to number is not supported for the given type in json_convert.\n");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            fmt_fprintf(stderr, last_error.message);
+            return NULL;
+        case JSON_BOOL:
+            if (element->type == JSON_NUMBER) {
+                bool *bool_val = (bool*)malloc(sizeof(bool));
+                if (!bool_val) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for number to boolean conversion in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    fmt_fprintf(stderr, last_error.message);
+                    return NULL;
+                }
+                *bool_val = (element->value.number_val != 0); // Non-zero numbers are true
+                return bool_val;
+            }
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Conversion to boolean is not supported for the given type in json_convert.\n");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            fmt_fprintf(stderr, last_error.message);
+            return NULL;
+        case JSON_ARRAY: {
+            JsonElement *array = json_create(JSON_ARRAY);
+            if (!array) {
+                snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_convert for array.\n");
+                last_error.code = JSON_ERROR_MEMORY;
+                fmt_fprintf(stderr, last_error.message);
+                return NULL;
+            }
+
+            switch (element->type) {
+                case JSON_STRING: {
+                    size_t i = 0;
+                    size_t len = strlen(element->value.string_val);
+                    while (i < len) {
+                        size_t char_len = string_utf8_char_len(element->value.string_val[i]);
+                        if (char_len == 0 || i + char_len > len) { // Invalid UTF-8
+                            json_deallocate(array);
+                            snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid UTF-8 in json_convert.\n");
+                            last_error.code = JSON_ERROR_SYNTAX;
+                            fmt_fprintf(stderr, last_error.message);
+                            return NULL;
+                        }
+                        char *utf8_char = (char*)malloc((char_len + 1) * sizeof(char));
+                        if (!utf8_char) {
+                            json_deallocate(array);
+                            snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_convert for UTF-8 character.\n");
+                            last_error.code = JSON_ERROR_MEMORY;
+                            fmt_fprintf(stderr, last_error.message);
+                            return NULL;
+                        }
+
+                        strncpy(utf8_char, element->value.string_val + i, char_len);
+                        utf8_char[char_len] = '\0';
+                        JsonElement *charElement = json_create(JSON_STRING);
+                        charElement->value.string_val = utf8_char;
+                        vector_push_back(array->value.array_val, &charElement);
+
+                        i += char_len;
+                    }
+                    break;
+                }
+                case JSON_NUMBER: {
+                    JsonElement *numElement = json_create(JSON_NUMBER);
+                    numElement->value.number_val = element->value.number_val;
+                    vector_push_back(array->value.array_val, &numElement);
+                    break;
+                }
+
+                case JSON_BOOL: {
+                    JsonElement *boolElement = json_create(JSON_BOOL);
+                    boolElement->value.bool_val = element->value.bool_val;
+                    vector_push_back(array->value.array_val, &boolElement);
+                    break;
+                }
+
+                case JSON_NULL: {
+                    JsonElement *nullElement = json_create(JSON_NULL);
+                    vector_push_back(array->value.array_val, &nullElement);
+                    break;
+                }
+
+                case JSON_OBJECT: {
+                    JsonElement *objElement = json_deep_copy(element); // Assuming json_deep_copy exists
+                    vector_push_back(array->value.array_val, &objElement);
+                    break;
+                }
+
+                case JSON_ARRAY: // Handle nested arrays
+                default: { // Treat any other types as a nested array
+                    JsonElement *arrElement = json_deep_copy(element); // Assuming json_deep_copy exists
+                    vector_push_back(array->value.array_val, &arrElement);
+                    break;
+                }
+            }
+            return array;
+            break;
+        }
+        case JSON_OBJECT: {
+            JsonElement *object = json_create(JSON_OBJECT);
+            if (!object) {
+                snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_convert for object.\n");
+                last_error.code = JSON_ERROR_MEMORY;
+                fmt_fprintf(stderr, last_error.message);
+                return NULL;
+            }
+
+            char *key = string_strdup("value");  // Common key for all conversions
+            JsonElement *newElement = NULL;
+
+            switch (element->type) {
+                case JSON_NUMBER:
+                    newElement = json_create(JSON_NUMBER);
+                    newElement->value.number_val = element->value.number_val;
+                    break;
+                case JSON_STRING:
+                    newElement = json_create(JSON_STRING);
+                    newElement->value.string_val = string_strdup(element->value.string_val);
+                    break;
+                case JSON_BOOL:
+                    newElement = json_create(JSON_BOOL);
+                    newElement->value.bool_val = element->value.bool_val;
+                    break;
+                case JSON_NULL:
+                    newElement = json_create(JSON_NULL);
+                    break;
+                default:
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Unsupported element type for object conversion in json_convert.\n");
+                    last_error.code = JSON_CREATION_FAILED;
+                    fmt_fprintf(stderr, last_error.message);
+                    json_deallocate(object);
+                    free(key); // Don't forget to free the key
+                    return NULL;
+            }
+
+            if (!newElement) {
+                snprintf(last_error.message, sizeof(last_error.message), "Error: Failed to create new element in json_convert.\n");
+                last_error.code = JSON_CREATION_FAILED;
+                fmt_fprintf(stderr, last_error.message);
+                json_deallocate(object);
+                free(key); // Free the key in case of failure
+                return NULL;
+            }
+
+            map_insert(object->value.object_val, key, newElement);
+            return object;
+        }
+        break;
+        default:
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Unsupported conversion type in json_convert.\n");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN; // Or any other suitable error code
+            fmt_fprintf(stderr, last_error.message);
+            return NULL;
+
+    }
+    return NULL;
+}

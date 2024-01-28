@@ -79,6 +79,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_count(Strin*, char*)` : count number of substr appears in String object 'str'.
 - `string_length_cstr(const char*)` : Returns the length of a char*.
 - `string_length_utf(const char*)` : Return the length of utf-8 char*.
+- `string_utf8_char_len(char )` : Return the len of each unicode character.
 
 ## String Characteristics
 - `string_is_alpha(String*)`: Checks if a String contains only alphabetic characters.

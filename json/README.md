@@ -980,3 +980,156 @@ int main() {
     return 0;
 }
 ```
+
+## Example 25 : how to convert type of json element to other types with `json_convert`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+
+    // Example: Convert the 'version' element to a string
+    JsonElement* versionElement = json_get_element(jsonElement, "version");
+    if (versionElement) {
+        char* versionStr = (char*)json_convert(versionElement, JSON_STRING);
+        if (versionStr) {
+            fmt_printf("Version as string: %s\n", versionStr);
+            free(versionStr);
+        } 
+        else {
+            fmt_printf("Failed to convert 'version' to string.\n");
+        }
+    }
+
+    // Example: Convert the 'supports_unicode' element to a string
+    JsonElement* unicodeElement = json_get_element(jsonElement, "supports_unicode");
+    if (unicodeElement) {
+        char* unicodeStr = (char*)json_convert(unicodeElement, JSON_STRING);
+        if (unicodeStr) {
+            fmt_printf("Supports Unicode as string: %s\n", unicodeStr);
+            free(unicodeStr);
+        } 
+        else {
+            fmt_printf("Failed to convert 'supports_unicode' to string.\n");
+        }
+    }
+
+    // Example: Convert the 'budget' in 'additional_info' to a string
+    JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+    if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+        JsonElement* budgetElement = json_get_element(additionalInfo, "budget");
+        if (budgetElement) {
+            char* budgetStr = (char*)json_convert(budgetElement, JSON_STRING);
+            if (budgetStr) {
+                fmt_printf("Budget as string: %s\n", budgetStr);
+                free(budgetStr);
+            } 
+            else {
+                fmt_printf("Failed to convert 'budget' to string.\n");
+            }
+        }
+    }
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+```
+
+## Example 26 : read json file and convert data then write to file with `json_convert` and `json_write_to_file`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+
+    // Convert the 'version' element to a string and update the JSON structure
+    JsonElement* versionElement = json_get_element(jsonElement, "version");
+    if (versionElement) {
+        char* versionStr = (char*)json_convert(versionElement, JSON_STRING);
+        if (versionStr) {
+            JsonElement* newVersionElement = json_create(JSON_STRING);
+            newVersionElement->value.string_val = versionStr;
+            json_set_element(jsonElement, "version", newVersionElement);
+        }
+    }
+
+    // Convert the 'budget' in 'additional_info' to a string and update the JSON structure
+    JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+    if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+        JsonElement* budgetElement = json_get_element(additionalInfo, "budget");
+        if (budgetElement) {
+            char* budgetStr = (char*)json_convert(budgetElement, JSON_STRING);
+            if (budgetStr) {
+                JsonElement* newBudgetElement = json_create(JSON_STRING);
+                newBudgetElement->value.string_val = budgetStr;
+                json_set_element(additionalInfo, "budget", newBudgetElement);
+            }
+        }
+    }
+
+    if (!json_write_to_file(jsonElement, "./sources/modified_json.json")) {
+        fmt_printf("Failed to write modified JSON to file.\n");
+    }
+    else {
+        fmt_printf("Modified JSON successfully written to './sources/modified_json.json'.\n");
+    }
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+
+```
+
+## Example 27 : convert any kind of data types to an other data with `json_convert`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+
+    JsonElement* versionElement = json_get_element(jsonElement, "version");
+    if (versionElement) {
+        JsonElement* versionStrElement = (JsonElement*)json_convert(versionElement, JSON_STRING);
+        json_set_element(jsonElement, "version", versionStrElement);
+    }
+
+    // Convert unicode_sample string to an array and update JSON
+    JsonElement* unicodeElement = json_get_element(jsonElement, "unicode_sample");
+    if (unicodeElement) {
+        JsonElement* unicodeArray = (JsonElement*)json_convert(unicodeElement, JSON_ARRAY);
+        json_set_element(jsonElement, "unicode_sample", unicodeArray);
+    }
+
+    // Convert supports_unicode boolean to an object and update JSON
+    JsonElement* supportsUnicodeElement = json_get_element(jsonElement, "supports_unicode");
+    if (supportsUnicodeElement) {
+        JsonElement* supportsUnicodeObj = (JsonElement*)json_convert(supportsUnicodeElement, JSON_OBJECT);
+        json_set_element(jsonElement, "supports_unicode", supportsUnicodeObj);
+    }
+
+    // Convert additional_info object to an array and update JSON
+    JsonElement* additionalInfoElement = json_get_element(jsonElement, "additional_info");
+    if (additionalInfoElement) {
+        JsonElement* additionalInfoArray = (JsonElement*)json_convert(additionalInfoElement, JSON_ARRAY);
+        json_set_element(jsonElement, "additional_info", additionalInfoArray);
+    }
+    
+    if (!json_write_to_file(jsonElement, "./sources/converted_json.json")) {
+        fmt_printf("Failed to write converted JSON to file.\n");
+    } 
+    else {
+        fmt_printf("Converted JSON successfully written to './sources/converted_json.json'.\n");
+    }
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+```
