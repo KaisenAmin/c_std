@@ -1,9 +1,3 @@
-/**
- * @author Amin Tahmasebi
- * @date 2023 
- * @class Vector
-*/
-
 #ifndef TIME_H
 #define TIME_H
 

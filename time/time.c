@@ -1,14 +1,9 @@
-/**
- * @author Amin Tahmasebi
- * @date 2023 
- * @class Vector
-*/
-
-#include "time.h"
-#include "../fmt/fmt.h"
+#include <string.h>
 #include <time.h>
 #include <stdlib.h>
-#include <string.h>
+#include "../fmt/fmt.h"
+#include "time.h"
+
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>

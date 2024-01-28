@@ -1,13 +1,7 @@
-/**
- * @author Amin Tahmasebi
- * @date 2024
- * @class Algorithm
-*/
-
-#include "algorithm.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "algorithm.h"
 
 static void swap(void *a, void *b, size_t size) {
     // Using a stack-allocated buffer for small elements

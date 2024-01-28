@@ -1,2 +1,0 @@
-Writing to a file: Hello, برنامه نویسان
-More text: This is an example using fmt_fprint

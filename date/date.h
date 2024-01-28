@@ -1,8 +1,9 @@
 #ifndef DATE_H
 #define DATE_H
 
-#include <stdbool.h>
 #include <time.h>
+#include <stdbool.h>
+
 
 typedef enum {
     Gregorian,
