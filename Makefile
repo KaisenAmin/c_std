@@ -8,33 +8,34 @@ INCLUDE_DIRS = -Ialgorithm -Iarray -Ibitset -Iconfig -Icrypto -Icsv -Idate -Ideq
 
 # Source files
 SOURCES = main.c \
-          algorithm/algorithm.c \
-          array/array.c \
-          bitset/bitset.c \
-          config/config.c \
-          crypto/crypto.c \
-          csv/csv.c \
-          date/date.c \
-          deque/deque.c \
-          dir/dir.c \
-          encoding/encoding.c \
-          file_io/file_reader.c \
-          file_io/file_writer.c \
-          fmt/fmt.c \
-          forward_list/forward_list.c \
-          json/json.c \
-          list/list.c \
-          map/map.c \
-          numeric/numeric.c \
-          priority_queue/priority_queue.c \
-          queue/queue.c \
-          span/span.c \
-          stack/stack.c \
-          string/string.c \
-          time/time.c \
-          tuple/tuple.c \
-          vector/vector.c
+		  algorithm/algorithm.c \
+		  array/array.c \
+		  bitset/bitset.c \
+		  config/config.c \
+		  crypto/crypto.c \
+		  csv/csv.c \
+		  date/date.c \
+		  deque/deque.c \
+		  dir/dir.c \
+		  encoding/encoding.c \
+		  file_io/file_reader.c \
+		  file_io/file_writer.c \
+		  fmt/fmt.c \
+		  forward_list/forward_list.c \
+		  json/json.c \
+		  list/list.c \
+		  map/map.c \
+		  numeric/numeric.c \
+		  priority_queue/priority_queue.c \
+		  queue/queue.c \
+		  span/span.c \
+		  stack/stack.c \
+		  string/string.c \
+		  time/time.c \
+		  tuple/tuple.c \
+		  vector/vector.c
 # Remove or correct any other .c files that don't exist
+
 
 # Object files
 OBJECTS = $(SOURCES:.c=.o)
@@ -44,13 +45,17 @@ EXECUTABLE = CStdProject
 
 # Windows-specific adjustments
 ifeq ($(OS),Windows_NT)
-    LDFLAGS += -lAdvapi32
-    ifeq ($(wildcard dir/*.c),)
-        LDFLAGS += -lshlwapi
-    endif
+	LDFLAGS += -lAdvapi32
+	ifeq ($(wildcard dir/*.c),)
+		LDFLAGS += -lshlwapi
+	endif
+	RM = del /Q /F
+else
+	RM = rm -f
 endif
 
 all: $(SOURCES) $(EXECUTABLE)
+	@echo Building...
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $(EXECUTABLE) $(LDFLAGS)
@@ -59,4 +64,4 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
 clean:
-	rm -f $(OBJECTS) $(EXECUTABLE)
+	$(RM) *.o $(EXECUTABLE).exe

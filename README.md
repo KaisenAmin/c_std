@@ -42,23 +42,21 @@ Each module in the project comes with a `.c` source file, a `.h` header file, an
 
 ## Compilation and Execution
 
-To compile and execute modules, a Python script `compile.py` is provided. It offers a cross-platform way to build and run the project.
+This project uses a Makefile for easy compilation and cleaning of modules.
 
-To compile the entire project, use:
+To compile the entire project, simply use:
 ```bash
-python compile.py b
+make
 ```
 
-To compile and run the project, use:
+To clean up the build artifacts and remove the compiled executable, use:
 ```bash
-python compile.py r
+make clean
 ```
-
-This script compiles the project into the `build` directory.
 
 ## Usage
 
-To use a module in your project, include the corresponding header file in your C source files. Example usage:
+To use a module in your project, include the corresponding header file in your C source files. For example, to use the `vector` module:
 
 ```c
 #include "vector.h"
@@ -68,13 +66,7 @@ int main() {
 }
 ```
 
-And compile with the Python script or manually:
-
-```
-python compile.py b
-```
-
-or
+or 
 
 ```
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o your_program your_program.c vector.c
