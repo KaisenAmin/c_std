@@ -10,6 +10,7 @@
 #define JSON_ERROR_UNEXPECTED_TOKEN 2
 #define JSON_ERROR_MEMORY 3
 #define JSON_CREATION_FAILED 4
+
 // JSON data types
 typedef enum {
     JSON_NULL,
@@ -49,13 +50,6 @@ typedef struct {
     int a;
     // Define parsing options here (e.g., strict mode, allow comments)
 } JsonParseOptions;
-
-// Iterator structure for JSON elements
-typedef struct {
-    const JsonElement *current_element; // Pointer to the current JSON element
-    size_t index;                       // Current index in the array or object
-    const JsonElement *parent;          // Pointer to the parent JSON element (array or object)
-} JsonIterator;
 
 // Error handling
 typedef struct {
@@ -103,14 +97,12 @@ JsonElement* json_parse_with_options(const char *json_str, JsonParseOptions opti
 JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data);
 JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data);
 JsonElement* json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data);
-JsonElement* json_iterator_value(const JsonIterator *iterator);
 JsonElement* json_create(JsonType type);
 
 char* json_serialize(const JsonElement *element);
 char* json_format(const JsonElement *element);
-char* json_to_pretty_string(const JsonElement *element, int indent_width);
+char** json_to_string_array(const JsonElement *array, size_t *length);
 
-bool json_iterator_next(JsonIterator *iterator);
 bool json_write_to_file(const JsonElement *element, const char *filename);
 bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element);
 bool json_remove_element(JsonElement *element, const char *key_or_index);
@@ -119,16 +111,11 @@ bool json_compare(const JsonElement *element1, const JsonElement *element2);
 
 void* json_convert(const JsonElement *element, JsonType type);
 void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data);
-
 size_t json_array_size(const JsonElement *array);
 size_t json_object_size(const JsonElement *object);
 
-JsonIterator json_iterator_begin(const JsonElement *element);
-JsonIterator json_iterator_end(const JsonElement *element);
-
 JsonType json_type_of_element(const JsonElement *element);
 JsonError json_last_error();
-
 
 void json_print(const JsonElement* element);
 void json_deallocate(JsonElement *element);

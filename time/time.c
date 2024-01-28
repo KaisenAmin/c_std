@@ -12,6 +12,7 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
+#include <stdint.h> 
 #else 
 #include <sys/time.h>
 #endif 
@@ -388,4 +389,41 @@ void time_deallocate(Time* t) {
         return;
     }
     free(t);
+}
+
+double time_current_time_in_seconds() {
+#if defined(_WIN32) || defined(_WIN64)
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+
+    // Convert the 64-bit FILETIME to a 64-bit integer
+    uint64_t time = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+    // Convert the time from 100-nanosecond intervals to seconds and adjust for the epoch difference
+    return (double)(time / 10000000.0) - 11644473600.0;
+#else 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000.0;
+#endif 
+}
+
+double time_current_time_in_microseconds() {
+#if defined(_WIN32) || defined(_WIN64)
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+
+    // Convert the 64-bit FILETIME to a 64-bit integer
+    uint64_t time = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+    // Convert the time from 100-nanosecond intervals to microseconds and adjust for the epoch difference
+    // 10 microseconds = 1 100-nanosecond interval
+    return (double)(time / 10.0) - 11644473600000000.0;
+#else 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    // Return the time in microseconds
+    return (double)(tv.tv_sec) * 1000000.0 + (double)(tv.tv_usec);
+#endif 
 }

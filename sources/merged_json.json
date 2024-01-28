@@ -5,6 +5,8 @@
     "name": "amin tahmasebi",
     "started": "2023-01-15"
   },
+  "address": { "city": "New York", "street": "123 Main St", "zip": null },
+  "age": 30,
   "ascii_sample": "Hello, World!",
   "categories": [
     {
@@ -44,8 +46,12 @@
       "name": "Movies"
     }
   ],
+  "hobbies": ["reading", "cycling", "photography"],
+  "is_student": false,
   "library": "JSON Test Library",
+  "name": "John Doe",
   "notes": null,
+  "scores": [95, 85, 78],
   "supports_unicode": true,
   "unicode_sample": "こんにちは世界 (Hello World in Japanese)",
   "version": 1

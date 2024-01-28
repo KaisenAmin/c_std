@@ -40,6 +40,9 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 - `int time_second(const Time* t)`: Returns the second part of a Time object.
 - `int time_secs_to(Time* from, Time* to)`: Calculates the difference in seconds between two Time objects.
 - `bool time_set_hms(Time *t, int h, int m, int s, int ms)`: Sets the hour, minute, second, and millisecond values of a Time object.
+
+- `double time_current_time_in_seconds` : get current time in seconds;
+- `double time_current_time_in_microseconds` : get current time in microseconds.
 - `char* time_to_string(const Time* t)`: Converts a Time object to a string format.
 - `Time* time_current_time(void)`: Gets the current system time.
 - `Time* time_from_msecs_since_start_of_day(int msecs)`: Creates a Time object from milliseconds since the start of the day.
@@ -222,4 +225,18 @@ int main() {
     time_deallocate(t13);
     return 0;
 }    
+```
+
+## Example 11 : get current time in seconds and microseconds with `time_current_time_in_seconds` and `time_current_time_in_microsecds`
+
+```c
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    fmt_printf("Current Time in seconds %f\n", time_current_time_in_seconds());
+    fmt_printf("Current Time in msec %f\n", time_current_time_in_microseconds());
+
+    return 0;
+}
 ```

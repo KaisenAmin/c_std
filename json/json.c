@@ -13,6 +13,10 @@ static JsonElement* parse_boolean(JsonParserState* state);
 static JsonElement* parser_internal(JsonParserState* state);
 static JsonElement* parse_object(JsonParserState* state);
 static void json_serialize_internal(const JsonElement* element, String* str);
+static bool json_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element);
+static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element);
+
+static JsonError last_error = {0, ""};
 
 static void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
@@ -45,7 +49,7 @@ static void json_print_internal(const JsonElement* element, int indent) {
             if (!first) {
                 fmt_printf("\n");
             }
-            print_indent(indent);
+            print_indent(indent - 2);
             fmt_printf("}");
             break;
         case JSON_ARRAY:
@@ -58,7 +62,7 @@ static void json_print_internal(const JsonElement* element, int indent) {
                 }
                 fmt_printf("\n");
             }
-            print_indent(indent);
+            print_indent(indent - 2);
             fmt_printf("]");
             break;
         case JSON_STRING:
@@ -106,6 +110,34 @@ void json_deallocate(JsonElement *element) {
             break;
     }
     free(element);
+}
+
+static bool json_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
+    MapIterator it = map_begin(object->value.object_val);
+    MapIterator end = map_end(object->value.object_val);
+
+    while (it.node != end.node) {
+        JsonElement* current_element = (JsonElement*)it.node->value;
+        if (predicate(current_element, user_data)) {
+            *found_element = current_element;
+            return true;
+        }
+        map_iterator_increment(&it);
+    }
+
+    return false;
+}
+
+static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
+    for (size_t i = 0; i < vector_size(array->value.array_val); ++i) {
+        JsonElement* current_element = *(JsonElement**)vector_at(array->value.array_val, i);
+        if (predicate(current_element, user_data)) {
+            *found_element = current_element;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static void json_element_deallocator(void* data) {
@@ -187,15 +219,15 @@ static void next_token(JsonParserState* state) {
 
 static JsonElement* parse_array(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_ARRAY_START) {
-        snprintf(state->error.message, sizeof(state->error.message), "Expected start of array at position %zu", state->position);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Expected start of array at position %zu", state->position);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
     JsonElement* array_element = json_create(JSON_ARRAY);
     if (!array_element) {
-        snprintf(state->error.message, sizeof(state->error.message), "Memory allocation failed for array at position %zu", state->position);
-        state->error.code = JSON_ERROR_MEMORY;
+        snprintf(last_error.message, sizeof(last_error.message), "Memory allocation failed for array at position %zu", state->position);
+        last_error.code = JSON_ERROR_MEMORY;
         return NULL;
     }
     next_token(state);
@@ -205,8 +237,8 @@ static JsonElement* parse_array(JsonParserState* state) {
             next_token(state);
         }
         else if (state->current_token.type == JSON_TOKEN_EOF) {
-            snprintf(state->error.message, sizeof(state->error.message), "Unexpected end of input in array at position %zu", state->position);
-            state->error.code = JSON_ERROR_SYNTAX;
+            snprintf(last_error.message, sizeof(last_error.message), "Unexpected end of input in array at position %zu", state->position);
+            last_error.code = JSON_ERROR_SYNTAX;
             json_deallocate(array_element);
             return NULL;
         }
@@ -225,8 +257,8 @@ static JsonElement* parse_array(JsonParserState* state) {
 
 static JsonElement* parse_string(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_STRING) {
-        snprintf(state->error.message, sizeof(state->error.message), "Expected string token at position %zu", state->position);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Expected string token at position %zu", state->position);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
     size_t start = state->position;
@@ -234,24 +266,24 @@ static JsonElement* parse_string(JsonParserState* state) {
     while (state->input[state->position] != '\"' && state->input[state->position] != '\0') {
         // Handle escape sequences if needed
         if (state->input[state->position] == '\0') {
-            state->error.code = JSON_ERROR_SYNTAX;
-            snprintf(state->error.message, sizeof(state->error.message), "Unterminated string");
+            last_error.code = JSON_ERROR_SYNTAX;
+            snprintf(last_error.message, sizeof(last_error.message), "Unterminated string");
             return NULL;
         }
         state->position++;
     }
 
     if (state->input[state->position] == '\0') {
-        snprintf(state->error.message, sizeof(state->error.message), "Unterminated string at position %zu", start);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Unterminated string at position %zu", start);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
     size_t length = state->position - start;
     char* str_content = (char*)malloc(length + 1);
     if (!str_content) {
-        snprintf(state->error.message, sizeof(state->error.message), "Memory allocation failed for string at position %zu", start);
-        state->error.code = JSON_ERROR_MEMORY;
+        snprintf(last_error.message, sizeof(last_error.message), "Memory allocation failed for string at position %zu", start);
+        last_error.code = JSON_ERROR_MEMORY;
         return NULL;
     }
 
@@ -261,8 +293,8 @@ static JsonElement* parse_string(JsonParserState* state) {
 
     JsonElement* element = json_create(JSON_STRING);
     if (!element) {
-        snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON string element at position %zu", start);
-        state->error.code = JSON_CREATION_FAILED;
+        snprintf(last_error.message, sizeof(last_error.message), "Failed to create JSON string element at position %zu", start);
+        last_error.code = JSON_CREATION_FAILED;
         free(str_content);
         return NULL;
     }
@@ -273,8 +305,8 @@ static JsonElement* parse_string(JsonParserState* state) {
 
 static JsonElement* parse_number(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_NUMBER) {
-        snprintf(state->error.message, sizeof(state->error.message), "Expected number token at position %zu", state->position);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Expected number token at position %zu", state->position);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
@@ -290,8 +322,8 @@ static JsonElement* parse_number(JsonParserState* state) {
     size_t length = state->position - start;
     char* number_str = (char*)malloc(length + 1);
     if (!number_str) {
-        snprintf(state->error.message, sizeof(state->error.message), "Memory allocation failed for number string at position %zu", start);
-        state->error.code = JSON_ERROR_MEMORY;
+        snprintf(last_error.message, sizeof(last_error.message), "Memory allocation failed for number string at position %zu", start);
+        last_error.code = JSON_ERROR_MEMORY;
         return NULL;
     }
 
@@ -301,8 +333,8 @@ static JsonElement* parse_number(JsonParserState* state) {
     char* endptr;
     double number_double = strtod(number_str, &endptr);
     if (endptr == number_str) {
-        snprintf(state->error.message, sizeof(state->error.message), "Invalid number format at position %zu", start);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Invalid number format at position %zu", start);
+        last_error.code = JSON_ERROR_SYNTAX;
         free(number_str);
         return NULL;
     }
@@ -310,8 +342,8 @@ static JsonElement* parse_number(JsonParserState* state) {
 
     JsonElement* element = json_create(JSON_NUMBER);
     if (!element) {
-        snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON number element at position %zu", start);
-        state->error.code = JSON_CREATION_FAILED; 
+        snprintf(last_error.message, sizeof(last_error.message), "Failed to create JSON number element at position %zu", start);
+        last_error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
 
@@ -321,8 +353,8 @@ static JsonElement* parse_number(JsonParserState* state) {
 
 static JsonElement* parse_null(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_NULL) {
-        snprintf(state->error.message, sizeof(state->error.message), "Expected 'null' token at position %zu", state->position);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Expected 'null' token at position %zu", state->position);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
@@ -330,8 +362,8 @@ static JsonElement* parse_null(JsonParserState* state) {
 
     JsonElement* element = json_create(JSON_NULL);
     if (!element) {
-        snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON null element at position %zu", state->position - 4);
-        state->error.code = JSON_CREATION_FAILED; 
+        snprintf(last_error.message, sizeof(last_error.message), "Failed to create JSON null element at position %zu", state->position - 4);
+        last_error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
     return element;
@@ -339,9 +371,9 @@ static JsonElement* parse_null(JsonParserState* state) {
 
 static JsonElement* parse_boolean(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_BOOLEAN) {
-        snprintf(state->error.message, sizeof(state->error.message),
+        snprintf(last_error.message, sizeof(last_error.message),
                  "Expected boolean token at position %zu", state->position);
-        state->error.code = JSON_ERROR_SYNTAX;
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
@@ -359,15 +391,15 @@ static JsonElement* parse_boolean(JsonParserState* state) {
         boolean_value = false;
     } 
     else {
-        snprintf(state->error.message, sizeof(state->error.message), "Invalid boolean format at position %zu", start);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Invalid boolean format at position %zu", start);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
     JsonElement* element = json_create(JSON_BOOL);
     if (!element) {
-        snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON boolean element at position %zu", start);
-        state->error.code = JSON_CREATION_FAILED; 
+        snprintf(last_error.message, sizeof(last_error.message), "Failed to create JSON boolean element at position %zu", start);
+        last_error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
 
@@ -391,31 +423,31 @@ static JsonElement* parser_internal(JsonParserState* state) {
         case JSON_TOKEN_NULL:
             return parse_null(state);
         default:
-            snprintf(state->error.message, sizeof(state->error.message), "Unexpected token");
-            state->error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            snprintf(last_error.message, sizeof(last_error.message), "Unexpected token");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
             return NULL;
     }
 }
 
 static JsonElement* parse_object(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_OBJECT_START) {
-        snprintf(state->error.message, sizeof(state->error.message), "Expected start of object at position %zu", state->position);
-        state->error.code = JSON_ERROR_SYNTAX;
+        snprintf(last_error.message, sizeof(last_error.message), "Expected start of object at position %zu", state->position);
+        last_error.code = JSON_ERROR_SYNTAX;
         return NULL;
     }
 
     JsonElement* object_element = json_create(JSON_OBJECT);
     if (!object_element) {
-        snprintf(state->error.message, sizeof(state->error.message), "Failed to create JSON object element at position %zu", state->position);
-        state->error.code = JSON_CREATION_FAILED; 
+        snprintf(last_error.message, sizeof(last_error.message), "Failed to create JSON object element at position %zu", state->position);
+        last_error.code = JSON_CREATION_FAILED; 
         return NULL;
     }
     next_token(state);
 
     while (state->current_token.type != JSON_TOKEN_OBJECT_END) {
         if (state->current_token.type != JSON_TOKEN_STRING) {
-            snprintf(state->error.message, sizeof(state->error.message), "Expected string as key in object at position %zu", state->position);
-            state->error.code = JSON_ERROR_SYNTAX;
+            snprintf(last_error.message, sizeof(last_error.message), "Expected string as key in object at position %zu", state->position);
+            last_error.code = JSON_ERROR_SYNTAX;
             json_deallocate(object_element);
             return NULL;
         }
@@ -423,8 +455,8 @@ static JsonElement* parse_object(JsonParserState* state) {
         char* key = parse_string(state)->value.string_val;
         next_token(state);
          if (state->current_token.type != JSON_TOKEN_COLON) {
-            snprintf(state->error.message, sizeof(state->error.message), "Expected colon after key in object at position %zu", state->position);
-            state->error.code = JSON_ERROR_SYNTAX;
+            snprintf(last_error.message, sizeof(last_error.message), "Expected colon after key in object at position %zu", state->position);
+            last_error.code = JSON_ERROR_SYNTAX;
             free(key);
             json_deallocate(object_element);
             return NULL;
@@ -583,13 +615,12 @@ JsonElement* json_parse(const char* json_str) {
 
     // Move to the first token
     next_token(&state); 
-    bool start_object_flag = false;
 
     JsonElement* root = NULL;
 
     if (state.current_token.type == JSON_TOKEN_OBJECT_START) {
         root = parse_object(&state);
-        start_object_flag = true;
+
     } 
     else if (state.current_token.type == JSON_TOKEN_ARRAY_START) {
         root = parse_array(&state);
@@ -606,11 +637,13 @@ JsonElement* json_parse(const char* json_str) {
         return NULL;
     }
 
+    next_token(&state);
+    
     if (state.current_token.type != JSON_TOKEN_EOF) {
-        if (!start_object_flag && state.input[state.position] != '\n') {
-            fmt_fprintf(stderr, "Error: Unexpected data after root element at position %zu. is %c\n", state.position, state.input[state.position]);
-            return NULL;
-        }
+        fmt_fprintf(stderr, "Error: Unexpected data after root element at position %zu. is %c\n", state.position, state.input[state.position]);
+        json_deallocate(root);
+        free(state.input);
+        return NULL;
     }
 
     free(state.input);
@@ -659,7 +692,7 @@ void json_print(const JsonElement* element) {
         fmt_printf("null\n");
         return;
     }
-    json_print_internal(element, 0);
+    json_print_internal(element, 2);
     fmt_printf("\n");
 }
 
@@ -934,4 +967,195 @@ bool json_set_element(JsonElement *element, const char *key_or_index, JsonElemen
             fmt_fprintf(stderr, "Error: Element is not an object or an array in json_set_element.\n");
             return false;
     }
+}
+
+bool json_remove_element(JsonElement *element, const char *key_or_index) {
+    if (!element || !key_or_index) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_remove_element.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_remove_element.\n");
+        last_error.code = JSON_ERROR_NONE;
+        return false;
+    }
+
+    switch (element->type) {
+        // Removing an element from a JSON object
+        case JSON_OBJECT:{
+                char *non_const_key = string_strdup(key_or_index); 
+                if (!non_const_key) {
+                    fmt_fprintf(stderr, "Error: Memory allocation failed in json_remove_element.\n");
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_remove_element.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    return false;
+                }
+                bool result = map_erase(element->value.object_val, non_const_key); // Erase the element with the given key
+                free(non_const_key); 
+                
+                return result; // Return the result of the erase operation
+            }
+            // Removing an element from a JSON array
+        case JSON_ARRAY: {
+                char *end;
+                long index = strtol(key_or_index, &end, 10);
+                if (end == key_or_index || *end != '\0' || index < 0 || (size_t)index >= vector_size(element->value.array_val)) {
+                    fmt_fprintf(stderr, "Error: Invalid index '%s' in json_remove_element.\n", key_or_index);
+                    return false;
+                }
+
+                JsonElement **array_element = vector_at(element->value.array_val, (size_t)index); // Get the element at the specified index
+                json_deallocate(*array_element); 
+                vector_erase(element->value.array_val, (size_t)index, 1); // Erase one element from the vector at the specified index
+                
+                return true;
+            }
+
+        default:
+            fmt_fprintf(stderr, "Error: Element is not an object or an array in json_remove_element.\n");
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Element is not an object or an array in json_remove_element.\n");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            return false;
+    }
+}
+
+JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data) {
+    if (!element || !predicate) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_find.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_find.\n");
+        last_error.code = JSON_ERROR_NONE;
+        return NULL;
+    }
+
+    JsonElement* found_element = NULL;
+
+    switch (element->type) {
+        case JSON_OBJECT:
+            if (json_find_in_object(element, predicate, user_data, &found_element)) {
+                return found_element;
+            }
+            break;
+        case JSON_ARRAY:
+            if (json_find_in_array(element, predicate, user_data, &found_element)) {
+                return found_element;
+            }
+            break;
+        default:
+            fmt_fprintf(stderr, "Error: Element is not an object or an array in json_find.\n");
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Element is not an object or an array in json_find.\n");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            break;
+    }
+
+    return NULL; // No matching element found
+}
+
+JsonError json_last_error() {
+    return last_error;
+}
+
+JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2) {
+    if (!element1 || !element2 || element1->type != JSON_OBJECT || element2->type != JSON_OBJECT) {
+        fmt_fprintf(stderr, "Error: Both elements must be JSON objects in json_merge.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Both elements must be JSON objects in json_merge.\n");
+        last_error.code = JSON_ERROR_NONE;
+        return NULL;
+    }
+
+    JsonElement* merged = json_create(JSON_OBJECT);
+    if (!merged) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in json_merge.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_merge.\n");
+        last_error.code = JSON_ERROR_MEMORY;
+        return NULL;
+    }
+
+    // Insert all elements from the first object into the merged object
+    MapIterator it = map_begin(element1->value.object_val);
+    MapIterator end = map_end(element1->value.object_val);
+    while (it.node != end.node) {
+        char* key = string_strdup((char*)it.node->key);
+        if (!key) {
+            fmt_fprintf(stderr, "Error: Memory allocation failed for key in json_merge.\n");
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for key in json_merge.\n");
+            last_error.code = JSON_ERROR_MEMORY;
+            json_deallocate(merged);
+            return NULL;
+        }
+
+        JsonElement* value_copy = json_deep_copy((JsonElement*)it.node->value);
+        if (!value_copy) {
+            free(key);
+            json_deallocate(merged);
+            return NULL;
+        }
+
+        map_insert(merged->value.object_val, key, value_copy);
+        map_iterator_increment(&it);
+    }
+
+    // Merge elements from the second object
+    it = map_begin(element2->value.object_val);
+    end = map_end(element2->value.object_val);
+    while (it.node != end.node) {
+        char* key = string_strdup((char*)it.node->key);
+        if (!key) {
+            fmt_fprintf(stderr, "Error: Memory allocation failed for key in json_merge (second object).\n");
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for key in json_merge (second object).\n");
+            last_error.code = JSON_ERROR_MEMORY;
+            json_deallocate(merged);
+            return NULL;
+        }
+
+        JsonElement* value_copy = json_deep_copy((JsonElement*)it.node->value);
+        if (!value_copy) {
+            free(key);
+            json_deallocate(merged);
+            return NULL;
+        }
+        map_insert(merged->value.object_val, key, value_copy);
+        map_iterator_increment(&it);
+    }
+
+    return merged;
+}
+
+char** json_to_string_array(const JsonElement *array, size_t *length) {
+    if (!array || array->type != JSON_ARRAY || !length) {
+        fmt_fprintf(stderr, "Error: Invalid input in json_to_string_array.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid input in json_to_string_array.\n");
+        last_error.code = JSON_ERROR_NONE;
+        return NULL;
+    }
+
+    *length = vector_size(array->value.array_val); 
+    if (*length == 0) {
+        fmt_fprintf(stderr, "Error: Size of String array element in json is zero in json_to_string_array\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Size of String array element in json is zero in json_to_string_array\n");
+        last_error.code = JSON_ERROR_NONE;
+        return NULL;
+    }
+
+    char **string_array = malloc(*length * sizeof(char*));
+    if (!string_array) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed in json_to_string_array.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_to_string_array.\n");
+        last_error.code = JSON_ERROR_MEMORY;
+        *length = 0;
+        return NULL;
+    }
+
+    for (size_t i = 0; i < *length; ++i) {
+        JsonElement *element = *(JsonElement**)vector_at(array->value.array_val, i);
+        if (!element || element->type != JSON_STRING) {
+            // If any element is not a string, deallocate and return NULL
+            fmt_fprintf(stderr, "Error: Non-string element found in json_to_string_array at index %zu.\n", i);
+            while (i > 0) {
+                free(string_array[--i]);
+            }
+            free(string_array);
+            *length = 0;
+            return NULL;
+        }
+        string_array[i] = string_strdup(element->value.string_val);
+    }
+
+    return string_array;
 }

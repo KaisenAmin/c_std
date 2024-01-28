@@ -18,6 +18,9 @@ typedef struct {
 
 char* time_to_string(const Time* t);
 
+double time_current_time_in_seconds();
+double time_current_time_in_microseconds();
+
 Time* time_create(int h, int m, int s, int ms);
 Time* time_current_time(void);
 Time* time_from_msecs_since_start_of_day(int msecs);

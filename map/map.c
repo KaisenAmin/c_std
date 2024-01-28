@@ -22,6 +22,7 @@ struct Map {
     size_t size;
 };
 
+
 void map_iterator_increment(MapIterator* it) {
     if (it == NULL) {
         fmt_fprintf(stderr, "Error: Null iterator provided in map_iterator_increment.\n");

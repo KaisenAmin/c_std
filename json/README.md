@@ -29,7 +29,6 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - `json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data)`: Applies a function to each element in a JSON array, creating a new array.
 - `json_serialize(const JsonElement *element)`: Converts a `JsonElement` back into a JSON string.
 - `json_format(const JsonElement *element)`: Formats JSON data for pretty-printing or custom formatting.
-- `json_to_pretty_string(const JsonElement *element, int indent_width)`: Returns a pretty-printed JSON string.
 - `json_write_to_file(const JsonElement *element, const char *filename)`: Writes JSON data to a file.
 - `json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element)`: Sets an element in a JSON object or array.
 - `json_remove_element(JsonElement *element, const char *key_or_index)`: Removes an element from a JSON object or array.
@@ -38,13 +37,12 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - `json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data)`: Applies a reducer function to a JSON array.
 - `json_array_size(const JsonElement *array)`: Returns the size of a JSON array.
 - `json_object_size(const JsonElement *object)`: Returns the number of key-value pairs in a JSON object.
-- `json_iterator_begin(const JsonElement *element)`: Begins iteration over JSON objects and arrays.
-- `json_iterator_end(const JsonElement *element)`: Ends iteration over JSON objects and arrays.
 - `json_type_of_element(const JsonElement *element)`: Returns the type of a given JSON element.
 - `json_last_error()`: Retrieves the last error occurred during JSON operations.
 - `json_print(const JsonElement* element)`: Prints the JSON element.
 - `json_deallocate(JsonElement *element)`: Deallocates a JSON element and its contents.
 - `json_compare(const JsonElement *element1, const JsonElement *element2)`: Compares two JSON elements.
+- `json_to_string_array` : convert array element in json to string array.
 
 ---
 
@@ -647,4 +645,338 @@ with open(json_file_path, 'r') as file:
 
 end = time.time()
 print(f"Python JSON Library Time: {end - start:.8f} seconds")
+```
+
+## Example 16 : Removing an element from json object with `json_remove_element`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString = "{\"name\": \"John Doe\", \"age\": 30, \"email\": \"johndoe@example.com\"}";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        // Remove the 'age' element from the object
+        if (json_remove_element(jsonElement, "age")) {
+            fmt_printf("Age removed successfully.\n");
+        } 
+        else {
+            fmt_printf("Failed to remove 'age' from JSON object.\n");
+        }
+
+        json_print(jsonElement);
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 17 : Removing an element from json Array with `json_remove_element`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString = "[1, 2, 3, 4, 5]";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        // Remove the element at index 1 (the second element)
+        if (json_remove_element(jsonElement, "1")) {
+            fmt_printf("Element at index 1 removed successfully.\n");
+        } 
+        else {
+            fmt_printf("Failed to remove element at index 1 from JSON array.\n");
+        }
+
+        json_print(jsonElement);
+        json_deallocate(jsonElement);
+
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 18: Finding an Element in a JSON Array with `json_find`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+// Predicate function to find the first number greater than a threshold
+bool is_number_greater(const JsonElement* element, void* user_data) {
+    double threshold = *(double*)user_data;
+    return element->type == JSON_NUMBER && element->value.number_val > threshold;
+}
+
+int main() {
+    const char* jsonString = "[1, 20, 3, 40, 5]";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        double threshold = 10.0;
+        JsonElement* foundElement = json_find(jsonElement, is_number_greater, &threshold);
+
+        if (foundElement) {
+            fmt_printf("Found element: %g\n", foundElement->value.number_val);
+        } 
+        else {
+            fmt_printf("No element found greater than %g.\n", threshold);
+        }
+
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 19: Finding an Element in a JSON Object with `json_find`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+// Predicate function to find a string element matching a keyword
+bool is_string_match(const JsonElement* element, void* user_data) {
+    const char* keyword = (const char*)user_data;
+    return element->type == JSON_STRING && strcmp(element->value.string_val, keyword) == 0;
+}
+
+int main() {
+    const char* jsonString = "{\"name\": \"John\", \"age\": 30, \"city\": \"New York\"}";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        const char* keyword = "New York";
+        JsonElement* foundElement = json_find(jsonElement, is_string_match, (void*)keyword);
+
+        if (foundElement) {
+            fmt_printf("Found matching string: %s\n", foundElement->value.string_val);
+        } 
+        else {
+            fmt_printf("No string element found matching '%s'.\n", keyword);
+        }
+
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 20: Finding a Boolean Element in a JSON Object with `json_find`
+
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+// Predicate function to find a boolean element with a specific value
+bool is_boolean_true(const JsonElement* element, void* user_data) {
+    (void)user_data; // Unused parameter
+    return element->type == JSON_BOOL && element->value.bool_val == true;
+}
+
+int main() {
+    const char* jsonString = "{\"name\": \"John\", \"age\": 30, \"is_student\": true, \"employed\": false}";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        JsonElement* foundElement = json_find(jsonElement, is_boolean_true, NULL);
+
+        if (foundElement) {
+            fmt_printf("Found boolean element with value 'true'.\n");
+        } 
+        else {
+            fmt_printf("No boolean element with value 'true' found.\n");
+        }
+
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 21: Manipulating and Serializing a JSON Object
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString = "{\"name\": \"Alice\", \"age\": 25}";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        // Adding a new element
+        JsonElement* newElement = json_create(JSON_STRING);
+        newElement->value.string_val = string_strdup("Engineer");
+        json_set_element(jsonElement, "profession", newElement);
+
+        // Modifying an existing element
+        JsonElement* ageElement = json_get_element(jsonElement, "age");
+        if (ageElement && ageElement->type == JSON_NUMBER) {
+            ageElement->value.number_val = 26; // Updating Alice's age
+        }
+
+        // Removing an element
+        json_remove_element(jsonElement, "name");
+
+        // Serializing the modified JSON object
+        char* serializedJson = json_serialize(jsonElement);
+        if (serializedJson) {
+            fmt_printf("Serialized JSON:\n%s\n", serializedJson);
+            free(serializedJson);
+        } 
+        else {
+            fmt_printf("Failed to serialize JSON element.\n");
+        }
+
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 22 : how to get last_error of json failed parse with `json_last_error`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // Example of an invalid JSON string
+    const char* invalidJsonString = "{invalid json}";
+    JsonElement* jsonElement = json_parse(invalidJsonString);
+
+    if (!jsonElement) {
+        JsonError error = json_last_error();
+        fmt_printf("Failed to parse JSON: Error Code %d, Message: %s\n", error.code, error.message);
+    } 
+    else {
+        // Parsing succeeded (unexpected in this case)
+        fmt_printf("JSON parsed successfully, which is unexpected.\n");
+        json_deallocate(jsonElement);
+    }
+    return 0;
+}
+```
+
+## Example 23 : how to merge 2 json file and the write into file `json_merge`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    JsonElement* json1 = json_read_from_file("./sources/json_modified.json");
+    if (!json1) {
+        fmt_printf("Failed to read or parse json1.json\n");
+        return 1;
+    }
+
+    // Read the second JSON object from file
+    JsonElement* json2 = json_read_from_file("./sources/test_json.json");
+    if (!json2) {
+        fmt_printf("Failed to read or parse json2.json\n");
+        json_deallocate(json1);
+        return 1;
+    }
+
+    // Merge json1 and json2
+    JsonElement* mergedJson = json_merge(json1, json2);
+    if (!mergedJson) {
+        fmt_printf("Failed to merge JSON objects\n");
+        json_deallocate(json1);
+        json_deallocate(json2);
+        return 1;
+    }
+
+    fmt_printf("Merged JSON:\n");
+    json_print(mergedJson);
+
+    if (json_write_to_file(mergedJson, "./sources/merged_json.json")) {
+        fmt_printf("Successfully write merged json into file\n");
+    }
+    else {
+        fmt_printf("Can not write merged json int file\n");
+    }
+
+    json_deallocate(json1);
+    json_deallocate(json2);
+    json_deallocate(mergedJson);
+
+    return 0;
+}
+```
+
+## Example 24 : how to convert array element in json to string_array with `json_to_string_array`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    if (jsonElement) {
+        JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+
+        if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+            JsonElement* contributorsArray = json_get_element(additionalInfo, "contributors");
+
+            if (contributorsArray && contributorsArray->type == JSON_ARRAY) {
+                size_t length = 0;
+                char** contributors = json_to_string_array(contributorsArray, &length);
+
+                if (contributors) {
+                    fmt_printf("Contributors:\n");
+                    for (size_t i = 0; i < length; ++i) {
+                        fmt_printf("  [%zu] %s\n", i, contributors[i]);
+                        free(contributors[i]); // Free each individual string
+                    }
+                    free(contributors); // Free the array itself
+                } 
+                else {
+                    fmt_printf("Failed to convert JSON array to string array.\n");
+                }
+            }
+            else {
+                fmt_printf("Contributors is not an Array\n");
+            }
+        } 
+        else {
+            fmt_printf("The 'contributors' element is not an array or not found.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON file '%s'.\n", jsonFilePath);
+    }
+
+    return 0;
+}
 ```

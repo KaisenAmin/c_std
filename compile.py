@@ -31,7 +31,7 @@ def compile_project(run_after_compile=False):
         # "stack",
         "string",
         "vector",
-        # "time",
+        "time",
         # "date",
         "file_io",
         # "dir",
