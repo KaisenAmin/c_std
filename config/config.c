@@ -1,14 +1,8 @@
-/**
- * @author Amin Tahmasebi
- * @date 2023 
- * @class Config
-*/
+#include <string.h>
 #include "config.h"
 #include "../string/string.h"
 #include "../fmt/fmt.h"
-
 #include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 
 static char *trim_whitespace(char *str) {

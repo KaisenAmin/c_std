@@ -1,5 +1,5 @@
-#ifndef DATE_H
-#define DATE_H
+#ifndef DATE_H_
+#define DATE_H_
 
 #include <time.h>
 #include <stdbool.h>

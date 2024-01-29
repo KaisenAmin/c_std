@@ -1,13 +1,7 @@
-/**
- * @author Amin Tahmasebi
- * @date 2024 
- * @class Numeric
-*/
-
-#include "numeric.h"
 #include <string.h>
+#include "numeric.h"
 #include <stdlib.h>
-#include <stdint.h>
+
 
 void numeric_iota(void* first, const void* last, size_t size, void* element, IncrementFunc func) {
     char* current = (char*)first;

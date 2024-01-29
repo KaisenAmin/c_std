@@ -1380,3 +1380,32 @@ void* json_convert(const JsonElement *element, JsonType type) {
     }
     return NULL;
 }
+
+JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data) {
+    if (!array || array->type != JSON_ARRAY || !map_func) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_map.\n");
+        return NULL;
+    }
+
+    JsonElement* resultArray = json_create(JSON_ARRAY);
+    if (!resultArray) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed for result array in json_map.\n");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < vector_size(array->value.array_val); ++i) {
+        JsonElement* currentElement = *(JsonElement**)vector_at(array->value.array_val, i);
+        JsonElement* transformedElement = map_func(currentElement, user_data);
+
+        if (!transformedElement) {
+            // Handle the case where map_func fails to transform an element
+            fmt_fprintf(stderr, "Error: Transformation failed for an element in json_map.\n");
+            json_deallocate(resultArray);
+            return NULL;
+        }
+
+        vector_push_back(resultArray->value.array_val, &transformedElement);
+    }
+
+    return resultArray;
+}
