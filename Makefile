@@ -64,4 +64,32 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
 clean:
-	$(RM) *.o $(EXECUTABLE).exe
+	-$(RM) main.o
+	-$(RM) algorithm\algorithm.o
+	-$(RM) array\array.o
+	-$(RM) bitset\bitset.o
+	-$(RM) config\config.o
+	-$(RM) crypto\crypto.o
+	-$(RM) csv\csv.o
+	-$(RM) date\date.o
+	-$(RM) deque\deque.o
+	-$(RM) dir\dir.o
+	-$(RM) encoding\encoding.o
+	-$(RM) file_io\file_reader.o
+	-$(RM) file_io\file_writer.o
+	-$(RM) fmt\fmt.o
+	-$(RM) forward_list\forward_list.o
+	-$(RM) json\json.o
+	-$(RM) list\list.o
+	-$(RM) map\map.o
+	-$(RM) numeric\numeric.o
+	-$(RM) priority_queue\priority_queue.o
+	-$(RM) queue\queue.o
+	-$(RM) span\span.o
+	-$(RM) stack\stack.o
+	-$(RM) string\string.o
+	-$(RM) time\time.o
+	-$(RM) tuple\tuple.o
+	-$(RM) vector\vector.o
+	-$(RM) $(EXECUTABLE).exe
+
