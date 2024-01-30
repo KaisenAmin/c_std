@@ -1549,3 +1549,51 @@ int main() {
 }
 ```
 
+## Example 36 : Parsing a Single Number as json 
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString = "42";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        if (jsonElement->type == JSON_NUMBER) {
+            fmt_printf("Parsed JSON number: %f\n", jsonElement->value.number_val);
+        } 
+        else {
+            fmt_printf("Parsed JSON element is not a number.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 37 : Parsing a Single String value as json 
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString = "\"Hello, world!\"";  // JSON string
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement && jsonElement->type == JSON_STRING) {
+        fmt_printf("Parsed JSON string: %s\n", jsonElement->value.string_val);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string or JSON is not a string.\n");
+    }
+
+    json_deallocate(jsonElement);
+    return 0;
+}
+```

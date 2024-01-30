@@ -711,12 +711,17 @@ JsonElement* json_parse(const char* json_str) {
     } 
     else if (state.current_token.type == JSON_TOKEN_ARRAY_START) {
         root = parse_array(&state);
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Root element must be an object or array at position %zu.\n", state.position);
-        free(state.input); 
-        return NULL;
     }
+    else {
+        // Handling JSON as a single value (string, number, boolean, null)
+        root = parser_internal(&state);
+        if (root == NULL) {
+            fmt_fprintf(stderr, "Error: Invalid JSON value at position %zu.\n", state.position);
+            free(state.input);
+            return NULL;
+        }
+    } 
+
 
     if (root == NULL) {
         fmt_fprintf(stderr, "Error while parsing JSON at position %zu: %s\n", state.position, state.error.message);
