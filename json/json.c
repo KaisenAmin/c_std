@@ -1354,7 +1354,7 @@ void* json_convert(const JsonElement *element, JsonType type) {
                     last_error.code = JSON_CREATION_FAILED;
                     fmt_fprintf(stderr, last_error.message);
                     json_deallocate(object);
-                    free(key); // Don't forget to free the key
+                    free(key); 
                     return NULL;
             }
 
@@ -1363,7 +1363,7 @@ void* json_convert(const JsonElement *element, JsonType type) {
                 last_error.code = JSON_CREATION_FAILED;
                 fmt_fprintf(stderr, last_error.message);
                 json_deallocate(object);
-                free(key); // Free the key in case of failure
+                free(key); 
                 return NULL;
             }
 
@@ -1383,29 +1383,73 @@ void* json_convert(const JsonElement *element, JsonType type) {
 
 JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data) {
     if (!array || array->type != JSON_ARRAY || !map_func) {
-        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_map.\n");
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_map. The input must be a JSON array and map_func must be provided.\n");
         return NULL;
     }
 
+    // Create a new JSON array to hold the result
     JsonElement* resultArray = json_create(JSON_ARRAY);
     if (!resultArray) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for result array in json_map.\n");
+        fmt_fprintf(stderr, "Error: Memory allocation failed for the result array in json_map.\n");
         return NULL;
     }
 
     for (size_t i = 0; i < vector_size(array->value.array_val); ++i) {
         JsonElement* currentElement = *(JsonElement**)vector_at(array->value.array_val, i);
+        
+        // Apply the transformation function to the current element
         JsonElement* transformedElement = map_func(currentElement, user_data);
 
+        // Check if the transformation was successful
         if (!transformedElement) {
-            // Handle the case where map_func fails to transform an element
-            fmt_fprintf(stderr, "Error: Transformation failed for an element in json_map.\n");
-            json_deallocate(resultArray);
+            fmt_fprintf(stderr, "Error: Transformation failed for an element at index %zu in json_map.\n", i);
+            // Deallocate previously transformed elements and the result array
+            for (size_t j = 0; j < i; ++j) {
+                JsonElement* previousElement = *(JsonElement**)vector_at(resultArray->value.array_val, j);
+                json_deallocate(previousElement);
+            }
+            vector_deallocate(resultArray->value.array_val);
+            free(resultArray);
             return NULL;
         }
-
         vector_push_back(resultArray->value.array_val, &transformedElement);
     }
+    return resultArray;
+}
 
+JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data) {
+    if (!array || array->type != JSON_ARRAY || !predicate) {
+        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_filter. The input must be a JSON array and predicate must be provided.\n");
+        return NULL;
+    }
+
+    JsonElement* resultArray = json_create(JSON_ARRAY);
+    if (!resultArray) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed for the result array in json_filter.\n");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < vector_size(array->value.array_val); ++i) {
+        JsonElement* currentElement = *(JsonElement**)vector_at(array->value.array_val, i);
+
+        // Apply the predicate function to the current element
+        if (predicate(currentElement, user_data)) {
+            // If predicate returns true, add the element to the result array
+            JsonElement* elementCopy = json_deep_copy(currentElement);
+            if (!elementCopy) {
+                // Handle memory allocation failure
+                fmt_fprintf(stderr, "Error: Memory allocation failed during deep copy in json_filter.\n");
+                // Deallocate previously added elements and the result array
+                for (size_t j = 0; j < vector_size(resultArray->value.array_val); ++j) {
+                    JsonElement* previousElement = *(JsonElement**)vector_at(resultArray->value.array_val, j);
+                    json_deallocate(previousElement);
+                }
+                vector_deallocate(resultArray->value.array_val);
+                free(resultArray);
+                return NULL;
+            }
+            vector_push_back(resultArray->value.array_val, &elementCopy);
+        }
+    }
     return resultArray;
 }

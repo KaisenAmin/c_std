@@ -1133,3 +1133,192 @@ int main() {
     return 0;
 }
 ```
+
+## Example 28: Doubling Numbers in a JSON Array
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+// Function to double the number in a JSON element
+JsonElement* double_number(const JsonElement* element, void* user_data) {
+    (void)user_data;
+    if (element->type == JSON_NUMBER) {
+        JsonElement* newElement = json_create(JSON_NUMBER);
+        newElement->value.number_val = element->value.number_val * 2;
+        return newElement;
+    }
+    return json_deep_copy(element); // Return a copy of the element if it's not a number
+}
+
+int main() {
+    const char* jsonString = "[1, 2, 3, 4, 5]";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        JsonElement* doubledArray = json_map(jsonElement, double_number, NULL);
+        if (doubledArray) {
+            fmt_printf("Doubled numbers array:\n");
+            json_print(doubledArray);
+            json_deallocate(doubledArray);
+        } 
+        else {
+            fmt_printf("Failed to map the JSON array.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 29: Converting Numbers to Strings in a JSON Array
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+// Function to convert a number to a string
+JsonElement* number_to_string(const JsonElement* element, void* user_data) {
+    (void)user_data;
+    if (element->type == JSON_NUMBER) {
+        char buffer[64];
+        snprintf(buffer, sizeof(buffer), "%g", element->value.number_val);
+        JsonElement* stringElement = json_create(JSON_STRING);
+        stringElement->value.string_val = string_strdup(buffer);
+        return stringElement;
+    }
+    return json_deep_copy(element); // Return a copy of the element if it's not a number
+}
+
+int main() {
+    const char* jsonString = "[1, 2, 3.5, 4, 5]";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        JsonElement* stringArray = json_map(jsonElement, number_to_string, NULL);
+        if (stringArray) {
+            fmt_printf("Numbers converted to strings:\n");
+            json_print(stringArray);
+            json_deallocate(stringArray);
+        } 
+        else {
+            fmt_printf("Failed to map the JSON array.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 30: Changing Boolean Values in a JSON Array
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+// Function to invert boolean values
+JsonElement* invert_boolean(const JsonElement* element, void* user_data) {
+    (void)user_data;
+    if (element->type == JSON_BOOL) {
+        JsonElement* newElement = json_create(JSON_BOOL);
+        newElement->value.bool_val = !element->value.bool_val;
+        return newElement;
+    }
+    return json_deep_copy(element); // Return a copy of the element if it's not a boolean
+}
+
+int main() {
+    const char* jsonString = "[true, false, true, false]";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement) {
+        JsonElement* invertedArray = json_map(jsonElement, invert_boolean, NULL);
+        if (invertedArray) {
+            fmt_printf("Inverted boolean array:\n");
+            json_print(invertedArray);
+            json_deallocate(invertedArray);
+        } 
+        else {
+            fmt_printf("Failed to map the JSON array.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+    return 0;
+}
+```
+
+## Example 31 : how to filter element in json file and then write to file `json_filter`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+// Predicate function to check if a book is available
+bool is_book_available(const JsonElement* element, void* user_data) {
+    (void)user_data; // Explicitly mark user_data as unused
+    if (element->type == JSON_OBJECT) {
+        JsonElement* available = json_get_element(element, "available");
+        return available && available->type == JSON_BOOL && available->value.bool_val;
+    }
+    return false; // Not a JSON object or not an available book
+}
+
+int main() {
+    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+
+    if (jsonElement) {
+        JsonElement* categories = json_get_element(jsonElement, "categories");
+        if (categories && categories->type == JSON_ARRAY) {
+            JsonElement* booksCategory = json_get_element(categories, "0");
+            if (booksCategory && booksCategory->type == JSON_OBJECT) {
+                JsonElement* items = json_get_element(booksCategory, "items");
+
+                if (items && items->type == JSON_ARRAY) {
+                    JsonElement* availableBooks = json_filter(items, is_book_available, NULL);
+                    if (availableBooks) {
+                        fmt_printf("Available books:\n");
+                        json_print(availableBooks);
+
+                        json_set_element(booksCategory, "items", availableBooks);
+
+                        // Write the updated JSON element to a file
+                        if (json_write_to_file(jsonElement, "./sources/filtered_books.json")) {
+                            fmt_printf("Filtered JSON successfully written to './sources/filtered_books.json'.\n");
+                        } 
+                        else {
+                            fmt_printf("Failed to write filtered JSON to file.\n");
+                        }
+                    } 
+                    else {
+                        fmt_printf("Failed to filter available books.\n");
+                    }
+                } 
+                else {
+                    fmt_printf("Items in 'Books' category are not an array or not found.\n");
+                }
+            } 
+            else {
+                fmt_printf("Books category not found.\n");
+            }
+        } 
+        else {
+            fmt_printf("'categories' element is not an array or not found.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON file './sources/json_example.json'.\n");
+    }
+    return 0;
+}
+```
