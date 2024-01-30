@@ -1322,3 +1322,230 @@ int main() {
     return 0;
 }
 ```
+
+## Example 32 : how to sum up the numbers with arrays element in json using `json_reduce`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+// Reduction function to sum numbers
+void* sum_numbers(const JsonElement* element, void* accumulator, void* user_data) {
+    (void)user_data;
+    if (element->type == JSON_NUMBER) {
+        double* sum = (double*)accumulator;
+        *sum += element->value.number_val;
+    }
+    return accumulator;
+}
+
+int main() {
+    // Assume jsonElement is initialized by parsing the JSON data
+    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+
+    if (jsonElement) {
+        // Access the 'additional_info' object
+        JsonElement* additionalInfo = json_get_element(jsonElement, "additional_info");
+        if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
+            // Access the 'numbers' array within 'additional_info'
+            JsonElement* numbersArray = json_get_element(additionalInfo, "numbers");
+            if (numbersArray && numbersArray->type == JSON_ARRAY) {
+                double initial_value = 0.0;
+                double* sum = (double*)json_reduce(numbersArray, sum_numbers, &initial_value, NULL);
+                if (sum) {
+                    fmt_printf("Sum of numbers in the array: %f\n", *sum);
+                } 
+                else {
+                    fmt_printf("Failed to calculate sum.\n");
+                }
+            } 
+            else {
+                fmt_printf("'numbers' array not found or not an array.\n");
+            }
+        } 
+        else {
+            fmt_printf("'additional_info' object not found or not an object.\n");
+        }
+
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON file.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 33 : concatenates names with `json_reduce`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "string/string.h"
+#include <string.h>
+#include <stdlib.h>
+
+
+// Reduction function to concatenate strings
+void* concatenate_strings(const JsonElement* element, void* accumulator, void* user_data) {
+    (void)user_data;
+    if (element->type == JSON_STRING) {
+        char** combined = (char**)accumulator;
+        if (*combined == NULL) {
+            // Allocate memory for the first time
+            *combined = string_strdup(element->value.string_val);
+        } 
+        else {
+            // Calculate new size and reallocate memory
+            size_t new_size = strlen(*combined) + strlen(element->value.string_val) + 2; // +2 for comma and null terminator
+            char* new_str = (char*)realloc(*combined, new_size);
+
+            if (new_str) {
+                strcat(new_str, ",");
+                strcat(new_str, element->value.string_val);
+                *combined = new_str;
+            }
+        }
+    }
+    return accumulator;
+}
+
+int main() {
+    JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
+
+    JsonElement *addinfo = json_get_element(jsonElement, "additional_info");
+    if (addinfo && addinfo->type == JSON_OBJECT) {
+        JsonElement* contributorsArray = json_get_element(addinfo, "contributors");
+        if (contributorsArray && contributorsArray->type == JSON_ARRAY) {
+            char* concatenatedNames = NULL;
+            json_reduce(contributorsArray, concatenate_strings, &concatenatedNames, NULL);
+
+            if (concatenatedNames) {
+                fmt_printf("Concatenated names: %s\n", concatenatedNames);
+                free(concatenatedNames);
+            } 
+            else {
+                fmt_printf("Failed to concatenate names.\n");
+            }
+        } 
+        else {
+            fmt_printf("Contributors array not found or not an array.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON file.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 34 : how to format data with `json_format`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "string/string.h"
+#include <stdlib.h>
+
+int main() {
+    JsonElement* jsonObject = json_create(JSON_OBJECT);
+    JsonElement* nameElement = json_create(JSON_STRING);
+
+    nameElement->value.string_val = string_strdup("John Doe");
+    json_set_element(jsonObject, "name", nameElement);
+
+    JsonElement* ageElement = json_create(JSON_NUMBER);
+    ageElement->value.number_val = 30;
+    json_set_element(jsonObject, "age", ageElement);
+
+    JsonElement* isStudentElement = json_create(JSON_BOOL);
+    isStudentElement->value.bool_val = true;
+    json_set_element(jsonObject, "isStudent", isStudentElement);
+
+    char* formattedJson = json_format(jsonObject);
+    if (formattedJson) {
+        fmt_printf("Formatted JSON:\n%s\n", formattedJson);
+        free(formattedJson);
+    } 
+    else {
+        fmt_printf("Failed to format JSON.\n");
+    }
+
+    json_deallocate(jsonObject);
+    return 0;
+}
+```
+
+## Example 35 : how to create a nested JSON structure with various data types, including arrays and objects.format this with `json_format`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "string/string.h"
+#include <stdlib.h>
+
+int main() {
+    JsonElement* jsonObject = json_create(JSON_OBJECT);
+    JsonElement* nameElement = json_create(JSON_STRING);
+
+    nameElement->value.string_val = string_strdup("John Doe");
+    json_set_element(jsonObject, "name", nameElement);
+
+    // Add a number element
+    JsonElement* ageElement = json_create(JSON_NUMBER);
+    ageElement->value.number_val = 30;
+    json_set_element(jsonObject, "age", ageElement);
+
+    // Add a boolean element
+    JsonElement* isStudentElement = json_create(JSON_BOOL);
+    isStudentElement->value.bool_val = true;
+    json_set_element(jsonObject, "isStudent", isStudentElement);
+
+    // Add an array element
+    JsonElement* hobbiesArray = json_create(JSON_ARRAY);
+    JsonElement* hobby1 = json_create(JSON_STRING);
+    hobby1->value.string_val = string_strdup("Reading");
+    vector_push_back(hobbiesArray->value.array_val, &hobby1);
+    JsonElement* hobby2 = json_create(JSON_STRING);
+    hobby2->value.string_val = string_strdup("Hiking");
+    vector_push_back(hobbiesArray->value.array_val, &hobby2);
+    json_set_element(jsonObject, "hobbies", hobbiesArray);
+
+    // Add a nested object
+    JsonElement* addressObject = json_create(JSON_OBJECT);
+    JsonElement* streetElement = json_create(JSON_STRING);
+
+    streetElement->value.string_val = string_strdup("123 Main St");
+    json_set_element(addressObject, "street", streetElement);
+
+    JsonElement* cityElement = json_create(JSON_STRING);
+    cityElement->value.string_val = string_strdup("Anytown");
+    json_set_element(addressObject, "city", cityElement);
+    json_set_element(jsonObject, "address", addressObject);
+
+    char* formattedJson = json_format(jsonObject);
+    if (formattedJson) {
+        fmt_printf("Formatted JSON:\n%s\n", formattedJson);
+
+        const char* filename = "./sources/output_json.json";
+        if (json_write_to_file(jsonObject, filename)) {
+            fmt_printf("JSON successfully written to '%s'.\n", filename);
+        } 
+        else {
+            fmt_printf("Failed to write JSON to file '%s'.\n", filename);
+        }
+
+        free(formattedJson);
+    } 
+    else {
+        fmt_printf("Failed to format JSON.\n");
+    }
+
+    json_deallocate(jsonObject);
+    return 0;
+}
+```
+

@@ -10,6 +10,7 @@
 #define JSON_ERROR_UNEXPECTED_TOKEN 2
 #define JSON_ERROR_MEMORY 3
 #define JSON_CREATION_FAILED 4
+#define JSON_TRANSFORM_FAILED 5
 
 // JSON data types
 typedef enum {
