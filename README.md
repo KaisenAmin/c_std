@@ -42,35 +42,77 @@ Each module in the project comes with a `.c` source file, a `.h` header file, an
 
 ## Compilation and Execution
 
-This project uses a Makefile for easy compilation and cleaning of modules.
+Certainly! Based on your description and the provided Python script, it seems you prefer a more streamlined compilation process using a custom Python script (`compile.py`) rather than traditional makefiles. I'll update the compilation section of your README to reflect this preference.
 
-To compile the entire project, simply use:
+Here's the revised compilation and execution section of your README:
+
+---
+
+## Compilation and Execution
+
+This project utilizes a Python script (`compile.py`) for easy compilation of modules, making the build process straightforward and efficient.
+
+### Requirements
+- Python 3.10 or higher
+- GCC compiler (ensure it's added to your system's PATH)
+
+### Using the compile.py Script
+
+To compile the entire project, simply run the `compile.py` script with the `b` argument:
+
 ```bash
-make
+python compile.py b
 ```
 
-To clean up the build artifacts and remove the compiled executable, use:
+This command compiles all source files and produces an executable in the `./build` directory.
+
+### Running the Compiled Program
+
+To compile and immediately run the compiled program, use the `r` argument:
+
 ```bash
-make clean
+python compile.py r
 ```
 
-## Usage
+### Adding New Modules
 
-To use a module in your project, include the corresponding header file in your C source files. For example, to use the `vector` module:
+If you add new modules or directories containing `.c` files, simply include their paths in the `source_directories` list within the `compile.py` script. The script automatically finds and compiles all `.c` files in the specified directories.
 
-```c
-#include "vector.h"
+### Streamlined Build Process
 
-int main() {
-    // Your code here
-}
-```
+The use of `compile.py` eliminates the need for traditional makefiles or manual compilation commands, providing a simple and unified build process. The script handles dependencies, includes, and linking, ensuring a hassle-free compilation experience.
 
-or 
 
-```
+## Manual Compilation Using GCC
+
+For developers who prefer manual compilation or need to integrate the project into other build systems, the source files can be compiled using the GCC command line. While the `compile.py` script is recommended for its convenience and automated handling of file dependencies, manual compilation offers flexibility for advanced use cases.
+
+### Requirements for Manual Compilation
+- GCC compiler (ensure it's added to your system's PATH)
+- C17 standard support in GCC
+
+### Compiling with GCC
+
+To manually compile a specific module or your entire project, you can use the GCC command with the `-std=c17` flag to ensure compliance with the C17 standard. Here's an example command to compile a program with the `vector` module:
+
+```bash
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o your_program your_program.c vector.c
 ```
+
+In this command:
+- `-std=c17` specifies the use of the C17 standard.
+- `-O3`, `-march=native`, `-flto`, and `-funroll-loops` are optimization flags.
+- `-Wall`, `-Wextra`, and `-pedantic` enable additional warnings for better code quality.
+- `-s` strips the binary for a smaller executable size.
+- `your_program.c` is your main C source file.
+- `vector.c` is the source file for the `vector` module (include other `.c` files as needed).
+- `your_program` is the output executable file.
+
+### Customizing the Compilation
+
+You can modify the GCC command to suit your specific requirements, such as including additional modules, linking libraries, or adjusting optimization levels. This approach offers full control over the compilation process, allowing you to tailor it to your project's needs.
+
+---
 
 ## Individual READMEs for Libraries
 
