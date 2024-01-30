@@ -234,26 +234,27 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
     vec->size++;
 }
 
-void vector_reserve(Vector *vec, size_t size) {
+bool vector_reserve(Vector *vec, size_t size) {
     if (!vec) {
         fmt_fprintf(stderr, "Error: Vector is NULL in vector_reserve.\n");
-        return; // Handle the error as per your application's needs
+        return false; 
     }
     if (vec->capacitySize >= size) {
-        return; // No need to reserve if the capacity is already sufficient
+        return true; 
     }
 
-    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize); // Allocate new space from the memory pool
+    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
     if (!newItems) { 
         fmt_fprintf(stderr, "Error: Failed to allocate memory for vector_reserve.\n");
-        return; // Handle allocation failure, maybe by resizing the pool or another appropriate action
+        return false;
     }
     if (vec->size > 0) {
-        memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items to the new space if there are any
+        memcpy(newItems, vec->items, vec->size * vec->itemSize);
     }
 
     vec->items = newItems;
     vec->capacitySize = size;
+    return true;
 }
 
 void vector_resize(Vector *vec, size_t size) {
@@ -355,44 +356,50 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
     vec->size++;
 }
 
-void vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
+bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
     if (!vec) {
         fmt_fprintf(stderr, "Error: Vector is NULL in vector_emplace_back.\n");
-        return; // Handle the error as per your application's needs
+        return false; // Indicate failure
     }
     if (itemSize != vec->itemSize) {
         fmt_fprintf(stderr, "Error: Invalid item size in vector_emplace_back.\n");
-        return; // Handle the error as per your application's needs
+        return false; // Indicate failure
     }
     if (vec->size >= vec->capacitySize) {
-        vector_reserve(vec, vec->capacitySize * 2); // Use the modified version
+        if (!vector_reserve(vec, vec->capacitySize * 2)) {
+            return false; // vector_reserve failed, indicate failure
+        }
     }
 
     memcpy((char *)vec->items + vec->size * vec->itemSize, item, vec->itemSize);
     vec->size++;
+    return true; // Indicate success
 }
 
-void vector_push_back(Vector *vec, const void *item) {
+bool vector_push_back(Vector *vec, const void *item) {
     if (!vec) {
         fmt_fprintf(stderr, "Error: Vector is NULL in vector_push_back.\n");
-        return; // Handle the error as per your application's needs
+        return false; // Indicate failure
     }
+
     if (vec->size >= vec->capacitySize) {
         size_t newCapacity = vec->capacitySize * 2; // Example growth strategy
         // Allocate new space from the memory pool
         void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
         if (!newItems) {
             fmt_fprintf(stderr, "Error: Failed to allocate memory in vector_push_back.\n");
-            return; // Handle allocation failure, maybe by resizing the pool or another appropriate action
+            return false; // Indicate failure
         }
 
         memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items to the new space
         vec->items = newItems;
         vec->capacitySize = newCapacity;
     }
+
     // Proceed with adding the new item
     memcpy((char *)vec->items + (vec->size * vec->itemSize), item, vec->itemSize);
     vec->size++;
+    return true; // Indicate success
 }
 
 void vector_deallocate(Vector *vec) {

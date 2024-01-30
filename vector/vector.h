@@ -37,18 +37,18 @@ bool vector_is_not_equal(const Vector* vec1, const Vector* vec2);
 bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2);
 bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2);
 bool vector_is_empty(Vector* vec);
+bool vector_reserve(Vector* vec, size_t size);
+bool vector_push_back(Vector* vec, const void* item);
+bool vector_emplace_back(Vector *vec, void *item, size_t itemSize);
 
 void vector_erase(Vector* vec, size_t pos, size_t len);
 void vector_insert(Vector* vec, size_t pos, void* item);
-void vector_reserve(Vector* vec, size_t size);
 void vector_resize(Vector* vec, size_t size);
 void vector_shrink_to_fit(Vector* vec);
 void vector_clear(Vector* vec);
 void vector_swap(Vector* vec1, Vector* vec2);
 void vector_assign(Vector* vec, size_t pos, void* item);
 void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize);
-void vector_emplace_back(Vector *vec, void *item, size_t itemSize);
-void vector_push_back(Vector* vec, const void* item);
 void vector_deallocate(Vector *vec);
 
 const void* vector_cbegin(Vector* vec);

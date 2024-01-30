@@ -855,57 +855,69 @@ JsonElement* json_deep_copy(const JsonElement *element) {
         return NULL;
     }
 
+    MapIterator it, end;
+
     switch (element->type) {
         case JSON_NULL:
-            // Nothing more to do for null
+            // No additional data to copy for null type
             break;
+
         case JSON_BOOL:
             copy->value.bool_val = element->value.bool_val;
             break;
+
         case JSON_NUMBER:
             copy->value.number_val = element->value.number_val;
             break;
+
         case JSON_STRING:
-            copy->value.string_val = string_strdup(element->value.string_val);
+            copy->value.string_val = strdup(element->value.string_val);
             if (!copy->value.string_val) {
                 fmt_fprintf(stderr, "Error: Memory allocation failed for string in json_deep_copy.\n");
                 json_deallocate(copy);
                 return NULL;
             }
             break;
+
         case JSON_ARRAY:
             for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
                 JsonElement *item = json_deep_copy(*(JsonElement **)vector_at(element->value.array_val, i));
                 if (!item) {
+                    json_deallocate(copy); // Deallocate the partially copied array
+                    return NULL;
+                }
+
+                if (!vector_push_back(copy->value.array_val, &item)) {
+                    json_deallocate(item);
                     json_deallocate(copy);
                     return NULL;
                 }
-                vector_push_back(copy->value.array_val, &item);
             }
             break;
-        case JSON_OBJECT: {
-                MapIterator it = map_begin(element->value.object_val);
-                MapIterator end = map_end(element->value.object_val);
-                while (it.node != end.node) {
-                    char *key = string_strdup((char *)it.node->key);
-                    if (!key) {
-                        fmt_fprintf(stderr, "Error: Memory allocation failed for object key in json_deep_copy.\n");
-                        json_deallocate(copy);
-                        return NULL;
-                    }
 
-                    JsonElement *val_copy = json_deep_copy((JsonElement *)it.node->value);
-                    if (!val_copy) {
-                        free(key);
-                        json_deallocate(copy);
-                        return NULL;
-                    }
-
-                    map_insert(copy->value.object_val, key, val_copy);
-                    map_iterator_increment(&it);
+        case JSON_OBJECT:
+            it = map_begin(element->value.object_val);
+            end = map_end(element->value.object_val);
+            while (it.node != end.node) {
+                char *key = strdup((char *)it.node->key);
+                if (!key) {
+                    fmt_fprintf(stderr, "Error: Memory allocation failed for object key in json_deep_copy.\n");
+                    json_deallocate(copy);
+                    return NULL;
                 }
+
+                JsonElement *val_copy = json_deep_copy((JsonElement *)it.node->value);
+                if (!val_copy) {
+                    free(key);
+                    json_deallocate(copy);
+                    return NULL;
+                }
+
+                map_insert(copy->value.object_val, key, val_copy);
+                map_iterator_increment(&it);
             }
             break;
+
         default:
             fmt_fprintf(stderr, "Error: Unknown JSON type in json_deep_copy.\n");
             json_deallocate(copy);
