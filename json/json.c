@@ -1652,3 +1652,43 @@ JsonElement* json_clone(const JsonElement *element) {
 
     return clonedElement;
 }
+
+char** json_get_keys(const JsonElement *object, size_t *num_keys) {
+    if (!object || object->type != JSON_OBJECT || !num_keys) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid input in json_get_keys.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
+        return NULL;
+    }
+
+    *num_keys = map_size(object->value.object_val);
+    char** keys = (char**)malloc(*num_keys * sizeof(char*));
+    if (!keys) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_get_keys.\n");
+        last_error.code = JSON_ERROR_MEMORY;
+        fmt_fprintf(stderr, last_error.message);
+        return NULL;
+    }
+
+    size_t i = 0;
+    MapIterator it = map_begin(object->value.object_val);
+    MapIterator end = map_end(object->value.object_val);
+    while (it.node != end.node) {
+        keys[i] = string_strdup((char*)it.node->key);
+        if (!keys[i]) {
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for key duplication in json_get_keys.\n");
+            last_error.code = JSON_ERROR_MEMORY;
+            fmt_fprintf(stderr, last_error.message);
+            // Deallocate previously allocated keys
+            while (i > 0) {
+                free(keys[--i]);
+            }
+            free(keys);
+            return NULL;
+        }
+        i++;
+        map_iterator_increment(&it);
+    }
+
+    return keys;
+}

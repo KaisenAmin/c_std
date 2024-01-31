@@ -1661,3 +1661,75 @@ int main() {
     return 0;
 }
 ```
+
+## Example 39 : Reading JSON from a File and Getting its Keys with `json_get_keys`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    const char* jsonFilePath = "./sources/json_example.json";
+    JsonElement* jsonElement = json_read_from_file(jsonFilePath);
+
+    if (jsonElement && jsonElement->type == JSON_OBJECT) {
+        size_t num_keys;
+        char** keys = json_get_keys(jsonElement, &num_keys);
+
+        if (keys) {
+            fmt_printf("Keys in JSON object:\n");
+            for (size_t i = 0; i < num_keys; ++i) {
+                fmt_printf("  Key %zu: %s\n", i + 1, keys[i]);
+                free(keys[i]); 
+            }
+            free(keys);
+        } 
+        else {
+            fmt_printf("Failed to get keys from JSON object.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON file '%s'.\n", jsonFilePath);
+    }
+
+    return 0;
+}
+```
+
+## Example 40 : Using a JSON String and Getting its Keys with `json_get_keys`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    const char* jsonString = "{\"name\": \"John Doe\", \"age\": 30, \"city\": \"New York\"}";
+    JsonElement* jsonElement = json_parse(jsonString);
+
+    if (jsonElement && jsonElement->type == JSON_OBJECT) {
+        size_t num_keys;
+        char** keys = json_get_keys(jsonElement, &num_keys);
+
+        if (keys) {
+            fmt_printf("Keys in JSON object:\n");
+            for (size_t i = 0; i < num_keys; ++i) {
+                fmt_printf("  Key %zu: %s\n", i + 1, keys[i]);
+                free(keys[i]);
+            }
+            free(keys); 
+        } 
+        else {
+            fmt_printf("Failed to get keys from JSON object.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
+    }
+
+    return 0;
+}
+```

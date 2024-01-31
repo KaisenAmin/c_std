@@ -103,7 +103,9 @@ JsonElement* json_clone(const JsonElement *element);
 
 char* json_serialize(const JsonElement *element);
 char* json_format(const JsonElement *element);
+
 char** json_to_string_array(const JsonElement *array, size_t *length);
+char** json_get_keys(const JsonElement *object, size_t *num_keys);
 
 bool json_write_to_file(const JsonElement *element, const char *filename);
 bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element);
