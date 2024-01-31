@@ -1608,12 +1608,16 @@ char* json_format(const JsonElement *element) {
 JsonElement* json_clone(const JsonElement *element) {
     if (!element) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: NULL input to json_clone.");
+        fmt_fprintf(stderr, last_error.message);
+        last_error.code = JSON_ERROR_NONE;
         return NULL;
     }
 
     JsonElement *clonedElement = (JsonElement*)malloc(sizeof(JsonElement));
     if (!clonedElement) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_clone.");
+        fmt_fprintf(stderr, last_error.message);
+        last_error.code = JSON_ERROR_MEMORY;
         return NULL;
     }
 
@@ -1630,6 +1634,8 @@ JsonElement* json_clone(const JsonElement *element) {
             if (!clonedElement->value.string_val) {
                 free(clonedElement);
                 snprintf(last_error.message, sizeof(last_error.message), "Error: String duplication failed in json_clone.");
+                fmt_fprintf(stderr, last_error.message);
+                last_error.code = JSON_ERROR_MEMORY;
                 return NULL;
             }
             break;

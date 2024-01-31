@@ -8,6 +8,8 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
+#define VECTOR_LOGGING_ENABLE
+
 #include <stdbool.h>
 #include <stddef.h>
 
