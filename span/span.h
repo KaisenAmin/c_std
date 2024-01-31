@@ -8,6 +8,8 @@
 #ifndef SPAN_H_
 #define SPAN_H_
 
+#define SPAN_LOGGING_ENABLE 
+
 #include <stddef.h>
 #include <stdbool.h>
 

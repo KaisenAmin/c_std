@@ -8,6 +8,8 @@
 #ifndef STACK_H_
 #define STACK_H_
 
+#define STACK_LOGGING_ENABLE 
+
 #include "../vector/vector.h"
 
 typedef struct Stack Stack;

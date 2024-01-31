@@ -1,6 +1,8 @@
 #ifndef TIME_H
 #define TIME_H
 
+#define TIME_LOGGINH_ENABLE
+
 #include <stdbool.h>
 
 typedef struct {
