@@ -10,12 +10,14 @@
 typedef struct TrieNode {
     struct TrieNode *children[ALPHA_SIZE];
     bool is_leaf;
+    // For convenience, we store the character that this node represents.
+    char data;
 } TrieNode;
 
 // Trie data structure, that stores a set of strings.
 // as a prefix tree.
 typedef struct Trie {
-    struct TrieNode *trie_root;;
+    TrieNode *trie_root;;
     size_t word_count;
 } Trie;
 
@@ -33,9 +35,11 @@ bool has_children(TrieNode* t);
 void trie_free(Trie* t);
 // Holds number of words that have been inserted into trie.
 size_t trie_count(Trie* t);
-
+void print_trie(Trie *t);
+void trie_node_print(TrieNode *t);
 
 // Create new node and allocate memory for it.
-TrieNode * new_trie_node(void);
+TrieNode * new_trie_node(char c);
+void free_trie_node(TrieNode *t);
 
 #endif  // TRIE_H_

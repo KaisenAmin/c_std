@@ -21,19 +21,13 @@ Trie* trie_new(void)
         return NULL;
 
     // Number of entries in trie 0.
-    t->word_count = 0;
-
-    // Allocate memory for our trie's root node.
-    t->trie_root = malloc(sizeof(TrieNode));
-    if (t->trie_root == NULL) {
-        free(t);
-        return NULL;
-    }
-
-    // Initialize root node. All children should be NULL.
+    t->word_count = 1;
+    t->trie_root = calloc(1, sizeof(TrieNode));
     for (size_t i = 0; i < ALPHA_SIZE; i++) {
         t->trie_root->children[i] = NULL;
     }
+    t->trie_root->is_leaf = true;
+    t->trie_root->data = '\0';
 
     return t;
 }
@@ -47,15 +41,15 @@ bool trie_insert(Trie* t, const char* str)
         return false;
 
     // Make sure we have a valid trie constructed.
-    if (t == NULL || t->trie_root == NULL)
+    if (t == NULL)
         return false;
 
-
+    printf("Inserting %s\n", str);
     TrieNode* curr = t->trie_root;
     while (*str != '\0') {
         // Path doesn't exist, make new node
         if (curr->children[*str - 'a'] == NULL) {
-            curr->children[*str - 'a'] = new_trie_node();
+            curr->children[*str - 'a'] = new_trie_node(*str);
         }
         // Go to next node and next character.
         curr = curr->children[*str - 'a'];
@@ -145,6 +139,21 @@ bool trie_node_remove(TrieNode **curr, const char *str)
 }
 
 
+TrieNode * new_trie_node(char c)
+{
+
+    TrieNode *n = calloc(1, sizeof(TrieNode));
+    if (n == NULL)
+        return NULL;
+
+    for (size_t i = 0; i < ALPHA_SIZE; i++) {
+        n->children[i] = NULL;
+    }
+
+    n->is_leaf = false;
+    n->data = c;
+    return n;
+}
 
 bool has_children(TrieNode* t)
 {
@@ -155,8 +164,34 @@ bool has_children(TrieNode* t)
     return false;
 }
 
-TrieNode * new_trie_node(void)
+void print_trie(Trie *t)
 {
+    printf("Printing trie\n");
+    if (t == NULL) {
+        printf("trie is null\n");
+        return;
+    }
 
-    return NULL;
+    if (t->trie_root == NULL) {
+        printf("trie root is null\n");
+        return;
+    }
+
+    trie_node_print(t->trie_root);
 }
+
+void trie_node_print(TrieNode *t)
+{
+    if (t == NULL) {
+        printf("trie node is null\n");
+        return;
+    }
+    TrieNode *tmp = t;
+    printf("%c -> ", tmp->data);
+    for (size_t i = 0; i < ALPHA_SIZE; i++) {
+        if (tmp->children[i] != NULL) {
+            trie_node_print(t->children[i]);
+        }
+    }
+}
+

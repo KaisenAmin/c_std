@@ -16,6 +16,7 @@ $(EXEC): $(OBJ)
 
 # Clean up
 .PHONY: clean
+	rm *.o
 
 clean:
 	rm -f $(OBJ) $(EXEC)

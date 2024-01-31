@@ -16,7 +16,19 @@ int main(void)
     printf("Trie created\n");
     printf("Trie word count: %zu\n", t->word_count);
 
+    if(!trie_insert(t, "hello"))
+        printf("Failed to insert word\n");
+    if(!trie_insert(t, "helish"))
+        printf("Failed to insert word\n");
+    if(!trie_insert(t, "helishness"))
+        printf("Failed to insert word\n");
+    if(!trie_insert(t, "can"))
+        printf("Failed to insert word\n");
+    if(!trie_insert(t, "canada"))
+        printf("Failed to insert word\n");
 
+
+    print_trie(t);
 
 
     return 0;
