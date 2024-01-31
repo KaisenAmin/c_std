@@ -91,9 +91,16 @@ bool map_emplace(Map* map, KeyType key, ValueType value);
 bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value);
 bool map_empty(const Map* map);
 
-#define MAP_FOREACH(map, it) \
-    for (MapIterator it = map_begin(map), __end__ = map_end(map); \
-        it.node != __end__.node; \
-        map_iterator_increment(&it))
+#define MAP_FOREACH(_key_type_, _key_, _value_type_, _value_, _map_, _code_) \
+do { \
+    if ((_map_) == NULL || map_empty(_map_)) break; \
+    _key_type_ _key_; \
+    _value_type_ _value_; \
+    for (MapIterator _it_ = map_begin(_map_), __end__ = map_end(_map_); _it_.node != __end__.node; map_iterator_increment(&_it_)) { \
+        _key_ = ((_key_type_) map_node_get_key(_it_.node)); \
+        _value_ = ((_value_type_) map_node_get_value(_it_.node)); \
+        _code_ \
+    } \
+} while (0)
 
 #endif 

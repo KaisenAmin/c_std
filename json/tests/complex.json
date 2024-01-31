@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "User",
+    "description": "A list of users",
+    "type": "array",
+    "b": [
+        53, 23, 213124,
+        {
+            "a": 1,
+            "b": 2,
+            "ce": "asdasd",
+            "d": 3,
+            "e": [413]
+        },
+        {
+            "e": true,
+            "f": false,
+            "g": null
+        },
+        null
+    ]
+}
