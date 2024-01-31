@@ -1605,3 +1605,44 @@ char* json_format(const JsonElement *element) {
     return formatted; // Return the duplicated string
 }
 
+JsonElement* json_clone(const JsonElement *element) {
+    if (!element) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: NULL input to json_clone.");
+        return NULL;
+    }
+
+    JsonElement *clonedElement = (JsonElement*)malloc(sizeof(JsonElement));
+    if (!clonedElement) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_clone.");
+        return NULL;
+    }
+
+    clonedElement->type = element->type;
+
+    switch (element->type) {
+        case JSON_NULL:
+        case JSON_BOOL:
+        case JSON_NUMBER:
+            clonedElement->value = element->value;
+            break;
+        case JSON_STRING:
+            clonedElement->value.string_val = string_strdup(element->value.string_val);
+            if (!clonedElement->value.string_val) {
+                free(clonedElement);
+                snprintf(last_error.message, sizeof(last_error.message), "Error: String duplication failed in json_clone.");
+                return NULL;
+            }
+            break;
+        case JSON_ARRAY:
+        case JSON_OBJECT:
+            // Shallow copy; just copy the reference
+            clonedElement->value = element->value;
+            break;
+        default:
+            free(clonedElement);
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Unknown type in json_clone.");
+            return NULL;
+    }
+
+    return clonedElement;
+}
