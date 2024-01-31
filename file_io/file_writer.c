@@ -379,7 +379,7 @@ bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer){
 
     while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), src_file))) {
         if (fwrite(buffer, sizeof(char), bytes_read, dest_file) != bytes_read) {
-            fmt_fprintf(stderr, "Error: Write Error occured in file_writer_copy.\n");
+            fmt_fprintf(stderr, "Error: Write Error occurred in file_writer_copy.\n");
             
             fclose(src_file);
             fclose(dest_file);

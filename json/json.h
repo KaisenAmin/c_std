@@ -10,6 +10,7 @@
 #define JSON_ERROR_UNEXPECTED_TOKEN 2
 #define JSON_ERROR_MEMORY 3
 #define JSON_CREATION_FAILED 4
+#define JSON_TRANSFORM_FAILED 5
 
 // JSON data types
 typedef enum {
@@ -98,6 +99,7 @@ JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void
 JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data);
 JsonElement* json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data);
 JsonElement* json_create(JsonType type);
+JsonElement* json_clone(const JsonElement *element);
 
 char* json_serialize(const JsonElement *element);
 char* json_format(const JsonElement *element);

@@ -547,7 +547,6 @@ int dir_count(const char* dirpath) {
         return -1;
     }
 
-    int count = 0;
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
@@ -1120,7 +1119,7 @@ bool dir_is_directory(const char* dirPath) {
     return result;
 #else 
     struct stat path_stat;
-    if (stat(filePath, &path_stat) != 0) {
+    if (stat(dirPath, &path_stat) != 0) {
         fmt_fprintf(stderr, "Error: stat failed or directory does not exist in dir_is_directory.\n");
         return false;
     }

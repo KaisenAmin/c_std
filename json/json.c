@@ -15,6 +15,7 @@ static JsonElement* parse_object(JsonParserState* state);
 static void json_serialize_internal(const JsonElement* element, String* str);
 static bool json_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element);
 static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element);
+static void json_format_internal(const JsonElement* element, String* str, int indent);
 
 static JsonError last_error = {0, ""};
 
@@ -549,6 +550,92 @@ static void json_serialize_internal(const JsonElement* element, String* str) {
     }
 }
 
+static void append_indent(String* str, int indent) {
+    for (int i = 0; i < indent; ++i) {
+        string_append(str, " ");
+    }
+}
+
+static void format_string(const char* value, String* str) {
+    string_append(str, "\"");
+    string_append(str, value);
+    string_append(str, "\"");
+}
+
+static void format_array(const JsonElement* element, String* str, int indent) {
+    string_append(str, "[\n");
+    for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
+        append_indent(str, indent + 2);
+        json_format_internal(*(JsonElement**)vector_at(element->value.array_val, i), str, indent + 2);
+        if (i < vector_size(element->value.array_val) - 1) {
+            string_append(str, ",");
+        }
+        string_append(str, "\n");
+    }
+    append_indent(str, indent);
+    string_append(str, "]");
+}
+
+static void format_object(const JsonElement* element, String* str, int indent) {
+    string_append(str, "{\n");
+    MapIterator it = map_begin(element->value.object_val);
+    MapIterator end = map_end(element->value.object_val);
+    bool first = true;
+    while (it.node != end.node) {
+        if (!first) {
+            string_append(str, ",\n");
+        }
+        append_indent(str, indent + 2);
+        format_string((char*)it.node->key, str);
+        string_append(str, ": ");
+        json_format_internal((JsonElement*)it.node->value, str, indent + 2);
+        first = false;
+        map_iterator_increment(&it);
+    }
+    if (!first) {
+        string_append(str, "\n");
+    }
+    append_indent(str, indent);
+    string_append(str, "}");
+}
+
+static void json_format_internal(const JsonElement* element, String* str, int indent) {
+    if (!element) {
+        string_append(str, "null");
+        return;
+    }
+
+    switch (element->type) {
+        case JSON_OBJECT:
+            format_object(element, str, indent);
+            break;
+        case JSON_ARRAY:
+            format_array(element, str, indent);
+            break;
+        case JSON_STRING:
+            format_string(element->value.string_val, str);
+            break;
+        case JSON_NUMBER:
+            {
+                char buffer[64];
+                snprintf(buffer, sizeof(buffer), "%g", element->value.number_val);
+                string_append(str, buffer);
+            }
+            break;
+        case JSON_BOOL:
+            string_append(str, element->value.bool_val ? "true" : "false");
+            break;
+        case JSON_NULL:
+            string_append(str, "null");
+            break;
+        default:
+            snprintf(last_error.message, sizeof(last_error.message), "Unknown JSON type");
+            last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
+            fmt_fprintf(stderr, "Error: Unknown JSON type in json_format_internal.\n");
+            string_append(str, "unknown");
+    }
+}
+
 JsonElement* json_create(JsonType type) {
     JsonElement *element = (JsonElement*)malloc(sizeof(JsonElement));
     if (!element) {
@@ -624,12 +711,17 @@ JsonElement* json_parse(const char* json_str) {
     } 
     else if (state.current_token.type == JSON_TOKEN_ARRAY_START) {
         root = parse_array(&state);
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Root element must be an object or array at position %zu.\n", state.position);
-        free(state.input); 
-        return NULL;
     }
+    else {
+        // Handling JSON as a single value (string, number, boolean, null)
+        root = parser_internal(&state);
+        if (root == NULL) {
+            fmt_fprintf(stderr, "Error: Invalid JSON value at position %zu.\n", state.position);
+            free(state.input);
+            return NULL;
+        }
+    } 
+
 
     if (root == NULL) {
         fmt_fprintf(stderr, "Error while parsing JSON at position %zu: %s\n", state.position, state.error.message);
@@ -768,57 +860,69 @@ JsonElement* json_deep_copy(const JsonElement *element) {
         return NULL;
     }
 
+    MapIterator it, end;
+
     switch (element->type) {
         case JSON_NULL:
-            // Nothing more to do for null
+            // No additional data to copy for null type
             break;
+
         case JSON_BOOL:
             copy->value.bool_val = element->value.bool_val;
             break;
+
         case JSON_NUMBER:
             copy->value.number_val = element->value.number_val;
             break;
+
         case JSON_STRING:
-            copy->value.string_val = string_strdup(element->value.string_val);
+            copy->value.string_val = strdup(element->value.string_val);
             if (!copy->value.string_val) {
                 fmt_fprintf(stderr, "Error: Memory allocation failed for string in json_deep_copy.\n");
                 json_deallocate(copy);
                 return NULL;
             }
             break;
+
         case JSON_ARRAY:
             for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
                 JsonElement *item = json_deep_copy(*(JsonElement **)vector_at(element->value.array_val, i));
                 if (!item) {
+                    json_deallocate(copy); // Deallocate the partially copied array
+                    return NULL;
+                }
+
+                if (!vector_push_back(copy->value.array_val, &item)) {
+                    json_deallocate(item);
                     json_deallocate(copy);
                     return NULL;
                 }
-                vector_push_back(copy->value.array_val, &item);
             }
             break;
-        case JSON_OBJECT: {
-                MapIterator it = map_begin(element->value.object_val);
-                MapIterator end = map_end(element->value.object_val);
-                while (it.node != end.node) {
-                    char *key = string_strdup((char *)it.node->key);
-                    if (!key) {
-                        fmt_fprintf(stderr, "Error: Memory allocation failed for object key in json_deep_copy.\n");
-                        json_deallocate(copy);
-                        return NULL;
-                    }
 
-                    JsonElement *val_copy = json_deep_copy((JsonElement *)it.node->value);
-                    if (!val_copy) {
-                        free(key);
-                        json_deallocate(copy);
-                        return NULL;
-                    }
-
-                    map_insert(copy->value.object_val, key, val_copy);
-                    map_iterator_increment(&it);
+        case JSON_OBJECT:
+            it = map_begin(element->value.object_val);
+            end = map_end(element->value.object_val);
+            while (it.node != end.node) {
+                char *key = strdup((char *)it.node->key);
+                if (!key) {
+                    fmt_fprintf(stderr, "Error: Memory allocation failed for object key in json_deep_copy.\n");
+                    json_deallocate(copy);
+                    return NULL;
                 }
+
+                JsonElement *val_copy = json_deep_copy((JsonElement *)it.node->value);
+                if (!val_copy) {
+                    free(key);
+                    json_deallocate(copy);
+                    return NULL;
+                }
+
+                map_insert(copy->value.object_val, key, val_copy);
+                map_iterator_increment(&it);
             }
             break;
+
         default:
             fmt_fprintf(stderr, "Error: Unknown JSON type in json_deep_copy.\n");
             json_deallocate(copy);
@@ -1383,14 +1487,18 @@ void* json_convert(const JsonElement *element, JsonType type) {
 
 JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data) {
     if (!array || array->type != JSON_ARRAY || !map_func) {
-        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_map. The input must be a JSON array and map_func must be provided.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_map. The input must be a JSON array and map_func must be provided.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
         return NULL;
     }
 
     // Create a new JSON array to hold the result
     JsonElement* resultArray = json_create(JSON_ARRAY);
     if (!resultArray) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for the result array in json_map.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for the result array in json_map.\n");
+        last_error.code = JSON_CREATION_FAILED;
+        fmt_fprintf(stderr, last_error.message);
         return NULL;
     }
 
@@ -1402,7 +1510,8 @@ JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* 
 
         // Check if the transformation was successful
         if (!transformedElement) {
-            fmt_fprintf(stderr, "Error: Transformation failed for an element at index %zu in json_map.\n", i);
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Transformation failed for an element at index %zu in json_map.\n", i);
+            last_error.code = JSON_TRANSFORM_FAILED;
             // Deallocate previously transformed elements and the result array
             for (size_t j = 0; j < i; ++j) {
                 JsonElement* previousElement = *(JsonElement**)vector_at(resultArray->value.array_val, j);
@@ -1419,13 +1528,17 @@ JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* 
 
 JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data) {
     if (!array || array->type != JSON_ARRAY || !predicate) {
-        fmt_fprintf(stderr, "Error: Invalid argument(s) in json_filter. The input must be a JSON array and predicate must be provided.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_filter. The input must be a JSON array and predicate must be provided.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
         return NULL;
     }
 
     JsonElement* resultArray = json_create(JSON_ARRAY);
     if (!resultArray) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for the result array in json_filter.\n");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for the result array in json_filter.\n");
+        last_error.code = JSON_CREATION_FAILED;
+        fmt_fprintf(stderr, last_error.message);
         return NULL;
     }
 
@@ -1437,8 +1550,10 @@ JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void
             // If predicate returns true, add the element to the result array
             JsonElement* elementCopy = json_deep_copy(currentElement);
             if (!elementCopy) {
+                snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed during deep copy in json_filter.\n");
+                last_error.code = JSON_ERROR_MEMORY;
                 // Handle memory allocation failure
-                fmt_fprintf(stderr, "Error: Memory allocation failed during deep copy in json_filter.\n");
+                fmt_fprintf(stderr, last_error.message);
                 // Deallocate previously added elements and the result array
                 for (size_t j = 0; j < vector_size(resultArray->value.array_val); ++j) {
                     JsonElement* previousElement = *(JsonElement**)vector_at(resultArray->value.array_val, j);
@@ -1452,4 +1567,88 @@ JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void
         }
     }
     return resultArray;
+}
+
+void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data) {
+    if (!array || array->type != JSON_ARRAY || !reduce_func) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_reduce.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
+        return NULL;
+    }
+
+    void* accumulator = initial_value;
+
+    for (size_t i = 0; i < vector_size(array->value.array_val); ++i) {
+        JsonElement* currentElement = *(JsonElement**)vector_at(array->value.array_val, i);
+        accumulator = reduce_func(currentElement, accumulator, user_data);
+    }
+
+    return accumulator;
+}
+
+char* json_format(const JsonElement *element) {
+    if (!element) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: The provided JsonElement is NULL in json_format.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
+        return NULL;
+    }
+
+    String* str = string_create("");
+    json_format_internal(element, str, 0);
+
+    const char* temp = string_c_str(str);
+    char* formatted = string_strdup(temp); // Use strdup to create a modifiable copy
+
+    string_deallocate(str); // Deallocate the String object
+    return formatted; // Return the duplicated string
+}
+
+JsonElement* json_clone(const JsonElement *element) {
+    if (!element) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: NULL input to json_clone.");
+        fmt_fprintf(stderr, last_error.message);
+        last_error.code = JSON_ERROR_NONE;
+        return NULL;
+    }
+
+    JsonElement *clonedElement = (JsonElement*)malloc(sizeof(JsonElement));
+    if (!clonedElement) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_clone.");
+        fmt_fprintf(stderr, last_error.message);
+        last_error.code = JSON_ERROR_MEMORY;
+        return NULL;
+    }
+
+    clonedElement->type = element->type;
+
+    switch (element->type) {
+        case JSON_NULL:
+        case JSON_BOOL:
+        case JSON_NUMBER:
+            clonedElement->value = element->value;
+            break;
+        case JSON_STRING:
+            clonedElement->value.string_val = string_strdup(element->value.string_val);
+            if (!clonedElement->value.string_val) {
+                free(clonedElement);
+                snprintf(last_error.message, sizeof(last_error.message), "Error: String duplication failed in json_clone.");
+                fmt_fprintf(stderr, last_error.message);
+                last_error.code = JSON_ERROR_MEMORY;
+                return NULL;
+            }
+            break;
+        case JSON_ARRAY:
+        case JSON_OBJECT:
+            // Shallow copy; just copy the reference
+            clonedElement->value = element->value;
+            break;
+        default:
+            free(clonedElement);
+            snprintf(last_error.message, sizeof(last_error.message), "Error: Unknown type in json_clone.");
+            return NULL;
+    }
+
+    return clonedElement;
 }

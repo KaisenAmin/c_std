@@ -51,6 +51,7 @@
   "notes": null,
   "additional_info": {
     "contributors": ["Sam", "Alex", "Maria"],
+    "numbers": [15, 20, 30, 40],
     "started": "2023-01-15",
     "budget": 500000.5,
     "name": "amin tahmasebi"

@@ -7,6 +7,8 @@
 #ifndef TUPLE_H_
 #define TUPLE_H_
 
+#define TUPLE_LOGGING_ENABLE
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
