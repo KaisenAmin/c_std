@@ -70,4 +70,7 @@ size_t vector_size(const Vector* vec);
 size_t vector_capacity(Vector* vec);
 size_t vector_max_size(Vector* vec);
 
+#define VECTOR_FOREACH(vec, it, type) \
+    for (size_t i = 0, type *it = vector_at((vec), 0); i < (vec)->size; it = vector_at((vec), ++i))
+
 #endif 
