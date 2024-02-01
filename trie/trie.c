@@ -21,12 +21,12 @@ Trie* trie_new(void)
         return NULL;
 
     // Number of entries in trie 0.
-    t->word_count = 1;
+    t->word_count = 0;
     t->trie_root = calloc(1, sizeof(TrieNode));
     for (size_t i = 0; i < ALPHA_SIZE; i++) {
         t->trie_root->children[i] = NULL;
     }
-    t->trie_root->is_leaf = true;
+    t->trie_root->is_word = true;
     t->trie_root->data = '\0';
 
     return t;
@@ -44,8 +44,20 @@ bool trie_insert(Trie* t, const char* str)
     if (t == NULL)
         return false;
 
-    printf("Inserting %s\n", str);
-    TrieNode* curr = t->trie_root;
+
+    if (!trie_node_insert(t->trie_root, str)) {
+        printf("Failed to insert word\n");
+        return false;
+    }
+
+    t->word_count++;
+    return true;
+
+}
+
+bool trie_node_insert(TrieNode* t, const char* str)
+{
+    TrieNode* curr = t;
     while (*str != '\0') {
         // Path doesn't exist, make new node
         if (curr->children[*str - 'a'] == NULL) {
@@ -56,15 +68,14 @@ bool trie_insert(Trie* t, const char* str)
         str++;
 
     }
-    // Mark current node as leaf
-    curr->is_leaf = true;
-    t->word_count++;
+    // Mark current node word.
+    curr->is_word = true;
 
     return true;
 }
 
 
-bool trie_search(Trie* t, const char* str)
+bool trie_search(const Trie* t, const char* str)
 {
     if (t->trie_root == NULL)
         return false;
@@ -76,29 +87,36 @@ bool trie_search(Trie* t, const char* str)
             return false;
         str++;
     }
-    // If current node is a leaf, we reached end of string, return 1;
-    return curr->is_leaf;
+    return (curr->is_word && curr != NULL);
 }
 
 // How many words added to Trie.
-size_t trie_count(Trie* t)
+size_t trie_count(const Trie* t)
 {
     return t->word_count;
 }
 
+static void trie_node_free(TrieNode* t)
+{
+    if (t == NULL)
+        return;
 
-/* void _trie_free(TrieNode* V */
-/* { */
-/*     if (n == NULL) */
-/*         return; */
+    for (size_t i = 0; i < ALPHA_SIZE; i++) {
+        if (t->children[i] != NULL) {
+            trie_node_free(t->children[i]);
+        }
+    }
+    free(t);
+}
 
-/*     for (size_t i = 0; i < ALPHA_SIZE; i++) { */
-/*         if (t->children[i] != NULL) { */
-/*             _trie_free(t->children[i]); */
-/*         } */
-/*     } */
-/*     free(t); */
-/* } */
+void trie_free(Trie* t)
+{
+    if (t == NULL)
+        return;
+
+    trie_node_free(t->trie_root);
+    free(t);
+}
 
 // Remove entry for trie. Returns true on success.
 bool trie_node_remove(TrieNode **curr, const char *str)
@@ -111,7 +129,7 @@ bool trie_node_remove(TrieNode **curr, const char *str)
         // recurse for node corresponding to the next children in the string.
         if (*curr != NULL && (*curr)->children[*str - 'a'] != NULL &&
             trie_node_remove(&((*curr)->children[*str - 'a']), str + 1) &&
-            (*curr)->is_leaf == false)
+            (*curr)->is_word == false)
         {
             if (!has_children(*curr)) {
                 free(*curr);
@@ -124,7 +142,7 @@ bool trie_node_remove(TrieNode **curr, const char *str)
     }
 
     // If we reach end of string
-    if (*str == '\0' && (*curr)->is_leaf) {
+    if (*str == '\0' && (*curr)->is_word) {
         if (!has_children(*curr)) {
             free(*curr);
             (*curr) = NULL;
@@ -132,14 +150,14 @@ bool trie_node_remove(TrieNode **curr, const char *str)
         }
         else {
             // Mark current node as non-leaf. DONT delete
-            (*curr)->is_leaf = false;
+            (*curr)->is_word = false;
         }
     }
     return false;
 }
 
 
-TrieNode * new_trie_node(char c)
+TrieNode * new_trie_node(const char c)
 {
 
     TrieNode *n = calloc(1, sizeof(TrieNode));
@@ -150,12 +168,13 @@ TrieNode * new_trie_node(char c)
         n->children[i] = NULL;
     }
 
-    n->is_leaf = false;
+    n->is_word = false;
     n->data = c;
     return n;
 }
 
-bool has_children(TrieNode* t)
+
+bool has_children(const TrieNode* t)
 {
     for (size_t i = 0; i < ALPHA_SIZE; i++) {
         if (t->children[i] != NULL)
@@ -164,7 +183,24 @@ bool has_children(TrieNode* t)
     return false;
 }
 
-void print_trie(Trie *t)
+
+static void trie_node_print(const TrieNode *t)
+{
+    if (t == NULL) {
+        printf("trie node is null\n");
+        return;
+    }
+    const TrieNode *tmp = t;
+    printf("%c -> ", tmp->data);
+    for (size_t i = 0; i < ALPHA_SIZE; i++) {
+        if (tmp->children[i] != NULL) {
+            trie_node_print(t->children[i]);
+        }
+    }
+}
+
+
+void trie_print(const Trie *t)
 {
     printf("Printing trie\n");
     if (t == NULL) {
@@ -173,25 +209,12 @@ void print_trie(Trie *t)
     }
 
     if (t->trie_root == NULL) {
-        printf("trie root is null\n");
+        printf("Trie empty\n");
         return;
     }
 
+    printf("Trie word count: %zu\n", t->word_count);
     trie_node_print(t->trie_root);
-}
-
-void trie_node_print(TrieNode *t)
-{
-    if (t == NULL) {
-        printf("trie node is null\n");
-        return;
-    }
-    TrieNode *tmp = t;
-    printf("%c -> ", tmp->data);
-    for (size_t i = 0; i < ALPHA_SIZE; i++) {
-        if (tmp->children[i] != NULL) {
-            trie_node_print(t->children[i]);
-        }
-    }
+    printf("\n");
 }
 

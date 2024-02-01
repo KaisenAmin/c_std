@@ -28,8 +28,16 @@ int main(void)
         printf("Failed to insert word\n");
 
 
-    print_trie(t);
+    trie_print(t);
+
+    if(trie_search(t, "hello"))
+        printf("Found word\n");
+    else
+        printf("Word not found\n");
+
 
 
     return 0;
 }
+
+
