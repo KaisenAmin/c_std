@@ -11,6 +11,10 @@
 #define JSON_ERROR_MEMORY 3
 #define JSON_CREATION_FAILED 4
 #define JSON_TRANSFORM_FAILED 5
+#define JSON_ERROR_INSERTION_FAILED 6
+#define JSON_ERROR_INVALID_VALUE 7
+#define JSON_ERROR_INVALID_KEY 8
+#define JSON_ERROR_TYPE 9 
 
 // JSON data types
 typedef enum {
@@ -112,6 +116,8 @@ bool json_set_element(JsonElement *element, const char *key_or_index, JsonElemen
 bool json_remove_element(JsonElement *element, const char *key_or_index);
 bool json_validate(const JsonElement *element, const char *schema_json);
 bool json_compare(const JsonElement *element1, const JsonElement *element2);
+bool json_add_to_array(JsonElement* element1, JsonElement* element2);
+bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value);
 
 void* json_convert(const JsonElement *element, JsonType type);
 void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data);

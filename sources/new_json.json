@@ -1,0 +1,53 @@
+{
+    "technology": {
+      "products": [
+        {
+          "category": "Laptops",
+          "items": [
+            {
+              "name": "Laptop A",
+              "brand": "BrandOne",
+              "price": 1200,
+              "ratings": {
+                "tech_site": 9.1,
+                "user_reviews": 8.5
+              }
+            },
+            {
+              "name": "Laptop B",
+              "brand": "BrandTwo",
+              "price": 1500,
+              "ratings": {
+                "tech_site": 9.3,
+                "user_reviews": 9.0
+              }
+            }
+          ]
+        },
+        {
+          "category": "Smartphones",
+          "items": [
+            {
+              "name": "Smartphone A",
+              "brand": "BrandThree",
+              "price": 700,
+              "ratings": {
+                "tech_site": 8.5,
+                "user_reviews": 8.8
+              }
+            },
+            {
+              "name": "Smartphone B",
+              "brand": "BrandFour",
+              "price": 950,
+              "ratings": {
+                "tech_site": 9.0,
+                "user_reviews": 9.2
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+  

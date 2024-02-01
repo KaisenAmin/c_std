@@ -1,0 +1,59 @@
+{
+  "additional_info": {
+    "budget": 500000,
+    "contributors": ["Sam", "Alex", "Maria"],
+    "name": "amin tahmasebi",
+    "numbers": [15, 20, 30, 40],
+    "started": "2023-01-15"
+  },
+  "ascii_sample": "Hello, World!",
+  "categories": [
+    {
+      "id": 1,
+      "items": [
+        {
+          "author": "John Doe",
+          "available": true,
+          "published_year": 2020,
+          "title": "Learning JSON"
+        },
+        {
+          "author": "Jane Smith",
+          "available": false,
+          "published_year": 2021,
+          "title": "Advanced JSON Processing"
+        }
+      ],
+      "name": "Books"
+    },
+    {
+      "id": 2,
+      "items": [
+        {
+          "director": "Alice Johnson",
+          "ratings": { "IMDB": 7.8, "Rotten Tomatoes": "85%" },
+          "released_year": 2019,
+          "title": "The JSON Saga"
+        },
+        {
+          "director": "Bob Brown",
+          "ratings": { "IMDB": 6.5, "Rotten Tomatoes": "75%" },
+          "released_year": 2018,
+          "title": "JSON Unleashed"
+        },
+        {
+          "director": "Chris Coder",
+          "ratings": { "IMDB": 8.5, "Rotten Tomatoes": "92%" },
+          "released_year": 2024,
+          "title": "JSON's Adventure"
+        }
+      ],
+      "name": "Movies"
+    }
+  ],
+  "library": "JSON Test Library",
+  "notes": null,
+  "supports_unicode": true,
+  "unicode_sample": "こんにちは世界 (Hello World in Japanese)",
+  "version": 1
+}

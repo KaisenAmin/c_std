@@ -88,6 +88,22 @@ static void json_print_internal(const JsonElement* element, int indent) {
     }
 }
 
+static char** split_query(const char* query, int* count) {
+    static char* tokens[256]; // Simple example, real code should dynamically allocate
+    int i = 0;
+    char* tempQuery = string_strdup(query); // Duplicate query to avoid modifying the original string
+    char* token = strtok(tempQuery, ".");
+    
+    while (token != NULL && i < 256) {
+        tokens[i++] = string_strdup(token); // Duplicate tokens, remember to free them later
+        token = strtok(NULL, ".");
+    }
+    
+    *count = i;
+    free(tempQuery); // Free the duplicated query
+    return tokens;
+}
+
 void json_deallocate(JsonElement *element) {
     if (!element) return;
 
@@ -1691,4 +1707,130 @@ char** json_get_keys(const JsonElement *object, size_t *num_keys) {
     }
 
     return keys;
+}
+
+bool json_add_to_array(JsonElement* element1, JsonElement* element2) {
+    if (!element1) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: element1 is NULL and invalid in json_add_to_array.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+    if (!element2) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: element2 is NULL and invalid in json_add_to_array.\n");
+        last_error.code = JSON_ERROR_NONE;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+
+    if (vector_push_back(element1->value.array_val, &element2)) {
+        return true;
+    }
+    return false;
+}
+
+bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value) {
+    if (!object || object->type != JSON_OBJECT) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Target is not a JSON object in json_add_to_object.\n");
+        last_error.code = JSON_ERROR_TYPE;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+    if (!key) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Key is NULL in json_add_to_object.\n");
+        last_error.code = JSON_ERROR_INVALID_KEY;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+    if (!value) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Value is NULL in json_add_to_object.\n");
+        last_error.code = JSON_ERROR_INVALID_VALUE;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+
+    // Duplicate the key to ensure it is managed independently
+    char* duplicatedKey = string_strdup(key);
+    if (!duplicatedKey) {
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Failed to duplicate key in json_add_to_object.\n");
+        last_error.code = JSON_ERROR_MEMORY;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+
+    // Check if the key already exists in the object
+    JsonElement* existingValue = (JsonElement*)map_at(object->value.object_val, duplicatedKey);
+    if (existingValue) {
+        // Deallocate the existing value associated with the key
+        json_deallocate(existingValue);
+
+        snprintf(last_error.message, sizeof(last_error.message), "Warning: Key already exists and its value will be replaced in json_add_to_object.\n");
+        fmt_fprintf(stderr, last_error.message);
+    }
+
+    // Replace or insert the key-value pair in the map
+    bool insertResult = map_insert(object->value.object_val, duplicatedKey, value);
+    if (!insertResult) {
+        free(duplicatedKey); 
+        if (!existingValue) {
+            // Only deallocate the new value if it wasn't replacing an existing value
+            json_deallocate(value);
+        }
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Failed to insert or replace key-value pair in json_add_to_object.\n");
+        last_error.code = JSON_ERROR_INSERTION_FAILED;
+        fmt_fprintf(stderr, last_error.message);
+        return false;
+    }
+
+    return true;
+}
+
+JsonElement* json_query(const JsonElement *element, const char *query) {
+    if (!element || !query) {
+        fprintf(stderr, "Invalid argument(s) to json_query.\n");
+        return NULL;
+    }
+
+    int count;
+    char** tokens = split_query(query, &count);
+    JsonElement* currentElement = (JsonElement*)element;
+
+    for (int i = 0; i < count; ++i) {
+        char* token = tokens[i];
+
+        // Handle array access
+        char* bracketPos = strchr(token, '[');
+        if (bracketPos) {
+            *bracketPos = '\0'; // End the string at the bracket to isolate the key
+            char* indexStr = bracketPos + 1;
+            char* endBracket = strchr(indexStr, ']');
+            if (!endBracket) {
+                fprintf(stderr, "Invalid query format. Missing closing bracket.\n");
+                break; // Break early on syntax error
+            }
+            *endBracket = '\0';
+
+            currentElement = json_get_element(currentElement, token); // Get the array or object
+            if (json_type_of_element(currentElement) == JSON_ARRAY) {
+                currentElement = json_get_element(currentElement, indexStr); // Get the element at index
+            } 
+            else {
+                fprintf(stderr, "Query error: Element is not an array where expected.\n");
+                currentElement = NULL;
+                break;
+            }
+        } else {
+            currentElement = json_get_element(currentElement, token);
+        }
+
+        if (!currentElement) {
+            fprintf(stderr, "Query error: Element not found for token %s.\n", token);
+            break;
+        }
+    }
+
+    for (int i = 0; i < count; ++i) {
+        free(tokens[i]); // Free the duplicated tokens
+    }
+    return currentElement;
 }

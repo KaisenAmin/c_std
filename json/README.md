@@ -1733,3 +1733,236 @@ int main() {
     return 0;
 }
 ```
+
+## Example 41 : how to add items to array element in json with `json_add_to_array` 
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    JsonElement* root = json_read_from_file("./sources/json_example.json");
+
+    JsonElement* categories = json_get_element(root, "categories");
+    JsonElement* moviesCategory = json_get_element(categories, "1"); // Direct access if you know the position
+    JsonElement* moviesItems = json_get_element(moviesCategory, "items");
+
+    JsonElement* newMovie = json_create(JSON_OBJECT);
+
+    // Set properties on the new movie object
+    JsonElement* title = json_create(JSON_STRING);
+    title->value.string_val = "JSON's Adventure";
+    json_set_element(newMovie, "title", title);
+
+    JsonElement* director = json_create(JSON_STRING);
+    director->value.string_val = "Chris Coder";
+    json_set_element(newMovie, "director", director);
+
+    JsonElement* releasedYear = json_create(JSON_NUMBER);
+    releasedYear->value.number_val = 2024;
+    json_set_element(newMovie, "released_year", releasedYear);
+
+    // Create and set ratings object
+    JsonElement* ratings = json_create(JSON_OBJECT);
+    JsonElement* imdbRating = json_create(JSON_NUMBER);
+    imdbRating->value.number_val = 8.5;
+    json_set_element(ratings, "IMDB", imdbRating);
+
+    JsonElement* rtRating = json_create(JSON_STRING);
+    rtRating->value.string_val = "92%";
+    json_set_element(ratings, "Rotten Tomatoes", rtRating);
+    json_set_element(newMovie, "ratings", ratings);
+    
+    if (json_add_to_array(moviesItems, newMovie)) {
+        fmt_printf("add successfully to array\n");
+    } 
+    else {
+        fmt_printf("failed in adding to array\n");
+    }
+
+    if (json_write_to_file(root, "./sources/modified_json_example.json")) {
+        fmt_printf("Write to file successfully.\n");
+    } 
+    else {
+        fmt_printf("Failed to write to file.\n");
+    }
+
+    json_deallocate(root);
+    return 0;
+}
+```
+
+## Example 42 : how to add object to json as new element with `json_add_to_object`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "string/string.h"
+
+int main() {
+    JsonElement* root = json_read_from_file("./sources/json_example.json");
+    JsonElement* jsonObject = json_create(JSON_OBJECT);
+
+    JsonElement* titleElement = json_create(JSON_STRING);
+    titleElement->value.string_val = string_strdup("Introduction to JSON");
+    
+    // Add the string element to the object with the key "title"
+    if (!json_add_to_object(jsonObject, "title", titleElement)) {
+        fprintf(stderr, "Failed to add title to JSON object.\n");
+        // Assume json_deallocate properly deallocates the entire JSON structure
+        json_deallocate(jsonObject);
+        return 1;
+    }
+
+    // Create a new number element
+    JsonElement* yearElement = json_create(JSON_NUMBER);
+    yearElement->value.number_val = 2024;
+    
+    // Add the number element to the object with the key "year"
+    if (!json_add_to_object(jsonObject, "year", yearElement)) {
+        fprintf(stderr, "Failed to add year to JSON object.\n");
+        json_deallocate(jsonObject);
+        return 1;
+    }
+
+    // Create a nested JSON object for the author
+    JsonElement* authorObject = json_create(JSON_OBJECT);
+    JsonElement* nameElement = json_create(JSON_STRING);
+    nameElement->value.string_val = string_strdup("John Doe");
+    json_add_to_object(authorObject, "name", nameElement);
+
+    // Add the nested object to the main JSON object with the key "author"
+    if (!json_add_to_object(jsonObject, "author", authorObject)) {
+        fprintf(stderr, "Failed to add author to JSON object.\n");
+        json_deallocate(jsonObject);
+        return 1;
+    }
+
+    // add to root object 
+    if (!json_add_to_object(root, "additional_info", jsonObject)) {
+        fmt_printf("Can not add new object to root");
+    }
+
+    json_print(root);
+
+    json_deallocate(root);
+    return 0;
+}
+```
+
+## Example 42 : quering over the json with `json_query`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "string/string.h"
+
+int main() {
+    JsonElement* root = json_read_from_file("./sources/json_example.json");
+
+    // Query for the title of the first book
+    JsonElement* bookTitleElement = json_query(root, "categories[0].items[0].title");
+    if (bookTitleElement && bookTitleElement->type == JSON_STRING) {
+        fmt_printf("Title of the first book: %s\n", bookTitleElement->value.string_val);
+    } 
+    else {
+        fmt_printf("Failed to query the title of the first book.\n");
+    }
+
+    // Query for the IMDB rating of "The JSON Saga"
+    JsonElement* imdbRatingElement = json_query(root, "categories[1].items[0].ratings.IMDB");
+    if (imdbRatingElement && imdbRatingElement->type == JSON_NUMBER) {
+        fmt_printf("IMDB rating of 'The JSON Saga': %.1f\n", imdbRatingElement->value.number_val);
+    } 
+    else {
+        fmt_printf("Failed to query the IMDB rating of 'The JSON Saga'.\n");
+    }
+
+    json_deallocate(root);
+    return 0;
+}
+```
+
+## Example 43 : set query over json string with `json_query`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* jsonString = 
+        "{"
+        "  \"technology\": {"
+        "    \"products\": ["
+        "      {"
+        "        \"category\": \"Laptops\","
+        "        \"items\": ["
+        "          {"
+        "            \"name\": \"Laptop A\","
+        "            \"brand\": \"BrandOne\","
+        "            \"price\": 1200,"
+        "            \"ratings\": {"
+        "              \"tech_site\": 9.1,"
+        "              \"user_reviews\": 8.5"
+        "            }"
+        "          },"
+        "          {"
+        "            \"name\": \"Laptop B\","
+        "            \"brand\": \"BrandTwo\","
+        "            \"price\": 1500,"
+        "            \"ratings\": {"
+        "              \"tech_site\": 9.3,"
+        "              \"user_reviews\": 9.0"
+        "            }"
+        "          }"
+        "        ]"
+        "      },"
+        "      {"
+        "        \"category\": \"Smartphones\","
+        "        \"items\": ["
+        "          {"
+        "            \"name\": \"Smartphone A\","
+        "            \"brand\": \"BrandThree\","
+        "            \"price\": 700,"
+        "            \"ratings\": {"
+        "              \"tech_site\": 8.5,"
+        "              \"user_reviews\": 8.8"
+        "            }"
+        "          },"
+        "          {"
+        "            \"name\": \"Smartphone B\","
+        "            \"brand\": \"BrandFour\","
+        "            \"price\": 950,"
+        "            \"ratings\": {"
+        "              \"tech_site\": 9.0,"
+        "              \"user_reviews\": 9.2"
+        "            }"
+        "          }"
+        "        ]"
+        "      }"
+        "    ]"
+        "  }"
+        "}";
+
+    JsonElement* root = json_parse(jsonString);
+    JsonElement* laptopAPriceElement = json_query(root, "technology.products[0].items[0].price");
+
+    if (laptopAPriceElement && laptopAPriceElement->type == JSON_NUMBER) {
+        fmt_printf("Price of Laptop A: %.2f\n", laptopAPriceElement->value.number_val);
+    } 
+    else {
+        fmt_printf("Failed to query the price of Laptop A.\n");
+    }
+
+    JsonElement* smartphoneBRatingElement = json_query(root, "technology.products[1].items[1].ratings.tech_site");
+    if (smartphoneBRatingElement && smartphoneBRatingElement->type == JSON_NUMBER) {
+        fmt_printf("Tech site rating of 'Smartphone B': %.1f\n", smartphoneBRatingElement->value.number_val);
+    } 
+    else {
+        fmt_printf("Failed to query the tech site rating of 'Smartphone B'.\n");
+    }
+
+    json_deallocate(root);
+    return 0;
+}
+```
