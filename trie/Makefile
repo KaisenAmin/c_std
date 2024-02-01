@@ -5,7 +5,7 @@ CFLAGS=-I.
 OBJ = main.o trie.o
 
 # Define your executable file name
-EXEC = trie
+EXEC = trie.bin
 
 # The first rule is the one executed when no parameters are fed into the Makefile
 $(EXEC): $(OBJ)
