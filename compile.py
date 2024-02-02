@@ -36,6 +36,7 @@ def compile_project(run_after_compile=False):
         # "time",
         # "date",
         "dir",
+        "cli",
         # "crypto",
         # "tuple",
         # Add other directories containing your .c files

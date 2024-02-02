@@ -44,7 +44,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - `json_deallocate(JsonElement *element)`: Deallocates a JSON element and its contents.
 - `json_compare(const JsonElement *element1, const JsonElement *element2)`: Compares two JSON elements.
 - `json_to_string_array` : convert array element in json to string array.
-
+- `json_add_to_array`: add objects or other kind of elements to array element in json.
+- `json_add_to_object`: add any kind of elements to json objects.
+- `json_query`: get element in json just by one query.
 ---
 
 ## Example 1: How to Read from a JSON File and Parse It `json_read_from_file` and `json_parse`

@@ -107,6 +107,7 @@ JsonElement* json_clone(const JsonElement *element);
 
 char* json_serialize(const JsonElement *element);
 char* json_format(const JsonElement *element);
+char* json_generate_schema(const JsonElement* element);
 
 char** json_to_string_array(const JsonElement *array, size_t *length);
 char** json_get_keys(const JsonElement *object, size_t *num_keys);
