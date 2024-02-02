@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#define STRING_LOGGING_ENABLE
 
 extern const char* STRING_ASCII_LETTERS;
 extern const char* STRING_ASCII_LOWERCASE;
