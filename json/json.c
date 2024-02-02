@@ -892,7 +892,7 @@ JsonElement* json_deep_copy(const JsonElement *element) {
             break;
 
         case JSON_STRING:
-            copy->value.string_val = strdup(element->value.string_val);
+            copy->value.string_val = string_strdup(element->value.string_val);
             if (!copy->value.string_val) {
                 fmt_fprintf(stderr, "Error: Memory allocation failed for string in json_deep_copy.\n");
                 json_deallocate(copy);
@@ -920,7 +920,7 @@ JsonElement* json_deep_copy(const JsonElement *element) {
             it = map_begin(element->value.object_val);
             end = map_end(element->value.object_val);
             while (it.node != end.node) {
-                char *key = strdup((char *)it.node->key);
+                char *key = string_strdup((char *)it.node->key);
                 if (!key) {
                     fmt_fprintf(stderr, "Error: Memory allocation failed for object key in json_deep_copy.\n");
                     json_deallocate(copy);
@@ -992,7 +992,7 @@ char* json_serialize(const JsonElement* element) {
     json_serialize_internal(element, str);
 
     const char* temp = string_c_str(str);
-    char* serialized = string_strdup(temp); // Use strdup to create a modifiable copy
+    char* serialized = string_strdup(temp); // Use string_strdup to create a modifiable copy
 
     string_deallocate(str); // Deallocate the String object
     return serialized; // Return the duplicated string
@@ -1615,7 +1615,7 @@ char* json_format(const JsonElement *element) {
     json_format_internal(element, str, 0);
 
     const char* temp = string_c_str(str);
-    char* formatted = string_strdup(temp); // Use strdup to create a modifiable copy
+    char* formatted = string_strdup(temp); // Use string_strdup to create a modifiable copy
 
     string_deallocate(str); // Deallocate the String object
     return formatted; // Return the duplicated string
@@ -1819,7 +1819,8 @@ JsonElement* json_query(const JsonElement *element, const char *query) {
                 currentElement = NULL;
                 break;
             }
-        } else {
+        } 
+        else {
             currentElement = json_get_element(currentElement, token);
         }
 
