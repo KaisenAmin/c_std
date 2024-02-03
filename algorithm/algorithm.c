@@ -906,3 +906,78 @@ void algorithm_remove_copy(const void *source, size_t num, size_t size, void *re
         }
     }
 }
+
+/**
+ * Removes elements from the source array based on a given predicate function and copies the remaining elements to the result array.
+ *
+ * @param source The source array.
+ * @param num The number of elements in the source array.
+ * @param size The size of each element in bytes.
+ * @param result The result array where the remaining elements will be copied.
+ * @param pred The predicate function that determines whether an element should be removed or not.
+ */
+void algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred) {
+    if (!source || !result || !pred || size == 0 || num == 0) return;
+
+    const char *src = (const char *)source;
+    char *dst = (char *)result;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (!pred(src + i * size)) {
+            memcpy(dst, src + i * size, size);
+            dst += size;
+        }
+    }
+}
+
+/**
+ * Replaces occurrences of a value in an array.
+ *
+ * This function replaces occurrences of the value `old_val` with the value `new_val` in the array `base`.
+ * The number of elements in the array is specified by `num`, and the size of each element is specified by `size`.
+ * The comparison function `comp` is used to compare elements in the array.
+ *
+ * @param base     Pointer to the start of the array.
+ * @param num      Number of elements in the array.
+ * @param size     Size of each element in bytes.
+ * @param old_val  Pointer to the value to be replaced.
+ * @param new_val  Pointer to the new value.
+ * @param comp     Comparison function used to compare elements.
+ */
+void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp){
+    if (!base || !old_val || !new_val || !comp || size == 0 || num == 0) return;
+
+    char *ptr = (char *)base;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (comp(ptr + i * size, old_val) == 0) {
+            memcpy(ptr + i * size, new_val, size);
+        }
+    }
+}
+
+/**
+ * Replaces elements in an array based on a given predicate function.
+ *
+ * This function iterates over the elements in the array pointed to by `base` and replaces
+ * elements that satisfy the predicate function `pred` with the value pointed to by `new_val`.
+ *
+ * @param base      Pointer to the start of the array.
+ * @param num       Number of elements in the array.
+ * @param size      Size of each element in bytes.
+ * @param new_val   Pointer to the value to replace the elements with.
+ * @param pred      Predicate function that determines if an element should be replaced.
+ *
+ * @return None.
+ */
+void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_val, BoolPredicateFunc pred) {
+    if (!base || !new_val || !pred || size == 0 || num == 0) return;
+
+    char *ptr = (char *)base;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (pred(ptr + i * size)) {
+            memcpy(ptr + i * size, new_val, size);
+        }
+    }
+}
