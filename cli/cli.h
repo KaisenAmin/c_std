@@ -17,6 +17,7 @@ typedef enum {
     CLI_ERROR_INVALID_ARGUMENT,
     CLI_ERROR_NONE,
     CLI_ERROR_ALLOCATION_FAILED,
+    CLI_DISABLE_STRICT_MODE,
 } CliStatusCode;
 
 typedef enum {
@@ -54,10 +55,11 @@ struct CliParser {
     CliCommand *commands;       // Array of commands
     size_t numOptions;          // Number of options
     size_t numCommands;         // Number of commands
-    const char *progName;       // Program name for usage display
-    const char *usage;          // Custom usage message
+    char *progName;       // Program name for usage display
+    char *usage;          // Custom usage message
     CliErrorHandler errorHandler; // Function to handle errors
     CliStatusCode lastError;
+    bool strictMode;            // Indicates whether strict mode is enabled
 };
 
 typedef struct {
@@ -73,9 +75,6 @@ const CliOption* cli_find_option(const CliParser *parser, const char *longOpt, c
 
 // Searches for and returns a command by its name.
 const CliCommand* cli_find_command(const CliParser *parser, const char *name);
-
-// Prints usage information, listing all options and commands.
-void cli_print_usage(const CliParser *parser);
 
 // Frees all resources allocated by the CLI parser.
 void cli_parser_deallocate(CliParser *parser);
