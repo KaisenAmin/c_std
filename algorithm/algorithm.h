@@ -44,7 +44,6 @@ void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size);
 void algorithm_rotate(void *first, void *middle, void *last, size_t size);
 void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result);
 void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp);
-size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred);
 void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp);
 void algorithm_replace_if(void *base, size_t num, size_t size, const void *val, BoolPredicateFunc pred);
 
@@ -73,7 +72,7 @@ size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp);
 size_t algorithm_count(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
 size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp);
-
+size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred);
 Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp);
 

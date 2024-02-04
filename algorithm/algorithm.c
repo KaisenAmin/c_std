@@ -919,7 +919,9 @@ void algorithm_remove_copy(const void *source, size_t num, size_t size, void *re
  * @return The number of elements copied to the result array.
  */
 size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred) {
-    if (!source || !result || !pred || size == 0 || num == 0) return 0;
+    if (!source || !result || !pred || size == 0 || num == 0) {
+        return 0;
+    }
 
     const char *src = (const char *)source;
     char *dst = (char *)result;
@@ -951,7 +953,9 @@ size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, voi
  * @param comp     Comparison function used to compare elements.
  */
 void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp){
-    if (!base || !old_val || !new_val || !comp || size == 0 || num == 0) return;
+    if (!base || !old_val || !new_val || !comp || size == 0 || num == 0) {
+        return;
+    }
 
     char *ptr = (char *)base;
 
@@ -977,7 +981,9 @@ void algorithm_replace(void *base, size_t num, size_t size, const void *old_val,
  * @return None.
  */
 void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_val, BoolPredicateFunc pred) {
-    if (!base || !new_val || !pred || size == 0 || num == 0) return;
+    if (!base || !new_val || !pred || size == 0 || num == 0) {
+        return;
+    }
 
     char *ptr = (char *)base;
 
