@@ -907,6 +907,7 @@ void algorithm_remove_copy(const void *source, size_t num, size_t size, void *re
     }
 }
 
+
 /**
  * Removes elements from the source array based on a given predicate function and copies the remaining elements to the result array.
  *
@@ -915,19 +916,24 @@ void algorithm_remove_copy(const void *source, size_t num, size_t size, void *re
  * @param size The size of each element in bytes.
  * @param result The result array where the remaining elements will be copied.
  * @param pred The predicate function that determines whether an element should be removed or not.
+ * @return The number of elements copied to the result array.
  */
-void algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred) {
-    if (!source || !result || !pred || size == 0 || num == 0) return;
+size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred) {
+    if (!source || !result || !pred || size == 0 || num == 0) return 0;
 
     const char *src = (const char *)source;
     char *dst = (char *)result;
+    size_t count = 0;
 
     for (size_t i = 0; i < num; ++i) {
         if (!pred(src + i * size)) {
             memcpy(dst, src + i * size, size);
             dst += size;
+            count++;
         }
     }
+
+    return count;
 }
 
 /**
