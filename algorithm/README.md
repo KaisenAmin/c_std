@@ -4492,3 +4492,157 @@ int main() {
 }
 
 ```
+
+## Example 137: Using `algorithm_replace`
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+typedef int (*CompareFunc)(const void *, const void *);
+
+int compare_ints(const void *a, const void *b) {
+    int num1 = *(int *)a;
+    int num2 = *(int *)b;
+    return num1 - num2;
+}
+
+void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp){
+    if (!base || !old_val || !new_val || !comp || size == 0 || num == 0) return;
+
+    char *ptr = (char *)base;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (comp(ptr + i * size, old_val) == 0) {
+            memcpy(ptr + i * size, new_val, size);
+        }
+    }
+}
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5, 5, 5, 8, 9, 10};
+    int old_val = 5;
+    int new_val = -1;
+
+    printf("Before replacement:\n");
+    for (int i = 0; i < 10; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    algorithm_replace(arr, 10, sizeof(int), &old_val, &new_val, compare_ints);
+
+    printf("After replacement:\n");
+    for (int i = 0; i < 10; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```
+
+## Example 138: Using `algorithm_replace_if`
+
+```c
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+
+typedef bool (*BoolPredicateFunc)(const void *);
+
+bool is_even(const void *n) {
+    int num = *(int *)n;
+    return num % 2 == 0;
+}
+
+void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_val, BoolPredicateFunc pred) {
+    if (!base || !new_val || !pred || size == 0 || num == 0) return;
+
+    char *ptr = (char *)base;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (pred(ptr + i * size)) {
+            memcpy(ptr + i * size, new_val, size);
+        }
+    }
+}
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int new_val = -1;
+
+    printf("Before replacement:\n");
+    for (int i = 0; i < 10; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    algorithm_replace_if(arr, 10, sizeof(int), &new_val, is_even);
+
+    printf("After replacement:\n");
+    for (int i = 0; i < 10; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```
+
+## Example 139: Using `algorithm_remove_copy_if`
+
+```c
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+
+typedef bool (*BoolPredicateFunc)(const void *);
+
+bool is_even(const void *n) {
+    int num = *(int *)n;
+    return num % 2 == 0;
+}
+
+size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred) {
+    if (!source || !result || !pred || size == 0 || num == 0) return 0;
+
+    const char *src = (const char *)source;
+    char *dst = (char *)result;
+    size_t count = 0;
+
+    for (size_t i = 0; i < num; ++i) {
+        if (!pred(src + i * size)) {
+            memcpy(dst, src + i * size, size);
+            dst += size;
+            count++;
+        }
+    }
+
+    return count;
+}
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int result[10] = {0};
+
+    printf("Source array:\n");
+    for (int i = 0; i < 10; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    size_t count = algorithm_remove_copy_if(arr, 10, sizeof(int), result, is_even);
+
+    printf("Result array:\n");
+    for (size_t i = 0; i < count; ++i) {
+        printf("%d ", result[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+```
