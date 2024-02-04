@@ -18,6 +18,7 @@ typedef enum {
     CLI_ERROR_NONE,
     CLI_ERROR_ALLOCATION_FAILED,
     CLI_DISABLE_STRICT_MODE,
+    CLI_ERROR_VALIDATION_FAILED,
 } CliStatusCode;
 
 typedef enum {
@@ -31,6 +32,9 @@ typedef void (*CliOptionHandler)(const CliOption *option, const char *value, voi
 typedef void (*CliCommandHandler)(const CliCommand *command, int argc, char *argv[], void *userData);
 typedef bool (*CliArgumentValidator)(const char *value, void *userData);
 typedef void (*CliErrorHandler)(const CliParser *parser, const char *error, void *userData);
+typedef bool (*CliOptionValidator)(const char *);
+typedef void (*CliPreExecutionHook)(const CliParser *parser, void *userData);
+typedef void (*CliPostExecutionHook)(const CliParser *parser, void *userData);
 
 struct CliOption {
     const char *longOpt;        // Long option string, e.g., "--help"
@@ -40,7 +44,16 @@ struct CliOption {
     CliArgumentValidator validator; // Validator function for argument value
     const char *description;    // Description of the option for help display
     void *userData;             // User data to be passed to the handler and validator
+    char *customErrorMessage;
+    CliOptionValidator validator; // Function pointer to the validator
+    char *validationErrorMessage;
 };
+
+typedef struct CliOptionGroup {
+    const char *groupName;    // Name of the option group
+    CliOption *options;       // Array of options
+    size_t numOptions;        // Number of options
+} CliOptionGroup;
 
 struct CliCommand {
     const char *name;           // Command name
@@ -49,23 +62,31 @@ struct CliCommand {
     void *userData;             // User data to be passed to the handler
 };
 
-// CLI parser configuration and state
-struct CliParser {
-    CliOption *options;         // Array of options
-    CliCommand *commands;       // Array of commands
-    size_t numOptions;          // Number of options
-    size_t numCommands;         // Number of commands
-    char *progName;       // Program name for usage display
-    char *usage;          // Custom usage message
-    CliErrorHandler errorHandler; // Function to handle errors
-    CliStatusCode lastError;
-    bool strictMode;            // Indicates whether strict mode is enabled
-};
-
 typedef struct {
     int code;
     char message[256];
 } CliError;
+
+// CLI parser configuration and state
+struct CliParser {
+    CliOption *options;            // Array of options
+    CliCommand *commands;          // Array of commands
+    size_t numOptions;             // Number of options
+    size_t numCommands;            // Number of commands
+    char *progName;                // Program name for usage display
+    char *usage;                   // Custom usage message
+    CliErrorHandler errorHandler;  // Function to handle errors
+    CliError lastError;
+    bool strictMode;               // Indicates whether strict mode is enabled
+    CliCommandHandler defaultCommandHandler;
+    CliOptionGroup *optionGroups;  // Array of option groups
+    size_t numOptionGroups;        // Number of option groups
+    CliPreExecutionHook preExecutionHook;
+    CliPostExecutionHook postExecutionHook;
+    void *preExecutionHookUserData; 
+    bool pipeliningEnabled;
+    void *userData;
+};
 
 // Initializes a new CLI parser with the specified program name for usage messages.
 CliParser* cli_parser_create(const char *progName);
@@ -116,10 +137,10 @@ void cli_enter_interactive_mode(CliParser *parser, const char *prompt);
 void cli_set_option_error_message(CliParser *parser, const char *longOpt, char shortOpt, const char *errorMessage);
 
 // Registers a function to be called before any command execution.
-void cli_set_pre_execution_hook(CliParser *parser, void (*hook)(const CliParser *parser, void *userData));
+void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook);
 
 // Registers a function to be called after any command execution.
-void cli_set_post_execution_hook(CliParser *parser, void (*hook)(const CliParser *parser, void *userData));
+void cli_set_post_execution_hook(CliParser *parser, CliPostExecutionHook hook);
 
 // allowing the output of one command to be used as input for another, enhancing scripting capabilities.
 void cli_enable_pipelining(CliParser *parser, bool enable);
@@ -130,17 +151,8 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
 // Prompts the user for confirmation with a customizable message and waits for a Y/N response.
 bool cli_prompt_confirmation(const char *promptMessage);
 
-// allowing the tool to display help and error messages in different languages based on user preference
-bool cli_set_language(CliParser *parser, const char *languageCode);
-
 // allowing users to use alternative names for commands and options for ease of use.
 bool cli_add_option_alias(CliParser *parser, const char *optionName, const char *alias);
-
-// offering a way to set up the application without lengthy command-line arguments.
-bool cli_parse_config_file(CliParser *parser, const char *filePath);
-
-// Reads options from environment variables prefixed with a specified string.
-bool cli_parse_env_vars(CliParser *parser, const char *envPrefix);
 
 // Parses command line arguments using a specified delimiter.
 bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], const char *delimiter);
@@ -170,6 +182,6 @@ bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt
 CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[]);
 
 // get last error of CliParser
-CliStatusCode cli_get_last_status(const CliParser *parser);
+CliError cli_get_last_error(const CliParser *parser);
 
 #endif // CLI_H_

@@ -40,13 +40,6 @@ The project is organized into several subdirectories, each representing a differ
 
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
-## Compilation and Execution
-
-Certainly! Based on your description and the provided Python script, it seems you prefer a more streamlined compilation process using a custom Python script (`compile.py`) rather than traditional makefiles. I'll update the compilation section of your README to reflect this preference.
-
-Here's the revised compilation and execution section of your README:
-
----
 
 ## Compilation and Execution
 

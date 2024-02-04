@@ -11,7 +11,7 @@ def find_c_files(directory):
                 c_files.append(os.path.join(root, file))
     return c_files
 
-def compile_project(run_after_compile=False):
+def compile_project(run_after_compile=False, program_args=[]):
     source_directories = [
         # "numeric",
         # "algorithm",
@@ -79,17 +79,19 @@ def compile_project(run_after_compile=False):
         print(f"Compilation successful. Output: {output}")
         if run_after_compile:
             print("Running the program...\n" + '*' * 25)
-            subprocess.run(output)
+            subprocess.run([output] + program_args)
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: python compile_project.py [b|r]")
         sys.exit(1)
 
+    program_args = sys.argv[2:]
+
     if sys.argv[1] == 'b':
         compile_project()
     elif sys.argv[1] == 'r':
-        compile_project(run_after_compile=True)
+        compile_project(run_after_compile=True, program_args=program_args)
     else:
         print("Invalid argument. Use 'b' to build or 'r' to build and run.")
         sys.exit(1)
