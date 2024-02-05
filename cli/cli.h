@@ -19,6 +19,7 @@ typedef enum {
     CLI_ERROR_ALLOCATION_FAILED,
     CLI_DISABLE_STRICT_MODE,
     CLI_ERROR_VALIDATION_FAILED,
+    CLI_ERROR_COMMAND_NOT_FOUND,
 } CliStatusCode;
 
 typedef enum {
@@ -45,7 +46,7 @@ struct CliOption {
     const char *description;    // Description of the option for help display
     void *userData;             // User data to be passed to the handler and validator
     char *customErrorMessage;
-    CliOptionValidator validator; // Function pointer to the validator
+    CliOptionValidator optionValidator; // Function pointer to the validator
     char *validationErrorMessage;
 };
 

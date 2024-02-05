@@ -7,7 +7,7 @@
 extern char **environ;
 static CliError cli_last_error = {0, ""};
 
-char** split_string(const char* str, const char* delimiter, int* count) {
+static char** split_string(const char* str, const char* delimiter, int* count) {
     char* token;
     char** tokenArray = NULL;
     char* strCopy = string_strdup(str); // Create a modifiable copy of str
@@ -29,14 +29,13 @@ char** split_string(const char* str, const char* delimiter, int* count) {
 CliParser* cli_parser_create(const char *progName) {
     if (progName == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Program name is NULL in cli_parser_create.\n");
-        cli_last_error.code = CLI_ERROR_NONE;
+        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
         #ifdef CLI_LOGGING_ENABLE
             fmt_fprintf(stderr, cli_last_error.message);
         #endif 
         return NULL;
     }
 
-    // Allocate memory for the CliParser struct
     CliParser *parser = (CliParser *)malloc(sizeof(CliParser));
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed for CliParser in cli_parser_create.\n");
@@ -47,29 +46,39 @@ CliParser* cli_parser_create(const char *progName) {
         return NULL;
     }
 
-    // Initialize the CliParser struct
     parser->options = NULL;
     parser->commands = NULL;
     parser->numOptions = 0;
     parser->numCommands = 0;
-    parser->progName = string_strdup(progName); 
+    parser->progName = string_strdup(progName);
     if (parser->progName == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed for program name in cli_parser_create.\n");
+        cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
         #ifdef CLI_LOGGING_ENABLE
             fmt_fprintf(stderr, cli_last_error.message);
-        #endif 
-        free(parser); 
+        #endif
+        free(parser); // Free the allocated parser before returning NULL
         return NULL;
     }
     parser->usage = NULL;
     parser->errorHandler = NULL;
-    parser->lastError.code = CLI_SUCCESS;
+    memset(&parser->lastError, 0, sizeof(parser->lastError)); // Initializing lastError
+    parser->strictMode = false;
+    parser->defaultCommandHandler = NULL;
+    parser->optionGroups = NULL; // Initialize to NULL
+    parser->numOptionGroups = 0; // Initialize to 0
+    parser->preExecutionHook = NULL;
+    parser->postExecutionHook = NULL;
+    parser->preExecutionHookUserData = NULL;
+    parser->pipeliningEnabled = false;
+    parser->userData = NULL;
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Parser Created Successfully.\n");
-
+    cli_last_error.code = CLI_SUCCESS;
     #ifdef CLI_LOGGING_ENABLE
         fmt_fprintf(stdout, cli_last_error.message);
-    #endif 
+    #endif
+
     return parser;
 }
 
@@ -537,63 +546,73 @@ void cli_update_description(CliParser *parser, const char *name, const char *new
 }
 
 CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[]) {
-    // Validate parser and arguments
-    if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is not initialized.");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return cli_last_error.code;
-    }
-    if (argc < 2 || argv == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Usage: %s <command> [options]", parser->progName ? parser->progName : "application");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return cli_last_error.code;
+    if (!parser || argc < 1 || !argv) {
+        fmt_printf("Debug: Invalid CLI parser setup or arguments.\n");
+        return CLI_ERROR_INVALID_ARGUMENT;
     }
 
-    // Attempt to find a matching command based on the first argument
-    const char *commandName = argv[1];
-    const CliCommand *foundCommand = cli_find_command(parser, commandName);
-    if (foundCommand != NULL) {
-        // Ensure command handler exists before calling
-        if (foundCommand->handler != NULL) {
-            foundCommand->handler(foundCommand, argc - 1, argv + 1, foundCommand->userData);
-            snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Command '%s' executed successfully.", commandName);
-            cli_last_error.code = CLI_SUCCESS;
-        } 
-        else {
-            snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command '%s' found, but no handler is defined.", commandName);
-            cli_last_error.code = CLI_ERROR_PARSE;
+    fmt_printf("Debug: Starting argument parsing.\n");
+    bool commandFound = false;
+
+    // First phase: Process all options
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i][0] == '-' || argv[i][1] == '-') { // Assuming options start with '-' or '--'
+            bool isOptionProcessed = false;
+
+            // Check each option group
+            for (size_t j = 0; j < parser->numOptionGroups; ++j) {
+                CliOptionGroup *group = &parser->optionGroups[j];
+                for (size_t k = 0; k < group->numOptions; ++k) {
+                    CliOption *option = &group->options[k];
+                    // Match option by long option or short option
+                    if ((option->longOpt && strcmp(argv[i], option->longOpt) == 0) ||
+                        (option->shortOpt && argv[i][1] == option->shortOpt)) {
+                        fmt_printf("Debug: Matched option %s.\n", argv[i]);
+                        const char *value = NULL;
+                        if (option->optionType != CLI_NO_ARG && i + 1 < argc) {
+                            value = argv[++i]; // Increment i to skip option's argument
+                            fmt_printf("Debug: Option argument %s.\n", value);
+                        }
+                        // Call the option handler with the value
+                        if (option->handler) {
+                            fmt_printf("Debug: Calling handler for option %s with value %s.\n", argv[i], value ? value : "NULL");
+                            option->handler(option, value, option->userData);
+                            isOptionProcessed = true;
+                            break; // Break if the option is processed
+                        }
+                    }
+                }
+                if (isOptionProcessed) break; // Break the outer loop if the option is processed
+            }
+            if (!isOptionProcessed) {
+                fmt_printf("Debug: Unrecognized option %s.\n", argv[i]);
+                // You might want to handle unrecognized options here
+            }
         }
-    } 
-    else if (parser->defaultCommandHandler != NULL) {
-        // Invoke default handler if set for unrecognized commands
-        parser->defaultCommandHandler(NULL, argc, argv, NULL);
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Info: Default command handler invoked for '%s'.", commandName);
-        cli_last_error.code = CLI_SUCCESS;
-    } 
-    else {
-        // Handle unrecognized command without a default handler
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Unknown command '%s'. Use '%s --help' for a list of available commands.", commandName, parser->progName ? parser->progName : "application");
-        cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
     }
 
-    #ifdef CLI_LOGGING_ENABLE
-        if (cli_last_error.code == CLI_SUCCESS) {
-            fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-        } 
-        else {
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
+    // Second phase: Look for command
+    for (int i = 1; i < argc; ++i) {
+        if (!(argv[i][0] == '-' || argv[i][1] == '-')) { // This is not an option, treat it as a command
+            const CliCommand *command = cli_find_command(parser, argv[i]);
+            if (command) {
+                fmt_printf("Debug: Found command %s. Calling handler.\n", argv[i]);
+                command->handler(command, argc - i - 1, &argv[i + 1], command->userData);
+                commandFound = true;
+                break; // Stop processing after command is found
+            }
         }
-    #endif
+    }
 
-    return cli_last_error.code;
+    if (!commandFound) {
+        fmt_printf("Debug: No valid command found. Consider printing help here.\n");
+        // Optionally print help or handle the absence of a valid command
+        return CLI_ERROR_COMMAND_NOT_FOUND;
+    }
+
+    fmt_printf("Debug: Command processed successfully.\n");
+    return CLI_SUCCESS;
 }
-
 
 CliError cli_get_last_error(const CliParser *parser) {
     if (parser == NULL) {
@@ -929,7 +948,7 @@ void cli_enter_interactive_mode(CliParser *parser, const char *prompt) {
         char *argv[64]; // Adjust size as necessary
         int argc = 0;
         char *token = strtok(inputBuffer, " ");
-        while (token != NULL && argc < (sizeof(argv) / sizeof(argv[0]) - 1)) {
+        while (token != NULL && argc < (int)(sizeof(argv) / sizeof(argv[0]) - 1)) {
             argv[argc++] = token;
             token = strtok(NULL, " ");
         }
@@ -1089,32 +1108,6 @@ void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
              hook ? "Pre-execution hook set successfully." : "Pre-execution hook cleared.");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
-}
-
-void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
-    // Validate the input parameters
-    if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
-                 "Error: Parser is NULL in cli_set_pre_execution_hook.");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return;
-    }
-
-    // It's valid for hook to be NULL, as the user might want to clear a previously set hook.
-    // No need to user data here as it's a separate field and might be set independently.
-    parser->preExecutionHook = hook;
-
-    snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
-             hook ? "Pre-execution hook set successfully." : "Pre-execution hook cleared.");
-    cli_last_error.code = CLI_SUCCESS;
-
     #ifdef CLI_LOGGING_ENABLE
         fmt_fprintf(stdout, "%s\n", cli_last_error.message);
     #endif
