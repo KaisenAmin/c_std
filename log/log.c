@@ -23,6 +23,7 @@ static const char* log_level_to_string(LogLevel level) {
     }
 }
 
+
 Log* log_init() {
     Log *config = (Log*) malloc(sizeof(Log));
 
