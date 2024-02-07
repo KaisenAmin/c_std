@@ -1,0 +1,4 @@
+2024-02-06 22:21:07 [DEBUG] Debugging application start.
+2024-02-06 22:21:07 [INFO] Application running.
+2024-02-06 22:21:07 [WARN] Low memory warning.
+2024-02-06 22:21:07 [ERROR] Error opening file.

@@ -27,6 +27,7 @@ def compile_project(run_after_compile=False, program_args=[]):
         "map",
         "json",
         "file_io",
+        "log",
         # "priority_queue",
         # "queue",
         # "span",
