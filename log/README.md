@@ -62,3 +62,54 @@ int main() {
     return 0;
 }
 ```
+
+## Example 4 : set log level with `log_set_log_level`
+
+```c
+#include "log/log.h"
+
+int main() {
+    Log* logger = log_init();
+    if (!logger) {
+        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
+        return -1;
+    }
+
+    // Initially set the log level to INFO
+    log_set_log_level(logger, LOG_LEVEL_INFO);
+    log_message(logger, LOG_LEVEL_INFO, "This is an info message. Debug messages will not be shown.");
+
+    // Change log level to DEBUG to see more detailed logging
+    log_set_log_level(logger, LOG_LEVEL_DEBUG);
+    log_message(logger, LOG_LEVEL_DEBUG, "Debug level set. This debug message is now visible.");
+
+    log_deallocate(logger);
+    return 0;
+}
+```
+
+## Example 5 : filter keyword in logging with `log_enable_keyword_filter`
+
+```c
+#include "log/log.h"
+
+int main() {
+    Log* logger = log_init();
+    if (!logger) {
+        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
+        return -1;
+    }
+
+    // Enable keyword filtering to only show logs containing "error"
+    log_enable_keyword_filter(logger, "error", true);
+    log_message(logger, LOG_LEVEL_DEBUG, "This debug message does not contain the keyword.");
+    log_message(logger, LOG_LEVEL_ERROR, "An error occurred.");
+
+    // Disable keyword filtering to show all logs again
+    log_enable_keyword_filter(logger, NULL, false);
+    log_message(logger, LOG_LEVEL_INFO, "Info level log, keyword filter disabled.");
+
+    log_deallocate(logger);
+    return 0;
+}
+```

@@ -6,7 +6,6 @@
 #include <time.h> 
 #include <stdlib.h>
 
-
 static const char* log_level_to_string(LogLevel level) {
     switch (level) {
         case LOG_LEVEL_DEBUG: 
@@ -47,6 +46,10 @@ Log* log_init() {
     config->file_reader = NULL;
     config->enable_timestamp = true;
     config->enable_log_level = true;
+
+    // Initialize keyword filtering
+    config->keyword_filter[0] = '\0'; 
+    config->is_keyword_filter_enabled = false; 
 
     #ifdef LOG_ENABLE_LOGGING
         fmt_fprintf(stdout, "Info: Logging system initialized in log_init.\n");
@@ -100,7 +103,6 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         #endif
         return;
     }
-
     if (level < config->level) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Error: Current log level (%d) is higher than the message log level (%d); message not logged.\n", config->level, level);
@@ -109,23 +111,28 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
     }
 
     va_list args;
-    char formatted_message[1024]; // Use a fixed size buffer for simplicity
-    char log_buffer[2048]; // Larger buffer to accommodate timestamps, log level, and message
+    char formatted_message[1024]; 
+    char timestamp[64] = ""; 
 
-    // Generate timestamp if enabled
-    char timestamp[64] = ""; // Buffer to hold timestamp
     if (config->enable_timestamp) {
         time_t now = time(NULL);
         struct tm *tm_info = localtime(&now);
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info); // Customize this format as needed
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
     }
 
-    // Prepare log message with vsnprintf to prevent buffer overflows
     va_start(args, message);
     vsnprintf(formatted_message, sizeof(formatted_message), message, args);
     va_end(args);
 
-    // Construct the final log message with optional log level and timestamp
+    // Check keyword filtering
+    if (config->is_keyword_filter_enabled && strstr(formatted_message, config->keyword_filter) == NULL) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: keyword for filtering is not valid in log_init.\n");
+        #endif 
+        return;
+    }
+
+    char log_buffer[2048]; 
     const char* level_str = log_level_to_string(level);
     snprintf(log_buffer, sizeof(log_buffer), "%s [%s] %s", timestamp, level_str, formatted_message);
 
@@ -154,6 +161,7 @@ void log_deallocate(Log* config) {
             fmt_fprintf(stderr, "Success: file_writer of Log now is free in log_deallocate.\n");
         #endif
     }
+
     // if you had allocated memory for `file_reader`
     if (config->file_reader) {
         file_reader_close(config->file_reader);
@@ -163,10 +171,66 @@ void log_deallocate(Log* config) {
         #endif
     }
 
-    // Finally, free the log config itself
     free(config);
 
     #ifdef LOG_ENABLE_LOGGING
         fmt_fprintf(stderr, "Success: Log Object now is free in log_deallocate.\n");
     #endif
+}
+
+bool log_set_log_level(Log* config, LogLevel newLevel) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null and invalid in log_set_log_level.\n");
+        #endif 
+        return false;
+    }
+    if (newLevel < LOG_LEVEL_DEBUG || newLevel > LOG_LEVEL_FATAL) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Invalid log level specified in log_set_log_level.\n");
+        #endif 
+        return false;
+    }
+
+    config->level = newLevel;
+
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Log Level chaged to %s in log_set_log_level.\n", log_level_to_string(config->level));
+    #endif 
+    return true;
+}
+
+bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_enable_keyword_filter.\n");
+        #endif
+        return false;
+    }
+    if (enable) {
+        if (keyword == NULL || strlen(keyword) == 0) {
+            #ifdef LOG_ENABLE_LOGGING
+                fmt_fprintf(stderr, "Error: Invalid keyword specified in log_enable_keyword_filter.\n");
+            #endif
+            return false;
+        }
+        
+        strncpy(config->keyword_filter, keyword, sizeof(config->keyword_filter) - 1);
+        config->keyword_filter[sizeof(config->keyword_filter) - 1] = '\0'; // Ensure null termination
+        config->is_keyword_filter_enabled = true;
+    } 
+    else {
+        config->is_keyword_filter_enabled = false;
+    }
+
+    #ifdef LOG_ENABLE_LOGGING
+        if (enable) {
+            fmt_fprintf(stdout, "Info: Keyword filtering enabled for '%s' in log_enable_keyword_filter.\n", keyword);
+        } 
+        else {
+            fmt_fprintf(stdout, "Info: Keyword filtering disabled in log_enable_keyword_filter.\n");
+        }
+    #endif
+    
+    return true;
 }

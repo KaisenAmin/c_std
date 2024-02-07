@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include "../fmt/fmt.h"
 
+#define MAX_KEYWORD_LENGTH 512
 #define LOG_ENABLE_LOGGING
 // Log levels
 typedef enum {
@@ -31,6 +32,8 @@ typedef struct {
     FileReader* file_reader;
     bool enable_timestamp;
     bool enable_log_level;
+    char keyword_filter[MAX_KEYWORD_LENGTH]; 
+    bool is_keyword_filter_enabled; 
 } Log;
 
 // Initialize the logging system
@@ -47,5 +50,12 @@ bool log_enable_timestamp(Log* config, bool enable);
 
 // Clean up the logging system
 void log_deallocate(Log* config);
+
+// set log leve 
+bool log_set_log_level(Log* config, LogLevel newLevel);
+
+// Enable filtering of log messages by keywords
+bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable);
+
 
 #endif // LOG_H_
