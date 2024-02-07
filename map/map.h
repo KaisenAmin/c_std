@@ -10,6 +10,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define MAP_LOGGING_ENABLE
+
 // Forward declarations
 typedef struct Map Map;
 typedef struct MapNode MapNode;

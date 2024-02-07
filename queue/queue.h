@@ -9,6 +9,8 @@
 
 #include "../vector/vector.h"
 
+#define QUEUE_LOGGING_ENABLE
+
 typedef struct Queue Queue;
 
 struct Queue {

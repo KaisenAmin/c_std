@@ -9,6 +9,8 @@
 
 #include "../vector/vector.h"
 
+#define PQUEUE_LOGGING_ENABLE
+
 typedef struct PriorityQueue PriorityQueue;
 
 struct PriorityQueue{
