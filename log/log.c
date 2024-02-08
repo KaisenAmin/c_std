@@ -58,6 +58,10 @@ Log* log_init() {
     }
     config->custom_filter = NULL;
     config->custom_filter_user_data = NULL;
+    config->rate_limit_interval = 0; // Disabled by default.
+    config->rate_limit_count = 0; // No limit by default.
+    memset(config->log_counts, 0, sizeof(config->log_counts));
+    config->last_reset_time = time(NULL);
     
     #ifdef LOG_ENABLE_LOGGING
         fmt_fprintf(stdout, "Info: Logging system initialized in log_init.\n");
@@ -111,26 +115,40 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         #endif
         return;
     }
-    else if (config->suspended) {
+    if (config->suspended) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Logging is currently suspended.\n");
         #endif
         return;
     }
-    else if (level < config->level) {
+    if (level < config->level) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Current log level (%d) is higher than the message log level (%d); message not logged.\n", config->level, level);
         #endif
         return;
     }
-    else if (!config->level_visibility[level]) {
+    if (!config->level_visibility[level]) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Error: Skip logging log level is currently not visible in log_message.\n");
         #endif 
         return; // Skip logging if this level is currently not visible
     }
     
-
+    // Check for rate limiting
+    time_t currentTime = time(NULL);
+    if (currentTime - config->last_reset_time >= config->rate_limit_interval) {
+        // Reset rate limit counters
+        memset(config->log_counts, 0, sizeof(config->log_counts));
+        config->last_reset_time = currentTime;
+    }
+    if (config->rate_limit_count > 0 && config->log_counts[level] >= config->rate_limit_count) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Rate limit exceeded for this level, skip logging in log_message.\n");
+        #endif 
+        return;
+    }
+    // Increment log count for this level
+    config->log_counts[level]++;
 
     char formatted_message[1024];
     char timestamp[64] = "";
@@ -180,7 +198,6 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         fmt_fprintf(config->file_writer->file_writer, "%s\n", log_buffer);
     }
 }
-
 
 void log_deallocate(Log* config) {
     if (!config) { 

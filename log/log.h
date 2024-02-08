@@ -41,8 +41,11 @@ typedef struct {
     bool level_visibility[LOG_LEVEL_FATAL + 1];
     LogFilterFunction custom_filter; 
     void* custom_filter_user_data;
+    unsigned int rate_limit_interval; // Time interval for rate limiting in seconds.
+    unsigned int rate_limit_count;    // Maximum count of logs allowed in the interval.
+    unsigned int log_counts[LOG_LEVEL_FATAL + 1]; // Count of logs for each level in the current interval.
+    time_t last_reset_time; // Last reset time for rate limiting.
 } Log;
-
 
 // Initialize the logging system
 Log* log_init();
@@ -53,16 +56,14 @@ void log_flush(Log* config);
 void log_suspend(Log* config);
 void log_resume(Log* config);
 
+// Clean up the logging system
+void log_deallocate(Log* config);
+
 // Set the log output
 bool log_set_output(Log* config, LogOutput output);
 
 // Enable or disable timestamps in log messages
 bool log_enable_timestamp(Log* config, bool enable);
-
-// Clean up the logging system
-void log_deallocate(Log* config);
-
-// set log leve 
 bool log_set_log_level(Log* config, LogLevel newLevel);
 
 // Enable filtering of log messages by keywords
@@ -80,6 +81,5 @@ bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_dat
 
 // Sets a maximum log file size. When the size is reached, the log file is archived and a new log file is started.
 bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat);
-
 
 #endif // LOG_H_

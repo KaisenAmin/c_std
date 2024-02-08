@@ -497,3 +497,12 @@ double time_current_time_in_microseconds() {
     return (double)(tv.tv_sec) * 1000000.0 + (double)(tv.tv_usec);
 #endif 
 }
+
+void time_sleep(unsigned int second) {
+    #if defined(_WIN32) || defined(_WIN64)
+        Sleep(second * 1000);
+    #else 
+        #include <unistd.h>
+        sleep(second);
+    #endif 
+}

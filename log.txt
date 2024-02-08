@@ -1,0 +1,30 @@
+2024-02-08 16:24:59 [INFO] - This is info message 0
+2024-02-08 16:24:59 [DEBUG] - This is debug message 0
+2024-02-08 16:24:59 [WARN] - This is a warning message 0
+2024-02-08 16:25:00 [INFO] - This is info message 1
+2024-02-08 16:25:00 [DEBUG] - This is debug message 1
+2024-02-08 16:25:01 [INFO] - This is info message 2
+2024-02-08 16:25:01 [DEBUG] - This is debug message 2
+2024-02-08 16:25:01 [WARN] - This is a warning message 2
+2024-02-08 16:25:02 [INFO] - This is info message 3
+2024-02-08 16:25:02 [DEBUG] - This is debug message 3
+2024-02-08 16:25:03 [INFO] - This is info message 4
+2024-02-08 16:25:03 [DEBUG] - This is debug message 4
+2024-02-08 16:25:03 [WARN] - This is a warning message 4
+2024-02-08 16:25:05 [WARN] - This is a warning message 6
+2024-02-08 16:25:07 [WARN] - This is a warning message 8
+2024-02-08 16:25:09 [INFO] - This is info message 10
+2024-02-08 16:25:09 [DEBUG] - This is debug message 10
+2024-02-08 16:25:09 [WARN] - This is a warning message 10
+2024-02-08 16:25:10 [INFO] - This is info message 11
+2024-02-08 16:25:10 [DEBUG] - This is debug message 11
+2024-02-08 16:25:11 [INFO] - This is info message 12
+2024-02-08 16:25:11 [DEBUG] - This is debug message 12
+2024-02-08 16:25:11 [WARN] - This is a warning message 12
+2024-02-08 16:25:12 [INFO] - This is info message 13
+2024-02-08 16:25:12 [DEBUG] - This is debug message 13
+2024-02-08 16:25:13 [INFO] - This is info message 14
+2024-02-08 16:25:13 [DEBUG] - This is debug message 14
+2024-02-08 16:25:13 [WARN] - This is a warning message 14
+2024-02-08 16:25:15 [WARN] - This is a warning message 16
+2024-02-08 16:25:17 [WARN] - This is a warning message 18

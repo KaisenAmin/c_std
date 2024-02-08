@@ -415,3 +415,44 @@ int main() {
     return 0;
 }
 ```
+
+## Example 17 : rate limiting features 
+
+```c
+#include "log/log.h"
+
+#if defined(_WIN32) || defined(_WIN64) 
+#include <windows.h>
+#else 
+#include <unistd.h>
+#endif 
+
+int main() {
+    Log* logger = log_init();
+    if (!logger) {
+        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
+        return -1;
+    }
+
+    // Configure rate limiting: Allow up to 5 messages per log level every 10 seconds
+    logger->rate_limit_interval = 10; // seconds
+    logger->rate_limit_count = 5;
+
+    // Generate log messages at a rate that exceeds the limit
+    for (int i = 0; i < 20; i++) {
+        log_message(logger, LOG_LEVEL_INFO, "This is info message %d", i);
+        log_message(logger, LOG_LEVEL_DEBUG, "This is debug message %d", i);
+        if (i % 2 == 0) {
+            log_message(logger, LOG_LEVEL_WARN, "This is a warning message %d", i);
+        }
+        #if defined(_WIN32) || defined(_WIN64)      
+            Sleep(1000); // Slow down message generation to simulate real-time logging
+        #else 
+            sleep(1);
+        #endif 
+    }
+
+    log_deallocate(logger);
+    return 0;
+}
+```
