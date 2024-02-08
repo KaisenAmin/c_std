@@ -24,6 +24,8 @@ typedef enum {
     LOG_OUTPUT_BOTH
 } LogOutput;
 
+typedef bool (*LogFilterFunction)(LogLevel level, const char* message, void* user_data);
+
 // Log configuration structure
 typedef struct {
     LogLevel level;
@@ -37,7 +39,10 @@ typedef struct {
     bool suspended;
     char format[256];
     bool level_visibility[LOG_LEVEL_FATAL + 1];
+    LogFilterFunction custom_filter; 
+    void* custom_filter_user_data;
 } Log;
+
 
 // Initialize the logging system
 Log* log_init();
@@ -71,5 +76,10 @@ bool log_set_format(Log* config, const char* format);
 bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible);
 bool log_redirect_output(Log* config, const char* newFilePath);
 bool log_set_verbose(Log* config, bool verbose);
+bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_data);
+
+// Sets a maximum log file size. When the size is reached, the log file is archived and a new log file is started.
+bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat);
+
 
 #endif // LOG_H_

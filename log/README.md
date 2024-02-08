@@ -360,3 +360,58 @@ int main() {
     return 0;
 }
 ```
+
+## Example 15 : set custome filter on logger `log_set_custom_filter
+
+```c
+#include "log/log.h"
+#include <string.h>
+
+bool custom_log_filter(LogLevel level, const char* message, void* user_data) {
+    (void)level;
+    const char* required_substring = (const char*)user_data;
+    return strstr(message, required_substring) != NULL;
+}
+
+int main() {
+    Log* logger = log_init();
+    if (!logger) {
+        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
+        return -1;
+    }
+
+    const char* filter_criteria = "important";
+    log_set_custom_filter(logger, custom_log_filter, (void*)filter_criteria);
+
+    log_message(logger, LOG_LEVEL_INFO, "This is an important info message.");
+    log_message(logger, LOG_LEVEL_INFO, "This is a regular info message, will be filtered out.");
+
+    log_deallocate(logger);
+    return 0;
+}
+```
+
+## Example 16 : set maximum log file size with  `log_set_max_file_size`
+
+```c
+#include "log/log.h"
+
+
+int main() {
+    Log* logger = log_init();
+    if (!logger) {
+        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
+        return -1;
+    }
+
+    // Set maximum log file size to 5 MB and specify archive naming pattern
+    log_set_max_file_size(logger, 5 * 1024 * 1024, "log_archive_%Y-%m-%d_%H-%M-%S.txt");
+
+    for (int i = 0; i < 1000; i++) {
+        log_message(logger, LOG_LEVEL_INFO, "Log message number %d", i);
+    }
+
+    log_deallocate(logger);
+    return 0;
+}
+```

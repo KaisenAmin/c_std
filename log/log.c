@@ -56,7 +56,9 @@ Log* log_init() {
     for (int i = 0; i <= LOG_LEVEL_FATAL; i++) {
         config->level_visibility[i] = true; // Initially, all log levels are visible
     }
-
+    config->custom_filter = NULL;
+    config->custom_filter_user_data = NULL;
+    
     #ifdef LOG_ENABLE_LOGGING
         fmt_fprintf(stdout, "Info: Logging system initialized in log_init.\n");
     #endif 
@@ -109,24 +111,25 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         #endif
         return;
     }
-    if (config->suspended) {
+    else if (config->suspended) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Logging is currently suspended.\n");
         #endif
         return;
     }
-    if (level < config->level) {
+    else if (level < config->level) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Current log level (%d) is higher than the message log level (%d); message not logged.\n", config->level, level);
         #endif
         return;
     }
-    if (!config->level_visibility[level]) {
+    else if (!config->level_visibility[level]) {
         #ifdef LOG_ENABLE_LOGGING
             fmt_fprintf(stderr, "Error: Skip logging log level is currently not visible in log_message.\n");
         #endif 
         return; // Skip logging if this level is currently not visible
     }
+    
 
 
     char formatted_message[1024];
@@ -149,7 +152,7 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
     // Keyword filtering
     if (config->is_keyword_filter_enabled && strstr(formatted_message, config->keyword_filter) == NULL) {
         #ifdef LOG_ENABLE_LOGGING
-        fmt_fprintf(stderr, "Message does not contain the keyword filter; not logged.\n");
+            fmt_fprintf(stderr, "Message does not contain the keyword filter; not logged.\n");
         #endif
         return;
     }
@@ -158,7 +161,13 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
     int written = snprintf(log_buffer, sizeof(log_buffer), config->format, timestamp, level_str, formatted_message);
     if (written < 0 || written >= (int)sizeof(log_buffer)) {
         #ifdef LOG_ENABLE_LOGGING
-        fmt_fprintf(stderr, "Failed to format log message correctly.\n");
+            fmt_fprintf(stderr, "Failed to format log message correctly.\n");
+        #endif
+        return;
+    }
+    else if(config->custom_filter && !config->custom_filter(level, formatted_message, config->custom_filter_user_data)) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: logging Skipped because of custom filter problem in in log_message.\n");
         #endif
         return;
     }
@@ -545,6 +554,75 @@ bool log_set_verbose(Log* config, bool verbose) {
     #ifdef LOG_ENABLE_LOGGING
         fmt_fprintf(stdout, "Info: Verbose logging is now %s.\n", verbose ? "enabled" : "disabled");
     #endif
+
+    return true;
+}
+
+bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_data) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_set_custom_filter.\n");
+        #endif
+        return false;
+    }
+
+    config->custom_filter = filter;
+    config->custom_filter_user_data = user_data;
+
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Custom log filter set successfully.\n");
+    #endif
+
+    return true;
+}
+
+bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat) {
+    if (!config || !config->file_writer || maxSize == 0) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Invalid parameters in log_set_max_file_size.\n");
+        #endif
+        return false;
+    }
+
+    // Check current log file size
+    long fileSize = file_writer_get_size(config->file_writer);
+    if (fileSize < 0) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Could not retrieve file size in log_set_max_file_size.\n");
+        #endif
+        return false;
+    }
+
+    if ((size_t)fileSize >= maxSize) {
+        char archivePath[1024];
+        time_t now = time(NULL);
+        struct tm* tm_info = localtime(&now);
+        strftime(archivePath, sizeof(archivePath), archivePathFormat, tm_info);
+
+        // Close current log file
+        file_writer_close(config->file_writer);
+        
+        // Archive current log file
+        if (rename("log.txt", archivePath) != 0) {
+            #ifdef LOG_ENABLE_LOGGING
+                fmt_fprintf(stderr, "Error: Could not archive log file in log_set_max_file_size.\n");
+            #endif
+            return false;
+        }
+
+        // Open a new log file
+        config->file_writer = file_writer_open("log.txt", WRITE_TEXT);
+        if (!config->file_writer) {
+            #ifdef LOG_ENABLE_LOGGING
+                fmt_fprintf(stderr, "Error: Could not open new log file in log_set_max_file_size.\n");
+            #endif
+            return false;
+        }
+
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stdout, "Info: Log file archived and new log file started.\n");
+        #endif
+    }
 
     return true;
 }

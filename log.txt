@@ -1,6 +1,0 @@
-2024-02-08 14:08:12 [DEBUG] - This is a verbose debug message.
-2024-02-08 14:08:12 [INFO] - This is a verbose info message.
-2024-02-08 14:08:12 [WARN] - This is a warning message.
-2024-02-08 14:08:12 [ERROR] - This is an error message.
-2024-02-08 14:08:12 [WARN] - This warning message is still visible.
-2024-02-08 14:08:12 [ERROR] - This error message is still visible.

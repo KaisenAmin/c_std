@@ -1,5 +1,6 @@
 #include "log/log.h"
 
+
 int main() {
     Log* logger = log_init();
     if (!logger) {
@@ -7,21 +8,15 @@ int main() {
         return -1;
     }
 
-    log_set_verbose(logger, true);
+    // Set maximum log file size to 5 MB and specify archive naming pattern
+    log_set_max_file_size(logger, 5 * 1024 * 1024, "log_archive_%Y-%m-%d_%H-%M-%S.txt");
 
-    log_message(logger, LOG_LEVEL_DEBUG, "This is a verbose debug message.");
-    log_message(logger, LOG_LEVEL_INFO, "This is a verbose info message.");
-    log_message(logger, LOG_LEVEL_WARN, "This is a warning message.");
-    log_message(logger, LOG_LEVEL_ERROR, "This is an error message.");
-
-    // Change verbosity dynamically
-    log_set_verbose(logger, false); 
-
-    log_message(logger, LOG_LEVEL_DEBUG, "This debug message will not be shown when verbose is off.");
-    log_message(logger, LOG_LEVEL_INFO, "This info message will not be shown when verbose is off.");
-    log_message(logger, LOG_LEVEL_WARN, "This warning message is still visible.");
-    log_message(logger, LOG_LEVEL_ERROR, "This error message is still visible.");
+    for (int i = 0; i < 1000; i++) {
+        log_message(logger, LOG_LEVEL_INFO, "Log message number %d", i);
+    }
 
     log_deallocate(logger);
     return 0;
 }
+
+
