@@ -1,0 +1,1 @@
+2024-02-08 13:25:04 [INFO] This is an informational message.

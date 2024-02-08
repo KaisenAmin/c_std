@@ -46,10 +46,16 @@ Log* log_init() {
     config->file_reader = NULL;
     config->enable_timestamp = true;
     config->enable_log_level = true;
+    config->suspended = false;
 
     // Initialize keyword filtering
     config->keyword_filter[0] = '\0'; 
     config->is_keyword_filter_enabled = false; 
+    strncpy(config->format, "%s [%s] - %s", sizeof(config->format));
+
+    for (int i = 0; i <= LOG_LEVEL_FATAL; i++) {
+        config->level_visibility[i] = true; // Initially, all log levels are visible
+    }
 
     #ifdef LOG_ENABLE_LOGGING
         fmt_fprintf(stdout, "Info: Logging system initialized in log_init.\n");
@@ -103,40 +109,61 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         #endif
         return;
     }
-    if (level < config->level) {
+    if (config->suspended) {
         #ifdef LOG_ENABLE_LOGGING
-            fmt_fprintf(stderr, "Error: Current log level (%d) is higher than the message log level (%d); message not logged.\n", config->level, level);
+            fmt_fprintf(stderr, "Logging is currently suspended.\n");
         #endif
         return;
     }
+    if (level < config->level) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Current log level (%d) is higher than the message log level (%d); message not logged.\n", config->level, level);
+        #endif
+        return;
+    }
+    if (!config->level_visibility[level]) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Skip logging log level is currently not visible in log_message.\n");
+        #endif 
+        return; // Skip logging if this level is currently not visible
+    }
 
-    va_list args;
-    char formatted_message[1024]; 
-    char timestamp[64] = ""; 
 
+    char formatted_message[1024];
+    char timestamp[64] = "";
+    char log_buffer[2048];
+    const char* level_str = log_level_to_string(level);
+
+    // Generate timestamp if enabled
     if (config->enable_timestamp) {
         time_t now = time(NULL);
-        struct tm *tm_info = localtime(&now);
+        struct tm* tm_info = localtime(&now);
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
     }
 
+    va_list args;
     va_start(args, message);
     vsnprintf(formatted_message, sizeof(formatted_message), message, args);
     va_end(args);
 
-    // Check keyword filtering
+    // Keyword filtering
     if (config->is_keyword_filter_enabled && strstr(formatted_message, config->keyword_filter) == NULL) {
         #ifdef LOG_ENABLE_LOGGING
-            fmt_fprintf(stderr, "Error: keyword for filtering is not valid in log_init.\n");
-        #endif 
+        fmt_fprintf(stderr, "Message does not contain the keyword filter; not logged.\n");
+        #endif
         return;
     }
 
-    char log_buffer[2048]; 
-    const char* level_str = log_level_to_string(level);
-    snprintf(log_buffer, sizeof(log_buffer), "%s [%s] %s", timestamp, level_str, formatted_message);
+    // Apply custom format
+    int written = snprintf(log_buffer, sizeof(log_buffer), config->format, timestamp, level_str, formatted_message);
+    if (written < 0 || written >= (int)sizeof(log_buffer)) {
+        #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stderr, "Failed to format log message correctly.\n");
+        #endif
+        return;
+    }
 
-    // Actual logging
+    // Log to the specified output
     if (config->output == LOG_OUTPUT_CONSOLE || config->output == LOG_OUTPUT_BOTH) {
         fmt_fprintf(stdout, "%s\n", log_buffer);
     }
@@ -144,6 +171,7 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         fmt_fprintf(config->file_writer->file_writer, "%s\n", log_buffer);
     }
 }
+
 
 void log_deallocate(Log* config) {
     if (!config) { 
@@ -232,5 +260,291 @@ bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable) {
         }
     #endif
     
+    return true;
+}
+
+bool log_update_keyword_filter(Log* config, const char* newKeyword) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_update_keyword_filter.\n");
+        #endif
+        return false;
+    }
+    if (newKeyword && strlen(newKeyword) > 0 && strlen(newKeyword) < MAX_KEYWORD_LENGTH) {
+        strncpy(config->keyword_filter, newKeyword, MAX_KEYWORD_LENGTH);
+        config->keyword_filter[MAX_KEYWORD_LENGTH - 1] = '\0'; // Ensure null-termination
+        config->is_keyword_filter_enabled = true;
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stdout, "Info: Keyword filter updated to '%s' in log_update_keyword_filter.\n", newKeyword);
+        #endif
+    } 
+    else if (newKeyword && strlen(newKeyword) == 0) {
+        // Disable keyword filtering if an empty string is passed
+        config->is_keyword_filter_enabled = false;
+        config->keyword_filter[0] = '\0';
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stdout, "Info: Keyword filter disabled in log_update_keyword_filter.\n");
+        #endif
+    } 
+    else {
+        // Handle invalid keyword length
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Invalid keyword length in log_update_keyword_filter.\n");
+        #endif
+        return false;
+    }
+
+    return true;
+}
+
+bool log_set_file_path(Log* config, const char* newFilePath) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_set_file_path.\n");
+        #endif
+        return false;
+    }
+
+    // Close the current file writer if it's open
+    if (config->file_writer) {
+        file_writer_close(config->file_writer);
+        config->file_writer = NULL;
+    }
+
+    // If the new file path is NULL or an empty string, stop here
+    if (!newFilePath || strlen(newFilePath) == 0) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Invalid new file path in log_set_file_path.\n");
+        #endif
+        return false;
+    }
+
+    // Attempt to open the new log file
+    config->file_writer = file_writer_open(newFilePath, WRITE_TEXT);
+    if (!config->file_writer) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Failed to open new log file in log_set_file_path.\n");
+        #endif
+        // Optionally, revert to console logging if file opening fails
+        config->output = LOG_OUTPUT_CONSOLE;
+        return false;
+    }
+
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Log file path updated to '%s' in log_set_file_path.\n", newFilePath);
+    #endif
+
+    return true;
+}
+
+void log_flush(Log* config) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_flush.\n");
+        #endif
+        return;
+    }
+
+    // Flush the log file if logging to a file
+    if ((config->output == LOG_OUTPUT_FILE || config->output == LOG_OUTPUT_BOTH) && config->file_writer) {
+        fflush(config->file_writer->file_writer);
+    }
+
+    // For console output, stdout is typically used
+    if (config->output == LOG_OUTPUT_CONSOLE || config->output == LOG_OUTPUT_BOTH) {
+        fflush(stdout);
+    }
+
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Log buffer flushed in log_flush.\n");
+    #endif
+}
+/*
+log_rotate help manage disk space by archiving old logs and starting fresh ones after a log file 
+reaches a certain size or after a certain period.
+This prevents log files from growing indefinitely and consuming too much disk space
+*/
+bool log_rotate(Log* config, const char* newLogPath, size_t maxSize) {
+    if (!config || !config->file_writer) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null or file_writer is not initialized in log_rotate.\n");
+        #endif
+        return false;
+    }
+
+    // Get the current size of the log file
+    long fileSize = file_writer_get_size(config->file_writer);
+    if (fileSize < 0) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Failed to get log file size in log_rotate.\n");
+        #endif
+        return false;
+    }
+
+    // Rotate the log if it exceeds the specified max size
+    if ((size_t)fileSize >= maxSize) {
+        // Close the current log file
+        file_writer_close(config->file_writer);
+        config->file_writer = NULL;
+
+        // Optionally, rename or move the current log file before opening a new one
+        if (rename("log.txt", newLogPath) != 0) {
+            #ifdef LOG_ENABLE_LOGGING
+                fmt_fprintf(stderr, "Error: Failed to rename log file in log_rotate.\n");
+            #endif
+            return false;
+        }
+
+        // Open a new log file
+        config->file_writer = file_writer_open("log.txt", WRITE_TEXT);
+        if (!config->file_writer) {
+            #ifdef LOG_ENABLE_LOGGING
+                fmt_fprintf(stderr, "Error: Failed to open new log file in log_rotate.\n");
+            #endif
+            return false;
+        }
+
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stdout, "Info: Log rotated successfully in log_rotate.\n");
+        #endif
+    }
+
+    return true;
+}
+
+void log_suspend(Log* config) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_suspend.\n");
+        #endif
+        return;
+    }
+    config->suspended = true;
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Logging suspended.\n");
+    #endif
+}
+
+void log_resume(Log* config) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_resume.\n");
+        #endif
+        return;
+    }
+    config->suspended = false;
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Logging resumed.\n");
+    #endif
+}
+
+bool log_set_format(Log* config, const char* format) {
+    if (!config || !format) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Invalid arguments to log_set_format.\n");
+        #endif
+        return false;
+    }
+    
+    strncpy(config->format, format, sizeof(config->format) - 1);
+    config->format[sizeof(config->format) - 1] = '\0'; // Ensure null termination
+    
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Log format updated.\n");
+    #endif
+    return true;
+}
+
+/*
+This function would enable or disable logging for specific log levels dynamically. For instance, 
+you might want to temporarily disable DEBUG logs without affecting the visibility of INFO, WARN, or ERROR logs
+*/
+bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stderr, "Error: Log configuration object is null in log_toggle_level_visibility.\n");
+        #endif
+        return false;
+    }
+
+    if (level < 0 || level > LOG_LEVEL_FATAL) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Invalid log level specified in log_toggle_level_visibility.\n");
+        #endif
+        return false;
+    }
+
+    config->level_visibility[level] = visible;
+
+    #ifdef LOG_ENABLE_LOGGING
+    fmt_fprintf(stdout, "Info: Visibility for log level %s is now %s.\n",
+                log_level_to_string(level), visible ? "enabled" : "disabled");
+    #endif
+
+    return true;
+}
+
+/*
+this function redirect log output dynamically to a different file without restarting the application. 
+This can be particularly useful for long-running applications where you want to change the log file based on time
+or based on a specific event without losing log messages or needing to restart the application
+*/
+bool log_redirect_output(Log* config, const char* newFilePath) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stderr, "Error: Log configuration object is null in log_redirect_output.\n");
+        #endif
+        return false;
+    }
+    if (!newFilePath || strlen(newFilePath) == 0) {
+        #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stderr, "Error: Invalid new file path in log_redirect_output.\n");
+        #endif
+        return false;
+    }
+
+    // Close the current log file if it's open
+    if (config->file_writer) {
+        file_writer_close(config->file_writer);
+        config->file_writer = NULL;
+    }
+
+    // Open the new log file
+    config->file_writer = file_writer_open(newFilePath, WRITE_TEXT);
+    if (!config->file_writer) {
+        #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stderr, "Error: Failed to open new log file in log_redirect_output.\n");
+        #endif
+        return false;
+    }
+
+    #ifdef LOG_ENABLE_LOGGING
+    fmt_fprintf(stdout, "Info: Log output redirected to '%s'.\n", newFilePath);
+    #endif
+
+    return true;
+}
+
+/*
+This function enables or disables verbose logging dynamically. 
+When verbose logging is enabled, all log levels are enabled (including DEBUG and INFO). 
+When it is disabled, it could limit the logging to higher severities (WARN, ERROR, FATAL).
+*/
+bool log_set_verbose(Log* config, bool verbose) {
+    if (!config) {
+        #ifdef LOG_ENABLE_LOGGING
+            fmt_fprintf(stderr, "Error: Log configuration object is null in log_set_verbose.\n");
+        #endif
+        return false;
+    }
+
+    // Enable or disable verbose logging
+    config->level_visibility[LOG_LEVEL_DEBUG] = verbose;
+    config->level_visibility[LOG_LEVEL_INFO] = verbose;
+
+    #ifdef LOG_ENABLE_LOGGING
+        fmt_fprintf(stdout, "Info: Verbose logging is now %s.\n", verbose ? "enabled" : "disabled");
+    #endif
+
     return true;
 }
