@@ -12,14 +12,19 @@
 
 List *list_create(size_t itemSize, CompareFunction compare) {
     if (itemSize == 0) {
-        fmt_fprintf(stderr, "Error: Item size must be greater than 0 in list_create.\n");
-        exit(-1);
+        #ifdef lIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Item size must be greater than 0 in list_create.\n");
+        #endif
+        return NULL;
+
     }
 
     List *list = malloc(sizeof(List));
     if (!list) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory for list in list_create.\n");
-        exit(-1);
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Cannot allocate memory for list in list_create.\n");
+        #endif
+        return NULL;
     }
 
     list->head = list->tail = NULL;
@@ -32,11 +37,15 @@ List *list_create(size_t itemSize, CompareFunction compare) {
 
 void *list_front(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_front.\n");
+        #endif
         return NULL;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Error: The list is empty in list_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fp  rintf(stderr, "Error: The list is empty in list_front.\n");
+        #endif
         return NULL;
     }
     return list->head->value;
@@ -44,11 +53,15 @@ void *list_front(const List *list) {
 
 void *list_back(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_back.\n");
+        #endif
         return NULL;
     }
     if (list->tail == NULL) {
-        fmt_fprintf(stderr, "Error: The list is empty in list_back.\n");
+        #ifdef  LIST_LOGGING_ENABLE
+            mt_fprintf(stderr, "Error: The list is empty in list_back.\n");
+        #endif
         return NULL;
     }
     return list->tail->value;
@@ -56,11 +69,15 @@ void *list_back(const List *list) {
 
 void *list_insert(List *list, size_t index, void *value) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_insert.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_insert.\n");
+        #endif
         return NULL;
     }
     if (index > list->size) {
-        fmt_fprintf(stderr, "Error: Index out of bounds in list_insert.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Index out of bounds in list_insert.\n");
+        #endif
         return NULL;
     }
     if (index == 0) {
@@ -104,11 +121,15 @@ void *list_insert(List *list, size_t index, void *value) {
 
 void *list_erase(List *list, size_t index) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_erase.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_erase.\n");
+        #endif
         return NULL;
     }
     if (index >= list->size) {
-        fmt_fprintf(stderr, "Error: Index out of bounds in list_erase.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Index out of bounds in list_erase.\n");
+        #endif
         return NULL;
     }
 
@@ -150,7 +171,9 @@ void *list_erase(List *list, size_t index) {
 
 void list_resize(List *list, size_t newSize, void *defaultValue) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_resize.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_resize.\n");
+        #endif
         return;
     }
 
@@ -161,7 +184,9 @@ void list_resize(List *list, size_t newSize, void *defaultValue) {
     while (list->size < newSize) {
         void *newValue = malloc(list->itemSize);
         if (!newValue) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in list_resize.\n");
+            #ifdef LIST_LOGGING_ENABLE
+                 fmt_fprintf(stderr, "Error: Memory allocation failed in list_resize.\n");
+            #endif
             return;
         }
 
@@ -181,7 +206,9 @@ void list_resize(List *list, size_t newSize, void *defaultValue) {
 
 void list_swap(List *list1, List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_swap.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            mt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_swap.\n");
+        #endif
         return;
     }
     Node *tempHead = list1->head; // Swap the heads
@@ -203,7 +230,9 @@ void list_swap(List *list1, List *list2) {
 
 void list_reverse(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_reverse.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_reverse.\n");
+        #endif
         return;
     }
     if (list->head == NULL) {
@@ -228,11 +257,14 @@ void list_reverse(List *list) {
 
 void list_sort(List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_sort.\n");
-        return;
+        #ifdef LIST_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Null pointer provided for list in list_sort.\n");
+        #endif
     }
     if (list->size < 2 || list->compare == NULL) {
-        fmt_fprintf(stderr, "Error: Insufficient size or null compare function in list_sort.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Insufficient size or null compare function in list_sort.\n");
+        #endif
         return;
     }
     bool swapped;
@@ -256,13 +288,17 @@ void list_sort(List* list) {
 
 void list_push_front(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_front.\n");
+        #endif
         return;
     }
 
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_push_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_push_front.\n");
+        #endif
         return;
     }
     newNode->value = malloc(list->itemSize);
@@ -290,13 +326,17 @@ void list_push_front(List *list, void *value) {
 
 void list_push_back(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_back.\n");
+        #endif
         return;
     }
 
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_push_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_push_back.\n");
+        #endif
         return;
     }
 
@@ -323,11 +363,15 @@ void list_push_back(List *list, void *value) {
 
 void list_pop_front(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_front.\n");
+        #endif
         return;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Error: Trying to pop from an empty list in list_pop_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Trying to pop from an empty list in list_pop_front.\n");
+        #endif
         return;  // The list is empty, nothing to pop
     }
 
@@ -348,11 +392,15 @@ void list_pop_front(List *list) {
 
 void list_pop_back(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_back.\n");
+            #endif
         return;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Error: Trying to pop from an empty list in list_pop_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Trying to pop from an empty list in list_pop_back.\n");
+        #endif
         return;  // The list is empty, nothing to pop
     }
     
@@ -375,7 +423,9 @@ void list_pop_back(List *list) {
 
 void list_clear(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_clear.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_clear.\n");
+        #endif
         return;
     }
     Node *current = list->head;
@@ -400,7 +450,9 @@ size_t list_length(const List *list) {
 
 void list_deallocate(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_deallocate.\n");
+        #ifdef LIST_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Null pointer provided for list in list_deallocate.\n");
+        #endif
         return;
     }
     list_clear(list);
@@ -409,7 +461,9 @@ void list_deallocate(List *list) {
 
 Node *list_begin(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_begin.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_begin.\n");
+        #endif
         return NULL;
     }
     return list->head;
@@ -417,7 +471,9 @@ Node *list_begin(const List *list) {
 
 Node *list_end(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_end.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_end.\n");
+        #endif
         return NULL;
     }
     return NULL; // In a singly linked list, the end is represented by NULL
@@ -425,7 +481,9 @@ Node *list_end(const List *list) {
 
 Node *list_rbegin(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rbegin.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rbegin.\n");
+        #endif
         return NULL;
     }
     return list->tail;
@@ -433,7 +491,9 @@ Node *list_rbegin(const List *list) {
 
 Node *list_rend(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rend.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rend.\n");
+        #endif
         return NULL;
     }
     return NULL;  // In a doubly linked list, the end is still represented by NULL
@@ -441,7 +501,9 @@ Node *list_rend(const List *list) {
 
 const Node *list_cbegin(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cbegin.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cbegin.\n");
+        #endif
         return NULL;
     }
     return list->head;
@@ -449,7 +511,9 @@ const Node *list_cbegin(const List *list) {
 
 const Node *list_cend(const List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cend.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cend.\n");
+        #endif
         return NULL;
     }
     return NULL;
@@ -457,7 +521,9 @@ const Node *list_cend(const List* list) {
 
 const Node *list_crbegin(const List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crbegin.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crbegin.\n");
+        #endif
         return NULL;
     }
     return list->tail;
@@ -465,7 +531,9 @@ const Node *list_crbegin(const List* list) {
 
 const Node *list_crend(const List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crend.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crend.\n");
+        #endif
         return NULL;
     }
     return NULL;
@@ -473,11 +541,15 @@ const Node *list_crend(const List* list) {
 
 void list_assign(List *list, void *values, size_t numValues) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_assign.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_assign.\n");
+        #endif
         return;
     }
     if (values == NULL && numValues > 0) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for values in list_assign.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for values in list_assign.\n");
+        #endif
         return;
     }
 
@@ -491,12 +563,16 @@ void list_assign(List *list, void *values, size_t numValues) {
 
 void list_emplace_front(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_front.\n");
+        #endif
         return;
     }
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_emplace_front.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_emplace_front.\n");
+        #endif
         return;
     }
     newNode->value = value;  // Directly use the provided value
@@ -516,12 +592,16 @@ void list_emplace_front(List *list, void *value) {
 
 void list_emplace_back(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_back.\n");
+        #endif
         return;
     }
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_emplace_back.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_emplace_back.\n");
+        #endif
         return;
     }
 
@@ -541,11 +621,15 @@ void list_emplace_back(List *list, void *value) {
 
 void list_splice(List *dest, List *src, Node *pos) {
     if (dest == NULL || src == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_splice.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_splice.\n");
+        #endif
         return;
     }
     if (dest == src) {
-        fmt_fprintf(stderr, "Error: Cannot splice a list into itself in list_splice.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Cannot splice a list into itself in list_splice.\n");
+        #endif
         return;
     }
     if (src->head == NULL) {
@@ -585,15 +669,21 @@ void list_splice(List *dest, List *src, Node *pos) {
 
 void list_remove(List *list, void *value) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove.\n");
+        #endif
         return;
     }
     if (value == NULL) {
-        fmt_fprintf(stderr, "Error: Null value provided for comparison in list_remove.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null value provided for comparison in list_remove.\n");
+        #endif
         return;
     }
     if (list->compare == NULL) {
-        fmt_fprintf(stderr, "Error: Null compare function provided in list_remove.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null compare function provided in list_remove.\n");
+        #endif
         return;
     }
 
@@ -626,11 +716,15 @@ void list_remove(List *list, void *value) {
 
 void list_remove_if(List *list, ConditionFunction cond) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove_if.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove_if.\n");
+        #endif
         return;
     }
     if (cond == NULL) {
-        fmt_fprintf(stderr, "Error: Null condition function provided in list_remove_if.\n");
+        #ifdef LIST_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Null condition function provided in list_remove_if.\n");
+        #endif
         return;
     }
     Node *current = list->head;
@@ -661,11 +755,15 @@ void list_remove_if(List *list, ConditionFunction cond) {
 
 void list_unique(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_unique.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for list in list_unique.\n");
+        #endif
         return;
     }
     if (list->compare == NULL) {
-        fmt_fprintf(stderr, "Error: Null compare function provided in list_unique.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null compare function provided in list_unique.\n");
+        #endif
         return;
     }
     if (list->size < 2) {
@@ -697,11 +795,15 @@ void list_unique(List *list) {
 
 void list_merge(List *list1, List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_merge.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_merge.\n");
+        #endif
         return;
     }
     if (list1 == list2 || list2->size == 0) {
-        fmt_fprintf(stderr, "Error: No merge needed, lists are identical or second list is empty in list_merge.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: No merge needed, lists are identical or second list is empty in list_merge.\n");
+        #endif
         return;
     }
     if (list1->size == 0) {
@@ -754,7 +856,9 @@ void list_merge(List *list1, List *list2) {
 
 bool list_is_less(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less.\n");
+        #endif
         return false;
     }
     if (list1->size != list2->size) {
@@ -778,7 +882,9 @@ bool list_is_less(const List *list1, const List *list2) {
 
 bool list_is_greater(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater.\n");
+        #endif
         return false;
     }
     return list_is_less(list2, list1);
@@ -786,7 +892,9 @@ bool list_is_greater(const List *list1, const List *list2) {
 
 bool list_is_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_equal.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_equal.\n");
+        #endif
         return false;
     }
     if (list1->size != list2->size) {
@@ -808,7 +916,9 @@ bool list_is_equal(const List *list1, const List *list2) {
 
 bool list_is_less_or_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less_or_equal.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less_or_equal.\n");
+        #endif
         return false;
     }
     return list_is_less(list1, list2) || list_is_equal(list1, list2);
@@ -816,7 +926,9 @@ bool list_is_less_or_equal(const List *list1, const List *list2) {
 
 bool list_is_greater_or_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater_or_equal.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater_or_equal.\n");
+        #endif
         return false;
     }
     return list_is_greater(list1, list2) || list_is_equal(list1, list2);
@@ -824,7 +936,9 @@ bool list_is_greater_or_equal(const List *list1, const List *list2) {
 
 bool list_is_not_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_not_equal.\n");
+        #ifdef LIST_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_not_equal.\n");
+        #endif
         return true;  // If one of the lists is null, they are not equal
     }
     return !list_is_equal(list1, list2);

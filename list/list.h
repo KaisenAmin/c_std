@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#define lIST_LOGGING_ENABLE
 
 typedef struct Node Node;
 typedef struct List List;
