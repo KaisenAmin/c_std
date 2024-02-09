@@ -14,8 +14,6 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
     typedef SOCKET TcpSocket;
-
-    #pragma comment(lib, "Ws2_32.lib")
 #else
     #include <sys/types.h>
     #include <sys/socket.h>
@@ -90,12 +88,12 @@ TcpStatus tcp_get_remote_address(TcpSocket socket, char* address, size_t address
 TcpStatus tcp_set_reuse_addr(TcpSocket socket, bool enabled);
 TcpStatus tcp_get_peer_name(TcpSocket socket, char* host, size_t host_len, unsigned short* port);
 TcpStatus tcp_get_sock_name(TcpSocket socket, char* host, size_t host_len, unsigned short* port);
-TcpStatus tcp_enable_ssl(TcpSocket socket, const char* cert_file, const char* key_file);
+TcpStatus tcp_enable_ssl(TcpSocket socket);
 TcpStatus tcp_disable_ssl(TcpSocket socket);
 TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len);
 TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len);
 TcpStatus tcp_get_connection_quality(TcpSocket socket, float* rtt, float* variance);
-TcpStatus tcp_ssl_init(void);
+TcpStatus tcp_ssl_init(const char* cert, const char* key);
 TcpStatus tcp_ssl_cleanup(void);
 TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host);
 TcpStatus tcp_ssl_accept(TcpSocket socket);

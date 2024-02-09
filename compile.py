@@ -38,7 +38,7 @@ def compile_project(run_after_compile=False, program_args=[]):
         # "vector",
         "time",
         # "date",
-        # "dir",
+        "dir",
         # "cli",
         # "crypto",
         # "tuple",

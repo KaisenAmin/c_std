@@ -3,20 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TCP_INVALID_SOCKET (~(TcpSocket)0)
+
 static SocketSSLMapping sslMappings[MAX_SSL_CONNECTIONS];
 static SSL_CTX* ssl_ctx = NULL;
-
-// Initialize OpenSSL - call this function once before using SSL/TLS
-static void openssl_init() {
-    SSL_load_error_strings();
-    OpenSSL_add_ssl_algorithms();
-    ssl_ctx = SSL_CTX_new(TLS_server_method()); // Use TLS_client_method() for client contexts
-    if (!ssl_ctx) {
-        #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error creating SSL context.\n");
-        #endif 
-    }
-}
 
 // Initialize the SSL mappings
 static void initialize_ssl_mappings() {
@@ -32,7 +22,8 @@ static SocketSSLMapping* get_ssl_mapping(TcpSocket socket, bool allocate) {
     for (int i = 0; i < MAX_SSL_CONNECTIONS; i++) {
         if (sslMappings[i].socket == socket) {
             return &sslMappings[i];
-        } else if (!emptySlot && sslMappings[i].socket == -1 && allocate) {
+        } 
+        else if (!emptySlot && sslMappings[i].socket == TCP_INVALID_SOCKET && allocate) {
             emptySlot = &sslMappings[i];
         }
     }
@@ -872,97 +863,73 @@ SSL* tcp_get_ssl(TcpSocket socket) {
     return mapping ? mapping->ssl : NULL;
 }
 
-TcpStatus tcp_enable_ssl(TcpSocket socket, const char* cert_file, const char* key_file) {
+TcpStatus tcp_enable_ssl(TcpSocket socket) {
     if (ssl_ctx == NULL) {
-        openssl_init();
-        if (ssl_ctx == NULL) {
-            return TCP_ERR_SETUP;
-        }
-    }
-
-    if (SSL_CTX_use_certificate_file(ssl_ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
         #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Failed to load certificate: %s\n", ERR_error_string(ERR_get_error(), NULL));
+            fmt_fprintf(stderr, "SSL context is not initialized.\n");
         #endif
         return TCP_ERR_SETUP;
     }
 
-    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
-        #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Failed to load private key: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        #endif
-        return TCP_ERR_SETUP;
-    }
-
+    // Create an SSL object for the socket
     SSL* ssl = SSL_new(ssl_ctx);
     if (!ssl) {
         #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error creating SSL object: %s\n", ERR_error_string(ERR_get_error(), NULL));
+            fmt_fprintf(stderr, "Failed to create SSL object.\n");
         #endif
         return TCP_ERR_GENERIC;
     }
 
+    // Associate the socket with the SSL object
     if (SSL_set_fd(ssl, socket) == 0) {
         #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error associating socket with SSL: %s\n", ERR_error_string(ERR_get_error(), NULL));
+            fmt_fprintf(stderr, "Failed to associate socket with SSL.\n");
         #endif
         SSL_free(ssl);
         return TCP_ERR_GENERIC;
     }
-
-    // Adjust for client or server usage as needed
-    int operationResult = SSL_accept(ssl); // Use SSL_connect(ssl) for client sockets
-    if (operationResult <= 0) {
-        #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "SSL handshake failed: %s\n", ERR_error_string(SSL_get_error(ssl, operationResult), NULL));
-        #endif
-        SSL_free(ssl);
-        return TCP_ERR_CONNECT;
-    }
-
-    tcp_set_ssl(socket, ssl); // Store `ssl` for use with read/write operations
+    tcp_set_ssl(socket, ssl);
 
     return TCP_SUCCESS;
 }
 
 TcpStatus tcp_disable_ssl(TcpSocket socket) {
-    SSL* ssl = tcp_get_ssl(socket); 
-    if (!ssl) {
+    SSL* ssl = tcp_get_ssl(socket);
+    if (ssl == NULL) {
         #ifdef TCP_LOGGING_ENABLE
             fmt_fprintf(stderr, "No SSL object associated with the socket.\n");
         #endif
-        return TCP_ERR_GENERIC;
+        return TCP_ERR_NO_SSL;
     }
 
-    // Perform SSL shutdown
-    int shutdown_ret = SSL_shutdown(ssl);
-    if (shutdown_ret == 0) {
-        shutdown_ret = SSL_shutdown(ssl);
-        if (shutdown_ret != 1) {
-            #ifdef TCP_LOGGING_ENABLE
-                fmt_fprintf(stderr, "Incomplete SSL shutdown: %s\n", ERR_error_string(SSL_get_error(ssl, shutdown_ret), NULL));
-            #endif
-        }
+    // Perform SSL shutdown sequence
+    int shutdownResult = SSL_shutdown(ssl);
+    if (shutdownResult == 0) {
+        SSL_shutdown(ssl);
     }
 
+    // Free the SSL object and clear any mappings
     SSL_free(ssl);
-    // Remove the association between the socket and its SSL object
     tcp_set_ssl(socket, NULL);
+
+    #ifdef TCP_LOGGING_ENABLE
+        fmt_fprintf(stdout, "SSL shutdown completed.\n");
+    #endif
 
     return TCP_SUCCESS;
 }
 
-TcpStatus tcp_ssl_init(void) {
+TcpStatus tcp_ssl_init(const char* cert, const char* key) {
     if (ssl_ctx != NULL) {
         // SSL context is already initialized
         #ifdef TCP_LOGGING_ENABLE
             fmt_fprintf(stdout, "SSL context is already initialized.\n");
         #endif
-        return TCP_SUCCESS; // or consider a specific status code to indicate "already initialized"
+        return TCP_SUCCESS; 
     }
 
     // Initialize OpenSSL
-    SSL_load_error_strings();   // Load SSL error strings
+    SSL_load_error_strings();   
     OpenSSL_add_ssl_algorithms(); // Register SSL/TLS ciphers and digests
     
     // Create a new SSL_CTX object as framework for TLS/SSL enabled functions
@@ -971,7 +938,36 @@ TcpStatus tcp_ssl_init(void) {
         #ifdef TCP_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error creating SSL context: %s\n", ERR_error_string(ERR_get_error(), NULL));
         #endif
-        return TCP_ERR_SETUP; // Error during setup
+        return TCP_ERR_SETUP; 
+    }
+
+    // Load certificate and private key files into the SSL context
+    if (SSL_CTX_use_certificate_file(ssl_ctx, cert, SSL_FILETYPE_PEM) <= 0) {
+        #ifdef TCP_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error loading certificate from file: %s\n", ERR_error_string(ERR_get_error(), NULL));
+        #endif
+        SSL_CTX_free(ssl_ctx);
+        ssl_ctx = NULL; 
+        return TCP_ERR_SSL;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, key, SSL_FILETYPE_PEM) <= 0) {
+        #ifdef TCP_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error loading private key from file: %s\n", ERR_error_string(ERR_get_error(), NULL));
+        #endif
+        SSL_CTX_free(ssl_ctx);
+        ssl_ctx = NULL; 
+        return TCP_ERR_SSL;
+    }
+
+    // Verify private key
+    if (!SSL_CTX_check_private_key(ssl_ctx)) {
+        #ifdef TCP_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Private key does not match the public certificate: %s\n", ERR_error_string(ERR_get_error(), NULL));
+        #endif
+        SSL_CTX_free(ssl_ctx);
+        ssl_ctx = NULL; 
+        return TCP_ERR_SSL;
     }
 
     // Initialize SSL mappings for SSL/TLS session management
@@ -1100,11 +1096,21 @@ TcpStatus tcp_ssl_accept(TcpSocket socket) {
     if (acceptResult <= 0) {
         int sslError = SSL_get_error(ssl, acceptResult);
         #ifdef TCP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "SSL handshake failed: %s\n", ERR_error_string(sslError, NULL));
+            fmt_fprintf(stderr, "SSL_accept failed with SSL error: %d\n", sslError);
+            if (sslError == SSL_ERROR_SYSCALL) {
+                unsigned long err;
+                while ((err = ERR_get_error()) != 0) {
+                    fmt_fprintf(stderr, "OpenSSL Error: %s\n", ERR_error_string(err, NULL));
+                }
+                if (errno != 0) { // Check if errno has been set
+                    fmt_fprintf(stderr, "Syscall error: %s\n", strerror(errno));
+                }
+            }
         #endif
-        SSL_free(ssl); 
-        return (sslError == SSL_ERROR_WANT_READ || sslError == SSL_ERROR_WANT_WRITE) ? TCP_ERR_TRY_AGAIN : TCP_ERR_SSL_HANDSHAKE;
+        SSL_free(ssl);
+        return TCP_ERR_SSL_HANDSHAKE;
     }
+
 
     // Handshake was successful, store the SSL object with the socket for further operations
     SocketSSLMapping* mapping = get_ssl_mapping(socket, true);
@@ -1263,7 +1269,8 @@ TcpStatus tcp_ssl_recv(TcpSocket socket, void* buf, size_t len, size_t* received
             fmt_fprintf(stdout, "Received %d bytes over SSL.\n", result);
         #endif
         return TCP_SUCCESS;
-    } else {
+    } 
+    else {
         int sslError = SSL_get_error(ssl, result);
         switch (sslError) {
             case SSL_ERROR_WANT_READ:
@@ -1280,11 +1287,24 @@ TcpStatus tcp_ssl_recv(TcpSocket socket, void* buf, size_t len, size_t* received
                     fmt_fprintf(stdout, "SSL connection closed by peer.\n");
                 #endif
                 return TCP_ERR_CLOSE;
-            case SSL_ERROR_SYSCALL:
+            case SSL_ERROR_SYSCALL: {
+                if (ERR_peek_error() == 0) { // No specific SSL error
+                    if (result == 0 || errno == 0) {
+                        fmt_fprintf(stdout, "SSL connection closed by peer or EOF reached.\n");
+                        SSL_free(ssl);
+                        tcp_set_ssl(socket, NULL); // Ensure to clear the SSL mapping
+                        tcp_close(socket); // Close the socket as the connection is done
+                        return TCP_ERR_CLOSE;
+                    } 
+                    else {
+                        fmt_fprintf(stderr, "SSL syscall error: %s\n", strerror(errno));
+                    }
+                }
                 #ifdef TCP_LOGGING_ENABLE
                     fmt_fprintf(stderr, "SSL read syscall error: %s\n", strerror(errno));
                 #endif
                 return TCP_ERR_RECV;
+            }
             default:
                 // An error occurred
                 #ifdef TCP_LOGGING_ENABLE
@@ -1316,6 +1336,9 @@ TcpStatus tcp_get_connection_quality(TcpSocket socket, float* rtt, float* varian
     #elif defined(_WIN32)
     // Windows does not provide a direct way to get RTT and its variance via socket options.
     // Custom implementation or estimation might be needed.
+        (void)socket;
+        (void)rtt;
+        (void)variance;
         #ifdef TCP_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Direct RTT measurement not supported on Windows.\n");
         #endif 
@@ -1331,7 +1354,7 @@ TcpStatus tcp_get_connection_quality(TcpSocket socket, float* rtt, float* varian
 // Ensure the socket is in non-blocking mode before using tcp_async_send.
 TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
     size_t result = send(socket, buf, len, 0);
-    if (result == -1) {
+    if (result == TCP_INVALID_SOCKET) {
         // Check if the error is EWOULDBLOCK (or its equivalent), which is normal for non-blocking sockets
         #ifdef _WIN32
             int lastError = WSAGetLastError();
@@ -1358,7 +1381,7 @@ TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
 // Ensure the socket is in non-blocking mode before using tcp_async_recv. The tcp_set_non_blocking function facilitates this
 TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len) {
     size_t result = recv(socket, buf, len, 0);
-    if (result == -1) {
+    if (result == TCP_INVALID_SOCKET) {
         // Check if the error is EWOULDBLOCK or its equivalent, which is normal for non-blocking sockets
         #ifdef _WIN32
             int lastError = WSAGetLastError();
