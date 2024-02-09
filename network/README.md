@@ -156,7 +156,8 @@ int main() {
 
 `Python Server Code`
 
-```pyhton
+```py
+
 import socket
 
 SERVER_IP = '127.0.0.1'
@@ -350,7 +351,7 @@ int main() {
 
 `python client for connect to server for getting remote address and port`
 
-```python
+```py
 import socket
 
 SERVER_IP = '127.0.0.1' 
