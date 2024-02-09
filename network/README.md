@@ -380,6 +380,12 @@ if __name__ == "__main__":
 
 ## Example 5 : `SSl` Echo Server in `TcpSocket`
 
+*Create server.ccrt and server.key*
+`openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -nodes -subj "/C=US/ST=YourState/L=YourCity/O=YourOrganization/CN=yourdomain.com"`
+
+*ssl client connect to our echo server*
+`openssl s_client -connect localhost:8443 -debug -showcerts`
+
 ```c
 #include "fmt/fmt.h"
 #include "network/tcp.h"
