@@ -24,20 +24,22 @@ def compile_project(run_after_compile=False, program_args=[]):
         # "forward_list",
         # "list",
         "fmt",
-        "map",
-        "json",
-        "file_io",
-        "log",
+        # "map",
+        # "json",
+        # "file_io",
+        # "log",
+        
         # "priority_queue",
         # "queue",
         # "span",
         # "stack",
         "string",
-        "vector",
-        # "time",
+        "network",
+        # "vector",
+        "time",
         # "date",
-        "dir",
-        "cli",
+        # "dir",
+        # "cli",
         # "crypto",
         # "tuple",
         # Add other directories containing your .c files
@@ -67,7 +69,7 @@ def compile_project(run_after_compile=False, program_args=[]):
     # Compile the project with OpenSSL flags
     command = f"gcc {flags} -o {output} " + " ".join(source_files) + f" -I{openssl_include_path} -L{openssl_lib_path} -lssl -lcrypto"
     if platform.system() == "Windows":
-        command += " -lAdvapi32"  # Add Windows-specific library
+        command += " -lWs2_32 -lAdvapi32"  # Add Windows-specific library
 
         if "dir" in source_directories:
             command += " -lshlwapi"

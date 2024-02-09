@@ -420,12 +420,7 @@ int main() {
 
 ```c
 #include "log/log.h"
-
-#if defined(_WIN32) || defined(_WIN64) 
-#include <windows.h>
-#else 
-#include <unistd.h>
-#endif 
+#include "time/time.h"
 
 int main() {
     Log* logger = log_init();
@@ -445,11 +440,7 @@ int main() {
         if (i % 2 == 0) {
             log_message(logger, LOG_LEVEL_WARN, "This is a warning message %d", i);
         }
-        #if defined(_WIN32) || defined(_WIN64)      
-            Sleep(1000); // Slow down message generation to simulate real-time logging
-        #else 
-            sleep(1);
-        #endif 
+        time_sleep(1);
     }
 
     log_deallocate(logger);
