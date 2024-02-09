@@ -87,7 +87,7 @@ int string_to_int(String *str);
 void string_reverse(String* str);
 void string_resize(String* str, size_t newSize);
 void string_shrink_to_fit(String* str);
-void string_append(String* str, const char* strItem);
+bool string_append(String* str, const char* strItem);
 void string_push_back(String* str, const char chItem); 
 void string_assign(String* str, const char* newStr);
 void string_insert(String* str, size_t pos, const char* strItem);

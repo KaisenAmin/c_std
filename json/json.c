@@ -67,6 +67,27 @@
     } \
 }
 
+#define _JSON_SERIALIZE_APPEND_STR(_str, _append, _len, _size) \
+{ \
+    if ((_str = _append_str(_str, _append, _len, _size)) == NULL) { \
+        return NULL; \
+    } \
+}
+
+#define _JSON_SERIALIZE_APPEND_IDENT(_str, _ident, _depth, _len, _size) \
+{ \
+    if ((_str = _ident_append(_str, _ident, _depth, _len, _size)) == NULL) { \
+        return NULL; \
+    } \
+}
+
+#define _JSON_SERIALIZE_R_CHECKED(_element, _ident, _depth, _str, _len, _size) \
+{ \
+    if ((_str = json_serialize_r(_element, _ident, _depth, _str, _len, _size)) == NULL) { \
+        return NULL; \
+    } \
+}
+
 static JsonError last_error = {0, ""};
 // static Mutex json_error_mutex = MUTEX_INITIALIZER;
 static const JsonParseOptions json_default_parse_options = {
@@ -143,6 +164,17 @@ static bool _is_token_at_position(JsonParserState *state, const char *token)
         return false;
     }
     return strncmp(state->input + state->position, token, token_len) == 0;
+}
+
+static bool _all_is_str(const char *str, int (*predicate)(int))
+{
+    size_t len = strlen(str);
+    for (size_t i = 0; i < len; i++) {
+        if (!predicate(str[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static void json_element_deallocator(void* data) {
@@ -814,11 +846,10 @@ JsonElement *json_get_element(const JsonElement *element, const char *key_or_ind
     if (element->type == JSON_ARRAY) {
         // check all the characters are digits
         size_t key_or_index_len = strlen(key_or_index);
-        for (size_t i = 0; i < key_or_index_len; i++) {
-            if (!isdigit(key_or_index[i])) {
-                _set_last_error(JSON_ERROR_INVALID_QUERY, "Invalid query expecting a number");
-                return NULL;
-            }
+
+        if (_all_is_str(key_or_index, isdigit) == false) {
+            _set_last_error(JSON_ERROR_INVALID_QUERY, "Invalid query expecting a number");
+            return NULL;
         }
 
         size_t index = strtoul(key_or_index, NULL, 10);
@@ -1001,62 +1032,594 @@ JsonElement *json_filter(const JsonElement *array, JsonPredicate predicate, void
     return filtered;
 }
 
-static void json_print_r(JsonElement *element, int ident, int depth)
+// Bad implementation should instead be printed
+// using a buffer like FILE* that flushes so it avoids too large strings
+void json_print(JsonElement *element, int ident)
+{
+    char *str = json_serialize(element, ident);
+    if (str == NULL) {
+        fmt_fprintf(stderr, "Error: %s\n", json_last_error());
+        return;
+    }
+    fmt_printf("%s", str);
+    free(str);
+}
+
+bool json_compare(const JsonElement *element1, const JsonElement *element2)
+{
+    if (element1 == element2) {
+        return true;
+    }
+
+    if (element1 == NULL || element2 == NULL || (element1->type != element2->type)) {
+        return false;
+    }
+
+    switch (element1->type) {
+    case JSON_NULL:
+        return true;
+    case JSON_BOOL:
+        return element1->value.bool_val == element2->value.bool_val;
+    case JSON_STRING:
+        return strcmp(element1->value.string_val, element2->value.string_val) == 0;
+    case JSON_NUMBER:
+        return element1->value.number_val == element2->value.number_val;
+    case JSON_ARRAY:
+        if (vector_size(element1->value.array_val) != vector_size(element2->value.array_val)) {
+            return false;
+        }
+        VECTOR_FOREACH(JsonElement *, element1->value.array_val, it, {
+            const size_t index = (size_t)it - (size_t)vector_begin(element1->value.array_val);
+            JsonElement **value2 = (JsonElement **)vector_at(element2->value.array_val, index);
+            if (value2 == NULL || !json_compare(*it, *value2)) {
+                return false;
+            }
+        });
+        return true;
+    case JSON_OBJECT:
+        if (map_size(element1->value.object_val) != map_size(element2->value.object_val)) {
+            return false;
+        }
+        MAP_FOREACH(char *, key, JsonElement *, value, element1->value.object_val, {
+            JsonElement *value2 = (JsonElement *)map_at(element2->value.object_val, key);
+            if (value2 == NULL || !json_compare(value, value2)) {
+                return false;
+            }
+        });
+        return true;
+    }
+    return false;
+}
+
+JsonElement *json_map(const JsonElement *array, JsonMapFunction function, void *user_data)
+{
+    if (!array || !function) {
+        _set_last_error(JSON_ERROR_INVALID_ARGUMENT, "Invalid argument expecting a non null array and function");
+        return NULL;
+    }
+    JSON_CREATE_TYPE_CHECK(array, JSON_ARRAY, {}, NULL);
+
+    JsonElement *mapped;
+    JSON_CREATE_CHECKED(mapped, JSON_ARRAY, {}, NULL);
+    VECTOR_FOREACH(JsonElement *, array->value.array_val, it, {
+        JsonElement *item = function(*it, user_data);
+        if (item == NULL) {
+            json_deallocate(mapped);
+            return NULL;
+        }
+        JSON_CREATE_VECTOR_PUSH_BACK_CHECKED(mapped->value.array_val, &item, { json_deallocate(mapped); }, NULL);
+    });
+
+    return mapped;
+}
+
+static char *_append_str(char *str, const char *append, size_t *len, size_t *size)
+{
+    size_t append_len = strlen(append);
+    if (*len + append_len + 1 > *size) {
+        size_t tmp = 1;
+        for (; tmp <= *len + append_len + 1; tmp <<= 1);
+        *size = tmp;
+        _JSON_CREATE_ALLOCATOR_CHECKED(str, realloc(str, *size), {}, NULL);
+    }
+    memcpy(str + *len, append, append_len);
+    *len += append_len;
+    str[*len] = '\0';
+    return str;
+}
+
+inline static char *_ident_append(char *str, int ident, int depth, size_t *len, size_t *size)
+{
+    if (ident == 0) {
+        return str;
+    }
+
+    size_t ident_len = ident * depth;
+
+    if (*len + ident_len + 2 > *size) {
+        size_t tmp = 1;
+        for (; tmp <= *len + ident_len + 2; tmp <<= 1);
+        *size = tmp;
+        _JSON_CREATE_ALLOCATOR_CHECKED(str, realloc(str, *size), {}, NULL);
+    }
+
+    str[*len] = '\n';
+    str[*len + ident_len + 1] = '\0';
+    memset(str + 1 + *len, ' ', ident_len);
+    *len += ident_len + 1;
+    return str;
+}
+
+static char *json_serialize_r(const JsonElement *element, int ident, int depth, char *str, size_t *len, size_t *size)
 {
     switch (element->type) {
-    case JSON_NULL:
-        fprintf(stdout, "null");
-        break;
-    case JSON_BOOL:
-        fprintf(stdout, "%s", element->value.bool_val ? "true" : "false");
-        break;
-    case JSON_STRING:
-        fprintf(stdout, "\"%s\"", element->value.string_val);
-        break;
-    case JSON_NUMBER:
-        fprintf(stdout, "%f", element->value.number_val);
-        break;
-    case JSON_ARRAY:
-        fprintf(stdout, "[\n");
-        VECTOR_FOREACH(JsonElement *, element->value.array_val, it, {
-            for (int i = 0; i < ident * (depth + 1); i++) {
-                fprintf(stdout, " ");
-            }
-            json_print_r(*it, ident, depth + 1);
-            if (it != vector_back(element->value.array_val)) {
-                fprintf(stdout, ",");
-            }
-            fprintf(stdout, "\n");
-        });
-        for (int i = 0; i < ident * depth; i++) {
-            fprintf(stdout, " ");
+        case JSON_NULL: {
+            _JSON_SERIALIZE_APPEND_STR(str, "null", len, size);
+            return str;
         }
-        fprintf(stdout, "]");
-        break;
-    case JSON_OBJECT:
-        fprintf(stdout, "{\n");
-        MAP_FOREACH(char *, key, JsonElement *, value, element->value.object_val, {
-            for (int i = 0; i < ident * (depth + 1); i++) {
-                fprintf(stdout, " ");
-            }
-            fprintf(stdout, "\"%s\": ", key);
-            json_print_r(value, ident, depth + 1);
-
-            fprintf(stdout, ",");
-
-            fprintf(stdout, "\n");
-        });
-        for (int i = 0; i < ident * depth; i++) {
-            fprintf(stdout, " ");
+        case JSON_BOOL: {
+            _JSON_SERIALIZE_APPEND_STR(str, element->value.bool_val ? "true" : "false", len, size);
+            return str;
         }
-        fprintf(stdout, "}");
-        break;
+        case JSON_STRING: {
+            _JSON_SERIALIZE_APPEND_STR(str, "\"", len, size);
+            _JSON_SERIALIZE_APPEND_STR(str, element->value.string_val, len, size);
+            _JSON_SERIALIZE_APPEND_STR(str, "\"", len, size);
+            return str;
+        }
+        case JSON_NUMBER: {
+            char number[64];
+            snprintf(number, sizeof(number), "%g", element->value.number_val);
+            _JSON_SERIALIZE_APPEND_STR(str, number, len, size);
+            return str;
+        }
+        case JSON_ARRAY: {
+            _JSON_SERIALIZE_APPEND_STR(str, "[", len, size);
+            VECTOR_FOREACH(JsonElement *, element->value.array_val, it, {
+                if (it != vector_begin(element->value.array_val)) {
+                    _JSON_SERIALIZE_APPEND_STR(str, ",", len, size);
+                }
+                _JSON_SERIALIZE_APPEND_IDENT(str, ident, depth, len, size);
+                _JSON_SERIALIZE_R_CHECKED(*it, ident, depth + 1, str, len, size);
+            });
+            _JSON_SERIALIZE_APPEND_IDENT(str, ident, depth - 1, len, size);
+            _JSON_SERIALIZE_APPEND_STR(str, "]", len, size);
+            return str;
+        }
+        case JSON_OBJECT: {
+            _JSON_SERIALIZE_APPEND_STR(str, "{", len, size);
+            bool second = false;
+            MAP_FOREACH(char *, key, JsonElement *, value, element->value.object_val, {
+                if (second) {
+                    _JSON_SERIALIZE_APPEND_STR(str, ",", len, size);
+                } else {
+                    second = true;
+                }
+                _JSON_SERIALIZE_APPEND_IDENT(str, ident, depth, len, size);
+                _JSON_SERIALIZE_APPEND_STR(str, "\"", len, size);
+                _JSON_SERIALIZE_APPEND_STR(str, key, len, size);
+                _JSON_SERIALIZE_APPEND_STR(str, "\":", len, size);
+                _JSON_SERIALIZE_R_CHECKED(value, ident, depth + 1, str, len, size);
+            });
+            _JSON_SERIALIZE_APPEND_IDENT(str, ident, depth - 1, len, size);
+            _JSON_SERIALIZE_APPEND_STR(str, "}", len, size);
+            return str;
+        }
+    }
+    return str;
+}
+
+char *json_serialize(const JsonElement *element, int ident)
+{
+    size_t len = 0;
+    size_t size = 64;
+    char *str;
+
+    if (element == NULL) {
+        _set_last_error(JSON_ERROR_INVALID_ARGUMENT, "Invalid argument expecting a non null element");
+        return NULL;
+    }
+
+    // allocate a string of a reasonable size to start with
+    if (element->type == JSON_OBJECT || element->type == JSON_ARRAY) {
+        size_t current_size = element->type == JSON_OBJECT ? map_size(element->value.object_val) : vector_size(element->value.array_val);
+        size = 64 * current_size + ident * current_size + 1;
+        size_t v = 1;
+        // find the next power of 2
+        for (; v <= size; v <<= 1);
+        size = v;
+    }
+
+    _JSON_CREATE_ALLOCATOR_CHECKED(str, malloc(size), {}, NULL);
+    _JSON_SERIALIZE_R_CHECKED(element, ident, 1, str, &len, &size);
+    return str;
+}
+
+bool json_write_to_file(const JsonElement *element, const char *filename)
+{
+    char *str = json_serialize(element, 0);
+    if (str == NULL) {
+        return false;
+    }
+
+    FILE *file = fopen(filename, "w+");
+    if (file == NULL) {
+        free(str);
+        _set_last_error(JSON_ERROR_FILE_NOT_FOUND, "File not found");
+        return false;
+    }
+
+    size_t written = fwrite(str, 1, strlen(str), file);
+    fclose(file);
+    free(str);
+    if (written != strlen(str)) {
+        _set_last_error(JSON_ERROR_IO_ERROR, "IO error");
+        return false;
+    }
+    return true;
+}
+
+bool json_set_element_array(JsonElement *array, size_t index, JsonElement *element)
+{
+    JSON_CREATE_TYPE_CHECK(array, JSON_ARRAY, {}, false);
+
+    if (index >= vector_size(array->value.array_val)) {
+        _set_last_error(JSON_ERROR_OUT_OF_RANGE, "Out of range");
+        return false;
+    }
+
+    JsonElement *old = *(JsonElement **)vector_at(array->value.array_val, index);
+    json_deallocate(old);
+    *(JsonElement **)vector_at(array->value.array_val, index) = element;
+    return true;
+}
+
+bool json_set_element_object(JsonElement *object, const char *key, JsonElement *element)
+{
+    JSON_CREATE_TYPE_CHECK(object, JSON_OBJECT, {}, false);
+
+    JsonElement *old = (JsonElement *)map_at(object->value.object_val, (void*)(key));
+    if (old != NULL) {
+        json_deallocate(old);
+    }
+    JSON_CREATE_MAP_INSERT_CHECKED(object->value.object_val, (void*)(key), element, {}, false);
+    return true;
+}
+
+bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *value)
+{
+    if (element->type == JSON_ARRAY) {
+        // check all the characters are digits
+        if (_all_is_str(key_or_index, isdigit) == false) {
+            _set_last_error(JSON_ERROR_INVALID_QUERY, "Invalid query expecting a number");
+            return false;
+        }
+        size_t index = strtoul(key_or_index, NULL, 10);
+        return json_set_element_array(element, index, value);
+    } else if (element->type == JSON_OBJECT) {
+        return json_set_element_object(element, key_or_index, value);
+    }
+    _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type expecting an array or an object");
+    return false;
+}
+
+void *json_reduce(const JsonElement *array, JsonReduceFunction function, void *initial, void *user_data)
+{
+    if (!array || !function) {
+        _set_last_error(JSON_ERROR_INVALID_ARGUMENT, "Invalid argument expecting a non null array and function");
+        return NULL;
+    }
+    JSON_CREATE_TYPE_CHECK(array, JSON_ARRAY, {}, NULL);
+
+    void *accumulator = initial;
+    VECTOR_FOREACH(JsonElement *, array->value.array_val, it, {
+        accumulator = function(accumulator, *it, user_data);
+    });
+
+    return accumulator;
+}
+
+bool json_remove_element_array(JsonElement *array, size_t index)
+{
+    JSON_CREATE_TYPE_CHECK(array, JSON_ARRAY, {}, false);
+
+    if (index >= vector_size(array->value.array_val)) {
+        _set_last_error(JSON_ERROR_OUT_OF_RANGE, "Out of range");
+        return false;
+    }
+
+    JsonElement *element = *(JsonElement **)vector_at(array->value.array_val, index);
+    json_deallocate(element);
+    vector_erase(array->value.array_val, index, sizeof(JsonElement *));
+    return true;
+}
+
+bool json_remove_element_object(JsonElement *object, const char *key)
+{
+    JSON_CREATE_TYPE_CHECK(object, JSON_OBJECT, {}, false);
+
+    JsonElement *element = (JsonElement *)map_at(object->value.object_val, (void*)(key));
+    if (element == NULL) {
+        _set_last_error(JSON_ERROR_OUT_OF_RANGE, "Out of range");
+        return false;
+    }
+    json_deallocate(element);
+    map_erase(object->value.object_val, (void*)(key));
+    return true;
+}
+
+bool json_remove_element(JsonElement *element, const char *key_or_index)
+{
+    if (element->type == JSON_ARRAY) {
+        // check all the characters are digits
+        if (_all_is_str(key_or_index, isdigit) == false) {
+            _set_last_error(JSON_ERROR_INVALID_QUERY, "Invalid query expecting a number");
+            return false;
+        }
+        size_t index = strtoul(key_or_index, NULL, 10);
+        return json_remove_element_array(element, index);
+    } else if (element->type == JSON_OBJECT) {
+        return json_remove_element_object(element, key_or_index);
+    }
+    _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type expecting an array or an object");
+    return false;
+}
+
+static JsonElement *json_convert_null_to(const JsonElement *element, JsonType type)
+{
+    JsonElement *converted;
+
+    JSON_CREATE_CHECKED(converted, type, {}, NULL);
+
+    switch (type) {
+        case JSON_BOOL: {
+            converted->value.bool_val = false;
+            break;
+        }
+        case JSON_STRING: {
+            JSON_CREATE_STRDUP_CHECKED(converted->value.string_val, "null", { json_deallocate(converted); }, NULL);
+            break;
+        }
+        case JSON_NUMBER: {
+            converted->value.number_val = 0;
+            break;
+        }
+
+        case JSON_NULL:
+        case JSON_ARRAY:
+        case JSON_OBJECT:
+            break;
+    }
+
+    return converted;
+}
+
+static JsonElement *json_convert_boolean_to(const JsonElement *element, JsonType type)
+{
+    JsonElement *converted;
+
+    switch (type) {
+        case JSON_NULL: {
+            if (element->value.bool_val) {
+                _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type cannot transform true to null");
+                return NULL;
+            }
+            JSON_CREATE_CHECKED(converted, JSON_NULL, {}, NULL);
+            return converted;
+        }
+        case JSON_BOOL: {
+            return json_deep_copy(element);
+        }
+        case JSON_STRING: {
+            JSON_CREATE_CHECKED(converted, JSON_STRING, {}, NULL);
+            JSON_CREATE_STRDUP_CHECKED(converted->value.string_val, element->value.bool_val ? "true" : "false", { json_deallocate(converted); }, NULL);
+            return converted;
+        }
+        case JSON_NUMBER: {
+            JSON_CREATE_CHECKED(converted, JSON_NUMBER, {}, NULL);
+            converted->value.number_val = element->value.bool_val ? 1 : 0;
+            return converted;
+        }
+        case JSON_ARRAY:
+        case JSON_OBJECT: {
+            // To number to array
+            JsonElement *number = json_convert(element, JSON_NUMBER);
+            if (number == NULL) {
+                return NULL;
+            }
+            JsonElement *array = json_convert(number, type);
+            json_deallocate(number);
+            return array;
+        }
     }
 }
 
-void json_print(JsonElement *element, int ident)
+static JsonElement *json_convert_string_to(const JsonElement *element, JsonType type)
 {
-    json_print_r(element, ident, 0);
+    JsonElement *converted;
+
+    if (type == JSON_STRING) {
+        return json_deep_copy(element);
+    }
+    
+    converted = json_parse(element->value.string_val);
+    if (converted == NULL) {
+        return NULL;
+    }
+
+    void *result = json_convert(converted, type); // Magic happens here (not really but it's a good comment)
+    json_deallocate(converted);
+    return result;
+}
+
+static JsonElement *json_convert_number_to(const JsonElement *element, JsonType type)
+{
+    JsonElement *converted;
+
+    switch (type) {
+        case JSON_NULL: {
+            if (element->value.number_val == 0) {
+                JSON_CREATE_CHECKED(converted, JSON_NULL, {}, NULL);
+                return converted;
+            }
+            _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type cannot transform non-zero number to null");
+            return NULL;
+        }
+        case JSON_BOOL: {
+            JSON_CREATE_CHECKED(converted, JSON_BOOL, {}, NULL);
+            converted->value.bool_val = element->value.number_val != 0;
+            return converted;
+        }
+        case JSON_STRING: {
+            char s_n[64];
+            snprintf(s_n, sizeof(s_n), "%g", element->value.number_val);
+            JSON_CREATE_CHECKED(converted, JSON_STRING, {}, NULL);
+            JSON_CREATE_STRDUP_CHECKED(converted->value.string_val, s_n, { json_deallocate(converted); }, NULL);
+            return converted;
+        }
+        case JSON_NUMBER: {
+            return json_deep_copy(element);
+        }
+        case JSON_ARRAY: {
+            JSON_CREATE_CHECKED(converted, JSON_ARRAY, {}, NULL);
+            JsonElement *element_copy;
+            _JSON_CREATE_ALLOCATOR_CHECKED(element_copy, json_deep_copy(element), { json_deallocate(converted); }, NULL);
+            JSON_CREATE_VECTOR_PUSH_BACK_CHECKED(converted->value.array_val, &element_copy, {
+                json_deallocate(converted);
+                json_deallocate(element_copy);
+            }, NULL);
+            return converted;
+        }
+        case JSON_OBJECT: {
+            JSON_CREATE_CHECKED(converted, JSON_OBJECT, {}, NULL);
+            JsonElement *element_copy;
+            _JSON_CREATE_ALLOCATOR_CHECKED(element_copy, json_deep_copy(element), { json_deallocate(converted); }, NULL);
+            JSON_CREATE_MAP_INSERT_CHECKED(converted->value.object_val, "0", element_copy, {
+                json_deallocate(converted);
+                json_deallocate(element_copy);
+            }, NULL);
+            return converted;
+        }
+    }
+
+    _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type could not convert number to the requested type");
+    return NULL;
+}
+
+static JsonElement *json_convert_object_to(const JsonElement *element, JsonType type)
+{
+    switch (type) {
+        case JSON_NULL: {
+            _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type object cannot be transformed to a null");
+            return NULL;
+        }
+        case JSON_BOOL: {
+            JsonElement *boolean;
+            JSON_CREATE_CHECKED(boolean, JSON_BOOL, {}, NULL);
+            boolean->value.bool_val = true;
+            return boolean;
+        }
+        case JSON_STRING: {
+            char *str = json_serialize(element, 0);
+            if (str == NULL) {
+                return NULL;
+            }
+            JsonElement *string;
+            JSON_CREATE_CHECKED(string, JSON_STRING, { free(str); }, NULL);
+            string->value.string_val = str;
+            return string;
+        }
+        case JSON_NUMBER: {
+            _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type object cannot be transformed to a number");
+            return NULL;
+        }
+        case JSON_ARRAY: {
+            JsonElement *array;
+            JSON_CREATE_CHECKED(array, JSON_ARRAY, {}, NULL);
+            MAP_FOREACH(char *, key, JsonElement *, value, element->value.object_val, {
+                JSON_CREATE_VECTOR_PUSH_BACK_CHECKED(array->value.array_val, &value, { json_deallocate(array); }, NULL);
+            });
+            return array;
+        }
+        case JSON_OBJECT: {
+            return json_deep_copy(element);
+        }
+    }
+}
+
+static JsonElement *json_convert_array_to(const JsonElement *element, JsonType type)
+{
+    switch (type) {
+        case JSON_BOOL: {
+            JsonElement *boolean;
+            JSON_CREATE_CHECKED(boolean, JSON_BOOL, {}, NULL);
+            boolean->value.bool_val = true;
+            return boolean;
+        }
+        case JSON_STRING: {
+            char *str = json_serialize(element, 0);
+            if (str == NULL) {
+                return NULL;
+            }
+            JsonElement *string;
+            JSON_CREATE_CHECKED(string, JSON_STRING, { free(str); }, NULL);
+            string->value.string_val = str;
+            return string;
+        }
+        case JSON_ARRAY: {
+            return json_deep_copy(element);
+        }
+        case JSON_OBJECT: {
+            JsonElement *object;
+            JSON_CREATE_CHECKED(object, JSON_OBJECT, {}, NULL);
+            VECTOR_FOREACH(JsonElement *, element->value.array_val, it, {
+                char skey[64];
+                char *akey;
+                size_t index = (size_t)it - (size_t)vector_begin(element->value.array_val);
+                snprintf(skey, sizeof(skey), "%zu", index);
+                JSON_CREATE_STRDUP_CHECKED(akey, skey, { json_deallocate(object); }, NULL);
+                JSON_CREATE_MAP_INSERT_CHECKED(object->value.object_val, akey, *it, { free(akey); json_deallocate(object); }, NULL);
+            });
+            return object;
+        }
+        case JSON_NULL:
+        case JSON_NUMBER:
+            _set_last_error(JSON_ERROR_INVALID_TYPE, "Invalid type expecting to transform array to (string, array, object, boolean)");
+            return NULL;
+    }
+}
+
+JsonElement *json_convert(const JsonElement *element, JsonType type)
+{
+    if (element == NULL) {
+        _set_last_error(JSON_ERROR_INVALID_ARGUMENT, "Invalid argument expecting a non null element");
+        return NULL;
+    }
+
+    if (element->type == type) {
+        return json_deep_copy(element);
+    }
+
+    switch (element->type) {
+        case JSON_NULL: {
+            return json_convert_null_to(element, type);
+        }
+        case JSON_BOOL: {
+            return json_convert_boolean_to(element, type);
+        }
+        case JSON_STRING: {
+            return json_convert_string_to(element, type);
+        }
+        case JSON_NUMBER: {
+            return json_convert_number_to(element, type);
+        }
+        case JSON_ARRAY: {
+            return json_convert_array_to(element, type);
+        }
+        case JSON_OBJECT: {
+            return json_convert_object_to(element, type);
+        }
+    }
 }
 
 #undef _JSON_CREATE_ALLOCATOR_CHECKED
@@ -1070,3 +1633,7 @@ void json_print(JsonElement *element, int ident)
 #undef JSON_CREATE_MAP_INSERT_CHECKED
 #undef JSON_PARSE_VALUE_CHECKED
 #undef JSON_CREATE_TYPE_CHECK
+#undef _JSON_SERIALIZE_APPEND_STR
+#undef _JSON_SERIALIZE_APPEND_IDENT
+#undef _JSON_SERIALIZE_R_CHECKED
+#undef _JSON_SERIALIZE_DEF

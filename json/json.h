@@ -112,41 +112,60 @@ JsonElement* json_read_from_file(const char *filename);
 JsonElement* json_parse_with_options(const char *json_str, JsonParseOptions options);
 JsonElement* json_read_from_file_with_options(const char *filename, JsonParseOptions options);
 
-// Get
+// Query
 JsonElement* json_get_element(const JsonElement *element, const char *key_or_index);
 JsonElement *json_get_array_element(const JsonElement *array, size_t index);
 JsonElement *json_get_object_element(const JsonElement *object, const char *key);
 JsonElement* json_query(const JsonElement *element, const char *query);
-
 size_t json_array_size(const JsonElement *array);
 size_t json_object_size(const JsonElement *object);
 
 // Error handling
 JsonError json_last_error();
 
+// Functional
 JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data);
 JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2);
 JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data);
-/*
-JsonElement* json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data);
-
-char* json_serialize(const JsonElement *element);
-char* json_format(const JsonElement *element);
-char** json_to_string_array(const JsonElement *array, size_t *length);
-
-bool json_write_to_file(const JsonElement *element, const char *filename);
-bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element);
-bool json_remove_element(JsonElement *element, const char *key_or_index);
-bool json_validate(const JsonElement *element, const char *schema_json);
+JsonElement* json_map(const JsonElement *array, JsonMapFunction function, void *user_data);
+void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data);
 bool json_compare(const JsonElement *element1, const JsonElement *element2);
 
-void* json_convert(const JsonElement *element, JsonType type);
-void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data);
+// Serialize
+char* json_serialize(const JsonElement *element, int ident);
+bool json_write_to_file(const JsonElement *element, const char *filename);
+
+// Set
+bool json_set_element_array(JsonElement *element, size_t index, JsonElement *value);
+bool json_set_element_object(JsonElement *element, const char *key, JsonElement *value);
+bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *value);
+
+bool json_remove_element_array(JsonElement *element, size_t index);
+bool json_remove_element_object(JsonElement *element, const char *key);
+bool json_remove_element(JsonElement *element, const char *key_or_index);
+
+/*
+// Why should we need this? (Basically, this is a reduce with json_convert)
+char** json_to_string_array(const JsonElement *array, size_t *length);
+{
+    void _reduce(const JsonElement *element, void *acc, void *user_data)
+    {
+        char **acc = (char**)acc;
+        size_t *length = (size_t*)user_data;
+        acc[*length] = json_convert(element, JSON_STRING);
+        (*length)++;
+    }
+    return (char**)json_reduce(array, _reduce, NULL, length);
+}
+
+// How should this word?
+// bool json_validate(const JsonElement *element, const char *schema_json);
+// Is that a good idea?...
 */
-void json_print(JsonElement *element, int ident);
+
+JsonElement* json_convert(const JsonElement *element, JsonType type);
+void json_print(JsonElement *element, int ident); // TODO: modify implementation
 
 JsonType json_typeof(const JsonElement *element);
-
-
 
 #endif 

@@ -92,7 +92,7 @@ String* string_create(const char* initialStr) {
     String* str = (String*)malloc(sizeof(String));
     if (!str) {
         fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create.\n");
-        exit(-1);
+        return NULL;
     }
 
     size_t initialSize = initialStr ? strlen(initialStr) : 0;
@@ -105,7 +105,7 @@ String* string_create(const char* initialStr) {
     if (!str->pool) {
         fmt_fprintf(stderr, "Error: Memory pool creation failed in string_create.\n");
         free(str);
-        exit(-1);
+        return NULL;
     }
 
     str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
@@ -113,7 +113,7 @@ String* string_create(const char* initialStr) {
         fmt_fprintf(stderr, "Error: Memory pool allocation failed in string_create.\n");
         memory_pool_destroy(str->pool);
         free(str);
-        exit(-1);
+        return NULL;
     }
 
     if (initialStr) {
@@ -367,18 +367,18 @@ void string_shrink_to_fit(String *str) {
     }
 }
 
-void string_append(String *str, const char *strItem) {
+bool string_append(String *str, const char *strItem) {
     if (str == NULL) {
         fmt_fprintf(stderr, "Error: The String object is NULL in string_append.\n");
-        return;
+        return false;
     }
     if (strItem == NULL) {
         fmt_fprintf(stderr, "Error: The strItem is NULL in string_append.\n");
-        return;
+        return false;
     }
     size_t strItemLength = strlen(strItem);
     if (strItemLength == 0) { 
-        return;
+        return true;  // Nothing to append
     }
 
     if (str->size + strItemLength >= str->capacitySize) {
@@ -387,7 +387,7 @@ void string_append(String *str, const char *strItem) {
 
         if (!newData) {
             fmt_fprintf(stderr, "Error: Memory allocation failed in string_append.\n");
-            return;
+            return false;
         }
 
         memcpy(newData, str->dataStr, str->size);
@@ -397,6 +397,7 @@ void string_append(String *str, const char *strItem) {
 
     strcpy(str->dataStr + str->size, strItem);
     str->size += strItemLength;
+    return true;
 }
 
 void string_push_back(String* str, char chItem) {
