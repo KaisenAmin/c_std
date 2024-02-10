@@ -200,6 +200,18 @@ TcpStatus tcp_accept(TcpSocket socket, TcpSocket* client_socket) {
         #ifdef TCP_LOGGING_ENABLE
             TcpStatusInfo status_info;
             tcp_get_last_error(&status_info);
+            // Check if the error is due to the operation that would block
+            #if defined(_WIN32) || defined(_WIN64)
+            if (status_info.sys_errno == WSAEWOULDBLOCK) {
+                fmt_fprintf(stderr, "Non-blocking socket operation could not be completed immediately in tcp_accept.\n");
+                return TCP_ERR_WOULD_BLOCK; // Assuming you define TCP_ERR_WOULD_BLOCK
+            }
+            #else
+            if (status_info.sys_errno == EAGAIN || status_info.sys_errno == EWOULDBLOCK) {
+                fmt_fprintf(stderr, "Non-blocking socket operation could not be completed immediately in tcp_accept.\n");
+                return TCP_ERR_WOULD_BLOCK; // Assuming you define TCP_ERR_WOULD_BLOCK
+            }
+            #endif
             fmt_fprintf(stderr, "Error: Accepting connection failed with error: %s in tcp_accept\n", status_info.message);
         #endif
         return TCP_ERR_ACCEPT;

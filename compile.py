@@ -28,7 +28,6 @@ def compile_project(run_after_compile=False, program_args=[]):
         # "json",
         # "file_io",
         # "log",
-        
         # "priority_queue",
         # "queue",
         # "span",
@@ -37,6 +36,7 @@ def compile_project(run_after_compile=False, program_args=[]):
         "network",
         # "vector",
         "time",
+        "concurrent",
         # "date",
         "dir",
         # "cli",

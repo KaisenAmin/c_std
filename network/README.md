@@ -500,3 +500,95 @@ int main() {
     return 0;
 }
 ```
+
+## Example 6 : concurrent server in `TcpSocket`
+
+`This example demonstrates how to set up a secure SSL/TCP server using a custom TCP library, which abstracts the complexity of socket programming and SSL communication. The example covers initializing the network environment, creating a non-blocking TCP socket, configuring SSL, and handling client connections in a multithreaded manner. This approach allows for scalable server applications that can handle multiple client connections concurrently without blocking the main execution thread.`
+
+```c
+#include "fmt/fmt.h"
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+
+#define PORT "8443"
+#define BUFFER_SIZE 1024
+#define CERT_FILE "./server.crt"
+#define KEY_FILE "./server.key"
+
+int handle_client(void* arg);
+
+int main() {
+    TcpSocket listen_socket;
+    
+    tcp_init();
+    tcp_ssl_init(CERT_FILE, KEY_FILE);
+
+    tcp_socket_create(&listen_socket);
+    tcp_set_non_blocking(listen_socket, true);
+    tcp_set_reuse_addr(listen_socket, true);
+    tcp_bind(listen_socket, NULL, atoi(PORT));
+    tcp_listen(listen_socket, 10);
+
+    fmt_printf("SSL Echo Server listening on port %s\n", PORT);
+
+    fd_set master_set;
+    FD_ZERO(&master_set);
+    FD_SET(listen_socket, &master_set);
+    int max_sd = listen_socket;
+
+    while (true) {
+        fd_set read_fds = master_set;
+        struct timeval timeout;
+        timeout.tv_sec = 0; // No wait timeout
+        timeout.tv_usec = 10000; // 10ms
+
+        int activity = select(max_sd + 1, &read_fds, NULL, NULL, &timeout);
+
+        if ((activity < 0) && (errno != EINTR)) {
+            fmt_printf("select error\n");
+        }
+
+        if (FD_ISSET(listen_socket, &read_fds)) {
+            TcpSocket* client_socket = malloc(sizeof(TcpSocket)); // Ensure proper error checking in production code
+            TcpStatus acceptStatus = tcp_accept(listen_socket, client_socket);
+            if (acceptStatus == TCP_SUCCESS) {
+                Thread thread_id = NULL;
+                thread_create(&thread_id, handle_client, client_socket);
+                thread_detach(thread_id);
+            } 
+            else {
+                free(client_socket);
+            }
+        }
+    }
+
+    tcp_close(listen_socket);
+    tcp_ssl_cleanup();
+    tcp_cleanup();
+    return 0;
+}
+
+int handle_client(void* arg) {
+    TcpSocket client_socket = *(TcpSocket*)arg;
+    free(arg); // Free the argument as soon as possible to avoid memory leaks
+
+    tcp_enable_ssl(client_socket);
+    if (tcp_ssl_accept(client_socket) != TCP_SUCCESS) {
+        tcp_ssl_close(client_socket);
+        tcp_close(client_socket);
+        return -1;
+    }
+
+    char buffer[BUFFER_SIZE];
+    size_t received, sent;
+
+    while (tcp_ssl_recv(client_socket, buffer, BUFFER_SIZE, &received) == TCP_SUCCESS && received > 0) {
+        tcp_ssl_send(client_socket, buffer, received, &sent);
+    }
+
+    tcp_ssl_close(client_socket);
+    tcp_close(client_socket);
+
+    return 0;
+}
+```
