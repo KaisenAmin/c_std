@@ -998,7 +998,7 @@ TcpStatus tcp_ssl_cleanup(void) {
         ssl_ctx = NULL;
         
         #ifdef TCP_LOGGING_ENABLE
-        fmt_fprintf(stdout, "SSL context cleaned up successfully.\n");
+            fmt_fprintf(stdout, "SSL context cleaned up successfully.\n");
         #endif
     }
 
@@ -1106,8 +1106,9 @@ TcpStatus tcp_ssl_accept(TcpSocket socket) {
     // Wait for a TLS/SSL client to initiate the TLS/SSL handshake
     int acceptResult = SSL_accept(ssl);
     if (acceptResult <= 0) {
-        int sslError = SSL_get_error(ssl, acceptResult);
+        
         #ifdef TCP_LOGGING_ENABLE
+            int sslError = SSL_get_error(ssl, acceptResult);
             fmt_fprintf(stderr, "SSL_accept failed with SSL error: %d\n", sslError);
             if (sslError == SSL_ERROR_SYSCALL) {
                 unsigned long err;

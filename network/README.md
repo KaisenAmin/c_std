@@ -2,6 +2,8 @@
 
 ## Example 1 : First server in `TcpSocket`
 
+`This server listens on a specified port and echoes back any received data to the client. It demonstrates basic server setup, including initialization, socket creation, binding, listening, accepting connections, receiving data, and sending data back.`
+
 ```c
 #include "fmt/fmt.h"
 #include "network/tcp.h"
@@ -83,6 +85,8 @@ int main() {
 ```
 
 ## Example 2 : client Echo with python example  `TcpSocket`
+
+`A C client connects to a Python server, sends a message, and prints the echoed message received from the server. This example illustrates how to create a TCP client, connect to a server, send and receive data.`
 
 ```c
 #include "fmt/fmt.h"
@@ -187,6 +191,8 @@ if __name__ == "__main__":
 
 ## Example 3 : Non Blocking `TcpSocket` client 
 
+`This client attempts to connect to a server in non-blocking mode, sending a message and waiting for a response without blocking the execution. It shows how to set a socket to non-blocking mode and handle send/receive operations accordingly.`
+
 ```c
 #include "fmt/fmt.h"
 #include "network/tcp.h"
@@ -271,6 +277,8 @@ int main() {
 ```
 
 ## Example 4 : get remote and local address with tcp server in `TcpSocket` 
+
+`A server that prints its own and the client's address upon connection. This demonstrates how to retrieve and display the local and remote addresses of a connection`
 
 ```c
 #include "fmt/fmt.h"
@@ -385,6 +393,8 @@ if __name__ == "__main__":
 
 *ssl client connect to our echo server*
 `openssl s_client -connect localhost:8443 -debug -showcerts`
+
+`An SSL/TLS server that echoes back received data over a secure connection. This example covers initializing SSL, creating an SSL-enabled socket, performing SSL handshakes, and secure data transmission.`
 
 ```c
 #include "fmt/fmt.h"
@@ -591,4 +601,237 @@ int handle_client(void* arg) {
 
     return 0;
 }
+```
+
+## Example 7 : Simple HttpServer with `TcpSocket`\
+
+`This example demonstrates how to create a simple HTTP server in C using the custom TcpSocket and concurrent libraries. The server listens on port 8080 and responds to incoming HTTP requests with a basic HTTP response message. This server is capable of handling multiple client connections concurrently through the use of threads.`
+
+```c
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+
+#define SERVER_PORT 8080
+#define BUFFER_SIZE 4096
+
+int handle_client(void* arg) {
+    TcpSocket client_socket = *(TcpSocket*)arg;
+    free(arg); // Free the dynamically allocated memory for the socket
+
+    char buffer[BUFFER_SIZE] = {0};
+    size_t received, sent;
+
+    if (tcp_recv(client_socket, buffer, BUFFER_SIZE, &received) == TCP_SUCCESS) {
+        fmt_printf("Request:\n%s\n", buffer);
+
+        // Simple HTTP response
+        const char* httpResponse = "HTTP/1.1 200 OK\r\n"
+                                    "Content-Type: text/plain\r\n"
+                                    "Connection: close\r\n"
+                                    "\r\n"
+                                    "Hello, world! This is a simple HTTP server response.\r\n";
+
+        tcp_send(client_socket, httpResponse, strlen(httpResponse), &sent);
+    }
+
+    tcp_close(client_socket);
+    fmt_printf("Client disconnected.\n");
+    
+    return TCP_SUCCESS;
+}
+
+int main(void) {
+    TcpSocket listen_socket;
+    TcpStatus status = tcp_init();
+
+    if (status != TCP_SUCCESS) {
+        fmt_fprintf(stderr, "Failed to initialize TCP.\n");
+        return 1;
+    }
+
+    status = tcp_socket_create(&listen_socket);
+    if (status != TCP_SUCCESS) {
+        fmt_fprintf(stderr, "Failed to create socket.\n");
+        tcp_cleanup();
+        return 1;
+    }
+
+    status = tcp_bind(listen_socket, NULL, SERVER_PORT);
+    if (status != TCP_SUCCESS) {
+        fmt_fprintf(stderr, "Failed to bind socket.\n");
+        tcp_close(listen_socket);
+        tcp_cleanup();
+        return 1;
+    }
+
+    status = tcp_listen(listen_socket, 10);
+    if (status != TCP_SUCCESS) {
+        fmt_fprintf(stderr, "Failed to listen on socket.\n");
+        tcp_close(listen_socket);
+        tcp_cleanup();
+        return 1;
+    }
+
+    fmt_printf("HTTP Server listening on port %d\n", SERVER_PORT);
+
+    while (1) {
+        TcpSocket* client_socket = (TcpSocket*) malloc(sizeof(TcpSocket));
+        if (client_socket == NULL) {
+            fmt_fprintf(stderr, "Failed to allocate memory for client socket.\n");
+            continue;
+        }
+
+        if (tcp_accept(listen_socket, client_socket) == TCP_SUCCESS) {
+            Thread client_thread;
+            if (thread_create(&client_thread, handle_client, client_socket) != THREAD_SUCCESS) {
+                fmt_fprintf(stderr, "Failed to create thread.\n");
+                free(client_socket); 
+            }
+            thread_detach(client_thread);
+        } 
+        else {
+            free(client_socket); 
+        }
+    }
+
+    tcp_close(listen_socket);
+    tcp_cleanup();
+
+    return 0;
+}
+```
+
+## Example 8: Asynchronous File Server using `TcpSocket`
+
+`This example demonstrates the creation of an asynchronous file server in C, utilizing the custom TcpSocket, fmt, concurrent, and file_io libraries. The server is designed to listen for incoming file requests on port 8080 and serve the requested files back to the client efficiently and concurrently. This example is particularly useful for understanding how to integrate network programming with file I/O and threading for scalable server applications.`
+
+```c
+#include "network/tcp.h"
+#include "fmt/fmt.h"
+#include "concurrent/concurrent.h"
+#include "file_io/file_reader.h"
+
+#define SERVER_PORT 8080
+#define BUFFER_SIZE 4096
+#define MAX_FILENAME_LENGTH 256
+
+int handle_client(void* arg) {
+    TcpSocket client_socket = *(TcpSocket*)arg;
+    free(arg); 
+
+    char request[BUFFER_SIZE] = {0};
+    size_t received;
+
+    // Receive the file request from the client
+    if (tcp_recv(client_socket, request, BUFFER_SIZE, &received) != TCP_SUCCESS || received == 0) {
+        fmt_fprintf(stderr, "Failed to receive data from client.\n");
+        tcp_close(client_socket);
+        return -1;
+    }
+
+    // Extract the filename from the request
+    char* token = strtok(request, " ");
+    if (token == NULL || strcmp(token, "GET") != 0) {
+        fmt_fprintf(stderr, "Invalid request format.\n");
+        tcp_close(client_socket);
+        return -1;
+    }
+
+    char* filename = strtok(NULL, " ");
+    if (filename == NULL) {
+        fmt_fprintf(stderr, "Filename not specified in request.\n");
+        tcp_close(client_socket);
+        return -1;
+    }
+
+    // Attempt to open the requested file
+    FileReader* reader = file_reader_open(filename, READ_BINARY);
+    if (!reader) {
+        char* errMsg = "File not found.\n";
+        tcp_send(client_socket, errMsg, strlen(errMsg), NULL);
+        tcp_close(client_socket);
+        return -1;
+    }
+
+    // Read the file content and send it to the client
+    char file_buffer[BUFFER_SIZE];
+    size_t bytes_read;
+    while ((bytes_read = file_reader_read(file_buffer, 1, BUFFER_SIZE, reader)) > 0) {
+        tcp_send(client_socket, file_buffer, bytes_read, NULL);
+    }
+
+    file_reader_close(reader);
+    tcp_close(client_socket);
+    fmt_printf("File \"%s\" sent successfully.\n", filename);
+
+    return 0;
+}
+
+int main(void) {
+    TcpSocket listen_socket;
+    tcp_init();
+    tcp_socket_create(&listen_socket);
+    tcp_bind(listen_socket, NULL, SERVER_PORT);
+    tcp_listen(listen_socket, 10);
+
+    fmt_printf("File Server listening on port %d\n", SERVER_PORT);
+
+    while (1) {
+        TcpSocket* client_socket = malloc(sizeof(TcpSocket));
+        if (tcp_accept(listen_socket, client_socket) == TCP_SUCCESS) {
+            Thread client_thread = NULL;
+            thread_create(&client_thread, handle_client, client_socket);
+            thread_detach(client_thread);
+        } 
+        else {
+            free(client_socket);
+        }
+    }
+
+    tcp_close(listen_socket);
+    tcp_cleanup();
+
+    return 0;
+}
+```
+
+*Client Request in Python*
+
+```py
+import socket
+
+# Server configuration
+SERVER_IP = '127.0.0.1'
+SERVER_PORT = 8080
+
+def request_file(filename):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    try:
+        sock.connect((SERVER_IP, SERVER_PORT))
+        print(f"Connected to {SERVER_IP}:{SERVER_PORT}")
+
+        request_message = f"GET {filename}"
+        sock.sendall(request_message.encode('utf-8'))
+        print(f"Requested file: {filename}")
+
+        with open(f"received_{filename}", 'wb') as file:
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break 
+                file.write(data)
+        
+        print(f"File received and saved as received_{filename}")
+
+    except socket.error as e:
+        print(f"Socket error: {e}")
+    finally:
+        sock.close()
+        print("Connection closed.")
+
+if __name__ == "__main__":
+    filename = input("Enter the filename to request: ")
+    request_file(filename)
 ```

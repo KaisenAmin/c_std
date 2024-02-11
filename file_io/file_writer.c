@@ -207,7 +207,14 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
         return 0;
     }
 
+    // Directly write binary data without conversion
+    if (writer->mode == WRITE_BINARY) {
+        return fwrite(buffer, size, count, writer->file_writer);
+    }
+
     size_t written = 0;
+
+    // Handle text and unicode data with conversion if necessary
     switch (writer->encoding) {
         case WRITE_ENCODING_UTF32: {
             // Convert UTF-8 to UTF-32 and then write
@@ -221,10 +228,9 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
             break;
         }
 
-        default: // Default case is ENCODING_UTF16
         case WRITE_ENCODING_UTF16: {
             #if defined(_WIN32) || defined(_WIN64)
-            // On Windows, UTF-16 is native, so use your UTF-8 to wchar_t conversion
+            // For Windows, if mode requires UTF-16, convert and write
             if (writer->mode == WRITE_UNICODE || writer->mode == WRITE_APPEND) {
                 wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
                 if (!wBuffer) {
@@ -234,23 +240,36 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
                 written = fwrite(wBuffer, sizeof(wchar_t), wcslen(wBuffer), writer->file_writer);
                 free(wBuffer);
             }
-            else if (writer->mode == WRITE_TEXT || writer->mode == WRITE_BINARY || writer->mode == WRITE_BUFFERED || writer->mode == WRITE_UNBUFFERED) {
+            else {
+                // For non-Unicode modes, write directly
                 written = fwrite(buffer, size, count, writer->file_writer);
-                break;
             }
             #else
-            // On other systems, convert UTF-8 to UTF-16 and then write
-            uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size * count);
-            if (!utf16Buffer) {
-                fmt_fprintf(stderr, "Error: Conversion to UTF-16 failed in file_writer_write.\n");
-                return 0;
+            // For non-Windows systems, convert UTF-8 to UTF-16 if required and write
+            if (writer->encoding == WRITE_ENCODING_UTF16) {
+                uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size * count);
+                if (!utf16Buffer) {
+                    fmt_fprintf(stderr, "Error: Conversion to UTF-16 failed in file_writer_write.\n");
+                    return 0;
+                }
+                written = fwrite(utf16Buffer, sizeof(uint16_t), wcslen((wchar_t*)utf16Buffer), writer->file_writer);
+                free(utf16Buffer);
+            } 
+            else {
+                // For non-Unicode modes, write directly
+                written = fwrite(buffer, size, count, writer->file_writer);
             }
-            written = fwrite(utf16Buffer, sizeof(uint16_t), wcslen((wchar_t*)utf16Buffer), writer->file_writer);
-            free(utf16Buffer);
             #endif
             break;
         }
+
+        // Other encoding types or default handling can be added here
+        default:
+            // For safety, default to direct writing for undefined encoding types
+            written = fwrite(buffer, size, count, writer->file_writer);
+            break;
     }
+
     return written;
 }
 

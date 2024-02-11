@@ -712,16 +712,51 @@ void *vector_data(Vector *vec) {
     return vec->items; // The underlying array
 }
 
+/**
+ * @brief Returns the number of elements currently stored in the vector.
+ * 
+ * This function provides the current size of the vector, indicating how many elements are currently stored in it. 
+ * The size can be used to determine the number of elements that are actually accessible within the vector. 
+ * It is an essential attribute for iterating over the vector's elements or when making decisions based on the vector's 
+ * occupancy.
+ * 
+ * @param vec A pointer to a constant Vector instance to query for its size. The vector should have been properly initialized 
+ * before invoking this function.
+ * @return The current number of elements in the vector as a `size_t` value. If the vector pointer is NULL, 
+ * the function returns 0. In case `VECTOR_LOGGING_ENABLE` is defined, it logs an error message to `stderr` to indicate 
+ * that the input vector pointer is NULL.
+ * 
+ * @note Error Handling: The function checks if the input vector pointer is NULL. If so, and `VECTOR_LOGGING_ENABLE` is defined,
+ * it outputs an error message to `stderr`. This approach aids in identifying issues during development, 
+ * but the specific error handling strategy might need to be adapted to fit the application's requirements.
+ */
 size_t vector_size(const Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Vector is NULL in vector_size.\n");
         #endif 
-        return 0; // Handle the error as per your application's needs
+        return 0; 
     }
     return vec->size;
 }
 
+/**
+ * @brief Retrieves the current capacity of the vector.
+ * 
+ * This function returns the current capacity of the vector, which is the number of elements it can hold before needing to 
+ * allocate more memory. It is an important function for understanding the memory efficiency and performance characteristics 
+ * of the vector, especially in scenarios where minimizing reallocations is critical.
+ * 
+ * @param vec A pointer to the Vector instance whose capacity is queried. The vector must be properly initialized before 
+ * calling this function.
+ * @return The capacity of the vector as a `size_t` value, representing the maximum number of elements it can currently 
+ * hold without reallocating memory. If the vector is NULL, the function returns 0, and if `VECTOR_LOGGING_ENABLE` is defined, 
+ * an error message is logged to `stderr`.
+ * 
+ * @note The function checks if the input vector pointer is NULL. If it is, and if `VECTOR_LOGGING_ENABLE` is defined, 
+ * an error message is printed to `stderr`. This aids in debugging but may need to be adjusted or enhanced based on specific 
+ * requirements for error reporting in your application.
+ */
 size_t vector_capacity(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
@@ -732,6 +767,23 @@ size_t vector_capacity(Vector *vec) {
     return vec->capacitySize;
 }
 
+/**
+ * @brief Calculates the maximum number of elements that the vector can hold based on its item size.
+ * 
+ * This function provides the maximum size that a vector can achieve, which is determined by the size of the items it holds. 
+ * It is crucial to note that this function returns the item size, which might not accurately represent the 'maximum size' 
+ * in terms of the number of elements. Typically, the maximum size would depend on the total amount of memory available and 
+ * the size of each element, so the implementation might need a revision to reflect the true maximum capacity of the vector.
+ * 
+ * @param vec A pointer to the Vector instance whose maximum size is to be determined.
+ * @return The size of the items in the vector as `size_t`. 
+ * This is indicative of the item size rather than the maximum number of items the vector can hold. If the vector is NULL, 
+ * the function returns 0, and an error message is logged to `stderr` if `VECTOR_LOGGING_ENABLE` is defined.
+ * 
+ * @note This function checks if the provided vector pointer is NULL. If so, and if `VECTOR_LOGGING_ENABLE` is defined, 
+ * it logs an error message to `stderr`. This behavior is useful for debugging but might need adjustment based on specific 
+ * application requirements for error handling.
+ */
 size_t vector_max_size(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE

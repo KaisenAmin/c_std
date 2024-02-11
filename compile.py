@@ -26,7 +26,7 @@ def compile_project(run_after_compile=False, program_args=[]):
         "fmt",
         # "map",
         # "json",
-        # "file_io",
+        "file_io",
         # "log",
         # "priority_queue",
         # "queue",

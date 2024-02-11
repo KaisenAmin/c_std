@@ -6,7 +6,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define TCP_LOGGING_ENABLE
+// #define TCP_LOGGING_ENABLE
 #define MAX_SSL_CONNECTIONS 256
 
 // Define platform-specific includes and types
