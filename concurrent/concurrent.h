@@ -3,6 +3,7 @@
 
 #include <time.h>
 
+
 /* Which platform are we on? */
 #if !defined(_TTHREAD_PLATFORM_DEFINED_)
   #if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
@@ -194,7 +195,8 @@ int thread_detach(Thread thr);
 int thread_equal(Thread thr0, Thread thr1);
 int thread_join(Thread thr, int *res);
 int thread_sleep(const struct timespec *duration, struct timespec *remaining);
-Thread thread_current(void);
+unsigned long thread_current(void);
+unsigned long thread_hardware_concurrency(void);
 
 TTHREAD_NORETURN void thread_exit(int res);
 void thread_yield(void);
@@ -244,5 +246,9 @@ void *thread_specific_get(ThreadSpecific key);
 #else
   #define call_once(flag,func) pthread_once(flag,func)
 #endif
+
+
+
+
 
 #endif /* _CTHREAD_H_ */

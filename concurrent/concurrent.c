@@ -955,18 +955,30 @@ int thread_create(Thread *thr, ThreadStart func, void *arg) {
  *       current thread. This handle is not guaranteed to be unique across threads
  *       and cannot be directly compared with other thread handles without using
  *       specific comparison functions.
- * @note On POSIX systems, pthread_self() is used to obtain the current thread's
+ * @note On POSIX systems, pthread_self() is used to obtain the   current thread's
  *       unique identifier.
  * @note The returned thread identifier can be used with other thread-related
  *       functions, such as thread_join or thread_equal, to perform operations
  *       on the current thread.
  */
-Thread thread_current(void) {
+unsigned long thread_current(void) {
   #if defined(_TTHREAD_WIN32_)
-    return GetCurrentThread();
+    return GetCurrentThreadId();
   #else
-    return pthread_self();
+    return (unsigned long)pthread_self();
   #endif
+}
+
+unsigned long thread_hardware_concurrency(void) {
+    #ifdef _TTHREAD_POSIX_
+      return sysconf(_SC_NPROCESSORS_ONLN);
+    #elif defined(_TTHREAD_WIN32_)
+      SYSTEM_INFO sysinfo;
+      GetSystemInfo(&sysinfo);
+      return sysinfo.dwNumberOfProcessors;
+    #else
+      return 2; // Default fallback
+    #endif
 }
 
 /**
@@ -1474,3 +1486,5 @@ void call_once(OnceFlag *flag, void (*func)(void)) {
   }
 }
 #endif /* defined(_TTHREAD_WIN32_) */
+
+
