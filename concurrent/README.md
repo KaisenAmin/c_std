@@ -3,7 +3,7 @@
 
 ## Example 1 : Producer-Consumer Synchronization 
 
-`This example demonstrates a classic synchronization problem known as the producer-consumer problem using threads, mutexes, and condition variables. The problem illustrates how two processes (or threads, in this example) share a common, fixed-size buffer. One thread (the producer) creates items and puts them into the buffer, while the other thread (the consumer) takes items out of the buffer. The key challenge is to ensure that the producer does not try to add items to the buffer if it is full, and the consumer does not try to remove items from the buffer if it is empty, to prevent race conditions and ensure data integrity.`
+`This example demonstrate a classic synchronization problem known as the producer-consumer problem using threads, mutexes, and condition variables. The problem illustrates how two processes (or threads, in this example) share a common, fixed-size buffer. One thread (the producer) creates items and puts them into the buffer, while the other thread (the consumer) takes items out of the buffer. The key challenge is to ensure that the producer does not try to add items to the buffer if it is full, and the consumer does not try to remove items from the buffer if it is empty, to prevent race conditions and ensure data integrity.`
 
 ```c 
 #include "concurrent/concurrent.h"

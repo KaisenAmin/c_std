@@ -1,5 +1,5 @@
-#ifndef _CTHREAD_H_
-#define _CTHREAD_H_
+#ifndef _CONCURRENT_H_
+#define _CONCURRENT_H_
 
 #include <time.h>
 
@@ -246,8 +246,6 @@ void *thread_specific_get(ThreadSpecific key);
 #else
   #define call_once(flag,func) pthread_once(flag,func)
 #endif
-
-
 
 
 
