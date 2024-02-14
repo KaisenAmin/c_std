@@ -42,6 +42,41 @@ Matrix* matrix_create(size_t rows, size_t cols) {
     return matrix;
 }
 
+Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2) {
+    if (!matrix1) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix1 object is null and invalid in matrix_add.\n");
+        #endif 
+        return NULL;
+    }
+    else if (!matrix2) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix2 object is null and invalid in matrix_add.\n");
+        #endif 
+        return NULL;
+    }
+    else if ((matrix1->rows != matrix2->rows) || (matrix1->cols != matrix2->cols)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: The two Matrix are not of the same order in matrix_add.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* addition = matrix_create(matrix1->rows, matrix1->cols);
+    if (!addition) {
+        fmt_fprintf(stderr, "Error: object creation failed for addition to matrix in matrix_add.\n");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix1->rows; i++) {
+        for (size_t j = 0; j < matrix1->cols; j++) {
+            size_t index = i * matrix1->cols + j;
+            addition->data[index] = matrix1->data[index] + matrix2->data[index];
+        }
+    }
+    
+    return addition;
+}
 void matrix_deallocate(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
