@@ -140,8 +140,6 @@ void thread_pool_destroy(ThreadPool* pool) {
     if (pool == NULL) {
         return;
     }
-
-struct timespec remaining;
     fmt_printf("Destroying ThreadPool\n");
 
     // Signal all worker threads to stop

@@ -1,29 +1,17 @@
-#include "concurrent/thread_pool.h"
+#include "matrix/matrix.h"
 #include "fmt/fmt.h"
 
-int example_task_function(void* arg) {
-    int* num = (int*)arg;
-    fmt_printf("Executing task number: %d\n", *num);
-
-    free(num); 
-
-    return 0;
-}
-
 int main() {
-    int num_threads = 4;
-    ThreadPool* pool = thread_pool_create(num_threads);
+    Matrix* matrix = matrix_create(3, 4);
 
-    // Add tasks to the pool
-    for (int i = 0; i < 10; i++) {
-        int* arg = malloc(sizeof(int));
-        *arg = i;
-        thread_pool_add_task(pool, example_task_function, arg);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Can not create matrix object");
     }
+    
+    matrix_set(matrix, 1, 1, 15.32); // row 1 and colon 1
+    matrix_print(matrix);
 
-    // // Wait for all tasks to complete
-    thread_pool_wait(pool);
-    thread_pool_destroy(pool);
 
+    matrix_deallocate(matrix);
     return 0;
 }
