@@ -77,6 +77,43 @@ Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2) {
     
     return addition;
 }
+
+Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2) {
+    if (!matrix1) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix1 object is null and invalid in matrix_subtract.\n");
+        #endif 
+        return NULL;
+    }
+    else if (!matrix2) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix2 object is null and invalid in matrix_subtract.\n");
+        #endif 
+        return NULL;
+    }
+    else if ((matrix1->rows != matrix2->rows) || (matrix1->cols != matrix2->cols)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: The two Matrix are not of the same order in matrix_subtract.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* subtraction = matrix_create(matrix1->rows, matrix1->cols);
+    if (!subtraction) {
+        fmt_fprintf(stderr, "Error: object creation failed for subtraction to matrix in matrix_subtract.\n");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix1->rows; i++) {
+        for (size_t j = 0; j < matrix1->cols; j++) {
+            size_t index = i * matrix1->cols + j;
+            subtraction->data[index] = matrix1->data[index] - matrix2->data[index];
+        }
+    }
+    
+    return subtraction;
+}
+
 void matrix_deallocate(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
