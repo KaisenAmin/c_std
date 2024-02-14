@@ -21,6 +21,8 @@ Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2);
 
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);
+
+bool matrix_scalar_multiply(Matrix* matrix, double scalar);
 bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value);
 
 double matrix_get(Matrix* matrix, size_t row, size_t col);

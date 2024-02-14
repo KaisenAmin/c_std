@@ -151,3 +151,41 @@ int main() {
     return 0;
 }
 ```
+
+## Example 5 : mutiply elements of Matrix with a scalar 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // create 2 X 3 Matrices
+    Matrix* matrix = matrix_create(2, 3); 
+    if (!matrix) {
+        fmt_fprintf(stderr, "Cannot create matrix object\n");
+        exit(-1);
+    }
+
+    matrix_set(matrix, 0, 0, 1.0);
+    matrix_set(matrix, 0, 1, 2.0);
+    matrix_set(matrix, 0, 2, 3.0);
+    matrix_set(matrix, 1, 0, 4.0);
+    matrix_set(matrix, 1, 1, 5.0);
+    matrix_set(matrix, 1, 2, 6.0);
+
+    fmt_printf("Original matrix:\n");
+    matrix_print(matrix);
+
+    double scalar = 2.0;
+    if (matrix_scalar_multiply(matrix, scalar)) {
+        fmt_printf("\nMatrix after scalar multiplication by %lf:\n", scalar);
+        matrix_print(matrix);
+    } 
+    else {
+        fmt_fprintf(stderr, "Scalar multiplication failed\n");
+    }
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```

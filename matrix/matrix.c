@@ -255,3 +255,24 @@ double matrix_get(Matrix* matrix, size_t row, size_t col) {
     size_t index = row * matrix->cols + col;
     return matrix->data[index];
 }
+
+bool matrix_scalar_multiply(Matrix* matrix, double scalar) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_scalar_multiply.\n");
+        #endif
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            size_t index = i * matrix->cols + j;
+            matrix->data[index] *= scalar;
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Matrix scalar multiplication completed successfully in matrix_scalar_multiply.\n");
+    #endif
+    return true;
+}
