@@ -114,6 +114,47 @@ Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2) {
     return subtraction;
 }
 
+Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2) {
+    if (!matrix1) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix1 object is null and invalid in matrix_multiply.\n");
+        #endif 
+        return NULL;
+    }
+    else if (!matrix2) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix2 object is null and invalid in matrix_multiply.\n");
+        #endif 
+        return NULL;
+    }
+    else if (matrix1->cols != matrix2->rows) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Number of columns in matrix1 does not match the number of rows in matrix2 in matrix_multiply.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* product = matrix_create(matrix1->rows, matrix2->cols);
+    if (!product) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Object creation failed for product matrix in matrix_multiply.\n");
+        #endif 
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix1->rows; i++) {
+        for (size_t j = 0; j < matrix2->cols; j++) {
+            double sum = 0.0;
+            for (size_t k = 0; k < matrix1->cols; k++) {
+                sum += matrix1->data[i * matrix1->cols + k] * matrix2->data[k * matrix2->cols + j];
+            }
+            product->data[i * product->cols + j] = sum;
+        }
+    }
+    
+    return product;
+}
+
 void matrix_deallocate(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
