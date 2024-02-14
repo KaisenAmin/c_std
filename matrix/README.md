@@ -189,3 +189,28 @@ int main() {
     return 0;
 }
 ```
+
+## Example 6 : check Matrix is square or not 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* mat = matrix_create(2, 3);
+
+    if (!mat) {
+        fmt_fprintf(stderr, "Can not create matrix");
+        exit(-1);
+    }
+
+    if (matrix_is_square(mat)) {
+        fmt_printf("Matrix is square");
+    }
+    else {
+        fmt_printf("Matrix is not square");
+    }
+    
+    return 0;
+}
+```

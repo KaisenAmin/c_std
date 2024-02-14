@@ -276,3 +276,17 @@ bool matrix_scalar_multiply(Matrix* matrix, double scalar) {
     #endif
     return true;
 }
+
+bool matrix_is_square(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_is_square.\n");
+        #endif
+        return false;
+    }
+    if (matrix->rows == matrix->cols) {
+        return true;
+    }
+
+    return false;
+}

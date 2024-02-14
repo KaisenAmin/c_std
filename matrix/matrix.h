@@ -24,6 +24,7 @@ void matrix_print(Matrix* matrix);
 
 bool matrix_scalar_multiply(Matrix* matrix, double scalar);
 bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value);
+bool matrix_is_square(const Matrix* matrix);
 
 double matrix_get(Matrix* matrix, size_t row, size_t col);
 
