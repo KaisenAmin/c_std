@@ -1,6 +1,6 @@
 #include "matrix.h"
 #include "../fmt/fmt.h"
-#include <stdlib.h>
+
 
 
 Matrix* matrix_create(size_t rows, size_t cols) {
@@ -123,4 +123,22 @@ void matrix_print(Matrix* matrix) {
         }
         fmt_printf("|\n");
     }
+}
+
+double matrix_get(Matrix* matrix, size_t row, size_t col) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stdout, "Info : this matrix object as param is null and invalid in matrix_get.\n");
+        #endif 
+        exit(-1);
+    }
+    else if (row >= matrix->rows || col >= matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: rows or cols or both of them are bigger than matrix rows and cols in matrix_get.\n");
+        #endif
+        exit(-1);
+    }
+
+    size_t index = row * matrix->cols + col;
+    return matrix->data[index];
 }

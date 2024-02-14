@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #define MATRIX_LOGGING_ENABLE 
 
@@ -18,5 +19,7 @@ Matrix* matrix_create(size_t rows, size_t cols);
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);
 bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value);
+
+double matrix_get(Matrix* matrix, size_t row, size_t col);
 
 #endif 
