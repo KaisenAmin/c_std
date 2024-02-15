@@ -290,3 +290,403 @@ bool matrix_is_square(const Matrix* matrix) {
 
     return false;
 }
+
+Matrix* matrix_create_identity(size_t n) {
+    Matrix* matrix = matrix_create(n, n);
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for identity matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            if (i == j) {
+                matrix_set(matrix, i, j, 1.0);
+            }
+            else {
+                matrix_set(matrix, i, j, 0.0);
+            }
+        }
+    }
+
+    return matrix;
+}
+
+bool matrix_is_equal(const Matrix* matrix1, const Matrix* matrix2) {
+    if (!matrix1) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix1 object is null and invalid in matrix_is_equal.\n");
+        #endif 
+        return NULL;
+    }
+    else if (!matrix2) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix2 object is null and invalid in matrix_is_equal.\n");
+        #endif 
+        return NULL;
+    }
+    else if ((matrix1->rows != matrix2->rows) || (matrix1->cols != matrix2->cols)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: The two Matrix are not of the same order in matrix_is_equal.\n");
+        #endif 
+        return NULL;
+    }
+
+    for (size_t index = 0; index < (matrix1->rows * matrix1->cols); index++) {
+        if (matrix1->data[index] != matrix2->data[index]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool matrix_is_identity(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_is_identity.\n");
+        #endif 
+        return false;
+    }
+    else if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is not square and invalid in matrix_is_identity.\n");
+        #endif 
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            size_t index = i * matrix->cols + j;
+            if (i == j) {
+                if (matrix->data[index] != 1.0) { 
+                    return false;
+                }
+            }
+            else if (matrix->data[index] != 0.0) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+// Checks if a matrix is idempotent: A^2 = A
+bool matrix_is_idempotent(const Matrix* matrix) {
+    if (!matrix || !matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The matrix is null or not square in matrix_is_idempotent.\n");
+        #endif
+        return false;
+    }
+
+    Matrix* square = matrix_multiply(matrix, matrix);
+    if (!square) {
+        #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stderr, "Error: Matrix multiplication failed in matrix_is_idempotent.\n");
+        #endif
+        return false;
+    }
+
+    bool isIdempotent = matrix_is_equal(square, matrix);
+    matrix_deallocate(square);
+
+    return isIdempotent;
+}
+
+bool matrix_is_row(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_is_row.\n");
+        #endif 
+        return false;
+    }
+    return matrix->rows == 1? true: false;
+}
+
+bool matrix_is_columnar(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_is_columnar.\n");
+        #endif 
+        return false;
+    }
+    return matrix->cols == 1? true: false;
+}
+
+Matrix* matrix_get_main_diagonal_as_column(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_get_main_diagonal_as_column.\n");
+        #endif 
+        return NULL;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_get_main_diagonal_as_column.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* diagonalMatrix = matrix_create(matrix->rows, 1); 
+    if (!diagonalMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Memory allocation failed for diagonal matrix in matrix_get_main_diagonal_as_column.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        matrix_set(diagonalMatrix, i, 0, matrix->data[i * matrix->cols + i]); 
+    }
+
+    return diagonalMatrix;
+}
+
+Matrix* matrix_get_main_diagonal_as_row(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_get_main_diagonal_as_column.\n");
+        #endif 
+        return NULL;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_get_main_diagonal_as_column.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* diagonalMatrix = matrix_create(1, matrix->cols); 
+    if (!diagonalMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Memory allocation failed for diagonal matrix in matrix_get_main_diagonal_as_column.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix->cols; i++) {
+        matrix_set(diagonalMatrix, 0, i, matrix->data[i * matrix->cols + i]); 
+    }
+
+    return diagonalMatrix;
+}
+
+Matrix* matrix_get_minor_diagonal_as_row(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_get_minor_diagonal_as_row.\n");
+        #endif 
+        return NULL;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_get_minor_diagonal_as_row.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* diagonalMatrix = matrix_create(1, matrix->cols); 
+    if (!diagonalMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Memory allocation failed for diagonal matrix in matrix_get_minor_diagonal_as_row.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix->cols; i++) {
+        matrix_set(diagonalMatrix, 0, i, matrix->data[i * matrix->cols + (matrix->cols - 1 - i)]); 
+    }
+
+    return diagonalMatrix;
+}
+
+Matrix* matrix_get_minor_diagonal_as_column(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_get_minor_diagonal_as_column.\n");
+        #endif 
+        return NULL;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_get_minor_diagonal_as_column.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* diagonalMatrix = matrix_create(matrix->rows, 1); 
+    if (!diagonalMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Memory allocation failed for diagonal matrix in matrix_get_minor_diagonal_as_column.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        matrix_set(diagonalMatrix, i, 0, matrix->data[i * matrix->cols + (matrix->cols - 1 - i)]); 
+    }
+
+    return diagonalMatrix;
+}
+
+Matrix* matrix_transpose(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_transpose.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* transposed = matrix_create(matrix->cols, matrix->rows);
+    if (!transposed) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: Memory allocation failed for transposed matrix in matrix_transpose.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            matrix_set(transposed, j, i, matrix->data[i * matrix->cols + j]);
+        }
+    }
+    return transposed;
+}
+
+bool matrix_is_symmetric(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_symmetric.\n");
+        #endif 
+        return false;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_is_symmetric.\n");
+        #endif 
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = i + 1; j < matrix->cols; j++) { // Start from j = i + 1 to skip the diagonal
+            if (matrix->data[i * matrix->cols + j] != matrix->data[j * matrix->cols + i]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool matrix_is_upper_triangular(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_upper_triangular.\n");
+        #endif 
+        return false;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_is_upper_triangular.\n");
+        #endif 
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < i; j++) { // Check below the main diagonal
+            if (matrix->data[i * matrix->cols + j] != 0) {
+                return false; 
+            }
+        }
+    }
+    return true; 
+}
+
+bool matrix_is_lower_triangular(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_lower_triangular.\n");
+        #endif 
+        return false;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_is_lower_triangular.\n");
+        #endif 
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = i + 1; j < matrix->cols; j++) { // Check above the main diagonal
+            if (matrix->data[i * matrix->cols + j] != 0) {
+                return false; 
+            }
+        }
+    }
+    return true; 
+}
+
+bool matrix_is_skew_symmetric(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_skew_symmetric.\n");
+        #endif 
+        return false;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE  
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_is_skew_symmetric.\n");
+        #endif 
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        // check diagonal elements are zero
+        if (matrix->data[i * matrix->cols + i] != 0) {
+            return false;
+        }
+
+        for (size_t j = i + 1; j < matrix->cols; j++) {
+            // check aij = -aji for non diagonal elements
+            if (matrix->data[i * matrix->cols + j] != -matrix->data[j * matrix->cols + i]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+double matrix_determinant(Matrix* matrix) {
+    if (matrix->rows != matrix->cols) {
+        fmt_fprintf(stderr, "Error: Determinant can only be calculated for square matrices.\n");
+        return 0;
+    }
+
+    if (matrix->rows == 1) {
+        return matrix->data[0];
+    } 
+    else if (matrix->rows == 2) {
+        return matrix->data[0] * matrix->data[3] - matrix->data[1] * matrix->data[2];
+    } 
+    else {
+        double det = 0;
+        for (int j1 = 0; j1 < (int)matrix->cols; j1++) {
+            Matrix* submatrix = matrix_create(matrix->rows - 1, matrix->cols - 1);
+            
+            // Generate submatrix
+            for (int i = 1; i < (int)matrix->rows; i++) {
+                int j2 = 0;
+                for (int j = 0; j < (int)matrix->cols; j++) {
+                    if (j == j1) continue;
+                    matrix_set(submatrix, i - 1, j2++, matrix->data[i * matrix->cols + j]);
+                }
+            }
+            det += (j1 % 2 == 0 ? 1 : -1) * matrix->data[j1] * matrix_determinant(submatrix);
+            matrix_deallocate(submatrix);
+        }
+        return det;
+    }
+}
