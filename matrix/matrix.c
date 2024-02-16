@@ -1,7 +1,52 @@
 #include "matrix.h"
 #include "../fmt/fmt.h"
+#include <math.h>
 
+#define EPSILON 1e-9
 
+// Function to check if a floating-point number is effectively zero
+static bool is_effectively_zero(double value) {
+    return fabs(value) < EPSILON;
+}
+
+// Function to swap two rows of a matrix
+void matrix_swap_rows(Matrix* mat, int row1, int row2) {
+    if (!mat || row1 >= mat->rows || row2 >= mat->rows || row1 < 0 || row2 < 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid row indices or matrix is null in matrix_swap_rows.\n");
+        #endif
+        return; 
+    }
+
+    for (size_t i = 0; i < mat->cols; i++) {
+        double temp = mat->data[row1 * mat->cols + i];
+        mat->data[row1 * mat->cols + i] = mat->data[row2 * mat->cols + i];
+        mat->data[row2 * mat->cols + i] = temp;
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Rows %d and %d swapped successfully in matrix_swap_rows.\n", row1, row2);
+    #endif
+}
+
+void matrix_swap_cols(Matrix* mat, int col1, int col2) {
+    if (!mat || col1 >= mat->cols || col2 >= mat->cols || col1 < 0 || col2 < 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid column indices or matrix is null in matrix_swap_cols.\n");
+        #endif
+        return; 
+    }
+
+    for (size_t i = 0; i < mat->rows; i++) {
+        double temp = mat->data[i * mat->cols + col1];
+        mat->data[i * mat->cols + col1] = mat->data[i * mat->cols + col2];
+        mat->data[i * mat->cols + col2] = temp;
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Columns %d and %d swapped successfully in matrix_swap_cols.\n", col1, col2);
+    #endif
+}
 
 Matrix* matrix_create(size_t rows, size_t cols) {
     if (rows == 0 || cols == 0) {
@@ -238,7 +283,7 @@ void matrix_print(Matrix* matrix) {
     }
 }
 
-double matrix_get(Matrix* matrix, size_t row, size_t col) {
+double matrix_get(const Matrix* matrix, size_t row, size_t col) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
             fmt_fprintf(stdout, "Info : this matrix object as param is null and invalid in matrix_get.\n");
@@ -659,7 +704,7 @@ bool matrix_is_skew_symmetric(const Matrix* matrix) {
     return true;
 }
 
-double matrix_determinant(Matrix* matrix) {
+double matrix_determinant(const Matrix* matrix) {
     if (matrix->rows != matrix->cols) {
         fmt_fprintf(stderr, "Error: Determinant can only be calculated for square matrices.\n");
         return 0;
@@ -680,7 +725,9 @@ double matrix_determinant(Matrix* matrix) {
             for (int i = 1; i < (int)matrix->rows; i++) {
                 int j2 = 0;
                 for (int j = 0; j < (int)matrix->cols; j++) {
-                    if (j == j1) continue;
+                    if (j == j1) {
+                        continue;
+                    }
                     matrix_set(submatrix, i - 1, j2++, matrix->data[i * matrix->cols + j]);
                 }
             }
@@ -689,4 +736,297 @@ double matrix_determinant(Matrix* matrix) {
         }
         return det;
     }
+}
+
+// Calculate the trace of a square matrix
+double matrix_trace(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_trace.\n");
+        #endif
+        return 0.0; // Indicate error or undefined
+    }
+
+    if (matrix->rows != matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_trace.\n");
+        #endif
+        return 0.0; // Indicate error or undefined
+    }
+
+    double trace = 0.0;
+    for (size_t i = 0; i < matrix->rows; i++) {
+        trace += matrix->data[i * matrix->cols + i];
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Trace calculated successfully in matrix_trace.\n");
+    #endif
+    return trace;
+}
+
+Matrix* matrix_create_submatrix(const Matrix* matrix, size_t excludeRow, size_t excludeCol) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input matrix is null in matrix_create_submatrix.\n");
+        #endif
+        return NULL;
+    }
+    if (excludeRow >= matrix->rows || excludeCol >= matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: excludeRow or excludeCol out of bounds in matrix_create_submatrix.\n");
+        #endif
+        return NULL;
+    }
+
+    Matrix* submatrix = matrix_create(matrix->rows - 1, matrix->cols - 1);
+    if (!submatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for submatrix in matrix_create_submatrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0, sub_i = 0; i < matrix->rows; i++) {
+        if (i == excludeRow) {
+            continue; // Skip the excluded row
+        }
+
+        for (size_t j = 0, sub_j = 0; j < matrix->cols; j++) {
+            if (j == excludeCol) {
+                continue; // Skip the excluded column
+            }
+            double value = matrix_get(matrix, i, j); // Assumes matrix_get function correctly handles bounds
+            matrix_set(submatrix, sub_i, sub_j, value); // Assumes matrix_set function correctly handles bounds and errors
+            sub_j++;
+        }
+        sub_i++;
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Submatrix created successfully in matrix_create_submatrix.\n");
+    #endif
+
+    return submatrix;
+}
+
+Matrix* matrix_adjugate(const Matrix* matrix) {
+    if (!matrix || !matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input for matrix_adjugate.\n");
+        #endif
+        return NULL;
+    }
+
+    Matrix* cofactorMatrix = matrix_create(matrix->rows, matrix->cols);
+    if (!cofactorMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for cofactorMatrix in matrix_adjugate.\n");
+        #endif
+        return NULL;
+    }
+
+    // Calculate cofactor matrix
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            Matrix* submatrix = matrix_create_submatrix(matrix, i, j); 
+            double minor = matrix_determinant(submatrix); 
+            double cofactor = pow(-1, i + j) * minor;
+
+            matrix_set(cofactorMatrix, i, j, cofactor);
+            matrix_deallocate(submatrix);
+        }
+    }
+
+    // Transpose the cofactor matrix to get the adjugate
+    Matrix* adjugate = matrix_transpose(cofactorMatrix);
+    matrix_deallocate(cofactorMatrix);
+
+    return adjugate;
+}
+
+Matrix* matrix_inverse(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_inverse.\n");
+        #endif
+        return NULL;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_inverse.\n");
+        #endif
+        return NULL;
+    }
+
+    double det = matrix_determinant(matrix);
+    if (det == 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix is singular and cannot be inverted in matrix_inverse.\n");
+        #endif
+        return NULL;
+    }
+
+    // Calculate the adjugate matrix
+    Matrix* inverse = matrix_adjugate(matrix); // This function needs to be implemented as discussed
+    if (!inverse) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to calculate adjugate matrix in matrix_inverse.\n");
+        #endif
+        return NULL;
+    }
+
+    // Create the inverse matrix by dividing the adjugate by the determinant
+    for (size_t i = 0; i < inverse->rows; i++) {
+        for (size_t j = 0; j < inverse->cols; j++) {
+            inverse->data[i * inverse->cols + j] /= det;
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Matrix inversion completed successfully in matrix_inverse.\n");
+    #endif
+
+    return inverse;
+}
+
+Matrix* matrix_copy(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input matrix is null in matrix_copy.\n");
+        #endif
+        return NULL;
+    }
+
+    Matrix* copy = matrix_create(matrix->rows, matrix->cols);
+    if (!copy) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for matrix copy in matrix_copy.\n");
+        #endif
+        return NULL;
+    }
+
+    // Copy the data from the original matrix to the new copy
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            copy->data[i * matrix->cols + j] = matrix->data[i * matrix->cols + j];
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Matrix copied successfully in matrix_copy.\n");
+    #endif
+
+    return copy;
+}
+
+Matrix* matrix_power(const Matrix* matrix, int power) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_power.\n");
+        #endif
+        return NULL;
+    }
+
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_power.\n");
+        #endif
+        return NULL;
+    }
+
+    if (power < 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Negative power is not supported in matrix_power.\n");
+        #endif
+        return NULL;
+    }
+
+    // Handle the power of 0 separately, which should return an identity matrix
+    if (power == 0) {
+        return matrix_create_identity(matrix->rows);
+    }
+
+    // Initialize result as a copy of the original matrix for power = 1
+    Matrix* result = matrix_copy(matrix); 
+    if (power == 1) {
+        return result;
+    }
+
+    Matrix* temp = NULL;
+    while (power > 1) {
+        if (power % 2 == 0) {
+            temp = matrix_multiply(result, result);
+            matrix_deallocate(result);
+
+            result = temp;
+            power /= 2;
+        } 
+        else {
+            temp = matrix_multiply(result, matrix);
+            matrix_deallocate(result);
+
+            result = temp;
+            power--;
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Matrix raised to power successfully in matrix_power.\n");
+    #endif
+
+    return result;
+}
+
+int matrix_rank(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input matrix is null in matrix_rank.\n");
+        #endif
+        return -1; 
+    }
+
+    Matrix* tempMatrix = matrix_copy(matrix);
+    if (!tempMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to copy matrix in matrix_rank.\n");
+        #endif
+        return -1;
+    }
+
+    int rank = tempMatrix->cols;
+    for (int row = 0; row < rank; row++) {
+        // If the diagonal element is effectively zero, try to find a non-zero element below it
+        if (is_effectively_zero(tempMatrix->data[row * tempMatrix->cols + row])) {
+            bool reduce = true;
+            for (int i = row + 1; i < (int)tempMatrix->rows; i++) {
+                if (!is_effectively_zero(tempMatrix->data[i * tempMatrix->cols + row])) {
+                    matrix_swap_rows(tempMatrix, row, i);
+                    reduce = false;
+                    break;
+                }
+            }
+
+            // If all elements in the current column below the diagonal are zero, reduce the rank
+            if (reduce) {
+                rank--;
+                for (int i = 0; i < (int)tempMatrix->rows; i++) {
+                    tempMatrix->data[i * tempMatrix->cols + row] = tempMatrix->data[i * tempMatrix->cols + rank];
+                }
+                row--;
+            }
+        } 
+        else {
+            // Make all elements below the diagonal in the current column zero
+            for (int i = row + 1; i < (int)tempMatrix->rows; i++) {
+                double mult = tempMatrix->data[i * tempMatrix->cols + row] / tempMatrix->data[row * tempMatrix->cols + row];
+                for (int j = row; j < (int)tempMatrix->cols; j++) {
+                    tempMatrix->data[i * tempMatrix->cols + j] -= mult * tempMatrix->data[row * tempMatrix->cols + j];
+                }
+            }
+        }
+    }
+
+    matrix_deallocate(tempMatrix);
+    return rank;
 }

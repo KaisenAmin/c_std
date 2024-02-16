@@ -672,3 +672,172 @@ int main() {
     return 0;
 }
 ```
+
+## Example 20 : sum of diagonal elements of matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* matrix = matrix_create(3, 3);
+    
+    if (!matrix) {
+        fmt_fprintf(stderr, "Cannot create matrix object\n");
+        exit(-1);
+    }
+
+    matrix_set(matrix, 0, 0, 1.0); 
+    matrix_set(matrix, 0, 1, 2.0);
+    matrix_set(matrix, 0, 2, 3.0);
+    matrix_set(matrix, 1, 0, 4.0);
+    matrix_set(matrix, 1, 1, 5.0); 
+    matrix_set(matrix, 1, 2, 6.0);
+    matrix_set(matrix, 2, 0, 7.0);
+    matrix_set(matrix, 2, 1, 8.0);
+    matrix_set(matrix, 2, 2, 9.0); 
+
+    fmt_printf("Matrix:\n");
+    matrix_print(matrix);
+
+    double trace = matrix_trace(matrix);
+    fmt_printf("Trace of the matrix is: %lf\n", trace);
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
+
+## Example 21 : get inverse of matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* matrix = matrix_create(2, 2);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    // | 4 7 |
+    // | 2 6 |
+    matrix_set(matrix, 0, 0, 4);
+    matrix_set(matrix, 0, 1, 7);
+    matrix_set(matrix, 1, 0, 2);
+    matrix_set(matrix, 1, 1, 6);
+
+
+    fmt_printf("Original Matrix:\n");
+    matrix_print(matrix);
+
+    Matrix* inverseMatrix = matrix_inverse(matrix);
+    if (!inverseMatrix) {
+        fmt_fprintf(stderr, "Failed to calculate the inverse of the matrix.\n");
+        matrix_deallocate(matrix);
+        return -1;
+    }
+
+    fmt_printf("\nInverse Matrix:\n");
+    matrix_print(inverseMatrix);
+
+    matrix_deallocate(matrix);
+    matrix_deallocate(inverseMatrix);
+
+    return 0;
+}
+```
+
+## Example 22: How to raise a square matrix to an integer power also how to copy 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* matrix = matrix_create(2, 2);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    // | 1 2 |
+    // | 3 4 |
+    matrix_set(matrix, 0, 0, 1);
+    matrix_set(matrix, 0, 1, 2);
+    matrix_set(matrix, 1, 0, 3);
+    matrix_set(matrix, 1, 1, 4);
+
+    Matrix* matrixCopy = matrix_copy(matrix);
+    if (!matrixCopy) {
+        fmt_fprintf(stderr, "Failed to copy matrix.\n");
+        matrix_deallocate(matrix);
+        
+        return -1;
+    }
+
+    int power = 2;
+    Matrix* matrixPowered = matrix_power(matrix, power);
+    if (!matrixPowered) {
+        fmt_fprintf(stderr, "Failed to raise matrix to power %d.\n", power);
+        matrix_deallocate(matrix);
+        matrix_deallocate(matrixCopy);
+
+        return -1;
+    }
+
+    fmt_printf("Original Matrix:\n");
+    matrix_print(matrix);
+
+    fmt_printf("\nCopied Matrix (should be identical to original):\n");
+    matrix_print(matrixCopy);
+
+    fmt_printf("\nMatrix Raised to Power %d:\n", power);
+    matrix_print(matrixPowered);
+
+    matrix_deallocate(matrix);
+    matrix_deallocate(matrixCopy);
+    matrix_deallocate(matrixPowered);
+
+    return 0;
+}
+```
+
+## Example 23 : get rank of matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* matrix = matrix_create(3, 3);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    // | 1 2 3 |
+    // | 4 5 6 |
+    // | 7 8 9 |
+    matrix_set(matrix, 0, 0, 1);
+    matrix_set(matrix, 0, 1, 2);
+    matrix_set(matrix, 0, 2, 3);
+    matrix_set(matrix, 1, 0, 4);
+    matrix_set(matrix, 1, 1, 5);
+    matrix_set(matrix, 1, 2, 6);
+    matrix_set(matrix, 2, 0, 7);
+    matrix_set(matrix, 2, 1, 8);
+    matrix_set(matrix, 2, 2, 9);
+
+    int rank = matrix_rank(matrix);
+
+    fmt_printf("Matrix:\n");
+    matrix_print(matrix);
+
+    fmt_printf("\nRank of the matrix is: %d\n", rank);
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
