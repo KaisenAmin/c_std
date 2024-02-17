@@ -10,8 +10,8 @@ static bool is_effectively_zero(double value) {
 }
 
 // Function to swap two rows of a matrix
-void matrix_swap_rows(Matrix* mat, int row1, int row2) {
-    if (!mat || row1 >= mat->rows || row2 >= mat->rows || row1 < 0 || row2 < 0) {
+void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2) {
+    if (!mat || row1 >= mat->rows || row2 >= mat->rows) {
         #ifdef MATRIX_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Invalid row indices or matrix is null in matrix_swap_rows.\n");
         #endif
@@ -29,8 +29,8 @@ void matrix_swap_rows(Matrix* mat, int row1, int row2) {
     #endif
 }
 
-void matrix_swap_cols(Matrix* mat, int col1, int col2) {
-    if (!mat || col1 >= mat->cols || col2 >= mat->cols || col1 < 0 || col2 < 0) {
+void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2) {
+    if (!mat || col1 >= mat->cols || col2 >= mat->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Invalid column indices or matrix is null in matrix_swap_cols.\n");
         #endif
@@ -1030,3 +1030,200 @@ int matrix_rank(const Matrix* matrix) {
     matrix_deallocate(tempMatrix);
     return rank;
 }
+
+bool matrix_is_diagonal(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_diagonal.\n");
+        #endif
+        return false;
+    }
+
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_is_diagonal.\n");
+        #endif
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            // Check if the current element is outside the main diagonal and not zero
+            if (i != j && !is_effectively_zero(matrix->data[i * matrix->cols + j])) {
+                #ifdef MATRIX_LOGGING_ENABLE
+                    fmt_fprintf(stderr, "Found a non-zero element outside the main diagonal in matrix_is_diagonal.\n");
+                #endif
+                return false;
+            }
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "The matrix is diagonal in matrix_is_diagonal.\n");
+    #endif
+    return true;
+}
+
+bool matrix_is_orthogonal(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_orthogonal.\n");
+        #endif
+        return false;
+    }
+    if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix is not square in matrix_is_orthogonal.\n");
+        #endif
+        return false;
+    }
+
+    Matrix* transpose = matrix_transpose(matrix);
+    if (!transpose) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to calculate transpose in matrix_is_orthogonal.\n");
+        #endif
+        return false;
+    }
+
+    Matrix* product = matrix_multiply(matrix, transpose);
+    if (!product) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to multiply matrix by its transpose in matrix_is_orthogonal.\n");
+        #endif
+        matrix_deallocate(transpose);  
+        return false;
+    }
+
+    // Check if the product is an identity matrix
+    bool isOrthogonal = matrix_is_identity(product);
+
+    matrix_deallocate(transpose);
+    matrix_deallocate(product);
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        if (isOrthogonal) {
+            fmt_fprintf(stdout, "The matrix is orthogonal in matrix_is_orthogonal.\n");
+        } 
+        else {
+            fmt_fprintf(stderr, "The matrix is not orthogonal in matrix_is_orthogonal.\n");
+        }
+    #endif
+
+    return isOrthogonal;
+}
+
+// Function to compute the Kronecker product of two matrices
+Matrix* matrix_kronecker_product(const Matrix* matrix1, const Matrix* matrix2) {
+    if (!matrix1 || !matrix2) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: One or both matrix objects are null in matrix_kronecker_product.\n");
+        #endif
+        return NULL;
+    }
+
+    size_t m = matrix1->rows, n = matrix1->cols, p = matrix2->rows, q = matrix2->cols;
+    Matrix* product = matrix_create(m * p, n * q);
+    if (!product) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for the result matrix in matrix_kronecker_product.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < m; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            for (size_t k = 0; k < p; ++k) {
+                for (size_t l = 0; l < q; ++l) {
+                    double a = matrix_get(matrix1, i, j);  
+                    double b = matrix_get(matrix2, k, l);  
+
+                    matrix_set(product, i * p + k, j * q + l, a * b);  
+                }
+            }
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Kronecker product computed successfully in matrix_kronecker_product.\n");
+    #endif
+    return product;
+}
+
+// Function to generate a Hankel matrix from its first row and last column matrices
+Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol) {
+    if (!firstRow || !lastCol || firstRow->rows != 1 || lastCol->cols != 1) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input matrices are null or invalid dimensions in matrix_hankel.\n");
+        #endif
+        return NULL;
+    }
+
+    size_t n = firstRow->cols; 
+    if (lastCol->rows != n) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Incompatible dimensions between first row and last column in matrix_hankel.\n");
+        #endif
+        return NULL;
+    }
+
+    Matrix* hankel = matrix_create(n, n);
+    if (!hankel) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for Hankel matrix in matrix_hankel.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            double value;
+            if (i + j < n) {
+                value = matrix_get(firstRow, 0, i + j); 
+            } 
+            else {
+                value = matrix_get(lastCol, i + j - n + 1, 0);
+            }
+            matrix_set(hankel, i, j, value);
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Hankel matrix generated successfully in matrix_hankel.\n");
+    #endif
+    return hankel;
+}
+
+// Function to check matrix is Hankle or not 
+bool matrix_is_hankel(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null in matrix_is_hankel.\n");
+        #endif
+        return false;
+    }
+    for (size_t i = 0; i < matrix->rows - 1; i++) {
+        for (size_t j = 0; j < matrix->cols - 1; j++) {
+            if (i + j >= matrix->rows - 1) {
+                continue; // Skip checks not relevant for a Hankel matrix
+            }
+            double value = matrix_get(matrix, i, j);
+            // Check next element in the anti-diagonal
+            if (i + 1 < matrix->rows && j > 0) {
+                double next = matrix_get(matrix, i + 1, j - 1);
+                if (!is_effectively_zero(value - next)) {
+                    #ifdef MATRIX_LOGGING_ENABLE
+                        fmt_fprintf(stderr, "The matrix is not Hankel at element [%zu, %zu].\n", i + 1, j - 1);
+                    #endif
+                    return false;
+                }
+            }
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "The matrix is Hankel.\n");
+    #endif
+    return true;
+}
+

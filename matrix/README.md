@@ -841,3 +841,222 @@ int main() {
     return 0;
 }
 ```
+
+## Example 24 : check Matrix is diagonal or not 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* matrix = matrix_create(3, 3);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return EXIT_FAILURE;
+    }
+
+    matrix_set(matrix, 0, 0, 1.0);
+    matrix_set(matrix, 1, 1, 5.0);
+    matrix_set(matrix, 2, 2, 9.0);
+
+    fmt_printf("Initial matrix:\n");
+    matrix_print(matrix);
+
+    // Check if the matrix is diagonal
+    if (matrix_is_diagonal(matrix)) {
+        fmt_printf("The matrix is diagonal.\n");
+    } 
+    else {
+        fmt_printf("The matrix is not diagonal.\n");
+    }
+
+    // Modify the matrix to make it non-diagonal
+    matrix_set(matrix, 0, 1, 2.0);
+
+    fmt_printf("\nModified matrix:\n");
+    matrix_print(matrix);
+
+    if (matrix_is_diagonal(matrix)) {
+        fmt_printf("The matrix is diagonal.\n");
+    } 
+    else {
+        fmt_printf("The matrix is not diagonal.\n");
+    }
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
+
+## Example 25 : Matrix is orthogonal or not 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // Orthogonal matrix example: Q = [0 -1; 1 0], Q * Q^T = I
+    Matrix* matrix = matrix_create(2, 2);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return EXIT_FAILURE;
+    }
+
+    matrix_set(matrix, 0, 0, 0);
+    matrix_set(matrix, 0, 1, -1);
+    matrix_set(matrix, 1, 0, 1);
+    matrix_set(matrix, 1, 1, 0);
+
+    fmt_printf("Original matrix:\n");
+    matrix_print(matrix);
+
+    if (matrix_is_orthogonal(matrix)) {
+        fmt_printf("The matrix is orthogonal.\n");
+    } 
+    else {
+        fmt_printf("The matrix is not orthogonal.\n");
+    }
+
+    // Modify the matrix to make it non-orthogonal
+    matrix_set(matrix, 0, 0, 1); 
+
+    fmt_printf("\nModified matrix:\n");
+    matrix_print(matrix);
+
+    if (matrix_is_orthogonal(matrix)) {
+        fmt_printf("The modified matrix is orthogonal.\n");
+    } 
+    else {
+        fmt_printf("The modified matrix is not orthogonal.\n");
+    }
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
+
+## Example 26 : product matrix Kronecker 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // Define matrix A (2x2)
+    Matrix* A = matrix_create(2, 2);
+    matrix_set(A, 0, 0, 1); 
+    matrix_set(A, 0, 1, 2); 
+    matrix_set(A, 1, 0, 3); 
+    matrix_set(A, 1, 1, 4); 
+
+    // Define matrix B (2x2)
+    Matrix* B = matrix_create(2, 2);
+    matrix_set(B, 0, 0, 0); 
+    matrix_set(B, 0, 1, 5); 
+    matrix_set(B, 1, 0, 6); 
+    matrix_set(B, 1, 1, 7); 
+
+    Matrix* C = matrix_kronecker_product(A, B);
+    if (!C) {
+        fmt_fprintf(stderr, "Failed to compute the Kronecker product.\n");
+        matrix_deallocate(A);
+        matrix_deallocate(B);
+        
+        return -1;
+    }
+
+    fmt_printf("Matrix A:\n");
+    matrix_print(A);
+
+    fmt_printf("\nMatrix B:\n");
+    matrix_print(B);
+
+    fmt_printf("\nKronecker product of A and B:\n");
+    matrix_print(C);
+
+    matrix_deallocate(A);
+    matrix_deallocate(B);
+    matrix_deallocate(C);
+
+    return 0;
+}
+```
+
+## Example 27 : create hankel Matrix from first row and last col 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double firstRowData[] = {1, 2, 3, 4};
+    Matrix* firstRow = matrix_create(1, 4);
+    for (size_t i = 0; i < 4; i++) {
+        matrix_set(firstRow, 0, i, firstRowData[i]);
+    }
+
+    double lastColData[] = {4, 5, 6, 7};
+    Matrix* lastCol = matrix_create(4, 1);
+    for (size_t i = 0; i < 4; i++) {
+        matrix_set(lastCol, i, 0, lastColData[i]);
+    }
+
+    // Generate the Hankel matrix
+    Matrix* hankelMatrix = matrix_hankel(firstRow, lastCol);
+    if (hankelMatrix) {
+        fmt_printf("Hankel Matrix:\n");
+        matrix_print(hankelMatrix);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to generate Hankel matrix.\n");
+    }
+
+    matrix_deallocate(firstRow);
+    matrix_deallocate(lastCol);
+    matrix_deallocate(hankelMatrix);
+
+    return EXIT_SUCCESS;
+}
+```
+
+## Example 28 : check matrix is hankle or not 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    size_t n = 4; 
+    Matrix* matrix = matrix_create(n, n);
+    
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return EXIT_FAILURE;
+    }
+
+    double values[] = {1, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7};
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            if (i + j < n) {
+                matrix_set(matrix, i, j, values[i + j]);
+            } 
+            else {
+                matrix_set(matrix, i, j, values[n - 1 + (i + j - n + 1)]);
+            }
+        }
+    }
+
+    fmt_printf("Matrix:\n");
+    matrix_print(matrix);
+
+    if (matrix_is_hankel(matrix)) {
+        fmt_printf("The matrix is Hankel.\n");
+    } 
+    else {
+        fmt_printf("The matrix is not Hankel.\n");
+    }
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
