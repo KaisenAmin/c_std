@@ -31,11 +31,25 @@ Matrix* matrix_power(const Matrix* matrix, int power);
 Matrix* matrix_copy(const Matrix* matrix);
 Matrix* matrix_kronecker_product(const Matrix* A, const Matrix* B);
 Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol);
+Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol);
+Matrix* matrix_from_array(const double* data, size_t rows, size_t cols);
+Matrix* matrix_circulant(const Matrix* firstRow);
+Matrix* matrix_hilbert(size_t n);
+Matrix* matrix_helmert(size_t n, bool full);
+Matrix* matrix_cofactor(const Matrix* matrix);
+Matrix* matrix_cholesky_decomposition(const Matrix* matrix);
+Matrix* matrix_pascal(size_t n);
+Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix);
+Matrix* matrix_projection(const Matrix* matrix);
+Matrix* matrix_vandermonde(const Matrix* matrix, size_t n);
+Matrix* matrix_companion(const Matrix* coefficients, size_t n);
 
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);
 void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2);
 void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2);
+void matrix_row_divide(Matrix* matrix, size_t row, double scalar);
+void matrix_row_subtract(Matrix* matrix, size_t targetRow, size_t subtractRow, double scalar);
 
 bool matrix_scalar_multiply(Matrix* matrix, double scalar);
 bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value);
@@ -52,10 +66,17 @@ bool matrix_is_skew_symmetric(const Matrix* matrix);
 bool matrix_is_diagonal(const Matrix* matrix);
 bool matrix_is_orthogonal(const Matrix* matrix);
 bool matrix_is_hankel(const Matrix* matrix);
+bool matrix_is_toeplitz(const Matrix* matrix);
+bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U);
+bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R);
+bool matrix_is_positive_definite(const Matrix* matrix);
 
 double matrix_get(const Matrix* matrix, size_t row, size_t col);
 double matrix_determinant(const Matrix* matrix);
 double matrix_trace(const Matrix* matrix);
+double matrix_frobenius_norm(const Matrix* matrix);
+double matrix_l1_norm(const Matrix* matrix);
+double matrix_infinity_norm(const Matrix* matrix);
 
 int matrix_rank(const Matrix* matrix);
 

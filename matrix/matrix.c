@@ -1,12 +1,63 @@
 #include "matrix.h"
 #include "../fmt/fmt.h"
 #include <math.h>
+#include <string.h>
 
 #define EPSILON 1e-9
 
 // Function to check if a floating-point number is effectively zero
 static bool is_effectively_zero(double value) {
     return fabs(value) < EPSILON;
+}
+
+static inline int min_number(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+// Function to calculate binomial coefficient
+double binomial_coefficient(int n, int k) {
+    double *C = (double*) malloc(sizeof(double) * (k + 1));
+    if (!C) {
+        return -1; 
+    }
+    memset(C, 0, sizeof(double) * (k + 1));
+    C[0] = 1;
+
+    for (int i = 1; i <= n; i++) {
+        for (int j = min_number(i, k); j > 0; j--) {
+            C[j] = C[j] + C[j-1];
+        }
+    }
+    double value = C[k];
+    free(C);
+    return value;
+}
+
+// function to calculate the dot product of two vectors
+double dot_product(const double* v1, const double* v2, size_t length) {
+    double sum = 0.0;
+    for (size_t i = 0; i < length; ++i) {
+        sum += v1[i] * v2[i];
+    }
+    return sum;
+}
+
+// function to subtract vector projection of u onto v from u (u = u - proj_v(u))
+void subtract_projection(double* u, const double* v, size_t length) {
+    double dot_uv = dot_product(u, v, length);
+    double dot_vv = dot_product(v, v, length);
+    double scale = dot_uv / dot_vv;
+    for (size_t i = 0; i < length; ++i) {
+        u[i] -= scale * v[i];
+    }
+}
+
+// function to normalize a vector
+void normalize_vector(double* v, size_t length) {
+    double norm = sqrt(dot_product(v, v, length));
+    for (size_t i = 0; i < length; ++i) {
+        v[i] /= norm;
+    }
 }
 
 // Function to swap two rows of a matrix
@@ -46,6 +97,18 @@ void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2) {
     #ifdef MATRIX_LOGGING_ENABLE
         fmt_fprintf(stdout, "Success: Columns %d and %d swapped successfully in matrix_swap_cols.\n", col1, col2);
     #endif
+}
+
+void matrix_row_divide(Matrix* matrix, size_t row, double scalar) {
+    for (size_t col = 0; col < matrix->cols; col++) {
+        matrix->data[row * matrix->cols + col] /= scalar;
+    }
+}
+
+void matrix_row_subtract(Matrix* matrix, size_t targetRow, size_t subtractRow, double scalar) {
+    for (size_t col = 0; col < matrix->cols; col++) {
+        matrix->data[targetRow * matrix->cols + col] -= scalar * matrix->data[subtractRow * matrix->cols + col];
+    }
 }
 
 Matrix* matrix_create(size_t rows, size_t cols) {
@@ -299,6 +362,15 @@ double matrix_get(const Matrix* matrix, size_t row, size_t col) {
 
     size_t index = row * matrix->cols + col;
     return matrix->data[index];
+}
+
+static bool matrix_check_diagonal(const Matrix* mat, size_t i, size_t j) {
+    double res = matrix_get(mat, i, j);
+    while (++i < mat->rows && ++j < mat->cols) {
+        if (matrix_get(mat, i, j) != res)
+            return false;
+    }
+    return true;
 }
 
 bool matrix_scalar_multiply(Matrix* matrix, double scalar) {
@@ -1225,5 +1297,727 @@ bool matrix_is_hankel(const Matrix* matrix) {
         fmt_fprintf(stdout, "The matrix is Hankel.\n");
     #endif
     return true;
+}
+
+// Function to create a Toeplitz matrix given its first row and column
+Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol) {
+    if (!firstRow || !firstCol) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input matrices (firstRow or firstCol) are null in matrix_toeplitz.\n");
+        #endif
+        return NULL;
+    }
+    if (firstRow->rows != 1) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: FirstRow should be a row vector in matrix_toeplitz.\n");
+        #endif
+        return NULL;
+    }
+    if (firstCol->cols != 1) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: FirstCol should be a column vector in matrix_toeplitz.\n");
+        #endif
+        return NULL;
+    }
+
+    size_t rows = firstCol->rows; 
+    size_t cols = firstRow->cols;
+    Matrix* toeplitzMatrix = matrix_create(rows, cols);
+    if (!toeplitzMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for Toeplitz matrix in matrix_toeplitz.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
+            if (j >= i) {
+                // Set value from first row
+                double value = matrix_get(firstRow, 0, j - i);
+                matrix_set(toeplitzMatrix, i, j, value);
+            } 
+            else {
+                // Set value from first column
+                double value = matrix_get(firstCol, i - j, 0);
+                matrix_set(toeplitzMatrix, i, j, value);
+            }
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Toeplitz matrix created successfully in matrix_toeplitz.\n");
+    #endif
+    return toeplitzMatrix;
+}
+
+// Function to create Matrix from given array of double 
+Matrix* matrix_from_array(const double* data, size_t rows, size_t cols) {
+    if (!data) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input data is null in matrix_from_array.\n");
+        #endif
+        return NULL;
+    }
+    if (rows == 0 || cols == 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Rows or cols cannot be zero in matrix_from_array.\n");
+        #endif
+        return NULL;
+    }
+
+    Matrix* matrix = matrix_create(rows, cols);
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for matrix in matrix_from_array.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
+            matrix->data[i * cols + j] = data[i * cols + j];
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Matrix created successfully from array in matrix_from_array.\n");
+    #endif
+    return matrix;
+}
+
+bool matrix_is_toeplitz(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null in matrix_is_toeplitz.\n");
+        #endif
+        return false;
+    }
+
+    // Check all elements in the first row
+    for (size_t i = 0; i < matrix->cols; i++) {
+        if (!matrix_check_diagonal(matrix, 0, i))
+            return false;
+    }
+
+    // Check all elements in the first column
+    for (size_t i = 1; i < matrix->rows; i++) {
+        if (!matrix_check_diagonal(matrix, i, 0))
+            return false;
+    }
+
+    return true;
+}
+
+// Function to create circulant matrix from a given matrix first_row .
+Matrix* matrix_circulant(const Matrix* firstRow) {
+    if (!firstRow || firstRow->rows != 1) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input must be a single-row matrix in matrix_circulant.\n");
+        #endif
+        return NULL;
+    }
+
+    size_t n = firstRow->cols; // The number of columns in the first row defines the size of the square matrix
+    Matrix* circulantMatrix = matrix_create(n, n);
+    if (!circulantMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for circulant matrix in matrix_circulant.\n");
+        #endif
+        return NULL;
+    }
+
+    // Populate the circulant matrix
+    for (size_t row = 0; row < n; ++row) {
+        for (size_t col = 0; col < n; ++col) {
+            // Calculate the index for the element in the first row that should be copied to the current position.
+            // This calculation effectively rotates the elements of the first row to fill the matrix.
+            size_t index = (col + row) % n;
+            double value = matrix_get(firstRow, 0, index);
+            matrix_set(circulantMatrix, row, col, value);
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Circulant matrix created successfully from the first row in matrix_circulant.\n");
+    #endif
+    return circulantMatrix;
+}
+
+// Function to create hilbert Matrix from give size 
+Matrix* matrix_hilbert(size_t n) {
+    if (n == 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: size is zero and its invalid for creating hilbert matrix.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* hilbertMatrix = matrix_create(n, n);
+    if (!hilbertMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for hilbert matrix in matrix_hilbert.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            double value = (double)1.0 / ((i + 1) + (j + 1) - 1.0);
+            if (!matrix_set(hilbertMatrix, i, j, value)) {
+                #ifdef MATRIX_LOGGING_ENABLE
+                    fmt_fprintf(stderr, "Error: Can not set valid in hilbert matrix in matrix_hilbert.\n");
+                #endif
+                return NULL;
+            }
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Hilbert matrix created successfully from the first row in matrix_hilbert.\n");
+    #endif
+    return hilbertMatrix;
+}
+
+// Function to create a Helmert matrix
+Matrix* matrix_helmert(size_t n, bool full) {
+    Matrix* helmertMatrix = matrix_create(n, full ? n : n - 1);
+    if (!helmertMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for Helmert matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            if (i == 0) {
+                // First row
+                matrix_set(helmertMatrix, i, j, 1.0 / sqrt(n));
+            } 
+            else if (j < i) {
+                // Below diagonal for subsequent rows
+                double value = 1.0 / sqrt(i * (i + 1.0));
+                matrix_set(helmertMatrix, full ? i : i - 1, j, value);
+            } 
+            else if (j == i) {
+                // Diagonal elements for subsequent rows
+                double value = -sqrt((double)i / (i + 1.0));
+                matrix_set(helmertMatrix, full ? i : i - 1, j, value);
+            }
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Helmert matrix created successfully from the first row in matrix_helmert.\n");
+    #endif
+    return helmertMatrix;
+}
+
+Matrix* matrix_cofactor(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null in matrix_cofator.\n");
+        #endif 
+        return NULL;
+    }
+    else if (!matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object should be square in matrix_cofactor.\n");
+        #endif 
+        return NULL;
+    }
+
+    size_t n = matrix->rows;
+    Matrix* cofactorMatrix = matrix_create(n, n);
+    if (!cofactorMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for cofactor matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            Matrix* submatrix = matrix_create_submatrix(matrix, i, j);
+            if (!submatrix) {
+                matrix_deallocate(cofactorMatrix);
+                return NULL;
+            }
+
+            double det = matrix_determinant(submatrix);
+            matrix_deallocate(submatrix);
+
+            // Calculate the cofactor
+            double cofactor = ((i + j) % 2 == 0 ? 1 : -1) * det;
+            matrix_set(cofactorMatrix, i, j, cofactor);
+        }
+    }
+
+    return cofactorMatrix;
+}
+
+Matrix* matrix_cholesky_decomposition(const Matrix* matrix) {
+    if (!matrix || matrix->rows != matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input must be a square matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    size_t n = matrix->rows;
+    Matrix* chol = matrix_create(n, n);
+    if (!chol) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Memory allocation failed for Cholesky decomposition.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = i; j < n; j++) {
+            double sum = matrix_get(matrix, i, j);
+            for (size_t k = 0; k < i; k++) {
+                sum -= matrix_get(chol, k, i) * matrix_get(chol, k, j);
+            }
+            if (i == j) {
+                if (sum <= 0.0) {
+                    #ifdef MATRIX_LOGGING_ENABLE
+                        fmt_fprintf(stderr, "Matrix is not positive definite.\n");
+                    #endif
+
+                    matrix_deallocate(chol);
+                    return NULL;
+                }
+                matrix_set(chol, i, j, sqrt(sum));
+            } 
+            else {
+                matrix_set(chol, i, j, sum / matrix_get(chol, i, i));
+            }
+        }
+    }
+
+    // Zero out the lower triangular part
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < i; j++) {
+            matrix_set(chol, i, j, 0.0);
+        }
+    }
+
+    return chol;
+}
+
+bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
+    if (!matrix || !matrix_is_square(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix must be square for LU decomposition.\n");
+        #endif
+        return false;
+    }
+
+    size_t n = matrix->rows;
+    *L = matrix_create(n, n);
+    *U = matrix_create(n, n);
+
+    if (!(*L) || !(*U)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for L or U in LU decomposition.\n");
+        #endif
+        if (*L) {
+            matrix_deallocate(*L);
+        }
+        if (*U) {
+            matrix_deallocate(*U);
+        }
+        return false;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        // Upper Triangular
+        for (size_t k = i; k < n; k++) {
+            double sum = 0.0;
+            for (size_t j = 0; j < i; j++) {
+                sum += matrix_get(*L, i, j) * matrix_get(*U, j, k);
+            }
+            matrix_set(*U, i, k, matrix_get(matrix, i, k) - sum);
+        }
+
+        // Lower Triangular
+        for (size_t k = i; k < n; k++) {
+            if (i == k) {
+                matrix_set(*L, i, i, 1.0); // Diagonals of L are set to 1
+            } 
+            else {
+                double sum = 0.0;
+                for (size_t j = 0; j < i; j++) {
+                    sum += matrix_get(*L, k, j) * matrix_get(*U, j, i);
+                }
+                matrix_set(*L, k, i, (matrix_get(matrix, k, i) - sum) / matrix_get(*U, i, i));
+            }
+        }
+    }
+
+    return true;
+}
+
+bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R) {
+    if (!A || A->rows < A->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix must have more rows than columns for QR decomposition in matrix_qr_decompositoin.\n");
+        #endif
+        return false;
+    }
+
+    size_t m = A->rows;
+    size_t n = A->cols;
+
+    *Q = matrix_create(m, n);
+    *R = matrix_create(n, n);
+    if (!Q || !R) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for Q && R in matrix_qr_decompositon.\n");
+        #endif 
+        return false;
+    }
+
+    double* a_col = (double*)malloc(sizeof(double) * m); 
+    double* q_col = (double*)malloc(sizeof(double) * m); 
+    if (!a_col || !q_col) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in matrix_decomposition.\n");
+        #endif 
+        return false;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        // Copy the ith column of A to a_col
+        for (size_t j = 0; j < m; ++j) {
+            a_col[j] = matrix_get(A, j, i);
+        }
+
+        // For each column, apply the Householder transformation
+        for (size_t k = 0; k < i; ++k) {
+            for (size_t j = 0; j < m; ++j) {
+                q_col[j] = matrix_get(*Q, j, k);
+            }
+            subtract_projection(a_col, q_col, m); // a_col -= projection of a_col onto q_col
+        }
+
+        normalize_vector(a_col, m); // Normalize a_col to get the ith column of Q
+
+        // Set the ith column of Q to normalized a_col
+        for (size_t j = 0; j < m; ++j) {
+            matrix_set(*Q, j, i, a_col[j]);
+        }
+
+        // Calculate R values
+        for (size_t j = 0; j < n; ++j) {
+            for (size_t i = 0; i <= j; ++i) {
+                // Compute the dot product of the ith orthonormal vector and the jth original column of A
+                double r_ij = 0.0;
+                for (size_t k = 0; k < m; ++k) {
+                    r_ij += matrix_get(*Q, k, i) * matrix_get(A, k, j); 
+                }
+                matrix_set(*R, i, j, r_ij); // Set the computed value in R
+            }
+        }
+    }
+
+    free(a_col);
+    free(q_col);
+
+    return true;
+}
+
+// Function to create a Pascal matrix
+Matrix* matrix_pascal(size_t n) {
+    Matrix* pascalMatrix = matrix_create(n, n);
+    if (!pascalMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_printf(stderr, "Error: Memory allocation failed for Pascal matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j <= i; j++) {
+            // Pascal matrix is symmetric, so we can fill both upper and lower triangular parts
+            double value = binomial_coefficient(i + j, i);
+            matrix_set(pascalMatrix, i, j, value);
+            matrix_set(pascalMatrix, j, i, value);
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Pascal matrix created successfully.\n");
+    #endif
+    return pascalMatrix;
+}
+
+// Function to compute the Frobenius norm of a matrix
+double matrix_frobenius_norm(const Matrix* matrix) {
+    double sum = 0.0;
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            double value = matrix_get(matrix, i, j);
+            sum += value * value;
+        }
+    }
+    return sqrt(sum);
+}
+
+// Function to compute the L1 norm of a matrix (maximum column sum)
+double matrix_l1_norm(const Matrix* matrix) {
+    double maxSum = 0.0;
+    for (size_t j = 0; j < matrix->cols; j++) {
+        double columnSum = 0.0;
+        for (size_t i = 0; i < matrix->rows; i++) {
+            columnSum += fabs(matrix_get(matrix, i, j));
+        }
+        if (columnSum > maxSum) {
+            maxSum = columnSum;
+        }
+    }
+    return maxSum;
+}
+
+// Function to compute the Infinity norm of a matrix (maximum row sum)
+double matrix_infinity_norm(const Matrix* matrix) {
+    double maxSum = 0.0;
+    for (size_t i = 0; i < matrix->rows; i++) {
+        double rowSum = 0.0;
+        for (size_t j = 0; j < matrix->cols; j++) {
+            rowSum += fabs(matrix_get(matrix, i, j));
+        }
+        if (rowSum > maxSum) {
+            maxSum = rowSum;
+        }
+    }
+    return maxSum;
+}
+
+Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix) {
+    if (matrix->rows != matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_inverse_gauss_jordan.\n");
+        #endif 
+        return NULL;
+    }
+
+    // Create an augmented matrix [A|I]
+    size_t n = matrix->rows;
+    Matrix* augmented = matrix_create(n, 2 * n);
+    if (!augmented) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in matrix_inverse_gauss_jordan.\n");
+        #endif 
+        return NULL;
+    }
+
+    // Fill the augmented matrix with [A|I]
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            augmented->data[i * 2 * n + j] = matrix->data[i * n + j]; 
+            augmented->data[i * 2 * n + j + n] = (i == j) ? 1.0 : 0.0; 
+        }
+    }
+
+    // Perform Gauss-Jordan elimination
+    for (size_t col = 0; col < n; col++) {
+        if (augmented->data[col * 2 * n + col] == 0) {
+            // Find a non-zero element in the same column
+            size_t swapRow = col + 1;
+            while (swapRow < n && augmented->data[swapRow * 2 * n + col] == 0) {
+                swapRow++;
+            }
+            if (swapRow == n) { 
+                #ifdef MATRIX_LOGGING_ENABLE
+                    fmt_fprintf(stderr, "Error: index out of bounds in swapping rwo in matrix_inverse_gauss_jordan.\n");
+                #endif 
+                matrix_deallocate(augmented);
+                return NULL;
+            }
+            matrix_swap_rows(augmented, col, swapRow);
+        }
+
+        matrix_row_divide(augmented, col, augmented->data[col * 2 * n + col]);
+
+        // Eliminate the column entries below and above the pivot
+        for (size_t row = 0; row < n; row++) {
+            if (row != col) {
+                matrix_row_subtract(augmented, row, col, augmented->data[row * 2 * n + col]);
+            }
+        }
+    }
+
+    // Extract the inverse matrix from the augmented matrix
+    Matrix* inverse = matrix_create(n, n);
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            inverse->data[i * n + j] = augmented->data[i * 2 * n + j + n];
+        }
+    }
+
+    matrix_deallocate(augmented);
+    return inverse;
+}
+
+bool matrix_is_positive_definite(const Matrix* matrix) {
+    if (!matrix || matrix->rows != matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix must be square to check if it's positive definite.\n");
+        #endif
+        return false;
+    }
+
+    // Matrix must also be symmetric for it to be positive definite
+    if (!matrix_is_symmetric(matrix)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix is not symmetric in positive_definite.\n");
+        #endif
+        return false;
+    }
+    Matrix* chol = matrix_cholesky_decomposition(matrix);
+    bool isPositiveDefinite = chol != NULL;
+
+    // Deallocate the Cholesky matrix if it was successfully created
+    if (isPositiveDefinite) {
+        matrix_deallocate(chol);
+    }
+    else {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: failed in getting chlesky_decompostion in positive_definite.\n");
+        #endif
+        return false;
+    }
+
+    return isPositiveDefinite;
+}
+
+// Calculate the projection matrix onto the column space of A
+Matrix* matrix_projection(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input matrix is null in matrix_projection.\n");
+        #endif
+        return NULL;
+    }
+
+    // Calculate transpose of matrix
+    Matrix* matrixTranspose = matrix_transpose(matrix);
+    if (!matrixTranspose) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Transpose calculation failed in matrix_projection.\n");
+        #endif
+        return NULL;
+    }
+
+    // Calculate m^T * m
+    Matrix* mta = matrix_multiply(matrixTranspose, matrix);
+    if (!mta) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Multiplication matrix^Tmatrix failed in matrix_projection.\n");
+        #endif
+        matrix_deallocate(matrixTranspose);
+        return NULL;
+    }
+
+    // Calculate inverse of m^T * m
+    Matrix* mtaInv = matrix_inverse(mta);
+    if (!mtaInv) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Inverse calculation failed in matrix_projection.\n");
+        #endif
+        matrix_deallocate(matrixTranspose); 
+        matrix_deallocate(mta); 
+        return NULL;
+    }
+
+    // Calculate m * (m^T * m)^-1
+    Matrix* m_mta_inv = matrix_multiply(matrix, mtaInv);
+    if (!m_mta_inv) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Multiplication A*(A^TA)^-1 failed in matrix_projection.\n");
+        #endif
+        matrix_deallocate(matrixTranspose); // Clean up
+        matrix_deallocate(mta); // Clean up
+        matrix_deallocate(mtaInv); // Clean up
+        return NULL;
+    }
+
+    // Calculate final projection matrix: A * (A^T * A)^-1 * A^T
+    Matrix* projection = matrix_multiply(m_mta_inv, matrixTranspose);
+    if (!projection) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Final projection matrix calculation failed in matrix_projection.\n");
+        #endif
+    }
+
+    matrix_deallocate(matrixTranspose);
+    matrix_deallocate(mta);
+    matrix_deallocate(mtaInv);
+    matrix_deallocate(m_mta_inv);
+
+    return projection;
+}
+
+Matrix* matrix_vandermonde(const Matrix* matrix, size_t n) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null and invalid in matrix_vandermonde.\n");
+        #endif 
+        return NULL;
+    }
+    
+    Matrix* vandermonde = matrix_create(n, n);
+    if (!vandermonde) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for vandermonde in matrix_vandermonde.\n");
+        #endif 
+        return NULL; // Memory allocation failed
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            vandermonde->data[i * n + j] = pow(matrix->data[i], j);
+        }
+    }
+
+    return vandermonde;
+}
+
+// Generate a companion matrix from polynomial coefficients
+Matrix* matrix_companion(const Matrix* coefficients, size_t degree) {
+    if (!coefficients) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null and invalid in matrix_companion.\n");
+        #endif 
+        return NULL;
+    }
+    
+    size_t n = degree - 1; // For a polynomial of degree n, the companion matrix is nxn
+    Matrix* companion = matrix_create(n, n);
+    if (!companion) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for companion matrix.\n");
+        #endif 
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            if (j == n - 1) { // Last column
+                companion->data[i * n + j] = -coefficients->data[n - 1 - i] / coefficients->data[degree - 1];
+            } 
+            else if (i == j + 1) { // Sub-diagonal
+                companion->data[i * n + j] = 1;
+            } 
+            else { // Other positions
+                companion->data[i * n + j] = 0;
+            }
+        }
+    }
+
+    return companion;
 }
 

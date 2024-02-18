@@ -1060,3 +1060,406 @@ int main() {
     return 0;
 }
 ```
+
+## Example 29 : create matrix from array then create toeplitz matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double firstRowData[] = {1, 4, 5, 6};
+    double firstColData[] = {1, 2, 3};
+
+    Matrix* firstRow = matrix_from_array(firstRowData, 1, sizeof(firstRowData) / sizeof(firstRowData[0]));
+    Matrix* firstCol = matrix_from_array(firstColData, sizeof(firstColData) / sizeof(firstColData[0]), 1);
+
+    fmt_printf("First row\n");
+    matrix_print(firstRow);
+
+    fmt_printf("First Col\n");
+    matrix_print(firstCol);
+    
+    Matrix* toeplitzMatrix = matrix_toeplitz(firstRow, firstCol);
+
+    fmt_printf("Toeplitz Matrix:\n");
+    matrix_print(toeplitzMatrix);
+
+    matrix_deallocate(firstRow);
+    matrix_deallocate(firstCol);
+    matrix_deallocate(toeplitzMatrix);
+
+    return 0;
+}
+```
+
+## Example 30 : create circulant matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double firstRowData[] = {1, 2, 3};
+    Matrix* firstRow = matrix_from_array(firstRowData, 1, sizeof(firstRowData) / sizeof(firstRowData[0]));
+
+    Matrix* circulantMatrix = matrix_circulant(firstRow);
+
+    fmt_printf("Circulan Matrix:\n");
+    matrix_print(circulantMatrix);
+
+    matrix_deallocate(firstRow);
+    matrix_deallocate(circulantMatrix);
+
+    return 0;
+}
+```
+
+## Example 31 : create hilbert Matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* hilbert = matrix_hilbert(3);
+
+    fmt_printf("Hilbert Matrix : \n");
+    matrix_print(hilbert);
+
+
+    matrix_deallocate(hilbert);
+    return 0;
+}
+```
+
+## Example 32 : create helmert matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* helmert = matrix_helmert(5, true);
+
+    fmt_printf("Helmert Matrix : \n");
+    matrix_print(helmert);
+
+    matrix_deallocate(helmert);
+    return 0;
+}
+```
+
+## Example 33 : Cofactor of Matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double arr[] = {1, 9, 3, 2, 5, 4, 3, 7, 8};
+    Matrix* mat = matrix_from_array(arr,3, 3);
+    Matrix* cofactor = matrix_cofactor(mat);
+
+    fmt_printf("Cofactor of Matrix : \n");
+    matrix_print(cofactor);
+
+    matrix_deallocate(mat);
+    matrix_deallocate(cofactor);
+    return 0;
+}
+```
+
+## Example 34 : calculate cholesky decomposition of a Matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double data[] = {4, 12, -16, 12, 37, -43, -16, -43, 98};
+    size_t n = 3; 
+
+    Matrix* matrix = matrix_from_array(data, n, n);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    Matrix* chol = matrix_cholesky_decomposition(matrix);
+    if (!chol) {
+        fmt_fprintf(stderr, "Cholesky decomposition failed.\n");
+        matrix_deallocate(matrix); 
+        return -1;
+    }
+
+    fmt_printf("Original Matrix:\n");
+    matrix_print(matrix);
+
+    fmt_printf("Cholesky Decomposition (Upper Triangular Matrix):\n");
+    matrix_print(chol);
+
+    matrix_deallocate(matrix);
+    matrix_deallocate(chol);
+
+    return 0;
+}
+```
+
+## Example 35 : LU decomposition 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double A_data[] = {4, 3, 2, 3, 2, 1, 2, 1, 3};
+    size_t n = 3; 
+    Matrix* A = matrix_from_array(A_data, n, n);
+
+    if (!A) {
+        fmt_fprintf(stderr, "Failed to create matrix A.\n");
+        return -1;
+    }
+
+    Matrix *L, *U;
+    bool success = matrix_lu_decomposition(A, &L, &U);
+    if (!success) {
+        fmt_fprintf(stderr, "LU decomposition failed.\n");
+        matrix_deallocate(A);
+        return -1;
+    }
+
+    fmt_printf("Original Matrix A:\n");
+    matrix_print(A);
+
+    fmt_printf("Lower Triangular Matrix L:\n");
+    matrix_print(L);
+
+    fmt_printf("Upper Triangular Matrix U:\n");
+    matrix_print(U);
+
+    matrix_deallocate(A);
+    matrix_deallocate(L);
+    matrix_deallocate(U);
+
+    return 0;
+}
+```
+
+## Example 36 : QR decomposition 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double A_data[] = {4, 12, -16, 12, 37, -43, -16, -43, 98};
+    size_t n = 3;
+    Matrix* A = matrix_from_array(A_data, n, n);
+    
+    if (!A) {
+        fmt_fprintf(stderr, "Failed to create matrix A.\n");
+        return -1;
+    }
+
+    Matrix *Q, *R;
+    bool success = matrix_qr_decomposition(A, &Q, &R);
+    if (!success) {
+        fmt_fprintf(stderr, "QR decomposition failed.\n");
+        matrix_deallocate(A); 
+        return -1;
+    }
+
+    fmt_printf("Original Matrix A:\n");
+    matrix_print(A);
+
+    fmt_printf("Orthogonal Matrix Q:\n");
+    matrix_print(Q);
+
+    fmt_printf("Upper Triangular Matrix R:\n");
+    matrix_print(R);
+
+    matrix_deallocate(A);
+    matrix_deallocate(Q);
+    matrix_deallocate(R);
+
+    return 0;
+}
+```
+
+## Example 37 : Pascal matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* pascal = matrix_pascal(5);
+
+    fmt_printf("Pascal Matrix : \n");
+    matrix_print(pascal);
+
+    matrix_deallocate(pascal);
+    return 0;
+}
+```
+
+## Example 38 : different kind of Norm 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double data[] = {1, -2, 3, -4, 5, -6, 7, -8, 9};
+    Matrix* matrix = matrix_from_array(data, 3, 3);
+    
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    // Compute norms
+    double frobeniusNorm = matrix_frobenius_norm(matrix);
+    double l1Norm = matrix_l1_norm(matrix);
+    double infinityNorm = matrix_infinity_norm(matrix);
+
+
+    fmt_printf("Frobenius Norm: %lf\n", frobeniusNorm);
+    fmt_printf("L1 Norm: %lf\n", l1Norm);
+    fmt_printf("Infinity Norm: %lf\n", infinityNorm);
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
+
+## Example 39 : Matrix is positive definite or not 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* posDefMatrix = matrix_create(2, 2);
+    matrix_set(posDefMatrix, 0, 0, 2);  
+    matrix_set(posDefMatrix, 0, 1, -1);
+    matrix_set(posDefMatrix, 1, 0, -1);
+    matrix_set(posDefMatrix, 1, 1, 2);
+
+    // Create a non-positive definite matrix (symmetric but not positive definite)
+    Matrix* nonPosDefMatrix = matrix_create(2, 2);
+    matrix_set(nonPosDefMatrix, 0, 0, 0);  
+    matrix_set(nonPosDefMatrix, 0, 1, 1);
+    matrix_set(nonPosDefMatrix, 1, 0, 1);
+    matrix_set(nonPosDefMatrix, 1, 1, 0);
+
+    if (matrix_is_positive_definite(posDefMatrix)) {
+        fmt_printf("The matrix is positive definite.\n");
+    } 
+    else {
+        fmt_printf("The matrix is not positive definite.\n");
+    }
+
+    if (matrix_is_positive_definite(nonPosDefMatrix)) {
+        fmt_printf("The matrix is positive definite.\n");
+    } 
+    else {
+        fmt_printf("The matrix is not positive definite.\n");
+    }
+
+    matrix_deallocate(posDefMatrix);
+    matrix_deallocate(nonPosDefMatrix);
+
+    return 0;
+}
+```
+
+## Example 40 : generate projection of a Matrix 
+
+```c 
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double matrix[] = {
+        1, 2,
+        3, 4,
+        5, 6
+    };
+    size_t rows = 3;
+    size_t cols = 2;
+    Matrix* A = matrix_from_array(matrix, rows, cols);
+
+    if (!A) {
+        fmt_printf("Failed to create matrix A.\n");
+        return -1;
+    }
+
+    fmt_printf("Matrix A:\n");
+    matrix_print(A);
+
+    // Compute the projection matrix P for the column space of A
+    Matrix* projection = matrix_projection(A);
+    if (!projection) {
+        fmt_printf("Failed to compute the projection matrix.\n");
+        matrix_deallocate(A); 
+        return -1;
+    }
+
+    fmt_printf("\nProjection Matrix P for the column space of A:\n");
+    matrix_print(projection);
+
+    matrix_deallocate(A);
+    matrix_deallocate(projection);
+
+    return 0;
+}
+``` 
+
+## Example 41 : create vandermond matrix from give matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double data[] = {4, 3, 1};
+    Matrix* matrix = matrix_from_array(data, 1, 3);
+    Matrix* vander = matrix_vandermonde(matrix, 3);
+
+    if (!matrix || !vander) {
+        fmt_fprintf(stderr, "vander creation or generate matrix from array failed\n");
+        return -1;
+    }
+
+    fmt_printf("Vandermond Matrix : \n");
+    matrix_print(vander);
+
+    matrix_deallocate(matrix);
+    matrix_deallocate(vander);
+
+    return 0;   
+}
+```
+
+## Example 42 : create companion matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double data[] = {1, 2, 3};
+    Matrix* matrix = matrix_from_array(data, 1, 3);
+    Matrix* companion = matrix_companion(matrix, 3);
+
+    fmt_printf("Companion Matrix : \n");
+    matrix_print(companion);
+
+    matrix_deallocate(companion);
+    matrix_deallocate(matrix);
+    return 0;   
+}
+```
