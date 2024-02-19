@@ -14,6 +14,8 @@ typedef struct Matrix {
     double* data;
 } Matrix;
 
+typedef double (*MatrixFunc)(double);
+
 Matrix* matrix_create(size_t rows, size_t cols);
 Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2);
 Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2);
@@ -43,6 +45,7 @@ Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix);
 Matrix* matrix_projection(const Matrix* matrix);
 Matrix* matrix_vandermonde(const Matrix* matrix, size_t n);
 Matrix* matrix_companion(const Matrix* coefficients, size_t n);
+Matrix* matrix_map(const Matrix* matrix, MatrixFunc func);
 
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);
@@ -70,6 +73,11 @@ bool matrix_is_toeplitz(const Matrix* matrix);
 bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U);
 bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R);
 bool matrix_is_positive_definite(const Matrix* matrix);
+bool matrix_fill(Matrix* matrix, double value);
+bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func);
+bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func);
+bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale);
+bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale);
 
 double matrix_get(const Matrix* matrix, size_t row, size_t col);
 double matrix_determinant(const Matrix* matrix);
@@ -77,6 +85,8 @@ double matrix_trace(const Matrix* matrix);
 double matrix_frobenius_norm(const Matrix* matrix);
 double matrix_l1_norm(const Matrix* matrix);
 double matrix_infinity_norm(const Matrix* matrix);
+double matrix_min_element(const Matrix* matrix);
+double matrix_max_element(const Matrix* matrix);
 
 int matrix_rank(const Matrix* matrix);
 

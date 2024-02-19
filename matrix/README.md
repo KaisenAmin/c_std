@@ -1463,3 +1463,174 @@ int main() {
     return 0;   
 }
 ```
+
+## Example 43 : How to apply a function to matrix_map also fill and matrix with prefer value 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+#include <math.h>
+
+double sine_of_element(double x) {
+    return sin(x);
+}
+
+int main() {
+    Matrix* matrix = matrix_create(3, 3);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    // Fill the matrix with the value PI / 4
+    if (!matrix_fill(matrix, 3.141596 / 4)) {
+        fmt_fprintf(stderr, "Failed to fill matrix.\n");
+        matrix_deallocate(matrix);
+        return -1;
+    }
+
+    fmt_printf("Matrix after filling with PI / 4:\n");
+    matrix_print(matrix);
+
+    // Apply the sine function to each element of the matrix
+    Matrix* resultMatrix = matrix_map(matrix, sine_of_element);
+    if (!resultMatrix) {
+        fmt_fprintf(stderr, "Failed to apply function to matrix.\n");
+        matrix_deallocate(matrix);
+        return -1;
+    }
+
+    fmt_printf("\nMatrix after applying the sine function:\n");
+    matrix_print(resultMatrix);
+
+    matrix_deallocate(matrix);
+    matrix_deallocate(resultMatrix);
+
+    return 0;
+}
+```
+
+## Example 44 : how to use matrix_row_addition and matrix_col_addition 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+
+int main() {
+    double values[9] = {
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9
+    };
+
+    Matrix* matrix = matrix_from_array(values, 3, 3);
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    fmt_printf("Original Matrix:\n");
+    matrix_print(matrix);
+
+    // Add the first row to the second row
+    if (matrix_row_addition(matrix, 1, 0, 1.0)) {
+        fmt_printf("\nMatrix after adding first row to the second row:\n");
+        matrix_print(matrix);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to add rows.\n");
+    }
+
+    // Add the first column to the third column, scaling the first column by 2
+    if (matrix_col_addition(matrix, 2, 0, 2.0)) {
+        fmt_printf("\nMatrix after adding first column (scaled by 2) to the third column:\n");
+        matrix_print(matrix);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to add columns.\n");
+    }
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
+
+## Example 45 : Apply function for specefic row and col 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+#include <math.h>
+
+double square(double x) {
+    return x * x;
+}
+
+int main() {
+    double values[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    Matrix* matrix = matrix_from_array(values, 3, 3); 
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    fmt_printf("Original Matrix:\n");
+    matrix_print(matrix);
+
+    // Apply 'square' function to the second row (index 1)
+    if (!matrix_apply_to_row(matrix, 1, square)) {
+        fmt_fprintf(stderr, "Failed to apply function to row.\n");
+        matrix_deallocate(matrix);
+        return -1;
+    }
+
+    fmt_printf("\nMatrix after applying 'square' function to the second row:\n");
+    matrix_print(matrix);
+
+    // Apply 'square' function to the first column (index 0)
+    if (!matrix_apply_to_col(matrix, 0, square)) {
+        fmt_fprintf(stderr, "Failed to apply function to column.\n");
+        matrix_deallocate(matrix);
+        return -1;
+    }
+
+    fmt_printf("\nMatrix after applying 'square' function to the first column:\n");
+    matrix_print(matrix);
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```
+
+## Example 46 : finding minimum and maximum element of a Matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double values[] = {
+        -2.5, 3.1, 5.0,
+        7.2, -8.6, 1.0,
+        4.5, -9.1, 2.3
+    };
+    Matrix* matrix = matrix_from_array(values, 3, 3); 
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    fmt_printf("Given Matrix:\n");
+    matrix_print(matrix);
+
+    double minElement = matrix_min_element(matrix);
+    fmt_printf("\nMinimum element in the matrix: %lf\n", minElement);
+
+    double maxElement = matrix_max_element(matrix);
+    fmt_printf("Maximum element in the matrix: %lf\n", maxElement);
+
+    matrix_deallocate(matrix);
+    return 0;
+}
+```

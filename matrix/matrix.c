@@ -2,6 +2,7 @@
 #include "../fmt/fmt.h"
 #include <math.h>
 #include <string.h>
+#include <float.h>
 
 #define EPSILON 1e-9
 
@@ -2021,3 +2022,185 @@ Matrix* matrix_companion(const Matrix* coefficients, size_t degree) {
     return companion;
 }
 
+bool matrix_fill(Matrix* matrix, double value) {
+    // Check if the matrix pointer is NULL
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null in matrix_fill.\n");
+        #endif
+        return false; // Exit the function early if matrix is NULL
+    }
+
+    // Check if the matrix data pointer is NULL
+    if (!matrix->data) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix data is null in matrix_fill.\n");
+        #endif
+        return false; 
+    }
+
+    // Iterate over each element in the matrix and set it to the specified value
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->cols; j++) {
+            matrix->data[i * matrix->cols + j] = value;
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Matrix filled with value %lf in matrix_fill.\n", value);
+    #endif
+    return true;
+}
+
+// function to apply an other function to each element of matrix 
+Matrix* matrix_map(const Matrix* matrix, MatrixFunc func) {
+    // Check for NULL pointer in input matrix or function
+    if (!matrix || !func) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: NULL argument provided to matrix_map.\n");
+        #endif
+        return NULL;
+    }
+
+    // Allocate memory for the new matrix
+    Matrix* result = (Matrix*)malloc(sizeof(Matrix));
+    if (!result) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in matrix_map.\n");
+        #endif
+        return NULL;
+    }
+
+    // Allocate memory for the new matrix data
+    result->data = (double*)malloc(matrix->rows * matrix->cols * sizeof(double));
+    if (!result->data) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation for matrix data failed in matrix_map.\n");
+        #endif
+        free(result); // Clean up previously allocated matrix structure
+        return NULL;
+    }
+
+    result->rows = matrix->rows;
+    result->cols = matrix->cols;
+
+    // Apply the function to each element of the input matrix
+    for (size_t i = 0; i < matrix->rows; ++i) {
+        for (size_t j = 0; j < matrix->cols; ++j) {
+            result->data[i * matrix->cols + j] = func(matrix->data[i * matrix->cols + j]);
+        }
+    }
+
+    #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stdout, "Success: Function applied to matrix in matrix_map.\n");
+    #endif
+
+    return result;
+}
+
+// function to find minimum element in the matrix 
+double matrix_min_element(const Matrix* matrix) {
+    if (!matrix || !matrix->data || matrix->rows == 0 || matrix->cols == 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Invalid matrix in matrix_min_element.\n");
+        #endif
+        return DBL_MAX; // Return the maximum double value as an error indicator
+    }
+
+    double min = DBL_MAX;
+    for (size_t i = 0; i < matrix->rows; ++i) {
+        for (size_t j = 0; j < matrix->cols; ++j) {
+            double value = matrix->data[i * matrix->cols + j];
+            if (value < min) {
+                min = value;
+            }
+        }
+    }
+
+    return min;
+}
+
+// function to find the maximum element in the matrix
+double matrix_max_element(const Matrix* matrix) {
+    if (!matrix || !matrix->data || matrix->rows == 0 || matrix->cols == 0) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Invalid matrix in matrix_max_element.\n");
+        #endif
+        return -DBL_MAX; // Return the minimum double value as an error indicator
+    }
+
+    double max = -DBL_MAX;
+    for (size_t i = 0; i < matrix->rows; ++i) {
+        for (size_t j = 0; j < matrix->cols; ++j) {
+            double value = matrix->data[i * matrix->cols + j];
+            if (value > max) {
+                max = value;
+            }
+        }
+    }
+    
+    return max;
+}
+
+// Apply a function to each element of a specified row
+bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func) {
+    if (!matrix || !func || row >= matrix->rows) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Invalid arguments in matrix_apply_to_row.\n");
+        #endif
+        return false;
+    }
+
+    for (size_t j = 0; j < matrix->cols; ++j) {
+        matrix->data[row * matrix->cols + j] = func(matrix->data[row * matrix->cols + j]);
+    }
+    return true;
+}
+
+// Apply a function to each element of a specified column
+bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func) {
+    if (!matrix || !func || col >= matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Invalid arguments in matrix_apply_to_col.\n");
+        #endif
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; ++i) {
+        matrix->data[i * matrix->cols + col] = func(matrix->data[i * matrix->cols + col]);
+    }
+
+    return true;
+}
+
+// Add one row to another after optionally scaling it
+bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale) {
+    if (!matrix || targetRow >= matrix->rows || sourceRow >= matrix->rows) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Invalid arguments in matrix_row_addition.\n");
+        #endif
+        return false;
+    }
+
+    for (size_t j = 0; j < matrix->cols; ++j) {
+        matrix->data[targetRow * matrix->cols + j] += scale * matrix->data[sourceRow * matrix->cols + j];
+    }
+
+    return true;
+}
+
+// Add one column to another after optionally scaling it
+bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale) {
+    if (!matrix || targetCol >= matrix->cols || sourceCol >= matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Invalid arguments in matrix_col_addition.\n");
+        #endif
+        return false;
+    }
+
+    for (size_t i = 0; i < matrix->rows; ++i) {
+        matrix->data[i * matrix->cols + targetCol] += scale * matrix->data[i * matrix->cols + sourceCol];
+    }
+
+    return true;
+}
