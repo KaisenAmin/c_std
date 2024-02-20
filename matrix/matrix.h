@@ -54,6 +54,7 @@ Matrix* matrix_get_row(const Matrix* matrix, size_t row);
 Matrix* matrix_get_col(const Matrix* matrix, size_t col);
 Matrix* matrix_block_diag(size_t count, ...);
 Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end);
+Matrix* matrix_walsh(size_t n);
 
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);

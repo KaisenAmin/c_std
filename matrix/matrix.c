@@ -13,6 +13,24 @@ static bool is_effectively_zero(double value) {
     return fabs(value) < EPSILON;
 }
 
+// function to generate the Walsh matrix recursively
+static void generateWalshMatrixRecursively(double* data, int order, int dim, int startRow, int startCol, int val) {
+    if (order == 1) {
+        data[startRow * dim + startCol] = val;
+        return;
+    }
+
+    int halfOrder = order / 2;
+    // Top-left quadrant
+    generateWalshMatrixRecursively(data, halfOrder, dim, startRow, startCol, val);
+    // Top-right quadrant
+    generateWalshMatrixRecursively(data, halfOrder, dim, startRow, startCol + halfOrder, val);
+    // Bottom-left quadrant
+    generateWalshMatrixRecursively(data, halfOrder, dim, startRow + halfOrder, startCol, val);
+    // Bottom-right quadrant (invert the values)
+    generateWalshMatrixRecursively(data, halfOrder, dim, startRow + halfOrder, startCol + halfOrder, -val);
+}
+
 static inline int min_number(int a, int b) {
     return (a < b) ? a : b;
 }
@@ -2482,4 +2500,26 @@ Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
         matrix->data[i] = (rand() % end) + start;
     }
     return matrix;
+}
+
+// Function to create a Walsh Matrix of size 'n'
+Matrix* matrix_walsh(size_t n) {
+    // Ensure 'n' is a power of 2
+    if (n & (n - 1)) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: 'n' is not a power of 2 in matrix_walsh.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* walshMatrix = matrix_create(n, n);
+    if (!walshMatrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for walsh in matrix_walsh.\n");
+        #endif 
+        return NULL;
+    }
+    generateWalshMatrixRecursively(walshMatrix->data, n, n, 0, 0, 1);
+
+    return walshMatrix;
 }

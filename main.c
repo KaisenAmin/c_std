@@ -2,14 +2,14 @@
 #include "fmt/fmt.h"
 
 int main() {
-    Matrix* matrix = matrix_random(10, 10, 1, 10);
+    Matrix* matrix = matrix_walsh(16);
 
     if (!matrix) {
         fmt_printf("Error in creation matrix object");
         return -1;        
     }
 
-    fmt_printf("Matrix random is : \n");
+    fmt_printf("Matrix walsh is : \n");
     matrix_print(matrix);
 
     matrix_deallocate(matrix);
