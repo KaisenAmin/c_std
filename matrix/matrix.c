@@ -2454,3 +2454,14 @@ bool matrix_is_sparse(const Matrix* matrix) {
     // Consider the matrix sparse if the non-zero percentage is less than 30%
     return nonZeroPercentage < 0.3;
 }
+
+size_t matrix_size(const Matrix *matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null and invalid in matrix_size.\n");
+        #endif 
+        return 0;
+    }
+
+    return matrix->rows * matrix->cols;
+}
