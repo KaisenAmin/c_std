@@ -4,6 +4,7 @@
 #include <string.h>
 #include <float.h>
 #include <stdint.h>
+#include <time.h>
 
 #define EPSILON 1e-9
 
@@ -2464,4 +2465,21 @@ size_t matrix_size(const Matrix *matrix) {
     }
 
     return matrix->rows * matrix->cols;
+}
+
+Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
+    Matrix* matrix = matrix_create(row, col);
+    srand(time(NULL));
+
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: creation of Matrix object failed in matrix_random.\n");
+        #endif
+        return NULL; 
+    }
+
+    for (size_t i = 0; i < matrix_size(matrix); i++) {
+        matrix->data[i] = (rand() % end) + start;
+    }
+    return matrix;
 }

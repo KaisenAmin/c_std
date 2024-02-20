@@ -2,16 +2,16 @@
 #include "fmt/fmt.h"
 
 int main() {
-    double dataA[] = {1, 0, 1, 0}; // 2x2 matrix
-    Matrix* A = matrix_from_array(dataA, 2, 2);
-    if (!A) {
-        fmt_fprintf(stderr, "Failed to create matrix A.\n");
-        return -1;
+    Matrix* matrix = matrix_random(10, 10, 1, 10);
+
+    if (!matrix) {
+        fmt_printf("Error in creation matrix object");
+        return -1;        
     }
 
-    fmt_printf("Matrix A Size is %zu\n", matrix_size(A));
-    matrix_print(A);
+    fmt_printf("Matrix random is : \n");
+    matrix_print(matrix);
 
-    matrix_deallocate(A);
+    matrix_deallocate(matrix);
     return 0;
 }

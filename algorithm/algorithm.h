@@ -72,6 +72,7 @@ size_t algorithm_count(const void *base, size_t num, size_t size, const void *va
 size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
 size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp);
 size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred);
+
 Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp);
 

@@ -15,7 +15,7 @@ typedef struct Matrix {
     double* data;
 } Matrix;
 
-typedef double (*MatrixFunc)(double);
+typedef double (*MatrixFunc)(double); 
 
 Matrix* matrix_create(size_t rows, size_t cols);
 Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2);
@@ -53,6 +53,7 @@ Matrix* matrix_inverse_hilbert(size_t n);
 Matrix* matrix_get_row(const Matrix* matrix, size_t row);
 Matrix* matrix_get_col(const Matrix* matrix, size_t col);
 Matrix* matrix_block_diag(size_t count, ...);
+Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end);
 
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);
