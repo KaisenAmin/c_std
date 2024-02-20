@@ -1634,3 +1634,134 @@ int main() {
     return 0;
 }
 ```
+
+## Example 47 : create leslie matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double f[] = {0.1, 2.0, 1.0, 0.1}; // Fecundity coefficients
+    double s[] = {0.2, 0.8, 0.7};      // Survival coefficients
+    size_t f_size = sizeof(f) / sizeof(f[0]);
+    size_t s_size = sizeof(s) / sizeof(s[0]);
+
+    Matrix* fl = matrix_from_array(f, 1, 3);
+    Matrix* sl = matrix_from_array(s, 1, 3);
+    
+    if (!fl || !sl) {
+        fmt_fprintf(stderr, "Error: can not create Matrix from array fl or sl or both of them");
+        return -1;
+    }
+
+    Matrix* leslieMatrix = matrix_leslie(fl, f_size, sl, s_size);
+    if (leslieMatrix) {
+        fmt_printf("Leslie Matrix:\n");
+        matrix_print(leslieMatrix);
+        matrix_deallocate(leslieMatrix);
+
+    }
+
+    matrix_deallocate(fl);
+    matrix_deallocate(sl);
+    return 0;
+}
+```
+
+## Example 48 : create inverse hilbert Matrix 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Matrix* invHilbert = matrix_inverse_hilbert(4);
+
+    if (!invHilbert) {
+        fmt_fprintf(stderr, "Error: can not create inverse hilbert matrix.\n");
+        return -1;
+    }
+    
+    fmt_printf("Inverse Hilbert Matrix : \n");
+    matrix_print(invHilbert);
+
+    matrix_deallocate(invHilbert);
+    return 0;
+}
+```
+
+## Example 49 : get row or col of Matrix as Matrix object 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double values[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    Matrix* matrix = matrix_from_array(values, 3, 3); 
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    fmt_printf("Original Matrix : \n");
+    matrix_print(matrix);
+
+    Matrix* row = matrix_get_row(matrix, 1);
+    if (!row) {
+        fmt_fprintf(stderr, "Row Matrix is null and invalid.\n");
+        matrix_deallocate(matrix);
+        return -1;
+    }
+
+    fmt_printf("row of matrix : \n");
+    matrix_print(row);
+
+    Matrix* col = matrix_get_col(matrix, 2);
+    if (!col) {
+        fmt_fprintf(stderr, "Col Matrix is null and invalid.\n");
+        matrix_deallocate(row);
+        matrix_deallocate(matrix);
+        return -1;
+    };
+
+    fmt_printf("col of matrix : \n");
+    matrix_print(col);
+
+    matrix_deallocate(col);
+    matrix_deallocate(row);
+    matrix_deallocate(matrix);
+
+    return 0;
+}
+```
+
+## Example 50 : Matrix to double Array 
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main() {
+    double values[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    Matrix* matrix = matrix_from_array(values, 3, 3); 
+    if (!matrix) {
+        fmt_fprintf(stderr, "Failed to create matrix.\n");
+        return -1;
+    }
+
+    fmt_printf("Original Matrix : \n");
+    matrix_print(matrix);
+
+    double* data = matrix_to_array(matrix);
+
+    for (size_t i = 0; i < (matrix->rows * matrix->cols); i++) {
+        fmt_printf("%lf ", data[i]);
+    }
+
+    free(data);
+    matrix_deallocate(matrix);
+    return 0;
+}
+```

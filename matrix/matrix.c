@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include <float.h>
+#include <stdint.h>
 
 #define EPSILON 1e-9
 
@@ -32,6 +33,22 @@ double binomial_coefficient(int n, int k) {
     double value = C[k];
     free(C);
     return value;
+}
+
+// Function to calculate factorial
+static int64_t factorial(int n) {
+    int64_t result = 1;
+    for (int i = 2; i <= n; ++i) {
+        result *= i;
+    }
+    return result;
+}
+
+// Function to calculate binomial coefficient
+static int64_t binomial_factorial(int n, int k) {
+    if (k > n) return 0;
+    if (k == 0 || k == n) return 1;
+    return factorial(n) / (factorial(k) * factorial(n - k));
 }
 
 // function to calculate the dot product of two vectors
@@ -2203,4 +2220,237 @@ bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, dou
     }
 
     return true;
+}
+
+// Function to create a Leslie matrix
+Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size) {
+    if (!f) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_leslie")
+        #endif 
+    }
+    // Check if sizes are compatible
+    else if (f_size != s_size + 1) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "The length of s must be one less than the length of f in matrix_leslie.\n");
+        #endif
+        return NULL;
+    }
+
+    // Create an N x N matrix, where N is the size of the fecundity array f
+    Matrix* leslie = matrix_create(f_size, f_size);
+    if (!leslie) {
+        fmt_fprintf(stderr, "Failed to create Leslie matrix.\n");
+        return NULL;
+    }
+
+    // Set the first row with fecundity coefficients
+    for (size_t i = 0; i < f_size; ++i) {
+        matrix_set(leslie, 0, i, f->data[i]);
+    }
+
+    // Set the sub-diagonal with survival coefficients
+    for (size_t i = 1; i < f_size; ++i) {
+        matrix_set(leslie, i, i - 1, s->data[i - 1]);
+    }
+    return leslie;
+}
+
+// Function to create a Fiedler matrix from a given array
+Matrix* matrix_fiedler(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_fiedler.\n");
+        #endif 
+        return NULL;
+    }
+
+    size_t n = matrix->cols >= matrix->rows? matrix->cols: matrix->rows; 
+    Matrix* fiedler = matrix_create(n, n);
+
+    if (!fiedler) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Failed to create Fiedler matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            // Set F[i, j] to the absolute difference between a[i] and a[j]
+            double value = fabs(matrix->data[i] - matrix->data[j]);
+            matrix_set(fiedler, i, j, value);
+        }
+    }
+
+    return fiedler;
+}
+
+// Function to create the inverse of a Hilbert matrix
+Matrix* matrix_inverse_hilbert(size_t n) {
+    Matrix* invH = matrix_create(n, n);
+    if (!invH) {
+        #ifdef MATRIX_LOGGING_ENABLE
+        fmt_fprintf(stderr, "Error: Memory allocation failed for inverse Hilbert matrix.\n");
+        #endif
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            int s = i + j;
+            int64_t sign = (s % 2 == 0) ? 1 : -1;
+            int64_t numerator = sign * (i + j + 1) * binomial_factorial(n + i, n - j - 1) * binomial_factorial(n + j, n - i - 1) * binomial_factorial(s, i) * binomial_factorial(s, j);
+            int64_t denominator = 1; // The denominator for Hilbert matrix inverse entries when n <= 14 are effectively 1
+            double value = (double)numerator / denominator;
+            matrix_set(invH, i, j, value);
+        }
+    }
+
+    return invH;
+}
+
+// function to return specefic row or a matrix 
+Matrix* matrix_get_row(const Matrix* matrix, size_t row) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_get_row.\n");
+        #endif 
+        return NULL;
+    }
+    else if (row >= matrix->rows) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: row is bigger than matrix->row or less than zero in matrix_get_row.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* r = matrix_create(1, matrix->cols);
+    if (!r) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for row in matrix_get_row.\n");
+        #endif 
+        return NULL;
+    }
+    
+    for (size_t j = 0; j < matrix->cols; j++) {
+        matrix_set(r, 0, j, matrix_get(matrix, row, j));
+    }
+
+    return r;
+}
+
+// function to return specefic col of a matrix 
+Matrix* matrix_get_col(const Matrix* matrix, size_t col) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: matrix object is null and invalid in matrix_get_col.\n");
+        #endif 
+        return NULL;
+    }
+    else if (col >= matrix->cols) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: row is bigger than matrix->row or less than zero in matrix_get_col.\n");
+        #endif 
+        return NULL;
+    }
+
+    Matrix* c = matrix_create(matrix->rows, 1);
+    if (!c) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for row in matrix_get_col.\n");
+        #endif 
+        return NULL;
+    }
+
+    for (size_t i = 0; i < matrix->rows; i++) {
+        matrix_set(c, i, 0, matrix_get(matrix, i, col));
+    }
+
+    return c;
+}
+
+double* matrix_to_array(const Matrix* matrix) {
+    if (!matrix) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Matrix object is null and invalid in matrix_to_array.\n");
+        #endif 
+        return NULL;
+    }
+
+    size_t size = matrix->rows * matrix->cols * sizeof(double);
+    double* data = (double*) malloc(size);
+    
+    if (!data) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in matrix_to_array.\n");
+        #endif 
+        return NULL;
+    }
+
+    memcpy(data, matrix->data, size);
+
+    return data;
+}
+
+// function to create a block diagonal matrix from provide Matrix params 
+Matrix* matrix_block_diag(size_t count, ...) {
+    va_list args;
+    size_t totalRows = 0, totalCols = 0;
+
+    va_start(args, count);
+    for (size_t i = 0; i < count; ++i) {
+        Matrix* mat = va_arg(args, Matrix*);
+        totalRows += mat->rows;
+        totalCols += mat->cols;
+    }
+    va_end(args);
+
+    Matrix* result = matrix_create(totalRows, totalCols);
+    if (!result) {
+        #ifdef MATRIX_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for matrix in matrix_block_diag")
+        #endif 
+        return NULL; 
+    }
+
+    // copy data into the right positions
+    size_t currentRow = 0, currentCol = 0;
+    va_start(args, count);
+    for (size_t i = 0; i < count; ++i) {
+        Matrix* mat = va_arg(args, Matrix*);
+        for (size_t r = 0; r < mat->rows; ++r) {
+            memcpy(result->data + (currentRow + r) * totalCols + currentCol, mat->data + r * mat->cols, mat->cols * sizeof(double));
+        }
+        currentRow += mat->rows;
+        currentCol += mat->cols;
+    }
+    va_end(args);
+
+    return result;
+}
+
+// Function to determine if a matrix is sparse
+bool matrix_is_sparse(const Matrix* matrix) {
+    if (!matrix || !matrix->data) {
+        #ifdef MATRIX_LOGGING_ENABLE 
+            fmt_fprintf(stderr, "Error: Matrix object is null and invalid in matrix_is_sparse.\n");
+        #endif 
+        return false; 
+    }
+
+    size_t totalElements = matrix->rows * matrix->cols;
+    size_t nonZeroCount = 0;
+    
+    for (size_t i = 0; i < totalElements; ++i) {
+        if (matrix->data[i] != 0) {
+            ++nonZeroCount;
+        }
+    }
+
+    // Calculate the percentage of non-zero elements
+    double nonZeroPercentage = (double)nonZeroCount / (double)totalElements;
+
+    // Consider the matrix sparse if the non-zero percentage is less than 30%
+    return nonZeroPercentage < 0.3;
 }

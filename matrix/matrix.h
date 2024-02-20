@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 // #define MATRIX_LOGGING_ENABLE 
 
@@ -46,6 +47,12 @@ Matrix* matrix_projection(const Matrix* matrix);
 Matrix* matrix_vandermonde(const Matrix* matrix, size_t n);
 Matrix* matrix_companion(const Matrix* coefficients, size_t n);
 Matrix* matrix_map(const Matrix* matrix, MatrixFunc func);
+Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size);
+Matrix* matrix_fiedler(const Matrix* matrix);
+Matrix* matrix_inverse_hilbert(size_t n);
+Matrix* matrix_get_row(const Matrix* matrix, size_t row);
+Matrix* matrix_get_col(const Matrix* matrix, size_t col);
+Matrix* matrix_block_diag(size_t count, ...);
 
 void matrix_deallocate(Matrix* matrix);
 void matrix_print(Matrix* matrix);
@@ -78,6 +85,7 @@ bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func);
 bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func);
 bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale);
 bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale);
+bool matrix_is_sparse(const Matrix* matrix);
 
 double matrix_get(const Matrix* matrix, size_t row, size_t col);
 double matrix_determinant(const Matrix* matrix);
@@ -88,6 +96,7 @@ double matrix_infinity_norm(const Matrix* matrix);
 double matrix_min_element(const Matrix* matrix);
 double matrix_max_element(const Matrix* matrix);
 
+double* matrix_to_array(const Matrix* matrix);
 int matrix_rank(const Matrix* matrix);
 
 #endif 

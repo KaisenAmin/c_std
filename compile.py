@@ -43,6 +43,7 @@ def compile_project(run_after_compile=False, program_args=[]):
         # "crypto",
         # "tuple",
         "matrix",
+        "graph",
         # Add other directories containing your .c files
     ]
 

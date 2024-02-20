@@ -2,26 +2,47 @@
 #include "fmt/fmt.h"
 
 int main() {
-    double values[] = {
-        -2.5, 3.1, 5.0,
-        7.2, -8.6, 1.0,
-        4.5, -9.1, 2.3
-    };
-    Matrix* matrix = matrix_from_array(values, 3, 3); 
-    if (!matrix) {
-        fmt_fprintf(stderr, "Failed to create matrix.\n");
+    double dataA[] = {1, 0, 1, 0}; // 2x2 matrix
+    Matrix* A = matrix_from_array(dataA, 2, 2);
+    if (!A) {
+        fmt_fprintf(stderr, "Failed to create matrix A.\n");
         return -1;
     }
 
-    fmt_printf("Given Matrix:\n");
-    matrix_print(matrix);
+    double dataB[] = {3, 4, 5, 6, 7, 8}; // 2x3 matrix
+    Matrix* B = matrix_from_array(dataB, 2, 3);
+    if (!B) {
+        fmt_fprintf(stderr, "Failed to create matrix B.\n");
+        matrix_deallocate(A);
+        return -1;
+    }
 
-    double minElement = matrix_min_element(matrix);
-    fmt_printf("\nMinimum element in the matrix: %lf\n", minElement);
+    double dataC[] = {7}; // 1x1 matrix
+    Matrix* C = matrix_from_array(dataC, 1, 1);
+    if (!C) {
+        fmt_fprintf(stderr, "Failed to create matrix C.\n");
+        matrix_deallocate(A);
+        matrix_deallocate(B);
+        return -1;
+    }
 
-    double maxElement = matrix_max_element(matrix);
-    fmt_printf("Maximum element in the matrix: %lf\n", maxElement);
+    // Combine A, B, and C into a block diagonal matrix
+    Matrix* blockDiagonal = matrix_block_diag(3, A, B, C);
+    if (!blockDiagonal) {
+        fmt_fprintf(stderr, "Failed to create block diagonal matrix.\n");
+        matrix_deallocate(A);
+        matrix_deallocate(B);
+        matrix_deallocate(C);
+        return -1;
+    }
 
-    matrix_deallocate(matrix);
+    fmt_printf("Block Diagonal Matrix:\n");
+    matrix_print(blockDiagonal);
+
+    matrix_deallocate(A);
+    matrix_deallocate(B);
+    matrix_deallocate(C);
+    matrix_deallocate(blockDiagonal);
+
     return 0;
 }
