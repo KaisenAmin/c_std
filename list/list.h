@@ -1,8 +1,8 @@
 /**
  * @author Amin Tahmasebi
- * @date 2023 
+ * @date 2023
  * @class List
-*/
+ */
 
 #ifndef LIST_H_
 #define LIST_H_
@@ -12,16 +12,18 @@
 
 typedef struct Node Node;
 typedef struct List List;
-typedef bool (*ConditionFunction)(void* value);
+typedef bool (*ConditionFunction)(void *value);
 typedef int (*CompareFunction)(const void *, const void *);
 
-struct Node {
+struct Node
+{
     void *value;
     Node *next;
-    Node *prev;  
+    Node *prev;
 };
 
-struct List {
+struct List
+{
     Node *head;
     Node *tail;
     size_t size;
@@ -42,7 +44,7 @@ void *list_erase(List *list, size_t index);
 void list_resize(List *list, size_t newSize, void *defaultValue);
 void list_swap(List *list1, List *list2);
 void list_reverse(List *list);
-void list_sort(List* list);
+void list_sort(List *list);
 void list_push_front(List *list, void *value);
 void list_push_back(List *list, void *value);
 void list_pop_front(List *list);
@@ -60,13 +62,13 @@ void list_deallocate(List *list);
 
 Node *list_begin(const List *list);
 Node *list_end(const List *list);
-Node *list_rbegin(const List *list);  // Only for doubly linked lists
-Node *list_rend(const List *list); 
+Node *list_rbegin(const List *list); // Only for doubly linked lists
+Node *list_rend(const List *list);
 
 const Node *list_cbegin(const List *list);
-const Node *list_cend(const List* list);
-const Node *list_crbegin(const List* list);
-const Node *list_crend(const List* list);
+const Node *list_cend(const List *list);
+const Node *list_crbegin(const List *list);
+const Node *list_crend(const List *list);
 
 bool list_is_less(const List *list1, const List *list2);
 bool list_is_greater(const List *list1, const List *list2);

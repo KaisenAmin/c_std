@@ -65,11 +65,15 @@ static MemoryPoolString *memory_pool_create(size_t size) {
 
 static void *memory_pool_allocate(MemoryPoolString *pool, size_t size) {
     if (pool == NULL) {
-        fmt_fprintf(stderr, "Error: Memory pool is NULL in memory_pool_allocate.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory pool is NULL in memory_pool_allocate.\n");
+        #endif
         return NULL;
     }
     if (pool->used + size > pool->poolSize) {
-        fmt_fprintf(stderr, "Error: Memory pool out of memory in memory_pool_allocate.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory pool out of memory in memory_pool_allocate.\n");
+        #endif
         return NULL; // Pool is out of memory
     }
 
@@ -81,7 +85,9 @@ static void *memory_pool_allocate(MemoryPoolString *pool, size_t size) {
 
 static void memory_pool_destroy(MemoryPoolString *pool) {
     if (pool == NULL) {
-        fmt_fprintf(stderr, "Warning: Attempt to destroy a NULL memory pool in memory_pool_destroy.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Warning: Attempt to destroy a NULL memory pool in memory_pool_destroy.\n");
+        #endif
         return;
     }
     free(pool->pool);
@@ -91,7 +97,9 @@ static void memory_pool_destroy(MemoryPoolString *pool) {
 String* string_create(const char* initialStr) {
     String* str = (String*)malloc(sizeof(String));
     if (!str) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create.\n");
+        #endif
         exit(-1);
     }
 
@@ -103,14 +111,18 @@ String* string_create(const char* initialStr) {
     size_t initialPoolSize = 1000000; // 1KB
     str->pool = memory_pool_create(initialPoolSize);
     if (!str->pool) {
-        fmt_fprintf(stderr, "Error: Memory pool creation failed in string_create.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory pool creation failed in string_create.\n");
+        #endif
         free(str);
         exit(-1);
     }
 
     str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
     if (!str->dataStr) {
-        fmt_fprintf(stderr, "Error: Memory pool allocation failed in string_create.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory pool allocation failed in string_create.\n");
+        #endif
         memory_pool_destroy(str->pool);
         free(str);
         exit(-1);
@@ -131,13 +143,17 @@ String* string_create_with_pool(size_t size) {
     }
     // Ensure global memory pool is initialized
     if (global_pool == NULL) {
-        fmt_fprintf(stderr, "Error: Failed to initialize global memory pool in string_create_with_pool.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to initialize global memory pool in string_create_with_pool.\n");
+        #endif
         exit(-1);  // Consider handling the error without exiting
     }
 
     String* str = (String*)malloc(sizeof(String));
     if (!str) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create_with_pool.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for String object in string_create_with_pool.\n");
+        #endif
         exit(-1);
     }
 
@@ -151,11 +167,15 @@ String* string_create_with_pool(size_t size) {
 
 String* string_substr(String* str, size_t pos, size_t len) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_substr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_substr.\n");
+        #endif
         return NULL;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_substr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_substr.\n");
+        #endif
         return NULL;
     }
 
@@ -166,7 +186,9 @@ String* string_substr(String* str, size_t pos, size_t len) {
 
     String* substr = string_create(NULL); // Allocate memory for the substring
     if (substr == NULL) { 
-        fmt_fprintf(stderr, "Error: Memory allocation failed for substring in string_substr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for substring in string_substr.\n");
+        #endif
         return NULL;
     }
 
@@ -175,7 +197,9 @@ String* string_substr(String* str, size_t pos, size_t len) {
     substr->dataStr = (char*)malloc(substr->capacitySize * sizeof(char));
 
     if (substr->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for dataStr in substring in string_substr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for dataStr in substring in string_substr.\n");
+        #endif
         free(substr);
         return NULL;
     }
@@ -192,11 +216,15 @@ bool string_empty(String* str) {
 
 bool string_contains(String* str, const char* substr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_contains.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_contains.\n");
+        #endif
         return false;
     }
     if (substr == NULL) {
-        fmt_fprintf(stderr, "Error: The substring is NULL in string_contains.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The substring is NULL in string_contains.\n");
+        #endif
         return false;
     }
     return strstr(str->dataStr, substr) != NULL;
@@ -207,7 +235,9 @@ int string_compare(const String* str1, const String* str2) {
         if (str1 == str2) {
             return 0;  // Both are NULL, considered equal
         }
-        fmt_fprintf(stderr, "Error: One or both String objects are NULL in string_compare.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: One or both String objects are NULL in string_compare.\n");
+        #endif
         return (str1 == NULL) ? -1 : 1;  // NULL is considered less than non-NULL
     }
     return strcmp(str1->dataStr, str2->dataStr);
@@ -252,7 +282,9 @@ bool string_is_alpha(String* str) {
 
 bool string_is_digit(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_is_digit.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_is_digit.\n");
+        #endif
         return false;
     }
     for (size_t index = 0; index < str->size; index++) {
@@ -265,7 +297,9 @@ bool string_is_digit(String* str) {
 
 bool string_is_upper(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_is_upper.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_is_upper.\n");
+        #endif
         return false;
     }
     for (size_t index = 0; index < str->size; index++) {
@@ -278,7 +312,9 @@ bool string_is_upper(String* str) {
 
 bool string_is_lower(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_is_lower.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_is_lower.\n");
+        #endif
         return false;
     }
     for (size_t index = 0; index < str->size; index++) {
@@ -293,7 +329,9 @@ void string_reverse(String* str) {
     if (str != NULL && str->dataStr != NULL) {
         char* reverse = (char*) malloc(sizeof(char) * (str->size + 1));
         if (!reverse) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in string_reverse.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Memory allocation failed in string_reverse.\n");
+            #endif
             return;
         }
 
@@ -306,14 +344,18 @@ void string_reverse(String* str) {
         free(reverse);
     }
     else {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_reverse.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_reverse.\n");
+        #endif
         return;
     }
 }
 
 void string_resize(String *str, size_t newSize) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_resize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_resize.\n");
+        #endif
         return;
     }
     if (newSize < str->size) {
@@ -326,7 +368,9 @@ void string_resize(String *str, size_t newSize) {
             char *newData = memory_pool_allocate(str->pool, newCapacity);
 
             if (!newData) {
-                fmt_fprintf(stderr, "Error: Memory allocation failed in string_resize.\n");
+                #ifdef STRING_LOGGING_ENABLE
+                    fmt_fprintf(stderr, "Error: Memory allocation failed in string_resize.\n");
+                #endif
                 return;
             }
             memcpy(newData, str->dataStr, str->size);
@@ -341,7 +385,9 @@ void string_resize(String *str, size_t newSize) {
 
 void string_shrink_to_fit(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_shrink_to_fit.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_shrink_to_fit.\n");
+        #endif
         return;
     }
     if (str->size + 1 == str->capacitySize) {
@@ -354,7 +400,9 @@ void string_shrink_to_fit(String *str) {
         char *newData = memory_pool_allocate(str->pool, newCapacity);
 
         if (newData == NULL) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in string_shrink_to_fit.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                 fmt_fprintf(stderr, "Error: Memory allocation failed in string_shrink_to_fit.\n");
+            #endif
             return;
         }
         // Copy existing data to the new space
@@ -369,11 +417,15 @@ void string_shrink_to_fit(String *str) {
 
 void string_append(String *str, const char *strItem) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_append.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_append.\n");
+        #endif
         return;
     }
     if (strItem == NULL) {
-        fmt_fprintf(stderr, "Error: The strItem is NULL in string_append.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The strItem is NULL in string_append.\n");
+        #endif
         return;
     }
     size_t strItemLength = strlen(strItem);
@@ -386,7 +438,9 @@ void string_append(String *str, const char *strItem) {
         char *newData = memory_pool_allocate(str->pool, newCapacity);
 
         if (!newData) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in string_append.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Memory allocation failed in string_append.\n");
+            #endif
             return;
         }
 
@@ -401,7 +455,9 @@ void string_append(String *str, const char *strItem) {
 
 void string_push_back(String* str, char chItem) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_push_back.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_push_back.\n");
+        #endif
         return;
     }
     if (str->size + 1 >= str->capacitySize) {
@@ -410,7 +466,9 @@ void string_push_back(String* str, char chItem) {
         char* newData = memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
         
         if (!newData) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in string_push_back.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Memory allocation failed in string_push_back.\n");
+            #endif
             return;
         }
 
@@ -429,11 +487,15 @@ void string_push_back(String* str, char chItem) {
 
 void string_assign(String *str, const char *newStr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_assign.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_assign.\n");
+        #endif
         return;
     }
     if (newStr == NULL) {
-        fmt_fprintf(stderr, "Error: The newStr is NULL in string_assign.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: The newStr is NULL in string_assign.\n");
+         #endif
         return;
     }
 
@@ -441,7 +503,9 @@ void string_assign(String *str, const char *newStr) {
     if (newStrLength + 1 > str->capacitySize) {
         char *newData = memory_pool_allocate(str->pool, newStrLength + 1);
         if (!newData) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in string_assign.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                 fmt_fprintf(stderr, "Error: Memory allocation failed in string_assign.\n");
+            #endif
             return;
         }
 
@@ -456,15 +520,21 @@ void string_assign(String *str, const char *newStr) {
 
 void string_insert(String *str, size_t pos, const char *strItem) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_insert.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_insert.\n");
+        #endif
         return;
     }
     if (strItem == NULL) {
-        fmt_fprintf(stderr, "Error: The strItem is NULL in string_insert.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The strItem is NULL in string_insert.\n");
+        #endif
         return;
     }
     if (pos > str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_insert.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_insert.\n");
+        #endif
         return;
     }
 
@@ -475,7 +545,9 @@ void string_insert(String *str, size_t pos, const char *strItem) {
         size_t newCapacity = newTotalLength + 1;
         char *newData = memory_pool_allocate(str->pool, newCapacity);
         if (!newData) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in string_insert.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Memory allocation failed in string_insert.\n");
+            #endif
             return;
         }
 
@@ -494,11 +566,15 @@ void string_insert(String *str, size_t pos, const char *strItem) {
 
 void string_erase(String *str, size_t pos, size_t len) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_erase.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: The String object is NULL in string_erase.\n");
+        #endif
         return;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_erase.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_erase.\n");
+        #endif
         return;
     }
     if (pos + len > str->size) { 
@@ -511,21 +587,29 @@ void string_erase(String *str, size_t pos, size_t len) {
 
 void string_replace(String *str1, const char *oldStr, const char *newStr) {
     if (str1 == NULL) {
-        fmt_fprintf(stderr, "Error: The String object (str1) is NULL in string_replace.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            mt_fprintf(stderr, "Error: The String object (str1) is NULL in string_replace.\n");
+        #endif
         return;
     }
     if (oldStr == NULL) {
-        fmt_fprintf(stderr, "Error: The oldStr is NULL in string_replace.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The oldStr is NULL in string_replace.\n");
+        #endif
         return;
     }
     if (newStr == NULL) {
-        fmt_fprintf(stderr, "Error: The newStr is NULL in string_replace.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The newStr is NULL in string_replace.\n");
+        #endif
         return;
     }
 
     char *position = strstr(str1->dataStr, oldStr);
-    if (position == NULL) { 
-        fmt_fprintf(stderr, "Warning: oldStr not found in str1 in string_replace.\n");
+    if (position == NULL) {
+        #ifdef STRING_LOGGING_ENABLE 
+            fmt_fprintf(stderr, "Warning: oldStr not found in str1 in string_replace.\n");
+        #endif
         return;  // oldStr not found in str1
     }
 
@@ -555,7 +639,9 @@ void string_replace(String *str1, const char *oldStr, const char *newStr) {
 
 void string_swap(String *str1, String *str2) {
     if (str1 == NULL || str2 == NULL) {
-        fmt_fprintf(stderr, "Error: One or both String objects are NULL in string_swap.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: One or both String objects are NULL in string_swap.\n");
+        #endif
         return;
     }
 
@@ -566,11 +652,15 @@ void string_swap(String *str1, String *str2) {
 
 void string_pop_back(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_pop_back.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_pop_back.\n");
+        #endif
         return;
     }
     if (str->size == 0) {
-        fmt_fprintf(stderr, "Warning: Attempt to pop back from an empty string in string_pop_back.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Warning: Attempt to pop back from an empty string in string_pop_back.\n");
+        #endif
         return;
     }
 
@@ -580,7 +670,9 @@ void string_pop_back(String *str) {
 
 void string_deallocate(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Warning: Attempt to deallocate a NULL String object in string_deallocate.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Warning: Attempt to deallocate a NULL String object in string_deallocate.\n");
+        #endif
         return;
     }
     // Destroy the memory pool associated with the string
@@ -597,11 +689,15 @@ void string_deallocate(String *str) {
 
 char string_at(String* str, size_t index) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_at.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_at.\n");
+        #endif
         return '\0';  // Return a default character
     }
     if (index >= str->size) {
-        fmt_fprintf(stderr, "Error: Index out of range in string_at.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Index out of range in string_at.\n");
+        #endif
         return '\0';  // Return a default character
     }
     return str->dataStr[index]; // (const char)
@@ -623,7 +719,9 @@ char* string_front(String *str) {
 
 size_t string_length(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_length.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_length.\n");
+        #endif
         return 0;
     }
     return str->size;
@@ -631,7 +729,9 @@ size_t string_length(String* str) {
 
 size_t string_capacity(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_capacity.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_capacity.\n");
+        #endif
         return 0;
     }
     return str->capacitySize;
@@ -639,7 +739,9 @@ size_t string_capacity(String* str) {
 
 size_t string_max_size(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_max_size.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_max_size.\n");
+        #endif
         return 0;  // Or a special value indicating error
     }
     return (size_t)-1;  // You may want to define a more realistic maximum size
@@ -648,15 +750,21 @@ size_t string_max_size(String* str) {
 
 size_t string_copy(String *str, char *buffer, size_t pos, size_t len) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_copy.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_copy.\n");
+        #endif
         return 0;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_copy.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_copy.\n");
+        #endif
         return 0;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_copy.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_copy.\n");
+        #endif
         return 0;
     }
 
@@ -673,15 +781,21 @@ size_t string_copy(String *str, char *buffer, size_t pos, size_t len) {
 
 int string_find(String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find.\n");
+        #endif
         return -1;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_find.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_find.\n");
+        #endif
         return -1;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_find.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_find.\n");
+        #endif
         return -1;
     }
 
@@ -694,21 +808,29 @@ int string_find(String *str, const char *buffer, size_t pos) {
 
 int string_rfind(String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_rfind.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_rfind.\n");
+        #endif
         return -1;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_rfind.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_rfind.\n");
+        #endif
         return -1;
     }
 
     size_t bufferLen = strlen(buffer);
     if (bufferLen == 0) {
-        fmt_fprintf(stderr, "Error: The buffer is empty in string_rfind.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: The buffer is empty in string_rfind.\n");
+        #endif
         return -1;
     }
     if (pos < bufferLen - 1) {
-        fmt_fprintf(stderr, "Error: Position is too small in string_rfind.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position is too small in string_rfind.\n");
+        #endif
         return -1;
     }
 
@@ -723,15 +845,21 @@ int string_rfind(String *str, const char *buffer, size_t pos) {
 
 int string_find_first_of(String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_first_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_first_of.\n");
+        #endif
         return -1;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_first_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_first_of.\n");
+        #endif
         return -1;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_find_first_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_find_first_of.\n");
+        #endif
         return -1;
     }
 
@@ -744,15 +872,21 @@ int string_find_first_of(String *str, const char *buffer, size_t pos) {
 
 int string_find_last_of(String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_last_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_last_of.\n");
+        #endif
         return -1;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_last_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_last_of.\n");
+        #endif
         return -1;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_find_last_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_find_last_of.\n");
+        #endif
         return -1;
     }
 
@@ -768,15 +902,21 @@ int string_find_last_of(String *str, const char *buffer, size_t pos) {
 
 int string_find_first_not_of(String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_first_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_first_not_of.\n");
+        #endif
         return -1;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_first_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_first_not_of.\n");
+        #endif
         return -1;
     }
     if (pos >= str->size) {
-        fmt_fprintf(stderr, "Error: Position out of bounds in string_find_first_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position out of bounds in string_find_first_not_of.\n");
+        #endif
         return -1;
     }
 
@@ -795,21 +935,29 @@ int string_find_first_not_of(String *str, const char *buffer, size_t pos) {
 
 int string_find_last_not_of(String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_last_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object or its data is NULL in string_find_last_not_of.\n");
+        #endif
         return -1;
     }
     if (buffer == NULL) {
-        fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_last_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is NULL in string_find_last_not_of.\n");
+        #endif
         return -1;
     }
 
     size_t bufferLen = strlen(buffer);
     if (bufferLen == 0) {
-        fmt_fprintf(stderr, "Error: The buffer is empty in string_find_last_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The buffer is empty in string_find_last_not_of.\n");
+        #endif
         return -1;
     }
     if (pos < bufferLen - 1) {
-        fmt_fprintf(stderr, "Error: Position is too small in string_find_last_not_of.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Position is too small in string_find_last_not_of.\n");
+        #endif
         return -1;
     }
 
@@ -824,7 +972,9 @@ int string_find_last_not_of(String *str, const char *buffer, size_t pos) {
 
 const char *string_data(String *str) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_data function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_data function.\n");
+        #endif
         return NULL;
     }
     return str->dataStr;
@@ -832,11 +982,15 @@ const char *string_data(String *str) {
 
 const char *string_c_str(const String *str) {
     if (str == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input in string_c_str function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input in string_c_str function.\n");
+        #endif
         return "";  // Return empty string for null String
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Uninitialized String in string_c_str function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Uninitialized String in string_c_str function.\n");
+        #endif
         return "";  // Return empty string for uninitialized String
     }
     return str->dataStr;
@@ -844,11 +998,15 @@ const char *string_c_str(const String *str) {
 
 char *string_begin(String *str) {
     if (str == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input in string_begin function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input in string_begin function.\n");
+        #endif
         return "";  // Return empty string for null String
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Uninitialized String in string_begin function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Uninitialized String in string_begin function.\n");
+        #endif
         return "";  // Return empty string for uninitialized String
     }
     return str->dataStr;  // The beginning of the string
@@ -856,7 +1014,9 @@ char *string_begin(String *str) {
 
 char *string_end(String *str) {
     if (str == NULL || str->dataStr == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_end function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_end function.\n");
+        #endif
         return NULL;  // Return NULL for null or uninitialized String
     }
     return str->dataStr + str->size;  // The end of the string
@@ -864,7 +1024,9 @@ char *string_end(String *str) {
 
 char *string_rbegin(String *str) {
     if (str == NULL || str->dataStr == NULL || str->size == 0) {
-        fmt_fprintf(stderr, "Error: Invalid input, uninitialized, or empty String in string_rbegin function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input, uninitialized, or empty String in string_rbegin function.\n");
+        #endif
         return NULL; 
     }
     return str->dataStr + str->size - 1;
@@ -872,7 +1034,9 @@ char *string_rbegin(String *str) {
 
 char *string_rend(String *str) {
     if (str == NULL || str->dataStr == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_rend function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_rend function.\n");
+        #endif
         return NULL;
     }
     return str->dataStr - 1; 
@@ -880,7 +1044,9 @@ char *string_rend(String *str) {
 
 const char *string_cbegin(String *str) {
     if (str == NULL || str->dataStr == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_cbegin function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_cbegin function.\n");
+        #endif
         return NULL;  // Return NULL for null or uninitialized String
     }
     return str->dataStr;  // The beginning of the string
@@ -888,7 +1054,9 @@ const char *string_cbegin(String *str) {
 
 const char *string_cend(String *str) {
     if (str == NULL || str->dataStr == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_cend function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_cend function.\n");
+        #endif
         return NULL;  // Return NULL for null or uninitialized String
     }
     return str->dataStr + str->size;  // The end of the string
@@ -896,7 +1064,9 @@ const char *string_cend(String *str) {
 
 const char *string_crbegin(String *str) {
     if (str == NULL || str->dataStr == NULL || str->size == 0) { 
-        fmt_fprintf(stderr, "Error: Invalid input, uninitialized, or empty String in string_crbegin function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Invalid input, uninitialized, or empty String in string_crbegin function.\n");
+        #endif
         return NULL;  // Return NULL for null, uninitialized, or empty String
     }
     return str->dataStr + str->size - 1;  // Pointer to the last character
@@ -904,7 +1074,9 @@ const char *string_crbegin(String *str) {
 
 const char *string_crend(String *str) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_crend function.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input or uninitialized String in string_crend function.\n");
+        #endif
         return NULL;  // Return NULL for null or uninitialized String
     }
     return str->dataStr - 1;  // Pointer to one before the first character
@@ -920,14 +1092,18 @@ void string_clear(String* str) {
             str->dataStr[0] = '\0';
         }
     }
-    fmt_fprintf(stderr, "Info : String object is null no need to clear in string_clear.\n");
+    #ifdef STRING_LOGGING_ENABLE
+        fmt_fprintf(stderr, "Info : String object is null no need to clear in string_clear.\n");
+    #endif
 }
 
 char* string_to_upper(String* str) {
     if (str != NULL) {
         char* upper = (char*) malloc(sizeof(char) * (str->size + 1));
         if (!upper) {
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for string_to_upper function.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Failed to allocate memory for string_to_upper function.\n");
+            #endif
             exit(-1);
         }
 
@@ -942,8 +1118,9 @@ char* string_to_upper(String* str) {
         upper[str->size] = '\0';
         return upper;
     }
-
-    fmt_fprintf(stderr, "Error: Input 'str' is NULL in string_to_upper function.\n");
+    #ifdef STRING_LOGGING_ENABLE
+        fmt_fprintf(stderr, "Error: Input 'str' is NULL in string_to_upper function.\n");
+    #endif
     return NULL;
 }
 
@@ -951,7 +1128,9 @@ char* string_to_lower(String* str) {
     if (str != NULL) {
         char* lower = (char*) malloc(sizeof(char) * (str->size + 1));
         if (!lower) {
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for string_to_lower function.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Failed to allocate memory for string_to_lower function.\n");
+            #endif
             exit(-1);
         }
 
@@ -966,19 +1145,24 @@ char* string_to_lower(String* str) {
         lower[str->size] = '\0';
         return lower;
     }
-
-    fmt_fprintf(stderr, "Error: Input 'str' is NULL in string_to_lower function.\n");
+    #ifdef STRING_LOGGING_ENABLE
+        fmt_fprintf(stderr, "Error: Input 'str' is NULL in string_to_lower function.\n");
+    #endif
     return NULL;
 }
 
 bool string_set_pool_size(String* str, size_t newSize) {
     if (!str) {
-        fmt_fprintf(stderr, "Error: Invalid input - 'str' is NULL in string_set_pool_size.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input - 'str' is NULL in string_set_pool_size.\n");
+        #endif
         return false;
     }
     
     if (newSize == 0) { 
-        fmt_fprintf(stderr, "Error: Invalid input - 'newSize' is zero in string_set_pool_size.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input - 'newSize' is zero in string_set_pool_size.\n");
+        #endif
         return false;
     }
     // If a memory pool already exists, destroy it first
@@ -990,14 +1174,18 @@ bool string_set_pool_size(String* str, size_t newSize) {
     // Create a new memory pool with the specified size
     str->pool = memory_pool_create(newSize);
     if (!str->pool) { 
-        fmt_fprintf(stderr, "Error: Failed to create a new memory pool in string_set_pool_size.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to create a new memory pool in string_set_pool_size.\n");
+        #endif
         return false; // Return false if memory pool creation fails
     }
     // If the string already has data, reallocate it in the new pool
     if (str->size > 0 && str->dataStr) {
         char* newData = memory_pool_allocate(str->pool, str->size + 1); // +1 for null terminator
         if (!newData) {
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for string data in the new pool in string_set_pool_size.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Failed to allocate memory for string data in the new pool in string_set_pool_size.\n");
+            #endif
             memory_pool_destroy(str->pool);
             str->pool = NULL;
             return false; // Return false if allocation fails
@@ -1011,11 +1199,15 @@ bool string_set_pool_size(String* str, size_t newSize) {
 
 void string_concatenate(String *str1, const String *str2) {
     if (str1 == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object 'str1' in string_concatenate.\n");
+        #ifdef STRING_LOGGING_ENABLE    
+            fmt_fprintf(stderr, "Error: Null String object 'str1' in string_concatenate.\n");
+        #endif
         return;
     }
     if (str2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object 'str2' in string_concatenate.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object 'str2' in string_concatenate.\n");
+        #endif
         return;
     }
     string_append(str1, str2->dataStr);
@@ -1023,7 +1215,9 @@ void string_concatenate(String *str1, const String *str2) {
 
 void string_trim_left(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_trim_left.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_trim_left.\n");
+        #endif
         return;
     }
     if (str->size == 0) {
@@ -1044,7 +1238,9 @@ void string_trim_left(String *str) {
 
 void string_trim_right(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_trim_right.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_trim_right.\n");
+        #endif
         return;
     }
     if (str->size == 0) {
@@ -1064,7 +1260,9 @@ void string_trim_right(String *str) {
 
 void string_trim(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_trim.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_trim.\n");
+        #endif
         return;
     }
 
@@ -1074,18 +1272,24 @@ void string_trim(String *str) {
 
 String** string_split(String *str, const char *delimiter, int *count) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_split.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_split.\n");
+        #endif
         return NULL;
     }
     if (delimiter == NULL) {
-        fmt_fprintf(stderr, "Error: Null delimiter in string_split.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null delimiter in string_split.\n");
+        #endif
         return NULL;
     }
 
     size_t num_splits = 0;
     char *temp = string_strdup(str->dataStr);
     if (temp == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_split.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_split.\n");
+        #endif
         return NULL;
     }
 
@@ -1103,13 +1307,17 @@ String** string_split(String *str, const char *delimiter, int *count) {
 
     String **splits = malloc(sizeof(String*) * num_splits);
     if (splits == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for splits in string_split.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for splits in string_split.\n");
+        #endif
         return NULL;
     }
 
     temp = string_strdup(str->dataStr);
     if (temp == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_split.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_split.\n");
+        #endif
         free(splits);
         return NULL;
     }
@@ -1120,7 +1328,9 @@ String** string_split(String *str, const char *delimiter, int *count) {
     while (token != NULL && index < num_splits) {
         splits[index] = string_create(token);
         if (splits[index] == NULL) {
-            fmt_fprintf(stderr, "Error: Failed to create string in string_split.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: Failed to create string in string_split.\n");
+            #endif
             // Free previously allocated strings and array
             for (size_t i = 0; i < index; i++) {
                 string_deallocate(splits[i]); // Assuming string_free is defined
@@ -1140,21 +1350,29 @@ String** string_split(String *str, const char *delimiter, int *count) {
 
 String* string_join(String **strings, int count, const char *delimiter) {
     if (strings == NULL) {
-        fmt_fprintf(stderr, "Error: Null string array in string_join.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null string array in string_join.\n");
+        #endif
         return NULL;
     }
     if (count <= 0) {
-        fmt_fprintf(stderr, "Error: Invalid count in string_join.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid count in string_join.\n");
+        #endif
         return NULL;
     }
     if (delimiter == NULL) {
-        fmt_fprintf(stderr, "Error: Null delimiter in string_join.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null delimiter in string_join.\n");
+        #endif
         return NULL;
     }
 
     String *result = string_create("");
     if (result == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_join.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_join.\n");
+        #endif
         return NULL;
     }
 
@@ -1169,17 +1387,23 @@ String* string_join(String **strings, int count, const char *delimiter) {
 
 void string_replace_all(String *str, const char *oldStr, const char *newStr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_replace_all.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_replace_all.\n");
+        #endif
         return;
     }
     if (oldStr == NULL || newStr == NULL) {
-        fmt_fprintf(stderr, "Error: Null substring in string_replace_all.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null substring in string_replace_all.\n");
+        #endif
         return;
     }
 
     String *temp = string_create("");
     if (temp == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_replace_all.\n");
+        #ifdef STRING_LOGGING_ENABLE    
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_replace_all.\n");
+        #endif
         return;
     }
 
@@ -1200,11 +1424,15 @@ void string_replace_all(String *str, const char *oldStr, const char *newStr) {
 
 int string_to_int(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_to_int.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_to_int.\n");
+        #endif
         return 0;
     }
     if (string_empty(str)) {
-        fmt_fprintf(stderr, "Error: Empty string in string_to_int.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Empty string in string_to_int.\n");
+        #endif
         return 0;
     }
     return atoi(str->dataStr);
@@ -1212,11 +1440,15 @@ int string_to_int(String *str) {
 
 float string_to_float(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_to_float.\n");
+        #ifdef STRING_LOGGING_ENABLE    
+             fmt_fprintf(stderr, "Error: Null String object in string_to_float.\n");
+        #endif
         return 0.0f;
     }
     if (string_empty(str)) {
-        fmt_fprintf(stderr, "Error: Empty string in string_to_float.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Empty string in string_to_float.\n");
+        #endif
         return 0.0f;
     }
     return atof(str->dataStr);
@@ -1224,11 +1456,15 @@ float string_to_float(String *str) {
 
 double string_to_double(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_to_double.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_to_double.\n");
+        #endif
         return 0.0;
     }
     if (string_empty(str)) {
-        fmt_fprintf(stderr, "Error: Empty string in string_to_double.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Empty string in string_to_double.\n");
+        #endif
         return 0.0;
     }
     return strtod(str->dataStr, NULL);
@@ -1236,11 +1472,15 @@ double string_to_double(String* str) {
 
 void string_pad_left(String *str, size_t totalLength, char padChar) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_pad_left.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_pad_left.\n");
+        #endif
         return;
     }
     if (str->size >= totalLength) {
-        fmt_fprintf(stderr, "Error: Size of String object is bigger or equal that total Length in string_pad_left.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Size of String object is bigger or equal that total Length in string_pad_left.\n");
+        #endif
         return;
     }
     size_t padSize = totalLength - str->size;
@@ -1248,7 +1488,9 @@ void string_pad_left(String *str, size_t totalLength, char padChar) {
     char *newData = (char *)malloc(newSize + 1); // +1 for null terminator
 
     if (newData == NULL) {
-        fmt_fprintf(stderr, "Error: Failed to allocate memory in string_pad_left.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Failed to allocate memory in string_pad_left.\n");
+        #endif
         return;
     }
 
@@ -1264,11 +1506,15 @@ void string_pad_left(String *str, size_t totalLength, char padChar) {
 
 void string_pad_right(String *str, size_t totalLength, char padChar) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_pad_right.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Null String object in string_pad_right.\n");
+        #endif
         return;
     }
     if (str->size >= totalLength) {
-        fmt_fprintf(stderr, "Error: Size of String object is bigger or equal that total Length in string_pad_right.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Size of String object is bigger or equal that total Length in string_pad_right.\n");
+        #endif
         return;
     }
 
@@ -1277,7 +1523,9 @@ void string_pad_right(String *str, size_t totalLength, char padChar) {
     char *newData = (char *)realloc(str->dataStr, newSize + 1); // +1 for null terminator
 
     if (newData == NULL) {
-        fmt_fprintf(stderr, "Error: Failed to allocate memory in string_pad_right.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to allocate memory in string_pad_right.\n");
+        #endif
         return;
     }
 
@@ -1291,7 +1539,9 @@ void string_pad_right(String *str, size_t totalLength, char padChar) {
 
 String* string_to_hex(String *str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_to_hex.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Null String object in string_to_hex.\n");
+            #endif
         return NULL;
     }
     if (string_empty(str)) {
@@ -1300,7 +1550,9 @@ String* string_to_hex(String *str) {
 
     String *hexStr = string_create("");
     if (hexStr == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_to_hex.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Memory allocation failed in string_to_hex.\n");
+        #endif
         return NULL;
     }
 
@@ -1315,17 +1567,23 @@ String* string_to_hex(String *str) {
 
 String* string_from_hex(String *hexStr) {
     if (hexStr == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_from_hex.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_from_hex.\n");
+        #endif
         return NULL;
     }
     if (string_empty(hexStr) || (hexStr->size % 2) != 0) {
-        fmt_fprintf(stderr, "Error: Invalid hex string in string_from_hex.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid hex string in string_from_hex.\n");
+        #endif
         return NULL; // Hex string should have an even number of characters
     }
 
     String *str = string_create("");
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_from_hex.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_from_hex.\n");
+        #endif
         return NULL;
     }
 
@@ -1340,15 +1598,21 @@ String* string_from_hex(String *hexStr) {
 
 size_t string_count(String* str, const char* substr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_count.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_count.\n");
+        #endif
         return 0;
     }
     if (substr == NULL) {
-        fmt_fprintf(stderr, "Error: Null substring in string_count.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null substring in string_count.\n");
+        #endif
         return 0;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Null data string in String object in string_count.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null data string in String object in string_count.\n");
+        #endif
         return 0;
     }
     size_t count = 0;
@@ -1364,19 +1628,27 @@ size_t string_count(String* str, const char* substr) {
 
 void string_remove(String* str, const char* substr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_remove.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_remove.\n");
+        #endif
         return;
     }
     if (substr == NULL) {
-        fmt_fprintf(stderr, "Error: Null substring in string_remove.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null substring in string_remove.\n");
+        #endif
         return;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Null data string in String object in string_remove.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null data string in String object in string_remove.\n");
+        #endif
         return;
     }
     if (strlen(substr) == 0) {
-        fmt_fprintf(stderr, "Error: Empty substring in string_remove.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Empty substring in string_remove.\n");
+        #endif
         return;
     }
     size_t len = strlen(substr);
@@ -1389,11 +1661,15 @@ void string_remove(String* str, const char* substr) {
 
 void string_remove_range(String* str, size_t startPos, size_t endPos) {
     if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Null String object in string_remove_range.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Null String object in string_remove_range.\n");
+        #endif
         return;
     }
     if (startPos >= endPos || endPos > str->size) {
-        fmt_fprintf(stderr, "Error: Invalid range in string_remove_range.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Invalid range in string_remove_range.\n");
+        #endif
         return;
     }
     size_t length = endPos - startPos;
@@ -1437,13 +1713,17 @@ String* string_from_double(double value) {
 
 String** string_tokenize(String* str, const char* delimiters, int* count) {
     if (str == NULL || delimiters == NULL) {
-        fmt_fprintf(stderr, "Error: Invalid input in string_tokenize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid input in string_tokenize.\n");
+        #endif
         return NULL;
     }
     size_t num_tokens = 0;
     char* temp_str = string_strdup(str->dataStr); // strdup
     if (temp_str == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_tokenize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_tokenize.\n");
+        #endif
         return NULL;
     }
     char* token = strtok(temp_str, delimiters);
@@ -1458,13 +1738,17 @@ String** string_tokenize(String* str, const char* delimiters, int* count) {
     // Allocate array of String pointers
     String** tokens = malloc(num_tokens * sizeof(String*));
     if (tokens == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for tokens in string_tokenize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for tokens in string_tokenize.\n");
+        #endif
         return NULL;
     }
     // Tokenize again to fill the array
     temp_str = string_strdup(str->dataStr);
     if (temp_str == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_tokenize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_tokenize.\n");
+        #endif
         free(tokens);
         return NULL;
     }
@@ -1474,7 +1758,9 @@ String** string_tokenize(String* str, const char* delimiters, int* count) {
     while (token != NULL && idx < num_tokens) {
         tokens[idx] = string_create(token);
         if (tokens[idx] == NULL) {
-            fmt_fprintf(stderr, "Error: string_create failed in string_tokenize.\n");
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: string_create failed in string_tokenize.\n");
+            #endif
             for (size_t i = 0; i < idx; ++i) {
                 // Assuming a function to free String* is available
                 string_deallocate(tokens[i]);
@@ -1510,11 +1796,15 @@ int string_compare_ignore_case(String* str1, String* str2) {
 
 String* string_base64_encode(const String *input) {
     if (input == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_baes64_encode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_baes64_encode.\n");
+        #endif
         return NULL;
     }
     if (input->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_base64_encode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_base64_encode.\n");
+        #endif
         return NULL;
     }
     String *encoded = string_create("");
@@ -1544,17 +1834,23 @@ String* string_base64_encode(const String *input) {
 
 String* string_base64_decode(const String* encodedStr) {
     if (encodedStr == NULL) {
-        fmt_fprintf(stderr, "Error: encodedStr param is null in string_base64_decode\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: encodedStr param is null in string_base64_decode\n");
+        #endif
         return NULL;
     }
     if (encodedStr->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: dataStr item of encodedStr object is null in string_base64_decode\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: dataStr item of encodedStr object is null in string_base64_decode\n");
+        #endif
         return NULL;
     }
     char* decodedStr = (char*)malloc(encodedStr->size * 3 / 4 + 1); 
 
     if (decodedStr == NULL) {
-        fmt_fprintf(stderr, "Error: Failed to allocate memory for base64 decoding");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to allocate memory for base64 decoding");
+        #endif
         return NULL;
     }
 
@@ -1603,11 +1899,15 @@ String* string_base64_decode(const String* encodedStr) {
 
 void string_format(String* str, const char* format, ...) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_format.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_format.\n");
+        #endif
         return;
     }
     if (format == NULL) {
-        fmt_fprintf(stderr, "Error: The format string is NULL in string_format.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The format string is NULL in string_format.\n");
+        #endif
         return;
     }
     // Start variadic argument processing
@@ -1617,7 +1917,9 @@ void string_format(String* str, const char* format, ...) {
     // Calculate the required length of the result string
     int length = vsnprintf(NULL, 0, format, args);
     if (length < 0) {
-        fmt_fprintf(stderr, "Error: vsnprintf failed in string_format.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: vsnprintf failed in string_format.\n");
+        #endif
         va_end(args);
         return;
     }
@@ -1625,7 +1927,9 @@ void string_format(String* str, const char* format, ...) {
     // Allocate memory for the formatted string
     char* buffer = (char*)malloc(length + 1);
     if (!buffer) {
-        fmt_fprintf(stderr, "Error: Failed to allocate memory in string_format.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Failed to allocate memory in string_format.\n");
+        #endif
         va_end(args);
         return;
     }
@@ -1644,11 +1948,15 @@ void string_format(String* str, const char* format, ...) {
 
 String* string_repeat(const String* str, size_t count) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_repeat.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_repeat.\n");
+        #endif
         return NULL;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_repeat.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_repeat.\n");
+        #endif
         return NULL;
     }
 
@@ -1656,7 +1964,9 @@ String* string_repeat(const String* str, size_t count) {
     char* repeatedStr = (char*)malloc(newLength + 1);
 
     if (repeatedStr == NULL) {
-        fmt_fprintf(stderr, "Failed to allocate memory in string_repeat\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Failed to allocate memory in string_repeat\n");
+        #endif
         return NULL;
     }
 
@@ -1709,15 +2019,21 @@ String* string_join_variadic(size_t count, ...) {
 
 void string_trim_characters(String* str, const char* chars) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_trim_characters.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_trim_characters.\n");
+        #endif
         return;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_trim_characters.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_trim_characters.\n");
+        #endif
         return;
     }
     if (chars == NULL) {
-        fmt_fprintf(stderr, "Error: The chars parameter is NULL in string_trim_characters.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The chars parameter is NULL in string_trim_characters.\n");
+        #endif
         return;
     }
     char* start = str->dataStr;
@@ -1738,11 +2054,15 @@ void string_trim_characters(String* str, const char* chars) {
 
 void string_shuffle(String* str){
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_shuffle.\n");
+        #ifdef STRING_LOGGING_ENABLE
+              fmt_fprintf(stderr, "Error: The String object is NULL in string_shuffle.\n");
+        #endif
         return;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_shuffle.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_shuffle.\n");
+        #endif
         return;
     }
 
@@ -1760,11 +2080,15 @@ void string_shuffle(String* str){
 
 void string_to_title(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_to_title.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: The String object is NULL in string_to_title.\n");
+        #endif
         return;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_to_title.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_to_title.\n");
+        #endif
         return;
     }
 
@@ -1785,7 +2109,9 @@ void string_to_title(String* str) {
 
 void string_to_capitalize(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_to_capitalize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_to_capitalize.\n");
+        #endif
         return;
     }
     if (str->dataStr == NULL) {
@@ -1793,7 +2119,9 @@ void string_to_capitalize(String* str) {
         return;
     }
     if (str->size == 0) {
-        fmt_fprintf(stderr, "Error: The size of String object is zero in string_to_capitalize.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The size of String object is zero in string_to_capitalize.\n");
+        #endif
         return;
     }
     str->dataStr[0] = toupper(str->dataStr[0]);
@@ -1801,7 +2129,9 @@ void string_to_capitalize(String* str) {
 
 void string_to_casefold(String* str) {
      if (str == NULL || str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: Invalid string input in string_to_casefold.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid string input in string_to_casefold.\n");
+        #endif
         return;
     }
     for (size_t i = 0; i < str->size; i++) {
@@ -1811,15 +2141,21 @@ void string_to_casefold(String* str) {
 
 bool string_starts_with(const String* str, const char* substr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_starts_with.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_starts_with.\n");
+        #endif
         return false;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_starts_with.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_starts_with.\n");
+        #endif
         return false;
     }
     if (substr == NULL) {
-        fmt_fprintf(stderr, "Error: The substring is NULL in string_starts_with.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The substring is NULL in string_starts_with.\n");
+        #endif
         return false;
     }
 
@@ -1832,15 +2168,21 @@ bool string_starts_with(const String* str, const char* substr) {
 
 bool string_ends_with(const String* str, const char* substr) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: The String object is NULL in string_ends_with.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The String object is NULL in string_ends_with.\n");
+        #endif
         return false;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_ends_with.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: The dataStr of String object is NULL in string_ends_with.\n");
+        #endif
         return false;
     }
     if (substr == NULL) {
-        fmt_fprintf(stderr, "Error: The substring is NULL in string_ends_with.\n");
+        #ifdef STRING_LOGGING_ENABLE    
+            fmt_fprintf(stderr, "Error: The substring is NULL in string_ends_with.\n");
+        #endif
         return false;
     }
 
@@ -1854,11 +2196,15 @@ bool string_ends_with(const String* str, const char* substr) {
 
 void string_swap_case(String* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: str is NULL in string_swap_case\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: str is NULL in string_swap_case\n");
+        #endif
         return;
     }
     if (str->dataStr == NULL) {
-        fmt_fprintf(stderr, "Error: str->dataStr is NULL in string_swap_case\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: str->dataStr is NULL in string_swap_case\n");
+        #endif
         return;
     }
 
@@ -1874,18 +2220,24 @@ void string_swap_case(String* str) {
 
 wchar_t* string_to_unicode(const char* str) {
     if (str == NULL) {
-        fmt_fprintf(stderr, "Error: Input string is NULL in string_to_unicode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input string is NULL in string_to_unicode.\n");
+        #endif
         return NULL;
     }
     // Calculate the length of the wide string
     size_t len = mbstowcs(NULL, str, 0) + 1;
     if (len == (size_t)-1) {
-        fmt_fprintf(stderr, "Error: Conversion failed in string_to_unicode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Conversion failed in string_to_unicode.\n");
+        #endif
         return NULL;
     }
     wchar_t* wstr = malloc(len * sizeof(wchar_t));
     if (!wstr) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_to_unicode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_to_unicode.\n");
+        #endif
         return NULL;
     }
 
@@ -1895,19 +2247,25 @@ wchar_t* string_to_unicode(const char* str) {
 
 String* string_from_unicode(const wchar_t* wstr) {
     if (wstr == NULL) {
-        fmt_fprintf(stderr, "Error: Input wide string is NULL in string_from_unicode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Input wide string is NULL in string_from_unicode.\n");
+        #endif
         return NULL;
     }
     // Calculate the length of the string
     size_t len = wcstombs(NULL, wstr, 0);
     if (len == (size_t)-1) {
-        fmt_fprintf(stderr, "Error: Conversion failed in string_from_unicode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Conversion failed in string_from_unicode.\n");
+        #endif
         return NULL;
     }
 
     char* str = malloc(len + 1); // +1 for null terminator
     if (!str) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_from_unicode.\n");
+        #ifdef STRING_LOGGING_ENABLE
+             fmt_fprintf(stderr, "Error: Memory allocation failed in string_from_unicode.\n");
+        #endif
         return NULL;
     }
     wcstombs(str, wstr, len + 1); // Convert and include the null terminator
@@ -1920,7 +2278,9 @@ String* string_from_unicode(const wchar_t* wstr) {
 
 String** string_create_from_initializer(size_t count, ...) {
     if (count == 0) {
-        fmt_fprintf(stderr, "Error: count is zero in string_create_from_initializer.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: count is zero in string_create_from_initializer.\n");
+        #endif
         return NULL;
     }
 
@@ -1930,7 +2290,9 @@ String** string_create_from_initializer(size_t count, ...) {
     // Allocate memory for the array of String pointers
     String** strings = (String**)malloc(sizeof(String*) * (count + 1)); // +1 for NULL termination
     if (!strings) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for strings array in string_create_from_initializer.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed for strings array in string_create_from_initializer.\n");
+        #endif
         va_end(args);
         return NULL;
     }
@@ -1940,7 +2302,9 @@ String** string_create_from_initializer(size_t count, ...) {
         char* str = va_arg(args, char*);
         strings[i] = string_create(str);
         if (!strings[i]) {
-            fmt_fprintf(stderr, "Error: string_create failed for string: %s in string_create_from_initializer.\n", str);
+            #ifdef STRING_LOGGING_ENABLE
+                fmt_fprintf(stderr, "Error: string_create failed for string: %s in string_create_from_initializer.\n", str);
+            #endif
             // Handle allocation failure: cleanup and exit
             for (size_t j = 0; j < i; j++) {
                 string_deallocate(strings[j]);
@@ -1961,13 +2325,17 @@ String** string_create_from_initializer(size_t count, ...) {
 char* string_strdup(const char* s) 
 {
     if (s == NULL) {
-        fmt_fprintf(stderr, "Error: Parameter 's' is NULL in string_strdup.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Parameter 's' is NULL in string_strdup.\n");
+        #endif
         return NULL;
     }
 
     char* new_str = malloc(strlen(s) + 1);
     if (new_str == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in string_strdup for string: %s\n", s);
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: Memory allocation failed in string_strdup for string: %s\n", s);
+        #endif
         return NULL;
     }
     strcpy(new_str, s);
@@ -1976,7 +2344,9 @@ char* string_strdup(const char* s)
 
 size_t string_length_cstr(const char* str) {
     if (!str) {
-        fmt_fprintf(stderr, "Error: str is null in string_length_cstr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: str is null in string_length_cstr.\n");
+        #endif
         return 0;
     }
     return (size_t)strlen(str);
@@ -1984,7 +2354,9 @@ size_t string_length_cstr(const char* str) {
 
 size_t string_length_utf8(const char* str) {
     if (!str) {
-        fmt_fprintf(stderr, "Error: str is null in string_length_cstr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: str is null in string_length_cstr.\n");
+        #endif
         return 0;
     }
     size_t length = 0;
@@ -2000,7 +2372,9 @@ size_t string_length_utf8(const char* str) {
 
 bool string_to_bool_from_cstr(const char* boolstr) {
     if (!boolstr) {
-        fmt_fprintf(stderr, "Error: bool str is NULL and invalid in string_to_bool_cstr.\n");
+        #ifdef STRING_LOGGING_ENABLE
+            fmt_fprintf(stderr, "Error: bool str is NULL and invalid in string_to_bool_cstr.\n");
+        #endif
         return false;
     }
 
