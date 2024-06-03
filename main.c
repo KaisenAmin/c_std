@@ -1,17 +1,23 @@
-#include "matrix/matrix.h"
+#include "database/postgres.h"
 #include "fmt/fmt.h"
+#include <stdlib.h>
 
 int main() {
-    Matrix* matrix = matrix_walsh(16);
+    Postgres *pg = (Postgres*) malloc(sizeof(Postgres));
 
-    if (!matrix) {
-        fmt_printf("Error in creation matrix object");
-        return -1;        
+    postgres_init(pg, "test", "test2", "123465689");
+    
+    if (postgres_connect(pg)) {
+        PostgresResult *pgRes = postgres_query(pg, "CREATE TABLE cars (brand VARCHAR(255), model VARCHAR(255), year INT);");
+
+        if (pgRes) {
+            fmt_printf("Create Table Done\n");
+            postgres_clear_result(pgRes);
+        }
     }
 
-    fmt_printf("Matrix walsh is : \n");
-    matrix_print(matrix);
+    postgres_disconnect(pg);
+    postgres_deallocate(pg);
 
-    matrix_deallocate(matrix);
     return 0;
 }

@@ -44,6 +44,7 @@ def compile_project(run_after_compile=False, program_args=[]):
         # "tuple",
         "matrix",
         "graph",
+        "database",
         # Add other directories containing your .c files
     ]
 
@@ -52,12 +53,18 @@ def compile_project(run_after_compile=False, program_args=[]):
         source_files.extend(find_c_files(directory))
 
     openssl_include_path = "./dependency/include"  # No longer pointing to C:/msys64...
-    openssl_lib_path = "./dependency/lib"   
+    openssl_lib_path = "./dependency/lib"
+    
+    # PostgreSQL paths
+    postgres_include_path = "C:/msys64/mingw64/include"
+    postgres_lib_path = "C:/msys64/mingw64/lib"
 
     # Compiler flags
     flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s"
     flags += f" -I{openssl_include_path}"  # Include path for OpenSSL headers
     flags += f" -L{openssl_lib_path}"      # Library path for OpenSSL libraries
+    flags += f" -I{postgres_include_path}" # Include path for PostgreSQL headers
+    flags += f" -L{postgres_lib_path}"     # Library path for PostgreSQL libraries
 
     build_dir = "./build"
     if not os.path.exists(build_dir):
@@ -68,8 +75,10 @@ def compile_project(run_after_compile=False, program_args=[]):
     if os.path.exists(output):
         os.remove(output)
 
-    # Compile the project with OpenSSL flags
+    # Compile the project with OpenSSL and PostgreSQL flags
     command = f"gcc {flags} -o {output} " + " ".join(source_files) + f" -I{openssl_include_path} -L{openssl_lib_path} -lssl -lcrypto"
+    command += f" -I{postgres_include_path} -L{postgres_lib_path} -lpq"
+    
     if platform.system() == "Windows":
         command += " -lWs2_32 -lAdvapi32"  # Add Windows-specific library
 

@@ -86,4 +86,4 @@ bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc 
 const void* algorithm_search(const void* first1, const void* last1, size_t size1,const void* first2, const void* last2, size_t size2, CompareFuncBool comp);
 const void *algorithm_search_n(const void *first, const void* last1, size_t size, size_t count, const void *val, CompareFuncBool comp);
 
-#endif // ALGORITHM_H_
+#endif 
