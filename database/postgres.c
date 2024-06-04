@@ -5,6 +5,17 @@
 
 #define CON_INFO_SIZE 256 
 
+Postgres* postgres_create() {
+    Postgres* pg = (Postgres*) malloc(sizeof(Postgres));
+
+    if (pg) {
+        return pg;
+    }
+    else {
+        return NULL;
+    }
+}
+
 void postgres_init(Postgres* pg, const char* database, const char* user, const char* password) {
     pg->database = string_strdup(database);
     pg->user = string_strdup(user);
@@ -24,6 +35,26 @@ bool postgres_connect(Postgres* pg) {
         return false;
     }
     return true;
+}
+
+bool postgres_execute_non_query(Postgres* pg, const char* command) {
+    if (pg->connection != NULL) {
+        PGresult *res = PQexec(pg->connection, command);
+
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            fmt_fprintf(stderr, "Error: Command execution failed %s\n", PQerrorMessage(pg->connection));
+            PQclear(res);
+
+            return false;
+        }
+
+        PQclear(res);
+        return true;
+    }
+    else {
+        fmt_fprintf(stderr, "Error: connection of postgres is null.\n");
+        return false;
+    }
 }
 
 void postgres_disconnect(Postgres* pg) {
