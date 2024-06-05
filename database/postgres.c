@@ -5,6 +5,16 @@
 
 #define CON_INFO_SIZE 256 
 
+static void print_line(int nFields, int *widths) {
+    for (int i = 0; i < nFields; i++) {
+        fmt_printf("+");
+        for (int j = 0; j < widths[i] + 2; j++) {
+            fmt_printf("-");
+        }
+    }
+    fmt_printf("+\n");
+}
+
 Postgres* postgres_create() {
     Postgres* pg = (Postgres*) malloc(sizeof(Postgres));
 
@@ -109,5 +119,133 @@ void postgres_deallocate(Postgres* pg) {
             PQfinish(pg->connection);
             pg->connection = NULL;
         }
+    }
+}
+
+bool postgres_begin_transaction(Postgres* pg) {
+    const char *beginCommand = "BEGIN";
+    if (pg->connection != NULL) {
+        PGresult *res = PQexec(pg->connection, beginCommand);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            char error_message[512];
+            snprintf(error_message, sizeof(error_message), "Begin transaction failed: %s", PQerrorMessage(pg->connection));
+            fmt_fprintf(stderr, "%s\n", error_message);
+
+            PQclear(res);
+            return false;
+        }
+        PQclear(res);
+        return true;
+    } 
+    else {
+        const char *error_message = "Connection of postgres is null.";
+        fmt_fprintf(stderr, "Error: %s\n", error_message);
+
+        return false;
+    }
+}
+
+bool postgres_commit_transaction(Postgres* pg) {
+    const char *commitCommand = "COMMIT";
+
+    if (pg->connection != NULL) {
+        PGresult *res = PQexec(pg->connection, commitCommand);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            char error_message[512];
+            snprintf(error_message, sizeof(error_message), "Commit transaction failed: %s", PQerrorMessage(pg->connection));
+            fmt_fprintf(stderr, "%s\n", error_message);
+
+            PQclear(res);
+            return false;
+        }
+        PQclear(res);
+        return true;
+    } 
+    else {
+        const char *error_message = "Connection of postgres is null.";
+        fmt_fprintf(stderr, "Error: %s\n", error_message);
+        return false;
+    }
+}
+
+bool postgres_rollback_transaction(Postgres* pg) {
+    const char *rollbackCommand = "ROLLBACK";
+
+    if (pg->connection != NULL) {
+        PGresult *res = PQexec(pg->connection, rollbackCommand);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            char error_message[512];
+            snprintf(error_message, sizeof(error_message), "Rollback transaction failed: %s", PQerrorMessage(pg->connection));
+            fmt_fprintf(stderr, "%s\n", error_message);
+            
+            PQclear(res);
+            return false;
+        }
+        PQclear(res);
+        return true;
+    } 
+    else {
+        const char *error_message = "Connection of postgres is null.";
+        fmt_fprintf(stderr, "Error: %s\n", error_message);
+        
+        return false;
+    }
+}
+
+const char* postgres_get_last_error(Postgres* pg) {
+    if (pg->connection != NULL) {
+        return PQerrorMessage(pg->connection);
+    } 
+    else {
+        return "Connection of postgres is null.";
+    }
+}
+
+int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes) {
+    if (pg->connection != NULL && pgRes->result != NULL) {
+        return atoi(PQcmdTuples(pgRes->result));
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: connection of postgres or result is null.\n");
+        return -1;
+    }
+}
+
+void postgres_print_result(PostgresResult* pgRes) {
+    if (pgRes && pgRes->result) {
+        int nFields = PQnfields(pgRes->result);
+        int nRows = PQntuples(pgRes->result);
+        int widths[nFields];
+
+        for (int i = 0; i < nFields; i++) {
+            widths[i] = string_length_cstr(PQfname(pgRes->result, i));
+
+            for (int j = 0; j < nRows; j++) {
+                int len = string_length_cstr(PQgetvalue(pgRes->result, j, i));
+                if (len > widths[i]) {
+                    widths[i] = len;
+                }
+            }
+        }
+
+        print_line(nFields, widths);
+
+        for (int i = 0; i < nFields; i++) {
+            fmt_printf("| %-*s ", widths[i], PQfname(pgRes->result, i));
+        }
+        fmt_printf("|\n");
+
+        print_line(nFields, widths);
+        
+        for (int i = 0; i < nRows; i++) {
+            for (int j = 0; j < nFields; j++) {
+                fmt_printf("| %-*s ", widths[j], PQgetvalue(pgRes->result, i, j));
+            }
+            fmt_printf("|\n");
+        }
+        print_line(nFields, widths);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: pgRes or pgRes->result is null.\n");
     }
 }

@@ -19,13 +19,21 @@ typedef struct {
 } PostgresResult;
 
 Postgres* postgres_create();
-void postgres_init(Postgres* pg, const char* database, const char* user, const char* password);
+PostgresResult* postgres_query(Postgres* pg, const char* query);
+
 bool postgres_connect(Postgres* pg);
 bool postgres_execute_non_query(Postgres* pg, const char* command);
-void postgres_disconnect(Postgres* pg);
+bool postgres_begin_transaction(Postgres* pg);
+bool postgres_commit_transaction(Postgres* pg);
+bool postgres_rollback_transaction(Postgres* pg);
 
-PostgresResult* postgres_query(Postgres* pg, const char* query);
+void postgres_init(Postgres* pg, const char* database, const char* user, const char* password);
+void postgres_disconnect(Postgres* pg);
 void postgres_clear_result(PostgresResult* pgResult);
 void postgres_deallocate(Postgres* pg);
+void postgres_print_result(PostgresResult* pgRes);
+
+const char* postgres_get_last_error(Postgres* pg);
+int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes);
 
 #endif 
