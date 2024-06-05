@@ -314,3 +314,59 @@ bool postgres_table_exists(Postgres* pg, const char* tableName) {
         return false;
     }
 }
+
+PostgresResult* postgres_list_tables(Postgres* pg) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return NULL;       
+    }
+
+    const char* query = 
+        "SELECT table_name "
+        "FROM information_schema.tables "
+        "WHERE table_schema = 'public' "
+        "ORDER BY table_name;";
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        return pgRes;
+    }
+    else {
+        fmt_fprintf(stderr, "Error: Query failed %s.\n", postgres_get_last_error(pg));
+        if (pgRes) {
+            postgres_clear_result(pgRes);
+        }
+        return NULL;
+    }
+}
+
+PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return NULL;
+    } 
+    else if (tableName == NULL) {
+        fmt_fprintf(stderr, "Error: tableName is null.\n");
+        return NULL;
+    }
+
+    char query[CON_INFO_SIZE * 2];
+    snprintf(query, sizeof(query), 
+        "SELECT column_name, data_type "
+        "FROM information_schema.columns "
+        "WHERE table_schema = 'public' "
+        "AND table_name = '%s';", tableName);
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        return pgRes;
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Query failed %s.\n", postgres_get_last_error(pg));
+        if (pgRes) {
+            postgres_clear_result(pgRes);
+        }
+        return NULL;
+    }
+}

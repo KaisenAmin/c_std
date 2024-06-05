@@ -19,7 +19,10 @@ typedef struct {
 } PostgresResult;
 
 Postgres* postgres_create();
+
 PostgresResult* postgres_query(Postgres* pg, const char* query);
+PostgresResult* postgres_list_tables(Postgres* pg);
+PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName);
 
 bool postgres_connect(Postgres* pg);
 bool postgres_execute_non_query(Postgres* pg, const char* command);

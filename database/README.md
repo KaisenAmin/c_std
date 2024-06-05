@@ -44,6 +44,8 @@ The documentation includes detailed descriptions of all the functions provided b
 - `void postgres_print_result(PostgresResult* pgRes)`: function takes a PostgresResult object and prints the results.
 - `int postgres_get_table_row_count(Postgres* pg, const char* tableName)`: function to retrieve the number of rows in a table.
 - `bool postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
+- `PostgresResult* postgres_list_tables(Postgres* pg)`: this function list all the tables in the current database.
+- `PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName)`: this function retrieve the column names and their data types for a given table in the database.
 
 ## Examples
 
@@ -463,6 +465,89 @@ int main() {
         } 
         else {
             fmt_fprintf(stderr, "Error: %s.\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 10 : get list of table names and print them
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "kaisen", "1256");
+
+        if (postgres_connect(pg)) {
+            PostgresResult* pgRes = postgres_list_tables(pg);
+
+            if (pg) {
+                fmt_printf("Tables in the `public` Schema:\n");
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            }
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s.\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 11 : how to use `postgres_get_table_schema`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "kaisen_one", "16954");
+
+        if (postgres_connect(pg)) {
+            const char* tableName = "cars";
+            PostgresResult* pgRes = postgres_get_table_schema(pg, tableName);
+
+            if (pgRes != NULL) {
+                fmt_printf("Schema of table '%s':\n", tableName);
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
         }
 
         postgres_deallocate(pg);
