@@ -26,6 +26,7 @@ bool postgres_execute_non_query(Postgres* pg, const char* command);
 bool postgres_begin_transaction(Postgres* pg);
 bool postgres_commit_transaction(Postgres* pg);
 bool postgres_rollback_transaction(Postgres* pg);
+bool postgres_table_exists(Postgres* pg, const char* tableName);
 
 void postgres_init(Postgres* pg, const char* database, const char* user, const char* password);
 void postgres_disconnect(Postgres* pg);
@@ -34,6 +35,8 @@ void postgres_deallocate(Postgres* pg);
 void postgres_print_result(PostgresResult* pgRes);
 
 const char* postgres_get_last_error(Postgres* pg);
+
 int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes);
+int postgres_get_table_row_count(Postgres* pg, const char* tableName);
 
 #endif 

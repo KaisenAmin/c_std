@@ -2,6 +2,7 @@
 #include "../string/string.h"
 #include "../fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define CON_INFO_SIZE 256 
 
@@ -236,7 +237,7 @@ void postgres_print_result(PostgresResult* pgRes) {
         fmt_printf("|\n");
 
         print_line(nFields, widths);
-        
+
         for (int i = 0; i < nRows; i++) {
             for (int j = 0; j < nFields; j++) {
                 fmt_printf("| %-*s ", widths[j], PQgetvalue(pgRes->result, i, j));
@@ -247,5 +248,69 @@ void postgres_print_result(PostgresResult* pgRes) {
     } 
     else {
         fmt_fprintf(stderr, "Error: pgRes or pgRes->result is null.\n");
+    }
+}
+
+int postgres_get_table_row_count(Postgres* pg, const char* tableName) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return -1;
+    }
+    else if (tableName == NULL) {
+        fmt_fprintf(stderr, "Error: tableName is null.\n");
+        return -1;
+    }
+
+    char query[CON_INFO_SIZE];
+    snprintf(query, sizeof(query), "SELECT COUNT(*) from %s", tableName);
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        int rowCount = atoi(PQgetvalue(pgRes->result, 0, 0));
+        postgres_clear_result(pgRes);
+
+        return rowCount;
+    }
+    else {
+        fmt_fprintf(stderr, "Error: Quert failed %s\n", postgres_get_last_error(pg));
+        postgres_clear_result(pgRes);
+
+        return -1;
+    }
+}
+
+bool postgres_table_exists(Postgres* pg, const char* tableName) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return -1;
+    }
+    else if (tableName == NULL) {
+        fmt_fprintf(stderr, "Error: tableName is null.\n");
+        return -1;
+    }
+
+    char query[CON_INFO_SIZE * 2];
+    snprintf(query, sizeof(query), 
+        "SELECT EXISTS ("
+        "SELECT FROM information_schema.tables "
+        "WHERE table_schema = 'public' "
+        "AND table_name = '%s'"
+        ")", tableName);
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        // `t` represents the boolean value true in PostgreSQL when checking for existence
+        bool exists = strcmp(PQgetvalue(pgRes->result, 0, 0), "t") == 0;
+        postgres_clear_result(pgRes);
+
+        return exists;
+    }
+    else {
+        fmt_fprintf(stderr, "Error: Query failed %s.\n", postgres_get_last_error(pg));
+        postgres_clear_result(pgRes);
+
+        return false;
     }
 }

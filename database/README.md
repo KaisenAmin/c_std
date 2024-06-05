@@ -42,6 +42,8 @@ The documentation includes detailed descriptions of all the functions provided b
 - `postgres_get_last_error(Postgres* pg)`: retrieves the last error message from the PostgreSQL connection.
 - `postgres_get_affected_rows(Postgres* pg, PostgresResult* pgRes)`: Returns the number of rows affected by the SQL command. If the SQL command that generated the PostgresResult was INSERT, UPDATE or DELETE, this returns a string containing the number of rows affected.
 - `postgres_print_result(PostgresResult* pgRes)`: function takes a PostgresResult object and prints the results.
+- `postgres_get_table_row_count(Postgres* pg, const char* tableName)`: function to retrieve the number of rows in a table.
+- `postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
 
 ## Examples
 
@@ -390,6 +392,83 @@ int main() {
     } 
     else {
         fmt_fprintf(stderr, "Error: Unable to create PostgreSQL object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 8: get table row count 
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "1235464");
+
+        if (postgres_connect(pg)) {
+            int rowCount = postgres_get_table_row_count(pg, "cars");
+
+            if (rowCount >= 0) {
+                fmt_printf("Number of rows in cars table is %d\n", rowCount);
+            }
+            else {
+                fmt_fprintf(stderr, "Error: %s.\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        }
+        else {
+            fmt_fprintf(stderr, "Error: %s.\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    }
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 9 : check if table exists or not 
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "kaisen", "986523");
+
+        if (postgres_connect(pg)) {
+            const char* tableName = "cars";
+            if (postgres_table_exists(pg, tableName)) {
+                fmt_printf("Table '%s' exists.\n", tableName);
+            } 
+            else {
+                fmt_printf("Table '%s' does not exist.\n", tableName);
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s.\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
     }
 
     return 0;
