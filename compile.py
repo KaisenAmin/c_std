@@ -56,8 +56,8 @@ def compile_project(run_after_compile=False, program_args=[]):
     openssl_lib_path = "./dependency/lib"
     
     # PostgreSQL paths
-    postgres_include_path = "C:/msys64/mingw64/include"
-    postgres_lib_path = "C:/msys64/mingw64/lib"
+    postgres_include_path = "./dependency/include"
+    postgres_lib_path = "./dependency/lib"
 
     # Compiler flags
     flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s"

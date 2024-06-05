@@ -23,6 +23,7 @@ Postgres* postgres_create();
 PostgresResult* postgres_query(Postgres* pg, const char* query);
 PostgresResult* postgres_list_tables(Postgres* pg);
 PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName);
+PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName);
 
 bool postgres_connect(Postgres* pg);
 bool postgres_execute_non_query(Postgres* pg, const char* command);
@@ -30,6 +31,7 @@ bool postgres_begin_transaction(Postgres* pg);
 bool postgres_commit_transaction(Postgres* pg);
 bool postgres_rollback_transaction(Postgres* pg);
 bool postgres_table_exists(Postgres* pg, const char* tableName);
+bool postgres_execute_prepared(Postgres* pg, const char* stmtName, const char* query, int nParams, const char* const* paramValues);
 
 void postgres_init(Postgres* pg, const char* database, const char* user, const char* password);
 void postgres_disconnect(Postgres* pg);

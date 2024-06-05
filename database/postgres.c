@@ -370,3 +370,63 @@ PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName) {
         return NULL;
     }
 }
+
+bool postgres_execute_prepared(Postgres* pg, const char* stmtName, const char* query, int nParams, const char* const* paramValues) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return false;
+    } 
+    else if (stmtName == NULL || query == NULL || paramValues == NULL) {
+        fmt_fprintf(stderr, "Error: statement name, query, or parameters are null.\n");
+        return false;
+    }
+
+    PGresult* res = PQprepare(pg->connection, stmtName, query, nParams, NULL);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fmt_fprintf(stderr, "Error: Statement preparation failed %s\n", PQerrorMessage(pg->connection));
+        PQclear(res);
+        return false;
+    }
+    PQclear(res);
+
+    res = PQexecPrepared(pg->connection, stmtName, nParams, paramValues, NULL, NULL, 0);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fmt_fprintf(stderr, "Error: Statement execution failed %s\n", PQerrorMessage(pg->connection));
+        PQclear(res);
+        return false;
+    }
+
+    PQclear(res);
+    return true;
+}
+
+PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection object is null.\n");
+        return NULL;
+    }
+    else if (tableName == NULL) {
+        fmt_fprintf(stderr, "Error: tableName is null.\n");
+        return NULL;
+    }
+
+    char query[CON_INFO_SIZE * 2];
+    snprintf(query, sizeof(query), 
+        "SELECT column_name "
+        "FROM information_schema.columns "
+        "WHERE table_schema = 'public' "
+        "AND table_name = '%s';", tableName);
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        return pgRes;
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Query failed %s.\n", postgres_get_last_error(pg));
+        if (pgRes) {
+            postgres_clear_result(pgRes);
+        }
+        return NULL;
+    }
+}

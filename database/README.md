@@ -46,6 +46,8 @@ The documentation includes detailed descriptions of all the functions provided b
 - `bool postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
 - `PostgresResult* postgres_list_tables(Postgres* pg)`: this function list all the tables in the current database.
 - `PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName)`: this function retrieve the column names and their data types for a given table in the database.
+- `bool postgres_execute_prepared(Postgres* pg, const char* stmtName, const char* query, int nParams, const char* const* paramValues)`: this function execute a parameterized query.This can help prevent SQL injection and make your queries more flexible.
+- `PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName)`: this function fetch the names of all the columns in a given table.This can be useful if you want to know the structure of a table without fetching all its data.
 
 ## Examples
 
@@ -539,6 +541,47 @@ int main() {
                 fmt_printf("Schema of table '%s':\n", tableName);
                 postgres_print_result(pgRes);
                 postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 12 : Executes a prepared SQL statement with the given parameters
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres_one", "hello_23");
+
+        if (postgres_connect(pg)) {
+            const char* stmtName = "insert_car";
+            const char* query = "INSERT INTO cars (brand, model, year) VALUES ($1, $2, $3)";
+            const char* paramValues[3] = {"BMW", "I8", "2020"};
+
+            if (postgres_execute_prepared(pg, stmtName, query, 3, paramValues)) {
+                fmt_printf("Prepared statement executed successfully.\n");
             } 
             else {
                 fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
