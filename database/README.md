@@ -36,14 +36,14 @@ The documentation includes detailed descriptions of all the functions provided b
 - `void postgres_clear_result(PostgresResult* pgResult)`: Clears the result of a query.
 - `void postgres_deallocate(Postgres* pg)`: Frees the memory occupied by the `Postgres` object.
 - `bool postgres_execute_non_query(Postgres* pg, const char* command)`: Executes an SQL command that does not return data (e.g., INSERT, UPDATE, DELETE).
-- `postgres_begin_transaction(Postgres* pg)`: Executes the SQL command `BEGIN` to start a transaction.
-- `postgres_commit_transaction(Postgres* pg)`: Executes the SQL command `COMMIT` to commit the current transaction.
+- `bool postgres_begin_transaction(Postgres* pg)`: Executes the SQL command `BEGIN` to start a transaction.
+- `bool postgres_commit_transaction(Postgres* pg)`: Executes the SQL command `COMMIT` to commit the current transaction.
 - `postgres_rollback_transaction(Postgres* pg)`: Execures the SQL command `ROLLBACK` to rollback the current transaction.
-- `postgres_get_last_error(Postgres* pg)`: retrieves the last error message from the PostgreSQL connection.
-- `postgres_get_affected_rows(Postgres* pg, PostgresResult* pgRes)`: Returns the number of rows affected by the SQL command. If the SQL command that generated the PostgresResult was INSERT, UPDATE or DELETE, this returns a string containing the number of rows affected.
-- `postgres_print_result(PostgresResult* pgRes)`: function takes a PostgresResult object and prints the results.
-- `postgres_get_table_row_count(Postgres* pg, const char* tableName)`: function to retrieve the number of rows in a table.
-- `postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
+- `const char* postgres_get_last_error(Postgres* pg)`: retrieves the last error message from the PostgreSQL connection.
+- `int postgres_get_affected_rows(Postgres* pg, PostgresResult* pgRes)`: Returns the number of rows affected by the SQL command. If the SQL command that generated the PostgresResult was INSERT, UPDATE or DELETE, this returns a string containing the number of rows affected.
+- `void postgres_print_result(PostgresResult* pgRes)`: function takes a PostgresResult object and prints the results.
+- `int postgres_get_table_row_count(Postgres* pg, const char* tableName)`: function to retrieve the number of rows in a table.
+- `bool postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
 
 ## Examples
 
