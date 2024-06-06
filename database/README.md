@@ -48,7 +48,11 @@ The documentation includes detailed descriptions of all the functions provided b
 - `PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName)`: this function retrieve the column names and their data types for a given table in the database.
 - `bool postgres_execute_prepared(Postgres* pg, const char* stmtName, const char* query, int nParams, const char* const* paramValues)`: this function execute a parameterized query.This can help prevent SQL injection and make your queries more flexible.
 - `PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName)`: this function fetch the names of all the columns in a given table.This can be useful if you want to know the structure of a table without fetching all its data.
-
+- `PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName)`: this function retrieves the primary keys of a given table. This can be useful for understanding the structure of a table and its unique constraints.
+- `PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName)`: this function retrieve foreign keys from a given table This function will help you understand the relationships between tables by identifying foreign keys and the tables they reference.
+- `PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName)`: this function retrieve the indexes of a given table. This function will help you understand the indexing strategy used in the table, which is important for optimizing query performance.
+- `PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName)`: this function will help you understand the storage footprint of a table, which is useful for database maintenance and optimization.
+- `int postgres_get_table_index_count(Postgres* pg, const char* tableName)`: This function will help you understand the indexing strategy used in the table, which is crucial for query performance optimization.
 ## Examples
 
 Several examples are provided to demonstrate the usage of the PostgreSQL library in various scenarios, including creating tables and handling query results and etc ... 
@@ -479,7 +483,7 @@ int main() {
 }
 ```
 
-### Example 10 : get list of table names and print them
+### Example 10 : get list of table names and print them with `postgres_list_tables`
 
 ```c
 #include "database/postgres.h"
@@ -602,6 +606,288 @@ int main() {
     return 0;
 }
 ```
+
+### Example 13: get primary keys of tables with `postgres_get_table_primary_keys`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "12356");
+
+        if (postgres_connect(pg)) {
+            const char* createTableCmd1 = 
+                "CREATE TABLE IF NOT EXISTS bus ("
+                "id SERIAL PRIMARY KEY, "
+                "brand VARCHAR(255), "
+                "model VARCHAR(255), "
+                "year INT"
+                ");";
+            if (postgres_execute_non_query(pg, createTableCmd1)) {
+                fmt_printf("Table 'bus' created successfully.\n");
+            } else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* createTableCmd2 = 
+                "CREATE TABLE IF NOT EXISTS owners ("
+                "owner_id SERIAL PRIMARY KEY, "
+                "name VARCHAR(255), "
+                "bus_id INT, "
+                "FOREIGN KEY (bus_id) REFERENCES bus(id)"
+                ");";
+            if (postgres_execute_non_query(pg, createTableCmd2)) {
+                fmt_printf("Table 'owners' created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* tableName1 = "bus";
+            PostgresResult* pgRes1 = postgres_get_table_primary_keys(pg, tableName1);
+
+            if (pgRes1) {
+                fmt_printf("Primary Keys of table '%s':\n", tableName1);
+                postgres_print_result(pgRes1);
+                postgres_clear_result(pgRes1);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* tableName2 = "owners";
+            PostgresResult* pgRes2 = postgres_get_table_primary_keys(pg, tableName2);
+
+            if (pgRes2) {
+                fmt_printf("Primary Keys of table '%s':\n", tableName2);
+                postgres_print_result(pgRes2);
+                postgres_clear_result(pgRes2);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 14 : get list of primary keys with `postgres_get_table_foreign_keys`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "123564");
+
+        if (postgres_connect(pg)) {
+            const char* createTableCmd1 = 
+                "CREATE TABLE IF NOT EXISTS bus ("
+                "id SERIAL PRIMARY KEY, "
+                "brand VARCHAR(255), "
+                "model VARCHAR(255), "
+                "year INT"
+                ");";
+            if (postgres_execute_non_query(pg, createTableCmd1)) {
+                fmt_printf("Table 'bus' created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* createTableCmd2 = 
+                "CREATE TABLE IF NOT EXISTS owners ("
+                "owner_id SERIAL PRIMARY KEY, "
+                "name VARCHAR(255), "
+                "bus_id INT, "
+                "FOREIGN KEY (bus_id) REFERENCES bus(id)"
+                ");";
+            if (postgres_execute_non_query(pg, createTableCmd2)) {
+                fmt_printf("Table 'owners' created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* tableName = "owners";
+            PostgresResult* pgRes = postgres_get_table_foreign_keys(pg, tableName);
+
+            if (pgRes) {
+                fmt_printf("Foreign Keys of table '%s':\n", tableName);
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 15 : get list of table indexes with `postgres_get_table_indexes`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "123656");
+
+        if (postgres_connect(pg)) {
+            const char* createTableCmd1 = 
+                "CREATE TABLE IF NOT EXISTS bus ("
+                "id SERIAL PRIMARY KEY, "
+                "brand VARCHAR(255), "
+                "model VARCHAR(255), "
+                "year INT"
+                ");";
+            if (postgres_execute_non_query(pg, createTableCmd1)) {
+                fmt_printf("Table 'bus' created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            // Create an index on the 'brand' column
+            const char* createIndexCmd = "CREATE INDEX IF NOT EXISTS idx_bus_brand ON bus(brand);";
+            if (postgres_execute_non_query(pg, createIndexCmd)) {
+                fmt_printf("Index on 'brand' column created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* tableName = "bus";
+            PostgresResult* pgRes = postgres_get_table_indexes(pg, tableName);
+
+            if (pgRes) {
+                fmt_printf("Indexes of table '%s':\n", tableName);
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 16 : get size of tables with `postgres_get_table_size`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "15632");
+
+        if (postgres_connect(pg)) {
+            const char* createTableCmd1 = 
+                "CREATE TABLE IF NOT EXISTS bus ("
+                "id SERIAL PRIMARY KEY, "
+                "brand VARCHAR(255), "
+                "model VARCHAR(255), "
+                "year INT"
+                ");";
+            if (postgres_execute_non_query(pg, createTableCmd1)) {
+                fmt_printf("Table 'bus' created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* createIndexCmd = "CREATE INDEX IF NOT EXISTS idx_bus_brand ON bus(brand);";
+            if (postgres_execute_non_query(pg, createIndexCmd)) {
+                fmt_printf("Index on 'brand' column created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            const char* tableName = "bus";
+            PostgresResult* pgRes = postgres_get_table_size(pg, tableName);
+
+            if (pgRes) {
+                fmt_printf("Size of table '%s':\n", tableName);
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 17 : get index count of tables with `postgres_get_table_index_count`
 ## Conclusion
 
 This PostgreSQL C library simplifies database interactions in C projects, providing an easy-to-use interface for connecting to PostgreSQL databases, executing queries, and managing results. The provided examples illustrate how to use the library for common database operations.

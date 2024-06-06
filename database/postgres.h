@@ -24,6 +24,10 @@ PostgresResult* postgres_query(Postgres* pg, const char* query);
 PostgresResult* postgres_list_tables(Postgres* pg);
 PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName);
 PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName);
+PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName); // new
+PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName); // new 
+PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName); // new 
+PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName);
 
 bool postgres_connect(Postgres* pg);
 bool postgres_execute_non_query(Postgres* pg, const char* command);
@@ -43,5 +47,6 @@ const char* postgres_get_last_error(Postgres* pg);
 
 int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes);
 int postgres_get_table_row_count(Postgres* pg, const char* tableName);
+int postgres_get_table_index_count(Postgres* pg, const char* tableName);
 
 #endif 
