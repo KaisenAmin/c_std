@@ -898,7 +898,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "amin1375");
+        postgres_init(pg, "test", "postgres", "52626512");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 

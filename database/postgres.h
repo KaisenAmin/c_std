@@ -24,9 +24,9 @@ PostgresResult* postgres_query(Postgres* pg, const char* query);
 PostgresResult* postgres_list_tables(Postgres* pg);
 PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName);
 PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName);
-PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName); // new
-PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName); // new 
-PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName); // new 
+PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName); 
+PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName); 
+PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName); 
 PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName);
 
 bool postgres_connect(Postgres* pg);
