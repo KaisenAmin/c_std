@@ -76,7 +76,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "12356");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             PostgresResult *pgRes = postgres_query(pg, "CREATE TABLE cars (brand VARCHAR(255), model VARCHAR(255), year INT);");
@@ -109,7 +109,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "123654");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             const char *createTableCmd = "CREATE TABLE IF NOT EXISTS cars (brand VARCHAR(255), model VARCHAR(255), year INT);";
@@ -146,7 +146,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "63259");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -203,7 +203,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "165132");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -262,7 +262,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "12356");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -319,7 +319,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "2135465");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -385,7 +385,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "123565");
+        postgres_init(pg, "db", "user", "password");
         
         if (postgres_connect(pg)) {
             PostgresResult *pgRes = postgres_query(pg, "SELECT * FROM cars");
@@ -425,7 +425,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "1235464");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             int rowCount = postgres_get_table_row_count(pg, "cars");
@@ -464,7 +464,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "kaisen", "986523");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* tableName = "cars";
@@ -502,7 +502,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "kaisen", "1256");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             PostgresResult* pgRes = postgres_list_tables(pg);
@@ -543,7 +543,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "kaisen_one", "16954");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* tableName = "cars";
@@ -585,7 +585,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres_one", "hello_23");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* stmtName = "insert_car";
@@ -626,7 +626,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "12356");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -707,7 +707,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "123564");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -777,7 +777,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "123656");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -842,7 +842,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "15632");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -906,7 +906,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "52626512");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -968,7 +968,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "13695236");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             const char* tableName = "bus";
@@ -1010,7 +1010,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "1651615");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "CREATE TABLE IF NOT EXISTS cars (id SERIAL PRIMARY KEY, brand VARCHAR(255), model VARCHAR(255), year INT);");
@@ -1060,7 +1060,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "156161");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
@@ -1121,7 +1121,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "65985");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
@@ -1173,7 +1173,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "1561651");
+        postgres_init(pg, "db", "user", "password");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
