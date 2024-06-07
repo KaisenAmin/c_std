@@ -9,13 +9,23 @@ int main() {
         postgres_init(pg, "test", "postgres", "amin1375");
 
         if (postgres_connect(pg)) {
-            int backend_pid = postgres_backend_pid(pg);
+            PostgresResult* pgRes = postgres_query(pg, "SELECT * FROM bus");
 
-            if (backend_pid != -1) {
-                fmt_printf("Backend PID: %d\n", backend_pid);
-            } 
+            if (pgRes != NULL) {
+                int is_binary = postgres_binary_tuples(pgRes);
+
+                if (is_binary) {
+                    fmt_printf("Yes is binary data and value is %d\n", is_binary);
+                } 
+                else if (is_binary == -1) {
+                    fmt_fprintf(stderr, "Error: some kind of unknow error happened.\n");
+                }    
+                else {
+                    fmt_printf("data is text not binary.\n");
+                }
+            }
             else {
-                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+                fmt_fprintf(stderr, "Error: PostgresResult object failed.\n");
             }
 
             postgres_disconnect(pg);

@@ -59,7 +59,8 @@ The documentation includes detailed descriptions of all the functions provided b
 - `int postgres_num_tuples(PostgresResult* pgRes)`: this function retrieve number of tuples (row) in a PostgresResult object.
 - `int postgres_num_fields(PostgresResult* pgRes)`: this function retrieve number of fields (columns) in a PostgresResult object.
 - `int postgres_backend_pid(Postgres* pg)`: this function retrieves the backend process ID.
-- `int postgres_command_tuples(PostgresResult* pgRes)`: this functionwill return the number of rows affected by the most recent command executed.
+- `int postgres_command_tuples(PostgresResult* pgRes)`: this function will return the number of rows affected by the most recent command executed.
+- `int postgres_binary_tuples(const PostgresResult* pgRes)`: this function will returns 1 if the PGresult contains binary data and 0 if it contains text data. 
 
 ## Examples
 
@@ -1200,6 +1201,55 @@ int main() {
             } 
             else {
                 fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 23 : check data is binary or text with `postgres_binary_tuples`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "amin1375");
+
+        if (postgres_connect(pg)) {
+            PostgresResult* pgRes = postgres_query(pg, "SELECT * FROM bus");
+
+            if (pgRes != NULL) {
+                int is_binary = postgres_binary_tuples(pgRes);
+
+                if (is_binary) {
+                    fmt_printf("Yes is binary data and value is %d\n", is_binary);
+                } 
+                else if (is_binary == -1) {
+                    fmt_fprintf(stderr, "Error: some kind of unknow error happened.\n");
+                }    
+                else {
+                    fmt_printf("data is text not binary.\n");
+                }
+            }
+            else {
+                fmt_fprintf(stderr, "Error: PostgresResult object failed.\n");
             }
 
             postgres_disconnect(pg);

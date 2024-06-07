@@ -722,7 +722,16 @@ int postgres_backend_pid(Postgres* pg) {
     if (pg == NULL || pg->connection == NULL) {
         fmt_fprintf(stderr, "Error: Postgres or its connection is null.\n");
         return -1;
-    }
+    }  
 
     return PQbackendPID(pg->connection);
+}
+
+int postgres_binary_tuples(const PostgresResult* pgRes) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: PostgresResult or result fields is null.\n");
+        return -1;
+    }
+
+    return PQbinaryTuples(pgRes->result);
 }

@@ -55,5 +55,6 @@ int postgres_num_tuples(PostgresResult* pgRes);
 int postgres_num_fields(PostgresResult* pgRes);
 int postgres_command_tuples(PostgresResult* pgRes);
 int postgres_backend_pid(Postgres* pg);
+int postgres_binary_tuples(const PostgresResult* pgRes);
 
 #endif 
