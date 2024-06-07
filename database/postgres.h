@@ -38,6 +38,7 @@ bool postgres_commit_transaction(Postgres* pg);
 bool postgres_rollback_transaction(Postgres* pg);
 bool postgres_table_exists(Postgres* pg, const char* tableName);
 bool postgres_execute_prepared(Postgres* pg, const char* stmtName, const char* query, int nParams, const char* const* paramValues);
+bool postgres_is_null(const PostgresResult* pgRes, int row, int col);
 
 void postgres_init(Postgres* pg, const char* database, const char* user, const char* password);
 void postgres_disconnect(Postgres* pg);
@@ -51,10 +52,11 @@ const char* postgres_get_value(PostgresResult* pgRes, int row, int col);
 int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes);
 int postgres_get_table_row_count(Postgres* pg, const char* tableName);
 int postgres_get_table_index_count(Postgres* pg, const char* tableName);
-int postgres_num_tuples(PostgresResult* pgRes);
-int postgres_num_fields(PostgresResult* pgRes);
+int postgres_num_tuples(const PostgresResult* pgRes);
+int postgres_num_fields(const PostgresResult* pgRes);
 int postgres_command_tuples(PostgresResult* pgRes);
 int postgres_backend_pid(Postgres* pg);
 int postgres_binary_tuples(const PostgresResult* pgRes);
+int postgres_bytes_size(const PostgresResult* pgRes, int colsNumber);
 
 #endif 

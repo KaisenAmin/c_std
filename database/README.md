@@ -61,6 +61,8 @@ The documentation includes detailed descriptions of all the functions provided b
 - `int postgres_backend_pid(Postgres* pg)`: this function retrieves the backend process ID.
 - `int postgres_command_tuples(PostgresResult* pgRes)`: this function will return the number of rows affected by the most recent command executed.
 - `int postgres_binary_tuples(const PostgresResult* pgRes)`: this function will returns 1 if the PGresult contains binary data and 0 if it contains text data. 
+- `int potgres_bytes_size(const PostgresResult* pgRes)`: this function return the size in bytes of the column associated with the given column number. Column number start at 0.[returns the space allocated for this column in a database row]
+- `bool postgres_is_null(const PostgresResult* pgRes, int row, int col)`: Tests a field for a null value. Row and column numbers start at 0. this function return true if field is null and false if it contains a non-null value.
 
 ## Examples
 

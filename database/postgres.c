@@ -691,7 +691,7 @@ PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableNa
     }
 }
 
-int postgres_num_tuples(PostgresResult* pgRes) {
+int postgres_num_tuples(const PostgresResult* pgRes) {
     if (pgRes == NULL || pgRes->result == NULL) {
         fmt_fprintf(stderr, "Error: PostgresResult or its result is null.\n");
         return -1;
@@ -700,7 +700,7 @@ int postgres_num_tuples(PostgresResult* pgRes) {
     return PQntuples(pgRes->result);
 }
 
-int postgres_num_fields(PostgresResult* pgRes) {
+int postgres_num_fields(const PostgresResult* pgRes) {
     if (pgRes == NULL || pgRes->result == NULL) {
         fmt_fprintf(stderr, "Error: PostgresResult or its result is null.\n");
         return -1;
@@ -734,4 +734,34 @@ int postgres_binary_tuples(const PostgresResult* pgRes) {
     }
 
     return PQbinaryTuples(pgRes->result);
+}
+
+int postgres_bytes_size(const PostgresResult* pgRes, int colsNumber) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: pgRes or pgRes->result is null.\n");
+        return -1;
+    }
+    else if (colsNumber < 0) {
+        fmt_fprintf(stderr, "Error: colsNumber start at zero.\n");
+        return -1;
+    }
+
+    return PQfsize(pgRes->result, colsNumber);
+}
+
+bool postgres_is_null(const PostgresResult* pgRes, int row, int col) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: pgRes or pgRes->result is null.\n");
+        return false;
+    } 
+    else if (row < 0 || row >= postgres_num_tuples(pgRes)) {
+        fmt_fprintf(stderr, "Error: Row index out of bounds.\n");
+        return false;
+    }
+    else if (col < 0 || col >= postgres_num_fields(pgRes)) {
+        fmt_fprintf(stderr, "Error: Column index out of bounds.\n");
+        return false;
+    }
+
+    return (bool)PQgetisnull(pgRes->result, row, col);
 }
