@@ -28,6 +28,8 @@ PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableN
 PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName); 
 PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName); 
 PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName);
+PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName);
+PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableName);
 
 bool postgres_connect(Postgres* pg);
 bool postgres_execute_non_query(Postgres* pg, const char* command);
@@ -44,9 +46,14 @@ void postgres_deallocate(Postgres* pg);
 void postgres_print_result(PostgresResult* pgRes);
 
 const char* postgres_get_last_error(Postgres* pg);
+const char* postgres_get_value(PostgresResult* pgRes, int row, int col);
 
 int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes);
 int postgres_get_table_row_count(Postgres* pg, const char* tableName);
 int postgres_get_table_index_count(Postgres* pg, const char* tableName);
+int postgres_num_tuples(PostgresResult* pgRes);
+int postgres_num_fields(PostgresResult* pgRes);
+int postgres_command_tuples(PostgresResult* pgRes);
+int postgres_backend_pid(Postgres* pg);
 
 #endif 

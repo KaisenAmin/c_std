@@ -324,7 +324,8 @@ PostgresResult* postgres_list_tables(Postgres* pg) {
         fmt_fprintf(stderr, "Error: postgres connection is null.\n");
         return NULL;       
     }
-
+    
+    
     const char* query = 
         "SELECT table_name "
         "FROM information_schema.tables "
@@ -596,4 +597,132 @@ int postgres_get_table_index_count(Postgres* pg, const char* tableName) {
         }
         return -1;
     }
+}
+
+PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return NULL;
+    } 
+    else if (tableName == NULL) {
+        fmt_fprintf(stderr, "Error: tableName is null.\n");
+        return NULL;
+    }
+
+    char query[CON_INFO_SIZE * 4];
+    snprintf(query, sizeof(query), 
+        "SELECT column_name, data_type, is_nullable, column_default "
+        "FROM information_schema.columns "
+        "WHERE table_schema = 'public' "
+        "AND table_name = '%s';", tableName);
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        return pgRes;
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Query failed %s.\n", postgres_get_last_error(pg));
+        if (pgRes) {
+            postgres_clear_result(pgRes);
+        }
+        return NULL;
+    }
+}
+
+const char* postgres_get_value(PostgresResult* pgRes, int row, int col) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: PostgresResult or its result is null.\n");
+        return NULL;
+    }
+
+    if (row < 0 || row >= PQntuples(pgRes->result)) {
+        fmt_fprintf(stderr, "Error: Row index out of bounds.\n");
+        return NULL;
+    }
+
+    if (col < 0 || col >= PQnfields(pgRes->result)) {
+        fmt_fprintf(stderr, "Error: Column index out of bounds.\n");
+        return NULL;
+    }
+
+    return PQgetvalue(pgRes->result, row, col);
+}
+
+PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableName) {
+    if (pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: postgres connection is null.\n");
+        return NULL;
+    } 
+    else if (tableName == NULL) {
+        fmt_fprintf(stderr, "Error: tableName is null.\n");
+        return NULL;
+    }
+
+    char query[CON_INFO_SIZE * 4];
+    snprintf(query, sizeof(query), 
+        "SELECT "
+        "tc.constraint_name, "
+        "tc.constraint_type, "
+        "kcu.column_name, "
+        "ccu.table_name AS foreign_table_name, "
+        "ccu.column_name AS foreign_column_name, "
+        "chk.check_clause "
+        "FROM information_schema.table_constraints AS tc "
+        "LEFT JOIN information_schema.key_column_usage AS kcu "
+        "ON tc.constraint_name = kcu.constraint_name "
+        "LEFT JOIN information_schema.constraint_column_usage AS ccu "
+        "ON ccu.constraint_name = tc.constraint_name "
+        "LEFT JOIN information_schema.check_constraints AS chk "
+        "ON tc.constraint_name = chk.constraint_name "
+        "WHERE tc.table_name = '%s' AND tc.table_schema = 'public';", tableName);
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+
+    if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
+        return pgRes;
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Query failed %s.\n", postgres_get_last_error(pg));
+        if (pgRes) {
+            postgres_clear_result(pgRes);
+        }
+        return NULL;
+    }
+}
+
+int postgres_num_tuples(PostgresResult* pgRes) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: PostgresResult or its result is null.\n");
+        return -1;
+    } 
+
+    return PQntuples(pgRes->result);
+}
+
+int postgres_num_fields(PostgresResult* pgRes) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: PostgresResult or its result is null.\n");
+        return -1;
+    }
+
+    return PQnfields(pgRes->result);
+}
+
+int postgres_command_tuples(PostgresResult* pgRes) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        fmt_fprintf(stderr, "Error: PostgresResult or its result is null.\n");
+        return -1;
+    }
+
+    return atoi(PQcmdTuples(pgRes->result));
+}
+
+int postgres_backend_pid(Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: Postgres or its connection is null.\n");
+        return -1;
+    }
+
+    return PQbackendPID(pg->connection);
 }

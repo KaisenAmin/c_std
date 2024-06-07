@@ -53,6 +53,14 @@ The documentation includes detailed descriptions of all the functions provided b
 - `PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName)`: this function retrieve the indexes of a given table. This function will help you understand the indexing strategy used in the table, which is important for optimizing query performance.
 - `PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName)`: this function will help you understand the storage footprint of a table, which is useful for database maintenance and optimization.
 - `int postgres_get_table_index_count(Postgres* pg, const char* tableName)`: This function will help you understand the indexing strategy used in the table, which is crucial for query performance optimization.
+- `PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName)`: This function will be similar to postgres_get_table_schema, but it will return more detailed information, including whether the column allows NULL values and the default value for the column if any.
+- `const char* postgres_get_value(PostgresResult* pgRes, int row, int col)`: This function will provide a more convenient way to get values from the PostgresResult structure.
+- `PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableName)`: This function retrieves all the constraints (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK) of a given table. This function can be very useful for understanding the structure and constraints of a table.
+- `int postgres_num_tuples(PostgresResult* pgRes)`: this function retrieve number of tuples (row) in a PostgresResult object.
+- `int postgres_num_fields(PostgresResult* pgRes)`: this function retrieve number of fields (columns) in a PostgresResult object.
+- `int postgres_backend_pid(Postgres* pg)`: this function retrieves the backend process ID.
+- `int postgres_command_tuples(PostgresResult* pgRes)`: this functionwill return the number of rows affected by the most recent command executed.
+
 ## Examples
 
 Several examples are provided to demonstrate the usage of the PostgreSQL library in various scenarios, including creating tables and handling query results and etc ... 
@@ -928,6 +936,267 @@ int main() {
 
             if (index_count >= 0) {
                 fmt_printf("Number of indexes on table '%s': %d\n", tableName, index_count);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 18 : get details of columns by `postgres_get_column_details`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "13695236");
+
+        if (postgres_connect(pg)) {
+            const char* tableName = "bus";
+            PostgresResult* pgRes = postgres_get_column_details(pg, tableName);
+
+            if (pgRes != NULL) {
+                fmt_printf("Column details of table '%s':\n", tableName);
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 19 : get value from table with `postgres_get_value`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "1651615");
+
+        if (postgres_connect(pg)) {
+            postgres_execute_non_query(pg, "CREATE TABLE IF NOT EXISTS cars (id SERIAL PRIMARY KEY, brand VARCHAR(255), model VARCHAR(255), year INT);");
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Toyota', 'Corolla', 2021), ('Honda', 'Civic', 2020);");
+
+            PostgresResult* pgRes = postgres_query(pg, "SELECT * FROM cars");
+
+            if (pgRes != NULL) {
+                fmt_printf("Query Results:\n");
+                postgres_print_result(pgRes);
+
+                const char* value = postgres_get_value(pgRes, 0, 1); 
+                if (value) {
+                    fmt_printf("Brand of the first car: %s\n", value);
+                }
+
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 20 : get table constraints with `postgres_get_table_constraints`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "156161");
+
+        if (postgres_connect(pg)) {
+            postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
+
+            // table with various constraints
+            if (postgres_execute_non_query(pg, "CREATE TABLE cars (id SERIAL PRIMARY KEY, brand VARCHAR(255) NOT NULL, model VARCHAR(255), year INT CHECK (year > 1885));")) {
+                fmt_printf("Table 'cars' created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Toyota', 'Corolla', 2021);");
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Honda', 'Civic', 2020);");
+
+            if (postgres_execute_non_query(pg, "CREATE UNIQUE INDEX unique_brand_model ON cars (brand, model);")) {
+                fmt_printf("Unique index created successfully.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            PostgresResult* pgRes = postgres_get_table_constraints(pg, "cars");
+
+            if (pgRes != NULL) {
+                fmt_printf("Constraints of table 'cars':\n");
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 21 : get number of rows and cols with `postgres_num_tuples` and `postgres_num_fields`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "65985");
+
+        if (postgres_connect(pg)) {
+            postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
+            postgres_execute_non_query(pg, "CREATE TABLE cars (id SERIAL PRIMARY KEY, brand VARCHAR(255), model VARCHAR(255), year INT CHECK (year > 1885));");
+
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Toyota', 'Corolla', 2021);");
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Benz', 'S500', 2020);");
+
+            PostgresResult* pgRes = postgres_query(pg, "SELECT * FROM cars");
+
+            if (pgRes != NULL) {
+                int num_tuples = postgres_num_tuples(pgRes);
+                int num_fields = postgres_num_fields(pgRes);
+
+                fmt_printf("Number of tuples (rows): %d\n", num_tuples);
+                fmt_printf("Number of fields (columns): %d\n", num_fields);
+
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 22 : get command tuples with `postgres_command_tuples`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "1561651");
+
+        if (postgres_connect(pg)) {
+            postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
+            postgres_execute_non_query(pg, "CREATE TABLE cars (id SERIAL PRIMARY KEY, brand VARCHAR(255), model VARCHAR(255), year INT CHECK (year > 1885));");
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Toyota', 'Corolla', 2021);");
+            postgres_execute_non_query(pg, "INSERT INTO cars (brand, model, year) VALUES ('Honda', 'Civic', 2020);");
+
+            // Execute a command that affects rows and get the number of affected rows
+            PostgresResult* pgRes = postgres_query(pg, "DELETE FROM cars WHERE brand='Toyota';");
+            if (pgRes != NULL) {
+                int affected_rows = postgres_command_tuples(pgRes);
+                fmt_printf("Number of rows affected by the delete command: %d\n", affected_rows);
+                postgres_clear_result(pgRes);
+            } 
+            else {
+                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+            }
+
+            pgRes = postgres_query(pg, "SELECT * FROM cars");
+            if (pgRes != NULL) {
+                fmt_printf("Query Results:\n");
+                postgres_print_result(pgRes);
+                postgres_clear_result(pgRes);
             } 
             else {
                 fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
