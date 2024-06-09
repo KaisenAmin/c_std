@@ -1029,3 +1029,12 @@ PostgresResult* postgres_get_result(Postgres* pg) {
     pgRes->result = res;
     return pgRes;
 }
+
+int postgres_request_cancle(Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: pg connection is null.\n");
+        return -1;
+    }
+
+    return PQrequestCancel(pg->connection);
+}

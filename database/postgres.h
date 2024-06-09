@@ -84,5 +84,6 @@ int postgres_get_line(Postgres* pg, char* buffer, int length);
 int postgres_get_line_async(Postgres* pg, char* buffer, int length);
 int postgres_put_line(Postgres* pg, const char* buffer);
 int postgres_put_bytes(Postgres* pg, const char* buffer, int bytes);
+int postgres_request_cancle(Postgres* pg);
 
 #endif 

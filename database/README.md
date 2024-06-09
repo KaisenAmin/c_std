@@ -96,6 +96,8 @@ Note that the application must check to see if a new line consists of the two ch
 - `void postgres_trace(Postgres* pg, FILE* stream)` : Enables tracing of the client/server communication to a debugging file stream.
 - `void postgres_un_trace(Postgres* pg)` : Disables tracing started by 'postgres_trace'.
 - `PostgresResult* postgres_get_result(Postgres* pg)`: 
+- `int postgres_request_cancle(Postgres* pg)`: this function Request that PostgreSQL abandon processing of the current command. The return value is 1 if the cancel request was successfully dispatched, 0 if not. (If not, 'postgres_get_last_error' tells why not.) Successful dispatch is no guarantee that the request will have any effect, however. Regardless of the return value of 'postgres_request_cancle', the application must continue with the normal result-reading sequence using 'postgres_get_result'. If the cancellation is effective, the current command will terminate early and return an error result. If the cancellation fails (say, because the backend was already done processing the command), then there will be no visible result at all.
+
 ## Examples
 
 Several examples are provided to demonstrate the usage of the PostgreSQL library in various scenarios, including creating tables and handling query results and etc ... 
