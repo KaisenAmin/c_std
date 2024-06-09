@@ -9,24 +9,9 @@ int main() {
         postgres_init(pg, "test", "postgres", "amin1375");
 
         if (postgres_connect(pg)) {
-            PostgresResult* pgRes = postgres_query(pg, "SELECT * FROM bus");
-
-            if (pgRes != NULL) {
-                int is_binary = postgres_binary_tuples(pgRes);
-
-                if (is_binary) {
-                    fmt_printf("Yes is binary data and value is %d\n", is_binary);
-                } 
-                else if (is_binary == -1) {
-                    fmt_fprintf(stderr, "Error: some kind of unknow error happened.\n");
-                }    
-                else {
-                    fmt_printf("data is text not binary.\n");
-                }
-            }
-            else {
-                fmt_fprintf(stderr, "Error: PostgresResult object failed.\n");
-            }
+            fmt_printf("Database name is %s\n", postgres_db_value(pg));
+            fmt_printf("user name is %s\n", postgres_user_value(pg));
+            fmt_printf("password name is %s\n", postgres_password_value(pg));
 
             postgres_disconnect(pg);
         } 

@@ -63,6 +63,10 @@ The documentation includes detailed descriptions of all the functions provided b
 - `int postgres_binary_tuples(const PostgresResult* pgRes)`: this function will returns 1 if the PGresult contains binary data and 0 if it contains text data. 
 - `int potgres_bytes_size(const PostgresResult* pgRes)`: this function return the size in bytes of the column associated with the given column number. Column number start at 0.[returns the space allocated for this column in a database row]
 - `bool postgres_is_null(const PostgresResult* pgRes, int row, int col)`: Tests a field for a null value. Row and column numbers start at 0. this function return true if field is null and false if it contains a non-null value.
+- `int postgres_reset_start(Postgres* pg)`:  If it returns 0, the reset has failed.
+- `char* postgres_db_value(const Postgres* pg)`: this function return postgres database value.
+- `char* postgres_user_value(const Postgres* pg)`: this function return username value.
+- `char* postgres_password_value(const Postgres* pg)`: this function return password value.
 
 ## Examples
 
@@ -1253,6 +1257,40 @@ int main() {
             else {
                 fmt_fprintf(stderr, "Error: PostgresResult object failed.\n");
             }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 24 : get name, user, password of connection
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "amin1375");
+
+        if (postgres_connect(pg)) {
+            fmt_printf("Database name is %s\n", postgres_db_value(pg));
+            fmt_printf("username is %s\n", postgres_user_value(pg));
+            fmt_printf("password is %s\n", postgres_password_value(pg));
 
             postgres_disconnect(pg);
         } 

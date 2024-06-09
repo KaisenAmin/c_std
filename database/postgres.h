@@ -49,6 +49,9 @@ void postgres_reset(Postgres* pg);
 
 const char* postgres_get_last_error(Postgres* pg);
 const char* postgres_get_value(PostgresResult* pgRes, int row, int col);
+char* postgres_db_value(const Postgres* pg);
+char* postgres_user_value(const Postgres* pg);
+char* postgres_password_value(const Postgres* pg);
 
 int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes);
 int postgres_get_table_row_count(Postgres* pg, const char* tableName);
@@ -59,5 +62,6 @@ int postgres_command_tuples(PostgresResult* pgRes);
 int postgres_backend_pid(Postgres* pg);
 int postgres_binary_tuples(const PostgresResult* pgRes);
 int postgres_bytes_size(const PostgresResult* pgRes, int colsNumber);
+int postgres_reset_start(Postgres* pg);
 
 #endif 

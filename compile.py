@@ -22,7 +22,7 @@ def compile_to_dll(directory, build_dir, openssl_include_path, openssl_lib_path,
     flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s"
     flags += f" -I{openssl_include_path} -L{openssl_lib_path} -I{postgres_include_path} -L{postgres_lib_path}"
     
-    # Collect dependencies based on the directory
+    # dependencies based on the directory
     dependencies = []
     if directory in ["fmt"] or directory in ["file_io"]:
         dependencies.append("encoding")
@@ -84,10 +84,10 @@ def compile_project(run_after_compile=False, compile_to_dll_only=False, program_
         # "config",
         # "csv",
         # "deque",
-        # "encoding",
+        "encoding",
         # "forward_list",
         # "list",
-        # "fmt",
+        "fmt",
         # "map",
         # "json",
         # "file_io",
@@ -96,7 +96,7 @@ def compile_project(run_after_compile=False, compile_to_dll_only=False, program_
         # "queue",
         # "span",
         # "stack",
-        # "string",
+        "string",
         # "network",
         # "vector",
         # "time",
@@ -106,7 +106,7 @@ def compile_project(run_after_compile=False, compile_to_dll_only=False, program_
         # "cli",
         # "crypto",
         # "tuple",
-        "matrix",
+        # "matrix",
         "database",
     ]
 

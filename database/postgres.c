@@ -775,3 +775,43 @@ void postgres_reset(Postgres* pg) {
         PQreset(pg->connection);
     }
 }
+
+int postgres_reset_start(Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: pg connection is null.\n");
+        return -1;
+    }
+    else {
+        return PQresetStart(pg->connection);
+    }
+}
+
+char* postgres_db_value(const Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: pg connection is null.\n");
+        return NULL;
+    }
+    else {
+        return PQdb(pg->connection);
+    }
+}
+
+char* postgres_user_value(const Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: pg connection is null.\n");
+        return NULL;
+    }
+    else {
+        return PQuser(pg->connection);
+    }
+}
+
+char* postgres_password_value(const Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: pg connection is null.\n");
+        return NULL;
+    }
+    else {
+        return PQpass(pg->connection);
+    }
+}
