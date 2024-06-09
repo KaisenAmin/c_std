@@ -67,7 +67,35 @@ The documentation includes detailed descriptions of all the functions provided b
 - `char* postgres_db_value(const Postgres* pg)`: this function return postgres database value.
 - `char* postgres_user_value(const Postgres* pg)`: this function return username value.
 - `char* postgres_password_value(const Postgres* pg)`: this function return password value.
+- `char* postgres_host_value(const Postgres* pg)`: this function return host value.
+- `char* postgres_port_value(const Postgres* pg)`: this function return port number.
+- `char* postgres_object_id_status(const PostgresResult* pgRes)`: Returns a string with the object ID of the inserted row, if the SQL command was an INSERT. (The string will be 0 if the INSERT did not insert exactly one row, or if the target table does not have OIDs.) If the command was not an INSERT, returns an empty string.
 
+- `char* postgres_command_status(PostgresResult* pgRes)`: Returns the command status string from the SQL command that generated the PostgresResutl.
+- `int postgres_protocol_version(const Postgres* pg)`: return the frontend/backend protocol being used .Currently, the possible values are 2 (2.0 protocol), 3 (3.0 protocol), or zero (connection bad). This will not change after connection startup is complete, but it could theoretically change during a connection reset. The 3.0 protocol will normally be used when communicating with PostgreSQL 7.4 or later servers; pre-7.4 servers support only protocol 2.0. 
+
+- `int postgres_server_version(cosnt Postgres* pg)`: Returns an integer representing the backend version. Applications may use this to determine the version of the database server they are connected to. The number is formed by converting the major, minor, and revision numbers into two-decimal-digit numbers and appending them together. For example, version 7.4.2 will be returned as 70402, and version 8.1 will be returned as 80100 (leading zeroes are not shown). Zero is returned if the connection is bad.
+
+- `int postgres_socket_descriptor(const Postgres* pg)`: obtained the file descriptor number of the connection socket to the server. a valid descriptor is equal or grater than 0 and -1 indicates that no server connection is currently open.
+
+- `int postgres_is_busy(Postgres* pg)`: Returns 'true' if a command is busy, that is, 'false' return indicates that PQgetResult can be called with assurance of not blocking.
+
+- `bool postgres_is_non_blocking(const Postgres* pg)`: this functio return the blocking status of the database connection. Returns 'true' if the connection is set to nonblocking mode and 'false' if blocking.
+
+- `int postgres_flush(Postgres* pg)`: this function Attempts to flush any queued output data to the server. Returns 0 if successful (or if the send queue is empty), -1 if it failed for some reason, or 1 if it was unable to send all the data in the send queue yet (this case can only occur if the connection is nonblocking). After sending any command or data on a nonblocking connection, call 'postgres_flush'. If it returns 1, wait for the socket to be write-ready and call it again; repeat until it returns 0. Once 'postgres_flush' returns 0, wait for the socket to be read-ready and then read the response as described above.
+
+- `int postgres_set_non_blocking(Postgres* pg, int state)`: this function the nonblocking status of the connection. Sets the state of the connection to nonblocking if arg is 1, or blocking if arg is 0. Returns 0 if OK, -1 if error.
+
+- `int postgres_get_line(Postgres* pg, char* buffer, int length)`: this function Reads a newline-terminated line of characters (transmitted by the server) into a buffer string of size length. also copies up to length-1 characters into the buffer and converts the terminating newline into a zero byte. PQgetline returns EOF at the end of input, 0 if the entire line has been read, and 1 if the buffer is full but the terminating newline has not yet been read.
+Note that the application must check to see if a new line consists of the two characters \., which indicates that the server has finished sending the results of the COPY command. If the application might receive lines that are more than length-1 characters long, care is needed to be sure it recognizes the \. line correctly (and does not, for example, mistake the end of a long data line for a terminator line).
+
+- `int postgres_put_line(Postgres* pg, const char* buffer)`: Sends a null-terminated string to the server. Returns 0 if OK and EOF if unable to send the string and return -1 if some kind of error happened .The COPY data stream sent by a series of calls to 'postgres_put_line' has the same format as that returned by 'postgres_get_line_async', except that applications are not obliged to send exactly one data row per 'postgres_put_line' call; it is okay to send a partial line or multiple lines per call.
+
+- `int postgres_put_bytes(Postgres* pg, const char* buffer, int bytes)`: Sends a non-null-terminated string to the server. Returns 0 if OK and EOF if unable to send the string. This is exactly like 'postgres_put_line', except that the data buffer need not be null-terminated since the number of bytes to send is specified directly. Use this procedure when sending binary data.
+
+- `void postgres_trace(Postgres* pg, FILE* stream)` : Enables tracing of the client/server communication to a debugging file stream.
+- `void postgres_un_trace(Postgres* pg)` : Disables tracing started by 'postgres_trace'.
+- `PostgresResult* postgres_get_result(Postgres* pg)`: 
 ## Examples
 
 Several examples are provided to demonstrate the usage of the PostgreSQL library in various scenarios, including creating tables and handling query results and etc ... 
@@ -83,7 +111,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             PostgresResult *pgRes = postgres_query(pg, "CREATE TABLE cars (brand VARCHAR(255), model VARCHAR(255), year INT);");
@@ -116,7 +144,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             const char *createTableCmd = "CREATE TABLE IF NOT EXISTS cars (brand VARCHAR(255), model VARCHAR(255), year INT);";
@@ -153,7 +181,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -210,7 +238,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -269,7 +297,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -326,7 +354,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             if (postgres_begin_transaction(pg)) {
@@ -392,7 +420,7 @@ int main() {
     Postgres *pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
         
         if (postgres_connect(pg)) {
             PostgresResult *pgRes = postgres_query(pg, "SELECT * FROM cars");
@@ -432,7 +460,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             int rowCount = postgres_get_table_row_count(pg, "cars");
@@ -471,7 +499,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* tableName = "cars";
@@ -509,7 +537,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             PostgresResult* pgRes = postgres_list_tables(pg);
@@ -550,7 +578,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* tableName = "cars";
@@ -592,7 +620,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* stmtName = "insert_car";
@@ -633,7 +661,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -714,7 +742,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -784,7 +812,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -849,7 +877,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -913,7 +941,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* createTableCmd1 = 
@@ -975,7 +1003,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             const char* tableName = "bus";
@@ -1017,7 +1045,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "CREATE TABLE IF NOT EXISTS cars (id SERIAL PRIMARY KEY, brand VARCHAR(255), model VARCHAR(255), year INT);");
@@ -1067,7 +1095,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
@@ -1128,7 +1156,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
@@ -1180,7 +1208,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "db", "user", "password");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             postgres_execute_non_query(pg, "DROP TABLE IF EXISTS cars;");
