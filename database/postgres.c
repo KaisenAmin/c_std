@@ -765,3 +765,13 @@ bool postgres_is_null(const PostgresResult* pgRes, int row, int col) {
 
     return (bool)PQgetisnull(pgRes->result, row, col);
 }
+
+void postgres_reset(Postgres* pg) {
+    if (pg == NULL || pg->connection == NULL) {
+        fmt_fprintf(stderr, "Error: pg connection is null.\n");
+        return;
+    }
+    else {
+        PQreset(pg->connection);
+    }
+}

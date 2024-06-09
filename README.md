@@ -30,18 +30,19 @@ The project is organized into several subdirectories, each representing a differ
 - `Crypto`: Provides tools for cryptographic operations. This module might include functions for encryption and decryption, hashing, and secure random number generation. It's intended to offer C developers basic cryptographic utilities, similar to what might be found in a more comprehensive C++ cryptographic library.
 - `Time`: The Time library in C is a comprehensive tool designed for handling time-related operations. Inspired by the functionality of more advanced languages, this library provides a robust set of functions for manipulating and comparing time values in C programs.
 - `Date`: The Date library in C offers a robust solution for handling and manipulating dates in both Gregorian and Persian calendars. This library is particularly useful for applications requiring operations on dates, such as calculations, conversions, and comparisons. Its comprehensive set of functions simplifies complex date-related tasks in C programming.
-- `Dir`: Dir  is used to manipulate path names, access information regarding paths and files, and manipulate the underlying file system.
-- `Tuple`: implement tuple similar to std::tuple in c++.
+- `Dir`: Dir is used to manipulate path names, access information regarding paths and files, and manipulate the underlying file system.
+- `Tuple`: Implement tuple similar to `std::tuple` in C++.
 - `FileWriter`: The FileWriter library is a versatile tool designed for file writing operations in C. It provides functionalities similar to higher-level languages, offering various modes for writing text and binary files, including support for Unicode (UTF-8 and UTF-16).
 - `FileReader`: The FileReader library is a versatile tool designed for file writing operations in C.
-- `fmt`: The fmt library is a comprehensive formatting and I/O library for C, inspired by fmt package in `golang`. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
-- `Json` : The Json library is a comprehensive and efficient tool designed for parsing, generating, and manipulating JSON data in C. It aims to provide a robust and user-friendly interface for handling JSON objects and arrays, enabling seamless integration of JSON functionality into C projects.
+- `fmt`: The fmt library is a comprehensive formatting and I/O library for C, inspired by the `fmt` package in Go. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
+- `Json`: The Json library is a comprehensive and efficient tool designed for parsing, generating, and manipulating JSON data in C. It aims to provide a robust and user-friendly interface for handling JSON objects and arrays, enabling seamless integration of JSON functionality into C projects.
 - `Log`: The Log library offers a flexible and powerful logging system for C projects, enabling detailed message logging across various levels (DEBUG, INFO, WARN, ERROR, FATAL). It supports multiple output destinations (console, file, or both), timestamp inclusion, log level configuration, and keyword filtering to refine log output. Integrated with file I/O operations and customizable settings, it enhances diagnostic and monitoring capabilities in development and production environments.
 - `Cli`: The CLI library provides a comprehensive solution for parsing command-line arguments in C projects, supporting options, commands, and subcommands with both short and long names. It features advanced functionalities like custom error handling, option grouping, interactive mode, and pipelining support, making it versatile for both simple and complex CLI applications. This library simplifies command-line parsing, validation, and execution, offering a robust foundation for building user-friendly command-line interfaces.
-
+- `Network`: The Network library provides support for TCP and UDP protocols, enabling the development of networked applications. It includes functions for creating sockets, binding, listening, connecting, sending, and receiving data over both TCP and UDP connections.
+- `Database`: The Database library offers tools for interacting with PostgreSQL databases. It includes functions for connecting to databases, executing queries, retrieving results, and handling transactions. This library aims to simplify database operations in C by providing a high-level API.
+- `Matrix`: The Matrix library provides tools for matrix operations, including creation, manipulation, and mathematical computations on matrices. It is designed to support a wide range of matrix operations needed in scientific computing and data analysis.
 
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
-
 
 ## Compilation and Execution
 
@@ -69,6 +70,16 @@ To compile and immediately run the compiled program, use the `r` argument:
 python compile.py r
 ```
 
+### Compiling to DLLs Only
+
+To compile only the DLLs (shared libraries) for each module, use the `l` argument:
+
+```bash
+python compile.py l
+```
+
+This command compiles all source files into shared libraries in the `./build` directory without producing an executable.
+
 ### Adding New Modules
 
 If you add new modules or directories containing `.c` files, simply include their paths in the `source_directories` list within the `compile.py` script. The script automatically finds and compiles all `.c` files in the specified directories.
@@ -76,7 +87,6 @@ If you add new modules or directories containing `.c` files, simply include thei
 ### Streamlined Build Process
 
 The use of `compile.py` eliminates the need for traditional makefiles or manual compilation commands, providing a simple and unified build process. The script handles dependencies, includes, and linking, ensuring a hassle-free compilation experience.
-
 
 ## Manual Compilation Using GCC
 
@@ -115,11 +125,11 @@ Each library module comes with its own README.md file, providing detailed instru
 
 ## Contribution
 
-Contributions are welcome. Whether it's extending existing libraries, improving performance, or fixing bugs, your help is appreciated. Fork the repository, make your changes, and submit a pull request.
+Contributions are
+
+ welcome. Whether it's extending existing libraries, improving performance, or fixing bugs, your help is appreciated. Fork the repository, make your changes, and submit a pull request.
 
 ## License
 
 This project is open-source and available under [ISC License](LICENSE).
-
----
 

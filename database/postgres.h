@@ -45,6 +45,7 @@ void postgres_disconnect(Postgres* pg);
 void postgres_clear_result(PostgresResult* pgResult);
 void postgres_deallocate(Postgres* pg);
 void postgres_print_result(PostgresResult* pgRes);
+void postgres_reset(Postgres* pg);
 
 const char* postgres_get_last_error(Postgres* pg);
 const char* postgres_get_value(PostgresResult* pgRes, int row, int col);

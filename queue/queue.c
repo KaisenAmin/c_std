@@ -20,7 +20,7 @@ Queue* queue_create(size_t itemSize) {
     Queue* queue = (Queue*)malloc(sizeof(Queue));
     if (!queue) {
         #ifdef QUEUE_LOGGING_ENABLE
-            mt_fprintf(stderr, "Error: Cannot allocate memory for queue in queue_create.");
+            fmt_fprintf(stderr, "Error: Cannot allocate memory for queue in queue_create.");
         #endif 
         exit(-1); // Handle allocation failure
     }
