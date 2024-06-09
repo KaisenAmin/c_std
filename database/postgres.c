@@ -1007,7 +1007,7 @@ void postgres_un_trace(Postgres* pg) {
 PostgresResult* postgres_get_result(Postgres* pg) {
     if (pg == NULL || pg->connection == NULL) {
         fmt_fprintf(stderr, "Error: pg connection is null.\n");
-        return;
+        return NULL;
     }
 
     PGresult *res = PQgetResult(pg->connection);
