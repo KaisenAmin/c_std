@@ -11,6 +11,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <limits.h>
 
 bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
