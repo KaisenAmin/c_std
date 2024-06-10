@@ -51,6 +51,10 @@ This project utilizes a Python script (`compile.py`) for easy compilation of mod
 ### Requirements
 - Python 3.10 or higher
 - GCC compiler (ensure it's added to your system's PATH)
+- **Linux Users**: Make sure to install the necessary development libraries:
+  ```bash
+  sudo apt-get install libssl-dev libpq-dev
+  ```
 
 ### Using the compile.py Script
 
@@ -70,9 +74,16 @@ To compile and immediately run the compiled program, use the `r` argument:
 python compile.py r
 ```
 
-### Compiling to DLLs Only
+On Linux, make sure to set the `LD_LIBRARY_PATH` before running the program:
 
-To compile only the DLLs (shared libraries) for each module, use the `l` argument:
+```bash
+export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
+./build/main
+```
+
+### Compiling to Shared Libraries Only
+
+To compile only the shared libraries (DLLs or `.so` files) for each module, use the `l` argument:
 
 ```bash
 python compile.py l
@@ -115,7 +126,9 @@ In this command:
 
 ### Customizing the Compilation
 
-You can modify the GCC command to suit your specific requirements, such as including additional modules, linking libraries, or adjusting optimization levels. This approach offers full control over the compilation process, allowing you to tailor it to your project's needs.
+You can modify the GCC command to suit your specific requirements, such as including additional modules, linking libraries, or adjusting optimization levels. This approach offers full
+
+ control over the compilation process, allowing you to tailor it to your project's needs.
 
 ---
 
@@ -125,9 +138,7 @@ Each library module comes with its own README.md file, providing detailed instru
 
 ## Contribution
 
-Contributions are
-
- welcome. Whether it's extending existing libraries, improving performance, or fixing bugs, your help is appreciated. Fork the repository, make your changes, and submit a pull request.
+Contributions are welcome. Whether it's extending existing libraries, improving performance, or fixing bugs, your help is appreciated. Fork the repository, make your changes, and submit a pull request.
 
 ## License
 
