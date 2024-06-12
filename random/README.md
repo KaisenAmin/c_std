@@ -29,8 +29,10 @@ The documentation includes detailed descriptions of all the functions provided b
 - `int random_randint(int a, int b)`: Generates a random integer between `a` and `b` (inclusive).
 - `int random_randrange(int a, int b, int step)`: Generates a random number within the range [a, b) (excluding b), with a specified step.
 - `void random_seed(unsigned int seed)`: random_seed initializes the random number generator with a given seed.
+- `double random_random()`:  Generates a random floating-point number between 0 and 1.
 
 ## Examples
+
 
 Several examples are provided to demonstrate the usage of the Random library in various scenarios.
 
@@ -93,6 +95,26 @@ int main() {
     return 0;
 }
 ```
+
+### Example 3 : Generate floating point random number with 'random_random'
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int) time_current_time_in_seconds());
+
+    for (int i = 0; i < 5; i++) {
+        double random = random_random();
+        fmt_printf("Random floating-point number between 0 and 1: %f\n", random);
+    }
+
+    return 0;
+}
+```
+
 
 ## Conclusion
 

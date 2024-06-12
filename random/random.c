@@ -25,3 +25,7 @@ int random_randrange(int a, int b, int step) {
     int range = (b - a + step - 1) / step;
     return a + (rand() % range) * step;
 }
+
+double random_random() {
+    return rand() / (double)RAND_MAX;
+}
