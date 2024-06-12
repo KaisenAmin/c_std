@@ -30,6 +30,9 @@ The documentation includes detailed descriptions of all the functions provided b
 - `int random_randrange(int a, int b, int step)`: Generates a random number within the range [a, b) (excluding b), with a specified step.
 - `void random_seed(unsigned int seed)`: random_seed initializes the random number generator with a given seed.
 - `double random_random()`:  Generates a random floating-point number between 0 and 1.
+- `double random_uniform(double a, double b)`: Generates a random floating-point number between a and b.
+- `int random_getrandbits(int a)`:  Generates a random integer with a random bits. arg should be greater than z and less than 32.
+- `void random_shuffle(void *array, size_t n, size_t size)`: Shuffles an array of any type.
 
 ## Examples
 
@@ -115,7 +118,74 @@ int main() {
 }
 ```
 
+### Example 4 : Genrate random floating point numbers between range with 'random_uniform'
 
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    for (size_t i = 0; i < 5; i++) {
+        double random = random_uniform(1.0, 10.256);
+        printf("%lf\n", random);
+    }
+    
+    return 0;
+}
+```
+
+### Example 5: shuffle arrays of different types with 'random_shuffle'
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+void print_int_array(int* array, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        fmt_printf("%d ", array[i]);
+    }
+    fmt_printf("\n");
+}
+
+void print_string_array(char** array, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        fmt_printf("%s ", array[i]);
+    }
+    fmt_printf("\n");
+}
+
+int main() {
+    random_seed((unsigned int) time_current_time_in_seconds());
+
+    int int_array[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t int_size = sizeof(int_array) / sizeof(int_array[0]);
+
+    fmt_printf("Original integer array:\n");
+    print_int_array(int_array, int_size);
+
+    random_shuffle(int_array, int_size, sizeof(int));
+
+    fmt_printf("Shuffled integer array:\n");
+    print_int_array(int_array, int_size);
+
+    char* string_array[] = {"apple", "banana", "cherry", "date", "elderberry", "fig", "grape"};
+    size_t string_size = sizeof(string_array) / sizeof(string_array[0]);
+
+    fmt_printf("Original string array:\n");
+    print_string_array(string_array, string_size);
+
+    random_shuffle(string_array, string_size, sizeof(char*));
+
+    fmt_printf("Shuffled string array:\n");
+    print_string_array(string_array, string_size);
+
+    return 0;
+}
+```
 ## Conclusion
 
 This Random library simplifies the generation of random numbers in C projects, providing an easy-to-use interface for generating random integers within specified ranges. The provided examples illustrate how to use the library for common random number generation tasks.
