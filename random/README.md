@@ -11,6 +11,9 @@ This Random library in C provides a set of functions for generating random numbe
 ## Key Features
 
 - **Random Integer Generation:** Functions to generate random integers within specified ranges.
+- **Random Floating-Point Generation:** Functions to generate random floating-point numbers between 0 and 1, or within specified ranges.
+- **Array Shuffling:** A generic function to shuffle elements of an array, supporting different data types.
+
 
 ## Installation and Compilation
 
@@ -39,7 +42,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 Several examples are provided to demonstrate the usage of the Random library in various scenarios.
 
-### Example 1: Basic Random Integer Generation
+### Example 1: Basic Random Integer Generation with `random_seed` and `random_randint`
 
 ```c
 #include "random.h"
@@ -67,7 +70,7 @@ int main() {
 ```
 
 
-### Example 2 : get random number and check invalid steps and range in 'random_randrange'
+### Example 2 : get random number and check invalid steps and range in `random_randrange`
 
 ```c
 #include "random/random.h"
@@ -99,7 +102,7 @@ int main() {
 }
 ```
 
-### Example 3 : Generate floating point random number with 'random_random'
+### Example 3 : Generate floating point random number with `random_random`
 
 ```c
 #include "random/random.h"
@@ -118,7 +121,7 @@ int main() {
 }
 ```
 
-### Example 4 : Genrate random floating point numbers between range with 'random_uniform'
+### Example 4 : Genrate random floating point numbers between range with `random_uniform`
 
 ```c
 #include "random/random.h"
@@ -137,7 +140,7 @@ int main() {
 }
 ```
 
-### Example 5: shuffle arrays of different types with 'random_shuffle'
+### Example 5: shuffle arrays of different types with `random_shuffle`
 
 ```c
 #include "random/random.h"
