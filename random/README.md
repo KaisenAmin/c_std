@@ -43,6 +43,20 @@ The documentation includes detailed descriptions of all the functions provided b
 - `void random_getstate(unsigned int *state)`: this function get the current state of the random number generator.
 - `void random_setstate(const unisgned int* state)`: this function set the state of the random number generator.
 - `double random_gauss(double mean, doube stddev)`: this function generate a random float number based on the Gaussian distribution. also `stddev` is the standard deviation (sigma) of the distribution.
+- `double random_expo(double lambda)`: this function generate a random float number based on the Exponential distribution. also `lambda` is the rate parameter (1/mean) of the distribution.
+- `double random_lognormal(double mean, double stddev)`: this function generate a random float number based on the `log-normal` distribution. `mean` param is underlying normal distrubution. and `stddev` is rate parameter (1/mean) of the distribution.
+- `double random_gamma(double shape, double scale)`: this function generate a random float number based on the Gamma distribution. based on this formula `https://numpy.org/doc/stable/reference/random/generated/numpy.random.gamma.html`
+
+- `double random_beta(double alpha, double beta)`: this function generate a random float number based on the Beta distribution. also `alpha` param is shap1 of the distrubution, and `beta` is the shape2 o fthe distrubution. based on this formaul `https://numpy.org/doc/stable/reference/random/generated/numpy.random.beta.html`
+
+- `double random_pareto(double shape, double scale)`: this function generate a random float number based on the Pareto distribution. also `shape` is param (a) of the distrubution and `scale` is param (m) of the distrubution. based on `https://numpy.org/doc/stable/reference/random/generated/numpy.random.pareto.html`
+
+- `double random_weibull(double shape, double scale)`: this function generate a random float number based on the Weibull distribution.
+also `shape` is param (a) of the distrubution and `scale` is param (λ) of the distribution. based on `https://numpy.org/doc/stable/reference/random/generated/numpy.random.weibull.html`.
+
+- `double random_vonmises(double mu, double kappa)`: this function generate a random float number based on the von Mises distribution.
+also `mu` is the mode (mean direction) of the distrubution. and `kappa` is the concentration parameter (dispersion) of the distribution. based on  `https://numpy.org/doc/stable/reference/random/generated/numpy.random.vonmises.html`.
+
 
 ## Examples
 
@@ -374,6 +388,84 @@ int main() {
     return 0;
 }
 ```
+
+### Example 12 : get random number based on log-normal distrubution `random_lognormal`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    for (int i = 0; i < 10; i++) {
+        double random_value = random_lognormal(0.0, 1.0);
+        fmt_printf("Random Log-Normal value: %f\n", random_value);
+    }
+
+    return 0;
+}
+```
+
+### Example 13 : random numbers based on gamma distrubution `random_gamma`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+     random_seed((unsigned int)time_current_time_in_seconds());
+
+    for (int i = 0; i < 10; i++) {
+        double random_value = random_gamma(2.0, 2.0);
+        fmt_printf("Random Gamma value: %f\n", random_value);
+    }
+
+    return 0;
+}
+```
+
+### Example 14 : generate random number based on pareto distrubution with `random_pareto`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    for (int i = 0; i < 10; i++) {
+        double random_value = random_pareto(2.0, 1.0);
+        fmt_printf("Random Pareto value: %f\n", random_value);
+    }
+
+    return 0;
+}
+```
+
+### Example 15 : generate random number based on von mises distrubution with `random_vonmises`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int) time_current_time_in_seconds());
+
+    for (int i = 0; i < 50; i++) {
+        double random_value = random_vonmises(0.0, 1.0);
+        fmt_printf("Random von Mises value: %f\n", random_value);
+    }
+
+    return 0;
+}
+```
+
+
 ## Conclusion
 
 This Random library simplifies the generation of random numbers in C projects, providing an easy-to-use interface for generating random integers within specified ranges. The provided examples illustrate how to use the library for common random number generation tasks.

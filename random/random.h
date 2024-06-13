@@ -21,6 +21,11 @@ double random_random();
 double random_uniform(double a, double b);
 double random_triangular(double low, double high, double mode);
 double random_gauss(double mean, double stddev);
-
+double random_expo(double lambda);
+double random_lognormal(double mean, double stddev);
+double random_gamma(double shape, double scale);
+double random_beta(double alpha, double beta);
+double random_weibull(double shape, double scale);
+double random_vonmises(double mu, double kappa);
 
 #endif 

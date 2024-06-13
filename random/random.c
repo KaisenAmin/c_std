@@ -4,6 +4,10 @@
 #include <string.h>
 #include <math.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 static unsigned int rand_state;
 
 void random_seed(unsigned int seed) {
@@ -225,6 +229,129 @@ double random_gauss(double mean, double stddev) {
 
     s = sqrt(-2.0 * log(s) / s);
     spare = v * s;
-    
+
     return mean + stddev * (u * s);
+}
+
+double random_expo(double lambda) {
+    if (lambda <= 0.0) {
+        fprintf(stderr, "Error: lambda must be greater than 0 in random_expo.\n");
+        return -1.0;
+    }
+
+    double expo;
+    do {
+        expo = random_random();
+    } while (expo == 0.0);
+
+    return -log(expo) / lambda;
+}
+
+double random_lognormal(double mean, double stddev) {
+    double normal_value = random_gauss(mean, stddev);
+
+    return exp(normal_value);
+}
+
+double random_gamma(double shape, double scale) {
+    if (shape <= 0.0 || scale <= 0.0) {
+        fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_gamma.\n");
+        return -1.0;
+    }
+
+    if (shape < 1.0) {
+        // Johnk's generator for shape < 1
+        double expo;
+        do {
+            expo = random_random();
+        } while (expo == 0.0);
+
+        return random_gamma(1.0 + shape, scale) * pow(expo, 1.0 / shape);
+    }
+
+    // Marsaglia and Tsang's method for shape >= 1
+    double d = shape - 1.0 / 3.0;
+    double c = 1.0 / sqrt(9.0 * d);
+    double v;
+
+    while (1) {
+        double u = random_random();
+        double z = random_gauss(0.0, 1.0);
+        v = pow(1.0 + c * z, 3);
+        if (u < 1.0 - 0.0331 * (z * z) * (z * z)) {
+            break;
+        }
+        if (log(u) < 0.5 * z * z + d * (1.0 - v + log(v))) {
+            break;
+        }
+    }
+
+    return d * v * scale;
+}
+
+double random_beta(double alpha, double beta) {
+    if (alpha <= 0.0 || beta <= 0.0) {
+        fprintf(stderr, "Error: alpha and beta parameters must be greater than 0 in random_beta.\n");
+        return -1.0;
+    }
+
+    double x = random_gamma(alpha, 1.0);
+    double y = random_gamma(beta, 1.0);
+
+    return x / (x + y);
+}
+
+double random_pareto(double shape, double scale) {
+    if (shape <= 0.0 || scale <= 0.0) {
+        fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_pareto.\n");
+        return -1.0;
+    }
+
+    double expo;
+    do {
+        expo = random_random();
+    } while (expo == 0.0);
+
+    return scale * pow((1.0 / expo), (1.0 / shape));
+}
+
+double random_weibull(double shape, double scale) {
+    if (shape <= 0.0 || scale <= 0.0) {
+        fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_weibull.\n");
+        return -1.0;
+    }
+
+    double expo;
+    do {
+        expo = random_random();
+    } while (expo == 0.0);
+
+    return scale * pow(-log(expo), 1.0 / shape);
+}
+
+double random_vonmises(double mu, double kappa) {
+    if (kappa <= 0.0) {
+        fprintf(stderr, "Error: kappa must be greater than 0 in random_vonmises.\n");
+        return -1.0;
+    }
+
+    const double tau = 2 * M_PI;
+    double r = 1 + sqrt(1 + 4 * kappa * kappa);
+    double rho = (r - sqrt(2 * r)) / (2 * kappa);
+    double s = (1 + rho * rho) / (2 * rho);
+
+    double U, W, Y, Z, V;
+    do {
+        U = random_random();
+        Z = cos(M_PI * U);
+        W = (1 + s * Z) / (s + Z);
+        V = random_random();
+    } while (kappa * (s - W) - log(4 * V * (s - 1)) < 0);
+
+    Y = 2 * random_random() - 1;
+    if (Y < 0) {
+        W = -W;
+    }
+
+    return fmod(mu + acos(W), tau);
 }
