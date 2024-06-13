@@ -42,6 +42,8 @@ The project is organized into several subdirectories, each representing a differ
 - `Database`: The Database library offers tools for interacting with PostgreSQL databases. It includes functions for connecting to databases, executing queries, retrieving results, and handling transactions. This library aims to simplify database operations in C by providing a high-level API.
 - `Matrix`: The Matrix library provides tools for matrix operations, including creation, manipulation, and mathematical computations on matrices. It is designed to support a wide range of matrix operations needed in scientific computing and data analysis.
 
+- `Random`: random library provides functionality like python random module for working with probablity and randomly numbers and elements. 
+
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
 ## Compilation and Execution
