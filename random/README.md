@@ -36,6 +36,12 @@ The documentation includes detailed descriptions of all the functions provided b
 - `double random_uniform(double a, double b)`: Generates a random floating-point number between a and b.
 - `int random_getrandbits(int a)`:  Generates a random integer with a random bits. arg should be greater than z and less than 32.
 - `void random_shuffle(void *array, size_t n, size_t size)`: Shuffles an array of any type.
+- `void* random_choice(void* array, size_t n, size_t size)`: this function can randomly select an element from an array.
+- `double random_triangular(double low, double high, double mode)`: this function returns a random float number between two given parameters, you can also set a mode parameter to specify the midpoint between the two other parameters.
+- `void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights)`: this function select multiple random elements from an array with specified weights.
+- `void random_sample(void *array, size_t n, size_t size, size_t num_samples, void *samples)`: this function a specified number of unique random elements from an array.
+- `void random_getstate(unsigned int *state)`: this function get the current state of the random number generator.
+- `void random_setstate(const unisgned int* state)`: this function set the state of the random number generator.
 
 ## Examples
 
@@ -185,6 +191,165 @@ int main() {
 
     fmt_printf("Shuffled string array:\n");
     print_string_array(string_array, string_size);
+
+    return 0;
+}
+```
+
+### Example 6 : how to choice and element from an array with `random_choice`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int) time_current_time_in_seconds());
+
+    int int_array[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t int_size = sizeof(int_array) / sizeof(int_array[0]);
+
+    int *random_int = (int *)random_choice(int_array, int_size, sizeof(int));
+    fmt_printf("Random choice from integer array: %d\n", *random_int);
+
+    char *string_array[] = {"apple", "banana", "cherry", "date", "elderberry", "fig", "grape"};
+    size_t string_size = sizeof(string_array) / sizeof(string_array[0]);
+
+    char **random_string = (char **)random_choice(string_array, string_size, sizeof(char *));
+    fmt_printf("Random choice from string array: %s\n", *random_string);
+    
+    return 0;
+}
+```
+
+### Example 7 : how to set mode between range with `random_triangular`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int) time_current_time_in_seconds());
+
+    for (int i = 0; i < 5; i++) {
+        double random = random_triangular(1.0, 10.0, 3.0);
+        fmt_printf("Random triangular number between 1.0 and 10.0 with mode 5.0: %f\n", random);
+    }
+
+    return 0;
+}
+```
+
+### Example 8 : how to set weight for choices with `random_choices`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    int int_array[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t int_size = sizeof(int_array) / sizeof(int_array[0]);
+    int choices[5];
+    double int_weights[] = {0.05, 0.05, 0.05, 0.05, 0.7, 0.05, 0.05, 0.05, 0.05, 0.05};
+
+    random_choices(int_array, int_size, sizeof(int), 5, choices, int_weights);
+    fmt_printf("Random choices from integer array with weights\n");
+
+    for (size_t index = 0; index < 5; index++) {
+        fmt_printf("%d\n", choices[index]);
+    }
+
+    fmt_printf("--------------\n");
+
+    char *string_array[] = {"apple", "banana", "cherry", "date", "elderberry", "fig", "grape"};
+    size_t string_size = sizeof(string_array) / sizeof(string_array[0]);
+    char *string_choices[5];
+    double string_weights[] = {0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.7};
+
+    random_choices(string_array, string_size, sizeof(char *), 5, string_choices, string_weights);
+    fmt_printf("Random choices from string array with weights\n");
+
+    for (size_t index = 0; index < 5; index++) {
+        fmt_printf("%s\n", string_choices[index]);
+    }
+
+    return 0;
+}
+```
+
+### Example 9 : how to get sequence of unique elements with `random_sample`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    int int_array[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t int_size = sizeof(int_array) / sizeof(int_array[0]);
+    int int_samples[5];
+
+    random_sample(int_array, int_size, sizeof(int), 5, int_samples);
+    fmt_printf("Random sample from integer array\n");
+
+    for (size_t index = 0; index < 5; index++) {
+        fmt_printf("%d\n", int_samples[index]);
+    }
+
+    fmt_printf("--------------\n");
+
+    char *string_array[] = {"C++", "C", "Python", "Go", "Rust", "Zig", "Php"};
+    size_t string_size = sizeof(string_array) / sizeof(string_array[0]);
+    char *string_samples[3];
+
+    random_sample(string_array, string_size, sizeof(char *), 3, string_samples);
+    fmt_printf("Random sample from string array\n");
+
+    for (size_t index = 0; index < 3; index++) {
+        fmt_printf("%s\n", string_samples[index]);
+    }
+
+    return 0;
+}
+```
+
+### Example 10 : set and get state `random_setstate`, `random_getstate`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    unsigned int state;
+
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    for (int i = 0; i < 5; i++) {
+        fmt_printf("Random number %d: %d\n", i + 1, random_randint(1, 100));
+    }
+
+    // Get the current state
+    random_getstate(&state);
+    fmt_printf("State saved.\n");
+
+    for (int i = 0; i < 5; i++) {
+        fmt_printf("Random number %d: %d\n", i + 6, random_randint(1, 100));
+    }
+
+    // Restore the state
+    random_setstate(&state);
+    fmt_printf("State restored.\n");
+
+    for (int i = 0; i < 5; i++) {
+        fmt_printf("Random number %d: %d\n", i + 6, random_randint(1, 100));
+    }
 
     return 0;
 }
