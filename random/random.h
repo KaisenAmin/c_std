@@ -20,5 +20,7 @@ int random_getrandbits(int a);
 double random_random();
 double random_uniform(double a, double b);
 double random_triangular(double low, double high, double mode);
+double random_gauss(double mean, double stddev);
+
 
 #endif 

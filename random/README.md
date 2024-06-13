@@ -42,6 +42,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `void random_sample(void *array, size_t n, size_t size, size_t num_samples, void *samples)`: this function a specified number of unique random elements from an array.
 - `void random_getstate(unsigned int *state)`: this function get the current state of the random number generator.
 - `void random_setstate(const unisgned int* state)`: this function set the state of the random number generator.
+- `double random_gauss(double mean, doube stddev)`: this function generate a random float number based on the Gaussian distribution. also `stddev` is the standard deviation (sigma) of the distribution.
 
 ## Examples
 
@@ -349,6 +350,25 @@ int main() {
 
     for (int i = 0; i < 5; i++) {
         fmt_printf("Random number %d: %d\n", i + 6, random_randint(1, 100));
+    }
+
+    return 0;
+}
+```
+
+### Example 11 : how to generate random number with gauss or normal distrubution `random_gauss`
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+#include "time/time.h"
+
+int main() {
+    random_seed((unsigned int)time_current_time_in_seconds());
+
+    for (int i = 0; i < 10; i++) {
+        double random_value = random_gauss(0.0, 1.0);
+        fmt_printf("Random Gaussian value: %f\n", random_value);
     }
 
     return 0;

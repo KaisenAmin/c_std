@@ -205,3 +205,26 @@ void random_getstate(unsigned int *state) {
         *state = rand_state;
     }
 }
+
+double random_gauss(double mean, double stddev) {
+    static int hasSpare = 0;
+    static double spare;
+
+    if (hasSpare) {
+        hasSpare = 0;
+        return mean + stddev * spare;
+    }
+
+    hasSpare = 1;
+    double u, v, s;
+    do {
+        u = random_random() * 2.0 - 1.0;
+        v = random_random() * 2.0 - 1.0;
+        s = u * u + v * v;
+    } while (s >= 1.0 || s == 0.0);
+
+    s = sqrt(-2.0 * log(s) / s);
+    spare = v * s;
+    
+    return mean + stddev * (u * s);
+}
