@@ -93,6 +93,18 @@ void* random_choice(void* array, size_t n, size_t size) {
     return (char*)array + index * size;
 }
 
+/**
+ * @brief Generates a random double number based on the Triangular distribution.
+ *
+ * @param low The lower limit of the distribution.
+ * @param high The upper limit of the distribution.
+ * @param mode The mode (peak) of the distribution. if `mode` is not within the range [low, high],
+ *             it is set to the midpoint of `low` and `high`.
+ * @return A random double number from the Triangular distribution.
+ *
+ * @note If `low` is greater than `high`, their values are swapped.
+ * @note The function uses the inverse transform sampling method to produce the triangular-distributed number.
+ */
 double random_triangular(double low, double high, double mode) {
     if (low > high) {
         double temp = low;
@@ -114,6 +126,22 @@ double random_triangular(double low, double high, double mode) {
     }
 }
 
+/**
+ * @brief Selects multiple random elements from an array with specified weights.
+ * The selected elements are copied into the provided choices array.
+ *
+ * @param array Pointer to the input array from which to select elements.
+ * @param n The number of elements in the input array.
+ * @param size The size of each element in the input array.
+ * @param num_choices The number of elements to select.
+ * @param choices Pointer to the array where the selected elements will be stored.
+ * @param weights Pointer to the array of weights corresponding to each element in the input array.
+ *
+ * @note The function performs error checking to ensure valid inputs. If any error is detected,
+ *       an error message is printed and the function returns without performing the selection.
+ *
+ * @note The function uses cumulative weights to perform weighted random sampling.
+ */
 void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights) {
     if (array == NULL) {
         fprintf(stderr, "Error: array is null in random_choices.\n");
