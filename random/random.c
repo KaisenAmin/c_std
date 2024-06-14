@@ -197,6 +197,12 @@ void random_sample(void *array, size_t n, size_t size, size_t num_samples, void 
     free(indices);
 }
 
+/**
+ * @brief This function sets the state of the random number generator to the specified value.
+ * 
+ * @param state A pointer to the state value to set the random number generator to.
+ *       if `state` is NULL, the function does nothing.
+ */
 void random_setstate(const unsigned int *state) {
     if (state != NULL) {
         rand_state = *state;
@@ -204,12 +210,28 @@ void random_setstate(const unsigned int *state) {
     }
 }
 
+/**
+ * @brief This function retrieves the current state of the random number generator.
+ * 
+ * @param state A pointer to where the current state of the random number generator will be stored. 
+ *       if `state` is NULL, the function does nothing.
+ */
 void random_getstate(unsigned int *state) {
     if (state != NULL) {
         *state = rand_state;
     }
 }
 
+/**
+ * @brief Generates a random double number based on the Gaussian (normal) distribution.
+ *
+ * @param mean The mean (mu) of the distribution.
+ * @param stddev The standard deviation (sigma) of the distribution.
+ * @return A random double number from the Gaussian distribution.
+ *
+ * @note The function uses the Box-Muller transform to generate a normally-distributed number.
+ * 
+ */
 double random_gauss(double mean, double stddev) {
     static int hasSpare = 0;
     static double spare;
