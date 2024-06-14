@@ -301,10 +301,20 @@ double random_beta(double alpha, double beta) {
     return x / (x + y);
 }
 
+/**
+ * @brief Generates a random float number based on the Pareto distribution.
+ * which is a continuous probability distribution.
+ *
+ * @param shape The shape parameter (a) of the distribution (must be greater than 0).
+ * @param scale The scale parameter (m) of the distribution (must be greater than 0).
+ * @return A random float number from the Pareto distribution.
+ *         If `shape` or `scale` is less than or equal to 0, the function prints an error message
+ *         and returns NaN.
+ */
 double random_pareto(double shape, double scale) {
     if (shape <= 0.0 || scale <= 0.0) {
         fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_pareto.\n");
-        return -1.0;
+        return NAN;
     }
 
     double expo;
