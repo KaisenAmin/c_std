@@ -155,6 +155,21 @@ void random_choices(void *array, size_t n, size_t size, size_t num_choices, void
     free(cumulative_weights);
 }
 
+/**
+ * @brief Samples a specified number of unique random elements from an array.
+ * The sampled elements are copied into the provided samples array.
+ *
+ * @param array Pointer to the input array from which to sample elements.
+ * @param n The number of elements in the input array.
+ * @param size The size of each element in the input array.
+ * @param num_samples The number of elements to sample.
+ * @param samples Pointer to the array where the sampled elements will be stored.
+ *
+ * @note The function performs error checking to ensure valid inputs. If any error is detected,
+ *       an error message is printed and the function returns without performing sampling.
+ * 
+ * @note This function uses a Fisher-Yates shuffle algorithm to ensure unique random sampling.
+ */
 void random_sample(void *array, size_t n, size_t size, size_t num_samples, void *samples) {
     if (array == NULL) {
         fprintf(stderr, "Error: array is null in random_sample.\n");
