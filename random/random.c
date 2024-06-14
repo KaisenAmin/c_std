@@ -233,10 +233,21 @@ double random_gauss(double mean, double stddev) {
     return mean + stddev * (u * s);
 }
 
+/**
+ * @brief Generates a random double number based on the Exponential distribution.
+ *
+ * @param lambda The rate parameter (1/mean) of the distribution (must be greater than 0).
+ * @return A random double number from the Exponential distribution.
+ *         If `lambda` is less than or equal to 0, the function prints an error message
+ *         and returns NAN.
+ *
+ * @note The function uses the inverse transform sampling method to produce the exponentially-distributed number.
+ *       If `lambda` is less than or equal to 0, the function will print error message and return NAN.
+ */
 double random_expo(double lambda) {
     if (lambda <= 0.0) {
         fprintf(stderr, "Error: lambda must be greater than 0 in random_expo.\n");
-        return -1.0;
+        return NAN;
     }
 
     double expo;
@@ -247,6 +258,14 @@ double random_expo(double lambda) {
     return -log(expo) / lambda;
 }
 
+/**
+ * @brief Generates a random double number based on the Log-normal distribution.
+ *
+ * @param mean The mean parameter of the underlying normal distribution.
+ * @param stddev The standard deviation parameter of the underlying normal distribution.
+ * @return A random double number from the Log-normal distribution.
+ * 
+ */
 double random_lognormal(double mean, double stddev) {
     double normal_value = random_gauss(mean, stddev);
 
