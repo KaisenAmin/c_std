@@ -29,6 +29,14 @@ The documentation includes detailed descriptions of all the functions provided b
 - `double statistics_median_high(double* data, size_t n)`: this function calculates the high median of the given data set. This function also sorts the data in ascending order before calculating the high median.
 - `double statistics_median_grouped(double *data, size_t n, double interval)`: this function calculates the median of grouped continuous data, calculated as the 50th percentile. this function treats the data points as continuous data and calculates the 50% percentile median by first finding the median range using specified interval width , and then interpolating within that range using the position of the values from the data set that fall in that range.
 
+- `double statistics_variance(double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the sample variance of the data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
+
+- `double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the standard deviation from a sample of data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
+
+- `double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu)`: this function calculates the variance of an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
+
+- `double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu)`: this function calculates the standard deviation from an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
+
 
 ## Examples
 
@@ -205,6 +213,147 @@ int main() {
     return 0;
 }
 ```
+
+### Example 6 : variance of data with or without xbar `statistics_variance`
+
+```c
+#include "statistics/statistics.h"
+#include "fmt/fmt.h"
+
+#include <math.h>
+
+int main() {
+    double data[] = {2, 2.5, 1.25, 3.1, 1.75, 2.8};
+    size_t n = sizeof(data) / sizeof(data[0]);
+    double var = statistics_variance(data, n, false, 0.0);
+
+    if (!isnan(var)) {
+        fmt_printf("Variance: %f\n", var);
+    } 
+    else {
+        fmt_printf("An error occurred while calculating the variance.\n");
+    }
+
+    double mean = statistics_mean(data, n);
+    double var_with_mean = statistics_variance(data, n, true, 5);
+
+    if (!isnan(var_with_mean)) {
+        fmt_printf("Variance with provided mean: %f\n", var_with_mean);
+    } 
+    else {
+        fmt_printf("An error occurred while calculating the variance with provided mean.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 7 : standar deviation with `statistics_stdev`
+
+```c
+#include "statistics/statistics.h"
+#include "fmt/fmt.h"
+
+#include <math.h>
+
+int main() {
+    double data1[] = {1, 30, 50, 100};
+    size_t n1 = sizeof(data1) / sizeof(data1[0]);
+    double stdev1 = statistics_stdev(data1, n1, true, 20.0);
+
+    if (!isnan(stdev1)) {
+        fmt_printf("Standard Deviation: %f\n", stdev1);
+    } 
+    else {
+       fmt_printf("An error occurred while calculating the standard deviation.\n");
+    }
+
+    double data2[] = {2, 2.5, 1.25, 3.1, 1.75, 2.8};
+    size_t n2 = sizeof(data2) / sizeof(data2[0]);
+    double stdev2 = statistics_stdev(data2, n2, false, 0.0);
+
+    if (!isnan(stdev2)) {
+        fmt_printf("Standard Deviation: %f\n", stdev2);
+    } 
+    else {
+        fmt_printf("An error occurred while calculating the standard deviation.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 7 : get poplulation variance with `statistics_pvariance`
+
+```c
+#include "statistics/statistics.h"
+#include "fmt/fmt.h"
+
+#include <math.h>
+
+int main() {
+    double data1[] = {1, 3, 5, 7, 9, 11};
+    size_t n1 = sizeof(data1) / sizeof(data1[0]);
+    double pvar1 = statistics_pvariance(data1, n1, true, 20.0);
+
+    fmt_printf("Population Variance with mu : %f\n", pvar1);
+
+    double data2[] = {2, 2.5, 1.25, 3.1, 1.75, 2.8};
+    size_t n2 = sizeof(data2) / sizeof(data2[0]);
+    double pvar2 = statistics_pvariance(data2, n2, false, 0.0);
+
+    fmt_printf("Population Variance: %f\n", pvar2);
+
+    double data3[] = {-11, 5.5, -3.4, 7.1};
+    size_t n3 = sizeof(data3) / sizeof(data3[0]);
+    double pvar3 = statistics_pvariance(data3, n3, true, 32.32);
+
+    fmt_printf("Population Variance: %f\n", pvar3);
+
+    double data4[] = {1, 30, 50, 100};
+    size_t n4 = sizeof(data4) / sizeof(data4[0]);
+    double pvar4 = statistics_pvariance(data4, n4, false, 0.0);
+
+    fmt_printf("Population Variance: %f\n", pvar4);
+
+    return 0;
+}
+```
+
+### Example 8 : calculate pstdev of sample data with `statistics_pstdev`
+
+```c
+#include "statistics/statistics.h"
+#include "fmt/fmt.h"
+
+#include <math.h>
+
+int main() {
+    double data1[] = {1, 3, 5, 7, 9, 11};
+    size_t n1 = sizeof(data1) / sizeof(data1[0]);
+    double pstdev1 = statistics_pstdev(data1, n1, false, 0.0);
+
+    if (!isnan(pstdev1)) {
+        fmt_printf("Population Standard Deviation: %f\n", pstdev1);
+    } 
+    else {
+        fmt_printf("An error occurred while calculating the population standard deviation.\n");
+    }
+
+    double mean = statistics_mean(data1, n1);
+    double pstdev2 = statistics_pstdev(data1, n1, true, mean);
+
+    if (!isnan(pstdev2)) {
+        fmt_printf("Population Standard Deviation with provided mean: %f\n", pstdev2);
+    } 
+    else {
+        fmt_printf("An error occurred while calculating the population standard deviation with provided mean.\n");
+    }
+
+    return 0;
+}
+```
+
 ## Conclusion
 
 The Statistics library in C provides robust functions for calculating various statistical measures such as mean, median, low median, and high median and etc ... These functions are optimized for performance and ease of use, making it an excellent choice for developers needing statistical analysis in their C projects. With clear documentation and examples, the library is straightforward to integrate and apply to different data sets.

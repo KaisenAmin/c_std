@@ -39,7 +39,7 @@ static size_t bisect_right(double* data, size_t n, double x) {
     return lo;
 }
 
-static int compare_doubles(const void* a, const void* b) {
+static int statistics_compare_doubles(const void* a, const void* b) {
     double arg1 = *(const double*)a;
     double arg2 = *(const double*)b;
 
@@ -91,7 +91,7 @@ double statistics_median(double* data, size_t n) {
         sorted_data[i] = data[i];
     }
 
-    qsort(sorted_data, n, sizeof(double), compare_doubles);
+    qsort(sorted_data, n, sizeof(double), statistics_compare_doubles);
 
     double median;
     if (n % 2 == 0) {
@@ -125,7 +125,7 @@ double statistics_median_low(double* data, size_t n) {
         sorted_data[i] = data[i];
     }
 
-    qsort(sorted_data, n, sizeof(double), compare_doubles);
+    qsort(sorted_data, n, sizeof(double), statistics_compare_doubles);
 
     double median_low;
     if (n % 2 == 0) {
@@ -159,7 +159,7 @@ double statistics_median_high(double* data, size_t n) {
         sorted_data[i] = data[i];
     }
 
-    qsort(sorted_data, n, sizeof(double), compare_doubles);
+    qsort(sorted_data, n, sizeof(double), statistics_compare_doubles);
 
     double median_high;
     if (n % 2 == 0) {
@@ -198,7 +198,7 @@ double statistics_median_grouped(double* data, size_t n, double interval) {
         sorted_data[i] = data[i];
     }
 
-    qsort(sorted_data, n, sizeof(double), compare_doubles);
+    qsort(sorted_data, n, sizeof(double), statistics_compare_doubles);
 
     size_t midpoint_index = n / 2;
     double x = sorted_data[midpoint_index];
@@ -213,4 +213,59 @@ double statistics_median_grouped(double* data, size_t n, double interval) {
 
     free(sorted_data);
     return median_grouped;
+}
+
+double statistics_variance(double* data, size_t n, bool xbar_provided, double xbar) {
+    if (!data || n < 2) {
+        fprintf(stderr, "Invalid input. Data should have at least two elements.\n");
+        return NAN;
+    }
+
+    double mean = xbar_provided ? xbar : statistics_mean(data, n);
+    double sum_sq_diff = 0.0;
+
+    for (size_t i = 0; i < n; i++) {
+        double diff = data[i] - mean;
+        sum_sq_diff += diff * diff;
+    }
+
+    return sum_sq_diff / (n - 1);
+}
+
+double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar) {
+    if (!data || n < 2) {
+        fprintf(stderr, "Invalid input. Data should have at least two elements.\n");
+        return NAN;
+    }
+
+    double variance = statistics_variance(data, n, xbar_provided, xbar);
+
+    return sqrt(variance);
+}
+
+double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu) {
+    if (!data || n < 1) {
+        fprintf(stderr, "Invalid input. Data should have at least one element.\n");
+        return NAN;
+    }
+
+    double mean = mu_provided ? mu : statistics_mean(data, n);
+    double sum_of_diff = 0.0;
+
+    for (size_t i = 0; i < n; i++) {
+        double diff = data[i] - mean;
+        sum_of_diff += diff * diff;
+    }
+
+    return sum_of_diff / n;
+}
+
+double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu) {
+    if (!data || n < 1) {
+        fprintf(stderr, "Invalid input. Data should have at least one element.\n");
+        return NAN;
+    }
+
+    double variance = statistics_pvariance(data, n, mu_provided, mu);
+    return sqrt(variance);
 }
