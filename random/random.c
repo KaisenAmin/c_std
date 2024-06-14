@@ -289,10 +289,19 @@ double random_gamma(double shape, double scale) {
     return d * v * scale;
 }
 
+/**
+ * @brief Generates a random double number based on the Beta distribution.
+ *
+ * @param alpha The shape1 parameter of the distribution (must be greater than 0).
+ * @param beta The shape2 parameter of the distribution (must be greater than 0).
+ * @return A random double number from the Beta distribution.
+ *         If `alpha` or `beta` is less than or equal to 0, the function prints an error message
+ *         and returns NaN.
+ */
 double random_beta(double alpha, double beta) {
     if (alpha <= 0.0 || beta <= 0.0) {
         fprintf(stderr, "Error: alpha and beta parameters must be greater than 0 in random_beta.\n");
-        return -1.0;
+        return NAN;
     }
 
     double x = random_gamma(alpha, 1.0);
@@ -302,12 +311,12 @@ double random_beta(double alpha, double beta) {
 }
 
 /**
- * @brief Generates a random float number based on the Pareto distribution.
+ * @brief Generates a random double number based on the Pareto distribution.
  * which is a continuous probability distribution.
  *
  * @param shape The shape parameter (a) of the distribution (must be greater than 0).
  * @param scale The scale parameter (m) of the distribution (must be greater than 0).
- * @return A random float number from the Pareto distribution.
+ * @return A random double number from the Pareto distribution.
  *         If `shape` or `scale` is less than or equal to 0, the function prints an error message
  *         and returns NaN.
  */
@@ -326,12 +335,12 @@ double random_pareto(double shape, double scale) {
 }
 
 /**
- * @brief Generates a random float number based on the Weibull distribution.
+ * @brief Generates a random double number based on the Weibull distribution.
  * which is a continuous probability distribution.
  *
  * @param shape The shape parameter (a) of the distribution (must be greater than 0).
  * @param scale The scale parameter (λ) of the distribution (must be greater than 0).
- * @return A random float number from the Weibull distribution.
+ * @return A random double number from the Weibull distribution.
  *         If `shape` or `scale` is less than or equal to 0, the function prints an error message
  *         and returns NaN.
  */
@@ -350,13 +359,13 @@ double random_weibull(double shape, double scale) {
 }
 
 /**
- * @brief Generates a random float number based on the von Mises distribution.
+ * @brief Generates a random double number based on the von Mises distribution.
  * which is a continuous probability distribution on the circle.
  *
  * @param mu The mean direction of the distribution (in radians).
  * @param kappa The concentration parameter (must be greater than 0). If `kappa` is less than or equal to 0, 
  *              the function prints an error message and returns NAN.
- * @return A random float number from the von Mises distribution.
+ * @return A random double number from the von Mises distribution.
  *         If `kappa` is less than or equal to 0, the function prints an error message and returns NAN.
  *         
  */
