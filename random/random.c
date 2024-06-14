@@ -10,11 +10,26 @@
 
 static unsigned int rand_state;
 
+/**
+ * @brief This function sets the seed for the random number generator, allowing
+ *      for reproducible sequences of random numbers.
+ *
+ * @param seed The seed value to initialize the random number generator.
+ */
 void random_seed(unsigned int seed) {
     rand_state = seed;
     srand(seed);
 }
 
+/**
+ * @brief This function generates a random integer in the range [a, b], inclusive.
+ * if `a` is greater than `b`, their values are swapped to ensure the correct range.
+ *
+ * @param a The lower bound of the range (inclusive).
+ * @param b The upper bound of the range (inclusive).
+ * 
+ * @return A random integer within the range [a, b].
+ */
 int random_randint(int a, int b) {
     if (a > b) {
         int temp = a;
@@ -25,8 +40,19 @@ int random_randint(int a, int b) {
     return a + rand() % (b - a + 1);
 }
 
+/**
+ * @brief This function generates a random integer in the range `[a, b)` with a specified step.
+ *
+ * @param a The start of the range (inclusive).
+ * @param b The end of the range (exclusive).
+ * @param step The step value (must be greater than 0).
+ * 
+ * @return A random integer within the range `[a, b)` with the given step.
+ *         Returns -1 if `a >= b` or `step <= 0`.
+ */
 int random_randrange(int a, int b, int step) {
     if (a >= b || step <= 0) {
+        fprintf(stderr, "Error: logic error a >= b and step <= 0");
         return -1; 
     }
 
@@ -34,10 +60,25 @@ int random_randrange(int a, int b, int step) {
     return a + (rand() % range) * step;
 }
 
+/**
+ * @brief This function generates a random double precision floating-point number
+ *      in the range [0, 1) using the standard library `rand()` function.
+ *
+ * @return A random double in the range [0, 1).
+ */
 double random_random() {
     return rand() / (double)RAND_MAX;
 }
 
+/**
+ * @brief This function generates a random double precision floating-point number
+ *      in the range [a, b). If `a` is greater than `b`, their values are swapped.
+ *
+ * @param a The lower bound of the range (inclusive).
+ * @param b The upper bound of the range (exclusive).
+ * 
+ * @return A random double in the range [a, b).
+ */
 double random_uniform(double a, double b) {
     if (a > b) {
         double temp = a;
