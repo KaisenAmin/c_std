@@ -253,10 +253,23 @@ double random_lognormal(double mean, double stddev) {
     return exp(normal_value);
 }
 
+/**
+ * @brief Generates a random double number based on the Gamma distribution.
+ *
+ * @param shape The shape parameter of the distribution (must be greater than 0).
+ * @param scale The scale parameter of the distribution (must be greater than 0).
+ * @return A random double number from the Gamma distribution.
+ *         If `shape` or `scale` is less than or equal to 0, the function prints an error message
+ *         and returns NaN.
+ *
+ * @note The function uses different methods depending on the value of `shape`:
+ *       - For `shape` < 1, Johnk's generator is used.
+ *       - For `shape` >= 1, Marsaglia and Tsang's method is used.
+ */
 double random_gamma(double shape, double scale) {
     if (shape <= 0.0 || scale <= 0.0) {
         fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_gamma.\n");
-        return -1.0;
+        return NAN;
     }
 
     if (shape < 1.0) {
