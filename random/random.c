@@ -315,10 +315,20 @@ double random_pareto(double shape, double scale) {
     return scale * pow((1.0 / expo), (1.0 / shape));
 }
 
+/**
+ * @brief Generates a random float number based on the Weibull distribution.
+ * which is a continuous probability distribution.
+ *
+ * @param shape The shape parameter (a) of the distribution (must be greater than 0).
+ * @param scale The scale parameter (λ) of the distribution (must be greater than 0).
+ * @return A random float number from the Weibull distribution.
+ *         If `shape` or `scale` is less than or equal to 0, the function prints an error message
+ *         and returns NaN.
+ */
 double random_weibull(double shape, double scale) {
     if (shape <= 0.0 || scale <= 0.0) {
         fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_weibull.\n");
-        return -1.0;
+        return NAN;
     }
 
     double expo;
@@ -329,10 +339,21 @@ double random_weibull(double shape, double scale) {
     return scale * pow(-log(expo), 1.0 / shape);
 }
 
+/**
+ * @brief Generates a random float number based on the von Mises distribution.
+ * which is a continuous probability distribution on the circle.
+ *
+ * @param mu The mean direction of the distribution (in radians).
+ * @param kappa The concentration parameter (must be greater than 0). If `kappa` is less than or equal to 0, 
+ *              the function prints an error message and returns NAN.
+ * @return A random float number from the von Mises distribution.
+ *         If `kappa` is less than or equal to 0, the function prints an error message and returns NAN.
+ *         
+ */
 double random_vonmises(double mu, double kappa) {
     if (kappa <= 0.0) {
         fprintf(stderr, "Error: kappa must be greater than 0 in random_vonmises.\n");
-        return -1.0;
+        return NAN;
     }
 
     const double tau = 2 * M_PI;
