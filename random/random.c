@@ -48,8 +48,15 @@ double random_uniform(double a, double b) {
     return a + (rand() / (double)RAND_MAX) * (b - a);
 }
 
+/**
+ * @brief Generates a random integer with a specified number of random bits.
+ *
+ * @param a The number of random bits to generate (must be > 0 and <= 32).
+ * @return A random integer with `a` random bits. Returns -1 for invalid input.
+ */
 int random_getrandbits(int a) {
     if (a <= 0 || a > (int)(sizeof(int) * 8)) {
+        fprintf(stderr, "Error: a is less than zero or bigger than 32.\n");
         return -1; // invalid input
     }
 
@@ -61,7 +68,25 @@ int random_getrandbits(int a) {
     return result;
 }
 
+/**
+ * @brief Shuffles an array of any type.
+
+ * @param array Pointer to the array to shuffle. if array is NULL function print error message and return nothing.
+ * @param n The number of elements in the array. if n == 0 function print error message and return nothing.
+ * @param size The size of each element in the array.
+ * 
+ * @note This function shuffles an array of any type using the Fisher-Yates algorithm.
+ */
 void random_shuffle(void *array, size_t n, size_t size) {
+    if (array == NULL) {
+        fprintf(stderr, "Error: array is null in random_choice.\n");
+        return;
+    }
+    else if (n == 0) {
+        fprintf(stderr, "Error: size of array is zero.\n");
+        return;
+    }
+
     char* arr = (char*)array;
     for (size_t i = 0; i < n - 1; i++) {
         size_t j = i + random_randint(0, n - i - 1);
@@ -79,6 +104,15 @@ void random_shuffle(void *array, size_t n, size_t size) {
     }
 }
 
+/**
+ * @brief Randomly selects an element from an array and returns a pointer to an element from the array.
+ *
+ * @param array Pointer to the array to select from. if array is NULL function return NULL.
+ * @param n The number of elements in the array. if n == 0 function return NULL.
+ * @param size The size of each element in the array.
+ * 
+ * @return Pointer to the randomly selected element. Returns NULL for invalid input.
+ */
 void* random_choice(void* array, size_t n, size_t size) {
     if (array == NULL) {
         fprintf(stderr, "Error: array is null in random_choice.\n");
