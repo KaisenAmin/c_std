@@ -351,6 +351,18 @@ double statistics_variance(double* data, size_t n, bool xbar_provided, double xb
     return sum_sq_diff / (n - 1);
 }
 
+/**
+ * @brief This function calculates the sample standard deviation of the given data points.
+ * Optionally, it can use a provided mean (xbar) instead of computing it from the data.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param xbar_provided Boolean indicating whether a mean (xbar) is provided.
+ * @param xbar The mean value to use if `xbar_provided` is `true`. If `xbar_provided` is `false`, this parameter is ignored.
+ * @return The sample standard deviation as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar) {
     if (!data || n < 2) {
         fprintf(stderr, "Invalid input. Data should have at least two elements.\n");
@@ -362,6 +374,18 @@ double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar)
     return sqrt(variance);
 }
 
+/**
+ * @brief This function calculates the population variance of the given data points.
+ * Optionally, it can use a provided mean (mu) instead of computing it from the data.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param mu_provided Boolean indicating whether a mean (mu) is provided.
+ * @param mu The mean value to use if `mu_provided` is `true`. If `mu_provided` is `false`, this parameter is ignored.
+ * @return The population variance as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is less than 1, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu) {
     if (!data || n < 1) {
         fprintf(stderr, "Invalid input. Data should have at least one element.\n");
