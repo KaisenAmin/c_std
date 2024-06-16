@@ -51,7 +51,7 @@ is a measure of the joint variability of two inputs.
 
 ## Examples
 
-Several examples are provided to demonstrate the usage of the Random library in various scenarios.
+Several examples are provided to demonstrate the usage of the Statistics library in various scenarios.
 
 ### Example 1 : calulate mean or average of data with `statistics_mean`
 

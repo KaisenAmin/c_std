@@ -20,3 +20,27 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 ## Documentation
 
 The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like generating random integers within specified ranges.
+
+
+### Function Descriptions
+
+- `char* sysinfo_product_version()`: This function Returns the product version of the operating system in string form. If the version could not be determined, this function returns "unknown".
+
+
+## Example 
+
+Several examples are provided to demonstrate the usage of the SysInfo library in various scenarios.
+
+## Example 1: get prodouct version of system with `sysinfo_product_version`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+
+int main() {
+    fmt_printf("Os Version : %s\n", sysinfo_product_version());
+
+    return 0;
+}
+```
