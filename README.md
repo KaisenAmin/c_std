@@ -46,6 +46,9 @@ The project is organized into several subdirectories, each representing a differ
 
 - `Statistics`: This Statistics library in C provides a set of functions for calculating mathematical statistics of numeric data. exactly like python statistics module .
 
+- `SysInfo`: This SysInfo library in C provides a set of functions for gathering lots of information about system also operating system. and work fine in (windows and linux) not Mac :))
+
+
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
 ## Compilation and Execution
