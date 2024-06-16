@@ -3,7 +3,7 @@
 
 
 int main() {
-    fmt_printf("OS Product Type: %s\n", sysinfo_product_type());
+    fmt_printf("Kernel Version: %s\n", sysinfo_kernel_version());
 
     return 0;
 }

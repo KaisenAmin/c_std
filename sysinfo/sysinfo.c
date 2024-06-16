@@ -34,6 +34,23 @@ static char* get_windows_product_type() {
     return product_type;
 }
 
+static char* get_windows_kernel_version() {
+    static char kernel_version[128];
+    OSVERSIONINFOEX osvi;
+
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+    if (GetVersionEx((OSVERSIONINFO*)&osvi)) {
+        sprintf(kernel_version, "%ld.%ld.%ld", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
+    } 
+    else {
+        strcpy(kernel_version, "unknown");
+    }
+
+    return kernel_version;
+}
+
 #elif __linux__
 
 #include <sys/utsname.h>
@@ -84,6 +101,20 @@ static char* get_linux_product_type() {
     return product_type;
 }
 
+static char* get_linux_kernel_version() {
+    static char kernel_version[128];
+    struct utsname buffer;
+
+    if (uname(&buffer) == 0) {
+        strncpy(kernel_version, buffer.release, sizeof(kernel_version));
+    } 
+    else {
+        strcpy(kernel_version, "unknown");
+    }
+
+    return kernel_version;
+}
+
 #else
 
 static char* get_unknown_version() {
@@ -94,6 +125,11 @@ static char* get_unknown_version() {
 static char* get_unknown_product_type() {
     static char product_type[] = "unknown";
     return product_type;
+}
+
+static char* get_unknown_kernel_version() {
+    static char kernel_version[] = "unknown";
+    return kernel_version;
 }
 
 #endif
@@ -116,5 +152,15 @@ char* sysinfo_product_type() {
     return get_linux_product_type();
 #else
     return get_unknown_product_type();
+#endif
+}
+
+char* sysinfo_kernel_version() {
+#ifdef _WIN32
+    return get_windows_kernel_version();
+#elif __linux__
+    return get_linux_kernel_version();
+#else
+    return get_unknown_kernel_version();
 #endif
 }

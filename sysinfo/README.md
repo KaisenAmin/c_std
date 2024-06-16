@@ -24,9 +24,10 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-- `char* sysinfo_product_version()`: This function Returns the product version of the operating system in string form. If the version could not be determined, this function returns "unknown".
+- `char* sysinfo_product_version()`: This function returns the product version of the operating system in string form. If the version could not be determined, this function returns "unknown".
 
 - `char* sysinfo_product_type()`: This function returns the product name of the operating system this application is running in.
+- `char* sysinfo_kernel_version()`: This function returns the release version of the operating system kernel.
 
 ## Example 
 
@@ -55,6 +56,20 @@ int main() {
 
 int main() {
     fmt_printf("OS Product Type: %s\n", sysinfo_product_type());
+
+    return 0;
+}
+```
+
+### Example 3 : get kernel version with `sysinfo_kernel_version`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+
+int main() {
+    fmt_printf("Kernel Version: %s\n", sysinfo_kernel_version());
 
     return 0;
 }
