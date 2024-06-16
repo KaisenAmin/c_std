@@ -627,6 +627,17 @@ void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count
     return modes;
 }
 
+/**
+ * @brief This function calculates the covariance between the given data points.
+ * Covariance is a measure of how much two random variables vary together.
+ *
+ * @param x Pointer to an array of doubles representing the first data set.
+ * @param y Pointer to an array of doubles representing the second data set.
+ * @param n The number of data points in each data set.
+ * @return The covariance as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `x` or `y` is NULL, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_covariance(double* x, double* y, size_t n) {
     if (x == NULL || y == NULL) {
         fprintf(stderr, "Error: x or y argument is null.\n");
@@ -648,6 +659,23 @@ double statistics_covariance(double* x, double* y, size_t n) {
     return sxy / (n - 1);
 }
 
+/**
+ * @brief This function calculates the correlation coefficient between the given data points. It supports
+ * both Pearson's linear correlation and Spearman's ranked correlation.
+ *
+ * @param x Pointer to an array of doubles representing the first data set.
+ * @param y Pointer to an array of doubles representing the second data set.
+ * @param n The number of data points in each data set.
+ * @param method The method to use for calculating the correlation. Supported methods are
+ *        `CORRELATION_LINEAR` for Pearson's correlation and `CORRELATION_RANKED` for Spearman's correlation.
+ * @return The correlation coefficient as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `x` or `y` is NULL, or if `n` is less than 2, or if an unsupported method is specified,
+ *       the function prints an error message to stderr and returns `NAN`.
+ * @note For `CORRELATION_LINEAR`, the function dynamically allocates memory for copies of the data points.
+ *       Ensure that there is enough available memory to avoid allocation failure.
+ * @note If the variance of either data set is zero, the function returns `NAN`.
+ */
 double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod method) {
     if (x == NULL || y == NULL) {
         fprintf(stderr, "Error: x or y argument is null.\n");
@@ -699,6 +727,24 @@ double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod 
     return sxy / sqrt(sxx * syy);
 }
 
+/**
+ * @brief This function performs linear regression on the given data points. If `proportional` is `true`,
+ * the regression line is forced through the origin, and only the slope is calculated. Otherwise,
+ * both slope and intercept are calculated.
+ *
+ * @param x Pointer to an array of doubles representing the x-coordinates of the data points.
+ * @param y Pointer to an array of doubles representing the y-coordinates of the data points.
+ * @param n The number of data points.
+ * @param proportional Boolean indicating whether the regression line should be forced through the origin.
+ * @return A LinearRegression structure containing the slope and intercept of the regression line.
+ *
+ * @note If `x` or `y` is NULL, or if `n` is less than 2, the function returns a LinearRegression
+ *       structure with both slope and intercept set to 0.0 and prints an error message to stderr.
+ * @note The function dynamically allocates memory for the centered data points if `proportional` is false.
+ *       Ensure that there is enough available memory to avoid allocation failure.
+ * @note If the variance of the x-coordinates is zero, the function returns a LinearRegression 
+ *       structure with both slope and intercept set to 0.0 and prints an error message to stderr.
+ */
 LinearRegression statistics_linear_regression(double* x, double* y, size_t n, bool proportional) {
     LinearRegression result = {0.0, 0.0};
 
