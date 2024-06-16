@@ -3,7 +3,7 @@
 
 
 int main() {
-    fmt_printf("Kernel Version: %s\n", sysinfo_kernel_version());
+    fmt_printf("Boot Unique Id : %s\n", sysinfo_boot_unique_id());
 
     return 0;
 }

@@ -51,6 +51,44 @@ static char* get_windows_kernel_version() {
     return kernel_version;
 }
 
+static char* get_windows_kernel_type() {
+    static char kernel_type[] = "Windows NT";
+    return kernel_type;
+}
+
+static char* get_windows_boot_unique_id() {
+    static char boot_id[128] = {0};
+    ULONGLONG uptime = GetTickCount64();
+    sprintf(boot_id, "%llu", uptime);
+    return boot_id;
+}
+
+static char* get_windows_cpu_architecture() {
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+
+    static char architecture[128];
+
+    switch (sysInfo.wProcessorArchitecture) {
+        case PROCESSOR_ARCHITECTURE_AMD64:
+            strcpy(architecture, "x86_64");
+            break;
+        case PROCESSOR_ARCHITECTURE_ARM:
+            strcpy(architecture, "ARM");
+            break;
+        case PROCESSOR_ARCHITECTURE_IA64:
+            strcpy(architecture, "IA64");
+            break;
+        case PROCESSOR_ARCHITECTURE_INTEL:
+            strcpy(architecture, "x86");
+            break;
+        default:
+            strcpy(architecture, "unknown");
+            break;
+    }
+    return architecture;
+}
+
 #elif __linux__
 
 #include <sys/utsname.h>
@@ -115,6 +153,54 @@ static char* get_linux_kernel_version() {
     return kernel_version;
 }
 
+static char* get_linux_kernel_type() {
+    static char kernel_type[128];
+    struct utsname buffer;
+
+    if (uname(&buffer) == 0) {
+        strncpy(kernel_type, buffer.sysname, sizeof(kernel_type));
+    } 
+    else {
+        strcpy(kernel_type, "unknown");
+    }
+
+    return kernel_type;
+}
+
+static char* get_linux_boot_unique_id() {
+    static char boot_id[128];
+    FILE* fp = fopen("/proc/sys/kernel/random/boot_id", "r");
+
+    if (fp == NULL) {
+        strcpy(boot_id, "unknown");
+        return boot_id;
+    }
+    if (fgets(boot_id, sizeof(boot_id) - 1, fp) != NULL) {
+        boot_id[strcspn(boot_id, "\n")] = 0;  // remove newline
+    } 
+    else {
+        strcpy(boot_id, "unknown");
+    }
+
+    fclose(fp);
+    return boot_id;
+}
+
+static char* get_linux_cpu_architecture() {
+    static char architecture[128];
+    struct utsname buffer;
+
+    if (uname(&buffer) == 0) {
+        strncpy(architecture, buffer.machine, sizeof(architecture));
+    } 
+    else {
+        strcpy(architecture, "unknown");
+    }
+
+    return architecture;
+}
+
+
 #else
 
 static char* get_unknown_version() {
@@ -130,6 +216,21 @@ static char* get_unknown_product_type() {
 static char* get_unknown_kernel_version() {
     static char kernel_version[] = "unknown";
     return kernel_version;
+}
+
+static char* get_unknown_kernel_type() {
+    static char kernel_type[] = "unknown";
+    return kernel_type;
+}
+
+static char* get_unknown_boot_unique_id() {
+    static char boot_id[] = "";
+    return boot_id;
+}
+
+static char* get_unknown_cpu_architecture() {
+    static char architecture[] = "unknown";
+    return architecture;
 }
 
 #endif
@@ -162,5 +263,35 @@ char* sysinfo_kernel_version() {
     return get_linux_kernel_version();
 #else
     return get_unknown_kernel_version();
+#endif
+}
+
+char* sysinfo_kernel_type() {
+#ifdef _WIN32
+    return get_windows_kernel_type();
+#elif __linux__
+    return get_linux_kernel_type();
+#else
+    return get_unknown_kernel_type();
+#endif
+}
+
+char* sysinfo_boot_unique_id() {
+#ifdef _WIN32
+    return get_windows_boot_unique_id();
+#elif __linux__
+    return get_linux_boot_unique_id();
+#else
+    return get_unknown_boot_unique_id();
+#endif
+}
+
+char* sysinfo_cpu_architecture() {
+#ifdef _WIN32
+    return get_windows_cpu_architecture();
+#elif __linux__
+    return get_linux_cpu_architecture();
+#else
+    return get_unknown_cpu_architecture();
 #endif
 }
