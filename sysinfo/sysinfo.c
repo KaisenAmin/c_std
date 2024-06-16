@@ -9,8 +9,7 @@
 
 #include <windows.h>
 
-
-char* get_windows_version() {
+static char* get_windows_version() {
     static char version[128];
     DWORD dwVersion = 0;
     DWORD dwMajorVersion = 0;
@@ -30,12 +29,17 @@ char* get_windows_version() {
     return version;
 }
 
+static char* get_windows_product_type() {
+    static char product_type[] = "Windows";
+    return product_type;
+}
+
 #elif __linux__
 
 #include <sys/utsname.h>
 
 
-char* get_linux_version() {
+static char* get_linux_version() {
     static char version[128];
     FILE* fp = popen("lsb_release -r | awk '{print $2}'", "r");
 
@@ -54,11 +58,42 @@ char* get_linux_version() {
     return version;
 }
 
+static char* get_linux_product_type() {
+    static char product_type[128];
+    FILE* fp = popen("lsb_release -i | awk -F: '{print $2}'", "r");
+
+    if (fp == NULL) {
+        strcpy(product_type, "unknown");
+        return product_type;
+    }
+    if (fgets(product_type, sizeof(product_type) - 1, fp) != NULL) {
+        product_type[strcspn(product_type, "\n")] = 0;  // remove newline
+
+        // trim whitespace
+        char* start = product_type;
+        while (*start == ' ' || *start == '\t') {
+            start++;
+        }
+        memmove(product_type, start, strlen(start) + 1);
+    } 
+    else {
+        strcpy(product_type, "unknown");
+    }
+
+    pclose(fp);
+    return product_type;
+}
+
 #else
 
-char* get_unknown_version() {
+static char* get_unknown_version() {
     static char version[] = "unknown";
     return version;
+}
+
+static char* get_unknown_product_type() {
+    static char product_type[] = "unknown";
+    return product_type;
 }
 
 #endif
@@ -71,5 +106,15 @@ char* sysinfo_product_version() {
     return get_linux_version();
 #else
     return get_unknown_version();
+#endif
+}
+
+char* sysinfo_product_type() {
+#ifdef _WIN32
+    return get_windows_product_type();
+#elif __linux__
+    return get_linux_product_type();
+#else
+    return get_unknown_product_type();
 #endif
 }
