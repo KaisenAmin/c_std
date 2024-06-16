@@ -379,6 +379,18 @@ double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu)
     return sum_of_diff / n;
 }
 
+/**
+ * @brief This function calculates the population standard deviation of the given data points.
+ * Optionally, it can use a provided mean (mu) instead of computing it from the data.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param mu_provided Boolean indicating whether a mean (mu) is provided.
+ * @param mu The mean value to use if `mu_provided` is `true`. If `mu_provided` is `false`, this parameter is ignored.
+ * @return The population standard deviation as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is less than 1, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu) {
     if (!data || n < 1) {
         fprintf(stderr, "Invalid input. Data should have at least one element.\n");
@@ -389,6 +401,20 @@ double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu) {
     return sqrt(variance);
 }
 
+/**
+ * @brief This function calculates the arithmetic mean (average) of the given data points.
+ * Optionally, it can use weights to compute the weighted arithmetic mean.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param weights Pointer to an array of doubles representing the weights. If `NULL`, 
+ *          the unweighted arithmetic mean is computed.
+ * @return The arithmetic mean as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If weights are provided, the sum of weights must be non-zero. 
+ *          If the sum of weights is zero, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_fmean(double* data, size_t n, double* weights) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
@@ -426,9 +452,7 @@ double statistics_fmean(double* data, size_t n, double* weights) {
 }
 
 /**
- * @brief Computes the geometric mean of a given data set.
- *
- * This function calculates the geometric mean of the given data points.
+ * @brief This function calculates the geometric mean of the given data points.
  * The geometric mean is the nth root of the product of n numbers.
  *
  * @param data Pointer to an array of doubles representing the data set.
