@@ -425,6 +425,21 @@ double statistics_fmean(double* data, size_t n, double* weights) {
     }
 }
 
+/**
+ * @brief Computes the geometric mean of a given data set.
+ *
+ * This function calculates the geometric mean of the given data points.
+ * The geometric mean is the nth root of the product of n numbers.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @return The geometric mean as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note The function does not support negative values in `data`. If any negative values are found, it prints an error message to stderr and returns `NAN`.
+ * @note If any element in `data` is zero, the geometric mean is zero.
+ * @note If the computed mean of the logarithms is `-INFINITY`, the function returns zero.
+ */
 double statistics_geometric_mean(double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
