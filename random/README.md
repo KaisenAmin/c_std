@@ -13,7 +13,7 @@ This Random library in C provides a set of functions for generating random numbe
 - **Random Integer Generation:** Functions to generate random integers within specified ranges.
 - **Random Floating-Point Generation:** Functions to generate random floating-point numbers between 0 and 1, or within specified ranges.
 - **Array Shuffling:** A generic function to shuffle elements of an array, supporting different data types.
-
+- **Documentation:** This library is fully and comprehensively documented using Doxygen format.
 
 ## Installation and Compilation
 
@@ -111,12 +111,12 @@ int main() {
 
     random = random_randrange(10, 1, 2);
     if (random == -1) {
-        printf("Invalid range input.\n");
+        fmt_printf("Invalid range input.\n");
     }
 
     random = random_randrange(1, 10, 0);
     if (random == -1) {
-        printf("Invalid step input.\n");
+        fmt_printf("Invalid step input.\n");
     }
 
     return 0;
@@ -154,7 +154,7 @@ int main() {
 
     for (size_t i = 0; i < 5; i++) {
         double random = random_uniform(1.0, 10.256);
-        printf("%lf\n", random);
+        fmt_printf("%lf\n", random);
     }
     
     return 0;

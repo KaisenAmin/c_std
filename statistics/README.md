@@ -37,6 +37,17 @@ The documentation includes detailed descriptions of all the functions provided b
 
 - `double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu)`: this function calculates the standard deviation from an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
 
+- `double statistics_fmean(double* data, size_t n, double* weights)`: this function calculate mean value with weight.
+- `double statistics_geometric_mean(double* data, size_t n)`: this function calculate geometric_mean of data.
+- `double statistics_harmonic_mean(double *data, size_t n, double* weights)`: this function calculate harmonic mean of data.
+- `void* statistics_mode(void* data, size_t n, size_t size)`: this function return the most commong data in array of any type.
+- `void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count)`: this function Return a list of the most frequently occurring values. 
+- `double statistics_covariance(double* x, double* y, size_t n)`: Return the sample covariance of two inputs *x* and *y*. Covariance
+is a measure of the joint variability of two inputs.
+
+- `double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod method)`: this function computes the correlation coefficient between two array x and y of length n. It calculates either the Pearson correlation if the method is CORRELATION_LINEAR or the Spearman rank correlation if the method is CORRELATION_RANKED, based on the specified CorrelationMethod enum.
+
+- `LinearRegression statistics_linear_regression(double* x, double* y, size_t n, bool proportional)`: this function return the slope and intercept of simple linear regression parameters estimated using ordinary least squares.
 
 ## Examples
 
@@ -354,6 +365,270 @@ int main() {
 }
 ```
 
+### Example 9 : genereate mena value with weight `statistics_fmean`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
+
+int main() {
+    double data[] = {3.5, 4.0, 5.25};
+    double weights[] = {0.2, 0.3, 0.5};
+    size_t n = sizeof(data) / sizeof(data[0]);
+
+    double fmean_result = statistics_fmean(data, n, weights);
+    if (!isnan(fmean_result)) {
+        fmt_printf("Weighted fmean is %lf\n", fmean_result);
+    }
+    else {
+        fmt_printf("result value is NAN");
+    }
+
+    double result_without_weights = statistics_fmean(data, n, NULL);
+
+    if (!isnan(result_without_weights)) {
+        fmt_printf("Arithmetic mean without weights: %f\n", result_without_weights);
+    }
+    else {
+        fmt_printf("result_without_weights has error.\n");q
+    }
+    
+    return 0;
+}
+```
+
+### Example 10 : calculate the geometric_mean of data with `statistics_geometric_mean`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
+
+int main() {
+    double data[] = {54, 24, 36};
+    size_t n = sizeof(data) / sizeof(data[0]);
+
+    double result = statistics_geometric_mean(data, n);
+
+    if (!isnan(NULL)) {
+        fmt_printf("Geometric mean: %f\n", result);
+    }
+    
+    return 0;
+}
+```
+
+### Example 11 : calculation harmonic mean with `statistics_harmonic_mean`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
+
+int main() {
+    double data1[] = {40, 60};
+    size_t n1 = sizeof(data1) / sizeof(data1[0]);
+
+    double result_without_weights = statistics_harmonic_mean(data1, n1, NULL);
+    if (!isnan(result_without_weights)) {
+        fmt_printf("Harmonic mean without weights: %lf\n", result_without_weights);
+    }
+
+    double data2[] = {40, 60};
+    double weights[] = {5, 30};
+    size_t n2 = sizeof(data2) / sizeof(data2[0]);
+
+    double result_with_weights = statistics_harmonic_mean(data2, n2, weights);
+    if (!isnan(result_with_weights)) {
+        fmt_printf("Harmonic mean with weights: %lf\n", result_with_weights);
+    }
+
+    return 0;
+}
+```
+
+### Example 12 : get most common data in array `statistics_mode`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+#include <stdlib.h>
+
+
+int main() {
+    int data1[] = {1, 1, 2, 3, 3, 3, 3, 4};
+    size_t n1 = sizeof(data1) / sizeof(data1[0]);
+
+    int* result_mode_int = (int*)statistics_mode(data1, n1, sizeof(int));
+    if (result_mode_int != NULL) {
+        fmt_printf("Mode (int): %d\n", *result_mode_int);
+        free(result_mode_int);
+    } 
+    else {
+        fmt_printf("Mode (int): Error computing mode\n");
+    }
+
+    const char* data2[] = {"red", "blue", "blue", "red", "green", "red", "red"};
+    size_t n2 = sizeof(data2) / sizeof(data2[0]);
+
+    char** result_mode_str = (char**)statistics_mode(data2, n2, sizeof(const char*));
+    if (result_mode_str != NULL) {
+        fmt_printf("Mode (str): %s\n", *result_mode_str);
+        free(result_mode_str);
+    } 
+    else {
+        fmt_printf("Mode (str): Error computing mode\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 13 : list of most frequently occurring values `statistics_multimode`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+#include <stdlib.h>
+
+
+int main() {
+    int data1[] = {1, 1, 2, 3, 3, 3, 3, 4, 4, 4, 4};
+    size_t n1 = sizeof(data1) / sizeof(data1[0]);
+    size_t mode_count1;
+
+    int* result_mode_int = (int*)statistics_multimode(data1, n1, sizeof(int), &mode_count1);
+    if (result_mode_int != NULL) {
+        fmt_printf("Multimode (int):");
+        for (size_t i = 0; i < mode_count1; i++) {
+            fmt_printf(" %d", result_mode_int[i]);
+        }
+        fmt_printf("\n");
+
+        free(result_mode_int);
+    } 
+    else {
+        fmt_printf("Multimode (int): Error computing mode\n");
+    }
+
+    const char* data2[] = {"red", "blue", "blue", "red", "green", "red", "red", "blue"};
+    size_t n2 = sizeof(data2) / sizeof(data2[0]);
+    size_t mode_count2;
+
+    const char** result_mode_str = (const char**)statistics_multimode(data2, n2, sizeof(const char*), &mode_count2);
+    if (result_mode_str != NULL) {
+        fmt_printf("Multimode (str):");
+        for (size_t i = 0; i < mode_count2; i++) {
+            fmt_printf(" %s", result_mode_str[i]);
+        }
+        fmt_printf("\n");
+
+        free(result_mode_str);
+    } 
+    else {
+        fmt_printf("Multimode (str): Error computing mode\n");
+    }
+    return 0;
+}
+```
+
+### Example 14 : calculate covariance with `statistics_covariance`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
+
+int main() {
+    double x[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    double y[] = {1, 2, 3, 1, 2, 3, 1, 2, 3};
+    size_t n = sizeof(x) / sizeof(x[0]);
+
+    double result_cov_xy = statistics_covariance(x, y, n);
+    if (!isnan(result_cov_xy)) {
+        fmt_printf("Covariance (x, y): %f\n", result_cov_xy);
+    }
+
+    double z[] = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+    double result_cov_xz = statistics_covariance(x, z, n);
+
+    if (!isnan(result_cov_xz)) {
+        fmt_printf("Covariance (x, z): %f\n", result_cov_xz);
+    }
+
+    double result_cov_zx = statistics_covariance(z, x, n);
+    if (!isnan(result_cov_zx)) {
+        fmt_printf("Covariance (z, x): %f\n", result_cov_zx);
+    }
+    
+    return 0;
+}
+```
+
+### Example 15 : calculate correlation of two x, y `statistics_correlation`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
+
+int main() {
+    double x[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    double y[] = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+    size_t n = sizeof(x) / sizeof(x[0]);
+
+    double result_pearson = statistics_correlation(x, y, n, CORRELATION_LINEAR);
+    if (!isnan(result_pearson)) {
+        fmt_printf("Pearson correlation (x, y): %f\n", result_pearson);
+    } 
+    else {
+        fmt_printf("Error calculating Pearson correlation (x, y).\n");
+    }
+
+    double result_spearman = statistics_correlation(x, y, n, CORRELATION_RANKED);
+    if (!isnan(result_spearman)) {
+        fmt_printf("Spearman correlation (x, y): %f\n", result_spearman);
+    } 
+    else {
+        fmt_printf("Error calculating Spearman correlation (x, y).\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 16 : Calculate slope and intercept of linear regression with `statistics_linear_regression`
+
+```c
+#include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
+
+int main() {
+    double x[] = {1, 2, 3, 4, 5};
+    double y[] = {3, 6, 9, 12, 15};
+    size_t n = sizeof(x) / sizeof(x[0]);
+    LinearRegression result = statistics_linear_regression(x, y, n, false);
+
+    fmt_printf("Linear regression (slope, intercept): (%f, %f)\n", result.slope, result.intercept);
+
+    double y_proportional[] = {3, 6, 9, 12, 15};
+    result = statistics_linear_regression(x, y_proportional, n, true);
+
+    fmt_printf("Proportional linear regression (slope, intercept): (%f, %f)\n", result.slope, result.intercept);
+
+    return 0;
+}
+```
 ## Conclusion
 
 The Statistics library in C provides robust functions for calculating various statistical measures such as mean, median, low median, and high median and etc ... These functions are optimized for performance and ease of use, making it an excellent choice for developers needing statistical analysis in their C projects. With clear documentation and examples, the library is straightforward to integrate and apply to different data sets.
