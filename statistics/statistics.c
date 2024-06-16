@@ -43,9 +43,11 @@ static size_t bisect_right(double* data, size_t n, double x) {
 // helper function for compute some of element 
 static double statistics_sum(double* data, size_t n) {
     double total = 0.0;
+
     for (size_t i = 0; i < n; i++) {
         total += data[i];
     }
+
     return total;
 }
 
@@ -56,6 +58,7 @@ static bool fail_neg(double* data, size_t n) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -86,12 +89,19 @@ static int statistics_compare_doubles(const void* a, const void* b) {
 
     return 0;
 }
+
 // this helper function is a comparator function used for qsort to sort data for statistics_rank_data
 static int statistics_compare_index_struct(const void* a, const void* b) {
     double arg1 = ((__StatisticsIndexedValue*)a)->value;
     double arg2 = ((__StatisticsIndexedValue*)b)->value;
-    if (arg1 < arg2) return -1;
-    if (arg1 > arg2) return 1;
+
+    if (arg1 < arg2) {
+        return -1;
+    }
+    if (arg1 > arg2) { 
+        return 1;
+    }
+
     return 0;
 }
 
@@ -114,10 +124,12 @@ static void statistics_rank_data(double* data, size_t n, double* ranked_data) {
     while (i < n) {
         size_t start = i;
         double sum_ranks = 0.0;
+
         while (i < n && indexed_data[i].value == indexed_data[start].value) {
             sum_ranks += i + 1;
             i++;
         }
+
         double avg_rank = sum_ranks / (i - start);
         for (size_t j = start; j < i; j++) {
             ranked_data[indexed_data[j].index] = avg_rank;
@@ -129,17 +141,22 @@ static void statistics_rank_data(double* data, size_t n, double* ranked_data) {
 
 static double statistics_sumprod(double* x, double* y, size_t n) {
     double sum = 0.0;
+
     for (size_t i = 0; i < n; i++) {
         sum += x[i] * y[i];
     }
+
     return sum;
 }
 
+// helper functin for add square of each element in data 
 static double statistics_sum_of_squares(double* data, size_t n) {
     double sum = 0.0;
+
     for (size_t i = 0; i < n; i++) {
         sum += data[i] * data[i];
     }
+
     return sum;
 }
 
@@ -149,8 +166,10 @@ static double statistics_spearman_correlation(double* x, double* y, size_t n) {
     double* y_ranked = malloc(n * sizeof(double));
     if (x_ranked == NULL || y_ranked == NULL) {
         fprintf(stderr, "Error: memory allocation failed.\n");
+
         free(x_ranked);
         free(y_ranked);
+        
         return NAN;
     }
 
@@ -172,6 +191,15 @@ static double statistics_spearman_correlation(double* x, double* y, size_t n) {
     return spearman_rho;
 }
 
+/**
+ * @brief This function calculates the arithmetic mean (average) of the given data points.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @return The arithmetic mean as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_mean(double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
@@ -190,6 +218,16 @@ double statistics_mean(double* data, size_t n) {
     return sum / n;
 }
 
+/**
+ * @brief This function calculates the median of the given data points.
+ * The median is the middle value when the data is sorted in ascending order.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @return The median as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_median(double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
@@ -225,9 +263,7 @@ double statistics_median(double* data, size_t n) {
 }
 
 /**
- * @brief Computes the low median of a given data set.
- *
- * This function calculates the low median of the given data points.
+ * @brief  This function calculates the low median of the given data points.
  * The low median is the smaller of the two middle values in an even-sized data set,
  * or the middle value in an odd-sized data set.
  *
@@ -236,7 +272,6 @@ double statistics_median(double* data, size_t n) {
  * @return The low median as a double. If an error occurs, the function returns `NAN`.
  *
  * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
- * @note The function dynamically allocates memory for a sorted copy of the data. Ensure that there is enough available memory to avoid allocation failure.
  */
 double statistics_median_low(double* data, size_t n) {
     if (data == NULL) {
