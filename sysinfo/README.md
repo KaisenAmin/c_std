@@ -33,10 +33,12 @@ The documentation includes detailed descriptions of all the functions provided b
 - `char* sysinfo_boot_unique_id()`: This function returns a unique ID for this machine's boot. in Linux, the boot unique ID is obtained from the file `/proc/sys/kernel/random/boot_id`. in Windows, the unique boot ID is derived from the system uptime in milliseconds since the last boot using `GetTickCount64()`.
 
 - `char* sysinfo_cpu_architecture()`: This function returns the architecture of the Cpu that the application is running on.
+- `char* sysinfo_machine_host_name()`: This function returns fully qualified name for a machine.  also in Linux version this function only work if the machine has a FQDN to give - if not, the result of the getaddrinfo() ends up being the same as the unqualified hostname.
+
+
 ## Example 
 
 Several examples are provided to demonstrate the usage of the SysInfo library in various scenarios.
-
 ## Example 1: get prodouct version of system with `sysinfo_product_version`
 
 ```c
@@ -116,6 +118,20 @@ int main() {
 
 int main() {
     fmt_printf("Cpu Architecture : %s\n", sysinfo_cpu_architecture());
+
+    return 0;
+}
+```
+
+## Example 7 : get machine host name with `sysinfo_machine_host_name`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+
+int main() {
+    fmt_printf("Machine Host Name is : %s\n", sysinfo_machine_host_name());
 
     return 0;
 }

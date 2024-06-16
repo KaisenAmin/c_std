@@ -91,10 +91,28 @@ static char* get_windows_cpu_architecture() {
     return architecture;
 }
 
+static char* get_windows_machine_host_name() {
+    static char hostname[150] = {0};
+    TCHAR infoBuf[150];
+    DWORD bufCharCount = 150;
+
+    if (GetComputerName(infoBuf, &bufCharCount)) {
+        for (int i = 0; i < (int)bufCharCount; i++) {
+            hostname[i] = infoBuf[i];
+        }
+    } else {
+        strcpy(hostname, "Unknown_Host_Name");
+    }
+    return hostname;
+}
+
 #elif __linux__
 
 #include <sys/utsname.h>
-
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
 
 static char* get_linux_version() {
     static char version[128];
@@ -202,6 +220,40 @@ static char* get_linux_cpu_architecture() {
     return architecture;
 }
 
+static char* get_linux_machine_host_name() {
+    static char hostname[1024];
+    hostname[1023] = '\0';
+
+    if (gethostname(hostname, sizeof(hostname) - 1) != 0) {
+        strcpy(hostname, "Unknown_Host_Name");
+        return hostname;
+    }
+
+    struct addrinfo hints, *info, *p;
+    int gai_result;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // IPV4 or IPV6
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_CANONNAME;
+
+    if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(gai_result));
+        strcpy(hostname, "Unknown_Host_Name");
+        return hostname;
+    }
+
+    for (p = info; p != NULL; p = p->ai_next) {
+        if (p->ai_canonname) {
+            strncpy(hostname, p->ai_canonname, sizeof(hostname) - 1);
+            hostname[sizeof(hostname) - 1] = '\0';
+            break;
+        }
+    }
+
+    freeaddrinfo(info);
+    return hostname;
+}
 
 #else
 
@@ -233,6 +285,11 @@ static char* get_unknown_boot_unique_id() {
 static char* get_unknown_cpu_architecture() {
     static char architecture[] = "unknown";
     return architecture;
+}
+
+static char* get_unknown_machine_host_name() {
+    static char hostname[] = "Unknown_Host_Name";
+    return hostname;
 }
 
 #endif
@@ -295,5 +352,15 @@ char* sysinfo_cpu_architecture() {
     return get_linux_cpu_architecture();
 #else
     return get_unknown_cpu_architecture();
+#endif
+}
+
+char* sysinfo_machine_host_name() {
+#ifdef _WIN32
+    return get_windows_machine_host_name();
+#elif __linux__
+    return get_linux_machine_host_name();
+#else
+    return get_unknown_machine_host_name();
 #endif
 }

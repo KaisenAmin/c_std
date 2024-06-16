@@ -3,7 +3,7 @@
 
 
 int main() {
-    fmt_printf("Boot Unique Id : %s\n", sysinfo_boot_unique_id());
+    fmt_printf("Machine Host Name is : %s\n", sysinfo_machine_host_name());
 
     return 0;
 }
