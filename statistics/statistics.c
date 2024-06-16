@@ -292,7 +292,19 @@ double statistics_median_high(double* data, size_t n) {
     return median_high;
 }
 
-// based on python implementation
+/**
+ * @brief This function calculates the grouped median of the given data points using a specified interval.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param interval The interval to use for grouping.
+ * @return The grouped median as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, or if `interval` is not positive, 
+ *          the function prints an error message to stderr and returns `NAN`.
+ * @note The function dynamically allocates memory for a sorted copy of the data. 
+ *          Ensure that there is enough available memory to avoid allocation failure.
+ */
 double statistics_median_grouped(double* data, size_t n, double interval) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
@@ -334,6 +346,18 @@ double statistics_median_grouped(double* data, size_t n, double interval) {
     return median_grouped;
 }
 
+/**
+ * @brief This function calculates the sample variance of the given data points.
+ * Optionally, it can use a provided mean (xbar) instead of computing it from the da ta.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param xbar_provided Boolean indicating whether a mean (xbar) is provided.
+ * @param xbar The mean value to use if `xbar_provided` is `true`. If `xbar_provided` is `false`, this parameter is ignored.
+ * @return The sample variance as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_variance(double* data, size_t n, bool xbar_provided, double xbar) {
     if (!data || n < 2) {
         fprintf(stderr, "Invalid input. Data should have at least two elements.\n");
