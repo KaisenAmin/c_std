@@ -7,7 +7,7 @@
 
 ## Overview
 
-This Statistics library in C provides a set of functions for calculating mathematical statistics of numeric data.
+This Statistics library in C provides a set of functions for calculating mathematical statistics of numeric data. this lib is completly cross platform.
 
 ## Installation and Compilation
 

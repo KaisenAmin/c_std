@@ -7,7 +7,7 @@
 
 ## Overview
 
-This SysInfo library in C provides a set of functions for gathering lots of information about system also operating system.
+This SysInfo library in C provides a set of functions for gathering lots of information about system also operating system. and work fine in (windows and linux) not Mac :))
 
 ## Installation and Compilation
 

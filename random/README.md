@@ -6,7 +6,7 @@
 
 ## Overview
 
-This Random library in C provides a set of functions for generating random numbers within specified ranges. It is designed to be easy to integrate into C projects, offering essential functionality for random number generation.
+This Random library in C provides a set of functions for generating random numbers within specified ranges. It is designed to be easy to integrate into C projects, offering essential functionality for random number generation. this library is complete cross platform.
 
 ## Key Features
 
