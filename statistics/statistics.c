@@ -509,6 +509,20 @@ double statistics_harmonic_mean(double* data, size_t n, double* weights) {
     return sum_weights / total;
 }
 
+/**
+ * @brief This function computes the mode of the given data set. If there are multiple elements with the same highest
+ * frequency, one of them is returned.
+ *
+ * @param data Pointer to the data set.
+ * @param n The number of elements in the data set.
+ * @param size The size of each element in the data set.
+ * @return A pointer to the mode element. If an error occurs, the function returns `NULL`.
+ *
+ * @note The returned mode element should be freed by the caller to avoid memory leaks.
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr
+ *       and returns `NULL`.
+ * @note If memory allocation fails, the function prints an error message to stderr and returns `NULL`.
+ */
 void* statistics_mode(void* data, size_t n, size_t size) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
