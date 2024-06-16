@@ -557,6 +557,21 @@ void* statistics_mode(void* data, size_t n, size_t size) {
     return mode_element;
 }
 
+/**
+ * @brief This function computes the modes of the given data set If there are multiple elements with the highest frequency,
+ * all of them are returned.
+ *
+ * @param data Pointer to the data set.
+ * @param n The number of elements in the data set.
+ * @param size The size of each element in the data set.
+ * @param mode_count Pointer to a variable where the function will store the number of modes found.
+ * @return A pointer to the array of modes. If an error occurs, the function returns `NULL`.
+ *
+ * @note The returned array of modes should be freed by the caller to avoid memory leaks.
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr
+ *       and returns `NULL`.
+ * @note If memory allocation fails, the function prints an error message to stderr and returns `NULL`.
+ */
 void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
