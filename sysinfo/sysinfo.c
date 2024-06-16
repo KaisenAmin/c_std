@@ -59,7 +59,9 @@ static char* get_windows_kernel_type() {
 static char* get_windows_boot_unique_id() {
     static char boot_id[128] = {0};
     ULONGLONG uptime = GetTickCount64();
+
     sprintf(boot_id, "%llu", uptime);
+
     return boot_id;
 }
 
@@ -122,7 +124,7 @@ static char* get_linux_product_type() {
         return product_type;
     }
     if (fgets(product_type, sizeof(product_type) - 1, fp) != NULL) {
-        product_type[strcspn(product_type, "\n")] = 0;  // remove newline
+        product_type[strcspn(product_type, "\n")] = 0; 
 
         // trim whitespace
         char* start = product_type;
@@ -176,7 +178,7 @@ static char* get_linux_boot_unique_id() {
         return boot_id;
     }
     if (fgets(boot_id, sizeof(boot_id) - 1, fp) != NULL) {
-        boot_id[strcspn(boot_id, "\n")] = 0;  // remove newline
+        boot_id[strcspn(boot_id, "\n")] = 0;  
     } 
     else {
         strcpy(boot_id, "unknown");
