@@ -7,11 +7,15 @@
 #include <string.h>
 
 int main() {
-    char filename[100] = "hello.txt";
+    printf("Hello World\n");
 
-    if (remove(filename) != 0) {
-        fprintf(stderr, "Error : %s", strerror(errno));
-    }
+    goto first;
+
+    printf("adfa");
+
+    first:
+    printf("This is good\n");
+
 
     return 0;
 }

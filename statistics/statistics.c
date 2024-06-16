@@ -224,6 +224,20 @@ double statistics_median(double* data, size_t n) {
     return median;
 }
 
+/**
+ * @brief Computes the low median of a given data set.
+ *
+ * This function calculates the low median of the given data points.
+ * The low median is the smaller of the two middle values in an even-sized data set,
+ * or the middle value in an odd-sized data set.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @return The low median as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note The function dynamically allocates memory for a sorted copy of the data. Ensure that there is enough available memory to avoid allocation failure.
+ */
 double statistics_median_low(double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
@@ -258,6 +272,17 @@ double statistics_median_low(double* data, size_t n) {
     return median_low;
 }
 
+/**
+ * @brief This function calculates the high median of the given data points.
+ * The high median is the larger of the two middle values in an even-sized data set,
+ * or the middle value in an odd-sized data set.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @return The high median as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_median_high(double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
@@ -302,8 +327,6 @@ double statistics_median_high(double* data, size_t n) {
  *
  * @note If `data` is `NULL`, or if `n` is zero, or if `interval` is not positive, 
  *          the function prints an error message to stderr and returns `NAN`.
- * @note The function dynamically allocates memory for a sorted copy of the data. 
- *          Ensure that there is enough available memory to avoid allocation failure.
  */
 double statistics_median_grouped(double* data, size_t n, double interval) {
     if (data == NULL) {
