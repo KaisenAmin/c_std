@@ -461,6 +461,22 @@ double statistics_geometric_mean(double* data, size_t n) {
     return exp(mean_log);
 }
 
+/**
+ * @brief This function calculates the harmonic mean of the given data points. Optionally, it can use
+ * weights to compute the weighted harmonic mean.
+ *
+ * @param data Pointer to an array of doubles representing the data set.
+ * @param n The number of elements in the data set.
+ * @param weights Pointer to an array of doubles representing the weights. If `NULL`, 
+ *          the unweighted harmonic mean is computed.
+ * @return The harmonic mean as a double. If an error occurs, the function returns `NAN`.
+ *
+ * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note The function does not support negative values in `data` or `weights`. 
+ *          If any negative values are found, it prints an error message to stderr and returns `NAN`.
+ * @note If the sum of weights is zero or if the weighted sum of the reciprocals is non-positive, 
+ *          the function prints an error message to stderr and returns `NAN`.
+ */
 double statistics_harmonic_mean(double* data, size_t n, double* weights) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
