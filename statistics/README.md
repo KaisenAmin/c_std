@@ -76,6 +76,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Mean: 3.000000
+```
 
 ### Example 2 : calculate the median of data with `statistics_median`
 
@@ -99,6 +103,10 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Median: 3.000000
 ```
 
 ### Example 3 : get low median of sequence of data with `statistics_median_low`
@@ -124,6 +132,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Low Median: -3.40
+```
 
 ### Example 4 : calculate high median of data with `statistics_median_high`
 
@@ -147,6 +159,10 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+High Median: 5.50
 ```
 
 ### Example 5: Calculate the median of grouped continuous data with `statistics_median_grouped`
@@ -224,6 +240,14 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Grouped Median (interval 1.0): 2.50
+Grouped Median (interval 1.0): 3.00
+Grouped Median (interval 2.0): 2.00
+Grouped Median (interval 3.0): 1.50
+Grouped Median (interval 5.0): 0.50
+```
 
 ### Example 6 : variance of data with or without xbar `statistics_variance`
 
@@ -245,7 +269,6 @@ int main() {
         fmt_printf("An error occurred while calculating the variance.\n");
     }
 
-    double mean = statistics_mean(data, n);
     double var_with_mean = statistics_variance(data, n, true, 5);
 
     if (!isnan(var_with_mean)) {
@@ -257,6 +280,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Variance: 0.479667
+Variance with provided mean: 9.665000
 ```
 
 ### Example 7 : standar deviation with `statistics_stdev`
@@ -292,6 +320,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Standard Deviation: 50.862560
+Standard Deviation: 0.692580
 ```
 
 ### Example 7 : get poplulation variance with `statistics_pvariance`
@@ -330,6 +363,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Population Variance with mu : 207.666667
+Population Variance: 0.399722
+Population Variance: 1126.975400
+Population Variance: 1302.687500
+```
 
 ### Example 8 : calculate pstdev of sample data with `statistics_pstdev`
 
@@ -364,6 +404,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Population Standard Deviation: 3.415650
+Population Standard Deviation with provided mean: 3.415650
+```
 
 ### Example 9 : genereate mena value with weight `statistics_fmean`
 
@@ -392,11 +437,16 @@ int main() {
         fmt_printf("Arithmetic mean without weights: %f\n", result_without_weights);
     }
     else {
-        fmt_printf("result_without_weights has error.\n");q
+        fmt_printf("result_without_weights has error.\n");
     }
     
     return 0;
 }
+```
+**Result:**
+```
+Weighted fmean is 4.525000
+Arithmetic mean without weights: 4.250000
 ```
 
 ### Example 10 : calculate the geometric_mean of data with `statistics_geometric_mean`
@@ -413,12 +463,16 @@ int main() {
 
     double result = statistics_geometric_mean(data, n);
 
-    if (!isnan(NULL)) {
+    if (!isnan(result)) {
         fmt_printf("Geometric mean: %f\n", result);
     }
     
     return 0;
 }
+```
+**Result:**
+```
+Geometric mean: 36.000000
 ```
 
 ### Example 11 : calculation harmonic mean with `statistics_harmonic_mean`
@@ -449,6 +503,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Harmonic mean without weights: 48.000000
+Harmonic mean with weights: 56.000000
 ```
 
 ### Example 12 : get most common data in array `statistics_mode`
@@ -487,6 +546,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Mode (int): 3
+Mode (str): red
 ```
 
 ### Example 13 : list of most frequently occurring values `statistics_multimode`
@@ -537,6 +601,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Multimode (int): 3 4
+Multimode (str): red
+```
 
 ### Example 14 : calculate covariance with `statistics_covariance`
 
@@ -571,6 +640,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Covariance (x, y): 0.750000
+Covariance (x, z): -7.500000
+Covariance (z, x): -7.500000
+```
 
 ### Example 15 : calculate correlation of two x, y `statistics_correlation`
 
@@ -604,6 +679,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Pearson correlation (x, y): -1.000000
+Spearman correlation (x, y): -1.000000
+```
 
 ### Example 16 : Calculate slope and intercept of linear regression with `statistics_linear_regression`
 
@@ -629,6 +709,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Linear regression (slope, intercept): (3.000000, 0.000000)
+Proportional linear regression (slope, intercept): (3.000000, 0.000000)
+```
+
 ## Conclusion
 
 The Statistics library in C provides robust functions for calculating various statistical measures such as mean, median, low median, and high median and etc ... These functions are optimized for performance and ease of use, making it an excellent choice for developers needing statistical analysis in their C projects. With clear documentation and examples, the library is straightforward to integrate and apply to different data sets.

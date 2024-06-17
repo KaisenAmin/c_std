@@ -107,8 +107,8 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "matrix",
         # "database",
         # "random",
-        # "statistics",
-        "sysinfo",
+        "statistics",
+        # "sysinfo",
     ]
 
     build_dir = "./build"
