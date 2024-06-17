@@ -3,7 +3,7 @@
 
 
 int main() {
-    fmt_printf("Machine Unique ID: %s\n", sysinfo_machine_unique_id());
+    fmt_printf("Pretty Product Name : %s\n", sysinfo_pretty_product_name());
 
     return 0;
 }

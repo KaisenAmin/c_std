@@ -1755,6 +1755,7 @@ bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value
         snprintf(last_error.message, sizeof(last_error.message), "Error: Failed to duplicate key in json_add_to_object.\n");
         last_error.code = JSON_ERROR_MEMORY;
         fmt_fprintf(stderr, last_error.message);
+        
         return false;
     }
 

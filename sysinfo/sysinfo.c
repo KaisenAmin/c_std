@@ -11,6 +11,7 @@
 #include <rpc.h>
 #include <objbase.h>
 
+
 static char* get_windows_version() {
     static char version[128];
     DWORD dwVersion = 0;
@@ -106,7 +107,7 @@ static char* get_windows_machine_host_name() {
     else {
         strcpy(hostname, "Unknown_Host_Name");
     }
-    
+
     return hostname;
 }
 
@@ -128,6 +129,50 @@ static char* get_windows_machine_unique_id() {
     }
 
     return unique_id;
+}
+
+typedef LONG NTSTATUS;
+typedef NTSTATUS (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+static void get_windows_pretty_version(char* buffer, size_t buffer_size) {
+    RTL_OSVERSIONINFOEXW osvi;
+    memset(&osvi, 0, sizeof(RTL_OSVERSIONINFOEXW));
+    osvi.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
+    
+    HMODULE hNtdll = GetModuleHandle(TEXT("ntdll.dll"));
+    if (hNtdll == NULL) {
+        snprintf(buffer, buffer_size, "Unknown Windows Version");
+        return;
+    }
+
+    // Use a union to safely cast the function pointer
+    union {
+        FARPROC proc;
+        RtlGetVersionPtr func;
+    } rtlGetVersionUnion;
+    
+    rtlGetVersionUnion.proc = GetProcAddress(hNtdll, "RtlGetVersion");
+    if (rtlGetVersionUnion.proc == NULL) {
+        snprintf(buffer, buffer_size, "Unknown Windows Version");
+        return;
+    }
+
+    rtlGetVersionUnion.func((PRTL_OSVERSIONINFOW)&osvi);
+
+    const char* productName;
+    if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0) {
+        productName = "Windows 10";
+    } else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3) {
+        productName = "Windows 8.1";
+    } else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2) {
+        productName = "Windows 8";
+    } else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1) {
+        productName = "Windows 7";
+    } else {
+        productName = "Unknown Windows Version";
+    }
+
+    snprintf(buffer, buffer_size, "%s Version %lu.%lu (Build %lu)", productName, osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
 }
 
 
@@ -424,4 +469,19 @@ char* sysinfo_machine_unique_id() {
 #else
     return get_unknown_machine_unique_id();
 #endif
+}
+
+char* sysinfo_pretty_product_name() {
+    static char pretty_name[256];
+    memset(pretty_name, 0, sizeof(pretty_name));
+
+#ifdef _WIN32
+    get_windows_pretty_version(pretty_name, sizeof(pretty_name));
+#elif __linux__
+    snprintf(pretty_name, sizeof(pretty_name), "%s %s", sysinfo_product_type(), sysinfo_product_version());
+#else
+    snprintf(pretty_name, sizeof(pretty_name), "%s %s", sysinfo_kernel_type(), sysinfo_kernel_version());
+#endif
+
+    return pretty_name;
 }

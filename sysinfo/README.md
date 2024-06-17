@@ -40,18 +40,26 @@ The documentation includes detailed descriptions of all the functions provided b
 ## Example 
 
 Several examples are provided to demonstrate the usage of the SysInfo library in various scenarios.
+
 ## Example 1: get prodouct version of system with `sysinfo_product_version`
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
     fmt_printf("Os Version : %s\n", sysinfo_product_version());
 
     return 0;
 }
+```
+**On Linux:**
+```
+Os Version : 24.04
+```
+**On Windows:**
+```
+Os Version : 10.0
 ```
 
 ## Example 2 : get product name of os with `sysinfo_product_type`
@@ -67,6 +75,15 @@ int main() {
     return 0;
 }
 ```
+**On Linux:**
+```
+OS Product Type: Ubuntu
+```
+**On Windows:**
+```
+OS Product Type: Windows
+```
+
 
 ### Example 3 : get kernel version with `sysinfo_kernel_version`
 
@@ -80,6 +97,14 @@ int main() {
 
     return 0;
 }
+```
+**On Linux:**
+```
+Kernel Version: 6.8.0-35-generic
+```
+**On Windows:**
+```
+Kernel Version: 10.0.19045
 ```
 
 ## Example 4 : get kernel type with `sysinfo_kernel_type`
@@ -95,6 +120,14 @@ int main() {
     return 0;
 }
 ```
+**On Linux:**
+```
+Kernel Type: Linux
+```
+**On Windows:**
+```
+Kernel Type: Windows NT
+```
 
 ## Example 5 : get boot unique id in linux in windows is not work `sysinfo_boot_unique_id`
 
@@ -108,6 +141,14 @@ int main() {
 
     return 0;
 }
+```
+**On Linux:**
+```
+Boot Unique Id : bba30543-fea2-4477-b9e4-5343f8746200
+```
+**On Windows:**
+```
+Boot Unique Id : 22066640
 ```
 
 ## Example 6 : get cpu architecture of system with `sysinfo_cpu_architecture`
@@ -123,6 +164,14 @@ int main() {
     return 0;
 }
 ```
+**On Linux:**
+```
+Cpu Architecture : x86_64
+```
+**On Windows:**
+```
+Cpu Architecture : x86_64
+```
 
 ## Example 7 : get machine host name with `sysinfo_machine_host_name`
 
@@ -137,6 +186,14 @@ int main() {
     return 0;
 }
 ```
+**On Linux:**
+```
+Machine Host Name is : kaisen-VirtualBox
+```
+**On Windows:**
+```
+Machine Host Name is : DESKTOP-DF2A2F9
+```
 
 ## Example 8 : get machine unique id  `sysinfo_machine_unique_id`
 
@@ -150,4 +207,34 @@ int main() {
 
     return 0;
 }
+```
+**On Linux:**
+```
+Machine Unique ID: 4229c1dd3d8c41e1a7b9e1102912cde3
+```
+**On Windows:**
+```
+Machine Unique ID: 8ba376a1-9832-45a0-b7bd-5d507e7a1d68
+```
+
+## Example 9 : get product name in pretty way with `sysinfo_pretty_product_name`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+
+int main() {
+    fmt_printf("Pretty Product Name : %s\n", sysinfo_pretty_product_name());
+
+    return 0;
+}
+```
+**On Linux:**
+```
+Pretty Product Name : Ubuntu 24.04
+```
+**On Windows:**
+```
+Pretty Product Name : Windows 10 Version 10.0 (Build 19045)
 ```

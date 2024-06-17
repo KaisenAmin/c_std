@@ -9,5 +9,6 @@ char* sysinfo_boot_unique_id();
 char* sysinfo_cpu_architecture();
 char* sysinfo_machine_host_name();
 char* sysinfo_machine_unique_id();
+char* sysinfo_pretty_product_name();
 
 #endif 
