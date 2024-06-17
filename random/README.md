@@ -66,7 +66,7 @@ Several examples are provided to demonstrate the usage of the Random library in 
 ### Example 1: Basic Random Integer Generation with `random_seed` and `random_randint`
 
 ```c
-#include "random.h"
+#include "random/random.h"
 #include "fmt/fmt.h"
 #include "time/time.h"
 
@@ -89,7 +89,20 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random number between 1 and 10: 3
+Random number between -10 and -30: -10
+Counter 1: 8
+Counter 2: 5
+Counter 3: 6
+Counter 4: 8
+Counter 5: 5
+Counter 6: 10
+Counter 7: 9
+Counter 8: 8
+Counter 9: 10
+```
 
 ### Example 2 : get random number and check invalid steps and range in `random_randrange`
 
@@ -122,7 +135,18 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random number between 50 and 100 with step 10: 80
+Random number between 50 and 100 with step 10: 90
+Random number between 50 and 100 with step 10: 80
+Random number between 50 and 100 with step 10: 50
+Random number between 50 and 100 with step 10: 60
+Error: logic error a >= b and step <= 0
+Invalid range input.
+Error: logic error a >= b and step <= 0
+Invalid step input.
+```
 ### Example 3 : Generate floating point random number with `random_random`
 
 ```c
@@ -141,7 +165,14 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random floating-point number between 0 and 1: 0.392407
+Random floating-point number between 0 and 1: 0.790857
+Random floating-point number between 0 and 1: 0.478957
+Random floating-point number between 0 and 1: 0.041414
+Random floating-point number between 0 and 1: 0.143132
+```
 ### Example 4 : Genrate random floating point numbers between range with `random_uniform`
 
 ```c
@@ -160,7 +191,14 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+4.655282
+10.174928
+2.001672
+4.704716
+1.116099
+```
 ### Example 5: shuffle arrays of different types with `random_shuffle`
 
 ```c
@@ -210,6 +248,17 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original integer array:
+1 2 3 4 5 6 7 8 9 10 
+Shuffled integer array:
+2 6 10 7 8 3 1 9 5 4
+Original string array:
+apple banana cherry date elderberry fig grape
+Shuffled string array:
+fig banana grape date elderberry apple cherry
+```
 
 ### Example 6 : how to choice and element from an array with `random_choice`
 
@@ -236,7 +285,11 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random choice from integer array: 7
+Random choice from string array: apple
+```
 ### Example 7 : how to set mode between range with `random_triangular`
 
 ```c
@@ -255,7 +308,14 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random triangular number between 1.0 and 10.0 with mode 5.0: 3.865636
+Random triangular number between 1.0 and 10.0 with mode 5.0: 4.834278
+Random triangular number between 1.0 and 10.0 with mode 5.0: 5.182280
+Random triangular number between 1.0 and 10.0 with mode 5.0: 5.509249
+Random triangular number between 1.0 and 10.0 with mode 5.0: 4.765507
+```
 ### Example 8 : how to set weight for choices with `random_choices`
 
 ```c
@@ -295,7 +355,22 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random choices from integer array with weights
+5
+3
+6
+5
+5
+--------------
+Random choices from string array with weights
+grape
+grape
+grape
+elderberry
+grape
+```
 ### Example 9 : how to get sequence of unique elements with `random_sample`
 
 ```c
@@ -333,6 +408,20 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Random sample from integer array
+9
+8
+3
+2
+7
+--------------
+Random sample from string array
+Python
+C++
+Zig
+```
 
 ### Example 10 : set and get state `random_setstate`, `random_getstate`
 
@@ -369,7 +458,26 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random number 1: 67
+Random number 2: 71
+Random number 3: 62
+Random number 4: 86
+Random number 5: 58
+State saved.
+Random number 6: 37
+Random number 7: 15
+Random number 8: 15
+Random number 9: 67
+Random number 10: 15
+State restored.
+Random number 6: 67
+Random number 7: 71
+Random number 8: 62
+Random number 9: 86
+Random number 10: 58
+```
 ### Example 11 : how to generate random number with gauss or normal distrubution `random_gauss`
 
 ```c
@@ -388,6 +496,19 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Random Gaussian value: -0.103868
+Random Gaussian value: 0.550835
+Random Gaussian value: -1.493940
+Random Gaussian value: 1.779333
+Random Gaussian value: -0.984763
+Random Gaussian value: -1.616925
+Random Gaussian value: -0.558794
+Random Gaussian value: -0.141184
+Random Gaussian value: -1.986525
+Random Gaussian value: 1.008667
+```
 
 ### Example 12 : get random number based on log-normal distrubution `random_lognormal`
 
@@ -400,7 +521,7 @@ int main() {
 int main() {
     random_seed((unsigned int)time_current_time_in_seconds());
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
         double random_value = random_lognormal(0.0, 1.0);
 
         if (!isnan(random_value))
@@ -409,6 +530,14 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Random Log-Normal value: 0.846263
+Random Log-Normal value: 0.434523
+Random Log-Normal value: 1.591718
+Random Log-Normal value: 4.173639
+Random Log-Normal value: 1.140356
 ```
 
 ### Example 13 : random numbers based on gamma distrubution `random_gamma`
@@ -432,7 +561,14 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random Gamma value: 4.169290
+Random Gamma value: 3.011071
+Random Gamma value: 7.138485
+Random Gamma value: 1.068895
+Random Gamma value: 6.594782
+```
 ### Example 14 : generate random number based on pareto distrubution with `random_pareto`
 
 ```c
@@ -453,6 +589,14 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Random Pareto value: 1.524975
+Random Pareto value: 1.486391
+Random Pareto value: 10.856653
+Random Pareto value: 1.058269
+Random Pareto value: 1.108613
 ```
 
 ### Example 15 : generate random number based on von mises distrubution with `random_vonmises`
@@ -476,7 +620,14 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Random von Mises value: 2.388292
+Random von Mises value: 1.929918
+Random von Mises value: 1.556270
+Random von Mises value: 2.903683
+Random von Mises value: 2.583023
+```
 
 ## Conclusion
 

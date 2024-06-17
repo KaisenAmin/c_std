@@ -97,7 +97,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         "string",
         # "network",
         # "vector",
-        # "time",
+        "time",
         # "concurrent",
         # "date",
         # "dir",
@@ -106,8 +106,8 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "tuple",
         # "matrix",
         # "database",
-        # "random",
-        "statistics",
+        "random",
+        # "statistics",
         # "sysinfo",
     ]
 

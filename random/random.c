@@ -52,7 +52,7 @@ int random_randint(int a, int b) {
  */
 int random_randrange(int a, int b, int step) {
     if (a >= b || step <= 0) {
-        fprintf(stderr, "Error: logic error a >= b and step <= 0");
+        fprintf(stderr, "Error: logic error a >= b and step <= 0\n");
         return -1; 
     }
 

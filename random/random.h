@@ -24,6 +24,7 @@ double random_gauss(double mean, double stddev);
 double random_expo(double lambda);
 double random_lognormal(double mean, double stddev);
 double random_gamma(double shape, double scale);
+double random_pareto(double shape, double scale);
 double random_beta(double alpha, double beta);
 double random_weibull(double shape, double scale);
 double random_vonmises(double mu, double kappa);
