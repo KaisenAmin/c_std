@@ -45,19 +45,26 @@ int random_randint(int a, int b) {
  *
  * @param a The start of the range (inclusive).
  * @param b The end of the range (exclusive).
- * @param step The step value (must be greater than 0).
+ * @param step The step value (can be positive or negative, but not zero).
  * 
  * @return A random integer within the range `[a, b)` with the given step.
  *         Returns -1 if `a >= b` or `step <= 0`.
  */
 int random_randrange(int a, int b, int step) {
-    if (a >= b || step <= 0) {
-        fprintf(stderr, "Error: logic error a >= b and step <= 0\n");
-        return -1; 
+    if (a == b || step == 0) {
+        fprintf(stderr, "Error: invalid range or step value\n");
+        return -1;
+    }
+    if ((step > 0 && a > b) || (step < 0 && a < b)) {
+        fprintf(stderr, "Error: logic error with range and step values\n");
+        return -1;
     }
 
-    int range = (b - a + step - 1) / step;
-    return a + (rand() % range) * step;
+    int range = abs(b - a);
+    int num_steps = (range + abs(step) - 1) / abs(step);  
+    int random_step = rand() % num_steps;  
+
+    return a + random_step * step;  
 }
 
 /**

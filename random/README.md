@@ -111,9 +111,7 @@ Counter 9: 10
 #include "fmt/fmt.h"
 #include "time/time.h"
 
-
 int main() {
-
     random_seed((unsigned int) time_current_time_in_seconds());
     
     int random = 0;
@@ -122,9 +120,12 @@ int main() {
         fmt_printf("Random number between 50 and 100 with step 10: %d\n", random);
     }
 
-    random = random_randrange(10, 1, 2);
+    random = random_randrange(10, 2, -1);
     if (random == -1) {
         fmt_printf("Invalid range input.\n");
+    }
+    else {
+        fmt_printf("Value is %d\n", random);
     }
 
     random = random_randrange(1, 10, 0);
@@ -138,13 +139,12 @@ int main() {
 **Result:**
 ```
 Random number between 50 and 100 with step 10: 80
-Random number between 50 and 100 with step 10: 90
 Random number between 50 and 100 with step 10: 80
-Random number between 50 and 100 with step 10: 50
+Random number between 50 and 100 with step 10: 70
 Random number between 50 and 100 with step 10: 60
-Error: logic error a >= b and step <= 0
-Invalid range input.
-Error: logic error a >= b and step <= 0
+Random number between 50 and 100 with step 10: 80
+Value is 4
+Error: invalid range or step value
 Invalid step input.
 ```
 ### Example 3 : Generate floating point random number with `random_random`
