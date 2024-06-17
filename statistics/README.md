@@ -183,7 +183,7 @@ int main() {
         fmt_printf("An error occurred while calculating the grouped median.\n");
     } 
     else {
-        fmt_printf("Grouped Median (interval 1.0): %.2f\n", median_grouped1); // Should print 2.5
+        fmt_printf("Grouped Median (interval 1.0): %.2f\n", median_grouped1); 
     }
 
    
@@ -196,7 +196,7 @@ int main() {
         fmt_printf("An error occurred while calculating the grouped median.\n");
     } 
     else {
-        fmt_printf("Grouped Median (interval 1.0): %.2f\n", median_grouped2); // Should print 3.0
+        fmt_printf("Grouped Median (interval 1.0): %.2f\n", median_grouped2); 
     }
 
     
@@ -209,7 +209,7 @@ int main() {
         fmt_printf("An error occurred while calculating the grouped median.\n");
     } 
     else {
-        fmt_printf("Grouped Median (interval 2.0): %.2f\n", median_grouped3); // Should print 2.0
+        fmt_printf("Grouped Median (interval 2.0): %.2f\n", median_grouped3); 
     }
 
     double data4[] = {1, 2, 3, 4}; 
