@@ -8,6 +8,8 @@
 #ifdef _WIN32
 
 #include <windows.h>
+#include <rpc.h>
+#include <objbase.h>
 
 static char* get_windows_version() {
     static char version[128];
@@ -100,11 +102,34 @@ static char* get_windows_machine_host_name() {
         for (int i = 0; i < (int)bufCharCount; i++) {
             hostname[i] = infoBuf[i];
         }
-    } else {
+    } 
+    else {
         strcpy(hostname, "Unknown_Host_Name");
     }
+    
     return hostname;
 }
+
+static char* get_windows_machine_unique_id() {
+    static char unique_id[128] = {0};
+    HKEY hKey;
+    DWORD bufferSize = sizeof(unique_id);
+    wchar_t buffer[128];
+
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        if (RegQueryValueExW(hKey, L"MachineGuid", NULL, NULL, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS) {
+            wcstombs(unique_id, buffer, sizeof(unique_id));  // convert wchar_t to char
+        }
+        RegCloseKey(hKey);
+    }
+
+    if (strlen(unique_id) == 0) {
+        strcpy(unique_id, "unknown");
+    }
+
+    return unique_id;
+}
+
 
 #elif __linux__
 
@@ -113,6 +138,8 @@ static char* get_windows_machine_host_name() {
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 static char* get_linux_version() {
     static char version[128];
@@ -255,6 +282,25 @@ static char* get_linux_machine_host_name() {
     return hostname;
 }
 
+static char* get_linux_machine_unique_id() {
+    static char unique_id[128];
+    FILE* fp = fopen("/etc/machine-id", "r");
+
+    if (fp == NULL) {
+        strcpy(unique_id, "unknown");
+        return unique_id;
+    }
+    if (fgets(unique_id, sizeof(unique_id) - 1, fp) != NULL) {
+        unique_id[strcspn(unique_id, "\n")] = 0;  // remove newline 
+    } 
+    else {
+        strcpy(unique_id, "unknown");
+    }
+
+    fclose(fp);
+    return unique_id;
+}
+
 #else
 
 static char* get_unknown_version() {
@@ -290,6 +336,11 @@ static char* get_unknown_cpu_architecture() {
 static char* get_unknown_machine_host_name() {
     static char hostname[] = "Unknown_Host_Name";
     return hostname;
+}
+
+static char* get_unknown_machine_unique_id() {
+    static char unique_id[] = "unknown";
+    return unique_id;
 }
 
 #endif
@@ -362,5 +413,15 @@ char* sysinfo_machine_host_name() {
     return get_linux_machine_host_name();
 #else
     return get_unknown_machine_host_name();
+#endif
+}
+
+char* sysinfo_machine_unique_id() {
+#ifdef _WIN32
+    return get_windows_machine_unique_id();
+#elif __linux__
+    return get_linux_machine_unique_id();
+#else
+    return get_unknown_machine_unique_id();
 #endif
 }

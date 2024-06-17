@@ -35,6 +35,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `char* sysinfo_cpu_architecture()`: This function returns the architecture of the Cpu that the application is running on.
 - `char* sysinfo_machine_host_name()`: This function returns fully qualified name for a machine.  also in Linux version this function only work if the machine has a FQDN to give - if not, the result of the getaddrinfo() ends up being the same as the unqualified hostname.
 
+- `char* sysinfo_machine_unique_id()`: This function returns the `id` for this machine. if no unique id could be determined . function returns an  `unknown` string. unique id is useful in network operations to identify this machine for an extended period of time.
 
 ## Example 
 
@@ -132,6 +133,20 @@ int main() {
 
 int main() {
     fmt_printf("Machine Host Name is : %s\n", sysinfo_machine_host_name());
+
+    return 0;
+}
+```
+
+## Example 8 : get machine unique id  `sysinfo_machine_unique_id`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+
+int main() {
+    fmt_printf("Machine Unique ID: %s\n", sysinfo_machine_unique_id());
 
     return 0;
 }

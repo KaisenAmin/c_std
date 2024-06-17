@@ -61,7 +61,10 @@ def compile_to_shared_library(directory, build_dir, openssl_include_path, openss
             command += f" -L{build_dir} -l{dep}"
         else:
             command += f" -L{build_dir} -l{dep}"
-    
+
+    if platform.system() == "Windows":
+        command += " -lole32"
+
     result = subprocess.run(command, shell=True)
     if result.returncode != 0:
         print(f"Failed to compile {directory} to shared library.")
@@ -152,7 +155,9 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
             lib_name = lib_name[3:-3]  # Remove 'lib' prefix and '.so' suffix
         command += f" -L{build_dir} -l{lib_name}"
     
-    if platform.system() != "Windows":
+    if platform.system() == "Windows":
+        command += " -lole32"
+    else:
         command += f" -Wl,-rpath,{build_dir}"
 
     result = subprocess.run(command, shell=True)

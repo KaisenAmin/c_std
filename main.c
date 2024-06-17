@@ -3,7 +3,7 @@
 
 
 int main() {
-    fmt_printf("Machine Host Name is : %s\n", sysinfo_machine_host_name());
+    fmt_printf("Machine Unique ID: %s\n", sysinfo_machine_unique_id());
 
     return 0;
 }
