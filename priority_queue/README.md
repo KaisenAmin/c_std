@@ -30,7 +30,6 @@ To use the Priority_Queue library in your project, include the `priority_queue.h
 ## Example 1 : How to create pq and `priority_queuepush`
 
 ```c
-
 #include "priority_queue/priority_queue.h"
 #include "fmt/fmt.h"
 
@@ -60,11 +59,14 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Priority Queue size: 5
+```
 
 ## Example 2 : get size with `priority_queue_size` and check is pq is empty or not with `priority_queue_empty`  
 
 ```c
-
 #include "priority_queue/priority_queue.h"
 #include "fmt/fmt.h"
 
@@ -95,13 +97,16 @@ int main() {
     priority_queue_deallocate(pq);
     return 0;
 }
-
+```
+**Result:**
+```
+Priority Queue size: 5
+Is the priority queue empty? No
 ```
 
 ## Example 3 : get top element with `priority_queue_top`
 
 ```c
-
 #include "priority_queue/priority_queue.h"
 #include "fmt/fmt.h"
 
@@ -134,13 +139,15 @@ int main() {
     priority_queue_deallocate(pq);
     return 0;
 }
-
+```
+**Result:**
+```
+Top element: 10
 ```
 
 ## Example 4 : get 'top' element
 
 ```c
-
 #include "priority_queue/priority_queue.h"
 #include "fmt/fmt.h"
 
@@ -180,6 +187,11 @@ int main() {
     priority_queue_deallocate(pq);
     return 0;
 }
+```
+**Result:**
+```
+Top element: 10
+New top element after pop: 7
 ```
 
 ## Example 5 : Sorting Integers in Desc orders 
@@ -222,6 +234,11 @@ int main() {
     priority_queue_deallocate(pq);
     return 0;
 }
+```
+**Result:**
+```
+Sorted elements in descending order:
+3 4 5 7 8 10 15
 ```
 
 ## Example 6: Merging Two Priority Queues
@@ -286,7 +303,11 @@ int main() {
 
     return 0;
 }
-
+```
+**Result:**
+```
+Merged Priority Queue:
+10 9 8 7 6 5 4 3 2 1 
 ```
 
 ## Example 7: Using Priority Queue for Task Scheduling
@@ -343,5 +364,48 @@ int main() {
     priority_queue_deallocate(taskQueue);
     return 0;
 }
-
+```
+**Result:**
+```
+Executing tasks in priority order:
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 104, Priority: 3
+Executing Task ID: 101, Priority: 3
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 105, Priority: 2
+Executing Task ID: 102, Priority: 2
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
+Executing Task ID: 103, Priority: 1
 ```

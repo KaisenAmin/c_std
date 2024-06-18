@@ -90,7 +90,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "json",
         # "file_io",
         # "log",
-        # "priority_queue",
+        "priority_queue",
         "queue",
         "span",
         "stack",
