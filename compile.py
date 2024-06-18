@@ -92,7 +92,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "log",
         # "priority_queue",
         "queue",
-        # "span",
+        "span",
         "stack",
         "string",
         # "network",

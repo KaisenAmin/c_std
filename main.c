@@ -1,51 +1,24 @@
-#include "stack/stack.h"
-#include "string/string.h"
+#include "span/span.h"
 #include "fmt/fmt.h"
 
-bool isBalanced(String* input) {
-    Stack* stack = stack_create(sizeof(char));
-    size_t length = string_length(input);
-
-    for (size_t i = 0; i < length; i++) {
-        char currentChar = string_at(input, i);
-
-        if (currentChar == '(' || currentChar == '[' || currentChar == '{') {
-            stack_push(stack, &currentChar);
-        }
-        else if (currentChar == ')' || currentChar == ']' || currentChar == '}') {
-            if (stack_empty(stack)) {
-                stack_deallocate(stack);
-                return false;
-            }
-
-            char topChar = *(char*)stack_top(stack);
-            stack_pop(stack);
-
-            if ((currentChar == ')' && topChar != '(') ||
-                (currentChar == ']' && topChar != '[') ||
-                (currentChar == '}' && topChar != '{')) {
-                stack_deallocate(stack);
-                return false;
-            }
-        }
-    }
-
-    bool balanced = stack_empty(stack);
-    stack_deallocate(stack);
-
-    return balanced;
-}
-
 int main() {
-    String* str = string_create("{[()]}");
+    int array[] = {10, 20, 30, 40, 50};
+    Span* span = span_create(array, 5, sizeof(int));
 
-    if (isBalanced(str)) {
-        fmt_printf("The string %s is balanced.\n", str->dataStr);
+    for (int* ptr = span_begin(span); ptr != span_end(span); ptr = span_increment(span, ptr)) {
+        if (ptr) {
+            fmt_printf("%d ", *ptr);
+        }
     }
-    else {
-        fmt_printf("The string %s is not balanced.\n", str->dataStr);
-    }
+    fmt_printf("\n");
 
-    string_deallocate(str);
+    for (int* ptr = span_rbegin(span); ptr != span_rend(span); ptr = (int*)span_decrement(span, ptr)) {
+        if (ptr) {
+            fmt_printf("%d ", *ptr);
+        }
+    }
+    fmt_printf("\n");
+
+    span_destroy(span);
     return 0;
 }

@@ -75,6 +75,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+1 2 3 4 5 
+```
 
 ### Example 2 : Vector in Span also use `span_size` and `span_at`
 
@@ -108,6 +112,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Elements in Span:
+15 20 30 40 50
+```
 
 ## Example 3 : use `char**` in Span 
 
@@ -128,10 +137,13 @@ int main() {
     }
     fmt_printf("\n");
 
-    // Clean up
     span_destroy(mySpan);
     return 0;
 }
+```
+**Result:**
+```
+Vector String Map Csv Array
 ```
 
 ### Example 4: Using `span_front` and `span_back` with an Array of Integers
@@ -158,6 +170,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+First element: 10
+Last element: 50
+```
 
 ### Example 5: Using `span_front` and `span_back` with an Array of Strings
 
@@ -181,6 +198,11 @@ int main() {
     span_destroy(span);
     return 0;
 }
+```
+**Result:**
+```
+First string: Hello
+Last string: C Programming
 ```
 
 ## Example 6 : Using `span_data`` and `span_cdata`
@@ -213,6 +235,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original data: 1 2 3 4 5 
+Modified data: 10 2 3 4 5
+```
 
 ## Example 7 : Using `span_empty`
 
@@ -233,7 +260,10 @@ int main() {
     span_destroy(span);
     return 0;
 }
-
+```
+**Result:**
+```
+Error: Null data provided to span_create
 ```
 
 ## Example 8 : Using `span_size_bytes`
@@ -253,6 +283,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Size of span in bytes: 80
+```
 
 ## Example 9 : Using `span_first`
 
@@ -267,6 +301,7 @@ int main() {
 
     Span firstThree = span_first(span, 3);
     fmt_printf("First three elements: ");
+
     for (size_t i = 0; i < firstThree.size / sizeof(int); ++i) { 
         fmt_printf("%d ", ((int*)firstThree.data)[i]);
     }
@@ -275,6 +310,10 @@ int main() {
     span_destroy(span);
     return 0;
 }
+```
+**Result:**
+```
+First three elements: 10 20 30
 ```
 
 ## Example 10 : Using `span_last`
@@ -297,7 +336,10 @@ int main() {
     span_destroy(span);
     return 0;
 }
-
+```
+**Result:**
+```
+Last two elements: 40 50 
 ```
 
 ## Example 11 : Using `span_subspan`
@@ -320,6 +362,10 @@ int main() {
     span_destroy(span);
     return 0;
 }
+```
+**Result:**
+```
+Middle three elements: 20 30 40 
 ```
 
 ## Example 12 : Using relation operators in Span 
@@ -347,6 +393,16 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Span1 is equal to Span2: false
+Span1 is less than Span2: true
+Span1 is greater than Span2: false
+Span1 is not equal to Span2: true
+Span1 is greater or equal to Span2: false
+Span1 is less or equal to Span2: true
+Error: Span memory pool is NULL in destroy_span_memory_pool
 ```
 
 ## Example 13 : Using Iterations functoins like `span_begin`, `span_end` 
@@ -376,5 +432,9 @@ int main() {
     span_destroy(span);
     return 0;
 }
-
+```
+**Result:**
+```
+10 20 30 40 50 
+50 40 30 20 10
 ```
