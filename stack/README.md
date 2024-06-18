@@ -69,13 +69,17 @@ int main() {
     int arr[] = {10, 20, 30, 40, 50};
 
     for (int i = 0; i < 5; i++) {
-        stack->push(stack, &arr[i]);
+        stack_push(stack, &arr[i]);
     }
-    fmt_printf("Size of stack is %d\n", stack->size(stack));
+    fmt_printf("Size of stack is %d\n", stack_size(stack));
 
-    stack->deallocate(stack);
+    stack_deallocate(stack);
     return 0;
 }
+```
+**Result:**
+```
+Size of stack is 5
 ```
 
 ## Example 2 : use `stack_top`, `stack_pop` and `stack_empty` methods 
@@ -83,7 +87,6 @@ int main() {
  gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\vector\vector.c .\stack\stack.c
 
 ```c
-
 #include "stack/stack.h"
 #include "fmt/fmt.h"
 
@@ -108,7 +111,13 @@ int main() {
     stack_deallocate(stack);
     return 0;
 }
-
+```
+**Result:**
+```
+Size of stack is 5
+Top Element is 50
+Pop value is 50
+After Pop size is 4
 ```
 
 ## Example 3 : how to use String Object in Stack 
@@ -145,6 +154,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Size of Stack is 3
+AminTahmasebiC Programming
+```
 
 ## Example 4 : all relationals operators as methods in Stack 
 
@@ -175,12 +189,18 @@ int main() {
     if (stack_is_not_equal(stk1, stk2)) { 
         fmt_printf("stk1 is not equal to stk2\n");
     }
-    // Clean up the stacks...
+    
     stack_deallocate(stk1);
     stack_deallocate(stk2);
 
     return 0;
 }
+```
+**Result:**
+```
+stk1 is equal to stk2
+stk1 is less than or equal to stk2
+stk1 is greater than or equal to stk2
 ```
 
 ## Example 5 : Using Stack with String Objects for Expression Evaluation
@@ -242,6 +262,7 @@ int evaluateExpression(String* expression) {
         int op2 = *(int*)stack_pop(values);
         int op1 = *(int*)stack_pop(values);
         int result = performOperation(op1, op2, operator);
+
         stack_push(values, &result);
     }
 
@@ -257,11 +278,15 @@ int main() {
     String* expr = string_create("3+2*2+1-8");
     int result = evaluateExpression(expr);
 
-    printf("Result: %d\n", result);
+    fmt_printf("Result: %d\n", result);
 
     string_deallocate(expr);
     return 0;
 }
+```
+**Result:**
+```
+Result: 0
 ```
 
 ### Example 6 :Stack of Vectors for Multi-level Undo Functionality
@@ -316,6 +341,10 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Current State After Undo: (1, 2) (3, 4) 
 ```
 
 ### Example 7 : Checking for Balanced Parentheses
@@ -373,4 +402,8 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+The string {[()]} is balanced.
 ```
