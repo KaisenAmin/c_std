@@ -196,6 +196,16 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+String after push_back: !
+Character at index 1: !
+Length: 1, Capacity: 32
+Info : String object is null no need to clear in string_clear.
+String after clear:
+Info : String object is null no need to clear in string_clear.
+Hello C Programmers
+```
 
 ## Example 2: `string_shrink_to_fit`, `string_resize`
 
@@ -221,8 +231,16 @@ int main() {
     // clean up and dellocate
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
+```
+**Result:**
+```
+String after append: Hello, World!
+String after resize: Hello
+String capacity after shrink to fit: 6
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 3: how to `string_assign` new string and `string_erase` some part of String obj also `string_insert` new ...  
@@ -249,8 +267,16 @@ int main() {
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
+```
+**Result:**
+```
+String after assign: New String
+String after insert: New Test String
+String after erase: est String
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 4: `string_replace` Strings 
@@ -269,7 +295,10 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+After replace: Hello There
+```
 
 ## Example 5: `string_swap` two String obj and also `string_pop_back`
 
@@ -295,8 +324,15 @@ int main() {
 
     string_deallocate(str1);
     string_deallocate(str2);
+
     return 0;
 }
+```
+**Result:**
+```
+After replace: Hello There
+After swap, str1: Sample Text, str2: Hello There
+After pop back: Hello Ther
 ```
 
 ## Example 6: `string_back` and `string_front` return ref to front and last char of String 
@@ -322,8 +358,17 @@ int main() {
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
+```
+**Result:**
+```
+Last character : d
+Wowww: a
+First character: H
+Max size is 18446744073709551615
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 7 : `string_copy` how to copy some part of String 
@@ -344,6 +389,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Copied 'World' (5 characters)
+```
 
 ## Example 8 : `string_find` find string in String and return position
 
@@ -362,11 +411,14 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Found 'World' at position: 7
+```
 
 ## Example 9 : how to use `string_rfind`, `string_find_first_of`, `string_find_last_of`
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -387,15 +439,21 @@ int main() {
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
-
+```
+**Result:**
+```
+Last 'o' found at position: 4
+First occurrence of 'World' found at position: 7
+Last occurrence of 'World' found at position: 7
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 10 : `string_find_first_not_of`, `string_find_last_not_of`
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -414,11 +472,15 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+First position not matching 'Hello': 1
+Last position not matching 'World': 8
+```
 
 ## Example 11 : `string_data` return pointer to String sequence 
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -432,14 +494,19 @@ int main() {
     // Deallocate and clean up
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
+```
+**Result:**
+```
+Data: Hello, World!
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 12 : `string_begin`, `string_end` return iterator pointer from begin and end of String sequence
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -449,18 +516,24 @@ int main() {
     for (char* it = string_begin(myString); it != string_end(myString); it++) {
         fmt_printf("%c", *it);
     }
-        
+    
+    fmt_printf("\n");
+
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
-
+```
+**Result:**
+```
+Hello amin
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 13 : `string_rbeing`, `string_rend` return reverse iterator 
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -477,14 +550,19 @@ int main() {
     // Clean up
     string_clear(myString);
     string_deallocate(myString);
+
     return 0;
 }
+```
+**Result:**
+```
+String in reverse: nima olleH
+Info : String object is null no need to clear in string_clear.
 ```
 
 ## Example 14 : `string_cbegin`, `string_cend`
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -501,13 +579,15 @@ int main() {
     string_deallocate(myString);
     return 0;
 }
-
+```
+**Result:**
+```
+String using cbegin and cend: Hello, World!
 ```
 
 ## Example 15 : `string_crbegin`, `string_crend` 
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -521,17 +601,18 @@ int main() {
     }
     fmt_printf("\n");
 
-    // Clean up
     string_deallocate(myString);
     return 0;
 }
-
+```
+**Result:**
+```
+String in reverse using crbegin and crend: !dlroW ,olleH
 ```
 
 ## Example 16 : how to use relationals operators in String 
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -557,14 +638,19 @@ int main() {
 
     string_deallocate(str1);
     string_deallocate(str2);
+
     return 0;
 }
+```
+**Result:**
+```
+String 1 is less than String 2
+String1 is less than or equal String2
 ```
 
 ## Example 17: Manipulate Multiple String 
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 
@@ -602,15 +688,21 @@ int main() {
     string_deallocate(greeting);
     string_deallocate(name);
     string_deallocate(sentence);
+
     return 0;
 }
-
+```
+**Result:**
+```
+Greeting: Hello, 
+Greeting with name: Hello, Alice
+Sentence: Hello!
+Sentence is less than greeting.
 ```
 
 ## Example 18: 2D String Array using Custom String Struct
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
@@ -664,6 +756,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Hello World ! 
+Goodbye Cruel World
+```
 
 ## Example 19 : bench mark operation in `String` and `std::string` 
 
@@ -671,7 +768,6 @@ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 Time taken (Custom String): 0.286000 seconds
 
 ```c
-
 #include "string/string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
@@ -707,11 +803,16 @@ int main() {
     for (int i = 0; i < ARRAY_SIZE; i++) { 
         string_deallocate(stringArray[i]);
     }
+
     return 0;
 }
 ```
+**Result in C:**
+```
+Average Custom Vector Time: 0.007211 seconds
+```
 
-and in Cpp 
+
 
 ```c
 #include <iostream>
@@ -738,18 +839,20 @@ int main() {
     return 0;
 }
 ```
+**Result in C++:**
+```
+Time taken (std::string): 0.81031 seconds
+```
 
 ## Example 20 : benchmark of `String` and `std::string`
 
-create pool
-Average Custom Vector Time: 0.001507 seconds
 
 ```c
 #include "string/string.h"
 #include "fmt/fmt.h"
 #include <time.h>
 
-#define ARRAY_SIZE 1000000
+#define ARRAY_SIZE 10000
 #define OPERATIONS 100
 
 int main() {
@@ -777,11 +880,17 @@ int main() {
     for (int i = 0; i < ARRAY_SIZE; i++) {
         string_deallocate(stringArray);
     }
+
     return 0;
 }
 ```
+**Result in C:**
+```
+create pool
+Average Custom Vector Time: 0.000034 seconds
+```
 
-Time taken (std::string): 0.0051607 seconds
+`Cpp Code`
 
 ```cpp 
 #include <iostream>
@@ -805,7 +914,10 @@ int main() {
 
     return 0;
 }
-
+```
+**Result in C++:**
+```
+Time taken (std::string): 0.0065333 seconds
 ```
 
 ### Example 21 : string to Lower or Upper 
@@ -832,6 +944,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+To Upper is -> HELLO WORLD
+To Lower is -> hello world
+```
 
 ### Example 22 : Reverse String with `string_reverse`
 
@@ -854,6 +971,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Yes 'Hello' exists in str
+Reverse String is dlroW olleH
+```
 
 ### Example 23 : `string_is_digit`
 
@@ -874,6 +996,10 @@ int main() {
     string_deallocate(myString);
     return 0;
 }
+```
+**Result:**
+```
+The string contains only digits.
 ```
 
 ### Example 24 : `string_is_lower`
@@ -898,6 +1024,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Uppercase: HELLO WORLD
+Lowercase: hello world
+```
 
 ### Example 25 : concatenate two String with `string_concatenate`
 
@@ -915,8 +1046,13 @@ int main() {
 
     string_deallocate(str1);
     string_deallocate(str2);
+
     return 0;
 }
+```
+**Result:**
+```
+Concatenated string: Hello World
 ```
 
 ### Example 26 : trim String from start, end or both 
@@ -945,6 +1081,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Trimmed Start: 'Hello World   '
+Trimmed End: 'Hello World'
+Info : String object is null no need to clear in string_clear.
+Trimmed Both: 'Hello World'
+```
 
 ### Example 27 : split String with `string_split`
 
@@ -967,6 +1110,15 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Split 0: Hello
+Split 1: World
+Split 2: This
+Split 3: Is
+Split 4: A
+Split 5: Test
 ```
 
 ### Example 28 : joins several String objects with `string_join` 
@@ -994,6 +1146,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Joined string: Hello World Again
+```
 
 ### Example 29 : `replace_all` 
 
@@ -1012,6 +1168,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Replaced string: This is a example. This is only a example.
+```
 
 ### Example 30: `string_to_int`
 
@@ -1028,6 +1188,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Integer value: 12345
 ```
 
 ### Example 31: `string_to_float`
@@ -1046,6 +1210,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Float value: 123.45
+```
 
 ### Example 32: `string_pad_left`
 
@@ -1062,6 +1230,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Padded String (Start): '*****hello'
 ```
 
 ### Example 33: `string_pad_right`
@@ -1080,6 +1252,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Padded String (End): 'world-----'
+```
 
 ### Example 34 : `string_to_hex`
 
@@ -1096,8 +1272,14 @@ int main() {
 
     string_deallocate(originalStr);
     string_deallocate(hexStr);
+
     return 0;
 }
+```
+**Result:**
+```
+Original String: Hello
+Hexadecimal Representation: 48656c6c6f
 ```
 
 ### Example 35 : `string_from_hex`
@@ -1115,8 +1297,14 @@ int main() {
 
     string_deallocate(hexStr);
     string_deallocate(convertedStr);
+
     return 0;
 }
+```
+**Result:**
+```
+Hexadecimal String: 48656c6c6f
+Converted String: Hello
 ```
 
 ## Example 36 : `string_count`
@@ -1135,6 +1323,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+The substring 'World' appears 2 times in 'Hello World, World!'.
 ```
 
 ### Example 37 : `string_remove`
@@ -1155,6 +1347,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original string: Hello World, World!
+String after removal: Hello , !
+```
 
 ### Example 38 : `string_from_int`
 
@@ -1172,6 +1369,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Integer 123 converted to string: 123
+```
 
 ### Example 39 : `string_from_float`
 
@@ -1188,6 +1389,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Float 123.456 converted to string: 123.456001
 ```
 
 ### Example 40 : `string_tokenize` 
@@ -1211,7 +1416,15 @@ int main() {
     string_deallocate(str);
     return 0;
 }
-
+```
+**Result:**
+```
+Token 0: Hello
+Token 1: World
+Token 2: This
+Token 3: Is
+Token 4: A
+Token 5: Test
 ```
 
 ### Example 40 : `string_to_double` 
@@ -1229,7 +1442,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
-
+```
+**Result:**
+```
+Double value: 123.456000
 ```
 
 ### Example 41 : `string_from_double` 
@@ -1247,7 +1463,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
-
+```
+**Result:**
+```
+String from double: 123.456000
 ```
 
 ### Example 42 : `string_compare_ignore_case`
@@ -1269,8 +1488,13 @@ int main() {
 
     string_deallocate(str1);
     string_deallocate(str2);
+
     return 0;
 }
+```
+**Result:**
+```
+Strings are equal (ignoring case)
 ```
 
 ### Example 43 : `string_base64_encode` and `string_base64_decode`
@@ -1296,9 +1520,15 @@ int main() {
     string_deallocate(originalStr);
     string_deallocate(encodedStr);
     string_deallocate(decodedStr);
+
     return 0;
 }
-
+```
+**Result:**
+```
+Original String: Hello, World!
+Base64 Encoded: SGVsbG8sIFdvcmxkIQ==
+Base64 Decoded: Hello, World!
 ```
 
 ### Example 44 : `string_format` 
@@ -1317,7 +1547,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
-
+```
+**Result:**
+```
+Hello, Alice! You have 5 new messages.
 ```
 
 ### Example 45 : `string_repeat`
@@ -1334,8 +1567,13 @@ int main() {
 
     string_deallocate(original);
     string_deallocate(repeated);
+
     return 0;
 }
+```
+**Result:**
+```
+Repeated String: Hello Hello Hello
 ```
 
 ### Example 46 : `string_join_variadic`
@@ -1360,6 +1598,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Joined String: Hello, World!
+```
 
 ## Example 47 : `string_trim_characters`
 
@@ -1376,6 +1618,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Trimmed String: Hello, World!
 ```
 
 ## Example 48 : `string_shuffle`
@@ -1395,6 +1641,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original String: Hello, World!
+Shuffled String: l,lerdlW!oH o
+```
 
 ### Example 49 : `string_to_title` 
 
@@ -1411,6 +1662,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Title Case: Hello World
 ```
 
 ### Example 50 : `string_to_casefold`
@@ -1429,6 +1684,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Casefolded: hello world
+```
 
 ### Example 51 : `string_remove_range` 
 
@@ -1445,6 +1704,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+After removal: HelloWorld!
 ```
 
 ### Example 52 : `string_starts_with`
@@ -1463,6 +1726,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Starts with 'Hello': true
+```
 
 ### Example 53 : `string_ends_with`
 
@@ -1479,6 +1746,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Ends with 'World!': true
 ```
 
 ### Example 54 : `string_to_capitalize` 
@@ -1497,7 +1768,10 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Capitalized: Hello world
+```
 ### Example 55 : `string_swap_case` 
 
 ```c
@@ -1513,6 +1787,10 @@ int main() {
     string_deallocate(str);
     return 0;
 }
+```
+**Result:**
+```
+Swapped Case: hELLO wORLD
 ```
 
 ### Example 56 : `string_to_unicode` and `string_from_unicode`
@@ -1551,6 +1829,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Unicode String: Привет, мир! مرحبا بالعالم
+Converted String: Привет, мир! مرحبا بالعالم
+```
 
 ## Example 57 : define different kind of constants strings 
 
@@ -1564,6 +1847,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+ASCII Letters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+ASCII Lowercase: abcdefghijklmnopqrstuvwxyz
 ```
 
 ## Example 58 : How to use `string_length_cstr` and `string_length_utf8`
@@ -1581,4 +1869,9 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Size of ASCII string is 11
+Size of unicode string is 9
 ```
