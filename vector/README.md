@@ -109,6 +109,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+10
+```
 
 ### Example 2: Strings
 
@@ -132,6 +136,10 @@ int main() {
     vector_deallocate(stringVector);
     return 0;
 }
+```
+**Result:**
+```
+Hello, World!
 ```
 
 ### Example 3: User-Defined Structures
@@ -161,6 +169,10 @@ int main() {
     vector_deallocate(structVector);   
     return 0;
 }
+```
+**Result:**
+```
+ID: 1, Value: 10.50
 ```
 
 ### Example 4: Use relational operators
@@ -201,6 +213,12 @@ int main() {
         
     return 0;
 }
+```
+**Result:**
+```
+vec1 is not equal to vec2
+vec1 is less than vec2
+vec2 is greater than vec2
 ```
 
 ## Example 5: Use at and char*
@@ -244,6 +262,16 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+10
+20
+30
+Hello
+World
+Example
+```
+
 ## Example 6: how to use 'swap'
 
 ```c
@@ -278,9 +306,18 @@ int main() {
 
     vector_deallocate(vector1);
     vector_deallocate(vector2);   
+
     return 0;
 }
-
+```
+**Result:**
+```
+Contents of vector1 after swap: 
+30
+40
+Contents of vector2 after swap:
+10
+20
 ```
 
 ## Example 7: how to use `vector_pop_back`
@@ -289,8 +326,7 @@ int main() {
 #include "vector/vector.h"
 #include "fmt/fmt.h"
 
-int main() 
-{   
+int main() {   
     Vector *intVector = vector_create(sizeof(int));
     int values[] = {10, 20, 30, 40};
 
@@ -307,6 +343,10 @@ int main()
     vector_deallocate(intVector);       
     return 0;
 }
+```
+**Result:**
+```
+Popped item: 40
 ```
 
 ## Example 8: how to use `vector_front`
@@ -332,6 +372,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+First item: 10
+```
 
 ## Example 9: how to use `vector_back`
 
@@ -355,6 +399,10 @@ int main() {
     vector_deallocate(intVector);        
     return 0;
 }
+```
+**Result:**
+```
+Last item: 30
 ```
 
 ## Example 10: use `vector_data` Returns pointer to the underlying array serving as element storage
@@ -382,6 +430,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Item 0: 10
+Item 1: 20
+Item 2: 30
+```
 
 ## Example 11: `vector_begin`, `vector_end` Return pointer to the first and last element
 
@@ -404,6 +458,12 @@ int main() {
     vector_deallocate(intVector);
     return 0;
 }
+```
+**Result:**
+```
+10
+20
+30
 ```
 
 ## Example 12: `vector_cbegin`, `vector_cend` Return const pointer to first and last element
@@ -428,6 +488,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+10
+20
+30
+```
 
 ## Example 13 : `vector_crbegin`, `vector_crend` Return reverse read-only iteration over the vector
 ```c
@@ -449,6 +515,12 @@ int main() {
     vector_deallocate(intVector);
     return 0;
 }
+```
+**Result:**
+```
+30
+20
+10
 ```
 
 ## Example 14: Using `vector_rbegin` and `vector_rend` for reverse iteration over the vector
@@ -472,6 +544,12 @@ int main() {
     vector_deallocate(intVector);
     return 0;
 }
+```
+**Result:**
+```
+30
+20
+10
 ```
 
 ## Example 15: `vector_insert` New element to vector 
@@ -501,6 +579,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+25
+10
+20
+30
+```
 
 ## Example 16: `vector_erase` element from vector
 
@@ -527,6 +612,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+10
+40
+50
+```
 
 ## Example 17: `vector_reserve`
 
@@ -548,6 +639,10 @@ int main() {
     vector_deallocate(intVector);
     return 0;
 }
+```
+**Result:**
+```
+Vector size: 11, Vector capacity: 32
 ```
 
 ## Example 18: resize size of the vector with `vector_resize` 
@@ -588,6 +683,18 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+After resizing to larger size:
+10
+20
+30
+0
+0
+After resizing to smaller size:
+10
+20
+```
 
 ## Example 19 : `vector_shrink_to_fit` fixed capacity
 
@@ -615,6 +722,11 @@ int main() {
     vector_deallocate(intVector);
     return 0;
 }
+```
+**Result:**
+```
+Size before shrink_to_fit: 3, Capacity before shrink_to_fit: 32
+Size after shrink_to_fit: 3, Capacity after shrink_to_fit: 3
 ```
 
 ## Example 20 : use `vector_emplace` and `vector_emplace_back` insert new element at positin and at the end of 
@@ -649,6 +761,15 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Hello
+NewString
+EmplacedString
+Vector
+Example
+EmplacedBackString
+```
 
 ## Example 21 : how to use `String` object in Vector
 
@@ -682,6 +803,12 @@ int main() {
     vector_deallocate(vec);
     return 0;
 }
+```
+**Result:**
+```
+Hello
+World
+Example
 ```
 
 ## Example 22 : how to use relationals operators in `Vector` 
@@ -718,18 +845,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Vector1 is less than Vector2
+```
 
 ### Example 23 : how to use `vector_begin` and `vector_end` with String Object 
-
-just you should now we can do this in lots of way by String ..
-also don't use printf in loop because it is not optimal.
-
-Apple
-Banana
-Cherry
-Lemon
-Watermelon
-Time taken: 0.000010 seconds
 
 ```c
 #include "string/string.h"
@@ -779,15 +900,17 @@ int main() {
     return 0;
 }
 ```
-
-also result in Cpp 
-
+**Result in C:**
+```
 Apple
 Banana
 Cherry
 Lemon
 Watermelon
-Time taken: 1.1523e-05 seconds
+Time taken: 0.000059 seconds
+```
+
+`also result in Cpp` 
 
 ```cpp
 #include <iostream>
@@ -814,7 +937,15 @@ int main() {
 
     return 0;
 }
-
+```
+**Result in C++:**
+```
+Apple
+Banana
+Cherry
+Lemon
+Watermelon
+Time taken: 1.2074e-05 seconds
 ```
 
 ### Example 24 :Vector of Vectors (2D Vector)
@@ -857,6 +988,12 @@ int main() {
     vector_deallocate(vec2D);
     return 0;
 }
+```
+**Result:**
+```
+0 1 2 
+3 4 5
+6 7 8
 ```
 
 ### Example 25 : Vector of Structs with Dynamic String Fields
@@ -901,6 +1038,12 @@ int main() {
     vector_deallocate(items);
     return 0;
 }
+```
+**Result:**
+```
+Name: Item1, Description: Description1
+Name: Item2, Description: Description2
+Name: Item3, Description: Description3
 ```
 
 ### Example 26 : Vector of Vectors (2D Vector) of Custom Structs 
@@ -974,4 +1117,13 @@ int main() {
     vector_deallocate(vec2D);
     return 0;
 }
+```
+**Result:**
+```
+Name: Person_0_0, Age: 0
+Name: Person_0_1, Age: 1
+Name: Person_0_2, Age: 2
+Name: Person_1_0, Age: 10
+Name: Person_1_1, Age: 11
+Name: Person_1_2, Age: 12
 ```
