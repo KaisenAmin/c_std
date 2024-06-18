@@ -69,6 +69,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Int: 42
+Float: 3.140000
+```
 
 ## Example 2: `Tuple` with Int, Float, and Vector
 
@@ -110,6 +115,12 @@ int main() {
     vector_deallocate(vectorValue);
     return 0;
 }
+```
+**Result:**
+```
+Int: 42
+Float: 3.140000
+Vector item: 100
 ```
 
 ## Example 3: Tuple with String, Array, and Queue
@@ -166,6 +177,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+String: Hello Tuple
+Array first element: 2
+Queue front element: 10
+```
 
 ## Example 4 : make_tuple with `tuple_make_tuple`
 
@@ -200,6 +217,12 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+Int: 42
+Float: 3.140000
+Char: A
 ```
 
 ## Example 5 : Tuple as return type functions 
@@ -244,6 +267,12 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+Age: 25
+Grade: 3.80
+Name: John Doe
 ```
 
 ## Example 6 : send Tuple as parameter to function 
@@ -305,6 +334,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Age: 27
+Grade: 19.32
+Vector size: 10
+Name: amin
+```
 
 ## Example 7 : how to use tuple_tie `tuple_tie`
 
@@ -348,6 +384,15 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+Int: 42
+Float: 3.140000
+Char: A
+Modified Int: 100
+Modified Float: 9.990000
+Modified Char: Z
 ```
 
 ## Example 8 : how to create make_tuple Using Queue and Vector 
@@ -398,6 +443,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Vector item: 42
+Queue front item: Hello, World!
+Simple Integer: 100
+```
 
 ## Example 9 : swap tuple with `tuple_swap`
 
@@ -431,6 +482,15 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Before swap:
+Tuple1 first element: 42
+Tuple2 first element: 100
+After swap:
+Tuple1 first element: 100
+Tuple2 first element: 42
+```
 
 ## Example 10 : forward tuple to functions as parameter with `tuple_forwrad_as_tuple`
 
@@ -459,6 +519,10 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Name is Hello amin and age is 27
+```
 
 `C++ Same Code`
 
@@ -477,6 +541,11 @@ int main() {
   print_pack (std::forward_as_tuple(str+" Daniels",22));
   return 0;
 }
+```
+**Result in C++:**
+```
+John Smith, 25
+John Daniels, 22
 ```
 
 ## Example 11 : relationals opeartors and `tuple_empty`
@@ -511,4 +580,15 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Tuple1 is less than Tuple2: true
+Tuple1 is greater than Tuple2: false
+Tuple1 is equal to Tuple2: false
+Tuple1 is not equal to Tuple2: true
+Tuple1 is greater or equal to Tuple2: false
+Tuple1 is less or equal to Tuple2: true
+Tuple1 is empty: false
+Empty Tuple is empty: true
 ```

@@ -76,7 +76,7 @@ def compile_to_shared_library(directory, build_dir, openssl_include_path, openss
 def compile_project(run_after_compile=False, compile_to_shared_only=False, program_args=[]):
     source_directories = [
         # "numeric",
-        # "algorithm",
+        "algorithm",
         # "array",
         # "bitset",
         # "config",
@@ -91,7 +91,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "file_io",
         # "log",
         # "priority_queue",
-        # "queue",
+        "queue",
         # "span",
         # "stack",
         "string",
@@ -103,7 +103,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "dir",
         # "cli",
         # "crypto",
-        # "tuple",
+        "tuple",
         # "matrix",
         # "database",
         # "random",
