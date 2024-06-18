@@ -45,12 +45,16 @@ int main() {
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
-    // Print the size of the queue
+
     fmt_printf("Queue size: %zu\n", queue_size(myQueue));
     
     queue_deallocate(myQueue);
     return 0;
 }
+```
+**Result:**
+```
+Queue size: 5
 ```
 
 ## Example 2 : check queue is `queue_empty` or not
@@ -77,6 +81,10 @@ int main() {
     queue_deallocate(myQueue);
     return 0;
 }
+```
+**Result:**
+```
+Is the queue empty? No
 ```
 
 ## Example 3 : `queue_front` and `queue_back` get ref to first and last element
@@ -114,6 +122,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Front element: 10
+Back element: 50
+Back element After change: 15236
+```
 
 ## Example 4 : how to pop element with `queue_pop`
 
@@ -144,7 +158,10 @@ int main() {
     queue_deallocate(myQueue);
     return 0;
 }
-
+```
+**Result:**
+```
+New front element after pop: 20
 ```
 
 ## Example 5 : `queue_emplace` element also use some relationals operators
@@ -172,7 +189,7 @@ int main() {
     for (int i = 0; i < 5; ++i) { 
         queue_emplace(myQueue2, &values2[i], sizeof(int));
     }
-    // // Compare the two queues
+ 
     fmt_printf("Are the queues equal? %s\n", queue_is_equal(myQueue1, myQueue2) ? "Yes" : "No");
     fmt_printf("Is myQueue1 less than myQueue2? %s\n", queue_is_less(myQueue1, myQueue2) ? "Yes" : "No");
 
@@ -181,7 +198,11 @@ int main() {
 
     return 0;
 }
-
+```
+**Result:**
+```
+Are the queues equal? No
+Is myQueue1 less than myQueue2? Yes
 ```
 
 ## Example 6 : how to use `queue_swap` in Queue
@@ -199,7 +220,6 @@ int main() {
         return -1;
     }
 
-    // Push some integers onto the first queue
     int values1[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) {
         queue_push(myQueue1, &values1[i]);
@@ -209,7 +229,7 @@ int main() {
     for (int i = 0; i < 5; ++i) { 
         queue_emplace(myQueue2, &values2[i], sizeof(int));
     }
-    // Swap the two queues
+
     queue_swap(myQueue1, myQueue2);
 
     // Check the front element of the swapped queues
@@ -226,6 +246,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Front element of myQueue1 after swap: 15
+Front element of myQueue2 after swap: 10
 ```
 
 ## Example 7 : Task Management System Using Queue
@@ -276,6 +301,17 @@ int main() {
     queue_deallocate(taskQueue);
     return 0;
 }
+```
+**Result:**
+```
+Task queue size before processing: 6
+Processing Task ID 1: Fix bug in code
+Processing Task ID 2: Update documentation
+Processing Task ID 3: Refactor module
+Processing Task ID 4: Fix bug in code
+Processing Task ID 5: Update documentation
+Processing Task ID 6: Refactor module
+Task queue size after processing: 0
 ```
 
 ## Example 8 : 2D Queue of String Objects
@@ -331,8 +367,25 @@ int main() {
         queue_deallocate(innerQueue);
     }
 
-    // Deallocate the outer Queue
     queue_deallocate(queue2D);
     return 0;
 }
+```
+**Result:**
+```
+Processing: String 0-0
+Processing: String 0-1
+Processing: String 0-2
+Processing: String 0-3
+Processing: String 0-4
+Processing: String 1-0
+Processing: String 1-1
+Processing: String 1-2
+Processing: String 1-3
+Processing: String 1-4
+Processing: String 2-0
+Processing: String 2-1
+Processing: String 2-2
+Processing: String 2-3
+Processing: String 2-4
 ```
