@@ -63,7 +63,7 @@ def compile_to_shared_library(directory, build_dir, openssl_include_path, openss
             command += f" -L{build_dir} -l{dep}"
 
     if platform.system() == "Windows":
-        command += " -lole32"
+        command += " -lole32 -lbthprops"
 
     result = subprocess.run(command, shell=True)
     if result.returncode != 0:
@@ -106,7 +106,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "tuple",
         # "matrix",
         # "database",
-        "random",
+        # "random",
         # "statistics",
         # "sysinfo",
     ]
@@ -156,7 +156,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         command += f" -L{build_dir} -l{lib_name}"
     
     if platform.system() == "Windows":
-        command += " -lole32"
+        command += " -lole32 -lbthprops"
     else:
         command += f" -Wl,-rpath,{build_dir}"
 

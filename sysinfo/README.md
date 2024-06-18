@@ -238,3 +238,26 @@ Pretty Product Name : Ubuntu 24.04
 ```
 Pretty Product Name : Windows 10 Version 10.0 (Build 19045)
 ```
+
+## Example 10 : get list of bluetooth `sysinfo_list_bluetooth_devices`
+
+```c
+#include "sysinfo/sysinfo.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    int count = 0;
+    char** devices = sysinfo_list_bluetooth_devices(&count);
+
+    fmt_printf("Found %d Bluetooth devices:\n", count);
+    for (int i = 0; i < count; i++) {
+        fmt_printf("%s\n", devices[i]);
+        free(devices[i]);
+    }
+
+    free(devices);
+    
+    return 0;
+}
+```

@@ -10,7 +10,7 @@
 #include <windows.h>
 #include <rpc.h>
 #include <objbase.h>
-
+#include <bluetoothapis.h>
 
 static char* get_windows_version() {
     static char version[128];
@@ -162,19 +162,79 @@ static void get_windows_pretty_version(char* buffer, size_t buffer_size) {
     const char* productName;
     if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0) {
         productName = "Windows 10";
-    } else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3) {
+    } 
+    else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3) {
         productName = "Windows 8.1";
-    } else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2) {
+    } 
+    else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2) {
         productName = "Windows 8";
-    } else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1) {
+    } 
+    else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1) {
         productName = "Windows 7";
-    } else {
+    } 
+    else {
         productName = "Unknown Windows Version";
     }
 
     snprintf(buffer, buffer_size, "%s Version %lu.%lu (Build %lu)", productName, osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
 }
 
+static char* get_windows_build_abi() {
+    static char build_abi[128];
+    memset(build_abi, 0, sizeof(build_abi));
+
+    char* architecture = sysinfo_cpu_architecture();
+    if (architecture) {
+        strcpy(build_abi, architecture);
+        strcat(build_abi, "-");
+    } 
+    else {
+        strcpy(build_abi, "unknown-");
+    }
+
+    strcat(build_abi, "little_endian-");
+
+    // On Windows, the data model is LLP64
+    strcat(build_abi, "llp64");
+
+    return build_abi;
+}
+
+char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
+    *count = 0;
+    char** devices = NULL;
+
+    BLUETOOTH_DEVICE_SEARCH_PARAMS searchParams;
+    BLUETOOTH_DEVICE_INFO deviceInfo;
+    HBLUETOOTH_DEVICE_FIND hFind;
+
+    memset(&searchParams, 0, sizeof(searchParams));
+    searchParams.dwSize = sizeof(searchParams);
+    searchParams.fReturnAuthenticated = TRUE;
+    searchParams.fReturnRemembered = TRUE;
+    searchParams.fReturnConnected = TRUE;
+    searchParams.fReturnUnknown = TRUE;
+    searchParams.fIssueInquiry = TRUE;
+    searchParams.cTimeoutMultiplier = 4;
+
+    deviceInfo.dwSize = sizeof(deviceInfo);
+
+    hFind = BluetoothFindFirstDevice(&searchParams, &deviceInfo);
+    if (hFind != NULL) {
+        do {
+            (*count)++;
+            devices = (char**)realloc(devices, sizeof(char*) * (*count));
+            wchar_t* wname = deviceInfo.szName;
+            int len = WideCharToMultiByte(CP_UTF8, 0, wname, -1, NULL, 0, NULL, NULL);
+            devices[(*count) - 1] = (char*)malloc(len);
+            WideCharToMultiByte(CP_UTF8, 0, wname, -1, devices[(*count) - 1], len, NULL, NULL);
+        } while (BluetoothFindNextDevice(hFind, &deviceInfo));
+
+        BluetoothFindDeviceClose(hFind);
+    }
+
+    return devices;
+}
 
 #elif __linux__
 
@@ -346,6 +406,55 @@ static char* get_linux_machine_unique_id() {
     return unique_id;
 }
 
+static char* get_linux_build_abi() {
+    static char build_abi[128];
+    struct utsname buffer;
+
+    if (uname(&buffer) == 0) {
+        if (strcmp(buffer.machine, "x86_64") == 0) {
+            strcpy(build_abi, "x86_64-");
+        } 
+        else {
+            strcpy(build_abi, buffer.machine);
+            strcat(build_abi, "-");
+        }
+    } 
+    else {
+        strcpy(build_abi, "unknown-");
+    }
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    strcat(build_abi, "little_endian-");
+#else
+    strcat(build_abi, "big_endian-");
+#endif
+
+    // On Unix-like systems, the data model is usually LP64
+    strcat(build_abi, "lp64");
+
+    return build_abi;
+}
+
+char** get_sysinfo_list_bluetooth_devices_linux(int* count) {
+    *count = 0;
+    char** devices = NULL;
+    FILE* pipe = popen("hcitool dev", "r");
+
+    if (pipe) {
+        char buffer[128];
+
+        while (fgets(buffer, 128, pipe) != NULL) {
+            buffer[strcspn(buffer, "\r\n")] = 0; 
+            (*count)++;
+            devices = (char**)realloc(devices, sizeof(char*) * (*count));
+            devices[(*count) - 1] = strdup(buffer);
+        }
+
+        pclose(pipe);
+    }
+    return devices;
+}
+
 #else
 
 static char* get_unknown_version() {
@@ -386,6 +495,16 @@ static char* get_unknown_machine_host_name() {
 static char* get_unknown_machine_unique_id() {
     static char unique_id[] = "unknown";
     return unique_id;
+}
+
+static char* get_unknown_build_abi() {
+    static char build_abi[] = "unknown";
+    return build_abi;
+}
+
+char** sysinfo_list_bluetooth_devices(int* count) {
+    *count = 0;
+    return NULL;
 }
 
 #endif
@@ -484,4 +603,24 @@ char* sysinfo_pretty_product_name() {
 #endif
 
     return pretty_name;
+}
+
+char* sysinfo_build_abi() {
+#ifdef _WIN32
+    return get_windows_build_abi();
+#elif __linux__
+    return get_linux_build_abi();
+#else
+    return get_unknown_build_abi();
+#endif
+}
+
+char** sysinfo_list_bluetooth_devices(int* count) {
+#ifdef _WIN32
+    return get_sysinfo_list_bluetooth_devices_windows(count);
+#elif __linux__
+    return get_sysinfo_list_bluetooth_devices_linux(count);
+#else
+    return NULL;
+#endif
 }

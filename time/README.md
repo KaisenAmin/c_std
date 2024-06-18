@@ -73,6 +73,10 @@ int main () {
     return 0;
 }
 ```
+**Result:**
+```
+Time create and to string: (14:30:45:500)
+```
 
 ## Example 2 : Testing `time_add_msecs`
 ```c
@@ -92,6 +96,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Add milliseconds: (0:00:01:000)
+```
 
 ## Example 3 :Testing `time_add_secs`
 ```c
@@ -108,8 +116,13 @@ int main() {
     
     free(str3);
     time_deallocate(t3);
+
     return 0;
 }
+```
+**Result:**
+```
+Add seconds: (2:02:03:000)
 ```
 
 ## Example 4: Testing `time_current_time`
@@ -126,8 +139,13 @@ int main() {
     
     free(str4);
     time_deallocate(t4);
+
     return 0;
 }
+```
+**Result:**
+```
+Current time: (21:21:48:492)
 ```
 
 ## Example 5: Testing `time_msecs_since_start_of_day`
@@ -141,6 +159,10 @@ int main() {
     
     return 0;
 }   
+```
+**Result:**
+```
+Milliseconds since start of day: 76943088
 ```
 
 ## Example 6: Testing `time_msecs_to`
@@ -158,6 +180,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Milliseconds difference: 3600000
+```
 
 ## Example 7: Testing `time_secs_to`
 ```c
@@ -174,6 +200,10 @@ int main() {
     return 0;
 }   
 ```
+**Result:**
+```
+Seconds difference: 3600
+```
 
 ## Example 8: Testing `time_is_equal`
 ```c
@@ -188,8 +218,13 @@ int main() {
 
     time_deallocate(t9);
     time_deallocate(t10);
+
     return 0;
 }
+```
+**Result:**
+```
+Times are equal: true
 ```
 
 ## Example 9: Testing `time_is_greater_than` and `time_is_less_than`
@@ -206,8 +241,14 @@ int main() {
     
     time_deallocate(t11);
     time_deallocate(t12);
+
     return 0;
 }
+```
+**Result:**
+```
+Time t11 is less than t12: true
+Time t12 is greater than t11: true
 ```
 
 ## Example 10: Testing `time_from_msecs_since_start_of_day`
@@ -223,8 +264,13 @@ int main() {
     
     free(str13);
     time_deallocate(t13);
+    
     return 0;
 }    
+```
+**Result:**
+```
+Time from msecs since start of day: (12:30:00:000)
 ```
 
 ## Example 11 : get current time in seconds and microseconds with `time_current_time_in_seconds` and `time_current_time_in_microsecds`
@@ -239,4 +285,9 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Current Time in seconds 1718733335.131222
+Current Time in msec 1718733335132198.000000
 ```
