@@ -1,17 +1,41 @@
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
+#include "random/random.h"
+#include "time/time.h"
+
+void fillMatrix(Matrix *mat) {
+    matrix_set(mat, 0, 0, random_randint(1, 10));
+    matrix_set(mat, 0, 1, random_randint(1, 10));
+    matrix_set(mat, 1, 0, random_randint(1, 10));
+    matrix_set(mat, 1, 1, random_randint(1, 10));
+}
 
 int main() {
-    Matrix* matrix = matrix_walsh(8);
+    random_seed((unsigned int)time_current_time_in_seconds());
 
-    if (!matrix) {
-        fmt_printf("Error in creation matrix object");
-        return -1;        
+    Matrix* matrix1 = matrix_create(2, 2);
+    Matrix* matrix2 = matrix_create(2, 2);
+
+    if (!matrix1 || !matrix2) {
+        fmt_fprintf(stderr, "Can not create matrix object");
+        exit(-1);
     }
 
-    fmt_printf("Matrix walsh is : \n");
-    matrix_print(matrix);
+    fillMatrix(matrix1);
+    fillMatrix(matrix2);
 
-    matrix_deallocate(matrix);
+    matrix_print(matrix1);
+    fmt_printf("\n");
+    matrix_print(matrix2);
+
+    Matrix* sum = matrix_add(matrix1, matrix2);
+
+    fmt_printf("\n");
+    matrix_print(sum);
+
+    matrix_deallocate(sum);
+    matrix_deallocate(matrix1);
+    matrix_deallocate(matrix2);
+    
     return 0;
 }
