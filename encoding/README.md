@@ -119,10 +119,13 @@ URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
 ```c
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
+#include <stdlib.h>
+#include <string.h>
 
 int main() {
     const char* text_to_decode = "Hello%20World%21%20This%20is%20a%20test%2Fexample%3F";
     char* decoded = encoding_url_decode(text_to_decode, strlen(text_to_decode));
+
     if (decoded) {
         fmt_printf("URL Encoded: %s\n", text_to_decode);
         fmt_printf("Decoded: %s\n", decoded);
@@ -131,6 +134,7 @@ int main() {
     else {
         fmt_printf("Failed to decode URL.\n");
     }
+
     return 0;
 }
 ```
@@ -146,6 +150,7 @@ Decoded: Hello World! This is a test/example?
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main() {
     const char* text_to_encode = "Hello, World!";
@@ -174,6 +179,7 @@ Base32 Encoded: JBSWY3DPFQQFO33SNRSCC===
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main() {
     const char* text_to_decode = "ORSXG5A=";  // Base32 encoded version of "test"
@@ -202,6 +208,7 @@ Decoded: test
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main() {
     const char* text = "Hello, World!";
@@ -227,6 +234,7 @@ Base16 Encoded: 48656C6C6F2C20576F726C6421
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main() {
     const char* encodedText = "48656C6C6F2C20576F726C6421";
@@ -315,6 +323,7 @@ int main() {
     for (size_t i = 0; calc[i] != 0; i++) {
         fmt_printf("%0X ", calc[i]);
     }
+    fmt_printf("\n");
 
     free(utf16_string);
     return 0;
@@ -569,6 +578,7 @@ int main() {
 
 ```c
 #include <stdlib.h>
+#include <string.h>
 #include "fmt/fmt.h"
 #include "encoding/encoding.h"
 
@@ -608,6 +618,7 @@ Decoded: Hello one
 
 ```c
 #include <stdlib.h>
+#include <string.h>
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
 
@@ -620,6 +631,7 @@ int main() {
 
     size_t decoded_size;
     char *decoded = encoding_base58_decode(b58, &decoded_size);
+
     if (decoded) {
         fmt_printf("Decoded Data: %.*s\n", (int)decoded_size, decoded);
         free(decoded);
@@ -639,6 +651,7 @@ Decoded Data: Hello, World!
 
 ```c
 #include <stdlib.h>
+#include <string.h>
 #include "fmt/fmt.h"
 #include "encoding/encoding.h"
 
@@ -659,6 +672,7 @@ int main() {
     // Decoding
     size_t decoded_length;
     uint8_t* decoded = encoding_base91_decode(encoded, &decoded_length);
+    
     if (!decoded) {
         fmt_fprintf(stderr, "Decoding failed.\n");
         free(encoded);

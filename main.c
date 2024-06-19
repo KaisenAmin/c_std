@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "fmt/fmt.h"
 #include "encoding/encoding.h"
 
@@ -19,6 +20,7 @@ int main() {
     // Decoding
     size_t decoded_length;
     uint8_t* decoded = encoding_base91_decode(encoded, &decoded_length);
+    
     if (!decoded) {
         fmt_fprintf(stderr, "Decoding failed.\n");
         free(encoded);
