@@ -1,51 +1,28 @@
-#include "priority_queue/priority_queue.h"
+#include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 
-typedef struct Task Task;
-
-struct Task {
-    int taskID;
-    int priority;
-};
-
-static int compare_tasks(const void* a, const void* b) {
-    const Task* taskA = a;
-    const Task* taskB = b;
-
-    return (taskA->priority > taskB->priority) - (taskA->priority < taskB->priority);
+bool is_even(const void *n) {
+    int num = *(int *)n;
+    return num % 2 == 0;
 }
 
 int main() {
-    PriorityQueue* taskQueue = priority_queue_create(sizeof(Task), compare_tasks);
+    int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int result[10] = {0};
 
-    if (!taskQueue) {
-        fmt_fprintf(stderr, "Failed to create task queue.\n");
-        return -1;
+    fmt_printf("Source array:\n");
+    for (int i = 0; i < 10; ++i) {
+        fmt_printf("%d ", arr[i]);
     }
+    fmt_printf("\n");
 
-    // Define some tasks with different priorities
-    Task tasks[] = {
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-        {101, 3}, {102, 2}, {103, 1}, {104, 3}, {105, 2},
-    };
+    size_t count = algorithm_remove_copy_if(arr, 10, sizeof(int), result, is_even);
 
-    for (size_t i = 0; i < sizeof(tasks) / sizeof(tasks[0]); ++i) { 
-        priority_queue_push(taskQueue, &tasks[i]);
+    fmt_printf("Result array:\n");
+    for (size_t i = 0; i < count; ++i) {
+        fmt_printf("%d ", result[i]);
     }
+    fmt_printf("\n");
 
-    fmt_printf("Executing tasks in priority order:\n");
-    while (!priority_queue_empty(taskQueue)) {
-        Task* topTask = priority_queue_top(taskQueue);
-        fmt_printf("Executing Task ID: %d, Priority: %d\n", topTask->taskID, topTask->priority);
-        priority_queue_pop(taskQueue);
-    }
-
-    priority_queue_deallocate(taskQueue);
     return 0;
 }

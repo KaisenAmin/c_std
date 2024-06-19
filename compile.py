@@ -77,7 +77,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
     source_directories = [
         # "numeric",
         "algorithm",
-        # "array",
+        "array",
         # "bitset",
         # "config",
         # "csv",
