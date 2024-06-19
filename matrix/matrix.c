@@ -342,42 +342,25 @@ bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value) {
 void matrix_print(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
-            fmt_fprintf(stdout, "Info : this matrix object as param is null and invalid in matrix_print.\n");
+            fprintf(stdout, "Info : this matrix object as param is null and invalid in matrix_print.\n");
         #endif 
         return;
     }
 
-    int max_width = 1;  // Minimum width for "0 "
+    // Find the maximum width needed for any element
+    int max_width = 0;
     for (size_t i = 0; i < matrix->rows * matrix->cols; ++i) {
-        if (matrix->data[i] != 0) {
-            int width = snprintf(NULL, 0, "%.5lf", matrix->data[i]);
-            if (width > max_width) {
-                max_width = width;
-            }
+        int width = snprintf(NULL, 0, "%.5lf", matrix->data[i]);
+        if (width > max_width) {
+            max_width = width;
         }
     }
 
     for (size_t row = 0; row < matrix->rows; ++row) {
-        fmt_printf("|");
+        fmt_printf("| ");
         for (size_t col = 0; col < matrix->cols; ++col) {
             size_t index = row * matrix->cols + col;
-            if (col == 0) { // First column
-                if (matrix->data[index] == 0) {
-                    fmt_printf(" 0"); 
-                } 
-                else {
-                    fmt_printf("%.5lf", matrix->data[index]); 
-                }
-            } 
-            else { 
-                if (matrix->data[index] == 0) {
-                    fmt_printf("%*s", max_width, "0"); // Align "0" within the calculated width
-                } 
-                else {
-                    fmt_printf("%*.5lf", max_width, matrix->data[index]);
-                }
-            }
-            fmt_printf(" "); // Space between columns
+            fmt_printf("%*.*lf ", max_width, 5, matrix->data[index]);
         }
         fmt_printf("|\n");
     }

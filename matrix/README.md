@@ -23,23 +23,32 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+|  0.00000  0.00000  0.00000  0.00000 |
+|  0.00000 15.32000  0.00000  0.00000 |
+|  0.00000  0.00000  0.00000  0.00000 |
+Value of matrix in row 1 and col 1 is 15.320000
+```
 
 ## Example 2 : how to add two Matrix with `matrix_add`
 
 ```c
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
-#include <time.h>
+#include "random/random.h"
+#include "time/time.h"
 
 void fillMatrix(Matrix *mat) {
-    matrix_set(mat, 0, 0, rand() % 10 + 1);
-    matrix_set(mat, 0, 1, rand() % 10 + 1);
-    matrix_set(mat, 1, 0, rand() % 10 + 1);
-    matrix_set(mat, 1, 1, rand() % 10 + 1);
+    matrix_set(mat, 0, 0, random_randint(1, 10));
+    matrix_set(mat, 0, 1, random_randint(1, 10));
+    matrix_set(mat, 1, 0, random_randint(1, 10));
+    matrix_set(mat, 1, 1, random_randint(1, 10));
 }
 
 int main() {
-    srand(time(NULL));
+    random_seed((unsigned int)time_current_time_in_seconds());
+
     Matrix* matrix1 = matrix_create(2, 2);
     Matrix* matrix2 = matrix_create(2, 2);
 
@@ -67,23 +76,36 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+| 3.00000 8.00000 |
+| 7.00000 7.00000 |
+
+| 5.00000 6.00000 |
+| 3.00000 1.00000 |
+
+| 8.00000 14.00000 |
+| 10.00000  8.00000 |
+```
 
 ## Example 3 : subtract two matrix with `matrix_subtract`
 
 ```c
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
-#include <time.h>
+#include "random/random.h"
+#include "time/time.h"
 
 void fillMatrix(Matrix *mat) {
-    matrix_set(mat, 0, 0, rand() % 10 + 1);
-    matrix_set(mat, 0, 1, rand() % 10 + 1);
-    matrix_set(mat, 1, 0, rand() % 10 + 1);
-    matrix_set(mat, 1, 1, rand() % 10 + 1);
+    matrix_set(mat, 0, 0, random_randint(1, 10));
+    matrix_set(mat, 0, 1, random_randint(1, 10));
+    matrix_set(mat, 1, 0, random_randint(1, 10));
+    matrix_set(mat, 1, 1, random_randint(1, 10));
 }
 
 int main() {
-    srand(time(NULL));
+    random_seed((unsigned int)time_current_time_in_seconds());
+
     Matrix* matrix1 = matrix_create(2, 2);
     Matrix* matrix2 = matrix_create(2, 2);
 
@@ -107,23 +129,31 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+| -2.00000  5.00000 |
+| -7.00000  3.00000 |
+```
 
 ## Example 4 : multiply two Matrix with `matrix_multiply`
 
 ```c
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
-#include <time.h>
+#include "random/random.h"
+#include "time/time.h"
 
 void fillMatrix(Matrix *mat) {
-    matrix_set(mat, 0, 0, rand() % 10 + 1);
-    matrix_set(mat, 0, 1, rand() % 10 + 1);
-    matrix_set(mat, 1, 0, rand() % 10 + 1);
-    matrix_set(mat, 1, 1, rand() % 10 + 1);
+    matrix_set(mat, 0, 0, random_randint(1, 10));
+    matrix_set(mat, 0, 1, random_randint(1, 10));
+    matrix_set(mat, 1, 0, random_randint(1, 10));
+    matrix_set(mat, 1, 1, random_randint(1, 10));
 }
 
+
 int main() {
-    srand(time(NULL));
+    random_seed((unsigned int)time_current_time_in_seconds());
+
     Matrix* matrix1 = matrix_create(2, 2);
     Matrix* matrix2 = matrix_create(2, 2);
 
@@ -150,6 +180,17 @@ int main() {
     
     return 0;
 }
+```
+**Result:**
+```
+| 3.00000  6.00000 |
+| 9.00000 10.00000 |
+
+| 8.00000 9.00000 |
+| 5.00000 9.00000 |
+
+| 54.00000  81.00000 |
+| 122.00000 171.00000 |
 ```
 
 ## Example 5 : mutiply elements of Matrix with a scalar 
@@ -189,6 +230,16 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original matrix:
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+
+Matrix after scalar multiplication by 2.000000:
+| 2.00000  4.00000  6.00000 |
+| 8.00000 10.00000 12.00000 |
+```
 
 ## Example 6 : check Matrix is square or not 
 
@@ -213,6 +264,10 @@ int main() {
     
     return 0;
 }
+```
+**Result:**
+```
+Matrix is not square
 ```
 
 ## Example 7 : create identity matrix and check is equal with other one or not 
@@ -252,6 +307,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Matrix1 and Matrix2 are equal.
+After modification, Matrix1 and Matrix2 are not equal.
 ```
 
 ## Example 8 : check Matrix is identity or not 
@@ -297,6 +357,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+The matrix is an identity matrix.
+The matrix is not an identity matrix.
 ```
 
 ## Example 9 : check Matrix is idempotent or not 
@@ -344,6 +409,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Matrix 1 is idempotent.
+Matrix 2 is not idempotent.
+```
 
 ## Example 10 : check row and columnar Matrix 
 
@@ -381,6 +451,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+RowMatrix is a row matrix.
+ColumnMatrix is a columnar matrix.
+RegularMatrix is neither a row matrix nor a columnar matrix.
+```
 
 ## Example 11 : get diagonal Matrix as row or columns 
 
@@ -415,6 +491,15 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Main diagonal as a column matrix:
+| 0 |
+| 0 |
+| 0 |
+Main diagonal as a row matrix:
+| 0 0 0 |
 ```
 
 ## Example 12 : get minor diagonal as row and columns 
@@ -467,6 +552,15 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Minor diagonal as a row matrix:
+| 3.00000 5.00000 7.00000 |
+Minor diagonal as a column matrix:
+| 3.00000 |
+| 5.00000 |
+| 7.00000 |
+```
 
 ## Example 13 : create transpose Matrix 
 
@@ -507,6 +601,17 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original matrix:
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+
+Transposed matrix:
+| 1.00000 4.00000 |
+| 2.00000 5.00000 |
+| 3.00000 6.00000 |
+```
 
 ## Example 14 : check Matrix is symmetric or not 
 
@@ -534,6 +639,10 @@ int main() {
     matrix_deallocate(matrixA);
     return 0;
 }
+```
+**Result:**
+```
+Matrix A is symmetric.
 ```
 
 ## Example 15 : Matrix is upper or lower triangular.
@@ -578,6 +687,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+The first matrix is upper triangular.
+The second matrix is lower triangular.
+```
 
 ## Example 16 : is skew symmetric or not 
 
@@ -605,6 +719,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+The matrix is skew-symmetric.
+```
 
 ## Example 17: Determinant of a 2X2 Matrix
 
@@ -626,6 +744,10 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Determinant of the 2x2 matrix is: 10.000000
 ```
 
 ## Example 18: Determinant of a 3X3 Matrix
@@ -654,6 +776,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Determinant of the 3x3 matrix is: -306.000000
+```
 
 ## Example 19: Determinant Calculation with Identity Matrix
 
@@ -671,6 +797,10 @@ int main() {
     matrix_deallocate(identityMatrix);
     return 0;
 }
+```
+**Result:**
+```
+Determinant of the 4x4 identity matrix is: 1.000000
 ```
 
 ## Example 20 : sum of diagonal elements of matrix 
@@ -706,6 +836,14 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Matrix:
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+| 7.00000 8.00000 9.00000 |
+Trace of the matrix is: 15.000000
 ```
 
 ## Example 21 : get inverse of matrix 
@@ -747,6 +885,16 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Original Matrix:
+| 4.00000 7.00000 |
+| 2.00000 6.00000 |
+
+Inverse Matrix:
+| 0.60000 -0.70000 |
+|-0.20000  0.40000 |
 ```
 
 ## Example 22: How to raise a square matrix to an integer power also how to copy 
@@ -803,6 +951,20 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original Matrix:
+| 1.00000 2.00000 |
+| 3.00000 4.00000 |
+
+Copied Matrix (should be identical to original):
+| 1.00000 2.00000 |
+| 3.00000 4.00000 |
+
+Matrix Raised to Power 2:
+|  7.00000 10.00000 |
+| 15.00000 22.00000 |
+```
 
 ## Example 23 : get rank of matrix 
 
@@ -840,6 +1002,15 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Matrix:
+|1.00000 2.00000 3.00000 |
+|4.00000 5.00000 6.00000 |
+|7.00000 8.00000 9.00000 |
+
+Rank of the matrix is: 2
 ```
 
 ## Example 24 : check Matrix is diagonal or not 
@@ -886,6 +1057,20 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Initial matrix:
+| 1.00000 0.00000 0.00000 |
+| 0.00000 5.00000 0.00000 |
+| 0.00000 0.00000 9.00000 |
+The matrix is diagonal.
+
+Modified matrix:
+| 1.00000 2.00000 0.00000 |
+| 0.00000 5.00000 0.00000 |
+| 0.00000 0.00000 9.00000 |
+The matrix is not diagonal.
 ```
 
 ## Example 25 : Matrix is orthogonal or not 
@@ -934,6 +1119,18 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original matrix:
+|  0.00000 -1.00000 |
+|  1.00000  0.00000 |
+The matrix is orthogonal.
+
+Modified matrix:
+|  1.00000 -1.00000 |
+|  1.00000  0.00000 |
+The modified matrix is not orthogonal.
+```
 
 ## Example 26 : product matrix Kronecker 
 
@@ -981,6 +1178,22 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Matrix A:
+| 1.00000 2.00000 |
+| 3.00000 4.00000 |
+
+Matrix B:
+| 0.00000 5.00000 |
+| 6.00000 7.00000 |
+
+Kronecker product of A and B:
+|  0.00000  5.00000  0.00000 10.00000 |
+|  6.00000  7.00000 12.00000 14.00000 |
+|  0.00000 15.00000  0.00000 20.00000 |
+| 18.00000 21.00000 24.00000 28.00000 |
+```
 
 ## Example 27 : create hankel Matrix from first row and last col 
 
@@ -1017,6 +1230,14 @@ int main() {
 
     return EXIT_SUCCESS;
 }
+```
+**Result:**
+```
+Hankel Matrix:
+|1.00000 2.00000 3.00000 4.00000 |
+|2.00000 3.00000 4.00000 5.00000 |
+|3.00000 4.00000 5.00000 6.00000 |
+|4.00000 5.00000 6.00000 7.00000 |
 ```
 
 ## Example 28 : check matrix is hankle or not 
@@ -1060,6 +1281,15 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Matrix:
+|1.00000 2.00000 3.00000 4.00000 |
+|2.00000 3.00000 4.00000 3.00000 |
+|3.00000 4.00000 3.00000 4.00000 |
+|4.00000 3.00000 4.00000 5.00000 |
+The matrix is Hankel.
+```
 
 ## Example 29 : create matrix from array then create toeplitz matrix 
 
@@ -1092,6 +1322,19 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+First row
+|1.00000 4.00000 5.00000 6.00000 |
+First Col
+|1.00000 |
+|2.00000 |
+|3.00000 |
+Toeplitz Matrix:
+|1.00000 4.00000 5.00000 6.00000 |
+|2.00000 1.00000 4.00000 5.00000 |
+|3.00000 2.00000 1.00000 4.00000 |
+```
 
 ## Example 30 : create circulant matrix 
 
@@ -1114,6 +1357,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Circulan Matrix:
+|1.00000 2.00000 3.00000 |
+|2.00000 3.00000 1.00000 |
+|3.00000 1.00000 2.00000 |
+```
 
 ## Example 31 : create hilbert Matrix 
 
@@ -1132,6 +1382,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Hilbert Matrix : 
+|1.00000 0.50000 0.33333 |
+|0.50000 0.33333 0.25000 |
+|0.33333 0.25000 0.20000 |
+```
 
 ## Example 32 : create helmert matrix 
 
@@ -1148,6 +1405,15 @@ int main() {
     matrix_deallocate(helmert);
     return 0;
 }
+```
+**Result:**
+```
+Helmert Matrix : 
+|0.44721  0.44721  0.44721  0.44721  0.44721 |
+|0.70711 -0.70711        0        0        0 |
+|0.40825  0.40825 -0.81650        0        0 |
+|0.28868  0.28868  0.28868 -0.86603        0 |
+|0.22361  0.22361  0.22361  0.22361 -0.89443 |
 ```
 
 ## Example 33 : Cofactor of Matrix 
@@ -1168,6 +1434,13 @@ int main() {
     matrix_deallocate(cofactor);
     return 0;
 }
+```
+**Result:**
+```
+Cofactor of Matrix : 
+|  12.00000  -4.00000  -1.00000 |
+| -51.00000  -1.00000  20.00000 |
+|  21.00000   2.00000 -13.00000 |
 ```
 
 ## Example 34 : calculate cholesky decomposition of a Matrix 
@@ -1204,6 +1477,17 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+Original Matrix:
+|   4.00000  12.00000 -16.00000 |
+|  12.00000  37.00000 -43.00000 |
+| -16.00000 -43.00000  98.00000 |
+Cholesky Decomposition (Upper Triangular Matrix):
+|  2.00000  6.00000 -8.00000 |
+|  0.00000  1.00000  5.00000 |
+|  0.00000  0.00000  3.00000 |
 ```
 
 ## Example 35 : LU decomposition 
@@ -1246,6 +1530,21 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original Matrix A:
+| 4.00000 3.00000 2.00000 |
+| 3.00000 2.00000 1.00000 |
+| 2.00000 1.00000 3.00000 |
+Lower Triangular Matrix L:
+| 1.00000 0.00000 0.00000 |
+| 0.75000 1.00000 0.00000 |
+| 0.50000 2.00000 1.00000 |
+Upper Triangular Matrix U:
+|  4.00000  3.00000  2.00000 |
+|  0.00000 -0.25000 -0.50000 |
+|  0.00000  0.00000  3.00000 |
+```
 
 ## Example 36 : QR decomposition 
 
@@ -1287,6 +1586,21 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original Matrix A:
+|   4.00000  12.00000 -16.00000 |
+|  12.00000  37.00000 -43.00000 |
+| -16.00000 -43.00000  98.00000 |
+Orthogonal Matrix Q:
+|  0.19612  0.16948  0.96582 |
+|  0.58835  0.76762 -0.25416 |
+| -0.78446  0.61809  0.05083 |
+Upper Triangular Matrix R:
+|   20.39608   57.85426 -105.31436 |
+|    0.00000    3.85806   24.85307 |
+|    0.00000    0.00000    0.45750 |
+```
 
 ## Example 37 : Pascal matrix 
 
@@ -1303,6 +1617,15 @@ int main() {
     matrix_deallocate(pascal);
     return 0;
 }
+```
+**Result:**
+```
+Pascal Matrix : 
+|  1.00000  1.00000  1.00000  1.00000  1.00000 |
+|  1.00000  2.00000  3.00000  4.00000  5.00000 |
+|  1.00000  3.00000  6.00000 10.00000 15.00000 |
+|  1.00000  4.00000 10.00000 20.00000 35.00000 |
+|  1.00000  5.00000 15.00000 35.00000 70.00000 |
 ```
 
 ## Example 38 : different kind of Norm 
@@ -1333,6 +1656,12 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Frobenius Norm: 16.881943
+L1 Norm: 18.000000
+Infinity Norm: 24.000000
 ```
 
 ## Example 39 : Matrix is positive definite or not 
@@ -1374,6 +1703,11 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+The matrix is positive definite.
+The matrix is not positive definite.
 ```
 
 ## Example 40 : generate projection of a Matrix 
@@ -1417,6 +1751,18 @@ int main() {
     return 0;
 }
 ``` 
+**Result:**
+```
+Matrix A:
+| 1.00000 2.00000 |
+| 3.00000 4.00000 |
+| 5.00000 6.00000 |
+
+Projection Matrix P for the column space of A:
+|  0.83333  0.33333 -0.16667 |
+|  0.33333  0.33333  0.33333 |
+| -0.16667  0.33333  0.83333 |
+```
 
 ## Example 41 : create vandermond matrix from give matrix 
 
@@ -1443,6 +1789,13 @@ int main() {
     return 0;   
 }
 ```
+**Result:**
+```
+Vandermond Matrix : 
+|  1.00000  4.00000 16.00000 |
+|  1.00000  3.00000  9.00000 |
+|  1.00000  1.00000  1.00000 |
+```
 
 ## Example 42 : create companion matrix 
 
@@ -1462,6 +1815,12 @@ int main() {
     matrix_deallocate(matrix);
     return 0;   
 }
+```
+**Result:**
+```
+Companion Matrix : 
+|  0.00000 -0.66667 |
+|  1.00000 -0.33333 |
 ```
 
 ## Example 43 : How to apply a function to matrix_map also fill and matrix with prefer value 
@@ -1509,6 +1868,18 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Matrix after filling with PI / 4:
+| 0.78540 0.78540 0.78540 |
+| 0.78540 0.78540 0.78540 |
+| 0.78540 0.78540 0.78540 |
+
+Matrix after applying the sine function:
+| 0.70711 0.70711 0.70711 |
+| 0.70711 0.70711 0.70711 |
+| 0.70711 0.70711 0.70711 |
+```
 
 ## Example 44 : how to use matrix_row_addition and matrix_col_addition 
 
@@ -1555,6 +1926,23 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original Matrix:
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+| 7.00000 8.00000 9.00000 |
+
+Matrix after adding first row to the second row:
+| 1.00000 2.00000 3.00000 |
+| 5.00000 7.00000 9.00000 |
+| 7.00000 8.00000 9.00000 |
+
+Matrix after adding first column (scaled by 2) to the third column:
+|  1.00000  2.00000  5.00000 |
+|  5.00000  7.00000 19.00000 |
+|  7.00000  8.00000 23.00000 |
+```
 
 ## Example 45 : Apply function for specefic row and col 
 
@@ -1570,6 +1958,7 @@ double square(double x) {
 int main() {
     double values[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     Matrix* matrix = matrix_from_array(values, 3, 3); 
+
     if (!matrix) {
         fmt_fprintf(stderr, "Failed to create matrix.\n");
         return -1;
@@ -1602,6 +1991,23 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original Matrix:
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+| 7.00000 8.00000 9.00000 |
+
+Matrix after applying 'square' function to the second row:
+|  1.00000  2.00000  3.00000 |
+| 16.00000 25.00000 36.00000 |
+|  7.00000  8.00000  9.00000 |
+
+Matrix after applying 'square' function to the first column:
+|   1.00000   2.00000   3.00000 |
+| 256.00000  25.00000  36.00000 |
+|  49.00000   8.00000   9.00000 |
+```
 
 ## Example 46 : finding minimum and maximum element of a Matrix 
 
@@ -1633,6 +2039,16 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Given Matrix:
+| -2.50000  3.10000  5.00000 |
+|  7.20000 -8.60000  1.00000 |
+|  4.50000 -9.10000  2.30000 |
+
+Minimum element in the matrix: -9.100000
+Maximum element in the matrix: 7.200000
 ```
 
 ## Example 47 : create leslie matrix 
@@ -1668,6 +2084,14 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Leslie Matrix:
+| 0.10000 2.00000 1.00000 0.00000 |
+| 0.20000 0.00000 0.00000 0.00000 |
+| 0.00000 0.80000 0.00000 0.00000 |
+| 0.00000 0.00000 0.70000 0.00000 |
+```
 
 ## Example 48 : create inverse hilbert Matrix 
 
@@ -1689,6 +2113,14 @@ int main() {
     matrix_deallocate(invHilbert);
     return 0;
 }
+```
+**Result:**
+```
+Inverse Hilbert Matrix : 
+|    16.00000  -120.00000   240.00000  -140.00000 |
+|  -120.00000  1200.00000 -2700.00000  1680.00000 |
+|   240.00000 -2700.00000  6480.00000 -4200.00000 |
+|  -140.00000  1680.00000 -4200.00000  2800.00000 |
 ```
 
 ## Example 49 : get row or col of Matrix as Matrix object 
@@ -1736,6 +2168,19 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original Matrix : 
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+| 7.00000 8.00000 9.00000 |
+row of matrix :
+| 4.00000 5.00000 6.00000 |
+col of matrix :
+| 3.00000 |
+| 6.00000 |
+| 9.00000 |
+```
 
 ## Example 50 : Matrix to double Array 
 
@@ -1755,6 +2200,7 @@ int main() {
     matrix_print(matrix);
 
     double* data = matrix_to_array(matrix);
+    fmt_printf("\n");
 
     for (size_t i = 0; i < (matrix->rows * matrix->cols); i++) {
         fmt_printf("%lf ", data[i]);
@@ -1764,6 +2210,15 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Original Matrix : 
+| 1.00000 2.00000 3.00000 |
+| 4.00000 5.00000 6.00000 |
+| 7.00000 8.00000 9.00000 |
+
+1.000000 2.000000 3.000000 4.000000 5.000000 6.000000 7.000000 8.000000 9.000000
 ```
 
 ## Example 51 : get size of Matrix 
@@ -1787,6 +2242,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Matrix A Size is 4
+| 1.00000 0.00000 |
+| 1.00000 0.00000 |
+```
 
 ## Example 52 : create random Matrix 
 
@@ -1809,6 +2270,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Matrix random is : 
+| 7.00000 3.00000 7.00000 |
+| 1.00000 1.00000 7.00000 |
+| 9.00000 5.00000 5.00000 |
+```
 
 ## Example 53 : create walsh matrix 
 
@@ -1817,7 +2285,7 @@ int main() {
 #include "fmt/fmt.h"
 
 int main() {
-    Matrix* matrix = matrix_walsh(16);
+    Matrix* matrix = matrix_walsh(8);
 
     if (!matrix) {
         fmt_printf("Error in creation matrix object");
@@ -1830,4 +2298,16 @@ int main() {
     matrix_deallocate(matrix);
     return 0;
 }
+```
+**Result:**
+```
+Matrix walsh is : 
+|  1.00000  1.00000  1.00000  1.00000  1.00000  1.00000  1.00000  1.00000 |
+|  1.00000 -1.00000  1.00000 -1.00000  1.00000 -1.00000  1.00000 -1.00000 |
+|  1.00000  1.00000 -1.00000 -1.00000  1.00000  1.00000 -1.00000 -1.00000 |
+|  1.00000 -1.00000 -1.00000  1.00000  1.00000 -1.00000 -1.00000  1.00000 |
+|  1.00000  1.00000  1.00000  1.00000 -1.00000 -1.00000 -1.00000 -1.00000 |
+|  1.00000 -1.00000  1.00000 -1.00000 -1.00000  1.00000 -1.00000  1.00000 |
+|  1.00000  1.00000 -1.00000 -1.00000 -1.00000 -1.00000  1.00000  1.00000 |
+|  1.00000 -1.00000 -1.00000  1.00000 -1.00000  1.00000  1.00000 -1.00000 |
 ```

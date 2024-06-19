@@ -243,6 +243,7 @@ int main() {
     if (decoded) {
         fmt_printf("Base16 Encoded: %s\n", encodedText);
         fmt_printf("Decoded: %s\n", decoded);
+        
         free(decoded);
     }
     return 0;
