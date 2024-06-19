@@ -75,6 +75,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Encoded: SGVsbG8sIFdvcmxkIQ==
+Decoded: Hello, World!
+```
+
 ### Example 2: URL Encoding
 
 In this example, we will encode a URL or a string with special characters using `encoding_url_encode`.
@@ -102,6 +108,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original: Hello World! This is a test/example?
+URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
+```
 
 ### Example 3: URL Decoding `encoding_url_decode`
 
@@ -122,6 +133,11 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
+Decoded: Hello World! This is a test/example?
 ```
 
 ## Examples 4 : use `encoding_base32_encode`
@@ -146,6 +162,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original: Hello, World!
+Base32 Encoded: JBSWY3DPFQQFO33SNRSCC===
+```
 
 ## Example 5 : use `encoding_base32_decode`
 
@@ -162,11 +183,17 @@ int main() {
         fmt_printf("Base32 Encoded: %s\n", text_to_decode);
         fmt_printf("Decoded: %s\n", decoded);
         free(decoded);
-    } else {
+    } 
+    else {
         fmt_printf("Failed to decode from Base32.\n");
     }
     return 0;
 }
+```
+**Result:**
+```
+Base32 Encoded: ORSXG5A=
+Decoded: test
 ```
 
 ## Example 6 : use `encoding_base16_encode`
@@ -188,6 +215,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Original: Hello, World!
+Base16 Encoded: 48656C6C6F2C20576F726C6421
+```
 
 ## Example 7 : use `encoding_base32_decode`
 
@@ -207,6 +239,11 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+Base16 Encoded: 48656C6C6F2C20576F726C6421
+Decoded: Hello, World!
 ```
 
 ## Example 8 : use `encoding_utf32_to_utf16`
@@ -237,6 +274,10 @@ int main() {
     free(utf16_string);
     return 0;
 }
+```
+**Result:**
+```
+UTF-16 String: D83D DE00 D83D DE03 D83D DE04 D83D DE06 D83D DE09 D83D DE0A \n
 ```
 
 ## Example 9 : convert utf16 to utf32 with `encoding_utf16_to_utf32`
@@ -279,6 +320,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+UTF-16 String: D83D DE00 D83D DE03 D83D DE04 D83D DE06 D83D DE09 D83D DE0A 
+UTF-32 String: 1F600 1F603 1F604 1F606 1F609 1F60A
+```
 
 ### Example 10: Using `encoding_utf16_to_utf8`
 
@@ -303,6 +349,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+UTF-8 Encoded String: Hello World
+```
 
 ### Example 11: Using `encoding_utf32_to_utf8`
 
@@ -326,6 +376,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+UTF-8 Encoded String: Hello World
 ```
 
 ## Example 12 : Check data is valid UTF-8 or not with `encoding_is_utf8`
@@ -371,6 +425,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+String 1 is valid UTF-8.
+String 2 is not valid UTF-8.
+String 3 is not valid UTF-8.
+```
+
 ## Example 13 : Check data is valid UTF-8 String or not with `encoding_is_utf8_string`
 
 ```c
@@ -413,6 +474,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Example 1 is valid UTF-8.
+Error: Invalid UTF-8 encoding detected in encoding_is_utf8_string.
+Example 2 is not valid UTF-8.
+Example 3 is valid UTF-8.
+```
 
 ## Example 14 : `encoding_utf8_to_utf16`
 
@@ -440,6 +508,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+UTF-16 Encoded String: 0048 0065 006C 006C 006F 002C 0020 0055 0054 0046 002D 0031 0036 0021 0020 D83D DE0A
 ```
 
 ### Example 15 :  `encoding_utf8_to_utf32`
@@ -469,6 +541,10 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+UTF-32 Encoded String: 00000048 00000065 0000006C 0000006C 0000006F 0000002C 00000020 00000055 00000054 00000046 0000002D 00000033 00000032 00000021 00000020 0001F30D
+```
 
 ## Example 16 : `encoding_hex_dump`
 
@@ -483,6 +559,10 @@ int main() {
     
     return 0;
 }
+```
+**Result:**
+```
+00000000  61 6d 69 6e                                      |amin|
 ```
 
 ## Example 17 : encode and decode data with Using `encoding_base85_encode` and `encoding_base85_decode`
@@ -514,8 +594,14 @@ int main() {
     else {
         fmt_printf("Encoding failed.\n");
     }
+
     return 0;
 }
+```
+**Result:**
+```
+Encoded ASCII85: 87cURD]it9AH
+Decoded: Hello one
 ```
 
 ## Example 18 : encode and decode data with `encoding_base58_encode` and `encode_base58_decode`
@@ -542,6 +628,11 @@ int main() {
     free(b58);
     return 0;
 }
+```
+**Result:**
+```
+Base58 Encoded: 72k1xXWG59fYdzSNoA
+Decoded Data: Hello, World!
 ```
 
 ## Example 19 : encode and decode data Using `encoding_base91_encode` and `encodinل_base91_decode`
@@ -579,4 +670,9 @@ int main() {
     free(decoded);
     return 0;
 }
+```
+**Result:**
+```
+Encoded: >OwJh>}AdcN[>081Q
+Decoded: Hello, Base91!
 ```
