@@ -54,8 +54,6 @@ represents a binary number.
 
 ## Example 1 : how to use `bitset_none` and `bitset_count`
 
-Please, enter a binary number: 11010111
-0000000011010111 has 6 bits set.
 ```cpp
 
 #include <iostream>       // std::cin, std::cout
@@ -76,6 +74,11 @@ int main (){
 
   return 0;
 }
+```
+**Result in C++:**
+```
+Please, enter a binary number: 11010111
+0000000011010111 has 6 bits set.
 ```
 
 ```c
@@ -115,6 +118,11 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Please, enter a binary number: 11010111
+0000000011010111 has 6 bits set.
+```
 
 ## Example 2 : how to get size of bitset with `bitset_size` and flip it with `bitset_flip`
  
@@ -143,13 +151,15 @@ int main(){
     return 0;
 }
 ```
+**Result:**
+```
+0
+4
+8
+0011
+```
 
 ## Example 3 : Using `bitset_all` and `bitset_none` and `bitset_any`
-
-Please, enter an 8-bit binary number: 11111111
-all: true
-any: true
-none: false
 
 ```c
 #include "bitset/bitset.h"
@@ -180,6 +190,13 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Please, enter an 8-bit binary number: 11111111
+all: true
+any: true
+none: false
+```
 
 ```cpp
 #include <iostream>       // std::cin, std::cout, std::boolalpha
@@ -198,14 +215,16 @@ int main (){
 
   return 0;
 }
-
+```
+**Result in C++:**
+```
+Please, enter an 8-bit binary number: 11111
+all: false
+any: true
+none: false
 ```
 
 ## Example 4 : Using `bitset_any` and `bitset_count`
-
-
-Please, enter a binary number: 10110
-0000000000010110 has 3 bits set.
 
 ```c
 #include "bitset/bitset.h"
@@ -237,6 +256,11 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Please, enter a binary number: 10110
+0000000000010110 has 3 bits set.
+```
 
 ```cpp
 
@@ -258,7 +282,11 @@ int main (){
 
   return 0;
 }
-
+```
+**Result in C++:**
+```
+Please, enter a binary number: 10110
+0000000000010110 has 3 bits set.
 ```
 
 ## Example 5 : Manually set bits with `bitset_set`
@@ -289,17 +317,20 @@ int main() {
     // Print the bitset, count of ones, and count of zeros
     fmt_printf("Bitset: ");
     bitset_print(foo);
-    fmt_printf(" has %zu ones and %zu zeros.\n", bitset_count(foo), foo->size - bitset_count(foo));
+    fmt_printf("has %zu ones and %zu zeros.\n", bitset_count(foo), foo->size - bitset_count(foo));
 
     bitset_deallocate(foo);
     return 0;
 }
-
+```
+**Result:**
+```
+Bitset: 11001101
+has 5 ones and 3 zeros.
 ```
 
 ## Example 6 : use `bitset_print` in Bitset also flip 
-Original bitset: 11010010
-After toggling: 00101101 
+
 ```c
 #include "bitset/bitset.h"
 #include "fmt/fmt.h"
@@ -320,6 +351,11 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Original bitset: 11010010
+After toggling: 00101101 
+```
 
 ```cpp
 #include <iostream>
@@ -337,14 +373,13 @@ int main() {
     return 0;
 }
 ```
+**Result in C++:**
+```
+Original bitset: 11010010
+After toggling: 00101101 
+```
 
 ## Example 7 : set and print 
-
-Enter a position to set (0-7): 2
-Bitset after setting position 2: 00000100
-
-Enter a position to set (0-7): 1
-Bitset after setting position 1: 00000010
 
 ```c
 
@@ -371,6 +406,16 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Enter a position to set (0-7): 2
+Bitset after setting position 2: 00000100
+
+Enter a position to set (0-7): 1
+Bitset after setting position 1: 00000010
+```
+
+`C++`
 
 ```cpp 
 
@@ -394,7 +439,11 @@ int main() {
 
     return 0;
 }
-
+```
+**Result:**
+```
+Enter a position to set (0-7): 3
+Bitset after setting position 3: 00001000
 ```
 
 ## Example 8: Set specific bits and convert to unsigned long long
@@ -425,6 +474,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Bitset: 0000000000000000000000000000000000000000000000000000000010101010
+Converted to unsigned long long: 170
+```
 
 **C++ Implementation:**
 
@@ -448,6 +502,11 @@ int main() {
 
     return 0;
 }
+```
+**Result in C++:**
+```
+Bitset: 0000000000000000000000000000000000000000000000000000000010101010
+Converted to unsigned long long: 170
 ```
 
 ## Example 9: Check bit status and count set bits
@@ -474,6 +533,18 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Bit 0 is not set
+Bit 1 is not set
+Bit 2 is set
+Bit 3 is not set
+Bit 4 is set
+Bit 5 is not set
+Bit 6 is not set
+Bit 7 is not set
+Number of set bits: 2
+```
 
 **C++ Implementation:**
 
@@ -496,6 +567,18 @@ int main() {
     return 0;
 }
 ```
+**Result in C++:**
+```
+Bit 0 is not set
+Bit 1 is not set
+Bit 2 is set
+Bit 3 is not set
+Bit 4 is set
+Bit 5 is not set
+Bit 6 is not set
+Bit 7 is not set
+Number of set bits: 2
+```
 
 ## Example 10: Converts Bitset Object to String (char*)
 
@@ -517,7 +600,10 @@ int main() {
     bitset_deallocate(bit);
     return 0;
 }
-
+```
+**Result:**
+```
+Bitset in string is 00001010
 ```
 
 **C++ Implementation:**
@@ -538,7 +624,10 @@ int main() {
 
     return 0;
 }
-
+```
+**Result in C++:**
+```
+Bitset String: 00001010
 ```
 
 ## Example 11: Bitwise Operations on Two Bitsets
@@ -590,6 +679,12 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Bitset 1: 10101010
+Bitset 2: 11001100
+Bitwise AND: 10001000
+```
 
 **C++ Implementation:**
 
@@ -609,6 +704,12 @@ int main() {
 
     return 0;
 }
+```
+**Result in C++:**
+```
+Bitset 1: 10101010
+Bitset 2: 11001100
+Bitwise AND: 10001000
 ```
 
 ## Example 13: Shifting Bits in a Bitset
@@ -651,6 +752,11 @@ int main() {
     return 0;
 }
 ```
+**Result in C:**
+```
+Original Bitset: 10011001
+Shifted Left by 2: 01100100
+```
 
 **C++ Implementation:**
 
@@ -668,4 +774,8 @@ int main() {
     return 0;
 }
 ```
-
+**Result in C++:**
+```
+Original Bitset: 10011001
+Shifted Left by 2: 01100100
+```
