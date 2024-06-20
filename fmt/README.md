@@ -63,20 +63,20 @@ Each of these functions offers a versatile approach to handling formatted text i
 
 void println() {
     for (int index = 0; index < 10; index++) {
-        fmt_println(string_from_int_cstr(index), ":", "سلام دنیا", FMT_END_ARGS);
+        fmt_println(string_from_int_cstr(index), ":", "سلام دنیا");
     }
 }
 
 // japanese
 void print() {
     for (int index = 0; index < 10; index++) {
-        fmt_print(string_from_int_cstr(index), ":", "ああ、 --", FMT_END_ARGS);
+        fmt_print(string_from_int_cstr(index), ":", "ああ、 --");
     }
 }
 
 int main() {
     println();
-    fmt_println("-----------------", FMT_END_ARGS);
+    fmt_println("-----------------");
     print();
 
     return 0;
@@ -91,17 +91,19 @@ int main() {
 #include <stdlib.h>
 
 int main() {
-    char* message = fmt_sprintln("This is a message with Unicode characters:", "سلام دنیا", "ああ、こんにちは", FMT_END_ARGS);
+    char* message = fmt_sprintln("This is a message with Unicode characters:", "سلام دنیا", "ああ、こんにちは");
     if (message) {
-        fmt_print(message, FMT_END_ARGS);
-        fmt_println(message, FMT_END_ARGS);
+        fmt_print(message);
+        fmt_println(message);
+
         free(message);
     }
 
-    message = fmt_sprintln("Another message:", "امین طهماسبی", string_from_int_cstr(42), FMT_END_ARGS);
+    message = fmt_sprintln("Another message:", "امین طهماسبی", string_from_int_cstr(42));
     if (message) {
         fmt_printf("%s", message);
         fmt_printf("and %d %s", 15, "امین"); 
+        
         free(message);
     }
 
@@ -123,17 +125,19 @@ Sprintln formats using the default formats for its operands and returns the resu
 #include <stdlib.h>
 
 int main() {
-    char* message = fmt_sprintln("This is a message with Unicode characters:", "سلام دنیا", "ああ、こんにちは", FMT_END_ARGS);
+    char* message = fmt_sprintln("This is a message with Unicode characters:", "سلام دنیا", "ああ、こんにちは");
     if (message) {
-        fmt_print(message, FMT_END_ARGS);
-        fmt_println(message, FMT_END_ARGS);
+        fmt_print(message);
+        fmt_println(message);
+
         free(message);
     }
 
-    message = fmt_sprintln("Another message:", "Hello, world!", string_from_int_cstr(42), FMT_END_ARGS);
+    message = fmt_sprintln("Another message:", "Hello, world!", string_from_int_cstr(42));
     if (message) {
         fmt_printf("%s", message);
         fmt_printf("and %d %s", 15, "امین"); 
+
         free(message);
     }
 
@@ -151,17 +155,19 @@ Sprint formats using the default formats for its operands and returns the result
 #include <stdlib.h>
 
 int main() {
-    char* message = fmt_sprint("This is a message with Unicode characters:", "سلام دنیا", "ああ、こんにちは", "\n", FMT_END_ARGS);
+    char* message = fmt_sprint("This is a message with Unicode characters:", "سلام دنیا", "ああ、こんにちは", "\n");
     if (message) {
-        fmt_print(message, FMT_END_ARGS);
-        fmt_println(message, FMT_END_ARGS);
+        fmt_print(message);
+        fmt_println(message);
+        
         free(message);
     }
 
-    message = fmt_sprint("Another message:", "Hello, world!", string_from_int_cstr(42), FMT_END_ARGS);
+    message = fmt_sprint("Another message:", "Hello, world!", string_from_int_cstr(42));
     if (message) {
         fmt_printf("%s", message);
-        fmt_printf("and %d", 15, FMT_END_ARGS); 
+        fmt_printf("and %d", 15);
+
         free(message);
     }
 
@@ -269,26 +275,28 @@ int main() {
 
 ```c
 #include "fmt/fmt.h"
+#include "time/time.h"
 #include <time.h>
 
 
 int main() {
-    struct timespec start, end;
-    double time_sum = 0;
+    Time* start_time = time_current_time();
 
-    clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < 10000; i++) {
-        // Average Custom fmt_printf Time: 0.000327 seconds
+        // fmt lib
         fmt_printf("%d : %s\n", i, "امین طهماسبی"); 
 
-        // Average Custom printf Time: 0.001184 seconds
-        // printf("%d : %s\n", i, "امین طهماسبی");
+        // standard lib
+        printf("%d : %s\n", i, "امین طهماسبی");
     }
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    time_sum += (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    double average_time = time_sum / 10000;
-    printf("Average Custom fmt_printf Time: %f seconds\n", average_time);
+    Time* end_time = time_current_time();
+    double diff_time = time_diff_in_seconds(start_time, end_time);
+
+    fmt_printf("Difference in Seconds : %lf", diff_time);
+
+    time_deallocate(start_time);
+    time_deallocate(end_time);
 
     return 0;
 }
@@ -323,19 +331,20 @@ int main() {
 
 int main() {
     char* input = NULL;
-    fmt_print("Enter a string (fmt_scan): ", FMT_END_ARGS);
+    fmt_print("Enter a string (fmt_scan): ");
 
     if (fmt_scan(&input) == 0) {
-        fmt_print("You entered: ", FMT_END_ARGS);
-        fmt_println(input, FMT_END_ARGS);
+        fmt_print("You entered: ");
+        fmt_println(input);
+
         free(input);
     } 
     else {
-        fmt_println("Error reading input.", FMT_END_ARGS);
+        fmt_println("Error reading input.");
     }
+    
     return 0;
 }
-
 ```
 
 ## Example 11 : Using `fmt_scanln`
@@ -346,7 +355,7 @@ int main() {
 
 int main() {
     char* input = NULL;
-    fmt_print("Enter a string (fmt_scanln): ", FMT_END_ARGS);
+    fmt_print("Enter a string (fmt_scanln): ");
 
     if (fmt_scanln(&input) == 0 && input != NULL) {
         char* message = fmt_sprintf("You entered: %s", input);
@@ -354,14 +363,14 @@ int main() {
             fmt_printf("%s\n", message);
             free(message);
         }
+        
         free(input);
     } 
     else {
-        fmt_println("Error or end of input.", FMT_END_ARGS);
+        fmt_println("Error or end of input.");
     }
     return 0;
 }
-
 ```
 
 ## Example 12 : how to use `fmt_scanf`
@@ -375,7 +384,7 @@ int main() {
     float salary;
     char name[50];
 
-    fmt_print("Enter your name, age, and salary: ", FMT_END_ARGS);
+    fmt_print("Enter your name, age, and salary: ");
     fmt_scanf("%s %d %f", name, &age, &salary);
 
     char* message = fmt_sprintf("Name: %s, Age: %d, Salary: %.2f", name, age, salary);
@@ -383,9 +392,9 @@ int main() {
         fmt_printf("Scanned data: %s\n", message);
         free(message);
     } 
+
     return 0;
 }
-
 ```
 
 ## Example 13 : how to write stream with `fmt_fprint`
@@ -396,9 +405,9 @@ int main() {
 int main() {
     FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
 
-    fmt_fprint(writer->file_writer, "This is text in a file", FMT_END_ARGS);
-    fmt_fprint(stdout, "Hello, World! ", "こんにちは ", "سلام دنیا", FMT_END_ARGS);
-    fmt_fprint(stderr, "This is an error message on stderr", FMT_END_ARGS);
+    fmt_fprint(writer->file_writer, "This is text in a file");
+    fmt_fprint(stdout, "Hello, World! ", "こんにちは ", "سلام دنیا");
+    fmt_fprint(stderr, "This is an error message on stderr");
 
     file_writer_close(writer);
     return 0;
@@ -413,14 +422,13 @@ int main() {
 int main() {
     FileWriter* writer = file_writer_open("./sources/output.txt", WRITE_TEXT);
 
-    fmt_fprintln(writer->file_writer, "This is a line in a file", FMT_END_ARGS);
-    fmt_fprintln(stdout, "This is a line on stdout", FMT_END_ARGS);
-    fmt_fprintln(stderr, "This is a line on stderr", FMT_END_ARGS);
+    fmt_fprintln(writer->file_writer, "This is a line in a file");
+    fmt_fprintln(stdout, "This is a line on stdout");
+    fmt_fprintln(stderr, "This is a line on stderr");
 
     file_writer_close(writer);
     return 0;
 }
-
 ```
 
 ## Example 15 : how to write formatted text to file with `fmt_fprintf`
@@ -496,8 +504,8 @@ int main() {
 
 int main() {
     fmt_printf("World : %s %s\n", "🌍", "😡");
-    fmt_println("Haaaa :", "😊🥴", FMT_END_ARGS);
-    fmt_print("😡", "🥶", "😎", "🤩", FMT_END_ARGS);
+    fmt_println("Haaaa :", "😊🥴");
+    fmt_print("😡", "🥶", "😎", "🤩");
 
     return 0;
 }
@@ -536,14 +544,14 @@ int main() {
 
 int main() {
     char* input = NULL;
-    fmt_print("Enter a line of text: ", FMT_END_ARGS);
+    fmt_print("Enter a line of text: ");
 
     if (fmt_scanln(&input) == 0 && input != NULL) {
         fmt_printf("You entered: %s\n", input);
         free(input);
     } 
     else {
-        fmt_println("Error or end of input.", FMT_END_ARGS);
+        fmt_println("Error or end of input.");
     }
     
     return 0;
@@ -557,7 +565,7 @@ int main() {
 
 int main() {
     fmt_fprintf(stdout, "Emoji example: %s %s %s\n", "😀", "🚀", "🌟");
-    fmt_fprint(stdout, "More emojis: ", "🌍", "🌈", "🔥", FMT_END_ARGS);
+    fmt_fprint(stdout, "More emojis: ", "🌍", "🌈", "🔥");
     
     return 0;
 }
@@ -572,7 +580,7 @@ int main() {
     FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
 
     fmt_fprintf(writer->file_writer, "Writing to a file: %s\n", "Hello, برنامه نویسان");
-    fmt_fprint(writer->file_writer, "More text: ", "This is an example", " using fmt_fprint", FMT_END_ARGS);
+    fmt_fprint(writer->file_writer, "More text: ", "This is an example", " using fmt_fprint");
 
     file_writer_close(writer);
     return 0;

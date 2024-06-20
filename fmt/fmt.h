@@ -9,20 +9,27 @@
 
 #define FMT_END_ARGS (NULL)
 
-void fmt_print(const char* format, ...);
-void fmt_println(const char* format, ...);
+#define fmt_print(...) __fmt_print(__VA_ARGS__, NULL)
+#define fmt_println(...) __fmt_println(__VA_ARGS__, NULL)
+#define fmt_sprint(...) __fmt_sprint(__VA_ARGS__, NULL)
+#define fmt_sprintln(...) __fmt_sprintln(__VA_ARGS__, NULL)
+#define fmt_fprint(stream, ...) __fmt_fprint(stream, __VA_ARGS__, NULL)
+#define fmt_fprintln(stream, ...) __fmt_fprintln(stream, __VA_ARGS__, NULL)
+
+void __fmt_print(const char* str, ...);
+void __fmt_println(const char* str, ...);
 void fmt_printf(const char* format, ...);
 
-char* fmt_sprintln(const char* first_arg, ...);
-char* fmt_sprint(const char* first_arg, ...);
+char* __fmt_sprintln(const char* str, ...);
+char* __fmt_sprint(const char* str, ...);
 char* fmt_sprintf(const char* format, ...);
 
 int fmt_scan(char** output);
 int fmt_scanln(char** output);
 int fmt_scanf(const char* format, ...);
 
-int fmt_fprint(FILE* stream, ...);
-int fmt_fprintln(FILE* stream, ...);
+int __fmt_fprint(FILE* stream, const char* str, ...);
+int __fmt_fprintln(FILE* stream, const char* str, ...);
 int fmt_fprintf(FILE* stream, const char* format, ...);
 
 int fmt_fscan(FILE* stream, const char* format, ...);

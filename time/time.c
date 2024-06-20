@@ -506,3 +506,32 @@ void time_sleep(unsigned int second) {
         sleep(second);
     #endif 
 }
+
+double time_diff_in_seconds(const Time* from, const Time* to) {
+    if (!from || !to) {
+        #ifdef TIME_LOGGINH_ENABLE
+            fmt_fprintf(stderr, "Error: NULL Time pointer(s) in time_diff_in_seconds.\n");
+        #endif 
+        return 0.0;
+    }
+    if (!time_is_valid(from) || !time_is_valid(to)) {
+        #ifdef TIME_LOGGINH_ENABLE
+            fmt_fprintf(stderr, "Error: Invalid Time object(s) in time_diff_in_seconds.\n");
+        #endif 
+        return 0.0;
+    }
+
+    // Convert each component to seconds and sum them up, including milliseconds
+    double from_secs = from->hour * 3600 + from->minute * 60 + from->second + from->msec / 1000.0;
+    double to_secs = to->hour * 3600 + to->minute * 60 + to->second + to->msec / 1000.0;
+    double diff = to_secs - from_secs; 
+
+    //  result should be within the range of -86400 and 86400 seconds
+    if (diff < -86400) {
+        diff += 86400;
+    } 
+    else if (diff > 86400) {
+        diff -= 86400;
+    }
+    return diff;
+}

@@ -52,6 +52,7 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 - `bool time_is_greater_than(const Time* lhs, const Time* rhs)`: Determines if one Time object is greater than another.
 - `bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs)`: Determines if one Time object is greater than or equal to another.
 - `bool time_is_not_equal(const Time* lhs, const Time* rhs)`: Checks if two Time objects are not equal.
+- `double time_diff_in_seconds(const Time* from, const Time* to)`: this function get two Time object then calculate differnece between them and return result as double value.
 
 To test the functionality of your `Time` library, you can create a series of examples that cover each function. Here are 10 examples, one for each major functionality:
 
@@ -290,4 +291,33 @@ int main() {
 ```
 Current Time in seconds 1718733335.131222
 Current Time in msec 1718733335132198.000000
+```
+
+## Example 12: calculate diff Time with `time_diff_in_seconds`
+
+```c 
+#include "fmt/fmt.h"
+#include "time/time.h"
+#include <time.h>
+
+
+int main() {
+    Time* start_time = time_current_time();
+
+    time_sleep(10);
+
+    Time* end_time = time_current_time();
+    double diff_time = time_diff_in_seconds(start_time, end_time);
+
+    fmt_printf("Difference in Seconds : %lf", diff_time);
+
+    time_deallocate(start_time);
+    time_deallocate(end_time);
+
+    return 0;
+}
+```
+**Result:**
+```
+Difference in Seconds : 10.007000
 ```

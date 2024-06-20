@@ -11,33 +11,23 @@
 #endif
 
 
-void fmt_print(const char* str, ...) {
+void __fmt_print(const char* str, ...) {
     va_list args;
     va_start(args, str);
     
-
 #if defined(_WIN32) || defined(_WIN64)
-    // wchar_t buffer[2048];
     DWORD written;
-    // int bufIndex = 0;
-    for (const char* arg = str; arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
-    
+    for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         wchar_t* wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
             WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr, wcslen(wstr), &written, NULL);
             WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), L"", 1, &written, NULL);  // Space separator
             free(wstr);
         }
-        // if (wstr) {
-        //     // Add to buffer instead of writing immediately
-        //     bufIndex += swprintf(&buffer[bufIndex], 1024 - bufIndex, L"%ls ", wstr);
-        //     free(wstr);
-        // }
     }
     WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), NULL, 1, &written, NULL);
-    //  WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), buffer, bufIndex, &written, NULL);
 #else 
-    for (const char* arg = str; arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
+    for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         printf("%s ", arg);  // Space separator already included
     }
 #endif 
@@ -45,13 +35,13 @@ void fmt_print(const char* str, ...) {
     va_end(args);
 }
 
-void fmt_println(const char* str, ...) {
+void __fmt_println(const char* str, ...) {
     va_list args;
     va_start(args, str);
 
 #if defined(_WIN32) || defined(_WIN64)
     DWORD written;
-    for (const char* arg = str; arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
+    for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         wchar_t* wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
             WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr, wcslen(wstr), &written, NULL);
@@ -61,7 +51,7 @@ void fmt_println(const char* str, ...) {
     }
     WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), L"\n", 1, &written, NULL); // New line
 #else 
-    for (const char* arg = str; arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
+    for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         printf("%s ", arg);  // Space separator already included
     }
     printf("\n");
@@ -94,8 +84,7 @@ void fmt_printf(const char* format, ...) {
     va_end(args);
 }
 
-
-char* fmt_sprintln(const char* first_arg, ...) {
+char* __fmt_sprintln(const char* first_arg, ...) {
     va_list args;
     va_start(args, first_arg);
 
@@ -103,11 +92,10 @@ char* fmt_sprintln(const char* first_arg, ...) {
     wchar_t* wstr_total = NULL;
     size_t wstr_total_len = 0;
 
-    // Windows: Convert each string to wchar and concatenate
     wchar_t* wstr = encoding_utf8_to_wchar(first_arg);
     if (wstr) {
-        wstr_total_len = wcslen(wstr); // No +1 for space yet
-        wstr_total = malloc((wstr_total_len + 1) * sizeof(wchar_t)); // +1 for null-terminator
+        wstr_total_len = wcslen(wstr);
+        wstr_total = malloc((wstr_total_len + 1) * sizeof(wchar_t));
         if (!wstr_total) {
             free(wstr);
             return NULL;
@@ -116,34 +104,29 @@ char* fmt_sprintln(const char* first_arg, ...) {
         free(wstr);
     }
 
-    const char* arg = va_arg(args, const char*);
-    while (arg != FMT_END_ARGS) {
+    const char* arg;
+    while ((arg = va_arg(args, const char*)) != NULL) {
         wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
-            size_t new_len = wstr_total_len + wcslen(wstr) + (wstr_total_len > 0 ? 1 : 0); // +1 for space if not first
-            wchar_t* new_wstr_total = realloc(wstr_total, (new_len + 1) * sizeof(wchar_t)); // +1 for null-terminator
+            size_t new_len = wstr_total_len + wcslen(wstr) + 1;
+            wchar_t* new_wstr_total = realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
             if (!new_wstr_total) {
                 free(wstr);
                 free(wstr_total);
                 return NULL;
             }
             wstr_total = new_wstr_total;
-            if (wstr_total_len > 0) {
-                wcscat(wstr_total, L" ");
-            }
+            wcscat(wstr_total, L" ");
             wcscat(wstr_total, wstr);
             wstr_total_len = new_len;
             free(wstr);
         }
-        arg = va_arg(args, const char*);
     }
-    wcscat(wstr_total, L"\n"); // Append newline
-    
-    // Convert the concatenated wide string back to UTF-8
+    wcscat(wstr_total, L"\n");
+
     char* result = encoding_wchar_to_utf8(wstr_total);
     free(wstr_total);
 #else
-    // Non-Windows: Direct concatenation of UTF-8 strings
     size_t size = 256;
     char* result = malloc(size);
     if (!result) return NULL;
@@ -151,11 +134,11 @@ char* fmt_sprintln(const char* first_arg, ...) {
     strcpy(result, first_arg);
     size_t len = strlen(first_arg);
 
-    const char* arg = va_arg(args, const char*);
-    while (arg != FMT_END_ARGS) {
+    const char* arg;
+    while ((arg = va_arg(args, const char*)) != NULL) {
         size_t arg_len = strlen(arg);
-        if (len + arg_len + 1 >= size) { // +1 for space or newline
-            size = len + arg_len + 1;
+        if (len + arg_len + 2 >= size) {
+            size = len + arg_len + 2;
             char* new_result = realloc(result, size);
             if (!new_result) {
                 free(result);
@@ -163,16 +146,11 @@ char* fmt_sprintln(const char* first_arg, ...) {
             }
             result = new_result;
         }
-        if (len > 0) { // Add
-            strcat(result, " ");
-        }
+        strcat(result, " ");
         strcat(result, arg);
-        len += arg_len + 1; // Update length for next iteration
-
-        arg = va_arg(args, const char*);
+        len += arg_len + 1;
     }
 
-    // Append newline
     strcat(result, "\n");
 
     va_end(args);
@@ -181,8 +159,7 @@ char* fmt_sprintln(const char* first_arg, ...) {
     return result;
 }
 
-
-char* fmt_sprint(const char* first_arg, ...) {
+char* __fmt_sprint(const char* first_arg, ...) {
     va_list args;
     va_start(args, first_arg);
 
@@ -190,11 +167,10 @@ char* fmt_sprint(const char* first_arg, ...) {
     wchar_t* wstr_total = NULL;
     size_t wstr_total_len = 0;
 
-    // Windows: Convert each string to wchar and concatenate
     wchar_t* wstr = encoding_utf8_to_wchar(first_arg);
     if (wstr) {
-        wstr_total_len = wcslen(wstr); // No +1 for space yet
-        wstr_total = malloc((wstr_total_len + 1) * sizeof(wchar_t)); // +1 for null-terminator
+        wstr_total_len = wcslen(wstr);
+        wstr_total = malloc((wstr_total_len + 1) * sizeof(wchar_t));
         if (!wstr_total) {
             free(wstr);
             return NULL;
@@ -203,34 +179,28 @@ char* fmt_sprint(const char* first_arg, ...) {
         free(wstr);
     }
 
-    const char* arg = va_arg(args, const char*);
-    while (arg != FMT_END_ARGS) {
+    const char* arg;
+    while ((arg = va_arg(args, const char*)) != NULL) {
         wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
-            size_t new_len = wstr_total_len + wcslen(wstr) + (wstr_total_len > 0 ? 1 : 0); // +1 for space if not first
-            wchar_t* new_wstr_total = realloc(wstr_total, (new_len + 1) * sizeof(wchar_t)); // +1 for null-terminator
+            size_t new_len = wstr_total_len + wcslen(wstr) + 1;
+            wchar_t* new_wstr_total = realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
             if (!new_wstr_total) {
                 free(wstr);
                 free(wstr_total);
                 return NULL;
             }
             wstr_total = new_wstr_total;
-            if (wstr_total_len > 0) {
-                wcscat(wstr_total, L" ");
-            }
+            wcscat(wstr_total, L" ");
             wcscat(wstr_total, wstr);
             wstr_total_len = new_len;
             free(wstr);
         }
-        arg = va_arg(args, const char*);
     }
-    // wcscat(wstr_total, L"\n"); // Append newline
-    
-    // Convert the concatenated wide string back to UTF-8
+
     char* result = encoding_wchar_to_utf8(wstr_total);
     free(wstr_total);
 #else
-    // Non-Windows: Direct concatenation of UTF-8 strings
     size_t size = 256;
     char* result = malloc(size);
     if (!result) return NULL;
@@ -238,11 +208,11 @@ char* fmt_sprint(const char* first_arg, ...) {
     strcpy(result, first_arg);
     size_t len = strlen(first_arg);
 
-    const char* arg = va_arg(args, const char*);
-    while (arg != FMT_END_ARGS) {
+    const char* arg;
+    while ((arg = va_arg(args, const char*)) != NULL) {
         size_t arg_len = strlen(arg);
-        if (len + arg_len + 1 >= size) { // +1 for space or newline
-            size = len + arg_len + 1;
+        if (len + arg_len + 2 >= size) {
+            size = len + arg_len + 2;
             char* new_result = realloc(result, size);
             if (!new_result) {
                 free(result);
@@ -250,17 +220,10 @@ char* fmt_sprint(const char* first_arg, ...) {
             }
             result = new_result;
         }
-        if (len > 0) { // Add
-            strcat(result, " ");
-        }
+        strcat(result, " ");
         strcat(result, arg);
-        len += arg_len + 1; // Update length for next iteration
-
-        arg = va_arg(args, const char*);
+        len += arg_len + 1;
     }
-
-    // Append newline
-    // strcat(result, "\n");
 
     va_end(args);
 #endif
@@ -365,18 +328,18 @@ int fmt_scanf(const char* format, ...) {
     return items_scanned;
 }
 
-int fmt_fprint(FILE* stream, ...) {
+int __fmt_fprint(FILE* stream, const char* str, ...) {
     if (!stream) {
         fprintf(stderr, "Error: Invalid stream object.\n");
         return -1;
     }
     va_list args;
-    va_start(args, stream);
+    va_start(args, str);
 
     int bytes_written = 0;
     int result;
 
-    for (const char* arg = va_arg(args, const char*); arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
+    for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         result = fwrite(arg, sizeof(char), strlen(arg), stream);
         if (result < 0) {
             fprintf(stderr, "Error writing to stream.\n");
@@ -390,21 +353,19 @@ int fmt_fprint(FILE* stream, ...) {
     return bytes_written;
 }
 
-
-int fmt_fprintln(FILE* stream, ...) {
+int __fmt_fprintln(FILE* stream, const char* str, ...) {
     if (!stream) {
         fprintf(stderr, "Error: Invalid stream object.\n");
         return -1;
     }
 
     va_list args;
-    va_start(args, stream);
+    va_start(args, str);
 
     int bytes_written = 0;
     int result;
 
-    for (const char* arg = va_arg(args, const char*); arg != FMT_END_ARGS; arg = va_arg(args, const char*)) {
-        // Write the argument
+    for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         result = fwrite(arg, sizeof(char), strlen(arg), stream);
         if (result < 0) {
             fprintf(stderr, "Error writing to stream.\n");
@@ -413,25 +374,27 @@ int fmt_fprintln(FILE* stream, ...) {
         }
         bytes_written += result;
 
-        // Write a space after the argument
         const char* space = " ";
         result = fwrite(space, sizeof(char), strlen(space), stream);
+
         if (result < 0) {
             fprintf(stderr, "Error writing space to stream.\n");
             va_end(args);
             return -1;
         }
+
         bytes_written += result;
     }
 
-    // Write a newline at the end
     const char* newline = "\n";
     result = fwrite(newline, sizeof(char), strlen(newline), stream);
+
     if (result < 0) {
         fprintf(stderr, "Error writing newline to stream.\n");
         va_end(args);
         return -1;
     }
+
     bytes_written += result;
 
     va_end(args);

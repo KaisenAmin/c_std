@@ -16,6 +16,7 @@ char* time_to_string(const Time* t);
 
 double time_current_time_in_seconds();
 double time_current_time_in_microseconds();
+double time_diff_in_seconds(const Time* from, const Time* to);
 
 Time* time_create(int h, int m, int s, int ms);
 Time* time_current_time(void);

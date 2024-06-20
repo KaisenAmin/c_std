@@ -342,7 +342,7 @@ bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value) {
 void matrix_print(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
-            fprintf(stdout, "Info : this matrix object as param is null and invalid in matrix_print.\n");
+            fmt_fprintf(stdout, "Info : this matrix object as param is null and invalid in matrix_print.\n");
         #endif 
         return;
     }

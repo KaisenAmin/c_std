@@ -88,7 +88,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         "fmt",
         # "map",
         # "json",
-        # "file_io",
+        "file_io",
         # "log",
         # "priority_queue",
         # "queue",
