@@ -1,20 +1,24 @@
 #include "fmt/fmt.h"
-#include "time/time.h"
-#include <time.h>
+#include "string/string.h"
 
+// persian
+void println() {
+    for (int index = 0; index < 10; index++) {
+        fmt_println(string_from_int_cstr(index), ":", "سلام دنیا");
+    }
+}
+
+// japanese
+void print() {
+    for (int index = 0; index < 10; index++) {
+        fmt_print(string_from_int_cstr(index), ":", "ああ、 --");
+    }
+}
 
 int main() {
-    Time* start_time = time_current_time();
-
-    time_sleep(10);
-
-    Time* end_time = time_current_time();
-    double diff_time = time_diff_in_seconds(start_time, end_time);
-
-    fmt_printf("Difference in Seconds : %lf", diff_time);
-
-    time_deallocate(start_time);
-    time_deallocate(end_time);
+    println();
+    fmt_println("-----------------");
+    print();
 
     return 0;
 }

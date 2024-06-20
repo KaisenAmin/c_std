@@ -2,6 +2,7 @@
 #include "../string/string.h"
 #include "../encoding/encoding.h"
 #include <stdlib.h>
+#include <string.h>
 
 FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     if (!filename) {
@@ -367,7 +368,7 @@ bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines
 
     while (lines_read < num_lines && !feof(reader->file_reader)) {
         if (file_reader_read_line(line_buffer, sizeof(line_buffer), reader)) {
-            (*buffer)[lines_read] = strdup(line_buffer);
+            (*buffer)[lines_read] = string_strdup(line_buffer);
             if (!(*buffer)[lines_read]) {
                 fprintf(stderr, "Error: Memory allocation failed for line in file_reader_read_lines.\n");
                 // Free previously allocated lines

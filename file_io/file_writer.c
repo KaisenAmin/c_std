@@ -1,18 +1,19 @@
+#if defined(_WIN32) || defined(_WIN64) 
+#include <windows.h>
+#include <io.h> // _get_osfhandle
+#else
+#define _GNU_SOURCE
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#endif 
+
 #include "file_writer.h"
 #include "../encoding/encoding.h"
 #include "../string/string.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-
-#if defined(_WIN32) || defined(_WIN64) 
-#include <windows.h>
-#include <io.h> // _get_osfhandle
-#else
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#endif 
 
 FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     if (!filename) {

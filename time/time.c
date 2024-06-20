@@ -10,6 +10,7 @@
 #include <stdint.h> 
 #else 
 #include <sys/time.h>
+#include <unistd.h>
 #endif 
 
 Time* time_create(int h, int m, int s, int ms) {
