@@ -283,11 +283,12 @@ Name: John Doe
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
+#include "random/random.h"
 #include <stdlib.h>
 
 void process_person_data(Tuple* personData) {
     if (!personData) {
-        printf("Invalid tuple.\n");
+        fmt_printf("Invalid tuple.\n");
         return;
     }
     size_t size;
@@ -297,21 +298,21 @@ void process_person_data(Tuple* personData) {
     String** name = (String**)tuple_get(personData, 3, &size);
 
     if (age) {
-        printf("Age: %d\n", *age);
+        fmt_printf("Age: %d\n", *age);
     }
     if (grade) { 
-        printf("Grade: %.2f\n", *grade);
+        fmt_printf("Grade: %.2f\n", *grade);
     }
     if (vector && *vector) { 
-        printf("Vector size: %zu\n", vector_size(*vector));
+        fmt_printf("Vector size: %zu\n", vector_size(*vector));
     }
     if (name && *name) { 
-        printf("Name: %s\n", string_c_str(*name));
+        fmt_printf("Name: %s\n", string_c_str(*name));
     }
 }
 
 void random_int_generator(void *output) {
-    *(int *)output = rand() % 100;
+    *(int *)output = random_randint(1, 100);
 }
 
 int main() {

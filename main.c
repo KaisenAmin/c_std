@@ -1,68 +1,56 @@
-#include "vector/vector.h"
+#include "tuple/tuple.h"
 #include "string/string.h"
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
+#include "random/random.h"
 #include <stdlib.h>
 
-typedef struct {
-    String* name;
-    int age;
-} Person;
+void process_person_data(Tuple* personData) {
+    if (!personData) {
+        fmt_printf("Invalid tuple.\n");
+        return;
+    }
+    size_t size;
+    int* age = (int*)tuple_get(personData, 0, &size);
+    float* grade = (float*)tuple_get(personData, 1, &size);
+    Vector** vector = (Vector**)tuple_get(personData, 2, &size);
+    String** name = (String**)tuple_get(personData, 3, &size);
 
-Person* create_person(int group, int index) {
-    Person* p = (Person*)malloc(sizeof(Person));
-    p->name = string_create("");
-    string_format(p->name, "Person_%d_%d", group, index);
-    p->age = group * 10 + index;
-
-    return p;
+    if (age) {
+        fmt_printf("Age: %d\n", *age);
+    }
+    if (grade) { 
+        fmt_printf("Grade: %.2f\n", *grade);
+    }
+    if (vector && *vector) { 
+        fmt_printf("Vector size: %zu\n", vector_size(*vector));
+    }
+    if (name && *name) { 
+        fmt_printf("Name: %s\n", string_c_str(*name));
+    }
 }
 
-void deallocate_person(Person* p) {
-    if (p) {
-        string_deallocate(p->name);
-        free(p);
-    }
+void random_int_generator(void *output) {
+    *(int *)output = random_randint(1, 100);
 }
 
 int main() {
-    Vector* vec2D = vector_create(sizeof(Vector*));
+    int age = 27;
+    float grade = 19.32f;
+    Vector* vec = vector_create(sizeof(int));
+    String* name = string_create("amin");
+    Tuple* information = NULL;
 
-    // Populate the 2D vector with vectors of Persons
-    for (int i = 0; i < 2; i++) {
-        Vector* peopleVec = vector_create(sizeof(Person*));
+    vector_resize(vec, 10);
+    algorithm_generate(vector_begin(vec), vector_end(vec), sizeof(int), random_int_generator);
+    
+    information = tuple_make_tuple(4, &age, sizeof(int), &grade, sizeof(float), &vec, sizeof(Vector*), &name, sizeof(String*));
+    process_person_data(information);
 
-        for (int j = 0; j < 3; j++) {
-            Person* person = create_person(i, j);
-            vector_push_back(peopleVec, &person);
-        }
-        vector_push_back(vec2D, &peopleVec);
-    }
+    vector_deallocate(vec);
+    string_deallocate(name);
+    tuple_deallocate(information);
 
-    // Iterate and print each person's details
-    for (size_t i = 0; i < vector_size(vec2D); i++) {
-        Vector** peopleVecPtr = (Vector**)vector_at(vec2D, i);
-        Vector* peopleVec = *peopleVecPtr;
-
-        for (size_t j = 0; j < vector_size(peopleVec); j++) {
-            Person** personPtr = (Person**)vector_at(peopleVec, j);
-            Person* person = *personPtr;
-
-            fmt_printf("Name: %s, Age: %d\n", string_c_str(person->name), person->age);
-        }
-    }
-
-    // Cleanup
-    for (size_t i = 0; i < vector_size(vec2D); i++) {
-        Vector** peopleVecPtr = (Vector**)vector_at(vec2D, i);
-        Vector* peopleVec = *peopleVecPtr;
-
-        for (size_t j = 0; j < vector_size(peopleVec); j++) {
-            Person** personPtr = (Person**)vector_at(peopleVec, j);
-            deallocate_person(*personPtr);
-        }
-        vector_deallocate(peopleVec);
-    }
-
-    vector_deallocate(vec2D);
     return 0;
 }

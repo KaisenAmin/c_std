@@ -8,7 +8,7 @@
 #include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdint.h>
 
 Deque* deque_create(size_t itemSize) {
     if (itemSize == 0) {
