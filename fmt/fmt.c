@@ -28,7 +28,7 @@ void __fmt_print(const char* str, ...) {
     WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), NULL, 1, &written, NULL);
 #else 
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
-        printf("%s ", arg);  // Space separator already included
+        printf("%s", arg);  // do not need space seperator
     }
 #endif 
 

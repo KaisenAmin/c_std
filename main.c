@@ -3,9 +3,8 @@
 int main() {
     FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
 
-    fmt_fprint(writer->file_writer, "This is text in a file");
-    fmt_fprint(stdout, "Hello, World! ", "こんにちは ", "سلام دنیا");
-    fmt_fprint(stderr, "This is an error message on stderr");
+    fmt_fprintf(writer->file_writer, "Writing to a file: %s\n", "Hello, برنامه نویسان");
+    fmt_fprint(writer->file_writer, "More text: ", "This is an example", " using fmt_fprint");
 
     file_writer_close(writer);
     return 0;

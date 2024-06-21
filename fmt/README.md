@@ -513,6 +513,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+This is a line on stdout 
+This is a line on stderr
+```
 
 ## Example 15 : how to write formatted text to file with `fmt_fprintf`
 
@@ -526,15 +531,19 @@ int main() {
 
     int bytes_written = fmt_fprintf(writer->file_writer, "%s is %d years old.\n", name, age);
     if (bytes_written < 0) {
-        fprintf(stderr, "Error occurred during writing with fmt_fprintf.\n");
+        fmt_fprintf(stderr, "Error occurred during writing with fmt_fprintf.\n");
     }
     else {
-        printf("%d bytes written.\n", bytes_written);
+        fmt_printf("%d bytes written.\n", bytes_written);
     }
 
     file_writer_close(writer);
     return 0;
 }
+```
+**Result:**
+```
+22 bytes written.
 ```
 
 ## Example 16 : writing error messatge in stderr using `fmt_fprintf`
@@ -549,14 +558,19 @@ int main() {
     // Write the error message to stderr
     int bytes_written = fmt_fprintf(stderr, "Error %d: %s\n", errorCode, errorMessage);
     if (bytes_written < 0) {
-        fprintf(stderr, "Error occurred during writing to stderr.\n");
+        fmt_fprintf(stderr, "Error occurred during writing to stderr.\n");
     } 
     else {
-        printf("%d bytes written to stderr.\n", bytes_written);
+        fmt_printf("%d bytes written to stderr.\n", bytes_written);
     }
 
     return 0;
 }
+```
+**Result:**
+```
+Error 404: Not Found
+21 bytes written to stderr.
 ```
 
 ## Example 17 : Writing message in console using `stdout` and `fmt_fprintf`
@@ -570,14 +584,19 @@ int main() {
 
     int bytes_written = fmt_fprintf(stdout, "%s is %d years old.\n", name, age); 
     if (bytes_written < 0) {
-        fprintf(stderr, "Error occurred during writing with fmt_fprintf.\n");
+        fmt_fprintf(stderr, "Error occurred during writing with fmt_fprintf.\n");
     }
     else {
-        printf("%d bytes written.\n", bytes_written);
+        fmt_printf("%d bytes written.\n", bytes_written);
     }
 
     return 0;
 }
+```
+**Result:**
+```
+Amin is 27 years old.
+22 bytes written.
 ```
 
 ## Example 18 : Show Emoji 
@@ -588,10 +607,16 @@ int main() {
 int main() {
     fmt_printf("World : %s %s\n", "🌍", "😡");
     fmt_println("Haaaa :", "😊🥴");
-    fmt_print("😡", "🥶", "😎", "🤩");
+    fmt_print("Hello", "World", "🤩");
 
     return 0;
 }
+```
+**Result:**
+```
+World : 🌍 😡
+Haaaa : 😊🥴
+HelloWorld🤩
 ```
 
 ## Example 19 : Scan data from file in formated text with `fmt_fscanf`
@@ -606,7 +631,7 @@ int main() {
     double d;
     char s[100];
 
-    int n = fmt_fscanf(stream->file_reader, "%d %lf %99s", &i, &d, s);
+    int n = fmt_fscanf(stream->file_reader, "%d %lf %[^\n]s", &i, &d, s);
     if (n != 3) {
         fmt_fprintf(stderr, "Error or insufficient data read from file\n");
     } 
@@ -617,6 +642,10 @@ int main() {
     file_reader_close(stream);
     return 0;
 }
+```
+**Result:**
+```
+Read data: 27, 19.650000, "Hello World"
 ```
 
 ## Example 20 : Using `fmt_scanln` with standart input
@@ -640,6 +669,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Enter a line of text: Hello World
+You entered: Hello
+```
 
 ## Example 21: Using Emojis with `fmt_fprintf` and `fmt_fprint`
 
@@ -652,6 +686,11 @@ int main() {
     
     return 0;
 }
+```
+**Result:**
+```
+Emoji example: 😀 🚀 🌟
+More emojis: 🌍🌈🔥
 ```
 
 ## Example 22 : Writing to a file Using `fmt_fprintf` and `fmt_fprint`
