@@ -96,7 +96,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "stack",
         "string",
         # "network",
-        # "vector",
+        "vector",
         "time",
         # "concurrent",
         "date",

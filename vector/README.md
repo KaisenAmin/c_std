@@ -195,17 +195,17 @@ int main() {
     }
 
     if (vector_is_equal(vec1, vec2)) { 
-        printf("vec1 is equal to vec2\n");
+        fmt_printf("vec1 is equal to vec2\n");
     }
     else {
-        printf("vec1 is not equal to vec2\n");
+        fmt_printf("vec1 is not equal to vec2\n");
     }
 
     if (vector_is_less(vec1, vec2)) { 
-        printf("vec1 is less than vec2\n");
+        fmt_printf("vec1 is less than vec2\n");
     }
     if (vector_is_greater(vec2, vec1)) {
-        printf("vec2 is greater than vec2\n");
+        fmt_printf("vec2 is greater than vec2\n");
     }
     // Cleanup
     vector_deallocate(vec1);
@@ -292,13 +292,13 @@ int main() {
 
     vector_swap(vector1, vector2);
 
-    fmt_println("Contents of vector1 after swap:", FMT_END_ARGS);
+    fmt_println("Contents of vector1 after swap:");
     for (size_t i = 0; i < vector_size(vector1); ++i) {
         int* item = (int*) vector_at(vector1, i);
         fmt_printf("%d\n", *item);
     }
 
-    fmt_println("Contents of vector2 after swap:", FMT_END_ARGS);
+    fmt_println("Contents of vector2 after swap:");
     for (size_t i = 0; i < vector_size(vector2); ++i) {
         int* item = (int*)vector_at(vector2, i);
         fmt_printf("%d\n", *item);
@@ -661,20 +661,20 @@ int main() {
 
     // Resize to a larger size (5)
     vector_resize(intVector, 5);
-    printf("After resizing to larger size:\n");
+    fmt_printf("After resizing to larger size:\n");
 
     for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
-        printf("%d\n", *item); // The last two elements will be zero-initialized
+        fmt_printf("%d\n", *item); // The last two elements will be zero-initialized
     }
 
     // Resize to a smaller size (2)
     vector_resize(intVector, 2);
 
-    printf("After resizing to smaller size:\n");
+    fmt_printf("After resizing to smaller size:\n");
     for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
-        printf("%d\n", *item); // Only the first two elements remain
+        fmt_printf("%d\n", *item); // Only the first two elements remain
     }
 
     vector_clear(intVector);
@@ -713,11 +713,11 @@ int main() {
         vector_push_back(intVector, &values[i]);
     }
 
-    printf("Size before shrink_to_fit: %zu, Capacity before shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
+    fmt_printf("Size before shrink_to_fit: %zu, Capacity before shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     // Shrink to fit the actual number of elements
     vector_shrink_to_fit(intVector);    
-    printf("Size after shrink_to_fit: %zu, Capacity after shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
+    fmt_printf("Size after shrink_to_fit: %zu, Capacity after shrink_to_fit: %zu\n", vector_size(intVector), vector_capacity(intVector));
 
     vector_deallocate(intVector);
     return 0;
@@ -754,7 +754,7 @@ int main() {
 
     for (size_t i = 0; i < vector_size(stringVector); ++i) {
         char** item = (char **)vector_at(stringVector, i);
-        printf("%s\n", *item);
+        fmt_printf("%s\n", *item);
     }
 
     vector_deallocate(stringVector);
@@ -856,11 +856,9 @@ Vector1 is less than Vector2
 #include "string/string.h"
 #include "vector/vector.h"
 #include "fmt/fmt.h"
-#include <time.h>
+#include "time/time.h"
 
 int main() {
-    struct timespec start, end;
-    double time_elapsed;
 
     Vector *vec = vector_create(sizeof(String*));
     String *fruits[5] = {
@@ -876,7 +874,7 @@ int main() {
         vector_push_back(vec, &fruits[index]);
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    Time* start_time = time_current_time();
 
     for (size_t index = 0; index < vector_size(vec); ++index) {
         String **strPtr = (String**)vector_at(vec, index);
@@ -890,11 +888,11 @@ int main() {
 
     vector_deallocate(vec);
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    time_elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-
+    Time* end_time = time_current_time();
+    double time_elapsed = time_diff_in_seconds(start_time, end_time);
+    
     fmt_printf("%s", string_c_str(concat));
-    fmt_printf("Time taken: %f seconds\n", time_elapsed);
+    fmt_printf("Time taken: %lf seconds\n", time_elapsed);
 
     string_deallocate(concat);
     return 0;
@@ -907,7 +905,7 @@ Banana
 Cherry
 Lemon
 Watermelon
-Time taken: 0.000059 seconds
+Time taken: 0.000009 seconds
 ```
 
 `also result in Cpp` 
@@ -1024,7 +1022,7 @@ int main() {
 
     for (size_t i = 0; i < vector_size(items); i++) {
         Item* itemPtr = (Item*)vector_at(items, i);
-        printf("Name: %s, Description: %s\n", 
+        fmt_printf("Name: %s, Description: %s\n", 
                string_c_str(itemPtr->name), 
                string_c_str(itemPtr->description));
     }
