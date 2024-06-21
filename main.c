@@ -1,24 +1,12 @@
 #include "fmt/fmt.h"
-#include "string/string.h"
-
-// persian
-void println() {
-    for (int index = 0; index < 10; index++) {
-        fmt_println(string_from_int_cstr(index), ":", "سلام دنیا");
-    }
-}
-
-// japanese
-void print() {
-    for (int index = 0; index < 10; index++) {
-        fmt_print(string_from_int_cstr(index), ":", "ああ、 --");
-    }
-}
 
 int main() {
-    println();
-    fmt_println("-----------------");
-    print();
+    FileWriter* writer = file_writer_open("./output.txt", WRITE_TEXT);
 
+    fmt_fprint(writer->file_writer, "This is text in a file");
+    fmt_fprint(stdout, "Hello, World! ", "こんにちは ", "سلام دنیا");
+    fmt_fprint(stderr, "This is an error message on stderr");
+
+    file_writer_close(writer);
     return 0;
 }

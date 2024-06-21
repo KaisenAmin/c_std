@@ -82,6 +82,21 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+0 : سلام دنیا 
+1 : سلام دنیا 
+2 : سلام دنیا 
+3 : سلام دنیا 
+4 : سلام دنیا 
+5 : سلام دنیا 
+6 : سلام دنیا 
+7 : سلام دنیا 
+8 : سلام دنیا 
+9 : سلام دنیا 
+----------------- 
+0 : ああ、 -- 1 : ああ、 -- 2 : ああ、 -- 3 : ああ、 -- 4 : ああ、 -- 5 : ああ、 -- 6 : ああ、 -- 7 : ああ、 -- 8 : ああ、 -- 9 : ああ、 --
+```
 
 ## Example 2 : write data in console with `fmt_printf`
 
@@ -114,6 +129,16 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+This is a message with Unicode characters: سلام دنیا ああ、こんにちは
+ This is a message with Unicode characters: سلام دنیا ああ、こんにちは
+ 
+Another message: امین طهماسبی 42
+and 15 امینThis is a message: Hello, world!
+This is a message with Unicode characters: سلام دنیا, ああ、こんにちは
+Another message: Hello, world!, 42
+```
 
 ## Example 3 : how to use `fmt_sprintln`
 
@@ -143,6 +168,13 @@ int main() {
 
     return 0;
 }
+```
+**Result:**
+```
+This is a message with Unicode characters: سلام دنیا ああ、こんにちは
+ This is a message with Unicode characters: سلام دنیا ああ、こんにちは
+ 
+Another message: Hello, world! 42
 ```
 
 ## Example 4 : how to use `fmt_sprint`
@@ -174,6 +206,13 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+This is a message with Unicode characters: سلام دنیا ああ、こんにちは 
+This is a message with Unicode characters: سلام دنیا ああ、こんにちは 
+
+Another message: Hello, world! 42and 15
+```
 
 ## Example 5 : how to use `fmt_sprintf`
 
@@ -200,6 +239,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Number: 42, String: Hello World, Unicode: こんにちは
+امین طهماسبی is 30 years old. Unicode Test: سلام دنیا
+```
 
 ### Example 6: Multi-Language Greeting and Data Display
 
@@ -225,7 +269,7 @@ int main() {
     Time* current_time = time_current_time();
     Date* current_date = date_current_date(Persian);
 
-    char* datetime = fmt_sprintf("Current Date and Time: %s %s", time_to_string(current_time), 
+    char* datetime = fmt_sprintf("Current Date and Time: %s %s\n", time_to_string(current_time), 
                                             date_to_string(current_date, format));
     if (datetime) {
         fmt_printf("%s", datetime);
@@ -236,6 +280,11 @@ int main() {
     date_deallocate(current_date);
     return 0;
 }
+```
+**Result:**
+```
+Hello in English: Hello, In Arabic: مرحبا, In Japanese: こんにちは
+Current Date and Time: (23:45:40:762) 1403-03-31
 ```
 
 ### Example 7: International Restaurant Menu Display
@@ -270,6 +319,14 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+International Restaurant Menu:
+-----------------------------
+1. Dish: Pizza (ピザ), Price: $9.99
+2. Dish: فلافل, Price: $5.49
+3. Dish: Noodles (麺), Price: $7.25
+```
 
 ## Example 8 : how much `fmt_printf` is fast ? 
 
@@ -301,7 +358,10 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+test it and see speed of fmt_printf
+```
 ## Example 9 : use `fmt_scan`
 
 ```c
@@ -321,6 +381,11 @@ int main() {
     }
     return 0;
 }
+```
+**Result:**
+```
+Enter a string: c_std
+You entered: c_std
 ```
 
 ## Example 10 : Using `fmt_scan`
@@ -345,6 +410,11 @@ int main() {
     
     return 0;
 }
+```
+**Result:**
+```
+Enter a string (fmt_scan):  Hello World
+You entered:  Hello 
 ```
 
 ## Example 11 : Using `fmt_scanln`
@@ -372,6 +442,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Enter a string (fmt_scanln): largest c framwork
+You entered: largest
+```
 
 ## Example 12 : how to use `fmt_scanf`
 
@@ -396,6 +471,11 @@ int main() {
     return 0;
 }
 ```
+**Result:**
+```
+Enter your name, age, and salary:  C 50 20.0 
+Scanned data: Name: C, Age: 50, Salary: 20.00
+```
 
 ## Example 13 : how to write stream with `fmt_fprint`
 
@@ -413,7 +493,10 @@ int main() {
     return 0;
 }
 ```
-
+**Result:**
+```
+Hello, World! こんにちは سلام دنیاThis is an error message on stderr
+```
 ## Example 14 : how to write on stream with `fmt_fprintln`
 
 ```c

@@ -1542,34 +1542,56 @@ wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
     return wstr;
 }
 
+#endif
+
 char* encoding_wchar_to_utf8(const wchar_t* wstr) {
     if (wstr == NULL) {
         fprintf(stderr, "Error: Input wchar string is NULL\n");
         return NULL;
     }
 
-    // Get the length of the required buffer
+#if defined(_WIN32) || defined(_WIN64)
     int utf8Length = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
     if (utf8Length == 0) {
         fprintf(stderr, "Error: WideCharToMultiByte failed to calculate length\n");
         return NULL;
     }
 
-    char* utf8Str = malloc(utf8Length * sizeof(char));
+    char* utf8Str = (char*)malloc(utf8Length * sizeof(char));
     if (!utf8Str) {
         fprintf(stderr, "Error: Cannot allocate memory for UTF-8 string\n");
         return NULL;
     }
-    // Convert the wide-character string to UTF-8
     if (WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8Str, utf8Length, NULL, NULL) == 0) {
         fprintf(stderr, "Error: Conversion from wchar to UTF-8 failed\n");
         free(utf8Str);
         return NULL;
     }
+#else
+    setlocale(LC_ALL, "en_US.UTF-8");
+
+    size_t utf8Length = wcstombs(NULL, wstr, 0);
+    if (utf8Length == (size_t)-1) {
+        fprintf(stderr, "Error: wcstombs failed\n");
+        return NULL;
+    }
+
+    char* utf8Str = (char*)malloc((utf8Length + 1) * sizeof(char));
+    if (!utf8Str) {
+        fprintf(stderr, "Error: Cannot allocate memory for UTF-8 string\n");
+        return NULL;
+    }
+
+    if (wcstombs(utf8Str, wstr, utf8Length + 1) == (size_t)-1) {
+        fprintf(stderr, "Error: Conversion from wchar to UTF-8 failed\n");
+        free(utf8Str);
+        return NULL;
+    }
+#endif
 
     return utf8Str;
 }
-#endif
+
 
 void encoding_initialize(void) {
     setlocale(LC_ALL, "");

@@ -1,3 +1,9 @@
+#if defined(__linux__)
+#define _GNU_SOURCE 
+
+#include <unistd.h>
+#endif 
+
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -5,7 +11,6 @@
 #include "date.h"
 #include "../fmt/fmt.h"
 #include "../time/time.h"
-
 
 
 #if defined(_WIN32) || defined(_WIN64)
