@@ -171,7 +171,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python compile_project.py [b|r|l]")
+        print("Usage: python compile.py [b|r|l]")
         sys.exit(1)
 
     program_args = sys.argv[2:]
