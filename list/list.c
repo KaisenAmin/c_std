@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 List *list_create(size_t itemSize, CompareFunction compare) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size must be greater than 0 in list_create.\n");
@@ -829,4 +828,3 @@ bool list_is_not_equal(const List *list1, const List *list2) {
     }
     return !list_is_equal(list1, list2);
 }
-

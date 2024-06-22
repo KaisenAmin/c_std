@@ -664,3 +664,77 @@ int main() {
     return 0;
 }
 ```
+
+## Example 22 : add and remove child 
+
+```c
+#include "list/list.h"
+#include "fmt/fmt.h"
+#include "string/string.h"
+#include <stdlib.h>
+
+
+typedef struct {
+    const char* name;
+    Node registry_links;
+} Child;
+
+Child* create_child(const char* name) {
+    Child* new_child = (Child*)malloc(sizeof(Child));
+    if (!new_child) {
+        fmt_fprintf(stderr, "Error: Memory allocation failed for new Child.\n");
+        exit(-1);
+    }
+
+    new_child->name = string_strdup(name); 
+    new_child->registry_links.next = NULL;
+    new_child->registry_links.prev = NULL;
+    new_child->registry_links.value = new_child;
+
+    return new_child;
+}
+
+void child_unlink(List* list, Child* c) {
+    list_remove(list, c);
+}
+
+static int compare_nodes(const void* a, const void* b) {
+    const Child* Child_a = (const Child*)a;
+    const Child* Child_b = (const Child*)b;
+
+    return string_strcmp(Child_a->name, Child_b->name);
+}
+
+void deallocate(List* children_registry, Child** children, size_t num_children) {
+    for (size_t i = 0; i < num_children; ++i) {
+        free((void*)children[i]->name);
+        free(children[i]);
+    }
+
+    list_deallocate(children_registry);
+}
+
+int main() {
+    const char* names[] = {"Marry", "Bob", "Sally"};
+    size_t num_children = sizeof(names) / sizeof(names[0]);
+
+    List* children_registry = list_create(sizeof(Child), compare_nodes);
+    Child* children[num_children];
+
+    for (size_t i = 0; i < num_children; ++i) {
+        children[i] = create_child(names[i]);
+        list_push_back(children_registry, children[i]);
+    }
+
+    child_unlink(children_registry, children[1]);
+
+    for (Node* node = list_begin(children_registry); node != list_end(children_registry); node = node->next) {
+        Child* c = (Child*)node->value;
+        fmt_printf("%s\n", c->name);
+    }
+
+    deallocate(children_registry, children, num_children);
+
+    return 0;
+}
+```

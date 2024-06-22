@@ -2030,3 +2030,7 @@ size_t string_utf8_char_len(char c) {
     }
     return 0;
 }
+
+int string_strcmp(const char* str1, const char* str2) {
+    return strcmp(str1, str2);
+}
