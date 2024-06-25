@@ -54,7 +54,7 @@ def compile_to_shared_library(directory, build_dir, openssl_include_path, openss
         dependencies.append("string")
    
     command = f"gcc {flags} -shared -o {output} " + " ".join(source_files)
-    command += " -lssl -lcrypto -lpq"
+    command += " -lssl -lcrypto -lpq -lraylib -lopengl32 -lgdi32 -lwinmm"
     
     for dep in dependencies:
         if platform.system() == "Windows":
@@ -84,7 +84,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "deque",
         "encoding",
         # "forward_list",
-        "list",
+        # "list",
         "fmt",
         # "map",
         # "json",
@@ -96,7 +96,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "stack",
         "string",
         # "network",
-        "vector",
+        # "vector",
         # "time",
         # "concurrent",
         # "date",
@@ -109,6 +109,7 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "random",
         # "statistics",
         # "sysinfo",
+        "turtle"
     ]
 
     build_dir = "./build"
@@ -138,6 +139,8 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
     source_files = ["./main.c"]
     flags = "-std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s"
     flags += f" -I{openssl_include_path} -L{openssl_lib_path} -I{postgres_include_path} -L{postgres_lib_path}"
+    flags += " -Ipath_to_raylib/include"  # Ensure to replace with the actual path
+    ldflags = " -Lpath_to_raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm"  # Ensure to replace with the actual path
     if platform.system() == "Windows":
         output = os.path.join(build_dir, "main.exe")
     else:
@@ -155,6 +158,8 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
             lib_name = lib_name[3:-3]  # Remove 'lib' prefix and '.so' suffix
         command += f" -L{build_dir} -l{lib_name}"
     
+    command += ldflags
+
     if platform.system() == "Windows":
         command += " -lole32 -lbthprops"
     else:

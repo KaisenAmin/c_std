@@ -1,18 +1,26 @@
-#include "list/list.h"
+#include <raylib.h>
+#include "turtle/turtle.h"
 
-static int compare_ints(const void* a, const void* b) {
-    int int_a = *(const int*)a;
-    int int_b = *(const int*)b;
-    return (int_a > int_b) - (int_a < int_b);
+void draw_left_turn() {
+    turtle_forward(100);
+    turtle_left(90);
+    turtle_forward(100);
+    turtle_left(90);
+    turtle_forward(100);
+    turtle_left(90);
+    turtle_forward(100);
 }
 
-int main() {
-    List *myList = list_create(sizeof(int), compare_ints);
-    int value = 100;
+int main(void) {
+    const int screenWidth = 800;
+    const int screenHeight = 600;
 
-    list_push_front(myList, &value);
-    list_pop_front(myList);
+    turtle_create();
+    turtle_init_window(screenWidth, screenHeight, "Turtle Left Turn Example");
+    turtle_set_fps(60);
+    turtle_set_speed(2.0f);
 
-    list_deallocate(myList);
+    turtle_run(draw_left_turn);
+
     return 0;
 }
