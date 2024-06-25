@@ -565,6 +565,7 @@ double random_vonmises(double mu, double kappa) {
         Z = cos(M_PI * U);
         W = (1 + s * Z) / (s + Z);
         V = random_random();
+        
     } while (kappa * (s - W) - log(4 * V * (s - 1)) < 0);
 
     Y = 2 * random_random() - 1;

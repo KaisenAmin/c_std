@@ -145,5 +145,6 @@ void turtle_set_position(float x, float y) {
         lines[lineCount].color = turtle.color;
         lineCount++;
     }
+    
     turtle.position = (Vector2){x, y};
 }

@@ -1,5 +1,3 @@
-Sure, let's create a comprehensive README for the `turtle` library, similar to the one you have for the `random` library. 
-
 ## Turtle Graphics Library in C
 
 **Author:** Amin Tahmasebi  
