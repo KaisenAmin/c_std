@@ -18,6 +18,28 @@ The Turtle Graphics library in C provides functions for drawing shapes and lines
 
 ## Installation and Compilation
 
+### Installing Dependencies
+
+To use this library, you need to have the `raylib` library installed. Follow the instructions below for your operating system:
+
+#### Linux
+
+Install `raylib` using your package manager or build from source. On Debian-based systems, you can use:
+
+```bash
+sudo apt-get install libraylib-dev
+```
+
+#### Windows
+
+For Windows, it is recommended to use MSYS2 to install `raylib`. First, download and install MSYS2 from [msys2.org](https://www.msys2.org/). Then, open the MSYS2 terminal and run the following commands:
+
+```bash
+pacman -Syu
+pacman -S mingw-w64-x86_64-raylib
+```
+
+
 To use this library, include `turtle.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
 
 ```bash
