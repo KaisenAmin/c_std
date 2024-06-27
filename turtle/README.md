@@ -779,6 +779,195 @@ int main(void) {
     return 0;
 }
 ```
+
+## Example 18 : Drawing a Spiral Pattern 
+```c
+#include "turtle/turtle.h"
+#include <math.h>
+
+
+void draw_spiral(Turtle *state) {
+    static bool drawn = false;
+
+    if (!drawn) {
+        for (int i = 0; i < 360; i++) {
+            // Set the color based on the angle to create a gradient effect
+            int red = (int)(127 * (1 + cos(DEG2RAD * i)));
+            int green = (int)(127 * (1 + sin(DEG2RAD * i)));
+            int blue = 255 - red;
+
+            turtle_set_color(state, red, green, blue, 255);
+            turtle_forward(state, i * 0.5);
+            turtle_right(state, 59); 
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    const int screenWidth = 800;
+    const int screenHeight = 600;
+
+    Turtle *state = turtle_create();
+    turtle_init_window(screenWidth, screenHeight, "Turtle Spiral Pattern Example");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 5.0f);
+
+    turtle_done(state, draw_spiral);
+
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+## Example 19 : Drawing a flower Pattern 
+```c
+#include "turtle/turtle.h"
+#include <math.h>
+
+void draw_petal(Turtle *state, float radius, float angle) {
+    for (int i = 0; i < 2; i++) {
+        turtle_circle(state, radius, angle, 50);
+        turtle_right(state, 180 - angle);
+    }
+}
+
+void draw_flower(Turtle *state) {
+    static bool drawn = false;
+    if (!drawn) {
+        for (int i = 0; i < 36; i++) {
+            // Set the color based on the angle to create a gradient effect
+            int red = (int)(127 * (1 + cos(DEG2RAD * i * 10)));
+            int green = (int)(127 * (1 + sin(DEG2RAD * i * 10)));
+            int blue = 255 - red;
+
+            turtle_set_color(state, red, green, blue, 255);
+            draw_petal(state, 50, 60);
+            turtle_right(state, 10);
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    const int screenWidth = 800;
+    const int screenHeight = 600;
+
+    Turtle *state = turtle_create();
+    turtle_init_window(screenWidth, screenHeight, "Turtle Flower Pattern Example");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 5.0f);
+
+    turtle_done(state, draw_flower);
+
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+## Example 20 : Drawing a hexagonal Spiral 
+
+```c
+#include "turtle/turtle.h"
+#include <math.h>
+
+void draw_hexagonal_spiral(Turtle *state) {
+    static bool drawn = false;
+    if (!drawn) {
+        float length = 10.0f;
+        for (int i = 0; i < 100; i++) {
+            
+            int red = (int)(127 * (1 + cos(DEG2RAD * i * 3.6)));
+            int green = (int)(127 * (1 + sin(DEG2RAD * i * 3.6)));
+            int blue = 255 - red;
+
+            turtle_set_color(state, red, green, blue, 255);
+            turtle_forward(state, length);
+            turtle_right(state, 60); 
+            length += 2.0f; 
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    const int screenWidth = 800;
+    const int screenHeight = 600;
+
+    Turtle *state = turtle_create();
+    turtle_init_window(screenWidth, screenHeight, "Turtle Hexagonal Spiral Example");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 5.0f);
+
+    turtle_done(state, draw_hexagonal_spiral);
+
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+## Example 21 : draw a heart 
+
+```c
+#include "turtle/turtle.h"
+#include <math.h>
+
+// Function to draw a curve
+void curve(Turtle *state) {
+    for (int i = 0; i < 200; i++) {
+        turtle_left(state, 1);
+        turtle_forward(state, 1);
+    }
+}
+
+// Function to draw a heart shape
+void draw_heart(Turtle *state) {
+    static bool drawn = false;
+    if (!drawn) {
+        turtle_set_speed(state, 3.0f);
+        
+        turtle_set_color(state, 255, 0, 0, 255);
+        turtle_pen_size(state, 5);
+        
+        turtle_color(state, "#FF0000", "#FFFFFF");
+        turtle_begin_fill(state);
+
+        turtle_right(state, 140); 
+        turtle_forward(state, 111.65);
+        curve(state);
+        turtle_right(state, 120);
+        curve(state);
+        turtle_forward(state, 111.65);
+        
+        turtle_end_fill(state);
+        
+        drawn = true;
+    }
+}
+
+int main(void) {
+    const int screenWidth = 800;
+    const int screenHeight = 600;
+
+    Turtle *state = turtle_create();
+    turtle_init_window(screenWidth, screenHeight, "Turtle Heart Shape Example");
+    turtle_set_fps(60);
+
+    turtle_set_background_color(state, 0, 0, 0, 255);
+    turtle_done(state, draw_heart);
+
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
 ## Conclusion
 
 This Turtle Graphics library simplifies the process of drawing graphics in C projects, providing an intuitive interface for moving the turtle and drawing shapes and lines. The provided examples illustrate how to use the library for common graphics tasks.

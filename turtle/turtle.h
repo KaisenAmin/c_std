@@ -52,6 +52,7 @@ typedef struct {
 typedef void (*TurtleDrawFunc)(Turtle *);
 
 Turtle *turtle_create(void);
+
 void turtle_deallocate(Turtle *state);
 void turtle_init_window(int width, int height, const char *title);
 void turtle_close_window(void);
@@ -88,11 +89,13 @@ void turtle_radians(Turtle *state);
 void turtle_set_background_color(Turtle *state, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
 int turtle_stamp(Turtle *state);
+
 float turtle_distance(Turtle *state, float x, float y);
 float turtle_heading(Turtle *state);
 float turtle_distance_turtle(Turtle *state, Tu *other_turtle);
 float turtle_get_pen_size(Turtle *state);
+
 bool turtle_filling(Turtle *state);
 bool turtle_is_down(Turtle *state);
 
-#endif // TURTLE_H
+#endif 
