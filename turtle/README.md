@@ -918,7 +918,6 @@ int main(void) {
 #include "turtle/turtle.h"
 #include <math.h>
 
-// Function to draw a curve
 void curve(Turtle *state) {
     for (int i = 0; i < 200; i++) {
         turtle_left(state, 1);
@@ -926,7 +925,6 @@ void curve(Turtle *state) {
     }
 }
 
-// Function to draw a heart shape
 void draw_heart(Turtle *state) {
     static bool drawn = false;
     if (!drawn) {
