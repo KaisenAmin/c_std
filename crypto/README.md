@@ -6,43 +6,43 @@
 
 ## Overview
 
-The Crypto library in C is a lightweight and versatile cryptographic hashing library for C programming, providing an interface for creating a variety of hash digests. It is designed to be a counterpart to the cryptographic capabilities found in higher-level languages like C++ and Python, offering C developers a straightforward approach to securing information.
+The Crypto Library in C is a comprehensive cryptographic library designed for developers who require secure and efficient hashing and encryption capabilities in their C programs. It provides a straightforward API for a variety of cryptographic operations, including hashing with multiple algorithms and encryption/decryption using DES in various modes. The library is built on top of the OpenSSL library, ensuring robust and widely trusted cryptographic functionality.
 
-This library serves as a bridge for developers familiar with Qt's `QCryptographicHash` class or similar high-level cryptographic APIs, allowing the use of these in a C environment.
+This library is particularly useful for developers who are familiar with cryptographic libraries in higher-level languages like C++ or Python and wish to leverage similar capabilities in C.
 
 ## Key Features
 
-- **Multiple Hashing Algorithms:** Supports a range of hashing algorithms including MD4, MD5, SHA-1, SHA-2 (SHA-224, SHA-256, SHA-384, SHA-512), and placeholders for SHA-3 and Keccak variants.
-- **Easy to Use:** Simplifies the hashing process with a straightforward API.
-- **Memory Management:** Allocates and frees memory dynamically to handle hash data, ensuring flexibility with data sizes.
-- **OpenSSL Integration:** Utilizes the robust OpenSSL library for cryptographic operations.
+- **Multiple Hashing Algorithms:** Supports a wide range of hashing algorithms, including MD4, MD5, SHA-1, SHA-2 (SHA-224, SHA-256, SHA-384, SHA-512), SHA-3, SHAKE variants, BLAKE2, MDC2, and RIPEMD-160.
+- **DES Encryption/Decryption:** Provides DES encryption and decryption in various modes (ECB, CBC, CFB, OFB), allowing for flexibility depending on the security needs.
+- **Cross-Platform Support:** The library can be compiled and used on both Windows and Unix-like systems, with platform-specific random number generation.
+- **OpenSSL Integration:** Utilizes the OpenSSL library for cryptographic operations, ensuring reliability and security.
+- **Memory Management:** Manages memory dynamically to accommodate varying sizes of data and cryptographic outputs.
 
 ## Installation and Compilation
 
-To use the Crypto library, include `crypto.h` in your project. You must have OpenSSL installed on your system as this library depends on it for the cryptographic functions.
+### Prerequisites
 
-Compile your C files using a command similar to:
+- **OpenSSL:** Ensure that OpenSSL is installed on your system. This library depends on OpenSSL for cryptographic functions.
+- **GCC:** A C compiler such as GCC is required to compile the library and your C programs.
+
+### Compilation
+
+To compile the Crypto library along with your C program, use a command similar to the following:
 
 ```bash
 gcc -std=c11 -O3 -Wall -Wextra -o mycrypto main.c crypto.c -lcrypto
 ```
 
-Ensure that your development environment is set up with the necessary tools and libraries, such as GCC and OpenSSL.
+This command compiles `main.c` and `crypto.c` and links the OpenSSL library (`-lcrypto`). Ensure that OpenSSL is properly installed and accessible in your system's library path.
 
-## Documentation
-
-Detailed documentation is provided within the header files, outlining the purpose and usage of each function, as well as the supported hashing algorithms. The documentation is intended to help users quickly integrate the library's functionalities into their projects.
-
-
-## Function Descriptions
+## Usage
 
 ### Hashing Operations
-- `crypto_hash_data(const uint8_t*, size_t, enum HashAlgorithm, size_t*)`: Computes a hash digest based on the selected algorithm for the provided data.
-- `crypto_print_hash(const uint8_t*, size_t)`: Prints the hash digest in a hexadecimal format.
 
-To include the additional hash algorithms you've implemented in your Crypto library documentation, you can expand the "Supported Algorithms" section as follows:
+The library provides a variety of hashing algorithms that can be used to generate cryptographic hash digests from data. The primary function for this is `crypto_hash_data`, which computes a hash digest based on the selected algorithm.
 
-### Supported Algorithms for hashing
+### Supported Algorithms for Hashing
+
 - `CRYPTO_MD4`: Computes an MD4 hash digest.
 - `CRYPTO_MD5`: Computes an MD5 hash digest.
 - `CRYPTO_SHA1`: Computes an SHA-1 hash digest.
@@ -62,10 +62,37 @@ To include the additional hash algorithms you've implemented in your Crypto libr
 - `CRYPTO_RIPEMD_160`: Computes an RIPEMD-160 hash digest.
 - `CRYPTO_SHA512_224`: Computes an SHA-512/224 hash digest.
 
-### Compilation
-```bash
-gcc -std=c17 -o mycrypto main.c crypto.c -lcrypto
-```
+### DES Encryption/Decryption
+
+The library supports DES encryption and decryption in several modes: ECB, CBC, CFB, and OFB. The functions `crypto_des_encrypt` and `crypto_des_decrypt` handle encryption and decryption, respectively.
+
+### Supported Modes for DES
+
+- `CRYPTO_MODE_ECB`: Electronic Codebook mode.
+- `CRYPTO_MODE_CBC`: Cipher Block Chaining mode.
+- `CRYPTO_MODE_CFB`: Cipher Feedback mode.
+- `CRYPTO_MODE_OFB`: Output Feedback mode.
+
+
+## Example Programs
+
+The library includes several example programs demonstrating how to use the various cryptographic functions:
+
+1. **MD4 Hash Example:** Computes and prints an MD4 hash of a string.
+2. **MD5 Hash Example:** Computes and prints an MD5 hash of a string.
+3. **SHA-1 Hash Example:** Computes and prints a SHA-1 hash of a string.
+4. **SHA-224 Hash Example:** Computes and prints a SHA-224 hash of a string.
+5. **SHA-256 Hash Example:** Computes and prints a SHA-256 hash of a string.
+6. **SHA-384 Hash Example:** Computes and prints a SHA-384 hash of a string.
+7. **SHA-512 Hash Example:** Computes and prints a SHA-512 hash of a string.
+8. **SHA3-224 Hash Example:** Computes and prints a SHA3-224 hash of a string.
+9. **SHA3-256 Hash Example:** Computes and prints a SHA3-256 hash of a string.
+10. **SHA3-384 Hash Example:** Computes and prints a SHA3-384 hash of a string.
+11. **SHA3-512 Hash Example:** Computes and prints a SHA3-512 hash of a string.
+12. **DES Encryption in OFB Mode Example:** Encrypts and decrypts a string using DES in OFB mode.
+13. **DES Encryption in ECB Mode Example:** Encrypts and decrypts a string using DES in ECB mode.
+14. **Random IV Generation and CBC Encryption Example:** Demonstrates random IV generation and DES encryption/decryption in CBC mode.
+
 
 ## Example 1 : use `MD4` algorithm `crypto_hash_data` and `crypto_print_hash`
 ```c

@@ -42,11 +42,16 @@ typedef struct {
     Color backgroundColor;
     bool isFilling;
     Color fillColor;
+
     struct {
         float size;
         Color color;
         bool drawn;
     } dot;
+
+    Vector2 *fillPoints;  
+    int fillPointCount;
+    int fillPointCapacity;
 } Turtle;
 
 typedef void (*TurtleDrawFunc)(Turtle *);

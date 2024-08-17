@@ -1,32 +1,175 @@
-
 # Queue Library in C
 
-**Author:** amin tahmasebi
-**Release Date:** 2023
+**Author:** Amin Tahmasebi  
+**Release Date:** 2023  
 **License:** ISC License
 
-The Queue library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size Queues, offering similar functionality to `std::queue` in C++.
+The Queue library is part of a project aimed at reimplementing C++ standard library features in C. It provides a generic container that encapsulates dynamic-sized Queues, offering functionality similar to `std::queue` in C++.
 
 ## Compilation
 
 To compile the Queue library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
 
 ```bash
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./queue/queue.c 
 ```
 
+If you need other libraries, you can add them by including their `.c` files.
+
 Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
 
 ## Usage
 
-To use the Queue library in your project, include the `queue.h` header file in your source code.
+To use the Queue library in your project, include the `queue.h` header file in your source code:
 
 ```c
 #include "queue/queue.h"
 ```
 
-## Example 1 : how to create queue and `queue_push_back` then get `queue_size`
+## API Reference
+
+### Queue Creation and Deallocation
+
+- **`Queue* queue_create(size_t itemSize);`**
+
+    Creates a new Queue object. The size of each item in the queue must be specified.
+
+    - **Parameters:**
+        - `itemSize`: The size of the items that will be stored in the queue.
+    - **Returns:** A pointer to the newly created Queue object.
+
+- **`void queue_deallocate(Queue* q);`**
+
+    Deallocates a Queue object, freeing all associated memory.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object to be deallocated.
+
+### Queue Operations
+
+- **`void queue_push(Queue* q, void* item);`**
+
+    Adds an item to the back of the queue.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+        - `item`: Pointer to the item to be added to the queue.
+
+- **`void queue_pop(Queue* q);`**
+
+    Removes the item at the front of the queue.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+
+- **`void* queue_front(const Queue* q);`**
+
+    Returns a pointer to the front item of the queue without removing it.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+    - **Returns:** A pointer to the front item or `NULL` if the queue is empty.
+
+- **`void* queue_back(const Queue* q);`**
+
+    Returns a pointer to the back item of the queue without removing it.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+    - **Returns:** A pointer to the back item or `NULL` if the queue is empty.
+
+- **`void queue_emplace(Queue* q, void* item, size_t itemSize);`**
+
+    Constructs and adds an item at the back of the queue, without copying.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+        - `item`: Pointer to the item to be emplaced.
+        - `itemSize`: Size of the item to be emplaced.
+
+- **`size_t queue_size(const Queue* q);`**
+
+    Returns the number of items currently in the queue.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+    - **Returns:** The number of items in the queue.
+
+- **`bool queue_empty(const Queue* q);`**
+
+    Checks if the queue is empty.
+
+    - **Parameters:**
+        - `q`: Pointer to the Queue object.
+    - **Returns:** `true` if the queue is empty, otherwise `false`.
+
+- **`void queue_swap(Queue* q1, Queue* q2);`**
+
+    Swaps the contents of two queues.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+
+### Relational Operations
+
+- **`bool queue_is_equal(const Queue* q1, const Queue* q2);`**
+
+    Checks if two queues are equal.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+    - **Returns:** `true` if the queues are equal, otherwise `false`.
+
+- **`bool queue_is_less(const Queue* q1, const Queue* q2);`**
+
+    Checks if the first queue is less than the second.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+    - **Returns:** `true` if the first queue is less than the second, otherwise `false`.
+
+- **`bool queue_is_greater(const Queue* q1, const Queue* q2);`**
+
+    Checks if the first queue is greater than the second.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+    - **Returns:** `true` if the first queue is greater than the second, otherwise `false`.
+
+- **`bool queue_is_not_equal(const Queue* q1, const Queue* q2);`**
+
+    Checks if two queues are not equal.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+    - **Returns:** `true` if the queues are not equal, otherwise `false`.
+
+- **`bool queue_is_less_or_equal(const Queue* q1, const Queue* q2);`**
+
+    Checks if the first queue is less than or equal to the second.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+    - **Returns:** `true` if the first queue is less than or equal to the second, otherwise `false`.
+
+- **`bool queue_is_greater_or_equal(const Queue* q1, const Queue* q2);`**
+
+    Checks if the first queue is greater than or equal to the second.
+
+    - **Parameters:**
+        - `q1`: Pointer to the first Queue object.
+        - `q2`: Pointer to the second Queue object.
+    - **Returns:** `true` if the first queue is greater than or equal to the second, otherwise `false`.
+
+## Examples
+
+### Example 1: Creating a Queue and Adding Items
 
 ```c
 #include "fmt/fmt.h"
@@ -40,7 +183,6 @@ int main() {
         return -1;
     }
 
-    // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
@@ -52,12 +194,12 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 Queue size: 5
 ```
 
-## Example 2 : check queue is `queue_empty` or not
+### Example 2: Checking If the Queue Is Empty
 
 ```c
 #include "fmt/fmt.h"
@@ -71,7 +213,6 @@ int main() {
         return -1;
     }
 
-    // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
@@ -82,12 +223,12 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 Is the queue empty? No
 ```
 
-## Example 3 : `queue_front` and `queue_back` get ref to first and last element
+### Example 3: Accessing Front and Back Elements
 
 ```c
 #include "fmt/fmt.h"
@@ -101,35 +242,30 @@ int main() {
         return -1;
     }
 
-    // Push some integers onto the queue
     int values[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
-    // Access the front and back elements
+
     int* front = queue_front(myQueue);
     int* back = queue_back(myQueue);
 
     if (front && back) {
         fmt_printf("Front element: %d\n", *front);
         fmt_printf("Back element: %d\n", *back);
-
-        *(int*)queue_back(myQueue) = 15236;
-        fmt_printf("Back element After change: %d\n", *(int*)queue_back(myQueue));
     }
 
     queue_deallocate(myQueue);
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 Front element: 10
 Back element: 50
-Back element After change: 15236
 ```
 
-## Example 4 : how to pop element with `queue_pop`
+### Example 4: Removing Items from the Queue
 
 ```c
 #include "fmt/fmt.h"
@@ -143,11 +279,13 @@ int main() {
         return -1;
     }
 
-    // Push some integers onto the queue
-    int values[] = {10, 20, 30, 40, 50};
+    int values
+
+[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
+
     queue_pop(myQueue);
     int* front = queue_front(myQueue);
 
@@ -159,12 +297,12 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 New front element after pop: 20
 ```
 
-## Example 5 : `queue_emplace` element also use some relationals operators
+### Example 5: Emplacing Items and Using Relational Operators
 
 ```c
 #include "fmt/fmt.h"
@@ -179,7 +317,6 @@ int main() {
         return -1;
     }
 
-    // Push some integers onto the first queue
     int values1[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) {
         queue_push(myQueue1, &values1[i]);
@@ -199,13 +336,13 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 Are the queues equal? No
 Is myQueue1 less than myQueue2? Yes
 ```
 
-## Example 6 : how to use `queue_swap` in Queue
+### Example 6: Swapping Queues
 
 ```c
 #include "fmt/fmt.h"
@@ -232,7 +369,6 @@ int main() {
 
     queue_swap(myQueue1, myQueue2);
 
-    // Check the front element of the swapped queues
     int* front1 = queue_front(myQueue1);
     int* front2 = queue_front(myQueue2);
 
@@ -247,13 +383,13 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 Front element of myQueue1 after swap: 15
 Front element of myQueue2 after swap: 10
 ```
 
-## Example 7 : Task Management System Using Queue
+### Example 7: Task Management System Using Queue
 
 ```c
 #include <string.h>
@@ -269,7 +405,6 @@ typedef struct Task {
 void addTask(Queue* queue, int id, const char* desc, int priority) {
     Task task;
     task.id = id;
-
     strncpy(task.description, desc, sizeof(task.description));
     task.priority = priority;
     queue_emplace(queue, &task, sizeof(Task));
@@ -279,7 +414,6 @@ void processTasks(Queue* queue) {
     while (!queue_empty(queue)) {
         Task* task = (Task*)queue_front(queue);
         fmt_printf("Processing Task ID %d: %s\n", task->id, task->description);
-        // Simulate task processing
         queue_pop(queue);
     }
 }
@@ -290,9 +424,6 @@ int main() {
     addTask(taskQueue, 1, "Fix bug in code", 5);
     addTask(taskQueue, 2, "Update documentation", 3);
     addTask(taskQueue, 3, "Refactor module", 4);
-    addTask(taskQueue, 4, "Fix bug in code", 5);
-    addTask(taskQueue, 5, "Update documentation", 3);
-    addTask(taskQueue, 6, "Refactor module", 4);
 
     fmt_printf("Task queue size before processing: %zu\n", queue_size(taskQueue));
     processTasks(taskQueue);
@@ -302,19 +433,16 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
-Task queue size before processing: 6
+Task queue size before processing: 3
 Processing Task ID 1: Fix bug in code
 Processing Task ID 2: Update documentation
 Processing Task ID 3: Refactor module
-Processing Task ID 4: Fix bug in code
-Processing Task ID 5: Update documentation
-Processing Task ID 6: Refactor module
 Task queue size after processing: 0
 ```
 
-## Example 8 : 2D Queue of String Objects
+### Example 8: 2D Queue of String Objects
 
 ```c
 #include "fmt/fmt.h"
@@ -323,30 +451,21 @@ Task queue size after processing: 0
 #include <stdlib.h>
 
 int main() {
-    // Create a Queue of String Queues (2D Queue)
     Queue* queue2D = queue_create(sizeof(Queue*));
 
-    // Create and populate inner Queues
     for (int i = 0; i < 3; ++i) { 
         Queue* stringQueue = queue_create(sizeof(String*));
 
-        // Add Strings to the inner Queue
         for (int j = 0; j < 5; ++j) { 
-            // Each inner Queue has 5 Strings
-            char *buffer = NULL;
-            buffer = fmt_sprintf("String %d-%d", i, j);
-            
-
+            char *buffer = fmt_sprintf("String %d-%d", i, j);
             String* str = string_create(buffer);
             queue_emplace(stringQueue, &str, sizeof(String*));
             free(buffer);
         }
 
-        // Add the inner Queue to the 2D Queue
         queue_emplace(queue2D, &stringQueue, sizeof(Queue*));
     }
 
-    // Iterate over each inner Queue and process its Strings
     while (!queue_empty(queue2D)) {
         Queue** innerQueuePtr = (Queue**)queue_front(queue2D);
         Queue* innerQueue = *innerQueuePtr;
@@ -354,15 +473,12 @@ int main() {
         while (!queue_empty(innerQueue)) {
             String** strPtr = (String**)queue_front(innerQueue);
             String* str = *strPtr;
-            
             fmt_printf("Processing: %s\n", string_c_str(str));
 
-            // Pop the processed String
             queue_pop(innerQueue);
             string_deallocate(str);
         }
 
-        // Pop the processed inner Queue
         queue_pop(queue2D);
         queue_deallocate(innerQueue);
     }
@@ -371,7 +487,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Expected Output:**
 ```
 Processing: String 0-0
 Processing: String 0-1
@@ -389,3 +505,7 @@ Processing: String 2-2
 Processing: String 2-3
 Processing: String 2-4
 ```
+
+## Conclusion
+
+The Queue library provides a flexible, easy-to-use API for creating and managing dynamic-sized queues in C. With support for standard queue operations and relational comparisons, it is a robust tool for a variety of applications, from simple data structures to complex task management systems.

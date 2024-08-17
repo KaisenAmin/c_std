@@ -1,17 +1,15 @@
-
 # Deque Library in C
 
-**Author:** amin tahmasebi
-**Release Date:** 2023
+**Author:** Amin Tahmasebi  
+**Release Date:** 2023  
 **License:** ISC License
 
+The Deque library provides a generic container in C that mimics the functionality of `std::deque` in C++. It offers a dynamic-size double-ended queue (deque) that allows fast insertion and removal of elements from both ends. This library is part of a larger project to reimplement C++ standard library features in C.
 
-The Deque library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size Deques, offering similar functionality to `std::deque` in C++.
 
 ## Compilation
 
 To compile the Deque library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
 
 ```bash
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./deque/deque.c 
@@ -21,11 +19,148 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 ## Usage
 
-To use the Deque library in your project, include the `Deque.h` header file in your source code.
+To use the Deque library in your project, include the `deque.h` header file in your source code:
 
 ```c
 #include "deque/deque.h"
 ```
+
+## Function Descriptions
+
+### Deque Creation and Deallocation
+
+- **`Deque* deque_create(size_t itemSize)`**  
+  Creates a new deque with elements of a specified size. `itemSize` is the size of each element in the deque. Returns a pointer to the newly created deque.
+
+- **`void deque_deallocate(Deque* deque)`**  
+  Deallocates all memory associated with the deque, including all elements and blocks. It should be called when the deque is no longer needed to avoid memory leaks.
+
+### Insertion and Deletion
+
+- **`void deque_push_front(Deque* deque, void* item)`**  
+  Inserts a new element at the front of the deque. The `item` is a pointer to the data to be inserted.
+
+- **`void deque_push_back(Deque* deque, const void* item)`**  
+  Inserts a new element at the back of the deque. The `item` is a pointer to the data to be inserted.
+
+- **`void deque_pop_front(Deque* deque)`**  
+  Removes the element at the front of the deque.
+
+- **`void deque_pop_back(Deque* deque)`**  
+  Removes the element at the back of the deque.
+
+### Accessing Elements
+
+- **`void* deque_front(const Deque* deque)`**  
+  Returns a pointer to the element at the front of the deque.
+
+- **`void* deque_back(const Deque* deque)`**  
+  Returns a pointer to the element at the back of the deque.
+
+- **`void* deque_at(const Deque* deque, size_t index)`**  
+  Returns a pointer to the element at the specified index in the deque. If the index is out of bounds, an error message is printed.
+
+### Capacity and Size Management
+
+- **`size_t deque_length(const Deque* deque)`**  
+  Returns the number of elements currently in the deque.
+
+- **`size_t deque_max_size(const Deque* deque)`**  
+  Returns the maximum possible number of elements that can be stored in the deque (limited by `SIZE_MAX`).
+
+- **`void deque_resize(Deque* deque, size_t newSize)`**  
+  Resizes the deque to contain `newSize` elements. If `newSize` is greater than the current size, new elements are added at the back. If `newSize` is smaller, elements are removed from the back.
+
+- **`void deque_shrink_to_fit(Deque* deque)`**  
+  Reduces the capacity of the deque to fit its current size, releasing any unused memory.
+
+- **`bool deque_empty(const Deque* deque)`**  
+  Returns `true` if the deque is empty, otherwise returns `false`.
+
+### Modifying Elements
+
+- **`void deque_insert(Deque* deque, size_t index, void* item)`**  
+  Inserts an element at the specified index in the deque. Elements at and after the index are shifted to the right.
+
+- **`void deque_erase(Deque* deque, size_t index)`**  
+  Removes the element at the specified index in the deque. Elements after the index are shifted to the left.
+
+- **`void deque_clear(Deque* deque)`**  
+  Removes all elements from the deque, resetting it to its initial state.
+
+- **`void deque_assign(Deque* deque, size_t n, void* val)`**  
+  Assigns `n` copies of `val` to the deque, replacing its contents.
+
+- **`void deque_emplace_back(Deque* deque, void* item)`**  
+  Inserts a new element at the back of the deque without copying, constructing the element in place.
+
+- **`void deque_emplace_front(Deque* deque, void* item)`**  
+  Inserts a new element at the front of the deque without copying, constructing the element in place.
+
+- **`void deque_emplace(Deque* deque, size_t index, void* item)`**  
+  Inserts a new element at the specified index without copying, constructing the element in place.
+
+### Relational Operators
+
+- **`bool deque_is_equal(const Deque* deque1, const Deque* deque2)`**  
+  Returns `true` if the contents of `deque1` and `deque2` are equal, otherwise returns `false`.
+
+- **`bool deque_is_less(const Deque* deque1, const Deque* deque2)`**  
+  Returns `true` if `deque1` is lexicographically less than `deque2`.
+
+- **`bool deque_is_greater(const Deque* deque1, const Deque* deque2)`**  
+  Returns `true` if `deque1` is lexicographically greater than `deque2`.
+
+- **`bool deque_is_not_equal(const Deque* deque1, const Deque* deque2)`**  
+  Returns `true` if the contents of `deque1` and `deque2` are not equal.
+
+- **`bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2)`**  
+  Returns `true` if `deque1` is lexicographically less than or equal to `deque2`.
+
+- **`bool deque_is_greater_or_equal(const Deque* deque1, const Deque* deque2)`**  
+  Returns `true` if `deque1` is lexicographically greater than or equal to `deque2`.
+
+### Iterator Functions
+
+- **`DequeIterator deque_begin(const Deque* deque)`**  
+  Returns an iterator pointing to the first element of the deque.
+
+- **`DequeIterator deque_end(const Deque* deque)`**  
+  Returns an iterator pointing just past the last element of the deque.
+
+- **`DequeIterator deque_rbegin(const Deque* deque)`**  
+  Returns a reverse iterator pointing to the last element of the deque.
+
+- **`DequeIterator deque_rend(const Deque* deque)`**  
+  Returns a reverse iterator pointing just before the first element of the deque.
+
+- **`const DequeIterator* deque_cbegin(const Deque* deque)`**  
+  Returns a constant iterator pointing to the first element of the deque.
+
+- **`const DequeIterator* deque_cend(const Deque* deque)`**  
+  Returns a constant iterator pointing just past the last element of the deque.
+
+- **`const DequeIterator* deque_crbegin(const Deque* deque)`**  
+  Returns a constant reverse iterator pointing to the last element of the deque.
+
+- **`const DequeIterator* deque_crend(const Deque* deque)`**  
+  Returns a constant reverse iterator pointing just before the first element of the deque.
+
+- **`void iterator_increment(DequeIterator* it)`**  
+  Moves the iterator `it` to the next element in the deque.
+
+- **`void iterator_decrement(DequeIterator* it)`**  
+  Moves the iterator `it` to the previous element in the deque.
+
+- **`bool iterator_equals(const DequeIterator* it1, const DequeIterator* it2)`**  
+  Returns `true` if iterators `it1` and `it2` point to the same element, otherwise returns `false`.
+
+- **`void* iterator_get(const DequeIterator* it)`**  
+  Returns a pointer to the element at the iterator `it`'s current position.
+
+---
+
+## Examples
 
 ### Example 1: Basic Push and Pop Operations
 ```c

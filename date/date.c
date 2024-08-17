@@ -128,8 +128,7 @@ static int fromzone(const unsigned char **bp, struct tm *tm, int mandatory) {
     return 1;
 }
 
-char* win_strptime(const char *buf, const char *fmt, struct tm *tm)
-{
+char* win_strptime(const char *buf, const char *fmt, struct tm *tm) {
     unsigned char c;
     const unsigned char *bp, *ep, *zname;
     int alt_format, i, split_year = 0, neg = 0, state = 0,
@@ -824,6 +823,16 @@ static int days_in_month(int year, int month, CalendarType type) {
     return 0; // Default case for unsupported calendar types
 }
 
+/**
+ * @brief Checks if the provided Date object represents a valid date.
+ *
+ * This function validates the year, month, and day components of the Date object 
+ * based on the specified calendar type. If the Date object is NULL, the function 
+ * returns false and logs an error message.
+ *
+ * @param date A pointer to the Date object to validate.
+ * @return true if the Date object is valid; false otherwise.
+ */
 bool date_is_valid(const Date* date) {
     if (!date) {
         fmt_fprintf(stderr, "Error: Date pointer is NULL in date_is_valid.\n");
@@ -832,6 +841,16 @@ bool date_is_valid(const Date* date) {
     return date_is_valid_ymd(date->year, date->month, date->day, date->calendarType);
 }
 
+/**
+ * @brief Creates a new Date object with the specified calendar type.
+ *
+ * This function allocates memory for a new Date object and initializes it with 
+ * invalid values (-1) to signify a null date. The calendar type is set based on 
+ * the provided type parameter.
+ *
+ * @param type The CalendarType (Gregorian or Persian) to be used for the new Date.
+ * @return A pointer to the newly created Date object.
+ */
 Date* date_create(CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
@@ -848,6 +867,20 @@ Date* date_create(CalendarType type) {
     return date;
 }
 
+/**
+ * @brief Creates a new Date object with the specified year, month, day, and calendar type.
+ *
+ * This function allocates memory for a new Date object and initializes it with the 
+ * provided year, month, and day values. It validates the provided date parameters and 
+ * logs an error message if they are invalid.
+ *
+ * @param y The year component of the date.
+ * @param m The month component of the date.
+ * @param d The day component of the date.
+ * @param type The CalendarType (Gregorian or Persian) to be used for the new Date.
+ * 
+ * @return A pointer to the newly created Date object, or exits the program if the date is invalid.
+ */
 Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
@@ -868,6 +901,15 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     return date;
 }
 
+/**
+ * @brief Checks if the provided Date object is null.
+ *
+ * This function checks if the Date object is NULL. If the Date object is NULL, 
+ * the function logs a warning message and returns true.
+ *
+ * @param date A pointer to the Date object to check.
+ * @return true if the Date object is NULL; false otherwise.
+ */
 bool date_is_null(const Date* date) {
     if (!date) {
         fmt_fprintf(stderr, "Warning: Date pointer is NULL in date_is_null.\n");
@@ -876,6 +918,18 @@ bool date_is_null(const Date* date) {
     return false;
 }
 
+/**
+ * @brief Adds a specified number of days to a given date.
+ *
+ * This function creates a new Date object by adding or subtracting the specified 
+ * number of days to/from the original date. It adjusts the resulting date for 
+ * month and year overflows/underflows based on the calendar type.
+ *
+ * @param orig_date A pointer to the original Date object.
+ * @param ndays The number of days to add (can be negative to subtract days).
+ * 
+ * @return A pointer to the new Date object with the adjusted date.
+ */
 Date* date_add_days(const Date* orig_date, int ndays) {
     if (!orig_date) {
         fmt_fprintf(stderr, "Error: Original date is NULL in date_add_days.\n");
@@ -930,6 +984,17 @@ Date* date_add_days(const Date* orig_date, int ndays) {
     return new_date;
 }
 
+/**
+ * @brief Adds a specified number of months to a given date.
+ *
+ * This function creates a new Date object by adding the specified number of months to the original date.
+ * It adjusts the resulting date for cases such as month overflow and day overflow based on the calendar type.
+ *
+ * @param orig_date A pointer to the original Date object.
+ * @param nmonths The number of months to add.
+ * 
+ * @return A pointer to the new Date object with the adjusted date.
+ */
 Date* date_add_months(const Date* orig_date, int nmonths) {
     if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         fmt_fprintf(stderr, "Error: date is null or not valid in date_add_months.\n");
@@ -963,6 +1028,17 @@ Date* date_add_months(const Date* orig_date, int nmonths) {
     return new_date;
 }
 
+/**
+ * @brief Adds a specified number of years to a given date.
+ *
+ * This function creates a new Date object by adding the specified number of years to the original date.
+ * It adjusts the resulting date for leap years, ensuring the date remains valid in the resulting year.
+ *
+ * @param orig_date A pointer to the original Date object.
+ * @param nyears The number of years to add.
+ * 
+ * @return A pointer to the new Date object with the adjusted date.
+ */
 Date* date_add_years(const Date* orig_date, int nyears) {
     if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         fmt_fprintf(stderr, "Error: date is null or not valid in date_add_years.\n");
@@ -994,6 +1070,17 @@ Date* date_add_years(const Date* orig_date, int nyears) {
     return new_date;
 }
 
+/**
+ * @brief Retrieves the year, month, and day from a Date object.
+ *
+ * This function extracts the year, month, and day values from the specified Date object and stores them
+ * in the provided pointers.
+ *
+ * @param date A pointer to the Date object.
+ * @param year A pointer to an integer where the year value will be stored.
+ * @param month A pointer to an integer where the month value will be stored.
+ * @param day A pointer to an integer where the day value will be stored.
+ */
 void date_get_date(const Date* date, int *year, int *month, int *day) {
      if (!date) {
         fmt_fprintf(stderr, "Error: Passed 'date' is NULL in date_get_date.\n");
@@ -1009,6 +1096,14 @@ void date_get_date(const Date* date, int *year, int *month, int *day) {
     *day = date->day;
 }
 
+/**
+ * @brief Retrieves the day from a Date object.
+ *
+ * This function returns the day of the month for the specified Date object.
+ *
+ * @param date A pointer to the Date object.
+ * @return The day of the month, or -1 if the date is invalid or NULL.
+ */
 int date_day(const Date* date) {
     if (date == NULL || !date_is_valid(date)) {
         // Handle the error, as the date is NULL
@@ -1018,6 +1113,14 @@ int date_day(const Date* date) {
     return date->day;
 }
 
+/**
+ * @brief Retrieves the month from a Date object.
+ *
+ * This function returns the month for the specified Date object.
+ *
+ * @param date A pointer to the Date object.
+ * @return The month, or -1 if the date is invalid or NULL.
+ */
 int date_month(const Date* date) {
     if (date == NULL || !date_is_valid(date)) {
         // Handle the error, as the date is NULL
@@ -1027,6 +1130,14 @@ int date_month(const Date* date) {
     return date->month;
 }
 
+/**
+ * @brief Retrieves the year from a Date object.
+ *
+ * This function returns the year for the specified Date object.
+ *
+ * @param date A pointer to the Date object.
+ * @return The year, or -1 if the date is invalid or NULL.
+ */
 int date_year(const Date* date) {
     if (date == NULL) {
         // Handle the error, as the date is NULL
@@ -1059,7 +1170,15 @@ static long persian_to_jdn(int year, int month, int day) {
            (1948320 - 1);
 }
 
-// This function returns the day of the week for the given date, where Monday is 1 and Sunday is 7.
+/**
+ * @brief Returns the day of the week for the given date.
+ *
+ * This function calculates the day of the week for the specified Date object.
+ * The return value corresponds to Monday as 1 through Sunday as 7.
+ *
+ * @param date A pointer to the Date object.
+ * @return The day of the week (Monday = 1, ..., Sunday = 7), or -1 in case of an error (NULL date or unsupported calendar type).
+ */
 int date_day_of_week(const Date* date) {
     if (date == NULL) {
         fmt_fprintf(stderr, "Error: Date is null in date_day_of_week.\n");
@@ -1081,7 +1200,14 @@ int date_day_of_week(const Date* date) {
     return (jdn + 1) % 7 + 1;
 }
 
-// This function calculates the day of the year, from 1 to 365 or 366 in a leap year.
+/**
+ * @brief Calculates the day of the year for the given date.
+ *
+ * This function calculates the day of the year for the specified Date object, ranging from 1 to 365 (or 366 in a leap year).
+ *
+ * @param date A pointer to the Date object.
+ * @return The day of the year (1 to 365/366), or -1 in case of an error (NULL date or unsupported calendar type).
+ */
 int date_day_of_year(const Date* date) {
     if (date == NULL) {
         fmt_fprintf(stderr, "Error: Date is null in date_day_of_year.\n");
@@ -1115,7 +1241,16 @@ int date_day_of_year(const Date* date) {
 
     return dayOfYear;
 }
-// This function returns the number of days in the given month of the specified year.
+
+/**
+ * @brief Returns the number of days in the specified month of the given year.
+ *
+ * This function returns the total number of days in the month for the provided Date object.
+ * It accounts for leap years when calculating the number of days in February.
+ *
+ * @param date A pointer to the Date object.
+ * @return The number of days in the month, or -1 in case of an error (e.g., NULL date or unsupported calendar type).
+ */
 int date_days_in_month(const Date* date) {
     if (!date) {
         fmt_fprintf(stderr, "Error: Date pointer is NULL in date_days_in_month.\n");
@@ -1151,7 +1286,15 @@ int date_days_in_month(const Date* date) {
     return days;
 }
 
-// This function returns the total number of days in the year of the given date.
+/**
+ * @brief Returns the total number of days in the year of the given date.
+ *
+ * This function calculates the total number of days in the year for the specified Date object,
+ * considering leap years if applicable.
+ *
+ * @param date A pointer to the Date object.
+ * @return The total number of days in the year (365 or 366), or -1 in case of an error (e.g., NULL date or unsupported calendar type).
+ */
 int date_days_in_year(const Date* date) {
     if (!date) {
         fmt_fprintf(stderr, "Error: Date pointer is NULL in date_days_in_year.\n");
@@ -1180,7 +1323,17 @@ int date_days_in_year(const Date* date) {
     }
 }
 
-// This function calculates the ISO 8601 week number for the given date.
+/**
+ * @brief Calculates the ISO 8601 week number for a given date.
+ *
+ * This function calculates the ISO 8601 week number for a provided date, taking into account
+ * the calendar type (Gregorian or Persian). It also optionally returns the year the week belongs to.
+ *
+ * @param date A pointer to the Date object.
+ * @param yearNumber A pointer to an integer to store the year the week belongs to (optional, can be NULL).
+ * 
+ * @return The ISO 8601 week number, or -1 in case of an error (e.g., unsupported calendar type or NULL date).
+ */
 int date_week_number(const Date* date, int* yearNumber) {
     if (!date) {
         fmt_fprintf(stderr, "Error: Date is NULL in date_week_number.\n");
@@ -1232,7 +1385,18 @@ int date_week_number(const Date* date, int* yearNumber) {
     return week;
 }
 
-// This function calculates the number of days between two dates.
+/**
+ * @brief Calculates the number of days between two dates.
+ *
+ * This function calculates the number of days between two Date objects. Both dates must have
+ * the same calendar type (Gregorian or Persian). The function returns the difference in days,
+ * or -1 in case of an error (e.g., mismatched calendar types or invalid dates).
+ *
+ * @param from A pointer to the start Date object.
+ * @param to A pointer to the end Date object.
+ * 
+ * @return The number of days between the two dates, or -1 in case of an error.
+ */
 int date_days_to(const Date* from, const Date* to) {
     if (!from || !to) {
         fmt_fprintf(stderr, "Error: One or both date pointers are NULL in date_days_to.\n");
@@ -1258,6 +1422,17 @@ int date_days_to(const Date* from, const Date* to) {
     return (int)(to_jd - from_jd);
 }
 
+/**
+ * @brief Compares two dates for equality.
+ *
+ * This function checks if two Date objects are equal by comparing their year, month, and day fields.
+ * The dates must also have the same calendar type (Gregorian or Persian).
+ *
+ * @param lhs A pointer to the first Date object.
+ * @param rhs A pointer to the second Date object.
+ * 
+ * @return true if the dates are equal, false otherwise.
+ */
 bool date_is_equal(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         fmt_fprintf(stderr, "Error: One or both dates are null in date_is_equals.\n");
@@ -1266,6 +1441,17 @@ bool date_is_equal(const Date* lhs, const Date* rhs) {
     return (lhs->year == rhs->year) && (lhs->month == rhs->month) && (lhs->day == rhs->day);
 }
 
+/**
+ * @brief Compares two dates to check if the first is less than the second.
+ *
+ * This function compares two Date objects and determines if the first date is earlier than the second.
+ * The dates must have the same calendar type (Gregorian or Persian).
+ *
+ * @param lhs A pointer to the first Date object.
+ * @param rhs A pointer to the second Date object.
+ * 
+ * @return true if the first date is earlier than the second, false otherwise.
+ */
 bool date_is_less_than(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_less_than.\n");
@@ -1280,6 +1466,17 @@ bool date_is_less_than(const Date* lhs, const Date* rhs) {
     return lhs->day < rhs->day;
 }
 
+/**
+ * @brief Compares two dates to check if the first is less than or equal to the second.
+ *
+ * This function compares two Date objects and determines if the first date is earlier than or equal to the second.
+ * The dates must have the same calendar type (Gregorian or Persian).
+ *
+ * @param lhs A pointer to the first Date object.
+ * @param rhs A pointer to the second Date object.
+ * 
+ * @return true if the first date is earlier than or equal to the second, false otherwise.
+ */
 bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_less_than_or_equal.\n");
@@ -1288,6 +1485,16 @@ bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs) {
     return date_is_less_than(lhs, rhs) || date_is_equal(lhs, rhs);
 }
 
+/**
+ * @brief Compares two dates to check if the first is greater than the second.
+ *
+ * This function compares two Date objects and determines if the first date is later than the second.
+ * The dates must have the same calendar type (Gregorian or Persian).
+ *
+ * @param lhs A pointer to the first Date object.
+ * @param rhs A pointer to the second Date object.
+ * @return true if the first date is later than the second, false otherwise.
+ */
 bool date_is_greater_than(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_greater_than.\n");
@@ -1302,6 +1509,17 @@ bool date_is_greater_than(const Date* lhs, const Date* rhs) {
     return lhs->day > rhs->day;
 }
 
+/**
+ * @brief Compares two dates to check if the first is greater than or equal to the second.
+ *
+ * This function compares two Date objects and determines if the first date is later than or equal to the second.
+ * The dates must have the same calendar type (Gregorian or Persian).
+ *
+ * @param lhs A pointer to the first Date object.
+ * @param rhs A pointer to the second Date object.
+ * 
+ * @return true if the first date is later than or equal to the second, false otherwise.
+ */
 bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
         fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_greater_than_or_equal.\n");
@@ -1310,10 +1528,31 @@ bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs) {
     return date_is_greater_than(lhs, rhs) || date_is_equal(lhs, rhs);
 }
 
+/**
+ * @brief Compares two Date objects for inequality.
+ *
+ * This function checks if two Date objects are not equal. The comparison takes into account
+ * the year, month, and day of the dates. It returns true if the dates are not equal.
+ *
+ * @param lhs A pointer to the first Date object.
+ * @param rhs A pointer to the second Date object.
+ * @return true if the dates are not equal, false otherwise.
+ */
 bool date_is_not_equals(const Date* lhs, const Date* rhs) {
     return !date_is_equal(lhs, rhs);
 }
 
+/**
+ * @brief Checks if a given year is a leap year for a specific calendar type.
+ *
+ * This function determines if the provided year is a leap year according to the specified
+ * calendar type (Gregorian or Persian). It handles both the Gregorian and Persian leap year
+ * rules and returns true if the year is a leap year.
+ *
+ * @param year The year to check.
+ * @param type The calendar type (Gregorian or Persian).
+ * @return true if the year is a leap year, false otherwise.
+ */
 bool date_is_leap_year_y(int year, CalendarType type) {
     if (type != Gregorian && type != Persian) {
         fmt_fprintf(stderr, "Error: CalendarType is not valid in date_is_leap_year_y.\n");
@@ -1336,6 +1575,15 @@ bool date_is_leap_year_y(int year, CalendarType type) {
     return false; // Default case
 }
 
+/**
+ * @brief Checks if the year of a given Date object is a leap year.
+ *
+ * This function determines if the year of the provided Date object is a leap year based on
+ * the date's calendar type (Gregorian or Persian).
+ *
+ * @param date A pointer to the Date object.
+ * @return true if the year is a leap year, false otherwise.
+ */
 bool date_is_leap_year(const Date* date) {
     if (date == NULL ) {
         fmt_fprintf(stderr, "Error: Date is null in date_is_leap_year");
@@ -1344,6 +1592,20 @@ bool date_is_leap_year(const Date* date) {
     return date_is_leap_year_y(date->year, date->calendarType);
 }
 
+/**
+ * @brief Sets the date of a Date object.
+ *
+ * This function sets the year, month, day, and calendar type of a Date object. It also validates
+ * the input parameters to ensure that the date is valid for the specified calendar type.
+ *
+ * @param date A pointer to the Date object to be set.
+ * @param year The year to set.
+ * @param month The month to set (1-12).
+ * @param day The day to set (1-31 depending on the month and calendar type).
+ * @param type The calendar type (Gregorian or Persian).
+ * 
+ * @return true if the date was successfully set, false otherwise.
+ */
 bool date_set_date(Date* date, int year, int month, int day, CalendarType type) {
     if (date == NULL) {
         fmt_fprintf(stderr, "Error: Date is null in date_set_date");
@@ -1369,6 +1631,16 @@ bool date_set_date(Date* date, int year, int month, int day, CalendarType type) 
     return true;
 }
 
+/**
+ * @brief Gets the current date based on the specified calendar type.
+ *
+ * This function retrieves the current date and returns it as a Date object. The calendar type
+ * can be either Gregorian or Persian. If Persian is selected, the function converts the current
+ * Gregorian date to the equivalent Persian date.
+ *
+ * @param type The calendar type (Gregorian or Persian).
+ * @return A pointer to the newly allocated Date object representing the current date. The caller is responsible for freeing the memory. Returns NULL if memory allocation fails or if an unsupported calendar type is provided.
+ */
 Date* date_current_date(CalendarType type) {
     // Get the current time
     time_t now = time(NULL);
@@ -1410,6 +1682,19 @@ Date* date_current_date(CalendarType type) {
     return currentDate;
 }
 
+/**
+ * @brief Creates a Date object from a string representation of the date.
+ *
+ * This function parses a date string according to the provided format and calendar type,
+ * and creates a corresponding Date object. It supports both Gregorian and Persian calendars.
+ *
+ * @param string The string containing the date to be parsed.
+ * @param format The format string specifying the date format.
+ * @param type The calendar type (Gregorian or Persian).
+ * 
+ * @return A pointer to the newly allocated Date object. The caller is responsible for freeing the memory. 
+ * Returns NULL if parsing fails or if memory allocation fails.
+ */
 Date* date_from_string(const char* string, const char* format, CalendarType type) {
     if (string == NULL || format == NULL) {
         fmt_fprintf(stderr, "Error: Invalid argument passed to date_from_string");
@@ -1466,6 +1751,19 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
     return date;
 }
 
+/**
+ * @brief Converts a Date object to a formatted string.
+ *
+ * This function takes a Date object and formats it as a string according to the provided format.
+ * The function supports both Gregorian and Persian calendars. The format string follows the
+ * rules of the `strftime` function for Gregorian dates and a simple formatting rule for Persian dates.
+ *
+ * @param date A pointer to the Date object to be formatted.
+ * @param format A format string that specifies how to format the date.
+ * @return A pointer to a dynamically allocated string containing the formatted date. 
+ * The caller is responsible for freeing the memory. Returns NULL if the input date or format is NULL, 
+ * or if memory allocation fails.
+ */
 char* date_to_string(const Date* date, const char* format) {
     if (!date || !format) {
         fmt_fprintf(stderr, "Error: Invalid argument passed to date_to_string. Date or format is NULL.\n");
@@ -1511,6 +1809,16 @@ char* date_to_string(const Date* date, const char* format) {
     return date_str;
 }
 
+/**
+ * @brief Converts a Date object to a Julian Day Number.
+ *
+ * This function converts a given date in the Gregorian calendar to the corresponding Julian Day Number (JDN).
+ * The Julian Day Number is the continuous count of days since the beginning of the Julian Period used primarily
+ * by astronomers.
+ *
+ * @param date A pointer to the Date object to be converted.
+ * @return The Julian Day Number corresponding to the given date. Returns -1 if the input date is NULL or invalid.
+ */
 long date_to_julian_day(const Date* date) {
     if (!date) {
         fmt_fprintf(stderr, "Error: Date is NULL in date_to_julian_day.\n");
@@ -1530,6 +1838,16 @@ long date_to_julian_day(const Date* date) {
     return jd;
 }
 
+/**
+ * @brief Creates a Date object from a Julian Day Number.
+ *
+ * This function converts a Julian Day Number (JDN) to the corresponding date in the Gregorian calendar.
+ * It allocates a new Date structure and returns a pointer to it.
+ *
+ * @param jd The Julian Day Number to be converted.
+ * @return A pointer to the newly allocated Date object. Returns NULL if the Julian Day Number is invalid or 
+ * if memory allocation fails.
+ */
 Date* date_from_julian_day(long jd) {
     if (jd < 0) {
         fmt_fprintf(stderr, "Error: Invalid Julian Day Number in date_from_julian_day.\n");
@@ -1562,6 +1880,17 @@ Date* date_from_julian_day(long jd) {
     return date;
 }
 
+/**
+ * @brief Converts a Gregorian date to a Persian (Jalali) date.
+ *
+ * This function takes a Gregorian date and converts it to the corresponding date
+ * in the Persian calendar. It allocates a new Date structure and returns a pointer
+ * to it.
+ *
+ * @param gregorian_date A pointer to the Gregorian date to be converted.
+ * @return A pointer to the newly allocated Persian date. Returns NULL if the input
+ * date is NULL or if memory allocation fails.
+ */
 Date* date_gregorian_to_solar(const Date* gregorian_date) {
     if (!gregorian_date) {
         fmt_fprintf(stderr, "Error: The provided Gregorian date is NULL in date_gregorian_to_solar.\n");
@@ -1614,6 +1943,17 @@ Date* date_gregorian_to_solar(const Date* gregorian_date) {
     return solar_date;
 }
 
+/**
+ * @brief Converts a Persian (Jalali) date to a Gregorian date.
+ *
+ * This function takes a Persian date and converts it to the corresponding date
+ * in the Gregorian calendar. It allocates a new Date structure and returns a pointer
+ * to it.
+ *
+ * @param solar_date A pointer to the Persian date to be converted.
+ * 
+ * @return A pointer to the newly allocated Gregorian date. Returns NULL if the input date is NULL or if memory allocation fails.
+ */
 Date* date_solar_to_gregorian(const Date* solar_date) {
     if (!solar_date) {
         fmt_fprintf(stderr, "Error: The provided Persian date is NULL in date_solar_to_gregorian.\n");
@@ -1689,6 +2029,15 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
     return gregorian_new_date;
 }
 
+/**
+ * @brief Deallocates a Date structure.
+ *
+ * This function frees the memory associated with a Date structure. If the
+ * provided date pointer is NULL, a warning message is printed and the function
+ * returns without performing any deallocation.
+ *
+ * @param date A pointer to the Date structure to be deallocated.
+ */
 void date_deallocate(Date* date) {
     if (!date) {
         fmt_fprintf(stderr, "Warning: Attempted to deallocate a NULL date in date_deallocate.\n");

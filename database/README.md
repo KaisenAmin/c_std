@@ -46,7 +46,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `bool postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
 - `PostgresResult* postgres_list_tables(Postgres* pg)`: this function list all the tables in the current database.
 - `PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName)`: this function retrieve the column names and their data types for a given table in the database.
-- `bool postgres_execute_prepared(Postgres* pg, const char* stmtName, const char* query, int nParams, const char* const* paramValues)`: this function execute a parameterized query.This can help prevent SQL injection and make your queries more flexible.
+- `bool postgres_execute_prepared(Postgres* pg, const char* stmtName, int nParams, const char* const* paramValues)`: this function execute a parameterized query.This can help prevent SQL injection and make your queries more flexible.
 - `PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName)`: this function fetch the names of all the columns in a given table.This can be useful if you want to know the structure of a table without fetching all its data.
 - `PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName)`: this function retrieves the primary keys of a given table. This can be useful for understanding the structure of a table and its unique constraints.
 - `PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName)`: this function retrieve foreign keys from a given table This function will help you understand the relationships between tables by identifying foreign keys and the tables they reference.
@@ -97,6 +97,46 @@ Note that the application must check to see if a new line consists of the two ch
 - `void postgres_un_trace(Postgres* pg)` : Disables tracing started by 'postgres_trace'.
 - `PostgresResult* postgres_get_result(Postgres* pg)`: 
 - `int postgres_request_cancle(Postgres* pg)`: this function Request that PostgreSQL abandon processing of the current command. The return value is 1 if the cancel request was successfully dispatched, 0 if not. (If not, 'postgres_get_last_error' tells why not.) Successful dispatch is no guarantee that the request will have any effect, however. Regardless of the return value of 'postgres_request_cancle', the application must continue with the normal result-reading sequence using 'postgres_get_result'. If the cancellation is effective, the current command will terminate early and return an error result. If the cancellation fails (say, because the backend was already done processing the command), then there will be no visible result at all.
+
+- `bool postgres_reconnect(Postgres* pg)` : Disconnects from the PostgreSQL database and attempts to reconnect using the stored connection parameters.
+
+- `bool postgres_ping(Postgres* pg)`: Checks if the connection to the PostgreSQL database server is still alive.
+
+- `PostgresResult* postgres_query_execution_time(Postgres* pg, const char* query)`: This function executes a given SQL query on the  
+PostgreSQL database, measures the time taken for the query to execute, and returns the result along with the execution time.
+
+- `bool postgres_create_function(Postgres* pg, const char* functionName, const char* returnType, const char* language, const char* functionBody, const char* paramDefinitions)` : This function constructs and executes a SQL `CREATE FUNCTION` command to create a new user-defined function in the PostgreSQL database using the specified parameters.
+
+- `bool postgres_drop_function(Postgres* pg, const char* functionName, const char* paramDefinitions)`: This function constructs and executes a SQL `DROP FUNCTION` command to remove a user-defined function from the PostgreSQL database.
+
+- `bool postgres_create_view(Postgres* pg, const char* viewName, const char* query)` : This function constructs and executes a SQL `CREATE VIEW` command to create a new view in the PostgreSQL database using the specified name and query.
+
+- `bool postgres_drop_view(Postgres* pg, const char* viewName)` : This function constructs and executes a SQL `DROP VIEW` command to remove a view from the PostgreSQL database.
+
+- `bool postgres_create_trigger(Postgres* pg, const char* triggerName, const char* tableName, const char* timing, const char* event, const char* function)` : This function constructs and executes a SQL `CREATE TRIGGER` command to create a trigger on the specified table. The trigger will call a specified function when a specified event occurs.
+
+- `bool postgres_drop_trigger(Postgres* pg, const char* triggerName, const char* tableName)` : This function constructs and executes a SQL `DROP TRIGGER` command to remove a trigger from the specified table.
+
+- `bool postgres_create_schema(Postgres* pg, const char* schemaName)` : This function constructs and executes a SQL `CREATE SCHEMA` command to create a new schema in the PostgreSQL database using the specified schema name.
+
+- `bool postgres_drop_schema(Postgres* pg, const char* schemaName, bool cascade)`: This function constructs and executes a SQL `DROP SCHEMA` command to drop an existing schema in the PostgreSQL database. The schema can be dropped with the `CASCADE` option to drop all dependent objects.
+
+- `PostgresResult* postgres_query_params(Postgres* pg, const char* query, int nParams, const char* const* paramValues)` : This function allows the execution of parameterized SQL queries to prevent SQL injection. The parameters are passed separately from the query, and PostgreSQL will handle their proper escaping.
+
+- `bool postgres_prepare_statement(Postgres* pg, const char* stmtName, const char* query)`: This function prepares a SQL statement, which can be executed multiple times with different parameters.
+
+- `bool postgres_clear_prepared_statement(Postgres* pg, const char* stmtName)`: This function clears a prepared statement, which frees up the associated resources in the PostgreSQL database.
+
+- `bool postgres_savepoint(Postgres* pg, const char* savepointName)` : This function creates a savepoint within the current transaction, allowing you to rollback to this point without affecting the entire transaction.
+
+- `bool postgres_rollback_to_savepoint(Postgres* pg, const char* savepointName)` : This function rolls back the current transaction to a specific savepoint, undoing any changes made after the savepoint was created.
+
+- `bool postgres_send_async_query(Postgres* pg, const char* query)` : This function sends a query to the PostgreSQL server in a non-blocking manner, allowing the application to perform other tasks while the server processes the query.
+
+- `PostgresResult* postgres_get_async_result(Postgres* pg)` : This function retrieves the result of a previously sent asynchronous query. It should be called repeatedly until the result is fully available.
+
+- `bool postgres_copy_from_csv(Postgres* pg, const char* tableName, const char* csvFilePath, const char* delimiter)` : Copies data from a CSV file into a specified table using PostgreSQL's COPY command.
+
 
 ## Examples
 
@@ -627,13 +667,31 @@ int main() {
         if (postgres_connect(pg)) {
             const char* stmtName = "insert_car";
             const char* query = "INSERT INTO cars (brand, model, year) VALUES ($1, $2, $3)";
-            const char* paramValues[3] = {"BMW", "I8", "2020"};
 
-            if (postgres_execute_prepared(pg, stmtName, query, 3, paramValues)) {
-                fmt_printf("Prepared statement executed successfully.\n");
+            // First, prepare the SQL statement
+            if (postgres_prepare_statement(pg, stmtName, query)) {
+                fmt_printf("Statement '%s' prepared successfully.\n", stmtName);
+
+                const char* paramValues[3] = {"BMW", "I8", "2020"};
+
+                // Then, execute the prepared statement with the provided parameters
+                if (postgres_execute_prepared(pg, stmtName, 3, paramValues)) {
+                    fmt_printf("Prepared statement executed successfully.\n");
+                } 
+                else {
+                    fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+                }
+
+                // Clear the prepared statement
+                if (postgres_clear_prepared_statement(pg, stmtName)) {
+                    fmt_printf("Statement '%s' cleared successfully.\n", stmtName);
+                } 
+                else {
+                    fmt_fprintf(stderr, "Failed to clear statement '%s'.\n", stmtName);
+                }
             } 
             else {
-                fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+                fmt_fprintf(stderr, "Failed to prepare statement '%s'.\n", stmtName);
             }
 
             postgres_disconnect(pg);
@@ -1266,7 +1324,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "amin1375");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             PostgresResult* pgRes = postgres_query(pg, "SELECT * FROM bus");
@@ -1315,7 +1373,7 @@ int main() {
     Postgres* pg = postgres_create();
 
     if (pg) {
-        postgres_init(pg, "test", "postgres", "amin1375");
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
 
         if (postgres_connect(pg)) {
             fmt_printf("Database name is %s\n", postgres_db_value(pg));
@@ -1330,6 +1388,688 @@ int main() {
 
         postgres_deallocate(pg);
     } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 25 : Reconnecting to the PostgreSQL Database with `postgres_reconnect`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        if (!postgres_reconnect(pg)) {
+            fmt_fprintf(stderr, "Reconnection failed.\n");
+        }
+        else {
+            fmt_printf("Reconnected to the database successfully.\n");
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Initial connection failed.\n");
+    }
+
+    postgres_deallocate(pg);
+
+    return 0;
+}
+```
+
+### Example 26 : Cheking the Connection Status to the PostgreSQL Database with `postgres_ping`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        if (postgres_ping(pg)) {
+            fmt_printf("Connection to the database is alive.\n");
+
+            PostgresResult* result = postgres_list_tables(pg);
+            if (result) {
+                fmt_printf("Tables in the database:\n");
+                postgres_print_result(result);
+                postgres_clear_result(result);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to list tables.\n");
+            }
+
+            const char* tableName = "cars"; 
+            int rowCount = postgres_get_table_row_count(pg, tableName);
+
+            if (rowCount >= 0) {
+                fmt_printf("The table '%s' has %d rows.\n", tableName, rowCount);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to retrieve row count for table '%s'.\n", tableName);
+            }
+
+        } 
+        else {
+            fmt_fprintf(stderr, "Connection to the database is lost or server is unreachable.\n");
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Initial connection failed.\n");
+    }
+
+    postgres_deallocate(pg);
+
+    return 0;
+}
+```
+
+### Example 27 : Measuring how long a specific query takes to execute with `postgres_query_execution_time`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        const char* query = "SELECT * FROM cars"; 
+        PostgresResult* result = postgres_query_execution_time(pg, query);
+
+        if (result) {
+            fmt_printf("Query executed successfully.\n");
+            postgres_print_result(result);
+            postgres_clear_result(result);
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to execute query.\n");
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Initial connection failed.\n");
+    }
+
+    postgres_deallocate(pg);
+
+    return 0;
+}
+```
+
+### Example 28 : create and drop function with `postgres_create_function` and `postgres_drop_function`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        const char* functionName = "add_numbers";
+        const char* returnType = "integer";
+        const char* language = "plpgsql";
+        const char* functionBody = "BEGIN RETURN $1 + $2; END;";
+        const char* paramDefinitions = "param1 integer, param2 integer";  
+
+        if (postgres_create_function(pg, functionName, returnType, language, functionBody, paramDefinitions)) {
+            fmt_printf("Function '%s' created successfully.\n", functionName);
+
+            const char* testQuery = "SELECT add_numbers(2, 3);";
+            PostgresResult* result = postgres_query(pg, testQuery);
+
+            if (result) {
+                const char* value = postgres_get_value(result, 0, 0);
+                fmt_printf("Function result: %s\n", value);
+
+                if (strcmp(value, "5") == 0) {
+                    fmt_printf("Test passed: Function works as expected.\n");
+                } 
+                else {
+                    fmt_fprintf(stderr, "Test failed: Unexpected result from function.\n");
+                }
+
+                postgres_clear_result(result);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to execute test query.\n");
+            }
+
+            if (postgres_drop_function(pg, functionName, paramDefinitions)) {
+                fmt_printf("Function '%s' dropped successfully.\n", functionName);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to drop function '%s'.\n", functionName);
+            }
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to create function '%s'.\n", functionName);
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to connect to the database.\n");
+    }
+
+    postgres_deallocate(pg);
+
+    return 0;
+}
+```
+
+### Example 29 : Create and Drop View with `postgres_create_view` and `postgres_drop_view`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        const char* viewName = "my_view";
+        const char* query = "SELECT id, brand FROM cars WHERE year = 2020;";
+
+        if (postgres_create_view(pg, viewName, query)) {
+            fmt_printf("View '%s' created successfully.\n", viewName);
+
+            const char* selectQuery = "SELECT * FROM my_view;";
+            PostgresResult* result = postgres_query(pg, selectQuery);
+
+            if (result) {
+                fmt_printf("View '%s' query executed successfully.\n", viewName);
+                postgres_print_result(result);
+                postgres_clear_result(result);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to query the view '%s'.\n", viewName);
+            }
+
+            if (postgres_drop_view(pg, viewName)) {
+                fmt_printf("View '%s' dropped successfully.\n", viewName);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to drop the view '%s'.\n", viewName);
+            }
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to create view '%s'.\n", viewName);
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to connect to the database.\n");
+    }
+
+    postgres_deallocate(pg);
+    return 0;
+}
+```
+
+### Example 30 : How to craete trigger and drop it with usage of functions `postgres_create_trigger` and `postgres_drop_trigger`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        // Step 1: Create the 'info' table
+        const char* createTableQuery = 
+            "CREATE TABLE IF NOT EXISTS info ("
+            "id SERIAL PRIMARY KEY, "
+            "name VARCHAR(255));";
+        
+        if (postgres_execute_non_query(pg, createTableQuery)) {
+            fmt_printf("Table 'info' created successfully.\n");
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to create table 'info'.\n");
+            postgres_disconnect(pg);
+            postgres_deallocate(pg);
+            return 1;
+        }
+
+        // Step 2: Create the 'audit_log' table
+        const char* createAuditLogTableQuery = 
+            "CREATE TABLE IF NOT EXISTS audit_log ("
+            "id SERIAL PRIMARY KEY, "
+            "table_name VARCHAR(255), "
+            "operation VARCHAR(50), "
+            "old_data TEXT, "
+            "new_data TEXT, "
+            "operation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+
+        if (postgres_execute_non_query(pg, createAuditLogTableQuery)) {
+            fmt_printf("Table 'audit_log' created successfully.\n");
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to create table 'audit_log'.\n");
+            postgres_disconnect(pg);
+            postgres_deallocate(pg);
+            return 1;
+        }
+
+        // Step 3: Create a function to be triggered
+        const char* functionName = "log_update";
+        const char* returnType = "trigger";
+        const char* language = "plpgsql";
+        const char* functionBody = 
+            "BEGIN "
+            "INSERT INTO audit_log(table_name, operation, old_data, new_data) "
+            "VALUES (TG_TABLE_NAME, TG_OP, OLD::text, NEW::text); "
+            "RETURN NEW; "
+            "END;";
+        const char* paramDefinitions = ""; // No parameters for this trigger function
+
+        if (postgres_create_function(pg, functionName, returnType, language, functionBody, paramDefinitions)) {
+            fmt_printf("Function '%s' created successfully.\n", functionName);
+
+            // Step 4: Create the trigger
+            const char* triggerName = "trigger_log_update";
+            const char* tableName = "info";
+            const char* timing = "AFTER";
+            const char* event = "UPDATE";
+
+            if (postgres_create_trigger(pg, triggerName, tableName, timing, event, functionName)) {
+                fmt_printf("Trigger '%s' created successfully on table '%s'.\n", triggerName, tableName);
+
+                // Step 5: Insert a sample row
+                const char* insertQuery = "INSERT INTO info (name) VALUES ('old_name');";
+                if (postgres_execute_non_query(pg, insertQuery)) {
+                    fmt_printf("Sample row inserted into 'info'.\n");
+                } 
+                else {
+                    fmt_fprintf(stderr, "Failed to insert sample row into 'info'.\n");
+                }
+
+                // Step 6: Update the row to trigger the function
+                const char* updateQuery = "UPDATE info SET name = 'new_name' WHERE id = 1;";
+                if (postgres_execute_non_query(pg, updateQuery)) {
+                    fmt_printf("Update query executed successfully, trigger should have fired.\n");
+                } 
+                else {
+                    fmt_fprintf(stderr, "Failed to execute update query.\n");
+                }
+
+                // Step 7: Drop the trigger
+                if (postgres_drop_trigger(pg, triggerName, tableName)) {
+                    fmt_printf("Trigger '%s' dropped successfully from table '%s'.\n", triggerName, tableName);
+                } 
+                else {
+                    fmt_fprintf(stderr, "Failed to drop trigger '%s' from table '%s'.\n", triggerName, tableName);
+                }
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to create trigger '%s' on table '%s'.\n", triggerName, tableName);
+            }
+
+            // Step 8: Drop the function
+            if (postgres_drop_function(pg, functionName, "")) {
+                fmt_printf("Function '%s' dropped successfully.\n", functionName);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to drop function '%s'.\n", functionName);
+            }
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to create function '%s'.\n", functionName);
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to connect to the database.\n");
+    }
+
+    postgres_deallocate(pg);
+    return 0;
+}
+```
+
+### Example 31 : Create and Drop Schema with `postgres_crate_schema` and `postgres_drop_schema`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        const char* schemaName = "test_schema";
+
+        // Create a new schema
+        if (postgres_create_schema(pg, schemaName)) {
+            fmt_printf("Schema '%s' created successfully.\n", schemaName);
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to create schema '%s'.\n", schemaName);
+        }
+
+        // Drop the schema with CASCADE option
+        if (postgres_drop_schema(pg, schemaName, true)) {
+            fmt_printf("Schema '%s' dropped successfully.\n", schemaName);
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to drop schema '%s'.\n", schemaName);
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to connect to the database.\n");
+    }
+
+    postgres_deallocate(pg);
+    return 0;
+}
+```
+
+### Example 32 : Parameterized query with `postgres_query_params` 
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        const char* insertQuery = "INSERT INTO info (name, age) VALUES ($1, $2)";
+        const char* paramValues[2] = {"John Doe", "30"};
+        
+        PostgresResult* insertRes = postgres_query_params(pg, insertQuery, 2, paramValues);
+        if (insertRes) {
+            fmt_printf("Row inserted successfully.\n");
+            postgres_clear_result(insertRes);
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to insert row.\n");
+        }
+
+        const char* selectQuery = "SELECT * FROM info WHERE age = $1";
+        const char* selectParamValues[1] = {"30"};
+        
+        PostgresResult* selectRes = postgres_query_params(pg, selectQuery, 1, selectParamValues);
+        if (selectRes) {
+            int nRows = postgres_num_tuples(selectRes);
+            for (int i = 0; i < nRows; i++) {
+                const char* name = postgres_get_value(selectRes, i, 0);
+                const char* age = postgres_get_value(selectRes, i, 1);
+
+                fmt_printf("Row %d: Name = %s, Age = %s\n", i + 1, name, age);
+            }
+            postgres_clear_result(selectRes);
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to execute select query.\n");
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to connect to the database.\n");
+    }
+
+    postgres_deallocate(pg);
+    return 0;
+}
+```
+
+### Example 33 : Prepare Stament and Execute the clear with `postgres_prepare_statement` and `postgres_clear_prepared_statement`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+    postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+    if (postgres_connect(pg)) {
+        fmt_printf("Connected to the database successfully.\n");
+
+        const char* stmtName = "insert_info";
+        const char* query = "INSERT INTO info (name, age) VALUES ($1, $2)";
+
+        // Prepare the statement
+        if (postgres_prepare_statement(pg, stmtName, query)) {
+            fmt_printf("Statement '%s' prepared successfully.\n", stmtName);
+
+            const char* paramValues[2] = {"Jane Doe", "25"};
+
+            // Execute the prepared statement using the correct function call
+            if (postgres_execute_prepared(pg, stmtName, 2, paramValues)) {
+                fmt_printf("Row inserted successfully using prepared statement.\n");
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to insert row using prepared statement.\n");
+            }
+
+            // Clear the prepared statement
+            if (postgres_clear_prepared_statement(pg, stmtName)) {
+                fmt_printf("Statement '%s' cleared successfully.\n", stmtName);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to clear statement '%s'.\n", stmtName);
+            }
+        } 
+        else {
+            fmt_fprintf(stderr, "Failed to prepare statement '%s'.\n", stmtName);
+        }
+
+        postgres_disconnect(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to connect to the database.\n");
+    }
+
+    postgres_deallocate(pg);
+    return 0;
+}
+```
+
+### Example 34 : how to manage transactions in PostgreSQL with savepoints, allowing for fine-grained control over rollback operations. with `postgres_savepoint` and `postgres_rollback_to_savepoint`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+        if (postgres_connect(pg)) {
+            fmt_printf("Connected to the database successfully.\n");
+
+            if (postgres_begin_transaction(pg)) {
+                fmt_printf("Transaction started.\n");
+
+                const char* insertQuery1 = "INSERT INTO cars (brand, model, year) VALUES ('Toyota', 'Camry', '2021');";
+                if (!postgres_execute_non_query(pg, insertQuery1)) {
+                    fmt_fprintf(stderr, "Failed to insert data.\n");
+                }
+
+                // Create a savepoint
+                const char* savepointName = "sp1";
+                if (postgres_savepoint(pg, savepointName)) {
+                    fmt_printf("Savepoint '%s' created.\n", savepointName);
+                }
+
+                const char* insertQuery2 = "INSERT INTO cars (brand, model, year) VALUES ('Ford', 'Mustang', '2021');";
+                if (!postgres_execute_non_query(pg, insertQuery2)) {
+                    fmt_fprintf(stderr, "Failed to insert data.\n");
+                }
+
+                // Rollback to savepoint
+                if (postgres_rollback_to_savepoint(pg, savepointName)) {
+                    fmt_printf("Rolled back to savepoint '%s'.\n", savepointName);
+                }
+
+                if (postgres_commit_transaction(pg)) {
+                    fmt_printf("Transaction committed.\n");
+                } 
+                else {
+                    fmt_fprintf(stderr, "Failed to commit transaction.\n");
+                }
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to start transaction.\n");
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 35 : send and get query result in async way `postgres_send_query` and `postgres_get_async_result`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+        if (postgres_connect(pg)) {
+            fmt_printf("Connected to the database successfully.\n");
+
+            const char* query = "SELECT * FROM cars;";
+
+            // Send query asynchronously
+            if (postgres_send_async_query(pg, query)) {
+                fmt_printf("Query sent successfully.\n");
+
+                // Check if the query result is ready
+                PostgresResult* result;
+                while ((result = postgres_get_async_result(pg)) != NULL) {
+                    if (result) {
+                        int nRows = postgres_num_tuples(result);
+                        for (int i = 0; i < nRows; i++) {
+                            const char* brand = postgres_get_value(result, i, 0);
+                            const char* model = postgres_get_value(result, i, 1);
+                            const char* year = postgres_get_value(result, i, 2);
+                            fmt_printf("Row %d: Brand = %s, Model = %s, Year = %s\n", i + 1, brand, model, year);
+                        }
+                        postgres_clear_result(result);
+                    }
+                }
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to send query.\n");
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
+
+    return 0;
+}
+```
+
+### Example 36 : copy data from csv file with `postgres_copy_from_csv`
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Postgres* pg = postgres_create();
+
+    if (pg) {
+        postgres_init(pg, "mydatabase", "myuser", "mypassword", "localhost", "5432");
+
+        if (postgres_connect(pg)) {
+            fmt_printf("Connected to the database successfully.\n");
+
+            const char* tableName = "cars";
+            const char* csvFilePath = "sources/pg_csv.csv";
+            const char* delimiter = ",";
+
+            if (postgres_copy_from_csv(pg, tableName, csvFilePath, delimiter)) {
+                fmt_printf("Data copied from CSV to table '%s' successfully.\n", tableName);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to copy data from CSV to table '%s'.\n", tableName);
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
+        }
+
+        postgres_deallocate(pg);
+    }
     else {
         fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
     }

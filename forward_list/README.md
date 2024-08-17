@@ -27,8 +27,157 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 #include "forward_list/forward_list.h"
 ```
 
+### Functions and Their Explanations
 
-Creating 20 different examples to demonstrate the usage of all methods in your `ForwardList` structure will provide a comprehensive understanding of how each function operates. Here are the examples:
+#### **List Creation and Initialization**
+
+- **`ForwardList* forward_list_create(size_t itemSize)`**  
+  Creates a new `ForwardList` with the specified item size. This function allocates memory for the list structure and initializes it with no elements.  
+  - **Parameters**: `itemSize` – The size of each element in the list.
+  - **Returns**: A pointer to the newly created `ForwardList` structure.
+
+#### **Element Access**
+
+- **`void* forward_list_front(const ForwardList* list)`**  
+  Returns a pointer to the first element in the list.  
+  - **Returns**: A pointer to the first element's data. If the list is empty, `NULL` is returned.
+
+#### **List Insertion and Deletion**
+
+- **`void forward_list_push_front(ForwardList* list, void* value)`**  
+  Inserts a new element at the front of the list.  
+  - **Parameters**: `list` – The list to insert into. `value` – A pointer to the value to insert.
+
+- **`void forward_list_pop_front(ForwardList* list)`**  
+  Removes the first element from the list.  
+  - **Parameters**: `list` – The list to remove the element from.
+
+- **`void forward_list_clear(ForwardList* list)`**  
+  Removes all elements from the list, effectively clearing it.  
+  - **Parameters**: `list` – The list to clear.
+
+- **`void forward_list_deallocate(ForwardList* list)`**  
+  Deallocates the list and all its elements, freeing memory.  
+  - **Parameters**: `list` – The list to deallocate.
+
+#### **List Properties and Size**
+
+- **`bool forward_list_empty(const ForwardList* list)`**  
+  Checks whether the list is empty.  
+  - **Returns**: `true` if the list is empty, `false` otherwise.
+
+- **`size_t forward_list_length(const ForwardList* list)`**  
+  Returns the number of elements in the list.  
+  - **Returns**: The number of elements in the list.
+
+- **`size_t forward_list_max_size(const ForwardList* list)`**  
+  Returns the maximum size the list can hold.  
+  - **Returns**: The maximum number of elements the list can theoretically hold (often platform-dependent).
+
+#### **List Assignment and Initialization**
+
+- **`void forward_list_assign(ForwardList* list, void* values, size_t numValues)`**  
+  Replaces the contents of the list with the elements from the provided array.  
+  - **Parameters**: `list` – The list to assign values to. `values` – A pointer to the array of values. `numValues` – The number of elements to assign.
+
+#### **List Iteration and Traversal**
+
+- **`ForwardListNode* forward_list_before_begin(ForwardList* list)`**  
+  Returns an iterator to the element before the first element.  
+  - **Returns**: A pointer to the node before the first element, or `NULL` if the list is empty.
+
+- **`ForwardListNode* forward_list_begin(ForwardList* list)`**  
+  Returns an iterator to the first element in the list.  
+  - **Returns**: A pointer to the first node.
+
+- **`ForwardListNode* forward_list_end(ForwardList* list)`**  
+  Returns an iterator to the end of the list (equivalent to `NULL`).  
+  - **Returns**: `NULL`, representing the end of the list.
+
+#### **Element Insertion and Erasure**
+
+- **`void forward_list_emplace_front(ForwardList* list, void* value)`**  
+  Emplaces a new element at the front of the list (uses existing memory instead of copying).  
+  - **Parameters**: `list` – The list to insert into. `value` – A pointer to the value to insert.
+
+- **`void forward_list_emplace_after(ForwardList* list, ForwardListNode* pos, void* value)`**  
+  Emplaces a new element after the specified position in the list.  
+  - **Parameters**: `list` – The list to insert into. `pos` – A pointer to the node after which to insert. `value` – A pointer to the value to insert.
+
+- **`void forward_list_insert_after(ForwardList* list, ForwardListNode* pos, void* value, size_t numValues)`**  
+  Inserts one or more elements after the specified position in the list.  
+  - **Parameters**: `list` – The list to insert into. `pos` – A pointer to the node after which to insert. `value` – A pointer to the value to insert. `numValues` – The number of values to insert.
+
+- **`void forward_list_erase_after(ForwardList* list, ForwardListNode* pos)`**  
+  Removes the element following the specified position.  
+  - **Parameters**: `list` – The list to remove from. `pos` – A pointer to the node before the one to be erased.
+
+#### **List Manipulation**
+
+- **`void forward_list_swap(ForwardList* list1, ForwardList* list2)`**  
+  Swaps the contents of two lists.  
+  - **Parameters**: `list1`, `list2` – The lists to swap.
+
+- **`void forward_list_resize(ForwardList* list, size_t newSize)`**  
+  Resizes the list to contain the specified number of elements.  
+  - **Parameters**: `list` – The list to resize. `newSize` – The new size of the list.
+
+- **`void forward_list_splice_after(ForwardList* list, ForwardListNode* pos, ForwardList* other)`**  
+  Transfers elements from another list into this list after the specified position.  
+  - **Parameters**: `list` – The list to splice into. `pos` – A pointer to the node after which to splice. `other` – The list to splice from.
+
+- **`void forward_list_remove(ForwardList* list, void* value)`**  
+  Removes all elements that match the specified value.  
+  - **Parameters**: `list` – The list to remove from. `value` – The value to remove.
+
+- **`void forward_list_remove_if(ForwardList* list, bool (*condition)(void*))`**  
+  Removes all elements that satisfy the specified condition.  
+  - **Parameters**: `list` – The list to remove from. `condition` – A pointer to the condition function.
+
+- **`void forward_list_unique(ForwardList* list)`**  
+  Removes consecutive duplicate elements from the list.  
+  - **Parameters**: `list` – The list to remove duplicates from.
+
+- **`void forward_list_merge(ForwardList* list1, ForwardList* list2)`**  
+  Merges two sorted lists into one sorted list.  
+  - **Parameters**: `list1`, `list2` – The lists to merge. The result is stored in `list1`.
+
+- **`void forward_list_sort(ForwardList* list)`**  
+  Sorts the elements in the list in ascending order.  
+  - **Parameters**: `list` – The list to sort.
+
+- **`void forward_list_reverse(ForwardList* list)`**  
+  Reverses the order of the elements in the list.  
+  - **Parameters**: `list` – The list to reverse.
+
+#### **Relational Operators**
+
+- **`bool forward_list_is_less(const ForwardList* list1, const ForwardList* list2)`**  
+  Compares two lists to determine if the first is lexicographically less than the second.  
+  - **Returns**: `true` if `list1` is less than `list2`, `false` otherwise.
+
+- **`bool forward_list_is_greater(const ForwardList* list1, const ForwardList* list2)`**  
+  Compares two lists to determine if the first is lexicographically greater than the second.  
+  - **Returns**: `true` if `list1` is greater than `list2`, `false` otherwise.
+
+- **`bool forward_list_is_equal(const ForwardList* list1, const ForwardList* list2)`**  
+  Compares two lists for equality.  
+  - **Returns**: `true` if `list1` is equal to `list2`, `false` otherwise.
+
+- **`bool forward_list_is_less_or_equal(const ForwardList* list1, const ForwardList* list2)`**  
+  Checks if the first list is less than or equal to the second list.  
+  - **Returns**: `true` if `list1` is less than or equal to `list2`, `false` otherwise.
+
+- **`bool forward_list_is_greater_or_equal(const ForwardList* list1, const ForwardList* list2)`**  
+  Checks if the first list
+
+ is greater than or equal to the second list.  
+  - **Returns**: `true` if `list1` is greater than or equal to `list2`, `false` otherwise.
+
+- **`bool forward_list_is_not_equal(const ForwardList* list1, const ForwardList* list2)`**  
+  Compares two lists for inequality.  
+  - **Returns**: `true` if `list1` is not equal to `list2`, `false` otherwise.
+
 
 ### Example 1: Create a ForwardList and Push Front with `forward_list_create` and `forward_list_push_front`
 ```c

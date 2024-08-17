@@ -104,6 +104,23 @@ static char** split_query(const char* query, int* count) {
     return tokens;
 }
 
+/**
+ * @brief Deallocates a JSON element and all of its associated resources.
+ * 
+ * @param element A pointer to the `JsonElement` to be deallocated. If the pointer is NULL, the function does nothing.
+ * 
+ * @details This function recursively deallocates the memory used by a JSON element, including any nested elements 
+ *          in arrays or objects. It handles the following types:
+ *          - `JSON_STRING`: Frees the string value.
+ *          - `JSON_ARRAY`: Recursively deallocates each element in the array, then deallocates the array itself.
+ *          - `JSON_OBJECT`: Deallocates the entire object map, including all key-value pairs.
+ *          - For other types (`JSON_NULL`, `JSON_BOOL`, `JSON_NUMBER`), no special handling is needed.
+ * 
+ * @warning After calling this function, the `JsonElement` pointer should not be used again, as the memory it points to 
+ *          has been freed. Using a freed pointer may result in undefined behavior.
+ * 
+ * @note It is assumed that `map_deallocate` and `vector_deallocate` correctly handle the deallocation of their contents.
+ */
 void json_deallocate(JsonElement *element) {
     if (!element) return;
 
@@ -129,6 +146,10 @@ void json_deallocate(JsonElement *element) {
     free(element);
 }
 
+/**
+ * @brief Iterates through a JSON object to find an element that matches a given predicate.
+ * @return True if a matching element is found, otherwise false.
+ */
 static bool json_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
     MapIterator it = map_begin(object->value.object_val);
     MapIterator end = map_end(object->value.object_val);
@@ -145,6 +166,10 @@ static bool json_find_in_object(const JsonElement* object, JsonPredicate predica
     return false;
 }
 
+/**
+ * @brief Iterates through a JSON array to find an element that matches a given predicate.
+ * @return True if a matching element is found, otherwise false.
+ */
 static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
     for (size_t i = 0; i < vector_size(array->value.array_val); ++i) {
         JsonElement* current_element = *(JsonElement**)vector_at(array->value.array_val, i);
@@ -157,6 +182,10 @@ static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate
     return false;
 }
 
+/**
+ * @brief Deallocates a JSON element, including its nested elements if applicable.
+ * @param data A pointer to the JSON element to be deallocated.
+ */
 static void json_element_deallocator(void* data) {
     if (!data) 
         return;
@@ -164,14 +193,30 @@ static void json_element_deallocator(void* data) {
     json_deallocate(element);
 }
 
+/**
+ * @brief Compares two strings used as keys in a JSON object.
+ * @return An integer less than, equal to, or greater than zero if `a` is found, respectively, to be less than, equal to, or greater than `b`.
+ */
 static int compare_strings_json(const KeyType a, const KeyType b) {
     return strcmp((const char*)a, (const char*)b);
 }
 
+/**
+ * @brief Deallocates memory used by a string.
+ * @param data A pointer to the string to be deallocated.
+ */
 static void string_deallocator_json(void *data) {
     free(data);
 } 
 
+/**
+ * @brief Advances the JSON parser state to the next token in the input string.
+ * 
+ * This function skips over any whitespace and then identifies the next significant 
+ * token in the JSON input, updating the parser state's current token accordingly.
+ * 
+ * @param state Pointer to the JsonParserState structure that holds the current parsing state.
+ */
 static void next_token(JsonParserState* state) {
     while (isspace((unsigned char)state->input[state->position])) {
         state->position++;
@@ -234,6 +279,15 @@ static void next_token(JsonParserState* state) {
     state->position++;
 }
 
+/**
+ * @brief Parses a JSON array from the input string.
+ * 
+ * This function assumes that the current token is the start of a JSON array (`[`).
+ * It continues parsing until the matching closing bracket (`]`) is found, or an error occurs.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the parsed array, 
+ *         or NULL if an error occurs during parsing.
+ */
 static JsonElement* parse_array(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_ARRAY_START) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected start of array at position %zu", state->position);
@@ -272,6 +326,15 @@ static JsonElement* parse_array(JsonParserState* state) {
     return array_element;
 }
 
+/**
+ * @brief Parses a JSON string from the input string.
+ * 
+ * This function assumes that the current token is the start of a JSON string (`"`).
+ * It reads characters until it finds the closing quote, handling escape sequences as necessary.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the parsed string, 
+ *         or NULL if an error occurs during parsing.
+ */
 static JsonElement* parse_string(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_STRING) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected string token at position %zu", state->position);
@@ -320,6 +383,15 @@ static JsonElement* parse_string(JsonParserState* state) {
     return element;
 }
 
+/**
+ * @brief Parses a JSON number from the input string.
+ * 
+ * This function assumes that the current token is the start of a JSON number.
+ * It reads characters that make up the number, handling integers, floating-point numbers, and scientific notation.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the parsed number, 
+ *         or NULL if an error occurs during parsing.
+ */
 static JsonElement* parse_number(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_NUMBER) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected number token at position %zu", state->position);
@@ -368,6 +440,15 @@ static JsonElement* parse_number(JsonParserState* state) {
     return element;
 }
 
+/**
+ * @brief Parses a JSON null value from the input string.
+ * 
+ * This function assumes that the current token is the literal "null".
+ * It advances the parser state past "null" and returns a JSON element representing the null value.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the null value, 
+ *         or NULL if an error occurs during parsing.
+ */
 static JsonElement* parse_null(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_NULL) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected 'null' token at position %zu", state->position);
@@ -386,6 +467,15 @@ static JsonElement* parse_null(JsonParserState* state) {
     return element;
 }
 
+/**
+ * @brief Parses a JSON boolean value from the input string.
+ * 
+ * This function assumes that the current token is either "true" or "false".
+ * It advances the parser state past the boolean value and returns a JSON element representing the boolean.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the boolean value, 
+ *         or NULL if an error occurs during parsing.
+ */
 static JsonElement* parse_boolean(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_BOOLEAN) {
         snprintf(last_error.message, sizeof(last_error.message),
@@ -425,6 +515,15 @@ static JsonElement* parse_boolean(JsonParserState* state) {
     return element;
 }
 
+/**
+ * @brief Internal parser function to handle different JSON elements based on the current token.
+ * 
+ * This function is called to parse the current element in the JSON structure. 
+ * It delegates to more specific parsing functions depending on the type of the token.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the parsed JSON value, 
+ * or NULL if an error occurs during parsing.
+ */
 static JsonElement* parser_internal(JsonParserState* state) {
     switch (state->current_token.type) {
         case JSON_TOKEN_OBJECT_START:
@@ -446,6 +545,15 @@ static JsonElement* parser_internal(JsonParserState* state) {
     }
 }
 
+/**
+ * @brief Parses a JSON object from the input string.
+ * 
+ * This function assumes that the current token is the start of a JSON object ('{'). 
+ * It parses key-value pairs, handling nested objects and arrays as necessary.
+ * 
+ * @return JsonElement* Pointer to a newly created JsonElement representing the parsed object, 
+ * or NULL if an error occurs during parsing.
+ */
 static JsonElement* parse_object(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_OBJECT_START) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected start of object at position %zu", state->position);
@@ -497,12 +605,30 @@ static JsonElement* parse_object(JsonParserState* state) {
     return object_element;
 }
 
+/**
+ * @brief Serializes a string value into a JSON-formatted string.
+ * 
+ * This function takes a string and appends it to a String object in JSON format, 
+ * including the surrounding quotes.
+ * 
+ * @param value The string to be serialized.
+ * @param str Pointer to the String structure where the serialized output is appended.
+ */
 static void serialize_string(const char* value, String* str) {
     string_append(str, "\"");
     string_append(str, value);
     string_append(str, "\"");
 }
 
+/**
+ * @brief Serializes a JSON array into a JSON-formatted string.
+ * 
+ * This function converts a JSON array into its JSON string representation, 
+ * including handling nested arrays or objects within the array.
+ * 
+ * @param element Pointer to the JsonElement representing the array to be serialized.
+ * @param str Pointer to the String structure where the serialized output is appended.
+ */
 static void serialize_array(const JsonElement* element, String* str) {
     string_append(str, "[");
     for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
@@ -514,6 +640,15 @@ static void serialize_array(const JsonElement* element, String* str) {
     string_append(str, "]");
 }
 
+/**
+ * @brief Serializes a JSON object into a JSON-formatted string.
+ * 
+ * This function converts a JSON object into its JSON string representation, 
+ * including handling nested objects or arrays within the object.
+ * 
+ * @param element Pointer to the JsonElement representing the object to be serialized.
+ * @param str Pointer to the String structure where the serialized output is appended.
+ */
 static void serialize_object(const JsonElement* element, String* str) {
     string_append(str, "{");
     MapIterator it = map_begin(element->value.object_val);
@@ -532,6 +667,15 @@ static void serialize_object(const JsonElement* element, String* str) {
     string_append(str, "}");
 }
 
+/**
+ * @brief Internal function for serializing a JSON element into a JSON-formatted string.
+ * 
+ * This function serializes different types of JSON elements (objects, arrays, strings, numbers, booleans, and null) 
+ * into a JSON-formatted string and appends the result to the provided `String` structure.
+ * 
+ * @param element Pointer to the JsonElement to be serialized.
+ * @param str Pointer to the String structure where the serialized JSON will be appended.
+ */
 static void json_serialize_internal(const JsonElement* element, String* str) {
     if (!element) {
         string_append(str, "null");
@@ -566,18 +710,44 @@ static void json_serialize_internal(const JsonElement* element, String* str) {
     }
 }
 
+/**
+ * @brief Appends a specified amount of indentation (spaces) to the JSON string.
+ * 
+ * This function adds spaces to the `String` structure to create indentation for pretty-printing JSON output.
+ * 
+ * @param str Pointer to the String structure where the indentation will be appended.
+ * @param indent Number of spaces to append for indentation.
+ */
 static void append_indent(String* str, int indent) {
     for (int i = 0; i < indent; ++i) {
         string_append(str, " ");
     }
 }
 
+/**
+ * @brief Formats a string value into a JSON-formatted string.
+ * 
+ * This function wraps the given string value in double quotes and appends it to the provided `String` structure.
+ * 
+ * @param value The string to be formatted.
+ * @param str Pointer to the String structure where the formatted string will be appended.
+ */
 static void format_string(const char* value, String* str) {
     string_append(str, "\"");
     string_append(str, value);
     string_append(str, "\"");
 }
 
+/**
+ * @brief Formats a JSON array into a pretty-printed JSON-formatted string.
+ * 
+ * This function converts a JSON array into its formatted JSON string representation, including proper indentation, 
+ * and appends the result to the provided `String` structure.
+ * 
+ * @param element Pointer to the JsonElement representing the array to be formatted.
+ * @param str Pointer to the String structure where the formatted JSON will be appended.
+ * @param indent Current indentation level for pretty-printing.
+ */
 static void format_array(const JsonElement* element, String* str, int indent) {
     string_append(str, "[\n");
     for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
@@ -592,6 +762,16 @@ static void format_array(const JsonElement* element, String* str, int indent) {
     string_append(str, "]");
 }
 
+/**
+ * @brief Formats a JSON object into a pretty-printed JSON-formatted string.
+ * 
+ * This function converts a JSON object into its formatted JSON string representation, including proper indentation, 
+ * and appends the result to the provided `String` structure.
+ * 
+ * @param element Pointer to the JsonElement representing the object to be formatted.
+ * @param str Pointer to the String structure where the formatted JSON will be appended.
+ * @param indent Current indentation level for pretty-printing.
+ */
 static void format_object(const JsonElement* element, String* str, int indent) {
     string_append(str, "{\n");
     MapIterator it = map_begin(element->value.object_val);
@@ -615,6 +795,17 @@ static void format_object(const JsonElement* element, String* str, int indent) {
     string_append(str, "}");
 }
 
+/**
+ * @brief Recursively formats a JSON element into a pretty-printed JSON-formatted string.
+ * 
+ * This function processes different types of JSON elements (objects, arrays, strings, numbers, booleans, and null),
+ * converting them into their pretty-printed JSON string representation, including proper indentation. The formatted 
+ * result is appended to the provided `String` structure.
+ * 
+ * @param element Pointer to the JsonElement to be formatted.
+ * @param str Pointer to the String structure where the formatted JSON will be appended.
+ * @param indent Current indentation level for pretty-printing.
+ */
 static void json_format_internal(const JsonElement* element, String* str, int indent) {
     if (!element) {
         string_append(str, "null");
@@ -652,6 +843,32 @@ static void json_format_internal(const JsonElement* element, String* str, int in
     }
 }
 
+/**
+ * @brief Creates a new JSON element of the specified type.
+ * 
+ * @param type The type of JSON element to create. This can be one of the following:
+ *             - `JSON_NULL`
+ *             - `JSON_BOOL`
+ *             - `JSON_NUMBER`
+ *             - `JSON_STRING`
+ *             - `JSON_ARRAY`
+ *             - `JSON_OBJECT`
+ * 
+ * @return A pointer to the newly created `JsonElement`, or NULL if memory allocation fails or if an invalid type is provided.
+ * 
+ * @details This function allocates memory for a `JsonElement` and initializes it according to the specified type. 
+ *          Depending on the type, it sets the appropriate initial value:
+ *          - `JSON_NULL`: No value is needed.
+ *          - `JSON_BOOL`: Initializes to `false`.
+ *          - `JSON_NUMBER`: Initializes to `0.0`.
+ *          - `JSON_STRING`: Initializes to `NULL`.
+ *          - `JSON_ARRAY`: Allocates memory for a dynamic array to hold elements.
+ *          - `JSON_OBJECT`: Allocates memory for a map to hold key-value pairs.
+ * 
+ * @warning The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
+ * 
+ * @note If an error occurs during memory allocation, an error message is logged, and the function returns NULL.
+ */
 JsonElement* json_create(JsonType type) {
     JsonElement *element = (JsonElement*)malloc(sizeof(JsonElement));
     if (!element) {
@@ -697,6 +914,18 @@ JsonElement* json_create(JsonType type) {
     return element;
 }
 
+/**
+ * @brief Parses a JSON string and returns the corresponding JSON element tree.
+ * 
+ * @param json_str The JSON string to be parsed.
+ * @return A pointer to the root `JsonElement` of the parsed JSON structure, or NULL if parsing fails.
+ * 
+ * @details This function takes a JSON-formatted string and parses it into a `JsonElement` structure. It handles 
+ * different types of JSON values, including objects, arrays, strings, numbers, booleans, and null values.
+ * If an error occurs during parsing, an appropriate error message is logged, and NULL is returned.
+ * 
+ * @warning The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
+ */
 JsonElement* json_parse(const char* json_str) {
     if (!json_str) {
         fmt_fprintf(stderr, "Error: Json string is NULL and Invalid in json_parse.\n");
@@ -758,6 +987,17 @@ JsonElement* json_parse(const char* json_str) {
     return root;
 }
 
+/**
+ * @brief Reads a JSON file and returns the corresponding JSON element tree.
+ * 
+ * @param filename The path to the JSON file to be read.
+ * @return A pointer to the root `JsonElement` of the parsed JSON structure, or NULL if reading or parsing fails.
+ * 
+ * @details This function reads a JSON file from disk, parses its content into a `JsonElement` structure, and returns a 
+ * pointer to the root element. It handles errors related to file operations and parsing, logging appropriate messages.
+ * 
+ * @warning The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
+ */
 JsonElement * json_read_from_file(const char* filename) {
     if (!filename) {
         fmt_fprintf(stderr, "Error: filename is Null and Invalid in json_read_from_file.\n");
@@ -795,6 +1035,16 @@ JsonElement * json_read_from_file(const char* filename) {
     return json_element;
 }
 
+/**
+ * @brief Prints a JSON element and its children to the standard output in a formatted manner.
+ * 
+ * @param element The JSON element to be printed.
+ * 
+ * @details This function prints the provided `JsonElement` to the standard output, formatting it to be human-readable.
+ * It handles different types of JSON values and ensures that the output is properly indented for readability.
+ * 
+ * @note If the input element is NULL, the function prints "null".
+ */
 void json_print(const JsonElement* element) {
     if (!element) {
         fmt_printf("null\n");
@@ -804,6 +1054,19 @@ void json_print(const JsonElement* element) {
     fmt_printf("\n");
 }
 
+/**
+ * @brief Retrieves a specific element from a JSON object or array by key or index.
+ * 
+ * @param element The JSON element, which must be an object or array, from which to retrieve the desired element.
+ * @param key_or_index The key (for objects) or index (for arrays) of the element to retrieve.
+ * 
+ * @return A pointer to the retrieved `JsonElement`, or NULL if the key/index is invalid or if an error occurs.
+ * 
+ * @details This function accesses a JSON object by key or a JSON array by index, returning the corresponding element.
+ * If the input is not an object or array, or if the key/index is invalid, the function logs an error and returns NULL.
+ * 
+ * @warning The returned element is part of the original structure; modifying it will affect the original JSON structure.
+ */
 JsonElement* json_get_element(const JsonElement *element, const char *key_or_index) {
     if (!element || !key_or_index) {
         fmt_fprintf(stderr, "Error: Invalid argument(s) in json_get_element.\n");
@@ -838,6 +1101,17 @@ JsonElement* json_get_element(const JsonElement *element, const char *key_or_ind
     }
 }
 
+/**
+ * @brief Returns the size of a JSON array.
+ * 
+ * @param array The JSON element representing an array.
+ * @return The number of elements in the array, or 0 if the input is not a valid JSON array.
+ * 
+ * @details This function checks if the provided JSON element is an array. If it is, it returns the number of elements 
+ * contained in the array. If the input is not an array or is NULL, an error is logged and 0 is returned.
+ * 
+ * @warning This function returns 0 if the input is NULL or if the input is not a JSON array.
+ */
 size_t json_array_size(const JsonElement *array) {
     if (!array) {
         fmt_fprintf(stderr, "Error: The provided JsonElement is NULL in json_array_size.\n");
@@ -852,6 +1126,17 @@ size_t json_array_size(const JsonElement *array) {
     return vector_size(array->value.array_val);
 }
 
+/**
+ * @brief Returns the size of a JSON object.
+ * 
+ * @param object The JSON element representing an object.
+ * @return The number of key-value pairs in the object, or 0 if the input is not a valid JSON object.
+ * 
+ * @details This function checks if the provided JSON element is an object. If it is, it returns the number of key-value
+ * pairs contained in the object. If the input is not an object or is NULL, an error is logged and 0 is returned.
+ * 
+ * @warning This function returns 0 if the input is NULL or if the input is not a JSON object.
+ */
 size_t json_object_size(const JsonElement* object) {
     if (!object) {
         fmt_fprintf(stderr, "Error: The Provided JsonElement is NULL in json_object_size.\n");
@@ -865,6 +1150,18 @@ size_t json_object_size(const JsonElement* object) {
     return map_size(object->value.object_val);
 }
 
+/**
+ * @brief Creates a deep copy of a JSON element.
+ * 
+ * @param element The JSON element to be copied.
+ * @return A new JSON element that is a deep copy of the input element, or NULL if an error occurs.
+ * 
+ * @details This function creates a deep copy of the given JSON element, recursively copying all nested elements in the case 
+ * of arrays and objects. For primitive types (e.g., number, boolean), a direct copy of the value is made.
+ * If memory allocation fails during the copy process, NULL is returned, and any partially created elements are deallocated.
+ * 
+ * @warning The caller is responsible for deallocating the returned JSON element using `json_deallocate` to prevent memory leaks.
+ */
 JsonElement* json_deep_copy(const JsonElement *element) {
     if (!element) {
         return NULL;
@@ -948,6 +1245,15 @@ JsonElement* json_deep_copy(const JsonElement *element) {
     return copy;
 }
 
+/**
+ * @brief Returns the type of a JSON element.
+ * 
+ * @param element The JSON element whose type is to be determined.
+ * @return The type of the JSON element, or JSON_NULL if the input is NULL.
+ * 
+ * @details This function returns the type of the provided JSON element. If the input element is NULL, the function returns JSON_NULL.
+ * This function does not distinguish between a JSON_NULL type and a NULL input.
+ */
 JsonType json_type_of_element(const JsonElement *element) {
     if (!element) {
         fmt_fprintf(stderr, "Error: The provided JsonElement is NULL in json_type_of_element.\n");
@@ -956,6 +1262,21 @@ JsonType json_type_of_element(const JsonElement *element) {
     return element->type;
 }
 
+/**
+ * @brief Writes a JSON element to a file in serialized JSON format.
+ * 
+ * @param element The JSON element to serialize and write to a file.
+ * @param filename The name of the file to which the JSON data will be written.
+ * 
+ * @return true if the JSON element was successfully written to the file; false otherwise.
+ * 
+ * @details This function serializes the given JSON element and writes the resulting string to a specified file.
+ * If the file cannot be opened or if the serialization fails, the function returns false and logs an error.
+ * 
+ * @note The caller is responsible for ensuring that the `element` and `filename` parameters are valid.
+ * 
+ * @warning The function will overwrite the file if it already exists.
+ */
 bool json_write_to_file(const JsonElement *element, const char *filename) {
     if (!element || !filename) {
         fmt_fprintf(stderr, "Error: Invalid argument(s) in json_write_to_file.\n");
@@ -987,6 +1308,17 @@ bool json_write_to_file(const JsonElement *element, const char *filename) {
     return true;
 }
 
+/**
+ * @brief Serializes a JSON element into a JSON-formatted string.
+ * 
+ * @param element The JSON element to serialize.
+ * @return A dynamically allocated string containing the serialized JSON. The caller is responsible for freeing this string.
+ * 
+ * @details This function converts a JSON element into its string representation in JSON format.
+ * The returned string is a modifiable copy that must be freed by the caller to avoid memory leaks.
+ * 
+ * @warning The caller is responsible for freeing the returned string.
+ */
 char* json_serialize(const JsonElement* element) {
     String* str = string_create("");
     json_serialize_internal(element, str);
@@ -998,6 +1330,19 @@ char* json_serialize(const JsonElement* element) {
     return serialized; // Return the duplicated string
 }
 
+/**
+ * @brief Compares two JSON elements for equality.
+ * 
+ * @param element1 The first JSON element to compare.
+ * @param element2 The second JSON element to compare.
+ * 
+ * @return true if the JSON elements are equal; false otherwise.
+ * 
+ * @details This function compares two JSON elements, considering their type and content. The comparison is deep, meaning
+ * that nested elements (arrays, objects) are also compared recursively.
+ * 
+ * @note JSON elements of different types are considered unequal. Two NULL elements are considered equal.
+ */
 bool json_compare(const JsonElement *element1, const JsonElement *element2) {
     if (element1 == element2) {
         return true;
@@ -1052,6 +1397,24 @@ bool json_compare(const JsonElement *element1, const JsonElement *element2) {
     }
 }
 
+/**
+ * @brief Sets a value in a JSON object or array at a specified key or index.
+ * 
+ * @param element The JSON object or array in which to set the value.
+ * @param key_or_index The key (for objects) or index (for arrays) where the value should be set.
+ * @param new_element The new JSON element to set at the specified key or index.
+ * 
+ * @return true if the value was successfully set; false otherwise.
+ * 
+ * @details This function updates a JSON object or array by setting the value at the specified key or index.
+ * If the element is an object, the key is used to identify the location to set the value. 
+ * If the element is an array, the index is used.
+ * 
+ * @warning The function assumes that `element`, `key_or_index`, and `new_element` are valid and non-NULL.
+ * 
+ * @note For arrays, the function replaces the existing element at the specified index.
+ *       For objects, the function adds or updates the key-value pair.
+ */
 bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element) {
     if (!element || !key_or_index || !new_element) {
         fmt_fprintf(stderr, "Error: Invalid argument(s) in json_set_element.\n");
@@ -1089,6 +1452,23 @@ bool json_set_element(JsonElement *element, const char *key_or_index, JsonElemen
     }
 }
 
+/**
+ * @brief Removes an element from a JSON object or array by key or index.
+ * 
+ * @param element The JSON object or array from which to remove an element. Must be of type JSON_OBJECT or JSON_ARRAY.
+ * @param key_or_index The key (for objects) or index (for arrays) identifying the element to remove.
+ * 
+ * @return true if the element was successfully removed; false if an error occurred.
+ * 
+ * @details This function removes an element from a JSON object or array based on the provided key or index.
+ * If the element is a JSON object, the key is used to locate and remove the associated key-value pair.
+ * If the element is a JSON array, the index is used to locate and remove the element at that position.
+ * The function returns false if the element is not an object or array, or if the key or index is invalid.
+ * 
+ * @warning The caller is responsible for ensuring the validity of the key or index.
+ * 
+ * @note If the element is not an object or array, or if an error occurs, the function returns false and sets an error message.
+ */
 bool json_remove_element(JsonElement *element, const char *key_or_index) {
     if (!element || !key_or_index) {
         fmt_fprintf(stderr, "Error: Invalid argument(s) in json_remove_element.\n");
@@ -1136,6 +1516,23 @@ bool json_remove_element(JsonElement *element, const char *key_or_index) {
     }
 }
 
+/**
+ * @brief Finds an element within a JSON object or array that matches a given predicate.
+ * 
+ * @param element The JSON object or array to search. Must be of type JSON_OBJECT or JSON_ARRAY.
+ * @param predicate A function pointer to the predicate function used to test elements.
+ * @param user_data Additional data passed to the predicate function.
+ * 
+ * @return A pointer to the first matching JSON element, or NULL if no match is found or an error occurs.
+ * 
+ * @details This function searches through a JSON object or array and returns the first element that satisfies
+ * the predicate function. The search stops as soon as a match is found. The predicate function must
+ * return true for a match and false otherwise.
+ * 
+ * @warning The caller is responsible for ensuring that the predicate function is correctly implemented.
+ * 
+ * @note If the element is not an object or array, or if an error occurs, the function returns NULL and sets an error message.
+ */
 JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data) {
     if (!element || !predicate) {
         fmt_fprintf(stderr, "Error: Invalid argument(s) in json_find.\n");
@@ -1167,10 +1564,36 @@ JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void
     return NULL; // No matching element found
 }
 
+/**
+ * @brief Retrieves the last error that occurred during JSON operations.
+ * 
+ * @return A JsonError struct containing the error code and message of the last error.
+ * 
+ * @details This function provides access to the last error that occurred during any JSON operation.
+ * The error code can be used to identify the type of error, and the error message provides
+ * additional details about the error.
+ * 
+ * @note The error state is global and shared across all JSON operations. It is reset with each new error.
+ */
 JsonError json_last_error() {
     return last_error;
 }
 
+/**
+ * @brief Merges two JSON objects into a new JSON object.
+ * 
+ * @param element1 The first JSON object to merge. Must be of type JSON_OBJECT.
+ * @param element2 The second JSON object to merge. Must be of type JSON_OBJECT.
+ * @return A new JSON object containing the merged contents of element1 and element2, or NULL if an error occurs.
+ * 
+ * @details This function creates a new JSON object and merges the key-value pairs from both input objects into it.
+ * If a key exists in both objects, the value from the second object is used. Memory allocation failures
+ * during the merge process will cause the function to return NULL, and an appropriate error message will be
+ * set in the global `last_error`.
+ * 
+ * @warning The caller is responsible for deallocating the returned JSON object using `json_deallocate`.
+ * @note Both input elements must be JSON objects. If they are not, the function returns NULL and sets an error message.
+ */
 JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2) {
     if (!element1 || !element2 || element1->type != JSON_OBJECT || element2->type != JSON_OBJECT) {
         fmt_fprintf(stderr, "Error: Both elements must be JSON objects in json_merge.\n");
@@ -1237,6 +1660,21 @@ JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2
     return merged;
 }
 
+/**
+ * @brief Converts a JSON array of strings into a C-style array of strings.
+ * 
+ * @param array The JSON array to convert. Must be of type JSON_ARRAY and contain only JSON_STRING elements.
+ * @param length A pointer to a size_t variable where the number of strings will be stored.
+ * 
+ * @return A C-style array of strings, or NULL if an error occurs.
+ * 
+ * @details This function extracts the strings from a JSON array and returns them in a newly allocated array.
+ * If the JSON array contains any non-string elements, the function returns NULL and sets an error message.
+ * The `length` parameter will be set to the number of strings in the returned array.
+ * 
+ * @warning The caller is responsible for deallocating the returned array and each string within it.
+ * @note If the input array is NULL, not of type JSON_ARRAY, or contains non-string elements, the function returns NULL.
+ */
 char** json_to_string_array(const JsonElement *array, size_t *length) {
     if (!array || array->type != JSON_ARRAY || !length) {
         fmt_fprintf(stderr, "Error: Invalid input in json_to_string_array.\n");
@@ -1280,6 +1718,27 @@ char** json_to_string_array(const JsonElement *array, size_t *length) {
     return string_array;
 }
 
+/**
+ * @brief Converts a JSON element to a specified JSON type.
+ * 
+ * @param element The JSON element to be converted. Must not be NULL.
+ * @param type The target JSON type for the conversion (e.g., JSON_STRING, JSON_NUMBER, JSON_BOOL, JSON_ARRAY, JSON_OBJECT).
+ * @return A pointer to the newly converted JSON element, or NULL if the conversion fails.
+ * 
+ * @details This function attempts to convert the provided JSON element to the specified type. If the conversion is not supported, or if memory allocation fails,
+ *          the function returns NULL and sets an appropriate error message in the global `last_error`.
+ * 
+ * Conversion details:
+ * - JSON_STRING: Converts a number or boolean to a string representation.
+ * - JSON_NUMBER: Converts a string containing a valid number to a double.
+ * - JSON_BOOL: Converts a non-zero number to true, and zero to false.
+ * - JSON_ARRAY: Converts various types (string, number, boolean, null, object, array) into a single-element array, or splits a string into an array of UTF-8 characters.
+ * - JSON_OBJECT: Wraps the element into a JSON object with the key "value".
+ * 
+ * If the conversion is unsupported or fails, the function returns NULL and sets the `last_error` code.
+ * 
+ * @warning The caller is responsible for deallocating the returned JSON element using `json_deallocate`.
+ */
 void* json_convert(const JsonElement *element, JsonType type) {
     if (!element) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: The provided JsonElement is NULL in json_convert.\n");
@@ -1501,6 +1960,19 @@ void* json_convert(const JsonElement *element, JsonType type) {
     return NULL;
 }
 
+/**
+ * @brief Applies a transformation function to each element of a JSON array and returns a new JSON array with the transformed elements.
+ * 
+ * @param array The JSON array to map over. Must be of type JSON_ARRAY.
+ * @param map_func The function to apply to each element. This function takes a JSON element and user data as arguments and returns a transformed JSON element.
+ * @param user_data Optional user data to pass to the mapping function. Can be NULL.
+ * 
+ * @return A new JSON array containing the transformed elements, or NULL if an error occurs.
+ * 
+ * @details This function creates a new JSON array where each element is the result of applying the `map_func` to the corresponding element in the input array. 
+ * If the transformation function returns NULL for any element, the entire operation fails, and any allocated memory for the result array is freed.
+ * The caller is responsible for deallocating the returned JSON array.
+ */
 JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data) {
     if (!array || array->type != JSON_ARRAY || !map_func) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_map. The input must be a JSON array and map_func must be provided.\n");
@@ -1542,6 +2014,19 @@ JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* 
     return resultArray;
 }
 
+/**
+ * @brief Filters elements of a JSON array based on a predicate function and returns a new JSON array with elements that satisfy the predicate.
+ * 
+ * @param array The JSON array to filter. Must be of type JSON_ARRAY.
+ * @param predicate The function to evaluate each element. This function takes a JSON element and user data as arguments and returns true if the element should be included in the result.
+ * @param user_data Optional user data to pass to the predicate function. Can be NULL.
+ * 
+ * @return A new JSON array containing the elements that satisfy the predicate, or NULL if an error occurs.
+ * 
+ * @details This function creates a new JSON array containing only the elements for which the `predicate` function returns true. 
+ * If an error occurs during the operation, such as a memory allocation failure, the function returns NULL and any partially constructed result array is deallocated.
+ * The caller is responsible for deallocating the returned JSON array.
+ */
 JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data) {
     if (!array || array->type != JSON_ARRAY || !predicate) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_filter. The input must be a JSON array and predicate must be provided.\n");
@@ -1585,6 +2070,19 @@ JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void
     return resultArray;
 }
 
+/**
+ * @brief Applies a reduction function across all elements of a JSON array.
+ * 
+ * @param array The JSON array to reduce. Must be of type JSON_ARRAY.
+ * @param reduce_func The function to apply to each element and the accumulator. This function takes a JSON element, the current accumulator, and user data as arguments.
+ * @param initial_value The initial value for the accumulator. Can be NULL if the reduction function can handle NULL as an initial value.
+ * @param user_data Optional user data to pass to the reduction function. Can be NULL.
+ * 
+ * @return The final accumulated value after applying the reduction function, or NULL if an error occurs.
+ * 
+ * @details This function iterates over each element in the array, applying the reduction function and accumulating the result. 
+ * If the input array is not of type JSON_ARRAY or if any argument is invalid, the function returns NULL and sets an error code.
+ */
 void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data) {
     if (!array || array->type != JSON_ARRAY || !reduce_func) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid argument(s) in json_reduce.\n");
@@ -1603,6 +2101,15 @@ void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void
     return accumulator;
 }
 
+/**
+ * @brief Formats a JSON element into a human-readable string.
+ * 
+ * @param element The JSON element to format.
+ * @return A dynamically allocated string containing the formatted JSON, or NULL if an error occurs.
+ * 
+ * @details This function serializes the JSON element into a pretty-printed string with indentation for readability.
+ * The caller is responsible for freeing the allocated string. If the input element is NULL, the function returns NULL and sets an error code.
+ */
 char* json_format(const JsonElement *element) {
     if (!element) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: The provided JsonElement is NULL in json_format.\n");
@@ -1621,6 +2128,17 @@ char* json_format(const JsonElement *element) {
     return formatted; // Return the duplicated string
 }
 
+/**
+ * @brief Creates a shallow copy of a JSON element.
+ * 
+ * @param element The JSON element to clone.
+ * 
+ * @return A pointer to the newly cloned JSON element, or NULL if an error occurs.
+ * 
+ * @details This function creates a shallow copy of the given JSON element. For JSON objects and arrays, the copy will reference the same underlying data as the original.
+ * For strings, a new string is allocated and copied. The caller is responsible for freeing the cloned element.
+ * If the input element is NULL or memory allocation fails, the function returns NULL and sets an error code.
+ */
 JsonElement* json_clone(const JsonElement *element) {
     if (!element) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: NULL input to json_clone.");
@@ -1669,6 +2187,18 @@ JsonElement* json_clone(const JsonElement *element) {
     return clonedElement;
 }
 
+/**
+ * @brief Retrieves all the keys from a JSON object.
+ * 
+ * @param object The JSON object from which to retrieve the keys. Must be of type JSON_OBJECT.
+ * @param num_keys Pointer to a size_t variable where the number of keys will be stored.
+ * 
+ * @return A dynamically allocated array of strings containing the keys, or NULL if an error occurs.
+ * 
+ * @details This function allocates memory for the array of keys and for each key string. 
+ * The caller is responsible for freeing the allocated memory. If the input JSON element is not an object 
+ * or if memory allocation fails, the function returns NULL and sets an error code.
+ */
 char** json_get_keys(const JsonElement *object, size_t *num_keys) {
     if (!object || object->type != JSON_OBJECT || !num_keys) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid input in json_get_keys.\n");
@@ -1709,6 +2239,18 @@ char** json_get_keys(const JsonElement *object, size_t *num_keys) {
     return keys;
 }
 
+/**
+ * @brief Adds an element to a JSON array.
+ * 
+ * @param element1 The JSON array to which the element will be added. Must be of type JSON_ARRAY.
+ * @param element2 The JSON element to add to the array. Must not be NULL.
+ * 
+ * @return true if the element was successfully added, false otherwise.
+ * 
+ * @details This function appends the provided element to the end of the JSON array. 
+ * If the operation fails (e.g., due to a memory allocation error), the function returns false and sets an error code.
+ * The function assumes that `element1` is a valid JSON array and `element2` is a valid JSON element.
+ */
 bool json_add_to_array(JsonElement* element1, JsonElement* element2) {
     if (!element1) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: element1 is NULL and invalid in json_add_to_array.\n");
@@ -1729,6 +2271,17 @@ bool json_add_to_array(JsonElement* element1, JsonElement* element2) {
     return false;
 }
 
+/**
+ * @brief Adds a key-value pair to a JSON object.
+ * 
+ * @param object The JSON object to which the key-value pair will be added. Must be of type JSON_OBJECT.
+ * @param key The key as a string. Must not be NULL.
+ * @param value The value to associate with the key. Must not be NULL.
+ * @return true if the key-value pair was successfully added or replaced, false otherwise.
+ * 
+ * @details If the key already exists in the object, the existing value is deallocated and replaced with the new value. 
+ * The key is duplicated to ensure it is managed independently within the JSON object. If any error occurs, it is reported, and false is returned.
+ */
 bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value) {
     if (!object || object->type != JSON_OBJECT) {
         snprintf(last_error.message, sizeof(last_error.message), "Error: Target is not a JSON object in json_add_to_object.\n");
@@ -1786,6 +2339,18 @@ bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value
     return true;
 }
 
+/**
+ * @brief Queries a JSON element using a dot-separated path.
+ * 
+ * @param element The JSON element to query. Must not be NULL.
+ * @param query The query string, using dot notation to specify the path to the desired element.
+ * 
+ * @return The JSON element found at the specified path, or NULL if the element could not be found or if an error occurs.
+ * 
+ * @details The query string can include array indexing using square brackets, e.g., "array[0].key". 
+ * The function traverses the JSON structure according to the query string and returns the corresponding JSON element.
+ * If any error occurs during the traversal (e.g., missing keys or indices), the function returns NULL.
+ */
 JsonElement* json_query(const JsonElement *element, const char *query) {
     if (!element || !query) {
         fprintf(stderr, "Invalid argument(s) to json_query.\n");

@@ -15,6 +15,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Opens a file for writing, based on the specified mode.
+ *
+ * This function opens a file for writing according to the specified `WriteMode`.
+ * It handles various modes such as text, binary, Unicode, buffered, unbuffered, and append.
+ * On Windows, it can open files with UTF-8 encoding for Unicode modes.
+ *
+ * @param filename The name of the file to open.
+ * @param mode The mode in which the file is to be opened, specified by the `WriteMode` enum.
+ * 
+ * @return A pointer to a `FileWriter` structure on success, or `NULL` on failure.
+ */
 FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     if (!filename) {
         fprintf(stderr, "Error: filename is null in file_writer_open.\n");
@@ -96,7 +108,18 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     return writer;
 }
 
-// Open an existing file for appending. If the file does not exist, it will be created.
+/**
+ * @brief Opens an existing file for appending. If the file does not exist, it will be created.
+ *
+ * This function opens a file for appending according to the specified `WriteMode`.
+ * If the file does not exist, it will create a new file.
+ * On Windows, it can open files with UTF-8 encoding for Unicode modes.
+ *
+ * @param filename The name of the file to open.
+ * @param mode The mode in which the file is to be opened, specified by the `WriteMode` enum.
+ * 
+ * @return A pointer to a `FileWriter` structure on success, or `NULL` on failure.
+ */
 FileWriter *file_writer_append(const char *filename, const WriteMode mode) {
     if (!filename) {
         fprintf(stderr, "Error: filename is null in file_writer_open.\n");
@@ -174,6 +197,16 @@ FileWriter *file_writer_append(const char *filename, const WriteMode mode) {
     return writer;
 }
 
+/**
+ * @brief Closes the file associated with the given `FileWriter`.
+ *
+ * This function closes the file associated with the `FileWriter` structure.
+ * It ensures that all data is flushed to the file before closing.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return `true` if the file was successfully closed, `false` otherwise.
+ */
 bool file_writer_close(FileWriter *writer) {
     if (writer->file_writer == NULL) {
         fprintf(stdout, "Warning: Right now the file is NULL no need to close it in file_writer_close.\n");
@@ -187,6 +220,15 @@ bool file_writer_close(FileWriter *writer) {
     return true;
 }
 
+/**
+ * @brief Gets the current position of the file pointer.
+ *
+ * This function returns the current position of the file pointer in the file associated with the `FileWriter`.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return The current position of the file pointer as a `size_t`. Returns `(size_t)-1` on error.
+ */
 size_t file_writer_get_position(FileWriter *writer) {
     if (writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_position.\n");
@@ -201,6 +243,20 @@ size_t file_writer_get_position(FileWriter *writer) {
     return (size_t)cursor_position;
 }
 
+/**
+ * @brief Writes data from a buffer to a file using the specified `FileWriter`.
+ *
+ * This function handles writing data to a file, with special handling for binary, UTF-16, and UTF-32 encodings.
+ * If the file is opened in binary mode, the data is written directly without conversion.
+ * If the file is opened in a Unicode mode, the data is converted to the appropriate encoding before writing.
+ *
+ * @param buffer The data buffer to write from.
+ * @param size The size of each element to be written.
+ * @param count The number of elements to write.
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return The number of elements successfully written.
+ */
 size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *writer) {
     if (!writer || !writer->file_writer || !buffer) {
         fprintf(stderr, "Error: Invalid argument in file_writer_write.\n");
@@ -273,6 +329,18 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
     return written;
 }
 
+/**
+ * @brief Writes a line of text to the file using the specified `FileWriter`.
+ *
+ * This function writes a line of text to the file, with special handling for Unicode text.
+ * It adds a newline character at the end of the line.
+ *
+ * @param buffer The buffer containing the line of text to write.
+ * @param size The size of the text line in bytes.
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return `true` if the line is successfully written, `false` otherwise.
+ */
 bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
     if (writer->file_writer == NULL || !writer) {
         fprintf(stderr, "Error: FileWriter object is NULL and not valid in file_writer_write_line.\n");
@@ -327,6 +395,15 @@ bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
     return written == 1;
 }
 
+/**
+ * @brief Checks if the file associated with the `FileWriter` is currently open.
+ *
+ * This function verifies whether the file managed by the `FileWriter` is open for writing.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return `true` if the file is open, `false` otherwise.
+ */
 bool file_writer_is_open(FileWriter* writer) {
     if (!writer) {
         fprintf(stderr, "Error: FileWriter pointer is NULL in file_writer_is_open.\n");
@@ -339,7 +416,16 @@ bool file_writer_is_open(FileWriter* writer) {
     return writer->is_open;
 }
 
-// This function will flush the buffer of the file writer, ensuring that all written data is physically stored in the file.
+/**
+ * @brief Flushes the buffer of the `FileWriter`, ensuring all written data is stored in the file.
+ *
+ * This function flushes any buffered data, forcing it to be physically written to the file.
+ * It is applicable for both text and binary modes and works correctly with Unicode text.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return `true` if the flush operation succeeds, `false` otherwise.
+ */
 bool file_writer_flush(FileWriter* writer) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is NULL and not valid in file_writer_flush");
@@ -356,7 +442,16 @@ bool file_writer_flush(FileWriter* writer) {
     return true;
 }
 
-// Set the character encoding for writing to the file.
+/**
+ * @brief Sets the character encoding for writing to the file.
+ *
+ * This function configures the `FileWriter` to use the specified encoding type for writing data.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * @param encoding The `WriteEncodingType` to be set (e.g., UTF-16, UTF-32).
+ * 
+ * @return `true` if the encoding type is successfully set, `false` otherwise.
+ */
 bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: Filewriter object is invalid or NULL in file_writer_set_encoding.\n");
@@ -370,7 +465,16 @@ bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encodi
     return true;
 }
 
-// Copy content from one file to another.
+/**
+ * @brief Copies the content from one file to another.
+ *
+ * This function copies the entire content of the file managed by the `src_writer` to the file managed by the `dest_writer`.
+ *
+ * @param src_writer A pointer to the source `FileWriter` structure.
+ * @param dest_writer A pointer to the destination `FileWriter` structure.
+ * 
+ * @return `true` if the file content is successfully copied, `false` otherwise.
+ */
 bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer){
     if (!src_writer || src_writer->file_writer == NULL || src_writer->file_path == NULL) {
         fprintf(stderr, "Error: src_writer object or file_path or both them are null and not valid in file_writer_copy.\n");
@@ -411,7 +515,15 @@ bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer){
     return true;
 }
 
-// get absolute path of FileWriter object 
+/**
+ * @brief Retrieves the absolute path of the file associated with the `FileWriter` object.
+ *
+ * This function returns the absolute file path that the `FileWriter` is currently operating on.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return A constant character pointer to the file path if the `FileWriter` is valid, `NULL` otherwise.
+ */
 const char *file_writer_get_file_name(FileWriter *writer){
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_file_name.\n");
@@ -424,7 +536,15 @@ const char *file_writer_get_file_name(FileWriter *writer){
     return (const char*)writer->file_path;
 }
 
-// get encoding type of FileWriter
+/**
+ * @brief Retrieves the encoding type currently set in the `FileWriter`.
+ *
+ * This function returns the encoding type used by the `FileWriter` object, such as UTF-16 or UTF-32.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return A constant character pointer representing the encoding type if valid, `NULL` otherwise.
+ */
 const char* file_writer_get_encoding(FileWriter *writer) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is null and not valid in file_writer_get_encoding.\n");
@@ -448,7 +568,17 @@ const char* file_writer_get_encoding(FileWriter *writer) {
     return encoding;
 }
 
-// Write formatted data to the file, similar to `fprintf`.
+/**
+ * @brief Writes formatted data to the file, similar to `fprintf`.
+ *
+ * This function formats a string according to the specified format and writes it to the file associated
+ * with the `FileWriter` object.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * @param format A format string, similar to `printf`, followed by the values to format.
+ * 
+ * @return The number of characters written, or `0` if an error occurs.
+ */
 size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
     if (!writer || !writer->file_writer || !format) {
         fprintf(stderr, "Error: Invalid argument in file_writer_write_fmt.\n");
@@ -468,6 +598,16 @@ size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
     return written;
 }
 
+/**
+ * @brief Retrieves the current size of the file associated with the `FileWriter`.
+ *
+ * This function flushes any pending write operations, moves the file pointer to the end of the file,
+ * and returns the size of the file in bytes.
+ *
+ * @param writer A pointer to the `FileWriter` structure.
+ * 
+ * @return The size of the file in bytes, or `0` if an error occurs.
+ */
 size_t file_writer_get_size(FileWriter* writer) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is not valid and NULL in file_writer_get_size.\n");
@@ -491,7 +631,17 @@ size_t file_writer_get_size(FileWriter* writer) {
     return size;
 }
 
-// Lock the file to prevent other processes from modifying it while it's being written to
+/**
+ * @brief Locks the file associated with the `FileWriter` to prevent other processes from modifying it.
+ *
+ * This function locks the file to ensure exclusive access, preventing other processes from writing
+ * to it while the lock is held. It uses platform-specific mechanisms to achieve the lock.
+ *
+ * @param writer A pointer to the `FileWriter` structure representing the file.
+ * 
+ * @return `true` if the file was successfully locked, `false` otherwise (e.g., if the `FileWriter` is invalid
+ * or the locking operation fails).
+ */
 bool file_writer_lock(FileWriter* writer) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is NULL in file_writer_lock.\n");
@@ -519,7 +669,17 @@ bool file_writer_lock(FileWriter* writer) {
     return true;
 }
 
-// Unlock the file once operations are done.
+/**
+ * @brief Unlocks the file associated with the `FileWriter` after operations are completed.
+ *
+ * This function releases the lock on the file, allowing other processes to access it.
+ * It uses platform-specific mechanisms to release the lock.
+ *
+ * @param writer A pointer to the `FileWriter` structure representing the file.
+ * 
+ * @return `true` if the file was successfully unlocked, `false` otherwise (e.g., if the `FileWriter` is invalid
+ * or the unlocking operation fails).
+ */
 bool file_writer_unlock(FileWriter* writer) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is NULL in file_writer_unlock.\n");
@@ -547,7 +707,19 @@ bool file_writer_unlock(FileWriter* writer) {
     return true;
 }
 
-// Move the file pointer to a specific location for random access writing
+/**
+ * @brief Moves the file pointer to a specific location for random access writing.
+ *
+ * This function allows the file pointer to be moved to a specific location, enabling random access writing.
+ * The position can be set relative to the beginning, end, or current position of the file.
+ *
+ * @param writer A pointer to the `FileWriter` structure representing the file.
+ * @param offset The offset in bytes to move the file pointer.
+ * @param cursor_pos The position from which the offset is applied (beginning, end, or current position).
+ * 
+ * @return `true` if the file pointer was successfully moved, `false` otherwise (e.g., if the `FileWriter` is invalid
+ * or the seek operation fails).
+ */
 bool file_writer_seek(FileWriter *writer, long offset, const CursorPosition cursor_pos) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is null and invalid in file_writer_seek.\n");
@@ -578,6 +750,18 @@ bool file_writer_seek(FileWriter *writer, long offset, const CursorPosition curs
     return true;
 }
 
+/**
+ * @brief Truncates the file associated with the `FileWriter` to the specified size.
+ *
+ * This function shortens the file to the given size. If the size is larger than
+ * the current file size, the file is extended, and the added space is filled with zeros.
+ *
+ * @param writer A pointer to the `FileWriter` structure representing the file.
+ * @param size The size to which the file should be truncated.
+ * 
+ * @return `true` if the file was successfully truncated, `false` otherwise (e.g., if
+ * the `FileWriter` is not valid, the flush operation fails, or the truncation fails).
+ */
 bool file_writer_truncate(FileWriter *writer, size_t size) {
     if (!writer || writer->file_writer == NULL) {
         fprintf(stderr, "Error: FileWriter object is null and invalid in file_writer_truncate.\n");
@@ -606,7 +790,21 @@ bool file_writer_truncate(FileWriter *writer, size_t size) {
     return true;
 }
 
-// Allows writing multiple buffers in a single operation, potentially optimizing I/O operations by reducing the number of system calls
+/**
+ * @brief Writes multiple buffers to a file in a single operation, potentially optimizing I/O operations.
+ *
+ * This function allows writing multiple buffers to the file in a batch operation,
+ * which can reduce the number of system calls and improve performance. The function
+ * handles different encoding types (UTF-16, UTF-32) and converts the data as needed before writing.
+ *
+ * @param writer A pointer to the `FileWriter` structure representing the file.
+ * @param buffers An array of pointers to the buffers to be written.
+ * @param sizes An array of sizes corresponding to the buffers to be written.
+ * @param count The number of buffers to be written.
+ * 
+ * @return `true` if all buffers were successfully written, `false` otherwise (e.g., if
+ * there is an error with the buffers, sizes, or the `FileWriter`).
+ */
 bool file_writer_write_batch(FileWriter* writer, const void** buffers, const size_t* sizes, size_t count) {
     if (!writer || !writer->file_writer || !buffers || !sizes) {
         fprintf(stderr, "Error: Invalid arguments in file_writer_write_batch.\n");
@@ -680,7 +878,22 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
     return total_written == all_bytes;
 }
 
-// Similar to file_writer_write_fmt, but specifically for appending formatted text to a file.
+/**
+ * @brief Appends formatted text to a file using the specified `FileWriter`.
+ *
+ * This function formats a string according to the specified format string
+ * and arguments, then appends the resulting string to the file associated
+ * with the given `FileWriter`. The function requires that the `FileWriter`
+ * is in append mode (`WRITE_APPEND`).
+ *
+ * @param writer A pointer to the `FileWriter` structure representing the file.
+ * @param format A format string that follows the same specifications as `printf`.
+ * @param ... Additional arguments that correspond to the format string.
+ * 
+ * @return `true` if the formatted text was successfully appended to the file, 
+ * `false` otherwise (e.g., if the `FileWriter` is not in append mode 
+ *  or if an error occurs during the writing process).
+ */
 bool file_writer_append_fmt(FileWriter* writer, const char* format, ...) {
     if (!writer || !writer->file_writer || !format) {
         fprintf(stderr, "Error: Invalid argument in file_writer_append_fmt.\n");

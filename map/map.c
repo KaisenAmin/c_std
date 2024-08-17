@@ -23,6 +23,17 @@ struct Map {
 };
 
 
+/**
+ * @brief Advances the iterator to the next element in the map.
+ *
+ * This function increments the iterator to point to the next element in the map
+ * according to the in-order traversal of the underlying Red-Black Tree. If the current
+ * node has a right child, the iterator moves to the leftmost node in the right subtree.
+ * Otherwise, it moves up the tree to find the first ancestor that is a left child of its parent.
+ *
+ * @param it A pointer to the MapIterator to be incremented. If the iterator is NULL or
+ * the node it points to is NULL, the function will log an error and return.
+ */
 void map_iterator_increment(MapIterator* it) {
     if (it == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -53,6 +64,17 @@ void map_iterator_increment(MapIterator* it) {
     }
 }
 
+/**
+ * @brief Moves the iterator to the previous element in the map.
+ *
+ * This function decrements the iterator to point to the previous element in the map
+ * according to the in-order traversal of the underlying Red-Black Tree. If the current
+ * node has a left child, the iterator moves to the rightmost node in the left subtree.
+ * Otherwise, it moves up the tree to find the first ancestor that is a right child of its parent.
+ *
+ * @param it A pointer to the MapIterator to be decremented. If the iterator is NULL or
+ * the node it points to is NULL, the function will log an error and return.
+ */
 void map_iterator_decrement(MapIterator* it) {
     if (it == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -82,6 +104,16 @@ void map_iterator_decrement(MapIterator* it) {
     }
 }
 
+/**
+ * @brief Creates a new MapNode with the given key and value.
+ *
+ * This function allocates memory for a new MapNode, initializes its key and value,
+ * and sets its color to RED, as required by Red-Black Tree properties.
+ *
+ * @param key The key to be stored in the new node.
+ * @param value The value to be associated with the key in the new node.
+ * @return A pointer to the newly created MapNode, or NULL if memory allocation fails.
+ */
 static MapNode* create_node(KeyType key, ValueType value) {
     MapNode* node = (MapNode*)malloc(sizeof(MapNode));
     
@@ -99,6 +131,17 @@ static MapNode* create_node(KeyType key, ValueType value) {
     return node;
 }
 
+/**
+ * @brief Performs a left rotation on the given node in the map.
+ *
+ * This function rotates the subtree rooted at node `x` to the left, ensuring
+ * the Red-Black Tree properties are maintained. The left rotation involves
+ * making the right child of `x` the new root of the subtree, and `x` becomes
+ * the left child of its former right child.
+ *
+ * @param map A pointer to the map structure.
+ * @param x A pointer to the node on which to perform the left rotation.
+ */
 static void map_left_rotate(Map* map, MapNode* x) {
     if (map == NULL || x == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -133,6 +176,17 @@ static void map_left_rotate(Map* map, MapNode* x) {
     x->parent = y;
 }
 
+/**
+ * @brief Performs a right rotation on the given node in the map.
+ *
+ * This function rotates the subtree rooted at node `y` to the right, ensuring
+ * the Red-Black Tree properties are maintained. The right rotation involves
+ * making the left child of `y` the new root of the subtree, and `y` becomes
+ * the right child of its former left child.
+ *
+ * @param map A pointer to the map structure.
+ * @param y A pointer to the node on which to perform the right rotation.
+ */
 static void map_right_rotate(Map* map, MapNode* y) {
     if (map == NULL || y == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -167,6 +221,17 @@ static void map_right_rotate(Map* map, MapNode* y) {
     y->parent = x;
 }
 
+/**
+ * @brief Replaces one subtree as a child of its parent with another subtree.
+ *
+ * This function is used during the deletion of a node in a Red-Black Tree.
+ * It replaces the subtree rooted at `u` with the subtree rooted at `v`.
+ * If `u` is the root of the tree, `v` becomes the new root.
+ *
+ * @param map A pointer to the map structure.
+ * @param u A pointer to the node to be replaced.
+ * @param v A pointer to the node to replace `u`.
+ */
 static void map_transplant(Map* map, MapNode* u, MapNode* v) {
     if (map == NULL || u == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -189,6 +254,15 @@ static void map_transplant(Map* map, MapNode* u, MapNode* v) {
     }
 }
 
+/**
+ * @brief Finds the node with the minimum key in the subtree.
+ *
+ * This function traverses the left children of the given node
+ * until it reaches the leftmost (smallest) node in the subtree.
+ *
+ * @param node A pointer to the root of the subtree.
+ * @return A pointer to the node with the minimum key in the subtree.
+ */
 static MapNode* map_minimum(MapNode* node) {
     if (node == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -202,6 +276,16 @@ static MapNode* map_minimum(MapNode* node) {
     return node;
 }
 
+/**
+ * @brief Restores Red-Black Tree properties after a node deletion.
+ *
+ * This function is called after a node has been removed from the Red-Black Tree.
+ * It ensures that the tree remains balanced and that all Red-Black properties are preserved.
+ * The function performs rotations and recoloring as necessary to fix any violations.
+ *
+ * @param map A pointer to the map structure.
+ * @param x A pointer to the node that replaces the deleted node, which may cause a violation of Red-Black Tree properties.
+ */
 static void map_erase_fixup(Map* map, MapNode* x) {
     while (x != map->root && (x == NULL || x->color == BLACK)) {
         if (x == x->parent->left) {
@@ -275,6 +359,16 @@ static void map_erase_fixup(Map* map, MapNode* x) {
     }
 }
 
+/**
+ * @brief Recursively frees all nodes in the subtree rooted at the given node.
+ *
+ * This function performs a post-order traversal of the tree,
+ * freeing each node and its associated key and value, using the provided deallocation functions.
+ *
+ * @param node A pointer to the root of the subtree to be freed.
+ * @param deallocKey A function pointer for deallocating the key associated with each node.
+ * @param deallocValue A function pointer for deallocating the value associated with each node.
+ */
 static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (node == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -296,6 +390,15 @@ static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeal
     free(node); // Finally, free the node itself
 }
 
+/**
+ * @brief Restores Red-Black Tree properties after a node insertion.
+ *
+ * This function ensures that the Red-Black Tree properties are maintained after inserting a new node.
+ * It performs rotations and recoloring as necessary to restore balance to the tree.
+ *
+ * @param map A pointer to the map structure.
+ * @param newNode A pointer to the newly inserted node that may cause a violation of the Red-Black Tree properties.
+ */
 static void map_insert_fixup(Map* map, MapNode* newNode) {
     if (map == NULL || newNode == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -356,6 +459,20 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
     map->root->color = BLACK;
 }
 
+/**
+ * @brief Creates a new map with the specified comparison and deallocation functions.
+ *
+ * This function initializes a new map with the provided comparison function for keys
+ * and optional deallocation functions for keys and values. The map is implemented as
+ * a Red-Black Tree, ensuring balanced insertion, deletion, and lookup operations.
+ *
+ * @param comp A comparison function used to order the keys in the map. This function must not be null.
+ * @param deallocKey A function to deallocate the keys when a node is deleted, or NULL if no deallocation is needed.
+ * @param deallocValue A function to deallocate the values when a node is deleted, or NULL if no deallocation is needed.
+ * 
+ * @return A pointer to the newly created map. If memory allocation fails or the comparison function is null, 
+ * the function will print an error message and terminate the program.
+ */
 Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (!comp) {
         #ifdef MAP_LOGGING_ENABLE
@@ -381,6 +498,14 @@ Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFu
     return map;
 }
 
+/**
+ * @brief Deallocates the memory used by the map and its nodes.
+ *
+ * This function frees all the memory associated with the map, including all of its nodes, keys, and values.
+ * After calling this function, the map pointer should no longer be used.
+ *
+ * @param map A pointer to the Map to be deallocated.
+ */
 void map_deallocate(Map* map) {
     if (!map){
         #ifdef MAP_LOGGING_ENABLE
@@ -392,6 +517,14 @@ void map_deallocate(Map* map) {
     free(map);
 }
 
+/**
+ * @brief Checks if the map is empty.
+ *
+ * This function returns true if the map contains no elements, or if the map pointer is null.
+ *
+ * @param map A pointer to the Map to be checked.
+ * @return true if the map is empty or null, false otherwise.
+ */
 bool map_empty(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -402,6 +535,15 @@ bool map_empty(const Map* map) {
     return map->size == 0;
 }
 
+/**
+ * @brief Returns the number of elements in the map.
+ *
+ * This function returns the number of key-value pairs currently stored in the map.
+ * If the map pointer is null, the function returns 0.
+ *
+ * @param map A pointer to the Map whose size is to be determined.
+ * @return The number of elements in the map, or 0 if the map is null.
+ */
 size_t map_size(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -412,6 +554,15 @@ size_t map_size(const Map* map) {
     return map->size;
 }
 
+/**
+ * @brief Returns the maximum possible number of elements in the map.
+ *
+ * This function returns the maximum number of elements that can be held in the map.
+ * The maximum size is determined based on the size of the MapNode structure.
+ *
+ * @param map A pointer to the Map whose maximum size is to be determined.
+ * @return The maximum number of elements that the map can hold, or 0 if the map pointer is null.
+ */
 size_t map_max_size(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -422,6 +573,20 @@ size_t map_max_size(const Map* map) {
     return (size_t)(~((size_t)0)) / sizeof(MapNode);
 }
 
+/**
+ * @brief Inserts a key-value pair into the map.
+ *
+ * This function inserts a new key-value pair into the map. If the key already exists, its associated value is replaced 
+ * with the new value. If the key does not exist, a new node is created and inserted into the map. 
+ * The function returns true on successful insertion or replacement.
+ *
+ * @param map A pointer to the Map where the key-value pair will be inserted.
+ * @param key The key to be inserted into the map.
+ * @param value The value to be associated with the key.
+ * 
+ * @return true if the key-value pair was successfully inserted or replaced, 
+ * false if the map or key is null or if node creation fails.
+ */
 bool map_insert(Map* map, KeyType key, ValueType value) {
     if (map == NULL || key == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -466,6 +631,16 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
     return true;
 }
 
+/**
+ * @brief Retrieves the value associated with the specified key in the map.
+ *
+ * This function searches for a key in the map and returns the associated value if the key is found.
+ * If the key is not found, the function returns NULL.
+ *
+ * @param map A pointer to the Map to be searched.
+ * @param key The key to search for in the map.
+ * @return The value associated with the key, or NULL if the key is not found or if a null pointer is provided.
+ */
 ValueType map_at(const Map* map, KeyType key) {
     if (map == NULL || key == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -491,6 +666,14 @@ ValueType map_at(const Map* map, KeyType key) {
     return NULL;  // Key not found
 }
 
+/**
+ * @brief Clears all elements from the map.
+ *
+ * This function removes all elements from the map, freeing any associated memory. After calling this
+ * function, the map will be empty.
+ *
+ * @param map A pointer to the Map to be cleared.
+ */
 void map_clear(Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -503,6 +686,16 @@ void map_clear(Map* map) {
     map->size = 0;
 }
 
+/**
+ * @brief Swaps the contents of two maps.
+ *
+ * This function exchanges the contents of two maps, including their root nodes, sizes, comparison functions,
+ * and deallocation functions. After calling this function, the two maps will effectively have swapped their
+ * entire state.
+ *
+ * @param map1 A pointer to the first Map to be swapped.
+ * @param map2 A pointer to the second Map to be swapped.
+ */
 void map_swap(Map* map1, Map* map2) {
     if (map1 == NULL || map2 == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -534,6 +727,17 @@ void map_swap(Map* map1, Map* map2) {
     map2->deallocValue = tempDeallocValue;
 }
 
+/**
+ * @brief Counts the number of elements matching a specific key in the map.
+ *
+ * This function searches for the specified key in the map and returns the number of elements matching the key.
+ * Since a map does not allow duplicate keys, the function will return either 0 (if the key is not found) or 1 (if the key is found).
+ *
+ * @param map A pointer to the Map to be searched.
+ * @param key The key to search for in the map.
+ * 
+ * @return The number of elements matching the key (0 or 1), or 0 if a null pointer is provided.
+ */
 size_t map_count(const Map* map, KeyType key) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -558,6 +762,20 @@ size_t map_count(const Map* map, KeyType key) {
     return 0; // Key not found
 }
 
+/**
+ * @brief Inserts a new key-value pair into the map if the key does not already exist.
+ *
+ * This function attempts to insert a new key-value pair into the map. If the key already exists,
+ * the function returns false without modifying the map. If the insertion is successful, the function
+ * returns true, and the Red-Black Tree is rebalanced if necessary.
+ *
+ * @param map A pointer to the Map where the key-value pair should be inserted.
+ * @param key The key to be inserted.
+ * @param value The value to be associated with the key.
+ * 
+ * @return true if the key-value pair was successfully inserted, false if the key already exists or 
+ * if a null pointer is provided.
+ */
 bool map_emplace(Map* map, KeyType key, ValueType value) {
     if (map == NULL || key == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -595,6 +813,14 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
     return true;
 }
 
+/**
+ * @brief Returns the comparison function used by the map.
+ *
+ * This function returns a pointer to the comparison function used by the map to order its elements.
+ *
+ * @param map A pointer to the Map whose comparison function is requested.
+ * @return A pointer to the comparison function, or NULL if the map is NULL.
+ */
 CompareFuncMap map_key_comp(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -605,6 +831,21 @@ CompareFuncMap map_key_comp(const Map* map) {
     return map->compFunc;  // Return the comparison function pointer
 }
 
+/**
+ * @brief Inserts a new key-value pair into the map with a hint for the insertion position.
+ *
+ * This function attempts to insert a new key-value pair into the map, using a hint to suggest the
+ * insertion position. If the key already exists, the function returns false without modifying the map.
+ * If the insertion is successful, the function returns true, and the Red-Black Tree is rebalanced if necessary.
+ *
+ * @param map A pointer to the Map where the key-value pair should be inserted.
+ * @param hint A MapIterator that hints at the insertion position.
+ * @param key The key to be inserted.
+ * @param value The value to be associated with the key.
+ * 
+ * @return true if the key-value pair was successfully inserted, 
+ * false if the key already exists or if a null pointer is provided.
+ */
 bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) {
     if (map == NULL || !key) {
         #ifdef MAP_LOGGING_ENABLE
@@ -692,6 +933,17 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
     return true;
 }
 
+/**
+ * @brief Erases an element from the map by its key.
+ *
+ * This function removes the element with the specified key from the map. If the key is not found,
+ * the function returns false. It also handles the necessary re-balancing of the Red-Black Tree
+ * after the removal to maintain its properties.
+ *
+ * @param map A pointer to the Map from which the element should be erased.
+ * @param key The key of the element to be removed.
+ * @return true if the element was successfully erased, false if the key was not found or the map was NULL.
+ */
 bool map_erase(Map* map, KeyType key) {
     if (map == NULL || map->root == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -770,6 +1022,17 @@ bool map_erase(Map* map, KeyType key) {
     return true;
 }
 
+/**
+ * @brief Finds an element in the map by its key.
+ *
+ * This function searches for an element with the specified key in the map.
+ * If the key is found, it returns an iterator pointing to the corresponding element.
+ * If the key is not found, it returns an iterator representing the end of the map.
+ *
+ * @param map A pointer to the Map to be searched.
+ * @param key The key of the element to find.
+ * @return A MapIterator pointing to the element if found, or to the end of the map if not found.
+ */
 MapIterator map_find(const Map* map, KeyType key) {
     MapIterator iterator = {0}; // Initialize iterator to represent the end or null
     if (map == NULL || key == NULL) {
@@ -792,6 +1055,15 @@ MapIterator map_find(const Map* map, KeyType key) {
     return iterator; // Key not found, return end iterator
 }
 
+/**
+ * @brief Returns an iterator to the first element in the map.
+ *
+ * This function returns an iterator pointing to the first element in the map,
+ * which is the leftmost node in the Red-Black Tree. If the map is empty, it returns an end iterator.
+ *
+ * @param map A pointer to the Map whose beginning is requested.
+ * @return A MapIterator pointing to the first element in the map, or a default iterator if the map is NULL.
+ */
 MapIterator map_begin(const Map* map) {
     MapIterator iterator = {0};  // Initialize to default, adjust as per your MapIterator structure.
     if (map == NULL) {
@@ -810,6 +1082,15 @@ MapIterator map_begin(const Map* map) {
     return iterator;
 }
 
+/**
+ * @brief Returns an iterator to the position after the last element in the map.
+ *
+ * This function returns an iterator representing the end of the map. The end iterator
+ * does not point to any element; it is used to denote the position after the last element in the map.
+ *
+ * @param map A pointer to the Map whose end iterator is requested.
+ * @return A MapIterator representing the end of the map, or a default iterator if the map is NULL.
+ */
 MapIterator map_end(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -820,6 +1101,15 @@ MapIterator map_end(const Map* map) {
     return (MapIterator){0}; // Default 'end' iterator
 }
 
+/**
+ * @brief Returns a reverse iterator to the last element of the map.
+ *
+ * This function is used to obtain an iterator representing the last element in the map,
+ * allowing traversal of the map in reverse order.
+ *
+ * @param map A pointer to the Map whose reverse begin iterator is requested.
+ * @return A MapIterator pointing to the last element in the map, or a default iterator if the map is NULL.
+ */
 MapIterator map_rbegin(const Map* map) {
     MapIterator iterator = {0};
     if (map == NULL) {
@@ -839,6 +1129,16 @@ MapIterator map_rbegin(const Map* map) {
     return iterator;
 }
 
+/**
+ * @brief Returns a reverse iterator to the position before the first element of the map.
+ *
+ * This function is used to obtain an iterator representing the end of the reverse sequence of elements
+ * in the map. It effectively points to the position before the first element when iterating in reverse.
+ *
+ * @param map A pointer to the Map whose reverse end iterator is requested.
+ * @return A MapIterator pointing to the position before the first element in reverse, 
+ * or a default iterator if the map is NULL.
+ */
 MapIterator map_rend(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -849,6 +1149,15 @@ MapIterator map_rend(const Map* map) {
     return (MapIterator){0}; // Default 'end' iterator
 }
 
+/**
+ * @brief Returns a constant iterator to the first element of the map.
+ *
+ * This function is used to obtain a constant iterator representing the first element in the map,
+ * allowing read-only access to the elements in forward order.
+ *
+ * @param map A pointer to the Map whose constant begin iterator is requested.
+ * @return A MapIterator pointing to the first element in the map, or a default iterator if the map is NULL.
+ */
 MapIterator map_cbegin(const Map* map) {
     MapIterator iterator = {0};
     if (map == NULL) {
@@ -869,6 +1178,15 @@ MapIterator map_cbegin(const Map* map) {
     return iterator;
 }
 
+/**
+ * @brief Returns a constant iterator to the position after the last element of the map.
+ *
+ * This function is used to obtain a constant iterator representing the end of the map,
+ * allowing read-only access to the elements. The iterator points to the position just after the last element.
+ *
+ * @param map A pointer to the Map whose constant end iterator is requested.
+ * @return A MapIterator pointing to the position after the last element, or a default iterator if the map is NULL.
+ */
 MapIterator map_cend(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -879,6 +1197,15 @@ MapIterator map_cend(const Map* map) {
     return (MapIterator){0}; // Default end iterator
 }
 
+/**
+ * @brief Returns a constant reverse iterator to the last element of the map.
+ *
+ * This function is used to obtain a constant reverse iterator representing the last element in the map,
+ * allowing read-only access to the elements in reverse order.
+ *
+ * @param map A pointer to the Map whose constant reverse begin iterator is requested.
+ * @return A MapIterator pointing to the last element in the map, or a default iterator if the map is NULL.
+ */
 MapIterator map_crbegin(const Map* map) {
     MapIterator iterator = {0};
     if (map == NULL) {
@@ -899,6 +1226,15 @@ MapIterator map_crbegin(const Map* map) {
     return iterator;
 }
 
+/**
+ * @brief Returns a constant reverse iterator to the position before the first element of the map.
+ *
+ * This function is used to obtain an iterator representing the end of the reverse sequence of elements
+ * in the map. It effectively points to the position before the first element when iterating in reverse.
+ *
+ * @param map A pointer to the Map whose constant reverse end iterator is requested.
+ * @return A MapIterator pointing to the end of the reverse sequence, or a default iterator if the map is NULL.
+ */
 MapIterator map_crend(const Map* map) {
     if (map == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -909,6 +1245,18 @@ MapIterator map_crend(const Map* map) {
     return (MapIterator){0}; // Default end iterator
 }
 
+/**
+ * @brief Finds the first element that is not less than the given key.
+ *
+ * This function searches the map for the first element whose key is not less than the specified key
+ * and returns an iterator to it. If all elements are less than the specified key, the end iterator is returned.
+ *
+ * @param map A pointer to the Map to search.
+ * @param key The key to compare the elements against.
+ * 
+ * @return A MapIterator pointing to the first element not less than the given key, 
+ * or the end iterator if no such element is found.
+ */
 MapIterator map_lower_bound(const Map* map, KeyType key) {
     MapIterator iterator = {0}; // Initialize to default, representing the end.
     if (map == NULL || key == NULL) {
@@ -937,6 +1285,18 @@ MapIterator map_lower_bound(const Map* map, KeyType key) {
     return iterator;
 }
 
+/**
+ * @brief Finds the first element that is greater than the given key.
+ *
+ * This function searches the map for the first element whose key is greater than the specified key
+ * and returns an iterator to it. If all elements are less than or equal to the specified key, 
+ * the end iterator is returned.
+ *
+ * @param map A pointer to the Map to search.
+ * @param key The key to compare the elements against.
+ * @return A MapIterator pointing to the first element greater than the given key, 
+ * or the end iterator if no such element is found.
+ */
 MapIterator map_upper_bound(const Map* map, KeyType key) {
     MapIterator iterator = {0}; // Initialize to default, representing the end.
     if (map == NULL || key == NULL) {
@@ -965,6 +1325,18 @@ MapIterator map_upper_bound(const Map* map, KeyType key) {
     return iterator;
 }
 
+/**
+ * @brief Returns the range of elements that match the specified key.
+ *
+ * This function returns a pair of iterators representing the range of elements in the map that match the given key.
+ * The first iterator points to the first element not less than the key, and the second 
+ * iterator points to the first element greater than the key.
+ *
+ * @param map A pointer to the Map to search.
+ * @param key The key to compare the elements against.
+ * @return A MapIteratorPair containing two iterators: the first pointing to the lower bound and 
+ * the second pointing to the upper bound of the key.
+ */
 MapIteratorPair map_equal_range(const Map* map, KeyType key) {
     MapIteratorPair iteratorPair = {{0}, {0}};
 
@@ -987,6 +1359,12 @@ MapIteratorPair map_equal_range(const Map* map, KeyType key) {
     return iteratorPair;
 }
 
+/**
+ * @brief Retrieves the key from the given map node.
+ *
+ * @param node A pointer to the MapNode from which to retrieve the key.
+ * @return The key stored in the node, or NULL if the node is NULL.
+ */
 KeyType map_node_get_key(MapNode* node) {
     if (!node) {
         #ifdef MAP_LOGGING_ENABLE
@@ -997,6 +1375,12 @@ KeyType map_node_get_key(MapNode* node) {
     return node->key;
 }
 
+/**
+ * @brief Retrieves the value from the given map node.
+ *
+ * @param node A pointer to the MapNode from which to retrieve the value.
+ * @return The value stored in the node, or NULL if the node is NULL.
+ */
 ValueType map_node_get_value(MapNode* node) {
     if (!node) {
         #ifdef MAP_LOGGING_ENABLE
@@ -1007,6 +1391,13 @@ ValueType map_node_get_value(MapNode* node) {
     return node->value;
 }
 
+/**
+ * @brief Prints all key-value pairs in the map.
+ *
+ * @param map A pointer to the Map to be printed.
+ * @param printKey A function pointer for printing the key.
+ * @param printValue A function pointer for printing the value.
+ */
 void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType)) {
     if (map == NULL || map->root == NULL) {
         #ifdef MAP_LOGGING_ENABLE
@@ -1030,6 +1421,12 @@ void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValu
     }
 }
 
+/**
+ * @brief Creates a copy of the given map.
+ *
+ * @param src A pointer to the source Map to copy.
+ * @return A pointer to the newly created copy of the map, or NULL if the source map is NULL or memory allocation fails.
+ */
 Map* map_copy(const Map* src) {
     if (src == NULL){
         #ifdef MAP_LOGGING_ENABLE

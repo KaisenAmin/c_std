@@ -83,6 +83,14 @@ static void mergeSortInternal(void *base, size_t low, size_t high, size_t size, 
     }
 }
 
+/**
+ * @brief Sorts an array using a stable merge sort algorithm.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to order the elements.
+ */
 void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp) {
     if (num > 1) {
         void* temp = malloc(num * size);
@@ -96,6 +104,14 @@ void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp
     }
 }
 
+/**
+ * @brief Sorts an array using a non-stable quicksort algorithm.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to order the elements.
+ */
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp) {
     if (num > 1) {
         void* temp = malloc(size);
@@ -110,6 +126,21 @@ void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp) {
     }
 }
 
+/**
+ * @brief Finds the first element in a range that matches a specified value.
+ *
+ * This function searches for the first element in the range `[base, base + num * size)` that is equal to `val`
+ * based on the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to find.
+ * @param comp Comparison function used to compare elements.
+ * It should return 0 if the elements are equal, and a non-zero value otherwise.
+ * 
+ * @return Pointer to the first matching element, or `NULL` if no match is found.
+ */
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     const char *ptr = (const char*)base;
 
@@ -122,6 +153,19 @@ void *algorithm_find(const void *base, size_t num, size_t size, const void *val,
     return NULL;
 }
 
+/**
+ * @brief Finds the first element in a range that satisfies a predicate.
+ *
+ * This function searches for the first element in the range `[base, base + num * size)` that satisfies
+ * the predicate function `pred`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function that returns `true` for the element to be found.
+ * 
+ * @return Pointer to the first element that satisfies the predicate, or `NULL` if no such element is found.
+ */
 void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     const char *ptr = (const char*)base;
 
@@ -134,6 +178,19 @@ void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicate
     return NULL;
 }
 
+/**
+ * @brief Finds the first element in a range that does not satisfy a predicate.
+ *
+ * This function searches for the first element in the range `[base, base + num * size)` that does not satisfy
+ * the predicate function `pred`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function that returns `true` for elements to be skipped.
+ * 
+ * @return Pointer to the first element that does not satisfy the predicate, or `NULL` if all elements satisfy it.
+ */
 void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     const char *ptr = (const char*)base;
 
@@ -146,6 +203,23 @@ void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredi
     return NULL;
 }
 
+/**
+ * @brief Finds the last occurrence of a subsequence in a range.
+ *
+ * This function searches for the last occurrence of the sequence `[base2, base2 + num2 * size2)` in the range
+ * `[base1, base1 + num1 * size1)`.
+ *
+ * @param base1 Pointer to the start of the main array.
+ * @param num1 Number of elements in the main array.
+ * @param size1 Size of each element in the main array in bytes.
+ * @param base2 Pointer to the start of the subsequence array.
+ * @param num2 Number of elements in the subsequence array.
+ * @param size2 Size of each element in the subsequence array in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return 0 if the elements are equal, and a non-zero value otherwise.
+ * 
+ * @return Pointer to the start of the last occurrence of the subsequence, or `NULL` if not found.
+ */
 void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
     if (num2 == 0) {
         return (void*)((char*)base1 + num1 * size1);
@@ -170,6 +244,23 @@ void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const voi
     return ret;
 }
 
+/**
+ * @brief Finds the first element in a range that matches any element in another range.
+ *
+ * This function searches for the first element in the range `[base1, base1 + num1 * size1)` that matches
+ * any element in the range `[base2, base2 + num2 * size2)`.
+ *
+ * @param base1 Pointer to the start of the main array.
+ * @param num1 Number of elements in the main array.
+ * @param size1 Size of each element in the main array in bytes.
+ * @param base2 Pointer to the start of the array to search for matches.
+ * @param num2 Number of elements in the array to search for matches.
+ * @param size2 Size of each element in the array to search for matches in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return 0 if the elements are equal, and a non-zero value otherwise.
+ * 
+ * @return Pointer to the first matching element in `base1`, or `NULL` if no match is found.
+ */
 void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
     const char *ptr1 = (const char*)base1;
     const char *ptr2 = (const char*)base2;
@@ -185,6 +276,22 @@ void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, cons
     return NULL;
 }
 
+/**
+ * @brief Performs a binary search to find the index of a value in a sorted range.
+ *
+ * This function performs a binary search on a sorted range `[base, base + num * size)` to find the index
+ * of the value `val`. The range must be sorted according to the same comparison function `comp`.
+ *
+ * @param base Pointer to the start of the sorted array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to find.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return The index of the found element, or `(size_t)-1` if the value is not found.
+ */
 size_t algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     size_t low = 0;
     size_t high = num;
@@ -207,6 +314,21 @@ size_t algorithm_binary_search(const void *base, size_t num, size_t size, const 
     return (size_t)-1; // Element not found
 }
 
+/**
+ * @brief Finds the maximum element in a range.
+ *
+ * This function iterates over the elements in the range `[base, base + num * size)` to find the maximum
+ * element, as determined by the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return Pointer to the maximum element, or `NULL` if the array is empty.
+ */
 void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFunc comp) {
     if (num == 0) {
         return NULL;
@@ -222,6 +344,21 @@ void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFu
     return (void *)max_element;
 }
 
+/**
+ * @brief Finds the minimum element in a range.
+ *
+ * This function iterates over the elements in the range `[base, base + num * size)` to find the minimum
+ * element, as determined by the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return Pointer to the minimum element, or `NULL` if the array is empty.
+ */
 void *algorithm_min_element(const void *base, size_t num, size_t size, CompareFunc comp) {
     if (num == 0) { 
         return NULL;
@@ -237,6 +374,14 @@ void *algorithm_min_element(const void *base, size_t num, size_t size, CompareFu
     return (void *)min_element;
 }
 
+/**
+ * @brief Applies a function to each element in an array.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param op Function to apply to each element.
+ */
 void algorithm_for_each(void *base, size_t num, size_t size, ForEachOpFunc op) {
     char *ptr = (char *)base;
     for (size_t i = 0; i < num; ++i) {
@@ -244,6 +389,14 @@ void algorithm_for_each(void *base, size_t num, size_t size, ForEachOpFunc op) {
     }
 }
 
+/**
+ * @brief Copies elements from a source array to a destination array.
+ *
+ * @param source Pointer to the source array.
+ * @param num Number of elements to copy.
+ * @param size Size of each element in bytes.
+ * @param dest Pointer to the destination array.
+ */
 void algorithm_copy(const void *source, size_t num, size_t size, void *dest) {
     const char *src_ptr = (const char *)source;
     char *dest_ptr = (char *)dest;
@@ -253,6 +406,20 @@ void algorithm_copy(const void *source, size_t num, size_t size, void *dest) {
     }
 }
 
+/**
+ * @brief Accumulates a result by applying an operation sequentially to the elements in a range.
+ *
+ * This function applies the operation `op` to the initial value `init` and each element in the range
+ * `[base, base + num * size)` to accumulate a result. The result is stored in `init`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param init Pointer to the initial value and where the result will be stored.
+ * @param op Function that defines how to accumulate the values.
+ * 
+ * @return Pointer to the result, which is the same as the `init` parameter.
+ */
 void *algorithm_accumulate(const void *base, size_t num, size_t size, void *init, AccumulateOpFunc op) {
     char *result = (char *)init;
     const char *ptr = (const char *)base;
@@ -263,6 +430,19 @@ void *algorithm_accumulate(const void *base, size_t num, size_t size, void *init
     return result;
 }
 
+/**
+ * @brief Checks if all elements in a range satisfy a predicate.
+ *
+ * This function returns `true` if the predicate `pred` returns `true` for all elements in the range
+ * `[base, base + num * size)`. Otherwise, it returns `false`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function to check each element.
+ * 
+ * @return `true` if all elements satisfy the predicate, `false` otherwise.
+ */
 bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     const char *ptr = (const char *)base;
 
@@ -275,6 +455,19 @@ bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFu
     return true;
 }
 
+/**
+ * @brief Checks if any element in a range satisfies a predicate.
+ *
+ * This function returns `true` if the predicate `pred` returns `true` for any element in the range
+ * `[base, base + num * size)`. Otherwise, it returns `false`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function to check each element.
+ * 
+ * @return `true` if any element satisfies the predicate, `false` otherwise.
+ */
 bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     const char *ptr = (const char *)base;
 
@@ -287,6 +480,19 @@ bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFu
     return false;
 }
 
+/**
+ * @brief Checks if none of the elements in a range satisfy a predicate.
+ *
+ * This function returns `true` if the predicate `pred` returns `false` for all elements in the range
+ * `[base, base + num * size)`. Otherwise, it returns `false`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function to check each element.
+ * 
+ * @return `true` if none of the elements satisfy the predicate, `false` otherwise.
+ */
 bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     const char *ptr = (const char *)base;
 
@@ -299,18 +505,49 @@ bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateF
     return true;
 }
 
+/**
+ * @brief Fills a range with a specified value.
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to the end of the range.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to fill the range with.
+ */
 void algorithm_fill(void *first, void *last, size_t size, const void *val) {
     for (char *ptr = first; ptr != last; ptr += size) {
         memcpy(ptr, val, size);
     }
 }
 
+/**
+ * @brief Fills the first n elements of a range with a specified value.
+ *
+ * @param first Pointer to the start of the range.
+ * @param n Number of elements to fill.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to fill the range with.
+ */
 void algorithm_fill_n(void *first, size_t n, size_t size, const void *val) {
     for (char *ptr = first; n > 0; ptr += size, n--) {
         memcpy(ptr, val, size);
     }
 }
 
+/**
+ * @brief Counts the number of occurrences of a value in a range.
+ *
+ * This function iterates over the elements in the range `[base, base + num * size)` and counts
+ * how many times the value `val` appears, as determined by the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to be counted.
+ * @param comp Comparison function used to compare elements.
+ * It should return 0 if the elements are equal, and a non-zero value otherwise.
+ * 
+ * @return The number of times `val` appears in the range.
+ */
 size_t algorithm_count(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     size_t count = 0;
     const char *ptr = (const char *)base;
@@ -324,6 +561,19 @@ size_t algorithm_count(const void *base, size_t num, size_t size, const void *va
     return count;
 }
 
+/**
+ * @brief Counts the number of elements in a range that satisfy a predicate function.
+ *
+ * This function iterates over the elements in the range `[base, base + num * size)` and counts
+ * how many of them satisfy the predicate function `pred`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function that returns `true` for elements that should be counted.
+ * 
+ * @return The number of elements that satisfy the predicate function `pred`.
+ */
 size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     size_t count = 0;
     const char *ptr = (const char *)base;
@@ -337,6 +587,14 @@ size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredica
     return count;
 }
 
+/**
+ * @brief Randomly shuffles elements in an array.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param rng Random number generator function.
+ */
 void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng) {
     if (num > 1) {
         char *arr = (char *)base;
@@ -359,6 +617,23 @@ void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberG
     }
 }
 
+/**
+ * @brief Finds the first position in a sorted range where a value can be inserted without violating the order.
+ *
+ * This function performs a binary search on a sorted range `[base, base + num * size)` to find the first
+ * position where `val` can be inserted while maintaining the sorted order. The range must be sorted
+ * according to the same comparison function `comp`.
+ *
+ * @param base Pointer to the start of the sorted array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to be inserted.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return Pointer to the first position where `val` can be inserted without violating the order.
+ */
 void *algorithm_lower_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     size_t low = 0;
     size_t high = num;
@@ -377,6 +652,22 @@ void *algorithm_lower_bound(const void *base, size_t num, size_t size, const voi
     return (void *)((const char *)base + low * size);
 }
 
+/**
+ * @brief Finds the first position in a sorted range where a value is greater than a specified value.
+ *
+ * This function performs a binary search on a sorted range `[base, base + num * size)` to find the first
+ * position where the elements are greater than `val`. The range must be sorted according to the same comparison function `comp`.
+ *
+ * @param base Pointer to the start of the sorted array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to compare against.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return Pointer to the first position where elements are greater than `val`.
+ */
 void *algorithm_upper_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     size_t low = 0;
     size_t high = num;
@@ -395,6 +686,15 @@ void *algorithm_upper_bound(const void *base, size_t num, size_t size, const voi
     return (void *)((const char *)base + low * size);
 }
 
+/**
+ * @brief Transforms each element in an array and stores the result in another array.
+ *
+ * @param base Pointer to the start of the input array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the output array where the results will be stored.
+ * @param op Transformation function to apply to each element.
+ */
 void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op) {
     const char *input_ptr = (const char *)base;
     char *output_ptr = (char *)result;
@@ -404,6 +704,20 @@ void algorithm_transform(const void *base, size_t num, size_t size, void *result
     }
 }
 
+/**
+ * @brief Reduces a range of elements to a single value using a specified binary operation.
+ *
+ * This function applies the binary operation `op` to each element in the range `[base, base + num * size)`
+ * and accumulates the result, starting with the initial value `init`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param init Pointer to the initial value, which is also used to store the accumulated result.
+ * @param op Binary operation function that takes two arguments: the accumulated result and the current element.
+ * 
+ * @return Pointer to the accumulated result (same as `init`).
+ */
 void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op) {
     const char *ptr = (const char *)base;
     char *result = (char *)init;
@@ -414,6 +728,21 @@ void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, Re
     return result;
 }
 
+/**
+ * @brief Removes consecutive duplicate elements from a sorted array.
+ *
+ * This function removes consecutive duplicate elements from a sorted array `base` as determined
+ * by the comparison function `comp`. The array must be sorted before calling this function.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return The number of unique elements remaining in the array.
+ */
 size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp) {
     if (num == 0) {
         return 0;
@@ -435,6 +764,22 @@ size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp) {
     return uniqueCount;
 }
 
+/**
+ * @brief Checks if two ranges are equal.
+ *
+ * This function compares two ranges `[base1, base1 + num1 * size1)` and `[base2, base2 + num2 * size2)`
+ * to determine if they contain the same elements in the same order, as determined by the comparison function `comp`.
+ *
+ * @param base1 Pointer to the start of the first array.
+ * @param num1 Number of elements in the first array.
+ * @param size1 Size of each element in the first array in bytes.
+ * @param base2 Pointer to the start of the second array.
+ * @param num2 Number of elements in the second array.
+ * @param size2 Size of each element in the second array in bytes.
+ * @param comp Comparison function used to compare elements.It should return 0 if the elements are equal, and a non-zero value otherwise.
+ * 
+ * @return `true` if the two ranges are equal, `false` otherwise.
+ */
 bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, 
                      CompareFunc comp) {
     // If the number of elements or sizes differ, the ranges are not equal
@@ -454,6 +799,21 @@ bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *b
     return true;
 }
 
+/**
+ * @brief Generates the next lexicographical permutation of a range.
+ *
+ * This function rearranges the elements in the range `[first, last)` into the next lexicographical
+ * permutation, as determined by the comparison function `comp`. If such a permutation is not possible,
+ * the range is rearranged into the smallest lexicographical order (sorted in ascending order).
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to one past the end of the range.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return `true` if the first element is less than the second, `false` otherwise.
+ * 
+ * @return `true` if the next permutation was generated, `false` if the range was reset to the smallest permutation.
+ */
 bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp) {
     if (first == last) {
         return false;
@@ -483,6 +843,21 @@ bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFun
     return false; // This should not be reached
 }
 
+/**
+ * @brief Generates the previous lexicographical permutation of a range.
+ *
+ * This function rearranges the elements in the range `[first, last)` into the previous lexicographical
+ * permutation, as determined by the comparison function `comp`. If such a permutation is not possible,
+ * the range is rearranged into the largest lexicographical order (sorted in descending order).
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to one past the end of the range.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements.
+ * It should return `true` if the first element is less than the second, `false` otherwise.
+ * 
+ * @return `true` if the previous permutation was generated, `false` if the range was reset to the largest permutation.
+ */
 bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp) {
     if (first == last) {
         return false;
@@ -511,6 +886,19 @@ bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFun
     return false;
 }
 
+/**
+ * @brief Partitions a range of elements based on a predicate function.
+ *
+ * This function rearranges the elements in the range `[base, base + num * size)` so that all elements
+ * for which the predicate function `pred` returns `true` appear before those for which it returns `false`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param pred Predicate function that returns `true` for elements that should appear before others.
+ * 
+ * @return Pointer to the first element in the second group (where `pred` returns `false`).
+ */
 void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     char *first = (char *)base;
     char *last = first + num * size;
@@ -533,6 +921,14 @@ void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc
     return first;
 }
 
+/**
+ * @brief Generates values for a range using a generator function.
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to the end of the range.
+ * @param size Size of each element in bytes.
+ * @param gen Generator function that produces values.
+ */
 void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen) {
     char *current = (char *)first;
     while (current != last) {
@@ -541,6 +937,14 @@ void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen)
     }
 }
 
+/**
+ * @brief Generates values for the first n elements of a range using a generator function.
+ *
+ * @param first Pointer to the start of the range.
+ * @param n Number of elements to generate.
+ * @param size Size of each element in bytes.
+ * @param gen Generator function that produces values.
+ */
 void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen) {
     char *current = (char *)first;
     for (size_t i = 0; i < n; ++i) {
@@ -549,6 +953,14 @@ void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen)
     }
 }
 
+/**
+ * @brief Copies a range of elements in reverse order.
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to the end of the range.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the destination array where elements will be copied.
+ */
 void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result) {
     const char *src = (const char *)last;
     char *dest = (char *)result;
@@ -560,6 +972,15 @@ void algorithm_copy_backward(const void *first, const void *last, size_t size, v
     }
 }
 
+/**
+ * @brief Copies elements from a source array to a destination array if they satisfy a predicate function.
+ *
+ * @param first Pointer to the start of the source array.
+ * @param last Pointer to the end of the source array.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the destination array.
+ * @param pred Predicate function that determines if an element should be copied.
+ */
 void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred) {
     const char *src = (const char *)first;
     char *dest = (char *)result;
@@ -573,6 +994,14 @@ void algorithm_copy_if(const void *first, const void *last, size_t size, void *r
     }
 }
 
+/**
+ * @brief Copies the first n elements from a source array to a destination array.
+ *
+ * @param first Pointer to the start of the source array.
+ * @param n Number of elements to copy.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the destination array.
+ */
 void algorithm_copy_n(const void *first, size_t n, size_t size, void *result) {
     const char *src = (const char *)first;
     char *dest = (char *)result;
@@ -584,6 +1013,25 @@ void algorithm_copy_n(const void *first, size_t n, size_t size, void *result) {
     }
 }
 
+/**
+ * @brief Finds the range of elements that are equal to a specified value in a sorted range.
+ *
+ * This function returns a `Pair` representing the range of elements in the sorted array `base`
+ * that are equal to the value `val`, as determined by the comparison function `comp`. The
+ * `first` element in the `Pair` is the first element in the range, and the `second` element
+ * is one past the last element in the range.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to search for.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return A `Pair` representing the range of elements equal to `val`.
+ *         `first` points to the first element in the range, and `second` points to one past the last element.
+ */
 Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     Pair range;
     range.first = algorithm_lower_bound(base, num, size, val, comp);
@@ -591,6 +1039,24 @@ Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void
     return range;
 }
 
+/**
+ * @brief Determines if a sorted range includes all the elements of another sorted range.
+ *
+ * This function checks if all elements of the sorted range `[first2, first2 + num2)` are contained
+ * within the sorted range `[first1, first1 + num1)` as determined by the comparison function `comp`.
+ *
+ * @param first1 Pointer to the start of the first sorted array.
+ * @param num1 Number of elements in the first array.
+ * @param size1 Size of each element in the first array.
+ * @param first2 Pointer to the start of the second sorted array.
+ * @param num2 Number of elements in the second array.
+ * @param size2 Size of each element in the second array.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return `true` if all elements of the second range are contained within the first range, `false` otherwise.
+ */
 bool algorithm_includes(const void *first1, size_t num1, size_t size1, const void *first2, size_t num2, size_t size2, 
                         CompareFunc comp) {
     const char *ptr1 = (const char *)first1;
@@ -610,6 +1076,23 @@ bool algorithm_includes(const void *first1, size_t num1, size_t size1, const voi
     return true;
 }
 
+/**
+ * @brief Copies unique elements from a sorted range to a new range.
+ *
+ * This function copies unique elements from the sorted array `first` to the array `result`,
+ * as determined by the comparison function `comp`. Elements that are equal (according to `comp`)
+ * are only copied once.
+ *
+ * @param first Pointer to the start of the sorted array.
+ * @param num Number of elements in the source array.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the start of the destination array.
+ * @param comp Comparison function used to compare elements.
+ * It should return a negative value if the first element is less than the second,
+ * zero if they are equal, and a positive value if the first element is greater than the second.
+ * 
+ * @return The number of unique elements copied to the destination array.
+ */
 size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp) {
     if (num == 0) {
         return 0;
@@ -629,6 +1112,13 @@ size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *r
     return count;
 }
 
+/**
+ * @brief Swaps the values of two elements.
+ *
+ * @param a Pointer to the first element.
+ * @param b Pointer to the second element.
+ * @param size Size of each element in bytes.
+ */
 void algorithm_swap(void *a, void *b, size_t size) {
     void *temp = malloc(size);
     if (!temp) {
@@ -643,6 +1133,14 @@ void algorithm_swap(void *a, void *b, size_t size) {
     free(temp);
 }
 
+/**
+ * @brief Swaps ranges of elements between two arrays.
+ *
+ * @param first1 Pointer to the start of the first array.
+ * @param first2 Pointer to the start of the second array.
+ * @param num Number of elements to swap.
+ * @param size Size of each element in bytes.
+ */
 void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size) {
     char *ptr1 = (char *)first1;
     char *ptr2 = (char *)first2;
@@ -652,6 +1150,21 @@ void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size) 
     }
 }
 
+/**
+ * @brief Checks if the elements in a range are sorted in non-decreasing order.
+ *
+ * This function determines whether the elements in the array pointed to by `base` are sorted
+ * in non-decreasing order, as defined by the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements. It should return a negative value
+ *             if the first element is less than the second, zero if they are equal, and a positive
+ *             value if the first element is greater than the second.
+ * 
+ * @return `true` if the elements are sorted in non-decreasing order, `false` otherwise.
+ */
 bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp) {
     if (num < 2) {
         return true; // A range with less than two elements is always sorted.
@@ -666,6 +1179,23 @@ bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc 
     return true; // All elements are in sorted order.
 }
 
+/**
+ * @brief Finds the first position in a range where the elements are no longer sorted.
+ *
+ * This function searches through the array pointed to by `base` and finds the first element
+ * where the sequence is no longer sorted in non-decreasing order, as defined by the comparison
+ * function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements. It should return a negative value
+ *             if the first element is less than the second, zero if they are equal, and a positive
+ *             value if the first element is greater than the second.
+ * 
+ * @return Pointer to the first element where the sequence is no longer sorted.
+ *         If the entire range is sorted, returns a pointer to the end of the array (i.e., `base + num * size`).
+ */
 void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp) {
     if (num < 2) {
         return (void *)((char *)base + num * size); // Entire range is sorted
@@ -680,6 +1210,14 @@ void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, Compa
     return (void *)((char *)base + num * size); // Entire range is sorted
 }
 
+/**
+ * @brief Rotates elements in a range.
+ *
+ * @param first Pointer to the start of the range.
+ * @param middle Pointer to the middle of the range.
+ * @param last Pointer to the end of the range.
+ * @param size Size of each element in bytes.
+ */
 void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
     char *next = (char *)middle;
 
@@ -697,6 +1235,15 @@ void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
     }
 }
 
+/**
+ * @brief Rotates elements in a range and copies them to a destination array.
+ *
+ * @param first Pointer to the start of the range.
+ * @param middle Pointer to the middle of the range.
+ * @param last Pointer to the end of the range.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the destination array.
+ */
 void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result) {
     const char *first_ptr = (const char *)first;
     const char *middle_ptr = (const char *)middle;
@@ -718,6 +1265,17 @@ void algorithm_rotate_copy(const void *first, const void *middle, const void *la
     }
 }
 
+/**
+ * @brief Merges two sorted arrays into a single sorted array.
+ *
+ * @param base1 Pointer to the first sorted array.
+ * @param num1 Number of elements in the first array.
+ * @param base2 Pointer to the second sorted array.
+ * @param num2 Number of elements in the second array.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the array where the merged result will be stored.
+ * @param comp Comparison function used to order the elements.
+ */
 void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t num2, size_t size, void *result, CompareFunc comp) {
     size_t i = 0, j = 0, k = 0;
     const char *a = (const char *)base1;
@@ -749,6 +1307,15 @@ void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t n
     }
 }
 
+/**
+ * @brief Merges two sorted halves of an array in place.
+ *
+ * @param base Pointer to the start of the array.
+ * @param middle Index of the middle element.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to order the elements.
+ */
 void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size, CompareFunc comp) {
     size_t i = 0, j = middle, k;
     char *arr = (char *)base;
@@ -771,6 +1338,20 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
     }
 }
 
+/**
+ * @brief Finds the first occurrence of two consecutive elements that are equal.
+ *
+ * This function searches through the array pointed to by `base` and finds the first pair of consecutive 
+ * elements that are equal, as determined by the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param comp Comparison function used to compare elements.
+ * 
+ * @return Pointer to the first element of the first pair of consecutive equal elements found.
+ * If no such pair is found, returns `NULL`.
+ */
 void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp) {
     const char *ptr = (const char *)base;
     for (size_t i = 0; i < num - 1; ++i) {
@@ -781,6 +1362,25 @@ void *algorithm_adjacent_find(const void *base, size_t num, size_t size, Compare
     return NULL;
 }
 
+/**
+ * @brief Finds the first position where two ranges differ.
+ *
+ * This function compares two arrays element by element and returns the first position where the elements differ.
+ * The comparison is done using the comparison function `comp`.
+ *
+ * @param base1 Pointer to the start of the first array.
+ * @param num1 Number of elements in the first array.
+ * @param size1 Size of each element in the first array in bytes.
+ * @param base2 Pointer to the start of the second array.
+ * @param num2 Number of elements in the second array.
+ * @param size2 Size of each element in the second array in bytes.
+ * @param comp Comparison function used to compare elements between the arrays.
+ * 
+ * @return A Pair structure:
+ *      - `first`: Pointer to the first differing element in the first array.
+ *      - `second`: Pointer to the first differing element in the second array.
+ *      If the ranges are equal, both pointers in the Pair will be `NULL`.
+ */
 Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp) {
     const char *ptr1 = (const char *)base1;
     const char *ptr2 = (const char *)base2;
@@ -800,6 +1400,23 @@ Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void
     return mismatch;
 }
 
+/**
+ * @brief Checks if two arrays are permutations of each other.
+ *
+ * This function checks whether the elements of the two arrays `base1` and `base2` are permutations of each other. 
+ * It does so by ensuring that each element in `base1` has a corresponding element in `base2` and vice versa, 
+ * with all elements being matched exactly once.
+ *
+ * @param base1 Pointer to the first array.
+ * @param num1 Number of elements in the first array.
+ * @param size1 Size of each element in the first array in bytes.
+ * @param base2 Pointer to the second array.
+ * @param num2 Number of elements in the second array.
+ * @param size2 Size of each element in the second array in bytes.
+ * @param comp Comparison function used to compare elements between the arrays.
+ * 
+ * @return true if the arrays are permutations of each other; false otherwise.
+ */
 bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
     // Check if both arrays have the same number of elements
     if (num1 != num2 || size1 != size2) {
@@ -829,6 +1446,22 @@ bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, cons
     return true;
 }
 
+/**
+ * @brief Searches for the first occurrence of a sequence within another sequence.
+ *
+ * This function searches for the first occurrence of the sequence starting at `first2` and ending at `last2` 
+ * within the sequence starting at `first1` and ending at `last1`.
+ *
+ * @param first1 Pointer to the start of the first sequence.
+ * @param last1 Pointer to the end of the first sequence.
+ * @param size1 Size of each element in the first sequence in bytes.
+ * @param first2 Pointer to the start of the second sequence.
+ * @param last2 Pointer to the end of the second sequence.
+ * @param size2 Size of each element in the second sequence in bytes.
+ * @param comp Comparison function used to compare elements between the sequences.
+ * 
+ * @return Pointer to the first element of the first occurrence of `first2` within `first1`. If not found, returns `last1`.
+ */
 const void* algorithm_search(const void* first1, const void* last1, size_t size1,const void* first2, const void* last2, size_t size2, CompareFuncBool comp) {
     const char* ptr1 = (const char*)first1;
     const char* ptr2 = (const char*)first2;
@@ -857,6 +1490,21 @@ const void* algorithm_search(const void* first1, const void* last1, size_t size1
     return last1; // No match found
 }
 
+/**
+ * @brief Searches for a sequence of identical elements within a range.
+ *
+ * This function searches for the first occurrence of a sequence of `count` identical elements 
+ * (each element matching `val`) within the range `[first, last)`.
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to the end of the range.
+ * @param size Size of each element in bytes.
+ * @param count Number of consecutive elements to search for.
+ * @param val Pointer to the value that elements should match.
+ * @param comp Comparison function used to compare elements with the value.
+ * 
+ * @return Pointer to the first element of the found sequence. If not found, returns `last`.
+ */
 const void *algorithm_search_n(const void *first, const void* last, size_t size, size_t count, const void *val, CompareFuncBool comp) {
     const char* ptr = (const char*)first;
     const char* end = (const char*)last;
@@ -880,6 +1528,19 @@ const void *algorithm_search_n(const void *first, const void* last, size_t size,
     return last; // Subsequence not found
 }
 
+/**
+ * @brief Removes elements that match a specified value from an array.
+ *
+ * This function removes all elements from the array `base` that match the value pointed to by `val`, 
+ * as determined by the comparison function `comp`.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @param val Pointer to the value to remove from the array.
+ * @param comp Comparison function used to compare elements with the value.
+ * @return Pointer to the new end of the array, after removing the specified elements.
+ */
 void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     char *ptr = (char *)base;
     size_t new_num = 0;
@@ -895,6 +1556,16 @@ void *algorithm_remove(void *base, size_t num, size_t size, const void *val, Com
     return ptr + new_num * size; // Pointer to the new end of the array
 }
 
+/**
+ * @brief Copies elements from a source array to a destination array, excluding elements that match a given value.
+ *
+ * @param source Pointer to the source array.
+ * @param num Number of elements in the source array.
+ * @param size Size of each element in bytes.
+ * @param result Pointer to the destination array.
+ * @param val Pointer to the value to exclude.
+ * @param comp Comparison function used to compare elements with the value.
+ */
 void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp) {
     const char *src = (const char *)source;
     char *dst = (char *)result;

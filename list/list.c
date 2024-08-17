@@ -9,6 +9,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Creates a new list with the specified item size and comparison function.
+ *
+ * This function initializes a new list, allocating memory for it and setting up the head and tail pointers, size, and item size.
+ * The comparison function is used for operations like sorting and removing elements.
+ *
+ * @param itemSize The size of each item in the list, in bytes. Must be greater than 0.
+ * @param compare A function pointer used to compare items in the list. This can be NULL if no comparison is needed.
+ * 
+ * @return Pointer to the newly created list, or NULL if memory allocation fails.
+ */
 List *list_create(size_t itemSize, CompareFunction compare) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size must be greater than 0 in list_create.\n");
@@ -29,6 +40,15 @@ List *list_create(size_t itemSize, CompareFunction compare) {
     return list;
 }
 
+/**
+ * @brief Returns a pointer to the value at the front of the list.
+ *
+ * This function retrieves the value stored at the front of the list (the head node). If the list is empty or the list pointer is NULL,
+ * an error message is printed and NULL is returned.
+ *
+ * @param list Pointer to the list.
+ * @return Pointer to the value at the front of the list, or NULL if the list is empty or invalid.
+ */
 void *list_front(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_front.\n");
@@ -41,6 +61,15 @@ void *list_front(const List *list) {
     return list->head->value;
 }
 
+/**
+ * @brief Returns a pointer to the value at the back of the list.
+ *
+ * This function retrieves the value stored at the back of the list (the tail node). If the list is empty or the list pointer is NULL,
+ * an error message is printed and NULL is returned.
+ *
+ * @param list Pointer to the list.
+ * @return Pointer to the value at the back of the list, or NULL if the list is empty or invalid.
+ */
 void *list_back(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_back.\n");
@@ -53,6 +82,18 @@ void *list_back(const List *list) {
     return list->tail->value;
 }
 
+/**
+ * @brief Inserts a new element at the specified index in the list.
+ *
+ * This function inserts a new element at the specified index in the list. If the index is 0, the element is inserted at the front.
+ * If the index is equal to the size of the list, the element is inserted at the back. The function returns a pointer to the newly inserted value.
+ *
+ * @param list Pointer to the list in which the element will be inserted.
+ * @param index The index at which to insert the new element. Must be within the bounds of the list.
+ * @param value Pointer to the value to be inserted.
+ * 
+ * @return Pointer to the newly inserted value, or NULL if the operation fails.
+ */
 void *list_insert(List *list, size_t index, void *value) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_insert.\n");
@@ -101,6 +142,17 @@ void *list_insert(List *list, size_t index, void *value) {
     return newNode->value;
 }
 
+/**
+ * @brief Erases an element from the list at the specified index.
+ *
+ * This function removes the element at the specified index in the list. The removed element's memory is freed, and the list is updated accordingly.
+ * If the list becomes empty after the operation, both the head and tail pointers are set to NULL.
+ *
+ * @param list Pointer to the list from which the element will be erased.
+ * @param index The index of the element to remove. Must be within the bounds of the list
+ * 
+ * @return Pointer to the value of the removed element, or NULL if the operation fails.
+ */
 void *list_erase(List *list, size_t index) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_erase.\n");
@@ -147,6 +199,17 @@ void *list_erase(List *list, size_t index) {
     return removedValue;
 }
 
+
+/**
+ * @brief Resizes the list to the specified new size.
+ *
+ * This function changes the size of the list to the new size. If the new size is smaller than the current size, elements are removed from the back.
+ * If the new size is larger, new elements are added to the back, initialized with the provided default value or zero if no default is provided.
+ *
+ * @param list Pointer to the list to be resized.
+ * @param newSize The new size of the list.
+ * @param defaultValue Pointer to the value used to initialize new elements if the list is expanded. If NULL, new elements are zero-initialized.
+ */
 void list_resize(List *list, size_t newSize, void *defaultValue) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_resize.\n");
@@ -178,6 +241,14 @@ void list_resize(List *list, size_t newSize, void *defaultValue) {
     }
 }
 
+/**
+ * @brief Swaps the contents of two lists.
+ *
+ * This function exchanges the contents of two lists, including their elements, sizes, and item sizes. After the swap, the two lists retain their original memory addresses but have swapped contents.
+ *
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ */
 void list_swap(List *list1, List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_swap.\n");
@@ -200,6 +271,14 @@ void list_swap(List *list1, List *list2) {
     list2->itemSize = tempItemSize;
 }
 
+/**
+ * @brief Reverses the order of elements in the list.
+ *
+ * This function reverses the order of all elements in the list. The head becomes the tail, and the tail becomes the head. 
+ * The operation is performed in-place, modifying the original list.
+ *
+ * @param list Pointer to the list to be reversed.
+ */
 void list_reverse(List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_reverse.\n");
@@ -225,6 +304,15 @@ void list_reverse(List *list) {
     list->tail = temp;
 }
 
+/**
+ * @brief Sorts the elements of the list in ascending order.
+ *
+ * This function sorts the elements of the list in ascending order based on the comparison function provided during
+ * the list's creation. It uses a simple bubble sort algorithm, which repeatedly swaps adjacent elements if they are in the wrong order.
+ * The sorting is done in-place, modifying the original list.
+ *
+ * @param list Pointer to the list to be sorted.
+ */
 void list_sort(List* list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_sort.\n");
@@ -253,6 +341,15 @@ void list_sort(List* list) {
     } while (swapped);
 }
 
+/**
+ * @brief Adds a new element to the front of the list.
+ *
+ * This function creates a new node and adds it to the front of the list. The new node contains a copy of the provided value.
+ * If the list is empty, the new node becomes both the head and the tail of the list.
+ *
+ * @param list Pointer to the list to which the element will be added.
+ * @param value Pointer to the value to be added to the front of the list.
+ */
 void list_push_front(List *list, void *value) {
     if (list == NULL || value == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_front.\n");
@@ -287,6 +384,15 @@ void list_push_front(List *list, void *value) {
     list->size++;
 }
 
+/**
+ * @brief Adds a new element to the back of the list.
+ *
+ * This function creates a new node and adds it to the back of the list. The new node contains a copy of the provided value.
+ * If the list is empty, the new node becomes both the head and the tail of the list.
+ *
+ * @param list Pointer to the list to which the element will be added.
+ * @param value Pointer to the value to be added to the back of the list.
+ */
 void list_push_back(List *list, void *value) {
     if (list == NULL || value == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_back.\n");
@@ -320,6 +426,14 @@ void list_push_back(List *list, void *value) {
     list->size++;
 }
 
+/**
+ * @brief Removes the first element from the list.
+ *
+ * This function removes the first element from the list. If the list is empty, it returns without performing any operation.
+ * The memory associated with the removed element is freed.
+ *
+ * @param list Pointer to the list from which the element will be removed.
+ */
 void list_pop_front(List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_front.\n");
@@ -345,6 +459,15 @@ void list_pop_front(List *list) {
     list->size--;
 }
 
+/**
+ * @brief Removes the last element from the list.
+ *
+ * This function removes the last element from the list. If the list is empty, it returns without 
+ * performing any operation. If the list contains only one element, it removes that element and sets 
+ * both the head and tail to NULL.
+ * 
+ * @param list Pointer to the list.
+ */
 void list_pop_back(List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_back.\n");
@@ -372,6 +495,14 @@ void list_pop_back(List *list) {
     list->size--;
 }
 
+/**
+ * @brief Clears all elements from the list.
+ *
+ * This function removes all elements from the list and frees the memory associated with each node 
+ * and its value. After this operation, the list is empty.
+ * 
+ * @param list Pointer to the list.
+ */
 void list_clear(List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_clear.\n");
@@ -389,14 +520,40 @@ void list_clear(List *list) {
     list->size = 0;
 }
 
+/**
+ * @brief Checks if the list is empty.
+ *
+ * This function checks whether the list contains any elements. It returns true if the list is empty, 
+ * and false otherwise.
+ * 
+ * @param list Pointer to the list.
+ * 
+ * @return bool True if the list is empty, false otherwise.
+ */
 bool list_empty(const List *list) {
     return list->head == NULL;
 }
 
+/**
+ * @brief Returns the number of elements in the list.
+ *
+ * This function returns the number of elements currently stored in the list.
+ * 
+ * @param list Pointer to the list.
+ * @return size_t The number of elements in the list.
+ */
 size_t list_length(const List *list) {
     return list->size;
 }
 
+/**
+ * @brief Deallocates the list and frees all associated memory.
+ *
+ * This function clears all elements from the list and frees the memory associated with the list itself.
+ * After calling this function, the list pointer should not be used unless it is reinitialized.
+ * 
+ * @param list Pointer to the list.
+ */
 void list_deallocate(List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_deallocate.\n");
@@ -406,6 +563,16 @@ void list_deallocate(List *list) {
     free(list);
 }
 
+/**
+ * @brief Returns an iterator to the first element of the list.
+ *
+ * This function returns a pointer to the first element in the list. If the list is empty, 
+ * it returns NULL.
+ * 
+ * @param list Pointer to the list.
+ * 
+ * @return Node* Pointer to the first element of the list, or NULL if the list is empty.
+ */
 Node *list_begin(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_begin.\n");
@@ -414,6 +581,16 @@ Node *list_begin(const List *list) {
     return list->head;
 }
 
+/**
+ * @brief Returns an iterator to the element following the last element of the list.
+ *
+ * This function returns a pointer to the element following the last element in the list. 
+ * Since the end of a singly linked list is represented by NULL, this function always returns NULL.
+ * 
+ * @param list Pointer to the list.
+ * 
+ * @return Node* Pointer to the end of the list (NULL).
+ */
 Node *list_end(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_end.\n");
@@ -422,6 +599,15 @@ Node *list_end(const List *list) {
     return NULL; // In a singly linked list, the end is represented by NULL
 }
 
+/**
+ * @brief Returns a reverse iterator to the last element of the list.
+ *
+ * This function returns a pointer to the last element in the list. It is useful for iterating 
+ * over the list in reverse order.
+ * 
+ * @param list Pointer to the list.
+ * @return Node* Pointer to the last element of the list, or NULL if the list is empty.
+ */
 Node *list_rbegin(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rbegin.\n");
@@ -430,6 +616,15 @@ Node *list_rbegin(const List *list) {
     return list->tail;
 }
 
+/**
+ * @brief Returns a reverse iterator to the element preceding the first element of the list.
+ *
+ * This function returns a pointer to the element preceding the first element in the list. 
+ * Since the reverse end of a doubly linked list is represented by NULL, this function always returns NULL.
+ * 
+ * @param list Pointer to the list.
+ * @return Node* Pointer to the reverse end of the list (NULL).
+ */
 Node *list_rend(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rend.\n");
@@ -438,6 +633,15 @@ Node *list_rend(const List *list) {
     return NULL;  // In a doubly linked list, the end is still represented by NULL
 }
 
+/**
+ * @brief Returns a constant iterator to the first element of the list.
+ *
+ * This function returns a constant pointer to the first element in the list. If the list is empty, 
+ * it returns NULL.
+ * 
+ * @param list Pointer to the list.
+ * @return const Node* Constant pointer to the first element of the list, or NULL if the list is empty.
+ */
 const Node *list_cbegin(const List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cbegin.\n");
@@ -446,6 +650,15 @@ const Node *list_cbegin(const List *list) {
     return list->head;
 }
 
+/**
+ * @brief Returns a constant iterator to the end of the list.
+ *
+ * This function returns a constant iterator (pointer) to the element following the last element 
+ * in the list. Since the end is represented by NULL, this function will always return NULL.
+ * 
+ * @param list Pointer to the list.
+ * @return const Node* Constant iterator pointing to the end of the list (NULL).
+ */
 const Node *list_cend(const List* list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cend.\n");
@@ -454,6 +667,15 @@ const Node *list_cend(const List* list) {
     return NULL;
 }
 
+/**
+ * @brief Returns a constant reverse iterator to the last element of the list.
+ *
+ * This function returns a constant reverse iterator (pointer) to the last element in the list. 
+ * It is useful for iterating over the list in reverse order.
+ * 
+ * @param list Pointer to the list.
+ * @return const Node* Constant reverse iterator pointing to the last element of the list.
+ */
 const Node *list_crbegin(const List* list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crbegin.\n");
@@ -462,6 +684,15 @@ const Node *list_crbegin(const List* list) {
     return list->tail;
 }
 
+/**
+ * @brief Returns a constant reverse iterator to the theoretical element preceding the first element of the list.
+ *
+ * This function returns a constant reverse iterator (pointer) to the element preceding the first element 
+ * in the list. Since the reverse end is represented by NULL, this function will always return NULL.
+ * 
+ * @param list Pointer to the list.
+ * @return const Node* Constant reverse iterator pointing to the theoretical element before the first element of the list (NULL).
+ */
 const Node *list_crend(const List* list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crend.\n");
@@ -470,6 +701,16 @@ const Node *list_crend(const List* list) {
     return NULL;
 }
 
+/**
+ * @brief Assigns values to the list from an array.
+ *
+ * This function assigns values from a given array to the list, replacing its current contents. 
+ * The list is cleared before the new values are inserted.
+ * 
+ * @param list Pointer to the list.
+ * @param values Pointer to the array of values to be assigned to the list.
+ * @param numValues Number of values in the array.
+ */
 void list_assign(List *list, void *values, size_t numValues) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_assign.\n");
@@ -488,6 +729,16 @@ void list_assign(List *list, void *values, size_t numValues) {
     }
 }
 
+/**
+ * @brief Inserts an element at the front of the list without copying.
+ *
+ * This function inserts an element at the front of the list by directly using the provided value 
+ * without making a copy. The list takes ownership of the value, and it should not be modified 
+ * by the caller after this operation.
+ * 
+ * @param list Pointer to the list.
+ * @param value Pointer to the value to be inserted.
+ */
 void list_emplace_front(List *list, void *value) {
     if (list == NULL || value == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_front.\n");
@@ -513,6 +764,16 @@ void list_emplace_front(List *list, void *value) {
     list->size++;
 }
 
+/**
+ * @brief Inserts an element at the back of the list without copying.
+ *
+ * This function inserts an element at the back of the list by directly using the provided value 
+ * without making a copy. The list takes ownership of the value, and it should not be modified 
+ * by the caller after this operation.
+ * 
+ * @param list Pointer to the list.
+ * @param value Pointer to the value to be inserted.
+ */
 void list_emplace_back(List *list, void *value) {
     if (list == NULL || value == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_back.\n");
@@ -538,6 +799,17 @@ void list_emplace_back(List *list, void *value) {
     list->size++;
 }
 
+/**
+ * @brief Splices elements from one list into another at a specified position.
+ * 
+ * This function moves the entire content of the source list (`src`) into the destination list (`dest`) at the 
+ * specified position (`pos`). The source list will be empty after the operation. If `pos` is NULL, 
+ * the elements are inserted at the end of the destination list.
+ * 
+ * @param dest Pointer to the destination list where elements will be spliced in.
+ * @param src Pointer to the source list from which elements will be moved.
+ * @param pos Pointer to the node in the destination list before which the source list will be inserted.
+ */
 void list_splice(List *dest, List *src, Node *pos) {
     if (dest == NULL || src == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_splice.\n");
@@ -582,6 +854,15 @@ void list_splice(List *dest, List *src, Node *pos) {
     src->size = 0;
 }
 
+/**
+ * @brief Removes elements equal to a specified value from the list.
+ * 
+ * This function removes all elements in the list that are equal to the given value, as determined by 
+ * the comparison function provided during list creation. The memory for the removed elements is freed.
+ * 
+ * @param list Pointer to the list from which elements will be removed.
+ * @param value Pointer to the value to compare against when removing elements.
+ */
 void list_remove(List *list, void *value) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove.\n");
@@ -623,6 +904,15 @@ void list_remove(List *list, void *value) {
     }
 }
 
+/**
+ * @brief Removes elements from the list that satisfy a given condition.
+ * 
+ * This function iterates through the list and removes all elements for which the condition function (`cond`) 
+ * returns true. The memory for the removed elements is freed.
+ * 
+ * @param list Pointer to the list from which elements will be removed.
+ * @param cond Function pointer to the condition function that determines whether an element should be removed.
+ */
 void list_remove_if(List *list, ConditionFunction cond) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove_if.\n");
@@ -658,6 +948,15 @@ void list_remove_if(List *list, ConditionFunction cond) {
     }
 }
 
+/**
+ * @brief Removes consecutive duplicate elements from the list.
+ * 
+ * This function iterates through the list and removes consecutive elements that are equal 
+ * according to the comparison function provided during list creation. 
+ * It ensures that only unique elements remain in the list.
+ * 
+ * @param list Pointer to the list from which to remove duplicates.
+ */
 void list_unique(List *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in list_unique.\n");
@@ -694,6 +993,16 @@ void list_unique(List *list) {
     }
 }
 
+/**
+ * @brief Merges two sorted lists into the first list, maintaining sort order.
+ * 
+ * This function merges the second list into the first list. Both lists must be sorted before 
+ * calling this function. The resulting list will contain all elements from both lists, 
+ * sorted in non-decreasing order. The second list will be empty after the merge.
+ * 
+ * @param list1 Pointer to the first list, which will contain the merged elements.
+ * @param list2 Pointer to the second list, which will be emptied after the merge.
+ */
 void list_merge(List *list1, List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_merge.\n");
@@ -751,6 +1060,18 @@ void list_merge(List *list1, List *list2) {
     list2->size = 0;
 }
 
+/**
+ * @brief Checks if the first list is lexicographically less than the second list.
+ * 
+ * This function compares two lists element by element. It returns true if the first list 
+ * is lexicographically less than the second list, and false otherwise. If the lists are of 
+ * different lengths, the shorter list is considered smaller.
+ * 
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ * 
+ * @return true if list1 is less than list2, false otherwise.
+ */
 bool list_is_less(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less.\n");
@@ -775,6 +1096,14 @@ bool list_is_less(const List *list1, const List *list2) {
     return false; // Lists are equal
 }
 
+/**
+ * @brief Checks if the first list is lexicographically greater than the second list.
+ * 
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ * 
+ * @return true if list1 is greater than list2, false otherwise.
+ */
 bool list_is_greater(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater.\n");
@@ -783,6 +1112,15 @@ bool list_is_greater(const List *list1, const List *list2) {
     return list_is_less(list2, list1);
 }
 
+
+/**
+ * @brief Checks if two lists are lexicographically equal.
+ * 
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ * 
+ * @return true if both lists are equal, false otherwise.
+ */
 bool list_is_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_equal.\n");
@@ -805,6 +1143,14 @@ bool list_is_equal(const List *list1, const List *list2) {
     return true;
 }
 
+/**
+ * @brief Checks if the first list is lexicographically less than or equal to the second list.
+ * 
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ * 
+ * @return true if list1 is less than or equal to list2, false otherwise.
+ */
 bool list_is_less_or_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less_or_equal.\n");
@@ -813,6 +1159,14 @@ bool list_is_less_or_equal(const List *list1, const List *list2) {
     return list_is_less(list1, list2) || list_is_equal(list1, list2);
 }
 
+/**
+ * @brief Checks if the first list is lexicographically greater than or equal to the second list.
+ * 
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ * 
+ * @return true if list1 is greater than or equal to list2, false otherwise.
+ */
 bool list_is_greater_or_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater_or_equal.\n");
@@ -821,6 +1175,14 @@ bool list_is_greater_or_equal(const List *list1, const List *list2) {
     return list_is_greater(list1, list2) || list_is_equal(list1, list2);
 }
 
+/**
+ * @brief Checks if two lists are not lexicographically equal.
+ * 
+ * @param list1 Pointer to the first list.
+ * @param list2 Pointer to the second list.
+ * 
+ * @return true if the lists are not equal, false if they are equal.
+ */
 bool list_is_not_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_not_equal.\n");

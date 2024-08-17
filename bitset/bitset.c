@@ -9,7 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+/**
+ * @brief Creates a new Bitset with the specified number of bits.
+ *
+ * Allocates memory for a Bitset structure and its internal bit array, initializing all bits to 0.
+ *
+ * @param num_bits The number of bits the bitset should contain.
+ * @return Pointer to the newly created Bitset, or NULL if memory allocation fails.
+ */
 Bitset* bitset_create(size_t num_bits) {
     Bitset* bs = (Bitset*)malloc(sizeof(Bitset));
     if (!bs) {
@@ -32,6 +39,13 @@ Bitset* bitset_create(size_t num_bits) {
     return bs;
 }
 
+/**
+ * @brief Deallocates memory associated with a Bitset.
+ *
+ * Frees the memory allocated for the Bitset structure and its internal bit array.
+ *
+ * @param bs Pointer to the Bitset to be deallocated.
+ */
 void bitset_deallocate(Bitset *bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Warning: Null pointer passed to bitset_deallocate. No action taken.\n");
@@ -41,6 +55,13 @@ void bitset_deallocate(Bitset *bs) {
     free(bs);
 }
 
+/**
+ * @brief Prints the Bitset to the standard output.
+ *
+ * Outputs the bits in the Bitset in a human-readable format, with the most significant bit on the left.
+ *
+ * @param bs Pointer to the Bitset to print.
+ */
 void bitset_print(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Warning: Null pointer passed to bitset_print. No action taken.\n");
@@ -53,6 +74,14 @@ void bitset_print(const Bitset* bs) {
     fmt_printf("\n");
 }
 
+/**
+ * @brief Sets the Bitset's bits from a string representation.
+ *
+ * Converts a string of '0's and '1's into corresponding bits in the Bitset, starting from the least significant bit.
+ *
+ * @param bs Pointer to the Bitset to modify.
+ * @param str String of '0's and '1's representing the desired bit pattern.
+ */
 void bitset_set_from_string(Bitset* bs, const char* str) {
     if (!bs || !str) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_set_from_string.\n");
@@ -83,6 +112,15 @@ void bitset_set_from_string(Bitset* bs, const char* str) {
     }
 }
 
+/**
+ * @brief Tests whether a specific bit is set in the Bitset.
+ *
+ * Checks if the bit at the specified position in the Bitset is set to 1.
+ *
+ * @param bs Pointer to the Bitset.
+ * @param pos The position of the bit to test.
+ * @return true if the bit is set, false otherwise.
+ */
 bool bitset_test(const Bitset *bs, size_t pos) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_test function.\n");
@@ -99,6 +137,17 @@ bool bitset_test(const Bitset *bs, size_t pos) {
     return (bs->bits[byte_index] & (1 << bit_index)) != 0; // Use bitwise AND to test if the bit is set
 }
 
+/**
+ * @brief Sets or clears a specific bit in the Bitset.
+ *
+ * Modifies the bit at the specified position in the Bitset, setting it to the specified value.
+ *
+ * @param bs Pointer to the Bitset.
+ * @param pos The position of the bit to modify.
+ * @param value The value to set the bit to (true for 1, false for 0).
+ * 
+ * @return Pointer to the modified Bitset.
+ */
 Bitset* bitset_set(Bitset* bs, size_t pos, bool value) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_set function.\n");
@@ -120,7 +169,15 @@ Bitset* bitset_set(Bitset* bs, size_t pos, bool value) {
     return bs;
 }
 
-// Clears the bit at the specified position
+/**
+ * @brief Clears the bit at the specified position in the Bitset.
+ *
+ * Sets the bit at the specified position in the Bitset to 0.
+ *
+ * @param bs Pointer to the Bitset.
+ * @param pos The position of the bit to clear.
+ * @return Pointer to the modified Bitset.
+ */
 Bitset* bitset_reset(Bitset* bs, size_t pos) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_reset function.\n");
@@ -137,7 +194,14 @@ Bitset* bitset_reset(Bitset* bs, size_t pos) {
     return bs;
 }
 
-// Flips all bits in the bitset
+/**
+ * @brief Flips all bits in the Bitset.
+ *
+ * Inverts every bit in the Bitset, turning 1s to 0s and 0s to 1s.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return Pointer to the modified Bitset.
+ */
 Bitset* bitset_flip_all(Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_flip_all function.\n");
@@ -151,6 +215,15 @@ Bitset* bitset_flip_all(Bitset* bs) {
     return bs;
 }
 
+/**
+ * @brief Flips a specific bit in the Bitset.
+ *
+ * Inverts the bit at the specified position in the Bitset, turning a 1 to 0 or a 0 to 1.
+ *
+ * @param bs Pointer to the Bitset.
+ * @param pos The position of the bit to flip.
+ * @return Pointer to the modified Bitset.
+ */
 Bitset* bitset_flip(Bitset* bs, size_t pos) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_flip function.\n");
@@ -169,7 +242,14 @@ Bitset* bitset_flip(Bitset* bs, size_t pos) {
     return bs;
 }
 
-// Checks if all bits in the bitset are set
+/**
+ * @brief Checks if all bits in the Bitset are set.
+ *
+ * Returns true if all bits in the Bitset are set to 1.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return true if all bits are set, false otherwise.
+ */
 bool bitset_all(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_all function.\n");
@@ -184,7 +264,14 @@ bool bitset_all(const Bitset* bs) {
     return true;
 }
 
-// Checks if any bit in the bitset is set
+/**
+ * @brief Checks if any bit in the Bitset is set.
+ *
+ * Returns true if at least one bit in the Bitset is set to 1.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return true if any bit is set, false otherwise.
+ */
 bool bitset_any(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_any function.\n");
@@ -199,7 +286,14 @@ bool bitset_any(const Bitset* bs) {
     return false;
 }
 
-// Checks if none of the bits in the bitset are set
+/**
+ * @brief Checks if none of the bits in the Bitset are set.
+ *
+ * Returns true if none of the bits in the Bitset are set to 1.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return true if no bits are set, false otherwise.
+ */
 bool bitset_none(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_none function.\n");
@@ -214,8 +308,14 @@ bool bitset_none(const Bitset* bs) {
     return true;
 }
 
-
-// Counts the number of set bits in the bitset
+/**
+ * @brief Counts the number of set bits in the Bitset.
+ *
+ * Returns the total number of bits in the Bitset that are set to 1.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return The number of set bits.
+ */
 size_t bitset_count(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_count function.\n");
@@ -232,11 +332,26 @@ size_t bitset_count(const Bitset* bs) {
 }
 
 
-// Returns the size of the bitset
+/**
+ * @brief Returns the size of the Bitset.
+ *
+ * Gets the number of bits contained in the Bitset.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return The size of the Bitset (number of bits).
+ */
 size_t bitset_size(const Bitset* bs) {
     return bs ? bs->size : 0;
 }
 
+/**
+ * @brief Converts the Bitset to an unsigned long.
+ *
+ * Converts the Bitset's bits to an unsigned long, with the least significant bit at position 0.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return The corresponding unsigned long value.
+ */
 unsigned long bitset_to_ulong(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_to_ulong function.\n");
@@ -255,6 +370,14 @@ unsigned long bitset_to_ulong(const Bitset* bs) {
     return value;
 }
 
+/**
+ * @brief Converts the Bitset to an unsigned long long.
+ *
+ * Converts the Bitset's bits to an unsigned long long, with the least significant bit at position 0.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return The corresponding unsigned long long value.
+ */
 unsigned long long bitset_to_ullong(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_to_ullong function.\n");
@@ -273,6 +396,14 @@ unsigned long long bitset_to_ullong(const Bitset* bs) {
     return value;
 }
 
+/**
+ * @brief Converts the Bitset to a string representation.
+ *
+ * Creates a string representation of the Bitset, with '1' representing set bits and '0' representing clear bits.
+ *
+ * @param bs Pointer to the Bitset.
+ * @return A dynamically allocated string containing the Bitset's bits, or NULL if memory allocation fails.
+ */
 char* bitset_to_string(const Bitset* bs) {
     if (!bs) {
         fmt_fprintf(stderr, "Error: Null pointer provided to bitset_to_string function.\n");

@@ -1,38 +1,38 @@
-#include "turtle/turtle.h"
-#include <math.h>
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
 
+int main() {
+    Postgres* pg = postgres_create();
 
-void draw_spiral(Turtle *state) {
-    static bool drawn = false;
+    if (pg) {
+        postgres_init(pg, "test", "postgres", "amin1375", "localhost", "5432");
 
-    if (!drawn) {
-        for (int i = 0; i < 360; i++) {
-            // Set the color based on the angle to create a gradient effect
-            int red = (int)(127 * (1 + cos(DEG2RAD * i)));
-            int green = (int)(127 * (1 + sin(DEG2RAD * i)));
-            int blue = 255 - red;
+        if (postgres_connect(pg)) {
+            fmt_printf("Connected to the database successfully.\n");
 
-            turtle_set_color(state, red, green, blue, 255);
-            turtle_forward(state, i * 0.5);
-            turtle_right(state, 59); 
+            const char* tableName = "cars";
+            const char* csvFilePath = "sources/pg_csv.csv";
+            const char* delimiter = ",";
+
+            if (postgres_copy_from_csv(pg, tableName, csvFilePath, delimiter)) {
+                fmt_printf("Data copied from CSV to table '%s' successfully.\n", tableName);
+            } 
+            else {
+                fmt_fprintf(stderr, "Failed to copy data from CSV to table '%s'.\n", tableName);
+            }
+
+            postgres_disconnect(pg);
+        } 
+        else {
+            fmt_fprintf(stderr, "Error: %s\n", postgres_get_last_error(pg));
         }
-        drawn = true;
+
+        postgres_deallocate(pg);
     }
-}
-
-int main(void) {
-    const int screenWidth = 800;
-    const int screenHeight = 600;
-
-    Turtle *state = turtle_create();
-    turtle_init_window(screenWidth, screenHeight, "Turtle Spiral Pattern Example");
-    turtle_set_fps(60);
-    turtle_set_speed(state, 5.0f);
-
-    turtle_done(state, draw_spiral);
-
-    turtle_deallocate(state);
-    turtle_close_window();
+    else {
+        fmt_fprintf(stderr, "Error: Unable to create postgres object.\n");
+    }
 
     return 0;
 }

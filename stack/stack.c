@@ -8,6 +8,17 @@
 #include "../fmt/fmt.h"
 #include <stdlib.h>
 
+/**
+ * @brief Creates a new stack.
+ *
+ * This function allocates memory for a new stack and initializes its underlying vector.
+ * If the allocation for the stack or the vector fails, it logs an error and exits the program.
+ *
+ * @param itemSize Size of each item that will be stored in the stack. This is used to initialize
+ * the underlying vector's item size.
+ * 
+ * @return Pointer to the newly created stack.
+ */
 Stack* stack_create(size_t itemSize) {
     Stack* stk = (Stack*)malloc(sizeof(Stack));
     if (!stk) {
@@ -28,6 +39,17 @@ Stack* stack_create(size_t itemSize) {
     return stk;
 }
 
+/**
+ * @brief Checks if two stacks are equal.
+ *
+ * This function compares two stacks and returns true if they are considered equal based on 
+ * their underlying vector comparison. If either stack is NULL, it logs an error and returns false.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ * 
+ * @return true if the two stacks are equal, false otherwise.
+ */
 bool stack_is_equal(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2) {
         #ifdef STACK_LOGGING_ENABLE
@@ -38,6 +60,18 @@ bool stack_is_equal(const Stack* stk1, const Stack* stk2) {
     return vector_is_equal(stk1->vec, stk2->vec);
 }
 
+/**
+ * @brief Checks if the first stack is less than the second stack.
+ *
+ * This function compares two stacks and returns true if the first stack is considered less than 
+ * the second stack based on their underlying vector comparison. If either stack is NULL, 
+ * it logs an error and returns false.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ * 
+ * @return true if the first stack is less than the second, false otherwise.
+ */
 bool stack_is_less(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2) {
         #ifdef STACK_LOGGING_ENABLE
@@ -48,6 +82,18 @@ bool stack_is_less(const Stack* stk1, const Stack* stk2) {
     return vector_is_less(stk1->vec, stk2->vec);
 }
 
+/**
+ * @brief Checks if the first stack is greater than the second stack.
+ *
+ * This function compares two stacks and returns true if the first stack is considered greater than 
+ * the second stack based on their underlying vector comparison. If either stack is NULL, 
+ * it logs an error and returns false.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ * 
+ * @return true if the first stack is greater than the second, false otherwise.
+ */
 bool stack_is_greater(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2) {
         #ifdef STACK_LOGGING_ENABLE
@@ -58,6 +104,18 @@ bool stack_is_greater(const Stack* stk1, const Stack* stk2) {
     return vector_is_greater(stk1->vec, stk2->vec);
 }
 
+/**
+ * @brief Checks if the first stack is less than or equal to the second stack.
+ *
+ * This function compares two stacks and returns true if the first stack is considered less than 
+ * or equal to the second stack based on their underlying vector comparison. If either stack is NULL, 
+ * it logs an error and returns false.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ * 
+ * @return true if the first stack is less than or equal to the second, false otherwise.
+ */
 bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2) {
         #ifdef STACK_LOGGING_ENABLE
@@ -68,6 +126,18 @@ bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2) {
     return stack_is_less(stk1, stk2) || stack_is_equal(stk1, stk2);
 }
 
+/**
+ * @brief Checks if the first stack is greater than or equal to the second stack.
+ *
+ * This function compares two stacks and returns true if the first stack is considered greater than 
+ * or equal to the second stack based on their underlying vector comparison. If either stack is NULL, 
+ * it logs an error and returns false.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ * 
+ * @return true if the first stack is greater than or equal to the second, false otherwise.
+ */
 bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2) {
         #ifdef STACK_LOGGING_ENABLE
@@ -78,6 +148,18 @@ bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2) {
     return stack_is_greater(stk1, stk2) || stack_is_equal(stk1, stk2);
 }
 
+/**
+ * @brief Checks if two stacks are not equal.
+ *
+ * This function compares two stacks and returns true if the two stacks are not equal 
+ * based on their underlying vector comparison. If either stack is NULL, 
+ * it logs an error and returns false.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ * 
+ * @return true if the two stacks are not equal, false otherwise.
+ */
 bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2) {
         #ifdef STACK_LOGGING_ENABLE
@@ -88,6 +170,15 @@ bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) {
     return !stack_is_equal(stk1, stk2);
 }
 
+/**
+ * @brief Pushes an item onto the stack.
+ *
+ * This function pushes a new item onto the stack. If the stack or the item pointer is NULL, 
+ * it logs an error and exits the program.
+ *
+ * @param stk Pointer to the stack where the item will be pushed.
+ * @param item Pointer to the item that will be pushed onto the stack.
+ */
 void stack_push(Stack* stk, void* item) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
@@ -104,6 +195,15 @@ void stack_push(Stack* stk, void* item) {
     vector_push_back(stk->vec, item);
 }
 
+/**
+ * @brief Removes the top item from the stack and returns it.
+ *
+ * This function pops the top item from the stack and returns a pointer to it. 
+ * If the stack is NULL or empty, it logs an error or warning, respectively, and returns NULL.
+ *
+ * @param stk Pointer to the stack from which the item will be popped.
+ * @return A pointer to the popped item, or NULL if the stack is empty or NULL.
+ */
 void* stack_pop(Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
@@ -120,6 +220,15 @@ void* stack_pop(Stack* stk) {
     return vector_pop_back(stk->vec);
 }
 
+/**
+ * @brief Returns the top item of the stack without removing it.
+ *
+ * This function returns a pointer to the top item of the stack without removing it. 
+ * If the stack is NULL or empty, it logs an error or warning, respectively, and returns NULL.
+ *
+ * @param stk Pointer to the stack whose top item will be accessed.
+ * @return A pointer to the top item of the stack, or NULL if the stack is empty or NULL.
+ */
 void* stack_top(Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
@@ -136,6 +245,15 @@ void* stack_top(Stack* stk) {
     return vector_back(stk->vec);
 }
 
+/**
+ * @brief Returns the number of items in the stack.
+ *
+ * This function returns the size of the stack, i.e., the number of items currently in the stack.
+ * If the stack pointer is NULL, it logs a warning and returns 0.
+ *
+ * @param stk Pointer to the stack whose size is to be returned.
+ * @return The number of items in the stack, or 0 if the stack is NULL.
+ */
 size_t stack_size(Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
@@ -146,6 +264,14 @@ size_t stack_size(Stack* stk) {
     return vector_size(stk->vec);
 }
 
+/**
+ * @brief Checks if the stack is empty.
+ *
+ * This function checks whether the stack is empty. A NULL stack is considered empty.
+ *
+ * @param stk Pointer to the stack to be checked.
+ * @return true if the stack is empty or NULL, false otherwise.
+ */
 bool stack_empty(Stack* stk) {
     if (stk == NULL) {
         return true; // Consider a NULL stack as empty
@@ -153,6 +279,15 @@ bool stack_empty(Stack* stk) {
     return vector_is_empty(stk->vec);
 }
 
+/**
+ * @brief Emplaces an item at the top of the stack.
+ *
+ * This function adds a new item to the top of the stack without copying it. It directly constructs the item
+ * in place at the top of the stack. If the stack or the item pointer is NULL, an error is logged.
+ *
+ * @param stk Pointer to the stack where the item will be emplaced.
+ * @param item Pointer to the item to be emplaced on the stack.
+ */
 void stack_emplace(Stack* stk, void* item) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
@@ -169,6 +304,14 @@ void stack_emplace(Stack* stk, void* item) {
     vector_emplace_back(stk->vec, item, stk->vec->itemSize);
 }
 
+/**
+ * @brief Clears all items from the stack.
+ *
+ * This function removes all items from the stack, effectively resetting its size to zero. 
+ * If the stack pointer is NULL, an error is logged.
+ *
+ * @param stk Pointer to the stack to be cleared.
+ */
 void stack_clear(Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
@@ -179,6 +322,14 @@ void stack_clear(Stack* stk) {
     vector_clear(stk->vec);
 }
 
+/**
+ * @brief Swaps the contents of two stacks.
+ *
+ * This function exchanges the contents of two stacks. If either of the stack pointers is NULL, an error is logged.
+ *
+ * @param stk1 Pointer to the first stack.
+ * @param stk2 Pointer to the second stack.
+ */
 void stack_swap(Stack* stk1, Stack* stk2) {
     if (stk1 == NULL || stk2 == NULL) {
         fmt_fprintf(stderr, "Error: One or both stack pointers are NULL in stack_swap.\n");
@@ -190,6 +341,14 @@ void stack_swap(Stack* stk1, Stack* stk2) {
     stk2->vec = tempVec;
 }
 
+/**
+ * @brief Deallocates the stack and frees up memory.
+ *
+ * This function deallocates the memory used by the stack, including the underlying vector.
+ * If the stack pointer is NULL, an error is logged.
+ *
+ * @param stk Pointer to the stack to be deallocated.
+ */
 void stack_deallocate(Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE

@@ -11,6 +11,10 @@
 #endif
 
 
+/**
+ * @brief Prints a formatted string to the console without a newline.
+ * Handles Unicode on Windows and uses standard output on other platforms.
+ */
 void __fmt_print(const char* str, ...) {
     va_list args;
     va_start(args, str);
@@ -35,6 +39,10 @@ void __fmt_print(const char* str, ...) {
     va_end(args);
 }
 
+/**
+ * @brief Prints a formatted string to the console with a newline.
+ * Adds a space separator between arguments and handles Unicode on Windows.
+ */
 void __fmt_println(const char* str, ...) {
     va_list args;
     va_start(args, str);
@@ -60,6 +68,18 @@ void __fmt_println(const char* str, ...) {
     va_end(args);
 }
 
+/**
+ * @brief Prints a formatted string to the standard output.
+ *
+ * This function prints a formatted string to the standard output (stdout). It works similarly to the standard `printf` function,
+ * but with additional support for wide characters and Unicode on Windows platforms.
+ *
+ * On Windows, the function converts the format string from UTF-8 to wide characters (UTF-16) and uses `vfwprintf` to print the formatted output.
+ * On other platforms, it uses `vprintf` directly with the provided format string.
+ *
+ * @param format The format string that specifies how to format the output. It supports standard printf-style formatting.
+ * @param ... Additional arguments to be formatted according to the format string.
+ */
 void fmt_printf(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -84,6 +104,10 @@ void fmt_printf(const char* format, ...) {
     va_end(args);
 }
 
+/**
+ * @brief Constructs a formatted string with spaces between arguments and a newline at the end.
+ * Handles Unicode on Windows and returns a dynamically allocated UTF-8 string.
+ */
 char* __fmt_sprintln(const char* first_arg, ...) {
     va_list args;
     va_start(args, first_arg);
@@ -159,6 +183,10 @@ char* __fmt_sprintln(const char* first_arg, ...) {
     return result;
 }
 
+/**
+ * @brief Constructs a formatted string with spaces between arguments but without a newline at the end.
+ * Handles Unicode on Windows and returns a dynamically allocated UTF-8 string.
+ */
 char* __fmt_sprint(const char* first_arg, ...) {
     va_list args;
     va_start(args, first_arg);
@@ -231,6 +259,18 @@ char* __fmt_sprint(const char* first_arg, ...) {
     return result;
 }
 
+/**
+ * @brief Formats a string and returns it as a dynamically allocated string.
+ *
+ * This function formats a string according to the specified format string and additional arguments,
+ * similar to `sprintf`. The resulting string is dynamically allocated and must be freed by the caller.
+ *
+ * @param format The format string that specifies how to format the output.
+ * @param ... Additional arguments to be formatted according to the format string.
+ * 
+ * @return A pointer to the dynamically allocated string containing the formatted text.
+ * The caller is responsible for freeing this memory. Returns `NULL` if memory allocation fails.
+ */
 char* fmt_sprintf(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -244,6 +284,17 @@ char* fmt_sprintf(const char* format, ...) {
     return result;
 }
 
+/**
+ * @brief Scans a string from standard input until space, newline, or EOF.
+ *
+ * This function reads input from standard input character by character, stopping at a space, newline, or EOF.
+ * The input is stored in a dynamically allocated string, which must be freed by the caller.
+ *
+ * @param output A pointer to a `char*` that will be set to the dynamically allocated string containing the input.
+ * The caller is responsible for freeing this memory.
+ * 
+ * @return 0 on success, or a negative value if an error occurred. If EOF is reached before any characters are read, the function returns 0.
+ */
 int fmt_scan(char** output) {
     char buffer[1024];
     int result = 0;
@@ -279,6 +330,15 @@ int fmt_scan(char** output) {
     return result; // Return the result of the reading process
 }
 
+/**
+ * @brief Reads a line of input from the standard input until a newline or space.
+ *
+ * This function reads a line from standard input, stopping at a newline or space,
+ * and stores it in a dynamically allocated string. The caller is responsible for freeing the allocated memory.
+ *
+ * @param output A pointer to a char* that will be set to the dynamically allocated string containing the input.
+ * @return 0 on success, or a negative value if an error occurred.
+ */
 int fmt_scanln(char** output) {
     char buffer[1024];
     int result = 0;
@@ -318,6 +378,17 @@ int fmt_scanln(char** output) {
     return result; // Return the result of the reading process
 }
 
+/**
+ * @brief Scans formatted input from the standard input.
+ *
+ * This function reads input from the standard input according to the specified format,
+ * similarly to the standard `scanf` function.
+ *
+ * @param format The format string specifying how to parse the input.
+ * @param ... Additional arguments corresponding to the format string to store the parsed input.
+ * 
+ * @return The number of input items successfully matched and assigned, or a negative value if an error occurred.
+ */
 int fmt_scanf(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -328,6 +399,10 @@ int fmt_scanf(const char* format, ...) {
     return items_scanned;
 }
 
+/**
+ * @brief Writes a formatted string to the specified file stream without adding a newline.
+ * Handles multiple arguments, writing them sequentially to the stream.
+ */
 int __fmt_fprint(FILE* stream, const char* str, ...) {
     if (!stream) {
         fprintf(stderr, "Error: Invalid stream object.\n");
@@ -353,6 +428,10 @@ int __fmt_fprint(FILE* stream, const char* str, ...) {
     return bytes_written;
 }
 
+/**
+ * @brief Writes a formatted string to the specified file stream, adding spaces and a newline.
+ * Handles multiple arguments, writing them sequentially with a space separator and a newline at the end.
+ */
 int __fmt_fprintln(FILE* stream, const char* str, ...) {
     if (!stream) {
         fprintf(stderr, "Error: Invalid stream object.\n");
@@ -401,6 +480,18 @@ int __fmt_fprintln(FILE* stream, const char* str, ...) {
     return bytes_written;
 }
 
+/**
+ * @brief Outputs formatted text to the given file stream.
+ *
+ * This function behaves similarly to `fprintf` but is part of the custom formatting library.
+ * It formats a string according to the specified format and writes it to the provided file stream.
+ *
+ * @param stream The file stream to write the formatted output to.
+ * @param format The format string that specifies how to format the output.
+ * @param ... Additional arguments to be formatted and written according to the format string.
+ * 
+ * @return The number of bytes successfully written, or a negative value if an error occurred.
+ */
 int fmt_fprintf(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
         fprintf(stderr, "Error: Invalid arguments for fmt_fprintf.\n");
@@ -429,6 +520,18 @@ int fmt_fprintf(FILE* stream, const char* format, ...) {
     return bytes_written;
 }
 
+/**
+ * @brief Scans formatted input from a file stream.
+ *
+ * This function reads formatted input from the specified file stream
+ * based on the provided format string. It works similarly to `fscanf`.
+ *
+ * @param stream The file stream to read from.
+ * @param format The format string specifying how to parse the input.
+ * @param ... Additional arguments that correspond to the format string.
+ * 
+ * @return The number of input items successfully matched and assigned, or a negative value if an error occurred.
+ */
 int fmt_fscan(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
         fprintf(stderr, "Error: Invalid arguments for fmt_fscan.\n");
@@ -445,6 +548,18 @@ int fmt_fscan(FILE* stream, const char* format, ...) {
     return items_scanned;
 }
 
+/**
+ * @brief Scans formatted input from a file stream, reading one line at a time.
+ *
+ * This function reads a single line of input from the specified file stream
+ * and parses it according to the provided format string.
+ *
+ * @param stream The file stream to read from.
+ * @param format The format string specifying how to parse the input.
+ * @param ... Additional arguments that correspond to the format string.
+ * 
+ * @return The number of input items successfully matched and assigned, or a negative value if an error occurred.
+ */
 int fmt_fscanln(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
         fprintf(stderr, "Error: Invalid arguments for fmt_fscanln.\n");
@@ -468,6 +583,18 @@ int fmt_fscanln(FILE* stream, const char* format, ...) {
     return items_scanned;
 }
 
+/**
+ * @brief Scans formatted input from a file stream.
+ *
+ * This function reads formatted input from the specified file stream
+ * based on the provided format string. It works similarly to `fscanf`.
+ *
+ * @param stream The file stream to read from.
+ * @param format The format string specifying how to parse the input.
+ * @param ... Additional arguments that correspond to the format string.
+ * 
+ * @return The number of input items successfully matched and assigned, or a negative value if an error occurred.
+ */
 int fmt_fscanf(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
         fprintf(stderr, "Error: Invalid arguments for fmt_fscanf.\n");

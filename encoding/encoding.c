@@ -61,6 +61,10 @@ static const char BASE91_ALPHABET[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     "!#$%&()*+,./:;<=>?@[]^_`{|}~\"";
 
+/**
+ * This function finds the index of a character within the BASE91_ALPHABET array, which is used for Base91 decoding. 
+ * If the character is not found, it returns -1 to indicate an invalid character.
+ */
 static int base91_decode_value(char c) {
     for (int i = 0; i < 91; ++i) {
         if (BASE91_ALPHABET[i] == c) {
@@ -70,6 +74,11 @@ static int base91_decode_value(char c) {
     return -1; // Character not found
 }
 
+/**
+ * This function verifies whether a given sequence of bytes is valid UTF-8 by checking the leading 
+ * byte and its corresponding continuation bytes. It handles various cases, including overlong sequences 
+ * and invalid characters, ensuring the input adheres to UTF-8 encoding rules.
+ */
 bool encoding_is_utf8(const uint8_t* input, size_t length) {
     uint8_t a;
     const uint8_t *srcptr = input+length;
@@ -135,6 +144,11 @@ bool encoding_is_utf8(const uint8_t* input, size_t length) {
     return true;
 }
 
+/**
+ * This function converts a UTF-16 encoded string to UTF-8. It handles surrogate pairs by converting 
+ * them to their corresponding UTF-32 representation before encoding them as UTF-8, ensuring proper handling 
+ * of all UTF-16 characters, including edge cases.
+ */
 static ConversionResult ConvertUTF16toUTF8 (
         const uint16_t** sourceStart, const uint16_t* sourceEnd, 
         uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
@@ -226,6 +240,11 @@ static ConversionResult ConvertUTF16toUTF8 (
     return result;
 }
 
+/**
+ * This function converts a UTF-32 encoded string to UTF-8. It processes each UTF-32 character,
+ * determining how many bytes are needed in UTF-8, and encodes the character accordingly, 
+ * while replacing any illegal UTF-32 values with a replacement character.
+ */
 static ConversionResult ConvertUTF32toUTF8 (
         const uint32_t** sourceStart, const uint32_t* sourceEnd, 
         uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
@@ -297,6 +316,11 @@ static ConversionResult ConvertUTF32toUTF8 (
     return result;
 }
 
+/**
+ * This function converts a UTF-8 encoded string to UTF-16. It iterates through the source UTF-8 string, 
+ * decodes each character, and checks for any invalid sequences. It handles cases where characters need to be split 
+ * into surrogate pairs in UTF-16 or replaced with a replacement character for illegal sequences.
+ */
 static ConversionResult ConvertUTF8toUTF16 (
         const uint8_t** sourceStart, const uint8_t* sourceEnd, 
         uint16_t** targetStart, uint16_t* targetEnd, ConversionFlags flags) {
@@ -388,6 +412,11 @@ static ConversionResult ConvertUTF8toUTF16 (
     return result;
 }
 
+/**
+ * This function converts a UTF-8 encoded string to UTF-32. It processes the UTF-8 input by decoding each character, 
+ * verifying its legality, and then directly storing it in the UTF-32 output. It also replaces any illegal 
+ * sequences with a replacement character and ensures no overflow occurs in the output buffer.
+ */
 ConversionResult ConvertUTF8toUTF32 (
         const uint8_t** sourceStart, const uint8_t* sourceEnd, 
         uint32_t** targetStart, uint32_t* targetEnd, ConversionFlags flags) {
@@ -461,6 +490,11 @@ ConversionResult ConvertUTF8toUTF32 (
     return result;
 }
 
+/**
+ * This function decodes a single Base32 character. If the character is between 'A' and 'Z', 
+ * it returns a value between 0 and 25. If the character is between '2' and '7', 
+ * it returns a value between 26 and 31. If the character is invalid, it returns -1.
+*/
 static int decode_char(unsigned char c) {
 	char retval = -1;
 
@@ -526,6 +560,11 @@ static unsigned char shift_right(unsigned char byte, signed char offset) {
     }
 }
 
+/**
+ * Shift the byte to the left by the specified offset
+ * This function calls shift_right with the negative of the offset,
+ * effectively performing a left shift.
+ */
 static unsigned char shift_left(unsigned char byte, signed char offset) {
 	return shift_right(byte, - offset);
 }
@@ -553,6 +592,21 @@ static int decode_sequence(const unsigned char *coded, unsigned char *plain) {
 	return 5;
 }
 
+/**
+ * @brief Encodes binary data into Base64 format.
+ *
+ * This function encodes a given input string into Base64 format. Base64 encoding 
+ * represents binary data in an ASCII string format by translating it into a radix-64 
+ * representation. The output string is null-terminated.
+ *
+ * @param input Pointer to the input binary data.
+ * @param length Length of the input data.
+ * 
+ * @return A dynamically allocated buffer containing the Base64 encoded string. 
+ * Returns NULL if an error occurs (e.g., memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char* encoding_base64_encode(const char* input, size_t length) {
     size_t output_length = 4 * ((length + 2) / 3);
     char* encoded = malloc(output_length + 1); // +1 for null terminator
@@ -582,6 +636,20 @@ char* encoding_base64_encode(const char* input, size_t length) {
     return encoded;
 }
 
+/**
+ * @brief Decodes a Base64 encoded string back to binary data.
+ *
+ * This function decodes a Base64 encoded string into its original binary form. 
+ * The input string length must be a multiple of 4.
+ *
+ * @param input Pointer to the Base64 encoded input string.
+ * @param length Length of the Base64 encoded string. Must be a multiple of 4.
+ * 
+ * @return A dynamically allocated buffer containing the decoded binary data. 
+ * Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
+ *
+ * @note The caller is responsible for freeing the returned decoded data.
+ */
 char* encoding_base64_decode(const char* input, size_t length) {
     if (length % 4 != 0) {
         fprintf(stderr, "Error: Invalid input length in encoding_base64_decode. Length must be a multiple of 4.\n");
@@ -630,6 +698,21 @@ char* encoding_base64_decode(const char* input, size_t length) {
     return decoded;
 }
 
+/**
+ * @brief Encodes a URL string by replacing special characters with their percent-encoded representation.
+ *
+ * This function encodes a URL string by replacing special characters with their 
+ * percent-encoded representation. Characters that are alphanumeric or one of 
+ * `-`, `.`, `_`, `~` are left unchanged.
+ *
+ * @param input Pointer to the input string.
+ * @param length Length of the input string.
+ * 
+ * @return A dynamically allocated buffer containing the URL encoded string. 
+ * Returns NULL if an error occurs (e.g., memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char* encoding_url_encode(const char* input, size_t length) {
     char* result = malloc(3 * length + 1); // Worst case scenario, every character needs encoding
     if (!result) {
@@ -654,6 +737,20 @@ char* encoding_url_encode(const char* input, size_t length) {
     return result;
 }
 
+/**
+ * @brief Decodes a URL-encoded string.
+ *
+ * This function decodes a URL-encoded string where each `%xx` sequence is replaced 
+ * by its corresponding character, and `+` is replaced by a space character. The 
+ * decoded string is stored in a dynamically allocated buffer.
+ *
+ * @param input Pointer to the URL-encoded input string.
+ * @param length Length of the input string.
+ * @return A dynamically allocated buffer containing the decoded string. Returns 
+ *         NULL if an error occurs (e.g., memory allocation failure, invalid percent-encoding).
+ *
+ * @note The caller is responsible for freeing the returned decoded string.
+ */
 char* encoding_url_decode(const char* input, size_t length) {
     char* result = malloc(length + 1); // Decoded string will be equal or smaller in size
     if (!result) {
@@ -696,6 +793,21 @@ char* encoding_url_decode(const char* input, size_t length) {
     return result;
 }
 
+/**
+ * @brief Encodes binary data into Base32 format.
+ *
+ * This function encodes a given input string into Base32 format. Base32 encoding 
+ * uses 32 characters to represent binary data. The output is padded with `=` characters 
+ * if necessary to ensure the encoded string length is a multiple of 8.
+ *
+ * @param input Pointer to the input binary data.
+ * @param length Length of the input data.
+ * 
+ * @return A dynamically allocated buffer containing the Base32 encoded string. 
+ *         Returns NULL if an error occurs (e.g., memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char* encoding_base32_encode(const char* input, size_t length) {
     size_t output_length = ((length + 4) / 5) * 8; // Output length including padding
     char* encoded = malloc(output_length + 1);
@@ -736,6 +848,21 @@ char* encoding_base32_encode(const char* input, size_t length) {
     return encoded;
 }
 
+/**
+ * @brief Decodes a Base32 encoded string back to binary data.
+ *
+ * This function decodes a Base32 encoded string into its original binary form. The 
+ * input string must be properly padded with `=` characters to ensure it is a multiple 
+ * of 8 characters long.
+ *
+ * @param input Pointer to the Base32 encoded input string.
+ * @param length Length of the Base32 encoded string. Must be a multiple of 8.
+ * 
+ * @return A dynamically allocated buffer containing the decoded binary data. 
+ *         Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
+ *
+ * @note The caller is responsible for freeing the returned decoded data.
+ */
 char* encoding_base32_decode(const char* input, size_t length) {
     if (length % 8 != 0) {
         fprintf(stderr, "Error: Invalid input length in encoding_base32_decode. Length must be a multiple of 8.\n");
@@ -769,6 +896,21 @@ char* encoding_base32_decode(const char* input, size_t length) {
     return (char*)result;
 }
 
+/**
+ * @brief Encodes binary data into Base16 (hexadecimal) format.
+ *
+ * This function encodes a given input string into Base16 format, also known as 
+ * hexadecimal encoding. Each byte of the input is represented by two hexadecimal 
+ * characters in the output string.
+ *
+ * @param input Pointer to the input binary data.
+ * @param length Length of the input data.
+ * 
+ * @return A dynamically allocated buffer containing the Base16 encoded string. 
+ * Returns NULL if an error occurs (e.g., memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char* encoding_base16_encode(const char* input, size_t length) {
     size_t output_length = length * 2;
     char* encoded = malloc(output_length + 1);
@@ -788,6 +930,21 @@ char* encoding_base16_encode(const char* input, size_t length) {
     return encoded;
 }
 
+/**
+ * @brief Decodes a Base16 (hexadecimal) encoded string into its binary form.
+ *
+ * This function takes a string encoded in Base16 (hexadecimal) and decodes it 
+ * into its original binary form. Each pair of hexadecimal characters is converted 
+ * into a single byte.
+ *
+ * @param input Pointer to the Base16 encoded input string.
+ * @param length Length of the Base16 encoded string. Must be an even number.
+ * 
+ * @return A dynamically allocated array containing the decoded binary data.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure, invalid character).
+ *
+ * @note The caller is responsible for freeing the returned binary data.
+ */
 char* encoding_base16_decode(const char* input, size_t length) {
     if (input == NULL) {
         fprintf(stderr, "Error: Invalid input param in encoding_base16_decode.\n");
@@ -842,6 +999,23 @@ char* encoding_base16_decode(const char* input, size_t length) {
     return decoded;
 }
 
+/**
+ * @brief Converts a UTF-32 encoded string to a UTF-16 encoded string.
+ *
+ * This function converts a string from UTF-32 encoding to UTF-16 encoding. 
+ * UTF-32 uses fixed-width 32-bit code units, while UTF-16 uses variable-width encoding. 
+ * The conversion may require allocating additional memory for the UTF-16 output, especially 
+ * when handling characters outside the Basic Multilingual Plane (BMP) which are encoded as 
+ * surrogate pairs in UTF-16.
+ *
+ * @param input Pointer to the UTF-32 encoded input string.
+ * @param length Length of the UTF-32 encoded string in characters.
+ * 
+ * @return A dynamically allocated array containing the UTF-16 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure, invalid character).
+ *
+ * @note The caller is responsible for freeing the returned UTF-16 string.
+ */
 uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encoding_utf32_to_utf16.\n");
@@ -882,6 +1056,22 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
     return output;
 }
 
+/**
+ * @brief Converts a UTF-16 encoded string to a UTF-32 encoded string.
+ *
+ * This function converts a string from UTF-16 encoding to UTF-32 encoding. 
+ * UTF-16 uses variable-width encoding, while UTF-32 uses fixed-width 32-bit code units. 
+ * The conversion may require handling surrogate pairs in UTF-16 to reconstruct 
+ * the original UTF-32 code points.
+ *
+ * @param input Pointer to the UTF-16 encoded input string.
+ * @param length Length of the UTF-16 encoded string in characters.
+ * 
+ * @return A dynamically allocated array containing the UTF-32 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure, invalid surrogate pair).
+ *
+ * @note The caller is responsible for freeing the returned UTF-32 string.
+ */
 uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encoding_utf16_to_utf32.\n");
@@ -929,6 +1119,21 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     return output;
 }
 
+/**
+ * @brief Converts a UTF-16 encoded string to a UTF-8 encoded string.
+ *
+ * This function converts a string from UTF-16 encoding to UTF-8 encoding. 
+ * UTF-16 uses variable-width encoding, while UTF-8 uses a more compact variable-width encoding.
+ * The conversion may require allocating additional memory for the UTF-8 output.
+ *
+ * @param input Pointer to the UTF-16 encoded input string.
+ * @param length Length of the UTF-16 encoded string in characters.
+ * 
+ * @return A dynamically allocated array containing the UTF-8 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned UTF-8 string.
+ */
 uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encoding_utf16_to_utf8.\n");
@@ -975,6 +1180,21 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     return resizedOutput;
 }
 
+/**
+ * @brief Converts a UTF-32 encoded string to a UTF-8 encoded string.
+ *
+ * This function converts a string from UTF-32 encoding to UTF-8 encoding. 
+ * UTF-32 uses fixed-width 32-bit code units, while UTF-8 uses variable-width encoding. 
+ * The conversion may require allocating additional memory for the UTF-8 output.
+ *
+ * @param input Pointer to the UTF-32 encoded input string.
+ * @param length Length of the UTF-32 encoded string in characters.
+ * 
+ * @return A dynamically allocated array containing the UTF-8 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned UTF-8 string.
+ */
 uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encoding_utf32_to_utf8.\n");
@@ -1022,6 +1242,18 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     return resizedOutput;
 }
 
+/**
+ * @brief Validates whether the provided string is a valid UTF-8 string.
+ *
+ * This function checks if a given byte sequence conforms to UTF-8 encoding rules.
+ * It verifies that each character in the string is correctly encoded according to UTF-8 standards.
+ *
+ * @param input Pointer to a pointer to the UTF-8 encoded input string.
+ * The pointer is updated to point to the end of the string after validation.
+ * @param length Length of the UTF-8 encoded string in bytes.
+ * 
+ * @return True if the string is a valid UTF-8 encoded string, false otherwise.
+ */
 bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
     if (input == NULL || *input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encoding_is_utf8_string.\n");
@@ -1044,6 +1276,21 @@ bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
     return true;
 }
 
+/**
+ * @brief Converts a UTF-8 encoded string to a UTF-16 encoded string.
+ *
+ * This function converts a string from UTF-8 encoding to UTF-16 encoding. UTF-8 and UTF-16 
+ * are both variable-length encoding schemes, and this conversion may require allocating 
+ * additional memory for the UTF-16 output.
+ *
+ * @param input Pointer to the UTF-8 encoded input string.
+ * @param length Length of the UTF-8 encoded string in bytes.
+ * 
+ * @return A dynamically allocated array containing the UTF-16 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned UTF-16 string.
+ */
 uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encoding_utf8_to_utf16.\n");
@@ -1083,6 +1330,21 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
     return resizedOutput;
 }
 
+/**
+ * @brief Converts a UTF-8 encoded string to a UTF-32 encoded string.
+ *
+ * This function converts a string from UTF-8 encoding to UTF-32 encoding. UTF-8 is a variable-length encoding,
+ * while UTF-32 uses fixed-width 32-bit code units. This conversion ensures that all characters are represented
+ * as 32-bit integers.
+ *
+ * @param input Pointer to the UTF-8 encoded input string.
+ * @param length Length of the UTF-8 encoded string in bytes.
+ * 
+ * @return A dynamically allocated array containing the UTF-32 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned UTF-32 string.
+ */
 uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encododing_utf8_to_utf32.\n");
@@ -1121,6 +1383,21 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     return output;
 }
 
+/**
+ * @brief Converts a UTF-8 encoded string to a UTF-32 encoded string.
+ *
+ * This function converts a string from UTF-8 encoding to UTF-32 encoding. UTF-8 is a variable-length encoding,
+ * while UTF-32 uses fixed-width 32-bit code units. This conversion ensures that all characters are represented
+ * as 32-bit integers.
+ *
+ * @param input Pointer to the UTF-8 encoded input string.
+ * @param length Length of the UTF-8 encoded string in bytes.
+ * 
+ * @return A dynamically allocated array containing the UTF-32 encoded string.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned UTF-32 string.
+ */
 void encoding_hex_dump(const void *data, size_t size) {
     const unsigned char *byte = (const unsigned char *)data;
     size_t i, j;
@@ -1149,6 +1426,20 @@ void encoding_hex_dump(const void *data, size_t size) {
     }
 }
 
+/**
+ * @brief Encodes binary data into a Base85 encoded string.
+ *
+ * Base85 is an encoding method used to encode binary data into ASCII text, often used 
+ * in contexts where binary data needs to be handled as text, such as in Adobe's PostScript.
+ *
+ * @param input Pointer to the binary data to be encoded.
+ * @param length The size of the binary data in bytes.
+ * 
+ * @return A dynamically allocated string containing the Base85 encoded representation.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char* encododing_base85_encode(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encododing_base85_encode.\n");
@@ -1197,6 +1488,20 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
     return encoded;
 }
 
+/**
+ * @brief Decodes a Base85 encoded string back into its original binary form.
+ *
+ * Base85 decoding interprets the encoded text and converts it back into the binary data
+ * it originally represented.
+ *
+ * @param input Pointer to the Base85 encoded string.
+ * @param length The length of the encoded string.
+ * 
+ * @return A dynamically allocated array containing the decoded binary data.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned decoded data.
+ */
 uint8_t* encododing_base85_decode(const char* input, size_t length) {
     if (input == NULL || length == 0) {
         fprintf(stderr, "Error: Invalid input or length in encododing_base85_decode.\n");
@@ -1279,6 +1584,20 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
     return resized_decoded;
 }
 
+/**
+ * @brief Encodes binary data into a Base58 encoded string.
+ *
+ * Base58 is commonly used in cryptocurrencies such as Bitcoin. It is designed to avoid 
+ * visually similar characters and is not case-sensitive.
+ *
+ * @param data Pointer to the binary data to be encoded.
+ * @param binsz The size of the binary data in bytes.
+ * 
+ * @return A dynamically allocated string containing the Base58 encoded representation. 
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char *encoding_base58_encode(const void *data, size_t binsz) {
     if (!data) {
         fprintf(stderr, "Error: Invalid input data in encoding_base58_encode.\n");
@@ -1337,6 +1656,15 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
     return b58;
 }
 
+/**
+ * @brief Decodes a Base58 encoded string back into its original binary form.
+ *
+ * @param b58 Pointer to the Base58 encoded string.
+ * @param binszp Pointer to a size_t variable where the length of the decoded data will be stored.
+ * 
+ * @return A dynamically allocated array containing the decoded binary data.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ */
 char *encoding_base58_decode(const char *b58, size_t *binszp) {
     if (b58 == NULL || binszp == NULL) {
         fprintf(stderr, "Error: Invalid input or binszp pointer in encoding_base58_decode.\n");
@@ -1394,6 +1722,17 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     return result;
 }
 
+/**
+ * @brief Decodes a Base91 encoded string into its original binary form.
+ *
+ * @param encoded Pointer to the Base91 encoded string.
+ * @param decoded_length Pointer to a size_t variable where the length of the decoded data will be stored.
+ * 
+ * @return A dynamically allocated array of uint8_t containing the decoded data. 
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned decoded data.
+ */
 uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     if (!encoded || !decoded_length) {
         fprintf(stderr, "Error: Invalid input or decoded_length pointer in encoding_base91_decode.\n");
@@ -1451,6 +1790,17 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     return decoded;
 }
 
+/**
+ * @brief Encodes binary data into a Base91 encoded string.
+ *
+ * @param data Pointer to the binary data to be encoded.
+ * @param length The length of the binary data.
+ * 
+ * @return A dynamically allocated string containing the Base91 encoded representation. 
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure).
+ *
+ * @note The caller is responsible for freeing the returned encoded string.
+ */
 char* encoding_base91_encode(const uint8_t* data, size_t length) {
     if (!data || length == 0) {
         fprintf(stderr, "Error: Invalid input data or length in encoding_base91_encode.\n");
@@ -1514,7 +1864,13 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
 }
 
 #if defined(_WIN32) || defined(_WIN64)
-// Function to convert UTF-8 string to wchar_t string (Windows only)
+/**
+ * @brief Converts a UTF-8 encoded string to a wide character string (wchar_t) on Windows.
+ *
+ * @param utf8Str Pointer to the UTF-8 encoded string.
+ * @return A dynamically allocated wide character string (wchar_t*). 
+ * Returns NULL if the conversion fails or if the input string is NULL.
+ */
 wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
     if (utf8Str == NULL) {
         fprintf(stderr, "Error: Input string is NULL\n");
@@ -1544,6 +1900,13 @@ wchar_t* encoding_utf8_to_wchar(const char* utf8Str) {
 
 #endif
 
+/**
+ * @brief Converts a wide character string (wchar_t) to a UTF-8 encoded string.
+ *
+ * @param wstr Pointer to the wide character string (wchar_t).
+ * 
+ * @return A dynamically allocated UTF-8 encoded string (char*). Returns NULL if the conversion fails or if the input string is NULL.
+ */
 char* encoding_wchar_to_utf8(const wchar_t* wstr) {
     if (wstr == NULL) {
         fprintf(stderr, "Error: Input wchar string is NULL\n");
@@ -1592,7 +1955,11 @@ char* encoding_wchar_to_utf8(const wchar_t* wstr) {
     return utf8Str;
 }
 
-
+/**
+ * @brief Initializes the encoding library by setting the locale for character encoding.
+ * 
+ * This function should be called at the beginning of the program to ensure proper handling of character encodings.
+ */
 void encoding_initialize(void) {
     setlocale(LC_ALL, "");
 }

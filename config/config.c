@@ -31,6 +31,16 @@ static void xor_encrypt_decrypt(const char *input, char *output, char key, size_
     }
 }
 
+/**
+ * @brief Creates a ConfigFile structure by reading the specified configuration file.
+ *
+ * This function opens a configuration file, reads its content, and parses it into sections and key-value pairs.
+ * The configuration is stored in a ConfigFile structure, which can be used for further operations like getting or setting values.
+ *
+ * @param filename The name of the configuration file to be read.
+ * @return A pointer to the ConfigFile structure containing the parsed configuration data.
+ *         Returns NULL if the file could not be opened or memory allocation failed.
+ */
 ConfigFile *config_create(const char *filename) {
     FileReader* fr = file_reader_open(filename, READ_TEXT);
     if (!fr) {
@@ -100,6 +110,15 @@ ConfigFile *config_create(const char *filename) {
     return config;
 }
 
+/**
+ * @brief Saves the configuration data to the specified file.
+ *
+ * This function writes the contents of the ConfigFile structure back to a file, preserving sections, key-value pairs, 
+ * and comments. The configuration is saved in a format compatible with standard INI files.
+ *
+ * @param config Pointer to the ConfigFile structure containing the configuration data.
+ * @param filename The name of the file where the configuration should be saved.
+ */
 void config_save(const ConfigFile *config, const char *filename) {
     FileWriter* fw = file_writer_open(filename, WRITE_TEXT);
     if (!fw) {
@@ -126,7 +145,18 @@ void config_save(const ConfigFile *config, const char *filename) {
     file_writer_close(fw);
 }
 
-// Retrieves the value for a given key in a specified section
+/**
+ * @brief Retrieves the value for a given key in a specified section.
+ *
+ * This function searches the specified section in the configuration file for the given key.
+ * If the key is found, the corresponding value is returned. If the section or key is not found, 
+ * NULL is returned.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value is to be retrieved.
+ * @return The value associated with the key, or NULL if the section or key is not found.
+ */
 const char *config_get_value(const ConfigFile *config, const char *section, const char *key) {
     if (!config) {
         fmt_fprintf(stderr, "Error: ConfigFile pointer is NULL in config_get_value.\n");
@@ -156,7 +186,17 @@ const char *config_get_value(const ConfigFile *config, const char *section, cons
     return NULL;
 }
 
-// Sets the value for a given key in a specified section
+/**
+ * @brief Sets the value for a given key in a specified section.
+ *
+ * This function sets the value for the specified key in the given section. If the section or key
+ * does not exist, they are created. If the key already exists, its value is updated.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key-value pair should be set.
+ * @param key The key for which the value is to be set.
+ * @param value The value to be set for the specified key.
+ */
 void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value) {
     if (!config) {
         fmt_fprintf(stderr, "Error: ConfigFile pointer is NULL in config_set_value.\n");
@@ -226,7 +266,15 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
     sec->entry_count++;
 }
 
-// Removes an entire section from the configuration
+/**
+ * @brief Removes an entire section from the configuration.
+ *
+ * This function removes the specified section from the configuration file. All keys and values within
+ * the section are deleted. If the section is not found, a warning is printed.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The name of the section to be removed.
+ */
 void config_remove_section(ConfigFile *config, const char *section) {
     if (!config || !section) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_remove_section.\n");
@@ -261,7 +309,16 @@ void config_remove_section(ConfigFile *config, const char *section) {
     }
 }
 
-// Removes a specific key-value pair from a section in the configuration
+/**
+ * @brief Removes a specific key-value pair from a section in the configuration.
+ *
+ * This function removes the specified key-value pair from the given section in the configuration. 
+ * If the key is found, it is deleted, and the remaining entries in the section are adjusted accordingly.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name from which the key-value pair should be removed.
+ * @param key The key to be removed from the section.
+ */
 void config_remove_key(ConfigFile *config, const char *section, const char *key) {
     if (!config || !section || !key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_remove_key.\n");
@@ -295,7 +352,14 @@ void config_remove_key(ConfigFile *config, const char *section, const char *key)
     }
 }
 
-// Frees all memory associated with the configuration structure
+/**
+ * @brief Frees all memory associated with the configuration structure.
+ *
+ * This function deallocates all memory used by the ConfigFile structure, including sections, keys, values, and comments.
+ * After calling this function, the ConfigFile structure should no longer be used.
+ *
+ * @param config Pointer to the ConfigFile structure to be deallocated.
+ */
 void config_deallocate(ConfigFile *config) {
     if (!config) {
         fmt_fprintf(stderr, "Error: ConfigFile pointer is NULL in config_deallocate.\n");
@@ -317,7 +381,15 @@ void config_deallocate(ConfigFile *config) {
     free(config);
 }
 
-// Checks if a specific section exists in the configuration
+/**
+ * @brief Checks if a specific section exists in the configuration.
+ *
+ * This function checks whether a given section exists in the configuration file.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The name of the section to check for.
+ * @return True if the section exists, false otherwise.
+ */
 bool config_has_section(const ConfigFile *config, const char *section) {
     if (!config || !section) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_has_section.\n");
@@ -332,7 +404,17 @@ bool config_has_section(const ConfigFile *config, const char *section) {
     return false;
 }
 
-// Checks if a specific key exists within a section
+/**
+ * @brief Checks if a specific key exists within a section.
+ *
+ * This function checks whether a given key exists in the specified section of the configuration file.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The name of the section to check within.
+ * @param key The name of the key to check for.
+ * 
+ * @return True if the key exists within the section, false otherwise.
+ */
 bool config_has_key(const ConfigFile *config, const char *section, const char *key) {
     if (!config || !section || !key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_has_key.\n");
@@ -359,7 +441,19 @@ bool config_has_key(const ConfigFile *config, const char *section, const char *k
     return false;
 }
 
-// Retrieves an integer value for a given key, or a default if key is not found
+/**
+ * @brief Retrieves an integer value for a given key in a specified section, or a default value if the key is not found.
+ *
+ * This function attempts to retrieve and convert the value associated with the given key in the specified section
+ * to an integer. If the key is not found or the value cannot be converted to an integer, the specified default value is returned.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value will be retrieved and converted to an integer.
+ * @param default_value The default integer value to return if the key is not found or the value is invalid.
+ * 
+ * @return The integer value associated with the key, or the default value if the key is not found or invalid.
+ */
 int config_get_int(const ConfigFile *config, const char *section, const char *key, int default_value) {
     if (!config || !section || !key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_int.\n");
@@ -378,7 +472,19 @@ int config_get_int(const ConfigFile *config, const char *section, const char *ke
     return default_value; // Return the default value if not found or not an integer
 }
 
-// Retrieves a double value for a given key, or a default if key is not found
+/**
+ * @brief Retrieves a double value for a given key in a specified section, or a default value if the key is not found.
+ *
+ * This function attempts to retrieve and convert the value associated with the given key in the specified section
+ * to a double. If the key is not found or the value cannot be converted to a double, the specified default value is returned.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value will be retrieved and converted to a double.
+ * @param default_value The default double value to return if the key is not found or the value is invalid.
+ * 
+ * @return The double value associated with the key, or the default value if the key is not found or invalid.
+ */
 double config_get_double(const ConfigFile *config, const char *section, const char *key, double default_value) {
     if (!config || !section || !key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_double.\n");
@@ -397,7 +503,20 @@ double config_get_double(const ConfigFile *config, const char *section, const ch
     return default_value; // Return the default value if not found or not a double
 }
 
-// Retrieves a boolean value for a given key, or a default if key is not found
+/**
+ * @brief Retrieves a boolean value for a given key in a specified section, or a default value if the key is not found.
+ *
+ * This function attempts to retrieve the value associated with the given key in the specified section
+ * and interpret it as a boolean. Accepted values for true are "true", "yes", and "1". Accepted values for false are "false", "no", and "0".
+ * If the key is not found or the value does not match any recognized boolean value, the specified default value is returned.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value will be retrieved and interpreted as a boolean.
+ * @param default_value The default boolean value to return if the key is not found or the value is invalid.
+ * 
+ * @return The boolean value associated with the key, or the default value if the key is not found or invalid.
+ */
 bool config_get_bool(const ConfigFile *config, const char *section, const char *key, bool default_value) {
     if (!config || !section || !key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_bool.\n");
@@ -417,7 +536,16 @@ bool config_get_bool(const ConfigFile *config, const char *section, const char *
     return default_value; // Return the default value if not found or not a recognized boolean
 }
 
-// Adds a comment to a specific section in the configuration
+/**
+ * @brief Adds a comment to a specific section in the configuration.
+ *
+ * This function allows you to add a comment to a specified section in the configuration. 
+ * The comment will be stored with the section and can be saved when the configuration is written to a file.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the comment will be added.
+ * @param comment The comment to be added to the section.
+ */
 void config_set_comment(ConfigFile *config, const char *section, const char *comment) {
     if (!config || !section || !comment) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_set_comment.\n");
@@ -435,7 +563,15 @@ void config_set_comment(ConfigFile *config, const char *section, const char *com
     fmt_fprintf(stderr, "Warning: Section '%s' not found in config_set_comment.\n", section);
 }
 
-// Initializes an iterator for traversing the configuration entries
+/**
+ * @brief Initializes an iterator for traversing the configuration entries.
+ *
+ * This function initializes a ConfigIterator for traversing the entries in the configuration file. 
+ * The iterator is used to sequentially access each key-value pair in each section of the configuration.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @return A ConfigIterator initialized to the first entry in the configuration.
+ */
 ConfigIterator config_get_iterator(const ConfigFile *config) {
     ConfigIterator iterator = {0};
 
@@ -450,7 +586,19 @@ ConfigIterator config_get_iterator(const ConfigFile *config) {
     return iterator;
 }
 
-// Iterates to the next entry in the configuration, returning false if at the end
+/**
+ * @brief Iterates to the next entry in the configuration.
+ *
+ * This function advances the iterator to the next entry (key-value pair) in the configuration. 
+ * It returns false if there are no more entries to iterate over, indicating the end of the configuration.
+ *
+ * @param iterator Pointer to the ConfigIterator structure.
+ * @param section Pointer to a string where the section name will be stored.
+ * @param key Pointer to a string where the key name will be stored.
+ * @param value Pointer to a string where the value will be stored.
+ * 
+ * @return True if the next entry was successfully retrieved, false if the end of the configuration is reached.
+ */
 bool config_next_entry(ConfigIterator *iterator, const char **section, const char **key, const char **value) {
     if (!iterator || !iterator->config || iterator->section_index >= iterator->config->section_count) {
         fmt_fprintf(stderr, "Error: Invalid iterator or config in config_next_entry.\n");
@@ -476,7 +624,14 @@ bool config_next_entry(ConfigIterator *iterator, const char **section, const cha
     return false;
 }
 
-// Reloads the configuration from the file, updating the in-memory representation
+/**
+ * @brief Reloads the configuration from the file, updating the in-memory representation.
+ *
+ * This function reloads the configuration from the original file, discarding any changes that have been made in memory.
+ * The in-memory configuration is replaced with the newly loaded data.
+ *
+ * @param config_ptr Pointer to the pointer of the ConfigFile structure. The structure will be updated with the new data.
+ */
 void config_reload(ConfigFile **config_ptr) {
     if (!config_ptr || !(*config_ptr) || !(*config_ptr)->filename) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_reload.\n");
@@ -493,7 +648,15 @@ void config_reload(ConfigFile **config_ptr) {
     *config_ptr = new_config; // Update to the new configuration
 }
 
-// Registers a callback function to be called upon modifications to the configuration
+/**
+ * @brief Registers a callback function to be called whenever a modification is made to the configuration.
+ *
+ * This function allows you to register a callback that will be triggered whenever a key-value pair
+ * in the configuration is modified. The callback will receive the section, key, and value of the modification.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param callback Function pointer to the callback function that will handle the modification events.
+ */
 void config_register_modification_callback(ConfigFile *config, void (*callback)(const char *section, const char *key, const char *value)) {
     if (!config) {
         fmt_fprintf(stderr, "Error: ConfigFile is NULL in config_register_modification_callback.\n");
@@ -503,7 +666,17 @@ void config_register_modification_callback(ConfigFile *config, void (*callback)(
 }
 
 
-// Validates the structure of the configuration against an expected template
+/**
+ * @brief Validates the structure of the configuration against an expected template.
+ *
+ * This function checks the configuration to ensure it conforms to a specified structure template.
+ * It validates the presence of required sections and optionally their keys. If any required section
+ * is missing, a warning is printed.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param expected_structure Pointer to an array of ConfigSection structures representing the expected configuration structure.
+ * @param structure_size The number of elements in the expected_structure array.
+ */
 void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size) {
     if (!config || !expected_structure) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_validate_structure.\n");
@@ -527,7 +700,20 @@ void config_validate_structure(const ConfigFile *config, const ConfigSection *ex
     }
 }
 
-// Retrieves an array of strings for a given key in a section
+/**
+ * @brief Retrieves an array of strings for a given key in a specified section.
+ *
+ * This function retrieves the value associated with the given key in the specified section,
+ * splits the value by commas into an array of strings, and returns the array.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value is to be retrieved and split into an array.
+ * @param array_size Pointer to a size_t variable where the number of elements in the array will be stored.
+ * 
+ * @return A pointer to an array of strings. The caller is responsible for freeing this memory. 
+ * Returns NULL if the key does not exist or if there is an error.
+ */
 char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size) {
     if (!config || !section || !key || !array_size) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_array.\n");
@@ -567,7 +753,18 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
     return array;
 }
 
-// Sets an array of strings for a given key in a section
+/**
+ * @brief Sets an array of strings for a given key in a specified section.
+ *
+ * This function combines an array of strings into a single comma-separated string and stores it as the value
+ * for the given key in the specified section.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value will be set to the combined array string.
+ * @param array Pointer to an array of strings to be combined and stored.
+ * @param array_size The number of elements in the array.
+ */
 void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size) {
     if (!config || !section || !key || !array || array_size == 0) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_set_array.\n");
@@ -593,7 +790,21 @@ void config_set_array(ConfigFile *config, const char *section, const char *key, 
     free(combined);
 }
 
-// Retrieves an encrypted value for a given key in a section
+/**
+ * @brief Retrieves an encrypted value for a given key in a section and decrypts it using the provided encryption key.
+ *
+ * This function looks up the specified key within the specified section of the configuration file.
+ * The stored value is expected to be encrypted using a simple XOR encryption, and it will be decrypted
+ * using the provided encryption key.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose encrypted value is to be retrieved.
+ * @param encryption_key The key used to decrypt the value.
+ * 
+ * @return A pointer to the decrypted value as a dynamically allocated string. The caller is responsible for freeing this memory.
+ * Returns NULL if the key does not exist or if there is an error in the process.
+ */
 char *config_get_encrypted_value(const ConfigFile *config, const char *section, const char *key, const char *encryption_key) {
     if (!config || !section || !key || !encryption_key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_encrypted_value.\n");
@@ -619,7 +830,18 @@ char *config_get_encrypted_value(const ConfigFile *config, const char *section, 
     return decrypted_value;
 }
 
-// Sets an encrypted value for a given key in a section
+/**
+ * @brief Sets an encrypted value for a given key in a section.
+ *
+ * This function encrypts the provided value using a simple XOR encryption with the provided encryption key
+ * and then stores the encrypted value in the configuration file under the specified section and key.
+ *
+ * @param config Pointer to the ConfigFile structure.
+ * @param section The section name where the key is located.
+ * @param key The key whose value will be encrypted and stored.
+ * @param value The value to be encrypted and stored.
+ * @param encryption_key The key used to encrypt the value.
+ */
 void config_set_encrypted_value(ConfigFile *config, const char *section, const char *key, const char *value, const char *encryption_key) {
     if (!config || !section || !key || !value || !encryption_key) {
         fmt_fprintf(stderr, "Error: Invalid arguments provided to config_set_encrypted_value.\n");

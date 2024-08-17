@@ -9,6 +9,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Creates a new ForwardList.
+ *
+ * This function allocates memory for a new ForwardList structure and initializes it.
+ * The list is created to hold elements of size `itemSize`. If `itemSize` is zero or
+ * if memory allocation fails, the function prints an error message and terminates
+ * the program.
+ *
+ * @param itemSize The size, in bytes, of each element that will be stored in the list.
+ * @return ForwardList* Pointer to the newly created ForwardList.
+ * @note If `itemSize` is zero or if memory allocation fails, the function will exit the program with an error.
+ */
 ForwardList *forward_list_create(size_t itemSize) {
     if (itemSize == 0) {
         fmt_fprintf(stderr, "Error: Item size cannot be zero in forward_list_create.\n");
@@ -84,6 +96,15 @@ static ForwardListNode *merge_sort(ForwardListNode *head, size_t itemSize) {
     return merge_sorted_lists(left, right, itemSize);
 }
 
+/**
+ * @brief Adds a new element to the front of the ForwardList.
+ *
+ * This function creates a new node with the provided `value` and inserts it at the
+ * front of the `list`. The list's size is increased by one.
+ *
+ * @param list Pointer to the ForwardList where the element will be added.
+ * @param value Pointer to the value to be added at the front of the list.
+ */
 void forward_list_push_front(ForwardList *list, void *value) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_push_front.\n");
@@ -113,6 +134,15 @@ void forward_list_push_front(ForwardList *list, void *value) {
     list->size++;
 }
 
+/**
+ * @brief Adds a new element to the front of the ForwardList.
+ *
+ * This function creates a new node with the provided `value` and inserts it at the
+ * front of the `list`. The list's size is increased by one.
+ *
+ * @param list Pointer to the ForwardList where the element will be added.
+ * @param value Pointer to the value to be added at the front of the list.
+ */
 void forward_list_pop_front(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_pop_front.\n");
@@ -131,6 +161,15 @@ void forward_list_pop_front(ForwardList *list) {
     list->size--;
 }
 
+/**
+ * @brief Retrieves the first element of the ForwardList.
+ *
+ * This function returns a pointer to the value stored in the first node of the `list`.
+ * If the list is empty, it returns `NULL`.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return void* Pointer to the value at the front of the list, or `NULL` if the list is empty.
+ */
 void *forward_list_front(const ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_front.\n");
@@ -143,6 +182,14 @@ void *forward_list_front(const ForwardList *list) {
     return list->head->value;
 }
 
+/**
+ * @brief Removes all elements from the ForwardList.
+ *
+ * This function clears the `list` by deallocating the memory of all its nodes, effectively
+ * making the list empty. The list's size is set to zero.
+ *
+ * @param list Pointer to the ForwardList to be cleared.
+ */
 void forward_list_clear(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_clear.\n");
@@ -161,6 +208,15 @@ void forward_list_clear(ForwardList *list) {
     list->size = 0;
 }
 
+/**
+ * @brief Checks whether the ForwardList is empty.
+ *
+ * This function returns `true` if the `list` is empty (i.e., contains no elements),
+ * otherwise it returns `false`. If the list pointer is `NULL`, it is considered empty.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return bool `true` if the list is empty, `false` otherwise.
+ */
 bool forward_list_empty(const ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_empty.\n");
@@ -169,6 +225,15 @@ bool forward_list_empty(const ForwardList *list) {
     return list->head == NULL;
 }
 
+/**
+ * @brief Returns the number of elements in the ForwardList.
+ *
+ * This function returns the size of the `list`, representing the number of elements
+ * currently stored in the list.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return size_t The number of elements in the list.
+ */
 size_t forward_list_length(const ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_length.\n");
@@ -177,6 +242,14 @@ size_t forward_list_length(const ForwardList *list) {
     return list->size;
 }
 
+/**
+ * @brief Deallocates the memory associated with the ForwardList.
+ *
+ * This function deallocates all the memory associated with the `list`, including all its nodes.
+ * It also clears the list before deallocating the list structure itself.
+ *
+ * @param list Pointer to the ForwardList to be deallocated.
+ */
 void forward_list_deallocate(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_deallocate.\n");
@@ -186,6 +259,17 @@ void forward_list_deallocate(ForwardList *list) {
     free(list);
 }
 
+/**
+ * @brief Assigns new values to the ForwardList, replacing its current contents.
+ *
+ * This function replaces the current contents of the `list` with `numValues` elements
+ * from the array pointed to by `values`. The list is cleared before the new values are added.
+ * The order of elements in the list is maintained as per the order in the input array.
+ *
+ * @param list Pointer to the ForwardList to be assigned new values.
+ * @param values Pointer to the array containing new values to be assigned.
+ * @param numValues The number of values in the array.
+ */
 void forward_list_assign(ForwardList *list, void *values, size_t numValues) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_assign.\n");
@@ -203,6 +287,15 @@ void forward_list_assign(ForwardList *list, void *values, size_t numValues) {
     forward_list_reverse(list); // Reverse the list to maintain the correct order
 }
 
+/**
+ * @brief Returns a pointer to the node before the beginning of the ForwardList.
+ *
+ * This function returns a pointer to the node before the beginning of the `list`. In a singly
+ * linked list, there is no node before the beginning, so this function returns `NULL`.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return ForwardListNode* A pointer to the node before the beginning, which is `NULL`.
+ */
 ForwardListNode *forward_list_before_begin(ForwardList *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in forward_list_before_begin.\n");
@@ -211,6 +304,14 @@ ForwardListNode *forward_list_before_begin(ForwardList *list) {
     return NULL; // In a singly linked list, there is no node before the beginning
 }
 
+/**
+ * @brief Returns a pointer to the first node in the ForwardList.
+ *
+ * This function returns a pointer to the first node (head) in the `list`.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return ForwardListNode* A pointer to the first node in the list.
+ */
 ForwardListNode *forward_list_begin(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_begin.\n");
@@ -219,6 +320,15 @@ ForwardListNode *forward_list_begin(ForwardList *list) {
     return list->head;
 }
 
+/**
+ * @brief Returns a pointer to the end of the ForwardList.
+ *
+ * This function returns `NULL` to represent the end of the `list`, as the end of a singly linked list
+ * is represented by a `NULL` pointer.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return ForwardListNode* A `NULL` pointer representing the end of the list.
+ */
 ForwardListNode *forward_list_end(ForwardList *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in forward_list_end.\n");
@@ -227,6 +337,15 @@ ForwardListNode *forward_list_end(ForwardList *list) {
     return NULL; // In a singly linked list, the end is represented by NULL
 }
 
+/**
+ * @brief Returns a pointer to the end of the ForwardList.
+ *
+ * This function returns `NULL` to represent the end of the `list`, as the end of a singly linked list
+ * is represented by a `NULL` pointer.
+ *
+ * @param list Pointer to the ForwardList.
+ * @return ForwardListNode* A `NULL` pointer representing the end of the list.
+ */
 size_t forward_list_max_size(const ForwardList *list) {
     if (list == NULL) {
         fmt_fprintf(stderr, "Error: Null pointer provided for list in forward_list_max_size.\n");
@@ -235,7 +354,17 @@ size_t forward_list_max_size(const ForwardList *list) {
     return (size_t)-1; // You might want to replace this with a more meaningful value
 }
 
-
+/**
+ * @brief Constructs an element in place after the specified position in the ForwardList.
+ *
+ * This function constructs a new element in place after the node specified by `pos` in the `list`,
+ * using the provided `value` without making a copy. If `pos` is `NULL`, the element is emplaced
+ * at the front of the list. The list's size is increased by one.
+ *
+ * @param list Pointer to the ForwardList where the element will be emplaced.
+ * @param pos Pointer to the node after which the element will be emplaced. If `NULL`, the element is emplaced at the front.
+ * @param value Pointer to the value to be emplaced after the specified position.
+ */
 void forward_list_emplace_front(ForwardList *list, void *value) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_emplace_front.\n");
@@ -284,6 +413,19 @@ void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *v
     list->size++;
 }
 
+/**
+ * @brief Inserts one or more elements into the ForwardList after the specified position.
+ *
+ * This function inserts `numValues` elements into the `list` after the node specified by `pos`.
+ * If `pos` is `NULL`, the elements are inserted at the beginning of the list. The values to be
+ * inserted are provided through a pointer `value`, and the size of each element is determined by
+ * the list's `itemSize`.
+ *
+ * @param list Pointer to the ForwardList where elements will be inserted.
+ * @param pos Pointer to the node after which the elements will be inserted. If `NULL`, elements are inserted at the beginning.
+ * @param value Pointer to the values to be inserted.
+ * @param numValues The number of values to be inserted.
+ */
 void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_insert_after.\n");
@@ -323,6 +465,19 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
     }
 }
 
+/**
+ * @brief Inserts one or more elements into the ForwardList after the specified position.
+ *
+ * This function inserts `numValues` elements into the `list` after the node specified by `pos`.
+ * If `pos` is `NULL`, the elements are inserted at the beginning of the list. The values to be
+ * inserted are provided through a pointer `value`, and the size of each element is determined by
+ * the list's `itemSize`.
+ *
+ * @param list Pointer to the ForwardList where elements will be inserted.
+ * @param pos Pointer to the node after which the elements will be inserted. If `NULL`, elements are inserted at the beginning.
+ * @param value Pointer to the values to be inserted.
+ * @param numValues The number of values to be inserted.
+ */
 void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_erase_after.\n");
@@ -344,6 +499,15 @@ void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) {
     list->size--;
 }
 
+/**
+ * @brief Swaps the contents of two ForwardLists.
+ *
+ * This function swaps the contents (nodes and sizes) of the two ForwardLists, `list1` and `list2`.
+ * After the swap, `list1` will contain what was originally in `list2` and vice versa.
+ *
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ */
 void forward_list_swap(ForwardList *list1, ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL list pointer(s) in forward_list_swap.\n");
@@ -360,6 +524,16 @@ void forward_list_swap(ForwardList *list1, ForwardList *list2) {
     list2->size = tempSize;
 }
 
+/**
+ * @brief Resizes the ForwardList to the specified size.
+ *
+ * This function resizes the `list` to contain `newSize` elements. If the current size of the list
+ * is greater than `newSize`, elements are removed from the front of the list. If the current size is
+ * less than `newSize`, new elements are added to the front of the list, initialized to zero.
+ *
+ * @param list Pointer to the ForwardList to be resized.
+ * @param newSize The new size of the list.
+ */
 void forward_list_resize(ForwardList *list, size_t newSize) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_resize.\n");
@@ -381,6 +555,17 @@ void forward_list_resize(ForwardList *list, size_t newSize) {
     }
 }
 
+/**
+ * @brief Splices the elements from another ForwardList into this list after the specified position.
+ * 
+ * This function moves all elements from the `other` ForwardList into the `list` 
+ * after the specified position `pos`. The `other` list becomes empty after this 
+ * operation. If `pos` is `NULL`, the elements are spliced at the beginning of the list.
+ * 
+ * @param list Pointer to the ForwardList where elements will be spliced.
+ * @param pos Pointer to the node after which the elements will be inserted. If `NULL`, elements are spliced at the beginning.
+ * @param other Pointer to the ForwardList whose elements will be spliced into `list`.
+ */
 void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_splice_after.\n");
@@ -420,6 +605,16 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
     }
 }
 
+/**
+ * @brief Removes all elements equal to the specified value from the ForwardList.
+ * 
+ * This function iterates through the ForwardList and removes all elements that 
+ * are equal to the specified `value`. Memory for the removed nodes is freed, 
+ * and the list's size is updated accordingly.
+ * 
+ * @param list Pointer to the ForwardList from which elements are to be removed.
+ * @param value Pointer to the value to be removed from the list.
+ */
 void forward_list_remove(ForwardList *list, void *value) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_remove.\n");
@@ -448,6 +643,16 @@ void forward_list_remove(ForwardList *list, void *value) {
     }
 }
 
+/**
+ * @brief Removes all elements that satisfy the specified condition from the ForwardList.
+ * 
+ * This function iterates through the ForwardList and removes all elements that 
+ * satisfy the specified condition. The condition is provided as a function pointer 
+ * that takes a pointer to the element and returns `true` if the element should be removed.
+ * 
+ * @param list Pointer to the ForwardList from which elements are to be removed.
+ * @param condition Function pointer to a function that determines if an element should be removed.
+ */
 void forward_list_remove_if(ForwardList *list, bool (*condition)(void*)) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_remove_if.\n");
@@ -477,6 +682,15 @@ void forward_list_remove_if(ForwardList *list, bool (*condition)(void*)) {
     }
 }
 
+/**
+ * @brief Removes consecutive duplicate elements from the ForwardList.
+ * 
+ * This function iterates through the ForwardList and removes consecutive elements 
+ * that are duplicates, retaining only the first occurrence. The list is modified 
+ * in place, and memory for the removed nodes is freed.
+ * 
+ * @param list Pointer to the ForwardList from which duplicates are to be removed.
+ */
 void forward_list_unique(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_unique.\n");
@@ -502,6 +716,17 @@ void forward_list_unique(ForwardList *list) {
     }
 }
 
+/**
+ * @brief Merges two sorted ForwardLists into a single sorted list.
+ * 
+ * This function takes two sorted ForwardLists, `list1` and `list2`, and merges 
+ * them into a single sorted list stored in `list1`. After the merge, `list2` 
+ * becomes empty. The elements are merged in a way that the resulting list is 
+ * sorted in ascending order.
+ * 
+ * @param list1 Pointer to the first sorted ForwardList that will store the merged list.
+ * @param list2 Pointer to the second sorted ForwardList, which will be emptied after the merge.
+ */
 void forward_list_merge(ForwardList *list1, ForwardList *list2) {
     if (!list1) {
         fmt_fprintf(stderr, "Error: NULL list1 pointer in forward_list_merge.\n");
@@ -536,6 +761,14 @@ void forward_list_merge(ForwardList *list1, ForwardList *list2) {
     list1->head = dummy.next; // Update list1's head
 }
 
+/**
+ * @brief Sorts the elements of the ForwardList in ascending order.
+ * 
+ * This function sorts the elements of the ForwardList using the merge sort algorithm. 
+ * The sorting is done in place, and the list is modified to reflect the new order.
+ * 
+ * @param list Pointer to the ForwardList to be sorted.
+ */
 void forward_list_sort(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer in forward_list_sort.\n");
@@ -547,6 +780,14 @@ void forward_list_sort(ForwardList *list) {
     list->head = merge_sort(list->head, list->itemSize);
 }
 
+/**
+ * @brief Reverses the order of elements in the ForwardList.
+ * 
+ * This function reverses the order of elements in the ForwardList. The list is 
+ * modified in place, and the head of the list is updated to reflect the new order.
+ * 
+ * @param list Pointer to the ForwardList to be reversed.
+ */
 void forward_list_reverse(ForwardList *list) {
     if (!list) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer in forward_list_reverse.\n");
@@ -571,6 +812,18 @@ static int compare_node_values(const void *a, const void *b, size_t size) {
     return memcmp(a, b, size);
 }
 
+/**
+ * @brief Compares two ForwardLists to determine if the first list is lexicographically less than the second.
+ * 
+ * This function checks if the elements in `list1` are lexicographically less than those in `list2`.
+ * The comparison is done element by element, and the function stops as soon as a non-equal element
+ * is found. If all compared elements are equal but `list1` is shorter than `list2`, the function returns true.
+ * 
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ * 
+ * @return true if `list1` is lexicographically less than `list2`, false otherwise.
+ */
 bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_less.\n");
@@ -588,6 +841,18 @@ bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2) {
     return node1 == NULL && node2 != NULL;
 }
 
+/**
+ * @brief Compares two ForwardLists to determine if the first list is lexicographically greater than the second.
+ * 
+ * This function checks if the elements in `list1` are lexicographically greater than those in `list2`.
+ * The comparison is done element by element, and the function stops as soon as a non-equal element
+ * is found. If all compared elements are equal but `list1` is longer than `list2`, the function returns true.
+ * 
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ * 
+ * @return true if `list1` is lexicographically greater than `list2`, false otherwise.
+ */
 bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_greater.\n");
@@ -596,6 +861,18 @@ bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2)
     return forward_list_is_less(list2, list1); // Just invert list1 and list2 for is_greater
 }
 
+/**
+ * @brief Compares two ForwardLists to determine if they are equal.
+ * 
+ * This function checks if the elements in `list1` are equal to those in `list2`.
+ * The comparison is done element by element. The function returns true if all elements
+ * are equal and both lists have the same length.
+ * 
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ * 
+ * @return true if `list1` is equal to `list2`, false otherwise.
+ */
 bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_equal.\n");
@@ -613,6 +890,17 @@ bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2) {
     return node1 == NULL && node2 == NULL;
 }
 
+/**
+ * @brief Compares two ForwardLists to determine if the first list is lexicographically less than or equal to the second.
+ * 
+ * This function checks if the elements in `list1` are lexicographically less than or equal to those in `list2`.
+ * The comparison is done element by element. The function returns true if `list1` is less than or equal to `list2`.
+ * 
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ * 
+ * @return true if `list1` is less than or equal to `list2`, false otherwise.
+ */
 bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_less_or_equal.\n");
@@ -621,6 +909,17 @@ bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *
     return forward_list_is_less(list1, list2) || forward_list_is_equal(list1, list2);
 }
 
+/**
+ * @brief Compares two ForwardLists to determine if the first list is lexicographically greater than or equal to the second.
+ * 
+ * This function checks if the elements in `list1` are lexicographically greater than or equal to those in `list2`.
+ * The comparison is done element by element. The function returns true if `list1` is greater than or equal to `list2`.
+ * 
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ * 
+ * @return true if `list1` is greater than or equal to `list2`, false otherwise.
+ */
 bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_greater_or_equal.\n");
@@ -629,6 +928,17 @@ bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardLis
     return forward_list_is_greater(list1, list2) || forward_list_is_equal(list1, list2);
 }
 
+/**
+ * @brief Compares two ForwardLists to determine if they are not equal.
+ * 
+ * This function checks if the elements in `list1` are not equal to those in `list2`.
+ * The comparison is done element by element. The function returns true if the lists differ in any element
+ * or if they have different lengths.
+ * 
+ * @param list1 Pointer to the first ForwardList.
+ * @param list2 Pointer to the second ForwardList.
+ * @return true if `list1` is not equal to `list2`, false otherwise.
+ */
 bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
         fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_not_equal.\n");

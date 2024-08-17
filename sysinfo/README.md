@@ -4,14 +4,13 @@
 **Release Date:** 2024  
 **License:** ISC License
 
-
 ## Overview
 
-This SysInfo library in C provides a set of functions for gathering lots of information about system also operating system. and work fine in (windows and linux) not Mac :))
+The SysInfo library provides a set of functions for retrieving detailed information about the operating system and hardware of a machine. It is designed to work on both Windows and Linux systems, though it is not compatible with macOS. The library is lightweight and easy to integrate into C projects, offering developers essential system details such as OS version, kernel type, CPU architecture, and more.
 
 ## Installation and Compilation
 
-To use this library, include `sysinfo.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
+To use this library, include `sysinfo.h` in your project and compile the source files with your C compiler. Here is an example using GCC:
 
 ```bash
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./sysinfo/sysinfo.c
@@ -19,231 +18,260 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 ## Documentation
 
-The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like generating random integers within specified ranges.
-
+The SysInfo library offers a variety of functions to gather information about the system it is running on. Below is a detailed description of each function provided by the library.
 
 ### Function Descriptions
 
-- `char* sysinfo_product_version()`: This function returns the product version of the operating system in string form. If the version could not be determined, this function returns "unknown".
+- **`char* sysinfo_product_version()`**: 
+  - Returns the version of the operating system as a string. If the version cannot be determined, it returns `"unknown"`.
+  - **Example (Linux)**: `"24.04"`
+  - **Example (Windows)**: `"10.0"`
 
-- `char* sysinfo_product_type()`: This function returns the product name of the operating system this application is running in.
-- `char* sysinfo_kernel_version()`: This function returns the release version of the operating system kernel.
-- `char* sysinfo_kernel_type()`: This function returns the type of the operating system kernel that program was compiled for. It's also the kernel the application is running on. on unix like systems it returns the same as the output of uname -s.
+- **`char* sysinfo_product_type()`**: 
+  - Returns the product name of the operating system. On Linux, it retrieves the distribution name; on Windows, it returns `"Windows"`.
+  - **Example (Linux)**: `"Ubuntu"`
+  - **Example (Windows)**: `"Windows"`
 
-- `char* sysinfo_boot_unique_id()`: This function returns a unique ID for this machine's boot. in Linux, the boot unique ID is obtained from the file `/proc/sys/kernel/random/boot_id`. in Windows, the unique boot ID is derived from the system uptime in milliseconds since the last boot using `GetTickCount64()`.
+- **`char* sysinfo_kernel_version()`**: 
+  - Returns the version of the operating system kernel. This is equivalent to the output of `uname -r` on Linux.
+  - **Example (Linux)**: `"6.8.0-35-generic"`
+  - **Example (Windows)**: `"10.0.19045"`
 
-- `char* sysinfo_cpu_architecture()`: This function returns the architecture of the Cpu that the application is running on.
-- `char* sysinfo_machine_host_name()`: This function returns fully qualified name for a machine.  also in Linux version this function only work if the machine has a FQDN to give - if not, the result of the getaddrinfo() ends up being the same as the unqualified hostname.
+- **`char* sysinfo_kernel_type()`**: 
+  - Returns the type of the kernel, such as `"Linux"` or `"Windows NT"`. This corresponds to the output of `uname -s` on Unix-like systems.
+  - **Example (Linux)**: `"Linux"`
+  - **Example (Windows)**: `"Windows NT"`
 
-- `char* sysinfo_machine_unique_id()`: This function returns the `id` for this machine. if no unique id could be determined . function returns an  `unknown` string. unique id is useful in network operations to identify this machine for an extended period of time.
+- **`char* sysinfo_boot_unique_id()`**: 
+  - Returns a unique ID for the current boot session. On Linux, this ID is read from `/proc/sys/kernel/random/boot_id`. On Windows, it is derived from the system uptime using `GetTickCount64()`.
+  - **Example (Linux)**: `"bba30543-fea2-4477-b9e4-5343f8746200"`
+  - **Example (Windows)**: `"22066640"`
 
-## Example 
+- **`char* sysinfo_cpu_architecture()`**: 
+  - Returns the CPU architecture of the system. This could be values like `"x86_64"`, `"ARM"`, etc.
+  - **Example (Linux/Windows)**: `"x86_64"`
 
-Several examples are provided to demonstrate the usage of the SysInfo library in various scenarios.
+- **`char* sysinfo_machine_host_name()`**: 
+  - Returns the fully qualified domain name (FQDN) of the machine if available. If no FQDN is available, it returns the hostname.
+  - **Example (Linux)**: `"kaisen-VirtualBox"`
+  - **Example (Windows)**: `"DESKTOP-DF2A2F9"`
 
-## Example 1: get prodouct version of system with `sysinfo_product_version`
+- **`char* sysinfo_machine_unique_id()`**: 
+  - Returns a unique identifier for the machine. This ID is persistent across reboots and is usually derived from `/etc/machine-id` on Linux or the Windows registry.
+  - **Example (Linux)**: `"4229c1dd3d8c41e1a7b9e1102912cde3"`
+  - **Example (Windows)**: `"8ba376a1-9832-45a0-b7bd-5d507e7a1d68"`
+
+- **`char* sysinfo_pretty_product_name()`**: 
+  - Returns a user-friendly string representing the operating system name and version.
+  - **Example (Linux)**: `"Ubuntu 24.04"`
+  - **Example (Windows)**: `"Windows 10 Version 10.0 (Build 19045)"`
+
+- **`char** sysinfo_list_bluetooth_devices(int* count)`**: 
+  - Returns a list of Bluetooth devices currently connected or known to the system. The number of devices is returned via the `count` parameter. This function is not guaranteed to work on all systems and is primarily implemented for Linux and Windows.
+  - **Example (Linux/Windows)**: List of Bluetooth device names.
+
+## Examples
+
+The following examples demonstrate how to use the SysInfo library in various scenarios.
+
+### Example 1: Get OS Version
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
 int main() {
-    fmt_printf("Os Version : %s\n", sysinfo_product_version());
-
+    fmt_printf("OS Version: %s\n", sysinfo_product_version());
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
-Os Version : 24.04
-```
-**On Windows:**
-```
-Os Version : 10.0
+OS Version: 24.04
 ```
 
-## Example 2 : get product name of os with `sysinfo_product_type`
+**Output on Windows:**
+```
+OS Version: 10.0
+```
+
+### Example 2: Get Product Type
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
-
 
 int main() {
     fmt_printf("OS Product Type: %s\n", sysinfo_product_type());
-
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
 OS Product Type: Ubuntu
 ```
-**On Windows:**
+
+**Output on Windows:**
 ```
 OS Product Type: Windows
 ```
 
-
-### Example 3 : get kernel version with `sysinfo_kernel_version`
+### Example 3: Get Kernel Version
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
     fmt_printf("Kernel Version: %s\n", sysinfo_kernel_version());
-
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
 Kernel Version: 6.8.0-35-generic
 ```
-**On Windows:**
+
+**Output on Windows:**
 ```
 Kernel Version: 10.0.19045
 ```
 
-## Example 4 : get kernel type with `sysinfo_kernel_type`
+### Example 4: Get Kernel Type
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
     fmt_printf("Kernel Type: %s\n", sysinfo_kernel_type());
-
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
 Kernel Type: Linux
 ```
-**On Windows:**
+
+**Output on Windows:**
 ```
 Kernel Type: Windows NT
 ```
 
-## Example 5 : get boot unique id in linux in windows is not work `sysinfo_boot_unique_id`
+### Example 5: Get Boot Unique ID
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
-    fmt_printf("Boot Unique Id : %s\n", sysinfo_boot_unique_id());
-
+    fmt_printf("Boot Unique ID: %s\n", sysinfo_boot_unique_id());
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
-Boot Unique Id : bba30543-fea2-4477-b9e4-5343f8746200
-```
-**On Windows:**
-```
-Boot Unique Id : 22066640
+Boot Unique ID: bba30543-fea2-4477-b9e4-5343f8746200
 ```
 
-## Example 6 : get cpu architecture of system with `sysinfo_cpu_architecture`
+**Output on Windows:**
+```
+Boot Unique ID: 22066640
+```
+
+### Example 6: Get CPU Architecture
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
-    fmt_printf("Cpu Architecture : %s\n", sysinfo_cpu_architecture());
-
+    fmt_printf("CPU Architecture: %s\n", sysinfo_cpu_architecture());
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux/Windows:**
 ```
-Cpu Architecture : x86_64
-```
-**On Windows:**
-```
-Cpu Architecture : x86_64
+CPU Architecture: x86_64
 ```
 
-## Example 7 : get machine host name with `sysinfo_machine_host_name`
+### Example 7: Get Machine Host Name
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
-    fmt_printf("Machine Host Name is : %s\n", sysinfo_machine_host_name());
-
+    fmt_printf("Machine Host Name: %s\n", sysinfo_machine_host_name());
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
-Machine Host Name is : kaisen-VirtualBox
-```
-**On Windows:**
-```
-Machine Host Name is : DESKTOP-DF2A2F9
+Machine Host Name: kaisen-VirtualBox
 ```
 
-## Example 8 : get machine unique id  `sysinfo_machine_unique_id`
+**Output on Windows:**
+```
+Machine Host Name: DESKTOP-DF2A2F9
+```
+
+### Example 8: Get Machine Unique ID
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
-
 
 int main() {
     fmt_printf("Machine Unique ID: %s\n", sysinfo_machine_unique_id());
-
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
 Machine Unique ID: 4229c1dd3d8c41e1a7b9e1102912cde3
 ```
-**On Windows:**
+
+**Output on Windows:**
 ```
 Machine Unique ID: 8ba376a1-9832-45a0-b7bd-5d507e7a1d68
 ```
 
-## Example 9 : get product name in pretty way with `sysinfo_pretty_product_name`
+### Example 9: Get Pretty Product Name
 
 ```c
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
 
-
 int main() {
-    fmt_printf("Pretty Product Name : %s\n", sysinfo_pretty_product_name());
-
+    fmt_printf("Pretty Product Name: %s\n", sysinfo_pretty_product_name());
     return 0;
 }
 ```
-**On Linux:**
+
+**Output on Linux:**
 ```
-Pretty Product Name : Ubuntu 24.04
-```
-**On Windows:**
-```
-Pretty Product Name : Windows 10 Version 10.0 (Build 19045)
+Pretty Product Name: Ubuntu 24.04
 ```
 
-## Example 10 : get list of bluetooth `sysinfo_list_bluetooth_devices`
+**Output on Windows:**
+```
+Pretty Product Name: Windows 10 Version 10.0 (Build 19045)
+```
+
+### Example 10: List Bluetooth Devices
 
 ```c
-#include "sysinfo/sysinfo.h"
 #include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
 #include <stdlib.h>
 
 int main() {
@@ -251,13 +279,14 @@ int main() {
     char** devices = sysinfo_list_bluetooth_devices(&count);
 
     fmt_printf("Found %d Bluetooth devices:\n", count);
-    for (int i = 0; i < count; i++) {
+    for
+
+ (int i = 0; i < count; i++) {
         fmt_printf("%s\n", devices[i]);
         free(devices[i]);
     }
 
     free(devices);
-    
     return 0;
 }
 ```

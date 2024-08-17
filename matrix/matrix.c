@@ -36,7 +36,7 @@ static inline int min_number(int a, int b) {
 }
 
 // Function to calculate binomial coefficient
-double binomial_coefficient(int n, int k) {
+static double binomial_coefficient(int n, int k) {
     double *C = (double*) malloc(sizeof(double) * (k + 1));
     if (!C) {
         return -1; 
@@ -97,7 +97,16 @@ void normalize_vector(double* v, size_t length) {
     }
 }
 
-// Function to swap two rows of a matrix
+/**
+ * @brief Swaps two rows of a matrix.
+ *
+ * This function swaps the elements of two rows in the given matrix.
+ * If the matrix pointer is NULL or the row indices are out of bounds, the function does nothing.
+ *
+ * @param mat The matrix whose rows are to be swapped.
+ * @param row1 The index of the first row to swap.
+ * @param row2 The index of the second row to swap.
+ */
 void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2) {
     if (!mat || row1 >= mat->rows || row2 >= mat->rows) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -117,6 +126,16 @@ void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2) {
     #endif
 }
 
+/**
+ * @brief Swaps two columns in a matrix.
+ *
+ * This function exchanges the positions of two columns in a matrix.
+ * If the matrix is NULL or the column indices are out of bounds, the function does nothing.
+ *
+ * @param mat The matrix in which to swap the columns.
+ * @param col1 The index of the first column to swap.
+ * @param col2 The index of the second column to swap.
+ */
 void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2) {
     if (!mat || col1 >= mat->cols || col2 >= mat->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -136,18 +155,51 @@ void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2) {
     #endif
 }
 
+/**
+ * @brief Divides all elements in a row by a scalar.
+ *
+ * This function divides each element in a specified row of the matrix by a given scalar value.
+ *
+ * @param matrix The matrix whose row will be divided.
+ * @param row The index of the row to divide.
+ * @param scalar The scalar value by which to divide each element in the row.
+ */
 void matrix_row_divide(Matrix* matrix, size_t row, double scalar) {
     for (size_t col = 0; col < matrix->cols; col++) {
         matrix->data[row * matrix->cols + col] /= scalar;
     }
 }
 
+
+/**
+ * @brief Subtracts a scaled row from another row.
+ *
+ * This function subtracts a scaled version of one row from another row in the matrix.
+ *
+ * @param matrix The matrix in which the operation will be performed.
+ * @param targetRow The index of the row that will be modified.
+ * @param subtractRow The index of the row to subtract from the target row.
+ * @param scalar The scalar value by which to multiply the subtractRow before subtracting it from the targetRow.
+ */
 void matrix_row_subtract(Matrix* matrix, size_t targetRow, size_t subtractRow, double scalar) {
     for (size_t col = 0; col < matrix->cols; col++) {
         matrix->data[targetRow * matrix->cols + col] -= scalar * matrix->data[subtractRow * matrix->cols + col];
     }
 }
 
+/**
+ * @brief Creates a matrix with the specified number of rows and columns, initialized to zero.
+ *
+ * This function allocates memory for a matrix structure and its data array. 
+ * The matrix is initialized with all elements set to zero.
+ * If the number of rows or columns is zero, or if memory allocation fails, 
+ * the function returns NULL.
+ *
+ * @param rows The number of rows in the matrix.
+ * @param cols The number of columns in the matrix.
+ * 
+ * @return A pointer to the created matrix, or NULL if an error occurred.
+ */
 Matrix* matrix_create(size_t rows, size_t cols) {
     if (rows == 0 || cols == 0) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -187,6 +239,18 @@ Matrix* matrix_create(size_t rows, size_t cols) {
     return matrix;
 }
 
+/**
+ * @brief Adds two matrices of the same dimensions.
+ *
+ * This function performs element-wise addition of two matrices.
+ * The matrices must have the same dimensions. If the dimensions do not match, 
+ * or if any of the matrices is NULL, the function returns NULL.
+ *
+ * @param matrix1 The first matrix to add.
+ * @param matrix2 The second matrix to add.
+ * 
+ * @return A new matrix containing the sum of the two matrices, or NULL if an error occurred.
+ */
 Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2) {
     if (!matrix1) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -223,6 +287,19 @@ Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2) {
     return addition;
 }
 
+
+/**
+ * @brief Subtracts the second matrix from the first matrix.
+ *
+ * This function performs element-wise subtraction of two matrices.
+ * The matrices must have the same dimensions. If the dimensions do not match, 
+ * or if any of the matrices is NULL, the function returns NULL.
+ *
+ * @param matrix1 The matrix from which to subtract.
+ * @param matrix2 The matrix to subtract.
+ * 
+ * @return A new matrix containing the result of the subtraction, or NULL if an error occurred.
+ */
 Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2) {
     if (!matrix1) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -259,6 +336,19 @@ Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2) {
     return subtraction;
 }
 
+/**
+ * @brief Multiplies two matrices and returns the result.
+ *
+ * This function performs matrix multiplication between two matrices, `matrix1` and `matrix2`.
+ * The number of columns in `matrix1` must match the number of rows in `matrix2`. 
+ * If the matrices are not compatible for multiplication or if any matrix is NULL, 
+ * the function returns NULL.
+ *
+ * @param matrix1 The first matrix (left operand) in the multiplication.
+ * @param matrix2 The second matrix (right operand) in the multiplication.
+ * 
+ * @return A new matrix representing the product of `matrix1` and `matrix2`, or NULL if an error occurred.
+ */
 Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2) {
     if (!matrix1) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -300,6 +390,14 @@ Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2) {
     return product;
 }
 
+/**
+ * @brief Deallocates the memory associated with a matrix.
+ *
+ * This function frees the memory used by the matrix, including its data array. 
+ * If the matrix pointer is NULL, the function does nothing.
+ *
+ * @param matrix The matrix to be deallocated.
+ */
 void matrix_deallocate(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -316,6 +414,19 @@ void matrix_deallocate(Matrix* matrix) {
     #endif 
 }
 
+/**
+ * @brief Sets the value of a specific element in a matrix.
+ *
+ * This function sets the value of the matrix element at the specified row and column.
+ * If the matrix pointer is NULL, or if the row or column indices are out of bounds, the function returns false.
+ *
+ * @param matrix The matrix in which to set the value.
+ * @param rows The row index where the value will be set.
+ * @param cols The column index where the value will be set.
+ * @param value The value to set at the specified position.
+ * 
+ * @return true if the value was set successfully, false otherwise.
+ */
 bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -339,6 +450,14 @@ bool matrix_set(Matrix* matrix, size_t rows, size_t cols, double value) {
     return true;
 }
 
+/**
+ * @brief Prints the matrix to the console in a formatted manner.
+ *
+ * This function prints the matrix elements to the console, formatting the output so that
+ * all elements are aligned in columns. If the matrix pointer is NULL, the function does nothing.
+ *
+ * @param matrix The matrix to be printed.
+ */
 void matrix_print(Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -366,6 +485,18 @@ void matrix_print(Matrix* matrix) {
     }
 }
 
+/**
+ * @brief Gets the value of a specific element in a matrix.
+ *
+ * This function retrieves the value of the matrix element at the specified row and column.
+ * If the matrix pointer is NULL, or if the row or column indices are out of bounds, the function exits the program.
+ *
+ * @param matrix The matrix from which to get the value.
+ * @param row The row index of the element to retrieve.
+ * @param col The column index of the element to retrieve.
+ * 
+ * @return The value at the specified position.
+ */
 double matrix_get(const Matrix* matrix, size_t row, size_t col) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -393,6 +524,16 @@ static bool matrix_check_diagonal(const Matrix* mat, size_t i, size_t j) {
     return true;
 }
 
+/**
+ * @brief Multiplies every element of the matrix by a scalar value.
+ *
+ * This function scales each element in the matrix by the given scalar.
+ *
+ * @param matrix The matrix to be scaled.
+ * @param scalar The scalar value to multiply each element by.
+ * 
+ * @return true if the operation is successful, false if the matrix is NULL.
+ */
 bool matrix_scalar_multiply(Matrix* matrix, double scalar) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -414,6 +555,14 @@ bool matrix_scalar_multiply(Matrix* matrix, double scalar) {
     return true;
 }
 
+/**
+ * @brief Checks if a matrix is square.
+ *
+ * A square matrix has the same number of rows and columns.
+ *
+ * @param matrix The matrix to be checked.
+ * @return true if the matrix is square, false otherwise. Returns false if the matrix is NULL.
+ */
 bool matrix_is_square(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -428,6 +577,14 @@ bool matrix_is_square(const Matrix* matrix) {
     return false;
 }
 
+/**
+ * @brief Creates an identity matrix of size n x n.
+ *
+ * An identity matrix is a square matrix with 1's on the main diagonal and 0's elsewhere.
+ *
+ * @param n The size of the identity matrix to be created.
+ * @return A pointer to the newly created identity matrix, or NULL if memory allocation fails.
+ */
 Matrix* matrix_create_identity(size_t n) {
     Matrix* matrix = matrix_create(n, n);
     if (!matrix) {
@@ -451,6 +608,17 @@ Matrix* matrix_create_identity(size_t n) {
     return matrix;
 }
 
+/**
+ * @brief Checks if two matrices are equal.
+ *
+ * Two matrices are considered equal if they have the same dimensions and their corresponding elements are identical.
+ *
+ * @param matrix1 The first matrix to be compared.
+ * @param matrix2 The second matrix to be compared.
+ * 
+ * @return true if the matrices are equal, false otherwise. 
+ * Returns false if either matrix is NULL or if their dimensions differ.
+ */
 bool matrix_is_equal(const Matrix* matrix1, const Matrix* matrix2) {
     if (!matrix1) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -480,6 +648,14 @@ bool matrix_is_equal(const Matrix* matrix1, const Matrix* matrix2) {
     return true;
 }
 
+/**
+ * @brief Checks if a matrix is an identity matrix.
+ *
+ * An identity matrix is a square matrix with 1's on the main diagonal and 0's elsewhere.
+ *
+ * @param matrix The matrix to be checked.
+ * @return true if the matrix is an identity matrix, false otherwise. Returns false if the matrix is NULL or not square.
+ */
 bool matrix_is_identity(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -511,7 +687,14 @@ bool matrix_is_identity(const Matrix* matrix) {
     return true;
 }
 
-// Checks if a matrix is idempotent: A^2 = A
+/**
+ * @brief Checks if a matrix is idempotent (i.e., A^2 = A).
+ *
+ * An idempotent matrix is a matrix that, when multiplied by itself, yields the same matrix.
+ *
+ * @param matrix The matrix to be checked.
+ * @return true if the matrix is idempotent, false otherwise. Returns false if the matrix is NULL, not square, or if the matrix multiplication fails.
+ */
 bool matrix_is_idempotent(const Matrix* matrix) {
     if (!matrix || !matrix_is_square(matrix)) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -534,6 +717,14 @@ bool matrix_is_idempotent(const Matrix* matrix) {
     return isIdempotent;
 }
 
+/**
+ * @brief Checks if a matrix is a row vector.
+ *
+ * A row vector is a matrix with only one row and one or more columns.
+ *
+ * @param matrix The matrix to be checked.
+ * @return true if the matrix is a row vector, false otherwise. Returns false if the matrix is NULL.
+ */
 bool matrix_is_row(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -544,6 +735,14 @@ bool matrix_is_row(const Matrix* matrix) {
     return matrix->rows == 1? true: false;
 }
 
+/**
+ * @brief Checks if a matrix is a column vector.
+ *
+ * A column vector is a matrix with only one column and one or more rows.
+ *
+ * @param matrix The matrix to be checked.
+ * @return true if the matrix is a column vector, false otherwise. Returns false if the matrix is NULL.
+ */
 bool matrix_is_columnar(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -554,6 +753,17 @@ bool matrix_is_columnar(const Matrix* matrix) {
     return matrix->cols == 1? true: false;
 }
 
+/**
+ * @brief Extracts the main diagonal of a square matrix and returns it as a column matrix.
+ *
+ * This function creates a new Nx1 matrix (where N is the number of rows in the input matrix),
+ * and fills it with the elements from the main diagonal of the input square matrix.
+ *
+ * @param matrix The square matrix from which the main diagonal will be extracted.
+ * 
+ * @return A new Nx1 matrix containing the main diagonal elements as a column.
+ * Returns NULL if the input matrix is NULL, not square, or if memory allocation fails.
+ */
 Matrix* matrix_get_main_diagonal_as_column(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -583,6 +793,17 @@ Matrix* matrix_get_main_diagonal_as_column(const Matrix* matrix) {
     return diagonalMatrix;
 }
 
+/**
+ * @brief Extracts the main diagonal of a square matrix and returns it as a row matrix.
+ *
+ * This function creates a new 1xN matrix (where N is the number of columns in the input matrix),
+ * and fills it with the elements from the main diagonal of the input square matrix.
+ *
+ * @param matrix The square matrix from which the main diagonal will be extracted.
+ * 
+ * @return A new 1xN matrix containing the main diagonal elements as a row. 
+ * Returns NULL if the input matrix is NULL, not square, or if memory allocation fails.
+ */
 Matrix* matrix_get_main_diagonal_as_row(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -612,6 +833,17 @@ Matrix* matrix_get_main_diagonal_as_row(const Matrix* matrix) {
     return diagonalMatrix;
 }
 
+/**
+ * @brief Extracts the minor diagonal of a square matrix and returns it as a row matrix.
+ *
+ * This function creates a new 1xN matrix (where N is the number of columns in the input matrix),
+ * and fills it with the elements from the minor diagonal (anti-diagonal) of the input square matrix.
+ *
+ * @param matrix The square matrix from which the minor diagonal will be extracted.
+ * 
+ * @return A new 1xN matrix containing the minor diagonal elements as a row.
+ * Returns NULL if the input matrix is NULL, not square, or if memory allocation fails.
+ */
 Matrix* matrix_get_minor_diagonal_as_row(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -641,6 +873,17 @@ Matrix* matrix_get_minor_diagonal_as_row(const Matrix* matrix) {
     return diagonalMatrix;
 }
 
+/**
+ * @brief Extracts the minor diagonal of a square matrix and returns it as a column matrix.
+ *
+ * This function creates a new Nx1 matrix (where N is the number of rows in the input matrix),
+ * and fills it with the elements from the minor diagonal (anti-diagonal) of the input square matrix.
+ *
+ * @param matrix The square matrix from which the minor diagonal will be extracted.
+ * 
+ * @return A new Nx1 matrix containing the minor diagonal elements as a column.
+ * Returns NULL if the input matrix is NULL, not square, or if memory allocation fails.
+ */
 Matrix* matrix_get_minor_diagonal_as_column(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -670,6 +913,16 @@ Matrix* matrix_get_minor_diagonal_as_column(const Matrix* matrix) {
     return diagonalMatrix;
 }
 
+/**
+ * @brief Transposes a given matrix.
+ *
+ * This function creates a new matrix with rows and columns swapped from the input matrix.
+ * The elements are rearranged such that the element at position (i, j) in the original matrix 
+ * is moved to position (j, i) in the transposed matrix.
+ *
+ * @param matrix The matrix to be transposed.
+ * @return A new transposed matrix. Returns NULL if the input matrix is NULL or if memory allocation fails.
+ */
 Matrix* matrix_transpose(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -694,6 +947,16 @@ Matrix* matrix_transpose(const Matrix* matrix) {
     return transposed;
 }
 
+/**
+ * @brief Checks if a matrix is symmetric.
+ *
+ * A matrix is symmetric if it is equal to its transpose, meaning the element at position 
+ * (i, j) is equal to the element at position (j, i) for all i, j. This function verifies 
+ * the symmetry by comparing the elements above the diagonal with those below the diagonal.
+ *
+ * @param matrix The matrix to check.
+ * @return true if the matrix is symmetric, false otherwise.
+ */
 bool matrix_is_symmetric(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -718,6 +981,16 @@ bool matrix_is_symmetric(const Matrix* matrix) {
     return true;
 }
 
+/**
+ * @brief Checks if a matrix is upper triangular.
+ *
+ * A matrix is upper triangular if all the elements below the main diagonal are zero. 
+ * This function checks each element below the main diagonal and returns false if 
+ * any of these elements are non-zero.
+ *
+ * @param matrix The matrix to check.
+ * @return true if the matrix is upper triangular, false otherwise.
+ */
 bool matrix_is_upper_triangular(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -742,6 +1015,16 @@ bool matrix_is_upper_triangular(const Matrix* matrix) {
     return true; 
 }
 
+/**
+ * @brief Checks if a matrix is lower triangular.
+ *
+ * A matrix is lower triangular if all the elements above the main diagonal are zero. 
+ * This function checks each element above the main diagonal and returns false if 
+ * any of these elements are non-zero.
+ *
+ * @param matrix The matrix to check.
+ * @return true if the matrix is lower triangular, false otherwise.
+ */
 bool matrix_is_lower_triangular(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -766,6 +1049,17 @@ bool matrix_is_lower_triangular(const Matrix* matrix) {
     return true; 
 }
 
+/**
+ * @brief Checks if a matrix is skew-symmetric.
+ *
+ * A matrix is skew-symmetric if it is equal to the negative of its transpose, meaning 
+ * the element at position (i, j) is equal to the negative of the element at position (j, i) 
+ * for all i, j, and the diagonal elements are all zero. This function verifies the 
+ * skew-symmetry by checking these conditions.
+ *
+ * @param matrix The matrix to check.
+ * @return true if the matrix is skew-symmetric, false otherwise.
+ */
 bool matrix_is_skew_symmetric(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE  
@@ -796,6 +1090,16 @@ bool matrix_is_skew_symmetric(const Matrix* matrix) {
     return true;
 }
 
+/**
+ * @brief Calculates the determinant of a square matrix.
+ *
+ * This function computes the determinant of a square matrix using a recursive approach. 
+ * For 1x1 and 2x2 matrices, it uses direct formulas. For larger matrices, it computes 
+ * the determinant by expanding along the first row and using recursive calls on submatrices.
+ *
+ * @param matrix The input square matrix.
+ * @return The determinant of the matrix. Returns 0 if the matrix is not square or an error occurs.
+ */
 double matrix_determinant(const Matrix* matrix) {
     if (matrix->rows != matrix->cols) {
         fmt_fprintf(stderr, "Error: Determinant can only be calculated for square matrices.\n");
@@ -830,7 +1134,15 @@ double matrix_determinant(const Matrix* matrix) {
     }
 }
 
-// Calculate the trace of a square matrix
+/**
+ * @brief Calculates the trace of a square matrix.
+ *
+ * The trace of a matrix is defined as the sum of the elements on its main diagonal.
+ * This function calculates the trace by iterating over the diagonal elements of the matrix.
+ *
+ * @param matrix The input square matrix.
+ * @return The trace of the matrix. Returns 0.0 if the matrix is not square or if an error occurs.
+ */
 double matrix_trace(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -857,6 +1169,20 @@ double matrix_trace(const Matrix* matrix) {
     return trace;
 }
 
+/**
+ * @brief Creates a submatrix by excluding a specified row and column.
+ *
+ * This function generates a submatrix from the input matrix by removing the specified 
+ * row and column. The resulting submatrix has one fewer row and one fewer column 
+ * than the original matrix.
+ *
+ * @param matrix The input matrix.
+ * @param excludeRow The index of the row to exclude.
+ * @param excludeCol The index of the column to exclude.
+ * 
+ * @return A pointer to the newly created submatrix, or NULL if an error occurs 
+ * (e.g., invalid indices or memory allocation failure).
+ */
 Matrix* matrix_create_submatrix(const Matrix* matrix, size_t excludeRow, size_t excludeCol) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -902,6 +1228,17 @@ Matrix* matrix_create_submatrix(const Matrix* matrix, size_t excludeRow, size_t 
     return submatrix;
 }
 
+/**
+ * @brief Computes the adjugate (also known as adjoint) of a square matrix.
+ *
+ * The adjugate of a matrix is the transpose of its cofactor matrix. This function
+ * first computes the cofactor matrix by calculating the determinant of submatrices,
+ * then transposes the cofactor matrix to produce the adjugate matrix.
+ *
+ * @param matrix The input square matrix.
+ * @return A pointer to the newly created adjugate matrix, or NULL if an error occurs 
+ * (e.g., if the input is not square or memory allocation fails).
+ */
 Matrix* matrix_adjugate(const Matrix* matrix) {
     if (!matrix || !matrix_is_square(matrix)) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -937,6 +1274,16 @@ Matrix* matrix_adjugate(const Matrix* matrix) {
     return adjugate;
 }
 
+/**
+ * @brief Computes the inverse of a square matrix.
+ *
+ * This function calculates the inverse of a square matrix by first computing its determinant.
+ * If the determinant is non-zero, the function then calculates the adjugate matrix and divides
+ * it by the determinant to obtain the inverse.
+ *
+ * @param matrix The input square matrix.
+ * @return A pointer to the newly created inverse matrix, or NULL if the matrix is singular or if an error occurs.
+ */
 Matrix* matrix_inverse(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -982,6 +1329,15 @@ Matrix* matrix_inverse(const Matrix* matrix) {
     return inverse;
 }
 
+/**
+ * @brief Creates a deep copy of the given matrix.
+ *
+ * This function allocates a new matrix and copies all the data from the input matrix to the new matrix.
+ * If the input matrix is NULL, the function returns NULL.
+ *
+ * @param matrix The matrix to copy.
+ * @return A pointer to the newly created matrix that is a copy of the input matrix, or NULL if an error occurs.
+ */
 Matrix* matrix_copy(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1012,6 +1368,18 @@ Matrix* matrix_copy(const Matrix* matrix) {
     return copy;
 }
 
+/**
+ * @brief Raises a square matrix to a given non-negative integer power.
+ *
+ * This function computes the matrix raised to the specified power using an efficient 
+ * exponentiation method. If the power is 0, the function returns the identity matrix.
+ *
+ * @param matrix The input matrix, which must be square.
+ * @param power The non-negative integer power to which the matrix is raised.
+ * 
+ * @return A pointer to the resulting matrix, or NULL if an error occurs 
+ * (e.g., the matrix is not square or the power is negative).
+ */
 Matrix* matrix_power(const Matrix* matrix, int power) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1070,6 +1438,15 @@ Matrix* matrix_power(const Matrix* matrix, int power) {
     return result;
 }
 
+/**
+ * @brief Computes the rank of a matrix.
+ *
+ * The rank of a matrix is the maximum number of linearly independent row or column vectors in the matrix. 
+ * This function uses a variant of Gaussian elimination to determine the rank.
+ *
+ * @param matrix The input matrix.
+ * @return The rank of the matrix, or -1 if an error occurs (e.g., the input matrix is NULL).
+ */
 int matrix_rank(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1123,6 +1500,15 @@ int matrix_rank(const Matrix* matrix) {
     return rank;
 }
 
+/**
+ * @brief Checks if a matrix is diagonal.
+ *
+ * A matrix is considered diagonal if all its off-diagonal elements are zero. 
+ * This function checks whether the input matrix meets this criterion.
+ *
+ * @param matrix The matrix to check.
+ * @return `true` if the matrix is diagonal, `false` otherwise.
+ */
 bool matrix_is_diagonal(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1156,6 +1542,15 @@ bool matrix_is_diagonal(const Matrix* matrix) {
     return true;
 }
 
+/**
+ * @brief Checks if a matrix is orthogonal.
+ *
+ * A matrix is orthogonal if its transpose is equal to its inverse, or equivalently, if the matrix multiplied 
+ * by its transpose yields the identity matrix. This function checks whether the input matrix is orthogonal.
+ *
+ * @param matrix The matrix to check.
+ * @return `true` if the matrix is orthogonal, `false` otherwise.
+ */
 bool matrix_is_orthogonal(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1205,7 +1600,18 @@ bool matrix_is_orthogonal(const Matrix* matrix) {
     return isOrthogonal;
 }
 
-// Function to compute the Kronecker product of two matrices
+/**
+ * @brief Computes the Kronecker product of two matrices.
+ *
+ * The Kronecker product is a block matrix formed by multiplying each element of the first matrix 
+ * by the entire second matrix. If matrix1 is of size m x n and matrix2 is of size p x q, 
+ * the resulting matrix will be of size (m * p) x (n * q).
+ *
+ * @param matrix1 The first input matrix.
+ * @param matrix2 The second input matrix.
+ * 
+ * @return A pointer to the resulting matrix, or NULL if an error occurs (invalid input or memory allocation failure).
+ */
 Matrix* matrix_kronecker_product(const Matrix* matrix1, const Matrix* matrix2) {
     if (!matrix1 || !matrix2) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1242,7 +1648,17 @@ Matrix* matrix_kronecker_product(const Matrix* matrix1, const Matrix* matrix2) {
     return product;
 }
 
-// Function to generate a Hankel matrix from its first row and last column matrices
+/**
+ * @brief Generates a Hankel matrix from the first row and last column vectors.
+ *
+ * A Hankel matrix is a square matrix in which each ascending skew-diagonal from left to right is constant. 
+ * This function generates such a matrix using the specified first row and last column vectors.
+ *
+ * @param firstRow A matrix containing the first row of the Hankel matrix (must be a row vector).
+ * @param lastCol A matrix containing the last column of the Hankel matrix (must be a column vector).
+ * 
+ * @return A pointer to the newly created Hankel matrix, or NULL if an error occurs (invalid input or memory allocation failure).
+ */
 Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol) {
     if (!firstRow || !lastCol || firstRow->rows != 1 || lastCol->cols != 1) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1286,7 +1702,15 @@ Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol) {
     return hankel;
 }
 
-// Function to check matrix is Hankle or not 
+/**
+ * @brief Checks if a matrix is a Hankel matrix.
+ *
+ * A Hankel matrix is a matrix in which each ascending anti-diagonal from left to right is constant.
+ * This function verifies whether the input matrix satisfies this property.
+ *
+ * @param matrix The input matrix to check.
+ * @return `true` if the matrix is a Hankel matrix, `false` otherwise.
+ */ 
 bool matrix_is_hankel(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1319,7 +1743,18 @@ bool matrix_is_hankel(const Matrix* matrix) {
     return true;
 }
 
-// Function to create a Toeplitz matrix given its first row and column
+/**
+ * @brief Creates a Toeplitz matrix given its first row and first column.
+ *
+ * A Toeplitz matrix is a matrix in which each descending diagonal from left to right is constant.
+ * This function generates such a matrix using the specified first row and first column vectors.
+ *
+ * @param firstRow A matrix containing the first row of the Toeplitz matrix (must be a row vector).
+ * @param firstCol A matrix containing the first column of the Toeplitz matrix (must be a column vector).
+ * 
+ * @return A pointer to the newly created Toeplitz matrix, or NULL if an error occurs 
+ * (invalid input or memory allocation failure).
+ */
 Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol) {
     if (!firstRow || !firstCol) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1371,7 +1806,18 @@ Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol) {
     return toeplitzMatrix;
 }
 
-// Function to create Matrix from given array of double 
+/**
+ * @brief Creates a matrix from a given array of doubles.
+ *
+ * This function takes a 1D array of doubles and arranges it into a matrix of the specified 
+ * number of rows and columns. The array is expected to be in row-major order.
+ *
+ * @param data The input array of doubles.
+ * @param rows The number of rows in the matrix.
+ * @param cols The number of columns in the matrix.
+ * 
+ * @return A pointer to the newly created matrix, or NULL if an error occurs (invalid input or memory allocation failure).
+ */
 Matrix* matrix_from_array(const double* data, size_t rows, size_t cols) {
     if (!data) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1406,6 +1852,15 @@ Matrix* matrix_from_array(const double* data, size_t rows, size_t cols) {
     return matrix;
 }
 
+/**
+ * @brief Checks if a matrix is a Toeplitz matrix.
+ *
+ * A Toeplitz matrix is a matrix in which each descending diagonal from left to right is constant.
+ * This function checks whether the input matrix satisfies this property.
+ *
+ * @param matrix The input matrix to check.
+ * @return `true` if the matrix is Toeplitz, `false` otherwise.
+ */
 bool matrix_is_toeplitz(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1429,7 +1884,15 @@ bool matrix_is_toeplitz(const Matrix* matrix) {
     return true;
 }
 
-// Function to create circulant matrix from a given matrix first_row .
+/**
+ * @brief Creates a circulant matrix from the first row of a given matrix.
+ *
+ * A circulant matrix is a special type of Toeplitz matrix where each row vector is a right cyclic 
+ * shift of the row above it. This function generates such a matrix from the first row of the input matrix.
+ *
+ * @param firstRow A matrix containing the first row of the circulant matrix (must be a single-row matrix).
+ * @return A pointer to the newly created circulant matrix, or NULL if an error occurs (e.g., invalid input or memory allocation failure).
+ */
 Matrix* matrix_circulant(const Matrix* firstRow) {
     if (!firstRow || firstRow->rows != 1) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1464,7 +1927,15 @@ Matrix* matrix_circulant(const Matrix* firstRow) {
     return circulantMatrix;
 }
 
-// Function to create hilbert Matrix from give size 
+/**
+ * @brief Creates a Hilbert matrix of the given size.
+ *
+ * A Hilbert matrix is a square matrix with entries being the unit fractions:
+ * H(i, j) = 1 / (i + j - 1), where i and j are the row and column indices, respectively.
+ *
+ * @param n The size of the Hilbert matrix (must be greater than 0).
+ * @return A pointer to the newly created Hilbert matrix, or NULL if an error occurs.
+ */
 Matrix* matrix_hilbert(size_t n) {
     if (n == 0) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1499,7 +1970,18 @@ Matrix* matrix_hilbert(size_t n) {
     return hilbertMatrix;
 }
 
-// Function to create a Helmert matrix
+/**
+ * @brief Creates a Helmert matrix of the specified size.
+ *
+ * A Helmert matrix is an orthogonal matrix used in statistical analysis. This function generates 
+ * either the full Helmert matrix or the reduced version by removing the last row. The entries in the 
+ * Helmert matrix are calculated based on the size of the matrix and whether it is the full or reduced version.
+ *
+ * @param n The size of the Helmert matrix.
+ * @param full Boolean value indicating whether to generate the full Helmert matrix (true) or the reduced version (false).
+ * 
+ * @return A pointer to the newly created Helmert matrix, or NULL if an error occurs.
+ */
 Matrix* matrix_helmert(size_t n, bool full) {
     Matrix* helmertMatrix = matrix_create(n, full ? n : n - 1);
     if (!helmertMatrix) {
@@ -1534,6 +2016,17 @@ Matrix* matrix_helmert(size_t n, bool full) {
     return helmertMatrix;
 }
 
+/**
+ * @brief Computes the cofactor matrix of a given square matrix.
+ *
+ * This function calculates the cofactor matrix for a given square matrix. 
+ * Each element in the cofactor matrix is determined by the determinant of 
+ * the submatrix that remains after removing the corresponding row and column, 
+ * multiplied by (-1)^(i+j) to account for the sign.
+ *
+ * @param matrix The input square matrix.
+ * @return A new matrix representing the cofactor matrix, or NULL if an error occurs.
+ */
 Matrix* matrix_cofactor(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1577,6 +2070,18 @@ Matrix* matrix_cofactor(const Matrix* matrix) {
     return cofactorMatrix;
 }
 
+/**
+ * @brief Performs the Cholesky decomposition of a positive definite matrix.
+ *
+ * This function decomposes a positive definite matrix into a lower triangular 
+ * matrix and its transpose. If the matrix is not positive definite, the function 
+ * returns NULL.
+ *
+ * @param matrix The input square matrix (must be positive definite).
+ * 
+ * @return A new matrix representing the Cholesky factor, or NULL if the matrix 
+ * is not positive definite or an error occurs.
+ */
 Matrix* matrix_cholesky_decomposition(const Matrix* matrix) {
     if (!matrix || matrix->rows != matrix->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1627,6 +2132,19 @@ Matrix* matrix_cholesky_decomposition(const Matrix* matrix) {
     return chol;
 }
 
+/**
+ * @brief Performs LU decomposition of a square matrix.
+ *
+ * This function decomposes a given square matrix into two matrices: 
+ * a lower triangular matrix `L` and an upper triangular matrix `U`, 
+ * such that the original matrix `A` can be represented as `A = L * U`.
+ *
+ * @param matrix The input square matrix to decompose.
+ * @param L Pointer to a pointer that will store the lower triangular matrix.
+ * @param U Pointer to a pointer that will store the upper triangular matrix.
+ * 
+ * @return `true` if the decomposition is successful, `false` otherwise.
+ */
 bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
     if (!matrix || !matrix_is_square(matrix)) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1680,6 +2198,20 @@ bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
     return true;
 }
 
+/**
+ * @brief Performs QR decomposition of a matrix.
+ *
+ * This function decomposes a given matrix into two matrices: 
+ * an orthogonal matrix `Q` and an upper triangular matrix `R`, 
+ * such that the original matrix `A` can be represented as `A = Q * R`.
+ * Note: The input matrix must have more rows than columns (m >= n).
+ *
+ * @param A The input matrix to decompose.
+ * @param Q Pointer to a pointer that will store the orthogonal matrix.
+ * @param R Pointer to a pointer that will store the upper triangular matrix.
+ * 
+ * @return `true` if the decomposition is successful, `false` otherwise.
+ */
 bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R) {
     if (!A || A->rows < A->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1749,7 +2281,15 @@ bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R) {
     return true;
 }
 
-// Function to create a Pascal matrix
+/**
+ * @brief Creates a Pascal matrix of size n x n.
+ *
+ * This function generates a Pascal matrix, which is a symmetric matrix where each element is a binomial coefficient.
+ * The matrix is filled in both the upper and lower triangular parts using the binomial coefficients.
+ *
+ * @param n The size of the Pascal matrix (number of rows and columns).
+ * @return A pointer to the generated Pascal matrix. Returns `NULL` if memory allocation fails.
+ */
 Matrix* matrix_pascal(size_t n) {
     Matrix* pascalMatrix = matrix_create(n, n);
     if (!pascalMatrix) {
@@ -1774,7 +2314,15 @@ Matrix* matrix_pascal(size_t n) {
     return pascalMatrix;
 }
 
-// Function to compute the Frobenius norm of a matrix
+/**
+ * @brief Computes the Frobenius norm of a matrix.
+ *
+ * The Frobenius norm is calculated as the square root of the sum of the absolute squares of all elements in the matrix.
+ * It provides a measure of the magnitude of the matrix.
+ *
+ * @param matrix The input matrix for which the Frobenius norm is to be computed.
+ * @return The Frobenius norm of the matrix.
+ */
 double matrix_frobenius_norm(const Matrix* matrix) {
     double sum = 0.0;
     for (size_t i = 0; i < matrix->rows; i++) {
@@ -1786,7 +2334,14 @@ double matrix_frobenius_norm(const Matrix* matrix) {
     return sqrt(sum);
 }
 
-// Function to compute the L1 norm of a matrix (maximum column sum)
+/**
+ * @brief Computes the L1 norm of a matrix.
+ *
+ * The L1 norm, also known as the maximum column sum norm, is calculated as the maximum of the sums of absolute values of each column.
+ *
+ * @param matrix The input matrix for which the L1 norm is to be computed.
+ * @return The L1 norm of the matrix.
+ */
 double matrix_l1_norm(const Matrix* matrix) {
     double maxSum = 0.0;
     for (size_t j = 0; j < matrix->cols; j++) {
@@ -1801,7 +2356,14 @@ double matrix_l1_norm(const Matrix* matrix) {
     return maxSum;
 }
 
-// Function to compute the Infinity norm of a matrix (maximum row sum)
+/**
+ * @brief Computes the infinity norm of a matrix.
+ *
+ * The infinity norm, also known as the maximum row sum norm, is calculated as the maximum of the sums of absolute values of each row.
+ *
+ * @param matrix The input matrix for which the infinity norm is to be computed.
+ * @return The infinity norm of the matrix.
+ */
 double matrix_infinity_norm(const Matrix* matrix) {
     double maxSum = 0.0;
     for (size_t i = 0; i < matrix->rows; i++) {
@@ -1816,6 +2378,15 @@ double matrix_infinity_norm(const Matrix* matrix) {
     return maxSum;
 }
 
+/**
+ * @brief Computes the inverse of a square matrix using the Gauss-Jordan elimination method.
+ *
+ * This function takes a square matrix and computes its inverse by performing Gauss-Jordan elimination. 
+ * If the matrix is not square or is singular (non-invertible), the function returns `NULL`.
+ *
+ * @param matrix The input square matrix to be inverted.
+ * @return A pointer to the inverse matrix. If the matrix is not invertible or an error occurs, `NULL` is returned.
+ */
 Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix) {
     if (matrix->rows != matrix->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1882,6 +2453,17 @@ Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix) {
     return inverse;
 }
 
+/**
+ * @brief Checks if a matrix is positive definite.
+ *
+ * This function verifies if a given matrix is positive definite. For a matrix to be positive definite, 
+ * it must be symmetric and its Cholesky decomposition must exist. If the matrix is not square or not symmetric,
+ * the function returns `false`.
+ *
+ * @param matrix The input matrix to check for positive definiteness.
+ * 
+ * @return `true` if the matrix is positive definite, otherwise `false`.
+ */
 bool matrix_is_positive_definite(const Matrix* matrix) {
     if (!matrix || matrix->rows != matrix->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1914,7 +2496,16 @@ bool matrix_is_positive_definite(const Matrix* matrix) {
     return isPositiveDefinite;
 }
 
-// Calculate the projection matrix onto the column space of A
+/**
+ * @brief Calculates the projection matrix onto the column space of a given matrix.
+ *
+ * This function computes the projection matrix P that projects any vector onto the column space of the input matrix A.
+ *
+ * @param matrix The input matrix A.
+ * 
+ * @return A pointer to the projection matrix. If any step in the calculation fails (memory allocation, matrix inversion),
+ * `NULL` is returned.
+ */
 Matrix* matrix_projection(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -1981,6 +2572,17 @@ Matrix* matrix_projection(const Matrix* matrix) {
     return projection;
 }
 
+/**
+ * @brief Generates a Vandermonde matrix from the given input matrix.
+ *
+ * A Vandermonde matrix is a matrix with terms of a geometric progression in each row. 
+ * 
+ * @param matrix The input matrix containing the initial values for the Vandermonde matrix.
+ * @param n The size (rows and columns) of the resulting Vandermonde matrix.
+ * 
+ * @return A pointer to the generated Vandermonde matrix. If the input matrix is `NULL` or 
+ * memory allocation fails, `NULL` is returned.
+ */
 Matrix* matrix_vandermonde(const Matrix* matrix, size_t n) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2006,7 +2608,15 @@ Matrix* matrix_vandermonde(const Matrix* matrix, size_t n) {
     return vandermonde;
 }
 
-// Generate a companion matrix from polynomial coefficients
+/**
+ * @brief Generates a companion matrix from the given polynomial coefficients.
+ *
+ * @param coefficients A matrix representing the polynomial coefficients, where the highest degree coefficient comes last.
+ * @param degree The degree of the polynomial.
+ * 
+ * @return A pointer to the generated companion matrix. If the input coefficients are `NULL` or memory allocation fails,
+ * `NULL` is returned.
+ */
 Matrix* matrix_companion(const Matrix* coefficients, size_t degree) {
     if (!coefficients) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2041,6 +2651,16 @@ Matrix* matrix_companion(const Matrix* coefficients, size_t degree) {
     return companion;
 }
 
+/**
+ * @brief Fills a matrix with a specified value.
+ *
+ * This function sets every element of the matrix to the provided value.
+ *
+ * @param matrix The matrix to be filled.
+ * @param value The value to fill the matrix with.
+ * 
+ * @return `true` if the matrix was successfully filled, `false` if the matrix or its data pointer is `NULL`.
+ */
 bool matrix_fill(Matrix* matrix, double value) {
     // Check if the matrix pointer is NULL
     if (!matrix) {
@@ -2071,7 +2691,18 @@ bool matrix_fill(Matrix* matrix, double value) {
     return true;
 }
 
-// function to apply an other function to each element of matrix 
+/**
+ * @brief Applies a specified function to each element of a matrix.
+ *
+ * This function creates a new matrix where each element is the result of applying the provided function `func`
+ * to the corresponding element of the input matrix.
+ *
+ * @param matrix The input matrix to which the function will be applied.
+ * @param func The function to apply to each element of the matrix.
+ * 
+ * @return A new matrix where each element is the result of applying `func` to the input matrix's elements.
+ * If the input matrix or function is `NULL`, or if memory allocation fails, the function returns `NULL`.
+ */
 Matrix* matrix_map(const Matrix* matrix, MatrixFunc func) {
     // Check for NULL pointer in input matrix or function
     if (!matrix || !func) {
@@ -2117,7 +2748,16 @@ Matrix* matrix_map(const Matrix* matrix, MatrixFunc func) {
     return result;
 }
 
-// function to find minimum element in the matrix 
+/**
+ * @brief Finds the minimum element in a matrix.
+ *
+ * This function iterates through all the elements of the matrix to find and return the minimum value.
+ *
+ * @param matrix The matrix in which to find the minimum element.
+ * 
+ * @return The minimum element in the matrix. If the matrix is `NULL`, empty, or invalid, 
+ * it returns `DBL_MAX` as an error indicator.
+ */
 double matrix_min_element(const Matrix* matrix) {
     if (!matrix || !matrix->data || matrix->rows == 0 || matrix->cols == 0) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2139,7 +2779,15 @@ double matrix_min_element(const Matrix* matrix) {
     return min;
 }
 
-// function to find the maximum element in the matrix
+/**
+ * @brief Finds the maximum element in a matrix.
+ *
+ * This function iterates through all the elements of the matrix to find and return the maximum value.
+ *
+ * @param matrix The matrix in which to find the maximum element.
+ * 
+ * @return The maximum element in the matrix. If the matrix is `NULL`, empty, or invalid, it returns `-DBL_MAX` as an error indicator.
+ */
 double matrix_max_element(const Matrix* matrix) {
     if (!matrix || !matrix->data || matrix->rows == 0 || matrix->cols == 0) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2161,7 +2809,19 @@ double matrix_max_element(const Matrix* matrix) {
     return max;
 }
 
-// Apply a function to each element of a specified row
+/**
+ * @brief Applies a function to each element of a specified row in a matrix.
+ *
+ * This function applies the provided function `func` to each element of the specified row in the matrix, 
+ * modifying the row in place.
+ *
+ * @param matrix The matrix whose row will be modified.
+ * @param row The index of the row to which the function will be applied.
+ * @param func The function to apply to each element of the specified row.
+ * 
+ * @return `true` if the operation is successful, `false` if the matrix or function is `NULL`, 
+ * or the row index is out of bounds.
+ */
 bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func) {
     if (!matrix || !func || row >= matrix->rows) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2176,7 +2836,19 @@ bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func) {
     return true;
 }
 
-// Apply a function to each element of a specified column
+/**
+ * @brief Applies a function to each element of a specified column in a matrix.
+ *
+ * This function applies the provided function `func` to each element of the specified column in the matrix, 
+ * modifying the column in place.
+ *
+ * @param matrix The matrix whose column will be modified.
+ * @param col The index of the column to which the function will be applied.
+ * @param func The function to apply to each element of the specified column.
+ * 
+ * @return `true` if the operation is successful, `false` if the matrix or function is `NULL`, 
+ * or the column index is out of bounds.
+ */
 bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func) {
     if (!matrix || !func || col >= matrix->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2192,7 +2864,19 @@ bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func) {
     return true;
 }
 
-// Add one row to another after optionally scaling it
+/**
+ * @brief Adds one row of a matrix to another, optionally scaling the source row before adding.
+ *
+ * This function adds the elements of the `sourceRow` to the corresponding elements of the `targetRow`
+ * in the matrix, optionally scaling the source row by a specified factor before the addition.
+ *
+ * @param matrix The matrix in which the row addition will take place.
+ * @param targetRow The index of the row that will be updated (the row to which the source row is added).
+ * @param sourceRow The index of the row that will be added to the target row.
+ * @param scale The scaling factor by which to multiply the source row before adding. Use 1.0 for no scaling.
+ * 
+ * @return `true` if the operation is successful, `false` if the matrix is `NULL` or the row indices are invalid.
+ */
 bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale) {
     if (!matrix || targetRow >= matrix->rows || sourceRow >= matrix->rows) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2208,7 +2892,19 @@ bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, dou
     return true;
 }
 
-// Add one column to another after optionally scaling it
+/**
+ * @brief Adds one column of a matrix to another, optionally scaling the source column before adding.
+ *
+ * This function adds the elements of the `sourceCol` to the corresponding elements of the `targetCol`
+ * in the matrix, optionally scaling the source column by a specified factor before the addition.
+ *
+ * @param matrix The matrix in which the column addition will take place.
+ * @param targetCol The index of the column that will be updated (the column to which the source column is added).
+ * @param sourceCol The index of the column that will be added to the target column.
+ * @param scale The scaling factor by which to multiply the source column before adding. Use 1.0 for no scaling.
+ * 
+ * @return `true` if the operation is successful, `false` if the matrix is `NULL` or the column indices are invalid.
+ */
 bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale) {
     if (!matrix || targetCol >= matrix->cols || sourceCol >= matrix->cols) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2224,7 +2920,21 @@ bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, dou
     return true;
 }
 
-// Function to create a Leslie matrix
+/**
+ * @brief Creates a Leslie matrix using fecundity and survival coefficients.
+ *
+ * A Leslie matrix is a type of matrix used in population ecology to model the dynamics of a population 
+ * with different age classes. The first row contains fecundity coefficients, and the sub-diagonal contains 
+ * survival coefficients.
+ *
+ * @param f A matrix representing the fecundity coefficients.
+ * @param f_size The number of fecundity coefficients (the number of columns in the Leslie matrix).
+ * @param s A matrix representing the survival coefficients.
+ * @param s_size The number of survival coefficients (one less than the number of rows in the Leslie matrix).
+ * 
+ * @return A pointer to the newly created Leslie matrix, or `NULL` if the input parameters are invalid 
+ * or memory allocation fails. The caller is responsible for freeing the allocated matrix.
+ */
 Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size) {
     if (!f) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2258,7 +2968,17 @@ Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size) {
     return leslie;
 }
 
-// Function to create a Fiedler matrix from a given array
+/**
+ * @brief Creates a Fiedler matrix from a given matrix.
+ *
+ * This function generates a Fiedler matrix, which is a symmetric matrix where each element 
+ * at position (i, j) is the absolute difference between the elements at positions i and j of 
+ * the input matrix's data array.
+ *
+ * @param matrix The input matrix whose elements will be used to generate the Fiedler matrix.
+ * @return A pointer to the newly created Fiedler matrix, or `NULL` if the input matrix is `NULL`
+ * or memory allocation fails. The caller is responsible for freeing the allocated matrix.
+ */
 Matrix* matrix_fiedler(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2288,7 +3008,18 @@ Matrix* matrix_fiedler(const Matrix* matrix) {
     return fiedler;
 }
 
-// Function to create the inverse of a Hilbert matrix
+/**
+ * @brief Creates the inverse of a Hilbert matrix of size `n`.
+ *
+ * This function generates the inverse of a Hilbert matrix, which is a square matrix with 
+ * elements defined by the formula for the inverse Hilbert matrix. The function uses binomial 
+ * coefficients and factorials to calculate the values.
+ *
+ * @param n The size of the Hilbert matrix to be inverted.
+ * 
+ * @return A pointer to the newly created inverse Hilbert matrix, or `NULL` if memory allocation fails. 
+ * The caller is responsible for freeing the allocated matrix.
+ */
 Matrix* matrix_inverse_hilbert(size_t n) {
     Matrix* invH = matrix_create(n, n);
     if (!invH) {
@@ -2312,7 +3043,17 @@ Matrix* matrix_inverse_hilbert(size_t n) {
     return invH;
 }
 
-// function to return specefic row or a matrix 
+/**
+ * @brief Extracts a specific row from a matrix and returns it as a new matrix.
+ *
+ * This function creates a new matrix containing the elements of the specified row from the input matrix.
+ *
+ * @param matrix The input matrix from which the row is to be extracted.
+ * @param row The index of the row to extract (0-based).
+ * 
+ * @return A pointer to the newly created matrix containing the specified row, or `NULL` if the input matrix is `NULL`, the row index is out of bounds,
+ * or memory allocation fails. The caller is responsible for freeing the allocated matrix.
+ */
 Matrix* matrix_get_row(const Matrix* matrix, size_t row) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2342,7 +3083,17 @@ Matrix* matrix_get_row(const Matrix* matrix, size_t row) {
     return r;
 }
 
-// function to return specefic col of a matrix 
+/**
+ * @brief Extracts a specific column from a matrix and returns it as a new matrix.
+ *
+ * This function creates a new matrix containing the elements of the specified column from the input matrix.
+ *
+ * @param matrix The input matrix from which the column is to be extracted.
+ * @param col The index of the column to extract (0-based).
+ * 
+ * @return A pointer to the newly created matrix containing the specified column, or `NULL` if the input matrix is `NULL`, the column index is out of bounds,
+ * or memory allocation fails. The caller is responsible for freeing the allocated matrix.
+ */
 Matrix* matrix_get_col(const Matrix* matrix, size_t col) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2372,6 +3123,17 @@ Matrix* matrix_get_col(const Matrix* matrix, size_t col) {
     return c;
 }
 
+/**
+ * @brief Converts a matrix to a 1D array of doubles.
+ *
+ * This function copies the elements of the matrix into a newly allocated 1D array.
+ * The array is a linear representation of the matrix data in row-major order.
+ *
+ * @param matrix The matrix to be converted to an array.
+ * 
+ * @return A pointer to the newly allocated array containing the matrix elements, or `NULL` if the matrix is `NULL` or memory allocation fails. 
+ * The caller is responsible for freeing the allocated memory.
+ */
 double* matrix_to_array(const Matrix* matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2395,7 +3157,18 @@ double* matrix_to_array(const Matrix* matrix) {
     return data;
 }
 
-// function to create a block diagonal matrix from provide Matrix params 
+/**
+ * @brief Creates a block diagonal matrix from a variable number of matrices.
+ *
+ * This function constructs a block diagonal matrix by placing each provided matrix
+ * along the diagonal of a larger matrix, leaving the off-diagonal blocks as zero matrices.
+ *
+ * @param count The number of matrices to include in the block diagonal matrix.
+ * @param ... A variable number of `Matrix*` pointers, each representing a block to be placed on the diagonal.
+ * 
+ * @return A pointer to the newly created block diagonal matrix, or `NULL` if memory allocation fails.
+ * The caller is responsible for freeing the allocated matrix using `matrix_deallocate`.
+ */
 Matrix* matrix_block_diag(size_t count, ...) {
     va_list args;
     size_t totalRows = 0, totalCols = 0;
@@ -2432,7 +3205,16 @@ Matrix* matrix_block_diag(size_t count, ...) {
     return result;
 }
 
-// Function to determine if a matrix is sparse
+/**
+ * @brief Determines if a matrix is sparse.
+ *
+ * A matrix is considered sparse if a significant portion of its elements are zero.
+ * This function calculates the percentage of non-zero elements and considers 
+ * the matrix sparse if less than 30% of the elements are non-zero.
+ *
+ * @param matrix The matrix to check for sparsity.
+ * @return `true` if the matrix is sparse, otherwise `false`.
+ */
 bool matrix_is_sparse(const Matrix* matrix) {
     if (!matrix || !matrix->data) {
         #ifdef MATRIX_LOGGING_ENABLE 
@@ -2457,6 +3239,15 @@ bool matrix_is_sparse(const Matrix* matrix) {
     return nonZeroPercentage < 0.3;
 }
 
+/**
+ * @brief Returns the total number of elements in a matrix.
+ *
+ * This function calculates the size of the matrix, defined as the product 
+ * of its rows and columns.
+ *
+ * @param matrix The matrix whose size is to be determined.
+ * @return The total number of elements in the matrix, or 0 if the matrix is NULL.
+ */
 size_t matrix_size(const Matrix *matrix) {
     if (!matrix) {
         #ifdef MATRIX_LOGGING_ENABLE
@@ -2468,6 +3259,21 @@ size_t matrix_size(const Matrix *matrix) {
     return matrix->rows * matrix->cols;
 }
 
+/**
+ * @brief Creates a matrix with random integer values.
+ *
+ * This function generates a matrix of the specified size (row x col) and fills it 
+ * with random integers within the specified range [start, end). The random values 
+ * are generated using the standard C library's `rand()` function.
+ *
+ * @param row The number of rows in the matrix.
+ * @param col The number of columns in the matrix.
+ * @param start The minimum value (inclusive) of the random range.
+ * @param end The maximum value (exclusive) of the random range.
+ * 
+ * @return A pointer to the newly created matrix filled with random values, 
+ * or NULL if the matrix creation fails.
+ */
 Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
     Matrix* matrix = matrix_create(row, col);
     srand(time(NULL));
@@ -2485,7 +3291,18 @@ Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
     return matrix;
 }
 
-// Function to create a Walsh Matrix of size 'n'
+/**
+ * @brief Creates a Walsh matrix of size n.
+ *
+ * This function generates a Walsh matrix, which is a special kind of square 
+ * matrix used in various applications such as signal processing and Hadamard 
+ * transforms. The size of the matrix must be a power of 2.
+ *
+ * @param n The size of the Walsh matrix (must be a power of 2).
+ * 
+ * @return A pointer to the newly created Walsh matrix, or NULL if the size `n` 
+ * is not a power of 2 or if the matrix creation fails.
+ */
 Matrix* matrix_walsh(size_t n) {
     // Ensure 'n' is a power of 2
     if (n & (n - 1)) {

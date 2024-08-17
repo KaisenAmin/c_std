@@ -9,7 +9,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+/**
+ * @brief Creates a new Priority Queue object.
+ * 
+ * This function initializes a new PriorityQueue object with the specified item size and comparison function.
+ * 
+ * @param itemSize Size of each item that the priority queue will hold.
+ * @param compare Pointer to a comparison function used to maintain the priority order in the queue.
+ * 
+ * @return Pointer to the newly created PriorityQueue object.
+ */
 PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*)) {
     if (itemSize == 0) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -46,7 +55,15 @@ PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*
     return pq;
 }
 
-// Helper function to swap two elements in the same vector
+/**
+ * @brief Swaps two elements within the same vector.
+ * 
+ * This helper function swaps the elements at the specified indices within the provided vector.
+ * 
+ * @param vec Pointer to the Vector object.
+ * @param index1 The index of the first element to swap.
+ * @param index2 The index of the second element to swap.
+ */
 static void element_swap(Vector* vec, size_t index1, size_t index2) {
     if (!vec) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -77,7 +94,16 @@ static void element_swap(Vector* vec, size_t index1, size_t index2) {
 
     free(temp);
 }
-// Function to maintain the heap property from bottom to top
+
+/**
+ * @brief Maintains the heap property from bottom to top.
+ * 
+ * This function ensures that the heap property is maintained in the vector by comparing each element with its parent and swapping them if necessary, moving upwards.
+ * 
+ * @param vec Pointer to the Vector object representing the heap.
+ * @param index The index of the element to heapify upwards.
+ * @param compare Pointer to the comparison function used to compare the elements.
+ */
 static void heapify_up(Vector* vec, size_t index, int (*compare)(const void*, const void*)) {
     if (!vec || !compare) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -146,6 +172,14 @@ static void heapify_down(Vector* vec, size_t index, int (*compare)(const void*, 
     }
 }
 
+/**
+ * @brief Checks if the priority queue is empty.
+ * 
+ * This function checks whether the priority queue contains any elements.
+ * 
+ * @param pq Pointer to the PriorityQueue object.
+ * @return `true` if the priority queue is empty or `pq` is NULL, otherwise `false`.
+ */
 bool priority_queue_empty(const PriorityQueue* pq) {
     if (!pq) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -156,6 +190,14 @@ bool priority_queue_empty(const PriorityQueue* pq) {
     return vector_is_empty(pq->vec);
 }
 
+/**
+ * @brief Returns the number of elements in the priority queue.
+ * 
+ * This function returns the current size (number of elements) of the priority queue.
+ * 
+ * @param pq Pointer to the PriorityQueue object.
+ * @return The number of elements in the priority queue, or 0 if `pq` is NULL.
+ */
 size_t priority_queue_size(const PriorityQueue* pq) {
     if (!pq) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -166,6 +208,15 @@ size_t priority_queue_size(const PriorityQueue* pq) {
     return vector_size(pq->vec);
 }
 
+/**
+ * @brief Adds an item to the priority queue.
+ * 
+ * This function inserts a new item into the priority queue, maintaining the heap property 
+ * based on the provided comparison function.
+ * 
+ * @param pq Pointer to the PriorityQueue object.
+ * @param item Pointer to the item to be added to the priority queue.
+ */
 void priority_queue_push(PriorityQueue* pq, void* item) {
     if (!pq) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -186,6 +237,14 @@ void priority_queue_push(PriorityQueue* pq, void* item) {
     heapify_up(pq->vec, currentSize - 1, pq->compare);
 }
 
+/**
+ * @brief Returns a pointer to the top element in the priority queue.
+ * 
+ * This function returns a pointer to the element with the highest priority in the priority queue without removing it.
+ * 
+ * @param pq Pointer to the PriorityQueue object.
+ * @return Pointer to the top element, or `NULL` if the priority queue is empty or `pq` is NULL.
+ */
 void* priority_queue_top(const PriorityQueue* pq) {
     if (!pq) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -202,6 +261,14 @@ void* priority_queue_top(const PriorityQueue* pq) {
     return vector_front(pq->vec);
 }
 
+/**
+ * @brief Removes the top element from the priority queue.
+ * 
+ * This function removes the element with the highest priority (i.e., the element at the front of the priority queue) 
+ * and rebalances the heap to maintain the priority order.
+ * 
+ * @param pq Pointer to the PriorityQueue object.
+ */
 void priority_queue_pop(PriorityQueue* pq) {
     if (!pq) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -223,6 +290,14 @@ void priority_queue_pop(PriorityQueue* pq) {
     heapify_down(pq->vec, 0, pq->compare);
 }
 
+/**
+ * @brief Deallocates the priority queue and frees all associated memory.
+ * 
+ * This function deallocates the PriorityQueue object, including its underlying vector, 
+ * and frees any memory that was allocated for storing the elements.
+ * 
+ * @param pq Pointer to the PriorityQueue object to be deallocated.
+ */
 void priority_queue_deallocate(PriorityQueue* pq) {
     if (!pq) {
         #ifdef PQUEUE_LOGGING_ENABLE
@@ -236,6 +311,14 @@ void priority_queue_deallocate(PriorityQueue* pq) {
     free(pq);
 }
 
+/**
+ * @brief Swaps the contents of two priority queues.
+ * 
+ * This function swaps the internal data (elements and comparison function) of two PriorityQueue objects. 
+ * 
+ * @param pq1 Pointer to the first PriorityQueue object.
+ * @param pq2 Pointer to the second PriorityQueue object.
+ */
 void priority_queue_swap(PriorityQueue* pq1, PriorityQueue* pq2) {
     if (!pq1 || !pq2) {
         #ifdef PQUEUE_LOGGING_ENABLE

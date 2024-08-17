@@ -20,6 +20,24 @@
 #define DES_BLOCK_SIZE 8
 #endif
 
+/**
+ * @brief Computes a cryptographic hash of the provided data using the specified algorithm.
+ *
+ * This function takes input data and computes its hash using one of the supported cryptographic
+ * algorithms (e.g., MD5, SHA-256, SHA3-512). The resulting hash is returned as a dynamically allocated 
+ * array of bytes, and the length of the hash is stored in the `outLength` parameter.
+ *
+ * The caller is responsible for freeing the memory allocated for the hash.
+ *
+ * @param data Pointer to the input data to be hashed.
+ * @param length Length of the input data in bytes.
+ * @param algorithm The hash algorithm to use (e.g., CRYPTO_MD5, CRYPTO_SHA256).
+ * @param[out] outLength Pointer to a size_t variable where the length of the computed hash will be stored.
+ *
+ * @return Pointer to the computed hash (as a byte array), or NULL if an error occurs. The caller must free the returned memory.
+ *
+ * @note The `outLength` parameter must be a valid pointer. If it is NULL, the function will return NULL.
+ */
 uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algorithm, size_t *outLength) {
     // Ensure outLength is a valid pointer
     if (!outLength) {
@@ -219,6 +237,17 @@ uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algo
     return md; // Caller is responsible for freeing this memory
 }
 
+/**
+ * @brief Prints a cryptographic hash in hexadecimal format.
+ *
+ * This function prints the provided hash data as a hexadecimal string. Each byte of the hash is
+ * printed as two hexadecimal characters.
+ *
+ * @param hash Pointer to the hash data to be printed.
+ * @param length Length of the hash data in bytes.
+ *
+ * @note If the `hash` parameter is NULL, the function prints "No hash data to print."
+ */
 void crypto_print_hash(const uint8_t* hash, size_t length) {
     if (hash == NULL) {
         printf("No hash data to print.\n");
@@ -231,6 +260,21 @@ void crypto_print_hash(const uint8_t* hash, size_t length) {
     printf("\n");
 }
 
+/**
+ * @brief Encrypts plaintext using the DES (Data Encryption Standard) algorithm.
+ *
+ * This function encrypts the provided plaintext using DES with the specified mode of operation (ECB, CBC, CFB, or OFB).
+ * The plaintext is padded to ensure its length is a multiple of the DES block size (8 bytes).
+ * 
+ * @param plaintext Pointer to the input plaintext data to be encrypted.
+ * @param len Length of the plaintext data in bytes.
+ * @param key Pointer to the key used for encryption (must be 8 bytes for DES).
+ * @param iv Pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If NULL, a default IV of all zeros is used.
+ * @param mode The mode of operation (CRYPTO_MODE_ECB, CRYPTO_MODE_CBC, CRYPTO_MODE_CFB, CRYPTO_MODE_OFB).
+ * @param out_len Pointer to a size_t variable where the length of the encrypted data will be stored.
+ * 
+ * @return Pointer to the encrypted data, or NULL if an error occurs. The caller is responsible for freeing this memory.
+ */
 void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len) {
     if (!out_len || !key || !plaintext) return NULL;
 
@@ -291,6 +335,21 @@ void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* ke
     return ciphertext; // Caller is responsible for freeing this memory
 }
 
+/**
+ * @brief Decrypts ciphertext using the DES (Data Encryption Standard) algorithm.
+ *
+ * This function decrypts the provided ciphertext using DES with the specified mode of operation (ECB, CBC, CFB, or OFB).
+ * The function assumes that the ciphertext length is a multiple of the DES block size (8 bytes).
+ * 
+ * @param ciphertext Pointer to the input ciphertext data to be decrypted.
+ * @param len Length of the ciphertext data in bytes.
+ * @param key Pointer to the key used for decryption (must be 8 bytes for DES).
+ * @param iv Pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If NULL, a default IV of all zeros is used.
+ * @param mode The mode of operation (CRYPTO_MODE_ECB, CRYPTO_MODE_CBC, CRYPTO_MODE_CFB, CRYPTO_MODE_OFB).
+ * @param out_len Pointer to a size_t variable where the length of the decrypted data will be stored.
+ * 
+ * @return Pointer to the decrypted data, or NULL if an error occurs. The caller is responsible for freeing this memory.
+ */
 void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len) {
     if (!out_len || !key || !ciphertext) return NULL;
 
@@ -342,6 +401,18 @@ void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* k
 }
 
 #if defined(_WIN32) || defined(_WIN64)
+/**
+ * @brief Generates a random Initialization Vector (IV) using Windows Cryptographic API.
+ *
+ * This function generates a random IV using the Windows Cryptographic API, specifically
+ * the CryptAcquireContext and CryptGenRandom functions.
+ *
+ * @param iv Pointer to a buffer where the generated IV will be stored.
+ * @param length The length of the IV to generate, in bytes.
+ *
+ * @note This function will terminate the program if it fails to acquire a cryptographic context
+ *       or generate random data.
+ */
 #include <Windows.h>
 #include <Wincrypt.h>
 
@@ -360,6 +431,18 @@ void crypto_generate_random_iv(uint8_t *iv, size_t length) {
 }
 
 #else
+/**
+ * @brief Generates a random Initialization Vector (IV) using the Unix-like system's `/dev/urandom` source.
+ *
+ * This function generates a random IV by reading from the `/dev/urandom` file, which provides
+ * random data generated by the operating system.
+ *
+ * @param iv Pointer to a buffer where the generated IV will be stored.
+ * @param length The length of the IV to generate, in bytes.
+ *
+ * @note This function will terminate the program if it fails to open `/dev/urandom` or read the requested
+ *       number of bytes.
+ */
 #include <fcntl.h>
 #include <unistd.h>
 

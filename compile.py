@@ -105,11 +105,11 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "crypto",
         # "tuple",
         # "matrix",
-        # "database",
+        "database",
         # "random",
         # "statistics",
         # "sysinfo",
-        "turtle"
+        # "turtle"
     ]
 
     build_dir = "./build"

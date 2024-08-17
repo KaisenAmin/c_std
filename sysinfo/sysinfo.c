@@ -509,7 +509,13 @@ char** sysinfo_list_bluetooth_devices(int* count) {
 
 #endif
 
-
+/**
+ * @brief This function returns the version of the operating system in a string format. 
+ * The version provides important information about the specific release of the operating system being used.
+ * 
+ * @return char* A static string containing the OS version. If the version cannot 
+ *               be determined, the function returns "unknown".
+ */
 char* sysinfo_product_version() {
 #ifdef _WIN32
     return get_windows_version();
@@ -520,6 +526,15 @@ char* sysinfo_product_version() {
 #endif
 }
 
+/**
+ * @brief This function returns the product type or name of the operating system. For instance, 
+ * it might return "Windows" for a Windows operating system or "Ubuntu" for an Ubuntu 
+ * Linux distribution. This information is useful for identifying the specific type of 
+ * operating system the application is running on.
+ * 
+ * @return char* A static string containing the OS product type. If the product type 
+ *               cannot be determined, the function returns "unknown".
+ */
 char* sysinfo_product_type() {
 #ifdef _WIN32
     return get_windows_product_type();
@@ -530,6 +545,14 @@ char* sysinfo_product_type() {
 #endif
 }
 
+/**
+ * @brief This function retrieves the kernel version of the operating system on which the application
+ * is running. For example, it may return "10.0.19045" on Windows or "6.8.0-35-generic" on Linux.
+ * The kernel version is essential for understanding the system's low-level OS details.
+ * 
+ * @return char* A static string containing the kernel version. If the version cannot be determined,
+ *               the function returns "unknown".
+ */
 char* sysinfo_kernel_version() {
 #ifdef _WIN32
     return get_windows_kernel_version();
@@ -540,6 +563,14 @@ char* sysinfo_kernel_version() {
 #endif
 }
 
+/**
+ * @brief This function provides the type of the kernel that the application is running on. For example,
+ * it may return "Windows NT" on Windows or "Linux" on Unix-like systems. This information is useful
+ * for identifying the general type of the operating system kernel.
+ * 
+ * @return char* A static string containing the kernel type. If the type cannot be determined,
+ *               the function returns "unknown".
+ */
 char* sysinfo_kernel_type() {
 #ifdef _WIN32
     return get_windows_kernel_type();
@@ -550,6 +581,14 @@ char* sysinfo_kernel_type() {
 #endif
 }
 
+/**
+ * @brief This function generates a unique identifier that represents the current boot session of the machine.
+ * On Linux, this is typically obtained from `/proc/sys/kernel/random/boot_id`, while on Windows, it may
+ * be derived from the system uptime. This unique ID can be used to track the current boot session of the system.
+ * 
+ * @return char* A static string containing the unique boot ID. If the ID cannot be determined,
+ *               the function returns "unknown".
+ */
 char* sysinfo_boot_unique_id() {
 #ifdef _WIN32
     return get_windows_boot_unique_id();
@@ -560,6 +599,14 @@ char* sysinfo_boot_unique_id() {
 #endif
 }
 
+/**
+ * @brief This function detects and returns the architecture of the CPU that the application
+ * is running on. For example, it may return "x86_64", "ARM", or "IA64", depending on
+ * the system. The architecture string is useful for understanding the type of processor
+ * the system is using.
+ * 
+ * @return char* A static string containing the CPU architecture.
+ */
 char* sysinfo_cpu_architecture() {
 #ifdef _WIN32
     return get_windows_cpu_architecture();
@@ -570,6 +617,13 @@ char* sysinfo_cpu_architecture() {
 #endif
 }
 
+/**
+ * @brief This function retrieves the fully qualified domain name (FQDN) or the simple host name
+ * of the machine on which the application is running. On Linux, it may attempt to resolve
+ * the FQDN, while on Windows, it returns the computer name.
+ * 
+ * @return char* A static string containing the machine's host name.
+ */
 char* sysinfo_machine_host_name() {
 #ifdef _WIN32
     return get_windows_machine_host_name();
@@ -580,6 +634,14 @@ char* sysinfo_machine_host_name() {
 #endif
 }
 
+/**
+ * @brief This function provides a unique identifier for the machine, which is useful for identifying
+ * the machine in network operations or other scenarios where a persistent unique ID is needed.
+ * The method of obtaining this ID varies by platform.
+ * 
+ * @return char* A static string containing the machine's unique ID. If the ID cannot be determined,
+ *               the function returns "unknown".
+ */
 char* sysinfo_machine_unique_id() {
 #ifdef _WIN32
     return get_windows_machine_unique_id();
@@ -590,6 +652,14 @@ char* sysinfo_machine_unique_id() {
 #endif
 }
 
+/**
+ * @brief This function generates a human-readable string that describes the operating system
+ * name and version in a friendly format. On Windows, it uses the system's product name
+ * and version. On Linux, it combines the product type and version. For other systems,
+ * it falls back to the kernel type and version.
+ * 
+ * @return char* A static string containing the pretty product name.
+ */
 char* sysinfo_pretty_product_name() {
     static char pretty_name[256];
     memset(pretty_name, 0, sizeof(pretty_name));
@@ -605,6 +675,13 @@ char* sysinfo_pretty_product_name() {
     return pretty_name;
 }
 
+/**
+ * @brief This function provides information about the system's ABI, which includes details
+ * such as the architecture, endianness, and data model (e.g., LP64, LLP64). The ABI
+ * is useful for understanding how the compiled binaries will interact with the system.
+ * 
+ * @return char* A static string containing the ABI information.
+ */
 char* sysinfo_build_abi() {
 #ifdef _WIN32
     return get_windows_build_abi();
@@ -615,6 +692,17 @@ char* sysinfo_build_abi() {
 #endif
 }
 
+/**
+ * @brief This function scans for Bluetooth devices and returns a list of device names that
+ * are connected or remembered by the system. The number of devices found is returned
+ * through the `count` parameter. The list of devices is dynamically allocated and should
+ * be freed by the caller.
+ * 
+ * @param count Pointer to an integer that will store the number of Bluetooth devices found.
+ * 
+ * @return char** An array of strings, each representing a Bluetooth device name.
+ *               The caller is responsible for freeing each string and the array itself.
+ */
 char** sysinfo_list_bluetooth_devices(int* count) {
 #ifdef _WIN32
     return get_sysinfo_list_bluetooth_devices_windows(count);

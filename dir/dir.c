@@ -174,7 +174,7 @@ static long long get_file_size_win(const wchar_t* filePath) {
     return size.QuadPart;
 }
 
-void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector* resultVector) {
+static void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector* resultVector) {
     if (!dirPath || !resultVector) {
         fmt_fprintf(stderr, "Error: Directory path or result vector is NULL in dir_list_contents_win.\n");
         return;
@@ -414,6 +414,12 @@ static void derive_key_from_password(const char* password, uint8_t* key) {
     }
 }
 
+/**
+ * @brief Creates a directory at the specified path.
+ *
+ * @param dirpath The path of the directory to create.
+ * @return `true` if the directory was successfully created, `false` otherwise.
+ */
 bool dir_make_directory(const char* dirpath) {
     if (!dirpath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_make_directory.\n");
@@ -443,6 +449,12 @@ bool dir_make_directory(const char* dirpath) {
     #endif
 }
 
+/**
+ * @brief Gets the name of the directory from a specified path.
+ *
+ * @param dirpath The path of the directory.
+ * @return A string representing the directory name, or `NULL` on error.
+ */
 char* dir_dir_name(const char* dirpath) {
     if (!dirpath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_dir_name.\n");
@@ -485,6 +497,11 @@ char* dir_dir_name(const char* dirpath) {
     #endif
 }
 
+/**
+ * @brief Gets the current working directory path.
+ *
+ * @return A string representing the current working directory path, or `NULL` on error.
+ */
 char* dir_current_path(void) {
     char* path = NULL;
 
@@ -514,6 +531,12 @@ char* dir_current_path(void) {
     return path; 
 }
 
+/**
+ * @brief Counts the number of items in a directory.
+ *
+ * @param dirpath The path of the directory to count items in.
+ * @return The number of items in the directory, or `-1` on error.
+ */
 int dir_count(const char* dirpath) {
     if (!dirpath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_count.\n");
@@ -559,6 +582,12 @@ int dir_count(const char* dirpath) {
     return count;
 }
 
+/**
+ * @brief Converts a relative file path to an absolute file path.
+ *
+ * @param relative_path The relative file path to convert.
+ * @return A string representing the absolute file path, or `NULL` on error.
+ */
 char* dir_absolute_file_path(const char* relative_path) {
     if (!relative_path) {
         fmt_fprintf(stderr, "Error: Relative path is NULL in dir_absolute_file_path.\n");
@@ -578,6 +607,12 @@ char* dir_absolute_file_path(const char* relative_path) {
     return absolutePath;
 }
 
+/**
+ * @brief Changes the current working directory.
+ *
+ * @param dirName The name of the directory to change to.
+ * @return `true` if the directory was successfully changed, `false` otherwise.
+ */
 bool dir_cd(const char* dirName) {
     if (!dirName) {
         fmt_fprintf(stderr, "Error: Directory name is NULL in dir_cd.\n");
@@ -607,10 +642,21 @@ bool dir_cd(const char* dirName) {
     #endif
 }
 
+/**
+ * @brief Changes the current working directory to the parent directory.
+ *
+ * @return `true` if the directory was successfully changed, `false` otherwise.
+ */
 bool dir_cd_up() {
     return dir_cd("..");
 }
 
+/**
+ * @brief Removes an empty directory.
+ *
+ * @param dirName The name of the directory to remove.
+ * @return `true` if the directory was successfully removed, `false` otherwise.
+ */
 bool dir_remove_directory(const char* dirName) {
     if (!dirName) {
         fmt_fprintf(stderr, "Error: Directory name is NULL in dir_remove_directory.\n");
@@ -644,6 +690,12 @@ bool dir_remove_directory(const char* dirName) {
     #endif
 }
 
+/**
+ * @brief Checks if a directory is empty.
+ *
+ * @param dirName The name of the directory to check.
+ * @return `true` if the directory is empty, `false` otherwise.
+ */
 bool dir_is_empty(const char* dirName) {
     if (!dirName) {
         fmt_fprintf(stderr, "Error: Directory name is NULL in dir_is_empty.\n");
@@ -677,6 +729,12 @@ bool dir_is_empty(const char* dirName) {
     #endif
 }
 
+/**
+ * @brief Recursively removes a directory and all its contents.
+ *
+ * @param dirPath The path of the directory to remove.
+ * @return `true` if the directory was successfully removed, `false` otherwise.
+ */
 bool dir_remove_directory_recursive(const char* dirPath) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_remove_directory_recursive.\n");
@@ -706,6 +764,13 @@ bool dir_remove_directory_recursive(const char* dirPath) {
     #endif
 }
 
+/**
+ * @brief Renames a file or directory.
+ *
+ * @param oldName The current name of the file or directory.
+ * @param newName The new name for the file or directory.
+ * @return `true` if the renaming was successful, `false` otherwise.
+ */
 bool dir_rename(const char* oldName, const char* newName) {
     if (!oldName || !newName) {
         fmt_fprintf(stderr, "Error: Old name or new name is NULL in dir_rename.\n");
@@ -741,6 +806,12 @@ bool dir_rename(const char* oldName, const char* newName) {
     #endif
 }
 
+/**
+ * @brief Checks if a directory exists at the specified path.
+ *
+ * @param dirPath The path of the directory to check.
+ * @return `true` if the directory exists, `false` otherwise.
+ */
 bool dir_is_directory_exists(const char* dirPath) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_is_directory_exists.\n");
@@ -774,6 +845,12 @@ bool dir_is_directory_exists(const char* dirPath) {
 
 }
 
+/**
+ * @brief Checks if a file exists at the specified path.
+ *
+ * @param filePath The path of the file to check.
+ * @return `true` if the file exists, `false` otherwise.
+ */
 bool dir_is_file_exists(const char* filePath) {
     if (!filePath) {
         fmt_fprintf(stderr, "Error: File path is NULL in dir_is_file_exists.\n");
@@ -797,6 +874,13 @@ bool dir_is_file_exists(const char* filePath) {
 #endif
 }
 
+/**
+ * @brief Copies a file from a source path to a destination path.
+ *
+ * @param srcPath The source file path.
+ * @param destPath The destination file path.
+ * @return `true` if the file was successfully copied, `false` otherwise.
+ */
 bool dir_copy_file(const char* srcPath, const char* destPath) {
     if (!srcPath || !destPath) {
         fmt_fprintf(stderr, "Error: Source or destination path is NULL in dir_copy_file.\n");
@@ -862,6 +946,13 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
 #endif
 }
 
+/**
+ * @brief Copies a directory and its contents to a new location.
+ *
+ * @param srcDir The source directory path.
+ * @param destDir The destination directory path.
+ * @return `true` if the directory was successfully copied, `false` otherwise.
+ */
 bool dir_copy_directory(const char* srcDir, const char* destDir) {
     if (!srcDir || !destDir) {
         fmt_fprintf(stderr, "Error: Source or destination directory is NULL in dir_copy_directory.\n");
@@ -985,6 +1076,12 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
 #endif 
 }
 
+/**
+ * @brief Gets the size of a directory and its contents.
+ *
+ * @param dirPath The path of the directory to calculate size.
+ * @return The size of the directory in bytes, or `-1` on error.
+ */
 long long dir_get_directory_size(const char* dirPath) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_directory_size.\n");
@@ -1013,6 +1110,12 @@ long long dir_get_directory_size(const char* dirPath) {
 #endif
 }
 
+/**
+ * @brief Gets the size of a file.
+ *
+ * @param filePath The path of the file to calculate size.
+ * @return The size of the file in bytes, or `-1` on error.
+ */
 long long dir_get_file_size(const char* filePath) {
     if (!filePath) {
         fmt_fprintf(stderr, "Error: File path is NULL in dir_get_file_size.\n");
@@ -1041,6 +1144,13 @@ long long dir_get_file_size(const char* filePath) {
 #endif
 }
 
+/**
+ * @brief Lists the contents of a directory based on the specified option.
+ *
+ * @param dirPath The path of the directory to list.
+ * @param option The option specifying what to list (files, directories, or both).
+ * @param result A vector to store the results.
+ */
 void dir_list_contents(const char* dirPath, DirListOption option, Vector* resultVector) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_list_contents.\n");
@@ -1065,6 +1175,12 @@ void dir_list_contents(const char* dirPath, DirListOption option, Vector* result
 #endif
 }
 
+/**
+ * @brief Checks if the specified path is a file.
+ *
+ * @param filePath The path to check.
+ * @return `true` if the path is a file, `false` otherwise.
+ */
 bool dir_is_file(const char *filePath) {
     if (!filePath) {
         fmt_fprintf(stderr, "Error: File path is NULL in dir_is_file.\n");
@@ -1096,6 +1212,12 @@ bool dir_is_file(const char *filePath) {
 #endif 
 }
 
+/**
+ * @brief Checks if the specified path is a directory.
+ *
+ * @param filePath The path to check.
+ * @return `true` if the path is a directory, `false` otherwise.
+ */
 bool dir_is_directory(const char* dirPath) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_is_directory.\n");
@@ -1127,6 +1249,13 @@ bool dir_is_directory(const char* dirPath) {
 #endif 
 }
 
+/**
+ * @brief Moves a file from a source path to a destination path.
+ *
+ * @param srcPath The source file path.
+ * @param destPath The destination file path.
+ * @return `true` if the file was successfully moved, `false` otherwise.
+ */
 bool dir_move_file(const char* srcPath, const char* destPath) {
     if (!srcPath) {
         fmt_fprintf(stderr, "Error: Source path is NULL in dir_move_file.\n");
@@ -1163,6 +1292,13 @@ bool dir_move_file(const char* srcPath, const char* destPath) {
 #endif
 }
 
+/**
+ * @brief Moves a directory and its contents to a new location.
+ *
+ * @param srcPath The source directory path.
+ * @param destPath The destination directory path.
+ * @return `true` if the directory was successfully moved, `false` otherwise.
+ */
 bool dir_move_directory(const char* srcPath, const char* destPath) {
     if (!srcPath) {
         fmt_fprintf(stderr, "Error: Source path is NULL in dir_move_directory.\n");
@@ -1211,6 +1347,12 @@ bool dir_move_directory(const char* srcPath, const char* destPath) {
 #endif
 }
 
+/**
+ * @brief Gets the modified time of the specified directory.
+ *
+ * @param dirPath The path of the directory.
+ * @return A string representing the modified time, or `NULL` on error.
+ */
 char* dir_get_modified_time(const char* dirPath) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_modified_time.\n");
@@ -1272,6 +1414,12 @@ char* dir_get_modified_time(const char* dirPath) {
 #endif
 }
 
+/**
+ * @brief Gets the creation time of the specified directory.
+ *
+ * @param dirPath The path of the directory.
+ * @return A string representing the creation time, or `NULL` on error.
+ */
 char* dir_get_creation_time(const char* dirPath) {
     if (!dirPath) {
         fmt_fprintf(stderr, "Error: Directory path is NULL in dir_get_creation_time.\n");
@@ -1318,6 +1466,11 @@ char* dir_get_creation_time(const char* dirPath) {
 #endif 
 }
 
+/**
+ * @brief Gets the user's home directory path.
+ *
+ * @return A string representing the home directory path, or `NULL` on error.
+ */
 char* dir_get_home_directory() {
     char* homeDir = NULL;
 
@@ -1347,6 +1500,12 @@ char* dir_get_home_directory() {
     return homeDir; // Caller responsible for freeing this memory
 }
 
+/**
+ * @brief Determines the type of file located at the specified path.
+ *
+ * @param filePath The path of the file to check.
+ * @return The type of the file, specified by the `DirFileType` enum.
+ */
 DirFileType dir_get_file_type(const char* filePath) {
     if (!filePath) {
         fmt_fprintf(stderr, "Error: File path is NULL in dir_get_file_type.\n");
@@ -1400,6 +1559,14 @@ DirFileType dir_get_file_type(const char* filePath) {
 #endif
 }
 
+/**
+ * @brief Encrypts a file using the specified password and initialization vector.
+ *
+ * @param filePath The path of the file to encrypt.
+ * @param password The password used for encryption.
+ * @param iv The initialization vector used for encryption.
+ * @return `true` if the file was successfully encrypted, `false` otherwise.
+ */
 bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     if (!filePath || !password || !iv) {
         fmt_fprintf(stderr, "Error: Invalid arguments in dir_encrypt_file. filePath, password, or iv is NULL.\n");
@@ -1464,6 +1631,14 @@ bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     return true;
 }
 
+/**
+ * @brief Decrypts a file using the specified password and initialization vector.
+ *
+ * @param filePath The path of the file to decrypt.
+ * @param password The password used for decryption.
+ * @param iv The initialization vector used for decryption.
+ * @return `true` if the file was successfully decrypted, `false` otherwise.
+ */
 bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     if (!filePath || !password || !iv) {
         fmt_fprintf(stderr, "Error: Invalid arguments in dir_decrypt_file. filePath, password, or iv is NULL.\n");
@@ -1528,6 +1703,15 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     return true;
 }
 
+/**
+ * @brief Retrieves the owner of the specified file.
+ *
+ * @param filePath The path of the file.
+ * @param ownerBuffer The buffer to store the owner's name.
+ * @param bufferSize The size of the buffer.
+ * 
+ * @return `true` if the owner was successfully retrieved, `false` otherwise.
+ */
 bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize) {
     if (!filePath || !ownerBuffer || bufferSize == 0) {
         fmt_fprintf(stderr, "Error: Invalid arguments in dir_get_file_owner. filePath, ownerBuffer is NULL, or bufferSize is 0.\n");
@@ -1611,6 +1795,15 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
 #endif
 }
 
+/**
+ * @brief Retrieves the owner of the specified directory.
+ *
+ * @param dirPath The path of the directory.
+ * @param ownerBuffer The buffer to store the owner's name.
+ * @param bufferSize The size of the buffer.
+ * 
+ * @return `true` if the owner was successfully retrieved, `false` otherwise.
+ */
 bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize) {
     if (!dirPath || !ownerBuffer || bufferSize == 0) {
         fmt_fprintf(stderr, "Error: Invalid arguments in dir_get_directory_owner. dirPath, ownerBuffer is NULL or bufferSize is 0.\n");
@@ -1695,6 +1888,15 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
 #endif
 }
 
+/**
+ * @brief Searches a directory for files matching a specified pattern.
+ *
+ * @param dirPath The path of the directory to search.
+ * @param pattern The pattern to match files against.
+ * @param callback The callback function to invoke for each matched file.
+ * @param userData User-defined data to pass to the callback function.
+ * @return `true` if the search was successful, `false` otherwise.
+ */
 bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData) {
     if (!dirPath || !pattern || !callback) {
         fmt_fprintf(stderr, "Error: Invalid arguments in dir_search. dirPath, pattern, or callback is NULL.\n");

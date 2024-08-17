@@ -25,7 +25,22 @@ static char** split_string(const char* str, const char* delimiter, int* count) {
     free(strCopy); // Clean up the strdup
     return tokenArray;
 }
-
+/** 
+ * @brief Creates a new CLI parser instance.
+ *
+ * This function allocates and initializes a new `CliParser` structure, which can be used
+ * to manage command-line options, commands, and their associated handlers.
+ *
+ * @param progName A string representing the name of the program. This name will be used in
+ *                 usage messages. Must not be NULL.
+ *
+ * @return A pointer to the newly created `CliParser` instance, or NULL if an error occurred.
+ *
+ * @note NULL if `progName` is NULL or if memory allocation fails.
+ * @note CliParser* a valid pointer to the `CliParser` instance if successful.
+ * @note The caller is responsible for deallocating the returned `CliParser` instance
+ *          using `cli_parser_deallocate` to prevent memory leaks.
+ */
 CliParser* cli_parser_create(const char *progName) {
     if (progName == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Program name is NULL in cli_parser_create.\n");
@@ -82,6 +97,19 @@ CliParser* cli_parser_create(const char *progName) {
     return parser;
 }
 
+/**
+ * @brief Deallocates a CLI parser and all associated resources.
+ *
+ * This function frees all memory associated with the given `CliParser` instance, including
+ * the options, commands, and any other dynamically allocated data. After calling this
+ * function, the `parser` pointer is no longer valid and should not be used.
+ *
+ * @param parser A pointer to the `CliParser` instance to be deallocated. Must not be NULL.
+ *
+ * @return void
+ * @note If `parser` is NULL, the function logs an error and returns without performing
+ *          any deallocation.
+ */
 void cli_parser_deallocate(CliParser *parser) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Attempted to deallocate a NULL CliParser.\n");
@@ -136,6 +164,19 @@ void cli_parser_deallocate(CliParser *parser) {
     #endif
 }
 
+/**
+ * @brief Sets a custom usage message for the CLI parser.
+ *
+ * This function allows the user to set a custom usage message that will be displayed
+ * when help information is printed. The custom usage message overrides the default
+ * generated message.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param usage A string containing the custom usage message. Must not be NULL.
+ *
+ * @return void
+ * @note If the `parser` or `usage` is NULL, an error is logged and the function returns without setting the usage message.
+ */
 void cli_set_custom_usage(CliParser *parser, const char *usage) {
     if (parser == NULL || usage == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL argument provided to cli_set_custom_usage.\n");
@@ -170,6 +211,18 @@ void cli_set_custom_usage(CliParser *parser, const char *usage) {
     }
 }
 
+/**
+ * @brief Enables or disables strict mode for the CLI parser.
+ *
+ * Strict mode, when enabled, causes the parser to treat unrecognized options as errors.
+ * This can be useful for ensuring that all provided options are valid and recognized by the parser.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param enable A boolean flag indicating whether to enable (`true`) or disable (`false`) strict mode.
+ *
+ * @return void
+ * @note If the `parser` is NULL, an error is logged and the function returns without modifying the strict mode setting.
+ */
 void cli_enable_strict_mode(CliParser *parser, bool enable) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_enable_strict_mode.\n");
@@ -201,7 +254,19 @@ void cli_enable_strict_mode(CliParser *parser, bool enable) {
         }
     #endif
 }
-
+/** 
+ * @brief Sets a custom error handler for the CLI parser.
+ *
+ * This function allows the user to specify a custom error handler function that will be called whenever
+ * an error occurs during parsing. The custom handler can be used to provide custom error messages or
+ * perform specific error handling actions.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param handler A pointer to the error handler function. Must not be NULL.
+ *
+ * @return void
+ * @note If the `parser` or `handler` is NULL, an error is logged and the function returns without setting the error handler.
+ */
 void cli_set_error_handler(CliParser *parser, CliErrorHandler handler) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Cannot set error handler on a NULL CliParser.\n");
@@ -231,6 +296,20 @@ void cli_set_error_handler(CliParser *parser, CliErrorHandler handler) {
     #endif
 }
 
+/**
+ * @brief Registers a new command with the CLI parser.
+ *
+ * This function adds a new command to the CLI parser, allowing it to be recognized and executed during
+ * command-line parsing. The command must have a unique name.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param command A pointer to the `CliCommand` structure defining the command. Must not be NULL.
+ *
+ * @return `true` if the command was successfully registered, `false` otherwise.
+ *
+ * @note false if the `parser` or `command` is NULL, or if a duplicate command name is detected.
+ * @note true if the command was successfully registered.
+ */
 bool cli_register_command(CliParser *parser, const CliCommand *command) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_register_command.\n");
@@ -289,6 +368,18 @@ bool cli_register_command(CliParser *parser, const CliCommand *command) {
     return true;
 }
 
+/**
+ * @brief Prints the help message for the CLI parser.
+ *
+ * This function outputs the usage message, followed by the list of available options and commands.
+ * If a custom usage message has been set, it will be displayed; otherwise, a default usage message
+ * will be generated based on the program name.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ *
+ * @return void
+ * @note If the parser is NULL, an error is logged, and the function returns without printing anything.
+ */
 void cli_print_help(const CliParser *parser) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_print_usage.\n");
@@ -336,6 +427,20 @@ void cli_print_help(const CliParser *parser) {
     #endif
 }
 
+/**
+ * @brief Registers a new option with the CLI parser.
+ *
+ * This function adds a new option to the CLI parser, allowing it to be recognized and processed
+ * during command-line parsing. The option must have a unique long or short identifier.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param option A pointer to the `CliOption` structure defining the option. Must not be NULL.
+ *
+ * @return `true` if the option was successfully registered, `false` otherwise.
+ *
+ * @note false if the `parser` or `option` is NULL, or if a duplicate option is detected.
+ * @note true if the option was successfully registered.
+ */
 bool cli_register_option(CliParser *parser, const CliOption *option) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_register_option.\n");
@@ -396,6 +501,19 @@ bool cli_register_option(CliParser *parser, const CliOption *option) {
     return true;
 }
 
+/**
+ * @brief Displays an error message using the CLI parser's error handler.
+ *
+ * This function outputs an error message using the parser's configured error handler, if one is set.
+ * If no custom error handler is provided, the error message is printed to `stderr`.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param error The error message to display. Must not be NULL or empty.
+ *
+ * @return void
+ *
+ * @note If the `parser` or `error` is NULL, an error is logged and the function returns without displaying anything.
+ */
 void cli_display_error(const CliParser *parser, const char *error) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_display_error.\n");
@@ -432,6 +550,19 @@ void cli_display_error(const CliParser *parser, const char *error) {
     #endif
 }
 
+/**
+ * @brief Prints the version information for the application.
+ *
+ * This function outputs the version information of the application, using the program name
+ * specified when the parser was created, followed by the provided version string.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param version A string containing the version information. Must not be NULL.
+ *
+ * @return void
+ *
+ * @note If the `parser` or `version` is NULL, an error is logged and the function returns without printing anything.
+ */
 void cli_print_version(const CliParser *parser, const char *version) {
     if (parser == NULL || version == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_print_version.\n");
@@ -451,6 +582,18 @@ void cli_print_version(const CliParser *parser, const char *version) {
     #endif
 }
 
+/**
+ * @brief Finds and returns a pointer to a command by its name.
+ *
+ * This function searches for a command in the CLI parser by its name. If found, a pointer to the command is returned.
+ * If the command is not found, NULL is returned.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param name The name of the command to search for. Must not be NULL.
+ *
+ * @return A pointer to the `CliCommand` structure if the command is found, or NULL if not found.
+ * @note If the `parser` or `name` is NULL, an error is logged and NULL is returned.
+ */
 const CliCommand* cli_find_command(const CliParser *parser, const char *name) {
     if (parser == NULL || name == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_find_command.\n");
@@ -470,6 +613,19 @@ const CliCommand* cli_find_command(const CliParser *parser, const char *name) {
     return NULL; // Command not found
 }
 
+/**
+ * @brief Finds and returns a pointer to an option by its long or short name.
+ *
+ * This function searches for an option in the CLI parser by its long option name or short option character.
+ * If found, a pointer to the option is returned. If the option is not found, NULL is returned.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param longOpt The long option name to search for. Can be NULL if searching by short option.
+ * @param shortOpt The short option character to search for. Can be '\0' if searching by long option.
+ *
+ * @return A pointer to the `CliOption` structure if the option is found, or NULL if not found.
+ * @note If the `parser` is NULL or both `longOpt` and `shortOpt` are not provided, an error is logged and NULL is returned.
+ */
 const CliOption* cli_find_option(const CliParser *parser, const char *longOpt, char shortOpt) {
     if (parser == NULL || (longOpt == NULL && shortOpt == '\0')) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_find_option.\n");
@@ -490,6 +646,20 @@ const CliOption* cli_find_option(const CliParser *parser, const char *longOpt, c
     return NULL; // Option not found
 }
 
+/**
+ * @brief Updates the description of a command or option.
+ *
+ * This function updates the description of a command or option in the CLI parser. The description is updated only
+ * if the specified command or option is found.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param name The name of the command or option to update. Must not be NULL.
+ * @param newDescription The new description to set. Must not be NULL.
+ * @param isCommand A boolean flag indicating whether the name refers to a command (true) or an option (false).
+ *
+ * @return void
+ * @note If the `parser`, `name`, or `newDescription` is NULL, an error is logged and the function returns without updating anything.
+ */
 void cli_update_description(CliParser *parser, const char *name, const char *newDescription, bool isCommand) {
     if (parser == NULL || name == NULL || newDescription == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_update_description.\n");
@@ -545,6 +715,22 @@ void cli_update_description(CliParser *parser, const char *name, const char *new
     #endif
 }
 
+/**
+ * @brief Parses command-line arguments based on the registered options and commands.
+ *
+ * This function processes the command-line arguments, first handling options
+ * (those that start with '-' or '--') and then looking for and executing commands.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param argc The argument count, typically from the main function.
+ * @param argv The argument vector, typically from the main function.
+ *
+ * @return `CliStatusCode` indicating the result of the parsing operation.
+ *
+ * @note CLI_SUCCESS on successful parsing and execution.
+ * @note CLI_ERROR_INVALID_ARGUMENT if the parser or arguments are invalid.
+ * @note CLI_ERROR_COMMAND_NOT_FOUND if no valid command was found in the arguments.
+ */
 CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[]) {
     if (!parser || argc < 1 || !argv) {
         fmt_printf("Debug: Invalid CLI parser setup or arguments.\n");
@@ -614,6 +800,17 @@ CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[]) {
     return CLI_SUCCESS;
 }
 
+/**
+ * @brief Retrieves the last error that occurred in the CLI parser.
+ *
+ * This function returns the last error information that occurred in the parser,
+ * including the error code and message.
+ *
+ * @param parser A pointer to the `CliParser` instance. Can be NULL.
+ *
+ * @return A `CliError` structure containing the last error details.
+ * @note If the `parser` is NULL, the function logs an error and returns the global last error.
+ */
 CliError cli_get_last_error(const CliParser *parser) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: cli_get_last_status called with NULL parser.\n");
@@ -629,6 +826,20 @@ CliError cli_get_last_error(const CliParser *parser) {
     return cli_last_error;
 }
 
+/**
+ * @brief Sets the default command handler for the parser.
+ *
+ * This function allows setting a default command handler that will be invoked
+ * when no specific command is found in the arguments. The handler can be cleared
+ * by passing NULL.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param handler The function to be set as the default command handler. Can be NULL.
+ *
+ * @return void
+ * @note If the `parser` is NULL, the function logs an error and does not set the handler.
+ * If the handler is NULL, the default handler is cleared.
+ */
 void cli_set_default_command_handler(CliParser *parser, CliCommandHandler handler) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_set_default_command_handler.");
@@ -657,6 +868,22 @@ void cli_set_default_command_handler(CliParser *parser, CliCommandHandler handle
     parser->defaultCommandHandler = handler;
 }
 
+/**
+ * @brief Unregisters a previously registered option from the parser.
+ *
+ * This function removes an option from the parser by either its long or short
+ * option identifier. It also handles the memory deallocation for the option's
+ * name and description.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param longOpt The long option name to unregister. Can be NULL if using shortOpt.
+ * @param shortOpt The short option character to unregister. Can be '\0' if using longOpt.
+ *
+ * @return `true` if the option was successfully unregistered, `false` otherwise.
+ *
+ * @note false if the `parser` is NULL, or if both `longOpt` and `shortOpt` are NULL.
+ * @note true if the option was successfully found and unregistered.
+ */
 bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_unregister_option.");
@@ -716,6 +943,20 @@ bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt
     return false;
 }
 
+/**
+ * @brief Unregisters a previously registered command from the parser.
+ *
+ * This function removes a command from the parser by its name. It also handles
+ * the memory deallocation for the command's name and description.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param name The name of the command to unregister. Must not be NULL.
+ *
+ * @return `true` if the command was successfully unregistered, `false` otherwise.
+ *
+ * @note false if the `parser` or `name` is NULL, or if the command was not found.
+ * @note true if the command was successfully found and unregistered.
+ */
 bool cli_unregister_command(CliParser *parser, const char *name) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_unregister_command.");
@@ -769,6 +1010,23 @@ bool cli_unregister_command(CliParser *parser, const char *name) {
     return false;
 }
 
+/**
+ * @brief Parses command-line arguments using a specified delimiter for argument splitting.
+ *
+ * This function processes the command-line arguments, splitting any arguments
+ * containing the specified delimiter before parsing them. This allows complex
+ * command-line inputs to be handled more flexibly.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param argc The argument count, typically from the main function.
+ * @param argv The argument vector, typically from the main function.
+ * @param delimiter The delimiter used to split arguments. Must not be NULL.
+ *
+ * @return `true` if the arguments were successfully parsed, `false` otherwise.
+ *
+ * @note false if the `parser`, `argv`, or `delimiter` is NULL, or if parsing fails.
+ * @note true if the arguments were successfully parsed.
+ */
 bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], const char *delimiter) {
     if (parser == NULL || argv == NULL || delimiter == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_parse_args_with_delimiter.");
@@ -817,6 +1075,21 @@ bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], co
     return status == CLI_SUCCESS;
 }
 
+/**
+ * @brief Adds a new group of options to the CLI parser.
+ *
+ * This function registers a group of related options under a specified group name
+ * in the parser. This allows for better organization and handling of options.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param groupName The name of the option group. Must not be NULL.
+ * @param options An array of `CliOption` structures to be added to the group. Must not be NULL.
+ * @param numOptions The number of options in the `options` array. Must be greater than 0.
+ *
+ * @return void
+ *
+ * @note If any of the parameters are invalid, the function logs an error and does not add the group.
+ */
 void cli_add_option_group(CliParser *parser, const char *groupName, const CliOption *options, size_t numOptions) {
     if (parser == NULL || groupName == NULL || options == NULL || numOptions == 0) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid arguments provided to cli_add_option_group.\n");
@@ -869,6 +1142,18 @@ void cli_add_option_group(CliParser *parser, const char *groupName, const CliOpt
     #endif
 }
 
+/**
+ * @brief Removes an option group from the CLI parser by its name.
+ *
+ * This function searches for an option group by name and removes it from the CLI parser.
+ * It also handles memory deallocation for the group's name and its options.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param groupName The name of the option group to remove. Must not be NULL.
+ *
+ * @return void
+ * @note If the `parser` or `groupName` is NULL, or if the group is not found, the function logs an error.
+ */
 void cli_remove_option_group(CliParser *parser, const char *groupName) {
     if (parser == NULL || groupName == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid arguments provided to cli_remove_option_group: parser or groupName is NULL.\n");
@@ -924,6 +1209,19 @@ void cli_remove_option_group(CliParser *parser, const char *groupName) {
     #endif
 }
 
+/**
+ * @brief Enters an interactive mode where the user can input and execute commands repeatedly.
+ *
+ * This function prompts the user for commands in a loop, parses them, and executes the corresponding
+ * actions until the user types "exit" or "quit". It provides a simple command-line interface (CLI)
+ * experience within a running application.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param prompt The prompt string to display before each user input. Must not be NULL.
+ *
+ * @return void
+ * @note If the `parser` is NULL, the function logs an error and exits without entering interactive mode.
+ */
 void cli_enter_interactive_mode(CliParser *parser, const char *prompt) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid parser provided to cli_enter_interactive_mode.\n");
@@ -965,6 +1263,22 @@ void cli_enter_interactive_mode(CliParser *parser, const char *prompt) {
     fmt_printf("Exiting interactive mode.\n");
 }
 
+/**
+ * @brief Sets a custom error message for a specific option when its validation fails.
+ *
+ * This function assigns a custom error message to a specific option identified by
+ * its long or short option name. The custom error message is displayed when the
+ * option fails validation during argument parsing.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param longOpt The long option name. Can be NULL if using shortOpt.
+ * @param shortOpt The short option character. Can be '\0' if using longOpt.
+ * @param errorMessage The custom error message to set. Must not be NULL.
+ *
+ * @return void
+ * @note If the `parser`, `longOpt` and `shortOpt` are both NULL, or if `errorMessage` is NULL,
+ * the function logs an error and does not set the custom error message.
+ */
 void cli_set_option_error_message(CliParser *parser, const char *longOpt, char shortOpt, const char *errorMessage) {
     if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Parser cannot be NULL.");
@@ -1034,6 +1348,21 @@ void cli_set_option_error_message(CliParser *parser, const char *longOpt, char s
     }
 }
 
+/**
+ * @brief Validates an argument provided for a specific CLI option using its custom validator function.
+ *
+ * This function checks if the argument provided for a CLI option is valid according to the
+ * custom validator function associated with that option. If the option has no validator, the
+ * function assumes the argument is valid.
+ *
+ * @param option A pointer to the `CliOption` instance. Must not be NULL.
+ * @param value The argument value to validate. Must not be NULL.
+ *
+ * @return `true` if the argument is valid or if there is no validator, `false` otherwise.
+ *
+ * @note false if `option` or `value` is NULL, or if validation fails.
+ * @note true if the argument passes validation or if no validator is present.
+ */
 bool cli_validate_option_argument(const CliOption *option, const char *value) {
     // Validate input parameters
     if (option == NULL) {
@@ -1087,6 +1416,19 @@ bool cli_validate_option_argument(const CliOption *option, const char *value) {
     }
 }
 
+/**
+ * @brief Sets a hook function to be executed before any command execution.
+ *
+ * This function allows the user to specify a hook that will be called automatically
+ * before any command is executed. This can be used for setup, logging, or any
+ * other pre-processing tasks. The hook can be cleared by passing `NULL`.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param hook The function to be set as the pre-execution hook. Can be NULL to clear the hook.
+ *
+ * @return void
+ * @note If the `parser` is NULL, the function will log an error and return without setting the hook.
+ */
 void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
     // Validate the input parameters
     if (parser == NULL) {
@@ -1113,6 +1455,20 @@ void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
     #endif
 }
 
+/**
+ * @brief Sets a hook function to be executed after any command execution.
+ *
+ * This function allows the user to specify a hook that will be called automatically
+ * after any command is executed. This can be used for cleanup, logging, or any
+ * other post-processing tasks. The hook can be cleared by passing `NULL`.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param hook The function to be set as the post-execution hook. Can be NULL to clear the hook.
+ *
+ * @return void
+
+ * @note If the `parser` is NULL, the function will log an error and return without setting the hook.
+ */
 void cli_set_post_execution_hook(CliParser *parser, CliPostExecutionHook hook) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
@@ -1135,6 +1491,19 @@ void cli_set_post_execution_hook(CliParser *parser, CliPostExecutionHook hook) {
     #endif
 }
 
+/**
+ * @brief Enables or disables the pipelining feature in the CLI parser.
+ *
+ * Pipelining allows the output of one command to be used as the input for another command.
+ * This function toggles the feature based on the `enable` parameter.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param enable A boolean value indicating whether to enable (`true`) or disable (`false`) pipelining.
+ *
+ * @return void
+ *
+ * @note If the `parser` is NULL, the function will log an error and return without enabling/disabling pipelining.
+ */
 void cli_enable_pipelining(CliParser *parser, bool enable) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
@@ -1157,6 +1526,25 @@ void cli_enable_pipelining(CliParser *parser, bool enable) {
     #endif
 }
 
+/**
+ * @brief Registers an alias for an existing command in the CLI parser.
+ *
+ * This function allows you to define an alternative name (alias) for an existing
+ * command in the CLI parser. The alias will behave exactly like the original command.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param commandName The name of the existing command to alias. Must not be NULL.
+ * @param alias The alias name for the command. Must not be NULL.
+ * 
+ * @return `true` if the alias was successfully added, `false` otherwise.
+ *         If false, the function will also set an appropriate error code and message
+ *         in the `cli_last_error` structure.
+ *
+ * @note false if `parser`, `commandName`, or `alias` is NULL.
+ * @note false if the specified original command is not found in the parser.
+ * @note false if the alias name already exists as a command.
+ * @note true if the alias was successfully added.
+ */
 bool cli_register_command_alias(CliParser *parser, const char *commandName, const char *alias) {
     if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
@@ -1215,6 +1603,22 @@ bool cli_register_command_alias(CliParser *parser, const char *commandName, cons
     return cli_register_command(parser, &aliasCommand);
 }
 
+/**
+ * @brief Prompts the user for confirmation with a customizable message.
+ *
+ * This function displays a prompt message asking the user for a yes/no confirmation.
+ * It waits for the user to input 'y' or 'n' and returns `true` for 'y' and `false` for 'n'.
+ * If the input is invalid, the function re-prompts the user.
+ *
+ * @param promptMessage The message to display when prompting for confirmation. Must not be NULL.
+ * 
+ * @return `true` if the user confirms with 'y', `false` if the user declines with 'n'.
+ *         If the input is invalid, the function re-prompts the user.
+ *
+ * @note false if `promptMessage` is NULL or if there is an error reading input.
+ * @note true if the user inputs 'y'.
+ * @note false if the user inputs 'n'.
+ */
 bool cli_prompt_confirmation(const char *promptMessage) {
     if (!promptMessage) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
@@ -1249,6 +1653,27 @@ bool cli_prompt_confirmation(const char *promptMessage) {
     }
 }
 
+/**
+ * @brief Processes a specific group of options within the CLI parser.
+ *
+ * This function processes the command line arguments for a specific option group,
+ * ensuring that each option within the group is handled according to its type
+ * (e.g., required argument, optional argument).
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param groupName The name of the option group to process. Must not be NULL.
+ * @param argc The argument count, typically from the main function.
+ * @param argv The argument vector, typically from the main function.
+ * 
+ * @return `true` if the option group was successfully processed, `false` otherwise.
+ *         If false, the function will also set an appropriate error code and message
+ *         in the `cli_last_error` structure.
+ *
+ * @note false if `parser`, `groupName`, or `argv` is NULL, or if `argc` is less than 1.
+ * @note false if the specified option group is not found in the parser.
+ * @note false if a required option within the group is not found.
+ * @note true if the option group was processed successfully.
+ */
 bool cli_process_option_group(CliParser *parser, const char *groupName, int argc, char *argv[]) {
     if (!parser || !groupName || argc < 1 || !argv) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
@@ -1318,6 +1743,26 @@ bool cli_process_option_group(CliParser *parser, const char *groupName, int argc
     return true;
 }
 
+/**
+ * @brief Adds an alias for an existing option in the CLI parser.
+ *
+ * This function allows you to define an alternative name (alias) for an existing
+ * option in the CLI parser. The alias will behave exactly like the original option.
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param optionName The name of the existing option to alias. Must not be NULL.
+ * @param alias The alias name for the option. Must not be NULL.
+ * 
+ * @return `true` if the alias was successfully added, `false` otherwise.
+ *         If false, the function will also set an appropriate error code and message
+ *         in the `cli_last_error` structure.
+ *
+ * @note false if `parser`, `optionName`, or `alias` is NULL.
+ * @note false if the specified original option is not found in the parser.
+ * @note false if the alias name already exists as an option.
+ * @note false if memory allocation fails during the process.
+ * @note true if the alias was successfully added.
+ */
 bool cli_add_option_alias(CliParser *parser, const char *optionName, const char *alias) {
     if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
@@ -1410,6 +1855,35 @@ bool cli_add_option_alias(CliParser *parser, const char *optionName, const char 
     return true;
 }
 
+/**
+ * @brief Sets a dependency between two options in the CLI parser.
+ *
+ * This function establishes a dependency where the presence of one option
+ * (identified by `longOpt` or `shortOpt`) requires the presence of another
+ * option (identified by `dependsOnLongOpt` or `dependsOnShortOpt`).
+ *
+ * @param parser A pointer to the `CliParser` instance. Must not be NULL.
+ * @param longOpt The long option name that has a dependency (e.g., "--verbose").
+ *                Can be NULL if `shortOpt` is provided.
+ * @param shortOpt The short option character that has a dependency (e.g., 'v').
+ * Can be '\0' if `longOpt` is provided.
+ * @param dependsOnLongOpt The long option name that is required as a dependency. Can be NULL if `dependsOnShortOpt` is provided.
+ * @param dependsOnShortOpt The short option character that is required as a dependency.
+ * Can be '\0' if `dependsOnLongOpt` is provided.
+ * 
+ * @return `true` if the dependency was successfully established, `false` otherwise.
+ *         If false, the function will also set an appropriate error code and message
+ *         in the `cli_last_error` structure.
+ *
+ * @note This function currently does not store the dependency relationship for 
+ *       validation during parsing. Future implementations may include this feature.
+ *
+ * @note false if the `parser` is NULL.
+ * @note false if both `longOpt` and `shortOpt` are NULL or empty, or if both
+ *         `dependsOnLongOpt` and `dependsOnShortOpt` are NULL or empty.
+ * @note false if the specified option or its dependency is not found in the parser.
+ * @note true if the option dependency was successfully set.
+ */
 bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char shortOpt, const char *dependsOnLongOpt, char dependsOnShortOpt) {
     // Validate parser and option names
     if (!parser) {
@@ -1480,7 +1954,7 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
              "Success: Option dependency between '%s' and '%s' set successfully.", longOpt ? longOpt : "N/A", dependsOnLongOpt ? dependsOnLongOpt : "N/A");
     cli_last_error.code = CLI_SUCCESS;
     #ifdef CLI_LOGGING_ENABLE
-    fmt_fprintf(stdout, "%s\n", cli_last_error.message);
+        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
     #endif
     return true;
 }

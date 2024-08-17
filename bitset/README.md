@@ -10,7 +10,7 @@ The Bitset library is a part of a project to reimplement C++ standard library fe
 
 ## Compilation
 
-To compile the Array library along with your main program, use the following GCC command:
+To compile the Bitset library along with your main program, use the following GCC command:
 if you need other lib just you can add name of libs .c 
 
 ```bash
@@ -23,7 +23,7 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 ## Usage
 
-To use the Array library in your project, include the `bitset.h` header file in your source code.
+To use the Bitset library in your project, include the `bitset.h` header file in your source code.
 
 in these examples i rewrite cpp example in Bitset code 
 

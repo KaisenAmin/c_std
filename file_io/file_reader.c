@@ -4,6 +4,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Opens a file for reading, based on the specified mode.
+ *
+ * This function opens a file for reading according to the specified `ReadMode`.
+ * It handles various modes such as text, binary, Unicode, buffered, unbuffered, and line-by-line reading.
+ * On Windows, it can open files with UTF-16 encoding for Unicode modes.
+ *
+ * @param filename The name of the file to open.
+ * @param mode The mode in which the file is to be opened, specified by the `ReadMode` enum.
+ * 
+ * @return A pointer to a `FileReader` structure on success, or `NULL` on failure.
+ */
 FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     if (!filename) {
         fprintf(stderr, "Error: filename is null in file_reader_open.\n");
@@ -78,6 +90,16 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     return reader;
 }
 
+/**
+ * @brief Closes the file associated with the given `FileReader`.
+ *
+ * This function closes the file associated with the `FileReader` structure.
+ * It ensures that all resources are properly released.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if the file was successfully closed, `false` otherwise.
+ */
 bool file_reader_close(FileReader *reader) {
     if (!reader) {
         fprintf(stderr, "Error: FileReader object is null in file_reader_close.\n");
@@ -97,6 +119,15 @@ bool file_reader_close(FileReader *reader) {
     return true;
 }
 
+/**
+ * @brief Gets the current position of the file pointer.
+ *
+ * This function returns the current position of the file pointer in the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The current position of the file pointer as a `size_t`. Returns `(size_t)-1` on error.
+ */
 size_t file_reader_get_position(FileReader *reader) {
     if (reader->file_reader == NULL) {
         fprintf(stderr, "Error: FileReader object is null and not valid in file_reader_get_position.\n");
@@ -111,6 +142,15 @@ size_t file_reader_get_position(FileReader *reader) {
     return (size_t)cursor_position;
 }
 
+/**
+ * @brief Checks if the file is open.
+ *
+ * This function checks if the file associated with the `FileReader` structure is open.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if the file is open, `false` otherwise.
+ */
 bool file_reader_is_open(FileReader* reader) {
     if (!reader) {
         fprintf(stderr, "Error: FileReader pointer is NULL in file_reader_is_open.\n");
@@ -123,6 +163,16 @@ bool file_reader_is_open(FileReader* reader) {
     return reader->is_open;
 }
 
+/**
+ * @brief Sets the encoding for reading the file.
+ *
+ * This function sets the encoding type for reading the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param encoding The encoding type to set, specified by the `ReadEncodingType` enum.
+ * 
+ * @return `true` if the encoding was successfully set, `false` otherwise.
+ */
 bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encoding) {
     if (!reader || reader->file_reader == NULL) {
         fprintf(stderr, "Error: FileReader object is invalid or NULL in file_reader_set_encoding.\n");
@@ -136,6 +186,15 @@ bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encodin
     return true;
 }
 
+/**
+ * @brief Retrieves the absolute path of the file associated with the `FileReader`.
+ *
+ * This function returns the absolute path of the file associated with the `FileReader` structure.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The absolute path of the file as a constant string. Returns `NULL` on error.
+ */
 const char *file_reader_get_file_name(FileReader *reader){
     if (!reader || reader->file_reader == NULL) {
         fprintf(stderr, "Error: FileReader object is null and not valid in file_reader_get_file_name.\n");
@@ -148,7 +207,17 @@ const char *file_reader_get_file_name(FileReader *reader){
     return (const char*)reader->file_path;
 }
 
-// Move the file pointer to a specific location for random access writing
+/**
+ * @brief Moves the file pointer to a specific location.
+ *
+ * This function moves the file pointer to a specific location in the file for random access reading.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param offset The offset from the position specified by `cursor_pos`.
+ * @param cursor_pos The reference position from which to calculate the offset, specified by the `CursorPosition` enum.
+ * 
+ * @return `true` if the seek operation was successful, `false` otherwise.
+ */
 bool file_reader_seek(FileReader *reader, long offset, const CursorPosition cursor_pos) {
     if (!reader || reader->file_reader == NULL) {
         fprintf(stderr, "Error: FileReader object is null and invalid in file_reader_seek.\n");
@@ -179,6 +248,15 @@ bool file_reader_seek(FileReader *reader, long offset, const CursorPosition curs
     return true;
 }
 
+/**
+ * @brief Checks if the end of the file has been reached.
+ *
+ * This function checks if the end of the file associated with the `FileReader` structure has been reached.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if the end of the file has been reached, `false` otherwise.
+ */
 bool file_reader_eof(FileReader* reader) {
     if (!reader || reader->file_reader == NULL) {
         fprintf(stderr, "Error: FileReader object is NULL and invalid in file_reader_eof.\n");
@@ -187,6 +265,15 @@ bool file_reader_eof(FileReader* reader) {
     return feof(reader->file_reader) != 0;
 }
 
+/**
+ * @brief Gets the size of the file associated with the `FileReader`.
+ *
+ * This function returns the size of the file in bytes.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The size of the file in bytes, or `0` on error.
+ */
 size_t file_reader_get_size(FileReader* reader) {
     if (!reader || reader->file_reader == NULL) {
         fprintf(stderr, "Error: FileReader object is not valid and NULL in file_reader_get_size.\n");
@@ -205,6 +292,18 @@ size_t file_reader_get_size(FileReader* reader) {
     return size;
 }
 
+/**
+ * @brief Reads data from the file into a buffer.
+ *
+ * This function reads data from the file associated with the `FileReader` into a specified buffer.
+ *
+ * @param buffer A pointer to the buffer where the data will be stored.
+ * @param size The size of each element to read.
+ * @param count The number of elements to read.
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The total number of elements successfully read, or `0` on error.
+ */
 size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* reader) {
     if (!reader || !reader->file_reader || !buffer) {
         fprintf(stderr, "Error: Invalid argument in file_reader_read.\n");
@@ -237,6 +336,17 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
     return 0;
 }
 
+/**
+ * @brief Reads a line of text from the file.
+ *
+ * This function reads a single line of text from the file associated with the `FileReader`.
+ *
+ * @param buffer A pointer to the buffer where the line will be stored.
+ * @param size The maximum number of characters to read, including the null terminator.
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if a line was successfully read, `false` otherwise.
+ */
 bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
     if (!reader || !reader->file_reader || !buffer) {
         fprintf(stderr, "Error: Invalid argument in file_reader_read_line.\n");
@@ -279,7 +389,16 @@ bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
     return true;
 }
 
-
+/**
+ * @brief Reads formatted data from the file.
+ *
+ * This function reads formatted data from the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param format The format string specifying how to interpret the data.
+ * 
+ * @return The number of items successfully read, or `0` on error.
+ */
 size_t file_reader_read_fmt(FileReader* reader, const char* format, ...) {
     if (!reader || !reader->file_reader || !format) {
         fprintf(stderr, "Error: Invalid argument in file_reader_read_fmt.\n");
@@ -309,6 +428,16 @@ size_t file_reader_read_fmt(FileReader* reader, const char* format, ...) {
     return read; // Number of items successfully read
 }
 
+/**
+ * @brief Copies the contents of one file to another.
+ *
+ * This function copies the contents of the source file associated with the `FileReader` to the destination file associated with the `FileWriter`.
+ *
+ * @param src_reader A pointer to the `FileReader` structure for the source file.
+ * @param dest_writer A pointer to the `FileWriter` structure for the destination file.
+ * 
+ * @return `true` if the copy operation was successful, `false` otherwise.
+ */
 bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
     if (!src_reader || !src_reader->file_reader || !dest_writer || !dest_writer->file_writer) {
         fprintf(stderr, "Error: Invalid argument in file_reader_copy.\n");
@@ -351,6 +480,17 @@ bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
     return true;
 }
 
+/**
+ * @brief Reads multiple lines of text from the file.
+ *
+ * This function reads a specified number of lines from the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param buffer A pointer to an array of strings where the lines will be stored.
+ * @param num_lines The number of lines to read.
+ * 
+ * @return `true` if the lines were successfully read, `false` otherwise.
+ */
 bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines) {
     if (!reader || !reader->file_reader || !buffer) {
         fprintf(stderr, "Error: Invalid arguments in file_reader_read_lines.\n");
