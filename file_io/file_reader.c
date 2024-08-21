@@ -1,5 +1,5 @@
 #include "file_reader.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include "../encoding/encoding.h"
 #include <stdlib.h>
 #include <string.h>

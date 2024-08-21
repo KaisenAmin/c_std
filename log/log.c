@@ -1,7 +1,7 @@
 #include "log.h"
 #include "../file_io/file_writer.h"
 #include "../file_io/file_reader.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include <string.h>
 #include <time.h> 
 #include <stdlib.h>

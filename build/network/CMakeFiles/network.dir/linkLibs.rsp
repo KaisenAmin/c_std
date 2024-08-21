@@ -1,0 +1,1 @@
+  -LC:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib  -LC:/Users/asus/OneDrive/Desktop/project/c_std/build/build  ../fmt/libfmt.dll.a -lssl ../crypto/libstdcrypto.dll.a -lws2_32 ../encoding/libencoding.dll.a ../string/libstdstring.dll.a -lcrypto -lssl -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

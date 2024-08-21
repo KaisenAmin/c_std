@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include "date.h"
 #include "../fmt/fmt.h"
-#include "../time/time.h"
+#include "../time/std_time.h"
 
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -100,7 +100,6 @@ static int first_wday_of(int yr) {
 }
 
 #define delim(p)	((p) == '\0' || isspace((unsigned char)(p)))
-#include <time.h>
 static int fromzone(const unsigned char **bp, struct tm *tm, int mandatory) {
 //    timezone_t tz;
     char buf[512], *p;
@@ -885,13 +884,15 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
         fmt_fprintf(stderr, "Error: Memory allocation failed in date_create_ymd.\n");
-        exit(-1);
+        return NULL;
+        // exit(-1);
     }
 
     if (!date_is_valid_ymd(y, m, d, type)) {
         fmt_fprintf(stderr, "Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         free(date); // Release the allocated memory
-        exit(-1);
+        return NULL;
+        // exit(-1);
     }
 
     date->year = y;
@@ -998,13 +999,13 @@ Date* date_add_days(const Date* orig_date, int ndays) {
 Date* date_add_months(const Date* orig_date, int nmonths) {
     if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         fmt_fprintf(stderr, "Error: date is null or not valid in date_add_months.\n");
-        exit(-1);
+        return NULL;
     }
 
     Date* new_date = (Date*)malloc(sizeof(Date));
     if (new_date == NULL) {
         fmt_fprintf(stderr, "Error: Cannot allocate memory for new date in date_add_months.\n");
-        exit(-1);
+        return NULL;
     }
 
     *new_date = *orig_date;

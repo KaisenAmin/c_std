@@ -2,27 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-/* Platform specific includes */
-#if defined(_TTHREAD_POSIX_)
-  #include <signal.h>
-  #include <sched.h>
-  #include <unistd.h>
-  #include <sys/time.h>
-  #include <errno.h>
-#elif defined(_TTHREAD_WIN32_)
-  #include <process.h>
-  #include <sys/timeb.h>
-#endif
 
-/* Standard, good-to-have defines */
-#ifndef NULL
-  #define NULL (void*)0
-#endif
-
-#if defined(_TTHREAD_WIN32_)
-  #define _CONDITION_EVENT_ONE 0
-  #define _CONDITION_EVENT_ALL 1
-#endif
 
 
 /**

@@ -47,7 +47,8 @@ Each constant in the `numbers.h` library represents a fundamental mathematical v
 
 ```c
 #include "numbers.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
+#include <math.h>
 
 int main() {
     double principal = 1000.0; // Initial investment
@@ -57,7 +58,7 @@ int main() {
     // Compound interest formula: A = P * e^(rt)
     double amount = principal * pow(NUMBERS_E, rate * years);
 
-    printf("Amount after %d years: $%.2f\n", years, amount);
+    fmt_printf("Amount after %d years: $%.2f\n", years, amount);
     return 0;
 }
 ```
@@ -66,13 +67,13 @@ int main() {
 
 ```c
 #include "numbers.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 
 int main() {
     double radians = 1.0; // Radians
     double degrees = radians * (180.0 / NUMBERS_PI); // Convert to degrees
 
-    printf("%.2f radians is equal to %.2f degrees\n", radians, degrees);
+    fmt_printf("%.2f radians is equal to %.2f degrees\n", radians, degrees);
     return 0;
 }
 ```
@@ -81,14 +82,15 @@ int main() {
 
 ```c
 #include "numbers.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
+#include <math.h>
 
 int main() {
     int n = 10; // nth position in Fibonacci sequence
     // Approximating the nth Fibonacci number using Golden Ratio
     double fib_n = (pow(NUMBERS_PHI, n) - pow(-NUMBERS_PHI, -n)) / sqrt(5);
 
-    printf("Approximate %dth Fibonacci number: %.0f\n", n, fib_n);
+    fmt_printf("Approximate %dth Fibonacci number: %.0f\n", n, fib_n);
     return 0;
 }
 ```

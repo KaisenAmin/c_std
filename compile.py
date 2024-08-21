@@ -81,13 +81,13 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "bitset",
         # "config",
         # "csv",
-        # "deque",
+        "deque",
         "encoding",
         # "forward_list",
         # "list",
         "fmt",
-        # "map",
-        # "json",
+        "map",
+        "json",
         # "file_io",
         # "log",
         # "priority_queue",
@@ -96,8 +96,8 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "stack",
         "string",
         # "network",
-        # "vector",
-        # "time",
+        "vector",
+        "time",
         # "concurrent",
         # "date",
         # "dir",
@@ -106,10 +106,10 @@ def compile_project(run_after_compile=False, compile_to_shared_only=False, progr
         # "tuple",
         # "matrix",
         "database",
-        # "random",
+        "random",
         # "statistics",
         # "sysinfo",
-        # "turtle"
+        "turtle"
     ]
 
     build_dir = "./build"

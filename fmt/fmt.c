@@ -1,9 +1,10 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
 #include <ctype.h>
 #include "../encoding/encoding.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include "fmt.h"
 
 #if defined(_WIN32) || defined(_WIN64)

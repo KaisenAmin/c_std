@@ -288,6 +288,7 @@ log_set_max_file_size(logger, 5 * 1024 * 1024, "log_archive_%Y-%m-%d.txt"); // 5
 
 ```c
 #include "log/log.h"
+#include <stdlib.h>
 
 int main() {
     Log* config = log_init();

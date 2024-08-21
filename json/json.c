@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include "../string/string.h"
+#include "../string/std_string.h"
 
 static JsonElement* parse_array(JsonParserState* state);
 static JsonElement* parse_string(JsonParserState* state);

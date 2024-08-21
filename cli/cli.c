@@ -1,6 +1,6 @@
 #include "cli.h"
 #include "../fmt/fmt.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -4,15 +4,34 @@
 #include <time.h>
 
 
-/* Which platform are we on? */
-#if !defined(_TTHREAD_PLATFORM_DEFINED_)
-  #if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+/* Platform specific includes */
+#if defined(_WIN32) || defined(_WIN64)
+  #ifndef _TTHREAD_WIN32_
     #define _TTHREAD_WIN32_
-  #else
+  #endif
+  #include <process.h>
+  #include <sys/timeb.h>
+#elif defined(__unix__) || defined(__APPLE__)
+  #ifndef _TTHREAD_POSIX_
     #define _TTHREAD_POSIX_
   #endif
-  #define _TTHREAD_PLATFORM_DEFINED_
+  #include <signal.h>
+  #include <sched.h>
+  #include <unistd.h>
+  #include <sys/time.h>
+  #include <errno.h>
 #endif
+
+/* Standard, good-to-have defines */
+#ifndef NULL
+  #define NULL (void*)0
+#endif
+
+#if defined(_TTHREAD_WIN32_)
+  #define _CONDITION_EVENT_ONE 0
+  #define _CONDITION_EVENT_ALL 1
+#endif
+
 
 /* Activate some POSIX functionality (e.g. clock_gettime and recursive mutexes) */
 #if defined(_TTHREAD_POSIX_)

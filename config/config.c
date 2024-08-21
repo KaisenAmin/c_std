@@ -1,6 +1,6 @@
 #include <string.h>
 #include "config.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <ctype.h>

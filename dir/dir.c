@@ -9,7 +9,7 @@
 #include <string.h>
 #include "../encoding/encoding.h"
 #include "../crypto/crypto.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include "../file_io/file_reader.h"
 #include "../file_io/file_writer.h"
 #include "../fmt/fmt.h"

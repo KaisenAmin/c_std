@@ -11,7 +11,7 @@
 
 #include "file_writer.h"
 #include "../encoding/encoding.h"
-#include "../string/string.h"
+#include "../string/std_string.h"
 #include <stdlib.h>
 #include <string.h>
 

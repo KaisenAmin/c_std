@@ -198,7 +198,7 @@ int main() {
 
 ### Example 2: Using `deque_at` to Access Elements
 ```c
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" 
 #include "fmt/fmt.h"
 
 int main() {
