@@ -54,6 +54,95 @@ Each module in the project comes with a `.c` source file, a `.h` header file, an
 
 ## Compilation and Execution
 
+
+### CMake Support
+
+This project now supports building with CMake, a powerful cross-platform build system that simplifies the process of compiling and linking code.
+
+### Building with CMake
+
+To build the project using CMake, follow these steps:
+
+1. **Install CMake**:
+   - Ensure that CMake is installed on your system. You can download it from the [official website](https://cmake.org/download/) or use a package manager like `apt`, `brew`, or `choco` depending on your operating system.
+
+2. **Create a Build Directory**:
+   - Navigate to the root directory of the project and create a build directory:
+
+     ```bash
+     mkdir build
+     cd build
+     ```
+
+3. **Generate Build Files**:
+   - Run CMake to generate the build files for your system:
+
+     ```bash
+     cmake ..
+     ```
+
+4. **Compile the Project**:
+   - Once the build files are generated, compile the project using `make` (or another build tool depending on your system):
+
+     ```bash
+     make
+     ```
+
+5. **Run the Compiled Program**:
+   - After compilation, the executable and shared libraries will be located in the `build` directory. You can run the executable directly:
+
+     ```bash
+     ./main
+     ```
+
+   - On Linux, ensure to set the `LD_LIBRARY_PATH` if you're using shared libraries:
+
+     ```bash
+     export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
+     ./build/main
+     ```
+
+### Adding Modules with CMake
+
+If you add new modules, you need to update the `CMakeLists.txt` file to include them. This file is used by CMake to configure the build process. Here's how to add a new module:
+
+1. **Edit `CMakeLists.txt`**:
+   - Add the new module's source files to the `add_library` or `add_executable` commands in the `CMakeLists.txt` file.
+
+2. **Re-run CMake**:
+   - After editing `CMakeLists.txt`, re-run CMake in the `build` directory:
+
+     ```bash
+     cmake ..
+     ```
+
+3. **Compile Again**:
+   - Use `make` or another build tool to compile the updated project.
+
+### Benefits of CMake
+
+Using CMake with this project provides several benefits:
+
+- **Cross-Platform Compatibility**: CMake allows for easy project builds across different platforms such as Windows, Linux, and macOS.
+- **Simplified Dependency Management**: CMake can automatically handle dependencies between different modules, making it easier to manage complex projects.
+- **Customizable Build Configurations**: CMake offers extensive configuration options, allowing you to customize your build process according to your needs.
+
+### Example CMake Usage
+
+Here's a sample `CMakeLists.txt` for a module:
+
+```cmake
+cmake_minimum_required(VERSION 3.10)
+project(MyCProject)
+
+# Add executable or shared library
+add_executable(main main.c)
+add_library(vector SHARED vector.c)
+
+# Link libraries
+target_link_libraries(main vector)
+```
+
 This project utilizes a Python script (`compile.py`) for easy compilation of modules, making the build process straightforward and efficient.
 
 ### Requirements
