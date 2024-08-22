@@ -119,29 +119,6 @@ If you add new modules, you need to update the `CMakeLists.txt` file to include 
 3. **Compile Again**:
    - Use `make` or another build tool to compile the updated project.
 
-### Benefits of CMake
-
-Using CMake with this project provides several benefits:
-
-- **Cross-Platform Compatibility**: CMake allows for easy project builds across different platforms such as Windows, Linux, and macOS.
-- **Simplified Dependency Management**: CMake can automatically handle dependencies between different modules, making it easier to manage complex projects.
-- **Customizable Build Configurations**: CMake offers extensive configuration options, allowing you to customize your build process according to your needs.
-
-### Example CMake Usage
-
-Here's a sample `CMakeLists.txt` for a module:
-
-```cmake
-cmake_minimum_required(VERSION 3.10)
-project(MyCProject)
-
-# Add executable or shared library
-add_executable(main main.c)
-add_library(vector SHARED vector.c)
-
-# Link libraries
-target_link_libraries(main vector)
-```
 
 This project utilizes a Python script (`compile.py`) for easy compilation of modules, making the build process straightforward and efficient.
 

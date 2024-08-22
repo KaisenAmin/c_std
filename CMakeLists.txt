@@ -65,38 +65,38 @@ target_link_libraries(main
     stdstring
     fmt
     encoding
-    random
-    map
-    vector
-    stdtime
-    statistics
-    tuple
-    turtle
-    sysinfo
-    stack
-    span
-    queue
-    priority_queue
-    algorithm
-    array
-    bitset
-    cli
-    deque
-    matrix
-    fileio
-    crypto
-    config
-    stdcrypto
-    csv
-    date
-    forwardlist
-    list
+    # random
+    # map
+    # vector
+    # stdtime
+    # statistics
+    # tuple
+    # turtle
+    # sysinfo
+    # stack
+    # span
+    # queue
+    # priority_queue
+    # algorithm
+    # array
+    # bitset
+    # cli
+    # deque
+    # matrix
+    # fileio
+    # crypto
+    # config
+    # stdcrypto
+    # csv
+    # date
+    # forwardlist
+    # list
     network
-    numbers
-    log
-    dir
-    concurrent
-    numeric
+    # numbers
+    # log
+    # dir
+    # concurrent
+    # numeric
     raylib
     opengl32
     gdi32

@@ -694,35 +694,8 @@ vector/clean: vector/CMakeFiles/vector.dir/clean
 CMakeFiles/main.dir/all: string/CMakeFiles/stdstring.dir/all
 CMakeFiles/main.dir/all: fmt/CMakeFiles/fmt.dir/all
 CMakeFiles/main.dir/all: encoding/CMakeFiles/encoding.dir/all
-CMakeFiles/main.dir/all: vector/CMakeFiles/vector.dir/all
-CMakeFiles/main.dir/all: map/CMakeFiles/map.dir/all
 CMakeFiles/main.dir/all: random/CMakeFiles/random.dir/all
-CMakeFiles/main.dir/all: statistics/CMakeFiles/statistics.dir/all
-CMakeFiles/main.dir/all: sysinfo/CMakeFiles/sysinfo.dir/all
-CMakeFiles/main.dir/all: stack/CMakeFiles/stack.dir/all
-CMakeFiles/main.dir/all: span/CMakeFiles/span.dir/all
-CMakeFiles/main.dir/all: time/CMakeFiles/stdtime.dir/all
-CMakeFiles/main.dir/all: tuple/CMakeFiles/tuple.dir/all
-CMakeFiles/main.dir/all: turtle/CMakeFiles/turtle.dir/all
-CMakeFiles/main.dir/all: algorithm/CMakeFiles/algorithm.dir/all
-CMakeFiles/main.dir/all: array/CMakeFiles/array.dir/all
-CMakeFiles/main.dir/all: queue/CMakeFiles/queue.dir/all
-CMakeFiles/main.dir/all: priority_queue/CMakeFiles/priority_queue.dir/all
-CMakeFiles/main.dir/all: numeric/CMakeFiles/numeric.dir/all
-CMakeFiles/main.dir/all: bitset/CMakeFiles/bitset.dir/all
-CMakeFiles/main.dir/all: cli/CMakeFiles/cli.dir/all
-CMakeFiles/main.dir/all: csv/CMakeFiles/csv.dir/all
-CMakeFiles/main.dir/all: date/CMakeFiles/date.dir/all
-CMakeFiles/main.dir/all: deque/CMakeFiles/deque.dir/all
-CMakeFiles/main.dir/all: concurrent/CMakeFiles/concurrent.dir/all
-CMakeFiles/main.dir/all: config/CMakeFiles/config.dir/all
-CMakeFiles/main.dir/all: file_io/CMakeFiles/fileio.dir/all
 CMakeFiles/main.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
-CMakeFiles/main.dir/all: forward_list/CMakeFiles/forwardlist.dir/all
-CMakeFiles/main.dir/all: list/CMakeFiles/list.dir/all
-CMakeFiles/main.dir/all: dir/CMakeFiles/dir.dir/all
-CMakeFiles/main.dir/all: log/CMakeFiles/log.dir/all
-CMakeFiles/main.dir/all: matrix/CMakeFiles/matrix.dir/all
 CMakeFiles/main.dir/all: network/CMakeFiles/network.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
@@ -731,7 +704,7 @@ CMakeFiles/main.dir/all: network/CMakeFiles/network.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/main.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 71
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 15
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/main.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 0
 .PHONY : CMakeFiles/main.dir/rule
@@ -757,7 +730,7 @@ CMakeFiles/run.dir/all: CMakeFiles/main.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/run.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 71
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 15
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/run.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 0
 .PHONY : CMakeFiles/run.dir/rule
@@ -1549,8 +1522,8 @@ dir/CMakeFiles/dir.dir/all: string/CMakeFiles/stdstring.dir/all
 dir/CMakeFiles/dir.dir/all: fmt/CMakeFiles/fmt.dir/all
 dir/CMakeFiles/dir.dir/all: encoding/CMakeFiles/encoding.dir/all
 dir/CMakeFiles/dir.dir/all: vector/CMakeFiles/vector.dir/all
-dir/CMakeFiles/dir.dir/all: file_io/CMakeFiles/fileio.dir/all
 dir/CMakeFiles/dir.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
+dir/CMakeFiles/dir.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f dir/CMakeFiles/dir.dir/build.make dir/CMakeFiles/dir.dir/depend
 	$(MAKE) $(MAKESILENT) -f dir/CMakeFiles/dir.dir/build.make dir/CMakeFiles/dir.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=20,21 "Built target dir"
