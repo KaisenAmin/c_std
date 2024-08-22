@@ -56,6 +56,7 @@ add_subdirectory(log)
 add_subdirectory(matrix)
 add_subdirectory(network)
 add_subdirectory(numbers)
+add_subdirectory(json)
 
 # Create the main executable
 add_executable(main main.c)
@@ -82,6 +83,7 @@ target_link_libraries(main
     # bitset
     # cli
     # deque
+    # json
     # matrix
     # fileio
     # crypto
