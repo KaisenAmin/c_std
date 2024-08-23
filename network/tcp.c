@@ -98,8 +98,8 @@ bool tcp_is_valid_address(const char* address) {
     return false;
 }
 
-TcpStatus tcp_socket_create(TcpSocket* socket) {
-    if (!socket) {
+TcpStatus tcp_socket_create(TcpSocket* sock) {
+    if (!sock) {
         #ifdef TCP_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Socket parameter is null in tcp_socket_create.\n");
         #endif
@@ -107,8 +107,8 @@ TcpStatus tcp_socket_create(TcpSocket* socket) {
     }
 
     #if defined(_WIN32) || defined(_WIN64)
-        *socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0);
-        if (*socket == INVALID_SOCKET) {
+        *sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0);
+        if (*sock == TCP_INVALID_SOCKET) {
             #ifdef TCP_LOGGING_ENABLE
                 TcpStatusInfo status_info;
                 tcp_get_last_error(&status_info); // Populate status_info with the last error
@@ -117,8 +117,8 @@ TcpStatus tcp_socket_create(TcpSocket* socket) {
             return TCP_ERR_SOCKET;
         }
     #else
-    *socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (*socket < 0) {
+    *sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (*sock < 0) {
         #ifdef TCP_LOGGING_ENABLE
             TcpStatusInfo status_info;
             tcp_get_last_error(&status_info); 
@@ -134,7 +134,7 @@ TcpStatus tcp_socket_create(TcpSocket* socket) {
     return TCP_SUCCESS;
 }
 
-TcpStatus tcp_bind(TcpSocket socket, const char* host, unsigned short port) {
+TcpStatus tcp_bind(TcpSocket sock, const char* host, unsigned short port) {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -152,7 +152,7 @@ TcpStatus tcp_bind(TcpSocket socket, const char* host, unsigned short port) {
         }
     }
 
-    if (bind(socket, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         #ifdef TCP_LOGGING_ENABLE
             TcpStatusInfo status_info;
             tcp_get_last_error(&status_info); 
@@ -196,7 +196,7 @@ TcpStatus tcp_accept(TcpSocket socket, TcpSocket* client_socket) {
     memset(&client_addr, 0, sizeof(client_addr));
 
     *client_socket = accept(socket, (struct sockaddr*)&client_addr, &client_addr_len);
-    if (*client_socket == INVALID_SOCKET) {
+    if (*client_socket == TCP_INVALID_SOCKET) {
         #ifdef TCP_LOGGING_ENABLE
             TcpStatusInfo status_info;
             tcp_get_last_error(&status_info);
@@ -1367,7 +1367,7 @@ TcpStatus tcp_get_connection_quality(TcpSocket socket, float* rtt, float* varian
 // Ensure the socket is in non-blocking mode before using tcp_async_send.
 TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
     size_t result = send(socket, buf, len, 0);
-    if (result == TCP_INVALID_SOCKET) {
+    if (result == (size_t)TCP_INVALID_SOCKET) {
         // Check if the error is EWOULDBLOCK (or its equivalent), which is normal for non-blocking sockets
         #ifdef _WIN32
             int lastError = WSAGetLastError();
@@ -1394,7 +1394,7 @@ TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
 // Ensure the socket is in non-blocking mode before using tcp_async_recv. The tcp_set_non_blocking function facilitates this
 TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len) {
     size_t result = recv(socket, buf, len, 0);
-    if (result == TCP_INVALID_SOCKET) {
+    if (result == (size_t)TCP_INVALID_SOCKET) {
         // Check if the error is EWOULDBLOCK or its equivalent, which is normal for non-blocking sockets
         #ifdef _WIN32
             int lastError = WSAGetLastError();

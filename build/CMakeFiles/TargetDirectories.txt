@@ -1,6 +1,5 @@
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles/main.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles/run.dir
-C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles/clean_build.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles/edit_cache.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles/rebuild_cache.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/string/CMakeFiles/stdstring.dir
@@ -104,3 +103,6 @@ C:/Users/asus/OneDrive/Desktop/project/c_std/build/network/CMakeFiles/edit_cache
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/network/CMakeFiles/rebuild_cache.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/numbers/CMakeFiles/edit_cache.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/numbers/CMakeFiles/rebuild_cache.dir
+C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/CMakeFiles/json.dir
+C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/CMakeFiles/edit_cache.dir
+C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/CMakeFiles/rebuild_cache.dir

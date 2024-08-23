@@ -143,19 +143,6 @@ run/fast:
 .PHONY : run/fast
 
 #=============================================================================
-# Target rules for targets named clean_build
-
-# Build rule for target.
-clean_build: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean_build
-.PHONY : clean_build
-
-# fast build rule for target.
-clean_build/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/clean_build.dir/build.make CMakeFiles/clean_build.dir/build
-.PHONY : clean_build/fast
-
-#=============================================================================
 # Target rules for targets named stdstring
 
 # Build rule for target.
@@ -584,6 +571,19 @@ network/fast:
 	$(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/build
 .PHONY : network/fast
 
+#=============================================================================
+# Target rules for targets named json
+
+# Build rule for target.
+json: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 json
+.PHONY : json
+
+# fast build rule for target.
+json/fast:
+	$(MAKE) $(MAKESILENT) -f json/CMakeFiles/json.dir/build.make json/CMakeFiles/json.dir/build
+.PHONY : json/fast
+
 main.obj: main.c.obj
 .PHONY : main.obj
 
@@ -616,7 +616,6 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... clean_build"
 	@echo "... run"
 	@echo "... algorithm"
 	@echo "... array"
@@ -632,6 +631,7 @@ help:
 	@echo "... fileio"
 	@echo "... fmt"
 	@echo "... forwardlist"
+	@echo "... json"
 	@echo "... list"
 	@echo "... log"
 	@echo "... main"

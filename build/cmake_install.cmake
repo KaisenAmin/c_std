@@ -73,6 +73,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("C:/Users/asus/OneDrive/Desktop/project/c_std/build/matrix/cmake_install.cmake")
   include("C:/Users/asus/OneDrive/Desktop/project/c_std/build/network/cmake_install.cmake")
   include("C:/Users/asus/OneDrive/Desktop/project/c_std/build/numbers/cmake_install.cmake")
+  include("C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/cmake_install.cmake")
 
 endif()
 

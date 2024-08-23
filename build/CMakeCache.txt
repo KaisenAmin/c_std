@@ -242,15 +242,6 @@ CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
-//Path to a library.
-LIB_EAY:FILEPATH=LIB_EAY-NOTFOUND
-
-//Path to a file.
-OPENSSL_INCLUDE_DIR:PATH=C:/msys64/mingw64/include
-
-//Path to a library.
-SSL_EAY:FILEPATH=SSL_EAY-NOTFOUND
-
 //Dependencies for the target
 array_LIB_DEPENDS:STATIC=general;fmt;general;vector;
 
@@ -276,9 +267,6 @@ concurrent_LIB_DEPENDS:STATIC=general;ws2_32;general;fmt;
 config_LIB_DEPENDS:STATIC=general;fmt;general;stdstring;general;fileio;
 
 //Dependencies for the target
-crypto_LIB_DEPENDS:STATIC=general;ssl;
-
-//Dependencies for the target
 csv_LIB_DEPENDS:STATIC=general;fmt;general;stdstring;general;fileio;
 
 //Dependencies for the target
@@ -298,6 +286,9 @@ fmt_LIB_DEPENDS:STATIC=general;encoding;general;stdstring;
 
 //Dependencies for the target
 forwardlist_LIB_DEPENDS:STATIC=general;fmt;
+
+//Dependencies for the target
+json_LIB_DEPENDS:STATIC=general;stdstring;general;fmt;general;fileio;general;vector;general;map;
 
 //Dependencies for the target
 list_LIB_DEPENDS:STATIC=general;fmt;
@@ -334,9 +325,6 @@ stdtime_LIB_DEPENDS:STATIC=general;fmt;
 
 //Dependencies for the target
 sysinfo_LIB_DEPENDS:STATIC=general;ole32;general;bthprops;
-
-//Dependencies for the target
-time_LIB_DEPENDS:STATIC=general;fmt;
 
 //Dependencies for the target
 tuple_LIB_DEPENDS:STATIC=general;fmt;
@@ -456,7 +444,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=35
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=36
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP
@@ -512,10 +500,6 @@ CMAKE_STRIP-ADVANCED:INTERNAL=1
 CMAKE_TAPI-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_VERBOSE_MAKEFILE
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: LIB_EAY
-LIB_EAY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: SSL_EAY
-SSL_EAY-ADVANCED:INTERNAL=1
 //linker supports push/pop state
 _CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED:INTERNAL=TRUE
 
