@@ -130,6 +130,7 @@ else()
         OpenSSL::Crypto
         pthread
         dl
+        m
         raylib
         pq
         # Optional modules that are commented out:

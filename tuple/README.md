@@ -130,7 +130,7 @@ Vector item: 100
 #include "vector/vector.h"
 #include "array/array.h"
 #include "queue/queue.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -229,7 +229,7 @@ Char: A
 
 ```c
 #include "tuple/tuple.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 Tuple* create_person_tuple(int age, float grade, const char* name) {
@@ -279,7 +279,7 @@ Name: John Doe
 
 ```c
 #include "tuple/tuple.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
@@ -497,7 +497,7 @@ Tuple2 first element: 42
 
 ```c
 #include "tuple/tuple.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 void print_back(Tuple* tuple) {
