@@ -24,10 +24,19 @@ To use this library, you need to have the `raylib` library installed. Follow the
 
 #### Linux
 
-Install `raylib` using your package manager or build from source. On Debian-based systems, you can use:
+1. Clone the raylib repository and build it from source:
 
 ```bash
-sudo apt-get install libraylib-dev
+git clone https://github.com/raysan5/raylib.git
+cd raylib/src
+make PLATFORM=PLATFORM_DESKTOP
+sudo make install
+```
+
+2. Install additional required packages:
+
+```bash
+sudo apt-get install libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev
 ```
 
 #### Windows
@@ -39,6 +48,7 @@ pacman -Syu
 pacman -S mingw-w64-x86_64-raylib
 ```
 
+### Compiling the Turtle Graphics Library
 
 To use this library, include `turtle.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
 
@@ -69,18 +79,16 @@ The documentation includes detailed descriptions of all the functions provided b
 - `void turtle_begin_drawing(void)`: Begins the drawing process.
 - `void turtle_clear_background(Color color)`: Clears the background with the specified color.
 - `void turtle_end_drawing(void)`: Ends the drawing process.
-- `void turtle_done(TurtleDrawFunc user_draw)`: Runs the main drawing loop, calling the user-defined drawing function. and  Keep the turtle window open until it is manually closed .
+- `void turtle_done(TurtleDrawFunc user_draw)`: Runs the main drawing loop, calling the user-defined drawing function, and keeps the turtle window open until it is manually closed.
 - `void turtle_setposition(float x, float y)`: Moves the turtle to the specified position.
-- `void turtle_set_x(float x)`: set the turtles first coordiante to x leave second coordinate unchanged.
-- `void turtle_set_y(float y)`: set the turtle's second coordiante to y. leave first coordinate unchanged.
-- `void turtle_set_heading(float angle)`: This function sets the orientation of the turtle to the specified angle in degrees, allowing the turtle to face a specific direction. This angle can be any number, with common directions like 0 for east, 90 for north, 180 for west, and 270 for south.
-- `void turtle_home(void)`: This function moves the turtle to the origin (coordinates 0,0) and resets its heading to the initial orientation (0 degrees). This allows the turtle to start from the default position and direction.
-- `void turtle_circle(float radius, float extent, int steps)`: This function draws a circle or an arc with a specified radius and extent, where the extent is the angle of the arc in degrees. If steps is not specified, it calculates the appropriate number of steps to approximate the circle or arc smoothly.
-- `void turtle_dot(float size, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`: This function draws a dot at the turtle's current position with the specified size and color. The color is defined by the RGBA values provided as parameters.
-
-- `void turtle_clear_stamp(int stamp_id)`: This function removes a previously made stamp identified by the provided stamp_id. This allows for selective removal of stamps from the canvas.
-
-- `int turtle_stamp(void)`: The turtle_stamp function creates a stamp at the turtle's current position and returns a unique stamp_id. This stamp_id can later be used to clear the specific stamp.
+- `void turtle_set_x(float x)`: Sets the turtle's first coordinate to x, leaving the second coordinate unchanged.
+- `void turtle_set_y(float y)`: Sets the turtle's second coordinate to y, leaving the first coordinate unchanged.
+- `void turtle_set_heading(float angle)`: Sets the orientation of the turtle to the specified angle in degrees, allowing the turtle to face a specific direction.
+- `void turtle_home(void)`: Moves the turtle to the origin (coordinates 0,0) and resets its heading to the initial orientation (0 degrees).
+- `void turtle_circle(float radius, float extent, int steps)`: Draws a circle or an arc with a specified radius and extent, where the extent is the angle of the arc in degrees.
+- `void turtle_dot(float size, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`: Draws a dot at the turtle's current position with the specified size and color.
+- `void turtle_clear_stamp(int stamp_id)`: Removes a previously made stamp identified by the provided stamp_id.
+- `int turtle_stamp(void)`: Creates a stamp at the turtle's current position and returns a unique stamp_id.
 
 ## Examples
 

@@ -20,12 +20,12 @@ include_directories(
 )
 
 # Link directories
-link_directories(
-    if (WIN32)
-        ${CMAKE_SOURCE_DIR}/dependency/lib
-    endif()
-    ${CMAKE_BINARY_DIR}/build
-)
+if (WIN32)
+    link_directories(${CMAKE_SOURCE_DIR}/dependency/lib)
+else()
+    link_directories(/usr/lib /usr/local/lib)
+endif()
+
 
 # Add subdirectories for modules
 add_subdirectory(string)
@@ -87,7 +87,7 @@ if (WIN32)
         # Optional modules that are commented out:
         # random
         # map
-        # vector
+        vector
         # stdtime
         # statistics
         # tuple
@@ -135,7 +135,7 @@ else()
         # Optional modules that are commented out:
         # random
         # map
-        # vector
+        vector
         # stdtime
         # statistics
         # tuple

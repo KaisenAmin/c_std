@@ -94,10 +94,11 @@ main_EXTERNAL_OBJECTS =
 build/main.exe: CMakeFiles/main.dir/main.c.obj
 build/main.exe: CMakeFiles/main.dir/build.make
 build/main.exe: network/libnetwork.dll.a
+build/main.exe: vector/libvector.dll.a
+build/main.exe: crypto/libstdcrypto.dll.a
 build/main.exe: fmt/libfmt.dll.a
 build/main.exe: string/libstdstring.dll.a
 build/main.exe: encoding/libencoding.dll.a
-build/main.exe: crypto/libstdcrypto.dll.a
 build/main.exe: CMakeFiles/main.dir/linkLibs.rsp
 build/main.exe: CMakeFiles/main.dir/objects1.rsp
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable build/main.exe"
