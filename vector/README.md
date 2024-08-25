@@ -774,7 +774,7 @@ EmplacedBackString
 ## Example 21 : how to use `String` object in Vector
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "vector/vector.h"
 #include "fmt/fmt.h"
 
@@ -853,10 +853,10 @@ Vector1 is less than Vector2
 ### Example 23 : how to use `vector_begin` and `vector_end` with String Object 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "vector/vector.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
 
@@ -999,7 +999,7 @@ int main() {
 This example demonstrates how to use the Vector library to store a collection of structs, where each struct contains dynamically allocated string fields (using the String library).
 ```c
 #include "vector/vector.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 typedef struct {
@@ -1048,7 +1048,7 @@ Name: Item3, Description: Description3
 
 ```c
 #include "vector/vector.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 

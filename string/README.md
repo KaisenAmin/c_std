@@ -157,7 +157,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_to_hex(String*)`: Converts a String to its hexadecimal representation.
 - `string_from_hex(String*)`: Converts a hexadecimal String back to the original string.
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 ```
 
 
@@ -165,7 +165,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 ```c
 
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -210,7 +210,7 @@ Hello C Programmers
 ## Example 2: `string_shrink_to_fit`, `string_resize`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -246,7 +246,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 3: how to `string_assign` new string and `string_erase` some part of String obj also `string_insert` new ...  
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -282,7 +282,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 4: `string_replace` Strings 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -303,7 +303,7 @@ After replace: Hello There
 ## Example 5: `string_swap` two String obj and also `string_pop_back`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -338,7 +338,7 @@ After pop back: Hello Ther
 ## Example 6: `string_back` and `string_front` return ref to front and last char of String 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -374,7 +374,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 7 : `string_copy` how to copy some part of String 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -397,7 +397,7 @@ Copied 'World' (5 characters)
 ## Example 8 : `string_find` find string in String and return position
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -419,7 +419,7 @@ Found 'World' at position: 7
 ## Example 9 : how to use `string_rfind`, `string_find_first_of`, `string_find_last_of`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -454,7 +454,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 10 : `string_find_first_not_of`, `string_find_last_not_of`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -481,7 +481,7 @@ Last position not matching 'World': 8
 ## Example 11 : `string_data` return pointer to String sequence 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -507,7 +507,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 12 : `string_begin`, `string_end` return iterator pointer from begin and end of String sequence
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -534,7 +534,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 13 : `string_rbeing`, `string_rend` return reverse iterator 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -563,7 +563,7 @@ Info : String object is null no need to clear in string_clear.
 ## Example 14 : `string_cbegin`, `string_cend`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -588,7 +588,7 @@ String using cbegin and cend: Hello, World!
 ## Example 15 : `string_crbegin`, `string_crend` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -613,7 +613,7 @@ String in reverse using crbegin and crend: !dlroW ,olleH
 ## Example 16 : how to use relationals operators in String 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -651,7 +651,7 @@ String1 is less than or equal String2
 ## Example 17: Manipulate Multiple String 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -703,7 +703,7 @@ Sentence is less than greeting.
 ## Example 18: 2D String Array using Custom String Struct
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -768,7 +768,7 @@ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 Time taken (Custom String): 0.286000 seconds
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
@@ -848,7 +848,7 @@ Time taken (std::string): 0.81031 seconds
 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <time.h>
 
@@ -922,7 +922,7 @@ Time taken (std::string): 0.0065333 seconds
 
 ### Example 21 : string to Lower or Upper 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -953,7 +953,7 @@ To Lower is -> hello world
 ### Example 22 : Reverse String with `string_reverse`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -980,7 +980,7 @@ Reverse String is dlroW olleH
 ### Example 23 : `string_is_digit`
 
 ```c
-#include "string/string.h" 
+#include "string/std_string.h" 
 #include "fmt/fmt.h"
 
 int main() {
@@ -1005,7 +1005,7 @@ The string contains only digits.
 ### Example 24 : `string_is_lower`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h" 
 #include <stdlib.h>
 
@@ -1033,7 +1033,7 @@ Lowercase: hello world
 ### Example 25 : concatenate two String with `string_concatenate`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1058,7 +1058,7 @@ Concatenated string: Hello World
 ### Example 26 : trim String from start, end or both 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1092,7 +1092,7 @@ Trimmed Both: 'Hello World'
 ### Example 27 : split String with `string_split`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1124,7 +1124,7 @@ Split 5: Test
 ### Example 28 : joins several String objects with `string_join` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1154,7 +1154,7 @@ Joined string: Hello World Again
 ### Example 29 : `replace_all` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1176,7 +1176,7 @@ Replaced string: This is a example. This is only a example.
 ### Example 30: `string_to_int`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1197,7 +1197,7 @@ Integer value: 12345
 ### Example 31: `string_to_float`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1218,7 +1218,7 @@ Float value: 123.45
 ### Example 32: `string_pad_left`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1239,7 +1239,7 @@ Padded String (Start): '*****hello'
 ### Example 33: `string_pad_right`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1260,7 +1260,7 @@ Padded String (End): 'world-----'
 ### Example 34 : `string_to_hex`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1285,7 +1285,7 @@ Hexadecimal Representation: 48656c6c6f
 ### Example 35 : `string_from_hex`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1310,7 +1310,7 @@ Converted String: Hello
 ## Example 36 : `string_count`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1332,7 +1332,7 @@ The substring 'World' appears 2 times in 'Hello World, World!'.
 ### Example 37 : `string_remove`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1356,7 +1356,7 @@ String after removal: Hello , !
 ### Example 38 : `string_from_int`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1377,7 +1377,7 @@ Integer 123 converted to string: 123
 ### Example 39 : `string_from_float`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1398,7 +1398,7 @@ Float 123.456 converted to string: 123.456001
 ### Example 40 : `string_tokenize` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1430,7 +1430,7 @@ Token 5: Test
 ### Example 40 : `string_to_double` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1451,7 +1451,7 @@ Double value: 123.456000
 ### Example 41 : `string_from_double` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1472,7 +1472,7 @@ String from double: 123.456000
 ### Example 42 : `string_compare_ignore_case`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1500,7 +1500,7 @@ Strings are equal (ignoring case)
 ### Example 43 : `string_base64_encode` and `string_base64_decode`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1534,7 +1534,7 @@ Base64 Decoded: Hello, World!
 ### Example 44 : `string_format` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1556,7 +1556,7 @@ Hello, Alice! You have 5 new messages.
 ### Example 45 : `string_repeat`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1579,7 +1579,7 @@ Repeated String: Hello Hello Hello
 ### Example 46 : `string_join_variadic`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1606,7 +1606,7 @@ Joined String: Hello, World!
 ## Example 47 : `string_trim_characters`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1627,7 +1627,7 @@ Trimmed String: Hello, World!
 ## Example 48 : `string_shuffle`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1650,7 +1650,7 @@ Shuffled String: l,lerdlW!oH o
 ### Example 49 : `string_to_title` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1671,7 +1671,7 @@ Title Case: Hello World
 ### Example 50 : `string_to_casefold`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1692,7 +1692,7 @@ Casefolded: hello world
 ### Example 51 : `string_remove_range` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1713,7 +1713,7 @@ After removal: HelloWorld!
 ### Example 52 : `string_starts_with`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1734,7 +1734,7 @@ Starts with 'Hello': true
 ### Example 53 : `string_ends_with`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1755,7 +1755,7 @@ Ends with 'World!': true
 ### Example 54 : `string_to_capitalize` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1775,7 +1775,7 @@ Capitalized: Hello world
 ### Example 55 : `string_swap_case` 
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1796,7 +1796,7 @@ Swapped Case: hELLO wORLD
 ### Example 56 : `string_to_unicode` and `string_from_unicode`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <wchar.h>
 #include <stdlib.h>
@@ -1839,7 +1839,7 @@ Converted String: Привет, мир! مرحبا بالعالم
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     fmt_printf("ASCII Letters: %s\n", STRING_ASCII_LETTERS);
@@ -1858,7 +1858,7 @@ ASCII Lowercase: abcdefghijklmnopqrstuvwxyz
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     const char* str = "سلام دنیا";

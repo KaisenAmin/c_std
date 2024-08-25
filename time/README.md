@@ -59,7 +59,7 @@ To test the functionality of your `Time` library, you can create a series of exa
 ## Example 1: `time_create` and `time_to_string`
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <stdlib.h>
 
 int main () {
@@ -82,7 +82,7 @@ Time create and to string: (14:30:45:500)
 ## Example 2 : Testing `time_add_msecs`
 ```c
 #include <stdlib.h>
-#include "time/time.h"
+#include "time/std_time.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -105,7 +105,7 @@ Add milliseconds: (0:00:01:000)
 ## Example 3 :Testing `time_add_secs`
 ```c
 #include <stdlib.h>
-#include "time/time.h"
+#include "time/std_time.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -129,7 +129,7 @@ Add seconds: (2:02:03:000)
 ## Example 4: Testing `time_current_time`
 ```c
 #include <stdlib.h>
-#include "time/time.h"
+#include "time/std_time.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -152,7 +152,7 @@ Current time: (21:21:48:492)
 ## Example 5: Testing `time_msecs_since_start_of_day`
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     int msecs = time_msecs_since_start_of_day();
@@ -168,7 +168,7 @@ Milliseconds since start of day: 76943088
 
 ## Example 6: Testing `time_msecs_to`
 ```c
-#include "time/time.h"
+#include "time/std_time.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -189,7 +189,7 @@ Milliseconds difference: 3600000
 ## Example 7: Testing `time_secs_to`
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     Time t7 = {10, 0, 0, 0};
@@ -209,7 +209,7 @@ Seconds difference: 3600
 ## Example 8: Testing `time_is_equal`
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     Time *t9 = time_create(12, 0, 0, 0);
@@ -231,7 +231,7 @@ Times are equal: true
 ## Example 9: Testing `time_is_greater_than` and `time_is_less_than`
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     Time *t11 = time_create(14, 0, 0, 0);
@@ -255,7 +255,7 @@ Time t12 is greater than t11: true
 ## Example 10: Testing `time_from_msecs_since_start_of_day`
 ```c
 #include <stdlib.h>
-#include "time/time.h"
+#include "time/std_time.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -278,7 +278,7 @@ Time from msecs since start of day: (12:30:00:000)
 
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     fmt_printf("Current Time in seconds %f\n", time_current_time_in_seconds());
@@ -297,7 +297,7 @@ Current Time in msec 1718733335132198.000000
 
 ```c 
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <time.h>
 
 
