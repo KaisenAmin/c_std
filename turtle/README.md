@@ -24,20 +24,32 @@ To use this library, you need to have the `raylib` library installed. Follow the
 
 #### Linux
 
-1. Clone the raylib repository and build it from source:
+1. **Clone the raylib repository and build it from source:**
 
-```bash
-git clone https://github.com/raysan5/raylib.git
-cd raylib/src
-make PLATFORM=PLATFORM_DESKTOP
-sudo make install
-```
+    ```bash
+    git clone https://github.com/raysan5/raylib.git
+    cd raylib/src
+    make PLATFORM=PLATFORM_DESKTOP
+    sudo make install
+    ```
 
-2. Install additional required packages:
+2. **Install additional required packages:**
 
-```bash
-sudo apt-get install libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev
-```
+    ```bash
+    sudo apt-get install libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev
+    ```
+
+3. **Rebuild raylib with `-fPIC`:**
+
+   To ensure `raylib` is compiled with position-independent code, follow these steps:
+
+   ```bash
+   cd ~/Desktop/raylib/build
+   make clean
+   cmake .. -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release
+   make
+   sudo make install
+   ```
 
 #### Windows
 
@@ -54,6 +66,17 @@ To use this library, include `turtle.h` in your project and compile the source f
 
 ```bash
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./turtle/turtle.c -lraylib -lm
+```
+
+### Rebuilding the Project
+
+After `raylib` has been successfully recompiled and installed, go back to your `c_std` project directory and clean the build files:
+
+```bash
+cd ~/Desktop/c_std/build
+rm -rf CMakeCache.txt CMakeFiles/ build/
+cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ ..
+cmake --build .
 ```
 
 ## Documentation
@@ -89,6 +112,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `void turtle_dot(float size, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`: Draws a dot at the turtle's current position with the specified size and color.
 - `void turtle_clear_stamp(int stamp_id)`: Removes a previously made stamp identified by the provided stamp_id.
 - `int turtle_stamp(void)`: Creates a stamp at the turtle's current position and returns a unique stamp_id.
+
 
 ## Examples
 
