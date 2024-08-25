@@ -44,6 +44,7 @@ To use this library, you need to have the `raylib` library installed. Follow the
    To ensure `raylib` is compiled with position-independent code, follow these steps:
 
    ```bash
+   mkdir build
    cd ~/Desktop/raylib/build
    make clean
    cmake .. -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release
