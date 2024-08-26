@@ -50,6 +50,8 @@ The project is organized into several subdirectories, each representing a differ
 
 - `Turtle`: The Turtle Graphics library in C provides functions for drawing shapes and lines using a "turtle" that moves around the screen. Inspired by the Python `turtle` module, this library allows C developers to easily create graphics and animations.
 
+- `HttpRequest and HttpResponse` :The Http library provides functionality for creating and handling HTTP servers and clients. It includes support for routing, request parsing, response generation, and handling various HTTP methods (GET, POST, etc.). This library simplifies the development of web-based applications in C, enabling easy integration of HTTP functionality into C projects.
+
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
 ## Compilation and Execution
