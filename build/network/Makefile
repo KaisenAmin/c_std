@@ -130,6 +130,30 @@ network/fast:
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build && $(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/build
 .PHONY : network/fast
 
+http.obj: http.c.obj
+.PHONY : http.obj
+
+# target to build an object file
+http.c.obj:
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build && $(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/http.c.obj
+.PHONY : http.c.obj
+
+http.i: http.c.i
+.PHONY : http.i
+
+# target to preprocess a source file
+http.c.i:
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build && $(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/http.c.i
+.PHONY : http.c.i
+
+http.s: http.c.s
+.PHONY : http.s
+
+# target to generate assembly for a file
+http.c.s:
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build && $(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/http.c.s
+.PHONY : http.c.s
+
 tcp.obj: tcp.c.obj
 .PHONY : tcp.obj
 
@@ -187,6 +211,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... network"
+	@echo "... http.obj"
+	@echo "... http.i"
+	@echo "... http.s"
 	@echo "... tcp.obj"
 	@echo "... tcp.i"
 	@echo "... tcp.s"

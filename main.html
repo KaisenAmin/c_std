@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Backend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        #responseData {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .response-key {
+            color: #d9534f;
+            font-weight: bold;
+        }
+
+        .response-value {
+            color: #5bc0de;
+        }
+    </style>
+</head>
+<body>
+    <h1>Contact Backend Server</h1>
+    <form id="backendForm">
+        <label for="action">Action:</label>
+        <select id="action" name="action">
+            <option value="base64_encode">Base64 Encode</option>
+            <option value="md5_hash">MD5 Hash</option>
+            <option value="des_encrypt">DES Encrypt</option>
+        </select>
+        <br><br>
+
+        <label for="data">Data:</label>
+        <input type="text" id="data" name="data" required>
+        <br><br>
+
+        <div id="keyField" style="display: none;">
+            <label for="key">Key (for DES Encrypt):</label>
+            <input type="text" id="key" name="key">
+            <br><br>
+
+            <label for="iv">IV (for DES Encrypt):</label>
+            <input type="text" id="iv" name="iv">
+            <br><br>
+        </div>
+
+        <input type="submit" value="Submit">
+    </form>
+
+    <h2>Response:</h2>
+    <div id="responseData"></div> <!-- This div will display the response data -->
+
+    <script>
+        const form = document.getElementById('backendForm');
+        const actionSelect = document.getElementById('action');
+        const keyField = document.getElementById('keyField');
+        const responseDataDiv = document.getElementById('responseData');
+
+        actionSelect.addEventListener('change', function () {
+            if (actionSelect.value === 'des_encrypt') {
+                keyField.style.display = 'block';
+            } else {
+                keyField.style.display = 'none';
+            }
+        });
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const action = document.getElementById('action').value;
+            const data = document.getElementById('data').value;
+            const key = document.getElementById('key').value;
+            const iv = document.getElementById('iv').value;
+
+            const requestData = {
+                action: action,
+                data: data
+            };
+
+            if (action === 'des_encrypt') {
+                requestData.key = key;
+                requestData.iv = iv;
+            }
+
+            fetch('http://localhost:8051', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Format and display the response data
+                responseDataDiv.innerHTML = formatResponse(data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                // Display the error in the div
+                responseDataDiv.textContent = `Error: ${error}`;
+            });
+        });
+
+        function formatResponse(data) {
+            let formatted = '';
+            for (const [key, value] of Object.entries(data)) {
+                formatted += `<span class="response-key">${key}</span>: <span class="response-value">${value}</span>\n`;
+            }
+            return formatted;
+        }
+    </script>
+</body>
+</html>

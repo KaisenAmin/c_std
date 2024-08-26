@@ -94,8 +94,13 @@ main_EXTERNAL_OBJECTS =
 build/main.exe: CMakeFiles/main.dir/main.c.obj
 build/main.exe: CMakeFiles/main.dir/build.make
 build/main.exe: network/libnetwork.dll.a
-build/main.exe: vector/libvector.dll.a
+build/main.exe: random/librandom.dll.a
+build/main.exe: time/libstdtime.dll.a
+build/main.exe: json/libjson.dll.a
 build/main.exe: crypto/libstdcrypto.dll.a
+build/main.exe: map/libmap.dll.a
+build/main.exe: vector/libvector.dll.a
+build/main.exe: file_io/libfileio.dll.a
 build/main.exe: fmt/libfmt.dll.a
 build/main.exe: string/libstdstring.dll.a
 build/main.exe: encoding/libencoding.dll.a

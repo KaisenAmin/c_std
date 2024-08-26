@@ -85,10 +85,10 @@ if (WIN32)
         ssl
         pq
         # Optional modules that are commented out:
-        # random
-        # map
+        random
+        map
         vector
-        # stdtime
+        stdtime
         # statistics
         # tuple
         # turtle
@@ -102,7 +102,7 @@ if (WIN32)
         # bitset
         # cli
         # deque
-        # json
+        json
         # matrix
         # fileio
         # crypto

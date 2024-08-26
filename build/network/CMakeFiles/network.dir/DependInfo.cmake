@@ -8,6 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "C:/Users/asus/OneDrive/Desktop/project/c_std/network/http.c" "network/CMakeFiles/network.dir/http.c.obj" "gcc" "network/CMakeFiles/network.dir/http.c.obj.d"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/network/tcp.c" "network/CMakeFiles/network.dir/tcp.c.obj" "gcc" "network/CMakeFiles/network.dir/tcp.c.obj.d"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/network/udp.c" "network/CMakeFiles/network.dir/udp.c.obj" "gcc" "network/CMakeFiles/network.dir/udp.c.obj.d"
   )

@@ -99,24 +99,45 @@ network/CMakeFiles/network.dir/udp.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/network.dir/udp.c.s"
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/network/udp.c -o CMakeFiles/network.dir/udp.c.s
 
+network/CMakeFiles/network.dir/http.c.obj: network/CMakeFiles/network.dir/flags.make
+network/CMakeFiles/network.dir/http.c.obj: network/CMakeFiles/network.dir/includes_C.rsp
+network/CMakeFiles/network.dir/http.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/network/http.c
+network/CMakeFiles/network.dir/http.c.obj: network/CMakeFiles/network.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object network/CMakeFiles/network.dir/http.c.obj"
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT network/CMakeFiles/network.dir/http.c.obj -MF CMakeFiles/network.dir/http.c.obj.d -o CMakeFiles/network.dir/http.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/network/http.c
+
+network/CMakeFiles/network.dir/http.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/network.dir/http.c.i"
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/network/http.c > CMakeFiles/network.dir/http.c.i
+
+network/CMakeFiles/network.dir/http.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/network.dir/http.c.s"
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/network/http.c -o CMakeFiles/network.dir/http.c.s
+
 # Object files for target network
 network_OBJECTS = \
 "CMakeFiles/network.dir/tcp.c.obj" \
-"CMakeFiles/network.dir/udp.c.obj"
+"CMakeFiles/network.dir/udp.c.obj" \
+"CMakeFiles/network.dir/http.c.obj"
 
 # External object files for target network
 network_EXTERNAL_OBJECTS =
 
 build/libnetwork.dll: network/CMakeFiles/network.dir/tcp.c.obj
 build/libnetwork.dll: network/CMakeFiles/network.dir/udp.c.obj
+build/libnetwork.dll: network/CMakeFiles/network.dir/http.c.obj
 build/libnetwork.dll: network/CMakeFiles/network.dir/build.make
-build/libnetwork.dll: fmt/libfmt.dll.a
 build/libnetwork.dll: crypto/libstdcrypto.dll.a
-build/libnetwork.dll: encoding/libencoding.dll.a
+build/libnetwork.dll: json/libjson.dll.a
+build/libnetwork.dll: file_io/libfileio.dll.a
+build/libnetwork.dll: vector/libvector.dll.a
+build/libnetwork.dll: map/libmap.dll.a
+build/libnetwork.dll: fmt/libfmt.dll.a
 build/libnetwork.dll: string/libstdstring.dll.a
+build/libnetwork.dll: encoding/libencoding.dll.a
 build/libnetwork.dll: network/CMakeFiles/network.dir/linkLibs.rsp
 build/libnetwork.dll: network/CMakeFiles/network.dir/objects1.rsp
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C shared library ../build/libnetwork.dll"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking C shared library ../build/libnetwork.dll"
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && "C:/Program Files/CMake/bin/cmake.exe" -E rm -f CMakeFiles/network.dir/objects.a
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && C:/msys64/mingw64/bin/ar.exe qc CMakeFiles/network.dir/objects.a @CMakeFiles/network.dir/objects1.rsp
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/network && C:/msys64/mingw64/bin/gcc.exe  -g -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s  -Wl,--enable-auto-import -shared -o ../build/libnetwork.dll -Wl,--out-implib,libnetwork.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles/network.dir/objects.a -Wl,--no-whole-archive @CMakeFiles/network.dir/linkLibs.rsp

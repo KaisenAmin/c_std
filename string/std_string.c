@@ -2990,3 +2990,35 @@ size_t string_utf8_char_len(char c) {
 int string_strcmp(const char* str1, const char* str2) {
     return strcmp(str1, str2);
 }
+
+/**
+ * @brief Duplicates up to `n` characters from a given string.
+ *
+ * This function creates a new string by duplicating the first `n` characters
+ * from the input string `str`. If the length of `str` is less than `n`, the 
+ * entire string is duplicated. The resulting string is null-terminated.
+ *
+ * @param str The input string to duplicate.
+ * @param n The maximum number of characters to duplicate from `str`.
+ * 
+ * @return A pointer to the newly allocated string that contains the first `n`
+ *         characters from `str`. The string is null-terminated. If memory 
+ *         allocation fails, the function returns `NULL`.
+ *
+ * @note The caller is responsible for freeing the memory allocated by this
+ *       function using `free()`.
+ */
+char* string_strndup(const char* str, size_t n) {
+    size_t len = strlen(str);
+    if (len > n) { 
+        len = n;
+    }
+
+    char* result = (char*)malloc(len + 1);
+    if (!result) { 
+        return NULL;
+    }
+
+    result[len] = '\0';
+    return (char*)memcpy(result, str, len);
+}

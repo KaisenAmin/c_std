@@ -835,3 +835,56 @@ if __name__ == "__main__":
     filename = input("Enter the filename to request: ")
     request_file(filename)
 ```
+
+
+To add your HTTP server example to the README file, you can use the following markdown format:
+
+---
+
+## HTTP Server Example
+
+This example demonstrates how to create a simple HTTP server in C using a custom HTTP library. The server listens on port 8051 and provides two endpoints:
+
+- `/`: Responds with a simple "Hello, World!" message.
+- `/echo`: Receives a JSON payload via a POST request and echoes it back in the response.
+
+**Test the endpoints**:
+     - `curl http://localhost:8051/` should return "Hello, World!".
+     - `curl -X POST http://localhost:8051/echo -H "Content-Type: application/json" -d '{"message": "Hello, world!"}'` should return the JSON message `{"message": "Hello, world!"}`.
+
+### Code
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+void handle_root(HttpRequest* req, HttpResponse* res) {
+    (void)req;
+    http_set_status(res, 200, "OK");
+    http_set_body(res, "Hello, World!");
+}
+
+void handle_echo(HttpRequest* req, HttpResponse* res) {
+    fmt_printf("Received body: %s\n", req->body);
+
+    if (req->json_body) {
+        fmt_printf("Debug: Valid JSON body detected\n");
+        http_set_status(res, 200, "OK");
+        http_set_json_body(res, json_deep_copy(req->json_body));
+    } 
+    else {
+        http_send_error(res, 400, "Bad Request: Expected JSON body");
+    }
+}
+
+int main() {
+    http_register_route("/", HTTP_GET, handle_root);
+    http_register_route("/echo", HTTP_POST, handle_echo);
+
+    fmt_printf("Starting HTTP server on port 8051...\n");
+    http_start_server(8051);
+
+    return 0;
+}
+```

@@ -303,7 +303,7 @@ map_LIB_DEPENDS:STATIC=general;fmt;
 matrix_LIB_DEPENDS:STATIC=general;fmt;
 
 //Dependencies for the target
-network_LIB_DEPENDS:STATIC=general;fmt;general;ssl;general;stdcrypto;general;ws2_32;
+network_LIB_DEPENDS:STATIC=general;fmt;general;ssl;general;stdcrypto;general;stdstring;general;json;general;ws2_32;
 
 //Dependencies for the target
 priority_queue_LIB_DEPENDS:STATIC=general;fmt;general;vector;

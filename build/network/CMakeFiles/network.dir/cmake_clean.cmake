@@ -2,6 +2,8 @@ file(REMOVE_RECURSE
   "../build/libnetwork.dll"
   "../build/libnetwork.dll.manifest"
   "../build/libnetwork.pdb"
+  "CMakeFiles/network.dir/http.c.obj"
+  "CMakeFiles/network.dir/http.c.obj.d"
   "CMakeFiles/network.dir/tcp.c.obj"
   "CMakeFiles/network.dir/tcp.c.obj.d"
   "CMakeFiles/network.dir/udp.c.obj"
