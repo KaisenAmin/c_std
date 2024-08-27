@@ -38,6 +38,7 @@ typedef struct {
     HttpQueryParam query_params[MAX_QUERY_PARAMS];
     size_t header_count;
     size_t query_param_count;
+    int id;
 } HttpRequest;
 
 typedef struct {

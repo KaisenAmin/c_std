@@ -8,16 +8,50 @@ static HttpRoute routes[MAX_ROUTES];
 static size_t route_count = 0;
 static bool server_running = true;
 
+// Function to match routes with dynamic segments
+static bool match_route(const char* route, const char* path, int* id_out) {
+    fmt_printf("Debug: Matching route '%s' against path '%s'\n", route, path);
+
+    const char* route_ptr = route;
+    const char* path_ptr = path;
+
+    while (*route_ptr && *path_ptr) {
+        if (*route_ptr == '{') {
+            // Skip the segment in the route template (e.g., "{id}")
+            while (*route_ptr && *route_ptr != '}') route_ptr++;
+            route_ptr++; // Skip '}'
+
+            // Parse the dynamic segment in the path
+            *id_out = atoi(path_ptr);
+            while (*path_ptr && *path_ptr != '/') path_ptr++;
+        } 
+        else {
+            // Match static segments
+            if (*route_ptr != *path_ptr) {
+                fmt_printf("Debug: Route segment mismatch: '%c' vs '%c'\n", *route_ptr, *path_ptr);
+                return false; // Mismatch
+            }
+            route_ptr++;
+            path_ptr++;
+        }
+    }
+
+    bool match = *route_ptr == '\0' && *path_ptr == '\0';
+    fmt_printf("Debug: Route match result: %d\n", match);
+    return match;
+}
+
+
 static void handle_request(HttpRequest* req, HttpResponse* res) {
     for (size_t i = 0; i < route_count; i++) {
-        if (strcmp(routes[i].path, req->path) == 0 && routes[i].method == req->method) {
+        int id = -1;
+        if (match_route(routes[i].path, req->path, &id) && routes[i].method == req->method) {
+            req->id = id; // Pass the extracted ID to the request
             routes[i].handler(req, res);
             return;
         }
     }
-
-    http_set_status(res, 404, "Not Found");
-    http_set_body(res, "Route not found");
+    http_send_error(res, 404, "Route not found");
 }
 
 HttpMethod http_parse_method(const char* request) {
