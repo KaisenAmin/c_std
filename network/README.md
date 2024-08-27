@@ -994,10 +994,10 @@ int main() {
 - `/users/{id}` : this api delete user base on id
 
 **Test the endpoints**:
-     - `curl http://localhost:8051/users` should return "Hello, World!".
-     - `curl -X POST http://localhost:8051/users -H "Content-Type: application/json" -d '{"id": 1, "name": "amin", "age": 27}'` should return {"message": "User added successfully"}
-     - `curl -X PUT http://localhost:8051/users/1 -H "Content-Type: application/json" -d '{"name": "ali", "age": 25}'` should return {"message": "User updated successfully"}
-     - `curl -X DELETE http://localhost:8051/users/1` should return {"message": "User deleted successfully"}
+- `curl http://localhost:8051/users` should return "Hello, World!".
+- `curl -X POST http://localhost:8051/users -H "Content-Type: application/json" -d '{"id": 1, "name": "amin", "age": 27}'` should return {"message": "User added successfully"}
+- `curl -X PUT http://localhost:8051/users/1 -H "Content-Type: application/json" -d '{"name": "ali", "age": 25}'` should return {"message": "User updated successfully"}
+- `curl -X DELETE http://localhost:8051/users/1` should return {"message": "User deleted successfully"}
 
     
 ### code 
