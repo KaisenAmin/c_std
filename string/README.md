@@ -86,6 +86,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_is_digit(String*)`: Checks if a String contains only digits.
 - `string_is_lower(String*)`: Checks if all characters in a String are lowercase.
 - `string_is_upper(String*)`: Checks if all characters in a String are uppercase.
+- `string_is_palindrome(String*)`: Checks if the given String object is a palindrome.
+- `string_is_alnum(String*)`: Checks if the given String object contains only alphanumeric characters.
 
 ## String Access and Iteration
 - `string_begin(String*)`: Returns an iterator to the beginning.
