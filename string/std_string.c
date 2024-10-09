@@ -3156,3 +3156,32 @@ bool string_is_title(String* str) {
 
     return true;
 }
+
+/**
+ * @brief Checks if the given String object consists entirely of space characters.
+ *
+ * This function iterates over the characters in the String object and checks
+ * if each character is a space (' '). If any character is not a space, it returns false.
+ * If all characters are spaces or the string is empty, it returns true.
+ * 
+ * @param str Pointer to the String object to check.
+ * @return Returns true if the String contains only space characters, otherwise false.
+ */
+bool string_is_space(String* str) {
+    if (!str) {
+        fprintf(stderr, "Error: String object `str` is NULL in string_is_space\n");
+        return false;
+    }
+    size_t str_size = string_length(str);
+    
+    if (!str_size) {
+        return false;
+    }
+
+    for (size_t i = 0; i < str_size; i++) {
+        if (string_at(str, i) != ' ') {
+            return false;
+        }
+    }
+    return true;
+}

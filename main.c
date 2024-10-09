@@ -3,26 +3,14 @@
 
 
 int main() {
-    String* a = string_create("HELLO, AND WELCOME TO MY WORLD");
-    fmt_printf("%s is title: %d\n", string_c_str(a), string_is_title(a)); 
+    String* str1 = string_create("     ");
+    String* str2 = string_create("");
 
-    String* b = string_create("Hello World");
-    fmt_printf("%s is title: %d\n", string_c_str(b), string_is_title(b)); 
+    fmt_printf("%s is space %d\n", string_c_str(str1), string_is_space(str1));
+    fmt_printf("%s is space %d\n", string_c_str(str2), string_is_space(str2));
 
-    String* c = string_create("22 Names");
-    fmt_printf("%s is title: %d\n", string_c_str(c), string_is_title(c)); 
-
-    String* d = string_create("This Is %'!?");
-    fmt_printf("%s is title: %d\n", string_c_str(d), string_is_title(d)); 
-
-    String* e = string_create("Hello world");
-    fmt_printf("%s is title: %d\n", string_c_str(e), string_is_title(e)); 
-
-    string_deallocate(a);
-    string_deallocate(b);
-    string_deallocate(c);
-    string_deallocate(d);
-    string_deallocate(e);
+    string_deallocate(str2);
+    string_deallocate(str1);
 
     return 0;
 }

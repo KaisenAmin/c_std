@@ -89,6 +89,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_is_palindrome(String*)`: Checks if the given String object is a palindrome.
 - `string_is_alnum(String*)`: Checks if the given String object contains only alphanumeric characters.
 - `string_is_title(String*)`: Checks if the given String object is in title case.
+- `string_is_space(String*)` : Checks if the given String object consists entirely of space characters.
 
 ## String Access and Iteration
 - `string_begin(String*)`: Returns an iterator to the beginning.
