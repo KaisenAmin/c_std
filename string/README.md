@@ -88,6 +88,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_is_upper(String*)`: Checks if all characters in a String are uppercase.
 - `string_is_palindrome(String*)`: Checks if the given String object is a palindrome.
 - `string_is_alnum(String*)`: Checks if the given String object contains only alphanumeric characters.
+- `string_is_title(String*)`: Checks if the given String object is in title case.
 
 ## String Access and Iteration
 - `string_begin(String*)`: Returns an iterator to the beginning.
@@ -1888,7 +1889,7 @@ Size of unicode string is 9
 int main() {
     String* str = string_create("121");
 
-    fmt_printf("%s is palindrome %d", str->dataStr, string_is_palindrome(str));
+    fmt_printf("%s is palindrome %d", string_c_str(str), string_is_palindrome(str));
 
     string_deallocate(str);
     return 0;
@@ -1906,12 +1907,46 @@ int main() {
     String* str = string_create("amin 15adf");
     String* new_one = string_create("Hello1994");
 
-    fmt_printf("'%s' is alnum %d\n", str->dataStr, string_is_alnum(str));
-    fmt_printf("'%s' is alnum %d\n", new_one->dataStr, string_is_alnum(new_one));
+    fmt_printf("'%s' is alnum %d\n", string_c_str(str), string_is_alnum(str));
+    fmt_printf("'%s' is alnum %d\n", string_c_str(new_one), string_is_alnum(new_one));
     
     string_deallocate(new_one);
     string_deallocate(str);
 
+    return 0;
+}
+```
+
+## Example 61 : Check given string is title or not with `string_is_title`
+
+```c
+#include "fmt/fmt.h"
+#include "string/std_string.h"
+
+
+int main() {
+    String* a = string_create("HELLO, AND WELCOME TO MY WORLD");
+    fmt_printf("%s is title: %d\n", string_c_str(a), string_is_title(a)); 
+
+    String* b = string_create("Hello World");
+    fmt_printf("%s is title: %d\n", string_c_str(b), string_is_title(b)); 
+
+    String* c = string_create("22 Names");
+    fmt_printf("%s is title: %d\n", string_c_str(c), string_is_title(c)); 
+
+    String* d = string_create("This Is %'!?");
+    fmt_printf("%s is title: %d\n", string_c_str(d), string_is_title(d)); 
+
+    String* e = string_create("Hello world");
+    fmt_printf("%s is title: %d\n", string_c_str(e), string_is_title(e)); 
+
+
+    string_deallocate(a);
+    string_deallocate(b);
+    string_deallocate(c);
+    string_deallocate(d);
+    string_deallocate(e);
+    
     return 0;
 }
 ```

@@ -3101,3 +3101,58 @@ bool string_is_alnum(String* str) {
     }
     return true;
 }
+
+/**
+ * @brief Checks if the given String object is in title case.
+ *
+ * A string is considered to be in title case if every word starts with an uppercase letter 
+ * and all subsequent characters in the word are lowercase. Non-alphabetic characters such as 
+ * punctuation and numbers are allowed and do not affect the title case condition. 
+ * 
+ * `Words are separated by spaces.`
+ * 
+ * @param str A pointer to the String object to check.
+ * 
+ * @return Returns `true` if the string is in title case, `false` otherwise.
+ */
+bool string_is_title(String* str) {
+    if (!str) {
+        fprintf(stderr, "Error: String object `str` is NULL in string_is_title\n");
+        return false;
+    }
+
+    size_t str_size = string_length(str);
+    if (str_size == 0) {
+        return false;
+    }
+
+    bool start_of_word = true;
+
+    for (size_t i = 0; i < str_size; i++) {
+        char ch = string_at(str, i);
+
+        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+            if (start_of_word) {
+                if (ch >= 'A' && ch <= 'Z') {
+                    start_of_word = false;
+                } 
+                else {
+                    return false;
+                }
+            } 
+            else {
+                if (ch >= 'A' && ch <= 'Z') {
+                    return false;
+                }
+            }
+        } 
+        else if (ch == ' ') {
+            start_of_word = true; 
+        } 
+        else {
+            start_of_word = false; 
+        }
+    }
+
+    return true;
+}

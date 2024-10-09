@@ -3,14 +3,26 @@
 
 
 int main() {
-    String* str = string_create("amin 15adf");
-    String* new_one = string_create("Hello1994");
+    String* a = string_create("HELLO, AND WELCOME TO MY WORLD");
+    fmt_printf("%s is title: %d\n", string_c_str(a), string_is_title(a)); 
 
-    fmt_printf("'%s' is alnum %d\n", str->dataStr, string_is_alnum(str));
-    fmt_printf("'%s' is alnum %d\n", new_one->dataStr, string_is_alnum(new_one));
-    
-    string_deallocate(new_one);
-    string_deallocate(str);
+    String* b = string_create("Hello World");
+    fmt_printf("%s is title: %d\n", string_c_str(b), string_is_title(b)); 
+
+    String* c = string_create("22 Names");
+    fmt_printf("%s is title: %d\n", string_c_str(c), string_is_title(c)); 
+
+    String* d = string_create("This Is %'!?");
+    fmt_printf("%s is title: %d\n", string_c_str(d), string_is_title(d)); 
+
+    String* e = string_create("Hello world");
+    fmt_printf("%s is title: %d\n", string_c_str(e), string_is_title(e)); 
+
+    string_deallocate(a);
+    string_deallocate(b);
+    string_deallocate(c);
+    string_deallocate(d);
+    string_deallocate(e);
 
     return 0;
 }
