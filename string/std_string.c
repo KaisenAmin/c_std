@@ -3062,3 +3062,42 @@ bool string_is_palindrome(String* str) {
     }
     return true;
 }
+
+/**
+ * @brief Checks if the given String object contains only alphanumeric characters.
+ *
+ * This function verifies whether the input String object consists solely of 
+ * alphanumeric characters (letters and digits). It returns `true` if all characters 
+ * are either alphabetic (`a-z`, `A-Z`) or numeric (`0-9`). If any non-alphanumeric character
+ * is found, the function returns `false`.
+ *
+ * @param str A pointer to the String object to be checked.
+ *
+ * @return Returns `true` if the String object contains only alphanumeric characters, 
+ * `false` otherwise.
+ *
+ * @note If the String object is `NULL`, the function will print an error message to `stderr` 
+ * and return `false`. If the String object is empty, the function also returns `false`.
+ */
+bool string_is_alnum(String* str) {
+    if (!str) {
+        fprintf(stderr, "Error: String object `str` is NULL in string_is_alnum");
+        return false;
+    }
+
+    size_t str_size = string_length(str);
+    if (!str_size) {
+        return false;
+    }
+    
+    for (size_t i = 0; i < str_size; i++) {
+        char ch = string_at(str, i);
+        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')) {
+            continue;
+        }
+        else {
+            return false;
+        }
+    }
+    return true;
+}
