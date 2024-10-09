@@ -1896,6 +1896,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+"121 is palindrome 1"
+```
 
 ## Example 60 : Check given string is alpha numeric or not with `string_is_alnum`
 
@@ -1916,6 +1920,11 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+'amin 15adf' is alnum 0
+'Hello1994' is alnum 1
 ```
 
 ## Example 61 : Check given string is title or not with `string_is_title`
@@ -1950,4 +1959,38 @@ int main() {
     
     return 0;
 }
+```
+**Result**
+```
+HELLO, AND WELCOME TO MY WORLD is title: 0
+Hello World is title: 1
+22 Names is title: 1
+This Is %'!? is title: 1
+Hello world is title: 0
+```
+
+## Example 62 : Check given string is space or not with `string_is_space`
+
+```c
+#include "fmt/fmt.h"
+#include "string/std_string.h"
+
+
+int main() {
+    String* str1 = string_create("     ");
+    String* str2 = string_create("");
+
+    fmt_printf("%s is space %d\n", string_c_str(str1), string_is_space(str1));
+    fmt_printf("%s is space %d\n", string_c_str(str2), string_is_space(str2));
+
+    string_deallocate(str2);
+    string_deallocate(str1);
+
+    return 0;
+}
+```
+**Result**
+```
+      is space 1
+ is space 0
 ```
