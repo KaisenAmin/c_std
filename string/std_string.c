@@ -3022,3 +3022,43 @@ char* string_strndup(const char* str, size_t n) {
     result[len] = '\0';
     return (char*)memcpy(result, str, len);
 }
+
+/**
+ * @brief Checks if the given String object is a palindrome.
+ *
+ * This function verifies whether the input String object is a palindrome. 
+ * A palindrome is a string that reads the same forwards and backwards.
+ * The function compares characters from the beginning and the end of the string,
+ * working towards the center.
+ *
+ * If the input string is empty, it is considered a palindrome.
+ *
+ * @param str A pointer to the String object to be checked.
+ *
+ * @return Returns `true` if the String object is a palindrome, `false` otherwise.
+ * 
+ * @note If the String object is `NULL`, the function will print an error message 
+ * to `stderr` and return `false`.
+ */
+bool string_is_palindrome(String* str) {
+    if (!str) {
+        fprintf(stderr, "Error : String object 'str' is NULL in string_is_palindrome");
+        return false;
+    }
+
+    size_t str_size = string_length(str);
+
+    if (str_size == 0) {
+        return true;
+    }
+
+    for (size_t i = 0, j = str_size - 1; i < str_size; i++, j--) {
+        if (string_at(str, i) == string_at(str, j)) {
+            continue;
+        }
+        else {
+            return false;
+        }
+    }
+    return true;
+}
