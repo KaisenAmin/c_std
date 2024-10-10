@@ -38,17 +38,18 @@ float string_to_float(const String *str);
 double string_to_double(const String* str);
 wchar_t* string_to_unicode(const char* str);
 
+String** string_create_from_initializer(size_t count, ...);
+String** string_split(String *str, const char *delimiter, int *count);
+String** string_tokenize(String* str, const char* delimiters, int* count);
+
 String* string_create(const char* initialStr);
 String* string_create_with_pool(size_t size);
 String* string_substr(String* str, size_t pos, size_t len);
-String** string_split(String *str, const char *delimiter, int *count);
 String* string_join(String **strings, int count, const char *delimiter);
 String* string_from_int(int value);
 String* string_from_float(float value);
 String* string_from_double(double value);
-String** string_tokenize(String* str, const char* delimiters, int* count);
 String* string_from_unicode(const wchar_t* wstr);
-String** string_create_from_initializer(size_t count, ...);
 String* string_to_hex(const String *str);
 String* string_from_hex(const String *hexStr);
 String* string_base64_encode(const String *input);
@@ -79,29 +80,15 @@ bool string_ends_with(const String* str, const char* substr);
 bool string_to_bool_from_cstr(const char* boolstr);
 
 int string_compare(const String* str1, const String* str2);
-int string_find(String* str, const char* buffer, size_t pos);
-int string_rfind(String* str, const char* buffer, size_t pos);
-int string_find_first_of(String* str, const char* buffer, size_t pos);
-int string_find_last_of(String* str, const char* buffer, size_t pos);
-int string_find_first_not_of(String* str, const char* buffer, size_t pos);
-int string_find_last_not_of(String* str, const char* buffer, size_t pos);
-int string_compare_ignore_case(String* str1, String* str2);
+int string_find(const String* str, const char* buffer, size_t pos);
+int string_rfind(const String* str, const char* buffer, size_t pos);
+int string_find_first_of(const String* str, const char* buffer, size_t pos);
+int string_find_last_of(const String* str, const char* buffer, size_t pos);
+int string_find_first_not_of(const String* str, const char* buffer, size_t pos);
+int string_find_last_not_of(const String* str, const char* buffer, size_t pos);
+int string_compare_ignore_case(const String* str1, const String* str2);
 int string_to_int(const String *str);
 int string_strcmp(const char* str1, const char* str2);
-
-void string_reverse(String* str);
-void string_resize(String* str, size_t newSize);
-void string_shrink_to_fit(String* str);
-void string_append(String* str, const char* strItem);
-void string_push_back(String* str, const char chItem); 
-void string_assign(String* str, const char* newStr);
-void string_insert(String* str, size_t pos, const char* strItem);
-void string_erase(String* str, size_t pos, size_t len);
-void string_replace(String* str1, const char* oldStr, const char* newStr);
-void string_swap(String* str1, String* str2);
-void string_pop_back(String* str);
-void string_deallocate(String* str);
-void string_clear(String* str);
 
 char* string_to_upper(String* str);
 char* string_to_lower(String* str);
@@ -148,5 +135,18 @@ void string_format(String* str, const char* format, ...);
 void string_remove(String* str, const char* substr);
 void string_remove_range(String* str, size_t startPos, size_t endPos);
 void string_swap_case(String* str);
+void string_reverse(String* str);
+void string_resize(String* str, size_t newSize);
+void string_shrink_to_fit(String* str);
+void string_append(String* str, const char* strItem);
+void string_push_back(String* str, const char chItem); 
+void string_assign(String* str, const char* newStr);
+void string_insert(String* str, size_t pos, const char* strItem);
+void string_erase(String* str, size_t pos, size_t len);
+void string_replace(String* str1, const char* oldStr, const char* newStr);
+void string_swap(String* str1, String* str2);
+void string_pop_back(String* str);
+void string_deallocate(String* str);
+void string_clear(String* str);
 
 #endif 

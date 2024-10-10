@@ -1023,7 +1023,7 @@ size_t string_copy(String *str, char *buffer, size_t pos, size_t len) {
  * @param pos The starting position for the search. Must be within the bounds of the string.
  * @return The index of the first occurrence of the substring, or -1 if not found or an error occurs.
  */
-int string_find(String *str, const char *buffer, size_t pos) {
+int string_find(const String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_find.\n");
         return -1;
@@ -1057,7 +1057,7 @@ int string_find(String *str, const char *buffer, size_t pos) {
  * 
  * @return The index of the last occurrence of the substring, or -1 if not found or an error occurs.
  */
-int string_rfind(String *str, const char *buffer, size_t pos) {
+int string_rfind(const String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_rfind.\n");
         return -1;
@@ -1098,7 +1098,7 @@ int string_rfind(String *str, const char *buffer, size_t pos) {
  * 
  * @return The index of the first matching character, or -1 if no match is found or an error occurs.
  */
-int string_find_first_of(String *str, const char *buffer, size_t pos) {
+int string_find_first_of(const String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_find_first_of.\n");
         return -1;
@@ -1131,7 +1131,7 @@ int string_find_first_of(String *str, const char *buffer, size_t pos) {
  * 
  * @return The index of the last matching character, or -1 if no match is found or an error occurs.
  */
-int string_find_last_of(String *str, const char *buffer, size_t pos) {
+int string_find_last_of(const String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_find_last_of.\n");
         return -1;
@@ -1167,7 +1167,7 @@ int string_find_last_of(String *str, const char *buffer, size_t pos) {
  * 
  * @return The index of the first non-matching character, or -1 if all characters match or an error occurs.
  */
-int string_find_first_not_of(String *str, const char *buffer, size_t pos) {
+int string_find_first_not_of(const String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_find_first_not_of.\n");
         return -1;
@@ -1206,7 +1206,7 @@ int string_find_first_not_of(String *str, const char *buffer, size_t pos) {
  * 
  * @return The index of the last character not in the buffer, or -1 if all characters match or an error occurs.
  */
-int string_find_last_not_of(String *str, const char *buffer, size_t pos) {
+int string_find_last_not_of(const String *str, const char *buffer, size_t pos) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_find_last_not_of.\n");
         return -1;
@@ -2255,7 +2255,7 @@ String** string_tokenize(String* str, const char* delimiters, int* count) {
  *         - A negative value if str1 is less than str2.
  *         - A positive value if str1 is greater than str2.
  */
-int string_compare_ignore_case(String* str1, String* str2) {
+int string_compare_ignore_case(const String* str1, const String* str2) {
     if (str1 == NULL || str2 == NULL) {
         if (str1 == str2) {
             return 0;

@@ -68,7 +68,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_is_greater_or_equal(const String*, const String*)`: Checks if the first String is greater than or equal to the second.
 - `string_is_not_equal(const String*, const String*)`: Checks if two Strings are not equal.
 - `string_compare(const String*, const String*)`: Compares two Strings.
-- `string_compare_ignore_case(String*, String*)`: Compares two Strings, ignoring case differences.
+- `string_compare_ignore_case(const String*, String*)`: Compares two Strings, ignoring case differences.
 
 ## String Information and Properties
 - `string_length(const String*)`: Returns the length of a String.
@@ -128,10 +128,10 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_swap_case(String*)`: Swaps the case of each character in a String.
 
 ## String Search and Replace
-- `string_find_first_of(String*, const char*, size_t)`: Finds the first occurrence of any of the characters in the given string.
-- `string_find_last_of(String*, const char*, size_t)`: Finds the last occurrence of any of the characters in the given string.
-- `string_find_first_not_of(String*, const char*, size_t)`: Finds the first character that does not match any of the characters in the given string.
-- `string_find_last_not_of(String*, const char*, size_t)`: Finds the last character that does not match any of the characters in the given string.
+- `string_find_first_of(const String*, const char*, size_t)`: Finds the first occurrence of any of the characters in the given string.
+- `string_find_last_of(const String*, const char*, size_t)`: Finds the last occurrence of any of the characters in the given string.
+- `string_find_first_not_of(const String*, const char*, size_t)`: Finds the first character that does not match any of the characters in the given string.
+- `string_find_last_not_of(const String*, const char*, size_t)`: Finds the last character that does not match any of the characters in the given string.
 - `string_replace_all(String*, const char*, const char*)`: Replaces all occurrences of a substring.
 - `string_remove(String*, const char*)`: Removes all occurrences of a substring.
 
