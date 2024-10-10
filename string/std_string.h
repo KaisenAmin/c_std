@@ -39,8 +39,8 @@ double string_to_double(const String* str);
 wchar_t* string_to_unicode(const char* str);
 
 String** string_create_from_initializer(size_t count, ...);
-String** string_split(String *str, const char *delimiter, int *count);
-String** string_tokenize(String* str, const char* delimiters, int* count);
+String** string_split(const String *str, const char *delimiter, int *count);
+String** string_tokenize(const String* str, const char* delimiters, int* count);
 
 String* string_create(const char* initialStr);
 String* string_create_with_pool(size_t size);
@@ -92,12 +92,12 @@ int string_strcmp(const char* str1, const char* str2);
 
 char* string_to_upper(const String* str);
 char* string_to_lower(const String* str);
-char* string_begin(String* str);
-char* string_end(String* str);
-char* string_rbegin(String* str);
-char* string_rend(String* str);
-char* string_back(String* str);
-char* string_front(String* str);
+char* string_begin(const String* str);
+char* string_end(const String* str);
+char* string_rbegin(const String* str);
+char* string_rend(const String* str);
+char* string_back(const String* str);
+char* string_front(const String* str);
 char* string_strdup(const char* s);
 char* string_from_int_cstr(int value);
 char* string_strndup(const char* str, size_t n);
@@ -105,18 +105,18 @@ char* string_strndup(const char* str, size_t n);
 size_t string_length_cstr(const char* str);
 size_t string_length_utf8(const char* str);
 size_t string_length(const String* str);
-size_t string_capacity(String* str);
-size_t string_max_size(String* str);
-size_t string_copy(String* str, char* buffer, size_t pos, size_t len);
-size_t string_count(String* str, const char* substr);
+size_t string_capacity(const String* str);
+size_t string_max_size(const String* str);
+size_t string_copy(const String* str, char* buffer, size_t pos, size_t len);
+size_t string_count(const String* str, const char* substr);
 size_t string_utf8_char_len(char c);
 
 const char* string_data(String* str);
 const char* string_c_str(const String* str);
-const char* string_cbegin(String* str);
-const char* string_cend(String* str);
-const char* string_crbegin(String* str);
-const char* string_crend(String* str);
+const char* string_cbegin(const String* str);
+const char* string_cend(const String* str);
+const char* string_crbegin(const String* str);
+const char* string_crend(const String* str);
 
 void string_deallocate(String *str);
 void string_concatenate(String *str1, const String *str2);

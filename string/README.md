@@ -72,11 +72,11 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 ## String Information and Properties
 - `string_length(const String*)`: Returns the length of a String.
-- `string_capacity(String*)`: Returns the capacity of a String.
-- `string_max_size(String*)`: Returns the maximum size of a String.
-- `string_empty(String*)`: Checks if a String is empty.
-- `string_contains(String*, const char*)`: Checks if a String contains a specific substring.
-- `string_count(Strin*, char*)` : count number of substr appears in String object 'str'.
+- `string_capacity(const String*)`: Returns the capacity of a String.
+- `string_max_size(const String*)`: Returns the maximum size of a String.
+- `string_empty(const String*)`: Checks if a String is empty.
+- `string_contains(const String*, const char*)`: Checks if a String contains a specific substring.
+- `string_count(const String*, char*)` : count number of substr appears in String object 'str'.
 - `string_length_cstr(const char*)` : Returns the length of a char*.
 - `string_length_utf(const char*)` : Return the length of utf-8 char*.
 - `string_utf8_char_len(char )` : Return the len of each unicode character.
@@ -93,21 +93,21 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_is_printable(const String*)` : Checks if all characters in the given String object are printable.
 
 ## String Access and Iteration
-- `string_begin(String*)`: Returns an iterator to the beginning.
-- `string_end(String*)`: Returns an iterator to the end.
-- `string_rbegin(String*)`: Returns a reverse iterator to the beginning.
-- `string_rend(String*)`: Returns a reverse iterator to the end.
-- `string_cbegin(String*)`: Returns a constant iterator to the beginning.
-- `string_cend(String*)`: Returns a constant iterator to the end.
-- `string_crbegin(String*)`: Returns a constant reverse iterator to the beginning.
-- `string_crend(String*)`: Returns a constant reverse iterator to the end.
+- `string_begin(const String*)`: Returns an iterator to the beginning.
+- `string_end(const String*)`: Returns an iterator to the end.
+- `string_rbegin(const String*)`: Returns a reverse iterator to the beginning.
+- `string_rend(const String*)`: Returns a reverse iterator to the end.
+- `string_cbegin(const String*)`: Returns a constant iterator to the beginning.
+- `string_cend(const String*)`: Returns a constant iterator to the end.
+- `string_crbegin(const String*)`: Returns a constant reverse iterator to the beginning.
+- `string_crend(const String*)`: Returns a constant reverse iterator to the end.
 
 ## String Data Access
 - `string_data(String*)`: Returns a pointer to the data stored in a String.
 - `string_c_str(String*)`: Returns a pointer to the null-terminated sequence of characters.
-- `string_at(String*, size_t)`: Returns a reference to the character at a specified index.
-- `string_back(String*)`: Returns a reference to the last character.
-- `string_front(String*)`: Returns a reference to the first character.
+- `string_at(const String*, size_t)`: Returns a reference to the character at a specified index.
+- `string_back(const String*)`: Returns a reference to the last character.
+- `string_front(const String*)`: Returns a reference to the first character.
 
 ## String Conversion Functions
 - `string_to_int(const String*)`: Converts a String to an integer.
@@ -136,7 +136,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_remove(String*, const char*)`: Removes all occurrences of a substring.
 
 ## Advanced String Operations
-- `string_split(String*, const char*, int*)`: Splits a String into an array of String objects.
+- `string_split(const String*, const char*, int*)`: Splits a String into an array of String objects.
 - `string_join(String**, int, const char*)`: Joins several String objects into one.
 - `string_trim(String*)`: Trims whitespace from both ends of a String.
 - `string_pad_left(String*, size_t, char)`: Pads a String from the left.
@@ -156,8 +156,9 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_base64_decode(const String*)`: Decodes a base64 encoded String.
 - `string_remove(String*, const char*)`: Removes all occurrences of a substring.
 - `string_set_pool_size(String*, size_t)`: Sets the size of the memory pool for a String.
-- `string_tokenize(String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
+- `string_tokenize(const String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
 - `string_create_from_initializer` : The string_create_from_initializer function dynamically creates an array of String pointers, each initialized with a string passed as a variadic argument.
+- `string_copy(const String*, char* , size_t, size_t )` : Copies a substring from the String object into the provided buffer.
 ## String Encoding Functions
 - `string_to_hex(const String*)`: Converts a String to its hexadecimal representation.
 - `string_from_hex(const String*)`: Converts a hexadecimal String back to the original string.

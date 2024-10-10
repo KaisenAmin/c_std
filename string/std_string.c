@@ -898,7 +898,7 @@ char string_at(const String* str, size_t index) {
  * @param str The String object to access. Must not be NULL or empty.
  * @return A pointer to the last character in the string, or NULL if the string is NULL or empty.
  */
-char* string_back(String *str) {
+char* string_back(const String *str) {
     if (str == NULL || str->size == 0) { 
         return NULL; 
     }
@@ -914,7 +914,7 @@ char* string_back(String *str) {
  * @param str The String object to access. Must not be NULL or empty.
  * @return A pointer to the first character in the string, or NULL if the string is NULL or empty.
  */
-char* string_front(String *str) {
+char* string_front(const String *str) {
     if (str == NULL || str->size == 0) { 
         return NULL;  
     }
@@ -947,7 +947,7 @@ size_t string_length(const String* str) {
  * @param str The String object whose capacity is to be determined. Must not be NULL.
  * @return The capacity of the string, or 0 if the String object is NULL.
  */
-size_t string_capacity(String* str) {
+size_t string_capacity(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_capacity.\n");
         return 0;
@@ -964,7 +964,7 @@ size_t string_capacity(String* str) {
  * @param str The String object. Must not be NULL.
  * @return The maximum possible size of the string, or 0 if the String object is NULL.
  */
-size_t string_max_size(String* str) {
+size_t string_max_size(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_max_size.\n");
         return 0;  // Or a special value indicating error
@@ -986,7 +986,7 @@ size_t string_max_size(String* str) {
  * 
  * @return The number of characters actually copied.
  */
-size_t string_copy(String *str, char *buffer, size_t pos, size_t len) {
+size_t string_copy(const String *str, char *buffer, size_t pos, size_t len) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: The String object or its data is NULL in string_copy.\n");
         return 0;
@@ -1284,14 +1284,14 @@ const char *string_c_str(const String *str) {
  * 
  * @return A pointer to the first character in the string, or an empty string on error.
  */
-char *string_begin(String *str) {
+char *string_begin(const String *str) {
     if (str == NULL) { 
         fprintf(stderr, "Error: Invalid input in string_begin function.\n");
-        return "";  // Return empty string for null String
+        return ""; 
     }
     if (str->dataStr == NULL) {
         fprintf(stderr, "Error: Uninitialized String in string_begin function.\n");
-        return "";  // Return empty string for uninitialized String
+        return ""; 
     }
     return str->dataStr;  // The beginning of the string
 }
@@ -1305,7 +1305,7 @@ char *string_begin(String *str) {
  * @param str The String object to retrieve the end pointer from. Must not be NULL.
  * @return A pointer to the end of the string, or NULL on error.
  */
-char *string_end(String *str) {
+char *string_end(const String *str) {
     if (str == NULL || str->dataStr == NULL) { 
         fprintf(stderr, "Error: Invalid input or uninitialized String in string_end function.\n");
         return NULL;  // Return NULL for null or uninitialized String
@@ -1322,7 +1322,7 @@ char *string_end(String *str) {
  * @param str The String object to retrieve the reverse beginning pointer from. Must not be NULL or empty.
  * @return A pointer to the last character in the string, or NULL on error.
  */
-char *string_rbegin(String *str) {
+char *string_rbegin(const String *str) {
     if (str == NULL || str->dataStr == NULL || str->size == 0) {
         fprintf(stderr, "Error: Invalid input, uninitialized, or empty String in string_rbegin function.\n");
         return NULL; 
@@ -1339,7 +1339,7 @@ char *string_rbegin(String *str) {
  * 
  * @return A pointer to one before the first character in the string, or NULL on error.
  */
-char *string_rend(String *str) {
+char *string_rend(const String *str) {
     if (str == NULL || str->dataStr == NULL) { 
         fprintf(stderr, "Error: Invalid input or uninitialized String in string_rend function.\n");
         return NULL;
@@ -1355,7 +1355,7 @@ char *string_rend(String *str) {
  * 
  * @return A constant pointer to the first character in the string, or NULL on error.
  */
-const char *string_cbegin(String *str) {
+const char *string_cbegin(const String *str) {
     if (str == NULL || str->dataStr == NULL) { 
         fprintf(stderr, "Error: Invalid input or uninitialized String in string_cbegin function.\n");
         return NULL;  // Return NULL for null or uninitialized String
@@ -1371,7 +1371,7 @@ const char *string_cbegin(String *str) {
  * 
  * @return A constant pointer to the end of the string, or NULL on error.
  */
-const char *string_cend(String *str) {
+const char *string_cend(const String *str) {
     if (str == NULL || str->dataStr == NULL) { 
         fprintf(stderr, "Error: Invalid input or uninitialized String in string_cend function.\n");
         return NULL;  // Return NULL for null or uninitialized String
@@ -1386,7 +1386,7 @@ const char *string_cend(String *str) {
  * @param str The String object for which to get the reverse beginning pointer. Must not be NULL or empty.
  * @return A constant pointer to the last character in the string, or NULL on error.
  */
-const char *string_crbegin(String *str) {
+const char *string_crbegin(const String *str) {
     if (str == NULL || str->dataStr == NULL || str->size == 0) { 
         fprintf(stderr, "Error: Invalid input, uninitialized, or empty String in string_crbegin function.\n");
         return NULL;  // Return NULL for null, uninitialized, or empty String
@@ -1401,7 +1401,7 @@ const char *string_crbegin(String *str) {
  * @param str The String object for which to get the reverse end pointer. Must not be NULL.
  * @return A constant pointer to one before the first character in the string, or NULL on error.
  */
-const char *string_crend(String *str) {
+const char *string_crend(const String *str) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: Invalid input or uninitialized String in string_crend function.\n");
         return NULL;  // Return NULL for null or uninitialized String
@@ -1425,7 +1425,9 @@ void string_clear(String* str) {
             str->dataStr[0] = '\0';
         }
     }
-    fprintf(stderr, "Info : String object is null no need to clear in string_clear.\n");
+    else {
+        fprintf(stderr, "Info : String object is null no need to clear in string_clear.\n");
+    }
 }
 
 /**
@@ -1640,7 +1642,7 @@ void string_trim(String *str) {
  * @param count A pointer to an integer where the number of splits will be stored. Must not be NULL.
  * @return An array of String pointers containing the split strings, or NULL if an error occurs.
  */
-String** string_split(String *str, const char *delimiter, int *count) {
+String** string_split(const String *str, const char *delimiter, int *count) {
     if (str == NULL) {
         fprintf(stderr, "Error: Null String object in string_split.\n");
         return NULL;
@@ -2014,7 +2016,7 @@ String* string_from_hex(const String *hexStr) {
  * 
  * @return The number of times the substring appears within the String object, or 0 if an error occurs.
  */
-size_t string_count(String* str, const char* substr) {
+size_t string_count(const String* str, const char* substr) {
     if (str == NULL) {
         fprintf(stderr, "Error: Null String object in string_count.\n");
         return 0;
@@ -2181,7 +2183,7 @@ String* string_from_double(double value) {
  * @param count A pointer to an integer where the number of tokens will be stored.
  * @return An array of String objects, each representing a token, or NULL if an error occurs.
  */
-String** string_tokenize(String* str, const char* delimiters, int* count) {
+String** string_tokenize(const String* str, const char* delimiters, int* count) {
     if (str == NULL || delimiters == NULL) {
         fprintf(stderr, "Error: Invalid input in string_tokenize.\n");
         return NULL;
