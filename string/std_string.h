@@ -34,8 +34,8 @@ struct String {
 };
 
 char string_at(const String* str, size_t index);
-float string_to_float(String *str);
-double string_to_double(String* str);
+float string_to_float(const String *str);
+double string_to_double(const String* str);
 wchar_t* string_to_unicode(const char* str);
 
 String* string_create(const char* initialStr);
@@ -49,8 +49,8 @@ String* string_from_double(double value);
 String** string_tokenize(String* str, const char* delimiters, int* count);
 String* string_from_unicode(const wchar_t* wstr);
 String** string_create_from_initializer(size_t count, ...);
-String* string_to_hex(String *str);
-String* string_from_hex(String *hexStr);
+String* string_to_hex(const String *str);
+String* string_from_hex(const String *hexStr);
 String* string_base64_encode(const String *input);
 String* string_base64_decode(const String* input);
 String* string_repeat(const String* str, size_t count);

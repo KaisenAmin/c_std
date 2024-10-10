@@ -1822,7 +1822,7 @@ int string_to_int(String *str) {
  * @param str The String object to convert. Must not be NULL.
  * @return The floating-point value of the String object's content, or 0.0f if the String object is NULL or empty.
  */
-float string_to_float(String *str) {
+float string_to_float(const String *str) {
     if (str == NULL) {
         fprintf(stderr, "Error: Null String object in string_to_float.\n");
         return 0.0f;
@@ -1843,7 +1843,7 @@ float string_to_float(String *str) {
  * @param str The String object to convert. Must not be NULL.
  * @return The double value of the String object's content, or 0.0 if the String object is NULL or empty.
  */
-double string_to_double(String* str) {
+double string_to_double(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: Null String object in string_to_double.\n");
         return 0.0;
@@ -1943,7 +1943,7 @@ void string_pad_right(String *str, size_t totalLength, char padChar) {
  * @param str The String object to convert to hexadecimal. Must not be NULL.
  * @return A new String object containing the hexadecimal representation of the input string, or NULL if an error occurs.
  */
-String* string_to_hex(String *str) {
+String* string_to_hex(const String *str) {
     if (str == NULL) {
         fprintf(stderr, "Error: Null String object in string_to_hex.\n");
         return NULL;
@@ -1978,7 +1978,7 @@ String* string_to_hex(String *str) {
  * @param hexStr The hex-encoded String object to convert. Must not be NULL and must have an even number of characters.
  * @return A new String object containing the decoded ASCII characters, or NULL if an error occurs.
  */
-String* string_from_hex(String *hexStr) {
+String* string_from_hex(const String *hexStr) {
     if (hexStr == NULL) {
         fprintf(stderr, "Error: Null String object in string_from_hex.\n");
         return NULL;

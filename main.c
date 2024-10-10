@@ -1,17 +1,15 @@
 #include "string/std_string.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
 int main() {
-    String* str = string_create("Hello World");
+    String *originalStr = string_create("Hello");
+    String *hexStr = string_to_hex(originalStr);
 
-    if (string_contains(str, "Hello")) { 
-        fmt_printf("Yes 'Hello' exists in str\n");
-    }
-    
-    string_reverse(str); // reverse String 
-    fmt_printf("Reverse String is %s\n", string_c_str(str));
+    fmt_printf("Original String: %s\n", originalStr->dataStr);
+    fmt_printf("Hexadecimal Representation: %s\n", hexStr->dataStr);
 
-    string_deallocate(str);
+    string_deallocate(originalStr);
+    string_deallocate(hexStr);
+
     return 0;
 }
