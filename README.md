@@ -129,7 +129,9 @@ This project utilizes a Python script (`compile.py`) for easy compilation of mod
 - GCC compiler (ensure it's added to your system's PATH)
 - **Linux Users**: Make sure to install the necessary development libraries:
   ```bash
-  sudo apt-get install libssl-dev libpq-dev
+  sudo apt-get update
+  sudo apt install build-essential git cmake libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev wayland-protocols libwayland-dev pkg-config libxinerama-dev libxkbcommon-dev
+  sudo apt-get install libssl-dev libpq-dev libraylib-dev
   ```
 
 ### Using the compile.py Script

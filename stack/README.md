@@ -86,6 +86,8 @@ Size of stack is 5
 
  gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\vector\vector.c .\stack\stack.c
 
+ also you can use cmake and ... 
+
 ```c
 #include "stack/stack.h"
 #include "fmt/fmt.h"
