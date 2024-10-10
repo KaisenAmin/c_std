@@ -82,15 +82,15 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_utf8_char_len(char )` : Return the len of each unicode character.
 
 ## String Characteristics
-- `string_is_alpha(String*)`: Checks if a String contains only alphabetic characters.
-- `string_is_digit(String*)`: Checks if a String contains only digits.
-- `string_is_lower(String*)`: Checks if all characters in a String are lowercase.
-- `string_is_upper(String*)`: Checks if all characters in a String are uppercase.
-- `string_is_palindrome(String*)`: Checks if the given String object is a palindrome.
-- `string_is_alnum(String*)`: Checks if the given String object contains only alphanumeric characters.
-- `string_is_title(String*)`: Checks if the given String object is in title case.
-- `string_is_space(String*)` : Checks if the given String object consists entirely of space characters.
-- `string_is_printable(String*)` : Checks if all characters in the given String object are printable.
+- `string_is_alpha(const String*)`: Checks if a String contains only alphabetic characters.
+- `string_is_digit(const String*)`: Checks if a String contains only digits.
+- `string_is_lower(const String*)`: Checks if all characters in a String are lowercase.
+- `string_is_upper(const String*)`: Checks if all characters in a String are uppercase.
+- `string_is_palindrome(const String*)`: Checks if the given String object is a palindrome.
+- `string_is_alnum(const String*)`: Checks if the given String object contains only alphanumeric characters.
+- `string_is_title(const String*)`: Checks if the given String object is in title case.
+- `string_is_space(const String*)` : Checks if the given String object consists entirely of space characters.
+- `string_is_printable(const String*)` : Checks if all characters in the given String object are printable.
 
 ## String Access and Iteration
 - `string_begin(String*)`: Returns an iterator to the beginning.
