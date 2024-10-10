@@ -70,7 +70,7 @@ bool string_is_palindrome(String* str);
 bool string_is_alnum(String* str);
 bool string_is_title(String* str);
 bool string_is_space(String* str);
-
+bool string_is_printable(String* str);
 bool string_empty(String* str);
 bool string_contains(String* str, const char* substr);
 bool string_set_pool_size(String* str, size_t newSize);

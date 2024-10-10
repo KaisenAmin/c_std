@@ -3185,3 +3185,43 @@ bool string_is_space(String* str) {
     }
     return true;
 }
+
+/**
+ * @brief Checks if all characters in the given String object are printable.
+ *
+ * A character is considered printable if its ASCII value is greater than 31.
+ * Printable characters include letters, digits, punctuation, and space.
+ *
+ * This function iterates through the String object and verifies that each character
+ * is a printable character. If a non-printable character (with an ASCII value 
+ * between 0 and 31) is encountered, the function returns false.
+ * 
+ * If the string is empty, the function returns true.
+ *
+ * @param str Pointer to the String object to be checked.
+ * @return true if all characters are printable or if the string is empty.
+ * @return false if the String object contains non-printable characters or is NULL.
+ *
+ * @note If the String object `str` is NULL, an error message is printed and the function returns false.
+ */
+bool string_is_printable(String* str) {
+    if (!str) {
+        fprintf(stderr, "Error : String object `str` is NULL in string_is_printable\n");
+        return false;
+    }
+
+    size_t str_size = string_length(str);
+    if (!str_size) {
+        return true;
+    }
+
+    for (size_t i = 0; i < str_size; i++) {
+        int ord = string_at(str, i);
+
+        if (ord >= 0 && ord <= 31) {
+            return false;
+        }
+    }
+
+    return true;
+}

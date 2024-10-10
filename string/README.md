@@ -90,6 +90,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_is_alnum(String*)`: Checks if the given String object contains only alphanumeric characters.
 - `string_is_title(String*)`: Checks if the given String object is in title case.
 - `string_is_space(String*)` : Checks if the given String object consists entirely of space characters.
+- `string_is_printable(String*)` : Checks if all characters in the given String object are printable.
 
 ## String Access and Iteration
 - `string_begin(String*)`: Returns an iterator to the beginning.
@@ -1993,4 +1994,32 @@ int main() {
 ```
       is space 1
  is space 0
+```
+
+## Example 63 : Check given string is printable or not with `string_is_printable`
+
+```c
+#include "fmt/fmt.h"
+#include "string/std_string.h"
+
+
+int main() {
+    String* str1 = string_create("Hello!Areyou#1?");
+    String* str2 = string_create("Hello!\nAre you #1?");
+
+    fmt_printf("'%s' is printable %d\n", string_c_str(str1), string_is_printable(str1));
+    fmt_printf("'%s' is printable %d\n", string_c_str(str2), string_is_printable(str2));
+
+    string_deallocate(str1);
+    string_deallocate(str2);
+
+    return 0;
+}
+```
+
+**Result**
+```
+'Hello!Areyou#1?' is printable 1
+'Hello!
+Are you #1?' is printable 0
 ```
