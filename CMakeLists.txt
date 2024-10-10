@@ -93,7 +93,7 @@ if (WIN32)
         # tuple
         # turtle
         # sysinfo
-        # stack
+        stack
         # span
         # queue
         # priority_queue

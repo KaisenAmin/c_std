@@ -179,7 +179,7 @@ bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) {
  * @param stk Pointer to the stack where the item will be pushed.
  * @param item Pointer to the item that will be pushed onto the stack.
  */
-void stack_push(Stack* stk, void* item) {
+void stack_push(const Stack* stk, const void* item) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_push.\n");
@@ -204,7 +204,7 @@ void stack_push(Stack* stk, void* item) {
  * @param stk Pointer to the stack from which the item will be popped.
  * @return A pointer to the popped item, or NULL if the stack is empty or NULL.
  */
-void* stack_pop(Stack* stk) {
+void* stack_pop(const Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_pop.\n");
@@ -229,7 +229,7 @@ void* stack_pop(Stack* stk) {
  * @param stk Pointer to the stack whose top item will be accessed.
  * @return A pointer to the top item of the stack, or NULL if the stack is empty or NULL.
  */
-void* stack_top(Stack* stk) {
+void* stack_top(const Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_top.\n");
@@ -254,7 +254,7 @@ void* stack_top(Stack* stk) {
  * @param stk Pointer to the stack whose size is to be returned.
  * @return The number of items in the stack, or 0 if the stack is NULL.
  */
-size_t stack_size(Stack* stk) {
+size_t stack_size(const Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
             fmt_fprintf(stderr, "Warning: Stack pointer is NULL in stack_size. Returning 0.\n");
@@ -272,7 +272,7 @@ size_t stack_size(Stack* stk) {
  * @param stk Pointer to the stack to be checked.
  * @return true if the stack is empty or NULL, false otherwise.
  */
-bool stack_empty(Stack* stk) {
+bool stack_empty(const Stack* stk) {
     if (stk == NULL) {
         return true; // Consider a NULL stack as empty
     }
@@ -288,7 +288,7 @@ bool stack_empty(Stack* stk) {
  * @param stk Pointer to the stack where the item will be emplaced.
  * @param item Pointer to the item to be emplaced on the stack.
  */
-void stack_emplace(Stack* stk, void* item) {
+void stack_emplace(const Stack* stk, void* item) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_emplace.\n");
@@ -312,7 +312,7 @@ void stack_emplace(Stack* stk, void* item) {
  *
  * @param stk Pointer to the stack to be cleared.
  */
-void stack_clear(Stack* stk) {
+void stack_clear(const Stack* stk) {
     if (stk == NULL) {
         #ifdef STACK_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_clear.\n");

@@ -103,8 +103,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_crend(const String*)`: Returns a constant reverse iterator to the end.
 
 ## String Data Access
-- `string_data(String*)`: Returns a pointer to the data stored in a String.
-- `string_c_str(String*)`: Returns a pointer to the null-terminated sequence of characters.
+- `string_data(const String*)`: Returns a pointer to the data stored in a String.
+- `string_c_str(const String*)`: Returns a pointer to the null-terminated sequence of characters.
 - `string_at(const String*, size_t)`: Returns a reference to the character at a specified index.
 - `string_back(const String*)`: Returns a reference to the last character.
 - `string_front(const String*)`: Returns a reference to the first character.

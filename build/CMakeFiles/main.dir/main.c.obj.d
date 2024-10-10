@@ -1,6 +1,8 @@
 CMakeFiles/main.dir/main.c.obj: \
  C:/Users/asus/OneDrive/Desktop/project/c_std/main.c \
- C:/Users/asus/OneDrive/Desktop/project/c_std/string/std_string.h \
+ C:/Users/asus/OneDrive/Desktop/project/c_std/stack/stack.h \
+ C:/Users/asus/OneDrive/Desktop/project/c_std/vector/vector.h \
+ C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stdbool.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stddef.h \
  C:/msys64/mingw64/include/stddef.h C:/msys64/mingw64/include/crtdefs.h \
  C:/msys64/mingw64/include/corecrt.h C:/msys64/mingw64/include/_mingw.h \
@@ -8,7 +10,7 @@ CMakeFiles/main.dir/main.c.obj: \
  C:/msys64/mingw64/include/_mingw_secapi.h \
  C:/msys64/mingw64/include/vadefs.h \
  C:/msys64/mingw64/include/sdks/_mingw_ddk.h \
- C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stdbool.h \
+ C:/Users/asus/OneDrive/Desktop/project/c_std/string/std_string.h \
  C:/Users/asus/OneDrive/Desktop/project/c_std/fmt/fmt.h \
  C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.h \
  C:/msys64/mingw64/include/stdio.h \
@@ -20,13 +22,4 @@ CMakeFiles/main.dir/main.c.obj: \
  C:/msys64/mingw64/include/stdarg.h \
  C:/msys64/mingw64/include/_mingw_stdarg.h \
  C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.h \
- C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.h \
- C:/msys64/mingw64/include/stdlib.h \
- C:/msys64/mingw64/include/corecrt_wstdlib.h \
- C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/limits.h \
- C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/syslimits.h \
- C:/msys64/mingw64/include/limits.h \
- C:/msys64/mingw64/include/sec_api/stdlib_s.h \
- C:/msys64/mingw64/include/malloc.h \
- C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/mm_malloc.h \
- C:/msys64/mingw64/include/errno.h
+ C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.h

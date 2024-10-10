@@ -1,18 +1,30 @@
+#include "stack/stack.h"
 #include "string/std_string.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
 int main() {
-    String* str = string_create("Hello,World-This.Is;A-Test");
-    int count = 0;
-    String** tokens = string_tokenize(str, ",.-;", &count);
+    String* myString = string_create("");
+    Stack* stack = stack_create(sizeof(char*));
 
-    for (int i = 0; i < count; i++) {
-        fmt_printf("Token %d: %s\n", i, tokens[i]->dataStr);
-        string_deallocate(tokens[i]);
-    }
-    free(tokens);
+    char* value1 = "Amin";
+    string_append(myString, value1);
+    stack_push(stack, &myString);
 
-    string_deallocate(str);
+    char* value2 = "Tahmasebi";
+    string_append(myString, value2);
+    stack_push(stack, &myString);
+
+    char* value3 = "C Programming";
+    string_append(myString, value3);
+    stack_push(stack, &myString);
+
+    fmt_printf("Size of Stack is %zu\n", stack_size(stack));
+
+    String** str1 = (String**)stack_pop(stack);
+    fmt_printf("%s", string_c_str(*str1));
+
+    string_deallocate(*str1);
+    stack_deallocate(stack);
+    
     return 0;
 }

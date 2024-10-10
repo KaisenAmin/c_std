@@ -42,15 +42,15 @@ To use the Stack library in your project, include the `stack.h` header file in y
 - `stack_is_not_equal(const Stack* stk1, const Stack* stk2)`: Checks if two stacks are not equal.
 
 ### Stack Operations
-- `stack_push(Stack* stk, void* item)`: Pushes an item onto the stack.
-- `stack_pop(Stack* stk)`: Removes the top item from the stack and returns it.
-- `stack_top(Stack* stk)`: Returns the top item of the stack without removing it.
-- `stack_empty(Stack* stk)`: Checks if the stack is empty.
-- `stack_size(Stack* stk)`: Returns the number of items in the stack.
-- `stack_clear(Stack* stk)`: Removes all items from the stack.
+- `stack_push(const Stack* stk, const void* item)`: Pushes an item onto the stack.
+- `stack_pop(const Stack* stk)`: Removes the top item from the stack and returns it.
+- `stack_top(const Stack* stk)`: Returns the top item of the stack without removing it.
+- `stack_empty(const Stack* stk)`: Checks if the stack is empty.
+- `stack_size(const Stack* stk)`: Returns the number of items in the stack.
+- `stack_clear(const Stack* stk)`: Removes all items from the stack.
 
 ### Advanced Stack Operations
-- `stack_emplace(Stack* stk, void* item)`: Adds a new item to the top of the stack without copying.
+- `stack_emplace(const Stack* stk, void* item)`: Adds a new item to the top of the stack without copying.
 - `stack_swap(Stack* stk1, Stack* stk2)`: Swaps the contents of two stacks.
 
 ### Cleanup
@@ -124,7 +124,7 @@ After Pop size is 4
 
 ```c
 #include "stack/stack.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -164,7 +164,7 @@ AminTahmasebiC Programming
 
 ```c
 #include "stack/stack.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -208,7 +208,7 @@ stk1 is greater than or equal to stk2
 This example demonstrates how to use the Stack and String libraries to evaluate a simple expression. It's a basic implementation and works with single-digit numbers and basic operators (+, -, *, /).
 ```c
 #include "stack/stack.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <ctype.h>
 
@@ -352,7 +352,7 @@ Current State After Undo: (1, 2) (3, 4)
 The program will take an input string and use a stack to keep track of opening parentheses. For each closing parenthesis, it will check if there is a corresponding opening parenthesis in the stack. If the stack is empty or the parentheses are mismatched, the string is not balanced.
 ```c
 #include "stack/stack.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 bool isBalanced(String* input) {

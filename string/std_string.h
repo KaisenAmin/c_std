@@ -111,7 +111,7 @@ size_t string_copy(const String* str, char* buffer, size_t pos, size_t len);
 size_t string_count(const String* str, const char* substr);
 size_t string_utf8_char_len(char c);
 
-const char* string_data(String* str);
+const char* string_data(const String* str);
 const char* string_c_str(const String* str);
 const char* string_cbegin(const String* str);
 const char* string_cend(const String* str);

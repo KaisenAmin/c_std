@@ -1244,7 +1244,7 @@ int string_find_last_not_of(const String *str, const char *buffer, size_t pos) {
  * @param str The String object to retrieve data from. Must not be NULL.
  * @return A pointer to the character data, or NULL on error.
  */
-const char *string_data(String *str) {
+const char *string_data(const String *str) {
     if (str == NULL || str->dataStr == NULL) {
         fprintf(stderr, "Error: Invalid input or uninitialized String in string_data function.\n");
         return NULL;
