@@ -29,22 +29,22 @@ typedef enum {
 } CorrelationMethod;
 
 
-double statistics_mean(double* data, size_t n);
-double statistics_fmean(double* data, size_t n, double* weights);
-double statistics_geometric_mean(double* data, size_t n);
-double statistics_harmonic_mean(double *data, size_t n, double* weights);
-double statistics_median(double* data, size_t n);
-double statistics_median_low(double* data, size_t n);
-double statistics_median_high(double* data, size_t n);
-double statistics_median_grouped(double *data, size_t n, double interval);
-double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu);
-double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu);
-double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar);
-double statistics_variance(double* data, size_t n, bool xbar_provided, double xbar);
-double statistics_covariance(double* x, double *y, size_t n);
-double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod method);
+double statistics_mean(const double* data, size_t n);
+double statistics_fmean(const double* data, size_t n, const double* weights);
+double statistics_geometric_mean(const double* data, size_t n);
+double statistics_harmonic_mean(const double *data, size_t n, const double* weights);
+double statistics_median(const double* data, size_t n);
+double statistics_median_low(const double* data, size_t n);
+double statistics_median_high(const double* data, size_t n);
+double statistics_median_grouped(const double *data, size_t n, double interval);
+double statistics_pstdev(const double* data, size_t n, bool mu_provided, double mu);
+double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu);
+double statistics_stdev(const double* data, size_t n, bool xbar_provided, double xbar);
+double statistics_variance(const double* data, size_t n, bool xbar_provided, double xbar);
+double statistics_covariance(const double* x, const double *y, size_t n);
+double statistics_correlation(const double* x, const double* y, size_t n, CorrelationMethod method);
 
-LinearRegression statistics_linear_regression(double* x, double* y, size_t n, bool proportional);
+LinearRegression statistics_linear_regression(const double* x, const double* y, size_t n, bool proportional);
 
 void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count);
 void* statistics_mode(void* data, size_t n, size_t size);

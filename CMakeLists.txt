@@ -85,11 +85,11 @@ if (WIN32)
         ssl
         pq
         # Optional modules that are commented out:
-        random
-        map
-        vector
+        # random
+        # map
+        # vector
         stdtime
-        # statistics
+        statistics
         # tuple
         # turtle
         # sysinfo
@@ -138,7 +138,7 @@ else()
         # map
         vector
         # stdtime
-        # statistics
+        statistics
         # tuple
         # turtle
         # sysinfo

@@ -5,7 +5,7 @@
 #include <string.h>
 
 // Return the index where to insert item x in list a, assuming a is sorted.
-static size_t bisect_left(double* data, size_t n, double x) {
+static size_t bisect_left(const double* data, size_t n, double x) {
     size_t lo = 0;
     size_t hi = n;
 
@@ -23,7 +23,7 @@ static size_t bisect_left(double* data, size_t n, double x) {
 }
 
 // Return the index where to insert item x in list a, assuming a is sorted.
-static size_t bisect_right(double* data, size_t n, double x) {
+static size_t bisect_right(const double* data, size_t n, double x) {
     size_t lo = 0;
     size_t hi = n;
 
@@ -41,7 +41,7 @@ static size_t bisect_right(double* data, size_t n, double x) {
 }
 
 // helper function for compute some of element 
-static double statistics_sum(double* data, size_t n) {
+static double statistics_sum(const double* data, size_t n) {
     double total = 0.0;
 
     for (size_t i = 0; i < n; i++) {
@@ -52,7 +52,7 @@ static double statistics_sum(double* data, size_t n) {
 }
 
 // helper function for checking if any element in data is negative return true
-static bool fail_neg(double* data, size_t n) {
+static bool fail_neg(const double* data, size_t n) {
     for (size_t i = 0; i < n; i++) {
         if (data[i] < 0) {
             return true;
@@ -106,7 +106,7 @@ static int statistics_compare_index_struct(const void* a, const void* b) {
 }
 
 // this helper function function has been corrected to handle ties by averaging the ranks of tied values.
-static void statistics_rank_data(double* data, size_t n, double* ranked_data) {
+static void statistics_rank_data(const double* data, size_t n, double* ranked_data) {
     __StatisticsIndexedValue* indexed_data = malloc(n * sizeof(__StatisticsIndexedValue));
     if (indexed_data == NULL) {
         fprintf(stderr, "Error: memory allocation failed.\n");
@@ -139,7 +139,7 @@ static void statistics_rank_data(double* data, size_t n, double* ranked_data) {
     free(indexed_data);
 }
 
-static double statistics_sumprod(double* x, double* y, size_t n) {
+static double statistics_sumprod(const double* x, const double* y, size_t n) {
     double sum = 0.0;
 
     for (size_t i = 0; i < n; i++) {
@@ -150,7 +150,7 @@ static double statistics_sumprod(double* x, double* y, size_t n) {
 }
 
 // helper functin for add square of each element in data 
-static double statistics_sum_of_squares(double* data, size_t n) {
+static double statistics_sum_of_squares(const double* data, size_t n) {
     double sum = 0.0;
 
     for (size_t i = 0; i < n; i++) {
@@ -161,7 +161,7 @@ static double statistics_sum_of_squares(double* data, size_t n) {
 }
 
 // this helper function calculates Spearman's rank correlation by transforming the ranks and recomputing the differences and sums.
-static double statistics_spearman_correlation(double* x, double* y, size_t n) {
+static double statistics_spearman_correlation(const double* x, const double* y, size_t n) {
     double* x_ranked = malloc(n * sizeof(double));
     double* y_ranked = malloc(n * sizeof(double));
     if (x_ranked == NULL || y_ranked == NULL) {
@@ -200,7 +200,7 @@ static double statistics_spearman_correlation(double* x, double* y, size_t n) {
  *
  * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_mean(double* data, size_t n) {
+double statistics_mean(const double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -228,7 +228,7 @@ double statistics_mean(double* data, size_t n) {
  *
  * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_median(double* data, size_t n) {
+double statistics_median(const double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -273,7 +273,7 @@ double statistics_median(double* data, size_t n) {
  *
  * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_median_low(double* data, size_t n) {
+double statistics_median_low(const double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -318,7 +318,7 @@ double statistics_median_low(double* data, size_t n) {
  *
  * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_median_high(double* data, size_t n) {
+double statistics_median_high(const double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -363,7 +363,7 @@ double statistics_median_high(double* data, size_t n) {
  * @note If `data` is `NULL`, or if `n` is zero, or if `interval` is not positive, 
  *          the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_median_grouped(double* data, size_t n, double interval) {
+double statistics_median_grouped(const double* data, size_t n, double interval) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -416,7 +416,7 @@ double statistics_median_grouped(double* data, size_t n, double interval) {
  *
  * @note If `data` is `NULL`, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_variance(double* data, size_t n, bool xbar_provided, double xbar) {
+double statistics_variance(const double* data, size_t n, bool xbar_provided, double xbar) {
     if (!data || n < 2) {
         fprintf(stderr, "Invalid input. Data should have at least two elements.\n");
         return NAN;
@@ -445,7 +445,7 @@ double statistics_variance(double* data, size_t n, bool xbar_provided, double xb
  *
  * @note If `data` is `NULL`, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar) {
+double statistics_stdev(const double* data, size_t n, bool xbar_provided, double xbar) {
     if (!data || n < 2) {
         fprintf(stderr, "Invalid input. Data should have at least two elements.\n");
         return NAN;
@@ -468,7 +468,7 @@ double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar)
  *
  * @note If `data` is `NULL`, or if `n` is less than 1, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu) {
+double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu) {
     if (!data || n < 1) {
         fprintf(stderr, "Invalid input. Data should have at least one element.\n");
         return NAN;
@@ -497,7 +497,7 @@ double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu)
  *
  * @note If `data` is `NULL`, or if `n` is less than 1, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu) {
+double statistics_pstdev(const double* data, size_t n, bool mu_provided, double mu) {
     if (!data || n < 1) {
         fprintf(stderr, "Invalid input. Data should have at least one element.\n");
         return NAN;
@@ -521,7 +521,7 @@ double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu) {
  * @note If weights are provided, the sum of weights must be non-zero. 
  *          If the sum of weights is zero, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_fmean(double* data, size_t n, double* weights) {
+double statistics_fmean(const double* data, size_t n, const double* weights) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -570,7 +570,7 @@ double statistics_fmean(double* data, size_t n, double* weights) {
  * @note If any element in `data` is zero, the geometric mean is zero.
  * @note If the computed mean of the logarithms is `-INFINITY`, the function returns zero.
  */
-double statistics_geometric_mean(double* data, size_t n) {
+double statistics_geometric_mean(const double* data, size_t n) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -622,7 +622,7 @@ double statistics_geometric_mean(double* data, size_t n) {
  * @note If the sum of weights is zero or if the weighted sum of the reciprocals is non-positive, 
  *          the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_harmonic_mean(double* data, size_t n, double* weights) {
+double statistics_harmonic_mean(const double* data, size_t n, const double* weights) {
     if (data == NULL) {
         fprintf(stderr, "Error: data argument is null.\n");
         return NAN;
@@ -821,6 +821,10 @@ void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count
  * @brief This function calculates the covariance between the given data points.
  * Covariance is a measure of how much two random variables vary together.
  *
+ * This function uses an unbiased estimator (bias is set to false), meaning that the 
+ * result is divided by \( n - 1 \), which is suitable for sample data rather than 
+ * population data.
+ *
  * @param x Pointer to an array of doubles representing the first data set.
  * @param y Pointer to an array of doubles representing the second data set.
  * @param n The number of data points in each data set.
@@ -828,7 +832,7 @@ void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count
  *
  * @note If `x` or `y` is NULL, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
  */
-double statistics_covariance(double* x, double* y, size_t n) {
+double statistics_covariance(const double* x, const double* y, size_t n) {
     if (x == NULL || y == NULL) {
         fprintf(stderr, "Error: x or y argument is null.\n");
         return NAN;
@@ -866,7 +870,7 @@ double statistics_covariance(double* x, double* y, size_t n) {
  *       Ensure that there is enough available memory to avoid allocation failure.
  * @note If the variance of either data set is zero, the function returns `NAN`.
  */
-double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod method) {
+double statistics_correlation(const double* x, const double* y, size_t n, CorrelationMethod method) {
     if (x == NULL || y == NULL) {
         fprintf(stderr, "Error: x or y argument is null.\n");
         return NAN;
@@ -935,7 +939,7 @@ double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod 
  * @note If the variance of the x-coordinates is zero, the function returns a LinearRegression 
  *       structure with both slope and intercept set to 0.0 and prints an error message to stderr.
  */
-LinearRegression statistics_linear_regression(double* x, double* y, size_t n, bool proportional) {
+LinearRegression statistics_linear_regression(const double* x, const double* y, size_t n, bool proportional) {
     LinearRegression result = {0.0, 0.0};
 
     if (x == NULL || y == NULL) {

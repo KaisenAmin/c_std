@@ -1,23 +1,29 @@
-#include "string/std_string.h"
 #include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
+
 
 int main() {
-    String *myString = string_create("Hello, World!");
+    double x[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    double y[] = {1, 2, 3, 1, 2, 3, 1, 2, 3};
+    size_t n = sizeof(x) / sizeof(x[0]);
 
-    // rfind example
-    int rfindPos = string_rfind(myString, "o,", string_length(myString) - 1);
-    fmt_printf("Last 'o' found at position: %d\n", rfindPos);
+    double result_cov_xy = statistics_covariance(x, y, n);
+    if (!isnan(result_cov_xy)) {
+        fmt_printf("Covariance (x, y): %f\n", result_cov_xy);
+    }
 
-    int findFirstOfPos = string_find_first_of(myString, "World", 0);
-    fmt_printf("First occurrence of 'World' found at position: %d\n", findFirstOfPos);
+    double z[] = {9, 8, 7, 6, 5, 4, 3, 2, 1};
+    double result_cov_xz = statistics_covariance(x, z, n);
 
-    // find_last_of example
-    int findLastOfPos = string_find_last_of(myString, "World", string_length(myString) - 1);
-    fmt_printf("Last occurrence of 'World' found at position: %d\n", findLastOfPos);
+    if (!isnan(result_cov_xz)) {
+        fmt_printf("Covariance (x, z): %f\n", result_cov_xz);
+    }
 
-    // Deallocate and clean up
-    string_clear(myString);
-    string_deallocate(myString);
-
+    double result_cov_zx = statistics_covariance(z, x, n);
+    if (!isnan(result_cov_zx)) {
+        fmt_printf("Covariance (z, x): %f\n", result_cov_zx);
+    }
+    
     return 0;
 }

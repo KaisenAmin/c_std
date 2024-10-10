@@ -709,16 +709,17 @@ vector/clean: vector/CMakeFiles/vector.dir/clean
 
 # All Build rule for target.
 CMakeFiles/main.dir/all: fmt/CMakeFiles/fmt.dir/all
-CMakeFiles/main.dir/all: encoding/CMakeFiles/encoding.dir/all
-CMakeFiles/main.dir/all: string/CMakeFiles/stdstring.dir/all
 CMakeFiles/main.dir/all: random/CMakeFiles/random.dir/all
-CMakeFiles/main.dir/all: map/CMakeFiles/map.dir/all
+CMakeFiles/main.dir/all: string/CMakeFiles/stdstring.dir/all
+CMakeFiles/main.dir/all: encoding/CMakeFiles/encoding.dir/all
 CMakeFiles/main.dir/all: vector/CMakeFiles/vector.dir/all
+CMakeFiles/main.dir/all: map/CMakeFiles/map.dir/all
 CMakeFiles/main.dir/all: time/CMakeFiles/stdtime.dir/all
-CMakeFiles/main.dir/all: file_io/CMakeFiles/fileio.dir/all
+CMakeFiles/main.dir/all: statistics/CMakeFiles/statistics.dir/all
 CMakeFiles/main.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
-CMakeFiles/main.dir/all: network/CMakeFiles/network.dir/all
+CMakeFiles/main.dir/all: file_io/CMakeFiles/fileio.dir/all
 CMakeFiles/main.dir/all: json/CMakeFiles/json.dir/all
+CMakeFiles/main.dir/all: network/CMakeFiles/network.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=37,38 "Built target main"
@@ -726,7 +727,7 @@ CMakeFiles/main.dir/all: json/CMakeFiles/json.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/main.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 27
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 29
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/main.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 0
 .PHONY : CMakeFiles/main.dir/rule
@@ -752,7 +753,7 @@ CMakeFiles/run.dir/all: CMakeFiles/main.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/run.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 27
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 29
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/run.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 0
 .PHONY : CMakeFiles/run.dir/rule
@@ -796,8 +797,8 @@ string/CMakeFiles/stdstring.dir/clean:
 # Target rules for target fmt/CMakeFiles/fmt.dir
 
 # All Build rule for target.
-fmt/CMakeFiles/fmt.dir/all: encoding/CMakeFiles/encoding.dir/all
 fmt/CMakeFiles/fmt.dir/all: string/CMakeFiles/stdstring.dir/all
+fmt/CMakeFiles/fmt.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f fmt/CMakeFiles/fmt.dir/build.make fmt/CMakeFiles/fmt.dir/depend
 	$(MAKE) $(MAKESILENT) -f fmt/CMakeFiles/fmt.dir/build.make fmt/CMakeFiles/fmt.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=27,28 "Built target fmt"
@@ -876,8 +877,8 @@ random/CMakeFiles/random.dir/clean:
 
 # All Build rule for target.
 map/CMakeFiles/map.dir/all: fmt/CMakeFiles/fmt.dir/all
-map/CMakeFiles/map.dir/all: encoding/CMakeFiles/encoding.dir/all
 map/CMakeFiles/map.dir/all: string/CMakeFiles/stdstring.dir/all
+map/CMakeFiles/map.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f map/CMakeFiles/map.dir/build.make map/CMakeFiles/map.dir/depend
 	$(MAKE) $(MAKESILENT) -f map/CMakeFiles/map.dir/build.make map/CMakeFiles/map.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=39,40 "Built target map"
@@ -904,8 +905,8 @@ map/CMakeFiles/map.dir/clean:
 
 # All Build rule for target.
 vector/CMakeFiles/vector.dir/all: fmt/CMakeFiles/fmt.dir/all
-vector/CMakeFiles/vector.dir/all: encoding/CMakeFiles/encoding.dir/all
 vector/CMakeFiles/vector.dir/all: string/CMakeFiles/stdstring.dir/all
+vector/CMakeFiles/vector.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f vector/CMakeFiles/vector.dir/build.make vector/CMakeFiles/vector.dir/depend
 	$(MAKE) $(MAKESILENT) -f vector/CMakeFiles/vector.dir/build.make vector/CMakeFiles/vector.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=73,74 "Built target vector"
@@ -932,8 +933,8 @@ vector/CMakeFiles/vector.dir/clean:
 
 # All Build rule for target.
 time/CMakeFiles/stdtime.dir/all: fmt/CMakeFiles/fmt.dir/all
-time/CMakeFiles/stdtime.dir/all: encoding/CMakeFiles/encoding.dir/all
 time/CMakeFiles/stdtime.dir/all: string/CMakeFiles/stdstring.dir/all
+time/CMakeFiles/stdtime.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f time/CMakeFiles/stdtime.dir/build.make time/CMakeFiles/stdtime.dir/depend
 	$(MAKE) $(MAKESILENT) -f time/CMakeFiles/stdtime.dir/build.make time/CMakeFiles/stdtime.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=65,66 "Built target stdtime"
@@ -986,8 +987,8 @@ statistics/CMakeFiles/statistics.dir/clean:
 
 # All Build rule for target.
 tuple/CMakeFiles/tuple.dir/all: fmt/CMakeFiles/fmt.dir/all
-tuple/CMakeFiles/tuple.dir/all: encoding/CMakeFiles/encoding.dir/all
 tuple/CMakeFiles/tuple.dir/all: string/CMakeFiles/stdstring.dir/all
+tuple/CMakeFiles/tuple.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f tuple/CMakeFiles/tuple.dir/build.make tuple/CMakeFiles/tuple.dir/depend
 	$(MAKE) $(MAKESILENT) -f tuple/CMakeFiles/tuple.dir/build.make tuple/CMakeFiles/tuple.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=69,70 "Built target tuple"
@@ -1066,8 +1067,8 @@ sysinfo/CMakeFiles/sysinfo.dir/clean:
 
 # All Build rule for target.
 stack/CMakeFiles/stack.dir/all: fmt/CMakeFiles/fmt.dir/all
-stack/CMakeFiles/stack.dir/all: encoding/CMakeFiles/encoding.dir/all
 stack/CMakeFiles/stack.dir/all: string/CMakeFiles/stdstring.dir/all
+stack/CMakeFiles/stack.dir/all: encoding/CMakeFiles/encoding.dir/all
 stack/CMakeFiles/stack.dir/all: vector/CMakeFiles/vector.dir/all
 	$(MAKE) $(MAKESILENT) -f stack/CMakeFiles/stack.dir/build.make stack/CMakeFiles/stack.dir/depend
 	$(MAKE) $(MAKESILENT) -f stack/CMakeFiles/stack.dir/build.make stack/CMakeFiles/stack.dir/build
@@ -1095,8 +1096,8 @@ stack/CMakeFiles/stack.dir/clean:
 
 # All Build rule for target.
 span/CMakeFiles/span.dir/all: fmt/CMakeFiles/fmt.dir/all
-span/CMakeFiles/span.dir/all: encoding/CMakeFiles/encoding.dir/all
 span/CMakeFiles/span.dir/all: string/CMakeFiles/stdstring.dir/all
+span/CMakeFiles/span.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f span/CMakeFiles/span.dir/build.make span/CMakeFiles/span.dir/depend
 	$(MAKE) $(MAKESILENT) -f span/CMakeFiles/span.dir/build.make span/CMakeFiles/span.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=55,56 "Built target span"
@@ -1123,8 +1124,8 @@ span/CMakeFiles/span.dir/clean:
 
 # All Build rule for target.
 queue/CMakeFiles/queue.dir/all: fmt/CMakeFiles/fmt.dir/all
-queue/CMakeFiles/queue.dir/all: encoding/CMakeFiles/encoding.dir/all
 queue/CMakeFiles/queue.dir/all: string/CMakeFiles/stdstring.dir/all
+queue/CMakeFiles/queue.dir/all: encoding/CMakeFiles/encoding.dir/all
 queue/CMakeFiles/queue.dir/all: vector/CMakeFiles/vector.dir/all
 	$(MAKE) $(MAKESILENT) -f queue/CMakeFiles/queue.dir/build.make queue/CMakeFiles/queue.dir/depend
 	$(MAKE) $(MAKESILENT) -f queue/CMakeFiles/queue.dir/build.make queue/CMakeFiles/queue.dir/build
@@ -1152,8 +1153,8 @@ queue/CMakeFiles/queue.dir/clean:
 
 # All Build rule for target.
 priority_queue/CMakeFiles/priority_queue.dir/all: fmt/CMakeFiles/fmt.dir/all
-priority_queue/CMakeFiles/priority_queue.dir/all: encoding/CMakeFiles/encoding.dir/all
 priority_queue/CMakeFiles/priority_queue.dir/all: string/CMakeFiles/stdstring.dir/all
+priority_queue/CMakeFiles/priority_queue.dir/all: encoding/CMakeFiles/encoding.dir/all
 priority_queue/CMakeFiles/priority_queue.dir/all: vector/CMakeFiles/vector.dir/all
 	$(MAKE) $(MAKESILENT) -f priority_queue/CMakeFiles/priority_queue.dir/build.make priority_queue/CMakeFiles/priority_queue.dir/depend
 	$(MAKE) $(MAKESILENT) -f priority_queue/CMakeFiles/priority_queue.dir/build.make priority_queue/CMakeFiles/priority_queue.dir/build
@@ -1233,8 +1234,8 @@ numeric/CMakeFiles/numeric.dir/clean:
 
 # All Build rule for target.
 array/CMakeFiles/array.dir/all: fmt/CMakeFiles/fmt.dir/all
-array/CMakeFiles/array.dir/all: encoding/CMakeFiles/encoding.dir/all
 array/CMakeFiles/array.dir/all: string/CMakeFiles/stdstring.dir/all
+array/CMakeFiles/array.dir/all: encoding/CMakeFiles/encoding.dir/all
 array/CMakeFiles/array.dir/all: vector/CMakeFiles/vector.dir/all
 	$(MAKE) $(MAKESILENT) -f array/CMakeFiles/array.dir/build.make array/CMakeFiles/array.dir/depend
 	$(MAKE) $(MAKESILENT) -f array/CMakeFiles/array.dir/build.make array/CMakeFiles/array.dir/build
@@ -1262,8 +1263,8 @@ array/CMakeFiles/array.dir/clean:
 
 # All Build rule for target.
 bitset/CMakeFiles/bitset.dir/all: fmt/CMakeFiles/fmt.dir/all
-bitset/CMakeFiles/bitset.dir/all: encoding/CMakeFiles/encoding.dir/all
 bitset/CMakeFiles/bitset.dir/all: string/CMakeFiles/stdstring.dir/all
+bitset/CMakeFiles/bitset.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f bitset/CMakeFiles/bitset.dir/build.make bitset/CMakeFiles/bitset.dir/depend
 	$(MAKE) $(MAKESILENT) -f bitset/CMakeFiles/bitset.dir/build.make bitset/CMakeFiles/bitset.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=5,6 "Built target bitset"
@@ -1290,8 +1291,8 @@ bitset/CMakeFiles/bitset.dir/clean:
 
 # All Build rule for target.
 cli/CMakeFiles/cli.dir/all: fmt/CMakeFiles/fmt.dir/all
-cli/CMakeFiles/cli.dir/all: encoding/CMakeFiles/encoding.dir/all
 cli/CMakeFiles/cli.dir/all: string/CMakeFiles/stdstring.dir/all
+cli/CMakeFiles/cli.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f cli/CMakeFiles/cli.dir/build.make cli/CMakeFiles/cli.dir/depend
 	$(MAKE) $(MAKESILENT) -f cli/CMakeFiles/cli.dir/build.make cli/CMakeFiles/cli.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=7,8 "Built target cli"
@@ -1318,8 +1319,8 @@ cli/CMakeFiles/cli.dir/clean:
 
 # All Build rule for target.
 concurrent/CMakeFiles/concurrent.dir/all: fmt/CMakeFiles/fmt.dir/all
-concurrent/CMakeFiles/concurrent.dir/all: encoding/CMakeFiles/encoding.dir/all
 concurrent/CMakeFiles/concurrent.dir/all: string/CMakeFiles/stdstring.dir/all
+concurrent/CMakeFiles/concurrent.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f concurrent/CMakeFiles/concurrent.dir/build.make concurrent/CMakeFiles/concurrent.dir/depend
 	$(MAKE) $(MAKESILENT) -f concurrent/CMakeFiles/concurrent.dir/build.make concurrent/CMakeFiles/concurrent.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=9,10,11 "Built target concurrent"
@@ -1346,8 +1347,8 @@ concurrent/CMakeFiles/concurrent.dir/clean:
 
 # All Build rule for target.
 config/CMakeFiles/config.dir/all: fmt/CMakeFiles/fmt.dir/all
-config/CMakeFiles/config.dir/all: encoding/CMakeFiles/encoding.dir/all
 config/CMakeFiles/config.dir/all: string/CMakeFiles/stdstring.dir/all
+config/CMakeFiles/config.dir/all: encoding/CMakeFiles/encoding.dir/all
 config/CMakeFiles/config.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f config/CMakeFiles/config.dir/build.make config/CMakeFiles/config.dir/depend
 	$(MAKE) $(MAKESILENT) -f config/CMakeFiles/config.dir/build.make config/CMakeFiles/config.dir/build
@@ -1375,8 +1376,8 @@ config/CMakeFiles/config.dir/clean:
 
 # All Build rule for target.
 file_io/CMakeFiles/fileio.dir/all: fmt/CMakeFiles/fmt.dir/all
-file_io/CMakeFiles/fileio.dir/all: encoding/CMakeFiles/encoding.dir/all
 file_io/CMakeFiles/fileio.dir/all: string/CMakeFiles/stdstring.dir/all
+file_io/CMakeFiles/fileio.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f file_io/CMakeFiles/fileio.dir/build.make file_io/CMakeFiles/fileio.dir/depend
 	$(MAKE) $(MAKESILENT) -f file_io/CMakeFiles/fileio.dir/build.make file_io/CMakeFiles/fileio.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=24,25,26 "Built target fileio"
@@ -1429,8 +1430,8 @@ crypto/CMakeFiles/stdcrypto.dir/clean:
 
 # All Build rule for target.
 csv/CMakeFiles/csv.dir/all: fmt/CMakeFiles/fmt.dir/all
-csv/CMakeFiles/csv.dir/all: encoding/CMakeFiles/encoding.dir/all
 csv/CMakeFiles/csv.dir/all: string/CMakeFiles/stdstring.dir/all
+csv/CMakeFiles/csv.dir/all: encoding/CMakeFiles/encoding.dir/all
 csv/CMakeFiles/csv.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f csv/CMakeFiles/csv.dir/build.make csv/CMakeFiles/csv.dir/depend
 	$(MAKE) $(MAKESILENT) -f csv/CMakeFiles/csv.dir/build.make csv/CMakeFiles/csv.dir/build
@@ -1458,8 +1459,8 @@ csv/CMakeFiles/csv.dir/clean:
 
 # All Build rule for target.
 date/CMakeFiles/date.dir/all: fmt/CMakeFiles/fmt.dir/all
-date/CMakeFiles/date.dir/all: encoding/CMakeFiles/encoding.dir/all
 date/CMakeFiles/date.dir/all: string/CMakeFiles/stdstring.dir/all
+date/CMakeFiles/date.dir/all: encoding/CMakeFiles/encoding.dir/all
 date/CMakeFiles/date.dir/all: time/CMakeFiles/stdtime.dir/all
 	$(MAKE) $(MAKESILENT) -f date/CMakeFiles/date.dir/build.make date/CMakeFiles/date.dir/depend
 	$(MAKE) $(MAKESILENT) -f date/CMakeFiles/date.dir/build.make date/CMakeFiles/date.dir/build
@@ -1487,8 +1488,8 @@ date/CMakeFiles/date.dir/clean:
 
 # All Build rule for target.
 deque/CMakeFiles/deque.dir/all: fmt/CMakeFiles/fmt.dir/all
-deque/CMakeFiles/deque.dir/all: encoding/CMakeFiles/encoding.dir/all
 deque/CMakeFiles/deque.dir/all: string/CMakeFiles/stdstring.dir/all
+deque/CMakeFiles/deque.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f deque/CMakeFiles/deque.dir/build.make deque/CMakeFiles/deque.dir/depend
 	$(MAKE) $(MAKESILENT) -f deque/CMakeFiles/deque.dir/build.make deque/CMakeFiles/deque.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=18,19 "Built target deque"
@@ -1515,11 +1516,11 @@ deque/CMakeFiles/deque.dir/clean:
 
 # All Build rule for target.
 dir/CMakeFiles/dir.dir/all: fmt/CMakeFiles/fmt.dir/all
-dir/CMakeFiles/dir.dir/all: encoding/CMakeFiles/encoding.dir/all
 dir/CMakeFiles/dir.dir/all: string/CMakeFiles/stdstring.dir/all
+dir/CMakeFiles/dir.dir/all: encoding/CMakeFiles/encoding.dir/all
 dir/CMakeFiles/dir.dir/all: vector/CMakeFiles/vector.dir/all
-dir/CMakeFiles/dir.dir/all: file_io/CMakeFiles/fileio.dir/all
 dir/CMakeFiles/dir.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
+dir/CMakeFiles/dir.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f dir/CMakeFiles/dir.dir/build.make dir/CMakeFiles/dir.dir/depend
 	$(MAKE) $(MAKESILENT) -f dir/CMakeFiles/dir.dir/build.make dir/CMakeFiles/dir.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=20,21 "Built target dir"
@@ -1546,8 +1547,8 @@ dir/CMakeFiles/dir.dir/clean:
 
 # All Build rule for target.
 forward_list/CMakeFiles/forwardlist.dir/all: fmt/CMakeFiles/fmt.dir/all
-forward_list/CMakeFiles/forwardlist.dir/all: encoding/CMakeFiles/encoding.dir/all
 forward_list/CMakeFiles/forwardlist.dir/all: string/CMakeFiles/stdstring.dir/all
+forward_list/CMakeFiles/forwardlist.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f forward_list/CMakeFiles/forwardlist.dir/build.make forward_list/CMakeFiles/forwardlist.dir/depend
 	$(MAKE) $(MAKESILENT) -f forward_list/CMakeFiles/forwardlist.dir/build.make forward_list/CMakeFiles/forwardlist.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=29,30 "Built target forwardlist"
@@ -1574,8 +1575,8 @@ forward_list/CMakeFiles/forwardlist.dir/clean:
 
 # All Build rule for target.
 list/CMakeFiles/list.dir/all: fmt/CMakeFiles/fmt.dir/all
-list/CMakeFiles/list.dir/all: encoding/CMakeFiles/encoding.dir/all
 list/CMakeFiles/list.dir/all: string/CMakeFiles/stdstring.dir/all
+list/CMakeFiles/list.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f list/CMakeFiles/list.dir/build.make list/CMakeFiles/list.dir/depend
 	$(MAKE) $(MAKESILENT) -f list/CMakeFiles/list.dir/build.make list/CMakeFiles/list.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=33,34 "Built target list"
@@ -1602,8 +1603,8 @@ list/CMakeFiles/list.dir/clean:
 
 # All Build rule for target.
 log/CMakeFiles/log.dir/all: fmt/CMakeFiles/fmt.dir/all
-log/CMakeFiles/log.dir/all: encoding/CMakeFiles/encoding.dir/all
 log/CMakeFiles/log.dir/all: string/CMakeFiles/stdstring.dir/all
+log/CMakeFiles/log.dir/all: encoding/CMakeFiles/encoding.dir/all
 log/CMakeFiles/log.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f log/CMakeFiles/log.dir/build.make log/CMakeFiles/log.dir/depend
 	$(MAKE) $(MAKESILENT) -f log/CMakeFiles/log.dir/build.make log/CMakeFiles/log.dir/build
@@ -1631,8 +1632,8 @@ log/CMakeFiles/log.dir/clean:
 
 # All Build rule for target.
 matrix/CMakeFiles/matrix.dir/all: fmt/CMakeFiles/fmt.dir/all
-matrix/CMakeFiles/matrix.dir/all: encoding/CMakeFiles/encoding.dir/all
 matrix/CMakeFiles/matrix.dir/all: string/CMakeFiles/stdstring.dir/all
+matrix/CMakeFiles/matrix.dir/all: encoding/CMakeFiles/encoding.dir/all
 	$(MAKE) $(MAKESILENT) -f matrix/CMakeFiles/matrix.dir/build.make matrix/CMakeFiles/matrix.dir/depend
 	$(MAKE) $(MAKESILENT) -f matrix/CMakeFiles/matrix.dir/build.make matrix/CMakeFiles/matrix.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=41,42 "Built target matrix"
@@ -1659,12 +1660,12 @@ matrix/CMakeFiles/matrix.dir/clean:
 
 # All Build rule for target.
 network/CMakeFiles/network.dir/all: fmt/CMakeFiles/fmt.dir/all
-network/CMakeFiles/network.dir/all: encoding/CMakeFiles/encoding.dir/all
 network/CMakeFiles/network.dir/all: string/CMakeFiles/stdstring.dir/all
-network/CMakeFiles/network.dir/all: map/CMakeFiles/map.dir/all
+network/CMakeFiles/network.dir/all: encoding/CMakeFiles/encoding.dir/all
 network/CMakeFiles/network.dir/all: vector/CMakeFiles/vector.dir/all
-network/CMakeFiles/network.dir/all: file_io/CMakeFiles/fileio.dir/all
+network/CMakeFiles/network.dir/all: map/CMakeFiles/map.dir/all
 network/CMakeFiles/network.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
+network/CMakeFiles/network.dir/all: file_io/CMakeFiles/fileio.dir/all
 network/CMakeFiles/network.dir/all: json/CMakeFiles/json.dir/all
 	$(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/depend
 	$(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/build
@@ -1692,10 +1693,10 @@ network/CMakeFiles/network.dir/clean:
 
 # All Build rule for target.
 json/CMakeFiles/json.dir/all: fmt/CMakeFiles/fmt.dir/all
-json/CMakeFiles/json.dir/all: encoding/CMakeFiles/encoding.dir/all
 json/CMakeFiles/json.dir/all: string/CMakeFiles/stdstring.dir/all
-json/CMakeFiles/json.dir/all: map/CMakeFiles/map.dir/all
+json/CMakeFiles/json.dir/all: encoding/CMakeFiles/encoding.dir/all
 json/CMakeFiles/json.dir/all: vector/CMakeFiles/vector.dir/all
+json/CMakeFiles/json.dir/all: map/CMakeFiles/map.dir/all
 json/CMakeFiles/json.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f json/CMakeFiles/json.dir/build.make json/CMakeFiles/json.dir/depend
 	$(MAKE) $(MAKESILENT) -f json/CMakeFiles/json.dir/build.make json/CMakeFiles/json.dir/build

@@ -23,31 +23,31 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-- `double statistics_mean(double* data, size_t n)`: this function calculate and return mean (average) of data.
-- `double statistics_median(double* data, size_t n)`: this function calculates the median of the data. this function also sorts the data in ascending order before calculating the median.
-- `double statistics_median_low(double* data, size_t n)`: this function calculates the low median of the given data set. This function also sorts the data in ascending order before calculating the low median.
-- `double statistics_median_high(double* data, size_t n)`: this function calculates the high median of the given data set. This function also sorts the data in ascending order before calculating the high median.
-- `double statistics_median_grouped(double *data, size_t n, double interval)`: this function calculates the median of grouped continuous data, calculated as the 50th percentile. this function treats the data points as continuous data and calculates the 50% percentile median by first finding the median range using specified interval width , and then interpolating within that range using the position of the values from the data set that fall in that range.
+- `double statistics_mean(const double* data, size_t n)`: this function calculate and return mean (average) of data.
+- `double statistics_median(const double* data, size_t n)`: this function calculates the median of the data. this function also sorts the data in ascending order before calculating the median.
+- `double statistics_median_low(const double* data, size_t n)`: this function calculates the low median of the given data set. This function also sorts the data in ascending order before calculating the low median.
+- `double statistics_median_high(const double* data, size_t n)`: this function calculates the high median of the given data set. This function also sorts the data in ascending order before calculating the high median.
+- `double statistics_median_grouped(const double *data, size_t n, double interval)`: this function calculates the median of grouped continuous data, calculated as the 50th percentile. this function treats the data points as continuous data and calculates the 50% percentile median by first finding the median range using specified interval width , and then interpolating within that range using the position of the values from the data set that fall in that range.
 
-- `double statistics_variance(double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the sample variance of the data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
+- `double statistics_variance(const double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the sample variance of the data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
 
-- `double statistics_stdev(double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the standard deviation from a sample of data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
+- `double statistics_stdev(const double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the standard deviation from a sample of data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
 
-- `double statistics_pvariance(double* data, size_t n, bool mu_provided, double mu)`: this function calculates the variance of an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
+- `double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu)`: this function calculates the variance of an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
 
-- `double statistics_pstdev(double* data, size_t n, bool mu_provided, double mu)`: this function calculates the standard deviation from an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
+- `double statistics_pstdev(const double* data, size_t n, bool mu_provided, double mu)`: this function calculates the standard deviation from an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
 
-- `double statistics_fmean(double* data, size_t n, double* weights)`: this function calculate mean value with weight.
-- `double statistics_geometric_mean(double* data, size_t n)`: this function calculate geometric_mean of data.
-- `double statistics_harmonic_mean(double *data, size_t n, double* weights)`: this function calculate harmonic mean of data.
+- `double statistics_fmean(const double* data, size_t n, const double* weights)`: this function calculate mean value with weight.
+- `double statistics_geometric_mean(const double* data, size_t n)`: this function calculate geometric_mean of data.
+- `double statistics_harmonic_mean(const double *data, size_t n, const double* weights)`: this function calculate harmonic mean of data.
 - `void* statistics_mode(void* data, size_t n, size_t size)`: this function return the most commong data in array of any type.
 - `void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count)`: this function Return a list of the most frequently occurring values. 
-- `double statistics_covariance(double* x, double* y, size_t n)`: Return the sample covariance of two inputs *x* and *y*. Covariance
+- `double statistics_covariance(const double* x, const double* y, size_t n)`: Return the sample covariance of two inputs *x* and *y*. Covariance
 is a measure of the joint variability of two inputs.
 
-- `double statistics_correlation(double* x, double* y, size_t n, CorrelationMethod method)`: this function computes the correlation coefficient between two array x and y of length n. It calculates either the Pearson correlation if the method is CORRELATION_LINEAR or the Spearman rank correlation if the method is CORRELATION_RANKED, based on the specified CorrelationMethod enum.
+- `double statistics_correlation(const double* x, const double* y, size_t n, CorrelationMethod method)`: this function computes the correlation coefficient between two array x and y of length n. It calculates either the Pearson correlation if the method is CORRELATION_LINEAR or the Spearman rank correlation if the method is CORRELATION_RANKED, based on the specified CorrelationMethod enum.
 
-- `LinearRegression statistics_linear_regression(double* x, double* y, size_t n, bool proportional)`: this function return the slope and intercept of simple linear regression parameters estimated using ordinary least squares.
+- `LinearRegression statistics_linear_regression(const double* x, const double* y, size_t n, bool proportional)`: this function return the slope and intercept of simple linear regression parameters estimated using ordinary least squares.
 
 ## Examples
 
