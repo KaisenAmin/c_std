@@ -90,8 +90,8 @@ int string_compare_ignore_case(const String* str1, const String* str2);
 int string_to_int(const String *str);
 int string_strcmp(const char* str1, const char* str2);
 
-char* string_to_upper(String* str);
-char* string_to_lower(String* str);
+char* string_to_upper(const String* str);
+char* string_to_lower(const String* str);
 char* string_begin(String* str);
 char* string_end(String* str);
 char* string_rbegin(String* str);

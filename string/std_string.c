@@ -1435,7 +1435,7 @@ void string_clear(String* str) {
  * @param str The String object to be converted. Must not be NULL.
  * @return A new C-string with all characters in uppercase. The caller is responsible for freeing the allocated memory.
  */
-char* string_to_upper(String* str) {
+char* string_to_upper(const String* str) {
     if (str != NULL) {
         char* upper = (char*) malloc(sizeof(char) * (str->size + 1));
         if (!upper) {
@@ -1466,7 +1466,7 @@ char* string_to_upper(String* str) {
  * @param str The String object to be converted. Must not be NULL.
  * @return A new C-string with all characters in lowercase. The caller is responsible for freeing the allocated memory.
  */
-char* string_to_lower(String* str) {
+char* string_to_lower(const String* str) {
     if (str != NULL) {
         char* lower = (char*) malloc(sizeof(char) * (str->size + 1));
         if (!lower) {

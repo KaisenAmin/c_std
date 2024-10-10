@@ -122,8 +122,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_from_unicode(const wchar_t*)`: Converts a wide string back to a regular string.
 
 ## String Case and Encoding Operations
-- `string_to_upper(String*)`: Converts a String to uppercase.
-- `string_to_lower(String*)`: Converts a String to lowercase.
+- `string_to_upper(const String*)`: Converts a String to uppercase.
+- `string_to_lower(const String*)`: Converts a String to lowercase.
 - `string_to_casefold(String*)`: Converts a String to casefolded form.
 - `string_swap_case(String*)`: Swaps the case of each character in a String.
 
