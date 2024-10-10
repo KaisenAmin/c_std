@@ -375,7 +375,7 @@ bool string_is_not_equal(String* str1, String* str2) {
  * 
  * @return true if all characters are alphabetic, false otherwise.
  */
-bool string_is_alpha(String* str) {
+bool string_is_alpha(const String* str) {
     if (str != NULL){
         for (size_t index = 0; index < str->size; index++){
             if (!(str->dataStr[index] >= 'a' && str->dataStr[index] <= 'z') && 
@@ -398,7 +398,7 @@ bool string_is_alpha(String* str) {
  * 
  * @return true if all characters are digits, false otherwise.
  */
-bool string_is_digit(String* str) {
+bool string_is_digit(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_is_digit.\n");
         return false;
@@ -420,7 +420,7 @@ bool string_is_digit(String* str) {
  * @param str The String object to check. Must not be NULL.
  * @return true if all characters are uppercase, false otherwise.
  */
-bool string_is_upper(String* str) {
+bool string_is_upper(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_is_upper.\n");
         return false;
@@ -442,7 +442,7 @@ bool string_is_upper(String* str) {
  * @param str The String object to check. Must not be NULL.
  * @return true if all characters are lowercase, false otherwise.
  */
-bool string_is_lower(String* str) {
+bool string_is_lower(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_is_lower.\n");
         return false;
@@ -877,7 +877,7 @@ void string_deallocate(String *str) {
  * @param index The index of the character to retrieve. Must be within the range of the string's size.
  * @return The character at the specified index, or '\0' if the index is out of range or the String object is NULL.
  */
-char string_at(String* str, size_t index) {
+char string_at(const String* str, size_t index) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_at.\n");
         return '\0';  // Return a default character
@@ -930,7 +930,7 @@ char* string_front(String *str) {
  * @param str The String object whose length is to be determined. Must not be NULL.
  * @return The length of the string, or 0 if the String object is NULL.
  */
-size_t string_length(String* str) {
+size_t string_length(const String* str) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_length.\n");
         return 0;
@@ -3040,7 +3040,7 @@ char* string_strndup(const char* str, size_t n) {
  * @note If the String object is `NULL`, the function will print an error message 
  * to `stderr` and return `false`.
  */
-bool string_is_palindrome(String* str) {
+bool string_is_palindrome(const String* str) {
     if (!str) {
         fprintf(stderr, "Error : String object 'str' is NULL in string_is_palindrome");
         return false;
@@ -3079,7 +3079,7 @@ bool string_is_palindrome(String* str) {
  * @note If the String object is `NULL`, the function will print an error message to `stderr` 
  * and return `false`. If the String object is empty, the function also returns `false`.
  */
-bool string_is_alnum(String* str) {
+bool string_is_alnum(const String* str) {
     if (!str) {
         fprintf(stderr, "Error: String object `str` is NULL in string_is_alnum");
         return false;
@@ -3115,7 +3115,7 @@ bool string_is_alnum(String* str) {
  * 
  * @return Returns `true` if the string is in title case, `false` otherwise.
  */
-bool string_is_title(String* str) {
+bool string_is_title(const String* str) {
     if (!str) {
         fprintf(stderr, "Error: String object `str` is NULL in string_is_title\n");
         return false;
@@ -3167,7 +3167,7 @@ bool string_is_title(String* str) {
  * @param str Pointer to the String object to check.
  * @return Returns true if the String contains only space characters, otherwise false.
  */
-bool string_is_space(String* str) {
+bool string_is_space(const String* str) {
     if (!str) {
         fprintf(stderr, "Error: String object `str` is NULL in string_is_space\n");
         return false;
@@ -3204,7 +3204,7 @@ bool string_is_space(String* str) {
  *
  * @note If the String object `str` is NULL, an error message is printed and the function returns false.
  */
-bool string_is_printable(String* str) {
+bool string_is_printable(const String* str) {
     if (!str) {
         fprintf(stderr, "Error : String object `str` is NULL in string_is_printable\n");
         return false;

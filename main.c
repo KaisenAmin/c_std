@@ -3,14 +3,10 @@
 
 
 int main() {
-    String* str1 = string_create("Hello!Areyou#1?");
-    String* str2 = string_create("Hello!\nAre you #1?");
+    String* str = string_create("121");
 
-    fmt_printf("'%s' is printable %d\n", string_c_str(str1), string_is_printable(str1));
-    fmt_printf("'%s' is printable %d\n", string_c_str(str2), string_is_printable(str2));
+    fmt_printf("%s is palindrome %d", string_c_str(str), string_is_palindrome(str));
 
-    string_deallocate(str1);
-    string_deallocate(str2);
-
+    string_deallocate(str);
     return 0;
 }
