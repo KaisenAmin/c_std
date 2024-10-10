@@ -70,6 +70,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - Returns a list of Bluetooth devices currently connected or known to the system. The number of devices is returned via the `count` parameter. This function is not guaranteed to work on all systems and is primarily implemented for Linux and Windows.
   - **Example (Linux/Windows)**: List of Bluetooth device names.
 
+- **`double sysinfo_cpu_usage()`**:
+  - Retrieves the current CPU usage percentage of the system.
 ## Examples
 
 The following examples demonstrate how to use the SysInfo library in various scenarios.
@@ -308,4 +310,14 @@ int main() {
     
     return 0;
 }
+```
+
+**Output on Linux:**
+```
+CPU Usage: 5.60%
+```
+
+**Output on Windows:**
+```
+CPU Usage: 3.64%
 ```
