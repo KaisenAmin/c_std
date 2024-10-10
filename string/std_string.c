@@ -227,7 +227,7 @@ String* string_substr(String* str, size_t pos, size_t len) {
  * 
  * @return true if the String object is empty or NULL, false otherwise.
  */
-bool string_empty(String* str) {
+bool string_empty(const String* str) {
     return (str == NULL) ? true : (str->size == 0);
 }
 
@@ -241,7 +241,7 @@ bool string_empty(String* str) {
  * 
  * @return true if the substring is found within the String object, false otherwise.
  */
-bool string_contains(String* str, const char* substr) {
+bool string_contains(const String* str, const char* substr) {
     if (str == NULL) {
         fprintf(stderr, "Error: The String object is NULL in string_contains.\n");
         return false;

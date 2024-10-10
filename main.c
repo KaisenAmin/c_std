@@ -1,28 +1,17 @@
 #include "string/std_string.h"
 #include "fmt/fmt.h"
+#include <stdlib.h>
 
 int main() {
-    String* str1 = string_create("Hello");
-    String* str2 = string_create("World");
+    String* str = string_create("Hello World");
 
-    if (string_is_equal(str1, str2)) {
-        fmt_printf("Strings are equal\n");
-    }   
-    if (string_is_less(str1, str2)) { 
-        fmt_printf("String 1 is less than String 2\n");
+    if (string_contains(str, "Hello")) { 
+        fmt_printf("Yes 'Hello' exists in str\n");
     }
-    if (string_is_greater(str1, str2)) {
-        fmt_printf("String1 is greater that String2\n");
-    }
-    if (string_is_less_or_equal(str1, str2)) {
-        fmt_printf("String1 is less than or equal String2\n");
-    }
-    if (string_is_greater_or_equal(str1, str2)) {
-        fmt_printf("String1 is greater than or equal String2\n");
-    }
+    
+    string_reverse(str); // reverse String 
+    fmt_printf("Reverse String is %s\n", string_c_str(str));
 
-    string_deallocate(str1);
-    string_deallocate(str2);
-
+    string_deallocate(str);
     return 0;
 }
