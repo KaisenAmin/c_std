@@ -89,10 +89,10 @@ if (WIN32)
         # map
         # vector
         stdtime
-        statistics
+        # statistics
         # tuple
         # turtle
-        # sysinfo
+        sysinfo
         stack
         # span
         # queue
@@ -102,7 +102,7 @@ if (WIN32)
         # bitset
         # cli
         # deque
-        json
+        # json
         # matrix
         # fileio
         # crypto

@@ -712,3 +712,99 @@ char** sysinfo_list_bluetooth_devices(int* count) {
     return NULL;
 #endif
 }
+
+#ifdef _WIN32
+static double get_sysinfo_cpu_usage_windows() {
+    FILETIME idleTime, kernelTime, userTime;
+
+    if (GetSystemTimes(&idleTime, &kernelTime, &userTime) == 0) {
+        fprintf(stderr, "Error: Failed to get CPU times.\n");
+        return -1.0;
+    }
+
+    static ULONGLONG prevIdleTime = 0, prevKernelTime = 0, prevUserTime = 0;
+
+    ULONGLONG idle = ((ULONGLONG)idleTime.dwLowDateTime | ((ULONGLONG)idleTime.dwHighDateTime << 32));
+    ULONGLONG kernel = ((ULONGLONG)kernelTime.dwLowDateTime | ((ULONGLONG)kernelTime.dwHighDateTime << 32));
+    ULONGLONG user = ((ULONGLONG)userTime.dwLowDateTime | ((ULONGLONG)userTime.dwHighDateTime << 32));
+
+    ULONGLONG idleDiff = idle - prevIdleTime;
+    ULONGLONG kernelDiff = kernel - prevKernelTime;
+    ULONGLONG userDiff = user - prevUserTime;
+
+    prevIdleTime = idle;
+    prevKernelTime = kernel;
+    prevUserTime = user;
+
+    if (kernelDiff + userDiff == 0) {
+        return 0.0;
+    }
+
+    return (double)((kernelDiff + userDiff - idleDiff) * 100.0) / (kernelDiff + userDiff);
+}
+
+#elif __linux__
+
+// Linux specific CPU usage function
+static double get_sysinfo_cpu_usage_linux() {
+    FILE *fp = fopen("/proc/stat", "r");
+    if (fp == NULL) {
+        fprintf(stderr, "Error: Failed to open /proc/stat.\n");
+        return -1.0;
+    }
+
+    unsigned long long int user, nice, system, idle, iowait, irq, softirq, steal;
+    if (fscanf(fp, "cpu %llu %llu %llu %llu %llu %llu %llu %llu", &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal) != 8) {
+        fclose(fp);
+        fprintf(stderr, "Error: Failed to read CPU stats from /proc/stat.\n");
+        return -1.0;
+    }
+    fclose(fp);
+
+    static unsigned long long int prevUser = 0, prevNice = 0, prevSystem = 0, prevIdle = 0, prevIowait = 0, prevIrq = 0, prevSoftirq = 0, prevSteal = 0;
+
+    unsigned long long int idleDiff = (idle + iowait) - (prevIdle + prevIowait);
+    unsigned long long int totalDiff = (user + nice + system + idle + iowait + irq + softirq + steal) -
+                                       (prevUser + prevNice + prevSystem + prevIdle + prevIowait + prevIrq + prevSoftirq + prevSteal);
+
+    prevUser = user;
+    prevNice = nice;
+    prevSystem = system;
+    prevIdle = idle;
+    prevIowait = iowait;
+    prevIrq = irq;
+    prevSoftirq = softirq;
+    prevSteal = steal;
+
+    if (totalDiff == 0) {
+        return 0.0;
+    }
+
+    return (double)((totalDiff - idleDiff) * 100.0) / totalDiff;
+}
+#endif
+
+/**
+ * @brief Retrieves the current CPU usage percentage of the system.
+ * 
+ * This function provides the CPU usage as a percentage by calculating the proportion
+ * of time the CPU has spent performing work (in user mode and kernel mode) as compared to
+ * idle time. The calculation is done over time, so repeated calls will provide more accurate
+ * usage information.
+ * 
+ * On Windows, it uses the `GetSystemTimes()` function to get the amount of time spent in idle,
+ * kernel, and user mode. On Linux, it reads from the `/proc/stat` file to obtain similar statistics.
+ * 
+ * @return double Returns the percentage of CPU usage. If an error occurs, it returns -1.0.
+ * 
+ * @note The function is platform-dependent and works on both Windows and Linux. On Windows, the 
+ *       CPU usage is calculated based on time intervals provided by `GetSystemTimes()`. On Linux,
+ *       the function parses the `/proc/stat` file to extract CPU usage statistics.
+ */
+double sysinfo_cpu_usage() {
+    #ifdef _WIN32
+        return get_sysinfo_cpu_usage_windows();
+    #elif __linux__
+        return get_sysinfo_cpu_usage_linux();
+    #endif 
+}

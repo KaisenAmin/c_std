@@ -95,10 +95,10 @@ build/main.exe: CMakeFiles/main.dir/main.c.obj
 build/main.exe: CMakeFiles/main.dir/build.make
 build/main.exe: network/libnetwork.dll.a
 build/main.exe: time/libstdtime.dll.a
-build/main.exe: statistics/libstatistics.dll.a
+build/main.exe: sysinfo/libsysinfo.dll.a
 build/main.exe: stack/libstack.dll.a
-build/main.exe: json/libjson.dll.a
 build/main.exe: crypto/libstdcrypto.dll.a
+build/main.exe: json/libjson.dll.a
 build/main.exe: file_io/libfileio.dll.a
 build/main.exe: map/libmap.dll.a
 build/main.exe: vector/libvector.dll.a

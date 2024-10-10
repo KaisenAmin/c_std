@@ -1,6 +1,8 @@
 #ifndef SYSINFO_H_
 #define SYSINFO_H_
 
+double sysinfo_cpu_usage();
+
 char* sysinfo_product_version();
 char* sysinfo_product_type();
 char* sysinfo_kernel_version();
