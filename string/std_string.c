@@ -290,7 +290,7 @@ int string_compare(const String* str1, const String* str2) {
  * 
  * @return true if the strings are equal, false otherwise.
  */
-bool string_is_equal(String* str1, String* str2) {
+bool string_is_equal(const String* str1, const String* str2) {
     return string_compare(str1, str2) == 0;
 }
 
@@ -304,7 +304,7 @@ bool string_is_equal(String* str1, String* str2) {
  * 
  * @return true if str1 is less than str2, false otherwise.
  */
-bool string_is_less(String* str1, String* str2) {
+bool string_is_less(const String* str1, const String* str2) {
     return string_compare(str1, str2) < 0;
 }
 
@@ -318,7 +318,7 @@ bool string_is_less(String* str1, String* str2) {
  * 
  * @return true if str1 is greater than str2, false otherwise.
  */
-bool string_is_greater(String* str1, String* str2) {
+bool string_is_greater(const String* str1, const String* str2) {
     return string_compare(str1, str2) > 0;
 }
 
@@ -332,7 +332,7 @@ bool string_is_greater(String* str1, String* str2) {
  * 
  * @return true if str1 is less than or equal to str2, false otherwise.
  */
-bool string_is_less_or_equal(String* str1, String* str2) {
+bool string_is_less_or_equal(const String* str1, const String* str2) {
     return string_compare(str1, str2) <= 0;
 }
 
@@ -346,7 +346,7 @@ bool string_is_less_or_equal(String* str1, String* str2) {
  * 
  * @return true if str1 is greater than or equal to str2, false otherwise.
  */
-bool string_is_greater_or_equal(String* str1, String* str2) {
+bool string_is_greater_or_equal(const String* str1, const String* str2) {
     return string_compare(str1, str2) >= 0;
 }
 
@@ -361,7 +361,7 @@ bool string_is_greater_or_equal(String* str1, String* str2) {
  * 
  * @return true if the strings are not equal, false otherwise.
  */
-bool string_is_not_equal(String* str1, String* str2) {
+bool string_is_not_equal(const String* str1, const String* str2) {
     return string_compare(str1, str2) != 0;
 }
 

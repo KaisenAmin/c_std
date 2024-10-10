@@ -56,12 +56,12 @@ String* string_base64_decode(const String* input);
 String* string_repeat(const String* str, size_t count);
 String* string_join_variadic(size_t count, ...); // Where ... are String* arguments
 
-bool string_is_equal(String* str1, String* str2);
-bool string_is_less(String* str1, String* str2);
-bool string_is_greater(String* str1, String* str2);
-bool string_is_less_or_equal(String* str1, String* str2);
-bool string_is_greater_or_equal(String* str1, String* str2);
-bool string_is_not_equal(String* str1, String* str2);
+bool string_is_equal(const String* str1, const String* str2);
+bool string_is_less(const String* str1, const String* str2);
+bool string_is_greater(const String* str1, const String* str2);
+bool string_is_less_or_equal(const String* str1, const String* str2);
+bool string_is_greater_or_equal(const String* str1, const String* str2);
+bool string_is_not_equal(const String* str1, const String* str2);
 bool string_is_alpha(const String* str);
 bool string_is_digit(const String* str);
 bool string_is_lower(const String* str);
