@@ -86,7 +86,7 @@ int string_find_last_of(String* str, const char* buffer, size_t pos);
 int string_find_first_not_of(String* str, const char* buffer, size_t pos);
 int string_find_last_not_of(String* str, const char* buffer, size_t pos);
 int string_compare_ignore_case(String* str1, String* str2);
-int string_to_int(String *str);
+int string_to_int(const String *str);
 int string_strcmp(const char* str1, const char* str2);
 
 void string_reverse(String* str);

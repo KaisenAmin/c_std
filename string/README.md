@@ -61,17 +61,17 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_trim_left(String *str)`: This function trims leading whitespace characters from the beginning of the String object str.
 - `string_trim_right(String *str)`: This function trims trailing whitespace characters from the end of the String object str
 ## String Comparison
-- `string_is_equal(String*, String*)`: Checks if two Strings are equal.
-- `string_is_less(String*, String*)`: Checks if the first String is less than the second.
-- `string_is_greater(String*, String*)`: Checks if the first String is greater than the second.
-- `string_is_less_or_equal(String*, String*)`: Checks if the first String is less than or equal to the second.
-- `string_is_greater_or_equal(String*, String*)`: Checks if the first String is greater than or equal to the second.
-- `string_is_not_equal(String*, String*)`: Checks if two Strings are not equal.
-- `string_compare(String*, String*)`: Compares two Strings.
+- `string_is_equal(const String*, const String*)`: Checks if two Strings are equal.
+- `string_is_less(const String*, const String*)`: Checks if the first String is less than the second.
+- `string_is_greater(const String*, const String*)`: Checks if the first String is greater than the second.
+- `string_is_less_or_equal(const String*, const String*)`: Checks if the first String is less than or equal to the second.
+- `string_is_greater_or_equal(const String*, const String*)`: Checks if the first String is greater than or equal to the second.
+- `string_is_not_equal(const String*, const String*)`: Checks if two Strings are not equal.
+- `string_compare(const String*, const String*)`: Compares two Strings.
 - `string_compare_ignore_case(String*, String*)`: Compares two Strings, ignoring case differences.
 
 ## String Information and Properties
-- `string_length(String*)`: Returns the length of a String.
+- `string_length(const String*)`: Returns the length of a String.
 - `string_capacity(String*)`: Returns the capacity of a String.
 - `string_max_size(String*)`: Returns the maximum size of a String.
 - `string_empty(String*)`: Checks if a String is empty.
@@ -110,9 +110,9 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_front(String*)`: Returns a reference to the first character.
 
 ## String Conversion Functions
-- `string_to_int(String*)`: Converts a String to an integer.
-- `string_to_float(String*)`: Converts a String to a float.
-- `string_to_double(String*)`: Converts a String to a double.
+- `string_to_int(const String*)`: Converts a String to an integer.
+- `string_to_float(const String*)`: Converts a String to a float.
+- `string_to_double(const String*)`: Converts a String to a double.
 - `string_from_int(int)`: Creates a String from an integer.
 - `string_from_float(float)`: Creates a String from a float.
 - `string_from_double(double)`: Creates a String from a double.
@@ -159,8 +159,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `string_tokenize(String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
 - `string_create_from_initializer` : The string_create_from_initializer function dynamically creates an array of String pointers, each initialized with a string passed as a variadic argument.
 ## String Encoding Functions
-- `string_to_hex(String*)`: Converts a String to its hexadecimal representation.
-- `string_from_hex(String*)`: Converts a hexadecimal String back to the original string.
+- `string_to_hex(const String*)`: Converts a String to its hexadecimal representation.
+- `string_from_hex(const String*)`: Converts a hexadecimal String back to the original string.
 ```c
 #include "string/std_string.h"
 ```

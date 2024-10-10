@@ -1800,7 +1800,7 @@ void string_replace_all(String *str, const char *oldStr, const char *newStr) {
  * @param str The String object to convert. Must not be NULL.
  * @return The integer value of the String object's content, or 0 if the String object is NULL or empty.
  */
-int string_to_int(String *str) {
+int string_to_int(const String *str) {
     if (str == NULL) {
         fprintf(stderr, "Error: Null String object in string_to_int.\n");
         return 0;
