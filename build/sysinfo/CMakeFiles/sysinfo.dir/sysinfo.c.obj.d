@@ -1,13 +1,17 @@
 sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: \
  C:/Users/asus/OneDrive/Desktop/project/c_std/sysinfo/sysinfo.c \
  C:/Users/asus/OneDrive/Desktop/project/c_std/sysinfo/sysinfo.h \
- C:/msys64/mingw64/include/stdio.h \
- C:/msys64/mingw64/include/corecrt_stdio_config.h \
+ C:/Users/asus/OneDrive/Desktop/project/c_std/vector/vector.h \
+ C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stdbool.h \
+ C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stddef.h \
+ C:/msys64/mingw64/include/stddef.h C:/msys64/mingw64/include/crtdefs.h \
  C:/msys64/mingw64/include/corecrt.h C:/msys64/mingw64/include/_mingw.h \
  C:/msys64/mingw64/include/_mingw_mac.h \
  C:/msys64/mingw64/include/_mingw_secapi.h \
  C:/msys64/mingw64/include/vadefs.h \
  C:/msys64/mingw64/include/sdks/_mingw_ddk.h \
+ C:/msys64/mingw64/include/stdio.h \
+ C:/msys64/mingw64/include/corecrt_stdio_config.h \
  C:/msys64/mingw64/include/_mingw_off_t.h \
  C:/msys64/mingw64/include/swprintf.inl \
  C:/msys64/mingw64/include/sec_api/stdio_s.h \
@@ -15,12 +19,14 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: \
  C:/msys64/mingw64/include/corecrt_wstdlib.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/limits.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/syslimits.h \
- C:/msys64/mingw64/include/limits.h C:/msys64/mingw64/include/crtdefs.h \
+ C:/msys64/mingw64/include/limits.h \
  C:/msys64/mingw64/include/sec_api/stdlib_s.h \
  C:/msys64/mingw64/include/malloc.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/mm_malloc.h \
  C:/msys64/mingw64/include/errno.h C:/msys64/mingw64/include/string.h \
  C:/msys64/mingw64/include/sec_api/string_s.h \
+ C:/msys64/mingw64/include/math.h C:/msys64/mingw64/include/winsock2.h \
+ C:/msys64/mingw64/include/_mingw_unicode.h \
  C:/msys64/mingw64/include/windows.h \
  C:/msys64/mingw64/include/sdkddkver.h C:/msys64/mingw64/include/excpt.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stdarg.h \
@@ -32,16 +38,13 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: \
  C:/msys64/mingw64/include/specstrings.h C:/msys64/mingw64/include/sal.h \
  C:/msys64/mingw64/include/concurrencysal.h \
  C:/msys64/mingw64/include/driverspecs.h \
- C:/msys64/mingw64/include/winnt.h \
- C:/msys64/mingw64/include/_mingw_unicode.h \
- C:/msys64/mingw64/include/ctype.h C:/msys64/mingw64/include/apiset.h \
+ C:/msys64/mingw64/include/winnt.h C:/msys64/mingw64/include/ctype.h \
+ C:/msys64/mingw64/include/apiset.h \
  C:/msys64/mingw64/include/psdk_inc/intrin-impl.h \
  C:/msys64/mingw64/include/basetsd.h C:/msys64/mingw64/include/guiddef.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/x86intrin.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/x86gprintrin.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/ia32intrin.h \
- C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/stddef.h \
- C:/msys64/mingw64/include/stddef.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/adxintrin.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/bmiintrin.h \
  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/bmi2intrin.h \
@@ -205,22 +208,13 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: \
  C:/msys64/mingw64/include/rpcnterr.h \
  C:/msys64/mingw64/include/rpcasync.h \
  C:/msys64/mingw64/include/shellapi.h C:/msys64/mingw64/include/winperf.h \
- C:/msys64/mingw64/include/winsock.h C:/msys64/mingw64/include/_timeval.h \
- C:/msys64/mingw64/include/_bsd_types.h \
- C:/msys64/mingw64/include/inaddr.h \
- C:/msys64/mingw64/include/psdk_inc/_socket_types.h \
- C:/msys64/mingw64/include/psdk_inc/_fd_types.h \
- C:/msys64/mingw64/include/psdk_inc/_ip_types.h \
- C:/msys64/mingw64/include/psdk_inc/_ip_mreq1.h \
- C:/msys64/mingw64/include/psdk_inc/_wsadata.h \
- C:/msys64/mingw64/include/psdk_inc/_xmitfile.h \
- C:/msys64/mingw64/include/psdk_inc/_wsa_errnos.h \
- C:/msys64/mingw64/include/wincrypt.h C:/msys64/mingw64/include/bcrypt.h \
- C:/msys64/mingw64/include/ncrypt.h C:/msys64/mingw64/include/dpapi.h \
- C:/msys64/mingw64/include/winefs.h C:/msys64/mingw64/include/winscard.h \
- C:/msys64/mingw64/include/wtypes.h C:/msys64/mingw64/include/rpcndr.h \
- C:/msys64/mingw64/include/rpcnsip.h C:/msys64/mingw64/include/rpcsal.h \
- C:/msys64/mingw64/include/ole2.h C:/msys64/mingw64/include/objbase.h \
+ C:/msys64/mingw64/include/winsock.h C:/msys64/mingw64/include/wincrypt.h \
+ C:/msys64/mingw64/include/bcrypt.h C:/msys64/mingw64/include/ncrypt.h \
+ C:/msys64/mingw64/include/dpapi.h C:/msys64/mingw64/include/winefs.h \
+ C:/msys64/mingw64/include/winscard.h C:/msys64/mingw64/include/wtypes.h \
+ C:/msys64/mingw64/include/rpcndr.h C:/msys64/mingw64/include/rpcnsip.h \
+ C:/msys64/mingw64/include/rpcsal.h C:/msys64/mingw64/include/ole2.h \
+ C:/msys64/mingw64/include/objbase.h \
  C:/msys64/mingw64/include/combaseapi.h \
  C:/msys64/mingw64/include/wtypesbase.h \
  C:/msys64/mingw64/include/unknwnbase.h \
@@ -236,5 +230,36 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: \
  C:/msys64/mingw64/include/sec_api/stralign_s.h \
  C:/msys64/mingw64/include/winsvc.h C:/msys64/mingw64/include/mcx.h \
  C:/msys64/mingw64/include/imm.h \
+ C:/msys64/mingw64/include/psdk_inc/_ws1_undef.h \
+ C:/msys64/mingw64/include/_timeval.h \
+ C:/msys64/mingw64/include/_bsd_types.h \
+ C:/msys64/mingw64/include/inaddr.h \
+ C:/msys64/mingw64/include/psdk_inc/_socket_types.h \
+ C:/msys64/mingw64/include/psdk_inc/_fd_types.h \
+ C:/msys64/mingw64/include/psdk_inc/_ip_types.h \
+ C:/msys64/mingw64/include/psdk_inc/_wsadata.h \
+ C:/msys64/mingw64/include/ws2def.h \
+ C:/msys64/mingw64/include/psdk_inc/_wsa_errnos.h \
+ C:/msys64/mingw64/include/qos.h \
  C:/msys64/mingw64/include/bluetoothapis.h \
- C:/msys64/mingw64/include/bthdef.h C:/msys64/mingw64/include/bthsdpdef.h
+ C:/msys64/mingw64/include/bthdef.h C:/msys64/mingw64/include/bthsdpdef.h \
+ C:/msys64/mingw64/include/winternl.h C:/msys64/mingw64/include/tchar.h \
+ C:/msys64/mingw64/include/sec_api/tchar_s.h \
+ C:/msys64/mingw64/include/tlhelp32.h \
+ C:/msys64/mingw64/include/iphlpapi.h \
+ C:/msys64/mingw64/include/iprtrmib.h C:/msys64/mingw64/include/mprapi.h \
+ C:/msys64/mingw64/include/lmcons.h C:/msys64/mingw64/include/ras.h \
+ C:/msys64/mingw64/include/in6addr.h C:/msys64/mingw64/include/naptypes.h \
+ C:/msys64/mingw64/include/ocidl.h C:/msys64/mingw64/include/ipmib.h \
+ C:/msys64/mingw64/include/nldef.h C:/msys64/mingw64/include/ipifcons.h \
+ C:/msys64/mingw64/include/udpmib.h C:/msys64/mingw64/include/tcpmib.h \
+ C:/msys64/mingw64/include/ipexport.h C:/msys64/mingw64/include/iptypes.h \
+ C:/msys64/mingw64/include/time.h C:/msys64/mingw64/include/sys/timeb.h \
+ C:/msys64/mingw64/include/sec_api/sys/timeb_s.h \
+ C:/msys64/mingw64/include/pthread_time.h \
+ C:/msys64/mingw64/include/ifdef.h C:/msys64/mingw64/include/tcpestats.h \
+ C:/msys64/mingw64/include/netioapi.h \
+ C:/msys64/mingw64/include/ws2tcpip.h \
+ C:/msys64/mingw64/include/ws2ipdef.h \
+ C:/msys64/mingw64/include/psdk_inc/_ip_mreq1.h \
+ C:/msys64/mingw64/include/mstcpip.h

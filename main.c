@@ -1,14 +1,15 @@
+#include "vector/vector.h"
 #include "fmt/fmt.h"
 #include "sysinfo/sysinfo.h"
+#include <stdlib.h>
 
 int main() {
-    double cpuUsage = sysinfo_cpu_usage();
-    if (cpuUsage >= 0) {
-        fmt_printf("CPU Usage: %.2f%%\n", cpuUsage);
+    
+    if (sysinfo_is_virtualized()) {
+        fmt_printf("The system is running in a virtualized environment.\n");
     } 
     else {
-        fmt_printf("Failed to retrieve CPU usage.\n");
+        fmt_printf("The system is not virtualized.\n");
     }
-    
     return 0;
 }

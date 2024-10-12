@@ -72,6 +72,37 @@ The SysInfo library offers a variety of functions to gather information about th
 
 - **`double sysinfo_cpu_usage()`**:
   - Retrieves the current CPU usage percentage of the system.
+
+- **`double sysinfo_memory_usage()`**:
+  - Retrieves the current memory usage percentage of the system.
+
+- **`char* sysinfo_disk_space(const char* path)`**:
+  - Retrieves the disk space information for a given path.
+
+- **`char* sysinfo_system_uptime()`**:
+  - Retrieves the system's uptime since the last boot.
+
+- **`int sysinfo_cpu_cores()`**:
+  - Retrieves the number of CPU cores available on the system.
+
+- **`Vector* sysinfo_process_list()`**:
+  - Retrieves a list of active processes on the system.
+
+- **`Vector* sysinfo_running_services()`**:
+  - Retrieves the list of currently running services on the system.
+
+- **`Vector* sysinfo_network_interfaces()`**:
+  - Retrieves the list of active network interfaces along with their IP addresses.
+
+- **`void sysinfo_deallocate_network_interfaces(Vector* interfaces)`** :
+  - Deallocates the memory used by a vector of SysinfoNetworkInterface structures.
+
+- **`Vector* sysinfo_open_ports()`**: 
+  - Retrieves a list of open network ports on the system return all tcp and udp listening ports.
+
+- **`bool sysinfo_is_virtualized()`**:
+  - Checks if the system is running in a virtualized environment.
+
 ## Examples
 
 The following examples demonstrate how to use the SysInfo library in various scenarios.
@@ -301,6 +332,7 @@ int main() {
 
 int main() {
     double cpuUsage = sysinfo_cpu_usage();
+
     if (cpuUsage >= 0) {
         fmt_printf("CPU Usage: %.2f%%\n", cpuUsage);
     } 
@@ -320,4 +352,230 @@ CPU Usage: 5.60%
 **Output on Windows:**
 ```
 CPU Usage: 3.64%
+```
+
+## Example 12 : get memory usage percentage with `sysinfo_memory_usage`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+int main() {
+    double memoryUsage = sysinfo_memory_usage();
+
+    if (memoryUsage >= 0) {
+        fmt_printf("Memory Usage: %.2f%%\n", memoryUsage);
+    } 
+    else {
+        fmt_printf("Failed to retrieve memory usage.\n");
+    }
+
+    return 0;
+}
+```
+
+**Output on Linux:**
+```
+Memory Usage: 55.60%
+```
+
+**Output on Windows:**
+```
+Memory Usage: 49.64%
+```
+
+## Example 13 : get disk space and avalible with `sysinfo_disk_space(const char* path)`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    const char* path = "C:\\";
+    char* diskSpaceInfo = sysinfo_disk_space(path);
+
+    if (diskSpaceInfo != NULL) {
+        fmt_printf("Disk Space Info for %s: %s\n", path, diskSpaceInfo);
+        free(diskSpaceInfo);
+    } 
+    else {
+        fmt_printf("Failed to retrieve disk space information for %s\n", path);
+    }
+
+    return 0;
+}
+```
+
+**Output on Linux:**
+```
+Disk Space Info for C:\: Total: 594597 MB, Used: 541148 MB, Available: 53449 MB
+```
+
+**Output on Windows:**
+```
+Disk Space Info for /: Total: 59459 MB, Used: 54114 MB, Available: 5344 MB
+```
+
+## Example 14 : get uptime of os with `sysinfo_system_uptime()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    char* uptime = sysinfo_system_uptime();
+
+    if (uptime != NULL) {
+        fmt_printf("System Uptime: %s\n", uptime);
+        free(uptime);
+    } 
+    else {
+        fmt_printf("Failed to retrieve system uptime.\n");
+    }
+
+    return 0;
+}
+```
+
+**Output on Linux:**
+```
+System Uptime: 0 days, 0 hours, 29 minutes, 26 seconds
+```
+
+**Output on Windows:**
+```
+System Uptime: 6 days, 2 hours, 29 minutes, 26 seconds
+```
+
+## Example 15 : get list of running services as Vector in `Vector* sysinfo_running_services()`
+
+```c
+#include "sysinfo/sysinfo.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Vector *runningServices = sysinfo_running_services();
+
+    for (size_t i = 0; i < vector_size(runningServices); ++i) {
+        char **servicePtr = (char **)vector_at(runningServices, i);
+        fmt_printf("Running service: %s\n", *servicePtr);
+
+        free(*servicePtr); 
+    }
+
+    vector_deallocate(runningServices); 
+    return 0;
+}
+```
+
+## Example 16 : get number of cpu cores `int sysinfo_cpu_cores()`
+
+```c
+#include "sysinfo/sysinfo.h"
+#include "fmt/fmt.h"
+
+int main() {
+    int cpu_cores = sysinfo_cpu_cores();
+
+    if (cpu_cores != -1) {
+        fmt_printf("Number of CPU cores: %d\n", cpu_cores);
+    } 
+    else {
+        fmt_printf("Error retrieving the number of CPU cores.\n");
+    }
+
+    return 0;
+}
+```
+
+## Example 17 : get list of process with `sysinfo_process_list()`
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    Vector* processes = sysinfo_process_list();
+
+    for (size_t i = 0; i < vector_size(processes); ++i) {
+        char** processPtr = (char**)vector_at(processes, i);
+        fmt_printf("Process: %s\n", *processPtr);
+
+        free(*processPtr); 
+    }
+
+    vector_deallocate(processes); 
+    return 0;
+}
+```
+
+## Example 18 : get list of network interface with `sysinfo_network_interfaces()` also deallocate with `sysinfo_deallocate_network_interfaces()`
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    Vector* interfaces = sysinfo_network_interfaces();
+
+    for (size_t i = 0; i < vector_size(interfaces); ++i) {
+        SysinfoNetworkInterface* iface = (SysinfoNetworkInterface*)vector_at(interfaces, i);
+        fmt_printf("Interface: %s, IP Address: %s\n", iface->interface_name, iface->ip_address);
+    }
+
+    sysinfo_deallocate_network_interfaces(interfaces);
+    return 0;
+}
+```
+
+## Example 19 : get list of open listening ports with `sysinfo_open_ports()`
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    Vector *openPorts = sysinfo_open_ports();
+
+    fmt_printf("List of Open Ports:\n");
+    
+    for (size_t i = 0; i < vector_size(openPorts); ++i) {
+        int **portPtr = (int **)vector_at(openPorts, i);
+        fmt_printf("Port: %d\n", **portPtr);
+
+        free(*portPtr);  
+    }
+
+    vector_deallocate(openPorts);
+    return 0;
+}
+```
+
+## Example 20 : check if system running or virtualized env or not with `sysinfo_is_vitrualized()`
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    
+    if (sysinfo_is_virtualized()) {
+        fmt_printf("The system is running in a virtualized environment.\n");
+    } 
+    else {
+        fmt_printf("The system is not virtualized.\n");
+    }
+    return 0;
+}
 ```

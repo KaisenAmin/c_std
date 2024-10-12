@@ -87,7 +87,7 @@ if (WIN32)
         # Optional modules that are commented out:
         # random
         # map
-        # vector
+        vector
         stdtime
         # statistics
         # tuple

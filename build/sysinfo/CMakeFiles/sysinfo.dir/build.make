@@ -93,6 +93,10 @@ sysinfo_EXTERNAL_OBJECTS =
 
 build/libsysinfo.dll: sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj
 build/libsysinfo.dll: sysinfo/CMakeFiles/sysinfo.dir/build.make
+build/libsysinfo.dll: vector/libvector.dll.a
+build/libsysinfo.dll: fmt/libfmt.dll.a
+build/libsysinfo.dll: string/libstdstring.dll.a
+build/libsysinfo.dll: encoding/libencoding.dll.a
 build/libsysinfo.dll: sysinfo/CMakeFiles/sysinfo.dir/linkLibs.rsp
 build/libsysinfo.dll: sysinfo/CMakeFiles/sysinfo.dir/objects1.rsp
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C shared library ../build/libsysinfo.dll"

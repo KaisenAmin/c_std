@@ -4,13 +4,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
 
 #ifdef _WIN32
-
+#include <winsock2.h>
 #include <windows.h>
 #include <rpc.h>
 #include <objbase.h>
 #include <bluetoothapis.h>
+#include <winternl.h>
+#include <tchar.h>
+#include <tlhelp32.h>
+#include <iphlpapi.h>
+#include <ws2tcpip.h>
+
+
+// Define the function pointer type for NtQuerySystemInformation
+typedef NTSTATUS (WINAPI *NtQuerySystemInformationFunc)(
+    ULONG SystemInformationClass,
+    PVOID SystemInformation,
+    ULONG SystemInformationLength,
+    PULONG ReturnLength);
 
 static char* get_windows_version() {
     static char version[128];
@@ -245,6 +260,11 @@ char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/statvfs.h>
+#include <dirent.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <arpa/inet.h>
 
 static char* get_linux_version() {
     static char version[128];
@@ -743,6 +763,119 @@ static double get_sysinfo_cpu_usage_windows() {
     return (double)((kernelDiff + userDiff - idleDiff) * 100.0) / (kernelDiff + userDiff);
 }
 
+// Windows specific memory usage function
+static double get_sysinfo_memory_usage_windows() {
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+
+    if (GlobalMemoryStatusEx(&memInfo) == 0) {
+        fprintf(stderr, "Error: Failed to retrieve memory status.\n");
+        return -1.0;
+    }
+
+    DWORDLONG totalMemory = memInfo.ullTotalPhys;
+    DWORDLONG usedMemory = totalMemory - memInfo.ullAvailPhys;
+
+    if (totalMemory == 0) {
+        return -1.0;
+    }
+
+    return (double)(usedMemory * 100.0) / totalMemory;
+}
+
+static char* get_sysinfo_disk_space_windows(const char* path) {
+    ULARGE_INTEGER freeBytesAvailable, totalBytes, totalFreeBytes;
+
+    if (GetDiskFreeSpaceExA(path, &freeBytesAvailable, &totalBytes, &totalFreeBytes) == 0) {
+        fprintf(stderr, "Error: Failed to get disk space information for path: %s\n", path);
+        return NULL;
+    }
+
+    char* result = (char*)malloc(256);
+    if (result == NULL) {
+        fprintf(stderr, "Error: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    snprintf(result, 256, "Total: %llu MB, Used: %llu MB, Available: %llu MB",
+             totalBytes.QuadPart / (1024 * 1024),
+             (totalBytes.QuadPart - totalFreeBytes.QuadPart) / (1024 * 1024),
+             totalFreeBytes.QuadPart / (1024 * 1024));
+
+    return result;
+}
+
+// Simpler Windows-specific function to get system uptime
+static char* get_sysinfo_system_uptime_windows() {
+    ULONGLONG uptimeMillis = GetTickCount64();  
+    ULONGLONG uptimeSeconds = uptimeMillis / 1000; 
+
+    unsigned long days = uptimeSeconds / (24 * 3600);
+    uptimeSeconds %= (24 * 3600);
+    unsigned long hours = uptimeSeconds / 3600;
+    uptimeSeconds %= 3600;
+    unsigned long minutes = uptimeSeconds / 60;
+    unsigned long seconds = uptimeSeconds % 60;
+
+    char* result = (char*)malloc(128);
+    if (result == NULL) {
+        fprintf(stderr, "Error: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    snprintf(result, 128, "%lu days, %lu hours, %lu minutes, %lu seconds", days, hours, minutes, seconds);
+    return result;
+}
+
+static void get_running_services_windows(Vector *services) {
+    SC_HANDLE scm = OpenSCManager(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
+    if (!scm) {
+        fprintf(stderr, "Error: Unable to open Service Control Manager.\n");
+        return;
+    }
+
+    DWORD bytesNeeded = 0, servicesReturned = 0, resumeHandle = 0;
+    EnumServicesStatus(scm, SERVICE_WIN32, SERVICE_STATE_ALL, NULL, 0, &bytesNeeded, &servicesReturned, &resumeHandle);
+
+    LPENUM_SERVICE_STATUS serviceStatus = (LPENUM_SERVICE_STATUS)malloc(bytesNeeded);
+    if (EnumServicesStatus(scm, SERVICE_WIN32, SERVICE_STATE_ALL, serviceStatus, bytesNeeded, &bytesNeeded, &servicesReturned, &resumeHandle)) {
+        for (DWORD i = 0; i < servicesReturned; i++) {
+            char *serviceName = strdup(serviceStatus[i].lpServiceName);  // Using strdup to allocate memory for the service name
+            vector_push_back(services, &serviceName);
+        }
+    } 
+    else {
+        fprintf(stderr, "Error: Failed to enumerate services.\n");
+    }
+
+    free(serviceStatus);
+    CloseServiceHandle(scm);
+}
+
+static void get_open_ports_windows(Vector *ports) {
+    PMIB_TCPTABLE tcpTable = NULL;
+    DWORD size = 0;
+
+    if (GetTcpTable(NULL, &size, TRUE) == ERROR_INSUFFICIENT_BUFFER) {
+        tcpTable = (MIB_TCPTABLE*)malloc(size);
+    }
+
+    if (GetTcpTable(tcpTable, &size, TRUE) == NO_ERROR) {
+        for (DWORD i = 0; i < tcpTable->dwNumEntries; i++) {
+            // Extract port number
+            DWORD port = ntohs((u_short)tcpTable->table[i].dwLocalPort);
+            int *port_ptr = (int*)malloc(sizeof(int));
+            *port_ptr = (int)port;
+            vector_push_back(ports, &port_ptr);
+        }
+    } 
+    else {
+        fprintf(stderr, "Error: Unable to retrieve TCP table.\n");
+    }
+    
+    free(tcpTable);
+}
+
 #elif __linux__
 
 // Linux specific CPU usage function
@@ -782,6 +915,195 @@ static double get_sysinfo_cpu_usage_linux() {
 
     return (double)((totalDiff - idleDiff) * 100.0) / totalDiff;
 }
+
+// Linux specific memory usage function
+static double get_sysinfo_memory_usage_linux() {
+    FILE *fp = fopen("/proc/meminfo", "r");
+    if (fp == NULL) {
+        fprintf(stderr, "Error: Failed to open /proc/meminfo.\n");
+        return -1.0;
+    }
+
+    unsigned long totalMemory = 0, availableMemory = 0;
+    char buffer[256];
+
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        if (sscanf(buffer, "MemTotal: %lu kB", &totalMemory) == 1) {
+            continue;
+        }
+        if (sscanf(buffer, "MemAvailable: %lu kB", &availableMemory) == 1) {
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    if (totalMemory == 0 || availableMemory == 0) {
+        return -1.0;
+    }
+
+    unsigned long usedMemory = totalMemory - availableMemory;
+    return (double)(usedMemory * 100.0) / totalMemory;
+}
+
+static char* get_sysinfo_disk_space_linux(const char* path) {
+    struct statvfs vfs;
+
+    if (statvfs(path, &vfs) != 0) {
+        fprintf(stderr, "Error: Failed to get disk space information for path: %s\n", path);
+        return NULL;
+    }
+
+    unsigned long totalBytes = vfs.f_blocks * vfs.f_frsize;
+    unsigned long availableBytes = vfs.f_bavail * vfs.f_frsize;
+    unsigned long usedBytes = totalBytes - availableBytes;
+
+    char* result = (char*)malloc(256);
+    if (result == NULL) {
+        fprintf(stderr, "Error: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    snprintf(result, 256, "Total: %lu MB, Used: %lu MB, Available: %lu MB",
+             totalBytes / (1024 * 1024), usedBytes / (1024 * 1024), availableBytes / (1024 * 1024));
+
+    return result;
+}
+
+static char* get_sysinfo_system_uptime_linux() {
+    FILE* fp = fopen("/proc/uptime", "r");
+    if (fp == NULL) {
+        fprintf(stderr, "Error: Failed to open /proc/uptime.\n");
+        return NULL;
+    }
+
+    double uptimeSeconds = 0.0;
+    if (fscanf(fp, "%lf", &uptimeSeconds) != 1) {
+        fclose(fp);
+        fprintf(stderr, "Error: Failed to read uptime from /proc/uptime.\n");
+        return NULL;
+    }
+    fclose(fp);
+
+    unsigned long days = uptimeSeconds / (24 * 3600);
+    uptimeSeconds = fmod(uptimeSeconds, (24 * 3600));
+    unsigned long hours = uptimeSeconds / 3600;
+    uptimeSeconds = fmod(uptimeSeconds, 3600);
+    unsigned long minutes = uptimeSeconds / 60;
+    unsigned long seconds = (unsigned long)uptimeSeconds % 60;
+
+    char* result = (char*)malloc(128);
+    if (result == NULL) {
+        fprintf(stderr, "Error: Memory allocation failed.\n");
+        return NULL;
+    }
+
+    snprintf(result, 128, "%lu days, %lu hours, %lu minutes, %lu seconds", days, hours, minutes, seconds);
+    return result;
+}
+
+static void get_running_services_linux(Vector *services) {
+    FILE *fp = popen("systemctl list-units --type=service --state=running --no-pager --no-legend", "r");
+    if (!fp) {
+        fprintf(stderr, "Error: Failed to run systemctl command.\n");
+        return;
+    }
+
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        char serviceName[256];
+        sscanf(buffer, "%255s", serviceName); 
+
+        char *service = strdup(serviceName); 
+        vector_push_back(services, &service);
+    }
+
+    pclose(fp);
+}
+
+static void get_open_ports_linux(Vector *ports) {
+    FILE *fp = popen("ss -lntu | awk 'NR>1 {print $5}'", "r");
+    if (!fp) {
+        fprintf(stderr, "Error: Failed to run ss command.\n");
+        return;
+    }
+
+    char buffer[128];
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        char *ip_port = strchr(buffer, ':');  
+        if (ip_port) {
+            int port;
+            sscanf(ip_port + 1, "%d", &port);  // Extract the port number
+            int *port_ptr = (int*)malloc(sizeof(int));
+            *port_ptr = port;
+            vector_push_back(ports, &port_ptr);
+        }
+    }
+
+    pclose(fp);
+}
+
+// Linux specific virtualization detection remains the same
+static bool check_virtualization_in_cpuinfo() {
+    FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
+    if (!cpuinfo) {
+        fprintf(stderr, "Error: Failed to open /proc/cpuinfo.\n");
+        return false;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), cpuinfo)) {
+        if (strstr(line, "hypervisor")) {
+            fclose(cpuinfo);
+            return true;  // Found hypervisor flag in /proc/cpuinfo
+        }
+    }
+
+    fclose(cpuinfo);
+    return false;
+}
+
+static bool check_virtualization_with_systemd() {
+    FILE *fp = popen("systemd-detect-virt", "r");
+    if (!fp) {
+        fprintf(stderr, "Error: Failed to run systemd-detect-virt.\n");
+        return false;
+    }
+
+    char buffer[256];
+    bool is_virtualized = false;
+    if (fgets(buffer, sizeof(buffer), fp)) {
+        if (strncmp(buffer, "none", 4) != 0) {
+            is_virtualized = true;  // systemd-detect-virt detected virtualization
+        }
+    }
+
+    pclose(fp);
+    return is_virtualized;
+}
+
+/**
+ * @brief Checks if the system is running in a virtualized environment.
+ * 
+ * This function attempts to detect if the system is virtualized by 
+ * examining `/proc/cpuinfo` or using the `systemd-detect-virt` utility.
+ *
+ * On Linux, it first checks the `/proc/cpuinfo` file for any indicators 
+ * of virtualization. If that fails, it tries to detect virtualization 
+ * using `systemd-detect-virt`.
+ *
+ * @return bool Returns true if virtualization is detected, false otherwise.
+ *
+ * @note This function is primarily designed for Linux environments.
+ *       The `check_virtualization_in_cpuinfo()` function checks for 
+ *       known virtualization flags in the CPU information, and 
+ *       `check_virtualization_with_systemd()` invokes `systemd-detect-virt`
+ *       to identify if the system is running in a virtual machine.
+ */
+bool sysinfo_is_virtualized() {
+    return check_virtualization_in_cpuinfo() || check_virtualization_with_systemd();
+}
+
 #endif
 
 /**
@@ -802,9 +1124,350 @@ static double get_sysinfo_cpu_usage_linux() {
  *       the function parses the `/proc/stat` file to extract CPU usage statistics.
  */
 double sysinfo_cpu_usage() {
-    #ifdef _WIN32
-        return get_sysinfo_cpu_usage_windows();
-    #elif __linux__
-        return get_sysinfo_cpu_usage_linux();
-    #endif 
+#ifdef _WIN32
+    return get_sysinfo_cpu_usage_windows();
+#elif __linux__
+    return get_sysinfo_cpu_usage_linux();
+#endif 
 }
+
+
+/**
+ * @brief Retrieves the current memory usage percentage of the system.
+ * 
+ * This function calculates the memory usage as a percentage of the total available memory on the system.
+ * It retrieves memory statistics differently depending on the platform. On Windows, it uses the
+ * `GlobalMemoryStatusEx()` function, while on Linux, it parses `/proc/meminfo`.
+ * 
+ * @return double Returns the percentage of memory being used. If an error occurs, it returns -1.0.
+ * 
+ * @note This function works on both Windows and Linux platforms. On Windows, it uses the 
+ *       `GlobalMemoryStatusEx()` function to get the total and available physical memory. On Linux, 
+ *       it reads from `/proc/meminfo` to retrieve memory statistics.
+ */
+double sysinfo_memory_usage() {
+#ifdef _WIN32
+    return get_sysinfo_memory_usage_windows();
+#elif __linux__
+    return get_sysinfo_memory_usage_linux();
+#endif
+}
+
+/**
+ * @brief Retrieves the disk space information for a given path.
+ * 
+ * This function provides the total, used, and available disk space for the specified path.
+ * It retrieves disk space information using platform-specific methods.
+ * 
+ * On Windows, it uses the `GetDiskFreeSpaceEx()` function to get the total and free space.
+ * On Linux, it uses the `statvfs()` system call to get the file system statistics.
+ * 
+ * @param path The file path to check the disk space for.
+ * @return char* A string containing the total, used, and available disk space in MB.
+ *               The caller is responsible for freeing the allocated memory.
+ *               Returns NULL in case of an error.
+ */
+char* sysinfo_disk_space(const char* path) {
+#ifdef _WIN32
+    return get_sysinfo_disk_space_windows(path);
+#elif __linux__
+    return get_sysinfo_disk_space_linux(path);
+#endif
+}
+
+/**
+ * @brief Retrieves the system's uptime since the last boot.
+ * 
+ * This function returns the system uptime in a human-readable format, including days, hours,
+ * minutes, and seconds.
+ * 
+ * On Windows, it uses the `GetTickCount64()` function to get the uptime in milliseconds.
+ * On Linux, it parses the `/proc/uptime` file to get the uptime in seconds.
+ * 
+ * @return char* A string containing the system uptime in days, hours, minutes, and seconds.
+ *               The caller is responsible for freeing the allocated memory.
+ *               Returns NULL in case of an error.
+ */
+char* sysinfo_system_uptime() {
+#ifdef _WIN32
+    return get_sysinfo_system_uptime_windows();
+#elif __linux__
+    return get_sysinfo_system_uptime_linux();
+#endif
+}
+
+/**
+ * @brief Retrieves the list of currently running services on the system.
+ * 
+ * This function gathers the running services on both Windows and Linux systems.
+ * The services are returned in a dynamically allocated vector of `String*`.
+ * 
+ * @return Vector* A vector containing the names of the running services.
+ * 
+ * @note The vector needs to be deallocated by the caller.
+ */
+Vector* sysinfo_running_services() {
+    Vector *services = vector_create(sizeof(char*));
+
+#ifdef _WIN32
+    get_running_services_windows(services);
+#elif __linux__
+    get_running_services_linux(services);
+#endif
+
+    return services;
+}
+
+/**
+ * @brief Retrieves the number of CPU cores available on the system.
+ * 
+ * This function returns the total number of CPU cores available for use on the system.
+ * 
+ * On Windows, it uses the `GetSystemInfo()` function to get the number of processors.
+ * On Linux, it uses `sysconf(_SC_NPROCESSORS_ONLN)` to retrieve the number of available processors.
+ * 
+ * @return int Number of CPU cores. If an error occurs, it returns -1.
+ */
+int sysinfo_cpu_cores() {
+#ifdef _WIN32
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+#elif __linux__
+    long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+    if (nprocs < 1) {
+        return -1; // Error occurred
+    }
+    return (int)nprocs;
+#endif
+}
+
+/**
+ * @brief Retrieves a list of active processes on the system.
+ * 
+ * This function returns a list of currently running processes on the system. 
+ * The processes are returned in a dynamically allocated vector of strings (char*).
+ * 
+ * @return Vector* A vector containing the names of the active processes.
+ * 
+ * @note The vector needs to be deallocated by the caller.
+ */
+Vector* sysinfo_process_list() {
+    Vector* processes = vector_create(sizeof(char*));
+
+#ifdef _WIN32
+    HANDLE hProcessSnap;
+    PROCESSENTRY32 pe32;
+    hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+    if (hProcessSnap == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "Error: Unable to create process snapshot.\n");
+        return processes;
+    }
+
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+    if (!Process32First(hProcessSnap, &pe32)) {
+        CloseHandle(hProcessSnap);
+        return processes;
+    }
+
+    do {
+        char* processName = strdup(pe32.szExeFile);
+        vector_push_back(processes, &processName);
+    } while (Process32Next(hProcessSnap, &pe32));
+
+    CloseHandle(hProcessSnap);
+
+#elif __linux__
+    DIR* procDir = opendir("/proc");
+    if (!procDir) {
+        fprintf(stderr, "Error: Unable to open /proc directory.\n");
+        return processes;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(procDir)) != NULL) {
+        if (entry->d_type == DT_DIR && strspn(entry->d_name, "0123456789") == strlen(entry->d_name)) {
+            char procPath[300];  // Increase buffer size to 300 to avoid truncation warnings
+            snprintf(procPath, sizeof(procPath), "/proc/%s/comm", entry->d_name);
+
+            FILE* commFile = fopen(procPath, "r");
+            if (commFile) {
+                char processName[256];
+                if (fgets(processName, sizeof(processName), commFile)) {
+                    processName[strcspn(processName, "\n")] = 0;  // Strip newline character
+                    char* process = strdup(processName);
+                    vector_push_back(processes, &process);
+                }
+                fclose(commFile);
+            }
+        }
+    }
+
+    closedir(procDir);
+#endif
+
+    return processes;
+}
+
+/**
+ * @brief Retrieves the list of active network interfaces along with their IP addresses.
+ * 
+ * This function gathers the list of active network interfaces and their associated IP addresses
+ * on both Windows and Linux systems. The results are returned in a dynamically allocated vector
+ * of `SysinfoNetworkInterface` structures.
+ * 
+ * @return Vector* A vector containing the network interfaces and their IP addresses.
+ * 
+ * @note The vector and its contents need to be deallocated by the caller.
+ */
+Vector* sysinfo_network_interfaces() {
+    Vector* interfaces = vector_create(sizeof(SysinfoNetworkInterface));
+
+#ifdef _WIN32
+    ULONG bufferSize = 15000;
+    PIP_ADAPTER_ADDRESSES adapterAddresses = (PIP_ADAPTER_ADDRESSES)malloc(bufferSize);
+
+    if (GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, adapterAddresses, &bufferSize) == ERROR_BUFFER_OVERFLOW) {
+        free(adapterAddresses);
+        adapterAddresses = (PIP_ADAPTER_ADDRESSES)malloc(bufferSize);
+    }
+
+    DWORD result = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, adapterAddresses, &bufferSize);
+    if (result == NO_ERROR) {
+        PIP_ADAPTER_ADDRESSES adapter = adapterAddresses;
+        while (adapter) {
+            // Skip inactive adapters
+            if (adapter->OperStatus == IfOperStatusUp) {
+                SysinfoNetworkInterface iface;
+                iface.interface_name = strdup(adapter->AdapterName);
+
+                PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
+                while (unicast) {
+                    SOCKADDR* addr = unicast->Address.lpSockaddr;
+                    if (addr->sa_family == AF_INET) {  // IPv4
+                        struct sockaddr_in* ipv4 = (struct sockaddr_in*)addr;
+                        iface.ip_address = strdup(inet_ntoa(ipv4->sin_addr));
+                        vector_push_back(interfaces, &iface);
+                        break; // Only get one IP address per interface
+                    }
+                    unicast = unicast->Next;
+                }
+            }
+            adapter = adapter->Next;
+        }
+    } else {
+        fprintf(stderr, "Error: Failed to get network adapter addresses.\n");
+    }
+
+    free(adapterAddresses);
+
+#elif __linux__
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        fprintf(stderr, "Error: Failed to open socket.\n");
+        return interfaces;
+    }
+
+    struct ifconf ifc;
+    char buffer[4096];
+    ifc.ifc_len = sizeof(buffer);
+    ifc.ifc_buf = buffer;
+
+    if (ioctl(fd, SIOCGIFCONF, &ifc) == -1) {
+        fprintf(stderr, "Error: Failed to get network interface configuration.\n");
+        close(fd);
+        return interfaces;
+    }
+
+    struct ifreq* ifr = ifc.ifc_req;
+    int interfaceCount = ifc.ifc_len / sizeof(struct ifreq);
+
+    for (int i = 0; i < interfaceCount; i++) {
+        struct ifreq* item = &ifr[i];
+        SysinfoNetworkInterface iface;
+        iface.interface_name = strdup(item->ifr_name);
+
+        if (ioctl(fd, SIOCGIFADDR, item) == 0) {
+            struct sockaddr_in* addr = (struct sockaddr_in*)&item->ifr_addr;
+            iface.ip_address = strdup(inet_ntoa(addr->sin_addr));
+            vector_push_back(interfaces, &iface);
+        }
+    }
+
+    close(fd);
+#endif
+
+    return interfaces;
+}
+
+/**
+ * @brief Deallocates the memory used by a vector of SysinfoNetworkInterface structures.
+ * 
+ * @param interfaces The vector containing the network interfaces.
+ */
+void sysinfo_deallocate_network_interfaces(Vector* interfaces) {
+    for (size_t i = 0; i < vector_size(interfaces); ++i) {
+        SysinfoNetworkInterface* iface = (SysinfoNetworkInterface*)vector_at(interfaces, i);
+        free(iface->interface_name);
+        free(iface->ip_address);
+    }
+    vector_deallocate(interfaces);
+}
+
+/**
+ * @brief Retrieves a list of open network ports on the system.
+ * 
+ * This function gathers open ports from both Windows and Linux systems.
+ * It returns a dynamically allocated vector of integers representing the open ports.
+ * 
+ * @return Vector* A vector containing the open ports.
+ * 
+ * @note The vector needs to be deallocated by the caller.
+ */
+Vector* sysinfo_open_ports() {
+    Vector *ports = vector_create(sizeof(int*));
+
+#ifdef _WIN32
+    get_open_ports_windows(ports);
+#elif __linux__
+    get_open_ports_linux(ports);
+#endif
+
+    return ports;
+}
+
+#ifdef _WIN32
+/**
+ * @brief Checks if the system is running in a virtualized environment.
+ *
+ * This function detects if the system is running in a virtualized environment 
+ * by checking for specific processor features available on the platform.
+ *
+ * On Windows, it checks the presence of `PF_VIRT_FIRMWARE_ENABLED` and 
+ * `PF_HYPERVISOR_PRESENT` features to determine virtualization status.
+ *
+ * On Linux, the detection is handled via `/proc/cpuinfo` or `systemd-detect-virt`, 
+ * although these are not included in this Windows-specific implementation.
+ *
+ * @return bool Returns true if virtualization is detected, false otherwise.
+ *
+ * @note This function is platform-specific and currently supports Windows and Linux.
+ *       The function checks for the availability of the `PF_VIRT_FIRMWARE_ENABLED` 
+ *       feature on all Windows systems. The `PF_HYPERVISOR_PRESENT` feature is 
+ *       conditionally checked if available on the platform.
+ */
+bool sysinfo_is_virtualized() {
+    if (IsProcessorFeaturePresent(PF_VIRT_FIRMWARE_ENABLED)) {
+        return true;
+    }
+
+#ifdef PF_HYPERVISOR_PRESENT
+    if (IsProcessorFeaturePresent(PF_HYPERVISOR_PRESENT)) {
+        return true;
+    }
+#endif
+
+    return false;
+}
+#endif

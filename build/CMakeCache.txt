@@ -324,7 +324,7 @@ stdcrypto_LIB_DEPENDS:STATIC=general;ssl;general;crypto;
 stdtime_LIB_DEPENDS:STATIC=general;fmt;
 
 //Dependencies for the target
-sysinfo_LIB_DEPENDS:STATIC=general;ole32;general;bthprops;
+sysinfo_LIB_DEPENDS:STATIC=general;ole32;general;bthprops;general;ws2_32;general;iphlpapi;general;stdstring;general;vector;
 
 //Dependencies for the target
 tuple_LIB_DEPENDS:STATIC=general;fmt;
