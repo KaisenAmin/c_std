@@ -18,6 +18,7 @@
 #include <tlhelp32.h>
 #include <iphlpapi.h>
 #include <ws2tcpip.h>
+#include <wbemidl.h>
 
 
 // Define the function pointer type for NtQuerySystemInformation
@@ -265,6 +266,7 @@ char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include <locale.h>
 
 static char* get_linux_version() {
     static char version[128];
@@ -876,6 +878,27 @@ static void get_open_ports_windows(Vector *ports) {
     free(tcpTable);
 }
 
+static void get_disk_partitions_windows(Vector *partitions) {
+    DWORD drive_mask = GetLogicalDrives();
+    char drive_letter[4] = "A:\\";
+
+    for (int i = 0; i < 26; ++i) {
+        if (drive_mask & (1 << i)) {
+            drive_letter[0] = 'A' + i;
+
+            ULARGE_INTEGER free_bytes_available, total_bytes, total_free_bytes;
+            if (GetDiskFreeSpaceExA(drive_letter, &free_bytes_available, &total_bytes, &total_free_bytes)) {
+                SysinfoDiskPartition partition;
+                partition.mount_point = strdup(drive_letter);
+                partition.total_size = total_bytes.QuadPart;  
+                partition.free_space = total_free_bytes.QuadPart;  
+
+                vector_push_back(partitions, &partition);
+            }
+        }
+    }
+}
+
 #elif __linux__
 
 // Linux specific CPU usage function
@@ -1102,6 +1125,38 @@ static bool check_virtualization_with_systemd() {
  */
 bool sysinfo_is_virtualized() {
     return check_virtualization_in_cpuinfo() || check_virtualization_with_systemd();
+}
+
+static void get_disk_partitions_linux(Vector *partitions) {
+    FILE *fp = fopen("/proc/mounts", "r");
+
+    if (!fp) {
+        fprintf(stderr, "Error: Failed to open /proc/mounts.\n");
+        return;
+    }
+
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        char device[256], mount_point[256], fs_type[256];
+        sscanf(line, "%255s %255s %255s", device, mount_point, fs_type);
+
+        // Skip non-physical partitions (e.g., tmpfs)
+        if (strcmp(fs_type, "tmpfs") == 0 || strcmp(fs_type, "devtmpfs") == 0) {
+            continue;
+        }
+
+        struct statvfs vfs;
+        if (statvfs(mount_point, &vfs) == 0) {
+            SysinfoDiskPartition partition;
+            partition.mount_point = strdup(mount_point);
+            partition.total_size = vfs.f_blocks * vfs.f_frsize;  // Total size in bytes
+            partition.free_space = vfs.f_bavail * vfs.f_frsize;  // Available space in bytes
+
+            vector_push_back(partitions, &partition);
+        }
+    }
+
+    fclose(fp);
 }
 
 #endif
@@ -1471,3 +1526,160 @@ bool sysinfo_is_virtualized() {
     return false;
 }
 #endif
+
+/**
+ * @brief Retrieves the current system locale as a string.
+ * 
+ * This function returns the system locale on both Windows and Linux platforms.
+ * 
+ * @return char* A dynamically allocated string representing the system locale. 
+ *               The caller is responsible for freeing the returned string.
+ */
+/**
+ * @brief Retrieves the current system locale as a string.
+ * 
+ * This function returns the system locale on both Windows and Linux platforms.
+ * 
+ * @return char* A dynamically allocated string representing the system locale. 
+ *               The caller is responsible for freeing the returned string.
+ */
+char* sysinfo_system_locale() {
+#ifdef _WIN32
+    wchar_t w_locale_buffer[128]; 
+    char locale_buffer[128];
+
+    if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, w_locale_buffer, sizeof(w_locale_buffer) / sizeof(wchar_t)) == 0) {
+        strcpy(locale_buffer, "unknown");
+    } 
+    else {
+        // Convert wide string (wchar_t) to narrow string (char*)
+        wcstombs(locale_buffer, w_locale_buffer, sizeof(locale_buffer));
+    }
+
+#else
+    // On Linux, check the environment variables to determine the locale.
+    static char locale_buffer[128];
+    const char* locale = getenv("LC_ALL");
+    if (!locale || strlen(locale) == 0) {
+        locale = getenv("LC_MESSAGES");
+    }
+    if (!locale || strlen(locale) == 0) {
+        locale = getenv("LANG");
+    }
+    if (!locale || strlen(locale) == 0) {
+        locale = setlocale(LC_ALL, NULL);
+    }
+    if (locale) {
+        strncpy(locale_buffer, locale, sizeof(locale_buffer) - 1);
+        locale_buffer[sizeof(locale_buffer) - 1] = '\0';  // Ensure null-termination
+    } 
+    else {
+        strcpy(locale_buffer, "unknown");
+    }
+#endif
+
+    // Return a dynamically allocated copy of the locale string
+    return strdup(locale_buffer);
+}
+
+/**
+ * @brief Checks if a specific service or process is running.
+ * 
+ * This function checks if a service or process by the given name is running on the system.
+ * 
+ * @param service_name The name of the service or process to check.
+ * @return bool Returns true if the service/process is running, false otherwise.
+ */
+bool sysinfo_is_service_running(const char* service_name) {
+#ifdef _WIN32
+    SC_HANDLE scm = OpenSCManager(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
+    if (!scm) {
+        fprintf(stderr, "Error: Unable to open Service Control Manager.\n");
+        return false;
+    }
+
+    SC_HANDLE service = OpenService(scm, service_name, SERVICE_QUERY_STATUS);
+    if (!service) {
+        CloseServiceHandle(scm);
+        return false;  
+    }
+
+    SERVICE_STATUS_PROCESS serviceStatus;
+    DWORD bytesNeeded;
+    bool isRunning = false;
+
+    if (QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, (LPBYTE)&serviceStatus, sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
+        if (serviceStatus.dwCurrentState == SERVICE_RUNNING) {
+            isRunning = true;
+        }
+    }
+
+    CloseServiceHandle(service);
+    CloseServiceHandle(scm);
+    return isRunning;
+
+#elif __linux__
+    // Linux implementation using systemctl or checking ps for the process name
+    char command[256];
+    snprintf(command, sizeof(command), "systemctl is-active --quiet %s", service_name);
+    int result = system(command);
+
+    if (result == 0) {
+        return true;  
+    }
+
+    // Fallback: Use ps command to check for the process name
+    FILE* proc_fp = popen("ps -e", "r");
+    if (!proc_fp) {
+        return false;  
+    }
+
+    char buffer[256];
+    bool found = false;
+
+    while (fgets(buffer, sizeof(buffer), proc_fp)) {
+        if (strstr(buffer, service_name) != NULL) {
+            found = true;
+            break;
+        }
+    }
+    pclose(proc_fp);
+
+    return found;
+#endif
+}
+
+Vector* sysinfo_disk_partitions() {
+    Vector* partitions = vector_create(sizeof(SysinfoDiskPartition));
+
+#ifdef _WIN32
+    get_disk_partitions_windows(partitions);
+#elif __linux__
+    get_disk_partitions_linux(partitions);
+#endif
+
+    return partitions;
+}
+
+/**
+ * @brief Deallocates the memory used by a vector of SysinfoDiskPartition structures.
+ * 
+ * This function iterates over a vector of `SysinfoDiskPartition` structures and frees the
+ * dynamically allocated memory for each partition's `mount_point`. After freeing the memory
+ * for each individual partition, it deallocates the vector itself.
+ * 
+ * @param partitions A pointer to a `Vector` containing `SysinfoDiskPartition` structures.
+ *                   The vector and its contents are deallocated by this function.
+ * 
+ * @warning Ensure that you do not use the `partitions` vector or its elements after calling
+ *          this function, as the memory will have been deallocated.
+ */
+void sysinfo_deallocate_disk_partitions(Vector* partitions) {
+    for (size_t i = 0; i < vector_size(partitions); ++i) {
+        SysinfoDiskPartition* partition = (SysinfoDiskPartition*)vector_at(partitions, i);
+        free(partition->mount_point);
+    }
+
+    vector_deallocate(partitions);
+}
+

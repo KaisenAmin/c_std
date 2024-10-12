@@ -34,6 +34,7 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: C:/Users/asus/OneDrive/Desktop/pro
   C:/msys64/mingw64/include/dde.h \
   C:/msys64/mingw64/include/ddeml.h \
   C:/msys64/mingw64/include/debugapi.h \
+  C:/msys64/mingw64/include/dispex.h \
   C:/msys64/mingw64/include/dlgs.h \
   C:/msys64/mingw64/include/dpapi.h \
   C:/msys64/mingw64/include/driverspecs.h \
@@ -172,6 +173,11 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: C:/Users/asus/OneDrive/Desktop/pro
   C:/msys64/mingw64/include/utilapiset.h \
   C:/msys64/mingw64/include/vadefs.h \
   C:/msys64/mingw64/include/virtdisk.h \
+  C:/msys64/mingw64/include/wbemcli.h \
+  C:/msys64/mingw64/include/wbemdisp.h \
+  C:/msys64/mingw64/include/wbemidl.h \
+  C:/msys64/mingw64/include/wbemprov.h \
+  C:/msys64/mingw64/include/wbemtran.h \
   C:/msys64/mingw64/include/winapifamily.h \
   C:/msys64/mingw64/include/winbase.h \
   C:/msys64/mingw64/include/wincon.h \
@@ -377,7 +383,11 @@ C:/msys64/mingw64/include/_timeval.h:
 
 C:/msys64/mingw64/include/inaddr.h:
 
+C:/msys64/mingw64/include/wbemprov.h:
+
 C:/msys64/mingw64/include/apiset.h:
+
+C:/msys64/mingw64/include/wbemcli.h:
 
 C:/msys64/mingw64/include/apisetcconv.h:
 
@@ -442,6 +452,10 @@ C:/msys64/mingw64/include/iptypes.h:
 C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/popcntintrin.h:
 
 C:/msys64/mingw64/include/ddeml.h:
+
+C:/msys64/mingw64/include/memoryapi.h:
+
+C:/msys64/mingw64/include/dispex.h:
 
 C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/shaintrin.h:
 
@@ -508,8 +522,6 @@ C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/14.2.0/include/lzcntintrin.h:
 C:/msys64/mingw64/include/threadpoollegacyapiset.h:
 
 C:/msys64/mingw64/include/mciapi.h:
-
-C:/msys64/mingw64/include/memoryapi.h:
 
 C:/msys64/mingw64/include/minwinbase.h:
 
@@ -732,6 +744,12 @@ C:/msys64/mingw64/include/utilapiset.h:
 C:/msys64/mingw64/include/vadefs.h:
 
 C:/msys64/mingw64/include/virtdisk.h:
+
+C:/msys64/mingw64/include/wbemdisp.h:
+
+C:/msys64/mingw64/include/wbemidl.h:
+
+C:/msys64/mingw64/include/wbemtran.h:
 
 C:/msys64/mingw64/include/winbase.h:
 

@@ -262,4 +262,8 @@ sysinfo/CMakeFiles/sysinfo.dir/sysinfo.c.obj: \
  C:/msys64/mingw64/include/ws2tcpip.h \
  C:/msys64/mingw64/include/ws2ipdef.h \
  C:/msys64/mingw64/include/psdk_inc/_ip_mreq1.h \
- C:/msys64/mingw64/include/mstcpip.h
+ C:/msys64/mingw64/include/mstcpip.h C:/msys64/mingw64/include/wbemidl.h \
+ C:/msys64/mingw64/include/wbemcli.h C:/msys64/mingw64/include/wbemprov.h \
+ C:/msys64/mingw64/include/wbemtran.h \
+ C:/msys64/mingw64/include/wbemdisp.h C:/msys64/mingw64/include/dispex.h \
+ C:/msys64/mingw64/include/servprov.h

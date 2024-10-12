@@ -97,11 +97,23 @@ The SysInfo library offers a variety of functions to gather information about th
 - **`void sysinfo_deallocate_network_interfaces(Vector* interfaces)`** :
   - Deallocates the memory used by a vector of SysinfoNetworkInterface structures.
 
+- **`void sysinfo_deallocate_disk_partitions(Vector* partitions)`**:
+  - Deallocates the memory used by a vector of SysinfoDiskPartition structures.
+
 - **`Vector* sysinfo_open_ports()`**: 
   - Retrieves a list of open network ports on the system return all tcp and udp listening ports.
 
+- **`Vector* sysinfo_disk_partitions()`**:
+  - Retrieves a list of mounted disk partitions on the system.
+
 - **`bool sysinfo_is_virtualized()`**:
   - Checks if the system is running in a virtualized environment.
+
+- **`char* sysinfo_system_locale()`**:
+  - Retrieves the current system locale as a string.
+
+- **`bool sysinfo_is_service_running(const char*)`**:
+  - Checks if a specific service or process is running.
 
 ## Examples
 
@@ -576,6 +588,67 @@ int main() {
     else {
         fmt_printf("The system is not virtualized.\n");
     }
+    return 0;
+}
+```
+
+## Example 21 : get system locale with `sysinfo_system_locale()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    char* locale = sysinfo_system_locale();
+    fmt_printf("System Locale: %s\n", locale);
+
+    free(locale);  
+    return 0;
+}
+```
+
+## Example 22 : check is service running or not with `sysinfo_is_service_running(const char*)`:
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    const char* service_name = "BITS"; 
+    
+    if (sysinfo_is_service_running(service_name)) {
+        fmt_printf("The service '%s' is running.\n", service_name);
+    } 
+    else {
+        fmt_printf("The service '%s' is not running.\n", service_name);
+    }
+
+    return 0;
+}
+```
+
+## Example 23 : get list of partitions as Vector* with `sysinfo_disk_partitions()`
+
+```c
+#include "fmt/fmt.h"
+#include "vector/vector.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    Vector* partitions = sysinfo_disk_partitions();
+
+    for (size_t i = 0; i < vector_size(partitions); ++i) {
+        SysinfoDiskPartition* partition = (SysinfoDiskPartition*)vector_at(partitions, i);
+        fmt_printf("Mount point: %s, Total size: %llu MB, Free space: %llu MB\n",
+            partition->mount_point,
+            partition->total_size / (1024 * 1024),
+            partition->free_space / (1024 * 1024));
+    }
+
+    sysinfo_deallocate_disk_partitions(partitions);
     return 0;
 }
 ```

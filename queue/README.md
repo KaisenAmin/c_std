@@ -279,9 +279,7 @@ int main() {
         return -1;
     }
 
-    int values
-
-[] = {10, 20, 30, 40, 50};
+    int values[] = {10, 20, 30, 40, 50};
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }

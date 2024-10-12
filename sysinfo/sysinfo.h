@@ -9,15 +9,26 @@ typedef struct {
     
 } SysinfoNetworkInterface;
 
+typedef struct {
+    char* mount_point;  
+    unsigned long long total_size;  
+    unsigned long long free_space;
+
+} SysinfoDiskPartition;
 
 Vector* sysinfo_running_services();
 Vector* sysinfo_process_list();
 Vector* sysinfo_network_interfaces();
 Vector* sysinfo_open_ports();
+Vector* sysinfo_disk_partitions();
 
 void sysinfo_deallocate_network_interfaces(Vector* interfaces);
+void sysinfo_deallocate_disk_partitions(Vector* partitions);
+
 int sysinfo_cpu_cores();
+
 bool sysinfo_is_virtualized();
+bool sysinfo_is_service_running(const char* service_name);
 
 double sysinfo_cpu_usage();
 double sysinfo_memory_usage();
@@ -33,6 +44,7 @@ char* sysinfo_machine_unique_id();
 char* sysinfo_pretty_product_name();
 char* sysinfo_build_abi();
 char* sysinfo_system_uptime();
+char* sysinfo_system_locale();
 char* sysinfo_disk_space(const char* path);
 
 char** sysinfo_list_bluetooth_devices(int* count);
