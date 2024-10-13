@@ -60,6 +60,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "C:/Users/asus/OneDrive/Desktop/project/c_std/priority_queue/CMakeLists.txt"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/random/CMakeLists.txt"
+  "C:/Users/asus/OneDrive/Desktop/project/c_std/secrets/CMakeLists.txt"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/span/CMakeLists.txt"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/stack/CMakeLists.txt"
   "C:/Users/asus/OneDrive/Desktop/project/c_std/statistics/CMakeLists.txt"
@@ -115,6 +116,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "network/CMakeFiles/CMakeDirectoryInformation.cmake"
   "numbers/CMakeFiles/CMakeDirectoryInformation.cmake"
   "json/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "secrets/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
@@ -155,4 +157,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "matrix/CMakeFiles/matrix.dir/DependInfo.cmake"
   "network/CMakeFiles/network.dir/DependInfo.cmake"
   "json/CMakeFiles/json.dir/DependInfo.cmake"
+  "secrets/CMakeFiles/secrets.dir/DependInfo.cmake"
   )

@@ -63,7 +63,7 @@ add_subdirectory(matrix)
 add_subdirectory(network)
 add_subdirectory(numbers)
 add_subdirectory(json)
-
+add_subdirectory(secrets)
 # Create the main executable
 add_executable(main main.c)
 
@@ -94,6 +94,7 @@ if (WIN32)
         # turtle
         sysinfo
         stack
+        secrets
         # span
         # queue
         # priority_queue
@@ -139,6 +140,7 @@ else()
         vector
         # stdtime
         statistics
+        secrets
         # tuple
         # turtle
         # sysinfo

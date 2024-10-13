@@ -54,6 +54,8 @@ The project is organized into several subdirectories, each representing a differ
 
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
+- `Secrets`: This Secrets library provides a simple interface for generating secure random numbers, tokens, and performing cryptographic operations like constant-time comparison. This makes it a suitable choice for any C project requiring secure random number generation and cryptographic security.
+
 ## Compilation and Execution
 
 

@@ -312,6 +312,9 @@ priority_queue_LIB_DEPENDS:STATIC=general;fmt;general;vector;
 queue_LIB_DEPENDS:STATIC=general;fmt;general;vector;
 
 //Dependencies for the target
+secrets_LIB_DEPENDS:STATIC=general;bcrypt;
+
+//Dependencies for the target
 span_LIB_DEPENDS:STATIC=general;fmt;
 
 //Dependencies for the target
@@ -324,7 +327,7 @@ stdcrypto_LIB_DEPENDS:STATIC=general;ssl;general;crypto;
 stdtime_LIB_DEPENDS:STATIC=general;fmt;
 
 //Dependencies for the target
-sysinfo_LIB_DEPENDS:STATIC=general;ole32;general;bthprops;general;ws2_32;general;iphlpapi;general;wbemuuid;general;stdstring;general;vector;
+sysinfo_LIB_DEPENDS:STATIC=general;ole32;general;bthprops;general;ws2_32;general;iphlpapi;general;stdstring;general;vector;
 
 //Dependencies for the target
 tuple_LIB_DEPENDS:STATIC=general;fmt;
@@ -444,7 +447,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=36
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=37
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

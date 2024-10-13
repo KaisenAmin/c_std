@@ -584,6 +584,19 @@ json/fast:
 	$(MAKE) $(MAKESILENT) -f json/CMakeFiles/json.dir/build.make json/CMakeFiles/json.dir/build
 .PHONY : json/fast
 
+#=============================================================================
+# Target rules for targets named secrets
+
+# Build rule for target.
+secrets: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 secrets
+.PHONY : secrets
+
+# fast build rule for target.
+secrets/fast:
+	$(MAKE) $(MAKESILENT) -f secrets/CMakeFiles/secrets.dir/build.make secrets/CMakeFiles/secrets.dir/build
+.PHONY : secrets/fast
+
 main.obj: main.c.obj
 .PHONY : main.obj
 
@@ -642,6 +655,7 @@ help:
 	@echo "... priority_queue"
 	@echo "... queue"
 	@echo "... random"
+	@echo "... secrets"
 	@echo "... span"
 	@echo "... stack"
 	@echo "... statistics"

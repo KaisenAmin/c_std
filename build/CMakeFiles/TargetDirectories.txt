@@ -106,3 +106,6 @@ C:/Users/asus/OneDrive/Desktop/project/c_std/build/numbers/CMakeFiles/rebuild_ca
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/CMakeFiles/json.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/CMakeFiles/edit_cache.dir
 C:/Users/asus/OneDrive/Desktop/project/c_std/build/json/CMakeFiles/rebuild_cache.dir
+C:/Users/asus/OneDrive/Desktop/project/c_std/build/secrets/CMakeFiles/secrets.dir
+C:/Users/asus/OneDrive/Desktop/project/c_std/build/secrets/CMakeFiles/edit_cache.dir
+C:/Users/asus/OneDrive/Desktop/project/c_std/build/secrets/CMakeFiles/rebuild_cache.dir

@@ -97,6 +97,7 @@ build/main.exe: network/libnetwork.dll.a
 build/main.exe: time/libstdtime.dll.a
 build/main.exe: sysinfo/libsysinfo.dll.a
 build/main.exe: stack/libstack.dll.a
+build/main.exe: secrets/libsecrets.dll.a
 build/main.exe: crypto/libstdcrypto.dll.a
 build/main.exe: json/libjson.dll.a
 build/main.exe: file_io/libfileio.dll.a
