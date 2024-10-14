@@ -3,7 +3,8 @@ project(c_std)
 
 # Set the C standard
 set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -g -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s")
+
 
 # Platform-specific linker flags
 if (WIN32)
@@ -64,6 +65,7 @@ add_subdirectory(network)
 add_subdirectory(numbers)
 add_subdirectory(json)
 add_subdirectory(secrets)
+add_subdirectory(xml)
 # Create the main executable
 add_executable(main main.c)
 
@@ -117,6 +119,7 @@ if (WIN32)
         # dir
         # concurrent
         # numeric
+        xml
     )
 else()
     find_package(OpenSSL REQUIRED)
@@ -167,6 +170,7 @@ else()
         # dir
         # concurrent
         # numeric
+        xml
     )
 endif()
 

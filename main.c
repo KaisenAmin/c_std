@@ -1,78 +1,54 @@
+#include "xml/xml.h"
 #include "fmt/fmt.h"
-#include "secrets/secrets.h"
-#include "vector/vector.h"
-#include "string/std_string.h"
 #include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
-#define PASSWORD_LENGTH 10
-#define NUM_PASSWORDS 5
-
-bool check_password_requirements(const char* password) {
-    int has_lower = 0, has_upper = 0, digit_count = 0;
-
-    for (size_t i = 0; i < PASSWORD_LENGTH; i++) {
-        if (islower(password[i])) {
-            has_lower = 1;
-        }
-        if (isupper(password[i])) {
-            has_upper = 1;
-        }
-        if (isdigit(password[i])) {
-            digit_count++;
-        }
-    }
-
-    return (has_lower && has_upper && digit_count >= 3);
-}
 
 int main() {
-    Vector* passwords = vector_create(sizeof(String*));
-    size_t ascii_len = string_length_cstr(STRING_ASCII_LETTERS);
-    size_t digits_len = string_length_cstr(STRING_DIGITS);
-    char* alphabet = (char*)malloc(sizeof(char) * (ascii_len + digits_len + 1));
+    XmlDocument* doc = xml_parse_string("<?xml version='1.0'?><catalog><book id='bk101'><title>XML Developer's Guide</title><author>John Doe</author></book></catalog>");
 
-    if (!alphabet) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory\n");
-        exit(EXIT_FAILURE);
+    if (!doc) {
+        fmt_printf("Failed to parse document.\n");
+        return 1;
     }
 
-    strcpy(alphabet, STRING_ASCII_LETTERS);
-    strcat(alphabet, STRING_DIGITS);
-
-    size_t alphabet_len = string_length_cstr(alphabet);
-
-    for (size_t i = 0; i < NUM_PASSWORDS; i++) {
-        String* password = string_create("");
-
-        while (1) {
-            string_clear(password);
-
-            for (size_t j = 0; j < PASSWORD_LENGTH; j++) {
-                char* random_char = (char*)secrets_choice(alphabet, alphabet_len, sizeof(char));
-                string_push_back(password, *random_char);
+    XmlNode* root = xml_get_root(doc);
+    
+    // Retrieve the 'book' element inside 'catalog'
+    XmlNode* book = xml_get_element(root, "book", NULL);
+    if (book) {
+        // Retrieve the 'title' element inside 'book'
+        XmlNode* title = xml_get_element(book, "title", NULL);
+        if (title && title->tag_name) {
+            const char* title_text = xml_get_element_text(title);
+            if (title_text) {
+                fmt_printf("Title: '%s'\n", title_text);
+                free((void*)title_text);
+            } 
+            else {
+                fmt_printf("Title text not found.\n");
             }
-            if (check_password_requirements(password->dataStr)) {
-                break; 
-            }
+        } 
+        else {
+            fmt_printf("Title element not found.\n");
         }
 
-        vector_push_back(passwords, &password);
+        // Retrieve the 'author' element inside 'book'
+        XmlNode* author = xml_get_element(book, "author", NULL);
+        if (author && author->tag_name) {
+            const char* author_text = xml_get_element_text(author);
+            if (author_text) {
+                fmt_printf("Author: '%s'\n", author_text);
+                free((void*)author_text);
+            } 
+            else {
+                fmt_printf("Author text not found.\n");
+            }
+        } else {
+            fmt_printf("Author element not found.\n");
+        }
+    } else {
+        fmt_printf("Book element not found.\n");
     }
 
-    fmt_printf("Generated Secure Passwords:\n");
-    for (size_t i = 0; i < vector_size(passwords); i++) {
-        String** password = (String**)vector_at(passwords, i);
-        fmt_printf("%zu: %s\n", i + 1, (*password)->dataStr);
-    }
-
-    for (size_t i = 0; i < vector_size(passwords); i++) {
-        String** password = (String**)vector_at(passwords, i);
-        string_deallocate(*password);
-    }
-
-    vector_deallocate(passwords);
-    free(alphabet);
+    xml_deallocate_document(doc);
     return 0;
 }

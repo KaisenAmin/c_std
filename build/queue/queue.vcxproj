@@ -4,51 +4,55 @@
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
   </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x64">
+    <ProjectConfiguration Include="Debug|win32">
       <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
+      <Platform>win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
+    <ProjectConfiguration Include="Release|win32">
       <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
+      <Platform>win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="MinSizeRel|x64">
+    <ProjectConfiguration Include="MinSizeRel|win32">
       <Configuration>MinSizeRel</Configuration>
-      <Platform>x64</Platform>
+      <Platform>win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="RelWithDebInfo|x64">
+    <ProjectConfiguration Include="RelWithDebInfo|win32">
       <Configuration>RelWithDebInfo</Configuration>
-      <Platform>x64</Platform>
+      <Platform>win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C395E845-B18E-3D69-B78D-A6F84D6617FD}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
-    <Platform>x64</Platform>
+    <Platform>win32</Platform>
     <ProjectName>queue</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableAsan>true</EnableAsan>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableAsan>true</EnableAsan>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableAsan>true</EnableAsan>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableAsan>true</EnableAsan>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -59,36 +63,36 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\Debug\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">queue.dir\Debug\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">queue</TargetName>
-    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
-    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\Release\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">queue.dir\Release\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">queue</TargetName>
-    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
-    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\MinSizeRel\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">queue.dir\MinSizeRel\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">queue</TargetName>
-    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.dll</TargetExt>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
-    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\RelWithDebInfo\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">queue.dir\RelWithDebInfo\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">queue</TargetName>
-    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.dll</TargetExt>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</LinkIncremental>
-    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">queue.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">queue</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|win32'">queue.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|win32'">queue</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|win32'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|win32'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|win32'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">queue.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">queue</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\build\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">queue.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">queue</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>C:\Users\asus\OneDrive\Desktop\project\c_std\dependency\include;C:\Users\asus\OneDrive\Desktop\project\c_std\queue;C:\Users\asus\OneDrive\Desktop\project\c_std\fmt;C:\Users\asus\OneDrive\Desktop\project\c_std\encoding;C:\Users\asus\OneDrive\Desktop\project\c_std\string;C:\Users\asus\OneDrive\Desktop\project\c_std\vector;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>%(AdditionalOptions) -g -O3 -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) -fsanitize=address -g -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -121,8 +125,8 @@
     </Midl>
     <Link>
       <AdditionalDependencies>..\vector\Debug\vector.lib;..\fmt\Debug\fmt.lib;..\encoding\Debug\encoding.lib;..\string\Debug\stdstring.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/if;C:/Users/asus/OneDrive/Desktop/project/c_std/if/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/(;C:/Users/asus/OneDrive/Desktop/project/c_std/(/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32;C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/);C:/Users/asus/OneDrive/Desktop/project/c_std/)/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/endif;C:/Users/asus/OneDrive/Desktop/project/c_std/endif/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/build/build;C:/Users/asus/OneDrive/Desktop/project/c_std/build/build/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 -Wl,--enable-auto-import</AdditionalOptions>
+      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86 -Wl,--enable-auto-import</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImportLibrary>C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/Debug/queue.lib</ImportLibrary>
@@ -133,10 +137,10 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>C:\Users\asus\OneDrive\Desktop\project\c_std\dependency\include;C:\Users\asus\OneDrive\Desktop\project\c_std\queue;C:\Users\asus\OneDrive\Desktop\project\c_std\fmt;C:\Users\asus\OneDrive\Desktop\project\c_std\encoding;C:\Users\asus\OneDrive\Desktop\project\c_std\string;C:\Users\asus\OneDrive\Desktop\project\c_std\vector;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>%(AdditionalOptions) -g -O3 -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) -fsanitize=address -g -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>
@@ -170,8 +174,8 @@
     </Midl>
     <Link>
       <AdditionalDependencies>..\vector\Release\vector.lib;..\fmt\Release\fmt.lib;..\encoding\Release\encoding.lib;..\string\Release\stdstring.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/if;C:/Users/asus/OneDrive/Desktop/project/c_std/if/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/(;C:/Users/asus/OneDrive/Desktop/project/c_std/(/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32;C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/);C:/Users/asus/OneDrive/Desktop/project/c_std/)/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/endif;C:/Users/asus/OneDrive/Desktop/project/c_std/endif/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/build/build;C:/Users/asus/OneDrive/Desktop/project/c_std/build/build/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 -Wl,--enable-auto-import</AdditionalOptions>
+      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86 -Wl,--enable-auto-import</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImportLibrary>C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/Release/queue.lib</ImportLibrary>
@@ -182,10 +186,10 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>C:\Users\asus\OneDrive\Desktop\project\c_std\dependency\include;C:\Users\asus\OneDrive\Desktop\project\c_std\queue;C:\Users\asus\OneDrive\Desktop\project\c_std\fmt;C:\Users\asus\OneDrive\Desktop\project\c_std\encoding;C:\Users\asus\OneDrive\Desktop\project\c_std\string;C:\Users\asus\OneDrive\Desktop\project\c_std\vector;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>%(AdditionalOptions) -g -O3 -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) -fsanitize=address -g -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>
@@ -219,8 +223,8 @@
     </Midl>
     <Link>
       <AdditionalDependencies>..\vector\MinSizeRel\vector.lib;..\fmt\MinSizeRel\fmt.lib;..\encoding\MinSizeRel\encoding.lib;..\string\MinSizeRel\stdstring.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/if;C:/Users/asus/OneDrive/Desktop/project/c_std/if/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/(;C:/Users/asus/OneDrive/Desktop/project/c_std/(/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32;C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/);C:/Users/asus/OneDrive/Desktop/project/c_std/)/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/endif;C:/Users/asus/OneDrive/Desktop/project/c_std/endif/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/build/build;C:/Users/asus/OneDrive/Desktop/project/c_std/build/build/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 -Wl,--enable-auto-import</AdditionalOptions>
+      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86 -Wl,--enable-auto-import</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImportLibrary>C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/MinSizeRel/queue.lib</ImportLibrary>
@@ -231,10 +235,10 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>C:\Users\asus\OneDrive\Desktop\project\c_std\dependency\include;C:\Users\asus\OneDrive\Desktop\project\c_std\queue;C:\Users\asus\OneDrive\Desktop\project\c_std\fmt;C:\Users\asus\OneDrive\Desktop\project\c_std\encoding;C:\Users\asus\OneDrive\Desktop\project\c_std\string;C:\Users\asus\OneDrive\Desktop\project\c_std\vector;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>%(AdditionalOptions) -g -O3 -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) -fsanitize=address -g -march=native -funroll-loops -Wextra -pedantic -Wno-deprecated-declarations -s</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -267,8 +271,8 @@
     </Midl>
     <Link>
       <AdditionalDependencies>..\vector\RelWithDebInfo\vector.lib;..\fmt\RelWithDebInfo\fmt.lib;..\encoding\RelWithDebInfo\encoding.lib;..\string\RelWithDebInfo\stdstring.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/if;C:/Users/asus/OneDrive/Desktop/project/c_std/if/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/(;C:/Users/asus/OneDrive/Desktop/project/c_std/(/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32;C:/Users/asus/OneDrive/Desktop/project/c_std/WIN32/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/);C:/Users/asus/OneDrive/Desktop/project/c_std/)/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/endif;C:/Users/asus/OneDrive/Desktop/project/c_std/endif/$(Configuration);C:/Users/asus/OneDrive/Desktop/project/c_std/build/build;C:/Users/asus/OneDrive/Desktop/project/c_std/build/build/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 -Wl,--enable-auto-import</AdditionalOptions>
+      <AdditionalLibraryDirectories>C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib;C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86 -Wl,--enable-auto-import</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImportLibrary>C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/RelWithDebInfo/queue.lib</ImportLibrary>
@@ -282,8 +286,8 @@
   <ItemGroup>
     <CustomBuild Include="C:\Users\asus\OneDrive\Desktop\project\c_std\queue\CMakeLists.txt">
       <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/asus/OneDrive/Desktop/project/c_std -BC:/Users/asus/OneDrive/Desktop/project/c_std/build --check-stamp-file C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -292,11 +296,11 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|win32'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|win32'">setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/asus/OneDrive/Desktop/project/c_std -BC:/Users/asus/OneDrive/Desktop/project/c_std/build --check-stamp-file C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -305,11 +309,11 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|win32'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/asus/OneDrive/Desktop/project/c_std -BC:/Users/asus/OneDrive/Desktop/project/c_std/build --check-stamp-file C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -318,11 +322,11 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">Building Custom Rule C:/Users/asus/OneDrive/Desktop/project/c_std/queue/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/asus/OneDrive/Desktop/project/c_std -BC:/Users/asus/OneDrive/Desktop/project/c_std/build --check-stamp-file C:/Users/asus/OneDrive/Desktop/project/c_std/build/queue/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -331,9 +335,9 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">C:\Users\asus\OneDrive\Desktop\project\c_std\build\queue\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|win32'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>

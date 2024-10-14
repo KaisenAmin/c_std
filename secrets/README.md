@@ -386,9 +386,8 @@ int main() {
                 char* random_char = (char*)secrets_choice(alphabet, alphabet_len, sizeof(char));
                 string_push_back(password, *random_char);
             }
-
-            if (check_password_requirements(password->dataStr)) {
-                break;
+            if (check_password_requirements(string_c_str(password))) {
+                break; 
             }
         }
 
@@ -398,7 +397,7 @@ int main() {
     fmt_printf("Generated Secure Passwords:\n");
     for (size_t i = 0; i < vector_size(passwords); i++) {
         String** password = (String**)vector_at(passwords, i);
-        fmt_printf("%zu: %s\n", i + 1, (*password)->dataStr);
+        fmt_printf("%zu: %s\n", i + 1, string_c_str(*password));
     }
 
     for (size_t i = 0; i < vector_size(passwords); i++) {
@@ -408,7 +407,6 @@ int main() {
 
     vector_deallocate(passwords);
     free(alphabet);
-
     return 0;
 }
 ```

@@ -597,6 +597,19 @@ secrets/fast:
 	$(MAKE) $(MAKESILENT) -f secrets/CMakeFiles/secrets.dir/build.make secrets/CMakeFiles/secrets.dir/build
 .PHONY : secrets/fast
 
+#=============================================================================
+# Target rules for targets named xml
+
+# Build rule for target.
+xml: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 xml
+.PHONY : xml
+
+# fast build rule for target.
+xml/fast:
+	$(MAKE) $(MAKESILENT) -f xml/CMakeFiles/xml.dir/build.make xml/CMakeFiles/xml.dir/build
+.PHONY : xml/fast
+
 main.obj: main.c.obj
 .PHONY : main.obj
 
@@ -666,6 +679,7 @@ help:
 	@echo "... tuple"
 	@echo "... turtle"
 	@echo "... vector"
+	@echo "... xml"
 	@echo "... main.obj"
 	@echo "... main.i"
 	@echo "... main.s"

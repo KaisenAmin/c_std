@@ -134,7 +134,7 @@ void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
  */
 unsigned int secrets_randbits(int k) {
     if (k <= 0 || k > (int)(sizeof(unsigned int) * CHAR_BIT)) {
-        fprintf(stderr, "Error: k must be between 1 and %lu\n", sizeof(unsigned int) * CHAR_BIT);
+        fprintf(stderr, "Error: k must be between 1 and %llu\n", sizeof(unsigned int) * CHAR_BIT);
         exit(EXIT_FAILURE);
     }
 

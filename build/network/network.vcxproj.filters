@@ -7,6 +7,9 @@
     <ClCompile Include="C:\Users\asus\OneDrive\Desktop\project\c_std\network\udp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\asus\OneDrive\Desktop\project\c_std\network\http.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="C:\Users\asus\OneDrive\Desktop\project\c_std\network\CMakeLists.txt" />
