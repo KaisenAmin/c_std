@@ -313,6 +313,46 @@ int main() {
     return 0;
 }
 ```
+
+## Example 7 : get elements 
+
+```c
+#include "xml/xml.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    XmlDocument* doc = xml_parse_string("<?xml version='1.0'?><catalog><book id='bk101'><title>XML Developer's Guide</title><author>John Doe</author></book></catalog>");
+    XmlNode* root = xml_get_root(doc);
+    XmlNode* book = xml_get_element(root, "book", NULL);
+
+    if (book) {
+        XmlNode* title = xml_get_element(book, "title", NULL);
+
+        if (title && title->tag_name) {
+            const char* title_text = xml_get_element_text(title);
+            if (title_text) {
+                fmt_printf("Title: '%s'\n", title_text);
+                free((void*)title_text);
+            } 
+        } 
+    
+        XmlNode* author = xml_get_element(book, "author", NULL);
+
+        if (author && author->tag_name) {
+            const char* author_text = xml_get_element_text(author);
+            if (author_text) {
+                fmt_printf("Author: '%s'\n", author_text);
+                free((void*)author_text);
+            } 
+            
+        } 
+    } 
+
+    xml_deallocate_document(doc);
+    return 0;
+}
+```
 ## Conclusion
 
 This XML library simplifies the process of working with XML documents in C projects, providing intuitive functions for common XML tasks such as parsing, element manipulation, and serialization. The provided examples illustrate the ease with which this library can be integrated into a variety of C-based applications.

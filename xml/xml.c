@@ -192,24 +192,16 @@ static const char *ezxml_attr(ezxml_t xml, const char *attr)
 // same as ezxml_get but takes an already initialized va_list
 static ezxml_t ezxml_vget(ezxml_t xml, va_list ap) {
     if (!xml) {
-        printf("ezxml_vget: xml is NULL!\n");
+        fprintf(stderr, "xml is NULL!\n");
         return NULL;
     }
 
     char *name = va_arg(ap, char *);
     int idx = -1;
 
-    printf("ezxml_vget: Looking for child with name: %s\n", name);
-
     if (name && *name) {
         idx = va_arg(ap, int);    
-        printf("ezxml_vget: Calling ezxml_child with name: %s\n", name);
         xml = ezxml_child(xml, name);
-        printf("ezxml_vget: After ezxml_child, xml address: %p\n", xml);
-    }
-
-    if (xml == NULL) {
-        printf("ezxml_vget: xml is NULL after ezxml_child\n");
     }
 
     return (idx < 0) ? xml : ezxml_vget(ezxml_idx(xml, idx), ap);
@@ -1127,7 +1119,6 @@ XmlDocument* xml_parse_file(const char* filename) {
         return NULL;
     }
     
-    // Wrap ezxml root into XmlDocument
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
     doc->root = (XmlNode*)malloc(sizeof(XmlNode));
     doc->root->internal_node = (void*)xml;
@@ -1137,32 +1128,22 @@ XmlDocument* xml_parse_file(const char* filename) {
 
 // Updated version of xml_parse_string with debugging
 XmlDocument* xml_parse_string(const char* xml_content) {
-    printf("Parsing XML string: %s\n", xml_content);
     size_t len = strlen(xml_content);
-    
-    // Copy the string to avoid modifying the original input, but don't free it prematurely
-    char* xml_copy = strdup(xml_content);  // Use strdup to copy the string
+    char* xml_copy = strdup(xml_content);  
+    ezxml_t xml = ezxml_parse_str(xml_copy, len);
 
-    ezxml_t xml = ezxml_parse_str(xml_copy, len);  // Parse the string with ezxml
     if (!xml) {
-        printf("Failed to parse XML string.\n");
-        free(xml_copy);  // Free the copy if parsing fails
-        return NULL;     // Return NULL if parsing fails
+        fprintf(stderr, "Error: Failed to parse XML string.\n");
+        free(xml_copy);  
+        return NULL;     
     }
 
-    printf("XML string parsed successfully.\n");
-
-    // Wrap ezxml in XmlDocument structure
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
     doc->root = (XmlNode*)malloc(sizeof(XmlNode));
-    doc->root->internal_node = (void*)xml; // Store the internal ezxml pointer
-
-    // DO NOT free xml_copy here, let ezxml_free handle the memory management
-    printf("Created XmlDocument structure.\n");
+    doc->root->internal_node = (void*)xml; 
 
     return doc;
 }
-
 
 XmlDocument* xml_create_document(const char* root_element_name) {
     ezxml_t xml = ezxml_new(root_element_name); // Use ezxml to create a new document
@@ -1175,7 +1156,6 @@ XmlDocument* xml_create_document(const char* root_element_name) {
 }
 
 XmlNode* xml_create_element(XmlDocument* doc, const char* tag_name) {
-    // Create a new isolated element (do not attach it to the root here)
     (void)doc;
     ezxml_t new_elem = ezxml_new(tag_name);  // Create an isolated ezxml node
     XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
@@ -1187,7 +1167,6 @@ XmlNode* xml_create_element(XmlDocument* doc, const char* tag_name) {
     return node;
 }
 
-
 XmlNode* xml_get_root(XmlDocument* doc) {
     if (!doc || !doc->root || !doc->root->internal_node) {
         printf("Error: Invalid document or root internal node.\n");
@@ -1195,61 +1174,39 @@ XmlNode* xml_get_root(XmlDocument* doc) {
     }
 
     ezxml_t root = ezxml_document_root((ezxml_t)doc->root->internal_node);
-
     if (!root) {
-        printf("Error: No root found.\n");
+        fprintf(stderr, "Error: No root found.\n");
         return NULL;
     }
 
-    // Wrap the root ezxml node in XmlNode
     XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
     if (!node) {
-        printf("Error: Memory allocation failed for root node.\n");
         return NULL;
     }
-
     node->internal_node = (void*)root;
 
-    // Debug: Check if the root name is valid
     if (!root->name) {
-        printf("Error: Root node has no name.\n");
         free(node);
         return NULL;
     }
 
-    // Explicitly allocate and copy the tag name to avoid memory issues
-    node->tag_name = strdup(root->name);  // Ensure proper memory allocation and copy of the string
+    node->tag_name = strdup(root->name); 
     if (!node->tag_name) {
-        printf("Error: strdup failed for root tag name.\n");
         free(node);
         return NULL;
     }
 
-    node->text = root->txt;  // Cache the text content
-
-    // Debugging: Print out memory addresses and tag name content
-    printf("Root internal node found: %p\n", (void*)node->internal_node);
-    printf("Root tag name: %s\n", node->tag_name ? node->tag_name : "(null)");
-
+    node->text = root->txt; 
     return node;
 }
 
-
-
-
-
-
 XmlNode* xml_find_element_by_tag(XmlNode* root, const char* tag_name) {
-    printf("Searching for element by tag: %s\n", tag_name);
     ezxml_t xml = (ezxml_t)root->internal_node;
     ezxml_t child = ezxml_child(xml, tag_name);
 
     if (!child) {
-        printf("Element with tag '%s' not found.\n", tag_name);
         return NULL;
     }
-
-    printf("Found element with tag: %s\n", child->name);
 
     XmlNode* result = (XmlNode*)malloc(sizeof(XmlNode));
     result->internal_node = (void*)child;
@@ -1257,7 +1214,6 @@ XmlNode* xml_find_element_by_tag(XmlNode* root, const char* tag_name) {
 
     return result;
 }
-
 
 void xml_print(XmlNode* node) {
     char* xml_str = ezxml_toxml((ezxml_t)node);
@@ -1272,13 +1228,11 @@ void xml_append_child(XmlNode* parent, XmlNode* child) {
     ezxml_t parent_node = (ezxml_t)parent->internal_node;
     ezxml_t child_node = (ezxml_t)child->internal_node;
 
-    // Ensure no circular references
     if (child_node == parent_node || child_node->parent == parent_node) {
-        printf("Error: Attempting to append a node to itself or its parent.\n");
+        fprintf(stderr, "Error: Attempting to append a node to itself or its parent.\n");
         return;
     }
 
-    // Insert the child into the parent's children list
     ezxml_insert(child_node, parent_node, 0);
 }
 
@@ -1292,79 +1246,59 @@ void xml_set_element_attribute(XmlNode* element, const char* name, const char* v
 }
 
 void xml_deallocate_document(XmlDocument* doc) {
-    ezxml_free((ezxml_t)doc->root->internal_node);  // Free the root ezxml node
-    free(doc->root);  // Free the root XmlNode wrapper
-    free(doc);        // Free the document
+    ezxml_free((ezxml_t)doc->root->internal_node);  
+    free(doc->root);  
+    free(doc);        
 }
 
 void xml_deallocate_node(XmlNode* node) {
-    ezxml_free((ezxml_t)node->internal_node);  // Free the ezxml node
-    free(node);  // Free the XmlNode wrapper
+    ezxml_free((ezxml_t)node->internal_node);  
+    free(node);  
 }
 
 char* xml_copy_text(const char* text) {
     if (!text) {
         return NULL;
     }
-    size_t len = strlen(text) + 1;  // +1 for null terminator
+
+    size_t len = strlen(text) + 1;  
     char* copy = (char*)malloc(len);
     if (copy) {
-        strncpy(copy, text, len);   // Use strncpy to avoid buffer overflow
+        strncpy(copy, text, len);   
     }
+
     return copy;
 }
 
 const char* xml_get_element_text(XmlNode* element) {
     if (!element || !element->internal_node) {
-        printf("Error: Null element or internal node.\n");
+        fprintf(stderr, "Error: Null element or internal node.\n");
         return NULL;
     }
 
     ezxml_t result = (ezxml_t)element->internal_node;
 
     if (result) {
-        printf("Found node: '%s', Text: '%s'\n", result->name ? result->name : "(null)", result->txt ? result->txt : "(null)");
-
         if (result->txt && strlen(result->txt) > 0) {
-            // Safely duplicate the text content using strdup
             char* duplicated_text = strdup(result->txt);
             if (duplicated_text) {
-                printf("Returning duplicated text content: %s\n", duplicated_text);
-                return duplicated_text;  // Return the duplicated text
-            } else {
-                printf("Memory allocation failed for text duplication.\n");
-                return NULL;
-            }
-        } else {
-            printf("Text content is empty or missing.\n");
-        }
-    } else {
-        printf("Invalid internal XML node.\n");
-    }
+                return duplicated_text;  
+            } 
+        } 
+    } 
 
-    return NULL;  // Return NULL if no text is found
+    return NULL;  
 }
-
 
 const char* xml_get_tag_name(XmlNode* node) {
     if (node && node->internal_node) {
-        return ((ezxml_t)node->internal_node)->name;  // Return tag name
+        return ((ezxml_t)node->internal_node)->name;  
     }
-
-    return NULL;  // Return NULL if no tag name
+    return NULL;  
 }
 
 const char* xml_get_element_attribute(XmlNode* element, const char* name) {
-    printf("Fetching attribute '%s' from element '%s'...\n", name, element->tag_name);
     const char* attr_value = ezxml_attr((ezxml_t)element->internal_node, name);
-
-    if (attr_value) {
-        printf("Found attribute '%s': %s\n", name, attr_value);
-    } 
-    else {
-        printf("Attribute '%s' not found in element '%s'.\n", name, element->tag_name);
-    }
-
     return attr_value;
 }
 
@@ -1375,20 +1309,22 @@ char* xml_to_string(XmlDocument* doc) {
 int xml_save_to_file(XmlDocument* doc, const char* filename) {
     char* xml_str = ezxml_toxml((ezxml_t)doc->root->internal_node);  // Convert to string
     if (!xml_str) {
+        fprintf(stderr, "Error: Can not Convert XML to string\n");
         return 0;  // Return 0 if conversion fails
     }
 
-    FILE* file = fopen(filename, "w");  // Open the file for writing
+    FILE* file = fopen(filename, "w");
     if (!file) {
-        free(xml_str);  // Free the string if file opening fails
+        fprintf(stderr, "Error: Can not open file file for write\n");
+        free(xml_str); 
         return 0;
     }
 
-    fprintf(file, "%s", xml_str);  // Write the XML string to the file
+    fprintf(file, "%s", xml_str); 
     fclose(file);
-    free(xml_str);  // Free the XML string after writing
+    free(xml_str);  
 
-    return 1;  // Return 1 for success
+    return 1; 
 }
 
 // Removes a node and its subtags without freeing the memory
@@ -1398,69 +1334,56 @@ void xml_cut(XmlNode* node) {
 
 // Returns the last parsing error, or an empty string if none
 const char* xml_get_error(XmlDocument* doc) {
-    return ezxml_error((ezxml_t)doc->root->internal_node);  // Use ezxml to retrieve the last error
+    return ezxml_error((ezxml_t)doc->root->internal_node); 
 }
 
 // Parses XML data from a file pointer (stream)
 XmlDocument* xml_parse_file_stream(FILE* fp) {
-    ezxml_t xml = ezxml_parse_fp(fp);  // Parse the XML from the file stream
+    ezxml_t xml = ezxml_parse_fp(fp); 
     if (!xml) {
-        return NULL;  // Return NULL if parsing fails
+        fprintf(stderr, "Error: Can not parse xml from file stream\n");
+        return NULL;  
     }
 
-    // Wrap ezxml in XmlDocument structure
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
     doc->root = (XmlNode*)malloc(sizeof(XmlNode));
-    doc->root->internal_node = (void*)xml;  // Store the internal ezxml pointer
+    doc->root->internal_node = (void*)xml; 
 
-    return doc;  // Return the wrapped document
+    return doc;  
 }
 
 // Retrieves processing instructions by target
 const char** xml_get_processing_instructions(XmlDocument* doc, const char* target) {
-    return ezxml_pi((ezxml_t)doc->root->internal_node, target);  // Use ezxml to retrieve processing instructions
+    return ezxml_pi((ezxml_t)doc->root->internal_node, target); 
 }
 
 XmlNode* xml_get_element(XmlNode* root, ...) {
     if (!root || !root->internal_node) {
-        printf("Error: Null root or internal node.\n");
+        fprintf(stderr, "Error: Null root or internal node.\n");
         return NULL;
     }
 
     va_list args;
     va_start(args, root);
 
-    // Traverse the XML tree using the provided tag names
     ezxml_t current_node = (ezxml_t)root->internal_node;
     const char* tag_name = va_arg(args, const char*);
 
     while (tag_name) {
-        // printf("Looking for child with tag: %s\n", tag_name);
-
-        // Exit if an empty tag name is passed
         if (strlen(tag_name) == 0) {
-            // printf("Error: Empty tag name encountered.\n");
             break;
         }
 
         current_node = ezxml_child(current_node, tag_name);
         if (!current_node) {
-            // printf("Node with tag '%s' not found.\n", tag_name);
             va_end(args);
             return NULL;
         }
-
-        // printf("Found node: '%s', Text: '%s', Address: %p\n", 
-        //        current_node->name ? current_node->name : "(null)", 
-        //        current_node->txt ? current_node->txt : "(null)", 
-        //        (void*)current_node->txt);
-
         tag_name = va_arg(args, const char*);
     }
 
     va_end(args);
 
-    // Wrap the found ezxml_t node in an XmlNode
     if (current_node) {
         XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
         if (node) {
