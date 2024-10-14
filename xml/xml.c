@@ -934,9 +934,11 @@ static void ezxml_free(ezxml_t xml)
 }
 
 // return parser error message or empty string if none
-static const char *ezxml_error(ezxml_t xml)
-{
-    while (xml && xml->parent) xml = xml->parent; // find root tag
+static const char *ezxml_error(ezxml_t xml) {
+    while (xml && xml->parent) {
+         xml = xml->parent; // find root tag
+    }
+
     return (xml) ? ((ezxml_root_t)xml)->err : "";
 }
 
@@ -999,13 +1001,13 @@ static ezxml_t ezxml_insert(ezxml_t xml, ezxml_t dest, size_t off)
 
 // Adds a child tag. off is the offset of the child tag relative to the start
 // of the parent tag's character content. Returns the child tag.
-static ezxml_t ezxml_add_child(ezxml_t xml, const char *name, size_t off)
-{
+static ezxml_t ezxml_add_child(ezxml_t xml, const char *name, size_t off) {
     ezxml_t child;
+    if (!xml) { 
+        return NULL;
+    }
 
-    if (! xml) return NULL;
-    child = (ezxml_t)memset(malloc(sizeof(struct ezxml)), '\0',
-                            sizeof(struct ezxml));
+    child = (ezxml_t)memset(malloc(sizeof(struct ezxml)), '\0', sizeof(struct ezxml));
     child->name = (char *)name;
     child->attr = EZXML_NIL;
     child->txt = "";
@@ -1014,92 +1016,134 @@ static ezxml_t ezxml_add_child(ezxml_t xml, const char *name, size_t off)
 }
 
 // sets the character content for the given tag and returns the tag
-static ezxml_t ezxml_set_txt(ezxml_t xml, const char *txt)
-{
-    if (! xml) return NULL;
-    if (xml->flags & EZXML_TXTM) free(xml->txt); // existing txt was malloced
+static ezxml_t ezxml_set_txt(ezxml_t xml, const char *txt) {
+    if (! xml) {
+        return NULL;
+    }
+    if (xml->flags & EZXML_TXTM) {
+        free(xml->txt); // existing txt was malloced
+    }
+
     xml->flags &= ~EZXML_TXTM;
     xml->txt = (char *)txt;
+    
     return xml;
 }
 
 // Sets the given tag attribute or adds a new attribute if not found. A value
 // of NULL will remove the specified attribute. Returns the tag given.
-static ezxml_t ezxml_set_attr(ezxml_t xml, const char *name, const char *value)
-{
+static ezxml_t ezxml_set_attr(ezxml_t xml, const char *name, const char *value) {
     int l = 0, c;
 
-    if (! xml) return NULL;
-    while (xml->attr[l] && strcmp(xml->attr[l], name)) l += 2;
+    if (!xml) { 
+        return NULL;
+    }
+    while (xml->attr[l] && strcmp(xml->attr[l], name)) {
+        l += 2;
+    }
+
     if (! xml->attr[l]) { // not found, add as new attribute
-        if (! value) return xml; // nothing to do
+        if (! value) {
+            return xml; // nothing to do
+        }
         if (xml->attr == EZXML_NIL) { // first attribute
             xml->attr = malloc(4 * sizeof(char *));
             xml->attr[1] = strdup(""); // empty list of malloced names/vals
         }
-        else xml->attr = realloc(xml->attr, (l + 4) * sizeof(char *));
+        else {
+            xml->attr = realloc(xml->attr, (l + 4) * sizeof(char *));
+        }
 
         xml->attr[l] = (char *)name; // set attribute name
         xml->attr[l + 2] = NULL; // null terminate attribute list
-        xml->attr[l + 3] = realloc(xml->attr[l + 1],
-                                   (c = strlen(xml->attr[l + 1])) + 2);
+        xml->attr[l + 3] = realloc(xml->attr[l + 1], (c = strlen(xml->attr[l + 1])) + 2);
         strcpy(xml->attr[l + 3] + c, " "); // set name/value as not malloced
-        if (xml->flags & EZXML_DUP) xml->attr[l + 3][c] = EZXML_NAMEM;
+
+        if (xml->flags & EZXML_DUP) { 
+            xml->attr[l + 3][c] = EZXML_NAMEM;
+        }
     }
-    else if (xml->flags & EZXML_DUP) free((char *)name); // name was strduped
+    else if (xml->flags & EZXML_DUP) {
+        free((char *)name); // name was strduped
+    }
 
     for (c = l; xml->attr[c]; c += 2); // find end of attribute list
-    if (xml->attr[c + 1][l / 2] & EZXML_TXTM) free(xml->attr[l + 1]); //old val
-    if (xml->flags & EZXML_DUP) xml->attr[c + 1][l / 2] |= EZXML_TXTM;
-    else xml->attr[c + 1][l / 2] &= ~EZXML_TXTM;
+     
+    if (xml->attr[c + 1][l / 2] & EZXML_TXTM) { 
+        free(xml->attr[l + 1]); //old val
+    }
+    if (xml->flags & EZXML_DUP) {
+         xml->attr[c + 1][l / 2] |= EZXML_TXTM;
+    }
+    else { 
+        xml->attr[c + 1][l / 2] &= ~EZXML_TXTM;
+    }
 
-    if (value) xml->attr[l + 1] = (char *)value; // set attribute value
+    if (value) {
+        xml->atr[l + 1] = (char *)value; // set attribute value
+    }
     else { // remove attribute
-        if (xml->attr[c + 1][l / 2] & EZXML_NAMEM) free(xml->attr[l]);
+        if (xml->attr[c + 1][l / 2] & EZXML_NAMEM) {
+            free(xml->attr[l]);
+        }
         memmove(xml->attr + l, xml->attr + l + 2, (c - l + 2) * sizeof(char*));
         xml->attr = realloc(xml->attr, (c + 2) * sizeof(char *));
-        memmove(xml->attr[c + 1] + (l / 2), xml->attr[c + 1] + (l / 2) + 1,
-                (c / 2) - (l / 2)); // fix list of which name/vals are malloced
+        memmove(xml->attr[c + 1] + (l / 2), xml->attr[c + 1] + (l / 2) + 1, (c / 2) - (l / 2)); // fix list of which name/vals are malloced
     }
+
     xml->flags &= ~EZXML_DUP; // clear strdup() flag
     return xml;
 }
 
 // sets a flag for the given tag and returns the tag
-static ezxml_t ezxml_set_flag(ezxml_t xml, short flag)
-{
-    if (xml) xml->flags |= flag;
+static ezxml_t ezxml_set_flag(ezxml_t xml, short flag) {
+    if (xml) {
+        xml->flags |= flag;
+    }
     return xml;
 }
 
 // removes a tag along with its subtags without freeing its memory
-static ezxml_t ezxml_cut(ezxml_t xml)
-{
+static ezxml_t ezxml_cut(ezxml_t xml) {
     ezxml_t cur;
 
-    if (! xml) return NULL; // nothing to do
-    if (xml->next) xml->next->sibling = xml->sibling; // patch sibling list
+    if (! xml) {
+        return NULL; // nothing to do
+    }
+    if (xml->next) {
+        xml->next->sibling = xml->sibling; // patch sibling list
+    }
 
     if (xml->parent) { // not root tag
         cur = xml->parent->child; // find head of subtag list
-        if (cur == xml) xml->parent->child = xml->ordered; // first subtag
+        if (cur == xml) {
+            xml->parent->child = xml->ordered; // first subtag
+        }
         else { // not first subtag
-            while (cur->ordered != xml) cur = cur->ordered;
+            while (cur->ordered != xml) {
+                cur = cur->ordered;
+            }
             cur->ordered = cur->ordered->ordered; // patch ordered list
 
             cur = xml->parent->child; // go back to head of subtag list
             if (strcmp(cur->name, xml->name)) { // not in first sibling list
-                while (strcmp(cur->sibling->name, xml->name))
+                while (strcmp(cur->sibling->name, xml->name)) {
                     cur = cur->sibling;
-                if (cur->sibling == xml) { // first of a sibling list
-                    cur->sibling = (xml->next) ? xml->next
-                                               : cur->sibling->sibling;
                 }
-                else cur = cur->sibling; // not first of a sibling list
+                if (cur->sibling == xml) { // first of a sibling list
+                    cur->sibling = (xml->next) ? xml->next: cur->sibling->sibling;
+                }
+                else {
+                    cur = cur->sibling; // not first of a sibling list
+                }
             }
 
-            while (cur->next && cur->next != xml) cur = cur->next;
-            if (cur->next) cur->next = cur->next->next; // patch next list
+            while (cur->next && cur->next != xml) {
+                cur = cur->next;
+            }
+            if (cur->next) {
+                cur->next = cur->next->next; // patch next list
+            }
         }        
     }
     xml->ordered = xml->sibling = xml->next = NULL;
