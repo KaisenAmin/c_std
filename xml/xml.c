@@ -45,7 +45,9 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
     (void)offset;
 
     HANDLE h = CreateFileMapping((HANDLE)_get_osfhandle(fd), NULL, PAGE_READWRITE, 0, 0, NULL);
-    if (!h) return MAP_FAILED;
+    if (!h) {
+        return MAP_FAILED;
+    }
     return MapViewOfFile(h, FILE_MAP_READ, 0, 0, length);
 }
 
@@ -365,16 +367,23 @@ static ezxml_t ezxml_close_tag(ezxml_root_t root, char *name, char *s) {
 
 // checks for circular entity references, returns non-zero if no circular
 // references are found, zero otherwise
-static int ezxml_ent_ok(char *name, char *s, char **ent)
-{
+static int ezxml_ent_ok(char *name, char *s, char **ent) {
     int i;
 
     for (; ; s++) {
-        while (*s && *s != '&') s++; // find next entity reference
-        if (! *s) return 1;
-        if (! strncmp(s + 1, name, strlen(name))) return 0; // circular ref.
+        while (*s && *s != '&') {
+            s++; // find next entity reference
+        }
+        if (! *s) {
+            return 1;
+        }
+        if (! strncmp(s + 1, name, strlen(name))) {
+             return 0; // circular ref.
+        }
         for (i = 0; ent[i] && strncmp(ent[i], s + 1, strlen(ent[i])); i += 2);
-        if (ent[i] && ! ezxml_ent_ok(name, ent[i + 1], ent)) return 0;
+        if (ent[i] && ! ezxml_ent_ok(name, ent[i + 1], ent)) {
+            return 0;
+        }
     }
 }
 
@@ -557,13 +566,23 @@ static void ezxml_free_attr(char **attr) {
     int i = 0;
     char *m;
     
-    if (! attr || attr == EZXML_NIL) return; // nothing to free
-    while (attr[i]) i += 2; // find end of attribute list
+    if (! attr || attr == EZXML_NIL) {
+        return; // nothing to free
+    }
+    while (attr[i]) {
+        i += 2; // find end of attribute list
+    }
+
     m = attr[i + 1]; // list of which names and values are malloced
     for (i = 0; m[i]; i++) {
-        if (m[i] & EZXML_NAMEM) free(attr[i * 2]);
-        if (m[i] & EZXML_TXTM) free(attr[(i * 2) + 1]);
+        if (m[i] & EZXML_NAMEM) {
+            free(attr[i * 2]);
+        }
+        if (m[i] & EZXML_TXTM) { 
+            free(attr[(i * 2) + 1]);
+        }
     }
+    
     free(m);
     free(attr);
 }
@@ -1279,7 +1298,6 @@ void xml_append_child(XmlNode* parent, XmlNode* child) {
 
     ezxml_insert(child_node, parent_node, 0);
 }
-
 
 void xml_set_element_text(XmlNode* element, const char* text) {
     ezxml_set_txt((ezxml_t)element->internal_node, text);
