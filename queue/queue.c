@@ -42,7 +42,7 @@ Queue* queue_create(size_t itemSize) {
         exit(-1); 
     }
 
-    QUEUE_LOG("[queue_create]: Queue created successfully at %p", queue);
+    QUEUE_LOG("[queue_create]: Queue created successfully at %p", (void*)queue);
     return queue;
 }
 
@@ -56,7 +56,7 @@ Queue* queue_create(size_t itemSize) {
  * @return true if the queue is empty or NULL, false otherwise.
  */
 bool queue_empty(const Queue* q) {
-    QUEUE_LOG("[queue_empty]: Entering with queue: %p", q);
+    QUEUE_LOG("[queue_empty]: Entering with queue: %p", (void*)q);
 
     if (!q) {
         QUEUE_LOG("[queue_empty]: Error: Queue pointer is NULL");
@@ -83,7 +83,7 @@ bool queue_empty(const Queue* q) {
  * @return The number of elements in the queue, or 0 if the queue is NULL.
  */
 size_t queue_size(const Queue* q) {
-    QUEUE_LOG("[queue_size]: Entering with queue: %p", q);
+    QUEUE_LOG("[queue_size]: Entering with queue: %p", (void*)q);
 
     if (!q) {
         QUEUE_LOG("[queue_size]: Error: Queue pointer is NULL");
@@ -110,7 +110,7 @@ size_t queue_size(const Queue* q) {
  * @param item Pointer to the item to be added to the queue.
  */
 void queue_push(Queue* q, void* item) {
-    QUEUE_LOG("[queue_push]: Entering with queue: %p, item: %p", q, item);
+    QUEUE_LOG("[queue_push]: Entering with queue: %p, item: %p", (void*)q, (void*)item);
 
     if (!q) {
         QUEUE_LOG("[queue_push]: Error: Queue is NULL");
@@ -138,7 +138,7 @@ void queue_push(Queue* q, void* item) {
  * @return Pointer to the front element, or NULL if the queue is empty or invalid.
  */
 void* queue_front(const Queue* q) {
-    QUEUE_LOG("[queue_front]: Entering with queue: %p", q);
+    QUEUE_LOG("[queue_front]: Entering with queue: %p", (void*)q);
 
     if (!q) {
         QUEUE_LOG("[queue_front]: Error: Queue pointer is NULL");
@@ -154,7 +154,7 @@ void* queue_front(const Queue* q) {
     }
 
     void* front = vector_front(q->vec);
-    QUEUE_LOG("[queue_front]: Returning front element: %p", front);
+    QUEUE_LOG("[queue_front]: Returning front element: %p", (void*)front);
 
     return front;
 }
@@ -169,7 +169,7 @@ void* queue_front(const Queue* q) {
  * @return Pointer to the last element, or NULL if the queue is empty or invalid.
  */
 void* queue_back(const Queue* q) {
-    QUEUE_LOG("[queue_back]: Entering with queue: %p", q);
+    QUEUE_LOG("[queue_back]: Entering with queue: %p", (void*)q);
 
     if (!q) {
         QUEUE_LOG("[queue_back]: Error: Queue pointer is NULL");
@@ -185,7 +185,7 @@ void* queue_back(const Queue* q) {
     }
 
     void* back = vector_back(q->vec);
-    QUEUE_LOG("[queue_back]: Returning back element: %p", back);
+    QUEUE_LOG("[queue_back]: Returning back element: %p", (void*)back);
     return back;
 }
 
@@ -198,7 +198,7 @@ void* queue_back(const Queue* q) {
  * @param q Pointer to the Queue object.
  */
 void queue_pop(Queue* q) {
-    QUEUE_LOG("[queue_pop]: Entering with queue: %p", q);
+    QUEUE_LOG("[queue_pop]: Entering with queue: %p", (void*)q);
 
     if (!q) {
         QUEUE_LOG("[queue_pop]: Error: Queue pointer is NULL");
@@ -228,7 +228,7 @@ void queue_pop(Queue* q) {
  * @param itemSize Size of the item to be added.
  */
 void queue_emplace(Queue* q, void* item, size_t itemSize) {
-    QUEUE_LOG("[queue_emplace]: Entering with queue: %p, item: %p, itemSize: %zu", q, item, itemSize);
+    QUEUE_LOG("[queue_emplace]: Entering with queue: %p, item: %p, itemSize: %zu", (void*)q, (void*)item, itemSize);
 
     if (!q) {
         QUEUE_LOG("[queue_emplace]: Error: Queue pointer is NULL");
@@ -257,7 +257,7 @@ void queue_emplace(Queue* q, void* item, size_t itemSize) {
  * @param q2 Pointer to the second Queue object.
  */
 void queue_swap(Queue* q1, Queue* q2) {
-    QUEUE_LOG("[queue_swap]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_swap]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_swap]: Error: One or both Queue pointers are NULL");
@@ -281,7 +281,7 @@ void queue_swap(Queue* q1, Queue* q2) {
  * @param q Pointer to the Queue object to be deallocated.
  */
 void queue_deallocate(Queue* q) {
-    QUEUE_LOG("[queue_deallocate]: Entering with q: %p", q);
+    QUEUE_LOG("[queue_deallocate]: Entering with q: %p", (void*)q);
 
     if (!q) {
         QUEUE_LOG("[queue_deallocate]: Error: Queue pointer is NULL");
@@ -309,7 +309,7 @@ void queue_deallocate(Queue* q) {
  * @return true if the queues are equal, false otherwise.
  */
 bool queue_is_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_equal]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_is_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_is_equal]: Error: One or both Queue pointers are NULL");
@@ -333,7 +333,7 @@ bool queue_is_equal(const Queue* q1, const Queue* q2) {
  * @return true if the first queue is less, false otherwise.
  */
 bool queue_is_less(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_less]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_is_less]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_is_less]: Error: One or both Queue pointers are NULL");
@@ -358,7 +358,7 @@ bool queue_is_less(const Queue* q1, const Queue* q2) {
  * @return true if the first queue is greater, false otherwise.
  */
 bool queue_is_greater(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_greater]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_is_greater]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_is_greater]: Error: One or both Queue pointers are NULL");
@@ -384,7 +384,7 @@ bool queue_is_greater(const Queue* q1, const Queue* q2) {
  * @return true if the queues are not equal, false otherwise.
  */
 bool queue_is_not_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_not_equal]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_is_not_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_is_not_equal]: Error: One or both Queue pointers are NULL");
@@ -408,7 +408,7 @@ bool queue_is_not_equal(const Queue* q1, const Queue* q2) {
  * @return true if the first queue is less than or equal, false otherwise.
  */
 bool queue_is_less_or_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_less_or_equal]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_is_less_or_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_is_less_or_equal]: Error: One or both Queue pointers are NULL");
@@ -417,6 +417,7 @@ bool queue_is_less_or_equal(const Queue* q1, const Queue* q2) {
 
     bool result = queue_is_less(q1, q2) || queue_is_equal(q1, q2);
     QUEUE_LOG("[queue_is_less_or_equal]: Comparison result: %s", result ? "true" : "false");
+
     return result;
 }
 
@@ -432,7 +433,7 @@ bool queue_is_less_or_equal(const Queue* q1, const Queue* q2) {
  * @return true if the first queue is greater than or equal, false otherwise.
  */
 bool queue_is_greater_or_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_greater_or_equal]: Entering with q1: %p, q2: %p", q1, q2);
+    QUEUE_LOG("[queue_is_greater_or_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
 
     if (!q1 || !q2) {
         QUEUE_LOG("[queue_is_greater_or_equal]: Error: One or both Queue pointers are NULL");

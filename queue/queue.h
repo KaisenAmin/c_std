@@ -14,7 +14,7 @@
 
 #ifdef QUEUE_LOGGING_ENABLE 
     #define QUEUE_LOG(fmt, ...) \
-        do { fprintf(stderr, " [QUEUE LOG] " fmt "\n", __func__, ##__VA_ARGS__); } while (0)
+        do { fprintf(stderr, "[QUEUE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
     #define QUEUE_LOG(fmt, ...) do { } while (0)
 #endif
