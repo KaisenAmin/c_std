@@ -14,26 +14,22 @@ static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolVector *pool);
 
 static MemoryPoolVector *memory_pool_create(size_t size) {
+    VECTOR_LOG("[memory_pool_create]: Entering with pool size: %zu", size);
+    
     if (size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Memory pool size cannot be zero.\n");
-        #endif
+        VECTOR_LOG("[memory_pool_create]: Error: Memory pool size cannot be zero.");
         return NULL;
     }
 
     MemoryPoolVector *pool = malloc(sizeof(MemoryPoolVector));
     if (!pool) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for MemoryPoolVector structure.\n");
-        #endif 
+        VECTOR_LOG("[memory_pool_create]: Error: Failed to allocate memory for MemoryPoolVector structure.");
         return NULL;
     }
 
     pool->pool = malloc(size);
     if (!pool->pool) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for memory pool of size %zu.\n", size);
-        #endif 
+        VECTOR_LOG("[memory_pool_create]: Error: Failed to allocate memory for memory pool of size %zu.", size);
         free(pool);
         return NULL;
     }
@@ -41,44 +37,45 @@ static MemoryPoolVector *memory_pool_create(size_t size) {
     pool->poolSize = size;
     pool->used = 0;
 
+    VECTOR_LOG("[memory_pool_create]: Successfully created memory pool at %p with size %zu.", (void*)pool, pool->poolSize);
     return pool;
 }
 
 static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
+    VECTOR_LOG("[memory_pool_allocate]: Entering with pool: %p, size: %zu", (void*)pool, size);
+    
     if (!pool) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Memory pool is not initialized.\n");
-        #endif 
+        VECTOR_LOG("[memory_pool_allocate]: Error: Memory pool is not initialized.");
         return NULL;
     }
     if (size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Cannot allocate zero size.\n");
-        #endif
+        VECTOR_LOG("[memory_pool_allocate]: Error: Cannot allocate zero size.");
         return NULL;
     }
     if (pool->used + size > pool->poolSize) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Memory pool out of space. Cannot allocate %zu bytes.\n", size);
-        #endif
-        return NULL; // Pool is out of memory
+        VECTOR_LOG("[memory_pool_allocate]: Error: Memory pool out of space. Cannot allocate %zu bytes.", size);
+        return NULL; 
     }
 
     void *mem = (char *)pool->pool + pool->used;
     pool->used += size;
 
+    VECTOR_LOG("[memory_pool_allocate]: Successfully allocated %zu bytes. New pool used size: %zu.", size, pool->used);
     return mem;
 }
 
 static void memory_pool_destroy(MemoryPoolVector *pool) {
+    VECTOR_LOG("[memory_pool_destroy]: Entering with pool: %p", (void*)pool);
+    
     if (!pool) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Attempted to destroy a non-initialized memory pool.\n");
-        #endif
+        VECTOR_LOG("[memory_pool_destroy]: Error: Attempted to destroy a non-initialized memory pool.");
         return;
     }
-    free(pool->pool); // Free the allocated pool memory
-    free(pool); // Free the pool structure itself
+    
+    free(pool->pool); 
+    free(pool); 
+    
+    VECTOR_LOG("[memory_pool_destroy]: Successfully destroyed the memory pool.");
 }
 
 /**
@@ -101,15 +98,14 @@ static void memory_pool_destroy(MemoryPoolVector *pool) {
  * created with a size of 100,000 bytes.
  */
 Vector* vector_create(size_t itemSize) {
+    VECTOR_LOG("[vector_create]: Entering with itemSize: %zu", itemSize);
+    
     Vector* vec = (Vector*)malloc(sizeof(Vector));
-
-    if (!vec){
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Can not allocate memory for Vector structure");
-        #endif 
-        exit(-1);
-    } 
-        
+    if (!vec) {
+        VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector structure.");
+        exit(-1); // Handle allocation failure
+    }
+    
     vec->size = 0;
     vec->capacitySize = 32; // Initial capacity
     vec->itemSize = itemSize;
@@ -118,22 +114,19 @@ Vector* vector_create(size_t itemSize) {
     vec->pool = memory_pool_create(initialPoolSize);
     if (!vec->pool) {
         free(vec);
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Can not allocate memory for Vector pool");
-        #endif 
+        VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector pool.");
         exit(-1);
     }
 
-    // Instead of malloc, use memory pool for initial allocation
     vec->items = memory_pool_allocate(vec->pool, vec->capacitySize * itemSize);
     if (!vec->items) {
         memory_pool_destroy(vec->pool);
         free(vec);
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Can not allocate memory for Vector items");
-        #endif
+        VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector items.");
         exit(-1);
     }
+
+    VECTOR_LOG("[vector_create]: Successfully created vector at %p with capacity %zu.", (void*)vec, vec->capacitySize);
     return vec;
 }
 
@@ -157,19 +150,21 @@ Vector* vector_create(size_t itemSize) {
  * comparison of the vector contents.
  */
 bool vector_is_equal(const Vector* vec1, const Vector* vec2) {
+    VECTOR_LOG("[vector_is_equal]: Entering with vector1: %p, vector2: %p", (void*)vec1, (void*)vec2);
+
     if (vec1 == NULL || vec2 == NULL) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vector pointers are NULL in vector_is_equal.\n");
-        #endif
-        return false; // One or both vectors are NULL, so they cannot be equal
+        VECTOR_LOG("[vector_is_equal]: Error: One or both vectors are NULL.");
+        return false; 
     }
     if (vec1->size != vec2->size) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vectors have different sizes in vector_is_equal.\n");
-        #endif
-        return false; // Vectors with different sizes cannot be equal
+        VECTOR_LOG("[vector_is_equal]: Vectors have different sizes. vec1 size: %zu, vec2 size: %zu", vec1->size, vec2->size);
+        return false; 
     }
-    return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) == 0;
+
+    bool result = memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) == 0;
+    VECTOR_LOG("[vector_is_equal]: Comparison result: %s", result ? "true" : "false");
+
+    return result;
 }
 
 /**
@@ -192,17 +187,20 @@ bool vector_is_equal(const Vector* vec1, const Vector* vec2) {
  * vector with fewer elements is considered to be less.
  */
 bool vector_is_less(const Vector* vec1, const Vector* vec2) {
+    VECTOR_LOG("[vector_is_less]: Entering with vector1: %p, vector2: %p", (void*)vec1, (void*)vec2);
+
     if (!vec1 || !vec2) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vector pointers are NULL in vector_is_less.\n");
-        #endif
+        VECTOR_LOG("[vector_is_less]: Error: One or both vectors are NULL.");
         return false;
     }
 
     size_t minSize = vec1->size < vec2->size ? vec1->size : vec2->size;
     int cmp = memcmp(vec1->items, vec2->items, minSize * vec1->itemSize);
 
-    return cmp < 0 || (cmp == 0 && vec1->size < vec2->size);
+    bool result = cmp < 0 || (cmp == 0 && vec1->size < vec2->size);
+    VECTOR_LOG("[vector_is_less]: Comparison result: %s", result ? "true" : "false");
+
+    return result;
 }
 
 /**
@@ -225,17 +223,20 @@ bool vector_is_less(const Vector* vec1, const Vector* vec2) {
  * vector with more elements is considered to be greater.
  */
 bool vector_is_greater(const Vector* vec1, const Vector* vec2) {
+    VECTOR_LOG("[vector_is_greater]: Entering with vector1: %p, vector2: %p", (void*)vec1, (void*)vec2);
+
     if (!vec1 || !vec2) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vector pointers are NULL in vector_is_greater.\n");
-        #endif 
+        VECTOR_LOG("[vector_is_greater]: Error: One or both vectors are NULL.");
         return false;
     }
 
     size_t minSize = vec1->size < vec2->size ? vec1->size : vec2->size;
     int cmp = memcmp(vec1->items, vec2->items, minSize * vec1->itemSize);
 
-    return cmp > 0 || (cmp == 0 && vec1->size > vec2->size);
+    bool result = cmp > 0 || (cmp == 0 && vec1->size > vec2->size);
+    VECTOR_LOG("[vector_is_greater]: Comparison result: %s", result ? "true" : "false");
+
+    return result;
 }
 
 /**
@@ -256,20 +257,23 @@ bool vector_is_greater(const Vector* vec1, const Vector* vec2) {
  * are considered not equal. Otherwise, a byte-by-byte comparison of the contents is performed.
  */
 bool vector_is_not_equal(const Vector* vec1, const Vector* vec2) {
+    VECTOR_LOG("[vector_is_not_equal]: Entering with vector1: %p, vector2: %p", (void*)vec1, (void*)vec2);
+
     if (!vec1 || !vec2) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vector pointers are NULL in vector_is_not_equal.\n");
-        #endif 
+        VECTOR_LOG("[vector_is_not_equal]: Error: One or both vectors are NULL.");
         return true;
     }
-    if (vec1->size != vec2->size) { 
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vectors have different sizes in vector_is_not_equal.\n");
-        #endif 
+    if (vec1->size != vec2->size) {
+        VECTOR_LOG("[vector_is_not_equal]: Vectors have different sizes. vec1 size: %zu, vec2 size: %zu", vec1->size, vec2->size);
         return true;
     }
-    return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) != 0;
+
+    bool result = memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) != 0;
+    VECTOR_LOG("[vector_is_not_equal]: Comparison result: %s", result ? "true" : "false");
+
+    return result;
 }
+
 
 /**
  * @brief This function compares two vectors lexicographically to check if the first vector (`vec1`) 
@@ -290,13 +294,17 @@ bool vector_is_not_equal(const Vector* vec1, const Vector* vec2) {
  * @note Ensure that both vectors are properly initialized before calling this function.
  */
 bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2) {
+    VECTOR_LOG("[vector_is_greater_or_equal]: Entering with vector1: %p, vector2: %p", (void*)vec1, (void*)vec2);
+
     if (!vec1 || !vec2) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vector pointers are NULL in vector_is_greater_or_equal.\n");
-        #endif 
-        return false; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_is_greater_or_equal]: Error: One or both vectors are NULL.");
+        return false;
     }
-    return !vector_is_less(vec1, vec2);
+
+    bool result = !vector_is_less(vec1, vec2);
+    VECTOR_LOG("[vector_is_greater_or_equal]: Comparison result: %s", result ? "true" : "false");
+
+    return result;
 }
 
 /**
@@ -318,13 +326,17 @@ bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2) {
  * @note Ensure that both vectors are properly initialized before calling this function.
  */
 bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) {
+    VECTOR_LOG("[vector_is_less_or_equal]: Entering with vector1: %p, vector2: %p", (void*)vec1, (void*)vec2);
+
     if (!vec1 || !vec2) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vector pointers are NULL in vector_is_less_or_equal.\n");
-        #endif 
-        return false; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_is_less_or_equal]: Error: One or both vectors are NULL.");
+        return false;
     }
-    return !vector_is_greater(vec1, vec2);
+
+    bool result = !vector_is_greater(vec1, vec2);
+    VECTOR_LOG("[vector_is_less_or_equal]: Comparison result: %s", result ? "true" : "false");
+
+    return result;
 }
 
 /**
@@ -341,13 +353,17 @@ bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) {
  * performing operations that require the vector to be non-empty.
  */
 bool vector_is_empty(Vector *vec) {
+    VECTOR_LOG("[vector_is_empty]: Entering with vector: %p", (void*)vec);
+
     if (vec == NULL) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_is_empty_impl.\n");
-        #endif 
-        return true; // or handle the error as per your application's needs
+        VECTOR_LOG("[vector_is_empty]: Error: Vector is NULL.");
+        return true; 
     }
-    return vec->size == 0;
+
+    bool isEmpty = (vec->size == 0);
+    VECTOR_LOG("[vector_is_empty]: Vector is %s", isEmpty ? "empty" : "not empty");
+
+    return isEmpty;
 }
 
 /**
@@ -371,33 +387,28 @@ bool vector_is_empty(Vector *vec) {
  * `VECTOR_LOGGING_ENABLE` is defined, an error message is logged to `stderr`.
  */
 void vector_erase(Vector *vec, size_t pos, size_t len) {
+    VECTOR_LOG("[vector_erase]: Entering with vector: %p, position: %zu, length: %zu", (void*)vec, pos, len);
+
     if (vec == NULL) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_erase.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_erase]: Error: Vector is NULL.");
+        return;
     }
-
     if (pos >= vec->size) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Position is out of bounds in vector_erase.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_erase]: Error: Position is out of bounds. Vector size: %zu", vec->size);
+        return;
+    }
+    if (pos + len > vec->size) {
+        VECTOR_LOG("[vector_erase]: Error: Length exceeds vector size. Vector size: %zu", vec->size);
+        return;
     }
 
-    if (pos + len > vec->size) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Length is too large in vector_erase.\n");
-        #endif
-        return; // Handle the error as per your application's needs
-    }
     char *base = (char *)vec->items;
-    memmove(base + pos * vec->itemSize, 
-            base + (pos + len) * vec->itemSize, 
-            (vec->size - pos - len) * vec->itemSize);
+    memmove(base + pos * vec->itemSize, base + (pos + len) * vec->itemSize, (vec->size - pos - len) * vec->itemSize);
 
     vec->size -= len;
+    VECTOR_LOG("[vector_erase]: Successfully erased %zu elements from position %zu. New size: %zu", len, pos, vec->size);
 }
+
 
 /**
  * @brief This function inserts a new element into the vector at the specified position. The elements 
@@ -421,50 +432,44 @@ void vector_erase(Vector *vec, size_t pos, size_t len) {
  * message is logged to `stderr`.
  */
 void vector_insert(Vector *vec, size_t pos, void *item) {
+    VECTOR_LOG("[vector_insert]: Entering with vector: %p, position: %zu, item: %p", (void*)vec, pos, (void*)item);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_insert.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_insert]: Error: Vector is NULL.");
+        return;
     }
     if (pos > vec->size) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Position is out of bounds in vector_insert.\n");
-        #endif
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_insert]: Error: Position is out of bounds. Vector size: %zu", vec->size);
+        return;
     }
-    
+
     if (vec->size == vec->capacitySize) {
-        // Allocate new space from the memory pool
+        VECTOR_LOG("[vector_insert]: Resizing vector to accommodate new element.");
+
         size_t newCapacity = vec->capacitySize * 2; // Double the capacity
         void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
 
         if (!newItems) {
-            #ifdef VECTOR_LOGGING_ENABLE
-                fmt_fprintf(stderr, "Error: Failed to allocate memory for vector_insert.\n");
-            #endif 
-            return; // Handle allocation failure, maybe by resizing the pool
+            VECTOR_LOG("[vector_insert]: Error: Failed to allocate memory for resizing.");
+            return;
         }
 
-        // Copy existing items to the new space
         memcpy(newItems, vec->items, pos * vec->itemSize); // Copy elements before insertion position
-        memcpy((char *)newItems + (pos + 1) * vec->itemSize, 
-               (char *)vec->items + pos * vec->itemSize, 
-               (vec->size - pos) * vec->itemSize); // Copy elements after insertion position
+        memcpy((char *)newItems + (pos + 1) * vec->itemSize, (char *)vec->items + pos * vec->itemSize, 
+                (vec->size - pos) * vec->itemSize); // Copy elements after insertion position
 
         vec->items = newItems;
         vec->capacitySize = newCapacity;
+        VECTOR_LOG("[vector_insert]: Resized vector to new capacity: %zu", newCapacity);
     } 
     else {
-        char *base = (char *)vec->items;  // Shift elements to make space for the new element
-        memmove(base + (pos + 1) * vec->itemSize, 
-                base + pos * vec->itemSize, 
-                (vec->size - pos) * vec->itemSize);
+        char *base = (char *)vec->items;
+        memmove(base + (pos + 1) * vec->itemSize, base + pos * vec->itemSize, (vec->size - pos) * vec->itemSize);
     }
 
-    // Insert the new element
     memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
     vec->size++;
+    VECTOR_LOG("[vector_insert]: Inserted new element at position %zu. New size: %zu", pos, vec->size);
 }
 
 /**
@@ -489,29 +494,33 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
  * 
  */
 bool vector_reserve(Vector *vec, size_t size) {
-    if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_reserve.\n");
-        #endif 
-        return false; 
-    }
-    if (vec->capacitySize >= size) {
-        return true; 
-    }
+    VECTOR_LOG("[vector_reserve]: Entering with vector: %p, size: %zu", (void*)vec, size);
 
-    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
-    if (!newItems) {
-        #ifdef VECTOR_LOGGING_ENABLE 
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for vector_reserve.\n");
-        #endif 
+    if (!vec) {
+        VECTOR_LOG("[vector_reserve]: Error: Vector is NULL.");
         return false;
     }
+    if (vec->capacitySize >= size) {
+        VECTOR_LOG("[vector_reserve]: Current capacity (%zu) is already sufficient.", vec->capacitySize);
+        return true;
+    }
+
+    VECTOR_LOG("[vector_reserve]: Resizing to new capacity: %zu", size);
+    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
+    if (!newItems) {
+        VECTOR_LOG("[vector_reserve]: Error: Failed to allocate memory.");
+        return false;
+    }
+
     if (vec->size > 0) {
         memcpy(newItems, vec->items, vec->size * vec->itemSize);
+        VECTOR_LOG("[vector_reserve]: Copied existing items to new memory.");
     }
 
     vec->items = newItems;
     vec->capacitySize = size;
+    VECTOR_LOG("[vector_reserve]: New capacity set to %zu", size);
+
     return true;
 }
 
@@ -534,20 +543,27 @@ bool vector_reserve(Vector *vec, size_t size) {
  * the new size.
  */
 void vector_resize(Vector *vec, size_t size) {
+    VECTOR_LOG("[vector_resize]: Entering with vector: %p, new size: %zu", (void*)vec, size);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_resize.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_resize]: Error: Vector is NULL.");
+        return;
     }
-    if (size > vec->capacitySize) { 
-        vector_reserve(vec, size); // Resize capacity if new size exceeds current capacity
+
+    if (size > vec->capacitySize) {
+        VECTOR_LOG("[vector_resize]: Current capacity (%zu) is less than new size. Resizing...", vec->capacitySize);
+        vector_reserve(vec, size);
     }
-    if (vec->size < size) { 
-        memset((char *)vec->items + vec->size * vec->itemSize, 0, (size - vec->size) * vec->itemSize);  // Initialize new elements to 0 if size is increased
+
+    if (vec->size < size) {
+        VECTOR_LOG("[vector_resize]: Expanding vector and zero-initializing new elements.");
+        memset((char *)vec->items + vec->size * vec->itemSize, 0, (size - vec->size) * vec->itemSize);
     }
+
     vec->size = size;
+    VECTOR_LOG("[vector_resize]: Vector size set to %zu", size);
 }
+
 
 /**
  * @brief This function resizes the vector's capacity to match its current size, thereby freeing 
@@ -567,35 +583,38 @@ void vector_resize(Vector *vec, size_t size) {
  * items and sets its capacity to zero.
  */
 void vector_shrink_to_fit(Vector *vec) {
+    VECTOR_LOG("[vector_shrink_to_fit]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_shrink_to_fit.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
-    }
-    if (vec->size == vec->capacitySize) {
-        return; // No need to shrink if size equals capacity
-    }
-
-    if (vec->size == 0) {
-        free(vec->items); // Assuming this memory is not part of the pool
-        vec->items = NULL;
-        vec->capacitySize = 0;
-
+        VECTOR_LOG("[vector_shrink_to_fit]: Error: Vector is NULL.");
         return;
     }
 
+    if (vec->size == vec->capacitySize) {
+        VECTOR_LOG("[vector_shrink_to_fit]: No need to shrink. Size (%zu) is equal to capacity.", vec->size);
+        return;
+    }
+
+    if (vec->size == 0) {
+        VECTOR_LOG("[vector_shrink_to_fit]: Vector is empty. Deallocating memory.");
+        free(vec->items);
+        vec->items = NULL;
+        vec->capacitySize = 0;
+        return;
+    }
+
+    VECTOR_LOG("[vector_shrink_to_fit]: Shrinking vector to fit size: %zu", vec->size);
     void *newItems = memory_pool_allocate(vec->pool, vec->size * vec->itemSize);
     if (!newItems) {
-        #ifdef VECTOR_LOGGING_ENABLE 
-            fmt_fprintf(stderr, "Error: Failed to allocate memory for vector_shrink_to_fit.\n");
-        #endif 
-        return; // Handle allocation failure, maybe by resizing the pool or another appropriate action
+        VECTOR_LOG("[vector_shrink_to_fit]: Error: Failed to allocate memory for shrink.");
+        return;
     }
-    
+
     memcpy(newItems, vec->items, vec->size * vec->itemSize);
     vec->items = newItems;
     vec->capacitySize = vec->size;
+
+    VECTOR_LOG("[vector_shrink_to_fit]: Shrink successful. New capacity: %zu", vec->capacitySize);
 }
 
 /**
@@ -615,11 +634,11 @@ void vector_shrink_to_fit(Vector *vec) {
  * to the elements in the original vectors will now reference elements in the swapped vectors.
  */
 void vector_swap(Vector *vec1, Vector *vec2) {
+    VECTOR_LOG("[vector_swap]: Entering with vec1: %p, vec2: %p", (void*)vec1, (void*)vec2);
+
     if (!vec1 || !vec2) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both vectors are NULL in vector_swap.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_swap]: Error: One or both vectors are NULL.");
+        return;
     }
 
     void *tempItems = vec1->items;
@@ -637,6 +656,8 @@ void vector_swap(Vector *vec1, Vector *vec2) {
     size_t tempItemSize = vec1->itemSize;
     vec1->itemSize = vec2->itemSize;
     vec2->itemSize = tempItemSize;
+
+    VECTOR_LOG("[vector_swap]: Swapped vectors. vec1: %p, vec2: %p", (void*)vec1, (void*)vec2);
 }
 
 /**
@@ -661,19 +682,19 @@ void vector_swap(Vector *vec1, Vector *vec2) {
  * an error message is logged to `stderr`.
  */
 void vector_assign(Vector *vec, size_t pos, void *item) {
+    VECTOR_LOG("[vector_assign]: Entering with vector: %p, position: %zu, item: %p", (void*)vec, pos, (void*)item);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_assign.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_assign]: Error: Vector is NULL.");
+        return;
     }
     if (pos >= vec->size) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Position is out of bounds in vector_assign.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_assign]: Error: Position %zu is out of bounds.", pos);
+        return;
     }
+
     memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
+    VECTOR_LOG("[vector_assign]: Assigned new item at position %zu.", pos);
 }
 
 /**
@@ -703,20 +724,19 @@ void vector_assign(Vector *vec, size_t pos, void *item) {
  * `VECTOR_LOGGING_ENABLE` is defined, an error message is logged to `stderr`.
  */
 void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
+    VECTOR_LOG("[vector_emplace]: Entering with vector: %p, position: %zu, item: %p, itemSize: %zu", (void*)vec, pos, (void*)item, itemSize);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_emplace.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_emplace]: Error: Vector is NULL.");
+        return;
     }
     if (pos > vec->size || itemSize != vec->itemSize) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Invalid position or item size in vector_emplace.\n");
-        #endif 
-        return; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_emplace]: Error: Invalid position or item size.");
+        return;
     }
     if (vec->size == vec->capacitySize) {
-        vector_reserve(vec, vec->capacitySize * 2); // Use the modified version
+        VECTOR_LOG("[vector_emplace]: Resizing vector to new capacity.");
+        vector_reserve(vec, vec->capacitySize * 2);
     }
 
     char *base = (char *)vec->items;
@@ -726,6 +746,8 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
 
     memcpy(base + pos * vec->itemSize, item, vec->itemSize);
     vec->size++;
+
+    VECTOR_LOG("[vector_emplace]: Inserted new item at position %zu. New size: %zu", pos, vec->size);
 }
 
 /**
@@ -753,28 +775,31 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
  * become invalid.
  */
 bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
+    VECTOR_LOG("[vector_emplace_back]: Entering with vector: %p, item: %p, itemSize: %zu", (void*)vec, (void*)item, itemSize);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_emplace_back.\n");
-        #endif 
+        VECTOR_LOG("[vector_emplace_back]: Error: Vector is NULL.");
         return false; // Indicate failure
     }
     if (itemSize != vec->itemSize) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Invalid item size in vector_emplace_back.\n");
-        #endif 
+        VECTOR_LOG("[vector_emplace_back]: Error: Invalid item size. Expected: %zu, got: %zu", vec->itemSize, itemSize);
         return false; // Indicate failure
     }
     if (vec->size >= vec->capacitySize) {
+        VECTOR_LOG("[vector_emplace_back]: Vector capacity exceeded. Resizing...");
         if (!vector_reserve(vec, vec->capacitySize * 2)) {
+            VECTOR_LOG("[vector_emplace_back]: Error: Resizing vector failed.");
             return false; // vector_reserve failed, indicate failure
         }
     }
 
     memcpy((char *)vec->items + vec->size * vec->itemSize, item, vec->itemSize);
     vec->size++;
+
+    VECTOR_LOG("[vector_emplace_back]: Item emplaced successfully. New size: %zu", vec->size);
     return true; // Indicate success
 }
+
 
 /**
  * @brief This function adds a new element to the end of the vector by copying the given item 
@@ -797,34 +822,37 @@ bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
  * become invalid.
  */
 bool vector_push_back(Vector *vec, const void *item) {
+    VECTOR_LOG("[vector_push_back]: Entering with vector: %p, item: %p", (void*)vec, (void*)item);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_push_back.\n");
-        #endif 
+        VECTOR_LOG("[vector_push_back]: Error: Vector is NULL.");
         return false; // Indicate failure
     }
 
     if (vec->size >= vec->capacitySize) {
+        VECTOR_LOG("[vector_push_back]: Vector capacity exceeded. Resizing...");
         size_t newCapacity = vec->capacitySize * 2; // Example growth strategy
-        // Allocate new space from the memory pool
         void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
+
         if (!newItems) {
-            #ifdef VECTOR_LOGGING_ENABLE
-                fmt_fprintf(stderr, "Error: Failed to allocate memory in vector_push_back.\n");
-            #endif 
+            VECTOR_LOG("[vector_push_back]: Error: Memory allocation failed for new capacity: %zu", newCapacity);
             return false; // Indicate failure
         }
 
-        memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items to the new space
+        memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items
         vec->items = newItems;
         vec->capacitySize = newCapacity;
+
+        VECTOR_LOG("[vector_push_back]: Resized vector successfully. New capacity: %zu", newCapacity);
     }
 
-    // Proceed with adding the new item
     memcpy((char *)vec->items + (vec->size * vec->itemSize), item, vec->itemSize);
     vec->size++;
+
+    VECTOR_LOG("[vector_push_back]: Item pushed successfully. New size: %zu", vec->size);
     return true; // Indicate success
 }
+
 
 /**
  * @brief This function releases all the memory allocated for the vector, including the memory pool 
@@ -841,38 +869,65 @@ bool vector_push_back(Vector *vec, const void *item) {
  * `VECTOR_LOGGING_ENABLE` is defined, an error message is logged to `stderr`.
  */
 void vector_deallocate(Vector *vec) {
+    VECTOR_LOG("[vector_deallocate]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_deallocate.\n");
-        #endif 
+        VECTOR_LOG("[vector_deallocate]: Error: Vector is NULL.");
         return; // Handle the error as per your application's needs
     }
+
     if (vec->pool != NULL) {
+        VECTOR_LOG("[vector_deallocate]: Destroying memory pool at: %p", (void*)vec->pool);
         memory_pool_destroy(vec->pool);
         vec->pool = NULL;
     }
+
     if (vec->items != NULL) {
-        vec->items = NULL;   // The items are part of the pool, so no need to free them separately
+        VECTOR_LOG("[vector_deallocate]: Nullifying items pointer: %p", (void*)vec->items);
+        vec->items = NULL;  
     }
+
+    VECTOR_LOG("[vector_deallocate]: Freeing vector: %p", (void*)vec);
     free(vec);
+
+    VECTOR_LOG("[vector_deallocate]: Exiting.");
 }
 
+
+/**
+ * @brief Retrieves a pointer to the element at the specified position in the vector.
+ * 
+ * This function provides direct access to the element at the specified position 
+ * in the vector. If the position is within bounds, it returns a pointer to the 
+ * element. If the position is out of bounds or the vector is NULL, it returns NULL.
+ * 
+ * @param vec A pointer to the Vector structure from which to retrieve the element. 
+ *            The vector must be properly initialized before calling this function.
+ * @param pos The position of the element to access within the vector.
+ * 
+ * @return A pointer to the element at the specified position. If the vector is 
+ *         NULL or the position is out of bounds, the function returns NULL.
+ * 
+ * @note Ensure that the position is less than the vector's size to avoid 
+ *       accessing out-of-bounds memory.
+ */
+
 void *vector_at(const Vector *vec, size_t pos) {
+    VECTOR_LOG("[vector_at]: Entering with vector: %p, position: %zu", (void*)vec, pos);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_at.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_at]: Error: Vector is NULL.");
+        return NULL;
     }
 
     if (pos < vec->size) {
-        return (char *)vec->items + (pos * vec->itemSize); // Calculate the address of the item at position 'pos'
-    }
+        void *item = (char *)vec->items + (pos * vec->itemSize);
+        VECTOR_LOG("[vector_at]: Returning item at position %zu: %p", pos, item);
+        return item;
+    } 
     else {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Position is out of bounds in vector_at.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_at]: Error: Position %zu is out of bounds.", pos);
+        return NULL;
     }
 }
 
@@ -893,21 +948,23 @@ void *vector_at(const Vector *vec, size_t pos) {
  * deallocated. Modifying the vector may invalidate the pointer.
  */
 void *vector_rbegin(Vector *vec) {
+    VECTOR_LOG("[vector_rbegin]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_rbegin.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_rbegin]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_rbegin.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_rbegin]: Error: Vector is empty.");
+        return NULL;
     }
 
-    return (void *)((char *)vec->items + (vec->size - 1) * vec->itemSize); // Last element
+    void *rbegin = (char *)vec->items + (vec->size - 1) * vec->itemSize;
+    VECTOR_LOG("[vector_rbegin]: Returning reverse begin pointer: %p",(void*)rbegin);
+
+    return rbegin;
 }
+
 
 /**
  * @brief This function provides a pointer to the position just before the first element of the vector. 
@@ -926,14 +983,19 @@ void *vector_rbegin(Vector *vec) {
  * a NULL pointer.
  */
 void *vector_rend(Vector *vec) {
+    VECTOR_LOG("[vector_rend]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_rend.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_rend]: Error: Vector is NULL.");
+        return NULL;
     }
-    return (void *)((char *)vec->items - vec->itemSize); // One before the first element
+
+    void *rend = (char *)vec->items - vec->itemSize;
+    VECTOR_LOG("[vector_rend]: Returning reverse end pointer (one before first element): %p", (void*)rend);
+
+    return rend;
 }
+
 
 /**
  * @brief This function provides a read-only pointer to the first element stored in the vector. 
@@ -952,20 +1014,22 @@ void *vector_rend(Vector *vec) {
  * pointer.
  */
 const void *vector_cbegin(Vector *vec) {
+    VECTOR_LOG("[vector_cbegin]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_cbegin.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_cbegin]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_cbegin.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_cbegin]: Error: Vector is empty.");
+        return NULL;
     }
+
+    VECTOR_LOG("[vector_cbegin]: Returning constant begin pointer: %p", (const void*)vec->items);
+    VECTOR_LOG("[vector_cbegin]: Exiting.");
     return (const void *)vec->items;
 }
+
 
 /**
  * @brief This function provides a read-only pointer to the memory location immediately following 
@@ -985,19 +1049,22 @@ const void *vector_cbegin(Vector *vec) {
  * pointer.
  */
 const void *vector_cend(Vector *vec) {
+    VECTOR_LOG("[vector_cend]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_cend.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_cend]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_end.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_cend]: Error: Vector is empty.");
+        return NULL;
     }
-    return (const void *)((char *)vec->items + (vec->size * vec->itemSize)); // One past the last element, as a read-only pointer
+
+    const void *end_ptr = (const void *)((char *)vec->items + (vec->size * vec->itemSize));
+    VECTOR_LOG("[vector_cend]: Returning constant end pointer: %p", end_ptr);
+    VECTOR_LOG("[vector_cend]: Exiting.");
+
+    return end_ptr;
 }
 
 /**
@@ -1016,19 +1083,22 @@ const void *vector_cend(Vector *vec) {
  * to avoid receiving a NULL pointer.
  */
 const void *vector_crbegin(Vector *vec) {
+    VECTOR_LOG("[vector_crbegin]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_crbegin.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_crbegin]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_crbegin.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_crbegin]: Error: Vector is empty.");
+        return NULL;
     }
-    return (const void *)((char *)vec->items + (vec->size - 1) * vec->itemSize); // Last element, as a read-only pointer
+
+    const void *rbegin_ptr = (const void *)((char *)vec->items + (vec->size - 1) * vec->itemSize);
+    VECTOR_LOG("[vector_crbegin]: Returning constant reverse begin pointer: %p", rbegin_ptr);
+    VECTOR_LOG("[vector_crbegin]: Exiting.");
+
+    return rbegin_ptr;
 }
 
 /**
@@ -1051,14 +1121,20 @@ const void *vector_crbegin(Vector *vec) {
  * a NULL pointer.
  */
 const void *vector_crend(Vector *vec) {
+    VECTOR_LOG("[vector_crend]: Entering with vector: %p", (void*)vec);
+
     if (vec == NULL) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_crend.\n");
-        #endif 
+        VECTOR_LOG("[vector_crend]: Error: Vector is NULL.");
         return NULL;
-    } 
-    return (const void *)((char *)vec->items - vec->itemSize); // One before the first element, as a read-only pointer
+    }
+
+    const void *crend_ptr = (const void *)((char *)vec->items - vec->itemSize); // One before the first element
+    VECTOR_LOG("[vector_crend]: Returning crend pointer: %p", crend_ptr);
+    VECTOR_LOG("[vector_crend]: Exiting.");
+
+    return crend_ptr;
 }
+
 
 /**
  * @brief This function provides access to the first element stored in the vector by returning 
@@ -1076,14 +1152,19 @@ const void *vector_crend(Vector *vec) {
  * a NULL pointer.
  */
 void *vector_begin(Vector *vec) {
+    VECTOR_LOG("[vector_begin]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_crend.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_begin]: Error: Vector is NULL.");
+        return NULL;
     }
-    return vec->items; // Pointer to the first element
+
+    VECTOR_LOG("[vector_begin]: Returning begin pointer: %p", (void*)vec->items);
+    VECTOR_LOG("[vector_begin]: Exiting.");
+
+    return vec->items;
 }
+
 
 /**
  * @brief This function provides a pointer to the memory location immediately following the 
@@ -1101,20 +1182,24 @@ void *vector_begin(Vector *vec) {
  * iteration. It does not point to a valid element and should not be dereferenced.
  */
 void *vector_end(Vector *vec) {
+    VECTOR_LOG("[vector_end]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_end.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_end]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_end.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_end]: Error: Vector is empty.");
+        return NULL;
     }
-    return (char *)vec->items + (vec->size * vec->itemSize); // One past the last element
+
+    void *end_ptr = (char *)vec->items + (vec->size * vec->itemSize); // One past the last element
+    VECTOR_LOG("[vector_end]: Returning end pointer: %p", (void*)end_ptr);
+
+    VECTOR_LOG("[vector_end]: Exiting.");
+    return end_ptr;
 }
+
 
 /**
  * @brief This function decreases the size of the vector by one, effectively removing the last 
@@ -1134,21 +1219,23 @@ void *vector_end(Vector *vec) {
  * invalid.
  */
 void *vector_pop_back(Vector *vec) {
+    VECTOR_LOG("[vector_pop_back]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_pop_back.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_pop_back]: Error: Vector is NULL.");
+        return NULL; 
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_pop_back.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_pop_back]: Error: Vector is empty.");
+        return NULL;
     }
 
     vec->size--;
-    return (char *)vec->items + (vec->size * vec->itemSize);
+    void *popped_element = (char *)vec->items + (vec->size * vec->itemSize);
+    VECTOR_LOG("[vector_pop_back]: Popped element: %p, new size: %zu", popped_element, vec->size);
+
+    VECTOR_LOG("[vector_pop_back]: Exiting.");
+    return popped_element;
 }
 
 /**
@@ -1167,28 +1254,33 @@ void *vector_pop_back(Vector *vec) {
  * If `VECTOR_LOGGING_ENABLE` is defined, an error message is logged to `stderr`.
  */
 void vector_clear(Vector *vec) {
+    VECTOR_LOG("[vector_clear]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_clear.\n");
-        #endif 
+        VECTOR_LOG("[vector_clear]: Error: Vector is NULL.");
         return; // Handle the error as per your application's needs
     }
 
     vec->size = 0;
+    VECTOR_LOG("[vector_clear]: Vector size set to 0.");
+
     // Optionally reduce capacity. Choose an appropriate size for your use case.
     size_t reducedCapacity = 4; // Or some other small size
     if (vec->capacitySize > reducedCapacity) {
+        VECTOR_LOG("[vector_clear]: Reducing capacity to %zu.", reducedCapacity);
+        
         void *newItems = memory_pool_allocate(vec->pool, reducedCapacity * vec->itemSize);
         if (newItems != NULL || reducedCapacity == 0) {
             vec->items = newItems;
             vec->capacitySize = reducedCapacity;
+            VECTOR_LOG("[vector_clear]: Capacity reduced, new capacity: %zu.", reducedCapacity);
         } 
         else {
-            #ifdef VECTOR_LOGGING_ENABLE
-                fmt_fprintf(stderr, "Error: Cannot reallocate the Vector in vector_clear.\n");
-            #endif 
+            VECTOR_LOG("[vector_clear]: Error: Cannot reallocate the vector.");
         }
     }
+
+    VECTOR_LOG("[vector_clear]: Exiting.");
 }
 
 /**
@@ -1208,19 +1300,19 @@ void vector_clear(Vector *vec) {
  * `vector_size()` before calling `vector_front()`.
  */
 void *vector_front(Vector *vec) {
+    VECTOR_LOG("[vector_front]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_front.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_front]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_front.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_front]: Error: Vector is empty.");
+        return NULL;
     }
-    return vec->items; // The first element is at the beginning of the items array
+
+    VECTOR_LOG("[vector_front]: Returning front element: %p", (void*)(vec->items));
+    return vec->items; 
 }
 
 /**
@@ -1239,19 +1331,21 @@ void *vector_front(Vector *vec) {
  * a NULL pointer.
  */
 void *vector_back(Vector *vec) {
+    VECTOR_LOG("[vector_back]: Entering with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_back.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_back]: Error: Vector is NULL.");
+        return NULL;
     }
     if (vec->size == 0) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is empty in vector_back.\n");
-        #endif 
-        return NULL; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_back]: Error: Vector is empty.");
+        return NULL;
     }
-    return (char *)vec->items + (vec->size - 1) * vec->itemSize; // The last element is at (size - 1) * itemSize offset from the beginning
+
+    void *back_element = (char *)vec->items + (vec->size - 1) * vec->itemSize;
+    VECTOR_LOG("[vector_back]: Returning back element: %p", (void*)back_element);
+
+    return back_element; 
 }
 
 /**
@@ -1269,16 +1363,18 @@ void *vector_back(Vector *vec) {
  * @note The returned pointer is valid until the vector is resized or deallocated. If the 
  * vector is resized, reallocated, or deallocated, the pointer may become invalid.
  */
-
 void *vector_data(Vector *vec) {
+    VECTOR_LOG("[vector_data]: Entering with vector: %p", (void*)vec);
+    
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_data.\n");
-        #endif 
+        VECTOR_LOG("[vector_data]: Error: Vector is NULL.");
         return NULL;
     }
-    return vec->items; // The underlying array
+
+    VECTOR_LOG("[vector_data]: Returning underlying data pointer: %p", (void*)(vec->items));
+    return vec->items;
 }
+
 
 /**
  * @brief Returns the number of elements currently stored in the vector.
@@ -1299,12 +1395,14 @@ void *vector_data(Vector *vec) {
  * but the specific error handling strategy might need to be adapted to fit the application's requirements.
  */
 size_t vector_size(const Vector *vec) {
+    VECTOR_LOG("[vector_size]: Entering with vector: %p", (void*)vec);
+    
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_size.\n");
-        #endif 
+        VECTOR_LOG("[vector_size]: Error: Vector is NULL.");
         return 0; 
     }
+
+    VECTOR_LOG("[vector_size]: Vector size: %zu", vec->size);
     return vec->size;
 }
 
@@ -1326,12 +1424,14 @@ size_t vector_size(const Vector *vec) {
  * requirements for error reporting in your application.
  */
 size_t vector_capacity(Vector *vec) {
+    VECTOR_LOG("[vector_capacity]: Entering with vector: %p", (void*)vec);
+    
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_capacity.\n");
-        #endif 
-        return 0; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_capacity]: Error: Vector is NULL.");
+        return 0;
     }
+    
+    VECTOR_LOG("[vector_capacity]: Vector capacity: %zu", vec->capacitySize);
     return vec->capacitySize;
 }
 
@@ -1353,12 +1453,16 @@ size_t vector_capacity(Vector *vec) {
  * application requirements for error handling.
  */
 size_t vector_max_size(Vector *vec) {
+    VECTOR_LOG("[vector_max_size]: Entering vector_max_size with vector: %p", (void*)vec);
+
     if (!vec) {
-        #ifdef VECTOR_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector is NULL in vector_max_size.\n");
-        #endif 
-        return 0; // Handle the error as per your application's needs
+        VECTOR_LOG("[vector_max_size]: Error: Vector is NULL in vector_max_size.");
+        return 0; 
     }
+
+    VECTOR_LOG("[vector_max_size]: Vector itemSize is %zu", vec->itemSize);
+    VECTOR_LOG("[vector_max_size]: Exiting vector_max_size, returning itemSize: %zu", vec->itemSize);
+
     return vec->itemSize;
 }
 

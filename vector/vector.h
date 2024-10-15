@@ -10,6 +10,13 @@
 
 #define VECTOR_LOGGING_ENABLE
 
+#ifdef VECTOR_LOGGING_ENABLE
+    #define VECTOR_LOG(fmt, ...) \
+        do { fprintf(stderr, "[VECTOR LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define VECTOR_LOG(fmt, ...) do { } while (0)
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 
