@@ -7,7 +7,15 @@
 #ifndef TUPLE_H_
 #define TUPLE_H_
 
-#define TUPLE_LOGGING_ENABLE
+// #define TUPLE_LOGGING_ENABLE
+
+#ifdef TUPLE_LOGGING_ENABLE
+    #define TUPLE_LOG(fmt, ...) \
+        do { fprintf(stderr, "[TUPLE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define TUPLE_LOG(fmt, ...) do { } while (0)
+#endif
+
 
 #include <stdbool.h>
 #include <stddef.h>

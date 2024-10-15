@@ -1,20 +1,29 @@
+#include "tuple/tuple.h"
 #include "fmt/fmt.h"
-#include "statistics/statistics.h"
-#include <math.h>
-
 
 int main() {
-    double x[] = {1, 2, 3, 4, 5};
-    double y[] = {3, 6, 9, 12, 15};
-    size_t n = sizeof(x) / sizeof(x[0]);
-    LinearRegression result = statistics_linear_regression(x, y, n, false);
+    size_t size1, size2;
 
-    fmt_printf("Linear regression (slope, intercept): (%f, %f)\n", result.slope, result.intercept);
+    Tuple* tuple1 = tuple_create(1);
+    int intValue1 = 42;
+    tuple_set(tuple1, 0, &intValue1, sizeof(int));
 
-    double y_proportional[] = {3, 6, 9, 12, 15};
-    result = statistics_linear_regression(x, y_proportional, n, true);
+    Tuple* tuple2 = tuple_create(1);
+    int intValue2 = 100;
+    tuple_set(tuple2, 0, &intValue2, sizeof(int));
 
-    fmt_printf("Proportional linear regression (slope, intercept): (%f, %f)\n", result.slope, result.intercept);
+    fmt_printf("Before swap:\n");
+    fmt_printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
+    fmt_printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
 
+    tuple_swap(tuple1, tuple2);
+
+    fmt_printf("After swap:\n");
+    fmt_printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
+    fmt_printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
+
+    tuple_deallocate(tuple1);
+    tuple_deallocate(tuple2);
+    
     return 0;
 }

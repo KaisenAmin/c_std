@@ -2,13 +2,13 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "build/libvector.dll"
+			"path" : "build/libpriority_queue.dll"
 		},
 		{
-			"path" : "vector/libvector.dll.a"
+			"path" : "priority_queue/libpriority_queue.dll.a"
 		},
 		{
-			"path" : "build/libvector.pdb"
+			"path" : "build/libpriority_queue.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -24,7 +24,7 @@
 		],
 		"files" : 
 		[
-			"vector/CMakeLists.txt",
+			"priority_queue/CMakeLists.txt",
 			"CMakeLists.txt",
 			"fmt/CMakeLists.txt"
 		],
@@ -89,7 +89,7 @@
 			"defines" : 
 			[
 				{
-					"define" : "vector_EXPORTS"
+					"define" : "priority_queue_EXPORTS"
 				}
 			],
 			"includes" : 
@@ -100,7 +100,7 @@
 				},
 				{
 					"backtrace" : 8,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/vector"
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/priority_queue"
 				},
 				{
 					"backtrace" : 4,
@@ -113,6 +113,10 @@
 				{
 					"backtrace" : 4,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/string"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/vector"
 				}
 			],
 			"language" : "C",
@@ -134,6 +138,10 @@
 	[
 		{
 			"backtrace" : 4,
+			"id" : "encoding::@8a01f42f38e96b4747a9"
+		},
+		{
+			"backtrace" : 4,
 			"id" : "stdstring::@22e829107201c6b975b1"
 		},
 		{
@@ -142,10 +150,10 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "encoding::@8a01f42f38e96b4747a9"
+			"id" : "vector::@95776985c747069fcc28"
 		}
 	],
-	"id" : "vector::@95776985c747069fcc28",
+	"id" : "priority_queue::@21f9f231e6871b1be224",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -158,6 +166,11 @@
 				"backtrace" : 3,
 				"fragment" : "-LC:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib",
 				"role" : "libraryPath"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "../vector/libvector.dll.a",
+				"role" : "libraries"
 			},
 			{
 				"backtrace" : 4,
@@ -181,12 +194,12 @@
 		],
 		"language" : "C"
 	},
-	"name" : "vector",
-	"nameOnDisk" : "libvector.dll",
+	"name" : "priority_queue",
+	"nameOnDisk" : "libpriority_queue.dll",
 	"paths" : 
 	{
-		"build" : "vector",
-		"source" : "vector"
+		"build" : "priority_queue",
+		"source" : "priority_queue"
 	},
 	"sourceGroups" : 
 	[
@@ -203,7 +216,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "vector/vector.c",
+			"path" : "priority_queue/priority_queue.c",
 			"sourceGroupIndex" : 0
 		}
 	],

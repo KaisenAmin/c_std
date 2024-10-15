@@ -19,23 +19,25 @@
  * @note The function will terminate the program if memory allocation fails and `TUPLE_LOGGING_ENABLE` is defined.
  */
 Tuple* tuple_create(size_t size) {
+    TUPLE_LOG("[tuple_create]: Entering with size: %zu", size);
+
     Tuple* tuple = (Tuple*)malloc(sizeof(Tuple));
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Memory allocation failed for tuple in tuple_create\n");
-        #endif 
+        TUPLE_LOG("[tuple_create]: Error: Memory allocation failed for tuple.");
         exit(-1);
     }
 
     tuple->size = size;
+    TUPLE_LOG("[tuple_create]: Allocating memory for %zu tuple elements.", size);
+
     tuple->elements = (TupleElement*)calloc(size, sizeof(TupleElement));
     if (!tuple->elements) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Memory allocation failed for tuple elements in tuple_create\n");
-        #endif 
+        TUPLE_LOG("[tuple_create]: Error: Memory allocation failed for tuple elements.");
         free(tuple);
         exit(-1);
     }
+
+    TUPLE_LOG("[tuple_create]: Tuple created successfully with size %zu.", size);
     return tuple;
 }
 
@@ -47,19 +49,24 @@ Tuple* tuple_create(size_t size) {
  * @note If the `tuple` pointer is `NULL`, the function will return immediately without performing any action.
  */
 void tuple_deallocate(Tuple* tuple) {
+    TUPLE_LOG("[tuple_deallocate]: Entering with tuple: %p", (void*)tuple);
+
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Info: tuple is NULL can't deallocate\n");
-        #endif 
+        TUPLE_LOG("[tuple_deallocate]: Info: Tuple is NULL, can't deallocate.");
         return;
     }
+
     for (size_t i = 0; i < tuple->size; ++i) {
+        TUPLE_LOG("[tuple_deallocate]: Freeing data at index %zu", i);
         free(tuple->elements[i].data);
     }
+
+    TUPLE_LOG("[tuple_deallocate]: Freeing tuple elements and tuple structure.");
     free(tuple->elements);
     free(tuple);
+    
+    TUPLE_LOG("[tuple_deallocate]: Deallocated successfully.");
 }
-
 /**
  * @brief This function assigns new data to the specified element of the tuple. 
  * It allocates memory for the new data and copies it into the tuple, replacing any existing data.
@@ -74,38 +81,35 @@ void tuple_deallocate(Tuple* tuple) {
  *       or if the `data` is `NULL`.
  */
 bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size) {
+    TUPLE_LOG("[tuple_set]: Entering with tuple: %p, index: %zu, size: %zu", (void*)tuple, index, size);
+
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: data is null in tuple_set\n");
-        #endif 
+        TUPLE_LOG("[tuple_set]: Error: Tuple is NULL.");
         return false;
     }
     if (index >= tuple->size) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: index is bigger or equal than tuple->size in tuple_set");
-        #endif 
+        TUPLE_LOG("[tuple_set]: Error: Index %zu is out of bounds (size: %zu).", index, tuple->size);
         return false;
     }
     if (!data) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: date is null in tuple_set\n");
-        #endif 
+        TUPLE_LOG("[tuple_set]: Error: Data is NULL.");
         return false;
     }
 
     void* newData = malloc(size);
     if (!newData) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Memory allocattion failed for newData in tuple_set\n");
-        #endif 
+        TUPLE_LOG("[tuple_set]: Error: Memory allocation failed.");
         return false;
     }
 
+    TUPLE_LOG("[tuple_set]: Copying new data to index %zu.", index);
     memcpy(newData, data, size);
     free(tuple->elements[index].data);
 
     tuple->elements[index].data = newData;
     tuple->elements[index].size = size;
+    TUPLE_LOG("[tuple_set]: Data set successfully at index %zu.", index);
+
     return true;
 }
 
@@ -121,26 +125,24 @@ bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size) {
  * @note It is the caller's responsibility to ensure that `outSize` is a valid pointer.
  */
 void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize) {
+    TUPLE_LOG("[tuple_get]: Entering with tuple: %p, index: %zu", (void*)tuple, index);
+
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: tuple is null in tuple_get\n");
-        #endif 
+        TUPLE_LOG("[tuple_get]: Error: Tuple is NULL.");
         return NULL;
     }
     if (index >= tuple->size) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: index is bigger or equal than tuple->size in tuple_get\n");
-        #endif 
+        TUPLE_LOG("[tuple_get]: Error: Index %zu is out of bounds (size: %zu).", index, tuple->size);
         return NULL;
     }
-    if(!outSize) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: outSize is null in tuple_get please give valid address\n");
-        #endif 
+    if (!outSize) {
+        TUPLE_LOG("[tuple_get]: Error: outSize is NULL.");
         return NULL;
     }
 
     *outSize = tuple->elements[index].size;
+    TUPLE_LOG("[tuple_get]: Returning data from index %zu, size: %zu", index, *outSize);
+
     return tuple->elements[index].data;
 }
 
@@ -155,11 +157,11 @@ void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize) {
  * @note The data provided is copied into the tuple, and the caller is responsible for managing the memory of the original data.
  */
 Tuple* tuple_make_tuple(size_t num, ...) {
+    TUPLE_LOG("[tuple_make_tuple]: Entering with num: %zu", num);
+
     Tuple* tuple = tuple_create(num);
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Creation of tuple failed in tuple_make_tuple\n");
-        #endif 
+        TUPLE_LOG("[tuple_make_tuple]: Error: Creation of tuple failed.");
         return NULL;
     }
 
@@ -170,15 +172,17 @@ Tuple* tuple_make_tuple(size_t num, ...) {
         void* data = va_arg(args, void*);
         size_t size = va_arg(args, size_t);
         if (!tuple_set(tuple, i, data, size)) {
-            #ifdef TUPLE_LOGGING_ENABLE
-                fmt_fprintf(stderr, "Error: failed to set data in tuple_make_tuple\n");
-            #endif 
+            TUPLE_LOG("[tuple_make_tuple]: Error: Failed to set data at index %zu.", i);
             tuple_deallocate(tuple);
             va_end(args);
+
             return NULL;
         }
+        TUPLE_LOG("[tuple_make_tuple]: Set data at index %zu.", i);
     }
     va_end(args);
+
+    TUPLE_LOG("[tuple_make_tuple]: Returning tuple: %p", (void*)tuple);
     return tuple;
 }
 
@@ -194,11 +198,11 @@ Tuple* tuple_make_tuple(size_t num, ...) {
  * @note The caller is responsible for managing the memory of the original data pointed to by these pointers.
  */
 Tuple* tuple_tie(size_t num, ...) {
+    TUPLE_LOG("[tuple_tie]: Entering with num: %zu", num);
+
     Tuple* tuple = tuple_create(num);
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Creation of tuple failed in tuple_tie\n");
-        #endif 
+        TUPLE_LOG("[tuple_tie]: Error: Creation of tuple failed.");
         return NULL;
     }
 
@@ -208,15 +212,17 @@ Tuple* tuple_tie(size_t num, ...) {
     for (size_t i = 0; i < num; ++i) {
         void** pointer = va_arg(args, void**);
         if (!tuple_set(tuple, i, &pointer, sizeof(void*))) {
-            #ifdef TUPLE_LOGGING_ENABLE
-                fmt_fprintf(stderr, "Error: failed to set data in tuple_tie\n");
-            #endif 
+            TUPLE_LOG("[tuple_tie]: Error: Failed to set data at index %zu.", i);
             tuple_deallocate(tuple);
             va_end(args);
+
             return NULL;
         }
+        TUPLE_LOG("[tuple_tie]: Set pointer at index %zu.", i);
     }
     va_end(args);
+
+    TUPLE_LOG("[tuple_tie]: Returning tuple: %p", (void*)tuple);
     return tuple;
 }
 
@@ -230,27 +236,28 @@ Tuple* tuple_tie(size_t num, ...) {
  * @note If either `a` or `b` is `NULL`, the function does nothing.
  */
 void tuple_swap(Tuple* a, Tuple* b) {
+    TUPLE_LOG("[tuple_swap]: Entering with tuple a: %p, tuple b: %p", (void*)a, (void*)b);
+
     if (a == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 'a' is null in tuple_swap\n");
-        #endif 
+        TUPLE_LOG("[tuple_swap]: Error: Param 'a' is NULL.");
         return;
     }
     if (b == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 'b' is null in tuple_swap\n");
-        #endif 
+        TUPLE_LOG("[tuple_swap]: Error: Param 'b' is NULL.");
         return;
     }
+
     // Swap the sizes
     size_t tempSize = a->size;
     a->size = b->size;
     b->size = tempSize;
+    TUPLE_LOG("[tuple_swap]: Swapped sizes, new sizes - a: %zu, b: %zu", a->size, b->size);
 
     // Swap the elements
     TupleElement* tempElements = a->elements;
     a->elements = b->elements;
     b->elements = tempElements;
+    TUPLE_LOG("[tuple_swap]: Swapped elements.");
 }
 
 /**
@@ -265,11 +272,11 @@ void tuple_swap(Tuple* a, Tuple* b) {
  * @note The caller is responsible for managing the memory of the original arguments since only their pointers are stored.
  */
 Tuple* tuple_forward_as_tuple(size_t num, ...) {
+    TUPLE_LOG("[tuple_forward_as_tuple]: Entering with num: %zu", num);
+
     Tuple* tuple = tuple_create(num);
     if (!tuple) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Creation of tuple failed in tuple_forward_as_tuple\n");
-        #endif 
+        TUPLE_LOG("[tuple_forward_as_tuple]: Error: Creation of tuple failed.");
         return NULL;
     }
 
@@ -278,11 +285,14 @@ Tuple* tuple_forward_as_tuple(size_t num, ...) {
 
     for (size_t i = 0; i < num; ++i) {
         void* pointer = va_arg(args, void*);
-        // Store the pointer directly, without allocating new memory
-        tuple->elements[i].data = pointer;
+        tuple->elements[i].data = pointer; // Store the pointer directly
         tuple->elements[i].size = sizeof(pointer);
+        TUPLE_LOG("[tuple_forward_as_tuple]: Element %zu set with data: %p", i, pointer);
     }
+
     va_end(args);
+    TUPLE_LOG("[tuple_forward_as_tuple]: Returning tuple: %p", (void*)tuple);
+
     return tuple;
 }
 
@@ -293,12 +303,14 @@ Tuple* tuple_forward_as_tuple(size_t num, ...) {
  * @return The number of elements in the tuple, or 0 if the tuple is `NULL`.
  */
 size_t tuple_size(const Tuple* tuple) {
+    TUPLE_LOG("[tuple_size]: Entering with tuple: %p", (void*)tuple);
+
     if (tuple == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: tuple is null in tuple_size\n");
-        #endif 
+        TUPLE_LOG("[tuple_size]: Error: Tuple is NULL.");
         return 0;
     }
+
+    TUPLE_LOG("[tuple_size]: Returning size: %zu", tuple->size);
     return tuple->size;
 }
 
@@ -313,27 +325,31 @@ size_t tuple_size(const Tuple* tuple) {
  * @note If either `t1` or `t2` is `NULL`, the function returns `false`.
  */
 bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
+    TUPLE_LOG("[tuple_is_equal]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
+
     if (t1 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_equal]: Error: Param 't1' is NULL.");
         return false;
     }
     if (t2 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_equal]: Error: Param 't2' is NULL.");
         return false;
     }
+
     if (tuple_size(t1) != tuple_size(t2)) {
+        TUPLE_LOG("[tuple_is_equal]: Tuples have different sizes: t1 = %zu, t2 = %zu", tuple_size(t1), tuple_size(t2));
         return false;
     }
+
     for (size_t i = 0; i < tuple_size(t1); ++i) {
         if (t1->elements[i].size != t2->elements[i].size ||
             memcmp(t1->elements[i].data, t2->elements[i].data, t1->elements[i].size) != 0) {
+            TUPLE_LOG("[tuple_is_equal]: Elements at index %zu are not equal.", i);
             return false;
         }
     }
+
+    TUPLE_LOG("[tuple_is_equal]: Tuples are equal.");
     return true;
 }
 
@@ -349,38 +365,44 @@ bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
  * @note If either `t1` or `t2` is `NULL`, the function returns `false`.
  */
 bool tuple_is_less(const Tuple* t1, const Tuple* t2) {
+    TUPLE_LOG("[tuple_is_less]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
+
     if (t1 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_less\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_less]: Error: Param 't1' is null.");
         return false;
     }
     if (t2 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_less\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_less]: Error: Param 't2' is null.");
         return false;
     }
+
     size_t minSize = (tuple_size(t1) < tuple_size(t2)) ? tuple_size(t1) : tuple_size(t2);
 
     for (size_t i = 0; i < minSize; ++i) {
         if (t1->elements[i].size < t2->elements[i].size) {
+            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is smaller than t2.", i);
             return true;
         }
-        if (t1->elements[i].size > t2->elements[i].size) { 
+        if (t1->elements[i].size > t2->elements[i].size) {
+            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is larger than t2.", i);
             return false;
         }
 
         int cmp = memcmp(t1->elements[i].data, t2->elements[i].data, t1->elements[i].size);
         if (cmp < 0) {
+            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is lexicographically less than t2.", i);
             return true;
         }
-        if (cmp > 0) { 
+        if (cmp > 0) {
+            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is lexicographically greater than t2.", i);
             return false;
         }
     }
 
-    return tuple_size(t1) < tuple_size(t2);
+    bool result = tuple_size(t1) < tuple_size(t2);
+    TUPLE_LOG("[tuple_is_less]: Returning result: %d", result);
+
+    return result;
 }
 
 /**
@@ -395,16 +417,14 @@ bool tuple_is_less(const Tuple* t1, const Tuple* t2) {
  * @note If either `t1` or `t2` is `NULL`, the function returns `false`.
  */
 bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
+    TUPLE_LOG("[tuple_is_greater]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
+
     if (t1 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_greater\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_greater]: Error: Param 't1' is null.");
         return false;
     }
     if (t2 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_greater\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_greater]: Error: Param 't2' is null.");
         return false;
     }
 
@@ -412,21 +432,29 @@ bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
 
     for (size_t i = 0; i < minSize; ++i) {
         if (t1->elements[i].size > t2->elements[i].size) {
+            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is larger than t2.", i);
             return true;
         }
-        if (t1->elements[i].size < t2->elements[i].size) { 
+        if (t1->elements[i].size < t2->elements[i].size) {
+            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is smaller than t2.", i);
             return false;
         }
 
         int cmp = memcmp(t1->elements[i].data, t2->elements[i].data, t1->elements[i].size);
-        if (cmp > 0) { 
+        if (cmp > 0) {
+            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is lexicographically greater than t2.", i);
             return true;
         }
-        if (cmp < 0) { 
+        if (cmp < 0) {
+            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is lexicographically less than t2.", i);
             return false;
         }
     }
-    return tuple_size(t1) > tuple_size(t2);
+
+    bool result = tuple_size(t1) > tuple_size(t2);
+    TUPLE_LOG("[tuple_is_greater]: Returning result: %d", result);
+
+    return result;
 }
 
 /**
@@ -440,19 +468,21 @@ bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
  * @note If either `t1` or `t2` is `NULL`, the function returns `false`.
  */
 bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2) {
+    TUPLE_LOG("[tuple_is_not_equal]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
+
     if (t1 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_not_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_not_equal]: Error: Param 't1' is null.");
         return false;
     }
     if (t2 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_not_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_not_equal]: Error: Param 't2' is null.");
         return false;
     }
-    return !tuple_is_equal(t1, t2);
+
+    bool result = !tuple_is_equal(t1, t2);
+    TUPLE_LOG("[tuple_is_not_equal]: Returning result: %d", result);
+
+    return result;
 }
 
 /**
@@ -466,19 +496,21 @@ bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2) {
  * @note If either `t1` or `t2` is `NULL`, the function returns `false`.
  */
 bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2) {
+    TUPLE_LOG("[tuple_is_greater_or_equal]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
+
     if (t1 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_greater_or_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_greater_or_equal]: Error: Param 't1' is null.");
         return false;
     }
     if (t2 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_greater_or_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_greater_or_equal]: Error: Param 't2' is null.");
         return false;
     }
-    return tuple_is_greater(t1, t2) || tuple_is_equal(t1, t2);
+
+    bool result = tuple_is_greater(t1, t2) || tuple_is_equal(t1, t2);
+    TUPLE_LOG("[tuple_is_greater_or_equal]: Returning result: %d", result);
+
+    return result;
 }
 
 /**
@@ -492,19 +524,20 @@ bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2) {
  * @note If either `t1` or `t2` is `NULL`, the function returns `false`.
  */
 bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2) {
+    TUPLE_LOG("[tuple_is_less_or_equal]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
+
     if (t1 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't1' is null in tuple_is_less_or_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_less_or_equal]: Error: Param 't1' is null.");
         return false;
     }
     if (t2 == NULL) {
-        #ifdef TUPLE_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Param 't2' is null in tuple_is_less_or_equal\n");
-        #endif 
+        TUPLE_LOG("[tuple_is_less_or_equal]: Error: Param 't2' is null.");
         return false;
     }
-    return tuple_is_less(t1, t2) || tuple_is_equal(t1, t2);
+    bool result = tuple_is_less(t1, t2) || tuple_is_equal(t1, t2);
+    TUPLE_LOG("[tuple_is_less_or_equal]: Returning result: %d", result);
+
+    return result;
 }
 
 /**
@@ -517,8 +550,15 @@ bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2) {
  * @return `true` if the tuple is empty or if `t` is `NULL`, `false` otherwise.
  */
 bool tuple_is_empty(Tuple* t) {
-    if (!t) { 
+    TUPLE_LOG("[tuple_is_empty]: Entering with tuple: %p", (void*)t);
+
+    if (!t) {
+        TUPLE_LOG("[tuple_is_empty]: Tuple is NULL, returning true.");
         return true;
     }
-    return t->size == 0;
+
+    bool result = (t->size == 0);
+    TUPLE_LOG("[tuple_is_empty]: Returning result: %d", result);
+
+    return result;
 }

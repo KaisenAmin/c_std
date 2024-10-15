@@ -92,7 +92,7 @@ if (WIN32)
         vector
         stdtime
         statistics
-        # tuple
+        tuple
         # turtle
         # sysinfo
         stack

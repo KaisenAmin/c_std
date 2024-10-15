@@ -2,13 +2,13 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "build/libstdtime.dll"
+			"path" : "build/libcsv.dll"
 		},
 		{
-			"path" : "time/libstdtime.dll.a"
+			"path" : "csv/libcsv.dll.a"
 		},
 		{
-			"path" : "build/libstdtime.pdb"
+			"path" : "build/libcsv.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -24,7 +24,7 @@
 		],
 		"files" : 
 		[
-			"time/CMakeLists.txt",
+			"csv/CMakeLists.txt",
 			"CMakeLists.txt",
 			"fmt/CMakeLists.txt"
 		],
@@ -36,7 +36,7 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 2,
+				"line" : 1,
 				"parent" : 0
 			},
 			{
@@ -51,7 +51,7 @@
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 4,
+				"line" : 7,
 				"parent" : 0
 			},
 			{
@@ -72,7 +72,7 @@
 			{
 				"command" : 4,
 				"file" : 0,
-				"line" : 3,
+				"line" : 4,
 				"parent" : 0
 			}
 		]
@@ -89,7 +89,7 @@
 			"defines" : 
 			[
 				{
-					"define" : "stdtime_EXPORTS"
+					"define" : "csv_EXPORTS"
 				}
 			],
 			"includes" : 
@@ -100,7 +100,7 @@
 				},
 				{
 					"backtrace" : 8,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/time"
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/csv"
 				},
 				{
 					"backtrace" : 4,
@@ -113,6 +113,10 @@
 				{
 					"backtrace" : 4,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/string"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/file_io"
 				}
 			],
 			"language" : "C",
@@ -134,6 +138,10 @@
 	[
 		{
 			"backtrace" : 4,
+			"id" : "encoding::@8a01f42f38e96b4747a9"
+		},
+		{
+			"backtrace" : 4,
 			"id" : "stdstring::@22e829107201c6b975b1"
 		},
 		{
@@ -142,10 +150,10 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "encoding::@8a01f42f38e96b4747a9"
+			"id" : "fileio::@0abdcc36844c050cb0cf"
 		}
 	],
-	"id" : "stdtime::@bd83b289c10ac4bbd907",
+	"id" : "csv::@42ee60fb9bd1b69ac571",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -161,17 +169,22 @@
 			},
 			{
 				"backtrace" : 4,
+				"fragment" : "../file_io/libfileio.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
 				"fragment" : "../fmt/libfmt.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "../string/libstdstring.dll.a",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 6,
 				"fragment" : "../encoding/libencoding.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 6,
-				"fragment" : "../string/libstdstring.dll.a",
 				"role" : "libraries"
 			},
 			{
@@ -181,12 +194,12 @@
 		],
 		"language" : "C"
 	},
-	"name" : "stdtime",
-	"nameOnDisk" : "libstdtime.dll",
+	"name" : "csv",
+	"nameOnDisk" : "libcsv.dll",
 	"paths" : 
 	{
-		"build" : "time",
-		"source" : "time"
+		"build" : "csv",
+		"source" : "csv"
 	},
 	"sourceGroups" : 
 	[
@@ -203,7 +216,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "time/std_time.c",
+			"path" : "csv/csv.c",
 			"sourceGroupIndex" : 0
 		}
 	],

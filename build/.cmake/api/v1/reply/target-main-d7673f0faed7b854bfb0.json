@@ -129,6 +129,10 @@
 				},
 				{
 					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/tuple"
+				},
+				{
+					"backtrace" : 3,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/stack"
 				},
 				{
@@ -162,12 +166,8 @@
 	"dependencies" : 
 	[
 		{
-			"backtrace" : 3,
-			"id" : "stdtime::@bd83b289c10ac4bbd907"
-		},
-		{
-			"backtrace" : 3,
-			"id" : "vector::@95776985c747069fcc28"
+			"backtrace" : 8,
+			"id" : "encoding::@8a01f42f38e96b4747a9"
 		},
 		{
 			"backtrace" : 8,
@@ -175,15 +175,19 @@
 		},
 		{
 			"backtrace" : 8,
+			"id" : "random::@043bef6630b23836363a"
+		},
+		{
+			"backtrace" : 8,
 			"id" : "fmt::@b8b4cdcf357fa61d5575"
 		},
 		{
-			"backtrace" : 8,
-			"id" : "encoding::@8a01f42f38e96b4747a9"
+			"backtrace" : 3,
+			"id" : "vector::@95776985c747069fcc28"
 		},
 		{
-			"backtrace" : 8,
-			"id" : "random::@043bef6630b23836363a"
+			"backtrace" : 3,
+			"id" : "stdtime::@bd83b289c10ac4bbd907"
 		},
 		{
 			"backtrace" : 3,
@@ -191,11 +195,15 @@
 		},
 		{
 			"backtrace" : 3,
+			"id" : "stack::@b5371760465ddb38638a"
+		},
+		{
+			"backtrace" : 3,
 			"id" : "statistics::@b0222a8b6403bf2ebd98"
 		},
 		{
 			"backtrace" : 3,
-			"id" : "stack::@b5371760465ddb38638a"
+			"id" : "tuple::@74e587df7558cf690548"
 		},
 		{
 			"backtrace" : 3,
@@ -281,6 +289,11 @@
 			{
 				"backtrace" : 3,
 				"fragment" : "statistics/libstatistics.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "tuple/libtuple.dll.a",
 				"role" : "libraries"
 			},
 			{
