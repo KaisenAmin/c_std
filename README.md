@@ -82,7 +82,7 @@ To build the project using CMake, follow these steps:
    - Run CMake to generate the build files for your system:
 
      ```bash
-     cmake ..
+     cmake -G "Unix Makefiles" ..
      ```
 
 4. **Compile the Project**:
