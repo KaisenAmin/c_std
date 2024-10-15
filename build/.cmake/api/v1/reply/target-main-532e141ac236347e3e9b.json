@@ -112,6 +112,10 @@
 				{
 					"backtrace" : 3,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/priority_queue"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/bitset"
 				}
 			],
 			"language" : "C",
@@ -133,11 +137,11 @@
 	[
 		{
 			"backtrace" : 6,
-			"id" : "stdstring::@22e829107201c6b975b1"
+			"id" : "fmt::@b8b4cdcf357fa61d5575"
 		},
 		{
 			"backtrace" : 6,
-			"id" : "fmt::@b8b4cdcf357fa61d5575"
+			"id" : "stdstring::@22e829107201c6b975b1"
 		},
 		{
 			"backtrace" : 6,
@@ -149,11 +153,15 @@
 		},
 		{
 			"backtrace" : 3,
+			"id" : "vector::@95776985c747069fcc28"
+		},
+		{
+			"backtrace" : 3,
 			"id" : "stdtime::@bd83b289c10ac4bbd907"
 		},
 		{
 			"backtrace" : 3,
-			"id" : "vector::@95776985c747069fcc28"
+			"id" : "bitset::@8bb175e1680bc5316eaa"
 		},
 		{
 			"backtrace" : 3,
@@ -230,6 +238,11 @@
 			{
 				"backtrace" : 3,
 				"fragment" : "priority_queue/libpriority_queue.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "bitset/libbitset.dll.a",
 				"role" : "libraries"
 			},
 			{

@@ -99,7 +99,7 @@ if (WIN32)
         # secrets
         # span
         # queue
-        priority_queue
+        # priority_queue
         # algorithm
         # array
         # bitset

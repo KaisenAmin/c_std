@@ -9,8 +9,19 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #define BITSET_OUT_OF_RANGE -1
+// #define BITSET_LOGGING_ENABLE
+
+#ifdef BITSET_LOGGING_ENABLE
+    #define BITSET_LOG(fmt, ...) \
+        do { fprintf(stderr, "[BITSET LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define BITSET_LOG(fmt, ...) do { } while (0)
+#endif
+
+
 
 typedef struct Bitset Bitset;
 

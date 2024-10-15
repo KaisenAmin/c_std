@@ -96,6 +96,7 @@ build/main.exe: CMakeFiles/main.dir/build.make
 build/main.exe: crypto/libstdcrypto.dll.a
 build/main.exe: time/libstdtime.dll.a
 build/main.exe: priority_queue/libpriority_queue.dll.a
+build/main.exe: bitset/libbitset.dll.a
 build/main.exe: vector/libvector.dll.a
 build/main.exe: fmt/libfmt.dll.a
 build/main.exe: string/libstdstring.dll.a

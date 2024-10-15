@@ -18,24 +18,28 @@
  * @return Pointer to the newly created Bitset, or NULL if memory allocation fails.
  */
 Bitset* bitset_create(size_t num_bits) {
+    BITSET_LOG("[bitset_create]: Function start.");
+
     Bitset* bs = (Bitset*)malloc(sizeof(Bitset));
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for Bitset structure in bitset_create.\n");
+        BITSET_LOG("[bitset_create]: Error - Memory allocation failed for Bitset structure.");
         exit(-1);
     }
-    // Calculate the number of bytes needed to store the bits
-    size_t num_bytes = (num_bits + 7) / 8; // Each byte can store 8 bits
-    bs->bits = (unsigned char*)malloc(num_bytes);  // Allocate memory for the bits
 
+    size_t num_bytes = (num_bits + 7) / 8; // Each byte can store 8 bits
+    BITSET_LOG("[bitset_create]: Allocating %zu bytes for bit array.", num_bytes);
+
+    bs->bits = (unsigned char*)malloc(num_bytes);
     if (!bs->bits) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for bit array in bitset_create.\n");
-        free(bs); // Handle memory allocation failure
+        BITSET_LOG("[bitset_create]: Error - Memory allocation failed for bit array.");
+        free(bs); 
         exit(-1);
     }
 
     memset(bs->bits, 0, num_bytes); // Initialize the bit array to 0
     bs->size = num_bits; // Set the size
 
+    BITSET_LOG("[bitset_create]: Bitset created with size %zu bits.", num_bits);
     return bs;
 }
 
@@ -47,12 +51,15 @@ Bitset* bitset_create(size_t num_bits) {
  * @param bs Pointer to the Bitset to be deallocated.
  */
 void bitset_deallocate(Bitset *bs) {
+    BITSET_LOG("[bitset_deallocate]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Warning: Null pointer passed to bitset_deallocate. No action taken.\n");
+        BITSET_LOG("[bitset_deallocate]: Warning - Null pointer passed, no action taken.");
         return;
     }
+    
     free(bs->bits);
     free(bs);
+    BITSET_LOG("[bitset_deallocate]: Bitset deallocated successfully.");
 }
 
 /**
@@ -63,15 +70,18 @@ void bitset_deallocate(Bitset *bs) {
  * @param bs Pointer to the Bitset to print.
  */
 void bitset_print(const Bitset* bs) {
+    BITSET_LOG("[bitset_print]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Warning: Null pointer passed to bitset_print. No action taken.\n");
+        BITSET_LOG("[bitset_print]: Warning - Null pointer passed, no action taken.");
         return;
     }
 
     for (int i = (int)bitset_size(bs) - 1; i >= 0; i--) {
         fmt_printf("%d", bitset_test(bs, i) ? 1 : 0);
     }
+
     fmt_printf("\n");
+    BITSET_LOG("[bitset_print]: Bitset printed successfully.");
 }
 
 /**
@@ -83,13 +93,16 @@ void bitset_print(const Bitset* bs) {
  * @param str String of '0's and '1's representing the desired bit pattern.
  */
 void bitset_set_from_string(Bitset* bs, const char* str) {
+    BITSET_LOG("[bitset_set_from_string]: Function start.");
     if (!bs || !str) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_set_from_string.\n");
+        BITSET_LOG("[bitset_set_from_string]: Error - Null pointer provided.");
         return;
     }
+
     size_t str_len = strlen(str);
     size_t bit_pos;
 
+    BITSET_LOG("[bitset_set_from_string]: String length: %zu.", str_len);
     for (bit_pos = 0; bit_pos < str_len; ++bit_pos) {
         bool bit_value = (str[str_len - 1 - bit_pos] == '1'); // Start from the rightmost character
         size_t pos = bit_pos;
@@ -100,16 +113,19 @@ void bitset_set_from_string(Bitset* bs, const char* str) {
 
             if (bit_value) {
                 bs->bits[byte_index] |= (1 << bit_index);
-            }
+            } 
             else {
                 bs->bits[byte_index] &= ~(1 << bit_index);
             } 
-        }
+            BITSET_LOG("[bitset_set_from_string]: Bit set at position %zu: %d.", pos, bit_value);
+        } 
         else {
-            fmt_fprintf(stderr, "Warning: String length exceeds bitset size in bitset_set_from_string.\n");
+            BITSET_LOG("[bitset_set_from_string]: Warning - String length exceeds bitset size.");
             break;
         }
     }
+
+    BITSET_LOG("[bitset_set_from_string]: Function end.");
 }
 
 /**
@@ -122,19 +138,21 @@ void bitset_set_from_string(Bitset* bs, const char* str) {
  * @return true if the bit is set, false otherwise.
  */
 bool bitset_test(const Bitset *bs, size_t pos) {
+    BITSET_LOG("[bitset_test]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_test function.\n");
+        BITSET_LOG("[bitset_test]: Error - Null pointer provided.");
         return false;
     }
     if (pos >= bs->size) {
-        fmt_fprintf(stderr, "Error: Position out of range in bitset_test function.\n");
+        BITSET_LOG("[bitset_test]: Error - Position out of range: %zu.", pos);
         return false;
     }
 
-    size_t bit_index = pos % 8; // Calculate the byte position and the bit position within that byte
+    size_t bit_index = pos % 8;
     size_t byte_index = pos / 8;
 
-    return (bs->bits[byte_index] & (1 << bit_index)) != 0; // Use bitwise AND to test if the bit is set
+    BITSET_LOG("[bitset_test]: Testing bit at position %zu (byte index: %zu, bit index: %zu).", pos, byte_index, bit_index);
+    return (bs->bits[byte_index] & (1 << bit_index)) != 0;
 }
 
 /**
@@ -149,23 +167,29 @@ bool bitset_test(const Bitset *bs, size_t pos) {
  * @return Pointer to the modified Bitset.
  */
 Bitset* bitset_set(Bitset* bs, size_t pos, bool value) {
+    BITSET_LOG("[bitset_set]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_set function.\n");
+        BITSET_LOG("[bitset_set]: Error - Null pointer provided.");
         return NULL;
     }
     if (pos >= bs->size) {
-        fmt_fprintf(stderr, "Error: Position out of range in bitset_set function.\n");
+        BITSET_LOG("[bitset_set]: Error - Position out of range: %zu.", pos);
         return bs;
     }
-    size_t byte_index = pos / 8; // Calculate the byte position
-    size_t bit_index = (pos % 8); // Calculate the bit position within that byte
+
+    size_t byte_index = pos / 8;
+    size_t bit_index = pos % 8;
 
     if (value) {
-        bs->bits[byte_index] |= (1 << bit_index); // Set the bit
+        BITSET_LOG("[bitset_set]: Setting bit at position %zu (byte index: %zu, bit index: %zu).", pos, byte_index, bit_index);
+        bs->bits[byte_index] |= (1 << bit_index);
+    } 
+    else {
+        BITSET_LOG("[bitset_set]: Clearing bit at position %zu (byte index: %zu, bit index: %zu).", pos, byte_index, bit_index);
+        bs->bits[byte_index] &= ~(1 << bit_index);
     }
-    else { 
-        bs->bits[byte_index] &= ~(1 << bit_index); // Clear the bit
-    }
+
+    BITSET_LOG("[bitset_set]: Bit modified successfully.");
     return bs;
 }
 
@@ -179,18 +203,24 @@ Bitset* bitset_set(Bitset* bs, size_t pos, bool value) {
  * @return Pointer to the modified Bitset.
  */
 Bitset* bitset_reset(Bitset* bs, size_t pos) {
+    BITSET_LOG("[bitset_reset]: Function start.");
+
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_reset function.\n");
+        BITSET_LOG("[bitset_reset]: Error - Null pointer provided.");
         return NULL;
     }
     if (pos >= bs->size) {
-        fmt_fprintf(stderr, "Error: Position out of range in bitset_reset function.\n");
+        BITSET_LOG("[bitset_reset]: Error - Position out of range: %zu.", pos);
         return bs;
     }
-    size_t byte_index = pos / 8; // Calculate the byte position and the bit position within that byte
+
+    size_t byte_index = pos / 8;
     size_t bit_index = pos % 8;
-    bs->bits[byte_index] &= ~(1 << bit_index); // Clear the bit: Use bitwise AND with a mask that has the relevant bit cleared
-    
+
+    BITSET_LOG("[bitset_reset]: Clearing bit at position %zu (byte index: %zu, bit index: %zu).", pos, byte_index, bit_index);
+    bs->bits[byte_index] &= ~(1 << bit_index);
+
+    BITSET_LOG("[bitset_reset]: Bit cleared successfully.");
     return bs;
 }
 
@@ -203,15 +233,21 @@ Bitset* bitset_reset(Bitset* bs, size_t pos) {
  * @return Pointer to the modified Bitset.
  */
 Bitset* bitset_flip_all(Bitset* bs) {
+    BITSET_LOG("[bitset_flip_all]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_flip_all function.\n");
+        BITSET_LOG("[bitset_flip_all]: Error - Null pointer provided.");
         return NULL;
     }
 
     size_t num_bytes = (bs->size + 7) / 8;
+    BITSET_LOG("[bitset_flip_all]: Flipping all bits. Total bytes: %zu.", num_bytes);
+
     for (size_t i = 0; i < num_bytes; ++i) {
+        BITSET_LOG("[bitset_flip_all]: Flipping byte %zu.", i);
         bs->bits[i] = ~(bs->bits[i]);
     }
+
+    BITSET_LOG("[bitset_flip_all]: All bits flipped successfully.");
     return bs;
 }
 
@@ -225,20 +261,24 @@ Bitset* bitset_flip_all(Bitset* bs) {
  * @return Pointer to the modified Bitset.
  */
 Bitset* bitset_flip(Bitset* bs, size_t pos) {
+    BITSET_LOG("[bitset_flip]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_flip function.\n");
+        BITSET_LOG("[bitset_flip]: Error - Null pointer provided.");
         return NULL;
     }
     if (pos >= bs->size) {
-        fmt_fprintf(stderr, "Error: Position out of range in bitset_flip function.\n");
+        BITSET_LOG("[bitset_flip]: Error - Position out of range: %zu", pos);
         return bs;
     }
 
-    size_t adjusted_pos = bs->size - 1 - pos;  // Adjust the position to count from the right
-    size_t byte_index = adjusted_pos / 8; // Find the byte in which the bit is located
-    size_t bit_index = adjusted_pos % 8;  // Find the bit's position within that byte
-    bs->bits[byte_index] ^= (1 << bit_index); // Flip the bit using XOR
+    size_t adjusted_pos = bs->size - 1 - pos;
+    size_t byte_index = adjusted_pos / 8;
+    size_t bit_index = adjusted_pos % 8;
     
+    BITSET_LOG("[bitset_flip]: Flipping bit at position %zu (adjusted: %zu, byte index: %zu, bit index: %zu).", pos, adjusted_pos, byte_index, bit_index);
+    bs->bits[byte_index] ^= (1 << bit_index);
+    
+    BITSET_LOG("[bitset_flip]: Bit flipped successfully.");
     return bs;
 }
 
@@ -251,16 +291,20 @@ Bitset* bitset_flip(Bitset* bs, size_t pos) {
  * @return true if all bits are set, false otherwise.
  */
 bool bitset_all(const Bitset* bs) {
+    BITSET_LOG("[bitset_all]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_all function.\n");
+        BITSET_LOG("[bitset_all]: Error - Null pointer provided.");
         return false;
     }
 
     for (size_t i = 0; i < bs->size; ++i) {
         if (!(bs->bits[i / 8] & (1 << (i % 8)))) {
+            BITSET_LOG("[bitset_all]: Bit %zu is not set.", i);
             return false;
         }
     }
+
+    BITSET_LOG("[bitset_all]: All bits are set.");
     return true;
 }
 
@@ -273,16 +317,20 @@ bool bitset_all(const Bitset* bs) {
  * @return true if any bit is set, false otherwise.
  */
 bool bitset_any(const Bitset* bs) {
+    BITSET_LOG("[bitset_any]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_any function.\n");
-        return false; // false or an appropriate error indicator
+        BITSET_LOG("[bitset_any]: Error - Null pointer provided.");
+        return false;
     }
 
     for (size_t i = 0; i < bs->size; ++i) {
         if (bs->bits[i / 8] & (1 << (i % 8))) {
+            BITSET_LOG("[bitset_any]: Bit %zu is set.", i);
             return true;
         }
     }
+
+    BITSET_LOG("[bitset_any]: No bits are set.");
     return false;
 }
 
@@ -295,16 +343,20 @@ bool bitset_any(const Bitset* bs) {
  * @return true if no bits are set, false otherwise.
  */
 bool bitset_none(const Bitset* bs) {
+    BITSET_LOG("[bitset_none]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_none function.\n");
-        return true; // true or an appropriate error indicator
+        BITSET_LOG("[bitset_none]: Error - Null pointer provided.");
+        return true; 
     }
 
     for (size_t i = 0; i < bs->size; ++i) {
         if (bs->bits[i / 8] & (1 << (i % 8))) {
+            BITSET_LOG("[bitset_none]: Bit %zu is set.", i);
             return false;
         }
     }
+
+    BITSET_LOG("[bitset_none]: No bits are set.");
     return true;
 }
 
@@ -317,20 +369,23 @@ bool bitset_none(const Bitset* bs) {
  * @return The number of set bits.
  */
 size_t bitset_count(const Bitset* bs) {
+    BITSET_LOG("[bitset_count]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_count function.\n");
-        return 0; // 0 or an appropriate error indicator
+        BITSET_LOG("[bitset_count]: Error - Null pointer provided.");
+        return 0; 
     }
 
     size_t count = 0;
     for (size_t i = 0; i < bs->size; ++i) {
         if (bs->bits[i / 8] & (1 << (i % 8))) {
             ++count;
+            BITSET_LOG("[bitset_count]: Bit %zu is set. Current count: %zu", i, count);
         }
     }
+
+    BITSET_LOG("[bitset_count]: Final count of set bits: %zu", count);
     return count;
 }
-
 
 /**
  * @brief Returns the size of the Bitset.
@@ -341,7 +396,15 @@ size_t bitset_count(const Bitset* bs) {
  * @return The size of the Bitset (number of bits).
  */
 size_t bitset_size(const Bitset* bs) {
-    return bs ? bs->size : 0;
+    BITSET_LOG("[bitset_size]: Function start.");
+
+    if (!bs) {
+        BITSET_LOG("[bitset_size]: Error - Null pointer provided.");
+        return 0;
+    }
+
+    BITSET_LOG("[bitset_size]: Bitset size is %zu.", bs->size);
+    return bs->size;
 }
 
 /**
@@ -353,20 +416,27 @@ size_t bitset_size(const Bitset* bs) {
  * @return The corresponding unsigned long value.
  */
 unsigned long bitset_to_ulong(const Bitset* bs) {
+    BITSET_LOG("[bitset_to_ulong]: Function start.");
+
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_to_ulong function.\n");
+        BITSET_LOG("[bitset_to_ulong]: Error - Null pointer provided.");
         return 0; // Returning 0 or an error code as appropriate for your use case
     }
 
     unsigned long value = 0;
+    BITSET_LOG("[bitset_to_ulong]: Converting Bitset of size %zu to unsigned long.", bs->size);
+
     for (size_t i = 0; i < bs->size; ++i) {
         size_t byte_index = i / 8;
         size_t bit_index = i % 8;
 
         if (bs->bits[byte_index] & (1 << bit_index)) {
             value |= (1UL << i); // Set the corresponding bit in the unsigned long value
+            BITSET_LOG("[bitset_to_ulong]: Bit %zu is set. Updated value: %lu", i, value);
         }
     }
+
+    BITSET_LOG("[bitset_to_ulong]: Conversion completed. Final value: %lu", value);
     return value;
 }
 
@@ -379,20 +449,26 @@ unsigned long bitset_to_ulong(const Bitset* bs) {
  * @return The corresponding unsigned long long value.
  */
 unsigned long long bitset_to_ullong(const Bitset* bs) {
+    BITSET_LOG("[bitset_to_ullong]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_to_ullong function.\n");
+        BITSET_LOG("[bitset_to_ullong]: Error - Null pointer provided.");
         return 0; // Returning 0 or an error code as appropriate for your use case
     }
 
     unsigned long long value = 0;
+    BITSET_LOG("[bitset_to_ullong]: Converting Bitset of size %zu to unsigned long long.", bs->size);
+
     for (size_t i = 0; i < bs->size; ++i) {
-        size_t bit_index = i % 8;
         size_t byte_index = i / 8;
+        size_t bit_index = i % 8;
 
         if (bs->bits[byte_index] & (1 << bit_index)) {
-            value |= (1ULL << i); 
+            value |= (1ULL << i);
+            BITSET_LOG("[bitset_to_ullong]: Bit %zu is set. Updated value: %llu", i, value);
         }
     }
+
+    BITSET_LOG("[bitset_to_ullong]: Conversion completed. Final value: %llu", value);
     return value;
 }
 
@@ -405,21 +481,26 @@ unsigned long long bitset_to_ullong(const Bitset* bs) {
  * @return A dynamically allocated string containing the Bitset's bits, or NULL if memory allocation fails.
  */
 char* bitset_to_string(const Bitset* bs) {
+    BITSET_LOG("[bitset_to_string]: Function start.");
     if (!bs) {
-        fmt_fprintf(stderr, "Error: Null pointer provided to bitset_to_string function.\n");
+        BITSET_LOG("[bitset_to_string]: Error - Null pointer provided.");
         return NULL;
     }
 
     char* str = (char*)malloc(bs->size + 1); // +1 for the null terminator
     if (!str) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in bitset_to_string function.\n");
+        BITSET_LOG("[bitset_to_string]: Error - Memory allocation failed.");
         return NULL;
     }
 
+    BITSET_LOG("[bitset_to_string]: Converting bitset of size %zu to string.", bs->size);
     for (size_t i = 0; i < bs->size; ++i) {
         str[bs->size - 1 - i] = bitset_test(bs, i) ? '1' : '0';
+        BITSET_LOG("[bitset_to_string]: Bit at position %zu is %c.", i, str[bs->size - 1 - i]);
     }
     str[bs->size] = '\0'; 
 
+    BITSET_LOG("[bitset_to_string]: Bitset successfully converted to string: %s", str);
     return str;
 }
+

@@ -4,12 +4,20 @@
  * @class String
 */
 
-
 #ifndef STD_STRING_H_
 #define STD_STRING_H_
 
 #include <stddef.h>
 #include <stdbool.h>
+
+#define STRING_LOGGING_ENABLE
+
+#ifdef STRING_LOGGING_ENABLE
+    #define STRING_LOG(fmt, ...) \
+        do { fprintf(stderr, "[STRING LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define STRING_LOG(fmt, ...) do { } while (0)
+#endif
 
 extern const char* STRING_ASCII_LETTERS;
 extern const char* STRING_ASCII_LOWERCASE;

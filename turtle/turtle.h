@@ -2,6 +2,16 @@
 #define TURTLE_H
 
 #include <raylib.h>
+#include <stdio.h>
+
+#define TURTLE_LOGGING_ENABLE
+
+#ifdef TURTLE_LOGGING_ENABLE
+    #define TURTLE_LOG(fmt, ...) \
+        do { fprintf(stderr, "[TURTLE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define TURTLE_LOG(fmt, ...) do { } while (0)
+#endif
 
 typedef struct {
     Vector2 start;

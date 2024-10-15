@@ -1,7 +1,18 @@
 #ifndef SYSINFO_H_
 #define SYSINFO_H_
 
+#include <stdio.h>
 #include "../vector/vector.h"
+
+#define SYSINFO_LOGGING_ENABLE
+
+#ifdef SYSINFO_LOGGING_ENABLE
+    #define SYSINFO_LOG(fmt, ...) \
+        do { fprintf(stderr, "[SYSINFO LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define SYSINFO_LOG(fmt, ...) do { } while (0)
+#endif
+
 
 typedef struct {
     char* interface_name;
