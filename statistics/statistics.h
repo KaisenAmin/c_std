@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-// #define STATISTICS_LOGGING_ENABLE 
+#define STATISTICS_LOGGING_ENABLE 
 
 #ifdef STATISTICS_LOGGING_ENABLE
     #define STATISTICS_LOG(fmt, ...) \

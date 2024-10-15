@@ -5,7 +5,7 @@ CMakeFiles/main.dir/main.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/mai
   C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.h \
   C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.h \
   C:/Users/asus/OneDrive/Desktop/project/c_std/fmt/fmt.h \
-  C:/Users/asus/OneDrive/Desktop/project/c_std/vector/vector.h \
+  C:/Users/asus/OneDrive/Desktop/project/c_std/statistics/statistics.h \
   C:/msys64/mingw64/include/_mingw.h \
   C:/msys64/mingw64/include/_mingw_mac.h \
   C:/msys64/mingw64/include/_mingw_off_t.h \
@@ -14,6 +14,7 @@ CMakeFiles/main.dir/main.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/mai
   C:/msys64/mingw64/include/corecrt.h \
   C:/msys64/mingw64/include/corecrt_stdio_config.h \
   C:/msys64/mingw64/include/crtdefs.h \
+  C:/msys64/mingw64/include/math.h \
   C:/msys64/mingw64/include/sdks/_mingw_ddk.h \
   C:/msys64/mingw64/include/sec_api/stdio_s.h \
   C:/msys64/mingw64/include/stdarg.h \
@@ -40,7 +41,7 @@ C:/Users/asus/OneDrive/Desktop/project/c_std/fmt/fmt.h:
 
 C:/msys64/mingw64/include/_mingw_off_t.h:
 
-C:/Users/asus/OneDrive/Desktop/project/c_std/vector/vector.h:
+C:/Users/asus/OneDrive/Desktop/project/c_std/statistics/statistics.h:
 
 C:/msys64/mingw64/include/_mingw_mac.h:
 
@@ -51,6 +52,8 @@ C:/msys64/mingw64/include/_mingw_stdarg.h:
 C:/msys64/mingw64/include/corecrt.h:
 
 C:/msys64/mingw64/include/corecrt_stdio_config.h:
+
+C:/msys64/mingw64/include/math.h:
 
 C:/msys64/mingw64/include/stdio.h:
 

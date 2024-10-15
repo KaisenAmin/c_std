@@ -96,6 +96,7 @@ build/main.exe: CMakeFiles/main.dir/build.make
 build/main.exe: crypto/libstdcrypto.dll.a
 build/main.exe: random/librandom.dll.a
 build/main.exe: time/libstdtime.dll.a
+build/main.exe: statistics/libstatistics.dll.a
 build/main.exe: stack/libstack.dll.a
 build/main.exe: secrets/libsecrets.dll.a
 build/main.exe: span/libspan.dll.a

@@ -2,13 +2,13 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "build/libtuple.dll"
+			"path" : "build/libforwardlist.dll"
 		},
 		{
-			"path" : "tuple/libtuple.dll.a"
+			"path" : "forward_list/libforwardlist.dll.a"
 		},
 		{
-			"path" : "build/libtuple.pdb"
+			"path" : "build/libforwardlist.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -24,7 +24,7 @@
 		],
 		"files" : 
 		[
-			"tuple/CMakeLists.txt",
+			"forward_list/CMakeLists.txt",
 			"CMakeLists.txt",
 			"fmt/CMakeLists.txt"
 		],
@@ -89,7 +89,7 @@
 			"defines" : 
 			[
 				{
-					"define" : "tuple_EXPORTS"
+					"define" : "forwardlist_EXPORTS"
 				}
 			],
 			"includes" : 
@@ -100,7 +100,7 @@
 				},
 				{
 					"backtrace" : 8,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/tuple"
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/forward_list"
 				},
 				{
 					"backtrace" : 4,
@@ -134,18 +134,18 @@
 	[
 		{
 			"backtrace" : 4,
+			"id" : "stdstring::@22e829107201c6b975b1"
+		},
+		{
+			"backtrace" : 4,
 			"id" : "fmt::@b8b4cdcf357fa61d5575"
 		},
 		{
 			"backtrace" : 4,
 			"id" : "encoding::@8a01f42f38e96b4747a9"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "stdstring::@22e829107201c6b975b1"
 		}
 	],
-	"id" : "tuple::@74e587df7558cf690548",
+	"id" : "forwardlist::@1893eb086a4e30c7558b",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -181,12 +181,12 @@
 		],
 		"language" : "C"
 	},
-	"name" : "tuple",
-	"nameOnDisk" : "libtuple.dll",
+	"name" : "forwardlist",
+	"nameOnDisk" : "libforwardlist.dll",
 	"paths" : 
 	{
-		"build" : "tuple",
-		"source" : "tuple"
+		"build" : "forward_list",
+		"source" : "forward_list"
 	},
 	"sourceGroups" : 
 	[
@@ -203,7 +203,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "tuple/tuple.c",
+			"path" : "forward_list/forward_list.c",
 			"sourceGroupIndex" : 0
 		}
 	],

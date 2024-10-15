@@ -2,13 +2,13 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "build/libstdtime.dll"
+			"path" : "build/libmatrix.dll"
 		},
 		{
-			"path" : "time/libstdtime.dll.a"
+			"path" : "matrix/libmatrix.dll.a"
 		},
 		{
-			"path" : "build/libstdtime.pdb"
+			"path" : "build/libmatrix.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -24,7 +24,7 @@
 		],
 		"files" : 
 		[
-			"time/CMakeLists.txt",
+			"matrix/CMakeLists.txt",
 			"CMakeLists.txt",
 			"fmt/CMakeLists.txt"
 		],
@@ -89,7 +89,7 @@
 			"defines" : 
 			[
 				{
-					"define" : "stdtime_EXPORTS"
+					"define" : "matrix_EXPORTS"
 				}
 			],
 			"includes" : 
@@ -100,7 +100,7 @@
 				},
 				{
 					"backtrace" : 8,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/time"
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/matrix"
 				},
 				{
 					"backtrace" : 4,
@@ -134,18 +134,18 @@
 	[
 		{
 			"backtrace" : 4,
+			"id" : "stdstring::@22e829107201c6b975b1"
+		},
+		{
+			"backtrace" : 4,
 			"id" : "fmt::@b8b4cdcf357fa61d5575"
 		},
 		{
 			"backtrace" : 4,
 			"id" : "encoding::@8a01f42f38e96b4747a9"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "stdstring::@22e829107201c6b975b1"
 		}
 	],
-	"id" : "stdtime::@bd83b289c10ac4bbd907",
+	"id" : "matrix::@23c283fdd1b78e1a8728",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -181,12 +181,12 @@
 		],
 		"language" : "C"
 	},
-	"name" : "stdtime",
-	"nameOnDisk" : "libstdtime.dll",
+	"name" : "matrix",
+	"nameOnDisk" : "libmatrix.dll",
 	"paths" : 
 	{
-		"build" : "time",
-		"source" : "time"
+		"build" : "matrix",
+		"source" : "matrix"
 	},
 	"sourceGroups" : 
 	[
@@ -203,7 +203,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "time/std_time.c",
+			"path" : "matrix/matrix.c",
 			"sourceGroupIndex" : 0
 		}
 	],

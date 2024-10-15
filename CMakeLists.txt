@@ -91,7 +91,7 @@ if (WIN32)
         # map
         vector
         stdtime
-        # statistics
+        statistics
         # tuple
         # turtle
         # sysinfo

@@ -182,15 +182,7 @@
 	[
 		{
 			"backtrace" : 4,
-			"id" : "fmt::@b8b4cdcf357fa61d5575"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "encoding::@8a01f42f38e96b4747a9"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "stdstring::@22e829107201c6b975b1"
+			"id" : "vector::@95776985c747069fcc28"
 		},
 		{
 			"backtrace" : 4,
@@ -198,7 +190,15 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "vector::@95776985c747069fcc28"
+			"id" : "stdstring::@22e829107201c6b975b1"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "fmt::@b8b4cdcf357fa61d5575"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "encoding::@8a01f42f38e96b4747a9"
 		},
 		{
 			"backtrace" : 4,

@@ -1,18 +1,20 @@
-#include "vector/vector.h"
 #include "fmt/fmt.h"
+#include "statistics/statistics.h"
+#include <math.h>
 
-int main() {   
-    Vector *intVector = vector_create(sizeof(int));
-    int values[] = {10, 20, 30};
 
-    for (int i = 0; i < 3; ++i) { 
-        vector_push_back(intVector, &values[i]);
-    }
-    // Using crbegin and crend for reverse read-only iteration over the vector
-    for (const int *it = (const int *)vector_crbegin(intVector); it != (const int *)vector_crend(intVector); --it) {
-        fmt_printf("%d\n", *it);
-    }
-        
-    vector_deallocate(intVector);
+int main() {
+    double x[] = {1, 2, 3, 4, 5};
+    double y[] = {3, 6, 9, 12, 15};
+    size_t n = sizeof(x) / sizeof(x[0]);
+    LinearRegression result = statistics_linear_regression(x, y, n, false);
+
+    fmt_printf("Linear regression (slope, intercept): (%f, %f)\n", result.slope, result.intercept);
+
+    double y_proportional[] = {3, 6, 9, 12, 15};
+    result = statistics_linear_regression(x, y_proportional, n, true);
+
+    fmt_printf("Proportional linear regression (slope, intercept): (%f, %f)\n", result.slope, result.intercept);
+
     return 0;
 }

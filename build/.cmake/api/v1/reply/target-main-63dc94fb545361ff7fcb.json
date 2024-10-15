@@ -125,6 +125,10 @@
 				},
 				{
 					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/statistics"
+				},
+				{
+					"backtrace" : 3,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/stack"
 				},
 				{
@@ -158,6 +162,18 @@
 	"dependencies" : 
 	[
 		{
+			"backtrace" : 3,
+			"id" : "stdtime::@bd83b289c10ac4bbd907"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "vector::@95776985c747069fcc28"
+		},
+		{
+			"backtrace" : 8,
+			"id" : "stdstring::@22e829107201c6b975b1"
+		},
+		{
 			"backtrace" : 8,
 			"id" : "fmt::@b8b4cdcf357fa61d5575"
 		},
@@ -167,23 +183,15 @@
 		},
 		{
 			"backtrace" : 8,
-			"id" : "stdstring::@22e829107201c6b975b1"
-		},
-		{
-			"backtrace" : 8,
 			"id" : "random::@043bef6630b23836363a"
 		},
 		{
 			"backtrace" : 3,
-			"id" : "vector::@95776985c747069fcc28"
-		},
-		{
-			"backtrace" : 3,
-			"id" : "stdtime::@bd83b289c10ac4bbd907"
-		},
-		{
-			"backtrace" : 3,
 			"id" : "queue::@d63f5f69c5a9088733ed"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "statistics::@b0222a8b6403bf2ebd98"
 		},
 		{
 			"backtrace" : 3,
@@ -268,6 +276,11 @@
 			{
 				"backtrace" : 3,
 				"fragment" : "time/libstdtime.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "statistics/libstatistics.dll.a",
 				"role" : "libraries"
 			},
 			{
