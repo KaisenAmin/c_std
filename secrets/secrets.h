@@ -3,6 +3,15 @@
 
 #include <stddef.h>
 
+// #define SECRETS_LOGGING_ENABLE 
+
+#ifdef SECRETS_LOGGING_ENABLE
+    #define SECRETS_LOG(fmt, ...) \
+        do { fprintf(stderr, "[SECRETS LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define SECRETS_LOG(fmt, ...) do { } while (0)
+#endif
+
 int secrets_randbelow(int n);
 int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_t length);
 

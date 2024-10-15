@@ -20,26 +20,27 @@
  * @param size Number of bytes to generate.
  */
 void secrets_token_bytes(unsigned char *buffer, size_t size) {
+    SECRETS_LOG("Secrets Log[secrets_token_bytes]: Entering secrets_token_bytes with size: %zu", size);
 #ifdef _WIN32
     if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, buffer, (ULONG)size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
-        fprintf(stderr, "Error: BCryptGenRandom failed\n");
+        SECRETS_LOG("Secrets Log[secrets_token_bytes]: Error: BCryptGenRandom failed");
         exit(EXIT_FAILURE);
     }
 #else
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) {
-        fprintf(stderr, "Error: Unable to open /dev/urandom\n");
+        SECRETS_LOG("Secrets Log[secrets_token_bytes]: Error: Unable to open /dev/urandom");
         exit(EXIT_FAILURE);
     }
     if (read(fd, buffer, size) != (ssize_t)size) {
-        fprintf(stderr, "Error: Unable to read from /dev/urandom\n");
+        SECRETS_LOG("Secrets Log[secrets_token_bytes]: Error: Unable to read from /dev/urandom");
         close(fd);
         exit(EXIT_FAILURE);
     }
     close(fd);
 #endif
+    SECRETS_LOG("Secrets Log[secrets_token_bytes]: Exiting secrets_token_bytes");
 }
-
 /**
  * @brief Generate a cryptographically secure random integer in the range [0, n).
  * 
@@ -47,11 +48,17 @@ void secrets_token_bytes(unsigned char *buffer, size_t size) {
  * @return A cryptographically secure random integer.
  */
 int secrets_randbelow(int n) {
+    SECRETS_LOG("Secrets Log[secrets_randbelow]: Entering secrets_randbelow with n: %d", n);
     unsigned char buffer[sizeof(int)];
     secrets_token_bytes(buffer, sizeof(buffer));
+
     int random_value = *(int *)buffer;
-    return abs(random_value) % n;
+    int result = abs(random_value) % n;
+
+    SECRETS_LOG("Secrets Log[secrets_randbelow]: Generated random value: %d", result);
+    return result;
 }
+
 
 /**
  * @brief Generate a cryptographically secure random token in hexadecimal format.
@@ -60,14 +67,15 @@ int secrets_randbelow(int n) {
  * @param nbytes Number of bytes to generate (each byte is converted to two hex digits).
  */
 void secrets_token_hex(char *buffer, size_t nbytes) {
+    SECRETS_LOG("Secrets Log[secrets_token_hex]: Entering secrets_token_hex with nbytes: %zu", nbytes);
     unsigned char *bytes = malloc(nbytes);
     secrets_token_bytes(bytes, nbytes);
     
     for (size_t i = 0; i < nbytes; i++) {
         sprintf(buffer + (i * 2), "%02x", bytes[i]);
     }
-
     free(bytes);
+    SECRETS_LOG("Secrets Log[secrets_token_hex]: Exiting secrets_token_hex");
 }
 
 /**
@@ -77,6 +85,7 @@ void secrets_token_hex(char *buffer, size_t nbytes) {
  * @param nbytes The number of random bytes to encode as Base64.
  */
 void secrets_token_urlsafe(char *buffer, size_t nbytes) {
+    SECRETS_LOG("Secrets Log[secrets_token_urlsafe]: Entering secrets_token_urlsafe with nbytes: %zu", nbytes);
     static const char urlsafe_table[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
@@ -90,6 +99,7 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
     }
 
     free(bytes);
+    SECRETS_LOG("Secrets Log[secrets_token_urlsafe]: Exiting secrets_token_urlsafe");
 }
 
 /**
@@ -101,10 +111,14 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
  * @return 1 if the sequences are equal, 0 otherwise.
  */
 int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_t length) {
+    SECRETS_LOG("Secrets Log[secrets_compare_digest]: Entering secrets_compare_digest with length: %zu", length);
     unsigned char result = 0;
+
     for (size_t i = 0; i < length; i++) {
         result |= a[i] ^ b[i];
     }
+
+    SECRETS_LOG("Secrets Log[secrets_compare_digest]: Exiting secrets_compare_digest with result: %d", result == 0);
     return result == 0;
 }
 
@@ -117,12 +131,15 @@ int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_
  * @return A pointer to the randomly selected element.
  */
 void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
+    SECRETS_LOG("Secrets Log[secrets_choice]: Entering secrets_choice with size: %zu, elem_size: %zu", size, elem_size);
     if (size == 0) {
-        fprintf(stderr, "Error: Cannot choose from an empty sequence.\n");
+        SECRETS_LOG("Secrets Log[secrets_choice]: Error: Cannot choose from an empty sequence");
         return NULL;
     }
 
-    int random_index = secrets_randbelow(size);  // Get a random index securely
+    int random_index = secrets_randbelow(size);
+    SECRETS_LOG("Secrets Log[secrets_choice]: Selected random index: %d", random_index);
+
     return (void*)((char*)seq + (random_index * elem_size)); 
 }
 
@@ -133,14 +150,16 @@ void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
  * @return A random integer with exactly k random bits.
  */
 unsigned int secrets_randbits(int k) {
+    SECRETS_LOG("Secrets Log[secrets_randbits]: Entering secrets_randbits with k: %d", k);
     if (k <= 0 || k > (int)(sizeof(unsigned int) * CHAR_BIT)) {
-        fprintf(stderr, "Error: k must be between 1 and %llu\n", sizeof(unsigned int) * CHAR_BIT);
+        SECRETS_LOG("Secrets Log[secrets_randbits]: Error: k must be between 1 and %llu", sizeof(unsigned int) * CHAR_BIT);
         exit(EXIT_FAILURE);
     }
-
+    
     unsigned int random_value = 0;
     secrets_token_bytes((unsigned char *)&random_value, sizeof(random_value));
-    random_value &= (1U << k) - 1; // Mask the unused bits (if k < 32)
+    random_value &= (1U << k) - 1;
+    SECRETS_LOG("Secrets Log[secrets_randbits]: Generated random bits: %u", random_value);
     
     return random_value;
 }

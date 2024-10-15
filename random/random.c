@@ -17,9 +17,15 @@ static unsigned int rand_state;
  * @param seed The seed value to initialize the random number generator.
  */
 void random_seed(unsigned int seed) {
+    RANDOM_LOG("Random Log[random_seed]: Entering with seed: %u", seed);
+
     rand_state = seed;
     srand(seed);
+
+    RANDOM_LOG("Random Log[random_seed]: Seed set to: %u", seed);
+    RANDOM_LOG("Random Log[random_seed]: Exiting");
 }
+
 
 /**
  * @brief This function generates a random integer in the range [a, b], inclusive.
@@ -31,14 +37,22 @@ void random_seed(unsigned int seed) {
  * @return A random integer within the range [a, b].
  */
 int random_randint(int a, int b) {
+    RANDOM_LOG("Random Log[random_randint]: Entering with a: %d, b: %d", a, b);
+
     if (a > b) {
+        RANDOM_LOG("Random Log[random_randint]: Swapping a and b as a > b.");
         int temp = a;
         a = b;
         b = temp;
     }
-    
-    return a + rand() % (b - a + 1);
+
+    int result = a + rand() % (b - a + 1);
+    RANDOM_LOG("Random Log[random_randint]: Generated random integer: %d in range [%d, %d]", result, a, b);
+    RANDOM_LOG("Random Log[random_randint]: Exiting with result: %d", result);
+
+    return result;
 }
+
 
 /**
  * @brief This function generates a random integer in the range `[a, b)` with a specified step.
@@ -51,21 +65,30 @@ int random_randint(int a, int b) {
  *         Returns -1 if `a >= b` or `step <= 0`.
  */
 int random_randrange(int a, int b, int step) {
+    RANDOM_LOG("Random Log[random_randrange]: Entering with a: %d, b: %d, step: %d", a, b, step);
+
     if (a == b || step == 0) {
-        fprintf(stderr, "Error: invalid range or step value\n");
+        RANDOM_LOG("Random Log[random_randrange]: Error: invalid range (a == b) or step (step == 0).");
         return -1;
     }
     if ((step > 0 && a > b) || (step < 0 && a < b)) {
-        fprintf(stderr, "Error: logic error with range and step values\n");
+        RANDOM_LOG("Random Log[random_randrange]: Error: logic error with range and step values.");
         return -1;
     }
 
     int range = abs(b - a);
-    int num_steps = (range + abs(step) - 1) / abs(step);  
-    int random_step = rand() % num_steps;  
+    int num_steps = (range + abs(step) - 1) / abs(step);
+    RANDOM_LOG("Random Log[random_randrange]: Calculated num_steps: %d", num_steps);
 
-    return a + random_step * step;  
+    int random_step = rand() % num_steps;
+    RANDOM_LOG("Random Log[random_randrange]: Generated random_step: %d", random_step);
+
+    int result = a + random_step * step;
+    RANDOM_LOG("Random Log[random_randrange]: Exiting with result: %d", result);
+
+    return result;
 }
+
 
 /**
  * @brief This function generates a random double precision floating-point number
@@ -74,8 +97,15 @@ int random_randrange(int a, int b, int step) {
  * @return A random double in the range [0, 1).
  */
 double random_random() {
-    return rand() / (double)RAND_MAX;
+    RANDOM_LOG("Random Log[random_random]: Entering");
+
+    double result = rand() / (double)RAND_MAX;
+    RANDOM_LOG("Random Log[random_random]: Generated random double: %f in range [0, 1)", result);
+
+    RANDOM_LOG("Random Log[random_random]: Exiting with result: %f", result);
+    return result;
 }
+
 
 /**
  * @brief This function generates a random double precision floating-point number
@@ -87,13 +117,19 @@ double random_random() {
  * @return A random double in the range [a, b).
  */
 double random_uniform(double a, double b) {
+    RANDOM_LOG("Random Log[random_uniform]: Entering random_uniform with a: %f, b: %f", a, b);
+
     if (a > b) {
+        RANDOM_LOG("Random Log[random_uniform]: Swapping a and b as a > b.");
         double temp = a;
         a = b;
         b = temp;
     }
 
-    return a + (rand() / (double)RAND_MAX) * (b - a);
+    double result = a + (rand() / (double)RAND_MAX) * (b - a);
+    RANDOM_LOG("Random Log[random_uniform]: Exiting random_uniform with result: %f", result);
+
+    return result;
 }
 
 /**
@@ -103,18 +139,23 @@ double random_uniform(double a, double b) {
  * @return A random integer with `a` random bits. Returns -1 for invalid input.
  */
 int random_getrandbits(int a) {
+    RANDOM_LOG("Random Log[random_getrandbits]: Entering random_getrandbits with a: %d", a);
+
     if (a <= 0 || a > (int)(sizeof(int) * 8)) {
-        fprintf(stderr, "Error: a is less than zero or bigger than 32.\n");
+        RANDOM_LOG("Random Log[random_getrandbits]: Error: a is out of valid range (1 to 32).");
         return -1; // invalid input
     }
 
     int result = 0;
     for (int i = 0; i < a; i++) {
         result = (result << 1) | (rand() & 1);
+        RANDOM_LOG("Random Log[random_getrandbits]: Generated random bit: %d, current result: %d", (rand() & 1), result);
     }
 
+    RANDOM_LOG("Random Log[random_getrandbits]: Exiting random_getrandbits with result: %d", result);
     return result;
 }
+
 
 /**
  * @brief Shuffles an array of any type.
@@ -126,31 +167,39 @@ int random_getrandbits(int a) {
  * @note This function shuffles an array of any type using the Fisher-Yates algorithm.
  */
 void random_shuffle(void *array, size_t n, size_t size) {
+    RANDOM_LOG("Random Log[random_shuffle]: Entering random_shuffle with array: %p, n: %zu, size: %zu", array, n, size);
+
     if (array == NULL) {
-        fprintf(stderr, "Error: array is null in random_choice.\n");
+        RANDOM_LOG("Random Log[random_shuffle]: Error: array is NULL in random_shuffle.");
         return;
     }
-    else if (n == 0) {
-        fprintf(stderr, "Error: size of array is zero.\n");
+    if (n == 0) {
+        RANDOM_LOG("Random Log[random_shuffle]: Error: size of array is zero in random_shuffle.");
         return;
     }
 
     char* arr = (char*)array;
     for (size_t i = 0; i < n - 1; i++) {
         size_t j = i + random_randint(0, n - i - 1);
+        RANDOM_LOG("Random Log[random_shuffle]: Swapping element %zu with element %zu", i, j);
 
         void* temp = malloc(size);
         if (temp == NULL) {
-            fprintf(stderr, "Error: Allocation failed in random_shuffle.\n");
-            return; 
+            RANDOM_LOG("Random Log[random_shuffle]: Error: memory allocation failed in random_shuffle.");
+            return;
         }
 
         memcpy(temp, arr + j * size, size);
         memcpy(arr + j * size, arr + i * size, size);
         memcpy(arr + i * size, temp, size);
         free(temp);
+
+        RANDOM_LOG("Random Log[random_shuffle]: Completed swap between elements %zu and %zu", i, j);
     }
+
+    RANDOM_LOG("Random Log[random_shuffle]: Exiting random_shuffle");
 }
+
 
 /**
  * @brief Randomly selects an element from an array and returns a pointer to an element from the array.
@@ -162,17 +211,24 @@ void random_shuffle(void *array, size_t n, size_t size) {
  * @return Pointer to the randomly selected element. Returns NULL for invalid input.
  */
 void* random_choice(void* array, size_t n, size_t size) {
+    RANDOM_LOG("Random Log[random_choice]: Entering random_choice with array: %p, n: %zu, size: %zu", array, n, size);
+
     if (array == NULL) {
-        fprintf(stderr, "Error: array is null in random_choice.\n");
+        RANDOM_LOG("Random Log[random_choice]: Error: array is NULL in random_choice.");
         return NULL;
     }
-    else if (n == 0) {
-        fprintf(stderr, "Error: size of array is zero.\n");
+    if (n == 0) {
+        RANDOM_LOG("Random Log[random_choice]: Error: size of array is zero in random_choice.");
         return NULL;
     }
 
     size_t index = random_randint(0, n - 1);
-    return (char*)array + index * size;
+    RANDOM_LOG("Random Log[random_choice]: Selected index: %zu", index);
+
+    void* result = (char*)array + index * size;
+    RANDOM_LOG("Random Log[random_choice]: Exiting random_choice with result: %p", result);
+
+    return result;
 }
 
 /**
@@ -188,25 +244,36 @@ void* random_choice(void* array, size_t n, size_t size) {
  * @note The function uses the inverse transform sampling method to produce the triangular-distributed number.
  */
 double random_triangular(double low, double high, double mode) {
+    RANDOM_LOG("Random Log[random_triangular]: Entering random_triangular with low: %f, high: %f, mode: %f", low, high, mode);
+
     if (low > high) {
+        RANDOM_LOG("Random Log[random_triangular]: Swapping low and high, as low > high.");
         double temp = low;
         low = high;
         high = temp;
     }
+
     if (mode < low || mode > high) {
+        RANDOM_LOG("Random Log[random_triangular]: Mode is out of bounds, setting mode to midpoint of low and high.");
         mode = (low + high) / 2;
     }
 
     double u = random_random();
     double c = (mode - low) / (high - low);
+    RANDOM_LOG("Random Log[random_triangular]: Generated random number u: %f, calculated c: %f", u, c);
 
+    double result;
     if (u <= c) {
-        return low + sqrt(u * (high - low) * (mode - low));
-    } 
-    else {
-        return high - sqrt((1 - u) * (high - low) * (high - mode));
+        result = low + sqrt(u * (high - low) * (mode - low));
     }
+    else {
+        result = high - sqrt((1 - u) * (high - low) * (high - mode));
+    }
+
+    RANDOM_LOG("Random Log[random_triangular]: Exiting random_triangular with result: %f", result);
+    return result;
 }
+
 
 /**
  * @brief Selects multiple random elements from an array with specified weights.
@@ -225,45 +292,64 @@ double random_triangular(double low, double high, double mode) {
  * @note The function uses cumulative weights to perform weighted random sampling.
  */
 void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights) {
+    RANDOM_LOG("Random Log[random_choices]: Entering random_choices with array: %p, n: %zu, size: %zu, num_choices: %zu, choices: %p, weights: %p", array, n, size, num_choices, choices, weights);
+
     if (array == NULL) {
-        fprintf(stderr, "Error: array is null in random_choices.\n");
+        RANDOM_LOG("Random Log[random_choices]: Error: array is NULL in random_choices.");
         return;
     }
     if (n == 0) {
-        fprintf(stderr, "Error: size of array is zero.\n");
+        RANDOM_LOG("Random Log[random_choices]: Error: size of array is zero in random_choices.");
         return;
     }
     if (num_choices == 0) {
-        fprintf(stderr, "Error: number of choices is zero.\n");
+        RANDOM_LOG("Random Log[random_choices]: Error: number of choices is zero in random_choices.");
         return;
     }
     if (weights == NULL) {
-        fprintf(stderr, "Error: weights array is null in random_choices.\n");
+        RANDOM_LOG("Random Log[random_choices]: Error: weights array is NULL in random_choices.");
         return;
     }
 
+    // Allocate memory for cumulative weights
     double *cumulative_weights = (double *)malloc(n * sizeof(double));
     if (cumulative_weights == NULL) {
-        fprintf(stderr, "Error: Allocation failed in random_choices.\n");
+        RANDOM_LOG("Random Log[random_choices]: Error: memory allocation failed for cumulative_weights in random_choices.");
         return;
     }
 
+    // Calculate cumulative weights
+    RANDOM_LOG("Random Log[random_choices]: Calculating cumulative weights.");
     cumulative_weights[0] = weights[0];
+    RANDOM_LOG("Random Log[random_choices]: cumulative_weights[0] = %f", cumulative_weights[0]);
+    
     for (size_t i = 1; i < n; i++) {
         cumulative_weights[i] = cumulative_weights[i - 1] + weights[i];
+        RANDOM_LOG("Random Log[random_choices]: cumulative_weights[%zu] = %f", i, cumulative_weights[i]);
     }
 
+    // Make random choices
     for (size_t i = 0; i < num_choices; i++) {
         double r = random_uniform(0.0, cumulative_weights[n - 1]);
+        RANDOM_LOG("Random Log[random_choices]: Generated random number r = %f for choice %zu", r, i);
+
         size_t index = 0;
         while (index < n - 1 && r > cumulative_weights[index]) {
             index++;
         }
+        RANDOM_LOG("Random Log[random_choices]: Selected index %zu for choice %zu", index, i);
+
         memcpy((char *)choices + i * size, (char *)array + index * size, size);
+        RANDOM_LOG("Random Log[random_choices]: Copied choice %zu from array index %zu", i, index);
     }
 
+    // Free memory
     free(cumulative_weights);
+
+    RANDOM_LOG("Random Log[random_choices]: Freed cumulative_weights memory.");
+    RANDOM_LOG("Random Log[random_choices]: Exiting random_choices.");
 }
+
 
 /**
  * @brief Samples a specified number of unique random elements from an array.
@@ -281,45 +367,56 @@ void random_choices(void *array, size_t n, size_t size, size_t num_choices, void
  * @note This function uses a Fisher-Yates shuffle algorithm to ensure unique random sampling.
  */
 void random_sample(void *array, size_t n, size_t size, size_t num_samples, void *samples) {
+    RANDOM_LOG("Random Log[random_sample]: Entering random_sample with array: %p, n: %zu, size: %zu, num_samples: %zu, samples: %p", array, n, size, num_samples, samples);
+
     if (array == NULL) {
-        fprintf(stderr, "Error: array is null in random_sample.\n");
+        RANDOM_LOG("Random Log[random_sample]: Error: array is NULL in random_sample.");
         return;
     }
     if (n == 0) {
-        fprintf(stderr, "Error: size of array is zero.\n");
+        RANDOM_LOG("Random Log[random_sample]: Error: size of array is zero in random_sample.");
         return;
     }
     if (num_samples == 0) {
-        fprintf(stderr, "Error: number of samples is zero.\n");
+        RANDOM_LOG("Random Log[random_sample]: Error: number of samples is zero in random_sample.");
         return;
     }
     if (num_samples > n) {
-        fprintf(stderr, "Error: number of samples is greater than the number of elements in the array.\n");
+        RANDOM_LOG("Random Log[random_sample]: Error: number of samples is greater than the number of elements in array.");
         return;
     }
 
     size_t *indices = (size_t *)malloc(n * sizeof(size_t));
     if (indices == NULL) {
-        fprintf(stderr, "Error: Allocation failed in random_sample.\n");
+        RANDOM_LOG("Random Log[random_sample]: Error: memory allocation failed for indices in random_sample.");
         return;
     }
 
+    // Initialize indices
+    RANDOM_LOG("Random Log[random_sample]: Initializing indices.");
     for (size_t i = 0; i < n; i++) {
         indices[i] = i;
     }
 
+    // Shuffle the first num_samples elements
+    RANDOM_LOG("Random Log[random_sample]: Shuffling array indices to select %zu samples.", num_samples);
     for (size_t i = 0; i < num_samples; i++) {
         size_t j = i + random_randint(0, n - i - 1);
+        RANDOM_LOG("Random Log[random_sample]: Swapping indices[%zu] with indices[%zu]", i, j);
         size_t temp = indices[i];
         indices[i] = indices[j];
         indices[j] = temp;
     }
 
+    // Copy the selected elements into the samples array
+    RANDOM_LOG("Random Log[random_sample]: Copying selected samples to output array.");
     for (size_t i = 0; i < num_samples; i++) {
         memcpy((char *)samples + i * size, (char *)array + indices[i] * size, size);
+        RANDOM_LOG("Random Log[random_sample]: Copied sample %zu from array index %zu", i, indices[i]);
     }
 
     free(indices);
+    RANDOM_LOG("Random Log[random_sample]: Exiting random_sample.");
 }
 
 /**
@@ -329,11 +426,20 @@ void random_sample(void *array, size_t n, size_t size, size_t num_samples, void 
  *       if `state` is NULL, the function does nothing.
  */
 void random_setstate(const unsigned int *state) {
+    RANDOM_LOG("Random Log[random_setstate]: Entering random_setstate with state: %p", (void*)state);
+
     if (state != NULL) {
         rand_state = *state;
         srand(rand_state);
+        RANDOM_LOG("Random Log[random_setstate]: State set to: %u", rand_state);
+    } 
+    else {
+        RANDOM_LOG("Random Log[random_setstate]: Error: state is NULL in random_setstate.");
     }
+
+    RANDOM_LOG("Random Log[random_setstate]: Exiting random_setstate");
 }
+
 
 /**
  * @brief This function retrieves the current state of the random number generator.
@@ -342,10 +448,19 @@ void random_setstate(const unsigned int *state) {
  *       if `state` is NULL, the function does nothing.
  */
 void random_getstate(unsigned int *state) {
+    RANDOM_LOG("Random Log[random_getstate]: Entering random_getstate with state: %p", (void*)state);
+
     if (state != NULL) {
         *state = rand_state;
+        RANDOM_LOG("Random Log[random_getstate]: Retrieved state: %u", rand_state);
+    } 
+    else {
+        RANDOM_LOG("Random Log[random_getstate]: Error: state is NULL in random_getstate.");
     }
+
+    RANDOM_LOG("Random Log[random_getstate]: Exiting random_getstate");
 }
+
 
 /**
  * @brief Generates a random double number based on the Gaussian (normal) distribution.
@@ -358,12 +473,19 @@ void random_getstate(unsigned int *state) {
  * 
  */
 double random_gauss(double mean, double stddev) {
+    RANDOM_LOG("Random Log[random_gauss]: Entering random_gauss with mean: %f, stddev: %f", mean, stddev);
+
     static int hasSpare = 0;
     static double spare;
 
     if (hasSpare) {
         hasSpare = 0;
-        return mean + stddev * spare;
+
+        RANDOM_LOG("Random Log[random_gauss]: Using spare value for Gaussian generation: %f", spare);
+        double result = mean + stddev * spare;
+        RANDOM_LOG("Random Log[random_gauss]: Exiting random_gauss with result: %f", result);
+
+        return result;
     }
 
     hasSpare = 1;
@@ -372,13 +494,20 @@ double random_gauss(double mean, double stddev) {
         u = random_random() * 2.0 - 1.0;
         v = random_random() * 2.0 - 1.0;
         s = u * u + v * v;
+
+        RANDOM_LOG("Random Log[random_gauss]: Generated u: %f, v: %f, s: %f", u, v, s);
     } while (s >= 1.0 || s == 0.0);
 
     s = sqrt(-2.0 * log(s) / s);
     spare = v * s;
+    RANDOM_LOG("Random Log[random_gauss]: Spare value stored: %f", spare);
 
-    return mean + stddev * (u * s);
+    double result = mean + stddev * (u * s);
+    RANDOM_LOG("Random Log[random_gauss]: Exiting random_gauss with result: %f", result);
+
+    return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the Exponential distribution.
@@ -392,18 +521,25 @@ double random_gauss(double mean, double stddev) {
  *       If `lambda` is less than or equal to 0, the function will print error message and return NAN.
  */
 double random_expo(double lambda) {
+    RANDOM_LOG("Random Log[random_expo]: Entering random_expo with lambda: %f", lambda);
+
     if (lambda <= 0.0) {
-        fprintf(stderr, "Error: lambda must be greater than 0 in random_expo.\n");
+        RANDOM_LOG("Random Log[random_expo]: Error: lambda is less than or equal to 0 in random_expo.");
         return NAN;
     }
 
     double expo;
     do {
         expo = random_random();
+        RANDOM_LOG("Random Log[random_expo]: Generated expo: %f", expo);
     } while (expo == 0.0);
 
-    return -log(expo) / lambda;
+    double result = -log(expo) / lambda;
+    RANDOM_LOG("Random Log[random_expo]: Exiting random_expo with result: %f", result);
+
+    return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the Log-normal distribution.
@@ -414,9 +550,15 @@ double random_expo(double lambda) {
  * 
  */
 double random_lognormal(double mean, double stddev) {
-    double normal_value = random_gauss(mean, stddev);
+    RANDOM_LOG("Random Log[random_lognormal]: Entering random_lognormal with mean: %f, stddev: %f", mean, stddev);
 
-    return exp(normal_value);
+    double normal_value = random_gauss(mean, stddev);
+    RANDOM_LOG("Random Log[random_lognormal]: Generated normal_value: %f from underlying normal distribution", normal_value);
+
+    double result = exp(normal_value);
+    RANDOM_LOG("Random Log[random_lognormal]: Exiting random_lognormal with result: %f", result);
+
+    return result;
 }
 
 /**
@@ -433,22 +575,29 @@ double random_lognormal(double mean, double stddev) {
  *       - For `shape` >= 1, Marsaglia and Tsang's method is used.
  */
 double random_gamma(double shape, double scale) {
+    RANDOM_LOG("Random Log[random_gamma]: Entering random_gamma with shape: %f, scale: %f", shape, scale);
+
     if (shape <= 0.0 || scale <= 0.0) {
-        fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_gamma.\n");
+        RANDOM_LOG("Random Log[random_gamma]: Error: shape or scale is less than or equal to 0 in random_gamma.");
         return NAN;
     }
 
     if (shape < 1.0) {
         // Johnk's generator for shape < 1
+        RANDOM_LOG("Random Log[random_gamma]: Using Johnk's generator for shape < 1");
         double expo;
         do {
             expo = random_random();
+            RANDOM_LOG("Random Log[random_gamma]: Generated expo: %f", expo);
         } while (expo == 0.0);
 
-        return random_gamma(1.0 + shape, scale) * pow(expo, 1.0 / shape);
+        double result = random_gamma(1.0 + shape, scale) * pow(expo, 1.0 / shape);
+        RANDOM_LOG("Random Log[random_gamma]: Exiting random_gamma (Johnk's) with result: %f", result);
+        return result;
     }
 
     // Marsaglia and Tsang's method for shape >= 1
+    RANDOM_LOG("Random Log[random_gamma]: Using Marsaglia and Tsang's method for shape >= 1");
     double d = shape - 1.0 / 3.0;
     double c = 1.0 / sqrt(9.0 * d);
     double v;
@@ -457,15 +606,20 @@ double random_gamma(double shape, double scale) {
         double u = random_random();
         double z = random_gauss(0.0, 1.0);
         v = pow(1.0 + c * z, 3);
+        RANDOM_LOG("Random Log[random_gamma]: Generated u: %f, z: %f, v: %f", u, z, v);
         if (u < 1.0 - 0.0331 * (z * z) * (z * z)) {
+            RANDOM_LOG("Random Log[random_gamma]: Break condition met in Marsaglia and Tsang's method (u condition).");
             break;
         }
         if (log(u) < 0.5 * z * z + d * (1.0 - v + log(v))) {
+            RANDOM_LOG("Random Log[random_gamma]: Break condition met in Marsaglia and Tsang's method (log(u) condition).");
             break;
         }
     }
 
-    return d * v * scale;
+    double result = d * v * scale;
+    RANDOM_LOG("Random Log[random_gamma]: Exiting random_gamma (Marsaglia and Tsang's) with result: %f", result);
+    return result;
 }
 
 /**
@@ -478,16 +632,23 @@ double random_gamma(double shape, double scale) {
  *         and returns NaN.
  */
 double random_beta(double alpha, double beta) {
+    RANDOM_LOG("Random Log[random_beta]: Entering random_beta with alpha: %f, beta: %f", alpha, beta);
+
     if (alpha <= 0.0 || beta <= 0.0) {
-        fprintf(stderr, "Error: alpha and beta parameters must be greater than 0 in random_beta.\n");
+        RANDOM_LOG("Random Log[random_beta]: Error: alpha or beta is less than or equal to 0 in random_beta.");
         return NAN;
     }
 
     double x = random_gamma(alpha, 1.0);
     double y = random_gamma(beta, 1.0);
+    RANDOM_LOG("Random Log[random_beta]: Generated x: %f, y: %f for random_beta", x, y);
 
-    return x / (x + y);
+    double result = x / (x + y);
+    RANDOM_LOG("Random Log[random_beta]: Exiting random_beta with result: %f", result);
+
+    return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the Pareto distribution.
@@ -500,17 +661,23 @@ double random_beta(double alpha, double beta) {
  *         and returns NaN.
  */
 double random_pareto(double shape, double scale) {
+    RANDOM_LOG("Random Log[random_pareto]: Entering random_pareto with shape: %f, scale: %f", shape, scale);
+
     if (shape <= 0.0 || scale <= 0.0) {
-        fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_pareto.\n");
+        RANDOM_LOG("Random Log[random_pareto]: Error: shape or scale is less than or equal to 0 in random_pareto.");
         return NAN;
     }
 
     double expo;
     do {
         expo = random_random();
+        RANDOM_LOG("Random Log[random_pareto]: Generated expo: %f", expo);
     } while (expo == 0.0);
 
-    return scale * pow((1.0 / expo), (1.0 / shape));
+    double result = scale * pow((1.0 / expo), (1.0 / shape));
+    RANDOM_LOG("Random Log[random_pareto]: Exiting random_pareto with result: %f", result);
+
+    return result;
 }
 
 /**
@@ -524,8 +691,10 @@ double random_pareto(double shape, double scale) {
  *         and returns NaN.
  */
 double random_weibull(double shape, double scale) {
+    RANDOM_LOG("Random Log[random_weibull]: Entering random_weibull with shape: %f, scale: %f", shape, scale);
+
     if (shape <= 0.0 || scale <= 0.0) {
-        fprintf(stderr, "Error: shape and scale parameters must be greater than 0 in random_weibull.\n");
+        RANDOM_LOG("Random Log[random_weibull]: Error: shape or scale is less than or equal to 0 in random_weibull.");
         return NAN;
     }
 
@@ -534,7 +703,10 @@ double random_weibull(double shape, double scale) {
         expo = random_random();
     } while (expo == 0.0);
 
-    return scale * pow(-log(expo), 1.0 / shape);
+    double result = scale * pow(-log(expo), 1.0 / shape);
+    RANDOM_LOG("Random Log[random_weibull]: Exiting random_weibull with result: %f", result);
+
+    return result;
 }
 
 /**
@@ -549,8 +721,9 @@ double random_weibull(double shape, double scale) {
  *         
  */
 double random_vonmises(double mu, double kappa) {
+    RANDOM_LOG("Random Log[random_vonmises]: Entering random_vonmises with mu: %f, kappa: %f", mu, kappa);
     if (kappa <= 0.0) {
-        fprintf(stderr, "Error: kappa must be greater than 0 in random_vonmises.\n");
+        RANDOM_LOG("Random Log[random_vonmises]: Error: kappa is less than or equal to 0 in random_vonmises.");
         return NAN;
     }
 
@@ -572,6 +745,6 @@ double random_vonmises(double mu, double kappa) {
     if (Y < 0) {
         W = -W;
     }
-
+    RANDOM_LOG("Random Log[random_vonmises]: Exiting random_vonmises with result: %f", result);
     return fmod(mu + acos(W), tau);
 }

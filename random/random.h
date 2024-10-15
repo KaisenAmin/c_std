@@ -4,6 +4,15 @@
 #include <stdio.h>
 #include <stddef.h>
 
+// #define RANDOM_LOGGING_ENABLE
+
+#ifdef RANDOM_LOGGING_ENABLE
+    #define RANDOM_LOG(fmt, ...) \
+        do { fprintf(stderr, "[RANDOM LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define RANDOM_LOG(fmt, ...) do { } while (0)
+#endif
+
 void random_seed(unsigned int seed);
 void random_shuffle(void *array, size_t n, size_t size);
 void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights);
