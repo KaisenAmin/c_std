@@ -22,8 +22,7 @@
 		"files" : 
 		[
 			"CMakeLists.txt",
-			"crypto/CMakeLists.txt",
-			"secrets/CMakeLists.txt"
+			"crypto/CMakeLists.txt"
 		],
 		"nodes" : 
 		[
@@ -58,15 +57,6 @@
 				"parent" : 4
 			},
 			{
-				"file" : 2
-			},
-			{
-				"command" : 2,
-				"file" : 2,
-				"line" : 6,
-				"parent" : 6
-			},
-			{
 				"command" : 3,
 				"file" : 0,
 				"line" : 179,
@@ -92,7 +82,7 @@
 			"includes" : 
 			[
 				{
-					"backtrace" : 9,
+					"backtrace" : 7,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/include"
 				},
 				{
@@ -113,10 +103,6 @@
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/random"
-				},
-				{
-					"backtrace" : 3,
 					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/vector"
 				},
 				{
@@ -125,27 +111,7 @@
 				},
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/statistics"
-				},
-				{
-					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/tuple"
-				},
-				{
-					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/stack"
-				},
-				{
-					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/secrets"
-				},
-				{
-					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/span"
-				},
-				{
-					"backtrace" : 3,
-					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/queue"
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/priority_queue"
 				}
 			],
 			"language" : "C",
@@ -166,24 +132,20 @@
 	"dependencies" : 
 	[
 		{
-			"backtrace" : 8,
+			"backtrace" : 6,
 			"id" : "encoding::@8a01f42f38e96b4747a9"
 		},
 		{
-			"backtrace" : 8,
+			"backtrace" : 6,
 			"id" : "stdstring::@22e829107201c6b975b1"
 		},
 		{
-			"backtrace" : 8,
-			"id" : "random::@043bef6630b23836363a"
-		},
-		{
-			"backtrace" : 8,
+			"backtrace" : 6,
 			"id" : "fmt::@b8b4cdcf357fa61d5575"
 		},
 		{
-			"backtrace" : 3,
-			"id" : "vector::@95776985c747069fcc28"
+			"backtrace" : 6,
+			"id" : "random::@043bef6630b23836363a"
 		},
 		{
 			"backtrace" : 3,
@@ -191,31 +153,15 @@
 		},
 		{
 			"backtrace" : 3,
-			"id" : "queue::@d63f5f69c5a9088733ed"
+			"id" : "vector::@95776985c747069fcc28"
 		},
 		{
 			"backtrace" : 3,
-			"id" : "stack::@b5371760465ddb38638a"
-		},
-		{
-			"backtrace" : 3,
-			"id" : "statistics::@b0222a8b6403bf2ebd98"
-		},
-		{
-			"backtrace" : 3,
-			"id" : "tuple::@74e587df7558cf690548"
-		},
-		{
-			"backtrace" : 3,
-			"id" : "span::@da6663ad5183d56b1dce"
+			"id" : "priority_queue::@21f9f231e6871b1be224"
 		},
 		{
 			"backtrace" : 3,
 			"id" : "stdcrypto::@1d62b725e69adc70ad4a"
-		},
-		{
-			"backtrace" : 3,
-			"id" : "secrets::@65418a93b5aaf0a94767"
 		}
 	],
 	"id" : "main::@6890427a1f51a3e7e1df",
@@ -278,52 +224,17 @@
 			},
 			{
 				"backtrace" : 3,
-				"fragment" : "random/librandom.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
 				"fragment" : "time/libstdtime.dll.a",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 3,
-				"fragment" : "statistics/libstatistics.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
-				"fragment" : "tuple/libtuple.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
-				"fragment" : "stack/libstack.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
-				"fragment" : "secrets/libsecrets.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
-				"fragment" : "span/libspan.dll.a",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
-				"fragment" : "queue/libqueue.dll.a",
+				"fragment" : "priority_queue/libpriority_queue.dll.a",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 5,
 				"fragment" : "-lcrypto",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 7,
-				"fragment" : "-lbcrypt",
 				"role" : "libraries"
 			},
 			{

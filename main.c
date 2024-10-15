@@ -1,29 +1,32 @@
-#include "tuple/tuple.h"
+#include "priority_queue/priority_queue.h"
 #include "fmt/fmt.h"
 
+static int compare_ints(const void* a, const void* b) {
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+
+    return (int_a > int_b) - (int_a < int_b);
+}
+
 int main() {
-    size_t size1, size2;
+    PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
 
-    Tuple* tuple1 = tuple_create(1);
-    int intValue1 = 42;
-    tuple_set(tuple1, 0, &intValue1, sizeof(int));
+    if (!pq) {
+        fmt_fprintf(stderr, "Failed to create priority queue.\n");
+        return -1;
+    }
 
-    Tuple* tuple2 = tuple_create(1);
-    int intValue2 = 100;
-    tuple_set(tuple2, 0, &intValue2, sizeof(int));
+    // Push some integers onto the priority queue
+    int values[] = {5, 10, 3, 7, 4};
+    for (int i = 0; i < 5; ++i) { 
+        priority_queue_push(pq, &values[i]);
+    }
 
-    fmt_printf("Before swap:\n");
-    fmt_printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
-    fmt_printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
+    int* top = priority_queue_top(pq);
+    if (top) {
+        fmt_printf("Top element: %d\n", *top);
+    }
 
-    tuple_swap(tuple1, tuple2);
-
-    fmt_printf("After swap:\n");
-    fmt_printf("Tuple1 first element: %d\n", *(int*)tuple_get(tuple1, 0, &size1));
-    fmt_printf("Tuple2 first element: %d\n", *(int*)tuple_get(tuple2, 0, &size2));
-
-    tuple_deallocate(tuple1);
-    tuple_deallocate(tuple2);
-    
+    priority_queue_deallocate(pq);
     return 0;
 }

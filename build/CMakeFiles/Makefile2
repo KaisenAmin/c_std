@@ -746,17 +746,12 @@ xml/clean: xml/CMakeFiles/xml.dir/clean
 # All Build rule for target.
 CMakeFiles/main.dir/all: encoding/CMakeFiles/encoding.dir/all
 CMakeFiles/main.dir/all: string/CMakeFiles/stdstring.dir/all
-CMakeFiles/main.dir/all: random/CMakeFiles/random.dir/all
 CMakeFiles/main.dir/all: fmt/CMakeFiles/fmt.dir/all
-CMakeFiles/main.dir/all: vector/CMakeFiles/vector.dir/all
+CMakeFiles/main.dir/all: random/CMakeFiles/random.dir/all
 CMakeFiles/main.dir/all: time/CMakeFiles/stdtime.dir/all
-CMakeFiles/main.dir/all: queue/CMakeFiles/queue.dir/all
-CMakeFiles/main.dir/all: stack/CMakeFiles/stack.dir/all
-CMakeFiles/main.dir/all: statistics/CMakeFiles/statistics.dir/all
-CMakeFiles/main.dir/all: tuple/CMakeFiles/tuple.dir/all
-CMakeFiles/main.dir/all: span/CMakeFiles/span.dir/all
+CMakeFiles/main.dir/all: vector/CMakeFiles/vector.dir/all
+CMakeFiles/main.dir/all: priority_queue/CMakeFiles/priority_queue.dir/all
 CMakeFiles/main.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
-CMakeFiles/main.dir/all: secrets/CMakeFiles/secrets.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=37,38 "Built target main"
@@ -764,7 +759,7 @@ CMakeFiles/main.dir/all: secrets/CMakeFiles/secrets.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/main.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 28
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/main.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 0
 .PHONY : CMakeFiles/main.dir/rule
@@ -790,7 +785,7 @@ CMakeFiles/run.dir/all: CMakeFiles/main.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/run.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 28
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 18
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/run.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles 0
 .PHONY : CMakeFiles/run.dir/rule
@@ -1559,8 +1554,8 @@ dir/CMakeFiles/dir.dir/all: encoding/CMakeFiles/encoding.dir/all
 dir/CMakeFiles/dir.dir/all: string/CMakeFiles/stdstring.dir/all
 dir/CMakeFiles/dir.dir/all: fmt/CMakeFiles/fmt.dir/all
 dir/CMakeFiles/dir.dir/all: vector/CMakeFiles/vector.dir/all
-dir/CMakeFiles/dir.dir/all: file_io/CMakeFiles/fileio.dir/all
 dir/CMakeFiles/dir.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
+dir/CMakeFiles/dir.dir/all: file_io/CMakeFiles/fileio.dir/all
 	$(MAKE) $(MAKESILENT) -f dir/CMakeFiles/dir.dir/build.make dir/CMakeFiles/dir.dir/depend
 	$(MAKE) $(MAKESILENT) -f dir/CMakeFiles/dir.dir/build.make dir/CMakeFiles/dir.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=20,21 "Built target dir"
@@ -1704,8 +1699,8 @@ network/CMakeFiles/network.dir/all: string/CMakeFiles/stdstring.dir/all
 network/CMakeFiles/network.dir/all: fmt/CMakeFiles/fmt.dir/all
 network/CMakeFiles/network.dir/all: vector/CMakeFiles/vector.dir/all
 network/CMakeFiles/network.dir/all: map/CMakeFiles/map.dir/all
-network/CMakeFiles/network.dir/all: file_io/CMakeFiles/fileio.dir/all
 network/CMakeFiles/network.dir/all: crypto/CMakeFiles/stdcrypto.dir/all
+network/CMakeFiles/network.dir/all: file_io/CMakeFiles/fileio.dir/all
 network/CMakeFiles/network.dir/all: json/CMakeFiles/json.dir/all
 	$(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/depend
 	$(MAKE) $(MAKESILENT) -f network/CMakeFiles/network.dir/build.make network/CMakeFiles/network.dir/build

@@ -8,7 +8,7 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
-#define VECTOR_LOGGING_ENABLE
+// #define VECTOR_LOGGING_ENABLE
 
 #ifdef VECTOR_LOGGING_ENABLE
     #define VECTOR_LOG(fmt, ...) \

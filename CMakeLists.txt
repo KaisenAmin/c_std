@@ -87,19 +87,19 @@ if (WIN32)
         ssl
         pq
         # Optional modules that are commented out:
-        random
+        # random
         # map
         vector
         stdtime
-        statistics
-        tuple
+        # statistics
+        # tuple
         # turtle
         # sysinfo
-        stack
-        secrets
-        span
-        queue
-        # priority_queue
+        # stack
+        # secrets
+        # span
+        # queue
+        priority_queue
         # algorithm
         # array
         # bitset

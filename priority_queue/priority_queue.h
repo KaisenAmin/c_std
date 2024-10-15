@@ -9,7 +9,14 @@
 
 #include "../vector/vector.h"
 
-#define PQUEUE_LOGGING_ENABLE
+// #define PQUEUE_LOGGING_ENABLE
+
+#ifdef PQUEUE_LOGGING_ENABLE 
+    #define PQUEUE_LOG(fmt, ...) \
+        do { fprintf(stderr, "[PQUEUE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define PQUEUE_LOG(fmt, ...) do { } while (0)
+#endif
 
 typedef struct PriorityQueue PriorityQueue;
 
