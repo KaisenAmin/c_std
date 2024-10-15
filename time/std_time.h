@@ -1,9 +1,18 @@
 #ifndef TIME_H
 #define TIME_H
 
-#define TIME_LOGGINH_ENABLE
-
 #include <stdbool.h>
+#include <stdio.h>
+
+#define TIME_LOGGING_ENABLE
+
+#ifdef TIME_LOGGING_ENABLE
+    #define TIME_LOG(fmt, ...) \
+        do { fprintf(stderr, "[TIME LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define TIME_LOG(fmt, ...) do { } while (0)
+#endif
+
 
 typedef struct {
     int hour;

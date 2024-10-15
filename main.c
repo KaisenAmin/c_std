@@ -1,32 +1,19 @@
-#include "priority_queue/priority_queue.h"
 #include "fmt/fmt.h"
+#include "time/std_time.h"
 
-static int compare_ints(const void* a, const void* b) {
-    int int_a = *(const int*)a;
-    int int_b = *(const int*)b;
-
-    return (int_a > int_b) - (int_a < int_b);
-}
 
 int main() {
-    PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
+    Time* start_time = time_current_time();
 
-    if (!pq) {
-        fmt_fprintf(stderr, "Failed to create priority queue.\n");
-        return -1;
-    }
+    time_sleep(10);
 
-    // Push some integers onto the priority queue
-    int values[] = {5, 10, 3, 7, 4};
-    for (int i = 0; i < 5; ++i) { 
-        priority_queue_push(pq, &values[i]);
-    }
+    Time* end_time = time_current_time();
+    double diff_time = time_diff_in_seconds(start_time, end_time);
 
-    int* top = priority_queue_top(pq);
-    if (top) {
-        fmt_printf("Top element: %d\n", *top);
-    }
+    fmt_printf("Difference in Seconds : %lf\n", diff_time);
 
-    priority_queue_deallocate(pq);
+    time_deallocate(start_time);
+    time_deallocate(end_time);
+
     return 0;
 }
