@@ -2,6 +2,7 @@
 #define SECRETS_H_
 
 #include <stddef.h>
+#include <stdio.h>
 
 // #define SECRETS_LOGGING_ENABLE 
 

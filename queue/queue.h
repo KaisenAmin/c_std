@@ -7,9 +7,17 @@
 #ifndef QUEUE_H_
 #define QUEUE_H_
 
+#include <stdio.h>
 #include "../vector/vector.h"
 
-#define QUEUE_LOGGING_ENABLE
+// #define QUEUE_LOGGING_ENABLE
+
+#ifdef QUEUE_LOGGING_ENABLE 
+    #define QUEUE_LOG(fmt, ...) \
+        do { fprintf(stderr, "Random Log[%s]: " fmt "\n", __func__, ##__VA_ARGS__); } while (0)
+#else
+    #define QUEUE_LOG(fmt, ...) do { } while (0)
+#endif
 
 typedef struct Queue Queue;
 

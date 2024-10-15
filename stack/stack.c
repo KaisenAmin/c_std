@@ -20,22 +20,22 @@
  * @return Pointer to the newly created stack.
  */
 Stack* stack_create(size_t itemSize) {
+    STACK_LOG("Stack Log[stack_create]: Entering with itemSize: %zu", itemSize);
+
     Stack* stk = (Stack*)malloc(sizeof(Stack));
     if (!stk) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Allocation failed for Stack in stack_create.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_create]: Error: Allocation failed for Stack");
         exit(-1);
     }
-    
+
     stk->vec = vector_create(itemSize);
     if (!stk->vec) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Vector creation failed in stack_create.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_create]: Error: Vector creation failed for Stack");
         free(stk);
         exit(-1);
     }
+
+    STACK_LOG("Stack Log[stack_create]: Stack created successfully");
     return stk;
 }
 
@@ -51,13 +51,16 @@ Stack* stack_create(size_t itemSize) {
  * @return true if the two stacks are equal, false otherwise.
  */
 bool stack_is_equal(const Stack* stk1, const Stack* stk2) {
+    STACK_LOG("Stack Log[stack_is_equal]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (!stk1 || !stk2) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both Stack pointers are NULL in stack_is_equal.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_is_equal]: Error: One or both Stack pointers are NULL");
         return false;
     }
-    return vector_is_equal(stk1->vec, stk2->vec);
+
+    bool result = vector_is_equal(stk1->vec, stk2->vec);
+    STACK_LOG("Stack Log[stack_is_equal]: Comparison result: %s", result ? "true" : "false");
+    return result;
 }
 
 /**
@@ -73,13 +76,16 @@ bool stack_is_equal(const Stack* stk1, const Stack* stk2) {
  * @return true if the first stack is less than the second, false otherwise.
  */
 bool stack_is_less(const Stack* stk1, const Stack* stk2) {
+    STACK_LOG("Stack Log[stack_is_less]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (!stk1 || !stk2) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both Stack pointers are NULL in stack_is_less.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_is_less]: Error: One or both Stack pointers are NULL");
         return false;
     }
-    return vector_is_less(stk1->vec, stk2->vec);
+
+    bool result = vector_is_less(stk1->vec, stk2->vec);
+    STACK_LOG("Stack Log[stack_is_less]: Comparison result is %s", result ? "true" : "false");
+    return result;
 }
 
 /**
@@ -95,13 +101,16 @@ bool stack_is_less(const Stack* stk1, const Stack* stk2) {
  * @return true if the first stack is greater than the second, false otherwise.
  */
 bool stack_is_greater(const Stack* stk1, const Stack* stk2) {
+    STACK_LOG("Stack Log[stack_is_greater]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (!stk1 || !stk2) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both Stack pointers are NULL in stack_is_greater.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_is_greater]: Error: One or both Stack pointers are NULL");
         return false;
     }
-    return vector_is_greater(stk1->vec, stk2->vec);
+
+    bool result = vector_is_greater(stk1->vec, stk2->vec);
+    STACK_LOG("Stack Log[stack_is_greater]: Comparison result is %s", result ? "true" : "false");
+    return result;
 }
 
 /**
@@ -117,13 +126,16 @@ bool stack_is_greater(const Stack* stk1, const Stack* stk2) {
  * @return true if the first stack is less than or equal to the second, false otherwise.
  */
 bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2) {
+    STACK_LOG("Stack Log[stack_is_less_or_equal]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (!stk1 || !stk2) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both Stack pointers are NULL in stack_is_less_or_equal.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_is_less_or_equal]: Error: One or both Stack pointers are NULL");
         return false;
     }
-    return stack_is_less(stk1, stk2) || stack_is_equal(stk1, stk2);
+
+    bool result = stack_is_less(stk1, stk2) || stack_is_equal(stk1, stk2);
+    STACK_LOG("Stack Log[stack_is_less_or_equal]: Comparison result is %s", result ? "true" : "false");
+    return result;
 }
 
 /**
@@ -139,13 +151,16 @@ bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2) {
  * @return true if the first stack is greater than or equal to the second, false otherwise.
  */
 bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2) {
+    STACK_LOG("Stack Log[stack_is_greater_or_equal]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (!stk1 || !stk2) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both Stack pointers are NULL in stack_is_greater_or_equal.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_is_greater_or_equal]: Error: One or both Stack pointers are NULL");
         return false;
     }
-    return stack_is_greater(stk1, stk2) || stack_is_equal(stk1, stk2);
+
+    bool result = stack_is_greater(stk1, stk2) || stack_is_equal(stk1, stk2);
+    STACK_LOG("Stack Log[stack_is_greater_or_equal]: Comparison result: %s", result ? "true" : "false");
+    return result;
 }
 
 /**
@@ -161,13 +176,16 @@ bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2) {
  * @return true if the two stacks are not equal, false otherwise.
  */
 bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) {
+    STACK_LOG("Stack Log[stack_is_not_equal]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (!stk1 || !stk2) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: One or both Stack pointers are NULL in stack_is_not_equal.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_is_not_equal]: Error: One or both Stack pointers are NULL");
         return false;
     }
-    return !stack_is_equal(stk1, stk2);
+
+    bool result = !stack_is_equal(stk1, stk2);
+    STACK_LOG("Stack Log[stack_is_not_equal]: Comparison result: %s", result ? "true" : "false");
+    return result;
 }
 
 /**
@@ -180,20 +198,21 @@ bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) {
  * @param item Pointer to the item that will be pushed onto the stack.
  */
 void stack_push(const Stack* stk, const void* item) {
+    STACK_LOG("Stack Log[stack_push]: Entering with stack: %p, item: %p", stk, item);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_push.\n");
-        #endif
+        STACK_LOG("Stack Log[stack_push]: Error: Stack pointer is NULL");
         exit(-1);
     }
     if (item == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Item pointer is NULL in stack_push.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_push]: Error: Item pointer is NULL");
         exit(-1);
     }
+
     vector_push_back(stk->vec, item);
+    STACK_LOG("Stack Log[stack_push]: Item pushed successfully");
 }
+
 
 /**
  * @brief Removes the top item from the stack and returns it.
@@ -205,19 +224,20 @@ void stack_push(const Stack* stk, const void* item) {
  * @return A pointer to the popped item, or NULL if the stack is empty or NULL.
  */
 void* stack_pop(const Stack* stk) {
+    STACK_LOG("Stack Log[stack_pop]: Entering with stack: %p", stk);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_pop.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_pop]: Error: Stack pointer is NULL");
         return NULL;
     }
     if (vector_is_empty(stk->vec)) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Warning: Attempting to pop from an empty stack in stack_pop.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_pop]: Warning: Attempting to pop from an empty stack");
         return NULL;
     }
-    return vector_pop_back(stk->vec);
+
+    void* result = vector_pop_back(stk->vec);
+    STACK_LOG("Stack Log[stack_pop]: Item popped successfully, returning %p", result);
+    return result;
 }
 
 /**
@@ -230,19 +250,20 @@ void* stack_pop(const Stack* stk) {
  * @return A pointer to the top item of the stack, or NULL if the stack is empty or NULL.
  */
 void* stack_top(const Stack* stk) {
+    STACK_LOG("Stack Log[stack_top]: Entering with stack: %p", stk);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_top.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_top]: Error: Stack pointer is NULL");
         return NULL;
     }
     if (vector_is_empty(stk->vec)) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Warning: Attempting to access top of an empty stack in stack_top.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_top]: Warning: Attempting to access top of an empty stack");
         return NULL;
     }
-    return vector_back(stk->vec);
+
+    void* item = vector_back(stk->vec);
+    STACK_LOG("Stack Log[stack_top]: Top item accessed successfully");
+    return item;
 }
 
 /**
@@ -255,13 +276,16 @@ void* stack_top(const Stack* stk) {
  * @return The number of items in the stack, or 0 if the stack is NULL.
  */
 size_t stack_size(const Stack* stk) {
+    STACK_LOG("Stack Log[stack_size]: Entering with stack: %p", stk);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Warning: Stack pointer is NULL in stack_size. Returning 0.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_size]: Warning: Stack pointer is NULL. Returning 0");
         return 0;
     }
-    return vector_size(stk->vec);
+
+    size_t size = vector_size(stk->vec);
+    STACK_LOG("Stack Log[stack_size]: Stack size is %zu", size);
+    return size;
 }
 
 /**
@@ -273,10 +297,16 @@ size_t stack_size(const Stack* stk) {
  * @return true if the stack is empty or NULL, false otherwise.
  */
 bool stack_empty(const Stack* stk) {
+    STACK_LOG("Stack Log[stack_empty]: Entering with stack: %p", stk);
+
     if (stk == NULL) {
+        STACK_LOG("Stack Log[stack_empty]: Stack is NULL, returning true");
         return true; // Consider a NULL stack as empty
     }
-    return vector_is_empty(stk->vec);
+
+    bool empty = vector_is_empty(stk->vec);
+    STACK_LOG("Stack Log[stack_empty]: Stack is %s", empty ? "empty" : "not empty");
+    return empty;
 }
 
 /**
@@ -289,19 +319,19 @@ bool stack_empty(const Stack* stk) {
  * @param item Pointer to the item to be emplaced on the stack.
  */
 void stack_emplace(const Stack* stk, void* item) {
+    STACK_LOG("Stack Log[stack_emplace]: Entering with stack: %p, item: %p", stk, item);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_emplace.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_emplace]: Error: Stack pointer is NULL");
         return;
     }
     if (item == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Item pointer is NULL in stack_emplace.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_emplace]: Error: Item pointer is NULL");
         return;
     }
+
     vector_emplace_back(stk->vec, item, stk->vec->itemSize);
+    STACK_LOG("Stack Log[stack_emplace]: Item emplaced successfully");
 }
 
 /**
@@ -313,13 +343,15 @@ void stack_emplace(const Stack* stk, void* item) {
  * @param stk Pointer to the stack to be cleared.
  */
 void stack_clear(const Stack* stk) {
+    STACK_LOG("Stack Log[stack_clear]: Entering with stack: %p", stk);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_clear.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_clear]: Error: Stack pointer is NULL");
         return;
     }
+
     vector_clear(stk->vec);
+    STACK_LOG("Stack Log[stack_clear]: Stack cleared successfully");
 }
 
 /**
@@ -331,16 +363,19 @@ void stack_clear(const Stack* stk) {
  * @param stk2 Pointer to the second stack.
  */
 void stack_swap(Stack* stk1, Stack* stk2) {
+    STACK_LOG("Stack Log[stack_swap]: Entering with stack1: %p, stack2: %p", stk1, stk2);
+
     if (stk1 == NULL || stk2 == NULL) {
-        fmt_fprintf(stderr, "Error: One or both stack pointers are NULL in stack_swap.\n");
+        STACK_LOG("Stack Log[stack_swap]: Error: One or both stack pointers are NULL");
         return;
     }
 
     Vector* tempVec = stk1->vec;
     stk1->vec = stk2->vec;
     stk2->vec = tempVec;
-}
 
+    STACK_LOG("Stack Log[stack_swap]: Stacks swapped successfully");
+}
 /**
  * @brief Deallocates the stack and frees up memory.
  *
@@ -350,14 +385,17 @@ void stack_swap(Stack* stk1, Stack* stk2) {
  * @param stk Pointer to the stack to be deallocated.
  */
 void stack_deallocate(Stack* stk) {
+    STACK_LOG("Stack Log[stack_deallocate]: Entering with stack: %p", stk);
+
     if (stk == NULL) {
-        #ifdef STACK_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Stack pointer is NULL in stack_deallocate.\n");
-        #endif 
+        STACK_LOG("Stack Log[stack_deallocate]: Error: Stack pointer is NULL");
         return;
     }
-    if (stk->vec != NULL) { 
-        vector_deallocate(stk->vec); // Deallocate the underlying vector
+
+    if (stk->vec != NULL) {
+        vector_deallocate(stk->vec);  // Deallocate the underlying vector
     }
-    free(stk); // Free the stack itself
+
+    free(stk);  // Free the stack itself
+    STACK_LOG("Stack Log[stack_deallocate]: Stack deallocated successfully");
 }
