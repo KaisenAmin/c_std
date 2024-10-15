@@ -10,11 +10,11 @@
 
 #include <stdio.h>
 
-// #define SPAN_LOGGING_ENABLE 
+#define SPAN_LOGGING_ENABLE 
 
 #ifdef SPAN_LOGGING_ENABLE 
     #define SPAN_LOG(fmt, ...) \
-        do { fprintf(stderr, "Random Log[%s]: " fmt "\n", __func__, ##__VA_ARGS__); } while (0)
+        do { fprintf(stderr, "[SPAN LOG]" fmt "\n", ##__VA_ARGS__); } while (0)
 #else
     #define SPAN_LOG(fmt, ...) do { } while (0)
 #endif

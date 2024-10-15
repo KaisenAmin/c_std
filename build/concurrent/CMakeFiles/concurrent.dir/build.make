@@ -74,30 +74,30 @@ concurrent/CMakeFiles/concurrent.dir/concurrent.c.obj: concurrent/CMakeFiles/con
 concurrent/CMakeFiles/concurrent.dir/concurrent.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c
 concurrent/CMakeFiles/concurrent.dir/concurrent.c.obj: concurrent/CMakeFiles/concurrent.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object concurrent/CMakeFiles/concurrent.dir/concurrent.c.obj"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT concurrent/CMakeFiles/concurrent.dir/concurrent.c.obj -MF CMakeFiles/concurrent.dir/concurrent.c.obj.d -o CMakeFiles/concurrent.dir/concurrent.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT concurrent/CMakeFiles/concurrent.dir/concurrent.c.obj -MF CMakeFiles/concurrent.dir/concurrent.c.obj.d -o CMakeFiles/concurrent.dir/concurrent.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c
 
 concurrent/CMakeFiles/concurrent.dir/concurrent.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/concurrent.dir/concurrent.c.i"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c > CMakeFiles/concurrent.dir/concurrent.c.i
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c > CMakeFiles/concurrent.dir/concurrent.c.i
 
 concurrent/CMakeFiles/concurrent.dir/concurrent.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/concurrent.dir/concurrent.c.s"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c -o CMakeFiles/concurrent.dir/concurrent.c.s
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/concurrent.c -o CMakeFiles/concurrent.dir/concurrent.c.s
 
 concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj: concurrent/CMakeFiles/concurrent.dir/flags.make
 concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj: concurrent/CMakeFiles/concurrent.dir/includes_C.rsp
 concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c
 concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj: concurrent/CMakeFiles/concurrent.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj -MF CMakeFiles/concurrent.dir/thread_pool.c.obj.d -o CMakeFiles/concurrent.dir/thread_pool.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT concurrent/CMakeFiles/concurrent.dir/thread_pool.c.obj -MF CMakeFiles/concurrent.dir/thread_pool.c.obj.d -o CMakeFiles/concurrent.dir/thread_pool.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c
 
 concurrent/CMakeFiles/concurrent.dir/thread_pool.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/concurrent.dir/thread_pool.c.i"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c > CMakeFiles/concurrent.dir/thread_pool.c.i
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c > CMakeFiles/concurrent.dir/thread_pool.c.i
 
 concurrent/CMakeFiles/concurrent.dir/thread_pool.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/concurrent.dir/thread_pool.c.s"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c -o CMakeFiles/concurrent.dir/thread_pool.c.s
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/concurrent/thread_pool.c -o CMakeFiles/concurrent.dir/thread_pool.c.s
 
 # Object files for target concurrent
 concurrent_OBJECTS = \
@@ -118,7 +118,7 @@ build/libconcurrent.dll: concurrent/CMakeFiles/concurrent.dir/objects1.rsp
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C shared library ../build/libconcurrent.dll"
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && "C:/Program Files/CMake/bin/cmake.exe" -E rm -f CMakeFiles/concurrent.dir/objects.a
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/ar.exe qc CMakeFiles/concurrent.dir/objects.a @CMakeFiles/concurrent.dir/objects1.rsp
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/gcc.exe  -g -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s  -Wl,--enable-auto-import -shared -o ../build/libconcurrent.dll -Wl,--out-implib,libconcurrent.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles/concurrent.dir/objects.a -Wl,--no-whole-archive @CMakeFiles/concurrent.dir/linkLibs.rsp
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/concurrent && C:/msys64/mingw64/bin/cc.exe  -g  -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s  -Wl,--enable-auto-import -shared -o ../build/libconcurrent.dll -Wl,--out-implib,libconcurrent.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles/concurrent.dir/objects.a -Wl,--no-whole-archive @CMakeFiles/concurrent.dir/linkLibs.rsp
 
 # Rule to build all files generated by this target.
 concurrent/CMakeFiles/concurrent.dir/build: build/libconcurrent.dll

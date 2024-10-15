@@ -1,21 +1,24 @@
-#include "xml/xml.h"
+#include "stack/stack.h"
 #include "fmt/fmt.h"
 
 int main() {
-    XmlDocument* doc = xml_create_document("catalog");
+    Stack* stack = stack_create(sizeof(int));
+    int arr[] = {10, 20, 30, 40, 50};
 
-    XmlNode* book1 = xml_create_element(doc, "book");
-    xml_append_child(xml_get_root(doc), book1);
-    xml_set_element_attribute(book1, "id", "bk101");
-    xml_set_element_text(book1, "XML Developer's Guide");
+    for (int i = 0; i < 5; i++) {
+        stack_push(stack, &arr[i]);
+    }
+    fmt_printf("Size of stack is %zu\n", stack_size(stack));
 
-    XmlNode* book2 = xml_create_element(doc, "book");
-    xml_append_child(xml_get_root(doc), book2);
-    xml_set_element_attribute(book2, "id", "bk102");
-    xml_set_element_text(book2, "Advanced C Programming");
+    if (!stack_empty(stack)) {
+        int topValue = *(int*)stack_top(stack);
+        fmt_printf("Top Element is %d\n", topValue);
 
-    xml_save_to_file(doc, "catalog.xml");
-    xml_deallocate_document(doc);
+        int pop = *(int*)stack_pop(stack);
+        fmt_printf("Pop value is %d\n", pop);
+        fmt_printf("After Pop size is %zu\n", stack_size(stack));
+    }
 
+    stack_deallocate(stack);
     return 0;
 }

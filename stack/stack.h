@@ -9,11 +9,11 @@
 #define STACK_H_
 
 #include <stdio.h>
-// #define STACK_LOGGING_ENABLE 
+#define STACK_LOGGING_ENABLE 
 
 #ifdef STACK_LOGGING_ENABLE
     #define STACK_LOG(fmt, ...) \
-        do { fprintf(stderr, "Random Log[%s]: " fmt "\n", __func__, ##__VA_ARGS__); } while (0)
+        do { fprintf(stderr, "[STACK LOG] " fmt "\n",##__VA_ARGS__); } while (0)
 #else
     #define STACK_LOG(fmt, ...) do { } while (0)
 #endif

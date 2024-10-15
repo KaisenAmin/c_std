@@ -68,7 +68,7 @@ Several examples are provided to demonstrate the usage of the Random library in 
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int) time_current_time_in_seconds());
@@ -109,7 +109,7 @@ Counter 9: 10
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int) time_current_time_in_seconds());
@@ -152,7 +152,7 @@ Invalid step input.
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int) time_current_time_in_seconds());
@@ -178,7 +178,7 @@ Random floating-point number between 0 and 1: 0.143132
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int)time_current_time_in_seconds());
@@ -204,7 +204,7 @@ int main() {
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 void print_int_array(int* array, size_t size) {
     for (size_t i = 0; i < size; i++) {
@@ -265,7 +265,7 @@ fig banana grape date elderberry apple cherry
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int) time_current_time_in_seconds());
@@ -295,7 +295,7 @@ Random choice from string array: apple
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int) time_current_time_in_seconds());
@@ -321,7 +321,7 @@ Random triangular number between 1.0 and 10.0 with mode 5.0: 4.765507
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int)time_current_time_in_seconds());
@@ -376,7 +376,7 @@ grape
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int)time_current_time_in_seconds());
@@ -428,7 +428,7 @@ Zig
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     unsigned int state;
@@ -483,7 +483,7 @@ Random number 10: 58
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     random_seed((unsigned int)time_current_time_in_seconds());
@@ -515,7 +515,7 @@ Random Gaussian value: 1.008667
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <math.h>
 
 int main() {
@@ -545,7 +545,7 @@ Random Log-Normal value: 1.140356
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <math.h>
 
 int main() {
@@ -574,7 +574,7 @@ Random Gamma value: 6.594782
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <math.h>
 
 int main() {
@@ -604,7 +604,7 @@ Random Pareto value: 1.108613
 ```c
 #include "random/random.h"
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <math.h>
 
 int main() {

@@ -1099,7 +1099,7 @@ static ezxml_t ezxml_set_attr(ezxml_t xml, const char *name, const char *value) 
     }
 
     if (value) {
-        xml->atr[l + 1] = (char *)value; // set attribute value
+        xml->attr[l + 1] = (char *)value; // set attribute value
     }
     else { // remove attribute
         if (xml->attr[c + 1][l / 2] & EZXML_NAMEM) {

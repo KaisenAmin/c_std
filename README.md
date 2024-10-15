@@ -117,7 +117,7 @@ If you add new modules, you need to update the `CMakeLists.txt` file to include 
    - After editing `CMakeLists.txt`, re-run CMake in the `build` directory:
 
      ```bash
-     cmake ..
+     cmake -G "Unix Makefiles" ..
      ```
 
 3. **Compile Again**:

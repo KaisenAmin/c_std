@@ -74,30 +74,30 @@ file_io/CMakeFiles/fileio.dir/file_writer.c.obj: file_io/CMakeFiles/fileio.dir/i
 file_io/CMakeFiles/fileio.dir/file_writer.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c
 file_io/CMakeFiles/fileio.dir/file_writer.c.obj: file_io/CMakeFiles/fileio.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object file_io/CMakeFiles/fileio.dir/file_writer.c.obj"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT file_io/CMakeFiles/fileio.dir/file_writer.c.obj -MF CMakeFiles/fileio.dir/file_writer.c.obj.d -o CMakeFiles/fileio.dir/file_writer.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT file_io/CMakeFiles/fileio.dir/file_writer.c.obj -MF CMakeFiles/fileio.dir/file_writer.c.obj.d -o CMakeFiles/fileio.dir/file_writer.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c
 
 file_io/CMakeFiles/fileio.dir/file_writer.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/fileio.dir/file_writer.c.i"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c > CMakeFiles/fileio.dir/file_writer.c.i
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c > CMakeFiles/fileio.dir/file_writer.c.i
 
 file_io/CMakeFiles/fileio.dir/file_writer.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/fileio.dir/file_writer.c.s"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c -o CMakeFiles/fileio.dir/file_writer.c.s
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_writer.c -o CMakeFiles/fileio.dir/file_writer.c.s
 
 file_io/CMakeFiles/fileio.dir/file_reader.c.obj: file_io/CMakeFiles/fileio.dir/flags.make
 file_io/CMakeFiles/fileio.dir/file_reader.c.obj: file_io/CMakeFiles/fileio.dir/includes_C.rsp
 file_io/CMakeFiles/fileio.dir/file_reader.c.obj: C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c
 file_io/CMakeFiles/fileio.dir/file_reader.c.obj: file_io/CMakeFiles/fileio.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object file_io/CMakeFiles/fileio.dir/file_reader.c.obj"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT file_io/CMakeFiles/fileio.dir/file_reader.c.obj -MF CMakeFiles/fileio.dir/file_reader.c.obj.d -o CMakeFiles/fileio.dir/file_reader.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT file_io/CMakeFiles/fileio.dir/file_reader.c.obj -MF CMakeFiles/fileio.dir/file_reader.c.obj.d -o CMakeFiles/fileio.dir/file_reader.c.obj -c C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c
 
 file_io/CMakeFiles/fileio.dir/file_reader.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/fileio.dir/file_reader.c.i"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c > CMakeFiles/fileio.dir/file_reader.c.i
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c > CMakeFiles/fileio.dir/file_reader.c.i
 
 file_io/CMakeFiles/fileio.dir/file_reader.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/fileio.dir/file_reader.c.s"
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c -o CMakeFiles/fileio.dir/file_reader.c.s
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/asus/OneDrive/Desktop/project/c_std/file_io/file_reader.c -o CMakeFiles/fileio.dir/file_reader.c.s
 
 # Object files for target fileio
 fileio_OBJECTS = \
@@ -118,7 +118,7 @@ build/libfileio.dll: file_io/CMakeFiles/fileio.dir/objects1.rsp
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/asus/OneDrive/Desktop/project/c_std/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C shared library ../build/libfileio.dll"
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && "C:/Program Files/CMake/bin/cmake.exe" -E rm -f CMakeFiles/fileio.dir/objects.a
 	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/ar.exe qc CMakeFiles/fileio.dir/objects.a @CMakeFiles/fileio.dir/objects1.rsp
-	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/gcc.exe  -g -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s  -Wl,--enable-auto-import -shared -o ../build/libfileio.dll -Wl,--out-implib,libfileio.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles/fileio.dir/objects.a -Wl,--no-whole-archive @CMakeFiles/fileio.dir/linkLibs.rsp
+	cd C:/Users/asus/OneDrive/Desktop/project/c_std/build/file_io && C:/msys64/mingw64/bin/cc.exe  -g  -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s  -Wl,--enable-auto-import -shared -o ../build/libfileio.dll -Wl,--out-implib,libfileio.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles/fileio.dir/objects.a -Wl,--no-whole-archive @CMakeFiles/fileio.dir/linkLibs.rsp
 
 # Rule to build all files generated by this target.
 file_io/CMakeFiles/fileio.dir/build: build/libfileio.dll

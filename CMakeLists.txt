@@ -3,7 +3,7 @@ project(c_std)
 
 # Set the C standard
 set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -g -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g  -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s")
 
 
 # Platform-specific linker flags
@@ -77,8 +77,8 @@ if (WIN32)
         fmt
         encoding
         stdcrypto
-        network
-        raylib
+        # network
+        # raylib
         opengl32
         gdi32
         winmm
@@ -87,18 +87,18 @@ if (WIN32)
         ssl
         pq
         # Optional modules that are commented out:
-        # random
+        random
         # map
         vector
         stdtime
         # statistics
         # tuple
         # turtle
-        sysinfo
+        # sysinfo
         stack
         secrets
-        # span
-        # queue
+        span
+        queue
         # priority_queue
         # algorithm
         # array
@@ -119,7 +119,7 @@ if (WIN32)
         # dir
         # concurrent
         # numeric
-        xml
+        # xml
     )
 else()
     find_package(OpenSSL REQUIRED)

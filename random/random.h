@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stddef.h>
 
-// #define RANDOM_LOGGING_ENABLE
+#define RANDOM_LOGGING_ENABLE
 
 #ifdef RANDOM_LOGGING_ENABLE
     #define RANDOM_LOG(fmt, ...) \
