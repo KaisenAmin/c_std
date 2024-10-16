@@ -1,47 +1,33 @@
-#include "map/map.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
+#include "list/list.h"
 
-int compare_doubles(const KeyType a, const KeyType b) {
-    const double* da = (const double*)a;
-    const double* db = (const double*)b;
-
-    if (*da < *db) {
-        return -1;
-    } 
-    else if (*da > *db) { 
-        return 1;
-    } 
-    else {
-        return 0;
-    }
-}
-
-void double_deallocator(void* data) {
-    free(data);
+static int compare_ints(const void* a, const void* b) {
+    int int_a = *(const int*)a;
+    int int_b = *(const int*)b;
+    return (int_a > int_b) - (int_a < int_b);
 }
 
 int main() {
-    Map* myMap = map_create(compare_doubles, double_deallocator, double_deallocator);
-    double keys[] = {1.1, 2.2, 3.3, 4.4, 5.5};
+    List *list1 = list_create(sizeof(int), compare_ints);
+    List *list2 = list_create(sizeof(int), compare_ints);
+    int values[] = {50, 40, 30, 20, 10};
+    int values2[] = {100, 200, 300, 400, 500};
 
-    for (int i = 0; i < 5; ++i) {
-        double* key = malloc(sizeof(double));
-        double* value = malloc(sizeof(double));
-        *key = keys[i];
-        *value = keys[i] * 10;
-        map_insert(myMap, key, value);
+    for (int i = 0; i < 5; ++i) { 
+        list_push_back(list1, &values[i]);
+    }
+    for (int i = 0; i < 5; ++i) { 
+        list_push_back(list2, &values2[i]);
+    }
+    list_swap(list1, list2); // Swap list1 and list2
+
+    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next){
+        int* value = (int*)node->value;
+        fmt_printf("%d\n", *value);
     }
 
-    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) {
-        double* key = (double*)map_node_get_key(it.node);
-        double* value = (double*)map_node_get_value(it.node);
-        
-        if (key && value) {
-            fmt_printf("%f: %f\n", *key, *value);
-        }
-    }
+    list_deallocate(list1);
+    list_deallocate(list2);
 
-    map_deallocate(myMap);
     return 0;
 }

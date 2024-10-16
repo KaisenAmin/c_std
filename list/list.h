@@ -9,6 +9,16 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+
+#define LIST_LOGGING_ENABLE
+
+#ifdef LIST_LOGGING_ENABLE 
+    #define LIST_LOG(fmt, ...) \
+        do { fprintf(stderr, "[LIST LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define LIST_LOG(fmt, ...) do { } while (0)
+#endif
 
 typedef struct Node Node;
 typedef struct List List;

@@ -22,13 +22,13 @@
  */
 List *list_create(size_t itemSize, CompareFunction compare) {
     if (itemSize == 0) {
-        fmt_fprintf(stderr, "Error: Item size must be greater than 0 in list_create.\n");
+        LIST_LOG("[list_create] Error: Item size must be greater than 0.");
         exit(-1);
     }
 
     List *list = malloc(sizeof(List));
     if (!list) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory for list in list_create.\n");
+        LIST_LOG("[list_create] Error: Cannot allocate memory for list.");
         exit(-1);
     }
 
@@ -37,6 +37,7 @@ List *list_create(size_t itemSize, CompareFunction compare) {
     list->itemSize = itemSize;
     list->compare = compare; 
 
+    LIST_LOG("[list_create] List created successfully with item size %zu.", itemSize);
     return list;
 }
 
@@ -51,16 +52,17 @@ List *list_create(size_t itemSize, CompareFunction compare) {
  */
 void *list_front(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_front.\n");
+        LIST_LOG("[list_front] Error: Null pointer provided for list.");
         return NULL;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Error: The list is empty in list_front.\n");
+        LIST_LOG("[list_front] Error: The list is empty.");
         return NULL;
     }
+
+    LIST_LOG("[list_front] Returning value at the front of the list.");
     return list->head->value;
 }
-
 /**
  * @brief Returns a pointer to the value at the back of the list.
  *
@@ -72,13 +74,15 @@ void *list_front(const List *list) {
  */
 void *list_back(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_back.\n");
+        LIST_LOG("[list_back] : Error: Null pointer provided for list in list_back.");
         return NULL;
     }
     if (list->tail == NULL) {
-        fmt_fprintf(stderr, "Error: The list is empty in list_back.\n");
+        LIST_LOG("[list_back] : Error: The list is empty in list_back.");
         return NULL;
     }
+
+    LIST_LOG("[list_back] : Returning value from the back of the list.");
     return list->tail->value;
 }
 
@@ -96,49 +100,61 @@ void *list_back(const List *list) {
  */
 void *list_insert(List *list, size_t index, void *value) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_insert.\n");
+        LIST_LOG("[list_insert] : Error: Null pointer provided for list in list_insert.");
         return NULL;
     }
     if (index > list->size) {
-        fmt_fprintf(stderr, "Error: Index out of bounds in list_insert.\n");
+        LIST_LOG("[list_insert] : Error: Index out of bounds in list_insert. Index: %zu, List size: %zu", index, list->size);
         return NULL;
     }
     if (index == 0) {
+        LIST_LOG("[list_insert] : Inserting value at the front of the list.");
         list_push_front(list, value);
+        LIST_LOG("[list_insert] : Successfully inserted value at the front.");
+
         return list->head->value;
     } 
     else if (index == list->size) {
+        LIST_LOG("[list_insert] : Inserting value at the back of the list.");
         list_push_back(list, value);
+        LIST_LOG("[list_insert] : Successfully inserted value at the back.");
+
         return list->tail->value;
     }
 
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
+        LIST_LOG("[list_insert] : Error: Memory allocation failed for newNode in list_insert.");
         return NULL;
     }
 
     newNode->value = malloc(list->itemSize);
     if (!newNode->value) {
+        LIST_LOG("[list_insert] : Error: Memory allocation failed for newNode value in list_insert.");
         free(newNode);
         return NULL;
     }
 
     memcpy(newNode->value, value, list->itemSize);
-    Node *current = list->head;
+    LIST_LOG("[list_insert] : Allocated new node with copied value at index %zu.", index);
 
-    for (size_t i = 0; i < index - 1; ++i) { 
+    // Traverse to the node just before the insertion point
+    Node *current = list->head;
+    for (size_t i = 0; i < index - 1; ++i) {
         current = current->next;
     }
 
     newNode->next = current->next;
-    newNode->prev = current;  // Set the prev pointer to the current node
+    newNode->prev = current;
 
     if (newNode->next != NULL) {
-        newNode->next->prev = newNode;  // Update the prev pointer of the next node
+        newNode->next->prev = newNode;  
     }
+
     current->next = newNode;
     list->size++;
 
+    LIST_LOG("[list_insert] : Successfully inserted value at index %zu. New list size: %zu", index, list->size);
     return newNode->value;
 }
 
@@ -155,11 +171,11 @@ void *list_insert(List *list, size_t index, void *value) {
  */
 void *list_erase(List *list, size_t index) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_erase.\n");
+        LIST_LOG("[list_erase] : Error: Null pointer provided for list in list_erase.");
         return NULL;
     }
     if (index >= list->size) {
-        fmt_fprintf(stderr, "Error: Index out of bounds in list_erase.\n");
+        LIST_LOG("[list_erase] : Error: Index %zu out of bounds (list size: %zu) in list_erase.", index, list->size);
         return NULL;
     }
 
@@ -169,12 +185,12 @@ void *list_erase(List *list, size_t index) {
         list->head = nodeToRemove->next;
 
         if (list->head) {
-            list->head->prev = NULL; 
+            list->head->prev = NULL;
         }
     } 
     else {
         Node *current = list->head;
-        for (size_t i = 0; i < index - 1; ++i) { 
+        for (size_t i = 0; i < index - 1; ++i) {
             current = current->next;
         }
         nodeToRemove = current->next;
@@ -193,12 +209,13 @@ void *list_erase(List *list, size_t index) {
     free(nodeToRemove);
     list->size--;
 
-    if (list->size == 0) { 
+    if (list->size == 0) {
         list->head = list->tail = NULL;
     }
+
+    LIST_LOG("[list_erase] : Successfully erased element at index %zu. New size: %zu", index, list->size);
     return removedValue;
 }
-
 
 /**
  * @brief Resizes the list to the specified new size.
@@ -212,33 +229,33 @@ void *list_erase(List *list, size_t index) {
  */
 void list_resize(List *list, size_t newSize, void *defaultValue) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_resize.\n");
+        LIST_LOG("[list_resize] : Error: Null pointer provided for list in list_resize.");
         return;
     }
+    LIST_LOG("[list_resize] : Resizing list from size %zu to %zu", list->size, newSize);
 
     while (list->size > newSize) {
         list_pop_back(list);
     }
-
     while (list->size < newSize) {
         void *newValue = malloc(list->itemSize);
+
         if (!newValue) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in list_resize.\n");
+            LIST_LOG("[list_resize] : Error: Memory allocation failed in list_resize.");
             return;
         }
-
         if (defaultValue != NULL) {
-            // Use the provided default value
-            memcpy(newValue, defaultValue, list->itemSize);
+            memcpy(newValue, defaultValue, list->itemSize); // Use the provided default value
         } 
         else {
-            // If defaultValue is NULL, initialize the space to zero
-            memset(newValue, 0, list->itemSize);
+            memset(newValue, 0, list->itemSize); 
         }
 
         list_push_back(list, newValue);
-        free(newValue); // Free the temporary allocation after pushing back
+        free(newValue); 
     }
+
+    LIST_LOG("[list_resize] : List resized successfully. New size: %zu", list->size);
 }
 
 /**
@@ -251,24 +268,28 @@ void list_resize(List *list, size_t newSize, void *defaultValue) {
  */
 void list_swap(List *list1, List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_swap.\n");
+        LIST_LOG("[list_swap] : Error: Null pointer provided for one or both lists in list_swap.");
         return;
     }
-    Node *tempHead = list1->head; // Swap the heads
+    LIST_LOG("[list_swap] : Swapping lists...");
+
+    Node *tempHead = list1->head; 
     list1->head = list2->head;
     list2->head = tempHead;
 
-    Node *tempTail = list1->tail; // Swap the tails
+    Node *tempTail = list1->tail; 
     list1->tail = list2->tail;
     list2->tail = tempTail;
 
-    size_t tempSize = list1->size; // Swap the sizes
+    size_t tempSize = list1->size; 
     list1->size = list2->size;
     list2->size = tempSize;
 
-    size_t tempItemSize = list1->itemSize; // Swap the item sizes
+    size_t tempItemSize = list1->itemSize; 
     list1->itemSize = list2->itemSize;
     list2->itemSize = tempItemSize;
+
+    LIST_LOG("[list_swap] : Lists swapped successfully.");
 }
 
 /**
@@ -281,11 +302,11 @@ void list_swap(List *list1, List *list2) {
  */
 void list_reverse(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_reverse.\n");
+        LIST_LOG("[list_reverse] : Error: Null pointer provided for list in list_reverse.");
         return;
     }
     if (list->head == NULL) {
-        // No action needed for empty list, but you might want to log it
+        LIST_LOG("[list_reverse] : List is empty, no action needed in list_reverse.");
         return;
     }
 
@@ -296,12 +317,14 @@ void list_reverse(List *list) {
         temp = current->prev; // Swap the next and prev pointers
         current->prev = current->next;
         current->next = temp;
-        current = current->prev; // Move to the next node in the original list
+        current = current->prev; 
     }
 
-    temp = list->head; // Swap the head and tail of the list
+    temp = list->head; 
     list->head = list->tail;
     list->tail = temp;
+
+    LIST_LOG("[list_reverse] : List reversed successfully.");
 }
 
 /**
@@ -315,15 +338,15 @@ void list_reverse(List *list) {
  */
 void list_sort(List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_sort.\n");
+        LIST_LOG("[list_sort] : Error: Null pointer provided for list in list_sort.");
         return;
     }
     if (list->size < 2 || list->compare == NULL) {
-        fmt_fprintf(stderr, "Error: Insufficient size or null compare function in list_sort.\n");
+        LIST_LOG("[list_sort] : Error: Insufficient size or null compare function in list_sort.");
         return;
     }
-    bool swapped;
 
+    bool swapped;
     do {
         swapped = false;
         Node *current = list->head;
@@ -339,6 +362,8 @@ void list_sort(List* list) {
         }
 
     } while (swapped);
+
+    LIST_LOG("[list_sort] : List sorted successfully.");
 }
 
 /**
@@ -352,19 +377,20 @@ void list_sort(List* list) {
  */
 void list_push_front(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_front.\n");
+        LIST_LOG("[list_push_front] : Error: Null pointer provided for list or value in list_push_front.");
         return;
     }
 
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_push_front.\n");
+        LIST_LOG("[list_push_front] : Error: Memory allocation failed for newNode in list_push_front.");
         return;
     }
     newNode->value = malloc(list->itemSize);
 
     if (!newNode->value) {
         free(newNode);
+        LIST_LOG("[list_push_front] : Error: Memory allocation failed for newNode->value in list_push_front.");
         return;
     }
 
@@ -382,6 +408,8 @@ void list_push_front(List *list, void *value) {
         list->tail = newNode;
     }
     list->size++;
+
+    LIST_LOG("[list_push_front] : Node added to the front of the list. New size: %zu", list->size);
 }
 
 /**
@@ -395,35 +423,38 @@ void list_push_front(List *list, void *value) {
  */
 void list_push_back(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_push_back.\n");
+        LIST_LOG("[list_push_back] : Error: Null pointer provided for list or value in list_push_back.");
         return;
     }
 
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_push_back.\n");
+        LIST_LOG("[list_push_back] : Error: Memory allocation failed for newNode in list_push_back.");
         return;
     }
 
     newNode->value = malloc(list->itemSize);
     if (!newNode->value) {
         free(newNode);
-        return;  // Memory allocation failure
+        LIST_LOG("[list_push_back] : Error: Memory allocation failed for newNode->value in list_push_back.");
+        return;  
     }
 
     memcpy(newNode->value, value, list->itemSize);
-    newNode->next = NULL;  // As this is the last node
-    newNode->prev = list->tail;  // Set the prev pointer to the current tail
+    newNode->next = NULL; 
+    newNode->prev = list->tail;  
 
     if (list->tail != NULL) {
-        list->tail->next = newNode;  // Update the next pointer of the current tail
+        list->tail->next = newNode;  
     }
-    list->tail = newNode;  // Update the tail of the list
+    list->tail = newNode;  
     
     if (list->head == NULL) {
-        list->head = newNode;  // If the list was empty, set the head to the new node
+        list->head = newNode;  
     }
     list->size++;
+
+    LIST_LOG("[list_push_back] : Node successfully added to the list. New size: %zu", list->size);
 }
 
 /**
@@ -436,27 +467,29 @@ void list_push_back(List *list, void *value) {
  */
 void list_pop_front(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_front.\n");
+        LIST_LOG("[list_pop_front] : Error: Null pointer provided for list in list_pop_front.");
         return;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Error: Trying to pop from an empty list in list_pop_front.\n");
-        return;  // The list is empty, nothing to pop
+        LIST_LOG("[list_pop_front] : Error: Trying to pop from an empty list in list_pop_front.");
+        return;  
     }
 
     Node *temp = list->head;
-    list->head = list->head->next;  // Update the head to the next node
+    list->head = list->head->next;  
 
     if (list->head != NULL) { 
-        list->head->prev = NULL;  // Set the prev pointer of the new head to NULL
+        list->head->prev = NULL;  
     }
     else {
-        list->tail = NULL;  // If the list becomes empty, set the tail to NULL
+        list->tail = NULL;  
     }
-    free(temp->value);  // Free the value and the node
-    free(temp);
 
+    free(temp->value);  
+    free(temp);
     list->size--;
+
+    LIST_LOG("[list_pop_front] : First element removed from the list. New size: %zu", list->size);
 }
 
 /**
@@ -470,12 +503,12 @@ void list_pop_front(List *list) {
  */
 void list_pop_back(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_pop_back.\n");
+        LIST_LOG("[list_pop_back] : Error: Null pointer provided for list in list_pop_back.");
         return;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Error: Trying to pop from an empty list in list_pop_back.\n");
-        return;  // The list is empty, nothing to pop
+        LIST_LOG("[list_pop_back] : Error: Trying to pop from an empty list in list_pop_back.");
+        return;  
     }
     
     // If there is only one node in the list
@@ -492,7 +525,9 @@ void list_pop_back(List *list) {
         free(lastNode->value);
         free(lastNode);
     }
+
     list->size--;
+    LIST_LOG("[list_pop_back] : Last element removed from the list. New size: %zu", list->size);
 }
 
 /**
@@ -505,7 +540,7 @@ void list_pop_back(List *list) {
  */
 void list_clear(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_clear.\n");
+        LIST_LOG("[list_clear] : Error: Null pointer provided for list in list_clear.");
         return;
     }
     Node *current = list->head;
@@ -518,6 +553,8 @@ void list_clear(List *list) {
     }
     list->head = list->tail = NULL;
     list->size = 0;
+
+    LIST_LOG("[list_clear] : List cleared successfully. Size is now 0.");
 }
 
 /**
@@ -531,6 +568,10 @@ void list_clear(List *list) {
  * @return bool True if the list is empty, false otherwise.
  */
 bool list_empty(const List *list) {
+    if (list == NULL) {
+        LIST_LOG("[list_empty] : Error: Null pointer provided for list in list_empty.");
+        return true; 
+    }
     return list->head == NULL;
 }
 
@@ -543,6 +584,10 @@ bool list_empty(const List *list) {
  * @return size_t The number of elements in the list.
  */
 size_t list_length(const List *list) {
+    if (list == NULL) {
+        LIST_LOG("[list_length] : Error: Null pointer provided for list in list_length.");
+        return 0;
+    }
     return list->size;
 }
 
@@ -556,11 +601,13 @@ size_t list_length(const List *list) {
  */
 void list_deallocate(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_deallocate.\n");
+        LIST_LOG("[list_deallocate] : Error: Null pointer provided for list in list_deallocate.");
         return;
     }
     list_clear(list);
     free(list);
+
+    LIST_LOG("[list_deallocate] : List deallocated successfully.");
 }
 
 /**
@@ -575,7 +622,7 @@ void list_deallocate(List *list) {
  */
 Node *list_begin(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_begin.\n");
+        LIST_LOG("[list_begin] : Error: Null pointer provided for list in list_begin.");
         return NULL;
     }
     return list->head;
@@ -593,10 +640,10 @@ Node *list_begin(const List *list) {
  */
 Node *list_end(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_end.\n");
+        LIST_LOG("[list_end] : Error: Null pointer provided for list in list_end.");
         return NULL;
     }
-    return NULL; // In a singly linked list, the end is represented by NULL
+    return NULL; 
 }
 
 /**
@@ -610,7 +657,7 @@ Node *list_end(const List *list) {
  */
 Node *list_rbegin(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rbegin.\n");
+        LIST_LOG("[list_rbegin] : Error: Null pointer provided for list in list_rbegin.");
         return NULL;
     }
     return list->tail;
@@ -627,10 +674,10 @@ Node *list_rbegin(const List *list) {
  */
 Node *list_rend(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_rend.\n");
+        LIST_LOG("[list_rend] : Error: Null pointer provided for list in list_rend.");
         return NULL;
     }
-    return NULL;  // In a doubly linked list, the end is still represented by NULL
+    return NULL;  // In a doubly linked list, the end is represented by NULL
 }
 
 /**
@@ -644,7 +691,7 @@ Node *list_rend(const List *list) {
  */
 const Node *list_cbegin(const List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cbegin.\n");
+        LIST_LOG("[list_cbegin] : Error: Null pointer provided for list in list_cbegin.");
         return NULL;
     }
     return list->head;
@@ -661,7 +708,7 @@ const Node *list_cbegin(const List *list) {
  */
 const Node *list_cend(const List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_cend.\n");
+        LIST_LOG("[list_cend] : Error: Null pointer provided for list in list_cend.");
         return NULL;
     }
     return NULL;
@@ -678,7 +725,7 @@ const Node *list_cend(const List* list) {
  */
 const Node *list_crbegin(const List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crbegin.\n");
+        LIST_LOG("[list_crbegin] : Error: Null pointer provided for list in list_crbegin.");
         return NULL;
     }
     return list->tail;
@@ -695,7 +742,7 @@ const Node *list_crbegin(const List* list) {
  */
 const Node *list_crend(const List* list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_crend.\n");
+        LIST_LOG("[list_crend] : Error: Null pointer provided for list in list_crend.");
         return NULL;
     }
     return NULL;
@@ -713,11 +760,11 @@ const Node *list_crend(const List* list) {
  */
 void list_assign(List *list, void *values, size_t numValues) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_assign.\n");
+        LIST_LOG("[list_assign] : Error: Null pointer provided for list in list_assign.");
         return;
     }
     if (values == NULL && numValues > 0) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for values in list_assign.\n");
+        LIST_LOG("[list_assign] : Error: Null pointer provided for values in list_assign.");
         return;
     }
 
@@ -727,6 +774,7 @@ void list_assign(List *list, void *values, size_t numValues) {
         void *currentValue = (char *)values + i * list->itemSize;
         list_push_back(list, currentValue);
     }
+    LIST_LOG("[list_assign] : List assigned with %zu values.", numValues);
 }
 
 /**
@@ -741,12 +789,13 @@ void list_assign(List *list, void *values, size_t numValues) {
  */
 void list_emplace_front(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_front.\n");
+        LIST_LOG("[list_emplace_front] : Error: Null pointer provided for list or value in list_emplace_front.");
         return;
     }
+
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_emplace_front.\n");
+        LIST_LOG("[list_emplace_front] : Error: Memory allocation failed for newNode in list_emplace_front.");
         return;
     }
     newNode->value = value;  // Directly use the provided value
@@ -761,8 +810,11 @@ void list_emplace_front(List *list, void *value) {
     if (list->tail == NULL) { 
         list->tail = newNode;
     }
+
     list->size++;
+    LIST_LOG("[list_emplace_front] : Node emplaced at front. List size is now: %zu", list->size);
 }
+
 
 /**
  * @brief Inserts an element at the back of the list without copying.
@@ -776,12 +828,13 @@ void list_emplace_front(List *list, void *value) {
  */
 void list_emplace_back(List *list, void *value) {
     if (list == NULL || value == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list or value in list_emplace_back.\n");
+        LIST_LOG("[list_emplace_back] : Error: Null pointer provided for list or value in list_emplace_back.");
         return;
     }
+
     Node *newNode = malloc(sizeof(Node));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for newNode in list_emplace_back.\n");
+        LIST_LOG("[list_emplace_back] : Error: Memory allocation failed for newNode in list_emplace_back.");
         return;
     }
 
@@ -797,6 +850,8 @@ void list_emplace_back(List *list, void *value) {
     }
     list->tail = newNode;
     list->size++;
+
+    LIST_LOG("[list_emplace_back] : Node emplaced at back. List size is now: %zu", list->size);
 }
 
 /**
@@ -812,22 +867,24 @@ void list_emplace_back(List *list, void *value) {
  */
 void list_splice(List *dest, List *src, Node *pos) {
     if (dest == NULL || src == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_splice.\n");
+        LIST_LOG("[list_splice] : Error: Null pointer provided for one or both lists in list_splice.");
         return;
     }
     if (dest == src) {
-        fmt_fprintf(stderr, "Error: Cannot splice a list into itself in list_splice.\n");
+        LIST_LOG("[list_splice] : Error: Cannot splice a list into itself in list_splice.");
         return;
     }
     if (src->head == NULL) {
-        // The source list is empty; no action needed
+        LIST_LOG("[list_splice] : Source list is empty, nothing to splice in list_splice.");
         return;
     }
+
     Node *srcFirst = src->head;
     Node *srcLast = src->tail;
 
     // If 'pos' is NULL, insert at the end of 'dest'
     if (pos == NULL) {
+        LIST_LOG("[list_splice] : Splicing at the end of the destination list.");
         if (dest->tail != NULL) { 
             dest->tail->next = srcFirst;
         }
@@ -838,6 +895,7 @@ void list_splice(List *dest, List *src, Node *pos) {
         dest->tail = srcLast;
     } 
     else {
+        LIST_LOG("[list_splice] : Splicing at the specified position in the destination list.");
         if (pos->prev != NULL) { 
             pos->prev->next = srcFirst;
         }
@@ -852,6 +910,8 @@ void list_splice(List *dest, List *src, Node *pos) {
     dest->size += src->size;
     src->head = src->tail = NULL; // Clear 'src' list
     src->size = 0;
+
+    LIST_LOG("[list_splice] : Splicing completed. Destination list size: %zu. Source list is now empty.", dest->size);
 }
 
 /**
@@ -865,24 +925,27 @@ void list_splice(List *dest, List *src, Node *pos) {
  */
 void list_remove(List *list, void *value) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove.\n");
+        LIST_LOG("[list_remove] : Error: Null pointer provided for list in list_remove.");
         return;
     }
     if (value == NULL) {
-        fmt_fprintf(stderr, "Error: Null value provided for comparison in list_remove.\n");
+        LIST_LOG("[list_remove] : Error: Null value provided for comparison in list_remove.");
         return;
     }
     if (list->compare == NULL) {
-        fmt_fprintf(stderr, "Error: Null compare function provided in list_remove.\n");
+        LIST_LOG("[list_remove] : Error: Null compare function provided in list_remove.");
         return;
     }
 
     Node *current = list->head;
 
+    LIST_LOG("[list_remove] : Starting removal of nodes matching the provided value.");
     while (current != NULL) {
         Node *next = current->next;
 
         if (list->compare(current->value, value) == 0) {
+            LIST_LOG("[list_remove] : Removing a node with the matching value.");
+
             if (current->prev) {
                 current->prev->next = next;
             }
@@ -899,9 +962,12 @@ void list_remove(List *list, void *value) {
             free(current);
 
             list->size--;
+            LIST_LOG("[list_remove] : Node removed, new list size: %zu", list->size);
         }
         current = next;
     }
+
+    LIST_LOG("[list_remove] : Finished removing nodes. Final list size: %zu", list->size);
 }
 
 /**
@@ -915,19 +981,23 @@ void list_remove(List *list, void *value) {
  */
 void list_remove_if(List *list, ConditionFunction cond) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_remove_if.\n");
+        LIST_LOG("[list_remove_if] : Error: Null pointer provided for list in list_remove_if.");
         return;
     }
     if (cond == NULL) {
-        fmt_fprintf(stderr, "Error: Null condition function provided in list_remove_if.\n");
+        LIST_LOG("[list_remove_if] : Error: Null condition function provided in list_remove_if.");
         return;
     }
+
     Node *current = list->head;
 
+    LIST_LOG("[list_remove_if] : Starting conditional removal of nodes.");
     while (current != NULL) {
         Node *next = current->next;
 
         if (cond(current->value)) {
+            LIST_LOG("[list_remove_if] : Removing a node that satisfies the condition.");
+
             if (current->prev) {
                 current->prev->next = next;
             }
@@ -943,9 +1013,13 @@ void list_remove_if(List *list, ConditionFunction cond) {
             free(current->value);
             free(current);
             list->size--;
+
+            LIST_LOG("[list_remove_if] : Node removed, new list size: %zu", list->size);
         }
         current = next;
     }
+
+    LIST_LOG("[list_remove_if] : Finished removing nodes based on condition. Final list size: %zu", list->size);
 }
 
 /**
@@ -959,17 +1033,19 @@ void list_remove_if(List *list, ConditionFunction cond) {
  */
 void list_unique(List *list) {
     if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in list_unique.\n");
+        LIST_LOG("[list_unique] : Error: Null pointer provided for list in list_unique.");
         return;
     }
     if (list->compare == NULL) {
-        fmt_fprintf(stderr, "Error: Null compare function provided in list_unique.\n");
+        LIST_LOG("[list_unique] : Error: Null compare function provided in list_unique.");
         return;
     }
     if (list->size < 2) {
-        // No action needed for lists with less than two elements
+        LIST_LOG("[list_unique] : No action needed, list has less than two elements.");
         return;
     }
+
+    LIST_LOG("[list_unique] : Starting process to remove duplicate elements from the list.");
     Node *current = list->head;
 
     while (current != NULL && current->next != NULL) {
@@ -979,18 +1055,23 @@ void list_unique(List *list) {
 
             if (duplicate->next) {
                 duplicate->next->prev = current;
-            }
+            } 
             else { 
                 list->tail = current;
             }
+
             free(duplicate->value);
             free(duplicate);
             list->size--;
-        }
+
+            LIST_LOG("[list_unique] : Removed a duplicate node, new list size: %zu", list->size);
+        } 
         else {
             current = current->next;
         }
     }
+
+    LIST_LOG("[list_unique] : Finished removing duplicates, final list size: %zu", list->size);
 }
 
 /**
@@ -1005,11 +1086,11 @@ void list_unique(List *list) {
  */
 void list_merge(List *list1, List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_merge.\n");
+        LIST_LOG("[list_merge] : Error: Null pointer provided for one or both lists in list_merge.");
         return;
     }
     if (list1 == list2 || list2->size == 0) {
-        fmt_fprintf(stderr, "Error: No merge needed, lists are identical or second list is empty in list_merge.\n");
+        LIST_LOG("[list_merge] : Error: No merge needed, lists are identical or second list is empty in list_merge.");
         return;
     }
     if (list1->size == 0) {
@@ -1018,15 +1099,16 @@ void list_merge(List *list1, List *list2) {
         list1->size = list2->size;
         list2->head = list2->tail = NULL;
         list2->size = 0;
-        perror("List1 was empty, transferred all nodes from list2.\n");
 
+        LIST_LOG("[list_merge] : List1 was empty, transferred all nodes from list2. New list1 size: %zu", list1->size);
         return;
     }
+
     Node *current1 = list1->head;
     Node *current2 = list2->head;
+    LIST_LOG("[list_merge] : Merging list2 into list1.");
 
-    while (current1 != NULL && current2 != NULL){
-
+    while (current1 != NULL && current2 != NULL) {
         if (list1->compare && list1->compare(current1->value, current2->value) > 0) {
             Node *next2 = current2->next; // Insert current2 before current1    
             current2->prev = current1->prev;
@@ -1034,15 +1116,18 @@ void list_merge(List *list1, List *list2) {
 
             if (current1->prev) {
                 current1->prev->next = current2;
-            }
+            } 
             else { 
                 list1->head = current2;
             }
+
             current1->prev = current2;
             current2 = next2;
 
             list2->size--;
             list1->size++;
+
+            LIST_LOG("[list_merge] : Inserted node from list2 into list1. New list1 size: %zu", list1->size);
         } 
         else {
             current1 = current1->next;
@@ -1050,14 +1135,17 @@ void list_merge(List *list1, List *list2) {
     }
 
     if (current2 != NULL) {
-        // perror("Attaching remaining nodes from list2 to the end of list1...\n");
+        LIST_LOG("[list_merge] : Attaching remaining nodes from list2 to the end of list1.");
         list1->tail->next = current2;
         current2->prev = list1->tail;
         list1->tail = list2->tail;
         list1->size += list2->size;
     }
+
     list2->head = list2->tail = NULL;
     list2->size = 0;
+
+    LIST_LOG("[list_merge] : Merge completed. Final list1 size: %zu. List2 is now empty.", list1->size);
 }
 
 /**
@@ -1074,12 +1162,16 @@ void list_merge(List *list1, List *list2) {
  */
 bool list_is_less(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less.\n");
+        LIST_LOG("[list_is_less] : Error: Null pointer provided for one or both lists in list_is_less.");
         return false;
     }
+    LIST_LOG("[list_is_less] : Comparing if list1 is less than list2.");
+
     if (list1->size != list2->size) {
+        LIST_LOG("[list_is_less] : Lists have different sizes: list1->size = %zu, list2->size = %zu", list1->size, list2->size);
         return list1->size < list2->size;
     }
+
     Node *node1 = list1->head;
     Node *node2 = list2->head;
 
@@ -1087,12 +1179,16 @@ bool list_is_less(const List *list1, const List *list2) {
         int val1 = *(int *)(node1->value);
         int val2 = *(int *)(node2->value);
 
+        LIST_LOG("[list_is_less] : Comparing node values: val1 = %d, val2 = %d", val1, val2);
         if (val1 != val2) {
+            LIST_LOG("[list_is_less] : Returning comparison result: %d", val1 < val2);
             return val1 < val2;
         }
         node1 = node1->next;
         node2 = node2->next;
     }
+
+    LIST_LOG("[list_is_less] : Lists are equal, returning false.");
     return false; // Lists are equal
 }
 
@@ -1106,12 +1202,16 @@ bool list_is_less(const List *list1, const List *list2) {
  */
 bool list_is_greater(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater.\n");
+        LIST_LOG("[list_is_greater] : Error: Null pointer provided for one or both lists in list_is_greater.");
         return false;
     }
-    return list_is_less(list2, list1);
-}
 
+    LIST_LOG("[list_is_greater] : Comparing if list1 is greater than list2.");
+    bool result = list_is_less(list2, list1);
+    LIST_LOG("[list_is_greater] : Comparison result in list_is_greater: %d", result);
+
+    return result;
+}
 
 /**
  * @brief Checks if two lists are lexicographically equal.
@@ -1123,23 +1223,31 @@ bool list_is_greater(const List *list1, const List *list2) {
  */
 bool list_is_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_equal.\n");
+        LIST_LOG("[list_is_equal] : Error: Null pointer provided for one or both lists in list_is_equal.");
         return false;
     }
     if (list1->size != list2->size) {
+        LIST_LOG("[list_is_equal] : Lists have different sizes: list1->size = %zu, list2->size = %zu", list1->size, list2->size);
         return false;
     }
+
     Node *node1 = list1->head;
     Node *node2 = list2->head;
 
     while (node1 != NULL && node2 != NULL) {
-        
-        if (list1->compare(node1->value, node2->value) != 0) {
+        int cmp_result = list1->compare(node1->value, node2->value);
+        LIST_LOG("[list_is_equal] : Comparing node values using custom comparison function: result = %d", cmp_result);
+
+        if (cmp_result != 0) {
+            LIST_LOG("[list_is_equal] : Nodes are not equal, returning false.");
             return false;
         }
+
         node1 = node1->next;
         node2 = node2->next;
     }
+
+    LIST_LOG("[list_is_equal] : Lists are equal, returning true.");
     return true;
 }
 
@@ -1153,10 +1261,14 @@ bool list_is_equal(const List *list1, const List *list2) {
  */
 bool list_is_less_or_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_less_or_equal.\n");
+        LIST_LOG("[list_is_less_or_equal] : Error: Null pointer provided for one or both lists in list_is_less_or_equal.");
         return false;
     }
-    return list_is_less(list1, list2) || list_is_equal(list1, list2);
+
+    bool result = list_is_less(list1, list2) || list_is_equal(list1, list2);
+    LIST_LOG("[list_is_less_or_equal] : Comparison result in list_is_less_or_equal: %d", result);
+
+    return result;
 }
 
 /**
@@ -1169,10 +1281,13 @@ bool list_is_less_or_equal(const List *list1, const List *list2) {
  */
 bool list_is_greater_or_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_greater_or_equal.\n");
+        LIST_LOG("[list_is_greater_or_equal] : Error: Null pointer provided for one or both lists in list_is_greater_or_equal.");
         return false;
     }
-    return list_is_greater(list1, list2) || list_is_equal(list1, list2);
+    bool result = list_is_greater(list1, list2) || list_is_equal(list1, list2);
+    LIST_LOG("[list_is_greater_or_equal] : Comparison result in list_is_greater_or_equal: %d", result);
+
+    return result;
 }
 
 /**
@@ -1185,8 +1300,11 @@ bool list_is_greater_or_equal(const List *list1, const List *list2) {
  */
 bool list_is_not_equal(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for one or both lists in list_is_not_equal.\n");
-        return true;  // If one of the lists is null, they are not equal
+        LIST_LOG("[list_is_not_equal] : Error: Null pointer provided for one or both lists in list_is_not_equal.");
+        return true; 
     }
-    return !list_is_equal(list1, list2);
+    bool result = !list_is_equal(list1, list2);
+    LIST_LOG("[list_is_not_equal] : Comparison result in list_is_not_equal: %d", result);
+
+    return result;
 }
