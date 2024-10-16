@@ -1,1 +1,0 @@
-  -LC:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib  ../file_io/libfileio.dll.a ../vector/libvector.dll.a ../map/libmap.dll.a ../fmt/libfmt.dll.a ../string/libstdstring.dll.a ../encoding/libencoding.dll.a -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

@@ -1,1 +1,0 @@
-  -LC:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib  -lraylib -lopengl32 -lgdi32 -lwinmm -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 
