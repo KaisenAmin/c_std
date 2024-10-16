@@ -23,21 +23,24 @@
  *         The caller is responsible for deallocating the Array using array_deallocate.
  */
 Array* array_create(size_t element_size, size_t size) {
-    Array* arr = (Array*)malloc(sizeof(Array));
+    ARRAY_LOG("[array_create] Info: Creating an array with element size %zu and initial size %zu.", element_size, size);
 
+    Array* arr = (Array*)malloc(sizeof(Array));
     if (!arr) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory for Array object in array_create\n");
+        ARRAY_LOG("[array_create] Error: Cannot allocate memory for Array object.");
         exit(-1);
     }
 
     arr->vec = vector_create(element_size);
     if (!arr->vec) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory for internal Vector in array_create\n");
+        ARRAY_LOG("[array_create] Error: Cannot allocate memory for internal Vector.");
         free(arr);
         exit(-1);
     }
-    vector_resize(arr->vec, size);
 
+    vector_resize(arr->vec, size);
+    ARRAY_LOG("[array_create] Success: Array created successfully.");
+    
     return arr;
 }
 
@@ -53,13 +56,21 @@ Array* array_create(size_t element_size, size_t size) {
  * @return bool True if the Arrays are equal, false otherwise.
  */
 bool array_is_equal(const Array* arr1, const Array* arr2) {
-    if (arr1 == NULL || arr2 == NULL || arr1->vec == NULL || arr2->vec == NULL) { 
-        return false; 
+    ARRAY_LOG("[array_is_equal] Info: Checking if two arrays are equal.");
+    
+    if (arr1 == NULL || arr2 == NULL || arr1->vec == NULL || arr2->vec == NULL) {
+        ARRAY_LOG("[array_is_equal] Warning: One or both arrays (or their vectors) are NULL.");
+        return false;
     }
     if (arr1->vec->size != arr2->vec->size) {
-        return false;  
+        ARRAY_LOG("[array_is_equal] Info: Arrays have different sizes. They are not equal.");
+        return false;
     }
-    return memcmp(arr1->vec->items, arr2->vec->items, arr1->vec->size * arr1->vec->itemSize) == 0;
+
+    bool result = memcmp(arr1->vec->items, arr2->vec->items, arr1->vec->size * arr1->vec->itemSize) == 0;
+    ARRAY_LOG("[array_is_equal] Result: %d", result);
+
+    return result;
 }
 
 /**
@@ -76,14 +87,19 @@ bool array_is_equal(const Array* arr1, const Array* arr2) {
  * @return bool True if the first Array is less than the second, false otherwise.
  */
 bool array_is_less(const Array* arr1, const Array* arr2) {
-    if (arr1 == NULL || arr2 == NULL || arr1->vec == NULL || arr2->vec == NULL) { 
-        return false; 
+    ARRAY_LOG("[array_is_less] Info: Comparing two arrays to check if the first is less than the second.");
+    if (arr1 == NULL || arr2 == NULL || arr1->vec == NULL || arr2->vec == NULL) {
+        ARRAY_LOG("[array_is_less] Error: One or both arrays are NULL or their vectors are NULL.");
+        return false;
     }
 
     size_t minSize = arr1->vec->size < arr2->vec->size ? arr1->vec->size : arr2->vec->size;
     int cmp = memcmp(arr1->vec->items, arr2->vec->items, minSize * arr1->vec->itemSize);
 
-    return cmp < 0 || (cmp == 0 && arr1->vec->size < arr2->vec->size);
+    bool result = cmp < 0 || (cmp == 0 && arr1->vec->size < arr2->vec->size);
+    ARRAY_LOG("[array_is_less] Result: %d", result);
+
+    return result;
 }
 
 /**
@@ -98,6 +114,7 @@ bool array_is_less(const Array* arr1, const Array* arr2) {
  * @return bool True if the first Array is greater than the second, false otherwise.
  */
 bool array_is_greater(const Array* arr1, const Array* arr2) {
+    ARRAY_LOG("[array_is_greater] Info: Checking if the first array is greater than the second.");
     return array_is_less(arr2, arr1);
 }
 
@@ -113,13 +130,21 @@ bool array_is_greater(const Array* arr1, const Array* arr2) {
  * @return bool True if the Arrays are not equal, false otherwise.
  */
 bool array_is_not_equal(const Array* arr1, const Array* arr2) {
-    if (arr1 == NULL || arr2 == NULL) { 
-        return arr1 != arr2; // If either is NULL, they're not equal
+    ARRAY_LOG("[array_is_not_equal] Info: Checking if the two arrays are not equal.");
+
+    if (arr1 == NULL || arr2 == NULL) {
+        ARRAY_LOG("[array_is_not_equal] Warning: One or both arrays are NULL. They are considered not equal.");
+        return arr1 != arr2;
     }
-    if (arr1->vec->size != arr2->vec->size) { 
-        return true;  // Different sizes mean they're not equal
+    if (arr1->vec->size != arr2->vec->size) {
+        ARRAY_LOG("[array_is_not_equal] Result: Arrays have different sizes.");
+        return true;
     }
-    return memcmp(arr1->vec->items, arr2->vec->items, arr1->vec->size * arr1->vec->itemSize) != 0;
+
+    bool result = memcmp(arr1->vec->items, arr2->vec->items, arr1->vec->size * arr1->vec->itemSize) != 0;
+    ARRAY_LOG("[array_is_not_equal] Result: %d", result);
+
+    return result;
 }
 
 /**
@@ -135,14 +160,20 @@ bool array_is_not_equal(const Array* arr1, const Array* arr2) {
  * @return bool True if the first Array is less than or equal to the second, false otherwise.
  */
 bool array_is_less_or_equal(const Array* arr1, const Array* arr2) {
+    ARRAY_LOG("[array_is_less_or_equal] Info: Checking if the first array is less than or equal to the second.");
+
     if (arr1 == NULL || arr2 == NULL) {
-        return (arr1 == NULL) && (arr2 != NULL); // Only true if arr1 is NULL and arr2 is not
+        ARRAY_LOG("[array_is_less_or_equal] Warning: One or both arrays are NULL.");
+        return (arr1 == NULL) && (arr2 != NULL);
     }
 
     size_t minSize = arr1->vec->size < arr2->vec->size ? arr1->vec->size : arr2->vec->size;
     int cmp = memcmp(arr1->vec->items, arr2->vec->items, minSize * arr1->vec->itemSize);
 
-    return cmp < 0 || (cmp == 0 && arr1->vec->size <= arr2->vec->size);
+    bool result = cmp < 0 || (cmp == 0 && arr1->vec->size <= arr2->vec->size);
+    ARRAY_LOG("[array_is_less_or_equal] Result: %d", result);
+
+    return result;
 }
 
 /**
@@ -158,20 +189,25 @@ bool array_is_less_or_equal(const Array* arr1, const Array* arr2) {
  * @return bool True if the first Array is greater than or equal to the second, false otherwise.
  */
 bool array_is_greater_or_equal(const Array* arr1, const Array* arr2) {
+    ARRAY_LOG("[array_is_greater_or_equal] Info: Checking if the first array is greater than or equal to the second.");
+
     if (arr1 == NULL && arr2 == NULL) {
-        // Both arrays are NULL, which means they are equal
+        ARRAY_LOG("[array_is_greater_or_equal] Both arrays are NULL, they are considered equal.");
         return true;
     }
     if (arr1 == NULL || arr2 == NULL) {
-        return (arr1 != NULL) && (arr2 == NULL); // Only true if arr1 is not NULL and arr2 is NULL
+        ARRAY_LOG("[array_is_greater_or_equal] Warning: One of the arrays is NULL.");
+        return (arr1 != NULL) && (arr2 == NULL);
     }
 
     size_t minSize = arr1->vec->size < arr2->vec->size ? arr1->vec->size : arr2->vec->size;
     int cmp = memcmp(arr1->vec->items, arr2->vec->items, minSize * arr1->vec->itemSize);
 
-    return cmp > 0 || (cmp == 0 && arr1->vec->size >= arr2->vec->size);
-}
+    bool result = cmp > 0 || (cmp == 0 && arr1->vec->size >= arr2->vec->size);
+    ARRAY_LOG("[array_is_greater_or_equal] Result: %d", result);
 
+    return result;
+}
 /**
  * @brief Checks if the Array is empty.
  *
@@ -182,9 +218,13 @@ bool array_is_greater_or_equal(const Array* arr1, const Array* arr2) {
  * @return bool True if the Array is empty, false otherwise.
  */
 bool array_empty(Array* arr) {
-    return arr == NULL || arr->vec == NULL || arr->vec->size == 0;
-}
+    ARRAY_LOG("[array_empty] Info: Checking if the array is empty.");
 
+    bool result = arr == NULL || arr->vec == NULL || arr->vec->size == 0;
+    ARRAY_LOG("[array_empty] Result: %d", result);
+
+    return result;
+}
 /**
  * @brief Deallocates the memory used by the Array.
  *
@@ -194,11 +234,18 @@ bool array_empty(Array* arr) {
  * @param arr The Array to deallocate.
  */
 void array_deallocate(Array* arr) {
+    ARRAY_LOG("[array_deallocate] Info: Deallocating the array.");
+
     if (arr != NULL) {
         if (arr->vec != NULL) {
-            vector_deallocate(arr->vec);  
+            vector_deallocate(arr->vec);
+            ARRAY_LOG("[array_deallocate] Info: Deallocated the vector.");
         }
-        free(arr);  // Free the array structure itself
+        free(arr);
+        ARRAY_LOG("[array_deallocate] Info: Deallocated the array structure.");
+    } 
+    else {
+        ARRAY_LOG("[array_deallocate] Warning: Array is NULL. No action taken.");
     }
 }
 
@@ -214,24 +261,27 @@ void array_deallocate(Array* arr) {
  * @param value The value to set at the specified index.
  */
 void array_set(Array* arr, size_t index, const void* value) {
+    ARRAY_LOG("[array_set] Info: Setting value at index %zu.", index);
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_set.\n");
+        ARRAY_LOG("[array_set] Error: Array is NULL.");
         return;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Array's vector is NULL in array_set.\n");
+        ARRAY_LOG("[array_set] Error: Array's vector is NULL.");
         return;
     }
     if (index >= arr->vec->size) {
-        fmt_fprintf(stderr, "Error: Index out of bounds in array_set.\n");
+        ARRAY_LOG("[array_set] Error: Index %zu out of bounds. Vector size is %zu.", index, arr->vec->size);
         return;
     }
     if (value == NULL) {
-        fmt_fprintf(stderr, "Error: Value is NULL in array_set.\n");
+        ARRAY_LOG("[array_set] Error: Value is NULL.");
         return;
     }
 
     memcpy((char*)arr->vec->items + (index * arr->vec->itemSize), value, arr->vec->itemSize);
+    ARRAY_LOG("[array_set] Success: Value set at index %zu.", index);
 }
 
 /**
@@ -246,25 +296,28 @@ void array_set(Array* arr, size_t index, const void* value) {
  * @param index The index in the main Array where the elements will be inserted.
  */
 void array_insert(Array* mainArr, const Array* otherArr, size_t index) {
+    ARRAY_LOG("[array_insert] Info: Inserting elements into main array at index %zu.", index);
+
     if (mainArr == NULL) {
-        fmt_fprintf(stderr, "Error: Main array is NULL in array_insert.\n");
+        ARRAY_LOG("[array_insert] Error: Main array is NULL.");
         return;
     }
     if (mainArr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Main array's vector is NULL in array_insert.\n");
+        ARRAY_LOG("[array_insert] Error: Main array's vector is NULL.");
         return;
     }
     if (otherArr == NULL) {
-        fmt_fprintf(stderr, "Error: Other array is NULL in array_insert.\n");
+        ARRAY_LOG("[array_insert] Error: Other array is NULL.");
         return;
     }
     if (otherArr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Other array's vector is NULL in array_insert.\n");
+        ARRAY_LOG("[array_insert] Error: Other array's vector is NULL.");
         return;
     }
 
     size_t newTotalSize = index + otherArr->vec->size;
     if (newTotalSize > mainArr->vec->size) {
+        ARRAY_LOG("[array_insert] Info: Resizing main array's vector to size %zu.", newTotalSize);
         vector_resize(mainArr->vec, newTotalSize);
     }
 
@@ -272,6 +325,7 @@ void array_insert(Array* mainArr, const Array* otherArr, size_t index) {
         void* value = vector_at(otherArr->vec, i);
         memcpy((char*)mainArr->vec->items + ((index + i) * mainArr->vec->itemSize), value, mainArr->vec->itemSize);
     }
+    ARRAY_LOG("[array_insert] Success: Elements from other array inserted at index %zu.", index);
 }
 
 /**
@@ -285,22 +339,25 @@ void array_insert(Array* mainArr, const Array* otherArr, size_t index) {
  * @param value The value to fill the Array with.
  */
 void array_fill(Array* arr, const void* value) {
+    ARRAY_LOG("[array_fill] Info: Filling array with specified value.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_fill.\n");
+        ARRAY_LOG("[array_fill] Error: Array is NULL.");
         return;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Array's vector is NULL in array_fill.\n");
+        ARRAY_LOG("[array_fill] Error: Array's vector is NULL.");
         return;
     }
     if (value == NULL) {
-        fmt_fprintf(stderr, "Error: 'value' is NULL in array_fill.\n");
+        ARRAY_LOG("[array_fill] Error: 'value' is NULL.");
         return;
     }
 
     for (size_t i = 0; i < arr->vec->size; ++i) { 
         memcpy((char*)arr->vec->items + (i * arr->vec->itemSize), value, arr->vec->itemSize);
     }
+    ARRAY_LOG("[array_fill] Success: Array filled with value.");
 }
 
 /**
@@ -314,26 +371,30 @@ void array_fill(Array* arr, const void* value) {
  * @param arr2 The second Array.
  */
 void array_swap(Array* arr1, Array* arr2) {
+    ARRAY_LOG("[array_swap] Info: Swapping two arrays.");
+
     if (arr1 == NULL) {
-        fmt_fprintf(stderr, "Error: arr1 is NULL in array_swap.\n");
+        ARRAY_LOG("[array_swap] Error: arr1 is NULL.");
         return;
     }
     if (arr2 == NULL) {
-        fmt_fprintf(stderr, "Error: arr2 is NULL in array_swap.\n");
+        ARRAY_LOG("[array_swap] Error: arr2 is NULL.");
         return;
     }
     if (arr1->vec == NULL) {
-        fmt_fprintf(stderr, "Error: arr1's vector is NULL in array_swap.\n");
+        ARRAY_LOG("[array_swap] Error: arr1's vector is NULL.");
         return;
     }
     if (arr2->vec == NULL) {
-        fmt_fprintf(stderr, "Error: arr2's vector is NULL in array_swap.\n");
+        ARRAY_LOG("[array_swap] Error: arr2's vector is NULL.");
         return;
     }
 
     Vector* temp = arr1->vec;
     arr1->vec = arr2->vec;
     arr2->vec = temp;
+
+    ARRAY_LOG("[array_swap] Success: Arrays swapped.");
 }
 
 /**
@@ -350,18 +411,22 @@ void array_swap(Array* arr1, Array* arr2) {
  *         Returns NULL if the Array, its vector is NULL, or the index is out of bounds.
  */
 void* array_at(Array* arr, size_t index) {
+    ARRAY_LOG("[array_at] Info: Accessing element at index %zu.", index);
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_at.\n");
+        ARRAY_LOG("[array_at] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Array's vector is NULL in array_at.\n");
+        ARRAY_LOG("[array_at] Error: Array's vector is NULL.");
         return NULL;
     }
     if (index >= arr->vec->size) {
-        fmt_fprintf(stderr, "Error: Index out of bounds in array_at.\n");
+        ARRAY_LOG("[array_at] Error: Index %zu out of bounds. Vector size is %zu.", index, arr->vec->size);
         return NULL;
     }
+
+    ARRAY_LOG("[array_at] Success: Element at index %zu accessed.", index);
     return vector_at(arr->vec, index);
 }
 
@@ -377,18 +442,22 @@ void* array_at(Array* arr, size_t index) {
  *         Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 void* array_begin(Array* arr) {
+    ARRAY_LOG("[array_begin] Info: Accessing beginning of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_begin.\n");
+        ARRAY_LOG("[array_begin] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_begin.\n");
+        ARRAY_LOG("[array_begin] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Array is empty in array_begin.\n");
+        ARRAY_LOG("[array_begin] Error: Array is empty.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_begin] Success: Pointer to beginning of the array returned.");
     return arr->vec->items;
 }
 
@@ -404,18 +473,22 @@ void* array_begin(Array* arr) {
  *         Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 void* array_end(Array* arr) {
+    ARRAY_LOG("[array_end] Info: Accessing end of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_end.\n");
+        ARRAY_LOG("[array_end] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_end.\n");
+        ARRAY_LOG("[array_end] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Array is empty in array_end.\n");
+        ARRAY_LOG("[array_end] Error: Array is empty.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_end] Success: Pointer to end of the array returned.");
     return vector_end(arr->vec);
 }
 
@@ -431,18 +504,22 @@ void* array_end(Array* arr) {
  *         Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 void* array_rbegin(Array* arr) {
+    ARRAY_LOG("[array_rbegin] Info: Accessing reverse beginning of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_rbegin.\n");
+        ARRAY_LOG("[array_rbegin] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_rbegin.\n");
+        ARRAY_LOG("[array_rbegin] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Array is empty in array_rbegin.\n");
+        ARRAY_LOG("[array_rbegin] Error: Array is empty.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_rbegin] Success: Reverse iterator to the beginning returned.");
     return vector_rbegin(arr->vec);
 }
 
@@ -458,14 +535,18 @@ void* array_rbegin(Array* arr) {
  *         Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 void* array_rend(Array* arr) {
+    ARRAY_LOG("[array_rend] Info: Accessing reverse end of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_rend.\n");
+        ARRAY_LOG("[array_rend] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_rend.\n");
+        ARRAY_LOG("[array_rend] Error: Vector is NULL.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_rend] Success: Reverse iterator to the end returned.");
     return vector_rend(arr->vec);
 }
 
@@ -480,18 +561,22 @@ void* array_rend(Array* arr) {
  * @return void* A pointer to the first element of the Array, or NULL if an error occurs.
  */
 void* array_front(Array* arr) {
+    ARRAY_LOG("[array_front] Info: Retrieving pointer to the first element of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_front.\n");
+        ARRAY_LOG("[array_front] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_front.\n");
+        ARRAY_LOG("[array_front] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Array is empty in array_front.\n");
+        ARRAY_LOG("[array_front] Error: Array is empty.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_front] Success: Pointer to the first element returned.");
     return vector_at(arr->vec, 0);  // First element
 }
 
@@ -506,18 +591,22 @@ void* array_front(Array* arr) {
  * @return void* A pointer to the last element of the Array, or NULL if an error occurs.
  */
 void* array_back(Array* arr) {
+    ARRAY_LOG("[array_back] Info: Retrieving pointer to the last element of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_back.\n");
+        ARRAY_LOG("[array_back] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_back.\n");
+        ARRAY_LOG("[array_back] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Array is empty in array_back.\n");
+        ARRAY_LOG("[array_back] Error: Array is empty.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_back] Success: Pointer to the last element returned.");
     return vector_at(arr->vec, arr->vec->size - 1);
 }
 
@@ -531,14 +620,18 @@ void* array_back(Array* arr) {
  * @return void* A pointer to the underlying data of the Array, or NULL if an error occurs.
  */
 void* array_data(Array* arr) {
+    ARRAY_LOG("[array_data] Info: Retrieving pointer to the underlying data of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_data.\n");
+        ARRAY_LOG("[array_data] Error: Array is NULL.");
         return NULL;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_data.\n");
+        ARRAY_LOG("[array_data] Error: Vector is NULL.");
         return NULL;
     }
+
+    ARRAY_LOG("[array_data] Success: Pointer to the underlying data returned.");
     return arr->vec->items;
 }
 
@@ -552,14 +645,18 @@ void* array_data(Array* arr) {
  * @return size_t The number of elements in the Array. Returns 0 if the Array or its vector is NULL.
  */
 size_t array_size(Array* arr) {
+    ARRAY_LOG("[array_size] Info: Retrieving size of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_size.\n");
+        ARRAY_LOG("[array_size] Error: Array is NULL.");
         return 0;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_size.\n");
+        ARRAY_LOG("[array_size] Error: Vector is NULL.");
         return 0;
     }
+
+    ARRAY_LOG("[array_size] Success: Size of the array returned: %zu.", arr->vec->size);
     return arr->vec->size;
 }
 
@@ -573,14 +670,18 @@ size_t array_size(Array* arr) {
  * @return size_t The maximum number of elements the Array can hold. Returns 0 if the Array or its vector is NULL.
  */
 size_t array_max_size(Array* arr) {
+    ARRAY_LOG("[array_max_size] Info: Retrieving maximum size of the array.");
+
     if (arr == NULL) {
-        fmt_fprintf(stderr, "Error: Array is NULL in array_max_size.\n");
+        ARRAY_LOG("[array_max_size] Error: Array is NULL.");
         return 0;
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_max_size.\n");
+        ARRAY_LOG("[array_max_size] Error: Vector is NULL.");
         return 0;
     }
+
+    ARRAY_LOG("[array_max_size] Success: Maximum size of the array returned: %zu.", vector_max_size(arr->vec));
     return vector_max_size(arr->vec);
 }
 
@@ -597,19 +698,22 @@ size_t array_max_size(Array* arr) {
  * Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 const void* array_cbegin(Array* arr) {
+    ARRAY_LOG("[array_cbegin] Info: Retrieving constant iterator to the beginning of the array.");
+
     if (arr == NULL) { 
-        fmt_fprintf(stderr, "Error: Array is NULL in array_cbegin.\n");
+        ARRAY_LOG("[array_cbegin] Error: Array is NULL.");
         return NULL; 
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_cbegin.\n");
+        ARRAY_LOG("[array_cbegin] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Vector size is 0 in array_cbegin.\n");
+        ARRAY_LOG("[array_cbegin] Error: Vector size is 0.");
         return NULL;
     }
-    // return arr->vec->items;
+
+    ARRAY_LOG("[array_cbegin] Success: Constant iterator to the beginning returned.");
     return vector_cbegin(arr->vec); 
 }
 
@@ -626,19 +730,22 @@ const void* array_cbegin(Array* arr) {
  * Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 const void* array_cend(Array* arr) {
+    ARRAY_LOG("[array_cend] Info: Retrieving constant iterator to the end of the array.");
+
     if (arr == NULL) { 
-        fmt_fprintf(stderr, "Error: Array is NULL in array_cend.\n");
+        ARRAY_LOG("[array_cend] Error: Array is NULL.");
         return NULL;  
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_cend.\n");
+        ARRAY_LOG("[array_cend] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Vector size is 0 in array_cend.\n");
+        ARRAY_LOG("[array_cend] Error: Vector size is 0.");
         return NULL;
     }
-    // return (const char*)arr->vec->items + (arr->vec->size * arr->vec->itemSize); 
+
+    ARRAY_LOG("[array_cend] Success: Constant iterator to the end returned.");
     return vector_cend(arr->vec);
 }
 
@@ -655,19 +762,22 @@ const void* array_cend(Array* arr) {
  * Returns NULL if the Array, its vector is NULL, or the Array is empty.
  */
 const void* array_crbegin(Array* arr) {
+    ARRAY_LOG("[array_crbegin] Info: Retrieving constant reverse iterator to the beginning of the array.");
+
     if (arr == NULL) { 
-        fmt_fprintf(stderr, "Error: Array is NULL in array_crbegin.\n");
+        ARRAY_LOG("[array_crbegin] Error: Array is NULL.");
         return NULL;  
     }
     if (arr->vec == NULL) {
-        fmt_fprintf(stderr, "Error: Vector is NULL in array_crbegin.\n");
+        ARRAY_LOG("[array_crbegin] Error: Vector is NULL.");
         return NULL;
     }
     if (arr->vec->size == 0) {
-        fmt_fprintf(stderr, "Error: Vector size is 0 in array_crbegin.\n");
+        ARRAY_LOG("[array_crbegin] Error: Vector size is 0.");
         return NULL;
     }
-    // return (const char*)arr->vec->items + ((arr->vec->size - 1) * arr->vec->itemSize); 
+
+    ARRAY_LOG("[array_crbegin] Success: Constant reverse iterator to the beginning returned.");
     return vector_crbegin(arr->vec);
 }
 
@@ -683,11 +793,14 @@ const void* array_crbegin(Array* arr) {
  *         Returns NULL if the Array or its internal vector is NULL.
  */
 const void* array_crend(Array* arr) {
+    ARRAY_LOG("[array_crend] Info: Retrieving constant reverse iterator to the end of the array.");
+
     if (arr == NULL || arr->vec == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input in array_crend.\n");
+        ARRAY_LOG("[array_crend] Error: Invalid input (Array or Vector is NULL).");
         return NULL;  
     }
-    // return (const char*)arr->vec->items - arr->vec->itemSize;  
+
+    ARRAY_LOG("[array_crend] Success: Constant reverse iterator to the end returned.");
     return vector_crend(arr->vec);
 }
 
@@ -700,11 +813,15 @@ const void* array_crend(Array* arr) {
  * @param arr The Array to be cleared.
  */
 void array_clear(Array* arr) {
+    ARRAY_LOG("[array_clear] Info: Clearing array.");
     if (arr == NULL || arr->vec == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input in array_clear.\n");
+        ARRAY_LOG("[array_clear] Error: Invalid array or vector pointer.");
         return;
     }
+
+    ARRAY_LOG("[array_clear] Info: Clearing array with size %zu.", arr->vec->size);
     vector_clear(arr->vec);
+    ARRAY_LOG("[array_clear] Success: Array cleared.");
 }
 
 /**
@@ -716,22 +833,25 @@ void array_clear(Array* arr) {
  * @param arr The Array to be reversed.
  */
 void array_reverse(Array* arr) {
+    ARRAY_LOG("[array_reverse] Info: Reversing array.");
+
     if (arr == NULL || arr->vec == NULL) { 
-        fmt_fprintf(stderr, "Error: Invalid input in array_reverse.\n");
+        ARRAY_LOG("[array_reverse] Error: Invalid array or vector pointer.");
         return;
     }
     if (arr->vec->size <= 1) {
-        // Nothing to reverse for an empty or single-element array
+        ARRAY_LOG("[array_reverse] Info: Nothing to reverse (array size is %zu).", arr->vec->size);
         return;
     }
+    ARRAY_LOG("[array_reverse] Info: Reversing array with size %zu.", arr->vec->size);
+
     size_t start = 0;
     size_t end = arr->vec->size - 1;
 
-    // Allocate memory for the temporary storage
     char* temp = (char*)malloc(arr->vec->itemSize);
     if (!temp) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in array_reverse.\n");
-        return; // Exit the function if memory allocation fails
+        ARRAY_LOG("[array_reverse] Error: Memory allocation failed.");
+        return;
     }
 
     while (start < end) {
@@ -741,7 +861,9 @@ void array_reverse(Array* arr) {
         start++;
         end--;
     }
+
     free(temp);
+    ARRAY_LOG("[array_reverse] Success: Array reversed.");
 }
 
 /**
@@ -755,15 +877,20 @@ void array_reverse(Array* arr) {
  * @param compare A pointer to a comparison function that takes two const void* arguments and returns an int.
  */
 void array_sort(Array* arr, int (*compare)(const void*, const void*)) {
+    ARRAY_LOG("[array_sort] Info: Sorting array.");
+
     if (arr == NULL || arr->vec == NULL || compare == NULL) {
-        fmt_fprintf(stderr, "Error: Invalid input in array_sort.\n");
+        ARRAY_LOG("[array_sort] Error: Invalid array, vector pointer, or compare function.");
         return;
     }
     if (arr->vec->size <= 1) {
-        // Nothing to sort for an empty or single-element array
+        ARRAY_LOG("[array_sort] Info: Nothing to sort (array size is %zu).", arr->vec->size);
         return;
     }
+
+    ARRAY_LOG("[array_sort] Info: Sorting array with size %zu.", arr->vec->size);
     qsort(arr->vec->items, arr->vec->size, arr->vec->itemSize, compare);
+    ARRAY_LOG("[array_sort] Success: Array sorted.");
 }
 
 /**
@@ -776,10 +903,20 @@ void array_sort(Array* arr, int (*compare)(const void*, const void*)) {
  * @param src The source Array from which to copy the contents.
  */
 void array_copy(Array* dest, const Array* src) {
-    if (src == NULL || dest == NULL) {
-        fmt_fprintf(stderr, "Error: One or both of them are null in array_copy.\n");
+    ARRAY_LOG("[array_copy] Info: Starting array copy.");
+
+    if (src == NULL) {
+        ARRAY_LOG("[array_copy] Error: Source array (src) is NULL.");
         return;
     }
+    if (dest == NULL) {
+        ARRAY_LOG("[array_copy] Error: Destination array (dest) is NULL.");
+        return;
+    }
+    ARRAY_LOG("[array_copy] Info: Copying from source array of size %zu to destination array of size %zu.",
+              src->vec->size, dest->vec->size);
+
     vector_resize(dest->vec, src->vec->size);
     memcpy(dest->vec->items, src->vec->items, src->vec->size * src->vec->itemSize);
+    ARRAY_LOG("[array_copy] Success: Array copied successfully. Destination array size is now %zu.", dest->vec->size);
 }

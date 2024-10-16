@@ -1,29 +1,26 @@
-#include "matrix/matrix.h"
 #include "fmt/fmt.h"
+#include "array/array.h"
 
 int main() {
-    double f[] = {0.1, 2.0, 1.0, 0.1}; // Fecundity coefficients
-    double s[] = {0.2, 0.8, 0.7};      // Survival coefficients
-    size_t f_size = sizeof(f) / sizeof(f[0]);
-    size_t s_size = sizeof(s) / sizeof(s[0]);
+    Array* arr1 = array_create(sizeof(int), 3);
+    Array* arr2 = array_create(sizeof(int), 3);
+    int arr1Values[] = {1, 2, 3};
+    int arr2Values[] = {1, 2, 3};
 
-    Matrix* fl = matrix_from_array(f, 1, 3);
-    Matrix* sl = matrix_from_array(s, 1, 3);
-    
-    if (!fl || !sl) {
-        fmt_fprintf(stderr, "Error: can not create Matrix from array fl or sl or both of them");
-        return -1;
+    for (size_t i = 0; i < 3; ++i) {
+        array_set(arr1, i, &arr1Values[i]);
+        array_set(arr2, i, &arr2Values[i]);
     }
 
-    Matrix* leslieMatrix = matrix_leslie(fl, f_size, sl, s_size);
-    if (leslieMatrix) {
-        fmt_printf("Leslie Matrix:\n");
-        matrix_print(leslieMatrix);
-        matrix_deallocate(leslieMatrix);
-
+    if (array_is_equal(arr1, arr2)) {
+        fmt_printf("Arrays are equal.\n");
+    }
+    else {
+        fmt_printf("Arrays are not equal.\n");
     }
 
-    matrix_deallocate(fl);
-    matrix_deallocate(sl);
+    array_deallocate(arr1);
+    array_deallocate(arr2);
+
     return 0;
 }

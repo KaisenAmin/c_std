@@ -9,6 +9,16 @@
 
 #include "../vector/vector.h"
 
+// #define ARRAY_LOGGING_ENABLE 
+
+#ifdef ARRAY_LOGGING_ENABLE 
+    #define ARRAY_LOG(fmt, ...) \
+        do { fprintf(stderr, "[ARRAY LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define ARRAY_LOG(fmt, ...) do { } while (0)
+#endif
+
+
 typedef struct Array Array;
 
 struct Array {

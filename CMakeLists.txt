@@ -106,7 +106,7 @@ if (WIN32)
         # cli
         # deque
         # json
-        matrix
+        # matrix
         # fileio
         # crypto
         # config

@@ -1,0 +1,294 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "build/main.exe"
+		},
+		{
+			"path" : "build/main.pdb"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"link_directories",
+			"target_link_libraries",
+			"add_custom_command",
+			"include_directories"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt",
+			"crypto/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 70,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 25,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 75,
+				"parent" : 0
+			},
+			{
+				"file" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 7,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 179,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 19,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -g  -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s -std=gnu17"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 7,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/dependency/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/string"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/fmt"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/encoding"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/crypto"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/vector"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/time"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "C:/Users/asus/OneDrive/Desktop/project/c_std/array"
+				}
+			],
+			"language" : "C",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "stdstring::@22e829107201c6b975b1"
+		},
+		{
+			"backtrace" : 6,
+			"id" : "fmt::@b8b4cdcf357fa61d5575"
+		},
+		{
+			"backtrace" : 6,
+			"id" : "encoding::@8a01f42f38e96b4747a9"
+		},
+		{
+			"backtrace" : 6,
+			"id" : "random::@043bef6630b23836363a"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "stdtime::@bd83b289c10ac4bbd907"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "vector::@95776985c747069fcc28"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "array::@b11a9723162007fe44d2"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "stdcrypto::@1d62b725e69adc70ad4a"
+		}
+	],
+	"id" : "main::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-g  -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,--enable-auto-import",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-LC:/Users/asus/OneDrive/Desktop/project/c_std/dependency/lib",
+				"role" : "libraryPath"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "crypto/libstdcrypto.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lopengl32",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lgdi32",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lwinmm",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lole32",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lbthprops",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lssl",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-lpq",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "time/libstdtime.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "array/libarray.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 5,
+				"fragment" : "-lcrypto",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "vector/libvector.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "fmt/libfmt.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "string/libstdstring.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "encoding/libencoding.dll.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32",
+				"role" : "libraries"
+			}
+		],
+		"language" : "C"
+	},
+	"name" : "main",
+	"nameOnDisk" : "main.exe",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "main.c",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "EXECUTABLE"
+}
