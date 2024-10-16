@@ -847,17 +847,17 @@ int main() {
     }
 
     if (matrix_is_idempotent(matrix1)) {
-        printf("Matrix 1 is idempotent.\n");
+        fmt_printf("Matrix 1 is idempotent.\n");
     } 
     else {
-        printf("Matrix 1 is not idempotent.\n");
+        fmt_printf("Matrix 1 is not idempotent.\n");
     }
 
     if (matrix_is_idempotent(matrix2)) {
-        printf("Matrix 2 is idempotent.\n");
+        fmt_printf("Matrix 2 is idempotent.\n");
     } 
     else {
-        printf("Matrix 2 is not idempotent.\n");
+        fmt_printf("Matrix 2 is not idempotent.\n");
     }
 
     matrix_deallocate(matrix1);
@@ -968,7 +968,7 @@ Main diagonal as a row matrix:
 int main() {
     Matrix* matrix = matrix_create(3, 3);
     if (!matrix) {
-        printf("Failed to create matrix.\n");
+        fmt_printf("Failed to create matrix.\n");
         return -1;
     }
 
@@ -986,20 +986,20 @@ int main() {
 
     Matrix* minorDiagonalRow = matrix_get_minor_diagonal_as_row(matrix);
     if (minorDiagonalRow) {
-        printf("Minor diagonal as a row matrix:\n");
+        fmt_printf("Minor diagonal as a row matrix:\n");
         matrix_print(minorDiagonalRow); 
     } 
     else {
-        printf("Failed to get the minor diagonal as a row matrix.\n");
+        fmt_printf("Failed to get the minor diagonal as a row matrix.\n");
     }
 
     Matrix* minorDiagonalColumn = matrix_get_minor_diagonal_as_column(matrix);
     if (minorDiagonalColumn) {
-        printf("Minor diagonal as a column matrix:\n");
+        fmt_printf("Minor diagonal as a column matrix:\n");
         matrix_print(minorDiagonalColumn); 
     } 
     else {
-        printf("Failed to get the minor diagonal as a column matrix.\n");
+        fmt_printf("Failed to get the minor diagonal as a column matrix.\n");
     }
 
     matrix_deallocate(matrix);

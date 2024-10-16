@@ -5,8 +5,17 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdio.h>
 
-// #define MATRIX_LOGGING_ENABLE 
+#define MATRIX_LOGGING_ENABLE 
+
+#ifdef MATRIX_LOGGING_ENABLE 
+    #define MATRIX_LOG(fmt, ...) \
+        do { fprintf(stderr, "[MATRIX LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define MATRIX_LOG(fmt, ...) do { } while (0)
+#endif
+
 
 // structure for Matrix 
 typedef struct Matrix {
