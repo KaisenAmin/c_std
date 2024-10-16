@@ -5,6 +5,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// #define ALGORITHM_LOGGING_ENABLE 
+
+#ifdef ALGORITHM_LOGGING_ENABLE 
+    #define ALGORITHM_LOG(fmt, ...) \
+        do { fprintf(stderr, "[ALGORITHM LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define AALGORITHM_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef struct {
     void *first;
     void *second;

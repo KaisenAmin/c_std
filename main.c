@@ -1,26 +1,47 @@
+#include "map/map.h"
 #include "fmt/fmt.h"
-#include "array/array.h"
+#include <stdlib.h>
+
+int compare_doubles(const KeyType a, const KeyType b) {
+    const double* da = (const double*)a;
+    const double* db = (const double*)b;
+
+    if (*da < *db) {
+        return -1;
+    } 
+    else if (*da > *db) { 
+        return 1;
+    } 
+    else {
+        return 0;
+    }
+}
+
+void double_deallocator(void* data) {
+    free(data);
+}
 
 int main() {
-    Array* arr1 = array_create(sizeof(int), 3);
-    Array* arr2 = array_create(sizeof(int), 3);
-    int arr1Values[] = {1, 2, 3};
-    int arr2Values[] = {1, 2, 3};
+    Map* myMap = map_create(compare_doubles, double_deallocator, double_deallocator);
+    double keys[] = {1.1, 2.2, 3.3, 4.4, 5.5};
 
-    for (size_t i = 0; i < 3; ++i) {
-        array_set(arr1, i, &arr1Values[i]);
-        array_set(arr2, i, &arr2Values[i]);
+    for (int i = 0; i < 5; ++i) {
+        double* key = malloc(sizeof(double));
+        double* value = malloc(sizeof(double));
+        *key = keys[i];
+        *value = keys[i] * 10;
+        map_insert(myMap, key, value);
     }
 
-    if (array_is_equal(arr1, arr2)) {
-        fmt_printf("Arrays are equal.\n");
-    }
-    else {
-        fmt_printf("Arrays are not equal.\n");
+    for (MapIterator it = map_begin(myMap); it.node != map_end(myMap).node; map_iterator_increment(&it)) {
+        double* key = (double*)map_node_get_key(it.node);
+        double* value = (double*)map_node_get_value(it.node);
+        
+        if (key && value) {
+            fmt_printf("%f: %f\n", *key, *value);
+        }
     }
 
-    array_deallocate(arr1);
-    array_deallocate(arr2);
-
+    map_deallocate(myMap);
     return 0;
 }

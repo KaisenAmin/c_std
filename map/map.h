@@ -10,7 +10,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-// #define MAP_LOGGING_ENABLE
+#define MAP_LOGGING_ENABLE
+
+#ifdef MAP_LOGGING_ENABLE 
+    #define MAP_LOG(fmt, ...) \
+        do { fprintf(stderr, "[MAP LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define MAP_LOG(fmt, ...) do { } while (0)
+#endif
 
 // Forward declarations
 typedef struct Map Map;

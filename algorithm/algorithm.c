@@ -4,32 +4,42 @@
 #include "algorithm.h"
 
 static void swap(void *a, void *b, size_t size) {
-    // Using a stack-allocated buffer for small elements
+    ALGORITHM_LOG("[swap] Swapping elements of size %zu bytes.", size);
     
     unsigned char temp[size];
     memcpy(temp, a, size);
     memcpy(a, b, size);
     memcpy(b, temp, size);
+
+    ALGORITHM_LOG("[swap] Swapped elements at memory locations %p and %p.", a, b);
 }
 
 static void reverse(void *first, void *last, size_t size) {
+    ALGORITHM_LOG("[reverse] Reversing elements between memory locations %p and %p, each of size %zu bytes.", first, last, size);
+
     char *a = (char *)first;
     char *b = (char *)last - size;
 
     while (a < b) {
+        ALGORITHM_LOG("[reverse] Swapping elements at positions %p and %p.", a, b);
         swap(a, b, size);
         a += size;
         b -= size;
     }
+
+    ALGORITHM_LOG("[reverse] Completed reversing elements.");
 }
 
 static void quickSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
     if (low < high) {
+        ALGORITHM_LOG("[quickSortInternal] Sorting range [%zu, %zu], pivot element at index %zu.", low, high, high);
+
         char* pivot = (char*)base + high * size;
         size_t i = low;
 
         for (size_t j = low; j < high; j++) {
             if (comp((char*)base + j * size, pivot) < 0) {
+                ALGORITHM_LOG("[quickSortInternal] Swapping elements at indices %zu and %zu.", i, j);
                 memcpy(temp, (char*)base + j * size, size);
                 memcpy((char*)base + j * size, (char*)base + i * size, size);
                 memcpy((char*)base + i * size, temp, size);
@@ -37,48 +47,61 @@ static void quickSortInternal(void *base, size_t low, size_t high, size_t size, 
             }
         }
 
+        ALGORITHM_LOG("[quickSortInternal] Placing pivot element at index %zu.", i);
         memcpy(temp, (char*)base + i * size, size);
         memcpy((char*)base + i * size, pivot, size);
         memcpy(pivot, temp, size);
 
-        if (i > 0) 
+        if (i > 0) {
+            ALGORITHM_LOG("[quickSortInternal] Recursively sorting left part: [%zu, %zu].", low, i - 1);
             quickSortInternal(base, low, i - 1, size, comp, temp);
+        }
+
+        ALGORITHM_LOG("[quickSortInternal] Recursively sorting right part: [%zu, %zu].", i + 1, high);
         quickSortInternal(base, i + 1, high, size, comp, temp);
     }
 }
 
 static void merge(void *base, size_t low, size_t mid, size_t high, size_t size, CompareFunc comp, void *temp) {
+    ALGORITHM_LOG("[merge] Merging two halves: [%zu, %zu) and [%zu, %zu).", low, mid, mid, high);
+
     size_t i = low, j = mid, k = 0;
 
     while (i < mid && j < high) {
         if (comp((char*)base + i * size, (char*)base + j * size) <= 0) {
             memcpy((char*)temp + k * size, (char*)base + i * size, size);
             i++;
-        } else {
+        } 
+        else {
             memcpy((char*)temp + k * size, (char*)base + j * size, size);
             j++;
         }
         k++;
     }
-
     while (i < mid) {
         memcpy((char*)temp + k * size, (char*)base + i * size, size);
-        i++; k++;
+        i++;
+        k++;
     }
-
     while (j < high) {
         memcpy((char*)temp + k * size, (char*)base + j * size, size);
-        j++; k++;
+        j++;
+        k++;
     }
 
+    ALGORITHM_LOG("[merge] Merged result copied back to base array, range [%zu, %zu).", low, high);
     memcpy((char*)base + low * size, temp, k * size);
 }
 
 static void mergeSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
     if (high - low > 1) {
         size_t mid = low + (high - low) / 2;
+        ALGORITHM_LOG("[mergeSortInternal] Splitting range [%zu, %zu) at midpoint %zu.", low, high, mid);
+
         mergeSortInternal(base, low, mid, size, comp, temp);
         mergeSortInternal(base, mid, high, size, comp, temp);
+
+        ALGORITHM_LOG("[mergeSortInternal] Merging sorted halves [%zu, %zu) and [%zu, %zu).", low, mid, mid, high);
         merge(base, low, mid, high, size, comp, temp);
     }
 }
@@ -93,14 +116,22 @@ static void mergeSortInternal(void *base, size_t low, size_t high, size_t size, 
  */
 void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp) {
     if (num > 1) {
+        ALGORITHM_LOG("[algorithm_stable_sort] Starting stable sort for %zu elements.", num);
         void* temp = malloc(num * size);
+
         if (temp) {
+            ALGORITHM_LOG("[algorithm_stable_sort] Memory allocation successful. Proceeding with merge sort.");
             mergeSortInternal(base, 0, num, size, comp, temp);
             free(temp);
-        } else {
+            ALGORITHM_LOG("[algorithm_stable_sort] Stable sort completed.");
+        } 
+        else {
             perror("Failed to allocate memory for stable sorting");
             exit(EXIT_FAILURE);
         }
+    } 
+    else {
+        ALGORITHM_LOG("[algorithm_stable_sort] No sorting needed for %zu elements.", num);
     }
 }
 
@@ -114,15 +145,22 @@ void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp
  */
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp) {
     if (num > 1) {
+        ALGORITHM_LOG("[algorithm_sort] Starting quicksort for %zu elements.", num);
         void* temp = malloc(size);
+
         if (temp) {
+            ALGORITHM_LOG("[algorithm_sort] Memory allocation successful. Proceeding with quicksort.");
             quickSortInternal(base, 0, num - 1, size, comp, temp);
             free(temp);
+            ALGORITHM_LOG("[algorithm_sort] Quicksort completed.");
         } 
         else {
             perror("Failed to allocate memory for sorting");
             exit(EXIT_FAILURE);
         }
+    } 
+    else {
+        ALGORITHM_LOG("[algorithm_sort] No sorting needed for %zu elements.", num);
     }
 }
 
@@ -143,13 +181,16 @@ void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp) {
  */
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
     const char *ptr = (const char*)base;
+    ALGORITHM_LOG("[algorithm_find] Searching for the element in an array of %zu elements.", num);
 
     for (size_t i = 0; i < num; i++) {
         if (comp(ptr + i * size, val) == 0) {
+            ALGORITHM_LOG("[algorithm_find] Element found at index %zu.", i);
             return (void *)(ptr + i * size);
         }
     }
 
+    ALGORITHM_LOG("[algorithm_find] Element not found in the array.");
     return NULL;
 }
 
@@ -168,13 +209,16 @@ void *algorithm_find(const void *base, size_t num, size_t size, const void *val,
  */
 void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
     const char *ptr = (const char*)base;
+    ALGORITHM_LOG("[algorithm_find_if] Starting search in array of %zu elements.", num);
 
     for (size_t i = 0; i < num; i++) {
         if (pred(ptr + i * size)) {
+            ALGORITHM_LOG("[algorithm_find_if] Element matching predicate found at index %zu.", i);
             return (void *)(ptr + i * size);
         }
     }
 
+    ALGORITHM_LOG("[algorithm_find_if] No element matching the predicate found.");
     return NULL;
 }
 
@@ -192,14 +236,17 @@ void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicate
  * @return Pointer to the first element that does not satisfy the predicate, or `NULL` if all elements satisfy it.
  */
 void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
-    const char *ptr = (const char*)base;
+    ALGORITHM_LOG("[algorithm_find_if_not] Info: Searching for the first element that does not satisfy the predicate in %zu elements.", num);
 
+    const char *ptr = (const char*)base;
     for (size_t i = 0; i < num; i++) {
         if (!pred(ptr + i * size)) {
+            ALGORITHM_LOG("[algorithm_find_if_not] Success: Element found at index %zu.", i);
             return (void *)(ptr + i * size);
         }
     }
 
+    ALGORITHM_LOG("[algorithm_find_if_not] Info: No element found that does not satisfy the predicate.");
     return NULL;
 }
 
@@ -221,7 +268,10 @@ void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredi
  * @return Pointer to the start of the last occurrence of the subsequence, or `NULL` if not found.
  */
 void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_find_end] Info: Searching for the last occurrence of the subsequence in the main array.");
+
     if (num2 == 0) {
+        ALGORITHM_LOG("[algorithm_find_end] Info: Subsequence is empty, returning pointer to the end of the main array.");
         return (void*)((char*)base1 + num1 * size1);
     }
 
@@ -239,7 +289,12 @@ void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const voi
         }
         if (found) {
             ret = (void *)(ptr1 + i * size1);
+            ALGORITHM_LOG("[algorithm_find_end] Info: Subsequence found starting at index %zu.", i);
         }
+    }
+
+    if (ret == NULL) {
+        ALGORITHM_LOG("[algorithm_find_end] Info: Subsequence not found.");
     }
     return ret;
 }
@@ -262,17 +317,21 @@ void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const voi
  * @return Pointer to the first matching element in `base1`, or `NULL` if no match is found.
  */
 void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_find_first_of] Info: Searching for the first occurrence of any element from the second array in the main array.");
+
     const char *ptr1 = (const char*)base1;
     const char *ptr2 = (const char*)base2;
 
     for (size_t i = 0; i < num1; ++i) {
         for (size_t j = 0; j < num2; ++j) {
             if (comp(ptr1 + i * size1, ptr2 + j * size2) == 0) {
+                ALGORITHM_LOG("[algorithm_find_first_of] Success: Match found at index %zu in the main array.", i);
                 return (void *)(ptr1 + i * size1);
             }
         }
     }
 
+    ALGORITHM_LOG("[algorithm_find_first_of] Info: No match found.");
     return NULL;
 }
 
@@ -293,6 +352,8 @@ void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, cons
  * @return The index of the found element, or `(size_t)-1` if the value is not found.
  */
 size_t algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_binary_search] Info: Performing binary search on a sorted array of %zu elements.", num);
+
     size_t low = 0;
     size_t high = num;
 
@@ -308,10 +369,13 @@ size_t algorithm_binary_search(const void *base, size_t num, size_t size, const 
             high = mid;
         } 
         else {
-            return (size_t)mid; // Element found, return index
+            ALGORITHM_LOG("[algorithm_binary_search] Success: Element found at index %zu.", mid);
+            return (size_t)mid;
         }
     }
-    return (size_t)-1; // Element not found
+
+    ALGORITHM_LOG("[algorithm_binary_search] Info: Element not found.");
+    return (size_t)-1;
 }
 
 /**
@@ -331,16 +395,21 @@ size_t algorithm_binary_search(const void *base, size_t num, size_t size, const 
  */
 void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFunc comp) {
     if (num == 0) {
+        ALGORITHM_LOG("[algorithm_max_element] Error: Array is empty, returning NULL.");
         return NULL;
     }
+    ALGORITHM_LOG("[algorithm_max_element] Info: Searching for the maximum element in an array of %zu elements.", num);
 
     const char *max_element = (const char *)base;
     for (size_t i = 1; i < num; ++i) {
         const char *element = (const char *)base + i * size;
         if (comp(max_element, element) < 0) {
             max_element = element;
+            ALGORITHM_LOG("[algorithm_max_element] Info: New maximum element found at index %zu.", i);
         }
     }
+
+    ALGORITHM_LOG("[algorithm_max_element] Success: Maximum element found.");
     return (void *)max_element;
 }
 
@@ -360,17 +429,22 @@ void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFu
  * @return Pointer to the minimum element, or `NULL` if the array is empty.
  */
 void *algorithm_min_element(const void *base, size_t num, size_t size, CompareFunc comp) {
-    if (num == 0) { 
+    if (num == 0) {
+        ALGORITHM_LOG("[algorithm_min_element] Error: Array is empty, returning NULL.");
         return NULL;
     }
+    ALGORITHM_LOG("[algorithm_min_element] Info: Searching for the minimum element in an array of %zu elements.", num);
 
     const char *min_element = (const char *)base;
     for (size_t i = 1; i < num; ++i) {
         const char *element = (const char *)base + i * size;
         if (comp(min_element, element) > 0) {
             min_element = element;
+            ALGORITHM_LOG("[algorithm_min_element] Info: New minimum element found at index %zu.", i);
         }
     }
+
+    ALGORITHM_LOG("[algorithm_min_element] Success: Minimum element found.");
     return (void *)min_element;
 }
 
@@ -383,10 +457,14 @@ void *algorithm_min_element(const void *base, size_t num, size_t size, CompareFu
  * @param op Function to apply to each element.
  */
 void algorithm_for_each(void *base, size_t num, size_t size, ForEachOpFunc op) {
+    ALGORITHM_LOG("[algorithm_for_each] Info: Applying operation to each of %zu elements.", num);
+
     char *ptr = (char *)base;
     for (size_t i = 0; i < num; ++i) {
         op(ptr + i * size);
     }
+
+    ALGORITHM_LOG("[algorithm_for_each] Success: Operation applied to all elements.");
 }
 
 /**
@@ -398,12 +476,17 @@ void algorithm_for_each(void *base, size_t num, size_t size, ForEachOpFunc op) {
  * @param dest Pointer to the destination array.
  */
 void algorithm_copy(const void *source, size_t num, size_t size, void *dest) {
+    ALGORITHM_LOG("[algorithm_copy] Info: Copying %zu elements.", num);
+
     const char *src_ptr = (const char *)source;
     char *dest_ptr = (char *)dest;
 
     for (size_t i = 0; i < num; ++i) {
         memcpy(dest_ptr + i * size, src_ptr + i * size, size);
+        ALGORITHM_LOG("[algorithm_copy] Info: Copied element %zu.", i);
     }
+
+    ALGORITHM_LOG("[algorithm_copy] Success: Copy completed.");
 }
 
 /**
@@ -421,12 +504,17 @@ void algorithm_copy(const void *source, size_t num, size_t size, void *dest) {
  * @return Pointer to the result, which is the same as the `init` parameter.
  */
 void *algorithm_accumulate(const void *base, size_t num, size_t size, void *init, AccumulateOpFunc op) {
+    ALGORITHM_LOG("[algorithm_accumulate] Info: Accumulating %zu elements.", num);
+
     char *result = (char *)init;
     const char *ptr = (const char *)base;
 
     for (size_t i = 0; i < num; ++i) {
         op(result, ptr + i * size);
+        ALGORITHM_LOG("[algorithm_accumulate] Info: Accumulated element %zu.", i);
     }
+
+    ALGORITHM_LOG("[algorithm_accumulate] Success: Accumulation completed.");
     return result;
 }
 
@@ -444,14 +532,17 @@ void *algorithm_accumulate(const void *base, size_t num, size_t size, void *init
  * @return `true` if all elements satisfy the predicate, `false` otherwise.
  */
 bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
-    const char *ptr = (const char *)base;
+    ALGORITHM_LOG("[algorithm_all_of] Info: Checking if all of %zu elements satisfy the predicate.", num);
 
+    const char *ptr = (const char *)base;
     for (size_t i = 0; i < num; ++i) {
         if (!pred(ptr + i * size)) {
+            ALGORITHM_LOG("[algorithm_all_of] Info: Element at index %zu does not satisfy the predicate.", i);
             return false;
         }
     }
 
+    ALGORITHM_LOG("[algorithm_all_of] Success: All elements satisfy the predicate.");
     return true;
 }
 
@@ -469,14 +560,17 @@ bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFu
  * @return `true` if any element satisfies the predicate, `false` otherwise.
  */
 bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
-    const char *ptr = (const char *)base;
+    ALGORITHM_LOG("[algorithm_any_of] Info: Checking if any element of %zu satisfies the predicate.", num);
 
+    const char *ptr = (const char *)base;
     for (size_t i = 0; i < num; ++i) {
         if (pred(ptr + i * size)) {
+            ALGORITHM_LOG("[algorithm_any_of] Success: Element at index %zu satisfies the predicate.", i);
             return true;
         }
     }
 
+    ALGORITHM_LOG("[algorithm_any_of] Info: No elements satisfy the predicate.");
     return false;
 }
 
@@ -494,14 +588,17 @@ bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFu
  * @return `true` if none of the elements satisfy the predicate, `false` otherwise.
  */
 bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
-    const char *ptr = (const char *)base;
+    ALGORITHM_LOG("[algorithm_none_of] Info: Checking if none of the elements of %zu satisfy the predicate.", num);
 
+    const char *ptr = (const char *)base;
     for (size_t i = 0; i < num; ++i) {
         if (pred(ptr + i * size)) {
+            ALGORITHM_LOG("[algorithm_none_of] Info: Element at index %zu satisfies the predicate, returning false.", i);
             return false;
         }
     }
 
+    ALGORITHM_LOG("[algorithm_none_of] Success: None of the elements satisfy the predicate.");
     return true;
 }
 
@@ -514,9 +611,13 @@ bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateF
  * @param val Pointer to the value to fill the range with.
  */
 void algorithm_fill(void *first, void *last, size_t size, const void *val) {
+    ALGORITHM_LOG("[algorithm_fill] Info: Filling range with value.");
+
     for (char *ptr = first; ptr != last; ptr += size) {
         memcpy(ptr, val, size);
     }
+
+    ALGORITHM_LOG("[algorithm_fill] Success: Range filled with value.");
 }
 
 /**
@@ -528,9 +629,13 @@ void algorithm_fill(void *first, void *last, size_t size, const void *val) {
  * @param val Pointer to the value to fill the range with.
  */
 void algorithm_fill_n(void *first, size_t n, size_t size, const void *val) {
+    ALGORITHM_LOG("[algorithm_fill_n] Info: Filling first %zu elements with value.", n);
+
     for (char *ptr = first; n > 0; ptr += size, n--) {
         memcpy(ptr, val, size);
     }
+
+    ALGORITHM_LOG("[algorithm_fill_n] Success: %zu elements filled with value.", n);
 }
 
 /**
@@ -549,15 +654,19 @@ void algorithm_fill_n(void *first, size_t n, size_t size, const void *val) {
  * @return The number of times `val` appears in the range.
  */
 size_t algorithm_count(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_count] Info: Counting occurrences of value in array of %zu elements.", num);
+
     size_t count = 0;
     const char *ptr = (const char *)base;
 
     for (size_t i = 0; i < num; ++i) {
         if (comp(ptr + i * size, val) == 0) {
             ++count;
+            ALGORITHM_LOG("[algorithm_count] Info: Found match at index %zu.", i);
         }
     }
 
+    ALGORITHM_LOG("[algorithm_count] Success: Total occurrences found: %zu.", count);
     return count;
 }
 
@@ -575,15 +684,18 @@ size_t algorithm_count(const void *base, size_t num, size_t size, const void *va
  * @return The number of elements that satisfy the predicate function `pred`.
  */
 size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred) {
+    ALGORITHM_LOG("[algorithm_count_if] Info: Counting elements that satisfy the predicate in array of %zu elements.", num);
+
     size_t count = 0;
     const char *ptr = (const char *)base;
-
     for (size_t i = 0; i < num; ++i) {
         if (pred(ptr + i * size)) {
             ++count;
+            ALGORITHM_LOG("[algorithm_count_if] Info: Predicate satisfied at index %zu.", i);
         }
     }
 
+    ALGORITHM_LOG("[algorithm_count_if] Success: Total elements that satisfy the predicate: %zu.", count);
     return count;
 }
 
@@ -596,16 +708,20 @@ size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredica
  * @param rng Random number generator function.
  */
 void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng) {
+    ALGORITHM_LOG("[algorithm_shuffle] Info: Shuffling array of %zu elements.", num);
+
     if (num > 1) {
         char *arr = (char *)base;
         char *temp = malloc(size);
+
         if (!temp) {
-            perror("Failed to allocate memory for shuffle");
+            ALGORITHM_LOG("[algorithm_shuffle] Error: Memory allocation failed for temp.");
             exit(EXIT_FAILURE);
         }
 
         for (size_t i = num - 1; i > 0; i--) {
             size_t j = rng() % (i + 1);
+            ALGORITHM_LOG("[algorithm_shuffle] Info: Swapping elements at index %zu and %zu.", i, j);
 
             // Swap arr[i] and arr[j]
             memcpy(temp, arr + i * size, size);
@@ -614,6 +730,7 @@ void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberG
         }
 
         free(temp);
+        ALGORITHM_LOG("[algorithm_shuffle] Success: Shuffling completed.");
     }
 }
 
@@ -635,6 +752,8 @@ void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberG
  * @return Pointer to the first position where `val` can be inserted without violating the order.
  */
 void *algorithm_lower_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_lower_bound] Info: Performing lower bound search in array of %zu elements.", num);
+
     size_t low = 0;
     size_t high = num;
 
@@ -649,6 +768,8 @@ void *algorithm_lower_bound(const void *base, size_t num, size_t size, const voi
             high = mid;
         }
     }
+
+    ALGORITHM_LOG("[algorithm_lower_bound] Success: Found lower bound at index %zu.", low);
     return (void *)((const char *)base + low * size);
 }
 
@@ -669,6 +790,8 @@ void *algorithm_lower_bound(const void *base, size_t num, size_t size, const voi
  * @return Pointer to the first position where elements are greater than `val`.
  */
 void *algorithm_upper_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_upper_bound] Info: Performing upper bound search in array of %zu elements.", num);
+
     size_t low = 0;
     size_t high = num;
 
@@ -683,6 +806,8 @@ void *algorithm_upper_bound(const void *base, size_t num, size_t size, const voi
             high = mid;
         }
     }
+
+    ALGORITHM_LOG("[algorithm_upper_bound] Success: Found upper bound at index %zu.", low);
     return (void *)((const char *)base + low * size);
 }
 
@@ -696,12 +821,17 @@ void *algorithm_upper_bound(const void *base, size_t num, size_t size, const voi
  * @param op Transformation function to apply to each element.
  */
 void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op) {
+    ALGORITHM_LOG("[algorithm_transform] Info: Applying transformation to %zu elements.", num);
+
     const char *input_ptr = (const char *)base;
     char *output_ptr = (char *)result;
 
     for (size_t i = 0; i < num; ++i) {
+        ALGORITHM_LOG("[algorithm_transform] Info: Transforming element at index %zu.", i);
         op(output_ptr + i * size, input_ptr + i * size);
     }
+
+    ALGORITHM_LOG("[algorithm_transform] Success: Transformation completed.");
 }
 
 /**
@@ -719,12 +849,17 @@ void algorithm_transform(const void *base, size_t num, size_t size, void *result
  * @return Pointer to the accumulated result (same as `init`).
  */
 void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op) {
+    ALGORITHM_LOG("[algorithm_reduce] Info: Reducing array of %zu elements.", num);
+
     const char *ptr = (const char *)base;
     char *result = (char *)init;
 
     for (size_t i = 0; i < num; ++i) {
+        ALGORITHM_LOG("[algorithm_reduce] Info: Reducing element at index %zu.", i);
         op(result, ptr + i * size);
     }
+
+    ALGORITHM_LOG("[algorithm_reduce] Success: Reduction completed.");
     return result;
 }
 
@@ -744,23 +879,27 @@ void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, Re
  * @return The number of unique elements remaining in the array.
  */
 size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_unique] Info: Removing duplicates from array of %zu elements.", num);
+
     if (num == 0) {
+        ALGORITHM_LOG("[algorithm_unique] Warning: Empty array, returning 0.");
         return 0;
     }
 
-    size_t uniqueCount = 1; // First element is always unique
+    size_t uniqueCount = 1; 
     char *array = (char *)base;
 
     for (size_t i = 1; i < num; ++i) {
-        // Compare current element with the last unique element
         if (comp(array + (uniqueCount - 1) * size, array + i * size) != 0) {
-            // If different, move it to the next unique position
             if (uniqueCount != i) {
                 memcpy(array + uniqueCount * size, array + i * size, size);
+                ALGORITHM_LOG("[algorithm_unique] Info: Moving element at index %zu to position %zu.", i, uniqueCount);
             }
             uniqueCount++;
         }
     }
+
+    ALGORITHM_LOG("[algorithm_unique] Success: Number of unique elements is %zu.", uniqueCount);
     return uniqueCount;
 }
 
@@ -782,8 +921,9 @@ size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp) {
  */
 bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, 
                      CompareFunc comp) {
-    // If the number of elements or sizes differ, the ranges are not equal
+    ALGORITHM_LOG("[algorithm_equal] Info: Comparing two arrays of %zu and %zu elements.", num1, num2);
     if (num1 != num2 || size1 != size2) {
+        ALGORITHM_LOG("[algorithm_equal] Warning: Arrays have different sizes, returning false.");
         return false;
     }
 
@@ -792,10 +932,12 @@ bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *b
 
     for (size_t i = 0; i < num1; ++i) {
         if (comp(ptr1 + i * size1, ptr2 + i * size2) != 0) {
+            ALGORITHM_LOG("[algorithm_equal] Info: Mismatch found at index %zu.", i);
             return false;
         }
     }
 
+    ALGORITHM_LOG("[algorithm_equal] Success: Arrays are equal.");
     return true;
 }
 
@@ -815,7 +957,9 @@ bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *b
  * @return `true` if the next permutation was generated, `false` if the range was reset to the smallest permutation.
  */
 bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp) {
+    ALGORITHM_LOG("[algorithm_next_permutation] Info: Generating next permutation.");
     if (first == last) {
+        ALGORITHM_LOG("[algorithm_next_permutation] Warning: Empty range, returning false.");
         return false;
     }
 
@@ -829,17 +973,22 @@ bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFun
             while (!comp(i, k)) {
                 k -= size;
             }
+
+            ALGORITHM_LOG("[algorithm_next_permutation] Info: Swapping elements.");
             swap(i, k, size);
             reverse(j, last, size);
 
+            ALGORITHM_LOG("[algorithm_next_permutation] Success: Next permutation generated.");
             return true;
         }
 
         if (i == (char *)first) {
+            ALGORITHM_LOG("[algorithm_next_permutation] Info: Resetting to smallest permutation.");
             reverse(first, last, size);
             return false;
         }
     }
+
     return false; // This should not be reached
 }
 
@@ -859,7 +1008,9 @@ bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFun
  * @return `true` if the previous permutation was generated, `false` if the range was reset to the largest permutation.
  */
 bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp) {
+    ALGORITHM_LOG("[algorithm_prev_permutation] Info: Generating previous permutation.");
     if (first == last) {
+        ALGORITHM_LOG("[algorithm_prev_permutation] Warning: Empty range, returning false.");
         return false;
     }
 
@@ -873,17 +1024,23 @@ bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFun
             while (!comp(k, i)) {
                 k -= size;
             }
+
+            ALGORITHM_LOG("[algorithm_prev_permutation] Info: Swapping elements.");
             swap(i, k, size);
             reverse(j, last, size);
+
+            ALGORITHM_LOG("[algorithm_prev_permutation] Success: Previous permutation generated.");
             return true;
         }
-
         if (i == (char *)first) {
+            ALGORITHM_LOG("[algorithm_prev_permutation] Info: Resetting to largest permutation.");
+            
             reverse(first, last, size);
             return false;
         }
     }
-    return false;
+
+    return false; 
 }
 
 /**
@@ -900,6 +1057,8 @@ bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFun
  * @return Pointer to the first element in the second group (where `pred` returns `false`).
  */
 void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred) {
+    ALGORITHM_LOG("[algorithm_partition] Info: Partitioning array of %zu elements.", num);
+
     char *first = (char *)base;
     char *last = first + num * size;
 
@@ -909,15 +1068,19 @@ void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc
         }
         do {
             last -= size;
-            if (first == last) 
+            if (first == last) {
                 break;
+            }
         } while (!pred(last));
 
         if (first != last) {
+            ALGORITHM_LOG("[algorithm_partition] Info: Swapping elements.");
             swap(first, last, size);
             first += size;
         }
     }
+
+    ALGORITHM_LOG("[algorithm_partition] Success: Partitioning completed.");
     return first;
 }
 
@@ -930,11 +1093,16 @@ void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc
  * @param gen Generator function that produces values.
  */
 void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen) {
+    ALGORITHM_LOG("[algorithm_generate] Info: Generating values for range.");
+
     char *current = (char *)first;
     while (current != last) {
         gen(current);
         current += size;
+        ALGORITHM_LOG("[algorithm_generate] Info: Value generated at position.");
     }
+
+    ALGORITHM_LOG("[algorithm_generate] Success: Generation completed.");
 }
 
 /**
@@ -946,11 +1114,16 @@ void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen)
  * @param gen Generator function that produces values.
  */
 void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen) {
+    ALGORITHM_LOG("[algorithm_generate_n] Info: Generating values for %zu elements.", n);
+
     char *current = (char *)first;
     for (size_t i = 0; i < n; ++i) {
         gen(current);
         current += size;
+        ALGORITHM_LOG("[algorithm_generate_n] Info: Value generated for element %zu.", i);
     }
+
+    ALGORITHM_LOG("[algorithm_generate_n] Success: Generation completed.");
 }
 
 /**
@@ -962,14 +1135,18 @@ void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen)
  * @param result Pointer to the destination array where elements will be copied.
  */
 void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result) {
+    ALGORITHM_LOG("[algorithm_copy_backward] Info: Copying elements in reverse order.");
     const char *src = (const char *)last;
     char *dest = (char *)result;
 
     while (src != (const char *)first) {
         src -= size;  // Move source pointer backwards
         dest -= size; // Move destination pointer backwards
-        memcpy(dest, src, size); // Copy element
+        memcpy(dest, src, size); 
+        ALGORITHM_LOG("[algorithm_copy_backward] Info: Element copied.");
     }
+
+    ALGORITHM_LOG("[algorithm_copy_backward] Success: Copying completed.");
 }
 
 /**
@@ -982,6 +1159,8 @@ void algorithm_copy_backward(const void *first, const void *last, size_t size, v
  * @param pred Predicate function that determines if an element should be copied.
  */
 void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred) {
+    ALGORITHM_LOG("[algorithm_copy_if] Info: Copying elements based on predicate.");
+
     const char *src = (const char *)first;
     char *dest = (char *)result;
 
@@ -989,9 +1168,12 @@ void algorithm_copy_if(const void *first, const void *last, size_t size, void *r
         if (pred(src)) {
             memcpy(dest, src, size);
             dest += size;
+            ALGORITHM_LOG("[algorithm_copy_if] Info: Element satisfying predicate copied.");
         }
         src += size;
     }
+
+    ALGORITHM_LOG("[algorithm_copy_if] Success: Copying completed.");
 }
 
 /**
@@ -1003,6 +1185,8 @@ void algorithm_copy_if(const void *first, const void *last, size_t size, void *r
  * @param result Pointer to the destination array.
  */
 void algorithm_copy_n(const void *first, size_t n, size_t size, void *result) {
+    ALGORITHM_LOG("[algorithm_copy_n] Info: Copying %zu elements of size %zu.", n, size);
+
     const char *src = (const char *)first;
     char *dest = (char *)result;
 
@@ -1010,7 +1194,11 @@ void algorithm_copy_n(const void *first, size_t n, size_t size, void *result) {
         memcpy(dest, src, size);
         src += size;
         dest += size;
+
+        ALGORITHM_LOG("[algorithm_copy_n] Info: Copied element %zu.", i);
     }
+
+    ALGORITHM_LOG("[algorithm_copy_n] Success: Copy completed.");
 }
 
 /**
@@ -1033,9 +1221,13 @@ void algorithm_copy_n(const void *first, size_t n, size_t size, void *result) {
  *         `first` points to the first element in the range, and `second` points to one past the last element.
  */
 Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_equal_range] Info: Finding equal range for value in array with %zu elements.", num);
+
     Pair range;
     range.first = algorithm_lower_bound(base, num, size, val, comp);
     range.second = algorithm_upper_bound(range.first, num, size, val, comp);
+
+    ALGORITHM_LOG("[algorithm_equal_range] Success: Equal range found.");
     return range;
 }
 
@@ -1059,6 +1251,8 @@ Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void
  */
 bool algorithm_includes(const void *first1, size_t num1, size_t size1, const void *first2, size_t num2, size_t size2, 
                         CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_includes] Info: Checking if array1 includes array2 with %zu and %zu elements respectively.", num1, num2);
+
     const char *ptr1 = (const char *)first1;
     const char *ptr2 = (const char *)first2;
     const char *last1 = ptr1 + num1 * size1;
@@ -1066,6 +1260,7 @@ bool algorithm_includes(const void *first1, size_t num1, size_t size1, const voi
 
     while (ptr2 != last2) {
         if ((ptr1 == last1) || comp(ptr2, ptr1) < 0) {
+            ALGORITHM_LOG("[algorithm_includes] Info: Array1 does not include Array2.");
             return false;
         }
         if (!comp(ptr1, ptr2)) {
@@ -1073,6 +1268,8 @@ bool algorithm_includes(const void *first1, size_t num1, size_t size1, const voi
         }
         ptr1 += size1;
     }
+
+    ALGORITHM_LOG("[algorithm_includes] Success: Array1 includes Array2.");
     return true;
 }
 
@@ -1094,21 +1291,27 @@ bool algorithm_includes(const void *first1, size_t num1, size_t size1, const voi
  * @return The number of unique elements copied to the destination array.
  */
 size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_unique_copy] Info: Copying unique elements from an array with %zu elements.", num);
+
     if (num == 0) {
+        ALGORITHM_LOG("[algorithm_unique_copy] Info: No elements to copy.");
         return 0;
     }
 
     const char *src = (const char *)first;
     char *dst = (char *)result;
-    memcpy(dst, src, size); // Copy first element
+    memcpy(dst, src, size); 
     size_t count = 1;
 
     for (size_t i = 1; i < num; ++i) {
         if (comp(dst + (count - 1) * size, src + i * size) != 0) {
             memcpy(dst + count * size, src + i * size, size);
             ++count;
+            ALGORITHM_LOG("[algorithm_unique_copy] Info: Unique element %zu copied.", count);
         }
     }
+
+    ALGORITHM_LOG("[algorithm_unique_copy] Success: Copied %zu unique elements.", count);
     return count;
 }
 
@@ -1120,9 +1323,11 @@ size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *r
  * @param size Size of each element in bytes.
  */
 void algorithm_swap(void *a, void *b, size_t size) {
+    ALGORITHM_LOG("[algorithm_swap] Info: Swapping two elements of size %zu.", size);
+
     void *temp = malloc(size);
     if (!temp) {
-        perror("Failed to allocate memory for swap");
+        ALGORITHM_LOG("[algorithm_swap] Error: Failed to allocate memory for temporary swap buffer.");
         exit(EXIT_FAILURE);
     }
 
@@ -1131,6 +1336,7 @@ void algorithm_swap(void *a, void *b, size_t size) {
     memcpy(b, temp, size);
 
     free(temp);
+    ALGORITHM_LOG("[algorithm_swap] Success: Swap completed.");
 }
 
 /**
@@ -1142,12 +1348,17 @@ void algorithm_swap(void *a, void *b, size_t size) {
  * @param size Size of each element in bytes.
  */
 void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size) {
+    ALGORITHM_LOG("[algorithm_swap_ranges] Info: Swapping %zu elements between two arrays of element size %zu.", num, size);
+
     char *ptr1 = (char *)first1;
     char *ptr2 = (char *)first2;
 
     for (size_t i = 0; i < num; ++i) {
         algorithm_swap(ptr1 + i * size, ptr2 + i * size, size);
+        ALGORITHM_LOG("[algorithm_swap_ranges] Info: Swapped element %zu.", i);
     }
+
+    ALGORITHM_LOG("[algorithm_swap_ranges] Success: Swap ranges completed.");
 }
 
 /**
@@ -1166,17 +1377,23 @@ void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size) 
  * @return `true` if the elements are sorted in non-decreasing order, `false` otherwise.
  */
 bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_is_sorted] Info: Checking if array of size %zu with element size %zu is sorted.", num, size);
+
     if (num < 2) {
-        return true; // A range with less than two elements is always sorted.
+        ALGORITHM_LOG("[algorithm_is_sorted] Success: Array with less than two elements is always sorted.");
+        return true; 
     }
 
     const char *ptr = (const char *)base;
     for (size_t i = 0; i < num - 1; ++i) {
         if (comp(ptr + i * size, ptr + (i + 1) * size) > 0) {
-            return false; // Found an element that is greater than the next element.
+            ALGORITHM_LOG("[algorithm_is_sorted] Info: Array is not sorted at element %zu.", i);
+            return false; 
         }
     }
-    return true; // All elements are in sorted order.
+
+    ALGORITHM_LOG("[algorithm_is_sorted] Success: Array is sorted.");
+    return true; 
 }
 
 /**
@@ -1197,17 +1414,22 @@ bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc 
  *         If the entire range is sorted, returns a pointer to the end of the array (i.e., `base + num * size`).
  */
 void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_is_sorted_until] Info: Checking if the array is sorted until a specific point in an array of size %zu.", num);
     if (num < 2) {
-        return (void *)((char *)base + num * size); // Entire range is sorted
+        ALGORITHM_LOG("[algorithm_is_sorted_until] Success: Entire array is sorted (size < 2).");
+        return (void *)((char *)base + num * size);
     }
 
     const char *ptr = (const char *)base;
     for (size_t i = 0; i < num - 1; ++i) {
         if (comp(ptr + i * size, ptr + (i + 1) * size) > 0) {
-            return (void *)(ptr + (i + 1) * size); // Found unsorted element
+            ALGORITHM_LOG("[algorithm_is_sorted_until] Info: Unsorted element found at index %zu.", i + 1);
+            return (void *)(ptr + (i + 1) * size);
         }
     }
-    return (void *)((char *)base + num * size); // Entire range is sorted
+
+    ALGORITHM_LOG("[algorithm_is_sorted_until] Success: Entire array is sorted.");
+    return (void *)((char *)base + num * size);
 }
 
 /**
@@ -1219,6 +1441,7 @@ void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, Compa
  * @param size Size of each element in bytes.
  */
 void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
+    ALGORITHM_LOG("[algorithm_rotate] Info: Rotating array elements in range [first, last) with middle at position %zu.", ((char *)middle - (char *)first) / size);
     char *next = (char *)middle;
 
     while ((char *)first != next) {
@@ -1233,6 +1456,8 @@ void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
             middle = next;
         }
     }
+
+    ALGORITHM_LOG("[algorithm_rotate] Success: Array rotation completed.");
 }
 
 /**
@@ -1245,24 +1470,25 @@ void algorithm_rotate(void *first, void *middle, void *last, size_t size) {
  * @param result Pointer to the destination array.
  */
 void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result) {
+    ALGORITHM_LOG("[algorithm_rotate_copy] Info: Copying rotated range [first, last) to result with middle at position %zu.", ((char *)middle - (char *)first) / size);
+
     const char *first_ptr = (const char *)first;
     const char *middle_ptr = (const char *)middle;
     const char *last_ptr = (const char *)last;
     char *result_ptr = (char *)result;
 
-    // Copy from middle to last into result
     while (middle_ptr != last_ptr) {
         memcpy(result_ptr, middle_ptr, size);
         result_ptr += size;
         middle_ptr += size;
     }
-
-    // Copy from first to middle into result
     while (first_ptr != (const char *)middle) {
         memcpy(result_ptr, first_ptr, size);
         result_ptr += size;
         first_ptr += size;
     }
+
+    ALGORITHM_LOG("[algorithm_rotate_copy] Success: Rotated copy completed.");
 }
 
 /**
@@ -1277,6 +1503,8 @@ void algorithm_rotate_copy(const void *first, const void *middle, const void *la
  * @param comp Comparison function used to order the elements.
  */
 void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t num2, size_t size, void *result, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_merge] Info: Merging two sorted arrays of sizes %zu and %zu.", num1, num2);
+
     size_t i = 0, j = 0, k = 0;
     const char *a = (const char *)base1;
     const char *b = (const char *)base2;
@@ -1293,18 +1521,18 @@ void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t n
         }
         k++;
     }
-
     while (i < num1) {
         memcpy(res + k * size, a + i * size, size);
         i++;
         k++;
     }
-
     while (j < num2) {
         memcpy(res + k * size, b + j * size, size);
         j++;
         k++;
     }
+
+    ALGORITHM_LOG("[algorithm_merge] Success: Merging completed.");
 }
 
 /**
@@ -1317,6 +1545,8 @@ void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t n
  * @param comp Comparison function used to order the elements.
  */
 void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_inplace_merge] Info: Merging array segments with middle at %zu and total number of elements %zu.", middle, num);
+
     size_t i = 0, j = middle, k;
     char *arr = (char *)base;
     char temp[size];
@@ -1324,7 +1554,8 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
     while (i < middle && j < num) {
         if (comp(arr + i * size, arr + j * size) <= 0) {
             i++;
-        } else {
+        } 
+        else {
             memcpy(temp, arr + j * size, size);
             for (k = j; k > i; k--) {
                 memcpy(arr + k * size, arr + (k - 1) * size, size);
@@ -1336,6 +1567,8 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
             j++;
         }
     }
+
+    ALGORITHM_LOG("[algorithm_inplace_merge] Success: In-place merge completed.");
 }
 
 /**
@@ -1353,12 +1586,17 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
  * If no such pair is found, returns `NULL`.
  */
 void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_adjacent_find] Info: Searching for adjacent equal elements in an array of size %zu.", num);
+
     const char *ptr = (const char *)base;
     for (size_t i = 0; i < num - 1; ++i) {
         if (comp(ptr + i * size, ptr + (i + 1) * size) == 0) {
+            ALGORITHM_LOG("[algorithm_adjacent_find] Success: Found adjacent equal elements at index %zu.", i);
             return (void *)(ptr + i * size);
         }
     }
+
+    ALGORITHM_LOG("[algorithm_adjacent_find] Info: No adjacent equal elements found.");
     return NULL;
 }
 
@@ -1382,21 +1620,24 @@ void *algorithm_adjacent_find(const void *base, size_t num, size_t size, Compare
  *      If the ranges are equal, both pointers in the Pair will be `NULL`.
  */
 Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp) {
+    ALGORITHM_LOG("[algorithm_mismatch] Info: Searching for mismatch between two arrays of size %zu and %zu.", num1, num2);
+
     const char *ptr1 = (const char *)base1;
     const char *ptr2 = (const char *)base2;
-
     size_t min_num = num1 < num2 ? num1 : num2;
 
     for (size_t i = 0; i < min_num; i++) {
         if (comp(ptr1 + i * size1, ptr2 + i * size2) != 0) {
-            Pair mismatch;
-            mismatch.first = (void *)(ptr1 + i * size1);
-            mismatch.second = (void *)(ptr2 + i * size2);
+            ALGORITHM_LOG("[algorithm_mismatch] Success: Mismatch found at index %zu.", i);
+            Pair mismatch = {(void *)(ptr1 + i * size1), (void *)(ptr2 + i * size2)};
+            
             return mismatch;
         }
     }
 
+    ALGORITHM_LOG("[algorithm_mismatch] Info: No mismatch found. Arrays are identical within the compared range.");
     Pair mismatch = {NULL, NULL};
+
     return mismatch;
 }
 
@@ -1418,31 +1659,33 @@ Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void
  * @return true if the arrays are permutations of each other; false otherwise.
  */
 bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp) {
-    // Check if both arrays have the same number of elements
+    ALGORITHM_LOG("[algorithm_is_permutation] Info: Checking if two arrays of size %zu and %zu are permutations of each other.", num1, num2);
     if (num1 != num2 || size1 != size2) {
+        ALGORITHM_LOG("[algorithm_is_permutation] Info: Arrays have different sizes. They cannot be permutations.");
         return false;
     }
 
-    // Temporary arrays to mark elements as found
     bool found1[num1], found2[num2];
     memset(found1, 0, sizeof(found1));
     memset(found2, 0, sizeof(found2));
 
     for (size_t i = 0; i < num1; ++i) {
+        bool matched = false;
         for (size_t j = 0; j < num2; ++j) {
-            // Check if elements match and neither has been paired before
-            if (!found1[i] && !found2[j] && comp((char *)base1 + i * size1, (char *)base2 + j * size2)) {
+            if (!found1[i] && !found2[j] && comp((char *)base1 + i * size1, (char *)base2 + j * size2) == 0) {
                 found1[i] = true;
                 found2[j] = true;
+                matched = true;
                 break;
             }
         }
-        // If an element in base1 does not have a match in base2
-        if (!found1[i]) {
+        if (!matched) {
+            ALGORITHM_LOG("[algorithm_is_permutation] Info: Element at index %zu in the first array does not have a match in the second array.", i);
             return false;
         }
     }
 
+    ALGORITHM_LOG("[algorithm_is_permutation] Success: The arrays are permutations of each other.");
     return true;
 }
 
@@ -1462,32 +1705,40 @@ bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, cons
  * 
  * @return Pointer to the first element of the first occurrence of `first2` within `first1`. If not found, returns `last1`.
  */
-const void* algorithm_search(const void* first1, const void* last1, size_t size1,const void* first2, const void* last2, size_t size2, CompareFuncBool comp) {
+const void* algorithm_search(const void* first1, const void* last1, size_t size1, const void* first2, const void* last2, size_t size2, CompareFuncBool comp) {
+    ALGORITHM_LOG("[algorithm_search] Info: Starting search between two ranges.");
+    
     const char* ptr1 = (const char*)first1;
     const char* ptr2 = (const char*)first2;
     const char* end1 = (const char*)last1;
 
     if (ptr2 == last2) {
-        return first1; // If the second sequence is empty, return the start of the first
+        ALGORITHM_LOG("[algorithm_search] Info: Second range is empty, returning first.");
+        return first1; 
     }
 
     while (ptr1 != end1) {
         const char* it1 = ptr1;
         const char* it2 = ptr2;
 
-        while (comp(it1, it2)) { // Compare elements
+        while (comp(it1, it2)) { 
             it1 += size1;
             it2 += size2;
+
             if (it2 == last2) {
-                return ptr1; // Found a match
+                ALGORITHM_LOG("[algorithm_search] Success: Found a match starting at element %zu.", (ptr1 - (const char*)first1) / size1);
+                return ptr1; 
             }
             if (it1 == end1) {
-                return last1; // Reached the end of the first sequence
+                ALGORITHM_LOG("[algorithm_search] Info: Reached the end of the first sequence without a full match.");
+                return last1; 
             }
         }
         ptr1 += size1;
     }
-    return last1; // No match found
+
+    ALGORITHM_LOG("[algorithm_search] Info: No match found, returning last.");
+    return last1;
 }
 
 /**
@@ -1506,10 +1757,12 @@ const void* algorithm_search(const void* first1, const void* last1, size_t size1
  * @return Pointer to the first element of the found sequence. If not found, returns `last`.
  */
 const void *algorithm_search_n(const void *first, const void* last, size_t size, size_t count, const void *val, CompareFuncBool comp) {
+    ALGORITHM_LOG("[algorithm_search_n] Info: Searching for %zu consecutive elements in a sequence.", count);
+
     const char* ptr = (const char*)first;
     const char* end = (const char*)last;
 
-    while (ptr + size * count <= end) { // Ensure there's enough room for 'count' elements
+    while (ptr + size * count <= end) {
         size_t matched = 0;
         for (size_t i = 0; i < count; ++i) {
             if (comp(ptr + i * size, val)) {
@@ -1521,11 +1774,14 @@ const void *algorithm_search_n(const void *first, const void* last, size_t size,
         }
 
         if (matched == count) {
-            return ptr; // Found the subsequence
+            ALGORITHM_LOG("[algorithm_search_n] Success: Found %zu consecutive elements.", count);
+            return ptr; 
         }
-        ptr += size; // Move to the next element
+        ptr += size;
     }
-    return last; // Subsequence not found
+
+    ALGORITHM_LOG("[algorithm_search_n] Info: Did not find %zu consecutive elements.", count);
+    return last;
 }
 
 /**
@@ -1542,6 +1798,8 @@ const void *algorithm_search_n(const void *first, const void* last, size_t size,
  * @return Pointer to the new end of the array, after removing the specified elements.
  */
 void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_remove] Info: Removing elements matching a value from %zu elements.", num);
+
     char *ptr = (char *)base;
     size_t new_num = 0;
 
@@ -1549,11 +1807,14 @@ void *algorithm_remove(void *base, size_t num, size_t size, const void *val, Com
         if (comp(ptr + i * size, val) != 0) {
             if (i != new_num) {
                 memcpy(ptr + new_num * size, ptr + i * size, size);
+                ALGORITHM_LOG("[algorithm_remove] Info: Moved element from index %zu to index %zu.", i, new_num);
             }
             ++new_num;
         }
     }
-    return ptr + new_num * size; // Pointer to the new end of the array
+
+    ALGORITHM_LOG("[algorithm_remove] Success: Removed elements, new size is %zu.", new_num);
+    return ptr + new_num * size;
 }
 
 /**
@@ -1567,17 +1828,23 @@ void *algorithm_remove(void *base, size_t num, size_t size, const void *val, Com
  * @param comp Comparison function used to compare elements with the value.
  */
 void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_remove_copy] Info: Starting with %zu elements.", num);
+
     const char *src = (const char *)source;
     char *dst = (char *)result;
+    size_t copied = 0;
 
     for (size_t i = 0; i < num; ++i) {
         if (comp(src + i * size, val) != 0) {
             memcpy(dst, src + i * size, size);
             dst += size;
+            copied++;
+            ALGORITHM_LOG("[algorithm_remove_copy] Info: Copied element at index %zu.", i);
         }
     }
-}
 
+    ALGORITHM_LOG("[algorithm_remove_copy] Success: Copied %zu elements.", copied);
+}
 
 /**
  * Removes elements from the source array based on a given predicate function and copies the remaining elements to the result array.
@@ -1590,7 +1857,10 @@ void algorithm_remove_copy(const void *source, size_t num, size_t size, void *re
  * @return The number of elements copied to the result array.
  */
 size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred) {
+    ALGORITHM_LOG("[algorithm_remove_copy_if] Info: Starting with %zu elements.", num);
+
     if (!source || !result || !pred || size == 0 || num == 0) {
+        ALGORITHM_LOG("[algorithm_remove_copy_if] Error: Invalid input parameters.");
         return 0;
     }
 
@@ -1603,9 +1873,11 @@ size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, voi
             memcpy(dst, src + i * size, size);
             dst += size;
             count++;
+            ALGORITHM_LOG("[algorithm_remove_copy_if] Info: Copied element at index %zu.", i);
         }
     }
 
+    ALGORITHM_LOG("[algorithm_remove_copy_if] Success: Copied %zu elements.", count);
     return count;
 }
 
@@ -1623,18 +1895,26 @@ size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, voi
  * @param new_val  Pointer to the new value.
  * @param comp     Comparison function used to compare elements.
  */
-void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp){
+void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp) {
+    ALGORITHM_LOG("[algorithm_replace] Info: Starting with %zu elements.", num);
+
     if (!base || !old_val || !new_val || !comp || size == 0 || num == 0) {
+        ALGORITHM_LOG("[algorithm_replace] Error: Invalid input parameters.");
         return;
     }
 
     char *ptr = (char *)base;
+    size_t replaced = 0;
 
     for (size_t i = 0; i < num; ++i) {
         if (comp(ptr + i * size, old_val) == 0) {
             memcpy(ptr + i * size, new_val, size);
+            replaced++;
+            ALGORITHM_LOG("[algorithm_replace] Info: Replaced element at index %zu.", i);
         }
     }
+
+    ALGORITHM_LOG("[algorithm_replace] Success: Replaced %zu elements.", replaced);
 }
 
 /**
@@ -1652,15 +1932,35 @@ void algorithm_replace(void *base, size_t num, size_t size, const void *old_val,
  * @return None.
  */
 void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_val, BoolPredicateFunc pred) {
-    if (!base || !new_val || !pred || size == 0 || num == 0) {
+    ALGORITHM_LOG("[algorithm_replace_if] Info: Starting replace_if with %zu elements.", num);
+
+    if (!base) {
+        ALGORITHM_LOG("[algorithm_replace_if] Error: base pointer is NULL.");
+        return;
+    }
+    if (!new_val) {
+        ALGORITHM_LOG("[algorithm_replace_if] Error: new_val pointer is NULL.");
+        return;
+    }
+    if (!pred) {
+        ALGORITHM_LOG("[algorithm_replace_if] Error: Predicate function is NULL.");
+        return;
+    }
+    if (size == 0 || num == 0) {
+        ALGORITHM_LOG("[algorithm_replace_if] Error: size or num is zero.");
         return;
     }
 
     char *ptr = (char *)base;
+    size_t replace_count = 0;
 
     for (size_t i = 0; i < num; ++i) {
         if (pred(ptr + i * size)) {
             memcpy(ptr + i * size, new_val, size);
+            replace_count++;
+            ALGORITHM_LOG("[algorithm_replace_if] Info: Replaced element at index %zu.", i);
         }
     }
+
+    ALGORITHM_LOG("[algorithm_replace_if] Success: Replaced %zu elements.", replace_count);
 }

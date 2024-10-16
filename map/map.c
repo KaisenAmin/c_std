@@ -22,7 +22,6 @@ struct Map {
     size_t size;
 };
 
-
 /**
  * @brief Advances the iterator to the next element in the map.
  *
@@ -36,31 +35,38 @@ struct Map {
  */
 void map_iterator_increment(MapIterator* it) {
     if (it == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null iterator provided in map_iterator_increment.\n");
-        #endif 
+        MAP_LOG("Error: Null iterator provided in map_iterator_increment.");
         return;
     }
     if (it->node == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Iterator's node is null in map_iterator_increment.\n");
-        #endif 
+        MAP_LOG("Error: Iterator's node is null in map_iterator_increment.");
         return;
     }
+    MAP_LOG("Incrementing iterator from node with key: %p", (void*)(it->node->key));
+
     // If the right subtree is not empty, the successor is the leftmost node in the right subtree
     if (it->node->right != NULL) {
         it->node = it->node->right;
-        
+        MAP_LOG("Moved to right subtree, new node key: %p", (void*)(it->node->key));
+
         while (it->node->left != NULL) {
             it->node = it->node->left;
+            MAP_LOG("Moved to leftmost child, new node key: %p", (void*)(it->node->key));
         }
     } 
     else {
         // Go up the tree to find the first ancestor that is a left child of its parent
         while (it->node->parent != NULL && it->node == it->node->parent->right) { 
             it->node = it->node->parent;
+            MAP_LOG("Moving up the tree, current node key: %p", (void*)(it->node->key));
         }
         it->node = it->node->parent;
+        if (it->node != NULL) {
+            MAP_LOG("Moved to parent, new node key: %p", (void*)(it->node->key));
+        } 
+        else {
+            MAP_LOG("Reached the end of the map.");
+        }
     }
 }
 
@@ -77,30 +83,38 @@ void map_iterator_increment(MapIterator* it) {
  */
 void map_iterator_decrement(MapIterator* it) {
     if (it == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null iterator provided in map_iterator_decrement.\n");
-        #endif 
+        MAP_LOG("Error: Null iterator provided in map_iterator_decrement.");
         return;
     }
     if (it->node == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Iterator's node is null in map_iterator_decrement.\n");
-        #endif 
+        MAP_LOG("Error: Iterator's node is null in map_iterator_decrement.");
         return;
     }
+    MAP_LOG("Decrementing iterator from node with key: %p", (void*)(it->node->key));
+
     // If the left subtree is not empty, the predecessor is the rightmost node in the left subtree
     if (it->node->left != NULL) {
         it->node = it->node->left;
+        MAP_LOG("Moved to left subtree, new node key: %p", (void*)(it->node->key));
+
         while (it->node->right != NULL) { 
             it->node = it->node->right;
+            MAP_LOG("Moved to rightmost child, new node key: %p", (void*)(it->node->key));
         }
     } 
     else {
         // Go up the tree to find the first ancestor that is a right child of its parent
         while (it->node->parent != NULL && it->node == it->node->parent->left) { 
             it->node = it->node->parent;
+            MAP_LOG("Moving up the tree, current node key: %p", (void*)(it->node->key));
         }
         it->node = it->node->parent;
+        if (it->node != NULL) {
+            MAP_LOG("Moved to parent, new node key: %p", (void*)(it->node->key));
+        } 
+        else {
+            MAP_LOG("Reached the beginning of the map.");
+        }
     }
 }
 
@@ -115,19 +129,20 @@ void map_iterator_decrement(MapIterator* it) {
  * @return A pointer to the newly created MapNode, or NULL if memory allocation fails.
  */
 static MapNode* create_node(KeyType key, ValueType value) {
-    MapNode* node = (MapNode*)malloc(sizeof(MapNode));
+    MAP_LOG("Creating a new node with key: %p and value: %p.", (void*)key, (void*)value);
     
+    MapNode* node = (MapNode*)malloc(sizeof(MapNode));
     if (!node) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Cannot allocate memory for node in create_node.\n");
-        #endif 
+        MAP_LOG("Error: Cannot allocate memory for node in create_node.");
         return NULL;
     }
+
     node->key = key;
     node->value = value;
     node->left = node->right = node->parent = NULL;
-    node->color = RED;  // All new nodes are red in a Red-Black Tree
-    
+    node->color = RED; 
+
+    MAP_LOG("Node created successfully with key: %p, value: %p, color: RED.", (void*)key, (void*)value);
     return node;
 }
 
@@ -144,36 +159,41 @@ static MapNode* create_node(KeyType key, ValueType value) {
  */
 static void map_left_rotate(Map* map, MapNode* x) {
     if (map == NULL || x == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided to map_left_rotate.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided to map_left_rotate.");
         return;
     }
+
     MapNode* y = x->right;
     if (y == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Right child is null in map_left_rotate.\n");
-        #endif 
+        MAP_LOG("Error: Right child is null in map_left_rotate for node: %p.", (void*)x);
         return;
     }
+
+    MAP_LOG("Performing left rotation on node: %p with right child: %p.", (void*)x, (void*)y);
 
     x->right = y->left;
     if (y->left != NULL) {
         y->left->parent = x;
+        MAP_LOG("Set the parent of left child %p to %p.", (void*)(y->left), (void*)x);
     }
+
     y->parent = x->parent;
-    
-    if (x->parent == NULL) { 
+    if (x->parent == NULL) {
         map->root = y;
-    }
-    else if (x == x->parent->left) { 
+        MAP_LOG("Node %p is now the root after left rotation.", (void*)y);
+    } 
+    else if (x == x->parent->left) {
         x->parent->left = y;
-    }
+        MAP_LOG("Node %p is now the left child of its parent %p.", (void*)y, (void*)(x->parent));
+    } 
     else {
         x->parent->right = y;
+        MAP_LOG("Node %p is now the right child of its parent %p.", (void*)y, (void*)(x->parent));
     }
+
     y->left = x;
     x->parent = y;
+    MAP_LOG("Left rotation completed. Node %p is now left child of node %p.", (void*)x, (void*)y);
 }
 
 /**
@@ -189,36 +209,41 @@ static void map_left_rotate(Map* map, MapNode* x) {
  */
 static void map_right_rotate(Map* map, MapNode* y) {
     if (map == NULL || y == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided to map_right_rotate.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided to map_right_rotate.");
         return;
     }
+
     MapNode* x = y->left;
     if (x == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Left child is null in map_right_rotate.\n");
-        #endif 
+        MAP_LOG("Error: Left child is null in map_right_rotate for node: %p.", (void*)y);
         return;
     }
+
+    MAP_LOG("Performing right rotation on node: %p with left child: %p.", (void*)y, (void*)x);
 
     y->left = x->right;
     if (x->right != NULL) {
         x->right->parent = y;
+        MAP_LOG("Set the parent of right child %p to %p.", (void*)(x->right), (void*)y);
     }
 
     x->parent = y->parent;
-    if (y->parent == NULL) { 
+    if (y->parent == NULL) {
         map->root = x;
-    }
-    else if (y == y->parent->right) { 
+        MAP_LOG("Node %p is now the root after right rotation.",(void*)x);
+    } 
+    else if (y == y->parent->right) {
         y->parent->right = x;
-    }
+        MAP_LOG("Node %p is now the right child of its parent %p.", (void*)x, (void*)(y->parent));
+    } 
     else {
         y->parent->left = x;
+        MAP_LOG("Node %p is now the left child of its parent %p.", (void*)x, (void*)(y->parent));
     }
+
     x->right = y;
     y->parent = x;
+    MAP_LOG("Right rotation completed. Node %p is now right child of node %p.", (void*)y, (void*)x);
 }
 
 /**
@@ -234,23 +259,27 @@ static void map_right_rotate(Map* map, MapNode* y) {
  */
 static void map_transplant(Map* map, MapNode* u, MapNode* v) {
     if (map == NULL || u == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided to map_transplant.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided to map_transplant.");
         return;
     }
-    
+    MAP_LOG("map_transplant: Replacing node %p with node %p.", (void*)u, (void*)v);
+
     if (u->parent == NULL) {
         map->root = v;
-    }
+        MAP_LOG("map_transplant: Node %p is the root. Setting new root to %p.", (void*)u, (void*)v);
+    } 
     else if (u == u->parent->left) {
         u->parent->left = v;
-    }
+        MAP_LOG("map_transplant: Node %p was the left child of its parent. Replacing with node %p.", (void*)u, (void*)v);
+    } 
     else {
         u->parent->right = v;
+        MAP_LOG("map_transplant: Node %p was the right child of its parent. Replacing with node %p.", (void*)u, (void*)v);
     }
-    if (v != NULL) { 
+
+    if (v != NULL) {
         v->parent = u->parent;
+        MAP_LOG("map_transplant: Setting node %p's parent to %p.", (void*)v, (void*)(u->parent));
     }
 }
 
@@ -265,14 +294,17 @@ static void map_transplant(Map* map, MapNode* u, MapNode* v) {
  */
 static MapNode* map_minimum(MapNode* node) {
     if (node == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided to map_minimum.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided to map_minimum.");
         return NULL;
     }
+    MAP_LOG("map_minimum: Finding minimum node starting from %p.", (void*)node);
+
     while (node->left != NULL) {
         node = node->left;
+        MAP_LOG("map_minimum: Moving left to node %p.", (void*)node);
     }
+
+    MAP_LOG("map_minimum: Minimum node found: %p.", (void*)node);
     return node;
 }
 
@@ -287,18 +319,29 @@ static MapNode* map_minimum(MapNode* node) {
  * @param x A pointer to the node that replaces the deleted node, which may cause a violation of Red-Black Tree properties.
  */
 static void map_erase_fixup(Map* map, MapNode* x) {
+    if (map == NULL) {
+        MAP_LOG("Error: Null pointer provided to map_erase_fixup.");
+        return;
+    }
+
+    MAP_LOG("map_erase_fixup: Fixing up tree after deletion starting with node %p.", (void*)x);
+
     while (x != map->root && (x == NULL || x->color == BLACK)) {
         if (x == x->parent->left) {
-      
             MapNode* w = x->parent->right;
+            MAP_LOG("map_erase_fixup: Sibling node (right of parent) is %p.", (void*)w);
+
             if (w->color == RED) {
+                MAP_LOG("map_erase_fixup: Case 1 - Sibling is red, performing left rotation on parent %p.", (void*)(x->parent));
                 w->color = BLACK;
                 x->parent->color = RED;
                 map_left_rotate(map, x->parent);
                 w = x->parent->right;
             }
+
             if ((w->left == NULL || w->left->color == BLACK) &&
                 (w->right == NULL || w->right->color == BLACK)) {
+                MAP_LOG("map_erase_fixup: Case 2 - Both children of sibling are black. Recoloring sibling %p.", (void*)w);
                 w->color = RED;
                 x = x->parent;
             } 
@@ -307,30 +350,38 @@ static void map_erase_fixup(Map* map, MapNode* x) {
                     if (w->left != NULL) {
                         w->left->color = BLACK;
                     }
+                    MAP_LOG("map_erase_fixup: Case 3 - Left child of sibling is red. Performing right rotation.");
                     w->color = RED;
                     map_right_rotate(map, w);
                     w = x->parent->right;
                 }
-                
+
+                MAP_LOG("map_erase_fixup: Case 4 - Right child of sibling is red. Performing left rotation on parent %p.", (void*)(x->parent));
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
-                if (w->right != NULL) { 
+                if (w->right != NULL) {
                     w->right->color = BLACK;
                 }
+                
                 map_left_rotate(map, x->parent);
                 x = map->root;
             }
         } 
         else {
             MapNode* w = x->parent->left;
+            MAP_LOG("map_erase_fixup: Sibling node (left of parent) is %p.", (void*)w);
+
             if (w->color == RED) {
+                MAP_LOG("map_erase_fixup: Case 1 - Sibling is red, performing right rotation on parent %p.", (void*)(x->parent));
                 w->color = BLACK;
                 x->parent->color = RED;
                 map_right_rotate(map, x->parent);
                 w = x->parent->left;
             }
+
             if ((w->right == NULL || w->right->color == BLACK) &&
                 (w->left == NULL || w->left->color == BLACK)) {
+                MAP_LOG("map_erase_fixup: Case 2 - Both children of sibling are black. Recoloring sibling %p.", (void*)w);
                 w->color = RED;
                 x = x->parent;
             } 
@@ -339,14 +390,16 @@ static void map_erase_fixup(Map* map, MapNode* x) {
                     if (w->right != NULL) {
                         w->right->color = BLACK;
                     }
+                    MAP_LOG("map_erase_fixup: Case 3 - Right child of sibling is red. Performing left rotation.");
                     w->color = RED;
                     map_left_rotate(map, w);
                     w = x->parent->left;
                 }
 
+                MAP_LOG("map_erase_fixup: Case 4 - Left child of sibling is red. Performing right rotation on parent %p.", (void*)(x->parent));
                 w->color = x->parent->color;
                 x->parent->color = BLACK;
-                if (w->left != NULL) { 
+                if (w->left != NULL) {
                     w->left->color = BLACK;
                 }
                 map_right_rotate(map, x->parent);
@@ -354,7 +407,9 @@ static void map_erase_fixup(Map* map, MapNode* x) {
             }
         }
     }
-    if (x != NULL) { 
+
+    if (x != NULL) {
+        MAP_LOG("map_erase_fixup: Recoloring node %p to black.", (void*)x);
         x->color = BLACK;
     }
 }
@@ -371,23 +426,27 @@ static void map_erase_fixup(Map* map, MapNode* x) {
  */
 static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (node == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: node param is null and invalid in map_free_nodes\n");
-        #endif 
+        MAP_LOG("Error: node param is null and invalid in map_free_nodes.");
         return;
     }
-    // Recursively free left and right subtrees
+    MAP_LOG("map_free_nodes: Freeing node with key: %p.", (void*)(node->key));
+
     map_free_nodes(node->left, deallocKey, deallocValue);
     map_free_nodes(node->right, deallocKey, deallocValue);
 
     // Deallocate the key and value if deallocation functions are provided
-    if (deallocKey) { 
+    if (deallocKey) {
+        MAP_LOG("map_free_nodes: Deallocating key: %p.", (void*)(node->key));
         deallocKey(node->key);
     }
     if (deallocValue) {
+        MAP_LOG("map_free_nodes: Deallocating value: %p.", (void*)(node->value));
         deallocValue(node->value);
     }
-    free(node); // Finally, free the node itself
+
+    
+    free(node); 
+    MAP_LOG("map_free_nodes: Node with keysuccessfully freed.");
 }
 
 /**
@@ -401,62 +460,62 @@ static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeal
  */
 static void map_insert_fixup(Map* map, MapNode* newNode) {
     if (map == NULL || newNode == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided to map_insert_fixup.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided to map_insert_fixup.");
         return;
     }
-    // Example fix-up logic, doesn't cover all cases.
+    MAP_LOG("map_insert_fixup: Fixing up after insertion of node with key %p.", (void*)(newNode->key));
+
     while (newNode != map->root && newNode->parent->color == RED) {
-        // Determine if parent is the left or right child of the grandparent
         if (newNode->parent == newNode->parent->parent->left) {
             MapNode* uncle = newNode->parent->parent->right;
             if (uncle && uncle->color == RED) {
-                // Case 1: Parent and Uncle are red
+                MAP_LOG("map_insert_fixup: Case 1 (left) - Parent and uncle are red.");
                 newNode->parent->color = BLACK;
                 uncle->color = BLACK;
                 newNode->parent->parent->color = RED;
                 newNode = newNode->parent->parent;
             } 
             else {
-                // Cases 2 and 3: Uncle is black
-                if (newNode == newNode->parent->right) { 
-                    newNode = newNode->parent;  // Convert to linear configuration
-                    // Perform left rotation
+                if (newNode == newNode->parent->right) {
+                    MAP_LOG("map_insert_fixup: Case 2 (left) - Performing left rotation.");
+                    newNode = newNode->parent;
+                    map_left_rotate(map, newNode);
                 }
-                // Perform right rotation
-                // Update colors
+                MAP_LOG("map_insert_fixup: Case 3 (left) - Performing right rotation.");
+
+                newNode->parent->color = BLACK;
+                newNode->parent->parent->color = RED;
+                map_right_rotate(map, newNode->parent->parent);
                 break; // Exit loop
             }
         } 
         else {
-            // Symmetric to the above case
             MapNode* uncle = newNode->parent->parent->left;
-
             if (uncle && uncle->color == RED) {
-                // Case 1: Parent and Uncle are red
+                MAP_LOG("map_insert_fixup: Case 1 (right) - Parent and uncle are red.");
                 newNode->parent->color = BLACK;
                 uncle->color = BLACK;
                 newNode->parent->parent->color = RED;
                 newNode = newNode->parent->parent;
             } 
             else {
-                // Cases 2 and 3: Uncle is black
                 if (newNode == newNode->parent->left) {
-                    // Convert to linear configuration
+                    MAP_LOG("map_insert_fixup: Case 2 (right) - Performing right rotation.");
                     newNode = newNode->parent;
                     map_right_rotate(map, newNode);
                 }
-                // Perform left rotation
+
+                MAP_LOG("map_insert_fixup: Case 3 (right) - Performing left rotation.");
                 newNode->parent->color = BLACK;
                 newNode->parent->parent->color = RED;
                 map_left_rotate(map, newNode->parent->parent);
-
-                break; // Exit loop
+                break; 
             }
         }
     }
+
     map->root->color = BLACK;
+    MAP_LOG("map_insert_fixup: Fix-up completed, root color set to BLACK.");
 }
 
 /**
@@ -475,17 +534,14 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
  */
 Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (!comp) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Compare function is null, cannot create map.\n");
-        #endif 
+        MAP_LOG("Error: Compare function is null, cannot create map.");
         exit(-1);
     }
+    MAP_LOG("map_create: Creating a new map.");
 
     Map* map = (Map*)malloc(sizeof(Map));
     if (!map) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Cannot allocate memory for map.\n");
-        #endif 
+        MAP_LOG("Error: Cannot allocate memory for map.");
         exit(-1);
     }
 
@@ -494,6 +550,8 @@ Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFu
     map->deallocKey = deallocKey;
     map->deallocValue = deallocValue;
     map->size = 0;
+
+    MAP_LOG("map_create: Map created successfully.");
 
     return map;
 }
@@ -507,14 +565,16 @@ Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFu
  * @param map A pointer to the Map to be deallocated.
  */
 void map_deallocate(Map* map) {
-    if (!map){
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Warning: Map is null or empty there is nothing to deallocate in map_deallocate.\n");
-        #endif 
+    if (!map) {
+        MAP_LOG("Warning: Map is null or empty, nothing to deallocate in map_deallocate.");
         return;
     }
-    map_free_nodes(map->root, map->deallocKey, map->deallocValue); // Use map_free_nodes to recursively free all nodes
+    MAP_LOG("map_deallocate: Deallocating map and freeing all nodes.");
+
+    map_free_nodes(map->root, map->deallocKey, map->deallocValue);
     free(map);
+
+    MAP_LOG("map_deallocate: Map deallocated successfully.");
 }
 
 /**
@@ -527,11 +587,11 @@ void map_deallocate(Map* map) {
  */
 bool map_empty(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_empty.\n");
-        #endif 
-        return true; // Consider an empty map for null pointer
+        MAP_LOG("Error: Null pointer provided for map in map_empty.");
+        return true; 
     }
+    MAP_LOG("map_empty: Checking if the map is empty. Map size is %zu.", map->size);
+
     return map->size == 0;
 }
 
@@ -546,11 +606,11 @@ bool map_empty(const Map* map) {
  */
 size_t map_size(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_size.\n");
-        #endif 
-        return 0; // Return 0 for null pointer
+        MAP_LOG("Error: Null pointer provided for map in map_size.");
+        return 0; 
     }
+
+    MAP_LOG("map_size: Returning the map size: %zu.", map->size);
     return map->size;
 }
 
@@ -565,12 +625,14 @@ size_t map_size(const Map* map) {
  */
 size_t map_max_size(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_max_size.\n");
-        #endif 
-        return 0; // Return 0 for null pointer
+        MAP_LOG("Error: Null pointer provided for map in map_max_size.");
+        return 0;
     }
-    return (size_t)(~((size_t)0)) / sizeof(MapNode);
+
+    size_t max_size = (size_t)(~((size_t)0)) / sizeof(MapNode);
+    MAP_LOG("map_max_size: Maximum possible size of the map: %zu.", max_size);
+
+    return max_size;
 }
 
 /**
@@ -589,24 +651,26 @@ size_t map_max_size(const Map* map) {
  */
 bool map_insert(Map* map, KeyType key, ValueType value) {
     if (map == NULL || key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_insert.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for map or key in map_insert.");
         return false;
     }
+    MAP_LOG("map_insert: Attempting to insert key-value pair into the map.");
+
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
 
     while (*curr) {
         parent = *curr;
         int cmp = map->compFunc(key, (*curr)->key);
-        
+
         if (cmp == 0) {
-            // Key already exists, replace its value
+            MAP_LOG("map_insert: Key found, replacing the existing value.");
             if (map->deallocValue) {
                 map->deallocValue((*curr)->value);
             }
+
             (*curr)->value = value;
+            MAP_LOG("map_insert: Value replaced successfully.");
             return true;
         }
         if (cmp < 0) {
@@ -619,15 +683,18 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
 
     MapNode* newNode = create_node(key, value);
     if (!newNode) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Node creation failed in map_insert.\n");
-        #endif 
+        MAP_LOG("Error: Node creation failed in map_insert.");
         return false;
     }
+
     *curr = newNode;
     newNode->parent = parent;
     map->size++;
+
+    MAP_LOG("map_insert: Node inserted successfully. Performing tree balancing.");
     map_insert_fixup(map, newNode);
+    MAP_LOG("map_insert: Insertion completed. Map size is now %zu.", map->size);
+
     return true;
 }
 
@@ -643,27 +710,30 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
  */
 ValueType map_at(const Map* map, KeyType key) {
     if (map == NULL || key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_at.\n");
-        #endif 
-        return NULL; // Return NULL for null pointer
+        MAP_LOG("Error: Null pointer provided for map or key in map_at.");
+        return NULL; 
     }
+
+    MAP_LOG("map_at: Searching for key in the map.");
     MapNode* curr = map->root;
     
     while (curr) {
         int cmp = map->compFunc(key, curr->key);
 
-        if (cmp == 0) { 
+        if (cmp == 0) {
+            MAP_LOG("map_at: Key found, returning the associated value.");
             return curr->value;
         }
-        if (cmp < 0) { 
+        if (cmp < 0) {
             curr = curr->left;
-        }
-        else { 
+        } 
+        else {
             curr = curr->right;
         }
     }
-    return NULL;  // Key not found
+
+    MAP_LOG("map_at: Key not found in the map.");
+    return NULL; 
 }
 
 /**
@@ -676,14 +746,17 @@ ValueType map_at(const Map* map, KeyType key) {
  */
 void map_clear(Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_clear.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for map in map_clear.");
         return;
     }
+
+    MAP_LOG("map_clear: Clearing all nodes in the map.");
     map_free_nodes(map->root, map->deallocKey, map->deallocValue);
+
     map->root = NULL;
     map->size = 0;
+
+    MAP_LOG("map_clear: Map cleared successfully.");
 }
 
 /**
@@ -698,11 +771,13 @@ void map_clear(Map* map) {
  */
 void map_swap(Map* map1, Map* map2) {
     if (map1 == NULL || map2 == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for one or both maps in map_swap.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for one or both maps in map_swap.");
         return;
     }
+
+    // Log swapping details
+    MAP_LOG("map_swap: Swapping the root nodes and sizes of the two maps.");
+
     // Swap the roots of the two maps
     MapNode* tempRoot = map1->root;
     map1->root = map2->root;
@@ -725,6 +800,8 @@ void map_swap(Map* map1, Map* map2) {
     ValueDeallocFunc tempDeallocValue = map1->deallocValue;
     map1->deallocValue = map2->deallocValue;
     map2->deallocValue = tempDeallocValue;
+
+    MAP_LOG("map_swap: Swap operation completed successfully.");
 }
 
 /**
@@ -740,17 +817,18 @@ void map_swap(Map* map1, Map* map2) {
  */
 size_t map_count(const Map* map, KeyType key) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_count.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for map in map_count.");
         return 0;
     }
+
+    MAP_LOG("map_count: Searching for the key in the map.");
+
     MapNode* current = map->root;
-    
     while (current != NULL) {
         int cmp = map->compFunc(key, current->key);
         if (cmp == 0) {
-            return 1; // Key found
+            MAP_LOG("map_count: Key found in the map.");
+            return 1; 
         }
         if (cmp < 0) { 
             current = current->left;
@@ -759,7 +837,9 @@ size_t map_count(const Map* map, KeyType key) {
             current = current->right;
         }
     }
-    return 0; // Key not found
+
+    MAP_LOG("map_count: Key not found in the map.");
+    return 0; 
 }
 
 /**
@@ -778,11 +858,12 @@ size_t map_count(const Map* map, KeyType key) {
  */
 bool map_emplace(Map* map, KeyType key, ValueType value) {
     if (map == NULL || key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_emplace.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for map or key in map_emplace.");
         return false;
     }
+
+    MAP_LOG("map_emplace: Attempting to insert key-value pair into the map.");
+
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
 
@@ -790,7 +871,8 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
         parent = *curr;
         int cmp = map->compFunc(key, (*curr)->key);
         
-        if (cmp == 0) { 
+        if (cmp == 0) {
+            MAP_LOG("map_emplace: Key already exists in the map. No insertion performed.");
             return false; // Key already exists
         }
         if (cmp < 0) { 
@@ -800,16 +882,21 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
             curr = &(*curr)->right;
         }
     }
-    MapNode* newNode = create_node(key, value);
 
+    MapNode* newNode = create_node(key, value);
     if (!newNode) {
+        MAP_LOG("map_emplace: Failed to create a new node for the key-value pair.");
         return false;
     }
+
     *curr = newNode;
     newNode->parent = parent;
     map->size++;
-    map_insert_fixup(map, newNode); // Perform necessary tree balancing
-    
+
+    MAP_LOG("map_emplace: Key-value pair inserted successfully. Rebalancing the tree.");
+    map_insert_fixup(map, newNode); 
+    MAP_LOG("map_emplace: Insertion completed. Map size is now %zu.", map->size);
+
     return true;
 }
 
@@ -823,12 +910,12 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
  */
 CompareFuncMap map_key_comp(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_key_comp.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for map in map_key_comp.");
         return NULL;
     }
-    return map->compFunc;  // Return the comparison function pointer
+
+    MAP_LOG("map_key_comp: Returning comparison function for the map.");
+    return map->compFunc; 
 }
 
 /**
@@ -847,33 +934,30 @@ CompareFuncMap map_key_comp(const Map* map) {
  * false if the key already exists or if a null pointer is provided.
  */
 bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) {
-    if (map == NULL || !key) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: map or key is null cannot emplace in map_emplace_hint.\n");
-        #endif 
-        exit(-1);
+    if (map == NULL || key == NULL) {
+        MAP_LOG("Error: map or key is null, cannot emplace in map_emplace_hint.");
+        exit(-1);  
     }
+
     MapNode* newNode = create_node(key, value);
-    
     if (newNode == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Unable to crate new Node in map_emplace_hint.\n");
-        #endif 
+        MAP_LOG("Error: Unable to create new node in map_emplace_hint.");
         return false;
     }
+    MAP_LOG("map_emplace_hint: New node created for key-value pair.");
 
-    // If the map is empty, just insert the node at the root.
     if (map->root == NULL) {
         map->root = newNode;
-        map->root->color = BLACK; // Root must be black.
+        map->root->color = BLACK;  
         map->size++;
 
+        MAP_LOG("map_emplace_hint: Map was empty, inserted node as root. Map size: %zu", map->size);
         return true;
     }
 
     // If hint is provided and valid, attempt to use it.
     if (hint.node != NULL) {
-        MapNode* curr = hint.node; // Replace dummy with actual hint implementation
+        MapNode* curr = hint.node;
         int cmp = map->compFunc(key, curr->key);
 
         if (cmp < 0) {
@@ -883,6 +967,7 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
                 map->size++;
                 map_insert_fixup(map, newNode);
 
+                MAP_LOG("map_emplace_hint: Inserted node to the left of hint node. Map size: %zu", map->size);
                 return true;
             }
         } 
@@ -893,17 +978,18 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
                 map->size++;
                 map_insert_fixup(map, newNode);
 
+                MAP_LOG("map_emplace_hint: Inserted node to the right of hint node. Map size: %zu", map->size);
                 return true;
             }
         } 
         else {
             // Key already exists, deallocate newNode and return false.
             free(newNode);
+            MAP_LOG("map_emplace_hint: Key already exists, no insertion. Map size remains: %zu", map->size);
             return false;
         }
     }
 
-    // If hint is not useful, fall back to regular insert.
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
 
@@ -912,23 +998,19 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
         int cmp = map->compFunc(key, (*curr)->key);
 
         if (cmp == 0) {
-            // Key already exists, deallocate newNode and return false.
             free(newNode);
+            MAP_LOG("map_emplace_hint: Key already exists during fallback insertion. Map size remains: %zu", map->size);
             return false;
         }
 
-        if (cmp < 0) {
-            curr = &(*curr)->left;
-        }
-        else { 
-            curr = &(*curr)->right;
-        }
+        curr = (cmp < 0) ? &(*curr)->left : &(*curr)->right;
     }
 
     *curr = newNode;
     newNode->parent = parent;
     map->size++;
     map_insert_fixup(map, newNode);
+    MAP_LOG("map_emplace_hint: Inserted node without hint. Map size: %zu", map->size);
 
     return true;
 }
@@ -946,9 +1028,7 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
  */
 bool map_erase(Map* map, KeyType key) {
     if (map == NULL || map->root == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: map or map root is null in map_erase.\n");
-        #endif 
+        MAP_LOG("Error: map or map root is null in map_erase.");
         return false;
     }
     
@@ -956,20 +1036,14 @@ bool map_erase(Map* map, KeyType key) {
     while (z != NULL) {
         int cmp = map->compFunc(key, z->key);
         if (cmp == 0) {
-            break; // Key found
+            MAP_LOG("map_erase: Key found, proceeding with node deletion.");
+            break; 
         }
-        if (cmp < 0) { 
-            z = z->left;
-        }
-        else {
-            z = z->right;
-        }
+        z = (cmp < 0) ? z->left : z->right;
     }
 
     if (z == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Key not found in map_erase.\n");
-        #endif 
+        MAP_LOG("Error: Key not found in map_erase.");
         return false;
     }
     
@@ -980,10 +1054,12 @@ bool map_erase(Map* map, KeyType key) {
     if (z->left == NULL) {
         x = z->right;
         map_transplant(map, z, z->right);
+        MAP_LOG("map_erase: Node has no left child, transplanting right child.");
     } 
     else if (z->right == NULL) {
         x = z->left;
         map_transplant(map, z, z->left);
+        MAP_LOG("map_erase: Node has no right child, transplanting left child.");
     } 
     else {
         y = map_minimum(z->right);
@@ -1000,25 +1076,32 @@ bool map_erase(Map* map, KeyType key) {
             y->right = z->right;
             y->right->parent = y;
         }
+
         map_transplant(map, z, y);
         y->left = z->left;
         y->left->parent = y;
         y->color = z->color;
+        MAP_LOG("map_erase: Node has two children, finding successor and transplanting.");
     }
 
     if (map->deallocKey) {
         map->deallocKey(z->key);
+        MAP_LOG("map_erase: Deallocating key of the node.");
     }
     if (map->deallocValue) {
         map->deallocValue(z->value);
+        MAP_LOG("map_erase: Deallocating value of the node.");
     }
     free(z);
+    MAP_LOG("map_erase: Node deleted and memory freed.");
 
     if (y_original_color == BLACK) { 
         map_erase_fixup(map, x);
+        MAP_LOG("map_erase: Fixing up the red-black tree after deletion.");
     }
     map->size--;
     
+    MAP_LOG("map_erase: Node deleted successfully. New map size: %zu", map->size);
     return true;
 }
 
@@ -1034,25 +1117,26 @@ bool map_erase(Map* map, KeyType key) {
  * @return A MapIterator pointing to the element if found, or to the end of the map if not found.
  */
 MapIterator map_find(const Map* map, KeyType key) {
-    MapIterator iterator = {0}; // Initialize iterator to represent the end or null
+    MapIterator iterator = {0}; 
+
     if (map == NULL || key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_find.\n");
-        #endif 
-        return iterator; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map or key in map_find.");
+        return iterator; 
     }
 
     MapNode* current = map->root;
     while (current != NULL) {
-        int cmp = map->compFunc(key, current->key); // Compare the current node's key with the search key
+        int cmp = map->compFunc(key, current->key); 
         if (cmp == 0) {
-            iterator.node = current; // Found the key, set iterator to point to the current node
+            iterator.node = current;
+            MAP_LOG("map_find: Key found in map.");
             return iterator;
         }
-        // Decide to move left or right in the tree based on comparison result
-        current = cmp < 0 ? current->left : current->right;
+        current = (cmp < 0) ? current->left : current->right;
     }
-    return iterator; // Key not found, return end iterator
+
+    MAP_LOG("map_find: Key not found in map.");
+    return iterator; 
 }
 
 /**
@@ -1065,20 +1149,27 @@ MapIterator map_find(const Map* map, KeyType key) {
  * @return A MapIterator pointing to the first element in the map, or a default iterator if the map is NULL.
  */
 MapIterator map_begin(const Map* map) {
-    MapIterator iterator = {0};  // Initialize to default, adjust as per your MapIterator structure.
+    MapIterator iterator = {0};  
+
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_begin.\n");
-        #endif 
-        return iterator; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map in map_begin.");
+        return iterator; 
     }
+
     // The first element is the leftmost node in the tree.
     MapNode* current = map->root;
+    if (current == NULL) {
+        MAP_LOG("map_begin: Map is empty, returning default iterator.");
+        return iterator; 
+    }
+
     while (current->left != NULL) {
         current = current->left;
     }
 
-    iterator.node =current;  // Set iterator to point to the leftmost node.
+    iterator.node = current;  
+    MAP_LOG("map_begin: Leftmost node found, iterator set to the first element.");
+
     return iterator;
 }
 
@@ -1093,12 +1184,12 @@ MapIterator map_begin(const Map* map) {
  */
 MapIterator map_end(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_end.\n");
-        #endif 
-        return (MapIterator){0}; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map in map_end.");
+        return (MapIterator){0}; 
     }
-    return (MapIterator){0}; // Default 'end' iterator
+
+    MAP_LOG("map_end: Returning default 'end' iterator.");
+    return (MapIterator){0}; 
 }
 
 /**
@@ -1112,20 +1203,25 @@ MapIterator map_end(const Map* map) {
  */
 MapIterator map_rbegin(const Map* map) {
     MapIterator iterator = {0};
+
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_rbegin.\n");
-        #endif 
-        return iterator; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map in map_rbegin.");
+        return iterator; 
     }
 
-    MapNode* current = map->root; // The rightmost node is the largest element in the map
-    
-    while (current->right != NULL) { 
+    MapNode* current = map->root;
+    if (current == NULL) {
+        MAP_LOG("map_rbegin: Map is empty, returning default iterator.");
+        return iterator; 
+    }
+
+    // The rightmost node is the largest element in the map
+    while (current->right != NULL) {
         current = current->right;
     }
-    iterator.node = current;  // Replace with actual assignment to iterator
-    
+    iterator.node = current;  
+    MAP_LOG("map_rbegin: Rightmost node found, iterator set to the last element.");
+
     return iterator;
 }
 
@@ -1141,12 +1237,12 @@ MapIterator map_rbegin(const Map* map) {
  */
 MapIterator map_rend(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_rend.\n");
-        #endif 
-        return (MapIterator){0}; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map in map_rend.");
+        return (MapIterator){0}; 
     }
-    return (MapIterator){0}; // Default 'end' iterator
+
+    MAP_LOG("map_rend: Returning default 'rend' iterator.");
+    return (MapIterator){0}; 
 }
 
 /**
@@ -1160,21 +1256,25 @@ MapIterator map_rend(const Map* map) {
  */
 MapIterator map_cbegin(const Map* map) {
     MapIterator iterator = {0};
-    if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_cbegin.\n");
-        #endif 
-        return iterator; // Return default iterator on error
-    }
 
-    if (map != NULL && map->root != NULL) {
+    if (map == NULL) {
+        MAP_LOG("Error: Null pointer provided for map in map_cbegin.");
+        return iterator; 
+    }
+    if (map->root != NULL) {
         MapNode* current = map->root;
+        MAP_LOG("map_cbegin: Navigating to the leftmost node.");
         
         while (current->left != NULL) {
             current = current->left;
         }
         iterator.node = current;
+        MAP_LOG("map_cbegin: Leftmost node found. Returning iterator to the first element.");
+    } 
+    else {
+        MAP_LOG("map_cbegin: Map is empty, returning default iterator.");
     }
+    
     return iterator;
 }
 
@@ -1189,12 +1289,12 @@ MapIterator map_cbegin(const Map* map) {
  */
 MapIterator map_cend(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_cend.\n");
-        #endif 
-        return (MapIterator){0}; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map in map_cend.");
+        return (MapIterator){0}; 
     }
-    return (MapIterator){0}; // Default end iterator
+
+    MAP_LOG("map_cend: Returning constant iterator to the end of the map.");
+    return (MapIterator){0}; 
 }
 
 /**
@@ -1208,21 +1308,25 @@ MapIterator map_cend(const Map* map) {
  */
 MapIterator map_crbegin(const Map* map) {
     MapIterator iterator = {0};
-    if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_crbegin.\n");
-        #endif 
-        return iterator; // Return default iterator on error
-    }
 
-    if (map != NULL && map->root != NULL) {
+    if (map == NULL) {
+        MAP_LOG("Error: Null pointer provided for map in map_crbegin.");
+        return iterator; 
+    }
+    if (map->root != NULL) {
         MapNode* current = map->root;
+        MAP_LOG("map_crbegin: Navigating to the rightmost node.");
         
         while (current->right != NULL) {
             current = current->right;
         }
         iterator.node = current;
+        MAP_LOG("map_crbegin: Rightmost node found. Returning iterator to the last element.");
+    } 
+    else {
+        MAP_LOG("map_crbegin: Map is empty, returning default iterator.");
     }
+
     return iterator;
 }
 
@@ -1237,11 +1341,11 @@ MapIterator map_crbegin(const Map* map) {
  */
 MapIterator map_crend(const Map* map) {
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map in map_crend.\n");
-        #endif 
+        MAP_LOG("Error: Null pointer provided for map in map_crend.");
         return (MapIterator){0}; // Return default iterator on error
     }
+
+    MAP_LOG("map_crend: Returning constant reverse iterator to the end of the reverse sequence.");
     return (MapIterator){0}; // Default end iterator
 }
 
@@ -1260,14 +1364,13 @@ MapIterator map_crend(const Map* map) {
 MapIterator map_lower_bound(const Map* map, KeyType key) {
     MapIterator iterator = {0}; // Initialize to default, representing the end.
     if (map == NULL || key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_lower_bound.\n");
-        #endif 
-        return iterator; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map or key in map_lower_bound.");
+        return iterator; 
     }
 
     MapNode* current = map->root;
     MapNode* last = NULL;
+    MAP_LOG("Starting map_lower_bound search for the provided key.");
 
     while (current != NULL) {
         if (map->compFunc(current->key, key) >= 0) {
@@ -1281,7 +1384,12 @@ MapIterator map_lower_bound(const Map* map, KeyType key) {
 
     if (last != NULL) { 
         iterator.node = last;
+        MAP_LOG("map_lower_bound found a matching node.");
+    } 
+    else {
+        MAP_LOG("map_lower_bound did not find a matching node. Returning end iterator.");
     }
+
     return iterator;
 }
 
@@ -1298,16 +1406,16 @@ MapIterator map_lower_bound(const Map* map, KeyType key) {
  * or the end iterator if no such element is found.
  */
 MapIterator map_upper_bound(const Map* map, KeyType key) {
-    MapIterator iterator = {0}; // Initialize to default, representing the end.
+    MapIterator iterator = {0}; 
+
     if (map == NULL || key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Null pointer provided for map or key in map_upper_bound.\n");
-        #endif 
-        return iterator; // Return default iterator on error
+        MAP_LOG("Error: Null pointer provided for map or key in map_upper_bound.");
+        return iterator; 
     }
 
     MapNode* current = map->root;
     MapNode* last = NULL;
+    MAP_LOG("Starting map_upper_bound search for the provided key.");
 
     while (current != NULL) {
         if (map->compFunc(current->key, key) > 0) {
@@ -1321,7 +1429,12 @@ MapIterator map_upper_bound(const Map* map, KeyType key) {
 
     if (last != NULL) { 
         iterator.node = last;
+        MAP_LOG("map_upper_bound found a matching node.");
+    } 
+    else {
+        MAP_LOG("map_upper_bound did not find a matching node. Returning end iterator.");
     }
+
     return iterator;
 }
 
@@ -1341,20 +1454,19 @@ MapIteratorPair map_equal_range(const Map* map, KeyType key) {
     MapIteratorPair iteratorPair = {{0}, {0}};
 
     if (map == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Map object is Null in map_equal_range.\n");
-        #endif 
-        return iteratorPair; // Return default iterator pair on error
+        MAP_LOG("Error: Map object is NULL in map_equal_range.");
+        return iteratorPair; 
     }
     if (key == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: KeyType value is Null in map_equal_range.\n");
-        #endif 
-        return iteratorPair; // Return default iterator pair on error
+        MAP_LOG("Error: KeyType value is NULL in map_equal_range.");
+        return iteratorPair; 
     }
 
+    MAP_LOG("Starting map_equal_range search for the provided key.");
     iteratorPair.first = map_lower_bound(map, key);
     iteratorPair.second = map_upper_bound(map, key);
+
+    MAP_LOG("map_equal_range search completed.");
 
     return iteratorPair;
 }
@@ -1367,11 +1479,11 @@ MapIteratorPair map_equal_range(const Map* map, KeyType key) {
  */
 KeyType map_node_get_key(MapNode* node) {
     if (!node) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: MapNode object is Null and Invalid in map_node_get_key.\n");
-        #endif 
+        MAP_LOG("Error: MapNode object is NULL and invalid in map_node_get_key.");
         return NULL;
     }
+
+    MAP_LOG("Successfully retrieved key from MapNode.");
     return node->key;
 }
 
@@ -1383,11 +1495,11 @@ KeyType map_node_get_key(MapNode* node) {
  */
 ValueType map_node_get_value(MapNode* node) {
     if (!node) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: MapNode object is Null and Invalid in map_node_get_value.\n");
-        #endif 
+        MAP_LOG("Error: MapNode object is NULL and invalid in map_node_get_value.");
         return NULL;
     }
+
+    MAP_LOG("Successfully retrieved value from MapNode.");
     return node->value;
 }
 
@@ -1400,25 +1512,24 @@ ValueType map_node_get_value(MapNode* node) {
  */
 void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType)) {
     if (map == NULL || map->root == NULL) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Map object or map->root is Null and Invalid in map_print.\n");
-        #endif 
+        MAP_LOG("Error: Map object or map->root is NULL and invalid in map_print.");
         return;
     }
-
     if (!printKey || !printValue) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: printKey or PrintValue of Both of them are NULL in map_print.\n");
-        #endif 
+        MAP_LOG("Error: printKey or printValue is NULL in map_print.");
         return;
     }
+    MAP_LOG("Starting map_print operation...");
 
     for (MapIterator it = map_begin(map); it.node != map_end(map).node; map_iterator_increment(&it)) {
+        MAP_LOG("Printing key-value pair.");
+
         printKey(map_node_get_key(it.node));
         fmt_printf(": ");
         printValue(map_node_get_value(it.node));
         fmt_printf("\n");
     }
+    MAP_LOG("Map printing completed.");
 }
 
 /**
@@ -1428,23 +1539,26 @@ void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValu
  * @return A pointer to the newly created copy of the map, or NULL if the source map is NULL or memory allocation fails.
  */
 Map* map_copy(const Map* src) {
-    if (src == NULL){
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Map Object is NULL and Invalid in map_copy.\n");
-        #endif 
+    if (src == NULL) {
+        MAP_LOG("Error: Map object is NULL and invalid in map_copy.");
         return NULL;
     }
+    MAP_LOG("Starting map_copy operation...");
 
     Map* newMap = map_create(src->compFunc, src->deallocKey, src->deallocValue);
     if (!newMap) {
-        #ifdef MAP_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Can not Allocate memory for newMap in map_copy.\n");    
-        #endif 
+        MAP_LOG("Error: Cannot allocate memory for newMap in map_copy.");
         return NULL;
     }
+    MAP_LOG("New map created, starting element copy...");
 
-    for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) { 
-        map_insert(newMap, map_node_get_key(it.node), map_node_get_value(it.node));
+    for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) {
+        KeyType key = map_node_get_key(it.node);
+        ValueType value = map_node_get_value(it.node);
+        map_insert(newMap, key, value);
+        MAP_LOG("Inserted key-value pair into new map during copy.");
     }
+
+    MAP_LOG("Map copy operation completed successfully.");
     return newMap;
 }

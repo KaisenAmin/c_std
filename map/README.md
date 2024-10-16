@@ -397,7 +397,7 @@ int main() {
 
 ```c
 #include "map/map.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int compare_doubles(const KeyType a, const KeyType b) {
@@ -406,9 +406,11 @@ int compare_doubles(const KeyType a, const KeyType b) {
 
     if (*da < *db) {
         return -1;
-    } else if (*da > *db) { 
+    } 
+    else if (*da > *db) { 
         return 1;
-    } else {
+    } 
+    else {
         return 0;
     }
 }
