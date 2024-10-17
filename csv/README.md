@@ -22,20 +22,37 @@ This library provides a simple and efficient way to read, manipulate, and write 
 
 To use this library, include the `csv.h` header in your C project and compile the `csv.c` source file along with your project files.
 
-## Functions
+## Functions Descriptions 
 
-- `CSVRow* csv_row_create()`: Create a new CSV row.
-- `void csv_row_destroy(CSVRow *row)`: Destroy a CSV row and free memory.
-- `void csv_row_append_cell(CSVRow *row, const char *value)`: Append a cell to a CSV row.
-- `char* csv_row_get_cell(const CSVRow *row, size_t index)`: Get a cell value from a CSV row.
-- `CsvFile* csv_file_create(char delimiter)`: Create a new CSV file structure.
-- `void csv_file_destroy(CsvFile *file)`: Destroy a CSV file structure and free memory.
-- `void csv_file_read(CsvFile *file, const char *filename)`: Read a CSV file.
-- `void csv_file_write(const CsvFile *file, const char *filename)`: Write to a CSV file.
-- `void csv_file_append_row(CsvFile *file, CSVRow *row)`: Append a row to a CSV file.
-- `CSVRow* csv_file_get_row(const CsvFile *file, size_t index)`: Get a row from a CSV file.
-- `void csv_file_remove_row(CsvFile *file, size_t index)`: Remove a row from a CSV file.
-- Additional utility functions are provided for column insertion, JSON export, etc.
+Here is a brief two-line description of each function in the CSV library:
+
+- `CsvRow* csv_row_create()`: Creates a new CSV row structure. Initializes the internal array for storing cell values.
+- `CsvRow* csv_file_get_row(const CsvFile *file, size_t index)`: Retrieves a row from a CSV file at the specified index. Returns NULL if the index is invalid.
+- `CsvRow* csv_row_read_next(FileReader *reader, char delimiter)`: Reads the next row from a file using the provided FileReader object and delimiter.
+- `CsvRow* csv_file_get_header(const CsvFile *file)`: Retrieves the header row from a CSV file, typically the first row.
+- `CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm)`: Searches for rows in the CSV file that contain the given search term.
+
+- `CsvFile* csv_file_create(char delimiter)`: Creates a new CSV file structure and initializes its internal state with the given delimiter.
+
+- `char* csv_row_get_cell(const CsvRow *row, size_t index)`: Retrieves the value of a cell from a CSV row at the specified index. Returns NULL if the index is out of bounds.
+- `char* csv_export_to_json(const CsvFile *file)`: Exports the contents of a CSV file to a JSON format string.
+
+- `void csv_row_destroy(CsvRow *row)`: Frees all memory associated with a CSV row, including the cells and the row structure itself.
+- `void csv_row_append_cell(CsvRow *row, const char *value)`: Appends a new cell with the given string value to a CSV row, resizing the row if needed.
+- `void csv_file_destroy(CsvFile *file)`: Destroys a CSV file structure and frees memory associated with all its rows and internal data.
+- `void csv_file_read(CsvFile *file, const char *filename)`: Reads the contents of a CSV file from the specified filename into the CSV structure.
+- `void csv_file_write(const CsvFile *file, const char *filename)`: Writes the contents of the CSV structure to a specified file, using the configured delimiter.
+- `void csv_file_append_row(CsvFile *file, CsvRow *row)`: Appends a new row to the CSV file structure, expanding the internal array if necessary.
+- `void csv_file_remove_row(CsvFile *file, size_t index)`: Removes a row from the CSV file at the specified index and shifts subsequent rows.
+- `void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colData)`: Inserts a new column at the specified index with the provided data.
+- `void csv_file_set_header(CsvFile *file, CsvRow *header)`: Sets the header row for a CSV file, replacing the existing header if one exists.
+- `void csv_file_concatenate(CsvFile *file1, const CsvFile *file2)`: Concatenates two CSV files, appending the rows of one file to another.
+
+- `int csv_row_get_cell_as_int(const CsvRow *row, size_t index)`: Converts the value of a specified cell in a row to an integer.
+- `int csv_column_sum(const CsvFile *file, size_t columnIndex)`: Sums the values of a specific column in the CSV file, assuming they contain integers.
+
+- `bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *format)`: Validates whether a specific cell in a row matches a given format string.
+
 ---
 
 ## Example 1
