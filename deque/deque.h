@@ -12,6 +12,16 @@
 
 #define DEFAULT_BLOCK_SIZE 64
 
+#define DEQUE_LOGGING_ENABLE
+
+#ifdef DEQUE_LOGGING_ENABLE 
+    #define DEQUE_LOG(fmt, ...) \
+        do { fprintf(stderr, "[DEQUE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define DEQUE_LOG(fmt, ...) do { } while (0)
+#endif
+
+
 typedef struct Deque Deque;
 typedef struct DequeIterator DequeIterator;
 

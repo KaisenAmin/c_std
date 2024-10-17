@@ -1,33 +1,33 @@
+#include "deque/deque.h"
 #include "fmt/fmt.h"
-#include "list/list.h"
-
-static int compare_ints(const void* a, const void* b) {
-    int int_a = *(const int*)a;
-    int int_b = *(const int*)b;
-    return (int_a > int_b) - (int_a < int_b);
-}
+#include <stdlib.h>
 
 int main() {
-    List *list1 = list_create(sizeof(int), compare_ints);
-    List *list2 = list_create(sizeof(int), compare_ints);
-    int values[] = {50, 40, 30, 20, 10};
-    int values2[] = {100, 200, 300, 400, 500};
+    Deque* deque1 = deque_create(sizeof(int));
+    Deque* deque2 = deque_create(sizeof(int));
+    int val = 5;
 
-    for (int i = 0; i < 5; ++i) { 
-        list_push_back(list1, &values[i]);
-    }
-    for (int i = 0; i < 5; ++i) { 
-        list_push_back(list2, &values2[i]);
-    }
-    list_swap(list1, list2); // Swap list1 and list2
+    // Adding elements
+    for (int i = 0; i < 3; ++i) {
+        int *newInt1 = malloc(sizeof(int));
+        *newInt1 = i;
+        deque_push_back(deque1, newInt1);
 
-    for (Node* node = list_begin(list1); node != list_end(list1); node = node->next){
-        int* value = (int*)node->value;
-        fmt_printf("%d\n", *value);
+        int *newInt2 = malloc(sizeof(int));
+        *newInt2 = val;
+        deque_push_back(deque2, newInt2);
     }
 
-    list_deallocate(list1);
-    list_deallocate(list2);
+    if (deque_is_less(deque1, deque2)) {
+        fmt_printf("Deque1 is less than Deque2\n");
+    }
 
+    for (size_t i = 0; i < 3; ++i) {
+        free(deque_at(deque1, i));
+        free(deque_at(deque2, i));
+    }
+
+    deque_deallocate(deque1);
+    deque_deallocate(deque2);
     return 0;
 }

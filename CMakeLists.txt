@@ -104,7 +104,7 @@ if (WIN32)
         # array
         # bitset
         # cli
-        # deque
+        deque
         # json
         # matrix
         # fileio
