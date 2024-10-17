@@ -177,13 +177,8 @@ To use the Queue library in your project, include the `queue.h` header file in y
 
 int main() {
     Queue* myQueue = queue_create(sizeof(int));
-
-    if (!myQueue) {
-        fmt_fprintf(stderr, "Failed to create queue.\n");
-        return -1;
-    }
-
     int values[] = {10, 20, 30, 40, 50};
+
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
@@ -207,13 +202,8 @@ Queue size: 5
 
 int main() {
     Queue* myQueue = queue_create(sizeof(int));
-
-    if (!myQueue) {
-        fmt_fprintf(stderr, "Failed to create queue.\n");
-        return -1;
-    }
-
     int values[] = {10, 20, 30, 40, 50};
+
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
@@ -236,13 +226,8 @@ Is the queue empty? No
 
 int main() {
     Queue* myQueue = queue_create(sizeof(int));
-
-    if (!myQueue) {
-        fmt_fprintf(stderr, "Failed to create queue.\n");
-        return -1;
-    }
-
     int values[] = {10, 20, 30, 40, 50};
+
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
@@ -273,13 +258,8 @@ Back element: 50
 
 int main() {
     Queue* myQueue = queue_create(sizeof(int));
-
-    if (!myQueue) {
-        fmt_fprintf(stderr, "Failed to create queue.\n");
-        return -1;
-    }
-
     int values[] = {10, 20, 30, 40, 50};
+
     for (int i = 0; i < 5; ++i) { 
         queue_push(myQueue, &values[i]);
     }
@@ -309,13 +289,8 @@ New front element after pop: 20
 int main() {
     Queue* myQueue1 = queue_create(sizeof(int));
     Queue* myQueue2 = queue_create(sizeof(int));
-
-    if (!myQueue1 || !myQueue2) {
-        fmt_fprintf(stderr, "Failed to create queue\n");
-        return -1;
-    }
-
     int values1[] = {10, 20, 30, 40, 50};
+
     for (int i = 0; i < 5; ++i) {
         queue_push(myQueue1, &values1[i]);
     }
@@ -349,13 +324,8 @@ Is myQueue1 less than myQueue2? Yes
 int main() {
     Queue* myQueue1 = queue_create(sizeof(int));
     Queue* myQueue2 = queue_create(sizeof(int));
-
-    if (!myQueue1 || !myQueue2) {
-        fmt_fprintf(stderr, "Failed to create queue\n");
-        return -1;
-    }
-
     int values1[] = {10, 20, 30, 40, 50};
+    
     for (int i = 0; i < 5; ++i) {
         queue_push(myQueue1, &values1[i]);
     }
