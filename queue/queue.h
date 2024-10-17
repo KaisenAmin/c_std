@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include "../vector/vector.h"
 
-#define QUEUE_LOGGING_ENABLE
+// #define QUEUE_LOGGING_ENABLE
 
 #ifdef QUEUE_LOGGING_ENABLE 
     #define QUEUE_LOG(fmt, ...) \

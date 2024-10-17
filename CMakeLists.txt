@@ -98,13 +98,13 @@ if (WIN32)
         # stack
         # secrets
         # span
-        # queue
+        queue
         # priority_queue
         # algorithm
         # array
-        bitset
+        # bitset
         # cli
-        deque
+        # deque
         # json
         # matrix
         # fileio
