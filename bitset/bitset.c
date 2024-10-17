@@ -709,7 +709,7 @@ Bitset* bitset_shift_right(const Bitset* bs, size_t shift) {
         return result;
     }
 
-    Bitset* result = bitset_create(bs->size); // Create a new bitset to store the result
+    Bitset* result = bitset_create(bs->size); 
     size_t num_bytes = (bs->size + 7) / 8; // Number of bytes in the bit array
 
     for (size_t i = num_bytes; i-- > 0;) {
@@ -719,4 +719,111 @@ Bitset* bitset_shift_right(const Bitset* bs, size_t shift) {
 
     BITSET_LOG("[bitset_shift_right]: Bitset shifted right successfully.");
     return result;
+}
+
+/**
+ * @brief Compares two Bitsets for equality.
+ *
+ * This function checks if two Bitsets are identical in size and bit values. 
+ * It returns true if the Bitsets are equal and false otherwise.
+ *
+ * @param bs1 The first Bitset to compare.
+ * @param bs2 The second Bitset to compare.
+ * @return true if the Bitsets are equal, false otherwise.
+ */
+bool bitset_is_equal(const Bitset* bs1, const Bitset* bs2) {
+    BITSET_LOG("[bitset_is_equal]: Function start.");
+    if (!bs1 || !bs2) {
+        BITSET_LOG("[bitset_is_equal]: Error - Null pointer provided.");
+        return false;
+    }
+    if (bs1->size != bs2->size) {
+        BITSET_LOG("[bitset_is_equal]: Bitsets have different sizes.");
+        return false;
+    }
+
+    size_t num_bytes = (bs1->size + 7) / 8;
+    for (size_t i = 0; i < num_bytes; ++i) {
+        if (bs1->bits[i] != bs2->bits[i]) {
+            BITSET_LOG("[bitset_is_equal]: Bitsets differ at byte %zu.", i);
+            return false;
+        }
+    }
+
+    BITSET_LOG("[bitset_is_equal]: Bitsets are equal.");
+    return true;
+}
+
+/**
+ * @brief Compares two Bitsets for inequality.
+ *
+ * This function checks if two Bitsets are different in size or bit values. 
+ * It returns true if the Bitsets are not equal and false otherwise.
+ *
+ * @param bs1 The first Bitset to compare.
+ * @param bs2 The second Bitset to compare.
+ * @return true if the Bitsets are not equal, false otherwise.
+ */
+bool bitset_is_not_equal(const Bitset* bs1, const Bitset* bs2) {
+    BITSET_LOG("[bitset_is_not_equal]: Function start.");
+    return !bitset_is_equal(bs1, bs2);
+}
+
+/**
+ * @brief Returns the value of the bit at the given position.
+ *
+ * This function returns the value of the bit at the specified position.
+ * It mimics the behavior of `std::bitset::operator[]` in C++.
+ *
+ * @param bs The Bitset to access.
+ * @param pos The position of the bit to access.
+ * @return The value of the bit at the specified position (true if set, false if not).
+ */
+bool bitset_at(const Bitset* bs, size_t pos) {
+    BITSET_LOG("[bitset_at]: Function start.");
+
+    if (!bs) {
+        BITSET_LOG("[bitset_at]: Error - Null pointer provided.");
+        return false;
+    }
+    if (pos >= bs->size) {
+        BITSET_LOG("[bitset_at]: Error - Position out of bounds.");
+        return false; 
+    }
+
+    size_t byte_index = pos / 8;
+    size_t bit_index = pos % 8;
+
+    bool result = (bs->bits[byte_index] & (1 << bit_index)) != 0;
+    BITSET_LOG("[bitset_at]: Bit at position %zu is %d.", pos, result);
+
+    return result;
+}
+
+/**
+ * @brief Returns a reference (pointer) to the bit at the given position for modification.
+ *
+ * This function allows modification of the bit at the specified position.
+ * The user can set the bit using the returned pointer (mimics the non-const version of `std::bitset::operator[]` in C++).
+ *
+ * @param bs The Bitset to modify.
+ * @param pos The position of the bit to modify.
+ * @return Pointer to the byte that contains the bit, shifted to the correct bit position.
+ */
+unsigned char* bitset_at_ref(Bitset* bs, size_t pos) {
+    BITSET_LOG("[bitset_at_ref]: Function start.");
+
+    if (!bs) {
+        BITSET_LOG("[bitset_at_ref]: Error - Null pointer provided.");
+        return NULL;
+    }
+    if (pos >= bs->size) {
+        BITSET_LOG("[bitset_at_ref]: Error - Position out of bounds.");
+        return NULL; 
+    }
+
+    size_t byte_index = pos / 8;
+
+    BITSET_LOG("[bitset_at_ref]: Returning reference to bit at position %zu.", pos);
+    return &bs->bits[byte_index];
 }

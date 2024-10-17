@@ -21,8 +21,6 @@
     #define BITSET_LOG(fmt, ...) do { } while (0)
 #endif
 
-
-
 typedef struct Bitset Bitset;
 
 struct Bitset {
@@ -50,6 +48,9 @@ bool bitset_all(const Bitset* bs);
 bool bitset_any(const Bitset* bs);
 bool bitset_none(const Bitset* bs);
 bool bitset_test(const Bitset* bs, size_t pos);
+bool bitset_is_equal(const Bitset* bs1, const Bitset* bs2);
+bool bitset_is_not_equal(const Bitset* bs1, const Bitset* bs2);
+bool bitset_at(const Bitset* bs, size_t pos);
 
 size_t bitset_count(const Bitset* bs);
 size_t bitset_size(const Bitset* bs);
@@ -58,5 +59,6 @@ unsigned long bitset_to_ulong(const Bitset* bs);
 unsigned long long bitset_to_ullong(const Bitset* bs);
 
 char* bitset_to_string(const Bitset* bs);
+unsigned char* bitset_at_ref(Bitset* bs, size_t pos);
 
 #endif 
