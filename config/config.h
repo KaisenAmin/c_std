@@ -10,6 +10,16 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+// #define CONFIG_LOGGING_ENABLE 
+
+#ifdef CONFIG_LOGGING_ENABLE 
+    #define CONFIG_LOG(fmt, ...) \
+        do { fprintf(stderr, "[CONFIG LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define CONFIG_LOG(fmt, ...) do { } while (0)
+#endif
+
+
 typedef struct ConfigEntry ConfigEntry;
 typedef struct ConfigSection ConfigSection;
 typedef struct ConfigFile ConfigFile;

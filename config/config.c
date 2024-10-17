@@ -1,11 +1,16 @@
 #include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include "config.h"
 #include "../string/std_string.h"
 #include "../fmt/fmt.h"
-#include <stdlib.h>
-#include <ctype.h>
+
 
 static char *trim_whitespace(char *str) {
+    if (!str) {
+        CONFIG_LOG("[trime_whitespace] Error: NULL string provided to trim_whitespace.\n");
+        return NULL;
+    }
     char *end;
     // Trim leading space
     while (isspace((unsigned char)*str)) {  
@@ -26,6 +31,11 @@ static char *trim_whitespace(char *str) {
 }
 
 static void xor_encrypt_decrypt(const char *input, char *output, char key, size_t size) {
+    if (!input || !output) {
+        CONFIG_LOG("[xor_encrypt_decrypt] Error: NULL input or output provided to xor_encrypt_decrypt.\n");
+        return;
+    }
+    
     for (size_t i = 0; i < size; ++i) {
         output[i] = input[i] ^ key;
     }
@@ -42,15 +52,17 @@ static void xor_encrypt_decrypt(const char *input, char *output, char key, size_
  *         Returns NULL if the file could not be opened or memory allocation failed.
  */
 ConfigFile *config_create(const char *filename) {
+    CONFIG_LOG("[config_create] Creating configuration from file '%s'.", filename);
+
     FileReader* fr = file_reader_open(filename, READ_TEXT);
     if (!fr) {
-        fmt_fprintf(stderr, "Error: Unable to open file '%s' for reading.\n", filename);
+        CONFIG_LOG("[config_create] Error: Unable to open file '%s' for reading.", filename);
         exit(-1);
     }
 
     ConfigFile *config = malloc(sizeof(ConfigFile));
     if (!config) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for ConfigFile.\n");
+        CONFIG_LOG("[config_create] Error: Memory allocation failed for ConfigFile.");
         file_reader_close(fr);
         exit(-1);
     }
@@ -59,15 +71,16 @@ ConfigFile *config_create(const char *filename) {
     config->section_count = 0;
     config->default_section = NULL;
     config->filename = string_strdup(filename);
+    CONFIG_LOG("[config_create] Initialized ConfigFile structure.");
 
     char line[1024];
     ConfigSection *current_section = NULL;
 
-    while (file_reader_read_line(line, sizeof(line), fr)){
+    while (file_reader_read_line(line, sizeof(line), fr)) {
         String* str = string_create(line);
         string_trim(str);
-        const char *trimmed = string_c_str(str);
 
+        const char *trimmed = string_c_str(str);
         char *writable_trimmed = string_strdup(trimmed);
         string_deallocate(str);
 
@@ -79,9 +92,17 @@ ConfigFile *config_create(const char *filename) {
         if (writable_trimmed[0] == '#' || writable_trimmed[0] == ';') {
             entry.isComment = true;
             entry.value = string_strdup(writable_trimmed);
+            CONFIG_LOG("[config_create] Comment found: %s", entry.value);
         }
-        if (writable_trimmed[0] == '[') {
+        else if (writable_trimmed[0] == '[') {
             current_section = malloc(sizeof(ConfigSection));
+            if (!current_section) {
+                CONFIG_LOG("[config_create] Error: Memory allocation failed for ConfigSection.");
+                free(writable_trimmed);
+                file_reader_close(fr);
+                exit(-1);
+            }
+            
             size_t section_name_length = strlen(writable_trimmed) - 2; // Exclude '[' and ']'
             current_section->section_name = malloc(section_name_length + 1); // +1 for null terminator
             strncpy(current_section->section_name, writable_trimmed + 1, section_name_length); // Skip '['
@@ -91,13 +112,16 @@ ConfigFile *config_create(const char *filename) {
 
             config->sections = realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
             config->sections[config->section_count++] = current_section;
+            CONFIG_LOG("[config_create] New section added: [%s]", current_section->section_name);
         } 
         else if (current_section && strchr(writable_trimmed, '=')) {
             char *key = strtok(writable_trimmed, "=");
             char *value = strtok(NULL, "");
             entry.key = string_strdup(trim_whitespace(key));
             entry.value = string_strdup(trim_whitespace(value));
+            CONFIG_LOG("[config_create] Key-Value pair found: %s = %s", entry.key, entry.value);
         }
+
         if (current_section && (entry.isComment || entry.key)) {
             current_section->entries = realloc(current_section->entries, (current_section->entry_count + 1) * sizeof(ConfigEntry));
             current_section->entries[current_section->entry_count++] = entry;
@@ -106,7 +130,9 @@ ConfigFile *config_create(const char *filename) {
         free(writable_trimmed);
     }
 
+    CONFIG_LOG("[config_create] Configuration successfully loaded from '%s'.", filename);
     file_reader_close(fr);
+
     return config;
 }
 
@@ -120,28 +146,35 @@ ConfigFile *config_create(const char *filename) {
  * @param filename The name of the file where the configuration should be saved.
  */
 void config_save(const ConfigFile *config, const char *filename) {
+    CONFIG_LOG("[config_save] Saving configuration to file '%s'.", filename);
+
     FileWriter* fw = file_writer_open(filename, WRITE_TEXT);
     if (!fw) {
-        fmt_fprintf(stderr, "Error: Unable to open file '%s' for writing.\n", filename);
+        CONFIG_LOG("[config_save] Error: Unable to open file '%s' for writing.", filename);
         return;
     }
 
     for (size_t i = 0; i < config->section_count; i++) {
         ConfigSection *section = config->sections[i];
         
+        CONFIG_LOG("[config_save] Writing section [%s].", section->section_name);
         file_writer_write_fmt(fw, "[%s]\n", section->section_name);
 
         for (size_t j = 0; j < section->entry_count; j++) {
             ConfigEntry *entry = &section->entries[j];
             if (entry->isComment) {
+                CONFIG_LOG("[config_save] Writing comment: %s", entry->value);
                 file_writer_write_fmt(fw, "%s\n", entry->value);
             }
             else if (entry->key && entry->value) {
+                CONFIG_LOG("[config_save] Writing key-value pair: %s=%s", entry->key, entry->value);
                 file_writer_write_fmt(fw, "%s=%s\n", entry->key, entry->value);
             }
         }
         file_writer_write_fmt(fw, "\n");
     }
+
+    CONFIG_LOG("[config_save] Configuration saved successfully to '%s'.", filename);
     file_writer_close(fw);
 }
 
@@ -158,16 +191,18 @@ void config_save(const ConfigFile *config, const char *filename) {
  * @return The value associated with the key, or NULL if the section or key is not found.
  */
 const char *config_get_value(const ConfigFile *config, const char *section, const char *key) {
+    CONFIG_LOG("[config_get_value] Retrieving value for section '%s', key '%s'.", section, key);
+
     if (!config) {
-        fmt_fprintf(stderr, "Error: ConfigFile pointer is NULL in config_get_value.\n");
+        CONFIG_LOG("[config_get_value] Error: ConfigFile pointer is NULL.");
         return NULL;
     }
     if (!section) {
-        fmt_fprintf(stderr, "Error: Section name is NULL in config_get_value.\n");
+        CONFIG_LOG("[config_get_value] Error: Section name is NULL.");
         return NULL;
     }
     if (!key) {
-        fmt_fprintf(stderr, "Error: Key name is NULL in config_get_value.\n");
+        CONFIG_LOG("[config_get_value] Error: Key name is NULL.");
         return NULL;
     }
 
@@ -175,14 +210,17 @@ const char *config_get_value(const ConfigFile *config, const char *section, cons
         if (strcmp(config->sections[i]->section_name, section) == 0) {
             ConfigSection *sec = config->sections[i];
             for (size_t j = 0; j < sec->entry_count; ++j) {
-                if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) { 
+                if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) {
+                    CONFIG_LOG("[config_get_value] Found value for key '%s': %s", key, sec->entries[j].value);
                     return sec->entries[j].value;
                 }
             }
-            
+            CONFIG_LOG("[config_get_value] Key '%s' not found in section '%s'.", key, section);
             break;
         }
     }
+
+    CONFIG_LOG("[config_get_value] Section '%s' not found.", section);
     return NULL;
 }
 
@@ -198,20 +236,22 @@ const char *config_get_value(const ConfigFile *config, const char *section, cons
  * @param value The value to be set for the specified key.
  */
 void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value) {
+    CONFIG_LOG("[config_set_value] Setting value for section '%s', key '%s'.", section, key);
+
     if (!config) {
-        fmt_fprintf(stderr, "Error: ConfigFile pointer is NULL in config_set_value.\n");
+        CONFIG_LOG("[config_set_value] Error: ConfigFile pointer is NULL.");
         return;
     }
     if (!section) {
-        fmt_fprintf(stderr, "Error: Section name is NULL in config_set_value.\n");
+        CONFIG_LOG("[config_set_value] Error: Section name is NULL.");
         return;
     }
     if (!key) {
-        fmt_fprintf(stderr, "Error: Key name is NULL in config_set_value.\n");
+        CONFIG_LOG("[config_set_value] Error: Key name is NULL.");
         return;
     }
     if (!value) {
-        fmt_fprintf(stderr, "Error: Value is NULL in config_set_value.\n");
+        CONFIG_LOG("[config_set_value] Error: Value is NULL.");
         return;
     }
 
@@ -225,9 +265,10 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
     }
 
     if (!sec) {
+        CONFIG_LOG("[config_set_value] Section '%s' not found, creating a new section.", section);
         sec = malloc(sizeof(ConfigSection));
         if (!sec) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed for new section in config_set_value.\n");
+            CONFIG_LOG("[config_set_value] Error: Memory allocation failed for new section.");
             return;
         }
         sec->section_name = string_strdup(section);
@@ -238,32 +279,35 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         if (!config->sections) {
             free(sec->section_name);
             free(sec);
-            fmt_fprintf(stderr, "Error: Memory allocation failed for sections array in config_set_value.\n");
+            CONFIG_LOG("[config_set_value] Error: Memory allocation failed for sections array.");
             return;
         }
         config->sections[config->section_count++] = sec;
+        CONFIG_LOG("[config_set_value] New section '%s' created.", section);
     }
 
-    // Update existing key or add new key-value pair
     for (size_t j = 0; j < sec->entry_count; ++j) {
         if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) {
+            CONFIG_LOG("[config_set_value] Updating existing key '%s' in section '%s'.", key, section);
             free(sec->entries[j].value);
-            sec->entries[j].key = string_strdup(key);
             sec->entries[j].value = string_strdup(value);
-
+            CONFIG_LOG("[config_set_value] Key '%s' updated with value '%s'.", key, value);
             return;
         }
     }
 
+    // Add a new entry
     sec->entries = realloc(sec->entries, (sec->entry_count + 1) * sizeof(ConfigEntry));
     if (!sec->entries) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for new entry in config_set_value.\n");
+        CONFIG_LOG("[config_set_value] Error: Memory allocation failed for new entry.");
         return;
     }
 
     sec->entries[sec->entry_count].key = string_strdup(key); // Allocate and set key
     sec->entries[sec->entry_count].value = string_strdup(value); // Allocate and set value
     sec->entry_count++;
+    
+    CONFIG_LOG("[config_set_value] New key '%s' with value '%s' added to section '%s'.", key, value, section);
 }
 
 /**
@@ -276,16 +320,20 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
  * @param section The name of the section to be removed.
  */
 void config_remove_section(ConfigFile *config, const char *section) {
+    CONFIG_LOG("[config_remove_section] Attempting to remove section '%s'.", section);
+
     if (!config || !section) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_remove_section.\n");
+        CONFIG_LOG("[config_remove_section] Error: Invalid arguments provided.");
         return;
     }
 
     bool section_found = false;
     for (size_t i = 0; i < config->section_count; ++i) {
         if (strcmp(config->sections[i]->section_name, section) == 0) {
+            CONFIG_LOG("[config_remove_section] Section '%s' found, removing it.", section);
             section_found = true;
-            free(config->sections[i]->section_name); // Free the section
+            free(config->sections[i]->section_name);
+
             for (size_t j = 0; j < config->sections[i]->entry_count; ++j) {
                 free(config->sections[i]->entries[j].key);
                 free(config->sections[i]->entries[j].value);
@@ -293,19 +341,22 @@ void config_remove_section(ConfigFile *config, const char *section) {
 
             free(config->sections[i]->entries);
             free(config->sections[i]);
-            
-            // Shift remaining sections
-            for (size_t k = i; k < config->section_count - 1; ++k) { 
+
+            // Shift the remaining sections up
+            for (size_t k = i; k < config->section_count - 1; ++k) {
                 config->sections[k] = config->sections[k + 1];
             }
+
             config->section_count--;
-            config->sections = realloc(config->sections, config->section_count * sizeof(ConfigSection *)); // Resize the sections array
-            
+            config->sections = realloc(config->sections, config->section_count * sizeof(ConfigSection *));
+            CONFIG_LOG("[config_remove_section] Section '%s' successfully removed.", section);
+
             return;
         }
     }
+
     if (!section_found) {
-        fmt_fprintf(stderr, "Warning: Section '%s' not found in config_remove_section.\n", section);
+        CONFIG_LOG("[config_remove_section] Warning: Section '%s' not found.", section);
     }
 }
 
@@ -320,8 +371,10 @@ void config_remove_section(ConfigFile *config, const char *section) {
  * @param key The key to be removed from the section.
  */
 void config_remove_key(ConfigFile *config, const char *section, const char *key) {
+    CONFIG_LOG("[config_remove_key] Attempting to remove key '%s' from section '%s'.", key, section);
+
     if (!config || !section || !key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_remove_key.\n");
+        CONFIG_LOG("[config_remove_key] Error: Invalid arguments provided.");
         return;
     }
 
@@ -332,23 +385,29 @@ void config_remove_key(ConfigFile *config, const char *section, const char *key)
 
             for (size_t j = 0; j < sec->entry_count; ++j) {
                 if (strcmp(sec->entries[j].key, key) == 0) {
+                    CONFIG_LOG("[config_remove_key] Key '%s' found in section '%s', removing it.", key, section);
                     key_found = true;
+
                     free(sec->entries[j].key);
                     free(sec->entries[j].value);
 
-                    for (size_t k = j; k < sec->entry_count - 1; ++k) { 
+                    // Shift the remaining entries up
+                    for (size_t k = j; k < sec->entry_count - 1; ++k) {
                         sec->entries[k] = sec->entries[k + 1];
                     }
                     sec->entry_count--;
                     sec->entries = realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
+
+                    CONFIG_LOG("[config_remove_key] Key '%s' successfully removed from section '%s'.", key, section);
                     return;
                 }
             }
             break;
         }
     }
+
     if (!key_found) {
-        fmt_fprintf(stderr, "Warning: Key '%s' in section '%s' not found in config_remove_key.\n", key, section);
+        CONFIG_LOG("[config_remove_key] Warning: Key '%s' in section '%s' not found.", key, section);
     }
 }
 
@@ -361,14 +420,22 @@ void config_remove_key(ConfigFile *config, const char *section, const char *key)
  * @param config Pointer to the ConfigFile structure to be deallocated.
  */
 void config_deallocate(ConfigFile *config) {
+    CONFIG_LOG("[config_deallocate] Deallocating configuration file.");
+
     if (!config) {
-        fmt_fprintf(stderr, "Error: ConfigFile pointer is NULL in config_deallocate.\n");
+        CONFIG_LOG("[config_deallocate] Error: ConfigFile pointer is NULL.");
         return;
     }
 
     for (size_t i = 0; i < config->section_count; ++i) {
+        CONFIG_LOG("[config_deallocate] Deallocating section '%s'.", config->sections[i]->section_name);
+
         free(config->sections[i]->section_name);
         for (size_t j = 0; j < config->sections[i]->entry_count; ++j) {
+            CONFIG_LOG("[config_deallocate] Deallocating key-value pair: '%s'='%s'.",
+                       config->sections[i]->entries[j].key,
+                       config->sections[i]->entries[j].value);
+
             free(config->sections[i]->entries[j].key);
             free(config->sections[i]->entries[j].value);
         }
@@ -376,8 +443,16 @@ void config_deallocate(ConfigFile *config) {
         free(config->sections[i]->entries);
         free(config->sections[i]);
     }
+
+    CONFIG_LOG("[config_deallocate] Deallocating sections array.");
     free(config->sections);
+
+    if (config->default_section) {
+        CONFIG_LOG("[config_deallocate] Deallocating default section name '%s'.", config->default_section);
+    }
     free(config->default_section);
+
+    CONFIG_LOG("[config_deallocate] Deallocating ConfigFile structure.");
     free(config);
 }
 
@@ -391,16 +466,20 @@ void config_deallocate(ConfigFile *config) {
  * @return True if the section exists, false otherwise.
  */
 bool config_has_section(const ConfigFile *config, const char *section) {
+    CONFIG_LOG("[config_has_section] Checking for section '%s'.", section);
     if (!config || !section) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_has_section.\n");
+        CONFIG_LOG("[config_has_section] Error: Invalid arguments provided.");
         return false;
     }
 
     for (size_t i = 0; i < config->section_count; ++i) {
-        if (strcmp(config->sections[i]->section_name, section) == 0) { 
+        if (strcmp(config->sections[i]->section_name, section) == 0) {
+            CONFIG_LOG("[config_has_section] Section '%s' found.", section);
             return true;
         }
     }
+
+    CONFIG_LOG("[config_has_section] Section '%s' not found.", section);
     return false;
 }
 
@@ -416,8 +495,9 @@ bool config_has_section(const ConfigFile *config, const char *section) {
  * @return True if the key exists within the section, false otherwise.
  */
 bool config_has_key(const ConfigFile *config, const char *section, const char *key) {
+    CONFIG_LOG("[config_has_key] Checking for key '%s' in section '%s'.", key, section);
     if (!config || !section || !key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_has_key.\n");
+        CONFIG_LOG("[config_has_key] Error: Invalid arguments provided.");
         return false;
     }
 
@@ -429,6 +509,7 @@ bool config_has_key(const ConfigFile *config, const char *section, const char *k
                     ConfigSection *sec = config->sections[i];
                     for (size_t j = 0; j < sec->entry_count; ++j) {   
                         if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) { 
+                            CONFIG_LOG("[config_has_key] Found key '%s' in section '%s'.", key, section);
                             return true;
                         }
                     }
@@ -438,6 +519,7 @@ bool config_has_key(const ConfigFile *config, const char *section, const char *k
             break;
         }
     }
+    CONFIG_LOG("[config_has_key] Key '%s' not found in section '%s'.", key, section);
     return false;
 }
 
@@ -455,21 +537,31 @@ bool config_has_key(const ConfigFile *config, const char *section, const char *k
  * @return The integer value associated with the key, or the default value if the key is not found or invalid.
  */
 int config_get_int(const ConfigFile *config, const char *section, const char *key, int default_value) {
+    CONFIG_LOG("[config_get_int] Retrieving integer value for key='%s' in section='%s'.", key, section);
     if (!config || !section || !key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_int.\n");
+        CONFIG_LOG("[config_get_int] Error: Invalid arguments provided.");
         return default_value;
     }
 
     const char *value = config_get_value(config, section, key);
     if (value) {
+        CONFIG_LOG("[config_get_int] Found value='%s' for key='%s'.", value, key);
+
         char *end;
         long int_val = strtol(value, &end, 10);
 
         if (end != value && *end == '\0') {
-            return (int)int_val; // Return the parsed integer
+            CONFIG_LOG("[config_get_int] Successfully parsed integer value '%ld'.", int_val);
+            return (int)int_val; 
         }
+
+        CONFIG_LOG("[config_get_int] Value '%s' is not a valid integer.", value);
+    } 
+    else {
+        CONFIG_LOG("[config_get_int] Key='%s' not found, returning default value '%d'.", key, default_value);
     }
-    return default_value; // Return the default value if not found or not an integer
+
+    return default_value; 
 }
 
 /**
@@ -486,20 +578,31 @@ int config_get_int(const ConfigFile *config, const char *section, const char *ke
  * @return The double value associated with the key, or the default value if the key is not found or invalid.
  */
 double config_get_double(const ConfigFile *config, const char *section, const char *key, double default_value) {
+    CONFIG_LOG("[config_get_double] Retrieving double value for key='%s' in section='%s'.", key, section);
+
     if (!config || !section || !key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_double.\n");
+        CONFIG_LOG("[config_get_double] Error: Invalid arguments provided.");
         return default_value;
     }
 
     const char *value = config_get_value(config, section, key);
     if (value) {
+        CONFIG_LOG("[config_get_double] Found value='%s' for key='%s'.", value, key);
+
         char *end;
         double double_val = strtod(value, &end);
 
-        if (end != value && *end == '\0') { 
-            return double_val; // Return the parsed double
+        if (end != value && *end == '\0') {
+            CONFIG_LOG("[config_get_double] Successfully parsed double value '%f'.", double_val);
+            return double_val; 
         }
+
+        CONFIG_LOG("[config_get_double] Value '%s' is not a valid double.", value);
+    } 
+    else {
+        CONFIG_LOG("[config_get_double] Key='%s' not found, returning default value '%f'.", key, default_value);
     }
+
     return default_value; // Return the default value if not found or not a double
 }
 
@@ -518,21 +621,28 @@ double config_get_double(const ConfigFile *config, const char *section, const ch
  * @return The boolean value associated with the key, or the default value if the key is not found or invalid.
  */
 bool config_get_bool(const ConfigFile *config, const char *section, const char *key, bool default_value) {
+    CONFIG_LOG("[config_get_bool] Retrieving boolean value for section='%s', key='%s'.", section, key);
     if (!config || !section || !key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_bool.\n");
+        CONFIG_LOG("[config_get_bool] Error: Invalid arguments provided.");
         return default_value;
     }
 
     const char *value = config_get_value(config, section, key);
 
     if (value) {
+        CONFIG_LOG("[config_get_bool] Found value='%s' for key='%s'.", value, key);
+
         if (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcmp(value, "1") == 0) { 
+            CONFIG_LOG("[config_get_bool] Interpreted value as 'true'.");
             return true;
         }
         else if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcmp(value, "0") == 0) { 
+            CONFIG_LOG("[config_get_bool] Interpreted value as 'false'.");
             return false;
         }
     }
+
+    CONFIG_LOG("[config_get_bool] Returning default value '%d'.", default_value);
     return default_value; // Return the default value if not found or not a recognized boolean
 }
 
@@ -547,20 +657,22 @@ bool config_get_bool(const ConfigFile *config, const char *section, const char *
  * @param comment The comment to be added to the section.
  */
 void config_set_comment(ConfigFile *config, const char *section, const char *comment) {
+    CONFIG_LOG("[config_set_comment] Setting comment for section='%s'.", section);
     if (!config || !section || !comment) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_set_comment.\n");
+        CONFIG_LOG("[config_set_comment] Error: Invalid arguments provided.");
         return;
     }
+
     for (size_t i = 0; i < config->section_count; ++i) {
         ConfigSection *sec = config->sections[i];
-        if (strcmp(config->sections[i]->section_name, section) == 0) { 
-            sec->comment = string_strdup(comment); // Allocate memory for and store the new comment 
-        }
-        else {
-            sec->comment = NULL;
+        if (strcmp(config->sections[i]->section_name, section) == 0) {
+            CONFIG_LOG("[config_set_comment] Found section '%s', setting comment.", section);
+            sec->comment = string_strdup(comment); 
+            return; 
         }
     }
-    fmt_fprintf(stderr, "Warning: Section '%s' not found in config_set_comment.\n", section);
+
+    CONFIG_LOG("[config_set_comment] Warning: Section '%s' not found.", section);
 }
 
 /**
@@ -573,16 +685,19 @@ void config_set_comment(ConfigFile *config, const char *section, const char *com
  * @return A ConfigIterator initialized to the first entry in the configuration.
  */
 ConfigIterator config_get_iterator(const ConfigFile *config) {
+    CONFIG_LOG("[config_get_iterator] Initializing iterator for configuration.");
     ConfigIterator iterator = {0};
 
     if (!config) {
-        fmt_fprintf(stderr, "Error: ConfigFile is NULL in config_get_iterator.\n");
-        return iterator; // Return an empty iterator
+        CONFIG_LOG("[config_get_iterator] Error: ConfigFile is NULL.");
+        return iterator; 
     }
+
     iterator.config = config;
     iterator.section_index = 0;
     iterator.entry_index = 0;
-    
+
+    CONFIG_LOG("[config_get_iterator] Iterator initialized successfully.");
     return iterator;
 }
 
@@ -600,8 +715,10 @@ ConfigIterator config_get_iterator(const ConfigFile *config) {
  * @return True if the next entry was successfully retrieved, false if the end of the configuration is reached.
  */
 bool config_next_entry(ConfigIterator *iterator, const char **section, const char **key, const char **value) {
+    CONFIG_LOG("[config_next_entry] Retrieving next entry in configuration.");
+
     if (!iterator || !iterator->config || iterator->section_index >= iterator->config->section_count) {
-        fmt_fprintf(stderr, "Error: Invalid iterator or config in config_next_entry.\n");
+        CONFIG_LOG("[config_next_entry] Error: Invalid iterator or configuration.");
         return false;
     }
 
@@ -612,6 +729,7 @@ bool config_next_entry(ConfigIterator *iterator, const char **section, const cha
             *section = sec->section_name;
             *key = sec->entries[iterator->entry_index].key;
             *value = sec->entries[iterator->entry_index].value;
+            CONFIG_LOG("[config_next_entry] Found entry: Section='%s', Key='%s', Value='%s'.", *section, *key, *value);
             iterator->entry_index++;
 
             return true;
@@ -621,6 +739,8 @@ bool config_next_entry(ConfigIterator *iterator, const char **section, const cha
             iterator->entry_index = 0;
         }
     }
+
+    CONFIG_LOG("[config_next_entry] No more entries to retrieve.");
     return false;
 }
 
@@ -633,19 +753,26 @@ bool config_next_entry(ConfigIterator *iterator, const char **section, const cha
  * @param config_ptr Pointer to the pointer of the ConfigFile structure. The structure will be updated with the new data.
  */
 void config_reload(ConfigFile **config_ptr) {
+    CONFIG_LOG("[config_reload] Reloading configuration from file.");
+
     if (!config_ptr || !(*config_ptr) || !(*config_ptr)->filename) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_reload.\n");
+        CONFIG_LOG("[config_reload] Error: Invalid configuration pointer or missing filename.");
         return;
     }
+
+    CONFIG_LOG("[config_reload] Reloading from file: '%s'.", (*config_ptr)->filename);
 
     ConfigFile *new_config = config_create((*config_ptr)->filename);
     if (!new_config) {
-        fmt_fprintf(stderr, "Error: Failed to reload configuration from file '%s'.\n", (*config_ptr)->filename);
+        CONFIG_LOG("[config_reload] Error: Failed to reload configuration from file '%s'.", (*config_ptr)->filename);
         return;
     }
 
-    config_deallocate(*config_ptr); // Free the old configuration
-    *config_ptr = new_config; // Update to the new configuration
+    CONFIG_LOG("[config_reload] Successfully reloaded configuration from '%s'.", (*config_ptr)->filename);
+    config_deallocate(*config_ptr); 
+    *config_ptr = new_config; 
+
+    CONFIG_LOG("[config_reload] Configuration reloaded successfully.");
 }
 
 /**
@@ -658,13 +785,15 @@ void config_reload(ConfigFile **config_ptr) {
  * @param callback Function pointer to the callback function that will handle the modification events.
  */
 void config_register_modification_callback(ConfigFile *config, void (*callback)(const char *section, const char *key, const char *value)) {
+    CONFIG_LOG("[config_register_modification_callback] Registering modification callback.");
     if (!config) {
-        fmt_fprintf(stderr, "Error: ConfigFile is NULL in config_register_modification_callback.\n");
+        CONFIG_LOG("[config_register_modification_callback] Error: ConfigFile is NULL.");
         return;
     }
-    config->modification_callback = callback;
-}
 
+    config->modification_callback = callback;
+    CONFIG_LOG("[config_register_modification_callback] Modification callback registered successfully.");
+}
 
 /**
  * @brief Validates the structure of the configuration against an expected template.
@@ -678,8 +807,10 @@ void config_register_modification_callback(ConfigFile *config, void (*callback)(
  * @param structure_size The number of elements in the expected_structure array.
  */
 void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size) {
+    CONFIG_LOG("[config_validate_structure] Validating configuration structure.");
+
     if (!config || !expected_structure) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_validate_structure.\n");
+        CONFIG_LOG("[config_validate_structure] Error: Invalid arguments provided.");
         return;
     }
 
@@ -687,17 +818,21 @@ void config_validate_structure(const ConfigFile *config, const ConfigSection *ex
         const ConfigSection *expected_sec = &expected_structure[i];
         bool section_found = false;
 
+        CONFIG_LOG("[config_validate_structure] Validating section: '%s'.", expected_sec->section_name);
         for (size_t j = 0; j < config->section_count; ++j) {
             if (strcmp(config->sections[j]->section_name, expected_sec->section_name) == 0) {
-                section_found = true;  // Further validation can be added here to check for specific keys and values
+                section_found = true;
+                CONFIG_LOG("[config_validate_structure] Section '%s' found.", expected_sec->section_name);
+                // Additional validation for keys and values can be added here
                 break;
             }
         }
 
         if (!section_found) {
-            fmt_printf("Section '%s' is missing in the configuration.\n", expected_sec->section_name);
+            CONFIG_LOG("[config_validate_structure] Warning: Section '%s' is missing in the configuration.", expected_sec->section_name);
         }
     }
+    CONFIG_LOG("[config_validate_structure] Configuration structure validation completed.");
 }
 
 /**
@@ -715,41 +850,47 @@ void config_validate_structure(const ConfigFile *config, const ConfigSection *ex
  * Returns NULL if the key does not exist or if there is an error.
  */
 char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size) {
+    CONFIG_LOG("[config_get_array] Retrieving array for key '%s' in section '%s'.", key, section);
+
     if (!config || !section || !key || !array_size) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_array.\n");
+        CONFIG_LOG("[config_get_array] Error: Invalid arguments provided.");
         *array_size = 0;
         return NULL;
     }
 
     const char *value = config_get_value(config, section, key);
     if (!value) {
+        CONFIG_LOG("[config_get_array] Warning: Value for key '%s' in section '%s' not found.", key, section);
         *array_size = 0;
         return NULL;
     }
 
     *array_size = 1;  // Count the number of elements
-    for (const char *p = value; *p; ++p) 
+    for (const char *p = value; *p; ++p) {
         if (*p == ',') (*array_size)++;
-    
-    char **array = malloc(*array_size * sizeof(char *)); // Allocate array of string pointers
+    }
+
+    CONFIG_LOG("[config_get_array] Found %zu elements for key '%s'.", *array_size, key);
+
+    char **array = malloc(*array_size * sizeof(char *)); 
     if (!array) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in config_get_array.\n");
+        CONFIG_LOG("[config_get_array] Error: Memory allocation failed.");
         *array_size = 0;
         return NULL;
     }
 
-    // Split the string into array
     char *value_copy = string_strdup(value);
     char *token = strtok(value_copy, ", ");
     size_t idx = 0;
 
-    while (token) 
-    {
+    while (token) {
         array[idx++] = string_strdup(token);
+        CONFIG_LOG("[config_get_array] Added element '%s' to the array.", token);
         token = strtok(NULL, ",");
     }
     free(value_copy);
 
+    CONFIG_LOG("[config_get_array] Array retrieval completed for key '%s' in section '%s'.", key, section);
     return array;
 }
 
@@ -766,28 +907,35 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
  * @param array_size The number of elements in the array.
  */
 void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size) {
+    CONFIG_LOG("[config_set_array] Setting array for key '%s' in section '%s'.", key, section);
+
     if (!config || !section || !key || !array || array_size == 0) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_set_array.\n");
+        CONFIG_LOG("[config_set_array] Error: Invalid arguments provided.");
         return;
     }
 
     size_t total_length = strlen(key) + 2; // +2 for '=' and '\0'
-    for (size_t i = 0; i < array_size; i++) 
+    for (size_t i = 0; i < array_size; i++) {
         total_length += strlen(array[i]) + ((i < array_size - 1) ? 1 : 0); // +1 for comma, if not the last element
-    
+    }
+
     char *combined = malloc(total_length);
     if (!combined) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in config_set_array.\n");
+        CONFIG_LOG("[config_set_array] Error: Memory allocation failed.");
         return;
     }
 
     char *ptr = combined;
     ptr += sprintf(ptr, "%s=", key);
-    for (size_t i = 0; i < array_size; i++) 
+    for (size_t i = 0; i < array_size; i++) {
         ptr += sprintf(ptr, "%s%s", array[i], (i < array_size - 1) ? ", " : "");
+    }
 
+    CONFIG_LOG("[config_set_array] Combined array value for key '%s': %s", key, combined);
     config_set_value(config, section, key, combined);
+    
     free(combined);
+    CONFIG_LOG("[config_set_array] Array set successfully for key '%s' in section '%s'.", key, section);
 }
 
 /**
@@ -806,29 +954,34 @@ void config_set_array(ConfigFile *config, const char *section, const char *key, 
  * Returns NULL if the key does not exist or if there is an error in the process.
  */
 char *config_get_encrypted_value(const ConfigFile *config, const char *section, const char *key, const char *encryption_key) {
+    CONFIG_LOG("[config_get_encrypted_value] Retrieving encrypted value for key '%s' in section '%s'.", key, section);
+
     if (!config || !section || !key || !encryption_key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_get_encrypted_value.\n");
+        CONFIG_LOG("[config_get_encrypted_value] Error: Invalid arguments provided.");
         return NULL;
     }
 
     const char *encrypted_value = config_get_value(config, section, key);
     if (!encrypted_value) {
-        fmt_fprintf(stderr, "Error: Unable to find encrypted value for key '%s' in section '%s'.\n", key, section);
+        CONFIG_LOG("[config_get_encrypted_value] Error: Unable to find encrypted value for key '%s' in section '%s'.", key, section);
         return NULL;
     }
 
     size_t value_size = strlen(encrypted_value);
     char *decrypted_value = malloc(value_size + 1);
     if (!decrypted_value) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in config_get_encrypted_value.\n");
+        CONFIG_LOG("[config_get_encrypted_value] Error: Memory allocation failed.");
         return NULL;
     }
 
+    CONFIG_LOG("[config_get_encrypted_value] Decrypting value for key '%s'.", key);
     xor_encrypt_decrypt(encrypted_value, decrypted_value, encryption_key[0], value_size);
     decrypted_value[value_size] = '\0';
 
+    CONFIG_LOG("[config_get_encrypted_value] Decryption successful for key '%s'.", key);
     return decrypted_value;
 }
+
 
 /**
  * @brief Sets an encrypted value for a given key in a section.
@@ -843,21 +996,27 @@ char *config_get_encrypted_value(const ConfigFile *config, const char *section, 
  * @param encryption_key The key used to encrypt the value.
  */
 void config_set_encrypted_value(ConfigFile *config, const char *section, const char *key, const char *value, const char *encryption_key) {
+    CONFIG_LOG("[config_set_encrypted_value] Setting encrypted value for key '%s' in section '%s'.", key, section);
+    
     if (!config || !section || !key || !value || !encryption_key) {
-        fmt_fprintf(stderr, "Error: Invalid arguments provided to config_set_encrypted_value.\n");
+        CONFIG_LOG("[config_set_encrypted_value] Error: Invalid arguments provided.");
         return;
     }
     
     size_t value_size = strlen(value);
     char *encrypted_value = malloc(value_size + 1);
     if (!encrypted_value) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in config_set_encrypted_value.\n");
+        CONFIG_LOG("[config_set_encrypted_value] Error: Memory allocation failed.");
         return;
     }
 
+    CONFIG_LOG("[config_set_encrypted_value] Encrypting value.");
     xor_encrypt_decrypt(value, encrypted_value, encryption_key[0], value_size);
     encrypted_value[value_size] = '\0';
 
+    CONFIG_LOG("[config_set_encrypted_value] Encrypted value set for key '%s' in section '%s'.", key, section);
     config_set_value(config, section, key, encrypted_value);
+    
     free(encrypted_value);
+    CONFIG_LOG("[config_set_encrypted_value] Encryption process completed and memory freed.");
 }
