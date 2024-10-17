@@ -106,13 +106,7 @@ Please, enter a binary number: 11010111
 #define MAX_INPUT_SIZE 16 // Define the maximum input size
 
 int main() {
-    // Create a Bitset with 16 bits
     Bitset* foo = bitset_create(16);
-    if (!foo) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
-
     char input[MAX_INPUT_SIZE + 1]; // +1 for the null terminator
     
     fmt_printf("Please, enter a binary number: ");
@@ -152,9 +146,6 @@ int main(){
     Bitset* bi1 = bitset_create(4);
     Bitset* bi2 = bitset_create(8);
 
-    if (!bi1 || !bi2) {
-        return -1;
-    }
     bitset_set_from_string(bi1, "0001");
 
     fmt_printf("%llu\n", bitset_to_ullong(bi2));
@@ -186,12 +177,6 @@ int main(){
 
 int main() {
     Bitset* foo = bitset_create(8);
-
-    if (!foo){
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
-
     char input[9]; // 8 bits + null terminator
     
     fmt_printf("Please, enter an 8-bit binary number: ");
@@ -314,13 +299,7 @@ Please, enter a binary number: 10110
 #include "bitset/bitset.h" 
 
 int main() {
-    // Create a Bitset with 8 bits
     Bitset* foo = bitset_create(8);
-
-    if (!foo) {
-        fprintf(stderr, "Failed to create bitset\n");
-        return 1;
-    }
 
     // // Manually set the bits to match "10110011"
     bitset_set(foo, 0, true);  // MSB
@@ -812,15 +791,10 @@ int main() {
     bitset_set_from_string(b2, "0011");
 
     Bitset* result = bitset_and(b1, b2);
-    if (result) {
-        fmt_printf("b1 & b2: ");
-        bitset_print(result);
-        bitset_deallocate(result); 
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Bitsets are not compatible for AND operation.\n");
-    }
+    fmt_printf("b1 & b2: ");
+    bitset_print(result);
 
+    bitset_deallocate(result); 
     bitset_deallocate(b1);
     bitset_deallocate(b2);
 
@@ -870,15 +844,10 @@ int main() {
 
     Bitset* result = bitset_or(b1, b2);
 
-    if (result) {
-        fmt_printf("b1 | b2: ");
-        bitset_print(result);
-        bitset_deallocate(result); 
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Bitsets are not compatible for OR operation.\n");
-    }
+    fmt_printf("b1 | b2: ");
+    bitset_print(result);
 
+    bitset_deallocate(result); 
     bitset_deallocate(b1);
     bitset_deallocate(b2);
 
@@ -921,16 +890,10 @@ int main() {
     bitset_set_from_string(b2, "0011");
 
     Bitset* result = bitset_xor(b1, b2);
+    fmt_printf("b1 ^ b2: ");
+    bitset_print(result);
 
-    if (result) {
-        fmt_printf("b1 ^ b2: ");
-        bitset_print(result);
-        bitset_deallocate(result); 
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Bitsets are not compatible for XOR operation.\n");
-    }
-
+    bitset_deallocate(result); 
     bitset_deallocate(b1);
     bitset_deallocate(b2);
 
@@ -976,19 +939,13 @@ int main() {
     bitset_set_from_string(b1, "10011001");
     Bitset* result = bitset_not(b1);
 
-    if (result) {
-        fmt_printf("Original bitset: ");
-        bitset_print(b1);
+    fmt_printf("Original bitset: ");
+    bitset_print(b1);
 
-        fmt_printf("~Original bitset: ");
-        bitset_print(result);
+    fmt_printf("~Original bitset: ");
+    bitset_print(result);
 
-        bitset_deallocate(result); 
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Could not perform bitwise NOT operation.\n");
-    }
-
+    bitset_deallocate(result); 
     bitset_deallocate(b1);
     return 0;
 }
