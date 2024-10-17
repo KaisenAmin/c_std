@@ -829,8 +829,237 @@ int main() {
 
     return 0;
 }
+
 ```
+
 **Result in C++:**
 ```
 b1 & b2: 0010
+```
+
+## Example 15 : how to use `or operator` in Bitset with `bitset_or`
+
+```c
+#include "bitset/bitset.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Bitset* b1 = bitset_create(4);
+    Bitset* b2 = bitset_create(4);
+
+    bitset_set_from_string(b1, "0110");
+    bitset_set_from_string(b2, "0011");
+
+    Bitset* result = bitset_or(b1, b2);
+
+    if (result) {
+        fmt_printf("b1 | b2: ");
+        bitset_print(result);
+        bitset_deallocate(result); 
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Bitsets are not compatible for OR operation.\n");
+    }
+
+    bitset_deallocate(b1);
+    bitset_deallocate(b2);
+
+    return 0;
+}
+```
+
+**C++ Implementation:**
+
+```c++ 
+#include <bitset>
+#include <iostream>
+ 
+int main() {
+    std::bitset<4> b1("0110");
+    std::bitset<4> b2("0011");
+ 
+    std::cout << "b1 | b2: " << (b1 | b2) << '\n';
+
+    return 0;
+}
+```
+
+**Result C++**
+```
+b1 | b2: 0111
+```
+
+## Example 16 : how to use `xor operator` in Bitset with `bitset_xor`
+
+```c
+#include "bitset/bitset.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Bitset* b1 = bitset_create(4);
+    Bitset* b2 = bitset_create(4);
+
+    bitset_set_from_string(b1, "0110");
+    bitset_set_from_string(b2, "0011");
+
+    Bitset* result = bitset_xor(b1, b2);
+
+    if (result) {
+        fmt_printf("b1 ^ b2: ");
+        bitset_print(result);
+        bitset_deallocate(result); 
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Bitsets are not compatible for XOR operation.\n");
+    }
+
+    bitset_deallocate(b1);
+    bitset_deallocate(b2);
+
+    return 0;
+}
+```
+
+**Result**
+```
+b1 ^ b2: 0101
+```
+
+**C++ Implementation:**
+
+```c++ 
+#include <bitset>
+#include <iostream>
+ 
+int main() {
+    std::bitset<4> b1("0110");
+    std::bitset<4> b2("0011");
+ 
+    std::cout << "b1 ^ b2: " << (b1 | b2) << '\n';
+
+    return 0;
+}
+```
+
+**Result C++**
+```
+b1 ^ b2: 0101
+```
+
+## Example 17 : not operator in bitset `bitset_not`
+
+```c
+#include "bitset/bitset.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Bitset* b1 = bitset_create(16);
+
+    bitset_set_from_string(b1, "10011001");
+    Bitset* result = bitset_not(b1);
+
+    if (result) {
+        fmt_printf("Original bitset: ");
+        bitset_print(b1);
+
+        fmt_printf("~Original bitset: ");
+        bitset_print(result);
+
+        bitset_deallocate(result); 
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Could not perform bitwise NOT operation.\n");
+    }
+
+    bitset_deallocate(b1);
+    return 0;
+}
+```
+
+**Result c_std**
+```
+Original bitset: 0000000010011001
+~Original bitset: 1111111101100110
+```
+
+**C++ Implementation**
+
+```c++
+#include <iostream>
+#include <bitset>
+
+int main() {
+    std::bitset<16> pattern{"10011001"};
+    
+    std::cout << "Original bitset : " << pattern << std::endl;
+    std::cout << "~Original bitset : " << ~pattern << std::endl;
+
+    return 0;
+}
+```
+
+**Result C++**
+```
+Original bitset: 0000000010011001
+~Original bitset: 1111111101100110
+```
+
+## Example 18 : `shift_to_left` and `shift_to_right`
+
+```c
+#include "bitset/bitset.h"
+#include "fmt/fmt.h"
+
+int main() {
+    Bitset* bs = bitset_create(8);
+    bitset_set_from_string(bs, "11010010");
+
+    fmt_printf("Original Bitset: ");
+    bitset_print(bs);
+
+    Bitset* left_shifted = bitset_shift_left(bs, 2);
+    fmt_printf("After left_shift by 2: ");
+    bitset_print(left_shifted);
+
+    Bitset* right_shift = bitset_shift_right(bs, 3);
+    fmt_printf("After right_shift by 3: ");
+    bitset_print(right_shift);
+
+    bitset_deallocate(bs);
+    bitset_deallocate(right_shift);
+    bitset_deallocate(left_shifted);
+    
+    return 0;
+}
+```
+
+**Result c_std:**
+```
+Original Bitset: 11010010
+After left_shift by 2: 01001000
+After right_shift by 3: 00011010
+```
+
+**C++ Implementation:**
+
+```c++
+int main() {
+    std::bitset<8> bs("11010010");
+    std::cout << "Original Bitset: " << bs << std::endl;
+
+    std::bitset<8> left_shifted = bs << 2;
+    std::cout << "After left shift by 2: " << left_shifted << std::endl;
+
+    std::bitset<8> right_shifted = bs >> 3;
+    std::cout << "After right shift by 3: " << right_shifted << std::endl;
+
+    return 0;
+}
+```
+
+**C++ Result**
+```
+Original Bitset: 11010010
+After left_shift by 2: 01001000
+After right_shift by 3: 00011010
 ```

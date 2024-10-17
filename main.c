@@ -2,25 +2,23 @@
 #include "fmt/fmt.h"
 
 int main() {
-    Bitset* b1 = bitset_create(4);
-    Bitset* b2 = bitset_create(4);
+    Bitset* bs = bitset_create(8);
+    bitset_set_from_string(bs, "11010010");
 
-    bitset_set_from_string(b1, "0110");
-    bitset_set_from_string(b2, "0011");
+    fmt_printf("Original Bitset: ");
+    bitset_print(bs);
 
-    Bitset* result = bitset_and(b1, b2);
+    Bitset* left_shifted = bitset_shift_left(bs, 2);
+    fmt_printf("After left_shift by 2: ");
+    bitset_print(left_shifted);
 
-    if (result) {
-        fmt_printf("b1 & b2: ");
-        bitset_print(result);
-        bitset_deallocate(result); 
-    } 
-    else {
-        fmt_fprintf(stderr, "Error: Bitsets are not compatible for AND operation.\n");
-    }
+    Bitset* right_shift = bitset_shift_right(bs, 3);
+    fmt_printf("After right_shift by 3: ");
+    bitset_print(right_shift);
 
-    bitset_deallocate(b1);
-    bitset_deallocate(b2);
-
+    bitset_deallocate(bs);
+    bitset_deallocate(right_shift);
+    bitset_deallocate(left_shifted);
+    
     return 0;
 }

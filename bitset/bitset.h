@@ -40,6 +40,11 @@ Bitset* bitset_reset(Bitset* bs, size_t pos);
 Bitset* bitset_flip(Bitset* bs, size_t pos);
 Bitset* bitset_flip_all(Bitset* bs);
 Bitset* bitset_and(const Bitset* bs1, const Bitset* bs2);
+Bitset* bitset_or(const Bitset* bs1, const Bitset* bs2);
+Bitset* bitset_xor(const Bitset* bs1, const Bitset* bs2);
+Bitset* bitset_not(const Bitset* bs);
+Bitset* bitset_shift_left(const Bitset* bs, size_t shift);
+Bitset* bitset_shift_right(const Bitset* bs, size_t shift);
 
 bool bitset_all(const Bitset* bs);
 bool bitset_any(const Bitset* bs);
