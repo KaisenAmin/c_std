@@ -10,51 +10,84 @@ I undertake this project out of a deep affection for the C programming language.
 
 The project is organized into several subdirectories, each representing a different module of the standard library:
 
-- `Array`: Implements a dynamic array similar to `std::array` in C++.
-- `ForwardList`: Implements a singly-linked list analogous to `std::forward_list` in C++.
-- `List`: Implements a doubly-linked list similar to `std::list` in C++.
-- `Queue`: Implements a queue based on `std::queue` in C++.
-- `Stack`: Implements a stack akin to `std::stack` in C++.
-- `String`: Implements a basic string class that mimics `std::string` in C++.
-- `Vector`: Implements a dynamic array similar to `std::vector` in C++.
-- `PriorityQueue`: Implements a priority queue based on `std::priority_queue` in C++.
-- `Deque`: Implements a deque based on `std::deque` in C++.
-- `CsvFile`, `CsvRow`: For read, write, and other operations on CSV files.
-- `ConfigFile`: Provides a flexible solution for handling configuration files in C.
-- `Map`: A generic implementation of a map, or associative array.
-- `Span`: Implements a span container for working with contiguous memory.
-- `Algorithm`: Provides a wide range of generic functionalities similar to `std::algorithm` in C++.
-- `Encoding`: A versatile tool for encoding and decoding operations.
-- `Numbers`: Provides constants for common mathematical values, similar to C++20's `<numbers>`.
+- `Array`: The Array library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::array` in C++.
+
+- `ForwardList`: The ForwardList library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size ForwardList, offering similar functionality to `std::forward_list` in C++. its single linked list.
+
+- `List`: The List library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size List, offering similar functionality to `std::list` in C++. its double linked list
+
+- `Queue`: The Queue library is part of a project aimed at reimplementing C++ standard library features in C. It provides a generic container that encapsulates dynamic-sized Queues, offering functionality similar to `std::queue` in C++.
+
+- `Stack`: The Stack library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::stack` in C++.
+
+- `String`: The String library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::string` in C++.
+
+- `Vector`: This Vector library, is an implementation that mimics the functionality of the C++ `std::vector`. It aims to provide dynamic array capabilities to C programs. The Vector library allows for creating dynamic arrays that can resize automatically when elements are added or removed. It supports various operations such as inserting, deleting, and accessing elements, as well as more advanced functionalities like memory pooling for efficient allocation and deallocation of elements.
+
+- `PriorityQueue`: The Priority Queue library is part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic-sized priority queues, offering similar functionality to `std::priority_queue` in C++.
+
+- `Deque`: The Deque library provides a generic container that mimics the functionality of `std::deque` in C++. It offers a dynamic-size double-ended queue (deque) that allows fast insertion and removal of elements from both ends. 
+
+- `CsvFile`, `CsvRow`: This library provides a simple and efficient way to read, manipulate, and write CSV (Comma-Separated Values) files . It offers functions for creating and destroying CSV rows and files, reading and writing CSV files, and performing various operations like appending rows, inserting columns, and exporting data in JSON format.
+
+- `ConfigFile`: The ConfigFile library is a versatile and easy-to-use solution for handling configuration files. It allows developers to read, modify, and save configurations in the standard INI file format. The library supports sections, key-value pairs, and comments, making it ideal for managing configuration data in various C applications.
+
+- `Map`: The Map library provides a generic implementation of a map (also known as an associative array). This map is implemented as a Red-Black Tree, which is a type of self-balancing binary search tree. This ensures efficient operations like insertion, deletion, and lookup, all with a time complexity of O(log n). similar to `std::map`
+
+- `Span`: The Span library is a custom C implementation inspired by the C++ `std::span` container. It provides a view over a contiguous sequence of elements, allowing for efficient and safe access without owning the underlying data.
+
+- `Algorithm`: The Algorithm library is a versatile collection of functions designed to bring the power and flexibility of C++ STL `<algorithm>` functionality to C programming. It provides a suite of generic algorithms for a variety of operations on arrays and other data structures, ranging from searching and sorting to transforming and accumulating elements.
+
+- `Encoding`: The Encoding library is a versatile tool designed for efficient and user-friendly encoding and decoding operations. While it currently supports Base64 encoding and decoding, the library is structured to accommodate additional encoding methods in the future. The library's extensible architecture ensures it can be adapted to include other encoding types such as Base16, Base32, and URL encoding, catering to a wide range of applications and data formats.
+
+- `Numbers`: The Numbers library in C provides constants for common mathematical values, analogous to the `<numbers>` header introduced in C++20. It offers a simple way to access important mathematical constants in C programming, enhancing the precision and readability of mathematical computations.
+
 - `Numeric`: Implements various numerical operations and algorithms, including those for basic arithmetic, interpolation, and mathematical calculations. This module aims to bring the functionality of the C++ `<numeric>` header to C, offering features like GCD, LCM, and midpoint calculations, among others.
-- `Crypto`: Provides tools for cryptographic operations. This module might include functions for encryption and decryption, hashing, and secure random number generation. It's intended to offer C developers basic cryptographic utilities, similar to what might be found in a more comprehensive C++ cryptographic library.
+
+- `Crypto`: Provides tools for cryptographic operations. This module might include functions for encryption and decryption, hashing, and secure random number generation. It's intended to offer C developers basic cryptographic utilities.
+
 - `Time`: The Time library in C is a comprehensive tool designed for handling time-related operations. Inspired by the functionality of more advanced languages, this library provides a robust set of functions for manipulating and comparing time values in C programs.
+
 - `Date`: The Date library in C offers a robust solution for handling and manipulating dates in both Gregorian and Persian calendars. This library is particularly useful for applications requiring operations on dates, such as calculations, conversions, and comparisons. Its comprehensive set of functions simplifies complex date-related tasks in C programming.
-- `Dir`: Dir is used to manipulate path names, access information regarding paths and files, and manipulate the underlying file system.
-- `Tuple`: Implement tuple similar to `std::tuple` in C++.
+
+- `Dir`: This library is dedicated to directory and file operations, offering comprehensive functionality to manage and manipulate files and directories on the filesystem. It is designed to provide a straightforward and efficient way to interact with the filesystem in C programming.
+
+- `Tuple`: This library offers a versatile implementation of tuples, structures that can hold a fixed number of elements of potentially different types. It's designed for efficiency and ease of use in a variety of applications, from data structures to systems programming. its similar to `std::tuple`
+
 - `FileWriter`: The FileWriter library is a versatile tool designed for file writing operations in C. It provides functionalities similar to higher-level languages, offering various modes for writing text and binary files, including support for Unicode (UTF-8 and UTF-16).
-- `FileReader`: The FileReader library is a versatile tool designed for file writing operations in C.
-- `fmt`: The fmt library is a comprehensive formatting and I/O library for C, inspired by the `fmt` package in Go. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
-- `Json`: The Json library is a comprehensive and efficient tool designed for parsing, generating, and manipulating JSON data in C. It aims to provide a robust and user-friendly interface for handling JSON objects and arrays, enabling seamless integration of JSON functionality into C projects.
+
+- `FileReader`: The FileReader library is a versatile tool designed for file reading operations in C.
+
+- `fmt`: The fmt library is a comprehensive formatting and I/O library, inspired by the `fmt` package in Go. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
+
+- `Json`: The Json library is a comprehensive and efficient tool designed for parsing, generating, and manipulating JSON data. It aims to provide a robust and user-friendly interface for handling JSON objects and arrays, enabling seamless integration of JSON functionality into C projects.
+
 - `Log`: The Log library offers a flexible and powerful logging system for C projects, enabling detailed message logging across various levels (DEBUG, INFO, WARN, ERROR, FATAL). It supports multiple output destinations (console, file, or both), timestamp inclusion, log level configuration, and keyword filtering to refine log output. Integrated with file I/O operations and customizable settings, it enhances diagnostic and monitoring capabilities in development and production environments.
+
 - `Cli`: The CLI library provides a comprehensive solution for parsing command-line arguments in C projects, supporting options, commands, and subcommands with both short and long names. It features advanced functionalities like custom error handling, option grouping, interactive mode, and pipelining support, making it versatile for both simple and complex CLI applications. This library simplifies command-line parsing, validation, and execution, offering a robust foundation for building user-friendly command-line interfaces.
+
 - `Network`: The Network library provides support for TCP and UDP protocols, enabling the development of networked applications. It includes functions for creating sockets, binding, listening, connecting, sending, and receiving data over both TCP and UDP connections.
+
 - `Database`: The Database library offers tools for interacting with PostgreSQL databases. It includes functions for connecting to databases, executing queries, retrieving results, and handling transactions. This library aims to simplify database operations in C by providing a high-level API.
+
 - `Matrix`: The Matrix library provides tools for matrix operations, including creation, manipulation, and mathematical computations on matrices. It is designed to support a wide range of matrix operations needed in scientific computing and data analysis.
 
 - `Random`: This random library provides functionality like python random module for working with probablity and randomly numbers and elements. 
 
 - `Statistics`: This Statistics library in C provides a set of functions for calculating mathematical statistics of numeric data. exactly like python statistics module .
 
-- `SysInfo`: This SysInfo library in C provides a set of functions for gathering lots of information about system also operating system. and work fine in (windows and linux) not Mac :))
+- `SysInfo`: The SysInfo library provides a set of functions for retrieving detailed information about the operating system and hardware of a machine. It is designed to work on both Windows and Linux systems, though it is not tested on macOS. The library is lightweight and easy to integrate into C projects, offering developers essential system details such as OS version, kernel type, CPU architecture, and more.
 
 - `Turtle`: The Turtle Graphics library in C provides functions for drawing shapes and lines using a "turtle" that moves around the screen. Inspired by the Python `turtle` module, this library allows C developers to easily create graphics and animations.
 
 - `HttpRequest and HttpResponse` :The Http library provides functionality for creating and handling HTTP servers and clients. It includes support for routing, request parsing, response generation, and handling various HTTP methods (GET, POST, etc.). This library simplifies the development of web-based applications in C, enabling easy integration of HTTP functionality into C projects.
 
-Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
-
 - `Secrets`: This Secrets library provides a simple interface for generating secure random numbers, tokens, and performing cryptographic operations like constant-time comparison. This makes it a suitable choice for any C project requiring secure random number generation and cryptographic security.
+
+- `Xml`: This XML library in C provides a comprehensive and easy-to-use API for parsing, creating, modifying, and traversing XML documents. It is designed to be lightweight, efficient, and fully cross-platform, making it suitable for embedded systems, desktop applications, and server environments
+
+## Note 
+Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 
 ## Compilation and Execution
 

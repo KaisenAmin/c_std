@@ -6,7 +6,7 @@
 
 ## Overview
 
-The ConfigFile library is a versatile and easy-to-use solution for handling configuration files in C. It allows developers to read, modify, and save configurations in the standard INI file format. The library supports sections, key-value pairs, and comments, making it ideal for managing configuration data in various C applications.
+The ConfigFile library is a versatile and easy-to-use solution for handling configuration files. It allows developers to read, modify, and save configurations in the standard INI file format. The library supports sections, key-value pairs, and comments, making it ideal for managing configuration data in various C applications.
 
 ## Features
 

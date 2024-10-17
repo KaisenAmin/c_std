@@ -5,7 +5,7 @@
 **License:** ISC License
 
 ## Overview
-This C library is dedicated to directory and file operations, offering comprehensive functionality to manage and manipulate files and directories on the filesystem. It is designed to provide a straightforward and efficient way to interact with the filesystem in C programming.
+This library is dedicated to directory and file operations, offering comprehensive functionality to manage and manipulate files and directories on the filesystem. It is designed to provide a straightforward and efficient way to interact with the filesystem in C programming.
 
 ## Key Features
 - **Directory Operations**: Create, delete, rename, and navigate through directories.

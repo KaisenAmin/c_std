@@ -5,7 +5,7 @@
 **License:** ISC License
 
 ## Overview
-This C library offers a versatile implementation of tuples, structures that can hold a fixed number of elements of potentially different types. It's designed for efficiency and ease of use in a variety of applications, from data structures to systems programming.
+This library offers a versatile implementation of tuples, structures that can hold a fixed number of elements of potentially different types. It's designed for efficiency and ease of use in a variety of applications, from data structures to systems programming.
 
 ## Key Features
 - **Versatility**: Can hold any type of data, including custom structures.

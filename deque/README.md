@@ -4,8 +4,7 @@
 **Release Date:** 2023  
 **License:** ISC License
 
-The Deque library provides a generic container in C that mimics the functionality of `std::deque` in C++. It offers a dynamic-size double-ended queue (deque) that allows fast insertion and removal of elements from both ends. This library is part of a larger project to reimplement C++ standard library features in C.
-
+The Deque library provides a generic container that mimics the functionality of `std::deque` in C++. It offers a dynamic-size double-ended queue (deque) that allows fast insertion and removal of elements from both ends. 
 
 ## Compilation
 
