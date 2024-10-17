@@ -102,7 +102,7 @@ if (WIN32)
         # priority_queue
         # algorithm
         # array
-        # bitset
+        bitset
         # cli
         deque
         # json

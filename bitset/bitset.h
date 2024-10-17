@@ -39,6 +39,7 @@ Bitset* bitset_set(Bitset* bs, size_t pos, bool value);
 Bitset* bitset_reset(Bitset* bs, size_t pos);
 Bitset* bitset_flip(Bitset* bs, size_t pos);
 Bitset* bitset_flip_all(Bitset* bs);
+Bitset* bitset_and(const Bitset* bs1, const Bitset* bs2);
 
 bool bitset_all(const Bitset* bs);
 bool bitset_any(const Bitset* bs);

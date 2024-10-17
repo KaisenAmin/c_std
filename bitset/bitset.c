@@ -504,3 +504,36 @@ char* bitset_to_string(const Bitset* bs) {
     return str;
 }
 
+/**
+ * @brief Performs bitwise AND operation on two Bitsets.
+ *
+ * Takes two Bitsets and returns a new Bitset that is the result of the AND operation.
+ * The sizes of the Bitsets must be the same for the operation to be valid.
+ *
+ * @param bs1 The first Bitset.
+ * @param bs2 The second Bitset.
+ * @return Pointer to the resulting Bitset after the AND operation, or NULL if the sizes are not compatible.
+ */
+Bitset* bitset_and(const Bitset* bs1, const Bitset* bs2) {
+    BITSET_LOG("[bitset_and]: Function start.");
+    if (bs1->size != bs2->size) {
+        BITSET_LOG("[bitset_and]: Error - Bitsets have different sizes.");
+        return NULL;
+    }
+
+    Bitset* result = bitset_create(bs1->size);
+    if (!result) {
+        BITSET_LOG("[bitset_and]: Error - Memory allocation failed for result Bitset.");
+        return NULL;
+    }
+
+    // Perform bitwise AND for each byte in the bit array
+    size_t num_bytes = (bs1->size + 7) / 8; // Calculate the number of bytes
+    for (size_t i = 0; i < num_bytes; ++i) {
+        result->bits[i] = bs1->bits[i] & bs2->bits[i];
+        BITSET_LOG("[bitset_and]: Byte %zu - Result: 0x%x", i, result->bits[i]);
+    }
+
+    BITSET_LOG("[bitset_and]: Bitwise AND operation completed successfully.");
+    return result;
+}

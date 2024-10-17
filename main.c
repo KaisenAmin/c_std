@@ -1,20 +1,26 @@
-#include "config/config.h"
+#include "bitset/bitset.h"
 #include "fmt/fmt.h"
 
 int main() {
-    ConfigFile *config = config_create("C:\\Users\\asus\\OneDrive\\Desktop\\project\\c_std\\sources\\config.ini");
-    config_set_comment(config, "global", "Global settings for the application"); // Set a comment for a section
+    Bitset* b1 = bitset_create(4);
+    Bitset* b2 = bitset_create(4);
 
-    // Check if a section exists
-    if (config_has_section(config, "user_preferences")) { 
-        fmt_printf("Section 'user_preferences' exists.\n");
-    }
-    // Check if a key exists in a section
-    if (config_has_key(config, "user_preferences", "theme")) {
-        fmt_printf("Key 'theme' exists in section 'user_preferences'.\n");
+    bitset_set_from_string(b1, "0110");
+    bitset_set_from_string(b2, "0011");
+
+    Bitset* result = bitset_and(b1, b2);
+
+    if (result) {
+        fmt_printf("b1 & b2: ");
+        bitset_print(result);
+        bitset_deallocate(result); 
+    } 
+    else {
+        fmt_fprintf(stderr, "Error: Bitsets are not compatible for AND operation.\n");
     }
 
-    config_save(config, "C:\\Users\\asus\\OneDrive\\Desktop\\project\\c_std\\sources\\config_with_comments.ini");
-    config_deallocate(config);
+    bitset_deallocate(b1);
+    bitset_deallocate(b2);
+
     return 0;
 }
