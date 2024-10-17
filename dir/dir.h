@@ -10,6 +10,15 @@
 #include <stdint.h>
 #include "../vector/vector.h"
 
+#define DIR_LOGGING_ENABLE
+
+#ifdef DIR_LOGGING_ENABLE 
+    #define DIR_LOG(fmt, ...) \
+        do { fprintf(stderr, "[DIR LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define DIR_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef bool (*DirCompareFunc)(const char* filePath, void* userData);
 
 typedef enum {

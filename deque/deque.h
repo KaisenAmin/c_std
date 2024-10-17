@@ -12,7 +12,7 @@
 
 #define DEFAULT_BLOCK_SIZE 64
 
-#define DEQUE_LOGGING_ENABLE
+// #define DEQUE_LOGGING_ENABLE
 
 #ifdef DEQUE_LOGGING_ENABLE 
     #define DEQUE_LOG(fmt, ...) \
