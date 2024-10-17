@@ -23,43 +23,51 @@
  */
 ForwardList *forward_list_create(size_t itemSize) {
     if (itemSize == 0) {
-        fmt_fprintf(stderr, "Error: Item size cannot be zero in forward_list_create.\n");
+        FORWARD_LIST_LOG("[forward_list_create] Error: Item size cannot be zero.");
         exit(-1);
     }
 
     ForwardList *list = malloc(sizeof(ForwardList));
     if (!list) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for ForwardList in forward_list_create.\n");
+        FORWARD_LIST_LOG("[forward_list_create] Error: Memory allocation failed for ForwardList.");
         exit(-1);
     }
+
     // Initialize the list
     list->head = NULL;
     list->itemSize = itemSize;
     list->size = 0;
 
+    FORWARD_LIST_LOG("[forward_list_create] ForwardList created with item size: %zu", itemSize);
     return list;
 }
 
 // Helper function to split the list into two halves
 static ForwardListNode *split_list_for_sort(ForwardListNode *head) {
-    ForwardListNode *fast = head, *slow = head, *prev = NULL;
+    if (!head) {
+        FORWARD_LIST_LOG("[split_list_for_sort] Error: NULL head.");
+        return NULL;
+    }
 
+    ForwardListNode *fast = head, *slow = head, *prev = NULL;
     while (fast != NULL && fast->next != NULL) {
         prev = slow;
         slow = slow->next;
         fast = fast->next->next;
     }
+
     if (prev != NULL) {
-        prev->next = NULL;
+        prev->next = NULL;  // Split the list into two halves
     }
 
+    FORWARD_LIST_LOG("[split_list_for_sort] List split for sorting.");
     return slow;
 }
 
 // Merge two sorted lists
 static ForwardListNode *merge_sorted_lists(ForwardListNode *a, ForwardListNode *b, size_t itemSize) {
     if (!a || !b) {
-        fmt_fprintf(stderr, "Error: NULL list node(s) in merge_sorted_lists.\n");
+        FORWARD_LIST_LOG("[merge_sorted_lists] NULL list node(s).");
         return NULL;
     }
     ForwardListNode dummy;
@@ -75,17 +83,19 @@ static ForwardListNode *merge_sorted_lists(ForwardListNode *a, ForwardListNode *
             tail->next = b;
             b = b->next;
         }
+
         tail = tail->next;
     }
     tail->next = (a != NULL) ? a : b;
 
+    FORWARD_LIST_LOG("[merge_sorted_lists] Merged two lists.");
     return dummy.next;
 }
 
 // Recursive merge sort implementation
 static ForwardListNode *merge_sort(ForwardListNode *head, size_t itemSize) {
     if (!head) {
-        fmt_fprintf(stderr, "Error: NULL head in merge_sort.\n");
+        FORWARD_LIST_LOG("[merge_sort] NULL head.");
         return NULL;
     }
 
@@ -93,6 +103,7 @@ static ForwardListNode *merge_sort(ForwardListNode *head, size_t itemSize) {
     ForwardListNode *left = merge_sort(head, itemSize);
     ForwardListNode *right = merge_sort(middle, itemSize);
 
+    FORWARD_LIST_LOG("[merge_sort] Sorted and merged two halves.");
     return merge_sorted_lists(left, right, itemSize);
 }
 
@@ -107,23 +118,23 @@ static ForwardListNode *merge_sort(ForwardListNode *head, size_t itemSize) {
  */
 void forward_list_push_front(ForwardList *list, void *value) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_push_front.\n");
+        FORWARD_LIST_LOG("[forward_list_push_front] NULL list pointer.");
         return;
     }
     if (!value) {
-        fmt_fprintf(stderr, "Error: NULL value pointer in forward_list_push_front.\n");
+        FORWARD_LIST_LOG("[forward_list_push_front] NULL value pointer.");
         return;
     }
 
     ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
     if (!newNode) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for new node in forward_list_push_front.\n");
+        FORWARD_LIST_LOG("[forward_list_push_front] Memory allocation failed for new node.");
         return;
     }
 
     newNode->value = malloc(list->itemSize);
     if (!newNode->value) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for node value in forward_list_push_front.\n");
+        FORWARD_LIST_LOG("[forward_list_push_front] Memory allocation failed for node value.");
         free(newNode);
         return;
     }
@@ -132,6 +143,8 @@ void forward_list_push_front(ForwardList *list, void *value) {
     newNode->next = list->head;
     list->head = newNode;
     list->size++;
+
+    FORWARD_LIST_LOG("[forward_list_push_front] Added new element to the front. New size: %zu", list->size);
 }
 
 /**
@@ -145,11 +158,11 @@ void forward_list_push_front(ForwardList *list, void *value) {
  */
 void forward_list_pop_front(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_pop_front.\n");
+        FORWARD_LIST_LOG("[forward_list_pop_front] NULL list pointer.");
         return;
     }
     if (!list->head) {
-        fmt_fprintf(stderr, "Warning: Attempting to pop from an empty list in forward_list_pop_front.\n");
+        FORWARD_LIST_LOG("[forward_list_pop_front] Warning: Attempting to pop from an empty list.");
         return;
     }
 
@@ -159,6 +172,7 @@ void forward_list_pop_front(ForwardList *list) {
     free(temp->value);
     free(temp);
     list->size--;
+    FORWARD_LIST_LOG("[forward_list_pop_front] Popped element. New size: %zu", list->size);
 }
 
 /**
@@ -172,13 +186,15 @@ void forward_list_pop_front(ForwardList *list) {
  */
 void *forward_list_front(const ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_front.\n");
+        FORWARD_LIST_LOG("[forward_list_front] NULL list pointer.");
         return NULL;
     }
     if (list->head == NULL) {
-        fmt_fprintf(stderr, "Warning: Attempting to access the front of an empty ForwardList in forward_list_front.\n");
+        FORWARD_LIST_LOG("[forward_list_front] Warning: Attempting to access the front of an empty list.");
         return NULL;
     }
+
+    FORWARD_LIST_LOG("[forward_list_front] Returning the front element.");
     return list->head->value;
 }
 
@@ -192,20 +208,25 @@ void *forward_list_front(const ForwardList *list) {
  */
 void forward_list_clear(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_clear.\n");
+        FORWARD_LIST_LOG("[forward_list_clear] NULL list pointer.");
         return;
     }
 
     ForwardListNode *current = list->head;
+    size_t nodesCleared = 0;
+
     while (current != NULL) {
         ForwardListNode *next = current->next;
 
         free(current->value);
         free(current);
         current = next;
+        nodesCleared++;
     }
+
     list->head = NULL;
     list->size = 0;
+    FORWARD_LIST_LOG("[forward_list_clear] Cleared %zu nodes. List is now empty.", nodesCleared);
 }
 
 /**
@@ -219,9 +240,10 @@ void forward_list_clear(ForwardList *list) {
  */
 bool forward_list_empty(const ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_empty.\n");
+        FORWARD_LIST_LOG("[forward_list_empty] NULL list pointer.");
         return true;  // Consider a NULL list as empty
     }
+    FORWARD_LIST_LOG("[forward_list_empty] List is %s.", list->head == NULL ? "empty" : "not empty");
     return list->head == NULL;
 }
 
@@ -236,9 +258,10 @@ bool forward_list_empty(const ForwardList *list) {
  */
 size_t forward_list_length(const ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_length.\n");
+        FORWARD_LIST_LOG("[forward_list_length] NULL list pointer.");
         return 0;
     }
+    FORWARD_LIST_LOG("[forward_list_length] List size: %zu", list->size);
     return list->size;
 }
 
@@ -252,11 +275,13 @@ size_t forward_list_length(const ForwardList *list) {
  */
 void forward_list_deallocate(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_deallocate.\n");
+        FORWARD_LIST_LOG("[forward_list_deallocate] NULL list pointer.");
         return;
     }
+    FORWARD_LIST_LOG("[forward_list_deallocate] Deallocating list.");
     forward_list_clear(list);  // Clear all nodes
     free(list);
+    FORWARD_LIST_LOG("[forward_list_deallocate] List deallocated.");
 }
 
 /**
@@ -272,19 +297,22 @@ void forward_list_deallocate(ForwardList *list) {
  */
 void forward_list_assign(ForwardList *list, void *values, size_t numValues) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_assign.\n");
+        FORWARD_LIST_LOG("[forward_list_assign] NULL list pointer.");
         return;
     }
     if (!values) {
-        fmt_fprintf(stderr, "Error: NULL values pointer in forward_list_assign.\n");
+        FORWARD_LIST_LOG("[forward_list_assign] NULL values pointer.");
         return;
     }
+    FORWARD_LIST_LOG("[forward_list_assign] Assigning %zu new values to the list.", numValues);
     forward_list_clear(list);  // Clear existing contents
     for (size_t i = 0; i < numValues; ++i) {
         void *value = (char *)values + i * list->itemSize; // Calculate the address of the value to be copied
-        forward_list_push_front(list, value);  // Add each new value to the front
+        forward_list_push_front(list, value);  
     }
+
     forward_list_reverse(list); // Reverse the list to maintain the correct order
+    FORWARD_LIST_LOG("[forward_list_assign] New values assigned and list order maintained.");
 }
 
 /**
@@ -297,10 +325,11 @@ void forward_list_assign(ForwardList *list, void *values, size_t numValues) {
  * @return ForwardListNode* A pointer to the node before the beginning, which is `NULL`.
  */
 ForwardListNode *forward_list_before_begin(ForwardList *list) {
-    if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in forward_list_before_begin.\n");
+    if (!list) {
+        FORWARD_LIST_LOG("[forward_list_before_begin] NULL list pointer.");
         return NULL;
     }
+    FORWARD_LIST_LOG("[forward_list_before_begin] Returning NULL as there is no node before the beginning.");
     return NULL; // In a singly linked list, there is no node before the beginning
 }
 
@@ -314,9 +343,10 @@ ForwardListNode *forward_list_before_begin(ForwardList *list) {
  */
 ForwardListNode *forward_list_begin(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_begin.\n");
+        FORWARD_LIST_LOG("[forward_list_begin] NULL list pointer.");
         return NULL;
     }
+    FORWARD_LIST_LOG("[forward_list_begin] Returning head of the list.");
     return list->head;
 }
 
@@ -330,11 +360,12 @@ ForwardListNode *forward_list_begin(ForwardList *list) {
  * @return ForwardListNode* A `NULL` pointer representing the end of the list.
  */
 ForwardListNode *forward_list_end(ForwardList *list) {
-    if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in forward_list_end.\n");
+    if (!list) {
+        FORWARD_LIST_LOG("[forward_list_end] NULL list pointer.");
         return NULL;
     }
-    return NULL; // In a singly linked list, the end is represented by NULL
+    FORWARD_LIST_LOG("[forward_list_end] Returning NULL to represent end of list.");
+    return NULL; 
 }
 
 /**
@@ -347,10 +378,12 @@ ForwardListNode *forward_list_end(ForwardList *list) {
  * @return ForwardListNode* A `NULL` pointer representing the end of the list.
  */
 size_t forward_list_max_size(const ForwardList *list) {
-    if (list == NULL) {
-        fmt_fprintf(stderr, "Error: Null pointer provided for list in forward_list_max_size.\n");
+    if (!list) {
+        FORWARD_LIST_LOG("[forward_list_max_size] NULL list pointer.");
         return (size_t)-1; // Or a specific error code or size_t max value
     }
+
+    FORWARD_LIST_LOG("[forward_list_max_size] Returning max size of the list.");
     return (size_t)-1; // You might want to replace this with a more meaningful value
 }
 
@@ -367,17 +400,17 @@ size_t forward_list_max_size(const ForwardList *list) {
  */
 void forward_list_emplace_front(ForwardList *list, void *value) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_emplace_front.\n");
+        FORWARD_LIST_LOG("[forward_list_emplace_front] NULL list pointer.");
         return;
     }
     if (!value) {
-        fmt_fprintf(stderr, "Error: NULL value pointer in forward_list_emplace_front.\n");
+        FORWARD_LIST_LOG("[forward_list_emplace_front] NULL value pointer.");
         return;
     }
 
     ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
     if (newNode == NULL) { 
-        fmt_fprintf(stderr, "Error: Can not allocate memory for newNode in forward_list_emplace_front.\n");
+        FORWARD_LIST_LOG("[forward_list_emplace_front] Memory allocation failed for newNode.");
         return;
     }
 
@@ -385,32 +418,55 @@ void forward_list_emplace_front(ForwardList *list, void *value) {
     newNode->next = list->head;
     list->head = newNode;
     list->size++;
+
+    FORWARD_LIST_LOG("[forward_list_emplace_front] Emplaced new value at the front. New size: %zu.", list->size);
 }
 
+
+/**
+ * @brief Inserts a new element after the specified position in the ForwardList.
+ * 
+ * This function creates a new node and places it immediately after the given `pos` node.
+ * If `pos` is NULL, the element is inserted at the beginning of the list. The element 
+ * to be inserted is passed by pointer and becomes the value of the newly created node.
+ * 
+ * @param list Pointer to the ForwardList where the new element will be inserted.
+ * @param pos Pointer to the node after which the new element will be inserted. 
+ *            If `NULL`, the element will be inserted at the beginning of the list.
+ * @param value Pointer to the value to be inserted into the list. This pointer must not be NULL.
+ * 
+ * @note The size of the inserted element should match the size specified by the ForwardList at creation.
+ * 
+ * @warning If memory allocation fails, the function returns without modifying the list. 
+ *          Be sure to check for null pointers when calling this function.
+ * 
+ * @return void
+ */
 void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *value) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_emplace_after.\n");
+        FORWARD_LIST_LOG("[forward_list_emplace_after] Error: NULL list pointer.");
         return;
     }
     if (!value) {
-        fmt_fprintf(stderr, "Error: NULL value pointer in forward_list_emplace_after.\n");
+        FORWARD_LIST_LOG("[forward_list_emplace_after] Error: NULL value pointer.");
         return;
     }
     if (pos == NULL) {
-        // Special case: if pos is NULL, insert at the beginning
+        FORWARD_LIST_LOG("[forward_list_emplace_after] Special case: inserting at the beginning.");
         forward_list_emplace_front(list, value);
         return;
     }
 
     ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
     if (newNode == NULL) { 
-        fmt_fprintf(stderr, "Error: Can not allocate memory for newNode in forward_list_emplace_after.\n");
+        FORWARD_LIST_LOG("[forward_list_emplace_after] Error: Unable to allocate memory for new node.");
         return;
     }
     newNode->value = value;
     newNode->next = pos->next;
     pos->next = newNode;
     list->size++;
+    FORWARD_LIST_LOG("[forward_list_emplace_after] Inserted value after the specified position.");
 }
 
 /**
@@ -428,15 +484,15 @@ void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *v
  */
 void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_insert_after.\n");
+        FORWARD_LIST_LOG("[forward_list_insert_after] Error: NULL list pointer.");
         return;
     }
     if (!value) {
-        fmt_fprintf(stderr, "Error: NULL value pointer in forward_list_insert_after.\n");
+        FORWARD_LIST_LOG("[forward_list_insert_after] Error: NULL value pointer.");
         return;
     }
     if (pos == NULL) {
-        // Special case: insert at the beginning if pos is NULL
+        FORWARD_LIST_LOG("[forward_list_insert_after] Special case: inserting at the beginning.");
         for (size_t i = 0; i < numValues; ++i) {
             void *currentValue = (char *)value + i * list->itemSize;
             forward_list_push_front(list, currentValue);
@@ -449,10 +505,12 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
         void *currentValue = (char *)value + i * list->itemSize;
         ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
         if (newNode == NULL) {
+            FORWARD_LIST_LOG("[forward_list_insert_after] Error: Memory allocation failed for new node.");
             return;
         }
         newNode->value = malloc(list->itemSize);
         if (newNode->value == NULL) {
+            FORWARD_LIST_LOG("[forward_list_insert_after] Error: Memory allocation failed for node value.");
             free(newNode);
             return;
         }
@@ -462,6 +520,7 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
         pos->next = newNode;
         pos = newNode;
         list->size++;
+        FORWARD_LIST_LOG("[forward_list_insert_after] Inserted value after the specified position.");
     }
 }
 
@@ -480,15 +539,15 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
  */
 void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_erase_after.\n");
+        FORWARD_LIST_LOG("[forward_list_erase_after] Error: NULL list pointer.");
         return;
     }
     if (!pos) {
-        fmt_fprintf(stderr, "Error: NULL position node in forward_list_erase_after.\n");
+        FORWARD_LIST_LOG("[forward_list_erase_after] Error: NULL position node.");
         return;
     }
     if (!pos->next) {
-        fmt_fprintf(stderr, "Warning: Attempting to erase after the end of the list in forward_list_erase_after.\n");
+        FORWARD_LIST_LOG("[forward_list_erase_after] Warning: Attempting to erase after the end of the list.");
         return;
     }
     ForwardListNode *temp = pos->next;
@@ -497,6 +556,7 @@ void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) {
     free(temp->value);
     free(temp);
     list->size--;
+    FORWARD_LIST_LOG("[forward_list_erase_after] Erased node after the specified position.");
 }
 
 /**
@@ -510,9 +570,10 @@ void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) {
  */
 void forward_list_swap(ForwardList *list1, ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL list pointer(s) in forward_list_swap.\n");
+        FORWARD_LIST_LOG("[forward_list_swap] Error: NULL list pointer(s).");
         return;
     }
+
     // Swap heads
     ForwardListNode *tempHead = list1->head;
     list1->head = list2->head;
@@ -522,6 +583,8 @@ void forward_list_swap(ForwardList *list1, ForwardList *list2) {
     size_t tempSize = list1->size;
     list1->size = list2->size;
     list2->size = tempSize;
+
+    FORWARD_LIST_LOG("[forward_list_swap] Swapped the contents of two lists.");
 }
 
 /**
@@ -536,23 +599,28 @@ void forward_list_swap(ForwardList *list1, ForwardList *list2) {
  */
 void forward_list_resize(ForwardList *list, size_t newSize) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_resize.\n");
+        FORWARD_LIST_LOG("[forward_list_resize] Error: NULL list pointer.");
         return;
     }
+
     while (list->size > newSize) { 
         forward_list_pop_front(list);
+        FORWARD_LIST_LOG("[forward_list_resize] Reduced size by popping front.");
     }
     while (list->size < newSize) {
         // Allocate memory for a new value and initialize it to zero
-        void *newValue = calloc(1, list->itemSize);  // Use calloc to zero-initialize
+        void *newValue = calloc(1, list->itemSize);  
         if (!newValue) {
-            fmt_fprintf(stderr, "Error: Memory allocation failed in forward_list_resize.\n");
+            FORWARD_LIST_LOG("[forward_list_resize] Error: Memory allocation failed.");
             break;
         }
         // Add the new value to the front of the list
         forward_list_push_front(list, newValue);
-        free(newValue);
+        free(newValue);  
+        FORWARD_LIST_LOG("[forward_list_resize] Increased size by adding new element.");
     }
+
+    FORWARD_LIST_LOG("[forward_list_resize] Resizing completed.");
 }
 
 /**
@@ -568,15 +636,16 @@ void forward_list_resize(ForwardList *list, size_t newSize) {
  */
 void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_splice_after.\n");
+        FORWARD_LIST_LOG("[forward_list_splice_after] Error: NULL list pointer.");
         return;
     }
     if (!other) {
-        fmt_fprintf(stderr, "Error: NULL other list pointer in forward_list_splice_after.\n");
+        FORWARD_LIST_LOG("[forward_list_splice_after] Error: NULL other list pointer.");
         return;
     }
     if (pos == NULL) {
         // Special case: if pos is NULL, splice at the beginning
+        FORWARD_LIST_LOG("[forward_list_splice_after] Splicing at the beginning as pos is NULL.");
         if (other->head != NULL) {
             ForwardListNode *otherCurrent = other->head;
             while (otherCurrent->next != NULL) {  // Find the last node of the other list
@@ -585,6 +654,7 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
             otherCurrent->next = list->head;
             list->head = other->head;
             list->size += other->size;
+            FORWARD_LIST_LOG("[forward_list_splice_after] Spliced %zu elements from other list to the beginning.", other->size);
             other->head = NULL;
             other->size = 0;
         }
@@ -592,6 +662,7 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
     }
 
     // Regular splicing after a given node
+    FORWARD_LIST_LOG("[forward_list_splice_after] Splicing after a given node.");
     if (other->head != NULL) {
         ForwardListNode *otherCurrent = other->head;
         while (otherCurrent->next != NULL) {  // Find the last node of the other list
@@ -600,6 +671,7 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
         otherCurrent->next = pos->next;
         pos->next = other->head;
         list->size += other->size;
+        FORWARD_LIST_LOG("[forward_list_splice_after] Spliced %zu elements after the given node.", other->size);
         other->head = NULL;
         other->size = 0;
     }
@@ -617,18 +689,22 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
  */
 void forward_list_remove(ForwardList *list, void *value) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_remove.\n");
+        FORWARD_LIST_LOG("[forward_list_remove] Error: NULL list pointer.");
         return;
     }
     if (!value) {
-        fmt_fprintf(stderr, "Error: NULL value pointer in forward_list_remove.\n");
+        FORWARD_LIST_LOG("[forward_list_remove] Error: NULL value pointer.");
         return;
     }
+
+    FORWARD_LIST_LOG("[forward_list_remove] Removing elements equal to the specified value.");
+    
     while (list->head != NULL && memcmp(list->head->value, value, list->itemSize) == 0) { 
         forward_list_pop_front(list);
+        FORWARD_LIST_LOG("[forward_list_remove] Removed element from the front.");
     }
-    ForwardListNode *current = list->head;
 
+    ForwardListNode *current = list->head;
     while (current != NULL && current->next != NULL) {
         if (memcmp(current->next->value, value, list->itemSize) == 0) {
             ForwardListNode *temp = current->next;
@@ -636,11 +712,14 @@ void forward_list_remove(ForwardList *list, void *value) {
             free(temp->value);
             free(temp);
             list->size--;
+            FORWARD_LIST_LOG("[forward_list_remove] Removed element from the list.");
         } 
         else {
             current = current->next;
         }
     }
+
+    FORWARD_LIST_LOG("[forward_list_remove] Removal of elements completed.");
 }
 
 /**
@@ -655,14 +734,17 @@ void forward_list_remove(ForwardList *list, void *value) {
  */
 void forward_list_remove_if(ForwardList *list, bool (*condition)(void*)) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_remove_if.\n");
+        FORWARD_LIST_LOG("[forward_list_remove_if] Error: NULL list pointer.");
         return;
     }
     if (!condition) {
-        fmt_fprintf(stderr, "Error: NULL condition function pointer in forward_list_remove_if.\n");
+        FORWARD_LIST_LOG("[forward_list_remove_if] Error: NULL condition function pointer.");
         return;
     }
 
+    FORWARD_LIST_LOG("[forward_list_remove_if] Removing elements based on condition.");
+    
+    // Remove elements at the front that satisfy the condition
     while (list->head != NULL && condition(list->head->value)) { 
         forward_list_pop_front(list);
     }
@@ -675,11 +757,14 @@ void forward_list_remove_if(ForwardList *list, bool (*condition)(void*)) {
             free(temp->value);
             free(temp);
             list->size--;
+            FORWARD_LIST_LOG("[forward_list_remove_if] Removed element.");
         } 
         else {
             current = current->next;
         }
     }
+
+    FORWARD_LIST_LOG("[forward_list_remove_if] Removal based on condition completed.");
 }
 
 /**
@@ -693,13 +778,15 @@ void forward_list_remove_if(ForwardList *list, bool (*condition)(void*)) {
  */
 void forward_list_unique(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL list pointer in forward_list_unique.\n");
+        FORWARD_LIST_LOG("[forward_list_unique] Error: NULL list pointer.");
         return;
     }
     if (list->head == NULL || list->head->next == NULL) {
-        // List is empty or has a single element, no action required
-        return;
+        FORWARD_LIST_LOG("[forward_list_unique] List is empty or has a single element, no action required.");
+        return; 
     }
+
+    FORWARD_LIST_LOG("[forward_list_unique] Removing consecutive duplicate elements.");
 
     ForwardListNode *current = list->head;
     while (current->next != NULL) {
@@ -709,11 +796,14 @@ void forward_list_unique(ForwardList *list) {
             free(duplicate->value);
             free(duplicate);
             list->size--;
+            FORWARD_LIST_LOG("[forward_list_unique] Removed duplicate element.");
         } 
         else {
             current = current->next;
         }
     }
+
+    FORWARD_LIST_LOG("[forward_list_unique] Removal of consecutive duplicates completed.");
 }
 
 /**
@@ -729,16 +819,19 @@ void forward_list_unique(ForwardList *list) {
  */
 void forward_list_merge(ForwardList *list1, ForwardList *list2) {
     if (!list1) {
-        fmt_fprintf(stderr, "Error: NULL list1 pointer in forward_list_merge.\n");
+        FORWARD_LIST_LOG("[forward_list_merge] Error: NULL list1 pointer.");
         return;
     }
     if (!list2) {
-        fmt_fprintf(stderr, "Error: NULL list2 pointer in forward_list_merge.\n");
+        FORWARD_LIST_LOG("[forward_list_merge] Error: NULL list2 pointer.");
         return;
     }
     if (list2->head == NULL) {
-        return;  // list2 is empty, nothing to merge
+        FORWARD_LIST_LOG("[forward_list_merge] list2 is empty, nothing to merge.");
+        return;  
     }
+
+    FORWARD_LIST_LOG("[forward_list_merge] Merging list1 and list2.");
     ForwardListNode dummy;
     ForwardListNode *tail = &dummy;
     dummy.next = NULL;
@@ -754,11 +847,15 @@ void forward_list_merge(ForwardList *list1, ForwardList *list2) {
         }
         tail = tail->next;
     }
+
     tail->next = (list1->head != NULL) ? list1->head : list2->head;
+    
     // Reset list2
     list2->head = NULL;
     list2->size = 0;
     list1->head = dummy.next; // Update list1's head
+
+    FORWARD_LIST_LOG("[forward_list_merge] Merging completed.");
 }
 
 /**
@@ -771,13 +868,17 @@ void forward_list_merge(ForwardList *list1, ForwardList *list2) {
  */
 void forward_list_sort(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer in forward_list_sort.\n");
+        FORWARD_LIST_LOG("[forward_list_sort] Error: NULL ForwardList pointer.");
         return;
     }
     if (list->head == NULL) {
-        return;  // List is empty, nothing to sort
+        FORWARD_LIST_LOG("[forward_list_sort] List is empty, nothing to sort.");
+        return;  
     }
+
+    FORWARD_LIST_LOG("[forward_list_sort] Sorting the ForwardList.");
     list->head = merge_sort(list->head, list->itemSize);
+    FORWARD_LIST_LOG("[forward_list_sort] Sorting completed.");
 }
 
 /**
@@ -790,13 +891,15 @@ void forward_list_sort(ForwardList *list) {
  */
 void forward_list_reverse(ForwardList *list) {
     if (!list) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer in forward_list_reverse.\n");
+        FORWARD_LIST_LOG("[forward_list_reverse] Error: NULL ForwardList pointer.");
         return;
     }
     if (list->head == NULL || list->head->next == NULL) {
+        FORWARD_LIST_LOG("[forward_list_reverse] No need to reverse. List is empty or has only one element.");
         return;  // List is empty or has only one element, no need to reverse
     }
 
+    FORWARD_LIST_LOG("[forward_list_reverse] Reversing the ForwardList.");
     ForwardListNode *prev = NULL, *current = list->head, *next = NULL;
     while (current != NULL) {
         next = current->next;     // Store next node
@@ -805,6 +908,7 @@ void forward_list_reverse(ForwardList *list) {
         current = next;
     }
     list->head = prev; // Update the head to the new front
+    FORWARD_LIST_LOG("[forward_list_reverse] ForwardList reversed successfully.");
 }
 
 // Helper function for comparing node values
@@ -826,19 +930,26 @@ static int compare_node_values(const void *a, const void *b, size_t size) {
  */
 bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_less.\n");
+        FORWARD_LIST_LOG("[forward_list_is_less] Error: NULL ForwardList pointer(s).");
         return false;
     }
+    
+    FORWARD_LIST_LOG("[forward_list_is_less] Comparing if list1 is less than list2.");
     ForwardListNode *node1 = list1->head, *node2 = list2->head;
 
     while (node1 && node2) {
         if (compare_node_values(node1->value, node2->value, list1->itemSize) >= 0) {
+            FORWARD_LIST_LOG("[forward_list_is_less] list1 is not less than list2.");
             return false;
         }
         node1 = node1->next;
         node2 = node2->next;
     }
-    return node1 == NULL && node2 != NULL;
+
+    bool result = (node1 == NULL && node2 != NULL);
+    FORWARD_LIST_LOG("[forward_list_is_less] Comparison result: %s", result ? "True" : "False");
+
+    return result;
 }
 
 /**
@@ -855,10 +966,11 @@ bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2) {
  */
 bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_greater.\n");
+        FORWARD_LIST_LOG("[forward_list_is_greater] Error: NULL ForwardList pointer(s).");
         return false;
     }
-    return forward_list_is_less(list2, list1); // Just invert list1 and list2 for is_greater
+    FORWARD_LIST_LOG("[forward_list_is_greater] Comparing if list1 is greater than list2.");
+    return forward_list_is_less(list2, list1);
 }
 
 /**
@@ -875,19 +987,25 @@ bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2)
  */
 bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_equal.\n");
+        FORWARD_LIST_LOG("[forward_list_is_equal] Error: NULL ForwardList pointer(s).");
         return false;
     }
+    FORWARD_LIST_LOG("[forward_list_is_equal] Checking if list1 is equal to list2.");
+
     ForwardListNode *node1 = list1->head, *node2 = list2->head;
 
     while (node1 && node2) {
-        if (compare_node_values(node1->value, node2->value, list1->itemSize) != 0) { 
+        if (compare_node_values(node1->value, node2->value, list1->itemSize) != 0) {
+            FORWARD_LIST_LOG("[forward_list_is_equal] Lists are not equal.");
             return false;
         }
         node1 = node1->next;
         node2 = node2->next;
     }
-    return node1 == NULL && node2 == NULL;
+    bool result = (node1 == NULL && node2 == NULL);
+    FORWARD_LIST_LOG("[forward_list_is_equal] Lists comparison result: %s", result ? "Equal" : "Not equal");
+
+    return result;
 }
 
 /**
@@ -903,10 +1021,14 @@ bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2) {
  */
 bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_less_or_equal.\n");
+        FORWARD_LIST_LOG("[forward_list_is_less_or_equal] Error: NULL ForwardList pointer(s).");
         return false;
     }
-    return forward_list_is_less(list1, list2) || forward_list_is_equal(list1, list2);
+    FORWARD_LIST_LOG("[forward_list_is_less_or_equal] Checking if list1 is less than or equal to list2.");
+    bool result = forward_list_is_less(list1, list2) || forward_list_is_equal(list1, list2);
+    FORWARD_LIST_LOG("[forward_list_is_less_or_equal] Comparison result: %s", result ? "True" : "False");
+
+    return result;
 }
 
 /**
@@ -922,9 +1044,10 @@ bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *
  */
 bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_greater_or_equal.\n");
+        FORWARD_LIST_LOG("[forward_list_is_greater_or_equal] Error: NULL ForwardList pointer(s).");
         return false;
     }
+    FORWARD_LIST_LOG("[forward_list_is_greater_or_equal] Comparing if list1 is greater than or equal to list2.");
     return forward_list_is_greater(list1, list2) || forward_list_is_equal(list1, list2);
 }
 
@@ -941,8 +1064,9 @@ bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardLis
  */
 bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2) {
     if (!list1 || !list2) {
-        fmt_fprintf(stderr, "Error: NULL ForwardList pointer(s) in forward_list_is_not_equal.\n");
+        FORWARD_LIST_LOG("[forward_list_is_not_equal] Error: NULL ForwardList pointer(s).");
         return true;  // If one is NULL and the other is not, they are not equal.
     }
+    FORWARD_LIST_LOG("[forward_list_is_not_equal] Checking if list1 is not equal to list2.");
     return !forward_list_is_equal(list1, list2);
 }

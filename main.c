@@ -1,17 +1,17 @@
-#include "dir/dir.h"
+#include "forward_list/forward_list.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
 int main() {
-    char* currentPath = dir_current_path();
+    ForwardList* list = forward_list_create(sizeof(int));
+    int value = 10;
 
-    if (currentPath) {
-        fmt_printf("Current directory path: '%s'\n", currentPath);
-        free(currentPath);
-    } 
-    else {
-        fmt_printf("Failed to get current directory path.\n");
+    forward_list_push_front(list, &value);
+
+    for (ForwardListNode* node = forward_list_begin(list); node != NULL; node = node->next) {
+        fmt_printf("%d ", *(int*)(node->value));
     }
+    fmt_printf("\n");
     
+    forward_list_deallocate(list);
     return 0;
 }

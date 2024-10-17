@@ -10,6 +10,16 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// #define FORWARD_LIST_LOGGING_ENABLE
+
+#ifdef FORWARD_LIST_LOGGING_ENABLE 
+    #define FORWARD_LIST_LOG(fmt, ...) \
+        do { fprintf(stderr, "[FORWARD_LIST LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define FORWARD_LIST_LOG(fmt, ...) do { } while (0)
+#endif
+
+
 typedef struct ForwardListNode ForwardListNode;
 typedef struct ForwardList ForwardList;
 
