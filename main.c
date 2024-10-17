@@ -1,22 +1,16 @@
-#include "bitset/bitset.h"
+#include "csv/csv.h"
 #include "fmt/fmt.h"
 
 int main() {
-    Bitset* bs = bitset_create(8);
-    bitset_set_from_string(bs, "00101010");
+    const char *filename = "C:\\Users\\asus\\OneDrive\\Desktop\\project\\c_std\\sources\\test_10.csv"; 
+    char delimiter = ','; // Specify the delimiter used in your CSV file
+    CsvFile* myCSV = csv_file_create(delimiter);  // Create a new CsvFile instance
 
-    for (size_t i = 0; i < bitset_size(bs); ++i) {
-        fmt_printf("bs[%zu]: %d\n", i, bitset_at(bs, i));
-    }
+    csv_file_read(myCSV, filename); // Read the CSV file
 
-    unsigned char* ref = bitset_at_ref(bs, 0);
-    if (ref) {
-        *ref |= 1 << 0; // Set the 0th bit to 1
-    }
+    fmt_printf("Contents of the CSV file:\n"); // Print the contents of the CSV file
+    csv_print(myCSV);
 
-    fmt_printf("After setting bit 0, Bitset holds: ");
-    bitset_print(bs);
-
-    bitset_deallocate(bs);
+    csv_file_destroy(myCSV);
     return 0;
 }

@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define STRING_LOGGING_ENABLE
+// #define STRING_LOGGING_ENABLE
 
 #ifdef STRING_LOGGING_ENABLE
     #define STRING_LOG(fmt, ...) \

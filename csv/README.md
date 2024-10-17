@@ -64,13 +64,13 @@ Below is a simple example of how to use this library to read a CSV file and prin
 #include "fmt/fmt.h"
 
 int main() {
-    const char *filename = "./test.csv"; // Replace with your CSV file's path
-    char delimiter = ','; // Specify the delimiter used in your CSV file
+    const char *filename = "./test.csv"; 
+    char delimiter = ','; 
     CsvFile* myCSV = csv_file_create(delimiter);  // Create a new CsvFile instance
 
-    csv_file_read(myCSV, filename); // Read the CSV file
+    csv_file_read(myCSV, filename); 
 
-    fmt_printf("Contents of the CSV file:\n"); // Print the contents of the CSV file
+    fmt_printf("Contents of the CSV file:\n"); 
     csv_print(myCSV);
 
     csv_file_destroy(myCSV);
@@ -93,7 +93,7 @@ int main() {
     csv_row_append_cell(newRow, "سلول جدید 3");
 
     csv_file_append_row(csv, newRow); // Append the new row to the CSV file
-    csv_file_write(csv, "sources/updated_file.csv");   // Write the updated CSV file to a new file
+    csv_file_write(csv, "sources/updated_file.csv");  
 
     csv_file_destroy(csv);
     return 0;
@@ -112,11 +112,10 @@ int main()
 
     csv_file_read(csv, "sources/test.csv"); // Read an existing CSV file
     csv_file_remove_row(csv, 1); // Remove the second row (index 1)
-    csv_file_write(csv, "sources/reduced_file.csv"); // Write the updated CSV file to a new file
+    csv_file_write(csv, "sources/reduced_file.csv"); 
 
     // Clean up
     csv_file_destroy(csv);
-
     return 0;
 }
 ```
