@@ -32,25 +32,17 @@ in these examples i rewrite cpp example in Bitset code
 ```
 ## Function Descriptions
 
-- `Bitset* bitset_create(size_t num_bits)`: Creates a new bitset with the specified number of bits.
+
 - `void bitset_deallocate(Bitset *bs)`: Frees the memory allocated for the bitset.
 - `void bitset_print(const Bitset* bs)`: Prints the entire bitset to the standard output.
 - `void bitset_set_from_string(Bitset* bs, const char* str)`: Sets the bitset's bits based on a string of '0's and '1's.
-- `bool bitset_test(const Bitset *bs, size_t pos)`: Tests whether the bit at the specified position in the bitset is set (1) or not (0).
+
+ (0).
+- `Bitset* bitset_create(size_t num_bits)`: Creates a new bitset with the specified number of bits.
 - `Bitset* bitset_set(Bitset* bs, size_t pos, bool value)`: Sets or clears the bit at the specified position in the bitset.
 - `Bitset* bitset_reset(Bitset* bs, size_t pos)`: Clears (sets to 0) the bit at the specified position in the bitset.
 - `Bitset* bitset_flip(Bitset* bs, size_t pos)`: Toggles (flips) the bit at the specified position in the bitset.
 - `Bitset* bitset_flip_all(Bitset* bs)`: Toggles (flips) all bits in the bitset.
-- `bool bitset_all(const Bitset* bs)`: Checks if all bits in the bitset are set (1).
-- `bool bitset_any(const Bitset* bs)`: Checks if any bit in the bitset is set (1).
-- `bool bitset_none(const Bitset* bs)`: Checks if no bits in the bitset are set (1).
-- `bitset_count(const Bitset* bs)`: Returns the number of bits that are set (1) in the bitset.
-- `size_t bitset_size(const Bitset* bs)`: Returns the size (number of bits) of the bitset.
-- `unsigned long bitset_to_ulong(const Bitset* bs)`: Converts the bitset to an `unsigned long` value, assuming the bitset 
-represents a binary number.
-
-- `unsigned long long bitset_to_ullong(const Bitset* bs)`: Converts the bitset to an `unsigned long long` value, assuming the bitset represents a binary number.
-- `char* bitset_to_string` : This function will convert the bitset to a string representation.
 - `Bitset* bitset_and(const Bitset* bs1, const Bitset* bs2)` : Takes two Bitsets and returns a new Bitset that is the result of the AND operation.
 - `Bitset* bitset_or(const Bitset* bs1, const Bitset* bs2)` : Takes two Bitsets and returns a new Bitset that is the result of the OR operation.
 - `Bitset* bitset_xor(const Bitset* bs1, const Bitset* bs2)` : Takes two Bitsets and returns a new Bitset that is the result of the XOR operation.
@@ -58,10 +50,25 @@ represents a binary number.
 - `Bitset* bitset_shift_right(const Bitset* bs, size_t shift)` : This function shifts all bits to the left by the given number of positions, filling the rightmost bits with zeros.
 - `Bitset* bitset_shift_left(const Bitset* bs, size_t shift)` : This function shifts all bits to the right by the given number of positions, filling the leftmost bits with zeros.
 
+- `bool bitset_all(const Bitset* bs)`: Checks if all bits in the bitset are set (1).
+- `bool bitset_any(const Bitset* bs)`: Checks if any bit in the bitset is set (1).
+- `bool bitset_none(const Bitset* bs)`: Checks if no bits in the bitset are set (1).
+- `bool bitset_test(const Bitset *bs, size_t pos)`: Tests whether the bit at the specified position in the bitset is set (1) or not
 - `bool bitset_is_equal(const Bitset* bs1, const Bitset* bs2)` : This function checks if two Bitsets are identical in size and bit values. 
 - `bool bitset_is_not_equal(const Bitset* bs1, const Bitset* bs2)` : This function checks if two Bitsets are different in size or bit values. 
 - `bool bitset_at(const Bitset* bs, size_t pos)` : This function returns the value of the bit at the specified position.
+
+- `size_t bitset_count(const Bitset* bs)`: Returns the number of bits that are set (1) in the bitset.
+- `size_t bitset_size(const Bitset* bs)`: Returns the size (number of bits) of the bitset.
+
+- `unsigned long bitset_to_ulong(const Bitset* bs)`: Converts the bitset to an `unsigned long` value, assuming the bitset 
+represents a binary number.
 - `unsigned char* bitset_at_ref(Bitset* bs, size_t pos)` : This function allows modification of the bit at the specified position.
+- `unsigned long long bitset_to_ullong(const Bitset* bs)`: Converts the bitset to an `unsigned long long` value, assuming the bitset represents a binary number.
+
+- `char* bitset_to_string` : This function will convert the bitset to a string representation.
+
+
 
 ## Example 1 : how to use `bitset_none` and `bitset_count`
 
