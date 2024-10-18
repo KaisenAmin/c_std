@@ -62,13 +62,8 @@ The documentation includes detailed descriptions of all the functions provided b
 
 int main() {
     XmlDocument* doc = xml_parse_file("sample.xml");
-
-    if (!doc) {
-        fmt_printf("Error parsing XML file.\n");
-        return 1;
-    }
-
     XmlNode* root = xml_get_root(doc);
+    
     if (root) {
         fmt_printf("Root element: %s\n", xml_get_tag_name(root));
 

@@ -184,14 +184,8 @@ static int compare_ints(const void* a, const void* b) {
 
 int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
-
-    if (!pq) {
-        fmt_fprintf(stderr, "Failed to create priority queue.\n");
-        return -1;
-    }
-
-    // Push some integers onto the priority queue
     int values[] = {5, 10, 3, 7, 4};
+    
     for (int i = 0; i < 5; ++i) { 
         priority_queue_push(pq, &values[i]);
     }
@@ -223,14 +217,8 @@ static int compare_ints(const void* a, const void* b) {
 
 int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
-
-    if (!pq) {
-        fmt_fprintf(stderr, "Failed to create priority queue.\n");
-        return -1;
-    }
-
-    // Push some integers onto the priority queue
     int values[] = {5, 10, 3, 7, 4};
+
     for (int i = 0; i < 5; ++i) { 
         priority_queue_push(pq, &values[i]);
     }
@@ -264,14 +252,8 @@ static int compare_ints(const void* a, const void* b) {
 
 int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
-
-    if (!pq) {
-        fmt_fprintf(stderr, "Failed to create priority queue.\n");
-        return -1;
-    }
-
-    // Push some integers onto the priority queue
     int values[] = {5, 10, 3, 7, 4};
+
     for (int i = 0; i < 5; ++i) { 
         priority_queue_push(pq, &values[i]);
     }
@@ -306,14 +288,8 @@ static int compare_ints(const void* a, const void* b) {
 
 int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints);
-
-    if (!pq) {
-        fmt_fprintf(stderr, "Failed to create priority queue.\n");
-        return -1;
-    }
-
-    // Push some integers onto the priority queue
     int values[] = {5, 10, 3, 7, 4};
+
     for (int i = 0; i < 5; ++i) { 
         priority_queue_push(pq, &values[i]);
     }
@@ -356,14 +332,8 @@ static int compare_ints_desc(const void* a, const void* b) {
 
 int main() {
     PriorityQueue* pq = priority_queue_create(sizeof(int), compare_ints_desc);
- 
-    if (!pq) {
-        fmt_fprintf(stderr, "Failed to create priority queue.\n");
-        return -1;
-    }
-
-    // Push some integers onto the priority queue
     int values[] = {5, 10, 3, 7, 4, 15, 8};
+
     for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) { 
         priority_queue_push(pq, &values[i]);
     }
@@ -371,9 +341,7 @@ int main() {
     fmt_printf("Sorted elements in descending order:\n");
     while (!priority_queue_empty(pq)) {
         int* top = priority_queue_top(pq);
-        if (top)
-
- {
+        if (top) {
             fmt_printf("%d ", *top);
         }
         priority_queue_pop(pq);
@@ -417,18 +385,12 @@ int main() {
     PriorityQueue* pq1 = priority_queue_create(sizeof(int), compare_ints);
     PriorityQueue* pq2 = priority_queue_create(sizeof(int), compare_ints);
     PriorityQueue* mergedPQ = priority_queue_create(sizeof(int), compare_ints);
-
-    if (!pq1 || !pq2 || !mergedPQ) {
-        fmt_fprintf(stderr, "Failed to create priority queues.\n");
-        return -1;
-    }
-
     int values1[] = {1, 3, 5, 7, 9};
+    int values2[] = {2, 4, 6, 8, 10};
+
     for (size_t i = 0; i < sizeof(values1) / sizeof(values1[0]); ++i) {
         priority_queue_push(pq1, &values1[i]);
     }
-
-    int values2[] = {2, 4, 6, 8, 10};
     for (size_t i = 0; i < sizeof(values2) / sizeof(values2[0]); ++i) {
         priority_queue_push(pq2, &values2[i]);
     }
@@ -483,11 +445,6 @@ static int compare_tasks(const void* a, const void* b) {
 
 int main() {
     PriorityQueue* taskQueue = priority_queue_create(sizeof(Task), compare_tasks);
-
-    if (!taskQueue) {
-        fmt_fprintf(stderr, "Failed to create task queue.\n");
-        return -1;
-    }
 
     // Define some tasks with different priorities
     Task tasks[] = {

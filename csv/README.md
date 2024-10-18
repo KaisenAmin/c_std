@@ -140,7 +140,7 @@ int main() {
             char* json = csv_export_to_json(csv); // Export to JSON
             if (json) {
                 fmt_printf("JSON Output:\n%s\n", json);
-                free(json); // Remember to free the allocated memory for the JSON string
+                free(json); 
             }
             else {
                 fprintf(stderr, "Error: Failed to export CSV to JSON.\n");

@@ -104,7 +104,6 @@ int main() {
         fmt_printf("%d\n", *item);
     }
 
-    // Cleanup
     vector_deallocate(intVector);
     return 0;
 }

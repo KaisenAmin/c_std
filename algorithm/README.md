@@ -28,10 +28,9 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 ## Function Descriptions
 
 ### Sorting and Searching
-- `algorithm_is_sorted`: check range of elements is sorted or not.
+- `bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp)`: check range of elements is sorted or not.
 
-- `algorithm_stable_sort`: Sorts a range of elements into ascending order while preserving the relative order of equivalent elements.
-- `algorithm_is_sorted`: Determines if a range of elements is sorted according to a comparison function.
+- `void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp)`: Sorts a range of elements into ascending order while preserving the relative order of equivalent elements.
 - `algorithm_is_sorted_until`: Identifies the point in a range up to which elements are sorted, returning an iterator to the first unsorted element.
 - `algorithm_find`: Finds the first occurrence of a value in a range.
 - `algorithm_find_if`: is a function that searches a range for the first element that satisfies a specified predicate.
@@ -1786,7 +1785,7 @@ Count of numbers greater than 5: 3
 #include <time.h>
 
 uint32_t simple_rng() {
-    return rand();  // Simple RNG, replace with a better one if needed
+    return rand(); 
 }
 
 int main() {
@@ -1820,7 +1819,7 @@ typedef struct {
 } Person;
 
 uint32_t simple_rng() {
-    return rand();  // Simple RNG, replace with a better one if needed
+    return rand();  
 }
 
 int main() {
