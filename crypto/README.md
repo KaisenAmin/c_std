@@ -97,7 +97,7 @@ The library includes several example programs demonstrating how to use the vario
 ## Example 1 : use `MD4` algorithm `crypto_hash_data` and `crypto_print_hash`
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -107,7 +107,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_MD4, &hashLength);
 
-    printf("MD4(\"%s\") = ", exampleData);
+    fmt_printf("MD4(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -120,7 +120,7 @@ int main() {
 ```c
 
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -130,7 +130,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_MD5, &hashLength);
 
-    printf("MD5(\"%s\") = ", exampleData);
+    fmt_printf("MD5(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -143,7 +143,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -153,7 +153,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA1, &hashLength);
 
-    printf("SHA-1(\"%s\") = ", exampleData);
+    fmt_printf("SHA-1(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -165,7 +165,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -175,7 +175,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA224, &hashLength);
 
-    printf("SHA-224(\"%s\") = ", exampleData);
+    fmt_printf("SHA-224(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -187,7 +187,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -197,7 +197,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA256, &hashLength);
 
-    printf("SHA-256(\"%s\") = ", exampleData);
+    fmt_printf("SHA-256(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -209,7 +209,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -219,7 +219,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA384, &hashLength);
 
-    printf("SHA-384(\"%s\") = ", exampleData);
+    fmt_printf("SHA-384(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -231,7 +231,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -241,7 +241,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA512, &hashLength);
 
-    printf("SHA-512(\"%s\") = ", exampleData);
+    fmt_printf("SHA-512(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -253,7 +253,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -263,7 +263,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA3_224, &hashLength);
 
-    printf("SHA3-224(\"%s\") = ", exampleData);
+    fmt_printf("SHA3-224(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -275,7 +275,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -285,7 +285,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA3_256, &hashLength);
 
-    printf("SHA-256(\"%s\") = ", exampleData);
+    fmt_printf("SHA-256(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -297,7 +297,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -307,7 +307,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA3_384, &hashLength);
 
-    printf("SHA3-384(\"%s\") = ", exampleData);
+    fmt_printf("SHA3-384(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -319,7 +319,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -329,7 +329,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA3_512, &hashLength);
 
-    printf("SHA3-512(\"%s\") = ", exampleData);
+    fmt_printf("SHA3-512(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -341,7 +341,7 @@ int main() {
 
 ```c
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -356,22 +356,22 @@ int main() {
     // Encrypt
     uint8_t* encrypted = (uint8_t*)crypto_des_encrypt(plaintext, lenPlain, key, iv, CRYPTO_MODE_OFB, &outLen);
     if (!encrypted) {
-        perror("Encryption failed");
+        fmt_fprintf(stderr, "Encryption failed");
         return 1;
     }
 
-    printf("Encrypted text: ");
+    fmt_printf("Encrypted text: ");
     crypto_print_hash(encrypted, outLen);
 
     // Decrypt
     uint8_t* decrypted = (uint8_t*)crypto_des_decrypt(encrypted, outLen, key, iv, CRYPTO_MODE_OFB, &outLen);
     if (!decrypted) {
-        perror("Decryption failed");
+        fmt_fprintf(stderr, "Decryption failed");
         free(encrypted); // Remember to free the allocated memory
         return 1;
     }
 
-    printf("Decrypted text: ");
+    fmt_printf("Decrypted text: ");
     for (size_t i = 0; i < outLen; i++) {
         putchar(decrypted[i]);
     }
@@ -390,7 +390,7 @@ int main() {
 ```c
 
 #include "crypto/crypto.h"
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -402,12 +402,12 @@ int main() {
 
     // Encrypt with ECB
     uint8_t* encrypted_ecb = (uint8_t*)crypto_des_encrypt(plaintext, strlen((const char *)plaintext), key, NULL, CRYPTO_MODE_ECB, &outLen);
-    printf("ECB Encrypted: ");
+    fmt_printf("ECB Encrypted: ");
     crypto_print_hash(encrypted_ecb, outLen);
 
     // Decrypt with ECB
     uint8_t* decrypted_ecb = (uint8_t*)crypto_des_decrypt(encrypted_ecb, outLen, key, NULL, CRYPTO_MODE_ECB, &outLen);
-    printf("ECB Decrypted: %s\n", decrypted_ecb);
+    fmt_printf("ECB Decrypted: %s\n", decrypted_ecb);
 
     free(encrypted_ecb);
     free(decrypted_ecb);
@@ -419,7 +419,7 @@ int main() {
 ## Example 14 : Generate random IV for `CBC` mode `crypto_des_encrypt`
 
 ```c
-#include <stdio.h>
+#include "fmt/fmt.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -435,12 +435,12 @@ int main() {
 
     // Encrypt with CBC
     uint8_t* encrypted_cbc = (uint8_t*)crypto_des_encrypt(plaintext, strlen((const char *)plaintext), key, iv, CRYPTO_MODE_CBC, &outLen);
-    printf("CBC Encrypted: ");
+    fmt_printf("CBC Encrypted: ");
     crypto_print_hash(encrypted_cbc, outLen);
 
     // Decrypt with CBC
     uint8_t* decrypted_cbc = (uint8_t*)crypto_des_decrypt(encrypted_cbc, outLen, key, iv, CRYPTO_MODE_CBC, &outLen);
-    printf("CBC Decrypted: %s\n", decrypted_cbc);
+    fmt_printf("CBC Decrypted: %s\n", decrypted_cbc);
 
     // Cleanup
     free(encrypted_cbc);

@@ -108,7 +108,7 @@ if (WIN32)
         # json
         # matrix
         # fileio
-        # crypto
+        crypto
         # config
         # csv
         # date

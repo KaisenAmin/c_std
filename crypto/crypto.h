@@ -8,6 +8,16 @@
 #ifndef DES_BLOCK_SIZE
 #define DES_BLOCK_SIZE 8
 #endif
+
+#define CRYPTO_LOGGING_ENABLE 
+
+#ifdef CRYPTO_LOGGING_ENABLE 
+    #define CRYPTO_LOG(fmt, ...) \
+        do { fprintf(stderr, "[CRYPTO LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define CRYPTO_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef enum {
     CRYPTO_MD4,
     CRYPTO_MD5,

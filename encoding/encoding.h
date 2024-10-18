@@ -12,6 +12,15 @@
 #include <stdbool.h>
 #include <locale.h>
 
+#define ENCODING_LOGGING_ENABLE 
+
+#ifdef ENCODING_LOGGING_ENABLE 
+    #define ENCODING_LOG(fmt, ...) \
+        do { fprintf(stderr, "[ENCODING LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define ENCODING_LOG(fmt, ...) do { } while (0)
+#endif
+
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #else

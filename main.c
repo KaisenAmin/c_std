@@ -1,32 +1,42 @@
+#include "crypto/crypto.h"
 #include "fmt/fmt.h"
-#include "queue/queue.h"
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 int main() {
-    Queue* myQueue1 = queue_create(sizeof(int));
-    Queue* myQueue2 = queue_create(sizeof(int));
-    int values1[] = {10, 20, 30, 40, 50};
-    
-    for (int i = 0; i < 5; ++i) {
-        queue_push(myQueue1, &values1[i]);
+    const uint8_t key[8] = "yourkey"; // 8 bytes key, assuming it is padded with zeros if less than 8 bytes
+    const uint8_t plaintext[] = "Hello World"; // Your plaintext
+    const uint8_t iv[DES_BLOCK_SIZE] = {0}; // The IV, if required by the mode
+    size_t lenPlain = strlen((const char *)plaintext);
+    size_t outLen;
+
+    // Encrypt
+    uint8_t* encrypted = (uint8_t*)crypto_des_encrypt(plaintext, lenPlain, key, iv, CRYPTO_MODE_OFB, &outLen);
+    if (!encrypted) {
+        fmt_fprintf(stderr, "Encryption failed");
+        return 1;
     }
 
-    int values2[] = {15, 25, 35, 45, 55};
-    for (int i = 0; i < 5; ++i) { 
-        queue_emplace(myQueue2, &values2[i], sizeof(int));
+    fmt_printf("Encrypted text: ");
+    crypto_print_hash(encrypted, outLen);
+
+    // Decrypt
+    uint8_t* decrypted = (uint8_t*)crypto_des_decrypt(encrypted, outLen, key, iv, CRYPTO_MODE_OFB, &outLen);
+    if (!decrypted) {
+        fmt_fprintf(stderr, "Decryption failed");
+        free(encrypted); // Remember to free the allocated memory
+        return 1;
     }
 
-    queue_swap(myQueue1, myQueue2);
-
-    int* front1 = queue_front(myQueue1);
-    int* front2 = queue_front(myQueue2);
-
-    if (front1 && front2) {
-        fmt_printf("Front element of myQueue1 after swap: %d\n", *front1);
-        fmt_printf("Front element of myQueue2 after swap: %d\n", *front2);
+    fmt_printf("Decrypted text: ");
+    for (size_t i = 0; i < outLen; i++) {
+        putchar(decrypted[i]);
     }
+    putchar('\n');
 
-    queue_deallocate(myQueue1);
-    queue_deallocate(myQueue2);
-
+    // Cleanup
+    free(encrypted);
+    free(decrypted);
     return 0;
 }
