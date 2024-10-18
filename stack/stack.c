@@ -4,9 +4,10 @@
  * @class Stack
 */
 
+#include <stdlib.h>
 #include "stack.h"
 #include "../fmt/fmt.h"
-#include <stdlib.h>
+
 
 /**
  * @brief Creates a new stack.

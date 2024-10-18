@@ -5,9 +5,10 @@
 */
 
 
+#include <stdlib.h>
 #include "queue.h"
 #include "../fmt/fmt.h"
-#include <stdlib.h>
+
 
 /**
  * @brief Creates a new Queue object with the specified item size.

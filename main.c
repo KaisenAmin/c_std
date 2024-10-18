@@ -1,24 +1,23 @@
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
-#include <string.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include "log/log.h"
+#include "time/std_time.h"
 
 int main() {
-    const uint8_t key[8] = "yourkey"; // 8 bytes key
-    const uint8_t plaintext[] = "Hello World"; 
-    size_t outLen;
+    Log* logger = log_init();
 
-    // Encrypt with ECB
-    uint8_t* encrypted_ecb = (uint8_t*)crypto_des_encrypt(plaintext, strlen((const char *)plaintext), key, NULL, CRYPTO_MODE_ECB, &outLen);
-    fmt_printf("ECB Encrypted: ");
-    crypto_print_hash(encrypted_ecb, outLen);
+    // Configure rate limiting: Allow up to 5 messages per log level every 10 seconds
+    logger->rate_limit_interval = 10; // seconds
+    logger->rate_limit_count = 5;
 
-    // Decrypt with ECB
-    uint8_t* decrypted_ecb = (uint8_t*)crypto_des_decrypt(encrypted_ecb, outLen, key, NULL, CRYPTO_MODE_ECB, &outLen);
-    fmt_printf("ECB Decrypted: %s\n", decrypted_ecb);
+    // Generate log messages at a rate that exceeds the limit
+    for (int i = 0; i < 20; i++) {
+        log_message(logger, LOG_LEVEL_INFO, "This is info message %d", i);
+        log_message(logger, LOG_LEVEL_DEBUG, "This is debug message %d", i);
+        if (i % 2 == 0) {
+            log_message(logger, LOG_LEVEL_WARN, "This is a warning message %d", i);
+        }
+        time_sleep(1);
+    }
 
-    free(encrypted_ecb);
-    free(decrypted_ecb);
+    log_deallocate(logger);
     return 0;
 }

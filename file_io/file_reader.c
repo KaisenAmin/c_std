@@ -1,8 +1,9 @@
+#include <stdlib.h>
+#include <string.h>
 #include "file_reader.h"
 #include "../string/std_string.h"
 #include "../encoding/encoding.h"
-#include <stdlib.h>
-#include <string.h>
+
 
 /**
  * @brief Opens a file for reading, based on the specified mode.

@@ -4,10 +4,11 @@
  * @class ForwardList
 */
 
-#include "forward_list.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "forward_list.h"
+#include "../fmt/fmt.h"
+
 
 /**
  * @brief Creates a new ForwardList.

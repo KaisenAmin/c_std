@@ -4,10 +4,11 @@
  * @class Bitset
 */
 
-#include "bitset.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "bitset.h"
+#include "../fmt/fmt.h"
+
 
 /**
  * @brief Creates a new Bitset with the specified number of bits.

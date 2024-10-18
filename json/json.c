@@ -1,8 +1,8 @@
-#include "json.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include "json.h"
 #include "../string/std_string.h"
 
 static JsonElement* parse_array(JsonParserState* state);

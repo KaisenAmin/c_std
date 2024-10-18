@@ -4,11 +4,12 @@
  * @class Deque
 */
 
-#include "deque.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include "deque.h"
+#include "../fmt/fmt.h"
+
 
 /**
  * @brief Creates a new deque with a specified item size.

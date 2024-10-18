@@ -8,6 +8,10 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
+
+#include <stdbool.h>
+#include <stddef.h>
+
 // #define VECTOR_LOGGING_ENABLE
 
 #ifdef VECTOR_LOGGING_ENABLE
@@ -17,8 +21,6 @@
     #define VECTOR_LOG(fmt, ...) do { } while (0)
 #endif
 
-#include <stdbool.h>
-#include <stddef.h>
 
 
 typedef struct Vector Vector;

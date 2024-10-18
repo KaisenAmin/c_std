@@ -1,10 +1,10 @@
-#include "matrix.h"
-#include "../fmt/fmt.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
 #include <stdint.h>
 #include <time.h>
+#include "matrix.h"
+#include "../fmt/fmt.h"
 
 #define EPSILON 1e-9
 

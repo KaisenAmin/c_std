@@ -1,8 +1,8 @@
-#include "statistics.h"
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include "statistics.h"
 
 /**
  * @brief This function performs a binary search to find the index where a value x should be inserted in the 

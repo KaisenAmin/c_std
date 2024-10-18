@@ -4,10 +4,11 @@
  * @class Tuple
 */
 
-#include "tuple.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "tuple.h"
+#include "../fmt/fmt.h"
+
 
 /**
  * @brief This function allocates memory for a tuple and its elements based on the given size.

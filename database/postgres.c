@@ -1,9 +1,10 @@
-#include "postgres.h"
-#include "../string/std_string.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "postgres.h"
+#include "../string/std_string.h"
+#include "../fmt/fmt.h"
+
 
 #define CON_INFO_SIZE 256 
 

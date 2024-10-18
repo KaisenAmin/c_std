@@ -9,11 +9,12 @@
 #include <errno.h>
 #endif 
 
+#include <stdlib.h>
+#include <string.h>
 #include "file_writer.h"
 #include "../encoding/encoding.h"
 #include "../string/std_string.h"
-#include <stdlib.h>
-#include <string.h>
+
 
 /**
  * @brief Opens a file for writing, based on the specified mode.

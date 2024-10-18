@@ -4,10 +4,11 @@
  * @class Map
 */
 
-#include "map.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "map.h"
+#include "../fmt/fmt.h"
+
 
 // Define the Red-Black Tree color constants
 #define RED 1

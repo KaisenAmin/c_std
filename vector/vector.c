@@ -4,10 +4,11 @@
  * @class Vector
 */
 
-#include "vector.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "vector.h"
+#include "../fmt/fmt.h"
+
 
 static MemoryPoolVector *memory_pool_create(size_t size);
 static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size);

@@ -4,10 +4,11 @@
  * @class Array
 */
 
-#include "array.h"
-#include "../fmt/fmt.h"
 #include <string.h>
 #include <stdlib.h>
+#include "array.h"
+#include "../fmt/fmt.h"
+
 
 /**
  * @brief Creates a new Array with a specified element size and initial size.

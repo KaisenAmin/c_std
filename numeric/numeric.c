@@ -1,7 +1,6 @@
 #include <string.h>
-#include "numeric.h"
 #include <stdlib.h>
-
+#include "numeric.h"
 
 void numeric_iota(void* first, const void* last, size_t size, void* element, IncrementFunc func) {
     char* current = (char*)first;

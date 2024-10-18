@@ -7,7 +7,15 @@
 #include "../fmt/fmt.h"
 
 #define MAX_KEYWORD_LENGTH 512
-#define LOG_ENABLE_LOGGING
+// #define LOG_ENABLE_LOGGING
+
+#ifdef LOG_LOGGING_ENABLE 
+    #define LOG_LOG(fmt, ...) \
+        do { fprintf(stderr, "[LOG LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define LOG_LOG(fmt, ...) do { } while (0)
+#endif
+
 // Log levels
 typedef enum {
     LOG_LEVEL_DEBUG,

@@ -1,8 +1,9 @@
+#include <stdlib.h>
+#include <string.h>
 #include "cli.h"
 #include "../fmt/fmt.h"
 #include "../string/std_string.h"
-#include <stdlib.h>
-#include <string.h>
+
 
 extern char **environ;
 static CliError cli_last_error = {0, ""};

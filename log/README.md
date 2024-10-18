@@ -356,10 +356,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     // Initially set the log level to INFO
     log_set_log_level(logger, LOG_LEVEL_INFO);
@@ -381,10 +377,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     // Enable keyword filtering to only show logs containing "error"
     log_enable_keyword_filter(logger, "error", true);
@@ -407,10 +399,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_message(logger, LOG_LEVEL_INFO, "Initial info message.");
     log_message(logger, LOG_LEVEL_ERROR, "Initial error message.");
@@ -436,10 +424,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_message(logger, LOG_LEVEL_INFO, "Logging to the initial file.");
 
@@ -463,15 +447,9 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_message(logger, LOG_LEVEL_ERROR, "An unexpected error occurred.");
-
-    // Flush logs to ensure the message is written out immediately
-    log_flush(logger);
+    log_flush(logger); 
 
     log_deallocate(logger);
     return 0;
@@ -485,10 +463,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_message(logger, LOG_LEVEL_INFO, "This is an informational message.");
 
@@ -509,10 +483,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     // Suspend logging temporarily
     log_suspend(logger);
@@ -534,10 +504,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     // Set a custom format for log messages
     log_set_format(logger, "[%s] [%s] - %s"); // Format: [Timestamp] [LogLevel] - Message
@@ -555,10 +521,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_message(logger, LOG_LEVEL_DEBUG, "This is a debug message.");
     log_message(logger, LOG_LEVEL_INFO, "This is an info message.");
@@ -595,10 +557,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_message(logger, LOG_LEVEL_INFO, "Logging to the initial file.");
 
@@ -622,10 +580,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     log_set_verbose(logger, true);
 
@@ -661,10 +615,6 @@ bool custom_log_filter(LogLevel level, const char* message, void* user_data) {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     const char* filter_criteria = "important";
     log_set_custom_filter(logger, custom_log_filter, (void*)filter_criteria);
@@ -685,10 +635,6 @@ int main() {
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     // Set maximum log file size to 5 MB and specify archive naming pattern
     log_set_max_file_size(logger, 5 * 1024 * 1024, "log_archive_%Y-%m-%d_%H-%M-%S.txt");
@@ -706,14 +652,10 @@ int main() {
 
 ```c
 #include "log/log.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 int main() {
     Log* logger = log_init();
-    if (!logger) {
-        fmt_fprintf(stderr, "Failed to initialize logging system.\n");
-        return -1;
-    }
 
     // Configure rate limiting: Allow up to 5 messages per log level every 10 seconds
     logger->rate_limit_interval = 10; // seconds

@@ -4,10 +4,11 @@
  * @class List
 */
 
-#include "list.h"
-#include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "list.h"
+#include "../fmt/fmt.h"
+
 
 /**
  * @brief Creates a new list with the specified item size and comparison function.

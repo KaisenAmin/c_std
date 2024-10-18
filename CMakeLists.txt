@@ -115,7 +115,7 @@ if (WIN32)
         # forwardlist
         # list
         # numbers
-        # log
+        log
         # dir
         # concurrent
         # numeric

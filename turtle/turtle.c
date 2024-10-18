@@ -1,6 +1,7 @@
-#include "turtle.h"
 #include <math.h>
 #include <stdlib.h>
+#include "turtle.h"
+
 
 #define INITIAL_CAPACITY 1024
 

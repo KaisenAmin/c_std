@@ -4,7 +4,7 @@
  * @class Crypto
 */
 
-#include "crypto.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md4.h>
@@ -15,6 +15,7 @@
 #include <openssl/mdc2.h>
 #include <openssl/des.h>
 #include <openssl/err.h>
+#include "crypto.h"
 
 #ifndef DES_BLOCK_SIZE
 #define DES_BLOCK_SIZE 8

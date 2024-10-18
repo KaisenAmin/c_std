@@ -4,14 +4,15 @@
  * @class Encoding
 */
 
-#include "encoding.h"
-// #include "../fmt/fmt.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
 #include <limits.h>
+#include "encoding.h"
+// #include "../fmt/fmt.h"
+
 
 bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
