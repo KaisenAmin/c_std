@@ -96,10 +96,11 @@ The library includes several example programs demonstrating how to use the vario
 
 ## Example 1 : use `MD4` algorithm `crypto_hash_data` and `crypto_print_hash`
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "The quick brown fox jumps over the lazy dog";
@@ -118,11 +119,11 @@ int main() {
 ## Example 2 : how to use `MD5`
 
 ```c
-
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "سلام";
@@ -142,10 +143,11 @@ int main() {
 ## Example 3 : How to Use `SHA-1`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "Hello World";
@@ -164,10 +166,11 @@ int main() {
 ## Example 4 :`SHA-224`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "Hello World";
@@ -186,10 +189,11 @@ int main() {
 ## Example 5 : `SHA-256`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "Hello World";
@@ -208,10 +212,11 @@ int main() {
 ## Example 6 : `SHA-384`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "امین طهماسبی";
@@ -230,10 +235,11 @@ int main() {
 ## Example 7 : `SHA-512`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "امین طهماسبی";
@@ -252,10 +258,11 @@ int main() {
 ## Example 8 : `SHA3-224`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "امین طهماسبی";
@@ -273,11 +280,13 @@ int main() {
 
 ## Example 9 : How to use `SHA3-256`
 
+
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "امین طهماسبی";
@@ -296,10 +305,11 @@ int main() {
 ## Example 10 : How to use `SHA3-384`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "امین طهماسبی";
@@ -318,10 +328,11 @@ int main() {
 ## Example 11 : How to use `SHA3-512`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const char* exampleData = "امین طهماسبی";
@@ -340,11 +351,12 @@ int main() {
 ## Example 12 : How to use `OFB` mode with `crypto_des_encrypt`
 
 ```c
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const uint8_t key[8] = "yourkey"; // 8 bytes key, assuming it is padded with zeros if less than 8 bytes
@@ -388,12 +400,12 @@ int main() {
 ## Example 13 : How to use `ECB` mode with `crypto_des_encrypt`
 
 ```c
-
-#include "crypto/crypto.h"
-#include "fmt/fmt.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+
 
 int main() {
     const uint8_t key[8] = "yourkey"; // 8 bytes key
@@ -419,10 +431,10 @@ int main() {
 ## Example 14 : Generate random IV for `CBC` mode `crypto_des_encrypt`
 
 ```c
-#include "fmt/fmt.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "fmt/fmt.h"
 #include "crypto/crypto.h"
 
 int main() {
