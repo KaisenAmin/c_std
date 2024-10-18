@@ -49,7 +49,7 @@ uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algo
     uint8_t* md = NULL;
     EVP_MD_CTX *mdctx;
     const EVP_MD *md_type;
-    unsigned char md_value[EVP_MAX_MD_SIZE];
+    // unsigned char md_value[EVP_MAX_MD_SIZE];
 
     switch (algorithm) {
         case CRYPTO_MD4:
@@ -123,6 +123,9 @@ uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algo
                     md_type = EVP_sha3_512();
                     *outLength = SHA512_DIGEST_LENGTH;
                     break;
+                default:
+                    CRYPTO_LOG("[crypto_hash_data] Unsupported algorithm");
+                    return NULL;
             }
             md = (uint8_t*)malloc(*outLength);
             if (!md) {
@@ -155,6 +158,9 @@ uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algo
                     md_type = EVP_shake256();
                     *outLength = 64; // desired length for SHAKE256
                     break;
+                default:
+                    CRYPTO_LOG("[crypto_hash_data] Unsupported algorithm");
+                    return NULL;
             }
             md = (uint8_t*)malloc(*outLength);
             if (!md) {
@@ -197,6 +203,9 @@ uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algo
                     md_type = EVP_sha512_224();
                     *outLength = 28;
                     break;
+                default:
+                    CRYPTO_LOG("[crypto_hash_data] Unsupported algorithm");
+                    return NULL;
             }
             md = (uint8_t*)malloc(*outLength);
             if (!md) {

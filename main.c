@@ -1,35 +1,24 @@
-#include "json/json.h"
+#include "crypto/crypto.h"
 #include "fmt/fmt.h"
-
-// Function to invert boolean values
-JsonElement* invert_boolean(const JsonElement* element, void* user_data) {
-    (void)user_data;
-    if (element->type == JSON_BOOL) {
-        JsonElement* newElement = json_create(JSON_BOOL);
-        newElement->value.bool_val = !element->value.bool_val;
-        return newElement;
-    }
-    return json_deep_copy(element); // Return a copy of the element if it's not a boolean
-}
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 int main() {
-    const char* jsonString = "[true, false, true, false]";
-    JsonElement* jsonElement = json_parse(jsonString);
+    const uint8_t key[8] = "yourkey"; // 8 bytes key
+    const uint8_t plaintext[] = "Hello World"; 
+    size_t outLen;
 
-    if (jsonElement) {
-        JsonElement* invertedArray = json_map(jsonElement, invert_boolean, NULL);
-        if (invertedArray) {
-            fmt_printf("Inverted boolean array:\n");
-            json_print(invertedArray);
-            json_deallocate(invertedArray);
-        } 
-        else {
-            fmt_printf("Failed to map the JSON array.\n");
-        }
-        json_deallocate(jsonElement);
-    } 
-    else {
-        fmt_printf("Failed to parse JSON string.\n");
-    }
+    // Encrypt with ECB
+    uint8_t* encrypted_ecb = (uint8_t*)crypto_des_encrypt(plaintext, strlen((const char *)plaintext), key, NULL, CRYPTO_MODE_ECB, &outLen);
+    fmt_printf("ECB Encrypted: ");
+    crypto_print_hash(encrypted_ecb, outLen);
+
+    // Decrypt with ECB
+    uint8_t* decrypted_ecb = (uint8_t*)crypto_des_decrypt(encrypted_ecb, outLen, key, NULL, CRYPTO_MODE_ECB, &outLen);
+    fmt_printf("ECB Decrypted: %s\n", decrypted_ecb);
+
+    free(encrypted_ecb);
+    free(decrypted_ecb);
     return 0;
 }
