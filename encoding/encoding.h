@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <locale.h>
 
-#define ENCODING_LOGGING_ENABLE 
+// #define ENCODING_LOGGING_ENABLE 
 
 #ifdef ENCODING_LOGGING_ENABLE 
     #define ENCODING_LOG(fmt, ...) \

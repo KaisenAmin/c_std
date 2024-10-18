@@ -5,6 +5,15 @@
 #include "../vector/vector.h"
 #include "../map/map.h"
 
+// #define JSON_LOGGING_ENABLE
+
+#ifdef JSON_LOGGING_ENABLE 
+    #define JSON_LOG(fmt, ...) \
+        do { fprintf(stderr, "[JSON LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define JSON_LOG(fmt, ...) do { } while (0)
+#endif
+
 #define JSON_ERROR_NONE 0
 #define JSON_ERROR_SYNTAX 1
 #define JSON_ERROR_UNEXPECTED_TOKEN 2

@@ -105,7 +105,7 @@ if (WIN32)
         # bitset
         # cli
         # deque
-        # json
+        json
         # matrix
         # fileio
         crypto

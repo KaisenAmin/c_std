@@ -9,7 +9,7 @@
 #define DES_BLOCK_SIZE 8
 #endif
 
-#define CRYPTO_LOGGING_ENABLE 
+// #define CRYPTO_LOGGING_ENABLE 
 
 #ifdef CRYPTO_LOGGING_ENABLE 
     #define CRYPTO_LOG(fmt, ...) \

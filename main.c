@@ -1,42 +1,35 @@
-#include "crypto/crypto.h"
+#include "json/json.h"
 #include "fmt/fmt.h"
-#include <string.h>
-#include <stdint.h>
-#include <stdlib.h>
+
+// Function to invert boolean values
+JsonElement* invert_boolean(const JsonElement* element, void* user_data) {
+    (void)user_data;
+    if (element->type == JSON_BOOL) {
+        JsonElement* newElement = json_create(JSON_BOOL);
+        newElement->value.bool_val = !element->value.bool_val;
+        return newElement;
+    }
+    return json_deep_copy(element); // Return a copy of the element if it's not a boolean
+}
 
 int main() {
-    const uint8_t key[8] = "yourkey"; // 8 bytes key, assuming it is padded with zeros if less than 8 bytes
-    const uint8_t plaintext[] = "Hello World"; // Your plaintext
-    const uint8_t iv[DES_BLOCK_SIZE] = {0}; // The IV, if required by the mode
-    size_t lenPlain = strlen((const char *)plaintext);
-    size_t outLen;
+    const char* jsonString = "[true, false, true, false]";
+    JsonElement* jsonElement = json_parse(jsonString);
 
-    // Encrypt
-    uint8_t* encrypted = (uint8_t*)crypto_des_encrypt(plaintext, lenPlain, key, iv, CRYPTO_MODE_OFB, &outLen);
-    if (!encrypted) {
-        fmt_fprintf(stderr, "Encryption failed");
-        return 1;
+    if (jsonElement) {
+        JsonElement* invertedArray = json_map(jsonElement, invert_boolean, NULL);
+        if (invertedArray) {
+            fmt_printf("Inverted boolean array:\n");
+            json_print(invertedArray);
+            json_deallocate(invertedArray);
+        } 
+        else {
+            fmt_printf("Failed to map the JSON array.\n");
+        }
+        json_deallocate(jsonElement);
+    } 
+    else {
+        fmt_printf("Failed to parse JSON string.\n");
     }
-
-    fmt_printf("Encrypted text: ");
-    crypto_print_hash(encrypted, outLen);
-
-    // Decrypt
-    uint8_t* decrypted = (uint8_t*)crypto_des_decrypt(encrypted, outLen, key, iv, CRYPTO_MODE_OFB, &outLen);
-    if (!decrypted) {
-        fmt_fprintf(stderr, "Decryption failed");
-        free(encrypted); // Remember to free the allocated memory
-        return 1;
-    }
-
-    fmt_printf("Decrypted text: ");
-    for (size_t i = 0; i < outLen; i++) {
-        putchar(decrypted[i]);
-    }
-    putchar('\n');
-
-    // Cleanup
-    free(encrypted);
-    free(decrypted);
     return 0;
 }

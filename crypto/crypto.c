@@ -149,11 +149,11 @@ uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algo
             switch (algorithm) {
                 case CRYPTO_SHAKE_128:
                     md_type = EVP_shake128();
-                    *outLength = 32; // Set to desired length for SHAKE128
+                    *outLength = 32; // desired length for SHAKE128
                     break;
                 case CRYPTO_SHAKE_256:
                     md_type = EVP_shake256();
-                    *outLength = 64; // Set to desired length for SHAKE256
+                    *outLength = 64; // desired length for SHAKE256
                     break;
             }
             md = (uint8_t*)malloc(*outLength);
