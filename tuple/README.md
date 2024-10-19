@@ -15,19 +15,107 @@ This library offers a versatile implementation of tuples, structures that can ho
 - **Flexible API**: Functions for creating, modifying, and querying tuples.
 - **Cross Platform**: Work in Windows and linux.
 
-## Function Explanations
 
-- `tuple_create`: Initializes a new tuple with the specified size.
-- `tuple_deallocate`: Freely releases all memory associated with the tuple.
-- `tuple_set`: Sets a value at a specific index in the tuple.
-- `tuple_get`: Retrieves a value from a specific index in the tuple.
-- `tuple_make_tuple`: Creates a tuple from a list of values.
-- `tuple_tie`: Creates a tuple that ties variables together.
-- `tuple_swap`: Swaps the contents of two tuples.
-- `tuple_forward_as_tuple`: Forwards arguments as a tuple, typically used in functions.
-- `tuple_size`: Returns the number of elements in the tuple.
-- `tuple_is_equal`, `tuple_is_less`, etc.: Relational operators for tuple comparison.
-- `tuple_is_empty`: Checks if the tuple is empty.
+### Tuple Structure
+The `Tuple` structure contains two key elements:
+- **TupleElement**: This holds individual elements of the tuple, which consist of a pointer to the data and the size of the data type.
+- **Tuple**: This holds an array of `TupleElement`s, representing the tuple's elements, and the size of the tuple, i.e., how many elements it holds.
+
+### Functions:
+
+#### Tuple Creation and Memory Management:
+- **`Tuple* tuple_create(size_t size)`**  
+  Initializes a tuple with the specified number of elements. Each element can hold a different type.
+  - **Parameters**:  
+    - `size`: The number of elements the tuple will contain.  
+  - **Returns**:  
+    - A pointer to the newly created `Tuple` object.
+
+- **`Tuple* tuple_make_tuple(size_t num, ...)`**  
+  A variadic function that initializes a tuple from a list of values, each with its corresponding size.
+  - **Parameters**:  
+    - `num`: The number of elements in the tuple.  
+    - Additional arguments: Data and size pairs for each element.
+  - **Returns**:  
+    - A pointer to the created `Tuple`.
+
+- **`Tuple* tuple_tie(size_t num, ...)`**  
+  Ties variables together into a tuple, allowing easy modification of the original variables through the tuple.
+  - **Parameters**:  
+    - `num`: The number of elements in the tuple.  
+    - Additional arguments: Pointers to variables.
+  - **Returns**:  
+    - A pointer to the created `Tuple`.
+
+- **`Tuple* tuple_forward_as_tuple(size_t num, ...)`**  
+  Forwards arguments as a tuple, which is useful in functions where arguments need to be passed together as a tuple.
+  - **Parameters**:  
+    - `num`: The number of elements.  
+    - Additional arguments: Pointers to the data.
+  - **Returns**:  
+    - A pointer to the created `Tuple`.
+
+- **`void tuple_deallocate(Tuple* tuple)`**  
+  Frees the memory associated with a tuple, including its elements.
+  - **Parameters**:  
+    - `tuple`: Pointer to the tuple to be deallocated.
+
+- **`void tuple_swap(Tuple* a, Tuple* b)`**  
+  Swaps the contents of two tuples.
+  - **Parameters**:  
+    - `a`, `b`: The two tuples to be swapped.
+
+#### Tuple Modification and Access:
+- **`bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size)`**  
+  Sets a value at a specific index in the tuple.
+  - **Parameters**:  
+    - `tuple`: The tuple to modify.  
+    - `index`: The index to set the value at.  
+    - `data`: Pointer to the data.  
+    - `size`: Size of the data.
+  - **Returns**:  
+    - `true` if the operation was successful, `false` otherwise.
+
+- **`void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize)`**  
+  Retrieves a value from a specific index in the tuple.
+  - **Parameters**:  
+    - `tuple`: The tuple to retrieve the value from.  
+    - `index`: The index of the value to retrieve.  
+    - `outSize`: Pointer to a size variable where the size of the retrieved value will be stored.
+  - **Returns**:  
+    - A pointer to the value at the specified index.
+
+#### Tuple Comparison:
+- **`bool tuple_is_equal(const Tuple* t1, const Tuple* t2)`**  
+  Compares two tuples for equality.
+  - **Returns**:  
+    - `true` if the tuples are equal, `false` otherwise.
+
+- **`bool tuple_is_less(const Tuple* t1, const Tuple* t2)`**  
+  Returns `true` if `t1` is less than `t2` according to lexicographical order.
+
+- **`bool tuple_is_greater(const Tuple* t1, const Tuple* t2)`**  
+  Returns `true` if `t1` is greater than `t2`.
+
+- **`bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2)`**  
+  Returns `true` if the two tuples are not equal.
+
+- **`bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2)`**  
+  Returns `true` if `t1` is greater than or equal to `t2`.
+
+- **`bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2)`**  
+  Returns `true` if `t1` is less than or equal to `t2`.
+
+- **`bool tuple_is_empty(Tuple* t)`**  
+  Checks if the tuple is empty (i.e., contains no elements).
+  - **Returns**:  
+    - `true` if the tuple is empty, `false` otherwise.
+
+#### Miscellaneous:
+- **`size_t tuple_size(const Tuple* tuple)`**  
+  Returns the number of elements in the tuple.
+
+
 
 ## Compilation
 To compile a program using the Tuple library, ensure that all relevant source files are included. For a program `main.c` that uses the Tuple library, compile with the following command:
@@ -38,6 +126,8 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 This command uses GCC with C17 standard, optimizing for speed (`-O3`) and the native architecture (`-march=native`). The `-flto` and `-funroll-loops` flags enable further optimizations, while `-Wall`, `-Wextra`, and `-pedantic` enable a wide range of warnings for better code quality. The `-s` flag strips the binary to reduce size.
 
+
+### Examples 
 
 ## Example 1 : create `tuple` with type int and float 
 
@@ -278,13 +368,14 @@ Name: John Doe
 ## Example 6 : send Tuple as parameter to function 
 
 ```c
+#include <stdlib.h>
 #include "tuple/tuple.h"
 #include "string/std_string.h"
 #include "vector/vector.h"
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 #include "random/random.h"
-#include <stdlib.h>
+
 
 void process_person_data(Tuple* personData) {
     if (!personData) {

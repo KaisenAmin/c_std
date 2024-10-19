@@ -17,37 +17,126 @@ To use this library, include `statistics.h` in your project and compile the sour
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./statistics/statistics.c
 ```
 
-## Documentation
+### Structures
 
-The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like generating random integers within specified ranges.
+1. **`LinearRegression` Structure**:
+    - **Purpose**: Represents the result of a simple linear regression model.
+    - **Fields**:
+        - `double slope`: The slope of the regression line, indicating the rate of change of the dependent variable with respect to the independent variable.
+        - `double intercept`: The intercept of the regression line, representing the value of the dependent variable when the independent variable is zero.
+    - **Use case**: This structure holds the result of performing a linear regression analysis, which fits a line to a set of data points.
 
-### Function Descriptions
+2. **`__StatisticsElementCount` Structure**:
+    - **Purpose**: Represents an element and its frequency of occurrence (used internally for mode and multimode calculations).
+    - **Fields**:
+        - `void* element`: A pointer to the data element.
+        - `size_t count`: The number of occurrences of this element.
+    - **Use case**: Used internally for keeping track of how often each element occurs when calculating mode or multimode.
 
-- `double statistics_mean(const double* data, size_t n)`: this function calculate and return mean (average) of data.
-- `double statistics_median(const double* data, size_t n)`: this function calculates the median of the data. this function also sorts the data in ascending order before calculating the median.
-- `double statistics_median_low(const double* data, size_t n)`: this function calculates the low median of the given data set. This function also sorts the data in ascending order before calculating the low median.
-- `double statistics_median_high(const double* data, size_t n)`: this function calculates the high median of the given data set. This function also sorts the data in ascending order before calculating the high median.
-- `double statistics_median_grouped(const double *data, size_t n, double interval)`: this function calculates the median of grouped continuous data, calculated as the 50th percentile. this function treats the data points as continuous data and calculates the 50% percentile median by first finding the median range using specified interval width , and then interpolating within that range using the position of the values from the data set that fall in that range.
+3. **`__StatisticsIndexedValue` Structure**:
+    - **Purpose**: Represents a value along with its index (used internally for certain calculations like correlation).
+    - **Fields**:
+        - `double value`: The actual value.
+        - `size_t index`: The index of the value in the original dataset.
+    - **Use case**: Useful for sorting data while preserving the original indices, particularly when calculating rank-based correlations like Spearman's correlation.
 
-- `double statistics_variance(const double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the sample variance of the data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
+4. **`CorrelationMethod` Enum**:
+    - **Purpose**: Defines the method of correlation to be used (Pearson correlation or Spearman rank correlation).
+    - **Values**:
+        - `CORRELATION_LINEAR`: For Pearson linear correlation.
+        - `CORRELATION_RANKED`: For Spearman rank correlation.
+    - **Use case**: This enum is used to specify the type of correlation method when calling the `statistics_correlation` function.
 
-- `double statistics_stdev(const double* data, size_t n, bool xbar_provided, double xbar)`: this function calculates the standard deviation from a sample of data. if xbar_provided is false, the mean is calculated internally; otherwise, the provided mean (xbar) is used.
+---
 
-- `double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu)`: this function calculates the variance of an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
+### Function Descriptions 
 
-- `double statistics_pstdev(const double* data, size_t n, bool mu_provided, double mu)`: this function calculates the standard deviation from an entire population. if mu_provided is false, the mean is calculated internally; otherwise, the provided mean (mu) is used.
+1. **`double statistics_mean(const double* data, size_t n)`**:
+    - **Purpose**: Calculates the arithmetic mean (average) of a dataset.
+    - **Returns**: The mean value.
+    - **Use case**: Useful for summarizing a dataset with a single central value.
 
-- `double statistics_fmean(const double* data, size_t n, const double* weights)`: this function calculate mean value with weight.
-- `double statistics_geometric_mean(const double* data, size_t n)`: this function calculate geometric_mean of data.
-- `double statistics_harmonic_mean(const double *data, size_t n, const double* weights)`: this function calculate harmonic mean of data.
-- `void* statistics_mode(void* data, size_t n, size_t size)`: this function return the most commong data in array of any type.
-- `void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count)`: this function Return a list of the most frequently occurring values. 
-- `double statistics_covariance(const double* x, const double* y, size_t n)`: Return the sample covariance of two inputs *x* and *y*. Covariance
-is a measure of the joint variability of two inputs.
+2. **`double statistics_fmean(const double* data, size_t n, const double* weights)`**:
+    - **Purpose**: Computes the weighted arithmetic mean of a dataset, where each value in `data` is given a specific weight from `weights`.
+    - **Returns**: The weighted mean.
+    - **Use case**: Used when certain data points should contribute more heavily to the average.
 
-- `double statistics_correlation(const double* x, const double* y, size_t n, CorrelationMethod method)`: this function computes the correlation coefficient between two array x and y of length n. It calculates either the Pearson correlation if the method is CORRELATION_LINEAR or the Spearman rank correlation if the method is CORRELATION_RANKED, based on the specified CorrelationMethod enum.
+3. **`double statistics_geometric_mean(const double* data, size_t n)`**:
+    - **Purpose**: Computes the geometric mean of a dataset, which is the nth root of the product of the data values.
+    - **Returns**: The geometric mean.
+    - **Use case**: Useful in cases where values are multiplicative, such as in growth rates or financial returns.
 
-- `LinearRegression statistics_linear_regression(const double* x, const double* y, size_t n, bool proportional)`: this function return the slope and intercept of simple linear regression parameters estimated using ordinary least squares.
+4. **`double statistics_harmonic_mean(const double *data, size_t n, const double* weights)`**:
+    - **Purpose**: Computes the harmonic mean of a dataset, which is the reciprocal of the average of reciprocals.
+    - **Returns**: The harmonic mean.
+    - **Use case**: Useful when dealing with rates or ratios, such as speeds or densities.
+
+5. **`double statistics_median(const double* data, size_t n)`**:
+    - **Purpose**: Calculates the median (middle value) of the dataset.
+    - **Returns**: The median value.
+    - **Use case**: Used when summarizing the central tendency of a dataset that may have outliers, as the median is less affected by extreme values.
+
+6. **`double statistics_median_low(const double* data, size_t n)`**:
+    - **Purpose**: Computes the low median (the largest value less than or equal to the middle value) of the dataset.
+    - **Returns**: The low median value.
+    - **Use case**: Used when needing to compute the median with an emphasis on the lower half of the dataset.
+
+7. **`double statistics_median_high(const double* data, size_t n)`**:
+    - **Purpose**: Computes the high median (the smallest value greater than or equal to the middle value) of the dataset.
+    - **Returns**: The high median value.
+    - **Use case**: Used when needing to compute the median with an emphasis on the upper half of the dataset.
+
+8. **`double statistics_median_grouped(const double *data, size_t n, double interval)`**:
+    - **Purpose**: Computes the median of grouped data using the provided interval width, assuming the data represents continuous values.
+    - **Returns**: The grouped median.
+    - **Use case**: Commonly used in statistics when dealing with binned or interval data.
+
+9. **`double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu)`**:
+    - **Purpose**: Calculates the population variance (measure of spread) for an entire population. If `mu_provided` is true, it uses the provided mean, otherwise it calculates the mean internally.
+    - **Returns**: The population variance.
+    - **Use case**: Used when working with the entire population of data.
+
+10. **`double statistics_pstdev(const double* data, size_t n, bool mu_provided, double mu)`**:
+    - **Purpose**: Calculates the population standard deviation for an entire population. If `mu_provided` is true, it uses the provided mean, otherwise it calculates the mean internally.
+    - **Returns**: The population standard deviation.
+    - **Use case**: Used for understanding how much variability exists in a population.
+
+11. **`double statistics_variance(const double* data, size_t n, bool xbar_provided, double xbar)`**:
+    - **Purpose**: Calculates the sample variance (a measure of how much the values in the dataset differ from the sample mean). If `xbar_provided` is false, the mean is calculated internally; otherwise, the provided mean is used.
+    - **Returns**: The sample variance.
+    - **Use case**: Used when working with a sample rather than the entire population.
+
+12. **`double statistics_stdev(const double* data, size_t n, bool xbar_provided, double xbar)`**:
+    - **Purpose**: Computes the sample standard deviation (square root of variance). If `xbar_provided` is false, the mean is calculated internally; otherwise, the provided mean is used.
+    - **Returns**: The sample standard deviation.
+    - **Use case**: Used to measure the spread or variability within a sample dataset.
+
+13. **`double statistics_covariance(const double* x, const double *y, size_t n)`**:
+    - **Purpose**: Calculates the sample covariance between two datasets (`x` and `y`), measuring how much the two datasets vary together.
+    - **Returns**: The covariance value.
+    - **Use case**: Useful in determining relationships between two variables, especially in financial markets or economics.
+
+14. **`double statistics_correlation(const double* x, const double* y, size_t n, CorrelationMethod method)`**:
+    - **Purpose**: Computes the correlation coefficient between two datasets (`x` and `y`). If the method is `CORRELATION_LINEAR`, it calculates the Pearson correlation; if `CORRELATION_RANKED`, it calculates the Spearman rank correlation.
+    - **Returns**: The correlation coefficient.
+    - **Use case**: Used to understand how strongly two variables are related.
+
+15. **`LinearRegression statistics_linear_regression(const double* x, const double* y, size_t n, bool proportional)`**:
+    - **Purpose**: Performs simple linear regression on two datasets (`x` and `y`), returning the slope and intercept of the best-fit line. If `proportional` is true, the intercept is forced to be zero.
+    - **Returns**: A `LinearRegression` structure containing the slope and intercept.
+    - **Use case**: Used in modeling the relationship between two variables.
+
+16. **`void* statistics_mode(void* data, size_t n, size_t size)`**:
+    - **Purpose**: Returns the mode (the most common value) in a dataset of any data type.
+    - **Returns**: A pointer to the mode.
+    - **Use case**: Useful for finding the most frequent value in datasets such as categorical data.
+
+17. **`void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count)`**:
+    - **Purpose**: Returns all modes (most frequently occurring values) in a dataset.
+    - **Returns**: A dynamically allocated array of modes and sets `mode_count` to the number of modes.
+    - **Use case**: Useful when there are multiple values with the same frequency, providing a more complete view of the dataset's frequency distribution.
+
+
 
 ## Examples
 

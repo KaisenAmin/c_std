@@ -815,8 +815,9 @@ int main(void) {
 
 ## Example 18 : Drawing a Spiral Pattern 
 ```c
-#include "turtle/turtle.h"
 #include <math.h>
+#include "turtle/turtle.h"
+
 
 
 void draw_spiral(Turtle *state) {
@@ -857,8 +858,9 @@ int main(void) {
 
 ## Example 19 : Drawing a flower Pattern 
 ```c
-#include "turtle/turtle.h"
 #include <math.h>
+#include "turtle/turtle.h"
+
 
 void draw_petal(Turtle *state, float radius, float angle) {
     for (int i = 0; i < 2; i++) {
@@ -905,8 +907,9 @@ int main(void) {
 ## Example 20 : Drawing a hexagonal Spiral 
 
 ```c
-#include "turtle/turtle.h"
 #include <math.h>
+#include "turtle/turtle.h"
+
 
 void draw_hexagonal_spiral(Turtle *state) {
     static bool drawn = false;
@@ -948,8 +951,9 @@ int main(void) {
 ## Example 21 : draw a heart 
 
 ```c
-#include "turtle/turtle.h"
 #include <math.h>
+#include "turtle/turtle.h"
+
 
 void curve(Turtle *state) {
     for (int i = 0; i < 200; i++) {

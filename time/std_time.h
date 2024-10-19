@@ -15,10 +15,10 @@
 
 
 typedef struct {
-    int hour;
-    int minute;
-    int second;
-    int msec;
+    int hour;    // Stores the hour part of the time (0-23)
+    int minute;  // Stores the minute part of the time (0-59)
+    int second;  // Stores the second part of the time (0-59)
+    int msec;    // Stores the millisecond part of the time (0-999)
 } Time;
 
 char* time_to_string(const Time* t);

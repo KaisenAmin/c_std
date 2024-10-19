@@ -23,30 +23,256 @@ To compile the Span library along with your main program, ensure all source file
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main your_program .\span\span.c
 ```
 
+
+### Structure Definition
+
+#### **`Span`**
+- **Definition**: A span is a non-owning view over a contiguous block of data. The `Span` structure represents this view.
+  
+  **Fields**:
+  - `void* data`: A pointer to the data block.
+  - `size_t size`: The number of elements in the span.
+  - `size_t elemSize`: The size (in bytes) of each element in the span.
+
+---
+
 ### Function Descriptions
 
-- `Span* span_create(void* data, size_t size)`: Creates a span pointing to the given data with the specified size. Uses the memory pool for allocation.
-- `void span_destroy(Span* span)`: Destroys the span, freeing its resources.
-- `void* span_begin(Span* span)`: Returns a pointer to the beginning of the span.
-- `const void* span_cbegin(const Span* span)`: Returns a constant pointer to the beginning of the span.
-- `void* span_end(Span* span)`: Returns a pointer to the end of the span.
-- `const void* span_cend(const Span* span)`: Returns a constant pointer to the end of the span.
-- `void* span_rbegin(Span* span)`: Returns a reverse iterator to the beginning of the span.
-- `const void* span_crbegin(const Span* span)`: Returns a constant reverse iterator to the beginning of the span.
-- `void* span_rend(Span* span)`: Returns a reverse iterator to the end of the span.
-- `const void* span_crend(const Span* span)`: Returns a constant reverse iterator to the end of the span.
-- `void* span_front(Span* span)`: Accesses the first element of the span.
-- `void* span_back(Span* span)`: Accesses the last element of the span.
-- `void* span_at(Span* span, size_t index)`: Accesses the element at the specified index with bounds checking.
-- `void* span_operator_index(Span* span, size_t index)`: Accesses the element at the specified index without bounds checking.
-- `void* span_data(Span* span)`: Provides direct access to the underlying data.
-- `const void* span_cdata(const Span* span)`: Provides constant access to the underlying data.
-- `size_t span_size(const Span* span)`: Returns the size of the span.
-- `bool span_empty(const Span* span)`: Checks if the span is empty.
-- `size_t span_size_bytes(const Span* span)`: Returns the size of the span in bytes.
-- `Span span_first(Span* span, size_t count)`: Obtains a subspan consisting of the first `count` elements.
-- `Span span_last(Span* span, size_t count)`: Obtains a subspan consisting of the last `count` elements.
-- `Span span_subspan(Span* span, size_t offset, size_t count)`: Obtains a subspan starting at the specified offset.
+
+1. **`Span* span_create(void* data, size_t elemCount, size_t elemSize)`**
+   - **Purpose**: Creates a new span that points to the given data with the specified number of elements (`elemCount`) and size of each element (`elemSize`).
+   - **Parameters**:
+     - `data`: A pointer to the data block.
+     - `elemCount`: The number of elements in the span.
+     - `elemSize`: The size of each element in bytes.
+   - **Returns**: A pointer to the newly created `Span`.
+   - **Use case**: Used when you want a non-owning view over an array or block of data without copying it.
+
+2. **`void span_destroy(Span* span)`**
+   - **Purpose**: Destroys the span and cleans up its resources.
+   - **Parameters**:
+     - `span`: The span to be destroyed.
+   - **Returns**: `void`.
+   - **Use case**: Use when a span is no longer needed to release its resources, although the data itself (pointed by `data`) is not deallocated by this function.
+
+---
+
+#### Iterator-Like Access
+
+3. **`void* span_begin(Span* span)`**
+   - **Purpose**: Returns a pointer to the first element in the span.
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A pointer to the first element.
+   - **Use case**: Used to iterate over the span starting from the first element.
+
+4. **`const void* span_cbegin(const Span* span)`**
+   - **Purpose**: Returns a constant pointer to the first element in the span (read-only access).
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A constant pointer to the first element.
+   - **Use case**: Used for iterating over a constant span where modification is not allowed.
+
+5. **`void* span_end(Span* span)`**
+   - **Purpose**: Returns a pointer to one past the last element in the span (end iterator).
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A pointer to the end of the span.
+   - **Use case**: Used to define the end of an iteration over the span.
+
+6. **`const void* span_cend(const Span* span)`**
+   - **Purpose**: Returns a constant pointer to one past the last element in the span (read-only).
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A constant pointer to the end of the span.
+   - **Use case**: Used when you want to iterate over the span without modifying the data.
+
+7. **`void* span_rbegin(Span* span)`**
+   - **Purpose**: Returns a reverse iterator to the beginning of the span (last element in reverse iteration).
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A pointer to the last element in the span.
+   - **Use case**: Used to iterate over the span in reverse order.
+
+8. **`const void* span_crbegin(const Span* span)`**
+   - **Purpose**: Returns a constant reverse iterator to the beginning of the span (read-only access).
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A constant pointer to the last element.
+   - **Use case**: Used for read-only reverse iteration.
+
+9. **`void* span_rend(Span* span)`**
+   - **Purpose**: Returns a reverse iterator pointing to one before the first element in the span.
+   - **Parameters**:
+     - `span`: The span to operate on.
+   - **Returns**: A pointer to one before the first element.
+   - **Use case**: Used to define the end of reverse iteration.
+
+10. **`const void* span_crend(const Span* span)`**
+    - **Purpose**: Returns a constant reverse iterator pointing to one before the first element in the span.
+    - **Parameters**:
+      - `span`: The span to operate on.
+    - **Returns**: A constant pointer to one before the first element.
+    - **Use case**: Used to define the end of reverse iteration in a read-only context.
+
+---
+
+#### Element Access
+
+11. **`void* span_front(Span* span)`**
+    - **Purpose**: Accesses the first element in the span.
+    - **Parameters**:
+      - `span`: The span to operate on.
+    - **Returns**: A pointer to the first element.
+    - **Use case**: Access the first element without iterating.
+
+12. **`void* span_back(Span* span)`**
+    - **Purpose**: Accesses the last element in the span.
+    - **Parameters**:
+      - `span`: The span to operate on.
+    - **Returns**: A pointer to the last element.
+    - **Use case**: Access the last element without iterating.
+
+13. **`void* span_at(Span* span, size_t index)`**
+    - **Purpose**: Accesses the element at the specified index with bounds checking.
+    - **Parameters**:
+      - `span`: The span to operate on.
+      - `index`: The index of the element to access.
+    - **Returns**: A pointer to the element at the specified index or `NULL` if the index is out of bounds.
+    - **Use case**: Used to safely access an element within bounds.
+
+14. **`void* span_data(Span* span)`**
+    - **Purpose**: Returns a pointer to the underlying data block.
+    - **Parameters**:
+      - `span`: The span to operate on.
+    - **Returns**: A pointer to the data.
+    - **Use case**: Provides direct access to the raw data.
+
+15. **`const void* span_cdata(const Span* span)`**
+    - **Purpose**: Returns a constant pointer to the underlying data block.
+    - **Parameters**:
+      - `span`: The span to operate on.
+    - **Returns**: A constant pointer to the data.
+    - **Use case**: Provides read-only access to the raw data.
+
+---
+
+#### Subspan Operations
+
+16. **`Span span_first(Span* span, size_t count)`**
+    - **Purpose**: Returns a new span consisting of the first `count` elements of the original span.
+    - **Parameters**:
+      - `span`: The span to operate on.
+      - `count`: The number of elements to include in the new span.
+    - **Returns**: A new `Span` with the first `count` elements.
+    - **Use case**: Useful when working with a sub-range of data.
+
+17. **`Span span_last(Span* span, size_t count)`**
+    - **Purpose**: Returns a new span consisting of the last `count` elements of the original span.
+    - **Parameters**:
+      - `span`: The span to operate on.
+      - `count`: The number of elements to include in the new span.
+    - **Returns**: A new `Span` with the last `count` elements.
+    - **Use case**: Useful when working with the end of the data block.
+
+18. **`Span span_subspan(Span* span, size_t offset, size_t count)`**
+    - **Purpose**: Returns a new span starting at the specified `offset` and consisting of `count` elements.
+    - **Parameters**:
+      - `span`: The span to operate on.
+      - `offset`: The starting position of the subspan.
+      - `count`: The number of elements in the subspan.
+    - **Returns**: A new `Span` with the specified range.
+    - **Use case**: Used when you need a subset of elements from the middle of the span.
+
+---
+
+#### Comparison Operations
+
+19. **`bool span_is_equal(const Span* span1, const Span* span2)`**
+    - **Purpose**: Checks if two spans are equal (based on element comparison).
+    - **Parameters**:
+      - `span1`: The first span.
+      - `span2`: The second span.
+    - **Returns**: `true` if the spans are equal, `false` otherwise.
+    - **Use case**: Used for equality comparison between two spans.
+
+20. **`bool span_is_less(const Span* span1, const Span* span2)`**
+    - **Purpose**: Checks if the first span is less than the second span (lexicographically).
+    - **Parameters**:
+      - `span1`: The first span.
+      - `span2`: The second span.
+    - **Returns**: `true` if `span1` is less than `span2`, `false` otherwise.
+    - **
+
+Use case**: Used for comparison or sorting purposes.
+
+21. **`bool span_is_greater(const Span* span1, const Span* span2)`**
+    - **Purpose**: Checks if the first span is greater than the second span (lexicographically).
+    - **Parameters**:
+      - `span1`: The first span.
+      - `span2`: The second span.
+    - **Returns**: `true` if `span1` is greater than `span2`, `false` otherwise.
+    - **Use case**: Used for comparison or sorting purposes.
+
+22. **`bool span_is_not_equal(const Span* span1, const Span* span2)`**
+    - **Purpose**: Checks if two spans are not equal.
+    - **Parameters**:
+      - `span1`: The first span.
+      - `span2`: The second span.
+    - **Returns**: `true` if the spans are not equal, `false` otherwise.
+    - **Use case**: Used for inequality comparison.
+
+23. **`bool span_is_greater_or_equal(const Span* span1, const Span* span2)`**
+    - **Purpose**: Checks if the first span is greater than or equal to the second span.
+    - **Parameters**:
+      - `span1`: The first span.
+      - `span2`: The second span.
+    - **Returns**: `true` if `span1` is greater than or equal to `span2`, `false` otherwise.
+    - **Use case**: Useful in ordered operations on spans.
+
+24. **`bool span_is_less_or_equal(const Span* span1, const Span* span2)`**
+    - **Purpose**: Checks if the first span is less than or equal to the second span.
+    - **Parameters**:
+      - `span1`: The first span.
+      - `span2`: The second span.
+    - **Returns**: `true` if `span1` is less than or equal to `span2`, `false` otherwise.
+    - **Use case**: Useful in ordered operations on spans.
+
+---
+
+#### Utility Functions
+
+25. **`bool span_empty(const Span* span)`**
+    - **Purpose**: Checks whether the span is empty (i.e., has no elements).
+    - **Parameters**:
+      - `span`: The span to check.
+    - **Returns**: `true` if the span is empty, `false` otherwise.
+    - **Use case**: Used to check if a span contains any data.
+
+26. **`size_t span_size(const Span* span)`**
+    - **Purpose**: Returns the number of elements in the span.
+    - **Parameters**:
+      - `span`: The span whose size is being queried.
+    - **Returns**: The number of elements in the span.
+    - **Use case**: Useful for determining the length of the span.
+
+27. **`size_t span_size_bits(const Span* span)`**
+    - **Purpose**: Returns the total size of the span in bits.
+    - **Parameters**:
+      - `span`: The span whose size is being queried.
+    - **Returns**: The size of the span in bits.
+    - **Use case**: Used when working with bit-level data operations.
+
+28. **`size_t span_size_bytes(const Span* span)`**
+    - **Purpose**: Returns the total size of the span in bytes.
+    - **Parameters**:
+      - `span`: The span whose size is being queried.
+    - **Returns**: The size of the span in bytes.
+    - **Use case**: Useful for memory or buffer-related operations where byte size is important.
+
+---
+
+### Examples 
 
 ### Example 1: Using `span_create` with Data Copy
 

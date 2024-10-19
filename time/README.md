@@ -27,40 +27,119 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 ## Function Descriptions
 
-- `Time* time_create(int h, int m, int s, int ms)`: Initializes a new Time object with specified hours, minutes, seconds, and milliseconds.
-- `void time_add_msecs(Time *t, int ms)`: Adds milliseconds to a Time object.
-- `void time_add_secs(Time* t, int s)`: Adds seconds to a Time object.
-- `int time_hour(const Time* t)`: Returns the hour part of a Time object.
-- `bool time_is_null(const Time* t)`: Checks if the given Time object is null.
-- `bool time_is_valid(const Time* t)`: Validates whether a Time object represents a valid time.
-- `int time_minute(const Time* t)`: Returns the minute part of a Time object.
-- `int time_msec(const Time* t)`: Returns the milliseconds part of a Time object.
-- `int time_msecs_since_start_of_day()`: Returns the number of milliseconds since the start of the day.
-- `int time_msecs_to(Time* from, Time* to)`: Calculates the difference in milliseconds between two Time objects.
-- `int time_second(const Time* t)`: Returns the second part of a Time object.
-- `int time_secs_to(Time* from, Time* to)`: Calculates the difference in seconds between two Time objects.
-- `bool time_set_hms(Time *t, int h, int m, int s, int ms)`: Sets the hour, minute, second, and millisecond values of a Time object.
+1. **String Conversion**:
+    - **`char* time_to_string(const Time* t)`**: 
+      - Converts a `Time` object to a human-readable string in the format `(HH:MM:SS:MS)` (e.g., `(12:34:56:789)`).
+      - Returns: A dynamically allocated string representing the time.
+      - **Use case**: Useful for displaying the time object in a readable format.
+    
+2. **Current Time Functions**:
+    - **`double time_current_time_in_seconds()`**: 
+      - Retrieves the current system time in seconds since the Unix epoch (January 1, 1970).
+      - Returns: The current time in seconds as a floating-point number.
+    
+    - **`double time_current_time_in_microseconds()`**: 
+      - Retrieves the current system time in microseconds since the Unix epoch.
+      - Returns: The current time in microseconds as a floating-point number.
+    
+    - **`Time* time_current_time(void)`**: 
+      - Returns the current system time as a `Time` object.
+      - **Use case**: Can be used to fetch the precise current time, including milliseconds.
 
-- `double time_current_time_in_seconds` : get current time in seconds;
-- `double time_current_time_in_microseconds` : get current time in microseconds.
-- `char* time_to_string(const Time* t)`: Converts a Time object to a string format.
-- `Time* time_current_time(void)`: Gets the current system time.
-- `Time* time_from_msecs_since_start_of_day(int msecs)`: Creates a Time object from milliseconds since the start of the day.
-- `bool time_is_equal(const Time* lhs, const Time* rhs)`: Checks if two Time objects are equal.
-- `bool time_is_less_than(const Time* lhs, const Time* rhs)`: Determines if one Time object is less than another.
-- `bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs)`: Determines if one Time object is less than or equal to another.
-- `bool time_is_greater_than(const Time* lhs, const Time* rhs)`: Determines if one Time object is greater than another.
-- `bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs)`: Determines if one Time object is greater than or equal to another.
-- `bool time_is_not_equal(const Time* lhs, const Time* rhs)`: Checks if two Time objects are not equal.
-- `double time_diff_in_seconds(const Time* from, const Time* to)`: this function get two Time object then calculate differnece between them and return result as double value.
+3. **Time Creation**:
+    - **`Time* time_create(int h, int m, int s, int ms)`**: 
+      - Creates a new `Time` object with the specified hours (`h`), minutes (`m`), seconds (`s`), and milliseconds (`ms`).
+      - Returns: A pointer to a dynamically allocated `Time` object.
 
-To test the functionality of your `Time` library, you can create a series of examples that cover each function. Here are 10 examples, one for each major functionality:
+    - **`Time* time_from_msecs_since_start_of_day(int msecs)`**: 
+      - Creates a `Time` object from the given milliseconds since the start of the day (00:00:00.000).
+      - **Use case**: Useful for generating a time object relative to the start of a day.
+
+4. **Time Manipulation**:
+    - **`void time_add_msecs(Time *t, int ms)`**: 
+      - Adds the specified number of milliseconds to the `Time` object.
+      - **Use case**: Can be used to increment the time object, handling overflow for seconds, minutes, and hours.
+
+    - **`void time_add_secs(Time* t, int s)`**: 
+      - Adds the specified number of seconds to the `Time` object.
+    
+    - **`void time_sleep(unsigned int second)`**: 
+      - Puts the program to sleep (halts execution) for the specified number of seconds.
+
+5. **Time Information Extraction**:
+    - **`int time_hour(const Time* t)`**: 
+      - Returns the hour component of the `Time` object.
+    
+    - **`int time_minute(const Time* t)`**: 
+      - Returns the minute component of the `Time` object.
+    
+    - **`int time_second(const Time* t)`**: 
+      - Returns the second component of the `Time` object.
+    
+    - **`int time_msec(const Time* t)`**: 
+      - Returns the millisecond component of the `Time` object.
+
+6. **Time Calculation**:
+    - **`double time_diff_in_seconds(const Time* from, const Time* to)`**: 
+      - Calculates the difference in seconds between two `Time` objects (`from` and `to`).
+      - Returns: The time difference as a floating-point number in seconds.
+    
+    - **`int time_msecs_since_start_of_day()`**: 
+      - Returns the total number of milliseconds that have passed since the start of the current day (00:00:00.000).
+    
+    - **`int time_msecs_to(Time* from, Time* to)`**: 
+      - Returns the number of milliseconds between two `Time` objects (`from` and `to`).
+    
+    - **`int time_secs_to(Time* from, Time* to)`**: 
+      - Returns the number of seconds between two `Time` objects.
+
+7. **Time Validation**:
+    - **`bool time_is_valid_time(int h, int m, int s, int ms)`**: 
+      - Checks whether the provided hours, minutes, seconds, and milliseconds constitute a valid time.
+      - **Returns**: `true` if the time is valid, `false` otherwise.
+    
+    - **`bool time_is_null(const Time* t)`**: 
+      - Checks if the `Time` object is `null`.
+    
+    - **`bool time_is_valid(const Time* t)`**: 
+      - Validates whether a `Time` object represents a valid time.
+
+8. **Relational Functions**:
+    - **`bool time_is_equal(const Time* lhs, const Time* rhs)`**: 
+      - Compares two `Time` objects for equality.
+      - **Returns**: `true` if both times are equal.
+    
+    - **`bool time_is_less_than(const Time* lhs, const Time* rhs)`**: 
+      - Checks if the `lhs` time is less than the `rhs` time.
+    
+    - **`bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs)`**: 
+      - Checks if the `lhs` time is less than or equal to the `rhs` time.
+    
+    - **`bool time_is_greater_than(const Time* lhs, const Time* rhs)`**: 
+      - Checks if the `lhs` time is greater than the `rhs` time.
+    
+    - **`bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs)`**: 
+      - Checks if the `lhs` time is greater than or equal to the `rhs` time.
+    
+    - **`bool time_is_not_equal(const Time* lhs, const Time* rhs)`**: 
+      - Checks if two `Time` objects are not equal.
+
+9. **Time Modification**:
+    - **`bool time_set_hms(Time *t, int h, int m, int s, int ms)`**: 
+      - Sets the hour, minute, second, and millisecond values of a `Time` object.
+
+10. **Memory Management**:
+    - **`void time_deallocate(Time* t)`**: 
+      - Frees the memory allocated for the `Time` object.
+  
+### Examples 
 
 ## Example 1: `time_create` and `time_to_string`
 ```c
+#include <stdlib.h>
 #include "fmt/fmt.h"
 #include "time/std_time.h"
-#include <stdlib.h>
+
 
 int main () {
     Time* t1 = time_create(14, 30, 45, 500);

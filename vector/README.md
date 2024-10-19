@@ -29,58 +29,270 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like creating a vector, adding and removing elements, as well as more complex functionalities such as memory pooling and vector comparison.
 
+### Function Descriptions:
+
+- **`Vector* vector_create(size_t itemSize)`**  
+  Initializes and returns a new vector capable of storing elements of the specified size.
+  - **Parameters:**  
+    - `itemSize`: The size in bytes of each element that will be stored in the vector.
+  - **Returns:**  
+    - A pointer to the newly created vector. Returns `NULL` if memory allocation fails.
+
+- **`bool vector_is_equal(const Vector* vec1, const Vector* vec2)`**  
+  Compares two vectors and checks if they are equal in terms of both size and content.
+  - **Parameters:**  
+    - `vec1`: The first vector to compare.  
+    - `vec2`: The second vector to compare.
+  - **Returns:**  
+    - `true` if both vectors have identical elements in the same order, otherwise `false`.
+
+- **`bool vector_is_less(const Vector* vec1, const Vector* vec2)`**  
+  Checks if the first vector is lexicographically less than the second vector.
+  - **Parameters:**  
+    - `vec1`: The first vector to compare.  
+    - `vec2`: The second vector to compare.
+  - **Returns:**  
+    - `true` if `vec1` is lexicographically smaller than `vec2`, otherwise `false`.
+
+- **`bool vector_is_greater(const Vector* vec1, const Vector* vec2)`**  
+  Checks if the first vector is lexicographically greater than the second vector.
+  - **Parameters:**  
+    - `vec1`: The first vector to compare.  
+    - `vec2`: The second vector to compare.
+  - **Returns:**  
+    - `true` if `vec1` is lexicographically greater than `vec2`, otherwise `false`.
+
+- **`bool vector_is_not_equal(const Vector* vec1, const Vector* vec2)`**  
+  Compares two vectors and checks if they are not equal.
+  - **Parameters:**  
+    - `vec1`: The first vector to compare.  
+    - `vec2`: The second vector to compare.
+  - **Returns:**  
+    - `true` if the vectors are not equal, otherwise `false`.
+
+- **`bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2)`**  
+  Checks if the first vector is lexicographically greater than or equal to the second vector.
+  - **Parameters:**  
+    - `vec1`: The first vector to compare.  
+    - `vec2`: The second vector to compare.
+  - **Returns:**  
+    - `true` if `vec1` is greater than or equal to `vec2`, otherwise `false`.
+
+- **`bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2)`**  
+  Checks if the first vector is lexicographically less than or equal to the second vector.
+  - **Parameters:**  
+    - `vec1`: The first vector to compare.  
+    - `vec2`: The second vector to compare.
+  - **Returns:**  
+    - `true` if `vec1` is less than or equal to `vec2`, otherwise `false`.
+
+- **`bool vector_is_empty(Vector* vec)`**  
+  Checks if the vector is empty, meaning it contains no elements.
+  - **Parameters:**  
+    - `vec`: The vector to check.
+  - **Returns:**  
+    - `true` if the vector is empty, otherwise `false`.
+
+- **`bool vector_reserve(Vector* vec, size_t size)`**  
+  Allocates enough memory for the vector to hold at least the specified number of elements without resizing. This is useful for preallocating memory to avoid frequent reallocations.
+  - **Parameters:**  
+    - `vec`: The vector to reserve space for.  
+    - `size`: The minimum number of elements to reserve capacity for.
+  - **Returns:**  
+    - `true` if memory allocation is successful, otherwise `false`.
+
+- **`bool vector_push_back(Vector* vec, const void* item)`**  
+  Adds an item to the end of the vector, resizing the vector if necessary.
+  - **Parameters:**  
+    - `vec`: The vector to which the item is added.  
+    - `item`: A pointer to the item being added to the vector.
+  - **Returns:**  
+    - `true` if the operation succeeds, otherwise `false` (e.g., memory allocation failure).
+
+- **`bool vector_emplace_back(Vector *vec, void *item, size_t itemSize)`**  
+  Constructs an item in place at the end of the vector, potentially avoiding copying and allowing more efficient insertion.
+  - **Parameters:**  
+    - `vec`: The vector to add the item to.  
+    - `item`: A pointer to the item to be added.  
+    - `itemSize`: The size of the item being added.
+  - **Returns:**  
+    - `true` if successful, otherwise `false`.
+
+- **`void vector_erase(Vector* vec, size_t pos, size_t len)`**  
+  Erases a range of elements from the vector, starting at the specified position and removing the specified number of elements.
+  - **Parameters:**  
+    - `vec`: The vector from which elements will be removed.  
+    - `pos`: The starting position of the elements to be removed.  
+    - `len`: The number of elements to erase.
+
+- **`void vector_insert(Vector* vec, size_t pos, void* item)`**  
+  Inserts an item into the vector at the specified position, shifting subsequent elements to the right.
+  - **Parameters:**  
+    - `vec`: The vector where the item will be inserted.  
+    - `pos`: The index at which the item will be inserted.  
+    - `item`: A pointer to the item to insert.
+
+- **`void vector_resize(Vector* vec, size_t size)`**  
+  Resizes the vector to contain the specified number of elements. If the new size is larger, additional elements will be uninitialized.
+  - **Parameters:**  
+    - `vec`: The vector to resize.  
+    - `size`: The new size of the vector.
+
+- **`void vector_shrink_to_fit(Vector* vec)`**  
+  Shrinks the capacity of the vector to match its current size, freeing any excess allocated memory.
+  - **Parameters:**  
+    - `vec`: The vector to shrink.
+
+- **`void vector_clear(Vector* vec)`**  
+  Clears all elements from the vector, setting its size to 0 but maintaining its current capacity.
+  - **Parameters:**  
+    - `vec`: The vector to clear.
+
+- **`void vector_swap(Vector* vec1, Vector* vec2)`**  
+  Swaps the contents of two vectors, exchanging their sizes, capacities, and elements.
+  - **Parameters:**  
+    - `vec1`: The first vector.  
+    - `vec2`: The second vector.
+
+- **`void vector_assign(Vector* vec, size_t pos, void* item)`**  
+  Assigns a new value to the element at the specified position.
+  - **Parameters:**  
+    - `vec`: The vector to modify.  
+    - `pos`: The position of the element to assign a new value to.  
+    - `item`: A pointer to the new item.
+
+- **`void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize)`**  
+  Constructs an item in place at the specified position within the vector.
+  - **Parameters:**  
+    - `vec`: The vector where the item will be constructed.  
+    - `pos`: The index at which to construct the item.  
+    - `item`: A pointer to the item to be placed.  
+    - `itemSize`: The size of the item.
+
+- **`void vector_deallocate(Vector *vec)`**  
+  Frees all memory associated with the vector, including its elements and the vector structure itself.
+  - **Parameters:**  
+    - `vec`: The vector to deallocate.
+
+- **`const void* vector_cbegin(Vector* vec)`**  
+  Returns a constant pointer to the first element in the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A constant pointer to the first element of the vector.
+
+- **`const void* vector_cend(Vector* vec)`**  
+  Returns a constant pointer to the element following the last element in the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A constant pointer to the element following the last element.
+
+- **`const void* vector_crbegin(Vector* vec)`**  
+  Returns a constant pointer to the first element of the reversed vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A constant pointer to the first element in the reversed vector.
+
+- **`const void* vector_crend(Vector* vec)`**  
+  Returns a constant pointer to the element following the last element of the reversed vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A constant pointer to the element after the last in the reversed vector.
+
+- **`void* vector_begin(Vector* vec)`**  
+  Returns a pointer to the first element in the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the first element.
+
+- **`
+
+void* vector_end(Vector* vec)`**  
+  Returns a pointer to the element following the last element in the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the element following the last.
+
+- **`void* vector_pop_back(Vector* vec)`**  
+  Removes the last element from the vector and returns a pointer to it.
+  - **Parameters:**  
+    - `vec`: The vector to modify.
+  - **Returns:**  
+    - A pointer to the last element removed.
+
+- **`void* vector_front(Vector* vec)`**  
+  Returns a pointer to the first element in the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the first element.
+
+- **`void* vector_back(Vector* vec)`**  
+  Returns a pointer to the last element in the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the last element.
+
+- **`void* vector_data(Vector* vec)`**  
+  Returns a pointer to the underlying array used by the vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the underlying array of elements.
+
+- **`void* vector_at(const Vector* vec, size_t pos)`**  
+  Returns a pointer to the element at the specified position.
+  - **Parameters:**  
+    - `vec`: The vector to access.  
+    - `pos`: The position of the element to access.
+  - **Returns:**  
+    - A pointer to the element at the specified position.
+
+- **`void* vector_rbegin(Vector* vec)`**  
+  Returns a pointer to the first element of the reversed vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the first element of the reversed vector.
+
+- **`void* vector_rend(Vector* vec)`**  
+  Returns a pointer to the element following the last element of the reversed vector.
+  - **Parameters:**  
+    - `vec`: The vector to access.
+  - **Returns:**  
+    - A pointer to the element following the last in the reversed vector.
+
+- **`size_t vector_size(const Vector* vec)`**  
+  Returns the number of elements currently stored in the vector.
+  - **Parameters:**  
+    - `vec`: The vector whose size is to be returned.
+  - **Returns:**  
+    - The number of elements in the vector.
+
+- **`size_t vector_capacity(Vector* vec)`**  
+  Returns the total capacity of the vector (the number of elements it can store without resizing).
+  - **Parameters:**  
+    - `vec`: The vector whose capacity is to be returned.
+  - **Returns:**  
+    - The capacity of the vector.
+
+- **`size_t vector_max_size(Vector* vec)`**  
+  Returns the maximum number of elements that the vector can hold, based on the system's limitations.
+  - **Parameters:**  
+    - `vec`: The vector whose maximum size is to be returned.
+  - **Returns:**  
+    - The maximum number of elements the vector can hold.
+
+
 ## Examples
 
 Several examples are provided to demonstrate the usage of the Vector library in various scenarios, including handling primitive data types, strings, and custom structures. These examples also show how to perform operations like iteration, sorting, and comparison on vectors.
-
-## License
-
-This library is distributed under the GNU General Public License v3.0, which allows for free use, modification, and distribution under the same license.
-
-
-### Function Descriptions
-
-- `vector_create(size_t itemSize)`: Initializes and returns a new vector with specified item size.
-- `vector_is_equal(const Vector* vec1, const Vector* vec2)`: Checks if two vectors are equal in content.
-- `vector_is_less(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically less than `vec2`.
-- `vector_is_greater(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically greater than `vec2`.
-
-- `vector_is_not_equal(const Vector* vec1, const Vector* vec2)`: Checks if two vectors are not equal.
-- `vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically greater than or equal to `vec2`.
-
-- `vector_is_less_or_equal(const Vector* vec1, const Vector* vec2)`: Checks if `vec1` is lexicographically less than or equal to `vec2`.
-
-- `vector_is_empty(Vector* vec)`: Determines if the vector is empty.
-- `vector_erase(Vector* vec, size_t pos, size_t len)`: Erases a range of elements from the vector.
-- `vector_insert(Vector* vec, size_t pos, void* item)`: Inserts an item into the vector at a specified position.
-- `vector_reserve(Vector* vec, size_t size)`: Reserves memory to enhance vector capacity.
-- `vector_resize(Vector* vec, size_t size)`: Resizes the vector to contain a specific number of elements.
-- `vector_shrink_to_fit(Vector* vec)`: Reduces the capacity of the vector to fit its size.
-- `vector_clear(Vector* vec)`: Clears the contents of the vector.
-- `vector_swap(Vector* vec1, Vector* vec2)`: Swaps the contents of two vectors.
-- `vector_assign(Vector* vec, size_t pos, void* item)`: Assigns a new value to an element at a specified position.
-- `vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize)`: Constructs an element in-place at a specified position.
-- `vector_emplace_back(Vector* vec, void* item, size_t itemSize)`: Constructs an element in-place at the end of the vector.
-
-- `vector_push_back(Vector* vec, void* item)`: Adds an element to the end of the vector.
-- `vector_deallocate(Vector* vec)`: Frees the memory occupied by the vector.
-- `vector_at(Vector* vec, size_t pos)`: Accesses an element at a specific position.
-- `vector_rbegin(Vector* vec)`: Returns a pointer to the beginning of the reversed vector.
-- `vector_rend(Vector* vec)`: Returns a pointer to the end of the reversed vector.
-- `vector_cbegin(Vector* vec)`: Returns a constant pointer to the beginning of the vector.
-- `vector_cend(Vector* vec)`: Returns a constant pointer to the end of the vector.
-- `vector_crbegin(Vector* vec)`: Returns a constant pointer to the beginning of the reversed vector.
-- `vector_crend(Vector* vec)`: Returns a constant pointer to the end of the reversed vector.
-- `vector_begin(Vector* vec)`: Returns a pointer to the first element.
-- `vector_end(Vector* vec)`: Returns a pointer to the element following the last element.
-- `vector_pop_back(Vector* vec)`: Removes the last element and returns a pointer to it.
-- `vector_front(Vector* vec)`: Accesses the first element.
-- `vector_back(Vector* vec)`: Accesses the last element.
-- `vector_data(Vector* vec)`: Returns a pointer to the underlying array.
-- `vector_size(Vector* vec)`: Returns the number of elements.
-- `vector_capacity(Vector* vec)`: Returns the capacity of the vector.
-- `vector_max_size(Vector* vec)`: Returns the maximum number of elements the vector can hold.
-
 
 
 ```c
@@ -1046,10 +1258,11 @@ Name: Item3, Description: Description3
 ### Example 26 : Vector of Vectors (2D Vector) of Custom Structs 
 
 ```c
+#include <stdlib.h>
 #include "vector/vector.h"
 #include "string/std_string.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
+
 
 typedef struct {
     String* name;
