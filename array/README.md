@@ -39,6 +39,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a pointer to the newly created `Array`. Exits the program if memory allocation fails.
 
+---
+
 ### `bool array_is_equal(const Array* arr1, const Array* arr2);`
 - **Purpose**:  
   Checks whether two arrays are equal by comparing the size and elements of the arrays.
@@ -49,6 +51,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns `true` if the arrays are equal in size and content, `false` otherwise.
+
+---
 
 ### `bool array_is_less(const Array* arr1, const Array* arr2);`
 - **Purpose**:  
@@ -61,6 +65,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns `true` if `arr1` is lexicographically less than `arr2`, `false` otherwise.
 
+---
+
 ### `bool array_is_greater(const Array* arr1, const Array* arr2);`
 - **Purpose**:  
   Compares two arrays lexicographically to check if the first array is greater than the second.
@@ -71,6 +77,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns `true` if `arr1` is lexicographically greater than `arr2`, `false` otherwise.
+
+---
 
 ### `bool array_is_not_equal(const Array* arr1, const Array* arr2);`
 - **Purpose**:  
@@ -83,6 +91,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns `true` if the arrays differ in size or content, `false` otherwise.
 
+---
+
 ### `bool array_is_less_or_equal(const Array* arr1, const Array* arr2);`
 - **Purpose**:  
   Checks if `arr1` is lexicographically less than or equal to `arr2`.
@@ -93,6 +103,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns `true` if `arr1` is less than or equal to `arr2`, `false` otherwise.
+
+---
 
 ### `bool array_is_greater_or_equal(const Array* arr1, const Array* arr2);`
 - **Purpose**:  
@@ -105,6 +117,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns `true` if `arr1` is greater than or equal to `arr2`, `false` otherwise.
 
+---
+
 ### `bool array_empty(Array* arr);`
 - **Purpose**:  
   Checks if the array is empty.
@@ -115,6 +129,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns `true` if the array is empty or `NULL`, `false` otherwise.
 
+---
 
 ### `void array_deallocate(Array* arr);`
 - **Purpose**:  
@@ -126,6 +141,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value. Safely deallocates resources.
 
+---
 
 ### `void array_set(Array* arr, size_t index, const void* value);`
 - **Purpose**:  
@@ -139,6 +155,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value. Logs errors for invalid parameters.
 
+---
+
 ### `void array_insert(Array* mainArr, const Array* otherArr, size_t index);`
 - **Purpose**:  
   Inserts elements from `otherArr` into `mainArr` starting at the specified index.
@@ -151,6 +169,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value. Logs errors for invalid parameters.
 
+---
+
 ### `void array_fill(Array* arr, const void* value);`
 - **Purpose**:  
   Fills the array with the specified value.
@@ -161,6 +181,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   No return value. Logs errors for invalid parameters.
+
+---
 
 ### `void array_swap(Array* arr1, Array* arr2);`
 - **Purpose**:  
@@ -173,6 +195,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value. Logs errors for invalid parameters.
 
+---
+
 ### `void* array_at(Array* arr, size_t index);`
 - **Purpose**:  
   Retrieves a pointer to the element at the specified index.
@@ -184,6 +208,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a pointer to the element or `NULL` if the index is out of bounds.
 
+---
+
 ### `void* array_begin(Array* arr);`
 - **Purpose**:  
   Returns a pointer to the first element of the array.
@@ -193,6 +219,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns a pointer to the first element or `NULL` if the array is empty.
+
+---
 
 ### `void* array_end(Array* arr);`
 - **Purpose**:  
@@ -204,6 +232,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a pointer to one element past the last element or `NULL` if the array is empty.
 
+---
 
 ### `void* array_rbegin(Array* arr);`
 - **Purpose**:  
@@ -215,6 +244,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a pointer to the last element or `NULL` if the array is empty.
 
+---
+
 ### `void* array_rend(Array* arr);`
 - **Purpose**:  
   Returns a pointer to one element before the first element (for reverse iteration).
@@ -224,6 +255,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns a pointer to one element before the first or `NULL` if the array is empty.
+
+---
 
 ### `void* array_front(Array* arr);`
 - **Purpose**:  
@@ -235,6 +268,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a pointer to the first element or `NULL` if the array is empty.
 
+---
 
 ### `void* array_back(Array* arr);`
 - **Purpose**:  
@@ -246,6 +280,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a pointer to the last element or `NULL` if the array is empty.
 
+---
+
 ### `void* array_data(Array* arr);`
 - **Purpose**:  
   Returns a pointer to the underlying data of the array.
@@ -255,6 +291,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns a pointer to the data or `NULL` if the array is empty.
+
+---
 
 ### `size_t array_size(Array* arr);`
 - **Purpose**:  
@@ -266,6 +304,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns the size of the array or `0` if the array is `NULL`.
 
+---
+
 ### `size_t array_max_size(Array* arr);`
 - **Purpose**:  
   Returns the maximum number of elements that the array can hold.
@@ -275,6 +315,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns the maximum size of the array.
+
+---
 
 ### `const void* array_cbegin(Array* arr);`
 - **Purpose**:  
@@ -286,6 +328,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a constant pointer to the first element or `NULL` if the array is empty.
 
+---
+
 ### `const void* array_cend(Array* arr);`
 - **Purpose**:  
   Returns a constant pointer to one element past the last element.
@@ -295,6 +339,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   Returns a constant pointer to one element past the last element or `NULL`.
+
+---
 
 ### `const void* array_crbegin(Array* arr);`
 - **Purpose**:  
@@ -306,6 +352,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a constant reverse pointer to the last element or `NULL`.
 
+---
+
 ### `const void* array_crend(Array* arr);`
 - **Purpose**:  
   Returns a constant reverse pointer to one element before the first element.
@@ -316,6 +364,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   Returns a constant reverse pointer to one element before the first element or `NULL`.
 
+---
 
 ### `void array_clear(Array* arr);`
 - **Purpose**:  
@@ -327,6 +376,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value.
 
+---
 
 ### `void array_reverse(Array* arr);`
 - **Purpose**:  
@@ -338,6 +388,7 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value.
 
+---
 
 ### `void array_sort(Array* arr, int (*compare)(const void*, const void*));`
 - **Purpose**:  
@@ -350,6 +401,8 @@ To use the Array library in your project, include the `array.h` header file in y
 - **Return Value**:  
   No return value.
 
+---
+
 ### `void array_copy(Array* dest, const Array* src);`
 - **Purpose**:  
   Copies the contents of the source array into the destination array.
@@ -360,6 +413,8 @@ To use the Array library in your project, include the `array.h` header file in y
   
 - **Return Value**:  
   No return value.
+
+---
 
 ## Example 1 : how to create Array object and `array_fill` array with value then get them with `array_at` method
 
