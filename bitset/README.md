@@ -42,6 +42,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a pointer to the newly created `Bitset`. If memory allocation fails, the program exits.
 
+---
+
 ### `void bitset_deallocate(Bitset *bs);`
 - **Purpose**:  
   Frees the memory allocated for the `Bitset` and its internal bit array.
@@ -52,6 +54,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   No return value. It gracefully handles NULL pointers.
 
+---
+
 ### `void bitset_print(const Bitset* bs);`
 - **Purpose**:  
   Prints the bits in the `Bitset` to the console in a human-readable format (with the most significant bit on the left).
@@ -61,6 +65,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   No return value. Logs errors for NULL pointers.
+
+---
 
 ### `void bitset_set_from_string(Bitset* bs, const char* str);`
 - **Purpose**:  
@@ -73,6 +79,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   No return value. Logs a warning if the string is longer than the `Bitset`.
 
+---
+
 ### `bool bitset_test(const Bitset *bs, size_t pos);`
 - **Purpose**:  
   Tests whether the bit at the specified position is set (1) or not.
@@ -83,6 +91,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns `true` if the bit is set, `false` if it is cleared or if the position is invalid.
+
+---
 
 ### `Bitset* bitset_set(Bitset* bs, size_t pos, bool value);`
 - **Purpose**:  
@@ -96,6 +106,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a pointer to the modified `Bitset`.
 
+---
+
 ### `Bitset* bitset_reset(Bitset* bs, size_t pos);`
 - **Purpose**:  
   Clears the bit at the specified position (sets it to 0).
@@ -107,6 +119,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a pointer to the modified `Bitset`.
 
+---
+
 ### `Bitset* bitset_flip_all(Bitset* bs);`
 - **Purpose**:  
   Flips all the bits in the `Bitset` (1 becomes 0, and 0 becomes 1).
@@ -116,6 +130,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns a pointer to the modified `Bitset`.
+
+---
 
 ### `Bitset* bitset_flip(Bitset* bs, size_t pos);`
 - **Purpose**:  
@@ -128,6 +144,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a pointer to the modified `Bitset`.
 
+---
+
 ### `bool bitset_all(const Bitset* bs);`
 - **Purpose**:  
   Checks if all bits in the `Bitset` are set to 1.
@@ -137,6 +155,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns `true` if all bits are set, `false` otherwise.
+
+---
 
 ### `bool bitset_any(const Bitset* bs);`
 - **Purpose**:  
@@ -148,6 +168,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns `true` if any bit is set, `false` if all bits are 0.
 
+---
+
 ### `bool bitset_none(const Bitset* bs);`
 - **Purpose**:  
   Checks if none of the bits in the `Bitset` are set (all bits are 0).
@@ -157,6 +179,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns `true` if all bits are 0, `false` otherwise.
+
+---
 
 ### `size_t bitset_count(const Bitset* bs);`
 - **Purpose**:  
@@ -168,6 +192,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns the count of bits set to 1.
 
+---
+
 ### `size_t bitset_size(const Bitset* bs);`
 - **Purpose**:  
   Returns the total number of bits in the `Bitset`.
@@ -177,6 +203,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns the size of the `Bitset` (number of bits).
+
+---
 
 ### `unsigned long bitset_to_ulong(const Bitset* bs);`
 - **Purpose**:  
@@ -188,6 +216,7 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns the bitset as an unsigned long.
 
+---
 
 ### `unsigned long long bitset_to_ullong(const Bitset* bs);`
 - **Purpose**:  
@@ -199,6 +228,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns the bitset as an unsigned long long.
 
+---
+
 ### `char* bitset_to_string(const Bitset* bs);`
 - **Purpose**:  
   Converts the `Bitset` into a string of '1's and '0's representing the bits.
@@ -209,6 +240,7 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a dynamically allocated string of '1's and '0's representing the bitset.
 
+---
 
 ### `Bitset* bitset_and(const Bitset* bs1, const Bitset* bs2);`
 - **Purpose**:  
@@ -221,6 +253,7 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a new `Bitset` containing the result, or `NULL` if the `Bitsets` are of different sizes.
 
+---
 
 ### `Bitset* bitset_or(const Bitset* bs1, const Bitset* bs2);`
 - **Purpose**:  
@@ -233,7 +266,9 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a new `Bitset` containing the result, or `NULL` if the `Bitsets` are of different sizes.
 
-### 20. `Bitset* bitset_xor(const Bitset* bs1, const Bitset* bs2);`
+---
+
+### `Bitset* bitset_xor(const Bitset* bs1, const Bitset* bs2);`
 - **Purpose**:  
   Performs a bitwise XOR operation between two `Bitsets`.
   
@@ -243,6 +278,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns a new `Bitset` containing the result, or `NULL` if the `Bitsets` are of different sizes.
+
+---
 
 ### `Bitset* bitset_not(const Bitset* bs);`
 - **Purpose**:  
@@ -256,6 +293,8 @@ in these examples i rewrite cpp example in Bitset code
 
  new `Bitset` containing the flipped bits.
 
+---
+
 ### `Bitset* bitset_shift_left(const Bitset* bs, size_t shift);`
 - **Purpose**:  
   Shifts all bits in the `Bitset` to the left by a specified number of positions.
@@ -266,6 +305,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns a new `Bitset` with the bits shifted left.
+
+---
 
 ### `Bitset* bitset_shift_right(const Bitset* bs, size_t shift);`
 - **Purpose**:  
@@ -278,6 +319,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns a new `Bitset` with the bits shifted right.
 
+---
+
 ### `bool bitset_is_equal(const Bitset* bs1, const Bitset* bs2);`
 - **Purpose**:  
   Compares two `Bitsets` for equality (both size and bit values).
@@ -288,6 +331,8 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns `true` if the `Bitsets` are equal, `false` otherwise.
+
+---
 
 ### `bool bitset_is_not_equal(const Bitset* bs1, const Bitset* bs2);`
 - **Purpose**:  
@@ -300,6 +345,7 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns `true` if the `Bitsets` are not equal, `false` if they are the same.
 
+---
 
 ### `bool bitset_at(const Bitset* bs, size_t pos);`
 - **Purpose**:  
@@ -312,6 +358,7 @@ in these examples i rewrite cpp example in Bitset code
 - **Return Value**:  
   Returns `true` if the bit is set, `false` if it is cleared or if the position is invalid.
 
+---
 
 ### `unsigned char* bitset_at_ref(Bitset* bs, size_t pos);`
 - **Purpose**:  
@@ -323,6 +370,9 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns a pointer to the byte that contains the bit at the specified position.
+
+
+--- 
 
 
 ## Example 1 : how to use `bitset_none` and `bitset_count`
