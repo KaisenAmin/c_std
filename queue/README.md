@@ -26,146 +26,157 @@ To use the Queue library in your project, include the `queue.h` header file in y
 #include "queue/queue.h"
 ```
 
-## API Reference
+## Functions Descriptions 
 
 ### Queue Creation and Deallocation
 
-- **`Queue* queue_create(size_t itemSize);`**
+### `Queue* queue_create(size_t itemSize);`
 
-    Creates a new Queue object. The size of each item in the queue must be specified.
+- **Purpose**: Creates a new Queue object. The size of each item in the queue must be specified.
+- **Parameters:**
+    - `itemSize`: The size of the items that will be stored in the queue.
+- **Returns:** A pointer to the newly created Queue object.
 
-    - **Parameters:**
-        - `itemSize`: The size of the items that will be stored in the queue.
-    - **Returns:** A pointer to the newly created Queue object.
+---
 
-- **`void queue_deallocate(Queue* q);`**
+### `void queue_deallocate(Queue* q);`
 
-    Deallocates a Queue object, freeing all associated memory.
+- **Purpose**: Deallocates a Queue object, freeing all associated memory.
+- **Parameters:**
+    - `q`: Pointer to the Queue object to be deallocated.
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object to be deallocated.
+---
 
-### Queue Operations
+### `void queue_push(Queue* q, void* item);`
 
-- **`void queue_push(Queue* q, void* item);`**
+- **Purpose**: Adds an item to the back of the queue.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
+    - `item`: Pointer to the item to be added to the queue.
 
-    Adds an item to the back of the queue.
+---
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
-        - `item`: Pointer to the item to be added to the queue.
+### `void queue_pop(Queue* q);` 
 
-- **`void queue_pop(Queue* q);`**
+- **Purpose**: Removes the item at the front of the queue.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
 
-    Removes the item at the front of the queue.
+---
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
+### `void* queue_front(const Queue* q);` 
+- **Purpose**: Returns a pointer to the front item of the queue without removing it.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
+- **Returns:** A pointer to the front item or `NULL` if the queue is empty.
 
-- **`void* queue_front(const Queue* q);`**
+---
 
-    Returns a pointer to the front item of the queue without removing it.
+### `void* queue_back(const Queue* q);` 
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
-    - **Returns:** A pointer to the front item or `NULL` if the queue is empty.
+- **Purpose**: Returns a pointer to the back item of the queue without removing it.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
+- **Returns:** A pointer to the back item or `NULL` if the queue is empty.
 
-- **`void* queue_back(const Queue* q);`**
+---
 
-    Returns a pointer to the back item of the queue without removing it.
+### `void queue_emplace(Queue* q, void* item, size_t itemSize);` 
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
-    - **Returns:** A pointer to the back item or `NULL` if the queue is empty.
+- **Purpose**: Constructs and adds an item at the back of the queue, without copying.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
+    - `item`: Pointer to the item to be emplaced.
+    - `itemSize`: Size of the item to be emplaced.
 
-- **`void queue_emplace(Queue* q, void* item, size_t itemSize);`**
+---
 
-    Constructs and adds an item at the back of the queue, without copying.
+### `size_t queue_size(const Queue* q);` 
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
-        - `item`: Pointer to the item to be emplaced.
-        - `itemSize`: Size of the item to be emplaced.
+- **Purpose**: Returns the number of items currently in the queue.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
+- **Returns:** The number of items in the queue.
 
-- **`size_t queue_size(const Queue* q);`**
+---
 
-    Returns the number of items currently in the queue.
+### `bool queue_empty(const Queue* q);` 
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
-    - **Returns:** The number of items in the queue.
+- **Purpose**: Checks if the queue is empty.
+- **Parameters:**
+    - `q`: Pointer to the Queue object.
+- **Returns:** `true` if the queue is empty, otherwise `false`.
 
-- **`bool queue_empty(const Queue* q);`**
+---
 
-    Checks if the queue is empty.
+### `void queue_swap(Queue* q1, Queue* q2);` 
 
-    - **Parameters:**
-        - `q`: Pointer to the Queue object.
-    - **Returns:** `true` if the queue is empty, otherwise `false`.
+- **Purpose**: Swaps the contents of two queues.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
 
-- **`void queue_swap(Queue* q1, Queue* q2);`**
+---
 
-    Swaps the contents of two queues.
+### `bool queue_is_equal(const Queue* q1, const Queue* q2);` 
 
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
+- **Purpose**: Checks if two queues are equal.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
+- **Returns:** `true` if the queues are equal, otherwise `false`.
 
-### Relational Operations
+---
 
-- **`bool queue_is_equal(const Queue* q1, const Queue* q2);`**
+### `bool queue_is_less(const Queue* q1, const Queue* q2);` 
 
-    Checks if two queues are equal.
+- **Purpose**: Checks if the first queue is less than the second.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
+- **Returns:** `true` if the first queue is less than the second, otherwise `false`.
 
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
-    - **Returns:** `true` if the queues are equal, otherwise `false`.
+--- 
 
-- **`bool queue_is_less(const Queue* q1, const Queue* q2);`**
+### `bool queue_is_greater(const Queue* q1, const Queue* q2);` 
 
-    Checks if the first queue is less than the second.
+- **Purpose**: Checks if the first queue is greater than the second.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
+- **Returns:** `true` if the first queue is greater than the second, otherwise `false`.
 
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
-    - **Returns:** `true` if the first queue is less than the second, otherwise `false`.
+--- 
 
-- **`bool queue_is_greater(const Queue* q1, const Queue* q2);`**
+### `bool queue_is_not_equal(const Queue* q1, const Queue* q2);` 
 
-    Checks if the first queue is greater than the second.
+- **Purpose**: Checks if two queues are not equal.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
+- **Returns:** `true` if the queues are not equal, otherwise `false`.
 
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
-    - **Returns:** `true` if the first queue is greater than the second, otherwise `false`.
+--- 
 
-- **`bool queue_is_not_equal(const Queue* q1, const Queue* q2);`**
+### `bool queue_is_less_or_equal(const Queue* q1, const Queue* q2);` 
 
-    Checks if two queues are not equal.
+- **Purpose**: Checks if the first queue is less than or equal to the second.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
+- **Returns:** `true` if the first queue is less than or equal to the second, otherwise `false`.
 
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
-    - **Returns:** `true` if the queues are not equal, otherwise `false`.
+--- 
 
-- **`bool queue_is_less_or_equal(const Queue* q1, const Queue* q2);`**
+### `bool queue_is_greater_or_equal(const Queue* q1, const Queue* q2);` 
 
-    Checks if the first queue is less than or equal to the second.
+- **Purpose**: Checks if the first queue is greater than or equal to the second.
+- **Parameters:**
+    - `q1`: Pointer to the first Queue object.
+    - `q2`: Pointer to the second Queue object.
+- **Returns:** `true` if the first queue is greater than or equal to the second, otherwise `false`.
 
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
-    - **Returns:** `true` if the first queue is less than or equal to the second, otherwise `false`.
-
-- **`bool queue_is_greater_or_equal(const Queue* q1, const Queue* q2);`**
-
-    Checks if the first queue is greater than or equal to the second.
-
-    - **Parameters:**
-        - `q1`: Pointer to the first Queue object.
-        - `q2`: Pointer to the second Queue object.
-    - **Returns:** `true` if the first queue is greater than or equal to the second, otherwise `false`.
+--- 
 
 ## Examples
 
