@@ -21,7 +21,6 @@ Ensure you have the GCC compiler installed on your system and that all source fi
 
 To use the Stack library in your project, include the `stack.h` header file in your source code.
 
-
 ```c
 #include "stack/stack.h"
 ```
@@ -30,144 +29,127 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 ## Function Descriptions
 
-## Stack Creation and Management
+### `Stack* stack_create(size_t itemSize)`
+- **Purpose**: Creates a new Stack object and initializes it to store items of a specified size.
+- **Parameters**: 
+    - `itemSize`: The size of each item that will be stored in the stack.
+- **Returns**: A pointer to the newly created `Stack`.
+- **Use case**: This function is used to create a stack that can hold items of a specific type or structure.
 
-1. **`Stack* stack_create(size_t itemSize)`**
-   - **Purpose**: Creates a new Stack object and initializes it to store items of a specified size.
-   - **Parameters**: 
-     - `itemSize`: The size of each item that will be stored in the stack.
-   - **Returns**: A pointer to the newly created `Stack`.
-   - **Use case**: This function is used to create a stack that can hold items of a specific type or structure.
+### `bool stack_is_equal(const Stack* stk1, const Stack* stk2)`
+- **Purpose**: Checks whether two stacks are equal by comparing their contents.
+- **Parameters**: 
+    - `stk1`: The first stack to compare.
+    - `stk2`: The second stack to compare.
+- **Returns**: `true` if the stacks are equal, `false` otherwise.
+- **Use case**: Useful when you need to verify if two stacks contain the same elements.
 
----
+### `bool stack_is_less(const Stack* stk1, const Stack* stk2)`
+- **Purpose**: Compares two stacks to determine if the first stack is less than the second stack (based on the lexicographical order of the elements).
+- **Parameters**: 
+    - `stk1`: The first stack.
+    - `stk2`: The second stack.
+- **Returns**: `true` if `stk1` is less than `stk2`, `false` otherwise.
+- **Use case**: For sorting or ranking stacks based on their contents.
 
-## Relational Operators
+###  `bool stack_is_greater(const Stack* stk1, const Stack* stk2)`
+- **Purpose**: Compares two stacks to determine if the first stack is greater than the second stack (based on the lexicographical order of the elements).
+- **Parameters**: 
+    - `stk1`: The first stack.
+    - `stk2`: The second stack.
+- **Returns**: `true` if `stk1` is greater than `stk2`, `false` otherwise.
+- **Use case**: Used in sorting or ranking stacks.
 
-2. **`bool stack_is_equal(const Stack* stk1, const Stack* stk2)`**
-   - **Purpose**: Checks whether two stacks are equal by comparing their contents.
-   - **Parameters**: 
-     - `stk1`: The first stack to compare.
-     - `stk2`: The second stack to compare.
-   - **Returns**: `true` if the stacks are equal, `false` otherwise.
-   - **Use case**: Useful when you need to verify if two stacks contain the same elements.
+### `bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2)`
+- **Purpose**: Determines if the first stack is less than or equal to the second stack.
+- **Parameters**: 
+    - `stk1`: The first stack.
+    - `stk2`: The second stack.
+- **Returns**: `true` if `stk1` is less than or equal to `stk2`, `false` otherwise.
+- **Use case**: For relational comparisons between stacks.
 
-3. **`bool stack_is_less(const Stack* stk1, const Stack* stk2)`**
-   - **Purpose**: Compares two stacks to determine if the first stack is less than the second stack (based on the lexicographical order of the elements).
-   - **Parameters**: 
-     - `stk1`: The first stack.
-     - `stk2`: The second stack.
-   - **Returns**: `true` if `stk1` is less than `stk2`, `false` otherwise.
-   - **Use case**: For sorting or ranking stacks based on their contents.
+### `bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2)`
+- **Purpose**: Determines if the first stack is greater than or equal to the second stack.
+- **Parameters**: 
+    - `stk1`: The first stack.
+    - `stk2`: The second stack.
+- **Returns**: `true` if `stk1` is greater than or equal to `stk2`, `false` otherwise.
+- **Use case**: For relational comparisons between stacks.
 
-4. **`bool stack_is_greater(const Stack* stk1, const Stack* stk2)`**
-   - **Purpose**: Compares two stacks to determine if the first stack is greater than the second stack (based on the lexicographical order of the elements).
-   - **Parameters**: 
-     - `stk1`: The first stack.
-     - `stk2`: The second stack.
-   - **Returns**: `true` if `stk1` is greater than `stk2`, `false` otherwise.
-   - **Use case**: Used in sorting or ranking stacks.
+### `bool stack_is_not_equal(const Stack* stk1, const Stack* stk2)`
+- **Purpose**: Checks whether two stacks are not equal by comparing their contents.
+- **Parameters**: 
+    - `stk1`: The first stack to compare.
+    - `stk2`: The second stack to compare.
+- **Returns**: `true` if the stacks are not equal, `false` otherwise.
+- **Use case**: For checking inequality between two stacks.
 
-5. **`bool stack_is_less_or_equal(const Stack* stk1, const Stack* stk2)`**
-   - **Purpose**: Determines if the first stack is less than or equal to the second stack.
-   - **Parameters**: 
-     - `stk1`: The first stack.
-     - `stk2`: The second stack.
-   - **Returns**: `true` if `stk1` is less than or equal to `stk2`, `false` otherwise.
-   - **Use case**: For relational comparisons between stacks.
+### `void stack_push(const Stack* stk, const void* item)`
+- **Purpose**: Pushes a new item onto the top of the stack.
+- **Parameters**: 
+    - `stk`: The stack onto which the item will be pushed.
+    - `item`: A pointer to the item to be added to the stack.
+- **Returns**: `void`.
+- **Use case**: Used to add a new item to the stack.
 
-6. **`bool stack_is_greater_or_equal(const Stack* stk1, const Stack* stk2)`**
-   - **Purpose**: Determines if the first stack is greater than or equal to the second stack.
-   - **Parameters**: 
-     - `stk1`: The first stack.
-     - `stk2`: The second stack.
-   - **Returns**: `true` if `stk1` is greater than or equal to `stk2`, `false` otherwise.
-   - **Use case**: For relational comparisons between stacks.
+### `void* stack_pop(const Stack* stk)`
+- **Purpose**: Removes the top item from the stack and returns it.
+- **Parameters**: 
+    - `stk`: The stack from which the top item will be popped.
+- **Returns**: A pointer to the item that was removed from the stack.
+- **Use case**: Used to remove and retrieve the last added item from the stack.
 
-7. **`bool stack_is_not_equal(const Stack* stk1, const Stack* stk2)`**
-   - **Purpose**: Checks whether two stacks are not equal by comparing their contents.
-   - **Parameters**: 
-     - `stk1`: The first stack to compare.
-     - `stk2`: The second stack to compare.
-   - **Returns**: `true` if the stacks are not equal, `false` otherwise.
-   - **Use case**: For checking inequality between two stacks.
+### `void* stack_top(const Stack* stk)`
+- **Purpose**: Retrieves the top item of the stack without removing it.
+- **Parameters**: 
+    - `stk`: The stack from which the top item will be retrieved.
+- **Returns**: A pointer to the top item in the stack.
+- **Use case**: Used when you need to look at the top item without modifying the stack.
 
----
+### `bool stack_empty(const Stack* stk)`
+- **Purpose**: Checks whether the stack is empty.
+- **Parameters**: 
+    - `stk`: The stack to check.
+- **Returns**: `true` if the stack is empty, `false` otherwise.
+- **Use case**: Useful to check if there are no items in the stack before performing operations like popping.
 
-## Stack Operations
+### `size_t stack_size(const Stack* stk)`
+- **Purpose**: Returns the number of items currently stored in the stack.
+- **Parameters**: 
+    - `stk`: The stack whose size will be checked.
+- **Returns**: The number of items in the stack.
+- **Use case**: Used when the number of items in the stack needs to be known.
 
-8. **`void stack_push(const Stack* stk, const void* item)`**
-   - **Purpose**: Pushes a new item onto the top of the stack.
-   - **Parameters**: 
-     - `stk`: The stack onto which the item will be pushed.
-     - `item`: A pointer to the item to be added to the stack.
-   - **Returns**: `void`.
-   - **Use case**: Used to add a new item to the stack.
+### `void stack_clear(const Stack* stk)`
+- **Purpose**: Removes all items from the stack, effectively emptying it.
+- **Parameters**: 
+    - `stk`: The stack to be cleared.
+- **Returns**: `void`.
+- **Use case**: Used when you need to reset the stack by removing all items.
 
-9. **`void* stack_pop(const Stack* stk)`**
-   - **Purpose**: Removes the top item from the stack and returns it.
-   - **Parameters**: 
-     - `stk`: The stack from which the top item will be popped.
-   - **Returns**: A pointer to the item that was removed from the stack.
-   - **Use case**: Used to remove and retrieve the last added item from the stack.
+### `void stack_emplace(const Stack* stk, void* item)`
+- **Purpose**: Adds a new item to the top of the stack without copying the item.
+- **Parameters**: 
+    - `stk`: The stack onto which the item will be added.
+    - `item`: A pointer to the item that will be added directly (without copying).
+- **Returns**: `void`.
+- **Use case**: Used for performance optimization, particularly when avoiding unnecessary memory copying is important.
 
-10. **`void* stack_top(const Stack* stk)`**
-    - **Purpose**: Retrieves the top item of the stack without removing it.
-    - **Parameters**: 
-      - `stk`: The stack from which the top item will be retrieved.
-    - **Returns**: A pointer to the top item in the stack.
-    - **Use case**: Used when you need to look at the top item without modifying the stack.
+### `void stack_swap(Stack* stk1, Stack* stk2)`
+- **Purpose**: Swaps the contents of two stacks.
+- **Parameters**: 
+    - `stk1`: The first stack.
+    - `stk2`: The second stack.
+- **Returns**: `void`.
+- **Use case**: Useful when you need to exchange the contents of two stacks without copying the individual elements.
 
-11. **`bool stack_empty(const Stack* stk)`**
-    - **Purpose**: Checks whether the stack is empty.
-    - **Parameters**: 
-      - `stk`: The stack to check.
-    - **Returns**: `true` if the stack is empty, `false` otherwise.
-    - **Use case**: Useful to check if there are no items in the stack before performing operations like popping.
+### `void stack_deallocate(Stack* stk)`
+- **Purpose**: Deallocates the stack, freeing up the memory used by the stack.
+- **Parameters**: 
+    - `stk`: The stack to deallocate.
+- **Returns**: `void`.
+- **Use case**: This function is essential for freeing the memory used by the stack once it is no longer needed, preventing memory leaks.
 
-12. **`size_t stack_size(const Stack* stk)`**
-    - **Purpose**: Returns the number of items currently stored in the stack.
-    - **Parameters**: 
-      - `stk`: The stack whose size will be checked.
-    - **Returns**: The number of items in the stack.
-    - **Use case**: Used when the number of items in the stack needs to be known.
-
-13. **`void stack_clear(const Stack* stk)`**
-    - **Purpose**: Removes all items from the stack, effectively emptying it.
-    - **Parameters**: 
-      - `stk`: The stack to be cleared.
-    - **Returns**: `void`.
-    - **Use case**: Used when you need to reset the stack by removing all items.
-
----
-
-## Advanced Stack Operations
-
-14. **`void stack_emplace(const Stack* stk, void* item)`**
-    - **Purpose**: Adds a new item to the top of the stack without copying the item.
-    - **Parameters**: 
-      - `stk`: The stack onto which the item will be added.
-      - `item`: A pointer to the item that will be added directly (without copying).
-    - **Returns**: `void`.
-    - **Use case**: Used for performance optimization, particularly when avoiding unnecessary memory copying is important.
-
-15. **`void stack_swap(Stack* stk1, Stack* stk2)`**
-    - **Purpose**: Swaps the contents of two stacks.
-    - **Parameters**: 
-      - `stk1`: The first stack.
-      - `stk2`: The second stack.
-    - **Returns**: `void`.
-    - **Use case**: Useful when you need to exchange the contents of two stacks without copying the individual elements.
-
----
-
-## Cleanup
-
-16. **`void stack_deallocate(Stack* stk)`**
-    - **Purpose**: Deallocates the stack, freeing up the memory used by the stack.
-    - **Parameters**: 
-      - `stk`: The stack to deallocate.
-    - **Returns**: `void`.
-    - **Use case**: This function is essential for freeing the memory used by the stack once it is no longer needed, preventing memory leaks.
 
 ---
 

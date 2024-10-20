@@ -6,6 +6,15 @@
 // #include <stddef.h>
 #include "file_writer.h"
 
+// #define FILE_READER_LOGGING_ENABLE
+
+#ifdef FILE_READER_LOGGING_ENABLE 
+    #define FILE_READER_LOG(fmt, ...) \
+        do { fprintf(stderr, "[FILE_READER LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define FILE_READER_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef enum {
     READ_TEXT,          // Open for reading in text mode
     READ_BINARY,        // Open for reading in binary mode

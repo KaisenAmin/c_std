@@ -682,7 +682,6 @@ CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) {
     return resizedFoundRows; 
 }
 
-
 /**
  * @brief Validates the format of a specific cell in a CSV row.
  *

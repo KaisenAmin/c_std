@@ -1176,150 +1176,418 @@ static ezxml_t ezxml_document_root(ezxml_t doc) {
     return doc;
 }
 
+/**
+ * @brief Parses an XML file and returns a corresponding XmlDocument structure.
+ * 
+ * This function reads the contents of the specified XML file and parses it into an XmlDocument structure.
+ * If the file cannot be parsed or memory allocation fails, an error is logged, and NULL is returned.
+ * 
+ * @param filename The path to the XML file to be parsed.
+ * @return A pointer to the XmlDocument structure representing the parsed XML file, or NULL if an error occurs.
+ */
 XmlDocument* xml_parse_file(const char* filename) {
+    XML_LOG("[xml_parse_file] Parsing XML file: %s", filename);
+
     ezxml_t xml = ezxml_parse_file(filename);
     if (!xml) {
+        XML_LOG("[xml_parse_file] Error: Failed to parse file: %s", filename);
         return NULL;
     }
-    
+
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
+    if (!doc) {
+        XML_LOG("[xml_parse_file] Error: Failed to allocate memory for XmlDocument.");
+        return NULL;
+    }
+
     doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    if (!doc->root) {
+        XML_LOG("[xml_parse_file] Error: Failed to allocate memory for root XmlNode.");
+        free(doc);
+        return NULL;
+    }
+
     doc->root->internal_node = (void*)xml;
+    XML_LOG("[xml_parse_file] Successfully parsed XML file: %s", filename);
     
     return doc;
 }
 
-// Updated version of xml_parse_string with debugging
+/**
+ * @brief Parses an XML string and returns a corresponding XmlDocument structure.
+ * 
+ * This function parses the provided XML string content into an XmlDocument structure.
+ * If the string cannot be parsed or memory allocation fails, an error is logged, and NULL is returned.
+ * 
+ * @param xml_content The XML string content to be parsed.
+ * @return A pointer to the XmlDocument structure representing the parsed XML string, or NULL if an error occurs.
+ */
 XmlDocument* xml_parse_string(const char* xml_content) {
-    size_t len = strlen(xml_content);
-    char* xml_copy = strdup(xml_content);  
-    ezxml_t xml = ezxml_parse_str(xml_copy, len);
+    XML_LOG("[xml_parse_string] Parsing XML string content.");
 
+    size_t len = strlen(xml_content);
+    char* xml_copy = strdup(xml_content);
+    if (!xml_copy) {
+        XML_LOG("[xml_parse_string] Error: Failed to copy XML string content.");
+        return NULL;
+    }
+
+    ezxml_t xml = ezxml_parse_str(xml_copy, len);
     if (!xml) {
-        fprintf(stderr, "Error: Failed to parse XML string.\n");
-        free(xml_copy);  
-        return NULL;     
+        XML_LOG("[xml_parse_string] Error: Failed to parse XML string.");
+        free(xml_copy);
+        return NULL;
     }
 
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
-    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
-    doc->root->internal_node = (void*)xml; 
+    if (!doc) {
+        XML_LOG("[xml_parse_string] Error: Failed to allocate memory for XmlDocument.");
+        ezxml_free(xml);  // Free the ezxml structure before returning
+        free(xml_copy);
+        return NULL;
+    }
 
+    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    if (!doc->root) {
+        XML_LOG("[xml_parse_string] Error: Failed to allocate memory for root XmlNode.");
+        ezxml_free(xml);
+        free(xml_copy);
+        free(doc);
+        return NULL;
+    }
+
+    doc->root->internal_node = (void*)xml;
+    XML_LOG("[xml_parse_string] Successfully parsed XML string content.");
+    
     return doc;
 }
 
+/**
+ * @brief Creates a new XML document with the specified root element name.
+ * 
+ * This function initializes a new XML document and sets the root element to the specified tag name. 
+ * It allocates memory for both the XmlDocument and the root XmlNode. If the document or root node 
+ * cannot be created, an error is logged and NULL is returned.
+ * 
+ * @param root_element_name The name of the root element to be created. 
+ * @return A pointer to the newly created XmlDocument structure, or NULL if an error occurs.
+ */
 XmlDocument* xml_create_document(const char* root_element_name) {
+    XML_LOG("[xml_create_document] Creating new XML document with root element: %s", root_element_name);
+
     ezxml_t xml = ezxml_new(root_element_name); // Use ezxml to create a new document
+    if (!xml) {
+        XML_LOG("[xml_create_document] Error: Failed to create root element: %s", root_element_name);
+        return NULL;
+    }
+
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
+    if (!doc) {
+        XML_LOG("[xml_create_document] Error: Failed to allocate memory for XmlDocument.");
+        ezxml_free(xml);
+        return NULL;
+    }
 
     doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    if (!doc->root) {
+        XML_LOG("[xml_create_document] Error: Failed to allocate memory for root XmlNode.");
+        ezxml_free(xml);
+        free(doc);
+        return NULL;
+    }
+
     doc->root->internal_node = (void*)xml; // Store the internal ezxml pointer
+    XML_LOG("[xml_create_document] Successfully created XML document with root element: %s", root_element_name);
 
     return doc;
 }
 
+/**
+ * @brief Creates a new XML element with the specified tag name.
+ * 
+ * This function creates a new XML element (node) with the given tag name. It allocates memory 
+ * for the XmlNode structure and uses the ezxml library to create an isolated XML element.
+ * If memory allocation or element creation fails, an error is logged, and NULL is returned.
+ * 
+ * @param doc Pointer to the XmlDocument structure (optional, can be NULL).
+ * @param tag_name The tag name for the new XML element.
+ * @return A pointer to the newly created XmlNode structure, or NULL if an error occurs.
+ */
 XmlNode* xml_create_element(XmlDocument* doc, const char* tag_name) {
     (void)doc;
+    XML_LOG("[xml_create_element] Creating new XML element with tag name: %s", tag_name);
+
     ezxml_t new_elem = ezxml_new(tag_name);  // Create an isolated ezxml node
-    XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
-
-    node->internal_node = (void*)new_elem;   // Store the new element
-    node->tag_name = new_elem->name;         // Set the tag name
-    node->text = new_elem->txt;              // Set the text content (initially empty)
-
-    return node;
-}
-
-XmlNode* xml_get_root(XmlDocument* doc) {
-    if (!doc || !doc->root || !doc->root->internal_node) {
-        printf("Error: Invalid document or root internal node.\n");
-        return NULL;
-    }
-
-    ezxml_t root = ezxml_document_root((ezxml_t)doc->root->internal_node);
-    if (!root) {
-        fprintf(stderr, "Error: No root found.\n");
+    if (!new_elem) {
+        XML_LOG("[xml_create_element] Error: Failed to create element with tag name: %s", tag_name);
         return NULL;
     }
 
     XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
     if (!node) {
+        XML_LOG("[xml_create_element] Error: Failed to allocate memory for XmlNode.");
+        ezxml_free(new_elem);
         return NULL;
     }
+
+    node->internal_node = (void*)new_elem;   // Store the new element
+    node->tag_name = new_elem->name;         // Set the tag name
+    node->text = new_elem->txt;              // Set the text content (initially empty)
+
+    XML_LOG("[xml_create_element] Successfully created XML element with tag name: %s", tag_name);
+
+    return node;
+}
+
+/**
+ * @brief Retrieves the root element of the XML document.
+ * 
+ * This function fetches the root element of the given XML document. It allocates memory for a new XmlNode structure representing the root node. 
+ * If the document is invalid or the root element cannot be found, the function logs an error and returns NULL.
+ * 
+ * @param doc Pointer to the XmlDocument structure representing the XML document.
+ * @return Pointer to an XmlNode structure representing the root element, or NULL if an error occurs.
+ */
+XmlNode* xml_get_root(XmlDocument* doc) {
+    XML_LOG("[xml_get_root] Retrieving root element from XML document.");
+    
+    if (!doc || !doc->root || !doc->root->internal_node) {
+        XML_LOG("[xml_get_root] Error: Invalid document or root internal node.");
+        return NULL;
+    }
+
+    ezxml_t root = ezxml_document_root((ezxml_t)doc->root->internal_node);
+    if (!root) {
+        XML_LOG("[xml_get_root] Error: No root element found in document.");
+        return NULL;
+    }
+
+    XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
+    if (!node) {
+        XML_LOG("[xml_get_root] Error: Failed to allocate memory for XmlNode.");
+        return NULL;
+    }
+
     node->internal_node = (void*)root;
 
     if (!root->name) {
+        XML_LOG("[xml_get_root] Error: Root element has no tag name.");
         free(node);
         return NULL;
     }
 
     node->tag_name = strdup(root->name); 
     if (!node->tag_name) {
+        XML_LOG("[xml_get_root] Error: Failed to allocate memory for tag name.");
         free(node);
         return NULL;
     }
 
     node->text = root->txt; 
+    XML_LOG("[xml_get_root] Successfully retrieved root element: %s", node->tag_name);
     return node;
 }
 
+/**
+ * @brief Finds an XML element by its tag name.
+ * 
+ * This function searches for the first child element with the specified tag name in the given root node.
+ * If the root or tag name is invalid, or if no matching element is found, the function logs an error and returns NULL.
+ * 
+ * @param root Pointer to the XmlNode structure representing the root node.
+ * @param tag_name The tag name of the element to search for.
+ * @return Pointer to the found XmlNode structure, or NULL if not found or an error occurs.
+ */
 XmlNode* xml_find_element_by_tag(XmlNode* root, const char* tag_name) {
+    XML_LOG("[xml_find_element_by_tag] Searching for element with tag name: %s", tag_name);
+    
+    if (!root || !tag_name) {
+        XML_LOG("[xml_find_element_by_tag] Error: Invalid root node or tag name.");
+        return NULL;
+    }
+
     ezxml_t xml = (ezxml_t)root->internal_node;
     ezxml_t child = ezxml_child(xml, tag_name);
 
     if (!child) {
+        XML_LOG("[xml_find_element_by_tag] Warning: Element with tag name '%s' not found.", tag_name);
         return NULL;
     }
 
     XmlNode* result = (XmlNode*)malloc(sizeof(XmlNode));
+    if (!result) {
+        XML_LOG("[xml_find_element_by_tag] Error: Failed to allocate memory for XmlNode.");
+        return NULL;
+    }
+
     result->internal_node = (void*)child;
     result->tag_name = child->name;
+    result->text = child->txt;
 
+    XML_LOG("[xml_find_element_by_tag] Successfully found element with tag name: %s", tag_name);
     return result;
 }
 
+/**
+ * @brief Prints an XML node to the standard output.
+ * 
+ * This function converts the given XML node to a string representation and prints it to the standard output.
+ * If the node or its conversion fails, the function logs an error.
+ * 
+ * @param node Pointer to the XmlNode structure to be printed.
+ */
 void xml_print(XmlNode* node) {
-    char* xml_str = ezxml_toxml((ezxml_t)node);
+    XML_LOG("[xml_print] Printing XML node.");
+
+    if (!node) {
+        XML_LOG("[xml_print] Error: Node is NULL.");
+        return;
+    }
+
+    char* xml_str = ezxml_toxml((ezxml_t)node->internal_node);
 
     if (xml_str) {
         printf("%s\n", xml_str);
+        XML_LOG("[xml_print] Successfully printed XML node.");
         free(xml_str);
+    } 
+    else {
+        XML_LOG("[xml_print] Error: Failed to convert node to XML string.");
     }
 }
 
+/**
+ * @brief Appends a child node to a parent node.
+ * 
+ * This function appends the given child node to the specified parent node.
+ * If either the parent or child is invalid, or if there is an attempt to append a node to itself or its parent, the function logs an error and returns.
+ * 
+ * @param parent Pointer to the XmlNode structure representing the parent node.
+ * @param child Pointer to the XmlNode structure representing the child node.
+ */
 void xml_append_child(XmlNode* parent, XmlNode* child) {
+    XML_LOG("[xml_append_child] Appending child node to parent.");
+
+    if (!parent || !child) {
+        XML_LOG("[xml_append_child] Error: Parent or child node is NULL.");
+        return;
+    }
+
     ezxml_t parent_node = (ezxml_t)parent->internal_node;
     ezxml_t child_node = (ezxml_t)child->internal_node;
 
     if (child_node == parent_node || child_node->parent == parent_node) {
-        fprintf(stderr, "Error: Attempting to append a node to itself or its parent.\n");
+        XML_LOG("[xml_append_child] Error: Attempting to append a node to itself or its parent.");
         return;
     }
 
     ezxml_insert(child_node, parent_node, 0);
+    XML_LOG("[xml_append_child] Successfully appended child node.");
 }
 
+/**
+ * @brief Sets the text content of an XML element.
+ * 
+ * This function sets the text content of the provided XML element. 
+ * If the element or the text is NULL, the function logs an error and returns without performing any action.
+ * 
+ * @param element Pointer to the XmlNode structure representing the element.
+ * @param text The text content to set for the element.
+ */
 void xml_set_element_text(XmlNode* element, const char* text) {
+    XML_LOG("[xml_set_element_text] Setting text for XML element.");
+
+    if (!element || !text) {
+        XML_LOG("[xml_set_element_text] Error: Element or text is NULL.");
+        return;
+    }
+
     ezxml_set_txt((ezxml_t)element->internal_node, text);
+    XML_LOG("[xml_set_element_text] Successfully set text for XML element.");
 }
 
+/**
+ * @brief Sets an attribute for an XML element.
+ * 
+ * This function sets an attribute with a specified name and value for the provided XML element.
+ * If the element, name, or value is NULL, the function logs an error and returns without performing any action.
+ * 
+ * @param element Pointer to the XmlNode structure representing the element.
+ * @param name The name of the attribute to set.
+ * @param value The value of the attribute to set.
+ */
 void xml_set_element_attribute(XmlNode* element, const char* name, const char* value) {
+    XML_LOG("[xml_set_element_attribute] Setting attribute for XML element.");
+
+    if (!element || !name || !value) {
+        XML_LOG("[xml_set_element_attribute] Error: Element, name, or value is NULL.");
+        return;
+    }
+
     ezxml_set_attr((ezxml_t)element->internal_node, name, value);
+    XML_LOG("[xml_set_element_attribute] Successfully set attribute '%s' with value '%s'.", name, value);
 }
 
+/**
+ * @brief Deallocates an XML document and its contents.
+ * 
+ * This function deallocates the memory associated with an XML document, including the root node and the document structure itself.
+ * If the document is NULL, the function logs an error and returns without performing any action.
+ * 
+ * @param doc Pointer to the XmlDocument structure to be deallocated.
+ */
 void xml_deallocate_document(XmlDocument* doc) {
+    XML_LOG("[xml_deallocate_document] Deallocating XML document.");
+
+    if (!doc) {
+        XML_LOG("[xml_deallocate_document] Error: Document is NULL.");
+        return;
+    }
+
     ezxml_free((ezxml_t)doc->root->internal_node);  
     free(doc->root);  
     free(doc);        
+
+    XML_LOG("[xml_deallocate_document] Successfully deallocated XML document.");
 }
 
+/**
+ * @brief Deallocates an XML node and its contents.
+ * 
+ * This function deallocates the memory associated with an individual XML node, including the internal node.
+ * If the node is NULL, the function logs an error and returns without performing any action.
+ * 
+ * @param node Pointer to the XmlNode structure to be deallocated.
+ */
 void xml_deallocate_node(XmlNode* node) {
+    XML_LOG("[xml_deallocate_node] Deallocating XML node.");
+
+    if (!node) {
+        XML_LOG("[xml_deallocate_node] Error: Node is NULL.");
+        return;
+    }
+
     ezxml_free((ezxml_t)node->internal_node);  
     free(node);  
+    XML_LOG("[xml_deallocate_node] Successfully deallocated XML node.");
 }
 
+/**
+ * @brief Copies the provided text to a new dynamically allocated memory block.
+ * 
+ * This function duplicates a given text string by allocating new memory 
+ * and copying the contents of the string into it. If the input text is NULL, 
+ * or if memory allocation fails, the function returns NULL.
+ * 
+ * @param text The text string to be copied.
+ * @return A pointer to the newly allocated copy of the text, or NULL if an error occurs.
+ * @note The caller is responsible for freeing the memory allocated for the copied text.
+ */
 char* xml_copy_text(const char* text) {
+    XML_LOG("[xml_copy_text] Copying text.");
+
     if (!text) {
+        XML_LOG("[xml_copy_text] Error: Text is NULL.");
         return NULL;
     }
 
@@ -1327,57 +1595,162 @@ char* xml_copy_text(const char* text) {
     char* copy = (char*)malloc(len);
     if (copy) {
         strncpy(copy, text, len);   
+        XML_LOG("[xml_copy_text] Successfully copied text.");
+    } 
+    else {
+        XML_LOG("[xml_copy_text] Error: Memory allocation failed.");
     }
 
     return copy;
 }
 
+/**
+ * @brief Retrieves the text content of an XML element.
+ * 
+ * This function retrieves the text content from the provided XML element. 
+ * If the element or its internal node is NULL, or if the element does not contain text, 
+ * the function returns NULL. The returned text is duplicated in new memory.
+ * 
+ * @param element Pointer to the XmlNode structure representing the element.
+ * @return A pointer to the duplicated text, or NULL if no text is found or an error occurs.
+ * @note The caller is responsible for freeing the memory allocated for the duplicated text.
+ */
 const char* xml_get_element_text(XmlNode* element) {
+    XML_LOG("[xml_get_element_text] Retrieving text from XML element.");
+
     if (!element || !element->internal_node) {
-        fprintf(stderr, "Error: Null element or internal node.\n");
+        XML_LOG("[xml_get_element_text] Error: Element or internal node is NULL.");
         return NULL;
     }
 
     ezxml_t result = (ezxml_t)element->internal_node;
 
-    if (result) {
-        if (result->txt && strlen(result->txt) > 0) {
-            char* duplicated_text = strdup(result->txt);
-            if (duplicated_text) {
-                return duplicated_text;  
-            } 
+    if (result && result->txt && strlen(result->txt) > 0) {
+        char* duplicated_text = strdup(result->txt);
+        if (duplicated_text) {
+            XML_LOG("[xml_get_element_text] Successfully retrieved and duplicated text.");
+            return duplicated_text;  
         } 
-    } 
+        else {
+            XML_LOG("[xml_get_element_text] Error: Memory allocation for duplicated text failed.");
+        }
+    }
 
+    XML_LOG("[xml_get_element_text] No text found for the element.");
     return NULL;  
 }
 
+/**
+ * @brief Retrieves the tag name of an XML element.
+ * 
+ * This function retrieves the tag name of the provided XML node. If the node or its 
+ * internal representation is NULL, the function returns NULL.
+ * 
+ * @param node Pointer to the XmlNode structure representing the element.
+ * @return A pointer to the tag name of the element, or NULL if the node or its internal representation is NULL.
+ */
 const char* xml_get_tag_name(XmlNode* node) {
+    XML_LOG("[xml_get_tag_name] Retrieving tag name.");
+
     if (node && node->internal_node) {
+        XML_LOG("[xml_get_tag_name] Successfully retrieved tag name.");
         return ((ezxml_t)node->internal_node)->name;  
     }
+
+    XML_LOG("[xml_get_tag_name] Error: Node or internal node is NULL.");
     return NULL;  
 }
 
+/**
+ * @brief Retrieves the value of an attribute for a given XML element.
+ * 
+ * This function retrieves the value of the specified attribute from an XML element.
+ * If the attribute exists, its value is returned. If the attribute is not found, 
+ * or if the element or name is NULL, the function returns NULL.
+ * 
+ * @param element Pointer to the XmlNode structure representing the element.
+ * @param name The name of the attribute to retrieve. 
+ * @return The value of the attribute as a string, or NULL if the attribute is not found or if an error occurs.
+ * @note The caller must ensure that the element and attribute name are not NULL before calling this function.
+ */
 const char* xml_get_element_attribute(XmlNode* element, const char* name) {
+    XML_LOG("[xml_get_element_attribute] Retrieving attribute value for '%s'.", name);
+
+    if (!element || !element->internal_node || !name) {
+        XML_LOG("[xml_get_element_attribute] Error: Element, internal node, or attribute name is NULL.");
+        return NULL;
+    }
+
     const char* attr_value = ezxml_attr((ezxml_t)element->internal_node, name);
+    if (attr_value) {
+        XML_LOG("[xml_get_element_attribute] Successfully retrieved attribute value.");
+    } 
+    else {
+        XML_LOG("[xml_get_element_attribute] Attribute '%s' not found.", name);
+    }
+
     return attr_value;
 }
 
+/**
+ * @brief Converts the XML document to a string representation.
+ * 
+ * This function converts the entire XML document to a string. The resulting string
+ * contains the serialized XML, which can be printed or saved to a file. If the conversion
+ * fails, the function returns NULL.
+ * 
+ * @param doc Pointer to the XmlDocument structure representing the XML document.
+ * @return A string containing the serialized XML document, or NULL if an error occurs.
+ * @note The caller must ensure that the document and its root node are not NULL before calling this function.
+ */
 char* xml_to_string(XmlDocument* doc) {
-    return ezxml_toxml((ezxml_t)doc->root->internal_node);  // Use ezxml to convert the document to a string
+    XML_LOG("[xml_to_string] Converting XML document to string.");
+
+    if (!doc || !doc->root || !doc->root->internal_node) {
+        XML_LOG("[xml_to_string] Error: Document, root, or internal node is NULL.");
+        return NULL;
+    }
+
+    char* xml_str = ezxml_toxml((ezxml_t)doc->root->internal_node);
+    if (xml_str) {
+        XML_LOG("[xml_to_string] Successfully converted XML document to string.");
+    } 
+    else {
+        XML_LOG("[xml_to_string] Error: Failed to convert XML document to string.");
+    }
+
+    return xml_str;
 }
 
+/**
+ * @brief Saves the XML document to a file.
+ * 
+ * This function saves the XML document to the specified file by first converting the document 
+ * to a string and then writing the string to the file. If the operation is successful, the 
+ * function returns 1. If the conversion or file writing fails, the function returns 0.
+ * 
+ * @param doc Pointer to the XmlDocument structure representing the XML document.
+ * @param filename The name of the file to which the XML document will be saved.
+ * @return 1 if the document is saved successfully, 0 otherwise.
+ * @note The caller must ensure that the document and its root node are not NULL before calling this function.
+ */
 int xml_save_to_file(XmlDocument* doc, const char* filename) {
+    XML_LOG("[xml_save_to_file] Saving XML document to file: %s", filename);
+
+    if (!doc || !doc->root || !doc->root->internal_node) {
+        XML_LOG("[xml_save_to_file] Error: Document or root is NULL.");
+        return 0;
+    }
+
     char* xml_str = ezxml_toxml((ezxml_t)doc->root->internal_node);  // Convert to string
     if (!xml_str) {
-        fprintf(stderr, "Error: Can not Convert XML to string\n");
+        XML_LOG("[xml_save_to_file] Error: Failed to convert XML document to string.");
         return 0;  // Return 0 if conversion fails
     }
 
     FILE* file = fopen(filename, "w");
     if (!file) {
-        fprintf(stderr, "Error: Can not open file file for write\n");
+        XML_LOG("[xml_save_to_file] Error: Failed to open file %s for writing.", filename);
         free(xml_str); 
         return 0;
     }
@@ -1386,42 +1759,154 @@ int xml_save_to_file(XmlDocument* doc, const char* filename) {
     fclose(file);
     free(xml_str);  
 
+    XML_LOG("[xml_save_to_file] Successfully saved XML document to file.");
     return 1; 
 }
 
-// Removes a node and its subtags without freeing the memory
+/**
+ * @brief Removes an XML node and its subtags without freeing the memory.
+ * 
+ * This function removes the specified node from the XML document tree, but does not
+ * free the memory associated with the node. The node is cut out of the tree but can 
+ * still be accessed and manipulated separately.
+ * 
+ * @param node Pointer to the XmlNode structure representing the node to be removed.
+ * @return void
+ * @note The caller must ensure that the node and its internal node are not NULL before calling this function.
+ */
 void xml_cut(XmlNode* node) {
+    XML_LOG("[xml_cut] Cutting XML node.");
+    if (!node || !node->internal_node) {
+        XML_LOG("[xml_cut] Error: Node or internal node is NULL.");
+        return;
+    }
+
     ezxml_cut((ezxml_t)node->internal_node);  // Use ezxml to remove the node
+    XML_LOG("[xml_cut] Successfully removed the XML node.");
 }
 
-// Returns the last parsing error, or an empty string if none
+/**
+ * @brief Retrieves the last XML parsing error, or an empty string if no errors occurred.
+ * 
+ * This function checks for any parsing errors that may have occurred during the last XML
+ * operation. If there was an error, the error message is returned. If no error occurred,
+ * an empty string is returned.
+ * 
+ * @param doc Pointer to the XmlDocument structure representing the XML document.
+ * @return A string containing the last parsing error message, or an empty string if no error occurred.
+ * @note The caller must ensure that the document, its root, and its internal node are not NULL before calling this function.
+ */
 const char* xml_get_error(XmlDocument* doc) {
-    return ezxml_error((ezxml_t)doc->root->internal_node); 
+    XML_LOG("[xml_get_error] Retrieving last XML parsing error.");
+    if (!doc || !doc->root || !doc->root->internal_node) {
+        XML_LOG("[xml_get_error] Error: Document or root is NULL.");
+        return "";
+    }
+
+    const char* error = ezxml_error((ezxml_t)doc->root->internal_node); 
+    if (error && strlen(error) > 0) {
+        XML_LOG("[xml_get_error] Error found: %s", error);
+    } 
+    else {
+        XML_LOG("[xml_get_error] No error found.");
+    }
+
+    return error;
 }
 
-// Parses XML data from a file pointer (stream)
+/**
+ * @brief Parses XML data from a file pointer (stream).
+ * 
+ * This function parses XML data from the given file stream and returns a pointer to the 
+ * XmlDocument structure representing the parsed XML document. If the parsing fails, 
+ * the function returns NULL.
+ * 
+ * @param fp File pointer to the input stream containing the XML data.
+ * @return A pointer to the parsed XmlDocument structure, or NULL if an error occurs.
+ * @note The caller must ensure that the file pointer is valid and not NULL before calling this function.
+ */
 XmlDocument* xml_parse_file_stream(FILE* fp) {
+    XML_LOG("[xml_parse_file_stream] Parsing XML from file stream.");
+    if (!fp) {
+        XML_LOG("[xml_parse_file_stream] Error: File pointer is NULL.");
+        return NULL;
+    }
+
     ezxml_t xml = ezxml_parse_fp(fp); 
     if (!xml) {
-        fprintf(stderr, "Error: Can not parse xml from file stream\n");
+        XML_LOG("[xml_parse_file_stream] Error: Failed to parse XML from file stream.");
         return NULL;  
     }
 
     XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
-    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
-    doc->root->internal_node = (void*)xml; 
+    if (!doc) {
+        XML_LOG("[xml_parse_file_stream] Error: Memory allocation failed for XmlDocument.");
+        return NULL;
+    }
 
+    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    if (!doc->root) {
+        XML_LOG("[xml_parse_file_stream] Error: Memory allocation failed for XmlNode.");
+        free(doc);
+        return NULL;
+    }
+
+    doc->root->internal_node = (void*)xml; 
+    XML_LOG("[xml_parse_file_stream] Successfully parsed XML from file stream.");
     return doc;  
 }
 
-// Retrieves processing instructions by target
+/**
+ * @brief Retrieves processing instructions from the XML document based on a given target.
+ * 
+ * This function searches for and returns the processing instructions (if any) associated 
+ * with the specified target in the XML document.
+ * 
+ * @param doc Pointer to the XmlDocument structure representing the XML document.
+ * @param target The target of the processing instructions ("xml-stylesheet").
+ * 
+ * @return A pointer to an array of strings containing the processing instructions, or NULL 
+ *         if no processing instructions are found or if an error occurs.
+ * 
+ * @note The caller must ensure that the document and target are not NULL.
+ */
 const char** xml_get_processing_instructions(XmlDocument* doc, const char* target) {
-    return ezxml_pi((ezxml_t)doc->root->internal_node, target); 
+    XML_LOG("[xml_get_processing_instructions] Retrieving processing instructions for target: %s", target);
+
+    if (!doc || !doc->root || !doc->root->internal_node) {
+        XML_LOG("[xml_get_processing_instructions] Error: Document or root is NULL.");
+        return NULL;
+    }
+
+    const char** instructions = ezxml_pi((ezxml_t)doc->root->internal_node, target); 
+    if (instructions) {
+        XML_LOG("[xml_get_processing_instructions] Successfully retrieved processing instructions.");
+    } 
+    else {
+        XML_LOG("[xml_get_processing_instructions] No processing instructions found.");
+    }
+
+    return instructions;
 }
 
+/**
+ * @brief Retrieves a nested XML element from the root node by tag names.
+ * 
+ * This function retrieves a nested XML element by navigating through the hierarchy
+ * of the XML document using variable-length arguments that represent the tag names.
+ * 
+ * @param root Pointer to the XmlNode structure representing the root node.
+ * @param ... Variable-length arguments representing the tag names in the hierarchy 
+ *            ("root", "child", "subchild").
+ * 
+ * @return A pointer to the XmlNode representing the found element, or NULL if the element
+ *         is not found or an error occurs.
+ * @note The caller must ensure that the root and internal node are not NULL.
+ */
 XmlNode* xml_get_element(XmlNode* root, ...) {
+    XML_LOG("[xml_get_element] Retrieving nested element from root node.");
     if (!root || !root->internal_node) {
-        fprintf(stderr, "Error: Null root or internal node.\n");
+        XML_LOG("[xml_get_element] Error: Null root or internal node.");
         return NULL;
     }
 
@@ -1433,14 +1918,18 @@ XmlNode* xml_get_element(XmlNode* root, ...) {
 
     while (tag_name) {
         if (strlen(tag_name) == 0) {
+            XML_LOG("[xml_get_element] Warning: Empty tag name encountered.");
             break;
         }
 
+        XML_LOG("[xml_get_element] Looking for child tag: %s", tag_name);
         current_node = ezxml_child(current_node, tag_name);
         if (!current_node) {
+            XML_LOG("[xml_get_element] Error: Element '%s' not found.", tag_name);
             va_end(args);
             return NULL;
         }
+
         tag_name = va_arg(args, const char*);
     }
 
@@ -1452,9 +1941,16 @@ XmlNode* xml_get_element(XmlNode* root, ...) {
             node->internal_node = (void*)current_node;
             node->tag_name = strdup(current_node->name);
             node->text = current_node->txt;
+
+            XML_LOG("[xml_get_element] Successfully retrieved element '%s'.", node->tag_name);
+        } 
+        else {
+            XML_LOG("[xml_get_element] Error: Memory allocation failed for XmlNode.");
         }
+
         return node;
     }
 
+    XML_LOG("[xml_get_element] Error: Could not retrieve the element.");
     return NULL;
 }

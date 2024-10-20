@@ -5,6 +5,15 @@
 #include <libpq-fe.h>
 
 
+// #define POSTGRES_LOGGING_ENABLE 
+
+#ifdef POSTGRES_LOGGING_ENABLE 
+    #define POSTGRES_LOG(fmt, ...) \
+        do { fprintf(stderr, "[POSTGRESLOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define POSTGRES_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef struct {
     char* database;
     char* user;
@@ -13,7 +22,6 @@ typedef struct {
     char* port;
     PGconn *connection;
 } Postgres;
-
 
 typedef struct {
     PGresult *result;

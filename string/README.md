@@ -37,135 +37,987 @@ Absolutely, adding a brief description for each function at the top of your READ
 - `STRING_WHITESPACE`
 - `STRING_PUNCTUATION`
 
-## String Creation and Management
-- `string_create(const char*)`: Creates a new String object with an initial value.
-- `string_create_with_pool(size_t)`: Creates a new String object with a specified memory pool size.
-- `string_deallocate(String*)`: Deallocates the memory used by a String object.
-- `string_clear(String*)`: Clears the contents of a String object.
+### Explanation of Functions 
 
-## String Manipulation
-- `string_push_back(String*, char)`: Appends a character to the end of a String.
-- `string_append(String*, const char*)`: Appends a string to the end of a String.
-- `string_assign(String*, const char*)`: Assigns a new value to a String.
-- `string_insert(String*, size_t, const char*)`: Inserts a string at a specified position.
-- `string_erase(String*, size_t, size_t)`: Erases a portion of a String.
-- `string_replace(String*, const char*, const char*)`: Replaces occurrences of a substring.
-- `string_concatenate(String*, const String*)`: Concatenates two String objects.
-- `string_swap(String*, String*)`: Swaps the contents of two String objects.
-- `string_reverse(String*)`: Reverses the content of a String.
-- `string_substr(String*, size_t, size_t)`: Creates a substring from a String object.
-- `string_pop_back(String*)`: Removes the last character of a String.
-- `string_resize(String*, size_t)`: Resizes a String to a specified size.
-- `string_shrink_to_fit(String*)`: Reduces the capacity of a String to fit its size.
-- `string_replace_all(String *, const char *, const char *)`: Replace occurrences of all substr in String object.
-- `string_trim_left(String *str)`: This function trims leading whitespace characters from the beginning of the String object str.
-- `string_trim_right(String *str)`: This function trims trailing whitespace characters from the end of the String object str
-## String Comparison
-- `string_is_equal(const String*, const String*)`: Checks if two Strings are equal.
-- `string_is_less(const String*, const String*)`: Checks if the first String is less than the second.
-- `string_is_greater(const String*, const String*)`: Checks if the first String is greater than the second.
-- `string_is_less_or_equal(const String*, const String*)`: Checks if the first String is less than or equal to the second.
-- `string_is_greater_or_equal(const String*, const String*)`: Checks if the first String is greater than or equal to the second.
-- `string_is_not_equal(const String*, const String*)`: Checks if two Strings are not equal.
-- `string_compare(const String*, const String*)`: Compares two Strings.
-- `string_compare_ignore_case(const String*, String*)`: Compares two Strings, ignoring case differences.
+#### `String* string_create(const char* initialStr)`
+- **Purpose**:  
+  Creates a new `String` object initialized with the provided `initialStr`. If no string is provided (`initialStr` is `NULL`), the `String` object is initialized with an empty string.
+- **Parameters**:
+  - `initialStr`: The initial string to be stored in the `String` object. Can be `NULL` for an empty string.
+- **Return Value**:  
+  - Returns a pointer to the newly created `String` object. Terminates the program if memory allocation fails.
 
-## String Information and Properties
-- `string_length(const String*)`: Returns the length of a String.
-- `string_capacity(const String*)`: Returns the capacity of a String.
-- `string_max_size(const String*)`: Returns the maximum size of a String.
-- `string_empty(const String*)`: Checks if a String is empty.
-- `string_contains(const String*, const char*)`: Checks if a String contains a specific substring.
-- `string_count(const String*, char*)` : count number of substr appears in String object 'str'.
-- `string_length_cstr(const char*)` : Returns the length of a char*.
-- `string_length_utf(const char*)` : Return the length of utf-8 char*.
-- `string_utf8_char_len(char )` : Return the len of each unicode character.
+#### `String* string_create_with_pool(size_t size)`
+- **Purpose**:  
+  Creates a new `String` object that uses a globally initialized memory pool for memory management.
+- **Parameters**:
+  - `size`: The size of the global memory pool to be initialized.
+- **Return Value**:  
+  - Returns a pointer to the newly created `String` object. Terminates the program if memory allocation or pool initialization fails.
 
-## String Characteristics
-- `string_is_alpha(const String*)`: Checks if a String contains only alphabetic characters.
-- `string_is_digit(const String*)`: Checks if a String contains only digits.
-- `string_is_lower(const String*)`: Checks if all characters in a String are lowercase.
-- `string_is_upper(const String*)`: Checks if all characters in a String are uppercase.
-- `string_is_palindrome(const String*)`: Checks if the given String object is a palindrome.
-- `string_is_alnum(const String*)`: Checks if the given String object contains only alphanumeric characters.
-- `string_is_title(const String*)`: Checks if the given String object is in title case.
-- `string_is_space(const String*)` : Checks if the given String object consists entirely of space characters.
-- `string_is_printable(const String*)` : Checks if all characters in the given String object are printable.
+#### `String* string_substr(String* str, size_t pos, size_t len)`
+- **Purpose**:  
+  Extracts a substring from the `String` object, starting at position `pos` and having the length `len`.
+- **Parameters**:
+  - `str`: The original `String` object from which the substring is extracted.
+  - `pos`: The starting position of the substring within the original string.
+  - `len`: The length of the substring to extract.
+- **Return Value**:  
+  - Returns a pointer to the newly created `String` object containing the substring. Returns `NULL` if an error occurs.
 
-## String Access and Iteration
-- `string_begin(const String*)`: Returns an iterator to the beginning.
-- `string_end(const String*)`: Returns an iterator to the end.
-- `string_rbegin(const String*)`: Returns a reverse iterator to the beginning.
-- `string_rend(const String*)`: Returns a reverse iterator to the end.
-- `string_cbegin(const String*)`: Returns a constant iterator to the beginning.
-- `string_cend(const String*)`: Returns a constant iterator to the end.
-- `string_crbegin(const String*)`: Returns a constant reverse iterator to the beginning.
-- `string_crend(const String*)`: Returns a constant reverse iterator to the end.
+#### `bool string_empty(const String* str)`
+- **Purpose**:  
+  Checks if the `String` object is empty, meaning it contains no characters or is `NULL`.
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:  
+  - Returns `true` if the `String` object is empty or `NULL`, otherwise `false`.
 
-## String Data Access
-- `string_data(const String*)`: Returns a pointer to the data stored in a String.
-- `string_c_str(const String*)`: Returns a pointer to the null-terminated sequence of characters.
-- `string_at(const String*, size_t)`: Returns a reference to the character at a specified index.
-- `string_back(const String*)`: Returns a reference to the last character.
-- `string_front(const String*)`: Returns a reference to the first character.
+#### `bool string_contains(const String* str, const char* substr)`
+- **Purpose**:  
+  Checks if the specified substring (`substr`) exists within the `String` object.
+- **Parameters**:
+  - `str`: The `String` object to search within.
+  - `substr`: The substring to search for.
+- **Return Value**:  
+  - Returns `true` if the substring is found, otherwise `false`.
 
-## String Conversion Functions
-- `string_to_int(const String*)`: Converts a String to an integer.
-- `string_to_float(const String*)`: Converts a String to a float.
-- `string_to_double(const String*)`: Converts a String to a double.
-- `string_from_int(int)`: Creates a String from an integer.
-- `string_from_float(float)`: Creates a String from a float.
-- `string_from_double(double)`: Creates a String from a double.
+#### `int string_compare(const String* str1, const String* str2)`
+- **Purpose**:  
+  Compares two `String` objects lexicographically.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `0` if both strings are equal, less than `0` if `str1` is less than `str2`, and greater than `0` if `str1` is greater than `str2`.
 
-## Unicode Handling
-- `string_to_unicode(const char*)`: Converts a regular string to a wide string.
-- `string_from_unicode(const wchar_t*)`: Converts a wide string back to a regular string.
+#### `bool string_is_equal(const String* str1, const String* str2)`
+- **Purpose**:  
+  Checks if two `String` objects are lexicographically equal.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `true` if the two strings are equal, otherwise `false`.
 
-## String Case and Encoding Operations
-- `string_to_upper(const String*)`: Converts a String to uppercase.
-- `string_to_lower(const String*)`: Converts a String to lowercase.
-- `string_to_casefold(String*)`: Converts a String to casefolded form.
-- `string_swap_case(String*)`: Swaps the case of each character in a String.
+#### `bool string_is_less(const String* str1, const String* str2)`
+- **Purpose**:  
+  Checks if the first `String` is lexicographically less than the second.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `true` if `str1` is less than `str2`, otherwise `false`.
 
-## String Search and Replace
-- `string_find_first_of(const String*, const char*, size_t)`: Finds the first occurrence of any of the characters in the given string.
-- `string_find_last_of(const String*, const char*, size_t)`: Finds the last occurrence of any of the characters in the given string.
-- `string_find_first_not_of(const String*, const char*, size_t)`: Finds the first character that does not match any of the characters in the given string.
-- `string_find_last_not_of(const String*, const char*, size_t)`: Finds the last character that does not match any of the characters in the given string.
-- `string_replace_all(String*, const char*, const char*)`: Replaces all occurrences of a substring.
-- `string_remove(String*, const char*)`: Removes all occurrences of a substring.
+#### `bool string_is_greater(const String* str1, const String* str2)`
+- **Purpose**:  
+  Checks if the first `String` is lexicographically greater than the second.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `true` if `str1` is greater than `str2`, otherwise `false`.
 
-## Advanced String Operations
-- `string_split(const String*, const char*, int*)`: Splits a String into an array of String objects.
-- `string_join(String**, int, const char*)`: Joins several String objects into one.
-- `string_trim(String*)`: Trims whitespace from both ends of a String.
-- `string_pad_left(String*, size_t, char)`: Pads a String from the left.
-- `string_pad_right(String*, size_t, char)`: Pads a String from the right.
-- `string_repeat(const String*, size_t)`: Creates a new String by repeating the original String a specified number of times.
-- `string_join_variadic(size_t, ...)`: Concatenates multiple Strings (variadic function).
-- `string_trim_characters(String*, const char*)`: Trims specified characters from both ends of a String.
-- `string_shuffle(String*)`: Randomly shuffle character of String object
-- `string_format(String*, const char*, ...)`: Formats a String using given format specifiers.
-- `string_to_title(String*)`: Converts each word in the String to title case.
-- `string_to_capitalize(String*)`: Capitalizes the first character of a String.
-- `string_to_casefold(String*)`: Converts a String to a case-insensitive form for comparisons.
-- `string_remove_range(String* str, size_t startPos, size_t endPos)`: Removes a range of characters from a String object, starting from startPos and ending at endPos.
-- `string_starts_with(String*, const char*)`: Checks if a String starts with a specified substring.
-- `string_ends_with(String*, const char*)`: Checks if a String ends with a specified substring.
-- `string_base64_encode(const String*)`: Encodes a String to base64 format.
-- `string_base64_decode(const String*)`: Decodes a base64 encoded String.
-- `string_remove(String*, const char*)`: Removes all occurrences of a substring.
-- `string_set_pool_size(String*, size_t)`: Sets the size of the memory pool for a String.
-- `string_tokenize(const String*, const char* , int*)`: This function splits a string into tokens based on multiple delimiters.
-- `string_create_from_initializer` : The string_create_from_initializer function dynamically creates an array of String pointers, each initialized with a string passed as a variadic argument.
-- `string_copy(const String*, char* , size_t, size_t )` : Copies a substring from the String object into the provided buffer.
-## String Encoding Functions
-- `string_to_hex(const String*)`: Converts a String to its hexadecimal representation.
-- `string_from_hex(const String*)`: Converts a hexadecimal String back to the original string.
-```c
-#include "string/std_string.h"
-```
+#### `bool string_is_less_or_equal(const String* str1, const String* str2)`
+- **Purpose**:  
+  Checks if the first `String` is lexicographically less than or equal to the second.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `true` if `str1` is less than or equal to `str2`, otherwise `false`.
 
+#### `bool string_is_greater_or_equal(const String* str1, const String* str2)`
+- **Purpose**:  
+  Checks if the first `String` is lexicographically greater than or equal to the second.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `true` if `str1` is greater than or equal to `str2`, otherwise `false`.
+
+#### `bool string_is_not_equal(const String* str1, const String* str2)`
+- **Purpose**:  
+  Compares two `String` objects for inequality.
+- **Parameters**:
+  - `str1`: The first `String` object.
+  - `str2`: The second `String` object.
+- **Return Value**:  
+  - Returns `true` if the strings are not equal, otherwise `false`.
+
+#### `bool string_is_alpha(const String* str)`
+- **Purpose**:  
+  Checks if all characters in the `String` object are alphabetic (A-Z, a-z).
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:  
+  - Returns `true` if all characters are alphabetic, otherwise `false`.
+
+#### `bool string_is_digit(const String* str)`
+- **Purpose**:  
+  Checks if all characters in the `String` object are digits (0-9).
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:  
+  - Returns `true` if all characters are digits, otherwise `false`.
+
+#### `bool string_is_upper(const String* str)`
+- **Purpose**:  
+  Checks if all characters in the `String` object are uppercase.
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:  
+  - Returns `true` if all characters are uppercase, otherwise `false`.
+
+#### `bool string_is_lower(const String* str)`
+- **Purpose**:  
+  Checks if all characters in the `String` object are lowercase.
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:  
+  - Returns `true` if all characters are lowercase, otherwise `false`.
+
+#### `void string_reverse(String* str)`
+- **Purpose**:  
+  Reverses the order of characters in the `String` object.
+- **Parameters**:
+  - `str`: The `String` object to reverse.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_resize(String *str, size_t newSize)`
+- **Purpose**:  
+  Resizes the `String` object to the specified `newSize`.
+- **Parameters**:
+  - `str`: The `String` object to resize.
+  - `newSize`: The new size to resize the `String` to.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+
+#### `void string_shrink_to_fit(String *str)`
+- **Purpose**:  
+  Reduces the capacity of the `String` object to fit its current size, shrinking the capacity to match the exact size of the string plus the null terminator. If the current capacity is already optimal, no action is taken.
+- **Parameters**:
+  - `str`: The `String` object to shrink. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_append(String *str, const char *strItem)`
+- **Purpose**:  
+  Appends a C-string (`strItem`) to the end of the `String` object. If the new size exceeds the current capacity, the function reallocates memory to accommodate the additional characters.
+- **Parameters**:
+  - `str`: The `String` object to which the string will be appended. Must not be `NULL`.
+  - `strItem`: The C-string to append. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_push_back(String *str, char chItem)`
+- **Purpose**:  
+  Appends a single character (`chItem`) to the end of the `String` object. If necessary, the function reallocates memory to accommodate the additional character.
+- **Parameters**:
+  - `str`: The `String` object to which the character will be appended. Must not be `NULL`.
+  - `chItem`: The character to append.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_assign(String *str, const char *newStr)`
+- **Purpose**:  
+  Replaces the current contents of the `String` object with the contents of `newStr`. If the new string is larger than the current capacity, the function reallocates memory to accommodate it.
+- **Parameters**:
+  - `str`: The `String` object to which the new string will be assigned. Must not be `NULL`.
+  - `newStr`: The new string to assign. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_insert(String *str, size_t pos, const char *strItem)`
+- **Purpose**:  
+  Inserts the contents of `strItem` into the `String` object at the specified position (`pos`). If the new size exceeds the current capacity, the function reallocates memory to accommodate the insertion.
+- **Parameters**:
+  - `str`: The `String` object into which the substring will be inserted. Must not be `NULL`.
+  - `pos`: The position at which to insert the substring. Must be within the bounds of the string's size.
+  - `strItem`: The substring to insert. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_erase(String *str, size_t pos, size_t len)`
+- **Purpose**:  
+  This function erases a portion of the `String` object starting at the specified position (`pos`) and spanning a specified length (`len`). If `len` exceeds the remaining length from `pos`, it is adjusted accordingly.
+- **Parameters**:
+  - `str`: The `String` object from which characters will be erased. Must not be `NULL`.
+  - `pos`: The starting position for the erase operation. Must be within the bounds of the string's size.
+  - `len`: The number of characters to erase.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_replace(String *str1, const char *oldStr, const char *newStr)`
+- **Purpose**:  
+  Replaces the first occurrence of the substring `oldStr` in the `String` object `str1` with `newStr`. If `oldStr` is not found, the function does nothing.
+- **Parameters**:
+  - `str1`: The `String` object in which the replacement will occur. Must not be `NULL`.
+  - `oldStr`: The substring to be replaced. Must not be `NULL`.
+  - `newStr`: The new substring to replace `oldStr` with. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_swap(String *str1, String *str2)`
+- **Purpose**:  
+  Swaps the contents of two `String` objects.
+- **Parameters**:
+  - `str1`: The first `String` object. Must not be `NULL`.
+  - `str2`: The second `String` object. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, swaps the contents of the two `String` objects.
+
+#### `void string_pop_back(String *str)`
+- **Purpose**:  
+  Removes the last character from the `String` object, reducing its size by one. If the string is empty, the function logs a warning and does nothing.
+- **Parameters**:
+  - `str`: The `String` object from which the last character is to be removed. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, modifies the `String` object in place.
+
+#### `void string_deallocate(String *str)`
+- **Purpose**:  
+  Deallocates the memory used by the `String` object and its associated resources, including the memory pool. If the `String` object is `NULL`, the function logs a warning and does nothing.
+- **Parameters**:
+  - `str`: The `String` object to be deallocated. Must not be `NULL`.
+- **Return Value**:  
+  - No return value, frees the `String` and its associated memory.
+
+#### `char string_at(const String *str, size_t index)`
+- **Purpose**:  
+  Retrieves the character at the specified index in the `String` object. If the index is out of range, the function logs an error and returns a default character (`'\0'`).
+- **Parameters**:
+  - `str`: The `String` object from which the character is to be retrieved. Must not be `NULL`.
+  - `index`: The index of the character to retrieve.
+- **Return Value**:  
+  - The character at the specified index, or `'\0'` if the index is out of range or the `String` is `NULL`.
+
+#### `char* string_back(const String *str)`
+- **Purpose**:  
+  Returns a pointer to the last character in the `String` object. If the `String` is `NULL` or empty, the function returns `NULL`.
+- **Parameters**:
+  - `str`: The `String` object to access. Must not be `NULL` or empty.
+- **Return Value**:  
+  - A pointer to the last character in the string, or `NULL` if the string is `NULL` or empty.
+
+#### `char* string_front(const String *str)`
+- **Purpose**:  
+  Returns a pointer to the first character in the `String` object. If the `String` is `NULL` or empty, the function returns `NULL`.
+- **Parameters**:
+  - `str`: The `String` object to access. Must not be `NULL` or empty.
+- **Return Value**:  
+  - A pointer to the first character in the string, or `NULL` if the string is `NULL` or empty.
+
+#### `size_t string_length(const String *str)`
+- **Purpose**:  
+  Retrieves the current length (size) of the `String` object. If the `String` is `NULL`, the function logs an error and returns `0`.
+- **Parameters**:
+  - `str`: The `String` object whose length is to be determined. Must not be `NULL`.
+- **Return Value**:  
+  - The length of the string, or `0` if the `String` is `NULL`.
+
+#### `size_t string_capacity(const String *str)`
+- **Purpose**:  
+  Retrieves the current capacity of the `String` object, indicating the maximum size the string can grow to without requiring reallocation. If the `String` is `NULL`, the function logs an error and returns `0`.
+- **Parameters**:
+  - `str`: The `String` object whose capacity is to be determined. Must not be `NULL`.
+- **Return Value**:  
+  - The capacity of the string, or `0` if the `String` is `NULL`.
+
+#### `size_t string_max_size(const String* str)`
+- **Purpose**:  
+  Returns the maximum possible size of the `String` object. Typically, this is a large value representing the maximum size the string can have on the system.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL`.
+- **Return Value**:  
+  - The maximum possible size of the string, or `0` if the `String` object is `NULL`.
+
+#### `size_t string_copy(const String* str, char* buffer, size_t pos, size_t len)`
+- **Purpose**:  
+  Copies up to `len` characters from the `String` object, starting at the specified position `pos`, into the provided buffer. It ensures the copied string is null-terminated.
+- **Parameters**:
+  - `str`: The `String` object to copy from. Must not be `NULL`.
+  - `buffer`: The buffer to copy the substring into. Must not be `NULL`.
+  - `pos`: The starting position in the string from which to begin copying.
+  - `len`: The number of characters to copy.
+- **Return Value**:  
+  - The number of characters actually copied.
+
+#### `int string_find(const String* str, const char* buffer, size_t pos)`
+- **Purpose**:  
+  Finds the first occurrence of the substring `buffer` in the `String` object, starting from the position `pos`.
+- **Parameters**:
+  - `str`: The `String` object to search in. Must not be `NULL`.
+  - `buffer`: The substring to search for. Must not be `NULL`.
+  - `pos`: The starting position for the search.
+- **Return Value**:  
+  - The index of the first occurrence of the substring, or `-1` if not found or an error occurs.
+
+#### `int string_rfind(const String* str, const char* buffer, size_t pos)`
+- **Purpose**:  
+  Finds the last occurrence of the substring `buffer` in the `String` object, up to the specified position `pos`.
+- **Parameters**:
+  - `str`: The `String` object to search in. Must not be `NULL`.
+  - `buffer`: The substring to search for. Must not be `NULL`.
+  - `pos`: The ending position for the search.
+- **Return Value**:  
+  - The index of the last occurrence of the substring, or `-1` if not found or an error occurs.
+
+#### `int string_find_first_of(const String* str, const char* buffer, size_t pos)`
+- **Purpose**:  
+  Finds the first occurrence of any character from the `buffer` in the `String` object, starting from the position `pos`.
+- **Parameters**:
+  - `str`: The `String` object to search in. Must not be `NULL`.
+  - `buffer`: The buffer containing characters to search for. Must not be `NULL`.
+  - `pos`: The starting position for the search.
+- **Return Value**:  
+  - The index of the first matching character, or `-1` if no match is found or an error occurs.
+
+#### `int string_find_last_of(const String* str, const char* buffer, size_t pos)`
+- **Purpose**:  
+  Finds the last occurrence of any character from the `buffer` in the `String` object, up to the specified position `pos`.
+- **Parameters**:
+  - `str`: The `String` object to search in. Must not be `NULL`.
+  - `buffer`: The buffer containing characters to search for. Must not be `NULL`.
+  - `pos`: The ending position for the search.
+- **Return Value**:  
+  - The index of the last matching character, or `-1` if no match is found or an error occurs.
+
+#### `int string_find_first_not_of(const String* str, const char* buffer, size_t pos)`
+- **Purpose**:  
+  Finds the first character in the `String` object starting from the specified position that does not match any character in the `buffer`.
+- **Parameters**:
+  - `str`: The `String` object to search in. Must not be `NULL`.
+  - `buffer`: The buffer containing characters to exclude. Must not be `NULL`.
+  - `pos`: The starting position for the search. Must be within the bounds of the string.
+- **Return Value**:  
+  The index of the first non-matching character, or `-1` if all characters match or an error occurs.
+
+#### `int string_find_last_not_of(const String* str, const char* buffer, size_t pos)`
+- **Purpose**:  
+  Finds the last character in the `String` object, starting from the specified position and searching backwards, that does not match any character in the `buffer`.
+- **Parameters**:
+  - `str`: The `String` object to search in. Must not be `NULL`.
+  - `buffer`: The buffer containing characters to exclude. Must not be `NULL`.
+  - `pos`: The starting position for the search. Must be within the bounds of the string.
+- **Return Value**:  
+  The index of the last non-matching character, or `-1` if all characters match or an error occurs.
+
+#### `const char* string_data(const String* str)`
+- **Purpose**:  
+  Returns the raw string data from the `String` object.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL`.
+- **Return Value**:  
+  A pointer to the character array managed by the `String` object, or `NULL` on error.
+
+#### `const char* string_c_str(const String* str)`
+- **Purpose**:  
+  Returns a constant pointer to the character array managed by the `String` object. Ensures that the returned string is null-terminated.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL`.
+- **Return Value**:  
+  A constant pointer to the C-string, or an empty string (`""`) on error.
+
+#### `char* string_begin(const String* str)`
+- **Purpose**:  
+  Returns a pointer to the first character in the `String` object.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL`.
+- **Return Value**:  
+  A pointer to the first character of the string, or an empty string on error.
+
+#### `char* string_end(const String* str)`
+- **Purpose**:  
+  Returns a pointer to the position just after the last character in the `String` object.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL`.
+- **Return Value**:  
+  A pointer to the end of the string, or `NULL` on error.
+
+#### `char* string_rbegin(const String* str)`
+- **Purpose**:  
+  Returns a pointer to the last character in the `String` object for reverse iteration.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL` or empty.
+- **Return Value**:  
+  A pointer to the last character of the string, or `NULL` on error.
+
+#### `char* string_rend(const String* str)`
+- **Purpose**:  
+  Returns a pointer to one position before the start of the string data, typically used for reverse iteration.
+- **Parameters**:
+  - `str`: The `String` object. Must not be `NULL`.
+- **Return Value**:  
+  A pointer to one position before the first character, or `NULL` on error.
+
+#### `const char* string_cbegin(const String* str)`
+- **Purpose**:  
+  Returns a constant pointer to the first character of the `String` object's data.
+- **Parameters**:
+  - `str`: The `String` object to retrieve the beginning pointer from. Must not be `NULL`.
+- **Return Value**:  
+  A constant pointer to the first character of the string, or `NULL` on error.
+
+#### `const char* string_cend(const String* str)`
+- **Purpose**:  
+  Returns a constant pointer to the position just after the last character of the string data.
+- **Parameters**:
+  - `str`: The `String` object to retrieve the end pointer from. Must not be `NULL`.
+- **Return Value**:  
+  A constant pointer to the end of the string, or `NULL` on error.
+
+#### `const char* string_crbegin(const String* str)`
+- **Purpose**:  
+  Returns a constant pointer to the last character in the `String` object for reverse iteration.
+- **Parameters**:
+  - `str`: The `String` object to retrieve the reverse beginning pointer from. Must not be `NULL` or empty.
+- **Return Value**:  
+  A constant pointer to the last character of the string, or `NULL` on error.
+
+#### `const char* string_crend(const String* str)`
+- **Purpose**:  
+  Returns a constant pointer to one position before the start of the string data, used for reverse iteration.
+- **Parameters**:
+  - `str`: The `String` object to retrieve the reverse end pointer from. Must not be `NULL`.
+- **Return Value**:  
+  A constant pointer to one before the first character, or `NULL` on error.
+
+#### `void string_clear(String* str)`
+- **Purpose**:  
+  Resets the `String` object, setting its size to zero and making it an empty string.
+- **Parameters**:
+  - `str`: The `String` object to clear. Must not be `NULL`.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `char* string_to_upper(const String* str)`
+- **Purpose**:  
+  Converts all characters in the `String` object to uppercase and returns a new C-string with the uppercase characters.
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Return Value**:  
+  A new C-string with all characters in uppercase. The caller is responsible for freeing the allocated memory.
+
+#### `char* string_to_lower(const String* str)`
+- **Purpose**:  
+  Converts all characters in the `String` object to lowercase and returns a new C-string with the lowercase characters.
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Return Value**:  
+  A new C-string with all characters in lowercase. The caller is responsible for freeing the allocated memory.
+
+#### `bool string_set_pool_size(String* str, size_t newSize)`
+- **Purpose**:  
+  Resizes the memory pool for the `String` object. If the pool already exists, it is destroyed and recreated with the new size.
+- **Parameters**:
+  - `str`: The `String` object to resize the memory pool for. Must not be `NULL`.
+  - `newSize`: The new size for the memory pool. Must be greater than zero.
+- **Return Value**:  
+  Returns `true` if the pool was successfully resized, otherwise `false`.
+
+#### `void string_concatenate(String* str1, const String* str2)`
+- **Purpose**:  
+  Concatenates the content of the second `String` object (`str2`) to the first `String` object (`str1`).
+- **Parameters**:
+  - `str1`: The `String` object to which the content will be appended. Must not be `NULL`.
+  - `str2`: The `String` object whose content will be appended to `str1`. Must not be `NULL`.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `void string_trim_left(String *str)`
+- **Purpose**:  
+  This function removes all leading whitespace characters from the `String` object.
+- **Parameters**:
+  - `str`: The `String` object to be trimmed. Must not be `NULL`.
+- **Functionality**:
+  - Iterates over the string data and trims all leading whitespace characters.
+  - Adjusts the string size and content accordingly.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `void string_trim_right(String *str)`
+- **Purpose**:  
+  This function removes all trailing whitespace characters from the `String` object.
+- **Parameters**:
+  - `str`: The `String` object to be trimmed. Must not be `NULL`.
+- **Functionality**:
+  - Iterates backward over the string data and trims all trailing whitespace characters.
+  - Adjusts the string size and content accordingly.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `void string_trim(String *str)`
+- **Purpose**:  
+  This function removes both leading and trailing whitespace characters from the `String` object by combining `string_trim_left` and `string_trim_right`.
+- **Parameters**:
+  - `str`: The `String` object to be trimmed. Must not be `NULL`.
+- **Functionality**:
+  - Calls the `string_trim_left` and `string_trim_right` functions in sequence to remove both leading and trailing whitespaces.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `String** string_split(const String *str, const char *delimiter, int *count)`
+- **Purpose**:  
+  Splits a `String` object into multiple `String` objects based on a specified delimiter.
+- **Parameters**:
+  - `str`: The `String` object to split. Must not be `NULL`.
+  - `delimiter`: The delimiter used to split the string. Must not be `NULL`.
+  - `count`: A pointer to an integer where the number of splits will be stored.
+- **Functionality**:
+  - Splits the `String` object into multiple strings based on the provided delimiter.
+  - Stores the split results in an array and returns the number of splits through `count`.
+- **Return Value**:  
+  An array of `String*` containing the split strings, or `NULL` if an error occurs.
+
+#### `String* string_join(String **strings, int count, const char *delimiter)`
+- **Purpose**:  
+  Joins an array of `String` objects into a single `String` object, separated by a specified delimiter.
+- **Parameters**:
+  - `strings`: The array of `String` pointers to be joined. Must not be `NULL`.
+  - `count`: The number of `String` objects in the array. Must be greater than 0.
+  - `delimiter`: The delimiter to be used between each string. Must not be `NULL`.
+- **Functionality**:
+  - Concatenates all the strings in the array into a single `String`, separated by the delimiter.
+- **Return Value**:  
+  A new `String` object containing the concatenated result, or `NULL` if an error occurs.
+
+#### `void string_replace_all(String *str, const char *oldStr, const char *newStr)`
+- **Purpose**:  
+  Replaces all occurrences of a substring (`oldStr`) within a `String` object with another substring (`newStr`).
+- **Parameters**:
+  - `str`: The `String` object in which the replacement occurs. Must not be `NULL`.
+  - `oldStr`: The substring to be replaced. Must not be `NULL`.
+  - `newStr`: The substring to replace `oldStr` with. Must not be `NULL`.
+- **Functionality**:
+  - Iterates through the `String` and replaces every occurrence of `oldStr` with `newStr`.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `int string_to_int(const String *str)`
+- **Purpose**:  
+  This function converts the content of a `String` object to an integer. If the `String` is `NULL` or empty, it returns 0.
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Functionality**:
+  - Validates if the string is not `NULL` or empty.
+  - Converts the string content to an integer using `atoi`.
+- **Return Value**:  
+  The integer value of the `String`'s content or 0 if the string is `NULL` or empty.
+
+#### `float string_to_float(const String *str)`
+- **Purpose**:  
+  Converts the content of a `String` object to a floating-point number (float).
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Functionality**:
+  - Validates if the string is not `NULL` or empty.
+  - Converts the string content to a float using `atof`.
+- **Return Value**:  
+  The floating-point value of the `String`'s content or 0.0f if the string is `NULL` or empty.
+
+#### `double string_to_double(const String* str)`
+- **Purpose**:  
+  Converts the content of a `String` object to a double-precision floating-point number (double).
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Functionality**:
+  - Validates if the string is not `NULL` or empty.
+  - Converts the string content to a double using `strtod`.
+- **Return Value**:  
+  The double value of the `String`'s content or 0.0 if the string is `NULL` or empty.
+
+#### `void string_pad_left(String *str, size_t totalLength, char padChar)`
+- **Purpose**:  
+  Pads the left side of a `String` object with a specified character until it reaches a desired length.
+- **Parameters**:
+  - `str`: The `String` object to be padded. Must not be `NULL`.
+  - `totalLength`: The total length the string should be after padding.
+  - `padChar`: The character to use for padding.
+- **Functionality**:
+  - If the string is shorter than `totalLength`, it pads the left side with `padChar`.
+  - If memory allocation fails, it logs an error.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `void string_pad_right(String *str, size_t totalLength, char padChar)`
+- **Purpose**:  
+  Pads the right side of a `String` object with a specified character until it reaches a desired length.
+- **Parameters**:
+  - `str`: The `String` object to be padded. Must not be `NULL`.
+  - `totalLength`: The total length the string should be after padding.
+  - `padChar`: The character to use for padding.
+- **Functionality**:
+  - If the string is shorter than `totalLength`, it pads the right side with `padChar`.
+  - If memory allocation fails, it logs an error.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `String* string_to_hex(const String *str)`
+- **Purpose**:  
+  Converts the content of a `String` object to its hexadecimal representation.
+- **Parameters**:
+  - `str`: The `String` object to convert to hexadecimal. Must not be `NULL`.
+- **Functionality**:
+  - Converts each character in the string to its corresponding hexadecimal value.
+  - Returns a new `String` object containing the hexadecimal representation.
+- **Return Value**:  
+  A new `String` object containing the hexadecimal representation, or `NULL` if an error occurs.
+
+#### `String* string_from_hex(const String *hexStr)`
+- **Purpose**:  
+  Converts a hex-encoded string (e.g., "48656c6c6f") into a new `String` object containing the corresponding ASCII characters (e.g., "Hello").
+- **Parameters**:
+  - `hexStr`: The hex-encoded `String` object. Must not be `NULL` and must have an even number of characters.
+- **Functionality**:
+  - Validates the input and checks if the hex string length is even.
+  - Converts every two hex digits into a character and appends it to a new `String` object.
+- **Return Value**:  
+  A new `String` object containing the decoded ASCII characters, or `NULL` if an error occurs.
+
+#### `size_t string_count(const String* str, const char* substr)`
+- **Purpose**:  
+  Counts how many times a given substring appears within a `String` object.
+- **Parameters**:
+  - `str`: The `String` object in which to search for the substring. Must not be `NULL`.
+  - `substr`: The substring to count within the `String` object. Must not be `NULL`.
+- **Functionality**:
+  - Searches for occurrences of `substr` in the string and counts how many times it appears.
+- **Return Value**:  
+  The number of occurrences of `substr`, or `0` if an error occurs.
+
+#### `void string_remove(String* str, const char* substr)`
+- **Purpose**:  
+  Removes all instances of a specified substring from a `String` object.
+- **Parameters**:
+  - `str`: The `String` object from which to remove the substring. Must not be `NULL`.
+  - `substr`: The substring to remove. Must not be `NULL` or empty.
+- **Functionality**:
+  - Finds and removes all occurrences of `substr` from the string.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `void string_remove_range(String* str, size_t startPos, size_t endPos)`
+- **Purpose**:  
+  Removes characters from the `String` object within a specified range.
+- **Parameters**:
+  - `str`: The `String` object from which to remove characters. Must not be `NULL`.
+  - `startPos`: The starting position of the range to remove.
+  - `endPos`: The ending position of the range to remove.
+- **Functionality**:
+  - Removes characters from `startPos` to `endPos` and adjusts the size of the `String`.
+- **Return Value**:  
+  This function does not return a value.
+
+#### `String* string_from_int(int value)`
+- **Purpose**:  
+  Creates a new `String` object from an integer value.
+- **Parameters**:
+  - `value`: The integer to convert.
+- **Functionality**:
+  - Converts the integer to a string and returns a new `String` object containing the result.
+- **Return Value**:  
+  A new `String` object containing the string representation of the integer.
+
+#### `char* string_from_int_cstr(int value)`
+- **Purpose**:  
+  Converts an integer to its C-string representation.
+- **Parameters**:
+  - `value`: The integer to convert.
+- **Functionality**:
+  - Converts the integer to a C-string and allocates memory for it. The caller is responsible for freeing the memory.
+- **Return Value**:  
+  A newly allocated C-string containing the integer's string representation.
+
+#### `String* string_from_float(float value)`
+- **Purpose**:  
+  Converts a floating-point number to its string representation and returns a new `String` object.
+- **Parameters**:
+  - `value`: The float value to convert.
+- **Functionality**:
+  - Converts the float value into a string and creates a new `String` object.
+- **Return Value**:  
+  A new `String` object containing the string representation of the float value.
+
+#### `String* string_from_double(double value)`
+- **Purpose**:  
+  Converts a double-precision floating-point number to its string representation and returns a new `String` object.
+- **Parameters**:
+  - `value`: The double value to convert.
+- **Functionality**:
+  - Converts the double value into a string and creates a new `String` object.
+- **Return Value**:  
+  A new `String` object containing the string representation of the double value.
+
+#### `String** string_tokenize(const String* str, const char* delimiters, int* count)`
+- **Purpose**:  
+  Tokenizes a `String` object into an array of tokens based on the specified delimiters.
+- **Parameters**:
+  - `str`: The `String` object to tokenize. Must not be `NULL`.
+  - `delimiters`: A C-string containing delimiter characters.
+  - `count`: A pointer to an integer to store the number of tokens.
+- **Functionality**:
+  - Splits the string into tokens based on the provided delimiters and returns an array of `String` objects.
+- **Return Value**:  
+  An array of `String` objects representing the tokens, or `NULL` if an error occurs.
+
+#### `int string_compare_ignore_case(const String* str1, const String* str2)`
+- **Purpose**:  
+  Compares two `String` objects in a case-insensitive manner.
+- **Parameters**:
+  - `str1`: The first `String` object to compare.
+  - `str2`: The second `String` object to compare.
+- **Functionality**:
+  - Performs a case-insensitive comparison between two strings.
+- **Return Value**:  
+  An integer indicating the result of the comparison: 0 if equal, negative if `str1` is less than `str2`, and positive if `str1` is greater than `str2`.
+
+#### `String* string_base64_encode(const String *input)`
+- **Purpose**:  
+  Encodes the content of a `String` object into Base64 format.
+- **Parameters**:
+  - `input`: The `String` object to encode.
+- **Functionality**:
+  - Converts the string's content into Base64 encoding.
+- **Return Value**:  
+  A new `String` object containing the Base64-encoded data, or `NULL` if an error occurs.
+
+#### `String* string_base64_decode(const String* encodedStr)`
+- **Purpose**:  
+  Decodes a Base64-encoded `String` object into its original binary form.
+- **Parameters**:
+  - `encodedStr`: The Base64-encoded `String` object. Must not be `NULL`.
+- **Functionality**:
+  - Decodes the Base64 string into its original binary form.
+- **Return Value**:  
+  A new `String` object containing the decoded binary data, or `NULL` if an error occurs.
+
+#### `void string_format(String* str, const char* format, ...)`
+- **Purpose**:  
+  Formats the content of a `String` object based on a format string and additional arguments, similar to how `printf` works.
+- **Parameters**:
+  - `str`: The `String` object to format.
+  - `format`: A format string specifying how to format the content.
+  - `...`: Additional arguments for formatting.
+- **Functionality**:
+  - Formats the content of the string based on the format and arguments and assigns it to the `String` object.
+  
+#### `String* string_repeat(const String* str, size_t count)`
+- **Purpose**:  
+  Creates a new `String` object containing the content of the input `String` repeated a specified number of times.
+- **Parameters**:
+  - `str`: The `String` object to repeat.
+  - `count`: The number of times to repeat the string.
+- **Functionality**:
+  - Repeats the content of the string `count` times and returns a new `String` object.
+  
+#### `String* string_join_variadic(size_t count, ...)`
+- **Purpose**:  
+  Joins multiple `String` objects passed as variadic arguments into a single `String` object.
+- **Parameters**:
+  - `count`: The number of `String` objects to join.
+  - `...`: The `String` objects to join.
+- **Functionality**:
+  - Joins the strings and returns a new `String` object containing the concatenated content.
+
+#### `void string_trim_characters(String* str, const char* chars)`
+- **Purpose**:  
+  Removes specified characters from both the beginning and end of a `String` object.
+- **Parameters**:
+  - `str`: The `String` object to trim.
+  - `chars`: A C-string containing characters to be trimmed from both ends of the string.
+- **Functionality**:
+  - Trims any occurrence of the specified characters from both the beginning and the end of the `String` object.
+
+#### `void string_shuffle(String* str)`
+- **Purpose**:  
+  Shuffles the characters in the `String` object randomly.
+- **Parameters**:
+  - `str`: The `String` object to shuffle. Must not be `NULL`.
+- **Functionality**:
+  - Uses the Fisher-Yates algorithm to shuffle the characters in the string randomly.
+
+#### `void string_to_title(String* str)`
+- **Purpose**:  
+  Converts the `String` object to title case, where the first letter of each word is capitalized, and the other letters are lowercase.
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Functionality**:
+  - Capitalizes the first letter of each word while converting the rest of the characters to lowercase.
+
+#### `void string_to_capitalize(String* str)`
+- **Purpose**:  
+  Capitalizes the first character of the `String` object.
+- **Parameters**:
+  - `str`: The `String` object to capitalize. Must not be `NULL`.
+- **Functionality**:
+  - Converts the first character of the string to uppercase if it exists.
+
+#### `void string_to_casefold(String* str)`
+- **Purpose**:  
+  Converts all characters in the `String` object to lowercase.
+- **Parameters**:
+  - `str`: The `String` object to convert. Must not be `NULL`.
+- **Functionality**:
+  - Iterates through the string and converts each character to lowercase.
+
+#### `bool string_starts_with(const String* str, const char* substr)`
+- **Purpose**:  
+  Checks if the `String` object starts with the specified substring.
+- **Parameters**:
+  - `str`: The `String` object to check. Must not be `NULL`.
+  - `substr`: The substring to compare at the start of the string. Must not be `NULL`.
+- **Functionality**:
+  - Returns `true` if the string starts with `substr`, otherwise `false`.
+
+#### `bool string_ends_with(const String* str, const char* substr)`
+- **Purpose**:  
+  Checks if the `String` object ends with the specified substring.
+- **Parameters**:
+  - `str`: The `String` object to check. Must not be `NULL`.
+  - `substr`: The substring to compare at the end of the string. Must not be `NULL`.
+- **Functionality**:
+  - Returns `true` if the string ends with `substr`, otherwise `false`.
+
+#### `void string_swap_case(String* str)`
+- **Purpose**:  
+  Swaps the case of each character in the `String` object, converting lowercase characters to uppercase and vice versa.
+- **Parameters**:
+  - `str`: The `String` object to swap case. Must not be `NULL`.
+- **Functionality**:
+  - Converts lowercase characters to uppercase and vice versa.
+
+#### `wchar_t* string_to_unicode(const char* str)`
+- **Purpose**:  
+  Converts a multi-byte C-string to a wide-character (Unicode) string.
+- **Parameters**:
+  - `str`: The C-string to convert. Must not be `NULL`.
+- **Functionality**:
+  - Converts the string to a wide-character string using `mbstowcs`.
+
+#### `String* string_from_unicode(const wchar_t* wstr)`
+- **Purpose**:  
+  Converts a wide-character string to a multi-byte C-string and creates a new `String` object from it.
+- **Parameters**:
+  - `wstr`: The wide-character string to convert. Must not be `NULL`.
+- **Functionality**:
+  - Converts the wide-character string to a multi-byte string using `wcstombs` and creates a new `String` object.
+
+#### `String** string_create_from_initializer(size_t count, ...)`
+- **Purpose**:  
+  Creates an array of `String` objects from a variable number of C-strings passed as variadic arguments.
+- **Parameters**:
+  - `count`: The number of C-strings to convert to `String` objects.
+  - `...`: A variable number of C-strings to convert.
+- **Functionality**:
+  - Converts each C-string to a `String` object and returns an array of pointers to these objects, with the array being null-terminated.
+
+#### `char* string_strdup(const char* str)`
+- **Purpose**:  
+  Duplicates the provided C-string by allocating new memory and copying its content.
+- **Parameters**:
+  - `str`: The C-string to duplicate. Must not be `NULL`.
+- **Functionality**:
+  - Allocates memory for a copy of the input string and returns a pointer to the new string.
+
+
+#### `size_t string_length_cstr(const char* str)`
+- **Purpose**:  
+  Calculates the length of a C-string (without counting the null terminator).
+- **Parameters**:
+  - `str`: A pointer to a C-string. Must not be `NULL`.
+- **Return Value**:
+  - The length of the C-string, or `0` if the string is `NULL`.
+
+#### `size_t string_length_utf8(const char* str)`
+- **Purpose**:  
+  Calculates the number of characters in a UTF-8 encoded C-string, correctly accounting for multi-byte characters.
+- **Parameters**:
+  - `str`: A pointer to a UTF-8 encoded C-string. Must not be `NULL`.
+- **Return Value**:
+  - The number of UTF-8 characters in the string, or `0` if the string is `NULL`.
+
+#### `bool string_to_bool_from_cstr(const char* boolstr)`
+- **Purpose**:  
+  Converts a C-string to a boolean value based on its content. The comparison is case-sensitive.
+- **Parameters**:
+  - `boolstr`: A C-string, expected to be "true" or "false".
+- **Return Value**:
+  - `true` if the string is "true", `false` if it is "false" or any other value (including `NULL`).
+
+#### `size_t string_utf8_char_len(char c)`
+- **Purpose**:  
+  Determines how many bytes a UTF-8 character occupies based on its first byte.
+- **Parameters**:
+  - `c`: The first byte of the UTF-8 character.
+- **Return Value**:
+  - The number of bytes the UTF-8 character occupies (1-4), or `0` if it is not a valid UTF-8 start byte.
+
+#### `int string_strcmp(const char* str1, const char* str2)`
+- **Purpose**:  
+  Compares two C-strings using `strcmp` and returns the result.
+- **Parameters**:
+  - `str1`, `str2`: Pointers to the C-strings to compare.
+- **Return Value**:
+  - The result of the `strcmp` comparison:  
+    - `<0` if `str1` is less than `str2`,  
+    - `0` if they are equal,  
+    - `>0` if `str1` is greater than `str2`.
+
+#### `char* string_strndup(const char* str, size_t n)`
+- **Purpose**:  
+  Duplicates the first `n` characters of a C-string and returns a pointer to the newly allocated memory.
+- **Parameters**:
+  - `str`: The input C-string to duplicate.
+  - `n`: The maximum number of characters to duplicate.
+- **Return Value**:
+  - A pointer to the newly allocated string, or `NULL` if memory allocation fails.
+
+#### `bool string_is_palindrome(const String* str)`
+- **Purpose**:  
+  Checks if the content of a `String` object is a palindrome (reads the same forwards and backwards).
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:
+  - `true` if the string is a palindrome, `false` otherwise.
+
+#### `bool string_is_alnum(const String* str)`
+- **Purpose**:  
+  Checks if a `String` object contains only alphanumeric characters (letters and digits).
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:
+  - `true` if the string is alphanumeric, `false` otherwise.
+
+#### `bool string_is_title(const String* str)`
+- **Purpose**:  
+  Checks if a `String` object is in title case (each word starts with an uppercase letter and all other letters are lowercase).
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:
+  - `true` if the string is in title case, `false` otherwise.
+
+#### `bool string_is_space(const String* str)`
+- **Purpose**:  
+  Checks if a `String` object contains only space characters.
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:
+  - `true` if the string contains only spaces, `false` otherwise.
+
+#### `bool string_is_printable(const String* str)`
+- **Purpose**:  
+  Checks if all characters in a `String` object are printable (ASCII values greater than 31).
+- **Parameters**:
+  - `str`: The `String` object to check.
+- **Return Value**:
+  - `true` if the string contains only printable characters or is empty, `false` otherwise.
+
+
+
+---
 
 ### Example 1: how to create String obj and use `string_push_back`, `string_append`, `string_at`, `string_clear`, `string_length`, `string_capacity` also `string_deallocate`
 

@@ -209,6 +209,7 @@ bool array_is_greater_or_equal(const Array* arr1, const Array* arr2) {
 
     return result;
 }
+
 /**
  * @brief Checks if the Array is empty.
  *
@@ -226,6 +227,7 @@ bool array_empty(Array* arr) {
 
     return result;
 }
+
 /**
  * @brief Deallocates the memory used by the Array.
  *

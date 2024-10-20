@@ -23,266 +23,353 @@ The logging system is designed to provide a flexible and configurable way to han
 
 ## Function Explanations
 
+
 ### `Log* log_init()`
-**Description:** Initializes the logging system. Allocates and configures a `Log` object with default settings.
 
-**Returns:** A pointer to the initialized `Log` object, or `NULL` if initialization fails.
+- **Purpose**:  
+  This function initializes the logging system by setting up a `Log` configuration object with default settings, such as log levels, output options, and filtering. It also attempts to open a log file named "log.txt" for writing. If the file cannot be opened, it defaults to console output.
 
-**Example:**
-```c
-Log* logger = log_init();
-```
+- **Return Value**:  
+  - A pointer to the initialized `Log` object if successful.
+  - `NULL`: If memory allocation fails.
 
-### `void log_message(Log* config, LogLevel level, const char* message, ...)`
-**Description:** Logs a message at a specified log level. Supports variable arguments similar to `printf`.
+- **Initialization**:  
+  - Allocates memory for a `Log` object.
+  - Sets default log level to `LOG_LEVEL_DEBUG`.
+  - Tries to open the log file "log.txt" for writing. If it fails, it switches to console output.
+  - Enables timestamps and log levels in log messages by default.
+  - Initializes the keyword filter and makes all log levels visible initially.
+  - If memory allocation for the log configuration object fails, the function logs the error and terminates the program.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `level`: The severity level of the message (e.g., `LOG_LEVEL_DEBUG`).
-- `message`: The format string for the message.
-- `...`: Variable arguments to be formatted.
-
-**Example:**
-```c
-log_message(logger, LOG_LEVEL_INFO, "This is an info message.");
-```
-
-### `void log_flush(Log* config)`
-**Description:** Ensures that any buffered log messages are immediately written to their output destinations.
-
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-
-**Example:**
-```c
-log_flush(logger);
-```
-
-### `void log_suspend(Log* config)`
-**Description:** Temporarily suspends logging. Messages sent to `log_message` will be ignored until logging is resumed.
-
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-
-**Example:**
-```c
-log_suspend(logger);
-```
-
-### `void log_resume(Log* config)`
-**Description:** Resumes logging after it has been suspended.
-
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-
-**Example:**
-```c
-log_resume(logger);
-```
-
-### `void log_deallocate(Log* config)`
-**Description:** Cleans up and deallocates the logging system, closing any open files and freeing memory.
-
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-
-**Example:**
-```c
-log_deallocate(logger);
-```
+- **Error Handling**:  
+  - If memory allocation fails for the `Log` object, the function logs an error and calls `exit(-1)` to terminate.
+  - If the log file cannot be opened, it logs an error and defaults to console output.
 
 ### `bool log_set_output(Log* config, LogOutput output)`
-**Description:** Sets the output destination for log messages (console, file, or both).
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `output`: The desired output destination (e.g., `LOG_OUTPUT_CONSOLE`).
+- **Purpose**:  
+  This function sets the output destination for log messages, allowing logs to be sent to the console, a file, or both. If the log file cannot be opened when `LOG_OUTPUT_FILE` is specified, it defaults back to console output.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:
+  - `config`: Pointer to the `Log` configuration object.
+  - `output`: The desired log output destination (`LOG_OUTPUT_CONSOLE`, `LOG_OUTPUT_FILE`, or `LOG_OUTPUT_BOTH`).
 
-**Example:**
-```c
-log_set_output(logger, LOG_OUTPUT_FILE);
-```
+- **Return Value**:  
+  - `true`: If the output was successfully set.
+  - `false`: If an error occurred (e.g., the configuration object is `NULL`, or the log file could not be opened).
+
+- **Functionality**:
+  - It first checks if the `Log` configuration object is valid.
+  - It sets the desired output destination.
+  - If `LOG_OUTPUT_FILE` is selected but the log file is not already open, it attempts to open "log.txt" for writing.
+  - If the file cannot be opened, the function logs an error and defaults to console output.
+
+- **Error Handling**:  
+  - Logs an error if the configuration object is `NULL`.
+  - If the log file cannot be opened, it logs an error and reverts to console output.
 
 ### `bool log_enable_timestamp(Log* config, bool enable)`
-**Description:** Enables or disables timestamping in log messages.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `enable`: `true` to enable timestamps, `false` to disable.
+- **Purpose**:  
+  This function enables or disables timestamps in log messages. When enabled, each log message will include the current date and time.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:
+  - `config`: Pointer to the `Log` configuration object.
+  - `enable`: `true` to enable timestamps, `false` to disable them.
 
-**Example:**
-```c
-log_enable_timestamp(logger, true);
-```
+- **Return Value**:  
+  - `true`: If the operation was successful.
+  - `false`: If the configuration object is `NULL`.
+
+- **Functionality**:
+  - It checks if the `Log` configuration object is valid.
+  - It enables or disables timestamps based on the `enable` flag.
+  - It logs a message indicating whether timestamps have been enabled or disabled.
+
+- **Error Handling**:  
+  - Logs an error if the configuration object is `NULL`.
+
+
+### `void log_message(Log* config, LogLevel level, const char* message, ...)`
+
+- **Purpose**:  
+  This function logs a message with a specified log level. It respects the configuration in the `Log` object, including the log level, output settings (console or file), timestamp inclusion, keyword filtering, and rate-limiting. Messages that do not meet the configured criteria (e.g., are below the current log level or exceed the rate limit) will not be logged.
+
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object that controls logging behavior.
+  - `level`: The log level of the message (e.g., `LOG_LEVEL_DEBUG`, `LOG_LEVEL_INFO`).
+  - `message`: A format string for the message to log (similar to `printf`), followed by optional arguments for formatting.
+
+- **Functionality**:
+  - The function first checks if logging is suspended, the log level is lower than the configured level, or if logging for the current level is disabled, and exits early if necessary.
+  - If rate limiting is enabled and the rate limit is reached for the current level, the message will be skipped.
+  - The function constructs the message, applying the configured timestamp, formatting, and keyword filtering.
+  - The formatted message is logged either to the console, to a file, or to both, depending on the configured output.
+
+- **Return Value**:  
+  - This function does not return a value. If an error occurs (e.g., configuration object is `NULL`, or rate limit is exceeded), the function logs appropriate messages internally.
+
+- **Error Handling**:  
+  - Logs errors if the configuration object is `NULL`, if the message exceeds the rate limit, or if there are formatting issues.
+
+
+### `void log_deallocate(Log* config)`
+
+- **Purpose**:  
+  This function releases all resources associated with the `Log` object, including closing any open file writer or file reader, and freeing the memory allocated for the `Log` configuration.
+
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object to be deallocated.
+
+- **Functionality**:
+  - The function checks if the `config` object is `NULL`. If not, it closes any open file writer and file reader, sets their pointers to `NULL`, and frees the `Log` object.
+  - It logs a message indicating that the resources have been successfully deallocated.
+
+- **Return Value**:  
+  - This function does not return a value. It performs cleanup and logging as needed.
+
+- **Error Handling**:  
+  - Logs an error if the `config` object is `NULL`.
+
 
 ### `bool log_set_log_level(Log* config, LogLevel newLevel)`
-**Description:** Sets the minimum log level. Only messages at or above this level will be logged.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `newLevel`: The new log level (e.g., `LOG_LEVEL_WARN`).
+- **Purpose**:  
+  This function updates the logging level of the logger, controlling which messages are logged. Only messages with a log level greater than or equal to the specified level will be logged.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:
+  - `config`: A pointer to the `Log` configuration object.
+  - `newLevel`: The new logging level to be set. It must be one of `LOG_LEVEL_DEBUG`, `LOG_LEVEL_INFO`, `LOG_LEVEL_WARN`, `LOG_LEVEL_ERROR`, or `LOG_LEVEL_FATAL`.
 
-**Example:**
-```c
-log_set_log_level(logger, LOG_LEVEL_WARN);
-```
+- **Return Value**:  
+  - `true`: If the log level was successfully updated.
+  - `false`: If the `config` is `NULL` or if `newLevel` is outside the valid range.
+
+- **Functionality**:
+  - The function first validates the `Log` object and checks that the specified `newLevel` is valid.
+  - It updates the log level in the `Log` configuration and logs a message indicating the log level change.
+
+- **Error Handling**:  
+  - Logs an error if the `Log` configuration object is `NULL` or if the specified log level is invalid (outside the range of valid levels).
+
 
 ### `bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable)`
-**Description:** Enables or disables filtering of log messages based on a keyword. Only messages containing the keyword will be logged when enabled.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `keyword`: The keyword to filter by.
-- `enable`: `true` to enable filtering, `false` to disable.
+- **Purpose**:  
+  This function enables or disables keyword-based filtering for log messages. When enabled, only log messages that contain the specified keyword will be logged.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `keyword`: The keyword to filter log messages. Must not be `NULL` or empty when enabling filtering.
+  - `enable`: A boolean flag to enable (`true`) or disable (`false`) keyword filtering.
 
-**Example:**
-```c
-log_enable_keyword_filter(logger, "error", true);
-```
+- **Return Value**:  
+  - `true`: If keyword filtering was successfully enabled or disabled.
+  - `false`: If the `config` is `NULL`, or if the `keyword` is invalid when enabling filtering.
+
+- **Functionality**:  
+  - The function checks if the `config` is valid. If keyword filtering is enabled, it verifies that the `keyword` is valid (i.e., non-`NULL` and non-empty). It then copies the keyword into the configuration and sets the filter flag.
+  - If keyword filtering is being disabled, the function clears the keyword and resets the filter flag.
+
+- **Error Handling**:  
+  - Logs errors if the `config` is `NULL` or the keyword is invalid.
+
 
 ### `bool log_update_keyword_filter(Log* config, const char* newKeyword)`
-**Description:** Updates the keyword used for filtering log messages.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `newKeyword`: The new keyword to filter by.
+- **Purpose**:  
+  This function updates the keyword used for filtering log messages. If the new keyword is an empty string, keyword filtering is disabled.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `newKeyword`: The new keyword to filter log messages. If an empty string is provided, keyword filtering will be disabled.
 
-**Example:**
-```c
-log_update_keyword_filter(logger, "warning");
-```
+- **Return Value**:  
+  - `true`: If the keyword filter was successfully updated or disabled.
+  - `false`: If the `config` is `NULL`, the `newKeyword` is invalid, or the length exceeds the maximum allowed keyword length.
+
+- **Functionality**:  
+  - The function first checks if the `config` is valid. If the new keyword is valid (non-empty and within the maximum length), the function updates the keyword filter.
+  - If an empty string is passed, keyword filtering is disabled, and the filter flag is reset.
+
+- **Error Handling**:  
+  - Logs an error if the `config` is `NULL`, the new keyword is invalid, or the keyword length exceeds the allowed limit.
+
 
 ### `bool log_set_file_path(Log* config, const char* newFilePath)`
-**Description:** Changes the file path where log messages are written.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `newFilePath`: The new file path for the log file.
+- **Purpose**:  
+  This function changes the log file path, closing the current file (if open) and attempting to open a new log file at the specified path.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `newFilePath`: The path to the new log file. If `newFilePath` is `NULL` or an empty string, the operation will fail.
 
-**Example:**
-```c
-log_set_file_path(logger, "new_log.txt");
-```
+- **Return Value**:  
+  - `true`: If the log file path was successfully updated.
+  - `false`: If the `config` is `NULL`, `newFilePath` is invalid, or the new file cannot be opened.
+
+- **Functionality**:  
+  - The function closes any currently open log file and attempts to open a new one at the specified path. If the new file cannot be opened, it logs an error and optionally reverts to console output.
+
+- **Error Handling**:  
+  - Logs errors if the `config` is `NULL`, the new file path is invalid, or the new log file cannot be opened.
+
 
 ### `bool log_rotate(Log* config, const char* newLogPath, size_t maxSize)`
-**Description:** Rotates the log file if it exceeds the specified size. The current log file is archived, and a new log file is started.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `newLogPath`: Path to the archive file.
-- `maxSize`: The maximum size (in bytes) for the log file.
+- **Purpose**:  
+  This function manages log file rotation when the current log file reaches a specified size. It renames or moves the existing log file to a new location, then starts writing to a fresh log file. This helps control log file size and manage disk space.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `newLogPath`: The new path to move or rename the current log file when it is rotated.
+  - `maxSize`: The maximum allowed size of the log file (in bytes). When the log file exceeds this size, rotation occurs.
 
-**Example:**
-```c
-log_rotate(logger, "old_log.txt", 1048576); // Rotate if file size exceeds 1 MB
-```
+- **Return Value**:  
+  - `true`: If the log file was successfully rotated.
+  - `false`: If there was an error (e.g., `config` is `NULL`, file rotation fails, or the file cannot be opened after rotation).
+
+- **Error Handling**:  
+  If the log file size cannot be obtained or the file cannot be renamed, the function logs appropriate errors and returns `false`.
+
+
+### `void log_suspend(Log* config)`
+
+- **Purpose**:  
+  This function temporarily suspends logging. No log messages will be recorded until logging is resumed using `log_resume`.
+
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+
+- **Return Value**:  
+  - None (void function).
+
+- **Error Handling**:  
+  Logs an error if `config` is `NULL`.
+
+
+### `void log_resume(Log* config)`
+
+- **Purpose**:  
+  This function resumes logging after it has been suspended. Once resumed, log messages will start being recorded again.
+
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+
+- **Return Value**:  
+  - None (void function).
+
+- **Error Handling**:  
+  Logs an error if `config` is `NULL`.
+
 
 ### `bool log_set_format(Log* config, const char* format)`
-**Description:** Sets a custom format for log messages.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `format`: The format string for log messages (e.g., `[%s] [%s] - %s`).
+- **Purpose**:  
+  This function allows setting a custom format for log messages. The format string should follow `printf`-like formatting rules and should include placeholders for timestamp, log level, and message text.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `format`: A `printf`-like format string to be used for log messages.
 
-**Example:**
-```c
-log_set_format(logger, "[%Y-%m-%d %H:%M:%S] [%s] %s");
-```
+- **Return Value**:  
+  - `true`: If the format was successfully set.
+  - `false`: If `config` or `format` is `NULL`.
+
+- **Error Handling**:  
+  Logs an error if `config` or `format` is invalid.
+
 
 ### `bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible)`
-**Description:** Toggles the visibility of specific log levels, allowing them to be shown or hidden dynamically.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `level`: The log level to toggle visibility for.
-- `visible`: `true` to show messages of this level, `false` to hide them.
+- **Purpose**:  
+  This function enables or disables the visibility of a specific log level dynamically. It allows you to show or hide log messages for a specific level (e.g., disable `DEBUG` messages while keeping `INFO` and `ERROR` messages visible).
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `level`: The log level to toggle visibility for (e.g., `LOG_LEVEL_DEBUG`, `LOG_LEVEL_INFO`).
+  - `visible`: A boolean flag to enable (`true`) or disable (`false`) visibility for the specified log level.
 
-**Example:**
-```c
-log_toggle_level_visibility(logger, LOG_LEVEL_DEBUG, false);
-```
+- **Return Value**:  
+  - `true`: If the visibility for the specified log level was successfully toggled.
+  - `false`: If `config` is `NULL` or the specified log level is invalid.
+
+- **Error Handling**:  
+  Logs an error if `config` is `NULL` or if the specified log level is out of bounds.
+
 
 ### `bool log_redirect_output(Log* config, const char* newFilePath)`
-**Description:** Redirects log output to a different file dynamically.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `newFilePath`: The new file path for logging.
+- **Purpose**:  
+  This function allows dynamically changing the log file during runtime without restarting the application. It closes the current log file (if open) and redirects the log output to the new file specified by `newFilePath`.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `newFilePath`: The path to the new log file where future log messages will be written.
 
-**Example:**
-```c
-log_redirect_output(logger, "new_log_file.txt");
-```
+- **Return Value**:  
+  - `true`: If the log output was successfully redirected to the new file.
+  - `false`: If `config` is `NULL`, the `newFilePath` is invalid, or an error occurs while opening the new file.
+
+- **Error Handling**:  
+  Logs an error if the `config` is `NULL`, the `newFilePath` is invalid, or the new log file cannot be opened.
+
 
 ### `bool log_set_verbose(Log* config, bool verbose)`
-**Description:** Enables or disables verbose logging. When enabled, all log levels are visible.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `verbose`: `true` to enable verbose logging, `false` to disable.
+- **Purpose**:  
+  This function enables or disables verbose logging. When verbose logging is enabled, all log levels (including `DEBUG` and `INFO`) are logged. When disabled, only higher-severity log levels (`WARN`, `ERROR`, `FATAL`) are logged.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `verbose`: A boolean value. `true` to enable verbose logging; `false` to disable verbose logging.
 
-**Example:**
-```c
-log_set_verbose(logger, true);
-```
+- **Return Value**:  
+  - `true`: If the verbosity setting was successfully applied.
+  - `false`: If `config` is `NULL`.
+
+- **Error Handling**:  
+  Logs an error if `config` is `NULL`.
+
 
 ### `bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_data)`
-**Description:** Sets a custom filter function to apply additional logic when deciding whether to log a message.
 
-**Parameters:**
-- `config`: Pointer to the `Log` object.
-- `filter`: The custom filter function.
-- `user_data`: User data to pass to the filter function.
+- **Purpose**:  
+  This function sets a custom filter for log messages. The filter function, provided by the user, will be called for each log message. If the filter returns `true`, the message will be logged; if `false`, it will be ignored.
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `filter`: A function pointer to the custom filter function.
+  - `user_data`: A pointer to user-defined data to be passed to the filter function.
 
-**Example:**
-```c
-bool custom_filter(LogLevel level, const char* message, void* user_data) {
-    return strstr(message, "important") != NULL;
-}
+- **Return Value**:  
+  - `true`: If the custom filter was set successfully.
+  - `false`: If `config` is `NULL`.
 
-log_set_custom_filter(logger, custom_filter, NULL);
-```
+- **Error Handling**:  
+  Logs an error if `config` is `NULL`.
+
 
 ### `bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat)`
-**Description:** Sets the maximum log file size. When the file exceeds this size, it is archived, and a new file is started.
 
-**Parameters:**
-- `config
+- **Purpose**:  
+  This function sets a maximum log file size. If the current log file exceeds the specified size, it is archived (renamed or moved), and a new log file is created. The archived log file is renamed using the format specified by `archivePathFormat`.
 
-`: Pointer to the `Log` object.
-- `maxSize`: The maximum log file size in bytes.
-- `archivePathFormat`: The format string for the archive file path, which can include timestamps.
+- **Parameters**:  
+  - `config`: A pointer to the `Log` configuration object.
+  - `maxSize`: The maximum size (in bytes) allowed for the log file before rotation.
+  - `archivePathFormat`: A format string used to generate the name for the archived log file (e.g., `log-%Y%m%d-%H%M%S.txt` for time-based naming).
 
-**Returns:** `true` if successful, `false` otherwise.
+- **Return Value**:  
+  - `true`: If the maximum file size was set and log rotation was performed as needed.
+  - `false`: If `config` is `NULL`, `config->file_writer` is `NULL`, `maxSize` is zero, or there was an error during file operations.
 
-**Example:**
-```c
-log_set_max_file_size(logger, 5 * 1024 * 1024, "log_archive_%Y-%m-%d.txt"); // 5 MB
-```
+- **Error Handling**:  
+  Logs an error if the file size cannot be retrieved, the log file cannot be archived, or the new log file cannot be created.
+
+
+---
 
 ## Example 1 : initialize logger with `log_init`
 

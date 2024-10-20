@@ -406,7 +406,7 @@ int fmt_scanf(const char* format, ...) {
  */
 int __fmt_fprint(FILE* stream, const char* str, ...) {
     if (!stream) {
-        fprintf(stderr, "Error: Invalid stream object.\n");
+        FMT_LOG("[__fmt_fprint] Error: Invalid stream object.\n");
         return -1;
     }
     va_list args;
@@ -418,7 +418,7 @@ int __fmt_fprint(FILE* stream, const char* str, ...) {
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         result = fwrite(arg, sizeof(char), strlen(arg), stream);
         if (result < 0) {
-            fprintf(stderr, "Error writing to stream.\n");
+            FMT_LOG("[__fmt_fprint] Error writing to stream.\n");
             va_end(args);
             return -1;
         }
@@ -435,7 +435,7 @@ int __fmt_fprint(FILE* stream, const char* str, ...) {
  */
 int __fmt_fprintln(FILE* stream, const char* str, ...) {
     if (!stream) {
-        fprintf(stderr, "Error: Invalid stream object.\n");
+        FMT_LOG("[__fmt_fprintln] Error: Invalid stream object.\n");
         return -1;
     }
 
@@ -448,7 +448,7 @@ int __fmt_fprintln(FILE* stream, const char* str, ...) {
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         result = fwrite(arg, sizeof(char), strlen(arg), stream);
         if (result < 0) {
-            fprintf(stderr, "Error writing to stream.\n");
+            FMT_LOG("[__fmt_fprintln] Error writing to stream.\n");
             va_end(args);
             return -1;
         }
@@ -458,7 +458,7 @@ int __fmt_fprintln(FILE* stream, const char* str, ...) {
         result = fwrite(space, sizeof(char), strlen(space), stream);
 
         if (result < 0) {
-            fprintf(stderr, "Error writing space to stream.\n");
+            FMT_LOG("[__fmt_fprintln] Error writing space to stream.\n");
             va_end(args);
             return -1;
         }
@@ -470,7 +470,7 @@ int __fmt_fprintln(FILE* stream, const char* str, ...) {
     result = fwrite(newline, sizeof(char), strlen(newline), stream);
 
     if (result < 0) {
-        fprintf(stderr, "Error writing newline to stream.\n");
+        FMT_LOG("[__fmt_fprintln] Error writing newline to stream.\n");
         va_end(args);
         return -1;
     }
@@ -495,7 +495,7 @@ int __fmt_fprintln(FILE* stream, const char* str, ...) {
  */
 int fmt_fprintf(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
-        fprintf(stderr, "Error: Invalid arguments for fmt_fprintf.\n");
+        FMT_LOG("[fmt_fprintf] Error: Invalid arguments for fmt_fprintf.\n");
         return -1;
     }
 
@@ -505,14 +505,14 @@ int fmt_fprintf(FILE* stream, const char* format, ...) {
     char buffer[2048]; // Define a suitable buffer size for formatted output
     int formatted_bytes = vsnprintf(buffer, sizeof(buffer), format, args);
     if (formatted_bytes < 0) {
-        fprintf(stderr, "Error formatting string for fmt_fprintf.\n");
+        FMT_LOG("[fmt_fprintf] Error formatting string for fmt_fprintf.\n");
         va_end(args);
         return -1;
     }
 
     int bytes_written = fwrite(buffer, sizeof(char), formatted_bytes, stream);
     if (bytes_written < formatted_bytes) {
-        fprintf(stderr, "Error writing to file in fmt_fprintf.\n");
+        FMT_LOG("[fmt_fprintf] Error writing to file in fmt_fprintf.\n");
         va_end(args);
         return -1;
     }
@@ -535,7 +535,7 @@ int fmt_fprintf(FILE* stream, const char* format, ...) {
  */
 int fmt_fscan(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
-        fprintf(stderr, "Error: Invalid arguments for fmt_fscan.\n");
+        FMT_LOG("[fmt_fscan] Error: Invalid arguments for fmt_fscan.\n");
         return -1;
     }
 
@@ -563,7 +563,7 @@ int fmt_fscan(FILE* stream, const char* format, ...) {
  */
 int fmt_fscanln(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
-        fprintf(stderr, "Error: Invalid arguments for fmt_fscanln.\n");
+        FMT_LOG("[fmt_fscanln] Error: Invalid arguments for fmt_fscanln.\n");
         return -1;
     }
 
@@ -598,7 +598,7 @@ int fmt_fscanln(FILE* stream, const char* format, ...) {
  */
 int fmt_fscanf(FILE* stream, const char* format, ...) {
     if (!stream || !format) {
-        fprintf(stderr, "Error: Invalid arguments for fmt_fscanf.\n");
+        FMT_LOG("[fmt_fscanf] Error: Invalid arguments for fmt_fscanf.\n");
         return -1;
     }
 

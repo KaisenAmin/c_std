@@ -28,52 +28,338 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ## Function Descriptions
 
-### Array Creation and Management
-- `array_create(size_t element_size, size_t size)`: Creates a new Array with a specified element size and initial size.
-- `array_deallocate(Array* arr)`: Frees the memory allocated for the Array.
+### `Array* array_create(size_t element_size, size_t size);`
+- **Purpose**:  
+  Creates a new `Array` with the specified element size and an initial number of elements. It allocates memory for the internal structure and the vector that stores the elements.
 
-### Relational Operators
-- `array_is_equal(const Array* arr1, const Array* arr2)`: Checks if two Arrays are equal.
-- `array_is_less(const Array* arr1, const Array* arr2)`: Determines if the first Array is less than the second.
-- `array_is_greater(const Array* arr1, const Array* arr2)`: Determines if the first Array is greater than the second.
-- `array_is_not_equal(const Array* arr1, const Array* arr2)`: Checks if two Arrays are not equal.
-- `array_is_less_or_equal(const Array* arr1, const Array* arr2)`: Checks if the first Array is less than or equal to the second.
-- `array_is_greater_or_equal(const Array* arr1, const Array* arr2)`: Checks if the first Array is greater than or equal to the second.
+- **Parameters**:  
+  - `element_size`: The size of each element in bytes.
+  - `size`: The initial number of elements in the array.
+  
+- **Return Value**:  
+  Returns a pointer to the newly created `Array`. Exits the program if memory allocation fails.
 
-### Array Operations
-- `array_set(Array* arr, size_t index, const void* value)`: Sets the value at a specific index in the Array.
-- `array_insert(Array* mainArr, const Array* otherArr, size_t index)`: Inserts elements of another Array into the main Array at a specified index.
-- `array_fill(Array* arr, const void* value)`: Fills the Array with a specified value.
-- `array_swap(Array* arr1, Array* arr2)`: Swaps the contents of two Arrays.
-- `array_copy(Array* dest, const Array* src)`: Copies all elements from the source array src to the destination array dest.
-- `array_reverse(Array* arr)`: Reverses the order of the elements in the array.
-- `array_sort(Array* arr, int (*compare)(const void*, const void*))`: Sorts the array using the provided comparison function.
-- `array_clear(Array* arr)`: Removes all elements from the array without deallocating the memory, effectively setting the size to zero.
+### `bool array_is_equal(const Array* arr1, const Array* arr2);`
+- **Purpose**:  
+  Checks whether two arrays are equal by comparing the size and elements of the arrays.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  Returns `true` if the arrays are equal in size and content, `false` otherwise.
+
+### `bool array_is_less(const Array* arr1, const Array* arr2);`
+- **Purpose**:  
+  Compares two arrays lexicographically to check if the first array is smaller than the second.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  Returns `true` if `arr1` is lexicographically less than `arr2`, `false` otherwise.
+
+### `bool array_is_greater(const Array* arr1, const Array* arr2);`
+- **Purpose**:  
+  Compares two arrays lexicographically to check if the first array is greater than the second.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  Returns `true` if `arr1` is lexicographically greater than `arr2`, `false` otherwise.
+
+### `bool array_is_not_equal(const Array* arr1, const Array* arr2);`
+- **Purpose**:  
+  Checks if two arrays are not equal, either in size or content.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  Returns `true` if the arrays differ in size or content, `false` otherwise.
+
+### `bool array_is_less_or_equal(const Array* arr1, const Array* arr2);`
+- **Purpose**:  
+  Checks if `arr1` is lexicographically less than or equal to `arr2`.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  Returns `true` if `arr1` is less than or equal to `arr2`, `false` otherwise.
+
+### `bool array_is_greater_or_equal(const Array* arr1, const Array* arr2);`
+- **Purpose**:  
+  Checks if `arr1` is lexicographically greater than or equal to `arr2`.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  Returns `true` if `arr1` is greater than or equal to `arr2`, `false` otherwise.
+
+### `bool array_empty(Array* arr);`
+- **Purpose**:  
+  Checks if the array is empty.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns `true` if the array is empty or `NULL`, `false` otherwise.
 
 
-### Array Access
-- `array_at(Array* arr, size_t index)`: Returns a pointer to the element at a specified index.
-- `array_begin(Array* arr)`: Returns a pointer to the beginning of the Array.
-- `array_end(Array* arr)`: Returns a pointer to the end of the Array.
-- `array_rbegin(Array* arr)`: Returns a reverse iterator pointing to the end of the Array.
-- `array_rend(Array* arr)`: Returns a reverse iterator pointing to the beginning of the Array.
-- `array_front(Array* arr)`: Returns a pointer to the first element of the Array.
-- `array_back(Array* arr)`: Returns a pointer to the last element of the Array.
-- `array_data(Array* arr)`: Returns a pointer to the underlying data of the Array.
+### `void array_deallocate(Array* arr);`
+- **Purpose**:  
+  Deallocates the memory used by the array and its internal vector.
 
-### Array Properties
-- `array_size(Array* arr)`: Returns the number of elements in the Array.
-- `array_max_size(Array* arr)`: Returns the maximum number of elements that the Array can hold.
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  No return value. Safely deallocates resources.
 
-### Const Array Iterators
-- `array_cbegin(Array* arr)`: Returns a constant iterator to the beginning of the Array.
-- `array_cend(Array* arr)`: Returns a constant iterator to the end of the Array.
-- `array_crbegin(Array* arr)`: Returns a constant reverse iterator to the end of the Array.
-- `array_crend(Array* arr)`: Returns a constant reverse iterator to the beginning of the Array.
 
-### Empty Check
-- `array_empty(Array* arr)`: Checks if the Array is empty.
+### `void array_set(Array* arr, size_t index, const void* value);`
+- **Purpose**:  
+  Sets the value of an element at the specified index.
 
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  - `index`: The index where the value will be set.
+  - `value`: A pointer to the value to be set.
+  
+- **Return Value**:  
+  No return value. Logs errors for invalid parameters.
+
+### `void array_insert(Array* mainArr, const Array* otherArr, size_t index);`
+- **Purpose**:  
+  Inserts elements from `otherArr` into `mainArr` starting at the specified index.
+
+- **Parameters**:  
+  - `mainArr`: A pointer to the main `Array` where elements will be inserted.
+  - `otherArr`: A pointer to the `Array` whose elements will be inserted.
+  - `index`: The position in `mainArr` where the elements will be inserted.
+  
+- **Return Value**:  
+  No return value. Logs errors for invalid parameters.
+
+### `void array_fill(Array* arr, const void* value);`
+- **Purpose**:  
+  Fills the array with the specified value.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  - `value`: A pointer to the value to be set for each element.
+  
+- **Return Value**:  
+  No return value. Logs errors for invalid parameters.
+
+### `void array_swap(Array* arr1, Array* arr2);`
+- **Purpose**:  
+  Swaps the contents of two arrays by exchanging their internal vectors.
+
+- **Parameters**:  
+  - `arr1`: A pointer to the first `Array`.
+  - `arr2`: A pointer to the second `Array`.
+  
+- **Return Value**:  
+  No return value. Logs errors for invalid parameters.
+
+### `void* array_at(Array* arr, size_t index);`
+- **Purpose**:  
+  Retrieves a pointer to the element at the specified index.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  - `index`: The index of the element to retrieve.
+  
+- **Return Value**:  
+  Returns a pointer to the element or `NULL` if the index is out of bounds.
+
+### `void* array_begin(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to the first element of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to the first element or `NULL` if the array is empty.
+
+### `void* array_end(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to one element past the last element of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to one element past the last element or `NULL` if the array is empty.
+
+
+### `void* array_rbegin(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to the last element of the array (reverse iteration).
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to the last element or `NULL` if the array is empty.
+
+### `void* array_rend(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to one element before the first element (for reverse iteration).
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to one element before the first or `NULL` if the array is empty.
+
+### `void* array_front(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to the first element of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to the first element or `NULL` if the array is empty.
+
+
+### `void* array_back(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to the last element of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to the last element or `NULL` if the array is empty.
+
+### `void* array_data(Array* arr);`
+- **Purpose**:  
+  Returns a pointer to the underlying data of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a pointer to the data or `NULL` if the array is empty.
+
+### `size_t array_size(Array* arr);`
+- **Purpose**:  
+  Returns the number of elements currently stored in the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns the size of the array or `0` if the array is `NULL`.
+
+### `size_t array_max_size(Array* arr);`
+- **Purpose**:  
+  Returns the maximum number of elements that the array can hold.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns the maximum size of the array.
+
+### `const void* array_cbegin(Array* arr);`
+- **Purpose**:  
+  Returns a constant pointer to the first element of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a constant pointer to the first element or `NULL` if the array is empty.
+
+### `const void* array_cend(Array* arr);`
+- **Purpose**:  
+  Returns a constant pointer to one element past the last element.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a constant pointer to one element past the last element or `NULL`.
+
+### `const void* array_crbegin(Array* arr);`
+- **Purpose**:  
+  Returns a constant reverse pointer to the last element of the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a constant reverse pointer to the last element or `NULL`.
+
+### `const void* array_crend(Array* arr);`
+- **Purpose**:  
+  Returns a constant reverse pointer to one element before the first element.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  Returns a constant reverse pointer to one element before the first element or `NULL`.
+
+
+### `void array_clear(Array* arr);`
+- **Purpose**:  
+  Clears all elements from the array, resetting its size to zero.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  No return value.
+
+
+### `void array_reverse(Array* arr);`
+- **Purpose**:  
+  Reverses the order of elements in the array.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  
+- **Return Value**:  
+  No return value.
+
+
+### `void array_sort(Array* arr, int (*compare)(const void*, const void*));`
+- **Purpose**:  
+  Sorts the elements in the array using the specified comparison function.
+
+- **Parameters**:  
+  - `arr`: A pointer to the `Array`.
+  - `compare`: A function pointer to a comparison function.
+  
+- **Return Value**:  
+  No return value.
+
+### `void array_copy(Array* dest, const Array* src);`
+- **Purpose**:  
+  Copies the contents of the source array into the destination array.
+
+- **Parameters**:  
+  - `dest`: A pointer to the destination `Array`.
+  - `src`: A pointer to the source `Array`.
+  
+- **Return Value**:  
+  No return value.
 
 ## Example 1 : how to create Array object and `array_fill` array with value then get them with `array_at` method
 

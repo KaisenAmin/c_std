@@ -408,6 +408,7 @@ static char* get_linux_kernel_type() {
 
     return kernel_type;
 }
+
 static char* get_linux_boot_unique_id() {
     SYSINFO_LOG("[get_linux_boot_unique_id]: Retrieving boot unique ID.");
     
@@ -583,7 +584,6 @@ char** get_sysinfo_list_bluetooth_devices_linux(int* count) {
     return devices;
 }
 
-
 #else
 
 static char* get_unknown_version() {
@@ -699,7 +699,6 @@ char* sysinfo_product_type() {
     return product_type;
 }
 
-
 /**
  * @brief This function retrieves the kernel version of the operating system on which the application
  * is running. For example, it may return "10.0.19045" on Windows or "6.8.0-35-generic" on Linux.
@@ -741,7 +740,6 @@ char* sysinfo_kernel_type() {
     SYSINFO_LOG("[sysinfo_kernel_type]: Kernel type is %s.", kernel_type ? kernel_type : "unknown");
     return kernel_type;
 }
-
 
 /**
  * @brief This function generates a unique identifier that represents the current boot session of the machine.
@@ -1512,12 +1510,14 @@ double sysinfo_memory_usage() {
 #endif
     if (memory_usage < 0) {
         SYSINFO_LOG("[sysinfo_memory_usage]: Error - Failed to retrieve memory usage.");
-    } else {
+    } 
+    else {
         SYSINFO_LOG("[sysinfo_memory_usage]: Memory usage retrieved successfully: %.2f%%", memory_usage);
     }
 
     return memory_usage;
 }
+
 /**
  * @brief Retrieves the disk space information for a given path.
  * 

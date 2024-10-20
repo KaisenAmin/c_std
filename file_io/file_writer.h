@@ -6,6 +6,15 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
+// #define FILE_WRITER_LOGGING_ENABLE
+
+#ifdef FILE_WRITER_LOGGING_ENABLE 
+    #define FILE_WRITER_LOG(fmt, ...) \
+        do { fprintf(stderr, "[FILE_WRITER LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define FILE_WRITER_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef enum {
     POS_BEGIN,
     POS_END,

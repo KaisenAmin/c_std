@@ -29,37 +29,252 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-- `int random_randint(int a, int b)`: Generates a random integer between `a` and `b` (inclusive).
-- `int random_randrange(int a, int b, int step)`: Generates a random number within the range [a, b) (excluding b), with a specified step.
-- `void random_seed(unsigned int seed)`: random_seed initializes the random number generator with a given seed.
-- `double random_random()`:  Generates a random floating-point number between 0 and 1.
-- `double random_uniform(double a, double b)`: Generates a random floating-point number between a and b.
-- `int random_getrandbits(int a)`:  Generates a random integer with a random bits. arg should be greater than z and less than 32.
-- `void random_shuffle(void *array, size_t n, size_t size)`: Shuffles an array of any type.
-- `void* random_choice(void* array, size_t n, size_t size)`: this function can randomly select an element from an array.
-- `double random_triangular(double low, double high, double mode)`: this function returns a random float number between two given parameters, you can also set a mode parameter to specify the midpoint between the two other parameters.
-- `void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights)`: this function select multiple random elements from an array with specified weights.
-- `void random_sample(void *array, size_t n, size_t size, size_t num_samples, void *samples)`: this function a specified number of unique random elements from an array.
-- `void random_getstate(unsigned int *state)`: this function get the current state of the random number generator.
-- `void random_setstate(const unisgned int* state)`: this function set the state of the random number generator.
-- `double random_gauss(double mean, doube stddev)`: this function generate a random float number based on the Gaussian distribution. also `stddev` is the standard deviation (sigma) of the distribution.
-- `double random_expo(double lambda)`: this function generate a random float number based on the Exponential distribution. also `lambda` is the rate parameter (1/mean) of the distribution.
-- `double random_lognormal(double mean, double stddev)`: this function generate a random float number based on the `log-normal` distribution. `mean` param is underlying normal distrubution. and `stddev` is rate parameter (1/mean) of the distribution.
-- `double random_gamma(double shape, double scale)`: this function generate a random float number based on the Gamma distribution. based on this formula `https://numpy.org/doc/stable/reference/random/generated/numpy.random.gamma.html`
+### `void random_seed(unsigned int seed)`
 
-- `double random_beta(double alpha, double beta)`: this function generate a random float number based on the Beta distribution. also `alpha` param is shap1 of the distrubution, and `beta` is the shape2 o fthe distrubution. based on this formaul `https://numpy.org/doc/stable/reference/random/generated/numpy.random.beta.html`
+- **Purpose**: Sets the seed for the random number generator, allowing reproducible sequences of random numbers.
+- **Parameters**:
+  - `seed`: The seed value used to initialize the random number generator.
+- **Return**: No return value.
+- **Details**:
+  - This function initializes the random number generator with a specific seed value to ensure that subsequent calls to random number generation functions produce a reproducible sequence.
+  - It logs the seed value and uses `srand()` to set the seed, ensuring that the random generator produces the same numbers when the same seed is provided.
+  - Logs entry, seed setting, and exit.
 
-- `double random_pareto(double shape, double scale)`: this function generate a random float number based on the Pareto distribution. also `shape` is param (a) of the distrubution and `scale` is param (m) of the distrubution. based on `https://numpy.org/doc/stable/reference/random/generated/numpy.random.pareto.html`
+### `int random_randint(int a, int b)`
 
-- `double random_weibull(double shape, double scale)`: this function generate a random float number based on the Weibull distribution.
-also `shape` is param (a) of the distrubution and `scale` is param (λ) of the distribution. based on `https://numpy.org/doc/stable/reference/random/generated/numpy.random.weibull.html`.
+- **Purpose**: Generates a random integer in the range `[a, b]`, inclusive.
+- **Parameters**:
+  - `a`: The lower bound of the range (inclusive).
+  - `b`: The upper bound of the range (inclusive).
+- **Return**: A random integer within the range `[a, b]`.
+- **Details**:
+  - If `a > b`, their values are swapped to ensure the correct range.
+  - It uses the `rand()` function to generate a random integer and constrains the result to the desired range.
+  - Logs the input values, any necessary swaps, and the final result.
 
-- `double random_vonmises(double mu, double kappa)`: this function generate a random float number based on the von Mises distribution.
-also `mu` is the mode (mean direction) of the distrubution. and `kappa` is the concentration parameter (dispersion) of the distribution. based on  `https://numpy.org/doc/stable/reference/random/generated/numpy.random.vonmises.html`.
+### `int random_randrange(int a, int b, int step)`
+
+- **Purpose**: Generates a random integer in the range `[a, b)` with a specified step value.
+- **Parameters**:
+  - `a`: The start of the range (inclusive).
+  - `b`: The end of the range (exclusive).
+  - `step`: The step value for the range (cannot be zero).
+- **Return**: A random integer in the range `[a, b)` that follows the step value, or `-1` if the input is invalid.
+- **Details**:
+  - This function generates a random integer from the sequence that starts at `a` and increments by `step` until it reaches `b`.
+  - If `a == b` or `step == 0`, it logs an error and returns `-1`. It also validates that the step direction is correct based on the relationship between `a` and `b`.
+  - Logs the range, step, and the final result.
+
+### `double random_random()`
+
+- **Purpose**: Generates a random double in the range `[0, 1)` using the standard library's `rand()` function.
+- **Parameters**: None.
+- **Return**: A random double precision floating-point number in the range `[0, 1)`.
+- **Details**:
+  - This function generates a random double by dividing the result of `rand()` by `RAND_MAX` to constrain the output to the range `[0, 1)`.
+  - Logs the generated random double and exits with the result.
+
+### `double random_uniform(double a, double b)`
+
+- **Purpose**: Generates a random double in the range `[a, b)`. If `a > b`, their values are swapped to ensure the correct range.
+- **Parameters**:
+  - `a`: The lower bound of the range (inclusive).
+  - `b`: The upper bound of the range (exclusive).
+- **Return**: A random double in the range `[a, b)`.
+- **Details**:
+  - This function generates a random double precision floating-point number between `a` and `b`, exclusive of `b`.
+  - If `a > b`, their values are swapped to ensure the correct range.
+  - It uses the `rand()` function, scaling the result by `(b - a)` to generate a value within the desired range.
+  - Logs the input values, any necessary swaps, and the final result.
+
+### `int random_getrandbits(int a)`
+
+- **Purpose**: Generates a random integer with a specified number of random bits.
+- **Parameters**:
+  - `a`: The number of random bits to generate (must be greater than 0 and less than or equal to 32).
+- **Return**: A random integer with `a` random bits. Returns `-1` for invalid input.
+- **Details**:
+  - This function generates a random integer by creating `a` random bits. It shifts and combines random bits to form the final integer.
+  - If the input `a` is out of the valid range (less than or equal to 0 or greater than 32), it logs an error and returns `-1`.
+  - Logs each generated random bit and the current state of the result during the process, then returns the final integer.
+
+### `void random_shuffle(void *array, size_t n, size_t size)`
+
+- **Purpose**: Shuffles an array of any type using the Fisher-Yates algorithm.
+- **Parameters**:
+  - `array`: Pointer to the array to shuffle.
+  - `n`: The number of elements in the array.
+  - `size`: The size of each element in the array.
+- **Return**: No return value.
+- **Details**:
+  - The function shuffles the elements of the array in place. It logs an error if the array is `NULL` or if `n` is zero.
+  - The Fisher-Yates shuffle is performed by randomly swapping each element with another randomly selected element from the remaining unshuffled portion of the array.
+  - Memory for swapping elements is dynamically allocated. If memory allocation fails during the swap, the function logs an error and exits.
+  - Logs the swap of elements during each iteration and exits once the shuffle is complete.
+
+### `void* random_choice(void* array, size_t n, size_t size)`
+
+- **Purpose**: Randomly selects an element from an array and returns a pointer to it.
+- **Parameters**:
+  - `array`: Pointer to the array to select from.
+  - `n`: The number of elements in the array.
+  - `size`: The size of each element in the array.
+- **Return**: Pointer to the randomly selected element or `NULL` for invalid input.
+- **Details**:
+  - This function returns a randomly selected element from the array. It logs an error and returns `NULL` if the array is `NULL` or `n` is zero.
+  - A random index is generated using `random_randint`, and the corresponding element is retrieved from the array.
+  - Logs the selected index and the pointer to the result before returning the randomly chosen element.
+
+### `double random_triangular(double low, double high, double mode)`
+
+- **Purpose**: Generates a random double number based on the Triangular distribution.
+- **Parameters**:
+  - `low`: The lower limit of the distribution.
+  - `high`: The upper limit of the distribution.
+  - `mode`: The mode (peak) of the distribution. If the `mode` is not within the range `[low, high]`, it is set to the midpoint of `low` and `high`.
+- **Return**: A random double number from the Triangular distribution.
+- **Details**:
+  - If `low` is greater than `high`, their values are swapped.
+  - The function uses inverse transform sampling to generate the triangular-distributed random value.
+  - A random number `u` is generated, and based on its comparison with `c`, the triangular-distributed number is computed.
+  - Logs the entire process, including swaps, random number generation, and result calculations.
+
+
+### `void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights)`
+
+- **Purpose**: Selects multiple random elements from an array based on specified weights.
+- **Parameters**:
+  - `array`: Pointer to the input array from which elements are selected.
+  - `n`: The number of elements in the input array.
+  - `size`: The size of each element in the input array.
+  - `num_choices`: The number of elements to select.
+  - `choices`: Pointer to the array where the selected elements will be stored.
+  - `weights`: Pointer to the array of weights corresponding to each element in the input array.
+- **Return**: No return value.
+- **Details**:
+  - The function checks for valid inputs, including whether the `array`, `weights`, or `num_choices` are valid.
+  - It uses cumulative weights to perform weighted random sampling. The weights determine the likelihood of selecting an element.
+  - The function calculates cumulative weights, generates a random number for each choice, and finds the corresponding element in the array based on that random number.
+  - The selected elements are copied into the `choices` array.
+  - The function logs errors, cumulative weight calculation, and every random selection step.
+  - Memory for cumulative weights is dynamically allocated and freed after use.
+
+### `void random_sample(void *array, size_t n, size_t size, size_t num_samples, void *samples)`
+
+- **Purpose**: Samples a specified number of unique random elements from an array using the Fisher-Yates shuffle algorithm.
+- **Parameters**:
+  - `array`: Pointer to the input array from which elements are sampled.
+  - `n`: The number of elements in the input array.
+  - `size`: The size of each element in the input array.
+  - `num_samples`: The number of elements to sample.
+  - `samples`: Pointer to the array where the sampled elements will be stored.
+- **Details**:
+  - The function ensures unique random sampling by shuffling indices and selecting a subset of them.
+  - It performs error checking, such as verifying if the `array` is not `NULL`, ensuring that `num_samples` does not exceed `n`, and handling memory allocation for indices.
+  - After shuffling indices, it copies the corresponding elements into the `samples` array.
+  - Logs the process of initialization, shuffling, copying, and memory management.
+
+### `void random_setstate(const unsigned int *state)`
+
+- **Purpose**: Sets the state of the random number generator to a specified value.
+- **Parameters**:
+  - `state`: A pointer to the state value to set the random number generator. If `state` is `NULL`, the function does nothing.
+- **Details**:
+  - This function allows the user to set the random number generator state to make the sequence of generated random numbers reproducible.
+  - Logs the entry into the function, state assignment, and exit. If the `state` is `NULL`, it logs an error.
+
+### `void random_getstate(unsigned int *state)`
+
+- **Purpose**: Retrieves the current state of the random number generator.
+- **Parameters**:
+  - `state`: A pointer where the current state of the random number generator will be stored. If `state` is `NULL`, the function does nothing.
+- **Details**:
+  - The function captures the current state of the random number generator, which can be useful for saving the state for future reproducibility.
+  - Logs the entry into the function, state retrieval, and exit. If the `state` is `NULL`, it logs an error.
+
+### `double random_gauss(double mean, double stddev)`
+
+- **Purpose**: Generates a random double number based on the Gaussian (normal) distribution using the Box-Muller transform.
+- **Parameters**:
+  - `mean`: The mean (mu) of the distribution.
+  - `stddev`: The standard deviation (sigma) of the distribution.
+- **Details**:
+  - Utilizes the Box-Muller transform to produce normally-distributed numbers. It generates two independent random values from a uniform distribution, transforms them into normally distributed numbers, and returns one. The spare value is stored for the next call to avoid recomputation.
+  - If a spare value is already available, the function uses that instead of recalculating.
+
+### `double random_expo(double lambda)`
+
+- **Purpose**: Generates a random double number based on the Exponential distribution.
+- **Parameters**:
+  - `lambda`: The rate parameter (1/mean) of the distribution.
+- **Details**:
+  - Uses the inverse transform sampling method to generate a random number from the Exponential distribution. It computes the result as `-log(uniform_random_value) / lambda`.
+  - If `lambda` is less than or equal to 0, the function logs an error and returns `NAN`.
+
+### `double random_lognormal(double mean, double stddev)`
+
+- **Purpose**: Generates a random double number based on the Log-normal distribution.
+- **Parameters**:
+  - `mean`: The mean parameter of the underlying normal distribution.
+  - `stddev`: The standard deviation parameter of the underlying normal distribution.
+- **Details**:
+  - First generates a random number from the Gaussian (normal) distribution using `random_gauss`, then exponentiates that value to obtain a number from the Log-normal distribution.
+  - The log-normal distribution is useful when modeling data that is positively skewed.
+
+### `double random_gamma(double shape, double scale)`
+
+- **Purpose**: Generates a random double number based on the Gamma distribution.
+- **Parameters**:
+  - `shape`: The shape parameter of the distribution.
+  - `scale`: The scale parameter of the distribution.
+- **Details**:
+  - Two different methods are used depending on the value of `shape`:
+    - For `shape < 1`, the function uses Johnk's generator.
+    - For `shape >= 1`, Marsaglia and Tsang's method is used, which is more efficient for larger shape values.
+  - Both methods produce a random number from the Gamma distribution, which is commonly used in fields like queuing theory, reliability analysis, and Bayesian statistics.
+
+### `double random_beta(double alpha, double beta)`
+
+- **Purpose**: Generates a random double number based on the Beta distribution.
+- **Parameters**:
+  - `alpha`: The shape1 parameter of the distribution.
+  - `beta`: The shape2 parameter of the distribution.
+- **Details**:
+  - The Beta distribution is generated by drawing two independent Gamma-distributed random numbers (with parameters `alpha` and `beta`), and then normalizing the result.
+  - Returns `NaN` if `alpha` or `beta` is less than or equal to 0, otherwise, the result is a number between 0 and 1.
+
+### `double random_pareto(double shape, double scale)`
+
+- **Purpose**: Generates a random double number based on the Pareto distribution.
+- **Parameters**:
+  - `shape`: The shape parameter (a) of the distribution.
+  - `scale`: The scale parameter (m) of the distribution.
+- **Details**:
+  - The Pareto distribution is generated using the inverse transform method. It returns a random number from the distribution defined by the `shape` and `scale` parameters.
+  - Returns `NaN` if `shape` or `scale` is less than or equal to 0.
+
+### `double random_weibull(double shape, double scale)`
+
+- **Purpose**: Generates a random double number based on the Weibull distribution.
+- **Parameters**:
+  - `shape`: The shape parameter (a) of the distribution.
+  - `scale`: The scale parameter (λ) of the distribution.
+- **Details**:
+  - The Weibull distribution is generated using the inverse transform sampling method. It returns a number based on the `shape` and `scale` parameters, commonly used in reliability analysis and survival models.
+  - Returns `NaN` if `shape` or `scale` is less than or equal to 0.
+
+### `double random_vonmises(double mu, double kappa)`
+
+- **Purpose**: Generates a random double number based on the von Mises distribution, which is used for modeling circular data.
+- **Parameters**:
+  - `mu`: The mean direction of the distribution (in radians).
+  - `kappa`: The concentration parameter (must be greater than 0).
+- **Details**:
+  - The von Mises distribution is a continuous probability distribution on the circle, useful in directional statistics. The function uses a rejection sampling algorithm to generate a random number from the von Mises distribution.
+  - Returns `NaN` if `kappa` is less than or equal to 0.
 
 
 ## Examples
-
 
 Several examples are provided to demonstrate the usage of the Random library in various scenarios.
 

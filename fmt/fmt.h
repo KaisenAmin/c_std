@@ -7,6 +7,16 @@
 #include "../file_io/file_writer.h"
 #include "../file_io/file_reader.h"
 
+// #define FMT_LOGGING_ENABLE
+
+#ifdef FMT_LOGGING_ENABLE 
+    #define FMT_LOG(fmt, ...) \
+        do { fprintf(stderr, "[FMT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define FMT_LOG(fmt, ...) do { } while (0)
+#endif
+
+
 #define FMT_END_ARGS (NULL)
 
 #define fmt_print(...) __fmt_print(__VA_ARGS__, NULL)

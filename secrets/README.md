@@ -31,14 +31,95 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-- `int secrets_randbelow(int exclusive_upper_bound)`: Generates a secure random integer in the range `[0, exclusive_upper_bound)`.
-- `int secrets_randbits(int k)`: Generates a secure random integer with `k` bits of randomness.
-- `void* secrets_token_bytes(size_t nbytes)`: Generates a secure random byte sequence of `nbytes` length.
-- `char* secrets_token_hex(size_t nbytes)`: Generates a secure random hexadecimal string representation of `nbytes` bytes.
-- `char* secrets_token_urlsafe(size_t nbytes)`: Generates a secure random URL-safe Base64-encoded string of `nbytes` bytes.
-- `int secrets_compare_digest(const void* a, const void* b, size_t len)`: Performs a constant-time comparison of two byte sequences to prevent timing attacks.
-- `void* secrets_choice(const void* seq, size_t size, size_t elem_size)`: Select a random element from a sequence (array) using cryptographically secure randomness.
-- `unsigned int secrets_randbits(int k)`: Generate a non-negative integer with exactly k random bits.
+### `void secrets_token_bytes(unsigned char *buffer, size_t size)`
+
+- **Purpose**: Generate cryptographically secure random bytes.
+- **Parameters**:
+  - `buffer`: Pointer to the byte array where random bytes will be stored.
+  - `size`: Number of bytes to generate.
+- **Return**: No return value.
+- **Details**:
+  - This function generates random bytes using platform-specific methods.
+  - On **Windows**, it uses `BCryptGenRandom`, and on **Unix-based systems**, it reads from `/dev/urandom`.
+  - If any error occurs during random byte generation, the function logs the error and exits the program.
+  - The generated random bytes are stored in the provided `buffer`.
+
+### `int secrets_randbelow(int n)`
+
+- **Purpose**: Generate a cryptographically secure random integer in the range [0, n).
+- **Parameters**:
+  - `n`: Upper limit (exclusive).
+- **Return**: A cryptographically secure random integer between 0 and `n-1`.
+- **Details**:
+  - This function first calls `secrets_token_bytes` to generate random bytes.
+  - It converts the bytes to an integer and then calculates a random number in the range `[0, n)` using modulo operation.
+  - Logs both the input and the generated random number.
+
+### `void secrets_token_hex(char *buffer, size_t nbytes)`
+
+- **Purpose**: Generate a cryptographically secure random token in hexadecimal format.
+- **Parameters**:
+  - `buffer`: Pointer to the array where the hexadecimal token will be stored.
+  - `nbytes`: Number of bytes to generate, each byte is converted to two hex digits.
+- **Return**: No return value.
+- **Details**:
+  - The function generates `nbytes` random bytes using `secrets_token_bytes`.
+  - It converts each byte to its hexadecimal representation (two characters per byte).
+  - The result is stored in the provided `buffer`.
+  - Allocates memory dynamically for the random bytes and frees it after use.
+
+### `void secrets_token_urlsafe(char *buffer, size_t nbytes)`
+
+- **Purpose**: Generate a cryptographically secure random URL-safe token.
+- **Parameters**:
+  - `buffer`: A pointer to the array where the Base64-encoded URL-safe token will be stored.
+  - `nbytes`: The number of random bytes to encode as a URL-safe token.
+- **Return**: No return value.
+- **Details**:
+  - This function generates `nbytes` random bytes using `secrets_token_bytes`.
+  - It converts each byte to a Base64 URL-safe character using a predefined table (`A-Z`, `a-z`, `0-9`, `-`, and `_`).
+  - The resulting token is stored in the provided `buffer`.
+  - Allocates memory dynamically for the random bytes and frees it after use.
+
+### `int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_t length)`
+
+- **Purpose**: Compare two byte sequences in constant time to prevent timing attacks.
+- **Parameters**:
+  - `a`: Pointer to the first byte sequence.
+  - `b`: Pointer to the second byte sequence.
+  - `length`: The number of bytes to compare.
+- **Return**: `1` if the sequences are equal, `0` otherwise.
+- **Details**:
+  - This function compares two byte sequences in constant time to avoid timing attacks. It loops over the sequences and performs a bitwise XOR for each byte, accumulating the result.
+  - Even if the sequences differ early on, the function continues to process the entire length, ensuring the time taken does not depend on when the difference is found.
+  - Logs the comparison result (`1` for equal, `0` for unequal).
+
+### `void* secrets_choice(const void* seq, size_t size, size_t elem_size)`
+
+- **Purpose**: Select a random element from a sequence (array) using cryptographically secure randomness.
+- **Parameters**:
+  - `seq`: Pointer to the sequence (array) of elements.
+  - `size`: The number of elements in the sequence.
+  - `elem_size`: Size of each element in bytes.
+- **Return**: A pointer to the randomly selected element or `NULL` if the sequence is empty.
+- **Details**:
+  - This function chooses a random element from a sequence using cryptographically secure randomness.
+  - It first checks if the sequence is empty (if `size == 0`) and logs an error if so.
+  - It uses `secrets_randbelow` to generate a random index and returns the element at the calculated index.
+  - Logs the randomly selected index.
+
+### `unsigned int secrets_randbits(int k)`
+
+- **Purpose**: Generate a non-negative integer with exactly `k` random bits.
+- **Parameters**:
+  - `k`: The number of random bits to generate (must be between 1 and 32).
+- **Return**: A random integer with exactly `k` random bits.
+- **Details**:
+  - This function generates a random integer with `k` bits using cryptographically secure randomness.
+  - If `k` is outside the valid range (1 to 32), it logs an error and exits the program.
+  - It calls `secrets_token_bytes` to generate random bytes, masks the extra bits using `(1U << k) - 1`, and returns the result.
+  - Logs the number of bits requested and the generated random value.
+
 
 ## Usage Examples
 

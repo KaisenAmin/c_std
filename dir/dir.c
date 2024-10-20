@@ -1049,7 +1049,8 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     bool result = CopyFileW(wSrcPath, wDestPath, FALSE) != 0;
     if (!result) {
         DIR_LOG("[dir_copy_file] Error: CopyFileW failed to copy from %s to %s.", srcPath, destPath);
-    } else {
+    } 
+    else {
         DIR_LOG("[dir_copy_file] File copied successfully from %s to %s", srcPath, destPath);
     }
 
@@ -1410,7 +1411,6 @@ bool dir_is_file(const char *filePath) {
 #endif 
 }
 
-
 /**
  * @brief Checks if the specified path is a directory.
  *
@@ -1578,7 +1578,6 @@ bool dir_move_directory(const char* srcPath, const char* destPath) {
     return true;
 #endif
 }
-
 
 /**
  * @brief Gets the modified time of the specified directory.
@@ -1752,7 +1751,6 @@ char* dir_get_home_directory() {
 
     return homeDir; 
 }
-
 
 /**
  * @brief Determines the type of file located at the specified path.
@@ -1976,7 +1974,6 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     return true;
 }
 
-
 /**
  * @brief Retrieves the owner of the specified file.
  *
@@ -2074,7 +2071,6 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
     return true;
 #endif
 }
-
 
 /**
  * @brief Retrieves the owner of the specified directory.

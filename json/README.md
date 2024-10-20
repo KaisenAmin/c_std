@@ -17,37 +17,342 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 
 ## Function Descriptions
 
-- `json_parse(const char *json_str)`: Parses a JSON string into a `JsonElement`.
-- `json_read_from_file(const char *filename)`: Reads JSON data from a file and parses it into a `JsonElement`.
-- `json_get_element(const JsonElement *element, const char *key_or_index)`: Retrieves an element from a JSON object or array by key or index.
-- `json_query(const JsonElement *element, const char *query)`: Queries JSON data using a specific query language or path expression.
-- `json_merge(const JsonElement *element1, const JsonElement *element2)`: Merges two JSON objects or arrays into one.
-- `json_deep_copy(const JsonElement *element)`: Creates a deep copy of JSON data.
-- `json_clone(const JsonElement *element)`: Create a shallow copy of a JSON element. This is different from a deep copy as it would copy the references for array and object types instead of duplicating all nested elements.
-- `json_parse_with_options(const char *json_str, JsonParseOptions options)`: Parses a JSON string with specific parsing options.
-- `json_find(const JsonElement *element, JsonPredicate predicate, void *user_data)`: Finds an element in a JSON object or array based on a predicate.
-- `json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data)`: Filters elements in a JSON array based on a predicate.
-- `json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data)`: Applies a function to each element in a JSON array, creating a new array.
-- `json_serialize(const JsonElement *element)`: Converts a `JsonElement` back into a JSON string.
-- `json_format(const JsonElement *element)`: Formats JSON data for pretty-printing or custom formatting.
-- `json_write_to_file(const JsonElement *element, const char *filename)`: Writes JSON data to a file.
-- `json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element)`: Sets an element in a JSON object or array.
-- `json_remove_element(JsonElement *element, const char *key_or_index)`: Removes an element from a JSON object or array.
-- `json_validate(const JsonElement *element, const char *schema_json)`: Validates JSON data against a schema.
-- `json_convert(const JsonElement *element, JsonType type)`: Converts between JSON elements and native data types.
-- `json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data)`: Applies a reducer function to a JSON array.
-- `json_array_size(const JsonElement *array)`: Returns the size of a JSON array.
-- `json_object_size(const JsonElement *object)`: Returns the number of key-value pairs in a JSON object.
-- `json_type_of_element(const JsonElement *element)`: Returns the type of a given JSON element.
-- `json_last_error()`: Retrieves the last error occurred during JSON operations.
-- `json_print(const JsonElement* element)`: Prints the JSON element.
-- `json_deallocate(JsonElement *element)`: Deallocates a JSON element and its contents.
-- `json_compare(const JsonElement *element1, const JsonElement *element2)`: Compares two JSON elements.
-- `json_to_string_array` : convert array element in json to string array.
-- `json_add_to_array`: add objects or other kind of elements to array element in json.
-- `json_add_to_object`: add any kind of elements to json objects.
-- `json_query`: get element in json just by one query.
----
+
+### `json_deallocate`
+
+- **Purpose**: Deallocates a `JsonElement` and all of its associated resources.
+- **Parameters**:
+  - `element`: A pointer to the `JsonElement` to be deallocated. If `NULL`, the function does nothing.
+- **Details**:
+  - **`JSON_STRING`**: Frees the memory associated with the string value.
+  - **`JSON_ARRAY`**: Recursively deallocates all elements within the array, then deallocates the array itself.
+  - **`JSON_OBJECT`**: Deallocates the entire object, including all key-value pairs in the object map.
+  - **Other Types** (`JSON_NULL`, `JSON_BOOL`, `JSON_NUMBER`): No special handling is needed; the element is freed.
+- **Return**: No return value (`void`), but frees the memory associated with the `JsonElement`.
+
+### `json_create`
+
+- **Purpose**: Creates a new JSON element of the specified type.
+- **Parameters**:
+  - `type`: The type of JSON element to create. This can be one of the following:
+    - `JSON_NULL`
+    - `JSON_BOOL`
+    - `JSON_NUMBER`
+    - `JSON_STRING`
+    - `JSON_ARRAY`
+    - `JSON_OBJECT`
+- **Details**:
+  - Allocates memory for a `JsonElement` and initializes it based on the provided type:
+    - **`JSON_NULL`**: No value is needed.
+    - **`JSON_BOOL`**: Initializes to `false`.
+    - **`JSON_NUMBER`**: Initializes to `0.0`.
+    - **`JSON_STRING`**: Initializes to `NULL`.
+    - **`JSON_ARRAY`**: Allocates memory for a dynamic array to hold elements.
+    - **`JSON_OBJECT`**: Allocates memory for a map to hold key-value pairs.
+- **Return**: A pointer to the newly created `JsonElement`, or `NULL` if memory allocation fails or if an invalid type is provided.
+- **Warnings**: 
+  - If an error occurs during memory allocation, the function logs an error and returns `NULL`.
+  - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
+
+### `json_parse`
+
+- **Purpose**: Parses a JSON string and returns the corresponding JSON element tree.
+- **Parameters**:
+  - `json_str`: The JSON-formatted string to be parsed.
+- **Details**:
+  - This function parses the given JSON string into a `JsonElement` structure, handling various JSON types such as:
+    - **Objects**
+    - **Arrays**
+    - **Strings**
+    - **Numbers**
+    - **Booleans**
+    - **Null values**
+  - If the parsing encounters an error, the function logs the error and returns `NULL`.
+- **Return**: A pointer to the root `JsonElement` of the parsed structure, or `NULL` if parsing fails.
+- **Warnings**:
+  - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
+  - If the input string contains invalid JSON or if an unexpected token is encountered, the function will return `NULL` and log the corresponding error message.
+
+### `json_read_from_file`
+
+- **Purpose**: Reads a JSON file from disk and parses it into a JSON element tree.
+- **Parameters**:
+  - `filename`: Path to the JSON file to be read.
+- **Details**:
+  - This function opens the specified JSON file, reads its content, and parses it into a `JsonElement` structure.
+  - It handles errors related to file operations (e.g., file not found, read errors) and JSON parsing.
+  - If any error occurs (such as failure to open the file, memory allocation failure, or invalid JSON), the function logs the error and returns `NULL`.
+- **Return**: A pointer to the root `JsonElement` of the parsed JSON structure, or `NULL` if reading or parsing fails.
+- **Warnings**:
+  - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
+  - Ensure the file content is in valid JSON format; otherwise, parsing will fail.
+
+### `json_print`
+
+- **Purpose**: Prints a JSON element and its children in a formatted and human-readable manner.
+- **Parameters**:
+  - `element`: The JSON element to be printed.
+- **Details**:
+  - This function formats and prints the `JsonElement` and its children to standard output.
+  - It handles all JSON types, including objects, arrays, strings, numbers, booleans, and null.
+  - Proper indentation is applied for better readability.
+- **Return**: No return value, but the JSON element is printed to the standard output.
+- **Note**: If the input `element` is `NULL`, it prints `"null"`.
+
+### `json_get_element`
+
+- **Purpose**: Retrieves a specific element from a JSON object or array by key or index.
+- **Parameters**:
+  - `element`: The JSON element (must be an object or array).
+  - `key_or_index`: The key (for objects) or index (for arrays) of the element to retrieve.
+- **Details**:
+  - This function accesses a JSON object by key or a JSON array by index.
+  - If the input is not an object or array, or if the key or index is invalid, it logs an error and returns `NULL`.
+- **Return**: A pointer to the retrieved `JsonElement`, or `NULL` if the key/index is invalid or an error occurs.
+- **Warning**: The returned element is part of the original structure; modifying it will affect the original JSON structure.
+
+### `json_array_size`
+
+- **Purpose**: Returns the number of elements in a JSON array.
+- **Parameters**:
+  - `array`: The JSON element representing an array.
+- **Return**: The number of elements in the array, or `0` if the input is not a valid JSON array.
+- **Details**:
+  - This function checks if the provided JSON element is an array and returns its size.
+  - If the input is not a valid JSON array or is `NULL`, it logs an error and returns `0`.
+
+
+### `json_object_size`
+
+- **Purpose**: Returns the number of key-value pairs in a JSON object.
+- **Parameters**:
+  - `object`: The JSON element representing an object.
+- **Return**: The number of key-value pairs in the object, or `0` if the input is not a valid JSON object.
+- **Details**:
+  - This function checks if the provided JSON element is an object and returns its size.
+  - If the input is not a valid JSON object or is `NULL`, it logs an error and returns `0`.
+
+### `json_deep_copy`
+
+- **Purpose**: Creates a deep copy of a JSON element, recursively copying nested elements.
+- **Parameters**:
+  - `element`: The JSON element to be copied.
+- **Return**: A pointer to the newly created deep copy of the JSON element, or `NULL` if memory allocation fails.
+- **Details**:
+  - The function makes a deep copy of the provided JSON element, including its nested elements in the case of arrays and objects.
+  - If memory allocation fails at any point, it logs an error, deallocates any partially copied data, and returns `NULL`.
+- **Warning**: The caller is responsible for deallocating the returned JSON element using `json_deallocate` to prevent memory leaks.
+
+### `json_type_of_element`
+
+- **Purpose**: Returns the type of a JSON element.
+- **Parameters**:
+  - `element`: The JSON element whose type is to be determined.
+- **Return**: The type of the JSON element, or `JSON_NULL` if the input is `NULL`.
+- **Details**:
+  - This function returns the type of the provided JSON element. If the input is `NULL`, the function returns `JSON_NULL`.
+
+### `json_write_to_file`
+
+- **Purpose**: Writes a JSON element to a file in serialized JSON format.
+- **Parameters**:
+  - `element`: The JSON element to serialize and write to a file.
+  - `filename`: The name of the file to which the JSON data will be written.
+- **Return**: `true` if the JSON element was successfully written to the file; `false` otherwise.
+- **Details**:
+  - This function serializes a JSON element and writes it to a specified file.
+  - If the file cannot be opened or the serialization fails, an error is logged, and `false` is returned.
+- **Warning**: The function will overwrite the file if it already exists.
+
+### `json_serialize`
+
+- **Purpose**: Serializes a JSON element into a JSON-formatted string.
+- **Parameters**:
+  - `element`: The JSON element to serialize.
+- **Return**: A dynamically allocated string containing the serialized JSON, or `NULL` if an error occurs.
+- **Details**:
+  - The function converts a JSON element into its string representation in JSON format.
+  - The caller is responsible for freeing the returned string to prevent memory leaks.
+- **Warning**: The returned string must be freed by the caller.
+
+### `json_compare`
+
+- **Purpose**: Compares two JSON elements for equality.
+- **Parameters**:
+  - `element1`, `element2`: The two JSON elements to compare.
+- **Return**: `true` if the elements are equal; `false` otherwise.
+- **Details**:
+  - The function performs a deep comparison, comparing nested elements (arrays, objects) recursively.
+  - Elements of different types are considered unequal. Two `NULL` elements are considered equal.
+
+### `json_set_element`
+
+- **Purpose**: Sets a value in a JSON object or array at a specified key or index.
+- **Parameters**:
+  - `element`: The JSON object or array in which to set the value.
+  - `key_or_index`: The key (for objects) or index (for arrays) where the value should be set.
+  - `new_element`: The new JSON element to set at the specified key or index.
+- **Return**: `true` if the value was successfully set; `false` otherwise.
+- **Details**:
+  - For objects, the key is used to identify where to set the value. For arrays, the index is used.
+  - Replaces existing elements in arrays and adds or updates key-value pairs in objects.
+
+### `json_remove_element`
+
+- **Purpose**: Removes an element from a JSON object or array by key or index.
+- **Parameters**:
+  - `element`: The JSON object or array from which to remove an element.
+  - `key_or_index`: The key (for objects) or index (for arrays) identifying the element to remove.
+- **Return**: `true` if the element was successfully removed; `false` otherwise.
+- **Details**: 
+  - For objects, the key is used to locate and remove the key-value pair.
+  - For arrays, the index is used to remove the element at the specified position.
+
+### `json_find`
+
+- **Purpose**: Finds an element within a JSON object or array that matches a given predicate.
+- **Parameters**:
+  - `element`: The JSON object or array to search.
+  - `predicate`: Function pointer to the predicate used to test elements.
+  - `user_data`: Additional data passed to the predicate function.
+- **Return**: Pointer to the first matching JSON element, or `NULL` if no match is found.
+- **Details**: 
+  - Searches through the elements of a JSON object or array, returning the first element that satisfies the predicate.
+
+### `json_last_error`
+
+- **Purpose**: Retrieves the last error that occurred during JSON operations.
+- **Parameters**: None.
+- **Return**: A `JsonError` struct containing the error code and message of the last error.
+- **Details**: 
+  - Provides access to the last error that occurred in any JSON operation. 
+
+### `json_merge`
+
+- **Purpose**: Merges two JSON objects into a new JSON object.
+- **Parameters**:
+  - `element1`, `element2`: The JSON objects to merge.
+- **Return**: A new JSON object containing the merged contents, or `NULL` if an error occurs.
+- **Details**: 
+  - The function creates a new JSON object and merges key-value pairs from both input objects. If a key exists in both objects, the value from the second object is used.
+
+### `json_to_string_array`
+
+- **Purpose**: Converts a JSON array of strings into a C-style array of strings.
+- **Parameters**:
+  - `array`: The JSON array to convert. Must contain only `JSON_STRING` elements.
+  - `length`: Pointer to a variable where the number of strings will be stored.
+- **Return**: A C-style array of strings, or `NULL` if an error occurs.
+- **Details**: 
+  - Extracts strings from the JSON array and returns them in a newly allocated array.
+  - If the array contains non-string elements or is invalid, `NULL` is returned.
+
+### `json_convert`
+
+- **Purpose**: Converts a JSON element to a specified type (e.g., `JSON_STRING`, `JSON_NUMBER`, `JSON_BOOL`, `JSON_ARRAY`, `JSON_OBJECT`).
+- **Parameters**:
+  - `element`: The JSON element to convert.
+  - `type`: The target type for the conversion.
+- **Return**: A new `JsonElement` of the specified type, or `NULL` if the conversion fails.
+- **Details**: 
+  - Handles conversion between JSON types (e.g., number to string, string to number, boolean to string).
+  - Returns `NULL` if the conversion is not supported or if memory allocation fails.
+  - The caller is responsible for deallocating the returned element.
+
+### `json_map`
+
+- **Purpose**: Applies a transformation function to each element of a JSON array and returns a new JSON array with the transformed elements.
+- **Parameters**:
+  - `array`: The JSON array to transform. Must be of type `JSON_ARRAY`.
+  - `map_func`: A function that takes a JSON element and user data as arguments and returns a transformed JSON element.
+  - `user_data`: Optional user data to pass to the mapping function. Can be `NULL`.
+- **Return**: A new JSON array containing the transformed elements, or `NULL` if an error occurs.
+- **Details**: 
+  - If the transformation fails for any element, the operation stops, and the entire result array is deallocated.
+
+### `json_filter`
+
+- **Purpose**: Filters elements of a JSON array based on a predicate function and returns a new JSON array with elements that satisfy the predicate.
+- **Parameters**:
+  - `array`: The JSON array to filter. Must be of type `JSON_ARRAY`.
+  - `predicate`: A function that takes a JSON element and user data as arguments and returns `true` if the element should be included in the result.
+  - `user_data`: Optional user data to pass to the predicate function. Can be `NULL`.
+- **Return**: A new JSON array containing the elements that satisfy the predicate, or `NULL` if an error occurs.
+- **Details**: 
+  - If an error occurs during the operation, the partially constructed result array is deallocated, and `NULL` is returned.
+
+### `json_reduce`
+
+- **Purpose**: Applies a reduction function across all elements of a JSON array, accumulating the result.
+- **Parameters**:
+  - `array`: The JSON array to reduce. Must be of type `JSON_ARRAY`.
+  - `reduce_func`: The function to apply to each element and the accumulator. Takes a JSON element, the current accumulator, and user data as arguments.
+  - `initial_value`: The initial value for the accumulator.
+  - `user_data`: Optional user data to pass to the reduction function.
+- **Return**: The final accumulated value, or `NULL` if an error occurs.
+- **Details**: 
+  - The function iterates over the elements, applying the reduction function and updating the accumulator. If any error occurs, it logs the issue and returns `NULL`.
+
+### `json_format`
+
+- **Purpose**: Formats a JSON element into a human-readable string.
+- **Parameters**:
+  - `element`: The JSON element to format.
+- **Return**: A dynamically allocated string containing the formatted JSON, or `NULL` if an error occurs.
+- **Details**:
+  - The returned string is pretty-printed with indentation for readability. The caller is responsible for freeing the string.
+
+### `json_clone`
+
+- **Purpose**: Creates a shallow copy of a JSON element.
+- **Parameters**:
+  - `element`: The JSON element to clone.
+- **Return**: A pointer to the newly cloned JSON element, or `NULL` if an error occurs.
+- **Details**: 
+  - For JSON objects and arrays, the copy references the same underlying data as the original. For strings, a new copy is allocated. The caller is responsible for deallocating the cloned element.
+
+### `json_get_keys`
+
+- **Purpose**: Retrieves all the keys from a JSON object.
+- **Parameters**:
+  - `object`: The JSON object from which to retrieve the keys.
+  - `num_keys`: A pointer to a `size_t` variable where the number of keys will be stored.
+- **Return**: A dynamically allocated array of strings containing the keys, or `NULL` if an error occurs.
+- **Details**: 
+  - Allocates memory for both the array of keys and each individual key. The caller is responsible for freeing the allocated memory.
+
+### `json_add_to_array`
+
+- **Purpose**: Adds an element to a JSON array.
+- **Parameters**:
+  - `element1`: The JSON array to which the element will be added.
+  - `element2`: The JSON element to add to the array.
+- **Return**: `true` if the element was successfully added, `false` otherwise.
+- **Details**: 
+  - Appends the provided element to the end of the JSON array. If the operation fails, it returns `false` and sets an error code.
+
+
+### `json_add_to_object`
+
+- **Purpose**: Adds a key-value pair to a JSON object.
+- **Parameters**:
+  - `object`: The JSON object to which the key-value pair will be added.
+  - `key`: The key as a string.
+  - `value`: The value to associate with the key.
+- **Return**: `true` if the key-value pair was successfully added or replaced, `false` otherwise.
+- **Details**: 
+  - If the key already exists, its value is replaced. The key is duplicated to ensure independent management in the object. Any existing value is deallocated.
+
+### `json_query`
+
+- **Purpose**: Queries a JSON element using a dot-separated path.
+- **Parameters**:
+  - `element`: The JSON element to query.
+  - `query`: The query string, using dot notation to specify the path to the desired element.
+- **Return**: The JSON element found at the specified path, or `NULL` if the element could not be found or if an error occurs.
+- **Details**: 
+  - The query can include array indexing (e.g., `"array[0].key"`). The function returns the corresponding JSON element or `NULL` if a key or index is missing.
+
 
 ## Example 1: How to Read from a JSON File and Parse It `json_read_from_file` and `json_parse`
 This example demonstrates how to read a JSON file and parse it using `json_read_from_file` and `json_parse`.

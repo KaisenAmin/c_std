@@ -513,7 +513,6 @@ void crypto_generate_random_iv(uint8_t *iv, size_t length) {
     CryptReleaseContext(hCryptProv, 0);
 }
 
-
 #else
 
 #include <fcntl.h>

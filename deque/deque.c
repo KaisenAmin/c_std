@@ -836,7 +836,6 @@ void deque_emplace_front(Deque* deque, void* item) {
     DEQUE_LOG("[deque_emplace_front] Item emplaced at blockIndex: %zu, indexInBlock: %zu. New size: %zu", blockIndex, indexInBlock, deque->size);
 }
 
-
 /**
  * @brief Inserts an element at the specified position in the deque.
  *
@@ -963,7 +962,6 @@ bool deque_is_equal(const Deque* deque1, const Deque* deque2) {
     DEQUE_LOG("[deque_is_equal] Deques are equal.");
     return true;
 }
-
 
 /**
  * @brief Compares two deques to determine if the first is less than the second.

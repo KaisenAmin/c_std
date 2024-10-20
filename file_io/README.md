@@ -18,44 +18,441 @@ This library provides a comprehensive set of functions for reading from and writ
 
 ### FileWriter Functions
 
-- `file_writer_open(filename, mode)`: Opens a file for writing in the specified mode.
-- `file_writer_append(filename, mode)`: Opens an existing file for appending, or creates it if it doesn't exist.
-- `file_writer_close(writer)`: Closes the given FileWriter.
-- `file_writer_get_position(writer)`: Returns the current position in the file.
-- `file_writer_write(buffer, size, count, writer)`: Writes data to the file.
-- `file_writer_write_line(buffer, size, writer)`: Writes a line of text to the file.
-- `file_writer_is_open(writer)`: Checks if the FileWriter is open.
-- `file_writer_flush(writer)`: Flushes the FileWriter's buffer.
-- `file_writer_set_encoding(writer, encoding)`: Sets the character encoding for writing.
-- `file_writer_copy(src_writer, dest_writer)`: Copies content from one FileWriter to another.
-- `file_writer_get_file_name(writer)`: Retrieves the file path associated with the FileWriter.
-- `file_writer_get_encoding(writer)`: Gets the encoding type of the FileWriter.
-- `file_writer_write_fmt(writer, format, ...)`: Writes formatted data to the file.
-- `file_writer_get_size(writer)`: Gets the size of the file.
-- `file_writer_lock(writer)`: Locks the file to prevent other processes from modifying it.
-- `file_writer_unlock(writer)`: Unlocks the file.
-- `file_writer_seek(writer, offset, cursor_pos)`: Moves the file pointer to a specific location.
-- `file_writer_truncate(writer, size)`: Truncates the file to a specified size.
-- `file_writer_write_batch(writer, buffers, sizes, count)`: Writes multiple buffers in a single operation.
-- `file_writer_append_fmt(writer, format, ...)`: Appends formatted text to a file.
+### `FileWriter* file_writer_open(const char* filename, const WriteMode mode)`
+
+- **Purpose**:  
+  The `file_writer_open` function is used to open a file for writing based on the specified `WriteMode`. This function supports writing in various modes, such as text, binary, Unicode, buffered, unbuffered, and appending, allowing flexibility in how the file is written.
+
+- **Parameters**:
+  - `filename`: The name of the file to open for writing.
+  - `mode`: The mode in which the file should be opened, specified by the `WriteMode` enum. The modes include:
+    - `WRITE_TEXT`: Open in text mode.
+    - `WRITE_BINARY`: Open in binary mode.
+    - `WRITE_UNICODE`: Open in Unicode mode (UTF-8).
+    - `WRITE_BUFFERED`: Open in buffered mode for optimized writing.
+    - `WRITE_UNBUFFERED`: Open in unbuffered mode for direct writing.
+    - `WRITE_APPEND`: Open in append mode to write data at the end of the file.
+
+- **Return Type**:  
+  Returns a pointer to the `FileWriter` structure on success, or `NULL` on failure (e.g., invalid `filename` or failure to open the file).
+
+### `FileWriter* file_writer_append(const char* filename, const WriteMode mode)`
+
+- **Purpose**:  
+  The `file_writer_append` function is used to open a file for appending data. This function allows appending new data to the end of an existing file, or creates a new file if it does not already exist. The function supports writing in different modes, such as text, binary, and Unicode.
+
+- **Parameters**:
+  - `filename`: The name of the file to open for appending.
+  - `mode`: The mode in which the file should be opened, specified by the `WriteMode` enum. The available modes include:
+    - `WRITE_TEXT`: Open in text mode for appending.
+    - `WRITE_BINARY`: Open in binary mode for appending.
+    - `WRITE_UNICODE`: Open in Unicode mode (UTF-8) for appending.
+    - `WRITE_BUFFERED`: Open in buffered mode for optimized writing.
+    - `WRITE_UNBUFFERED`: Open in unbuffered mode for direct writing.
+    - `WRITE_APPEND`: Open specifically for appending data.
+
+- **Return Type**:  
+  Returns a pointer to the `FileWriter` structure on success, or `NULL` on failure (e.g., invalid `filename` or failure to open the file).
+
+### `bool file_writer_close(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_close` function closes the file associated with the given `FileWriter` structure. It ensures that all buffered data is properly flushed to the file before closing, preventing data loss.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns `true` if the file was successfully closed, or `false` if an error occurred (e.g., if the file was already closed or `fclose` failed).
+
+### `size_t file_writer_get_position(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_get_position` function retrieves the current position of the file pointer within the file associated with the `FileWriter`. This is useful for tracking the position in the file during writing operations.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns the current file pointer position as a `size_t`. If an error occurs, the function returns `(size_t)-1`.
+
+### `size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_write` function writes data from a buffer to the file associated with the `FileWriter`. It handles different writing modes, including binary and Unicode (UTF-16 and UTF-32), and can perform necessary encoding conversions before writing.
+
+- **Parameters**:
+  - `buffer`: The data buffer to write from.
+  - `size`: The size of each element in the buffer.
+  - `count`: The number of elements to write.
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns the number of elements successfully written. If an error occurs (e.g., invalid `FileWriter` structure or buffer), the function returns `0`.
+
+### `bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_write_line` function writes a line of text to the file associated with the `FileWriter`, automatically adding a newline character at the end. It handles Unicode text, ensuring proper encoding (e.g., UTF-16 on Windows).
+
+- **Parameters**:
+  - `buffer`: The buffer containing the line of text to write.
+  - `size`: The size of the text line in bytes.
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns `true` if the line was successfully written, or `false` if there was an error.
+
+
+### `bool file_writer_is_open(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_is_open` function checks whether the file associated with the `FileWriter` structure is currently open. This is useful to verify the state of the file before performing any write operations.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns `true` if the file is open, or `false` if it is not open or if an error occurred.
+
+
+### `bool file_writer_flush(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_flush` function ensures that all buffered data is physically written to the file. It is useful in scenarios where immediate persistence of data to the file is necessary.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns `true` if the flush operation was successful, or `false` if an error occurred (e.g., invalid `FileWriter` or failed `fflush`).
+
+### `bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding)`
+
+- **Purpose**:  
+  The `file_writer_set_encoding` function configures the `FileWriter` to use the specified character encoding for writing data. It supports different encodings, such as UTF-16 and UTF-32.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+  - `encoding`: The desired `WriteEncodingType` (e.g., `WRITE_ENCODING_UTF16` or `WRITE_ENCODING_UTF32`).
+
+- **Return Type**:  
+  Returns `true` if the encoding was successfully set, or `false` if there was an error (e.g., invalid `FileWriter` or invalid encoding type).
+
+
+### `bool file_writer_copy(FileWriter* src_writer, FileWriter* dest_writer)`
+
+- **Purpose**:  
+  The `file_writer_copy` function copies the entire content of the file managed by the `src_writer` to the file managed by the `dest_writer`. This function is useful for duplicating files or transferring content between different file streams.
+
+- **Parameters**:
+  - `src_writer`: A pointer to the source `FileWriter` structure.
+  - `dest_writer`: A pointer to the destination `FileWriter` structure.
+
+- **Return Type**:  
+  Returns `true` if the file content was successfully copied, or `false` if an error occurred (e.g., file reading/writing failure or invalid `FileWriter` structures).
+
+
+### `const char* file_writer_get_file_name(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_get_file_name` function retrieves the absolute path of the file associated with the `FileWriter` structure. This allows the user to check which file the `FileWriter` is currently operating on.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns a constant character pointer to the file path if the `FileWriter` is valid, or `NULL` if there is an error.
+
+
+### `const char* file_writer_get_encoding(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_get_encoding` function retrieves the encoding type currently set for the `FileWriter` (e.g., UTF-16 or UTF-32). This allows the user to confirm how data is being written to the file in terms of encoding.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns a constant character pointer representing the encoding type if valid, or `NULL` if there is an error.
+
+
+### `size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...)`
+
+- **Purpose**:  
+  The `file_writer_write_fmt` function writes formatted data to the file associated with the `FileWriter`, similar to the behavior of `fprintf`. It formats the data according to the provided format string and writes it to the file.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+  - `format`: A format string (similar to `printf`), followed by the values to format.
+
+- **Return Type**:  
+  Returns the number of characters successfully written, or `0` if an error occurs (e.g., invalid `FileWriter` or formatting failure).
+
+### `size_t file_writer_get_size(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_get_size` function retrieves the current size of the file associated with the `FileWriter`. It ensures that any pending writes are flushed to the file, then seeks to the end of the file to calculate the size.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure.
+
+- **Return Type**:  
+  Returns the size of the file in bytes, or `0` if an error occurs (e.g., failed `fseek` or invalid `FileWriter`).
+
+### `bool file_writer_lock(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_lock` function locks the file associated with the `FileWriter` structure to prevent other processes from modifying it while the lock is held. This ensures exclusive access to the file for writing.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure representing the file.
+
+- **Return Type**:  
+  Returns `true` if the file is successfully locked, or `false` if an error occurred.
+
+### `bool file_writer_unlock(FileWriter* writer)`
+
+- **Purpose**:  
+  The `file_writer_unlock` function releases the lock on the file associated with the `FileWriter`, allowing other processes to access it again. This function should be called after the file operations are completed.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure representing the file.
+
+- **Return Type**:  
+  Returns `true` if the file is successfully unlocked, or `false` if an error occurred.
+
+### `bool file_writer_seek(FileWriter* writer, long offset, const CursorPosition cursor_pos)`
+
+- **Purpose**:  
+  The `file_writer_seek` function moves the file pointer to a specific location, enabling random access writing. The position can be set relative to the beginning, end, or current position of the file.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure representing the file.
+  - `offset`: The offset in bytes to move the file pointer.
+  - `cursor_pos`: The reference position for the offset (`POS_BEGIN`, `POS_END`, or `POS_CURRENT`).
+
+- **Return Type**:  
+  Returns `true` if the file pointer was successfully moved, or `false` if there was an error.
+
+
+### `bool file_writer_truncate(FileWriter* writer, size_t size)`
+
+- **Purpose**:  
+  The `file_writer_truncate` function truncates the file associated with the `FileWriter` to the specified size. If the new size is smaller than the current file size, the file is shortened. If it is larger, the file is extended, and the added space is filled with zeros.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure representing the file.
+  - `size`: The size to which the file should be truncated (in bytes).
+
+- **Return Type**:  
+  Returns `true` if the file was successfully truncated, or `false` if an error occurred.
+
+### `bool file_writer_write_batch(FileWriter* writer, const void** buffers, const size_t* sizes, size_t count)`
+
+- **Purpose**:  
+  The `file_writer_write_batch` function writes multiple buffers to a file in a single operation, potentially optimizing I/O operations by reducing the number of system calls. It handles different encoding types (e.g., UTF-16, UTF-32) and converts the data as needed before writing.
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure representing the file.
+  - `buffers`: An array of pointers to the data buffers to be written.
+  - `sizes`: An array of sizes corresponding to each buffer.
+  - `count`: The number of buffers to be written.
+
+- **Return Type**:  
+  Returns `true` if all buffers were successfully written, or `false` if an error occurred.
+
+### `bool file_writer_append_fmt(FileWriter* writer, const char* format, ...)`
+
+- **Purpose**:  
+  The `file_writer_append_fmt` function formats a string according to the specified format string and appends the resulting text to the file associated with the `FileWriter`. The `FileWriter` must be in append mode (`WRITE_APPEND`).
+
+- **Parameters**:
+  - `writer`: A pointer to the `FileWriter` structure representing the file.
+  - `format`: A format string (similar to `printf`), followed by additional arguments corresponding to the format.
+
+- **Return Type**:  
+  Returns `true` if the formatted text was successfully appended, or `false` if an error occurred.
 
 ### FileReader Functions
 
-- `file_reader_open(filename, mode)`: Opens a file for reading in the specified mode.
-- `file_reader_close(reader)`: Closes the FileReader.
-- `file_reader_get_position(reader)`: Returns the current position in the file.
-- `file_reader_is_open(reader)`: Checks if the FileReader is open.
-- `file_reader_set_encoding(reader, encoding)`: Sets the character encoding for reading.
-- `file_reader_get_file_name(reader)`: Retrieves the file path associated with the FileReader.
-- `file_reader_seek(reader, offset, cursor_pos)`: Moves the file pointer to a specific location.
-- `file_reader_eof(reader)`: Checks if the end of the file has been reached.
-- `file_reader_get_size(reader)`: Gets the size of the file.
-- `file_reader_read(buffer, size, count, reader)`: Reads data from the file.
-- `file_reader_read_line(buffer, size, reader)`: Reads a line of text from the file.
-- `file_reader_read_fmt(reader, format, ...)`: Reads formatted data from the file.
-- `file_reader_copy(src_reader, dest_writer)`: Copies content from a FileReader to a FileWriter.
-- `file_reader_read_lines(reader, buffer, num_lines)`: Reads a specified number of lines from the file.
+### `FileReader* file_reader_open(const char* filename, const ReadMode mode)` 
 
+- **Purpose**:  
+  The `FileReader` function is designed to open and manage reading operations on files using various modes, such as text, binary, Unicode, buffered, unbuffered, and line-by-line reading. This flexibility allows for optimized file reading based on the specific needs of the user. The function is part of a broader framework aimed at providing robust file management capabilities in C.
+
+- **Parameters**:
+  - `filename`: The path of the file to open.
+  - `mode`: Specifies how the file should be opened, as defined by the `ReadMode` enum. Modes include:
+    - `READ_TEXT`: Opens the file in text mode.
+    - `READ_BINARY`: Opens the file in binary mode.
+    - `READ_UNICODE`: Opens the file for Unicode text reading (on Windows, it may involve encoding conversion to UTF-16).
+    - `READ_BUFFERED`: Opens the file with buffered reading for optimized performance.
+    - `READ_UNBUFFERED`: Opens the file without buffering, performing direct read operations.
+    - `READ_LINE`: Opens the file for line-by-line reading, useful for text files.
+
+- **Return Type**:  
+  Returns a pointer to a `FileReader` structure on success, or `NULL` on failure.
+
+
+### `bool file_reader_close(FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_close` function is responsible for properly closing the file associated with a `FileReader` structure. It ensures that any resources allocated for the file (such as memory and file handles) are released to prevent resource leaks.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure that holds information about the open file and its state.
+
+- **Return Type**:  
+  Returns `true` if the file was successfully closed, or `false` if an error occurred (e.g., invalid `FileReader` structure or failure to close the file).
+
+### `size_t file_reader_get_position(FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_get_position` function retrieves the current position of the file pointer within the file associated with the `FileReader` structure. This allows the user to track or resume reading from the current position.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure that holds information about the open file.
+
+- **Return Type**:  
+  Returns the current file pointer position as a `size_t`. If an error occurs (such as an invalid `FileReader` structure), the function returns `(size_t)-1`.
+
+### `bool file_reader_is_open(FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_is_open` function checks whether the file associated with the given `FileReader` structure is currently open. This helps the user ensure that the file is still available for reading operations.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure that holds information about the open file.
+
+- **Return Type**:  
+  Returns `true` if the file is open, or `false` if it is not, or if an error occurs (e.g., invalid `FileReader` structure).
+
+### `bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encoding)`
+
+- **Purpose**:  
+  The `file_reader_set_encoding` function sets the encoding type for reading the file associated with the `FileReader` structure. This allows the user to specify how the file should be interpreted when reading text in different encodings.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure that holds information about the file.
+  - `encoding`: Specifies the encoding type to set, defined by the `ReadEncodingType` enum (e.g., `READ_ENCODING_UTF16` or `READ_ENCODING_UTF32`).
+
+- **Return Type**:  
+  Returns `true` if the encoding was successfully set, or `false` if an error occurred (e.g., invalid `FileReader` structure or invalid encoding type).
+
+### `const char* file_reader_get_file_name(FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_get_file_name` function retrieves the absolute file path associated with the `FileReader` structure. This allows the user to access the full file path of the currently opened file for reference or logging purposes.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure that holds information about the file.
+
+- **Return Type**:  
+  Returns the absolute file path as a constant string if successful, or `NULL` if there is an error (e.g., invalid `FileReader` structure or `file_path` is `NULL`).
+
+### `bool file_reader_seek(FileReader* reader, long offset, const CursorPosition cursor_pos)`
+
+- **Purpose**:  
+  The `file_reader_seek` function moves the file pointer to a specific location within the file. This allows for random access reading, where the user can skip to a particular position in the file to begin reading from there.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure.
+  - `offset`: The number of bytes to move the file pointer relative to the `cursor_pos`.
+  - `cursor_pos`: The reference point from which to calculate the offset. It is defined by the `CursorPosition` enum with values like:
+    - `POS_BEGIN`: Move relative to the beginning of the file.
+    - `POS_END`: Move relative to the end of the file.
+    - `POS_CURRENT`: Move relative to the current position of the file pointer.
+
+- **Return Type**:  
+  Returns `true` if the file pointer was successfully moved, or `false` if there was an error (e.g., invalid `FileReader` structure or failed `fseek`).
+
+### `bool file_reader_eof(FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_eof` function checks if the file pointer has reached the end of the file. This is useful when reading through a file to determine when there is no more data to read.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure.
+
+- **Return Type**:  
+  Returns `true` if the file pointer has reached the end of the file, or `false` if not or if an error occurs (e.g., invalid `FileReader`).
+
+### `size_t file_reader_get_size(FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_get_size` function returns the total size of the file in bytes. This is useful for determining the size of the file for reading or processing operations.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure.
+
+- **Return Type**:  
+  Returns the size of the file in bytes, or `0` if an error occurred (e.g., invalid `FileReader` or failed `fseek`).
+
+### `size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_read` function reads data from the file into a buffer. It supports reading in both binary and text modes, handling different types of data reading efficiently.
+
+- **Parameters**:
+  - `buffer`: A pointer to the buffer where the data will be stored.
+  - `size`: The size of each element to read (in bytes).
+  - `count`: The number of elements to read.
+  - `reader`: A pointer to the `FileReader` structure.
+
+- **Return Type**:  
+  Returns the number of elements successfully read, or `0` if an error occurs (e.g., invalid `FileReader` structure or buffer).
+
+### `bool file_reader_read_line(char* buffer, size_t size, FileReader* reader)`
+
+- **Purpose**:  
+  The `file_reader_read_line` function reads a single line of text from the file associated with the `FileReader`. It supports different encoding modes, including UTF-16 and UTF-8, handling encoding conversions where necessary.
+
+- **Parameters**:
+  - `buffer`: A pointer to the buffer where the line will be stored.
+  - `size`: The maximum number of characters to read, including the null terminator.
+  - `reader`: A pointer to the `FileReader` structure.
+
+- **Return Type**:  
+  Returns `true` if a line was successfully read, or `false` if an error occurs (e.g., invalid `FileReader` structure or reading failure).
+
+### `size_t file_reader_read_fmt(FileReader* reader, const char* format, ...)`
+
+- **Purpose**:  
+  The `file_reader_read_fmt` function reads formatted data from the file using a format string, similar to how `scanf` works. This is useful for reading structured data in a predefined format.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure.
+  - `format`: A format string specifying how to interpret the data.
+  - (varargs): A variable number of arguments representing the variables that will receive the formatted data.
+
+- **Return Type**:  
+  Returns the number of items successfully read, or `0` if an error occurs (e.g., invalid `FileReader` structure or formatting failure).
+
+### `bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer)`
+
+- **Purpose**:  
+  The `file_reader_copy` function copies the contents of a source file (associated with the `FileReader`) to a destination file (associated with the `FileWriter`). It handles encoding conversion if necessary, ensuring that UTF-16 content is converted to UTF-8 before writing.
+
+- **Parameters**:
+  - `src_reader`: A pointer to the `FileReader` structure for the source file.
+  - `dest_writer`: A pointer to the `FileWriter` structure for the destination file.
+
+- **Return Type**:  
+  Returns `true` if the copy operation was successful, or `false` if an error occurred (e.g., failed reading, writing, or conversion).
+
+### `bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines)`
+
+- **Purpose**:  
+  The `file_reader_read_lines` function reads multiple lines of text from a file, storing each line in a dynamically allocated array of strings. This function allows the user to extract a specified number of lines for further processing.
+
+- **Parameters**:
+  - `reader`: A pointer to the `FileReader` structure associated with the file.
+  - `buffer`: A pointer to an array of strings where the lines will be stored. The memory for this buffer is allocated dynamically within the function.
+  - `num_lines`: The number of lines to read from the file.
+
+- **Return Type**:  
+  Returns `true` if the specified number of lines was successfully read, or `false` if an error occurred (e.g., memory allocation failure, invalid `FileReader`, or file reading issues). The buffer will contain the lines that were successfully read.
 
 ## Compilation
 

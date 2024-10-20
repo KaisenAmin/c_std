@@ -4,6 +4,15 @@
 #include <stddef.h>
 #include <stdio.h>
 
+// #define XML_LOGGING_ENABLE 
+
+#ifdef XML_LOGGING_ENABLE
+    #define XML_LOG(fmt, ...) \
+        do { fprintf(stderr, "[XML LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define XML_LOG(fmt, ...) do { } while (0)
+#endif
+
 typedef struct XmlDocument XmlDocument;
 typedef struct XmlNode XmlNode;
 typedef struct XmlAttribute XmlAttribute; 

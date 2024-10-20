@@ -54,6 +54,4 @@ void crypto_generate_random_iv(uint8_t *iv, size_t length);
 void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len);
 void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len);
 
-
-
 #endif 

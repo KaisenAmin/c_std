@@ -132,7 +132,6 @@ bool log_enable_timestamp(Log* config, bool enable) {
     return true;
 }
 
-
 /**
  * @brief Logs a message at a specified log level.
  *
@@ -398,7 +397,6 @@ bool log_set_file_path(Log* config, const char* newFilePath) {
     return true;
 }
 
-
 /**
  * @brief Flushes the log output buffer.
  *
@@ -425,7 +423,6 @@ void log_flush(Log* config) {
 
     LOG_LOG("[log_flush] Info: Log buffer flushed.");
 }
-
 
 /**
  * @brief Rotates the log file when it reaches a specified maximum size.

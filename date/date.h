@@ -2,7 +2,17 @@
 #define DATE_H_
 
 #include <time.h>
+#include <stdio.h>
 #include <stdbool.h>
+
+// #define DATE_LOGGING_ENABLE 
+
+#ifdef DATE_LOGGING_ENABLE 
+    #define DATE_LOG(fmt, ...) \
+        do { fprintf(stderr, "[DATE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define DATE_LOG(fmt, ...) do { } while (0)
+#endif
 
 
 typedef enum {

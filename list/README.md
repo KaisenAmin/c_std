@@ -29,126 +29,205 @@ To use the List library in your project, include the `list.h` header file in you
 
 ## Functions Explanations 
 
-Here’s an updated documentation with a one-line explanation for each function in the `List` library:
+### `List *list_create(size_t itemSize, CompareFunction compare)`
+- **Purpose**: Initializes a new list structure with a specified item size and optional comparison function for sorting and comparing elements.
+- **Parameters**:
+  - `itemSize`: Size of each item in the list in bytes.
+  - `compare`: Optional function for comparing elements in the list; can be `NULL` if not needed.
+- **Return**: Pointer to the newly created list or `NULL` if memory allocation fails.
 
----
+### `size_t list_length(const List *list)`
+- **Purpose**: Returns the current number of elements in the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: The number of elements in the list, or `0` if the list is `NULL`.
 
-### `List *list_create(size_t itemSize, CompareFunction compare);`
-Creates a new list with elements of a specified size and an optional comparison function.
+### `void *list_front(const List *list)`
+- **Purpose**: Retrieves the value of the first element in the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: Pointer to the value of the first element, or `NULL` if the list is empty or `NULL`.
 
-### `size_t list_length(const List *list);`
-Returns the number of elements in the list.
+### `void *list_back(const List *list)`
+- **Purpose**: Retrieves the value of the last element in the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: Pointer to the value of the last element, or `NULL` if the list is empty or `NULL`.
 
-### `void *list_front(const List *list);`
-Returns the first element in the list.
+### `void *list_insert(List *list, size_t index, void *value)`
+- **Purpose**: Inserts a new element at the specified index.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `index`: Position where the new element will be inserted.
+  - `value`: Pointer to the value of the new element.
+- **Return**: Pointer to the inserted value, or `NULL` if the insertion fails.
 
-### `void *list_back(const List *list);`
-Returns the last element in the list.
+### `void *list_erase(List *list, size_t index)`
+- **Purpose**: Removes an element from the list at the specified index.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `index`: Position of the element to be removed.
+- **Return**: Pointer to the value of the removed element, or `NULL` if the removal fails.
 
-### `void *list_insert(List *list, size_t index, void *value);`
-Inserts an element at a specified index in the list.
+### `void list_resize(List *list, size_t newSize, void *defaultValue)`
+- **Purpose**: Resizes the list to a new size, filling new elements with `defaultValue`.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `newSize`: New desired size of the list.
+  - `defaultValue`: Value to initialize new elements (if added).
+- **Return**: None.
 
-### `void *list_erase(List *list, size_t index);`
-Removes an element from a specified index in the list.
+### `void list_swap(List *list1, List *list2)`
+- **Purpose**: Swaps the contents of two lists.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: None.
 
-### `void list_resize(List *list, size_t newSize, void *defaultValue);`
-Resizes the list to a specified number of elements, filling with a default value if necessary.
+### `void list_reverse(List *list)`
+- **Purpose**: Reverses the order of elements in the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: None.
 
-### `void list_swap(List *list1, List *list2);`
-Swaps the contents of two lists.
+### `void list_sort(List *list)`
+- **Purpose**: Sorts the elements in the list using the comparison function.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: None.
 
-### `void list_reverse(List *list);`
-Reverses the order of elements in the list.
+### `void list_push_front(List *list, void *value)`
+- **Purpose**: Adds a new element to the front of the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `value`: Pointer to the value of the new element.
+- **Return**: None.
 
-### `void list_sort(List *list);`
-Sorts the elements of the list using the comparison function.
+### `void list_push_back(List *list, void *value)`
+- **Purpose**: Adds a new element to the back of the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `value`: Pointer to the value of the new element.
+- **Return**: None.
 
-### `void list_push_front(List *list, void *value);`
-Adds an element to the front of the list.
+### `void list_pop_front(List *list)`
+- **Purpose**: Removes the first element from the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: None.
 
-### `void list_push_back(List *list, void *value);`
-Adds an element to the back of the list.
+### `void list_pop_back(List *list)`
+- **Purpose**: Removes the last element from the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: None.
 
-### `void list_pop_front(List *list);`
-Removes the first element from the list.
+### `void list_clear(List *list)`
+- **Purpose**: Removes all elements from the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: None.
 
-### `void list_pop_back(List *list);`
-Removes the last element from the list.
+### `void list_assign(List *list, void *values, size_t numValues)`
+- **Purpose**: Replaces the contents of the list with a new set of values.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `values`: Pointer to the array of values.
+  - `numValues`: Number of values to assign to the list.
+- **Return**: None.
 
-### `void list_clear(List *list);`
-Removes all elements from the list.
+### `void list_emplace_front(List *list, void *value)`
+- **Purpose**: Adds an element to the front of the list without copying the value.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `value`: Pointer to the value.
+- **Return**: None.
 
-### `bool list_empty(const List *list);`
-Checks if the list is empty.
+### `void list_emplace_back(List *list, void *value)`
+- **Purpose**: Adds an element to the back of the list without copying the value.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `value`: Pointer to the value.
+- **Return**: None.
 
-### `void list_deallocate(List *list);`
-Frees all memory used by the list.
+### `void list_splice(List *dest, List *src, Node *pos)`
+- **Purpose**: Moves elements from one list into another at a specified position.
+- **Parameters**:
+  - `dest`: Pointer to the destination list.
+  - `src`: Pointer to the source list.
+  - `pos`: Pointer to the position in `dest` where elements from `src` will be inserted.
+- **Return**: None.
 
-### `Node *list_begin(const List *list);`
-Returns the first node in the list.
+### `void list_remove(List *list, void *value)`
+- **Purpose**: Removes all elements matching the given value from the list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `value`: Pointer to the value to be removed.
+- **Return**: None.
 
-### `Node *list_end(const List *list);`
-Returns the position just past the last node in the list (equivalent to `NULL`).
+### `void list_remove_if(List *list, ConditionFunction cond)`
+- **Purpose**: Removes elements that match a condition.
+- **Parameters**:
+  - `list`: Pointer to the list.
+  - `cond`: Function pointer to the condition to be met for removal.
+- **Return**: None.
 
-### `Node *list_rbegin(const List *list);`
-Returns the last node in the list for reverse iteration.
+### `void list_unique(List *list)`
+- **Purpose**: Removes consecutive duplicate elements from a sorted list.
+- **Parameters**:
+  - `list`: Pointer to the list.
+- **Return**: None.
 
-### `Node *list_rend(const List *list);`
-Returns the position just before the first node in the list (equivalent to `NULL`).
+### `void list_merge(List *list1, List *list2)`
+- **Purpose**: Merges two sorted lists into one sorted list.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: None.
 
-### `const Node *list_cbegin(const List *list);`
-Returns a constant iterator to the first node in the list.
+### `bool list_is_less(const List *list1, const List *list2)`
+- **Purpose**: Checks if one list is lexicographically less than another.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: `true` if `list1` is less than `list2`, otherwise `false`.
 
-### `const Node *list_cend(const List *list);`
-Returns a constant iterator to the position just past the last node in the list.
+### `bool list_is_greater(const List *list1, const List *list2)`
+- **Purpose**: Checks if one list is lexicographically greater than another.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: `true` if `list1` is greater than `list2`, otherwise `false`.
 
-### `const Node *list_crbegin(const List *list);`
-Returns a constant reverse iterator to the last node in the list.
+### `bool list_is_equal(const List *list1, const List *list2)`
+- **Purpose**: Checks if two lists are lexicographically equal.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: `true` if the lists are equal, otherwise `false`.
 
-### `const Node *list_crend(const List *list);`
-Returns a constant reverse iterator to the position just before the first node in the list.
+### `bool list_is_less_or_equal(const List *list1, const List *list2)`
+- **Purpose**: Checks if one list is less than or equal to another lexicographically.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: `true` if `list1` is less than or equal to `list2`, otherwise `false`.
 
-### `void list_assign(List *list, void *values, size_t numValues);`
-Assigns a set of values to the list, replacing its current content.
+### `bool list_is_greater_or_equal(const List *list1, const List *list2)`
+- **Purpose**: Checks if one list is greater than or equal to another lexicographically.
+- **Parameters**:
+  - `list1`: Pointer to the first list.
+  - `list2`: Pointer to the second list.
+- **Return**: `true` if `list1` is greater than or equal to `list2`, otherwise `false`.
 
-### `void list_emplace_front(List *list, void *value);`
-Adds an element to the front of the list without copying the value.
+### `bool list_is_not_equal(const List *list1, const List *list2)`
+- **Purpose**: Checks if two lists are not lexicographically equal.
+- **Parameters**:
+  - `list1`: Pointer to the
 
-### `void list_emplace_back(List *list, void *value);`
-Adds an element to the back of the list without copying the value.
-
-### `void list_splice(List *dest, List *src, Node *pos);`
-Inserts elements from one list into another at a specified position.
-
-### `void list_remove(List *list, void *value);`
-Removes all elements from the list that match a specified value.
-
-### `void list_remove_if(List *list, ConditionFunction cond);`
-Removes elements from the list that satisfy a specified condition.
-
-### `void list_unique(List *list);`
-Removes consecutive duplicate elements from the list.
-
-### `void list_merge(List *list1, List *list2);`
-Merges two sorted lists into one, leaving the second list empty.
-
-### `bool list_is_less(const List *list1, const List *list2);`
-Checks if the first list is lexicographically less than the second list.
-
-### `bool list_is_greater(const List *list1, const List *list2);`
-Checks if the first list is lexicographically greater than the second list.
-
-### `bool list_is_equal(const List *list1, const List *list2);`
-Checks if two lists are lexicographically equal.
-
-### `bool list_is_less_or_equal(const List *list1, const List *list2);`
-Checks if the first list is lexicographically less than or equal to the second list.
-
-### `bool list_is_greater_or_equal(const List *list1, const List *list2);`
-Checks if the first list is lexicographically greater than or equal to the second list.
-
-### `bool list_is_not_equal(const List *list1, const List *list2);`
-Checks if two lists are not lexicographically equal.
+ first list.
+  - `list2`: Pointer to the second list.
+- **Return**: `true` if the lists are not equal, otherwise `false`.
 
 ## Examples 
 

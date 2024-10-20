@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "date.h"
-#include "../fmt/fmt.h"
 #include "../time/std_time.h"
 
 
@@ -691,7 +690,7 @@ out:
 
 static const unsigned char *conv_num(const unsigned char *buf, int *dest, unsigned int llim, unsigned int ulim) {
     if (!buf || !dest) {
-        fmt_fprintf(stderr, "Error: NULL pointer passed to conv_num.\n");
+        DATE_LOG("Error: NULL pointer passed to conv_num.\n");
         return NULL;
     }
     unsigned int result = 0;
@@ -702,7 +701,7 @@ static const unsigned char *conv_num(const unsigned char *buf, int *dest, unsign
 
     ch = *buf;
     if (ch < '0' || ch > '9') {
-        fmt_fprintf(stderr, "Error: Non-numeric character found in conv_num.\n");
+        DATE_LOG("Error: Non-numeric character found in conv_num.\n");
         return NULL;
     }
 
@@ -725,7 +724,7 @@ static const unsigned char *find_string(const unsigned char *bp, int *tgt, const
         const char * const *n2, int c) {
 
     if (!bp || !tgt || !n1) {
-        fmt_fprintf(stderr, "Error: NULL pointer passed to find_string.\n");
+        DATE_LOG("Error: NULL pointer passed to find_string.\n");
         return NULL;
     }
     int i;
@@ -749,7 +748,7 @@ static const unsigned char *find_string(const unsigned char *bp, int *tgt, const
 
 static bool is_persian_leap_year(int year) { // winner (Musa Akrami method) ! ;D
     if (year <= 0) {
-        fmt_fprintf(stderr, "Error: Invalid year passed to is_persian_leap_year. Year: %d\n", year);
+        DATE_LOG("Error: Invalid year passed to is_persian_leap_year. Year: %d\n", year);
         return false;
     }
 
@@ -765,7 +764,7 @@ static bool is_persian_leap_year(int year) { // winner (Musa Akrami method) ! ;D
 
 static int persian_days_in_month(int year, int month) {
     if (year <= 0 || month <= 0 || month > 12) {
-        fmt_fprintf(stderr, "Error: Invalid year or month passed to persian_days_in_month. Year: %d, Month: %d\n", year, month);
+        DATE_LOG("Error: Invalid year or month passed to persian_days_in_month. Year: %d, Month: %d\n", year, month);
         return -1; // Indicate an error
     }
     if (month <= 6) {
@@ -782,7 +781,7 @@ static int persian_days_in_month(int year, int month) {
 
 static bool date_is_valid_ymd(int y, int m, int d, CalendarType type) {
     if (y == 0 || m <= 0 || m > 12 || d <= 0) {
-        fmt_fprintf(stderr, "Error: Invalid year, month, or day in date_is_valid_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
+        DATE_LOG("Error: Invalid year, month, or day in date_is_valid_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         return false;
     }
 
@@ -802,7 +801,7 @@ static bool date_is_valid_ymd(int y, int m, int d, CalendarType type) {
 
 static int days_in_month(int year, int month, CalendarType type) {
     if (month < 1 || month > 12) {
-        fmt_fprintf(stderr, "Error: Invalid month in days_in_month. Month: %d\n", month);
+        DATE_LOG("Error: Invalid month in days_in_month. Month: %d\n", month);
         return 0; // Return 0 for invalid month
     }
     if (type == Gregorian) {
@@ -822,6 +821,29 @@ static int days_in_month(int year, int month, CalendarType type) {
     return 0; // Default case for unsupported calendar types
 }
 
+static long gregorian_to_jdn(int year, int month, int day) {
+    if (month < 3) {
+        year--;
+        month += 12;
+    }
+    return day + (153 * (month - 3) + 2) / 5 + 365 * year + year / 4 - year / 100 + year / 400 - 32045;
+}
+
+// Helper function to convert Persian date to Julian Day Number
+static long persian_to_jdn(int year, int month, int day) {
+    int epbase, epyear;
+
+    epbase = year - ((year >= 0) ? 474 : 473);
+    epyear = 474 + (epbase % 2820);
+
+    return day +
+           ((month <= 7) ? ((month - 1) * 31) : (((month - 1) * 30) + 6)) +
+           ((epyear * 682) - 110) / 2816 +
+           (epyear - 1) * 365 +
+           (epbase / 2820) * 1029983 +
+           (1948320 - 1);
+}
+
 /**
  * @brief Checks if the provided Date object represents a valid date.
  *
@@ -834,7 +856,7 @@ static int days_in_month(int year, int month, CalendarType type) {
  */
 bool date_is_valid(const Date* date) {
     if (!date) {
-        fmt_fprintf(stderr, "Error: Date pointer is NULL in date_is_valid.\n");
+        DATE_LOG("Error: Date pointer is NULL in date_is_valid.\n");
         return false;
     }
     return date_is_valid_ymd(date->year, date->month, date->day, date->calendarType);
@@ -853,7 +875,7 @@ bool date_is_valid(const Date* date) {
 Date* date_create(CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in date_create.\n");
+        DATE_LOG("Error: Memory allocation failed in date_create.\n");
         exit(-1);
     }
 
@@ -883,13 +905,13 @@ Date* date_create(CalendarType type) {
 Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in date_create_ymd.\n");
+        DATE_LOG("Error: Memory allocation failed in date_create_ymd.\n");
         return NULL;
         // exit(-1);
     }
 
     if (!date_is_valid_ymd(y, m, d, type)) {
-        fmt_fprintf(stderr, "Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
+        DATE_LOG("Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         free(date); // Release the allocated memory
         return NULL;
         // exit(-1);
@@ -913,7 +935,7 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
  */
 bool date_is_null(const Date* date) {
     if (!date) {
-        fmt_fprintf(stderr, "Warning: Date pointer is NULL in date_is_null.\n");
+        DATE_LOG("Warning: Date pointer is NULL in date_is_null.\n");
         return true;
     }
     return false;
@@ -933,17 +955,17 @@ bool date_is_null(const Date* date) {
  */
 Date* date_add_days(const Date* orig_date, int ndays) {
     if (!orig_date) {
-        fmt_fprintf(stderr, "Error: Original date is NULL in date_add_days.\n");
+        DATE_LOG("Error: Original date is NULL in date_add_days.\n");
         return NULL;
     }
     if (!date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
-        fmt_fprintf(stderr, "Error: Invalid original date in date_add_days. Year: %d, Month: %d, Day: %d\n", orig_date->year, orig_date->month, orig_date->day);
+        DATE_LOG("Error: Invalid original date in date_add_days. Year: %d, Month: %d, Day: %d\n", orig_date->year, orig_date->month, orig_date->day);
         return NULL;
     }
 
     Date* new_date = (Date*)malloc(sizeof(Date));
     if (!new_date) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for new date in date_add_days.\n");
+        DATE_LOG("Error: Memory allocation failed for new date in date_add_days.\n");
         return NULL;
     }
 
@@ -998,13 +1020,13 @@ Date* date_add_days(const Date* orig_date, int ndays) {
  */
 Date* date_add_months(const Date* orig_date, int nmonths) {
     if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
-        fmt_fprintf(stderr, "Error: date is null or not valid in date_add_months.\n");
+        DATE_LOG("Error: date is null or not valid in date_add_months.\n");
         return NULL;
     }
 
     Date* new_date = (Date*)malloc(sizeof(Date));
     if (new_date == NULL) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory for new date in date_add_months.\n");
+        DATE_LOG("Error: Cannot allocate memory for new date in date_add_months.\n");
         return NULL;
     }
 
@@ -1042,13 +1064,13 @@ Date* date_add_months(const Date* orig_date, int nmonths) {
  */
 Date* date_add_years(const Date* orig_date, int nyears) {
     if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
-        fmt_fprintf(stderr, "Error: date is null or not valid in date_add_years.\n");
+        DATE_LOG("Error: date is null or not valid in date_add_years.\n");
         exit(-1);
     }
 
     Date* new_date = (Date*)malloc(sizeof(Date));
     if (new_date == NULL) {
-        fmt_fprintf(stderr, "Error: Cannot allocate memory for new date in date_add_years.\n");
+        DATE_LOG("Error: Cannot allocate memory for new date in date_add_years.\n");
         exit(-1);
     }
 
@@ -1084,11 +1106,11 @@ Date* date_add_years(const Date* orig_date, int nyears) {
  */
 void date_get_date(const Date* date, int *year, int *month, int *day) {
      if (!date) {
-        fmt_fprintf(stderr, "Error: Passed 'date' is NULL in date_get_date.\n");
+        DATE_LOG("Error: Passed 'date' is NULL in date_get_date.\n");
         return;
     }
     if (!year || !month || !day) {
-        fmt_fprintf(stderr, "Error: One or more output pointers (year, month, day) are NULL in date_get_date.\n");
+        DATE_LOG("Error: One or more output pointers (year, month, day) are NULL in date_get_date.\n");
         return;
     }
 
@@ -1108,7 +1130,7 @@ void date_get_date(const Date* date, int *year, int *month, int *day) {
 int date_day(const Date* date) {
     if (date == NULL || !date_is_valid(date)) {
         // Handle the error, as the date is NULL
-        fmt_fprintf(stderr, "Error: Date is null in date_day or date is not valid.\n");
+        DATE_LOG("Error: Date is null in date_day or date is not valid.\n");
         return -1; // Return an invalid day
     }
     return date->day;
@@ -1125,7 +1147,7 @@ int date_day(const Date* date) {
 int date_month(const Date* date) {
     if (date == NULL || !date_is_valid(date)) {
         // Handle the error, as the date is NULL
-        fmt_fprintf(stderr, "Error: Date is null in date_month or date is not valid.\n");
+        DATE_LOG("Error: Date is null in date_month or date is not valid.\n");
         return -1; // Return an invalid month
     }
     return date->month;
@@ -1142,33 +1164,10 @@ int date_month(const Date* date) {
 int date_year(const Date* date) {
     if (date == NULL) {
         // Handle the error, as the date is NULL
-        fmt_fprintf(stderr, "Error: Date is null in date_year or date is not valid.\n");
+        DATE_LOG("Error: Date is null in date_year or date is not valid.\n");
         return -1; // Return an invalid year
     }
     return date->year;
-}
-
-static long gregorian_to_jdn(int year, int month, int day) {
-    if (month < 3) {
-        year--;
-        month += 12;
-    }
-    return day + (153 * (month - 3) + 2) / 5 + 365 * year + year / 4 - year / 100 + year / 400 - 32045;
-}
-
-// Helper function to convert Persian date to Julian Day Number
-static long persian_to_jdn(int year, int month, int day) {
-    int epbase, epyear;
-
-    epbase = year - ((year >= 0) ? 474 : 473);
-    epyear = 474 + (epbase % 2820);
-
-    return day +
-           ((month <= 7) ? ((month - 1) * 31) : (((month - 1) * 30) + 6)) +
-           ((epyear * 682) - 110) / 2816 +
-           (epyear - 1) * 365 +
-           (epbase / 2820) * 1029983 +
-           (1948320 - 1);
 }
 
 /**
@@ -1182,7 +1181,7 @@ static long persian_to_jdn(int year, int month, int day) {
  */
 int date_day_of_week(const Date* date) {
     if (date == NULL) {
-        fmt_fprintf(stderr, "Error: Date is null in date_day_of_week.\n");
+        DATE_LOG("Error: Date is null in date_day_of_week.\n");
         return -1; // Indicate an error
     }
 
@@ -1194,7 +1193,7 @@ int date_day_of_week(const Date* date) {
         jdn = persian_to_jdn(date->year, date->month, date->day);
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_day_of_week.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_day_of_week.\n");
         return -1; // Indicate an error for unsupported calendar types
     }
     // Calculate the day of the week (Monday = 1, ..., Sunday = 7)
@@ -1211,7 +1210,7 @@ int date_day_of_week(const Date* date) {
  */
 int date_day_of_year(const Date* date) {
     if (date == NULL) {
-        fmt_fprintf(stderr, "Error: Date is null in date_day_of_year.\n");
+        DATE_LOG("Error: Date is null in date_day_of_year.\n");
         return -1; // Indicate an error
     }
 
@@ -1236,7 +1235,7 @@ int date_day_of_year(const Date* date) {
         }
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_day_of_year.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_day_of_year.\n");
         return -1; // Indicate an error for unsupported calendar types
     }
 
@@ -1254,7 +1253,7 @@ int date_day_of_year(const Date* date) {
  */
 int date_days_in_month(const Date* date) {
     if (!date) {
-        fmt_fprintf(stderr, "Error: Date pointer is NULL in date_days_in_month.\n");
+        DATE_LOG("Error: Date pointer is NULL in date_days_in_month.\n");
         return -1; // Indicate an error
     }
 
@@ -1280,7 +1279,7 @@ int date_days_in_month(const Date* date) {
         }
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_days_in_month.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_days_in_month.\n");
         return -1; // Indicate an error for unsupported calendar types
     }
 
@@ -1298,7 +1297,7 @@ int date_days_in_month(const Date* date) {
  */
 int date_days_in_year(const Date* date) {
     if (!date) {
-        fmt_fprintf(stderr, "Error: Date pointer is NULL in date_days_in_year.\n");
+        DATE_LOG("Error: Date pointer is NULL in date_days_in_year.\n");
         return -1; // Indicate an error
     }
 
@@ -1319,7 +1318,7 @@ int date_days_in_year(const Date* date) {
         }
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_days_in_year.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_days_in_year.\n");
         return -1; // Indicate an error for unsupported calendar types
     }
 }
@@ -1337,7 +1336,7 @@ int date_days_in_year(const Date* date) {
  */
 int date_week_number(const Date* date, int* yearNumber) {
     if (!date) {
-        fmt_fprintf(stderr, "Error: Date is NULL in date_week_number.\n");
+        DATE_LOG("Error: Date is NULL in date_week_number.\n");
         return -1;
     }
 
@@ -1379,7 +1378,7 @@ int date_week_number(const Date* date, int* yearNumber) {
         }
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_week_number.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_week_number.\n");
         return -1; // Indicate an error for unsupported calendar types
     }
 
@@ -1400,19 +1399,19 @@ int date_week_number(const Date* date, int* yearNumber) {
  */
 int date_days_to(const Date* from, const Date* to) {
     if (!from || !to) {
-        fmt_fprintf(stderr, "Error: One or both date pointers are NULL in date_days_to.\n");
+        DATE_LOG("Error: One or both date pointers are NULL in date_days_to.\n");
         return -1;
     }
     if (from->calendarType != to->calendarType) {
-        fmt_fprintf(stderr, "Error: Calendar types of dates do not match in date_days_to.\n");
+        DATE_LOG("Error: Calendar types of dates do not match in date_days_to.\n");
         return -1;
     }
     if (!date_is_valid(from)) {
-        fmt_fprintf(stderr, "Error: The 'from' date is invalid in date_days_to.\n");
+        DATE_LOG("Error: The 'from' date is invalid in date_days_to.\n");
         return -1;
     }
     if (!date_is_valid(to)) {
-        fmt_fprintf(stderr, "Error: The 'to' date is invalid in date_days_to.\n");
+        DATE_LOG("Error: The 'to' date is invalid in date_days_to.\n");
         return -1;
     }
 
@@ -1436,7 +1435,7 @@ int date_days_to(const Date* from, const Date* to) {
  */
 bool date_is_equal(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
-        fmt_fprintf(stderr, "Error: One or both dates are null in date_is_equals.\n");
+        DATE_LOG("Error: One or both dates are null in date_is_equals.\n");
         return false;  // Consider unequal if either date is NULL
     }
     return (lhs->year == rhs->year) && (lhs->month == rhs->month) && (lhs->day == rhs->day);
@@ -1455,7 +1454,7 @@ bool date_is_equal(const Date* lhs, const Date* rhs) {
  */
 bool date_is_less_than(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
-        fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_less_than.\n");
+        DATE_LOG("Error: One or both dates are null or invalid in date_is_less_than.\n");
         return false;  // Cannot determine if invalid or NULL
     }
     if (lhs->year != rhs->year) {
@@ -1480,7 +1479,7 @@ bool date_is_less_than(const Date* lhs, const Date* rhs) {
  */
 bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
-        fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_less_than_or_equal.\n");
+        DATE_LOG("Error: One or both dates are null or invalid in date_is_less_than_or_equal.\n");
         return false;  // Cannot determine if invalid or NULL
     }
     return date_is_less_than(lhs, rhs) || date_is_equal(lhs, rhs);
@@ -1498,7 +1497,7 @@ bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs) {
  */
 bool date_is_greater_than(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
-        fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_greater_than.\n");
+        DATE_LOG("Error: One or both dates are null or invalid in date_is_greater_than.\n");
         return false;  // Cannot determine if invalid or NULL
     }
     if (lhs->year != rhs->year) {
@@ -1523,7 +1522,7 @@ bool date_is_greater_than(const Date* lhs, const Date* rhs) {
  */
 bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs) {
     if (lhs == NULL || rhs == NULL || !date_is_valid(lhs) || !date_is_valid(rhs) || (lhs->calendarType != rhs->calendarType)) {
-        fmt_fprintf(stderr, "Error: One or both dates are null or invalid in date_is_greater_than_or_equal.\n");
+        DATE_LOG("Error: One or both dates are null or invalid in date_is_greater_than_or_equal.\n");
         return false;  // Cannot determine if invalid or NULL
     }
     return date_is_greater_than(lhs, rhs) || date_is_equal(lhs, rhs);
@@ -1556,7 +1555,7 @@ bool date_is_not_equals(const Date* lhs, const Date* rhs) {
  */
 bool date_is_leap_year_y(int year, CalendarType type) {
     if (type != Gregorian && type != Persian) {
-        fmt_fprintf(stderr, "Error: CalendarType is not valid in date_is_leap_year_y.\n");
+        DATE_LOG("Error: CalendarType is not valid in date_is_leap_year_y.\n");
         return false;
     }
     if (type == Gregorian) {
@@ -1587,7 +1586,7 @@ bool date_is_leap_year_y(int year, CalendarType type) {
  */
 bool date_is_leap_year(const Date* date) {
     if (date == NULL ) {
-        fmt_fprintf(stderr, "Error: Date is null in date_is_leap_year");
+        DATE_LOG("Error: Date is null in date_is_leap_year");
         return false;  // Cannot determine if the date is NULL
     }
     return date_is_leap_year_y(date->year, date->calendarType);
@@ -1609,18 +1608,18 @@ bool date_is_leap_year(const Date* date) {
  */
 bool date_set_date(Date* date, int year, int month, int day, CalendarType type) {
     if (date == NULL) {
-        fmt_fprintf(stderr, "Error: Date is null in date_set_date");
+        DATE_LOG("Error: Date is null in date_set_date");
         return false;
     }
     if (year <= 0 || month <= 0 || month > 12 || day <= 0) {
-        fmt_fprintf(stderr, "Error: Year, month, or day are not valid");
+        DATE_LOG("Error: Year, month, or day are not valid");
         return false;
     }
 
     // Check validity based on calendar type
     if ((type == Gregorian && day > days_in_month(year, month, Gregorian)) ||
         (type == Persian && day > days_in_month(year, month, Persian))) {
-        fmt_fprintf(stderr, "Error: Day is not valid for the given month and year");
+        DATE_LOG("Error: Day is not valid for the given month and year");
         return false;
     }
 
@@ -1650,7 +1649,7 @@ Date* date_current_date(CalendarType type) {
     // Allocate memory for a new Date
     Date* currentDate = (Date*)malloc(sizeof(Date));
     if (currentDate == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in date_current_date.\n");
+        DATE_LOG("Error: Memory allocation failed in date_current_date.\n");
         return NULL;
     }
     if (type == Gregorian) {
@@ -1669,13 +1668,13 @@ Date* date_current_date(CalendarType type) {
             currentDate->calendarType = Persian;
         } 
         else {
-            fmt_fprintf(stderr, "Error: Failed to get current Persian Date in date_current_date.\n");
+            DATE_LOG("Error: Failed to get current Persian Date in date_current_date.\n");
             free(currentDate);
             return NULL;
         }
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_current_date.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_current_date.\n");
         free(currentDate);
         return NULL;
     }
@@ -1698,7 +1697,7 @@ Date* date_current_date(CalendarType type) {
  */
 Date* date_from_string(const char* string, const char* format, CalendarType type) {
     if (string == NULL || format == NULL) {
-        fmt_fprintf(stderr, "Error: Invalid argument passed to date_from_string");
+        DATE_LOG("Error: Invalid argument passed to date_from_string");
         return NULL;
     }
 
@@ -1708,7 +1707,7 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
     // Allocate memory for a new Date
     Date* date = (Date*)malloc(sizeof(Date));
     if (date == NULL) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in date_from_string.\n");
+        DATE_LOG("Error: Memory allocation failed in date_from_string.\n");
         return NULL;
     }
 
@@ -1717,13 +1716,13 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
     if (type == Gregorian) {
         #if defined(_WIN32) || defined(_WIN64)
         if (win_strptime(string, format, &tm) == NULL) {
-            fmt_fprintf(stderr, "Error: failed to parse string in date_from_string.\n");
+            DATE_LOG("Error: failed to parse string in date_from_string.\n");
             free(date);
             return NULL; // Failed to parse string
         }
         #else 
         if (strptime(string, format, &tm) == NULL) {
-            fmt_fprintf(stderr, "Error: failed to parse string in date_from_string.\n");
+            DATE_LOG("Error: failed to parse string in date_from_string.\n");
             free(date);
             return NULL; // Failed to parse string
         }
@@ -1736,7 +1735,7 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
     else if (type == Persian) {
         // Basic parsing for a Persian date in "YYYY-MM-DD" format
         if (sscanf(string, "%d-%d-%d", &date->year, &date->month, &date->day) != 3) {
-            fmt_fprintf(stderr, "Error: failed to parse string in date_from_string.\n");
+            DATE_LOG("Error: failed to parse string in date_from_string.\n");
             free(date);
             return NULL; // Failed to parse string
         }
@@ -1744,7 +1743,7 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
         // Additional validation can be added here for Persian dates
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_from_string.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_from_string.\n");
         free(date);
         return NULL;
     }
@@ -1767,14 +1766,14 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
  */
 char* date_to_string(const Date* date, const char* format) {
     if (!date || !format) {
-        fmt_fprintf(stderr, "Error: Invalid argument passed to date_to_string. Date or format is NULL.\n");
+        DATE_LOG("Error: Invalid argument passed to date_to_string. Date or format is NULL.\n");
         return NULL;
     }
 
     // Allocate buffer for the formatted date string
     char* date_str = (char*)malloc(80 * sizeof(char));  // Adjust size as necessary
     if (!date_str) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for date string in date_to_string.\n");
+        DATE_LOG("Error: Memory allocation failed for date string in date_to_string.\n");
         return NULL;
     }
 
@@ -1788,7 +1787,7 @@ char* date_to_string(const Date* date, const char* format) {
         };
         // Format the date using strftime
         if (strftime(date_str, 80, format, &tm_date) == 0) {
-            fmt_fprintf(stderr, "Error: Failed to format date in date_to_string.\n");
+            DATE_LOG("Error: Failed to format date in date_to_string.\n");
             free(date_str);
             return NULL;
         }
@@ -1796,13 +1795,13 @@ char* date_to_string(const Date* date, const char* format) {
     else if (date->calendarType == Persian) {
         int result = snprintf(date_str, 80, "%04d-%02d-%02d", date->year, date->month, date->day);
         if (result < 0 || result >= 80) {
-            fmt_fprintf(stderr, "Error: Failed to format Persian date in date_to_string.\n");
+            DATE_LOG("Error: Failed to format Persian date in date_to_string.\n");
             free(date_str);
             return NULL;
         }
     } 
     else {
-        fmt_fprintf(stderr, "Error: Unsupported calendar type in date_to_string.\n");
+        DATE_LOG("Error: Unsupported calendar type in date_to_string.\n");
         free(date_str);
         return NULL;
     }
@@ -1822,11 +1821,11 @@ char* date_to_string(const Date* date, const char* format) {
  */
 long date_to_julian_day(const Date* date) {
     if (!date) {
-        fmt_fprintf(stderr, "Error: Date is NULL in date_to_julian_day.\n");
+        DATE_LOG("Error: Date is NULL in date_to_julian_day.\n");
         return -1;
     }
     if (!date_is_valid(date)) {
-        fmt_fprintf(stderr, "Error: Invalid date in date_to_julian_day.\n");
+        DATE_LOG("Error: Invalid date in date_to_julian_day.\n");
         return -1;
     }
 
@@ -1851,7 +1850,7 @@ long date_to_julian_day(const Date* date) {
  */
 Date* date_from_julian_day(long jd) {
     if (jd < 0) {
-        fmt_fprintf(stderr, "Error: Invalid Julian Day Number in date_from_julian_day.\n");
+        DATE_LOG("Error: Invalid Julian Day Number in date_from_julian_day.\n");
         return NULL;
     }
 
@@ -1870,7 +1869,7 @@ Date* date_from_julian_day(long jd) {
 
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed for date in date_from_julian_day.\n");
+        DATE_LOG("Error: Memory allocation failed for date in date_from_julian_day.\n");
         return NULL;
     }
 
@@ -1894,7 +1893,7 @@ Date* date_from_julian_day(long jd) {
  */
 Date* date_gregorian_to_solar(const Date* gregorian_date) {
     if (!gregorian_date) {
-        fmt_fprintf(stderr, "Error: The provided Gregorian date is NULL in date_gregorian_to_solar.\n");
+        DATE_LOG("Error: The provided Gregorian date is NULL in date_gregorian_to_solar.\n");
         return NULL;
     }
     long gy = gregorian_date->year;
@@ -1932,7 +1931,7 @@ Date* date_gregorian_to_solar(const Date* gregorian_date) {
     // Create new Date for Jalali
     Date* solar_date = (Date*)malloc(sizeof(Date));
     if (!solar_date) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in date_gregorian_to_solar.\n");
+        DATE_LOG("Error: Memory allocation failed in date_gregorian_to_solar.\n");
         return NULL;
     }
 
@@ -1957,7 +1956,7 @@ Date* date_gregorian_to_solar(const Date* gregorian_date) {
  */
 Date* date_solar_to_gregorian(const Date* solar_date) {
     if (!solar_date) {
-        fmt_fprintf(stderr, "Error: The provided Persian date is NULL in date_solar_to_gregorian.\n");
+        DATE_LOG("Error: The provided Persian date is NULL in date_solar_to_gregorian.\n");
         return NULL;
     }
 
@@ -1966,7 +1965,7 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
     long jd = solar_date->day;
     
     if (solar_date->month == 12 && solar_date->day > 29 && !is_persian_leap_year(solar_date->year)) {
-        fmt_fprintf(stderr, "Error: the date is not valid because year is not leap year");
+        DATE_LOG("Error: the date is not valid because year is not leap year");
         exit(-1);
     }
     if (jm == 12 && jd == 30 && date_is_leap_year(solar_date)) {
@@ -2015,7 +2014,7 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
 
     Date* gregorian_new_date = (Date*)malloc(sizeof(Date));
     if (!gregorian_new_date) {
-        fmt_fprintf(stderr, "Error: Memory allocation failed in date_solar_to_gregorian.\n");
+        DATE_LOG("Error: Memory allocation failed in date_solar_to_gregorian.\n");
         return NULL;
     }
 
@@ -2041,7 +2040,7 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
  */
 void date_deallocate(Date* date) {
     if (!date) {
-        fmt_fprintf(stderr, "Warning: Attempted to deallocate a NULL date in date_deallocate.\n");
+        DATE_LOG("Warning: Attempted to deallocate a NULL date in date_deallocate.\n");
         return;
     }
     free(date);

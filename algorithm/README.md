@@ -27,68 +27,571 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ## Function Descriptions
 
-### Sorting and Searching
-- `bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp)`: check range of elements is sorted or not.
+Here are the explanations with the return values for the provided functions:
 
-- `void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp)`: Sorts a range of elements into ascending order while preserving the relative order of equivalent elements.
-- `algorithm_is_sorted_until`: Identifies the point in a range up to which elements are sorted, returning an iterator to the first unsorted element.
-- `algorithm_find`: Finds the first occurrence of a value in a range.
-- `algorithm_find_if`: is a function that searches a range for the first element that satisfies a specified predicate.
-- `algorithm_find_if_not`: Searches a range for the first element that does not satisfy a specified predicate.
-- `algorithm_find_end`: Finds the last occurrence of a subsequence within a range.
-- `algorithm_find_first_of`: Searches for the first element in a range that matches any element from another range.
-- `algorithm_binary_search`: Checks if a value exists in a sorted range then return index of val.
+---
 
-### Copying and Accumulating
-- `algorithm_copy`: Copies a range of elements to a new location.
-- `algorithm_accumulate`: Accumulates values in a range, starting from an initial value.
+### `void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp)`
+- **Description**: Performs a stable sort using the merge sort algorithm, which preserves the relative order of equal elements.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `comp`: Comparison function to define the order of elements.
+- **Return Value**:  
+  No return value. The array is sorted in place.
 
-### Modifying Sequence Operations
-- `algorithm_transform`: Applies a function to a range and stores the result in another range.
-- `algorithm_partition`: Partitions a range based on a predicate, without sorting.
-- `algorithm_nth_element`: Rearranges elements such that the nth element is in its sorted position.
-- `algorithm_unique`: Removes consecutive duplicates in a range.
-- `algorithm_merge`: Merges two sorted ranges.
-- `algorithm_inplace_merge`: Merges two consecutive sorted ranges in-place.
-- `algorithm_fill` : This function fills a range of elements with a specified value. It takes a pointer to the beginning of the range, a pointer to the end of the range (exclusive), the size of each element, and the pointer to the value to fill.
-- `algorithm_fill_n`: This function fills n elements starting from a given pointer with a specified value. It takes a pointer to the beginning of the range, the number of elements to fill, the size of each element, and the pointer to the value to fill.
+---
 
-### Non-modifying Sequence Operations
-- `algorithm_for_each`: Applies a function to each element in a range.
-- `algorithm_max_element`: Finds the maximum element in a range.
-- `algorithm_min_element`: Finds the minimum element in a range.
-- `algorithm_all_of`: Checks if a predicate is true for all elements in a range.
-- `algorithm_any_of`: Checks if a predicate is true for any element in a range.
-- `algorithm_none_of`: Checks if a predicate is false for all elements in a range.
-- `algorithm_lower_bound`: Finds the first position where a value can be inserted without violating order.
-- `algorithm_upper_bound`: Finds the last position where a value can be inserted without violating order.
-- `algorithm_rotate`: Rotates the elements in a range so that the element pointed by `middle` becomes the first element.
-- `algorithm_rotate_copy`: The function will copy the elements from the input range to the output range.but with a rotation effect such that the element pointed by middle becomes the first element of the output range.
+### `void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp)`
+- **Description**: Uses quicksort to sort an array. This is a non-stable sort, which means the relative order of equal elements may not be preserved.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `comp`: Comparison function to define the order of elements.
+- **Return Value**:  
+  No return value. The array is sorted in place.
 
-### Reduction and Comparison
-- `algorithm_reduce`: Reduces elements in a range to a single value using a specified operation.
-- `algorithm_adjacent_find`: Finds the first pair of adjacent elements in a range that satisfy a comparison function.
-- `algorithm_count`: Counts the number of elements in a range that are equal to a specified value, as determined by a comparison function.
-- `algorithm_count_if`: Counts the elements in a range that satisfy a specified boolean predicate function.
-- `algorithm_mismatch`: Finds the first position where two ranges differ, using a comparison function.
-- `algorithm_equal`: Determines if two ranges are equal, based on a comparison function.
-- `algorithm_is_permutation`: Checks if one range is a permutation of another, using a comparison function.
-- `algorithm_search`: Searches for a subrange within a range, using a comparison function.
-- `algorithm_search_n`: Looks for a sequence of repeated values within a range, based on a specified count and a comparison function.
+---
 
-### Others 
-- `algorithm_next_permutation`: Generates the next permutation of a range in lexicographical order, returns true if such a permutation exists, false otherwise.
-- `algorithm_prev_permutation`: Generates the previous permutation of a range in lexicographical order, returns true if such a permutation exists, false otherwise.
-- `algorithm_generate`: Assigns each element in a range a value generated by a function.
-- `algorithm_generate_n`: Similar to algorithm_generate, but affects only the first n elements of the range.
-- `algorithm_copy_backward`: Copies a range of elements to a new location in backward direction, preventing overlap issues.
-- `algorithm_copy_if`: Copies elements from one range to another if they satisfy a specified condition.
-- `algorithm_copy_n`: Copies n elements from one range to another.
-- `algorithm_equal_range`: Returns a pair of iterators defining the subrange of elements equal to a given value within a sorted range.
-- `algorithm_includes`: Checks if all elements of one sorted range are contained in another sorted range.
-- `algorithm_unique_copy`: Copies elements from a range to another range omitting consecutive duplicates.
-- `algorithm_swap`: Exchanges values of two elements.
-- `algorithm_swap_ranges`: Swaps elements in one range with those in another range of the same size.
+### `void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+- **Description**: Finds the first element in the array that matches the provided value.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `val`: Pointer to the value to find.
+  - `comp`: Comparison function used to check for equality between elements.
+- **Return Value**:  
+  Returns a pointer to the first matching element if found; otherwise, returns `NULL`.
+
+---
+
+### `void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+- **Description**: Finds the first element in the array that satisfies the given predicate.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `pred`: Predicate function that returns true if the element matches the condition.
+- **Return Value**:  
+  Returns a pointer to the first matching element if found; otherwise, returns `NULL`.
+
+---
+
+### `void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+- **Description**: Finds the first element in the array that does not satisfy the given predicate.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `pred`: Predicate function that returns true if the element should be skipped.
+- **Return Value**:  
+  Returns a pointer to the first element that does not satisfy the predicate; otherwise, returns `NULL`.
+
+---
+
+### `void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
+- **Description**: Finds the last occurrence of a subsequence within a larger array.
+- **Parameters**:
+  - `base1`: Pointer to the main array.
+  - `num1`: Number of elements in the main array.
+  - `size1`: Size of each element in the main array.
+  - `base2`: Pointer to the subsequence array.
+  - `num2`: Number of elements in the subsequence array.
+  - `size2`: Size of each element in the subsequence array.
+  - `comp`: Comparison function to compare elements.
+- **Return Value**:  
+  Returns a pointer to the last occurrence of the subsequence in the main array if found; otherwise, returns `NULL`.
+
+
+### `void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
+- **Description**: Finds the first occurrence of any element from one array in another array.
+- **Parameters**:
+  - `base1`: Pointer to the main array.
+  - `num1`: Number of elements in the main array.
+  - `size1`: Size of each element in the main array.
+  - `base2`: Pointer to the array of elements to search for.
+  - `num2`: Number of elements in the search array.
+  - `size2`: Size of each element in the search array.
+  - `comp`: Comparison function to compare elements.
+- **Return Value**:  
+  Returns a pointer to the first matching element in the main array if found; otherwise, returns `NULL`.
+
+
+### `size_t algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+
+- **Purpose**: Performs a binary search on a sorted array to find the index of a specific value.
+- **Parameters**:
+  - `base`: Pointer to the sorted array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in the array.
+  - `val`: Pointer to the value to find.
+  - `comp`: Comparison function used to compare elements.
+- **Return**: Index of the found element, or `(size_t)-1` if not found.
+- **Use Case**: Efficiently finding an element in a sorted array.
+
+### `void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Finds the maximum element in an array based on a comparison function.
+- **Parameters**:
+  - `base`: Pointer to the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `comp`: Comparison function that returns a negative value if the first element is less than the second, zero if they are equal, and a positive value if the first element is greater.
+- **Return**: Pointer to the maximum element, or `NULL` if the array is empty.
+
+
+### `void *algorithm_min_element(const void *base, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Finds the minimum element in an array based on a comparison function.
+- **Parameters**:
+  - Same as `algorithm_max_element`.
+- **Return**: Pointer to the minimum element, or `NULL` if the array is empty.
+
+### `void algorithm_for_each(void *base, size_t num, size_t size, ForEachOpFunc op)`
+
+- **Purpose**: Applies a function to each element in an array.
+- **Parameters**:
+  - `base`: Pointer to the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `op`: A function to apply to each element.
+- **Return**: None. The function performs an operation on each element.
+
+
+### `void algorithm_copy(const void *source, size_t num, size_t size, void *dest)`
+
+- **Purpose**: Copies elements from a source array to a destination array.
+- **Parameters**:
+  - `source`: Pointer to the source array.
+  - `num`: Number of elements to copy.
+  - `size`: Size of each element.
+  - `dest`: Pointer to the destination array.
+- **Return**: None. The elements are copied from the source to the destination.
+
+
+### `void *algorithm_accumulate(const void *base, size_t num, size_t size, void *init, AccumulateOpFunc op)`
+
+- **Purpose**: Accumulates a result by applying an operation to each element and an initial value.
+- **Parameters**:
+  - `base`: Pointer to the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `init`: Pointer to the initial value and where the result will be stored.
+  - `op`: A function that defines how to accumulate the values.
+- **Return**: Pointer to the accumulated result, which is the same as `init`.
+
+### `bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+
+- **Purpose**: Checks if all elements in a range satisfy a predicate.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `pred`: Predicate function that returns `true` if the element satisfies the condition.
+- **Return**: `true` if all elements satisfy the predicate, otherwise `false`.
+
+
+### `bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+
+- **Purpose**: Checks if any element in a range satisfies a predicate.
+- **Parameters**:
+  - Same as `algorithm_all_of`.
+- **Return**: `true` if any element satisfies the predicate, otherwise `false`.
+
+
+### `bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+
+- **Purpose**: Checks if none of the elements in a range satisfy a predicate.
+- **Parameters**:
+  - Same as `algorithm_all_of`.
+- **Return**: `true` if none of the elements satisfy the predicate, otherwise `false`.
+
+### `void algorithm_fill(void *first, void *last, size_t size, const void *val)`
+
+- **Purpose**: Fills a range of elements with a specified value.
+- **Parameters**:
+  - `first`: Pointer to the start of the range.
+  - `last`: Pointer to the end of the range.
+  - `size`: Size of each element.
+  - `val`: Value to fill the range with.
+- **Return**: None. The range is modified in place.
+
+### `void algorithm_fill_n(void *first, size_t n, size_t size, const void *val)`
+
+- **Purpose**: Fills the first `n` elements of a range with a specified value.
+- **Parameters**:
+  - `first`: Pointer to the start of the range.
+  - `n`: Number of elements to fill.
+  - Same as `algorithm_fill`.
+- **Return**: None.
+
+### `size_t algorithm_count(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+
+- **Purpose**: Counts the number of occurrences of a value in a range.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements.
+  - `size`: Size of each element.
+  - `val`: Value to count.
+  - `comp`: Comparison function that returns `0` if elements are equal.
+- **Return**: The number of occurrences of `val` in the array.
+
+### `size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+
+- **Purpose**: Counts the number of elements in a range that satisfy a predicate.
+- **Parameters**:
+  - Same as `algorithm_count`, except instead of a value to compare, a predicate function `pred` is provided.
+- **Return**: The number of elements that satisfy the predicate.
+
+
+### `void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng)`
+
+- **Purpose**: Randomly shuffles the elements of an array.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `rng`: Random number generator function.
+- **Return**: None. The array is shuffled in place.
+
+### `void *algorithm_lower_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+
+- **Purpose**: Finds the first position in a sorted range where a value can be inserted without violating the order.
+- **Parameters**:
+  - `base`: Pointer to the sorted array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `val`: Value to insert.
+  - `comp`: Comparison function used to compare elements.
+- **Return**: Pointer to the first position where `val` can be inserted.
+
+### `void *algorithm_upper_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+
+- **Purpose**: Finds the first position in a sorted range where the elements are greater than a specified value.
+- **Parameters**: Same as `algorithm_lower_bound`.
+- **Return**: Pointer to the first position where elements are greater than `val`.
+
+### `void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op)`
+
+- **Purpose**: Transforms each element in an array and stores the result in another array.
+- **Parameters**:
+  - `base`: Pointer to the input array.
+  - `num`: Number of elements.
+  - `size`: Size of each element.
+  - `result`: Pointer to the output array.
+  - `op`: Function that defines the transformation.
+- **Return**: None. The transformed elements are stored in the result array.
+
+### `void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op)`
+
+- **Purpose**: Reduces a range of elements to a single value using a specified binary operation.
+- **Parameters**:
+  - `base`: Pointer to the input array.
+  - `num`: Number of elements.
+  - `size`: Size of each element.
+  - `init`: Initial value and result storage.
+  - `op`: Binary operation function.
+- **Return**: Pointer to the accumulated result (`init`).
+
+### `size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Removes consecutive duplicate elements from a sorted array.
+- **Parameters**:
+  - `base`: Pointer to the sorted array.
+  - `num`: Number of elements.
+  - `size`: Size of each element.
+  - `comp`: Comparison function used to compare elements.
+- **Return**: The number of unique elements remaining in the array.
+
+### `bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
+
+- **Purpose**: Compares two ranges to determine if they contain the same elements in the same order.
+- **Parameters**:
+  - `base1`: Pointer to the first array.
+  - `num1`: Number of elements in the first array.
+  - `size1`: Size of each element in the first array.
+  - `base2`: Pointer to the second array.
+  - `num2`: Number of elements in the second array.
+  - `size2`: Size of each element in the second array.
+  - `comp`: Comparison function to compare elements.
+- **Return**: `true` if the two ranges are equal, `false` otherwise.
+
+### `bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp) `
+
+- **Purpose**: Rearranges elements into the next lexicographical permutation.
+- **Parameters**:
+  - `first`: Pointer to the start of the range.
+  - `last`: Pointer to one past the end of the range.
+  - `size`: Size of each element.
+  - `comp`: Comparison function to compare elements.
+- **Return**: `true` if the next permutation is generated, `false` if the range is reset to the smallest permutation.
+
+### `bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp)`
+
+- **Purpose**: Rearranges elements into the previous lexicographical permutation.
+- **Parameters**: Same as `algorithm_next_permutation`.
+- **Return**: `true` if the previous permutation is generated, `false` if the range is reset to the largest permutation.
+
+### `void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred)`
+
+- **Purpose**: Partitions a range of elements so that all elements for which the predicate returns `true` appear before those for which it returns `false`.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements.
+  - `size`: Size of each element.
+  - `pred`: Predicate function that returns `true` for elements to appear before others.
+- **Return**: Pointer to the first element in the second group (where `pred` returns `false`).
+
+### `void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen)`
+
+- **Purpose**: Fills a range with values generated by a generator function.
+- **Parameters**:
+  - `first`: Pointer to the start of the range.
+  - `last`: Pointer to the end of the range.
+  - `size`: Size of each element.
+  - `gen`: Generator function that produces values.
+- **Return**: None.
+
+### `void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen)`
+
+- **Purpose**: This function fills the first `n` elements of a range with values produced by a generator function. It applies the generator function `gen` to generate values and stores them sequentially in the memory region starting from `first`.
+
+- **Parameters**:
+  - `first`: Pointer to the beginning of the memory region where the values will be stored.
+  - `n`: The number of elements to generate.
+  - `size`: The size of each element in bytes.
+  - `gen`: A generator function that returns the value to be stored in each element.
+- **Return**: No return value.
+- **Use Case**: Use this function to populate an array or data structure with values generated on the fly, such as initializing a set of random numbers or filling a range with a specific pattern.
+
+### `void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result)`
+
+- **Purpose**: Copies elements from one range to another in reverse order.
+- **Parameters**:
+  - `first`: Pointer to the start of the range.
+  - `last`: Pointer to the end of the range.
+  - `size`: Size of each element.
+  - `result`: Pointer to the destination array.
+- **Return**: None.
+
+### `void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred)`
+
+- **Purpose**: Copies elements from one array to another if they satisfy a predicate function.
+- **Parameters**:
+  - `first`, `last`: Source range.
+  - `size`: Size of each element.
+  - `result`: Destination array.
+  - `pred`: Predicate function that determines which elements to copy.
+- **Return**: None.
+
+### `void algorithm_copy_n(const void *first, size_t n, size_t size, void *result)`
+
+- **Purpose**: Copies the first `n` elements from one array to another.
+- **Parameters**:
+  - `first`: Pointer to the start of the source array.
+  - `n`: Number of elements to copy.
+  - `size`: Size of each element.
+  - `result`: Destination array.
+- **Return**: None.
+
+### `Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+
+- **Purpose**: Finds the range of elements equal to a specified value in a sorted array.
+- **Parameters**:
+  - `base`: Pointer to the sorted array.
+  - `num`: Number of elements.
+  - `size`: Size of each element.
+  - `val`: Pointer to the value to search for.
+  - `comp`: Comparison function.
+- **Return**: A `Pair` structure with `first` pointing to the first element equal to `val` and `second` pointing to one past the last.
+
+### `bool algorithm_includes(const void *first1, size_t num1, size_t size1, const void *first2, size_t num2, size_t size2, CompareFunc comp)`
+
+- **Purpose**: Determines if all elements of a sorted range are included in another sorted range.
+- **Parameters**:
+  - `first1`, `num1`, `size1`: The main array.
+  - `first2`, `num2`, `size2`: The array whose elements are being checked for inclusion.
+  - `comp`: Comparison function.
+- **Return**: `true` if all elements of `first2` are included in `first1`, `false` otherwise.
+
+### `size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp)`
+
+- **Purpose**: Copies unique elements from a sorted array to a new array.
+- **Parameters**:
+  - `first`, `num`, `size`: Source array.
+  - `result`: Destination array.
+  - `comp`: Comparison function to determine uniqueness.
+- **Return**: Number of unique elements copied.
+
+### `void algorithm_swap(void *a, void *b, size_t size)`
+
+- **Purpose**: Swaps the values of two elements.
+- **Parameters**:
+  - `a`, `b`: Pointers to the elements to swap.
+  - `size`: Size of each element.
+- **Return**: None.
+
+### `void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size)`
+
+- **Purpose**: Swaps elements between two ranges.
+- **Parameters**:
+  - `first1`, `first2`: Pointers to the start of the ranges.
+  - `num`: Number of elements to swap.
+  - `size`: Size of each element.
+- **Return**: None.
+
+### `bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Checks if the elements in a range are sorted in non-decreasing order.
+- **Parameters**:
+  - `base`, `num`, `size`: The array to check.
+  - `comp`: Comparison function to check the order.
+- **Return**: `true` if the range is sorted, `false` otherwise.
+
+### `void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Finds the first position in a range where the elements are no longer sorted in non-decreasing order.
+- **Parameters**:
+  - `base`, `num`, `size`: The array to check.
+  - `comp`: Comparison function to check the order.
+- **Return**: Pointer to the first element where the sequence is no longer sorted, or the end of the array if it's fully sorted.
+
+### `void algorithm_rotate(void *first, void *middle, void *last, size_t size)`
+
+- **Purpose**: Rotates elements in a range, shifting elements between `first`, `middle`, and `last`.
+- **Parameters**:
+  - `first`, `middle`, `last`: Pointers to the start, middle, and end of the range to rotate.
+  - `size`: Size of each element.
+- **Return**: None.
+
+### `void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result)`
+
+- **Purpose**: Rotates elements in a range and copies the result to another destination array.
+- **Parameters**:
+  - `first`, `middle`, `last`: Pointers to the start, middle, and end of the range to rotate.
+  - `size`: Size of each element.
+  - `result`: Pointer to the destination array where the rotated elements are copied.
+- **Return**: None.
+
+### `void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t num2, size_t size, void *result, CompareFunc comp)`
+
+- **Purpose**: Merges two sorted arrays into a single sorted array.
+- **Parameters**:
+  - `base1`, `num1`: The first sorted array.
+  - `base2`, `num2`: The second sorted array.
+  - `size`: Size of each element.
+  - `result`: Pointer to the array where the merged result will be stored.
+  - `comp`: Comparison function to determine the order.
+- **Return**: None.
+
+### `void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Merges two sorted halves of an array in place.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `middle`: Index of the middle element.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `comp`: Comparison function to order elements.
+- **Description**: This function rearranges elements between two sorted parts of an array into one merged sorted array.
+
+
+### `void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp)`
+
+- **Purpose**: Finds the first occurrence of two consecutive elements that are equal.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element.
+  - `comp`: Comparison function to check equality.
+- **Return**: Pointer to the first element of the first pair of consecutive equal elements, or `NULL` if no match is found.
+
+### `Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp)`
+
+- **Purpose**: Finds the first position where two ranges differ.
+- **Parameters**:
+  - `base1`, `num1`, `size1`: First array details.
+  - `base2`, `num2`, `size2`: Second array details.
+  - `comp`: Comparison function to compare elements.
+- **Return**: A `Pair` where `first` and `second` point to the first differing elements in the two arrays. If the ranges are equal, both pointers are `NULL`.
+
+### `bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
+
+- **Purpose**: Checks if two arrays are permutations of each other.
+- **Parameters**:
+  - `base1`, `num1`, `size1`: First array details.
+  - `base2`, `num2`, `size2`: Second array details.
+  - `comp`: Comparison function to compare elements.
+- **Return**: `true` if the arrays are permutations of each other, `false` otherwise.
+
+### `const void* algorithm_search(const void* first1, const void* last1, size_t size1, const void* first2, const void* last2, size_t size2, CompareFuncBool comp)`
+
+- **Purpose**: Searches for the first occurrence of a sequence within another sequence.
+- **Parameters**:
+  - `first1`, `last1`, `size1`: Details of the first sequence (array).
+  - `first2`, `last2`, `size2`: Details of the second sequence to search for.
+  - `comp`: Comparison function to compare elements between sequences.
+- **Return**: Pointer to the first element of the first occurrence of `first2` within `first1`. Returns `last1` if not found.
+
+### `const void *algorithm_search_n(const void *first, const void* last, size_t size, size_t count, const void *val, CompareFuncBool comp)`
+
+- **Purpose**: Searches for a sequence of `n` identical elements within a range.
+- **Parameters**:
+  - `first`, `last`, `size`: Details of the range (array).
+  - `count`: Number of consecutive elements to search for.
+  - `val`: Pointer to the value that the elements should match.
+  - `comp`: Comparison function to compare elements with `val`.
+- **Return**: Pointer to the first element of the found sequence, or `last` if not found.
+
+### `void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
+
+- **Purpose**: Removes elements that match a specified value from an array.
+- **Parameters**:
+  - `base`, `num`, `size`: Details of the array.
+  - `val`: Pointer to the value to remove from the array.
+  - `comp`: Comparison function to compare elements with `val`.
+- **Return**: Pointer to the new end of the array after the matching elements are removed.
+
+### `void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp)`
+
+- **Purpose**: Copies elements from a source array to a destination array, excluding elements that match a specified value.
+- **Parameters**:
+  - `source`, `num`, `size`: Details of the source array.
+  - `result`: Pointer to the destination array.
+  - `val`: Pointer to the value to exclude.
+  - `comp`: Comparison function to compare elements with `val`.
+- **Return**: No return value, but copies elements excluding those that match `val`.
+
+### `size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred)`
+
+- **Purpose**: Removes elements from the source array based on a predicate function and copies the remaining elements to the result array.
+- **Parameters**:
+  - `source`, `num`, `size`: Details of the source array.
+  - `result`: Pointer to the destination array.
+  - `pred`: Predicate function to determine if an element should be removed.
+- **Return**: The number of elements copied to the result array.
+
+### `void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp)`
+
+- **Purpose**: Replaces occurrences of a value in an array.
+- **Parameters**:
+  - `base`, `num`, `size`: Details of the array.
+  - `old_val`: Pointer to the value to replace.
+  - `new_val`: Pointer to the new value.
+  - `comp`: Comparison function to compare elements with `old_val`.
+- **Return**: No return value, but replaces elements matching `old_val` with `new_val`.
+
+### `void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_val, BoolPredicateFunc pred)`
+
+- **Purpose**: Replaces elements in an array based on a predicate function.
+- **Parameters**:
+  - `base`, `num`, `size`: Details of the array.
+  - `new_val`: Pointer to the value to replace the elements with.
+  - `pred`: Predicate function that determines if an element should be replaced.
+- **Return**: No return value, but replaces elements that satisfy the predicate with `new_val`.
 
 
 ## Example 1 : Sorting array of integer using `algorithm_sort`

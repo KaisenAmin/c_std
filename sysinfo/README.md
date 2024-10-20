@@ -20,100 +20,354 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 The SysInfo library offers a variety of functions to gather information about the system it is running on. Below is a detailed description of each function provided by the library.
 
+### Sysinfo Structures 
+
+### `SysinfoNetworkInterface` Structure
+
+- **Purpose**:  
+  This structure stores information about a network interface, including its name and IP address.
+
+- **Members**:
+  - `char* interface_name`: The name of the network interface.
+  - `char* ip_address`: The IP address associated with the interface.
+
+
+### `SysinfoDiskPartition` Structure
+
+- **Purpose**:  
+  This structure holds information about a disk partition, including the mount point, total size, and free space.
+
+- **Members**:
+  - `char* mount_point`: The mount point of the partition (e.g., `/` or `C:\`).
+  - `unsigned long long total_size`: The total size of the partition in bytes.
+  - `unsigned long long free_space`: The available free space on the partition in bytes.
+
+
 ### Function Descriptions
 
-- **`char* sysinfo_product_version()`**: 
-  - Returns the version of the operating system as a string. If the version cannot be determined, it returns `"unknown"`.
-  - **Example (Linux)**: `"24.04"`
-  - **Example (Windows)**: `"10.0"`
+### `Vector* sysinfo_running_services()`
 
-- **`char* sysinfo_product_type()`**: 
-  - Returns the product name of the operating system. On Linux, it retrieves the distribution name; on Windows, it returns `"Windows"`.
-  - **Example (Linux)**: `"Ubuntu"`
-  - **Example (Windows)**: `"Windows"`
+- **Purpose**:  
+  This function retrieves a list of currently running services on the system. It handles both Windows and Linux platforms, storing the names of the services in a dynamically allocated vector of strings (`Vector*`).
+- **Parameters**:  
+  - None.
+- **Return Value**:  
+  - A `Vector*` containing the names of the running services on the system.
+  - Returns `NULL` if an error occurs (e.g., memory allocation failure).
 
-- **`char* sysinfo_kernel_version()`**: 
-  - Returns the version of the operating system kernel. This is equivalent to the output of `uname -r` on Linux.
-  - **Example (Linux)**: `"6.8.0-35-generic"`
-  - **Example (Windows)**: `"10.0.19045"`
+- **Error Handling**:  
+  Logs an error if the vector cannot be created or if any platform-specific functions fail.
 
-- **`char* sysinfo_kernel_type()`**: 
-  - Returns the type of the kernel, such as `"Linux"` or `"Windows NT"`. This corresponds to the output of `uname -s` on Unix-like systems.
-  - **Example (Linux)**: `"Linux"`
-  - **Example (Windows)**: `"Windows NT"`
+### `Vector* sysinfo_process_list()`
 
-- **`char* sysinfo_boot_unique_id()`**: 
-  - Returns a unique ID for the current boot session. On Linux, this ID is read from `/proc/sys/kernel/random/boot_id`. On Windows, it is derived from the system uptime using `GetTickCount64()`.
-  - **Example (Linux)**: `"bba30543-fea2-4477-b9e4-5343f8746200"`
-  - **Example (Windows)**: `"22066640"`
+- **Purpose**:  
+  This function gathers the names of currently active processes on the system. It works on both Windows and Linux platforms and stores the process names in a dynamically allocated vector of strings.
+- **Parameters**:  
+  - None.
+- **Return Value**:  
+  - A `Vector*` containing the names of active processes.
+  - Returns `NULL` if an error occurs (e.g., failure to allocate memory for the vector).
+- **Error Handling**:  
+  Logs errors for failure to capture process snapshots, read directories, or allocate memory.
 
-- **`char* sysinfo_cpu_architecture()`**: 
-  - Returns the CPU architecture of the system. This could be values like `"x86_64"`, `"ARM"`, etc.
-  - **Example (Linux/Windows)**: `"x86_64"`
+### `Vector* sysinfo_network_interfaces()`
 
-- **`char* sysinfo_machine_host_name()`**: 
-  - Returns the fully qualified domain name (FQDN) of the machine if available. If no FQDN is available, it returns the hostname.
-  - **Example (Linux)**: `"kaisen-VirtualBox"`
-  - **Example (Windows)**: `"DESKTOP-DF2A2F9"`
+- **Purpose**:  
+  This function retrieves the list of active network interfaces and their corresponding IP addresses. It handles both Windows and Linux systems, returning a vector of `SysinfoNetworkInterface` structures.
+- **Parameters**:  
+  - None.
 
-- **`char* sysinfo_machine_unique_id()`**: 
-  - Returns a unique identifier for the machine. This ID is persistent across reboots and is usually derived from `/etc/machine-id` on Linux or the Windows registry.
-  - **Example (Linux)**: `"4229c1dd3d8c41e1a7b9e1102912cde3"`
-  - **Example (Windows)**: `"8ba376a1-9832-45a0-b7bd-5d507e7a1d68"`
+- **Return Value**:  
+  - A `Vector*` containing the active network interfaces and their IP addresses.
+  - Returns `NULL` if an error occurs (e.g., failure to allocate memory for the vector).
 
-- **`char* sysinfo_pretty_product_name()`**: 
-  - Returns a user-friendly string representing the operating system name and version.
-  - **Example (Linux)**: `"Ubuntu 24.04"`
-  - **Example (Windows)**: `"Windows 10 Version 10.0 (Build 19045)"`
+- **Error Handling**:  
+  Logs errors for memory allocation issues or system call failures on both platforms.
 
-- **`char** sysinfo_list_bluetooth_devices(int* count)`**: 
-  - Returns a list of Bluetooth devices currently connected or known to the system. The number of devices is returned via the `count` parameter. This function is not guaranteed to work on all systems and is primarily implemented for Linux and Windows.
-  - **Example (Linux/Windows)**: List of Bluetooth device names.
+### `Vector* sysinfo_open_ports()`
 
-- **`double sysinfo_cpu_usage()`**:
-  - Retrieves the current CPU usage percentage of the system.
+- **Purpose**:  
+  This function retrieves a list of currently open network ports on the system. It gathers information for both Windows and Linux platforms and returns a vector of integers representing the open ports.
+- **Parameters**:  
+  - None.
+- **Return Value**:  
+  - A `Vector*` containing the open network ports on the system.
+  - Returns `NULL` if an error occurs (e.g., failure to allocate memory for the vector).
 
-- **`double sysinfo_memory_usage()`**:
-  - Retrieves the current memory usage percentage of the system.
+- **Error Handling**:  
+  Logs errors if system calls fail or if there is a problem creating the vector.
 
-- **`char* sysinfo_disk_space(const char* path)`**:
-  - Retrieves the disk space information for a given path.
+### `Vector* sysinfo_disk_partitions()`
 
-- **`char* sysinfo_system_uptime()`**:
-  - Retrieves the system's uptime since the last boot.
+- **Purpose**:  
+  This function retrieves information about the disk partitions on the system. The disk partitions are represented as `SysinfoDiskPartition` structures, which contain details like the mount point, total size, and free space. It handles both Windows and Linux platforms.
 
-- **`int sysinfo_cpu_cores()`**:
-  - Retrieves the number of CPU cores available on the system.
+- **Parameters**:  
+  - None.
 
-- **`Vector* sysinfo_process_list()`**:
-  - Retrieves a list of active processes on the system.
+- **Return Value**:  
+  - A `Vector*` containing `SysinfoDiskPartition` structures representing the disk partitions.
+  - Returns `NULL` if an error occurs or if the platform is unsupported.
 
-- **`Vector* sysinfo_running_services()`**:
-  - Retrieves the list of currently running services on the system.
+- **Error Handling**:  
+  Logs errors if the vector cannot be created or if system-specific functions fail.
 
-- **`Vector* sysinfo_network_interfaces()`**:
-  - Retrieves the list of active network interfaces along with their IP addresses.
+### `void sysinfo_deallocate_network_interfaces(Vector* interfaces)`
 
-- **`void sysinfo_deallocate_network_interfaces(Vector* interfaces)`** :
-  - Deallocates the memory used by a vector of SysinfoNetworkInterface structures.
+- **Purpose**:  
+  This function deallocates the memory used by a vector of `SysinfoNetworkInterface` structures, including the dynamically allocated `interface_name` and `ip_address` fields for each interface. It frees each individual interface and then deallocates the vector itself.
+- **Parameters**:  
+  - `interfaces`: A pointer to a `Vector` containing `SysinfoNetworkInterface` structures. The memory for each element in the vector is deallocated, and then the vector itself is freed.
+- **Error Handling**:  
+  - If `interfaces` is `NULL`, the function logs a warning and returns without performing any operations.
+  - Logs details about each interface being deallocated.
 
-- **`void sysinfo_deallocate_disk_partitions(Vector* partitions)`**:
-  - Deallocates the memory used by a vector of SysinfoDiskPartition structures.
+### `void sysinfo_deallocate_disk_partitions(Vector* partitions)`
 
-- **`Vector* sysinfo_open_ports()`**: 
-  - Retrieves a list of open network ports on the system return all tcp and udp listening ports.
+- **Purpose**:  
+  This function deallocates a vector of `SysinfoDiskPartition` structures, specifically freeing the `mount_point` string for each partition and then deallocating the vector itself.
 
-- **`Vector* sysinfo_disk_partitions()`**:
-  - Retrieves a list of mounted disk partitions on the system.
+- **Parameters**:  
+  - `partitions`: A pointer to a `Vector` containing `SysinfoDiskPartition` structures. The function frees the memory for each partition's `mount_point`, and then deallocates the vector.
 
-- **`bool sysinfo_is_virtualized()`**:
-  - Checks if the system is running in a virtualized environment.
+- **Error Handling**:  
+  - If `partitions` is `NULL`, the function logs a warning and returns without performing any operations.
+  - Logs each partition’s deallocation process and any potential issues (e.g., `NULL` partitions).
 
-- **`char* sysinfo_system_locale()`**:
-  - Retrieves the current system locale as a string.
+### `int sysinfo_cpu_cores()`
 
-- **`bool sysinfo_is_service_running(const char*)`**:
-  - Checks if a specific service or process is running.
+- **Purpose**:  
+  Retrieves the number of CPU cores available on the system. It uses platform-specific implementations for Windows and Linux to return the total number of CPU cores.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - Returns the total number of CPU cores available on the system.
+  - Returns `-1` if an error occurs (e.g., failure to retrieve core count due to system call issues).
+
+### `bool sysinfo_is_virtualized()`
+
+- **Purpose**:  
+  Checks if the system is running in a virtualized environment by detecting specific processor features that are indicative of virtualization technology. It provides platform-specific checks for virtualization status (e.g., Hyper-V on Windows).
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - `true`: If the system is detected to be running in a virtualized environment (using `PF_VIRT_FIRMWARE_ENABLED` or `PF_HYPERVISOR_PRESENT` on Windows).
+  - `false`: If the system is not running in a virtualized environment.
+
+### `bool sysinfo_is_service_running(const char* service_name)`
+
+- **Purpose**:  
+  This function checks whether a specific service or process, given by `service_name`, is currently running on the system. It supports both Windows and Linux systems.
+
+- **Parameters**:  
+  - `service_name`: The name of the service or process to check.
+
+- **Return Value**:  
+  - `true`: If the service or process is running.
+  - `false`: If the service or process is not running.
+
+### `double sysinfo_cpu_usage()`
+
+- **Purpose**:  
+  This function calculates the current CPU usage percentage by comparing the CPU time spent performing work (in user mode and kernel mode) to the idle time. It provides an overview of how much of the CPU's capacity is being utilized at the moment.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - The CPU usage as a percentage (`double`).
+  - `-1.0`: If an error occurs (e.g., failure to retrieve CPU usage data from the system).
+
+- **Usage Example**:  
+  Use this function to monitor or log real-time CPU usage for performance tracking or system diagnostics.
+
+
+### `double sysinfo_memory_usage()`
+
+- **Purpose**:  
+  This function calculates the current memory usage percentage based on the total available memory and the memory currently in use by the system. It provides insight into how much of the system's memory resources are being consumed.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - The memory usage as a percentage (`double`).
+  - `-1.0`: If an error occurs (e.g., failure to retrieve memory usage data from the system).
+
+### `char* sysinfo_product_version()`
+
+- **Purpose**:  
+  This function retrieves the version of the operating system, providing key information about the specific release version of the OS ( Windows 10, Ubuntu 20.04). It helps identify the system's OS version for compatibility checks or system profiling.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the OS version (e.g., `"Windows 10"`, `"Ubuntu 20.04"`).
+  - `"unknown"`: If the version cannot be determined.
+
+### `char* sysinfo_product_type()`
+
+- **Purpose**:  
+  This function retrieves the product type or name of the operating system (e.g., `"Windows"`, `"Ubuntu"`). It identifies the specific OS to help determine system compatibility or environment details.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the OS product type.
+  - `"unknown"`: If the product type cannot be determined.
+
+### `char* sysinfo_kernel_version()`
+
+- **Purpose**:  
+  This function retrieves the kernel version of the operating system. The kernel version gives detailed information about the OS, which is useful for diagnostics, debugging, or ensuring compatibility (e.g., `"10.0.19045"` on Windows, `"6.8.0-35-generic"` on Linux).
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the kernel version.
+  - `"unknown"`: If the kernel version cannot be determined.
+
+### `char* sysinfo_kernel_type()`
+
+- **Purpose**:  
+  This function returns the type of the operating system kernel, providing a high-level classification (e.g., `"Windows NT"` for Windows systems or `"Linux"` for Linux-based systems).
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the kernel type.
+  - `"unknown"`: If the kernel type cannot be determined.
+
+### `char* sysinfo_boot_unique_id()`
+
+- **Purpose**:  
+  This function generates a unique identifier representing the current boot session of the machine. It is useful for tracking the current boot session or for session-specific operations.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the unique boot ID.
+  - `"unknown"`: If the boot ID cannot be determined.
+
+### `char* sysinfo_cpu_architecture()`
+
+- **Purpose**:  
+  This function detects and returns the CPU architecture of the system (e.g., `"x86_64"`, `"ARM"`, `"IA64"`). It helps to identify the processor type in use, useful for compatibility and system profiling.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the CPU architecture.
+  - `"unknown"`: If the architecture cannot be determined.
+
+### `char* sysinfo_machine_host_name()`
+
+- **Purpose**:  
+  This function retrieves the host name or fully qualified domain name (FQDN) of the machine. It is useful for network-related tasks where the machine's identity is required.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the machine's host name.
+  - `"unknown"`: If the host name cannot be determined.
+
+### `char* sysinfo_machine_unique_id()`
+
+- **Purpose**:  
+  This function provides a unique identifier for the machine, typically based on hardware properties or a system-specific identifier. It is useful for ensuring persistent identification of the machine across reboots.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the machine's unique ID.
+  - `"unknown"`: If the ID cannot be determined.
+
+### `char* sysinfo_pretty_product_name()`
+
+- **Purpose**:  
+  This function returns a human-readable string that combines the operating system’s product name and version in a user-friendly format, giving more intuitive system information.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the pretty OS product name.
+
+### `char* sysinfo_build_abi()`
+
+- **Purpose**:  
+  This function returns information about the system's Application Binary Interface (ABI), including architecture, endianness, and data model. It is useful for determining system capabilities and compatibility with certain applications.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A static string containing the ABI details.
+  - `"unknown"`: If the ABI cannot be determined.
+
+### `char* sysinfo_system_uptime()`
+
+- **Purpose**:  
+  This function returns the system's uptime (time since last boot) in a human-readable format (e.g., "1 day, 2 hours, 30 minutes"). It is useful for system monitoring and diagnostics.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A dynamically allocated string containing the system uptime in days, hours, minutes, and seconds. The caller must free the memory.
+  - `NULL`: If the uptime cannot be determined.
+
+### `char* sysinfo_system_locale()`
+
+- **Purpose**:  
+  This function retrieves the system's current locale setting, useful for adapting applications to the user’s language and region preferences.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A dynamically allocated string containing the system locale. The caller must free the returned string.
+  - `"unknown"`: If the locale cannot be determined.
+
+### `char* sysinfo_disk_space(const char* path)`
+
+- **Purpose**:  
+  This function returns information about the total, used, and available disk space for the given path on the system. It is useful for disk space monitoring and system diagnostics.
+
+- **Parameters**:  
+  - `path`: A string representing the file path for which to check disk space.
+
+- **Return Value**:  
+  - A string containing the total, used, and available disk space in MB. The caller must free the memory.
+  - `NULL`: If the disk space cannot be determined.
+
+### `char** sysinfo_list_bluetooth_devices(int* count)`
+
+- **Purpose**:  
+  This function scans for Bluetooth devices and returns a list of names for the devices currently connected or remembered by the system.
+
+- **Parameters**:  
+  - `count`: A pointer to an integer where the function will store the number of found Bluetooth devices.
+
+- **Return Value**:  
+  - An array of strings representing Bluetooth device names. The caller must free each string and the array.
+  - `NULL`: If no devices are found or the function fails.
+
+
+---
+
 
 ## Examples
 

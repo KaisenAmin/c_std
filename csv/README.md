@@ -24,36 +24,271 @@ To use this library, include the `csv.h` header in your C project and compile th
 
 ## Functions Descriptions 
 
-Here is a brief two-line description of each function in the CSV library:
 
-- `CsvRow* csv_row_create()`: Creates a new CSV row structure. Initializes the internal array for storing cell values.
-- `CsvRow* csv_file_get_row(const CsvFile *file, size_t index)`: Retrieves a row from a CSV file at the specified index. Returns NULL if the index is invalid.
-- `CsvRow* csv_row_read_next(FileReader *reader, char delimiter)`: Reads the next row from a file using the provided FileReader object and delimiter.
-- `CsvRow* csv_file_get_header(const CsvFile *file)`: Retrieves the header row from a CSV file, typically the first row.
-- `CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm)`: Searches for rows in the CSV file that contain the given search term.
+### `CsvRow* csv_row_create()`
 
-- `CsvFile* csv_file_create(char delimiter)`: Creates a new CSV file structure and initializes its internal state with the given delimiter.
+- **Purpose**: Creates a new, empty `CsvRow` structure.
+- **Parameters**: None.
+- **Return**: A pointer to the newly created `CsvRow` structure, or terminates the program if memory allocation fails.
+- **Details**: 
+  - Allocates memory for a `CsvRow` structure.
+  - Initializes the row by setting the `cells` pointer to `NULL`, `size` to `0`, and `capacity` to `0` to indicate an empty row.
+  - Logs the success or failure of the operation.
 
-- `char* csv_row_get_cell(const CsvRow *row, size_t index)`: Retrieves the value of a cell from a CSV row at the specified index. Returns NULL if the index is out of bounds.
-- `char* csv_export_to_json(const CsvFile *file)`: Exports the contents of a CSV file to a JSON format string.
+### `void csv_row_destroy(CsvRow *row)`
 
-- `void csv_row_destroy(CsvRow *row)`: Frees all memory associated with a CSV row, including the cells and the row structure itself.
-- `void csv_row_append_cell(CsvRow *row, const char *value)`: Appends a new cell with the given string value to a CSV row, resizing the row if needed.
-- `void csv_file_destroy(CsvFile *file)`: Destroys a CSV file structure and frees memory associated with all its rows and internal data.
-- `void csv_file_read(CsvFile *file, const char *filename)`: Reads the contents of a CSV file from the specified filename into the CSV structure.
-- `void csv_file_write(const CsvFile *file, const char *filename)`: Writes the contents of the CSV structure to a specified file, using the configured delimiter.
-- `void csv_file_append_row(CsvFile *file, CsvRow *row)`: Appends a new row to the CSV file structure, expanding the internal array if necessary.
-- `void csv_file_remove_row(CsvFile *file, size_t index)`: Removes a row from the CSV file at the specified index and shifts subsequent rows.
-- `void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colData)`: Inserts a new column at the specified index with the provided data.
-- `void csv_file_set_header(CsvFile *file, CsvRow *header)`: Sets the header row for a CSV file, replacing the existing header if one exists.
-- `void csv_file_concatenate(CsvFile *file1, const CsvFile *file2)`: Concatenates two CSV files, appending the rows of one file to another.
+- **Purpose**: Frees the memory associated with a `CsvRow` structure and its contents.
+- **Parameters**:
+  - `row`: Pointer to the `CsvRow` structure to be destroyed.
+- **Return**: None.
+- **Details**:
+  - Frees each individual cell in the `CsvRow`.
+  - Frees the array of cells (`row->cells`) and then the `CsvRow` structure itself.
+  - Logs each step, including any errors if the `row` is `NULL`.
 
-- `int csv_row_get_cell_as_int(const CsvRow *row, size_t index)`: Converts the value of a specified cell in a row to an integer.
-- `int csv_column_sum(const CsvFile *file, size_t columnIndex)`: Sums the values of a specific column in the CSV file, assuming they contain integers.
+### `void csv_row_append_cell(CsvRow *row, const char *value)`
 
-- `bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *format)`: Validates whether a specific cell in a row matches a given format string.
+- **Purpose**: Adds a new cell with a specified value to a `CsvRow`.
+- **Parameters**:
+  - `row`: Pointer to the `CsvRow` structure where the cell will be added.
+  - `value`: A string representing the value to append.
+- **Return**: None.
+- **Details**:
+  - Dynamically resizes the internal array of cells if necessary.
+  - Uses `string_strdup` to copy the `value` string into the newly created cell.
+  - Logs each step of the process, including the new value being appended and any memory allocation failures.
+
+### `char* csv_row_get_cell(const CsvRow *row, size_t index)`
+
+- **Purpose**: Retrieves the value of a cell at a specified index in a `CsvRow`.
+- **Parameters**:
+  - `row`: Pointer to the `CsvRow` structure.
+  - `index`: The index of the cell to retrieve.
+- **Return**: A pointer to the string value of the cell, or `NULL` if the index is out of bounds or the row is `NULL`.
+- **Details**:
+  - Checks if the index is valid and the `row` is not `NULL`.
+  - Logs the outcome, including any errors, and returns the value at the specified index if valid.
+
+### `CsvFile* csv_file_create(char delimiter)`
+
+- **Purpose**: Creates a new `CsvFile` structure with a specified delimiter.
+- **Parameters**:
+  - `delimiter`: The character used to separate fields in the CSV file (e.g., `,` or `;`).
+- **Return**: A pointer to the newly created `CsvFile` structure.
+- **Details**:
+  - Allocates memory for the `CsvFile` structure.
+  - Initializes the `rows` pointer to `NULL`, `size` to `0`, and `capacity` to `0` (indicating an empty file).
+  - Sets the provided delimiter for separating fields.
+  - Logs the success or failure of the memory allocation.
+
+### `void csv_file_destroy(CsvFile *file)`
+
+- **Purpose**: Frees the memory associated with a `CsvFile` structure and its rows.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure to be destroyed.
+- **Return**: None.
+- **Details**:
+  - Iterates through each `CsvRow` in the `CsvFile` and destroys it using `csv_row_destroy`.
+  - Frees the array of `rows` and the `CsvFile` structure itself.
+  - Logs each step, including any errors (e.g., if `file` is `NULL`).
+
+
+### `void csv_file_read(CsvFile *file, const char *filename)`
+
+- **Purpose**: Reads the contents of a CSV file into a `CsvFile` structure.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure where the CSV contents will be stored.
+  - `filename`: The name of the CSV file to read.
+- **Return**: None.
+- **Details**:
+  - Opens the CSV file for reading using a file reader utility (`file_reader_open`).
+  - Reads the file line by line, stripping any newline characters.
+  - Each line is parsed into a `CsvRow` using `parse_csv_line` and then appended to the `CsvFile`.
+  - Logs each step of the process, including opening, reading, parsing, and closing the file.
+
+### `void csv_file_write(const CsvFile *file, const char *filename)`
+
+- **Purpose**: Writes the contents of a `CsvFile` structure to a specified file.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure containing the CSV data.
+  - `filename`: The name of the file where the CSV data will be written.
+- **Return**: None.
+- **Details**:
+  - Opens the specified file for writing.
+  - Iterates through each row and cell of the `CsvFile`, writing them to the file, separating cells with the specified delimiter.
+  - Writes each row as a new line in the file.
+  - Ensures proper memory handling and logs progress, including any errors encountered during file operations.
+
+### `void csv_file_append_row(CsvFile *file, CsvRow *row)`
+
+- **Purpose**: Appends a new row to a `CsvFile` structure.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure where the row will be appended.
+  - `row`: Pointer to the `CsvRow` structure to append.
+- **Return**: None.
+- **Details**:
+  - Checks if the `CsvFile` has enough capacity to hold the new row; if not, it reallocates memory for the `rows` array, doubling its capacity.
+  - Appends the new row at the end of the `rows` array.
+  - Logs the resizing and appending process, including memory allocation checks and errors.
+
+
+### `CsvRow* csv_file_get_row(const CsvFile *file, size_t index)`
+
+- **Purpose**: Retrieves a specific row from a `CsvFile` by its index.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure from which to retrieve the row.
+  - `index`: The index of the row to retrieve.
+- **Return**: Pointer to the `CsvRow` structure at the specified index, or `NULL` if the index is out of bounds or the file is `NULL`.
+- **Details**:
+  - Performs bounds checking to ensure the index is valid.
+  - Logs the process and any errors, such as invalid indices or `NULL` pointers.
+
+
+### `void csv_file_remove_row(CsvFile *file, size_t index)`
+
+- **Purpose**: Removes a row from a `CsvFile` at the specified index.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure from which to remove the row.
+  - `index`: The index of the row to remove.
+- **Return**: None.
+- **Details**:
+  - Destroys the row at the specified index using `csv_row_destroy`.
+  - Shifts all subsequent rows one position forward to fill the gap left by the removed row.
+  - Decreases the size of the `CsvFile` and logs the process, including any errors due to invalid indices or memory issues.
+
+### `void csv_print(const CsvFile *file)`
+
+- **Purpose**: Prints the contents of a `CsvFile` structure to the standard output.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure to print.
+- **Return**: None.
+- **Details**:
+  - Iterates through each row and cell of the `CsvFile`, printing the content to the standard output.
+  - Cells within each row are separated by the delimiter character.
+  - Handles error cases where the `file` is `NULL`.
+  - Logs the process and any issues that occur during execution.
+
+### `CsvRow* csv_row_read_next(FileReader *reader, char delimiter)`
+
+- **Purpose**: Reads the next row from a file using a `FileReader` object.
+- **Parameters**:
+  - `reader`: Pointer to the `FileReader` object used to read the file.
+  - `delimiter`: The character used to separate fields in the row.
+- **Return**: Pointer to a `CsvRow` containing the parsed cells, or `NULL` if an error occurs or the end of the file is reached.
+- **Details**:
+  - Reads a line from the file and splits it into cells based on the specified delimiter.
+  - Handles quoted fields and trims newlines from the end of the line.
+  - Logs progress and errors during the reading and parsing of each line.
+
+### `void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colData)`
+
+- **Purpose**: Inserts a new column into a `CsvFile` structure at a specified index.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` where the column will be inserted.
+  - `colIndex`: The index at which to insert the new column.
+  - `colData`: Pointer to the `CsvRow` containing the data for the new column.
+- **Return**: None.
+- **Details**:
+  - Inserts a column into each row of the `CsvFile` at the specified index.
+  - If a row does not have a corresponding value in `colData`, a `NULL` value is inserted.
+  - Handles memory reallocation to ensure enough space for the new column.
+  - Logs the process, including memory allocation and shifting of cells to make room for the new column.
+
+### `CsvRow* csv_file_get_header(const CsvFile *file)`
+
+- **Purpose**: Retrieves the header row from a `CsvFile`.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` from which to retrieve the header.
+- **Return**: Pointer to the header `CsvRow`, or `NULL` if the file is empty or invalid.
+- **Details**:
+  - Returns the first row of the `CsvFile`, which is typically considered the header.
+  - Logs the process and any issues, such as empty or `NULL` files.
+
+### `void csv_file_set_header(CsvFile *file, CsvRow *header)`
+
+- **Purpose**: Replaces the existing header row in a `CsvFile` structure with a new header. If the file has no rows, the header is inserted as the first row.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` structure where the new header will be set.
+  - `header`: Pointer to the `CsvRow` structure that will be set as the new header.
+- **Return**: None.
+- **Details**:
+  - If the file already contains rows, the current header (first row) is destroyed and replaced by the new header.
+  - If the file is empty, it checks the capacity and resizes the row array if necessary.
+  - The function logs all operations, including memory allocation and row destruction.
+
+### `int csv_row_get_cell_as_int(const CsvRow *row, size_t index)`
+
+- **Purpose**: Retrieves the value of a specific cell in a `CsvRow` and converts it to an integer.
+- **Parameters**:
+  - `row`: Pointer to the `CsvRow` from which the cell value will be retrieved.
+  - `index`: The index of the cell to retrieve within the row.
+- **Return**: The integer value of the cell. Returns 0 if an error occurs (invalid index or null row).
+- **Details**:
+  - Logs the start of the function, checks for invalid input, and converts the string value of the cell at the given index into an integer.
+  - Uses the `atoi` function for conversion.
+  - Logs any errors, including invalid indices or null row references.
+
+### `CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm)`
+
+- **Purpose**: Finds and returns all rows in a `CsvFile` that contain a specific search term.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` to search.
+  - `searchTerm`: The term to search for in the cells of the CSV file.
+- **Return**: An array of pointers to the rows that contain the search term. The array is null-terminated. If no matches are found, the function returns `NULL`.
+- **Details**:
+  - Searches through each row and each cell in the CSV file for the given search term.
+  - Allocates memory to store pointers to matching rows. The array is resized to match the exact number of found rows.
+  - Logs memory allocation and search progress for each row and cell, as well as when matches are found.
+  - The function breaks the inner loop after finding the first occurrence in a row, ensuring only the first match per row is returned.
+
+### `bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *format)`
+
+- **Purpose**: Validates the format of a specific cell in a `CsvRow` by comparing the content of the cell to a formatted string.
+- **Parameters**:
+  - `row`: Pointer to the `CsvRow` containing the cell to be validated.
+  - `index`: The index of the cell in the row.
+  - `format`: A format string that specifies the expected format of the cell content.
+- **Return**: Returns `true` if the cell content matches the given format, `false` otherwise.
+- **Details**:
+  - The function uses the `snprintf` function to format the cell content into a string and then compares it with the actual cell content.
+  - Logs errors for invalid parameters or if the cell doesn't match the format.
+
+### `void csv_file_concatenate(CsvFile *file1, const CsvFile *file2)`
+
+- **Purpose**: Appends all rows from one `CsvFile` (source) to another `CsvFile` (destination). The rows are copied to ensure the source file remains unchanged.
+- **Parameters**:
+  - `file1`: The target `CsvFile` where rows will be appended.
+  - `file2`: The source `CsvFile` from which rows will be copied.
+- **Return**: None.
+- **Details**:
+  - For each row in the source file (`file2`), the function creates a new row in the target file (`file1`) and appends all cells from the source row.
+  - The source file is not modified, and memory is dynamically allocated for the new rows in the target file.
+
+### `int csv_column_sum(const CsvFile *file, size_t columnIndex)`
+
+- **Purpose**: Sums the integer values of a specific column in a `CsvFile`.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` containing the data.
+  - `columnIndex`: The index of the column to sum.
+- **Return**: The sum of the integer values in the specified column. If there are errors, it returns `0`.
+- **Details**:
+  - Iterates through each row in the CSV file and adds the integer values in the specified column.
+  - Logs warnings if a row doesn't contain enough columns for the specified index, indicating that the column is out of range.
+
+### `char* csv_export_to_json(const CsvFile *file)`
+
+- **Purpose**: Exports the contents of a `CsvFile` to a JSON-formatted string.
+- **Parameters**:
+  - `file`: Pointer to the `CsvFile` to be exported.
+- **Return**: A JSON string representing the CSV file. The caller is responsible for freeing the allocated memory.
+- **Details**:
+  - The function loops through each row and cell of the CSV file, converting the data into JSON format.
+  - Each cell is represented as a JSON field (`"fieldX": "value"`) where `X` is the cell's index.
+  - The function dynamically allocates memory for the JSON string and ensures proper formatting (e.g., commas, curly braces).
+  - Logs all operations and errors, including memory allocation failures.
 
 ---
+
 
 ## Example 1
 

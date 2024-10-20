@@ -342,13 +342,11 @@ void random_choices(void *array, size_t n, size_t size, size_t num_choices, void
         RANDOM_LOG("[random_choices]: Copied choice %zu from array index %zu", i, index);
     }
 
-    // Free memory
     free(cumulative_weights);
 
     RANDOM_LOG("[random_choices]: Freed cumulative_weights memory.");
     RANDOM_LOG("[random_choices]: Exiting random_choices.");
 }
-
 
 /**
  * @brief Samples a specified number of unique random elements from an array.
@@ -439,7 +437,6 @@ void random_setstate(const unsigned int *state) {
     RANDOM_LOG("[random_setstate]: Exiting random_setstate");
 }
 
-
 /**
  * @brief This function retrieves the current state of the random number generator.
  * 
@@ -459,7 +456,6 @@ void random_getstate(unsigned int *state) {
 
     RANDOM_LOG("[random_getstate]: Exiting random_getstate");
 }
-
 
 /**
  * @brief Generates a random double number based on the Gaussian (normal) distribution.
@@ -507,7 +503,6 @@ double random_gauss(double mean, double stddev) {
     return result;
 }
 
-
 /**
  * @brief Generates a random double number based on the Exponential distribution.
  *
@@ -538,7 +533,6 @@ double random_expo(double lambda) {
 
     return result;
 }
-
 
 /**
  * @brief Generates a random double number based on the Log-normal distribution.

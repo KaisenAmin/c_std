@@ -74,6 +74,113 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 - `CRYPTO_MODE_OFB`: Output Feedback mode.
 
 
+### Function Descriptions 
+
+### `uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algorithm, size_t *outLength)`
+
+**Purpose**: This function computes a cryptographic hash of the provided data using a specified cryptographic algorithm (e.g., MD5, SHA-256, SHA3-512). The result is returned as a dynamically allocated array of bytes, with the length of the hash stored in the `outLength` parameter.
+
+**Parameters**:
+- `data`: A pointer to the input data that needs to be hashed.
+- `length`: The length (in bytes) of the input data.
+- `algorithm`: Specifies which cryptographic hash algorithm to use (e.g., `CRYPTO_MD5`, `CRYPTO_SHA256`).
+- `outLength`: A pointer to a variable where the length of the computed hash will be stored.
+
+**Returns**: A pointer to the computed hash (as a byte array), or `NULL` if an error occurs (e.g., memory allocation failure or unsupported algorithm). The caller is responsible for freeing the memory allocated for the hash.
+
+**Details**:
+- The function supports multiple cryptographic algorithms, including MD5, SHA-256, SHA3, SHAKE, Blake2, RIPEMD, and others.
+- Depending on the selected algorithm, it either directly calls lower-level hashing functions (like `MD5`, `SHA256`) or uses OpenSSL's `EVP` interfaces for more complex algorithms like SHA3 and Blake2.
+- The function performs error checking, ensuring the `outLength` pointer is valid and that memory allocation succeeds.
+- If any error occurs during the hashing process, the function logs the error, cleans up any allocated resources, and returns `NULL`.
+
+### `void crypto_print_hash(const uint8_t* hash, size_t length)`
+**Purpose**: This function prints cryptographic hash data as a hexadecimal string.
+
+**Parameters**:
+- `hash`: A pointer to the byte array containing the hash data.
+- `length`: The number of bytes in the hash data.
+
+**Details**:
+- The function converts each byte of the hash into two hexadecimal characters and prints the result.
+- If the `hash` parameter is `NULL`, it logs an error message and prints "No hash data to print."
+
+### `void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
+**Purpose**: Encrypts the given plaintext using the DES (Data Encryption Standard) algorithm in various modes (ECB, CBC, CFB, OFB).
+
+**Parameters**:
+- `plaintext`: A pointer to the plaintext data that needs to be encrypted.
+- `len`: The length of the plaintext data in bytes.
+- `key`: A pointer to the encryption key (must be 8 bytes for DES).
+- `iv`: A pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If `NULL`, an IV of all zeros is used.
+- `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
+- `out_len`: A pointer to a variable that will store the length of the encrypted data.
+
+**Returns**: A pointer to the encrypted data (ciphertext) or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the ciphertext.
+
+**Details**:
+- The plaintext is padded to ensure its length is a multiple of the DES block size (8 bytes).
+- The function uses DES encryption based on the mode of operation specified.
+  - ECB (Electronic Codebook)
+  - CBC (Cipher Block Chaining)
+  - CFB (Cipher Feedback)
+  - OFB (Output Feedback)
+- Error handling ensures that null inputs for critical parameters (e.g., `plaintext`, `key`, `out_len`) lead to early returns with error messages logged.
+- Memory is allocated for the padded plaintext and ciphertext, which must be freed by the caller.
+
+### `void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
+**Purpose**: Decrypts the provided ciphertext using the DES (Data Encryption Standard) algorithm in various modes (ECB, CBC, CFB, or OFB).
+
+**Parameters**:
+- `ciphertext`: A pointer to the ciphertext data that needs to be decrypted.
+- `len`: The length of the ciphertext data in bytes.
+- `key`: A pointer to the decryption key (must be 8 bytes for DES).
+- `iv`: A pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If `NULL`, an IV of all zeros is used.
+- `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
+- `out_len`: A pointer to a variable that will store the length of the decrypted data.
+
+**Returns**: A pointer to the decrypted data (plaintext), or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the decrypted data.
+
+**Details**:
+- The function decrypts the provided ciphertext using DES based on the specified mode of operation:
+  - ECB (Electronic Codebook)
+  - CBC (Cipher Block Chaining)
+  - CFB (Cipher Feedback)
+  - OFB (Output Feedback)
+- The ciphertext is processed in blocks of 8 bytes (the DES block size), and memory is allocated for the plaintext.
+- If an initialization vector (IV) is not provided, the function defaults to using an IV of all zeros.
+- Memory allocated for the plaintext must be freed by the caller.
+- If any input parameters are invalid (e.g., `ciphertext`, `key`, or `out_len` is `NULL`), the function logs an error and returns `NULL`.
+
+### `void crypto_generate_random_iv(uint8_t *iv, size_t length)`
+**Purpose**: Generates a random Initialization Vector (IV) for cryptographic purposes, using platform-specific methods.
+
+**Parameters**:
+- `iv`: A pointer to the buffer where the generated IV will be stored.
+- `length`: The length (in bytes) of the IV to generate.
+
+**Platform-specific Implementations**:
+1. **Windows (using Cryptographic API)**:
+   - Acquires a cryptographic context via the `CryptAcquireContext` function.
+   - Generates random bytes using the `CryptGenRandom` function.
+   - Releases the cryptographic context.
+   
+   **Error Handling**:
+   - If the cryptographic context cannot be acquired or if random bytes cannot be generated, the function logs the error and terminates the program.
+
+2. **Unix-like systems (using `/dev/urandom`)**:
+   - Opens the `/dev/urandom` file to read cryptographically secure random bytes.
+   - Reads the specified number of random bytes into the IV buffer.
+   - Closes the file once done.
+   
+   **Error Handling**:
+   - If the file cannot be opened or the read operation fails, the function logs the error and terminates the program.
+
+**Notes**:
+- The function ensures platform compatibility by using preprocessor directives to choose the appropriate method based on whether the platform is Windows or Unix-like.
+- Both implementations use cryptographically secure random sources to generate IVs, ensuring that the IVs are suitable for use in encryption algorithms.
+- If an error occurs (e.g., failure to open `/dev/urandom` or to acquire a cryptographic context), the program will terminate to prevent usage of insecure or uninitialized data.
+
 ## Example Programs
 
 The library includes several example programs demonstrating how to use the various cryptographic functions:

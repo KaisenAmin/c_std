@@ -28,28 +28,26 @@ To use the Matrix library in your project, include the `matrix.h` header file in
 
 ## Matrix Library API Overview
 
-### Matrix Creation and Deallocation
-
 - **`Matrix* matrix_create(size_t rows, size_t cols);`**
-  - Creates a new matrix with the specified number of rows and columns.
+  - **Purpose**: Creates a new matrix with the specified number of rows and columns.
   - **Parameters:**
     - `rows`: Number of rows in the matrix.
     - `cols`: Number of columns in the matrix.
   - **Returns:** A pointer to the newly created matrix.
 
 - **`void matrix_deallocate(Matrix* matrix);`**
-  - Deallocates the memory associated with the matrix.
+  - **Purpose**: Deallocates the memory associated with the matrix.
   - **Parameters:**
     - `matrix`: Pointer to the matrix to be deallocated.
 
 - **`Matrix* matrix_create_identity(size_t n);`**
-  - Creates an `n x n` identity matrix where all the diagonal elements are 1, and all other elements are 0.
+  - **Purpose**: Creates an `n x n` identity matrix where all the diagonal elements are 1, and all other elements are 0.
   - **Parameters:**
     - `n`: Size of the identity matrix (number of rows and columns).
   - **Returns:** A pointer to the newly created identity matrix.
 
 - **`Matrix* matrix_create_submatrix(const Matrix* matrix, size_t excludeRow, size_t excludeCol);`**
-  - Creates a submatrix by removing the specified row and column from the original matrix.
+  - **Purpose**: Creates a submatrix by removing the specified row and column from the original matrix.
   - **Parameters:**
     - `matrix`: The original matrix.
     - `excludeRow`: The index of the row to exclude.
@@ -57,131 +55,127 @@ To use the Matrix library in your project, include the `matrix.h` header file in
   - **Returns:** A pointer to the newly created submatrix.
 
 - **`Matrix* matrix_from_array(const double* data, size_t rows, size_t cols);`**
-  - Creates a matrix from a 1D array of data, filling it row by row.
+  - **Purpose**: Creates a matrix from a 1D array of data, filling it row by row.
   - **Parameters:**
     - `data`: Pointer to the array containing the matrix data.
     - `rows`: Number of rows in the matrix.
     - `cols`: Number of columns in the matrix.
   - **Returns:** A pointer to the newly created matrix.
 
-### Basic Matrix Operations
-
 - **`Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2);`**
-  - Adds two matrices element-wise.
+  - **Purpose**: Adds two matrices element-wise.
   - **Parameters:**
     - `matrix1`: First matrix.
     - `matrix2`: Second matrix.
   - **Returns:** A new matrix containing the sum of the two matrices.
 
 - **`Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2);`**
-  - Subtracts one matrix from another element-wise.
+  - **Purpose**: Subtracts one matrix from another element-wise.
   - **Parameters:**
     - `matrix1`: First matrix.
     - `matrix2`: Second matrix.
   - **Returns:** A new matrix containing the difference of the two matrices.
 
 - **`Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2);`**
-  - Multiplies two matrices using standard matrix multiplication.
+  - **Purpose**: Multiplies two matrices using standard matrix multiplication.
   - **Parameters:**
     - `matrix1`: First matrix.
     - `matrix2`: Second matrix.
   - **Returns:** A new matrix containing the product of the two matrices.
 
-### Matrix Properties and Checks
-
 - **`bool matrix_is_square(const Matrix* matrix);`**
-  - Checks if the matrix is square (i.e., the number of rows equals the number of columns).
+  - **Purpose**: Checks if the matrix is square (i.e., the number of rows equals the number of columns).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is square, otherwise `false`.
 
 - **`bool matrix_is_equal(const Matrix* matrix1, const Matrix* matrix2);`**
-  - Checks if two matrices are equal element-wise.
+  - **Purpose**: Checks if two matrices are equal element-wise.
   - **Parameters:**
     - `matrix1`: First matrix.
     - `matrix2`: Second matrix.
   - **Returns:** `true` if the matrices are equal, otherwise `false`.
 
 - **`bool matrix_is_identity(const Matrix* matrix);`**
-  - Checks if the matrix is an identity matrix.
+  - **Purpose**: Checks if the matrix is an identity matrix.
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is an identity matrix, otherwise `false`.
 
 - **`bool matrix_is_idempotent(const Matrix* matrix);`**
-  - Checks if the matrix is idempotent (i.e., `A * A = A`).
+  - **Purpose**: Checks if the matrix is idempotent (i.e., `A * A = A`).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is idempotent, otherwise `false`.
 
 - **`bool matrix_is_symmetric(const Matrix* matrix);`**
-  - Checks if the matrix is symmetric (i.e., `A[i][j] == A[j][i]`).
+  - **Purpose**: Checks if the matrix is symmetric (i.e., `A[i][j] == A[j][i]`).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is symmetric, otherwise `false`.
 
 - **`bool matrix_is_upper_triangular(const Matrix* matrix);`**
-  - Checks if the matrix is upper triangular.
+  - **Purpose**: Checks if the matrix is upper triangular.
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is upper triangular, otherwise `false`.
 
 - **`bool matrix_is_lower_triangular(const Matrix* matrix);`**
-  - Checks if the matrix is lower triangular.
+  - **Purpose**: Checks if the matrix is lower triangular.
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is lower triangular, otherwise `false`.
 
 - **`bool matrix_is_skew_symmetric(const Matrix* matrix);`**
-  - Checks if the matrix is skew-symmetric (i.e., `A[i][j] == -A[j][i]`).
+  - **Purpose**: Checks if the matrix is skew-symmetric (i.e., `A[i][j] == -A[j][i]`).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is skew-symmetric, otherwise `false`.
 
 - **`bool matrix_is_diagonal(const Matrix* matrix);`**
-  - Checks if the matrix is diagonal (i.e., all off-diagonal elements are zero).
+  - **Purpose**: Checks if the matrix is diagonal (i.e., all off-diagonal elements are zero).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is diagonal, otherwise `false`.
 
 - **`bool matrix_is_orthogonal(const Matrix* matrix);`**
-  - Checks if the matrix is orthogonal (i.e., `A * A^T = I`).
+  - **Purpose**: Checks if the matrix is orthogonal (i.e., `A * A^T = I`).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is orthogonal, otherwise `false`.
 
 - **`bool matrix_is_hankel(const Matrix* matrix);`**
-  - Checks if the matrix is a Hankel matrix (constant along anti-diagonals).
+  - **Purpose**: Checks if the matrix is a Hankel matrix (constant along anti-diagonals).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is a Hankel matrix, otherwise `false`.
 
 - **`bool matrix_is_toeplitz(const Matrix* matrix);`**
-  - Checks if the matrix is a Toeplitz matrix (constant along diagonals).
+  - **Purpose**: Checks if the matrix is a Toeplitz matrix (constant along diagonals).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is a Toeplitz matrix, otherwise `false`.
 
 - **`bool matrix_is_positive_definite(const Matrix* matrix);`**
-  - Checks if the matrix is positive definite.
+  - **Purpose**: Checks if the matrix is positive definite.
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is positive definite, otherwise `false`.
 
 - **`bool matrix_is_sparse(const Matrix* matrix);`**
-  - Checks if the matrix is sparse (i.e., contains mostly zero elements).
+  - **Purpose**: Checks if the matrix is sparse (i.e., contains mostly zero elements).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is sparse, otherwise `false`.
 
 - **`bool matrix_is_row(const Matrix* matrix);`**
-  - Checks if the matrix is a row matrix (i.e., has only one row).
+  - **Purpose**:- Checks if the matrix is a row matrix (i.e., has only one row).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is a row matrix, otherwise `false`.
 
 - **`bool matrix_is_columnar(const Matrix* matrix);`**
-  - Checks if the matrix is a column matrix (i.e., has only one column).
+  - **Purpose**:  Checks if the matrix is a column matrix (i.e., has only one column).
   - **Parameters:**
     - `matrix`: The matrix to check.
   - **Returns:** `true` if the matrix is a column matrix, otherwise `false`.
@@ -189,7 +183,7 @@ To use the Matrix library in your project, include the `matrix.h` header file in
 ### Matrix Decompositions
 
 - **`bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U);`**
-  - Performs LU decomposition of the matrix into lower (L) and upper (U) triangular matrices.
+  - **Purpose**: Performs LU decomposition of the matrix into lower (L) and upper (U) triangular matrices.
   - **Parameters:**
     - `matrix`: The matrix to decompose.
     - `L`: Pointer to the lower triangular matrix.
@@ -197,7 +191,7 @@ To use the Matrix library in your project, include the `matrix.h` header file in
   - **Returns:** `true` if the decomposition is successful, otherwise `false`.
 
 - **`bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R);`**
-  - Performs QR decomposition of the matrix into orthogonal (Q) and upper triangular (R) matrices.
+  - **Purpose**: Performs QR decomposition of the matrix into orthogonal (Q) and upper triangular (R) matrices.
   - **Parameters:**
     - `A`: The matrix to decompose.
     - `Q`: Pointer to the orthogonal matrix.
@@ -205,7 +199,7 @@ To use the Matrix library in your project, include the `matrix.h` header file in
   - **Returns:** `true` if the decomposition is successful, otherwise `false`.
 
 - **`Matrix* matrix_cholesky_decomposition(const Matrix* matrix);`**
-  - Performs Cholesky decomposition of the matrix (must be positive definite).
+  - **Purpose**: Performs Cholesky decomposition of the matrix (must be positive definite).
   - **Parameters:**
     - `matrix`: The matrix to decompose.
   - **Returns:** A new matrix representing the Cholesky factor.
@@ -213,58 +207,58 @@ To use the Matrix library in your project, include the `matrix.h` header file in
 ### Matrix Transformations
 
 - **`Matrix* matrix_transpose(const Matrix* matrix);`**
-  - Transposes the matrix (swaps rows and columns).
+  - **Purpose**: Transposes the matrix (swaps rows and columns).
   - **Parameters:**
     - `matrix`: The matrix to transpose.
   - **Returns:** A new matrix representing the transpose of the input matrix.
 
 - **`Matrix* matrix_adjugate(const Matrix* matrix);`**
-  - Computes the adjugate (adjoint) of the matrix.
+  - **Purpose**: Computes the adjugate (adjoint) of the matrix.
   - **Parameters:**
     - `matrix`: The matrix to compute the adjugate for.
   - **Returns:** A new matrix representing the adjugate.
 
 - **`Matrix* matrix_inverse(const Matrix* matrix);`**
-  - Computes the inverse of the matrix.
+  - **Purpose**: Computes the inverse of the matrix.
   - **Parameters:**
     - `matrix`: The matrix to invert.
   - **Returns:** A new matrix representing the inverse.
 
 - **`Matrix* matrix_power(const Matrix* matrix, int power);`**
-  - Raises the matrix to the specified integer power.
+  - **Purpose**: Raises the matrix to the specified integer power.
   - **Parameters:**
     - `matrix`: The matrix to raise to a power.
     - `power`: The power to raise the matrix to.
   - **Returns:** A new matrix representing the matrix raised to the given power.
 
 - **`Matrix* matrix_circulant(const Matrix* firstRow);`**
-  - Generates a circulant matrix from the first row. In a circulant matrix, each row is a cyclic shift of the previous row.
+  - **Purpose**: Generates a circulant matrix from the first row. In a circulant matrix, each row is a cyclic shift of the previous row.
   - **Parameters:**
     - `firstRow`: The first row of the circulant matrix.
   - **Returns:** A new circulant matrix.
 
 - **`Matrix* matrix_helmert(size_t n, bool full);`**
-  - Generates a Helmert matrix, which is an orthogonal matrix used in multivariate statistics.
+  - **Purpose**: Generates a Helmert matrix, which is an orthogonal matrix used in multivariate statistics.
   - **Parameters:**
     - `n`: Size of the Helmert matrix (number of rows and columns).
     - `full`: If `true`, returns a full Helmert matrix; otherwise, returns a reduced Helmert matrix.
   - **Returns:** A new Helmert matrix.
 
 - **`Matrix* matrix_fiedler(const Matrix* matrix);`**
-  - Creates a Fiedler matrix, where each element is the absolute difference between two elements of the input matrix.
+  - **Purpose**: Creates a Fiedler matrix, where each element is the absolute difference between two elements of the input matrix.
   - **Parameters:**
     - `matrix`: The matrix to use as a reference for generating the Fiedler matrix.
   - **Returns:** A new Fiedler matrix.
 
 - **`Matrix* matrix_block_diag(size_t count, ...);`**
-  - Creates a block diagonal matrix from multiple matrices. Each input matrix becomes a block along the diagonal of the resulting matrix.
+  - **Purpose**: Creates a block diagonal matrix from multiple matrices. Each input matrix becomes a block along the diagonal of the resulting matrix.
   - **Parameters:**
     - `count`: The number of matrices to include.
     - `...`: Variable number of matrices.
   - **Returns:** A new block diagonal matrix.
 
 - **`Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end);`**
-  - Generates a matrix filled with random values within the specified range.
+  - **Purpose**: Generates a matrix filled with random values within the specified range.
   - **Parameters:**
     - `row`: Number of rows in the matrix.
     - `col`: Number of columns in the matrix.
@@ -272,62 +266,61 @@ To use the Matrix library in your project, include the `matrix.h` header file in
     - `end`: The maximum random value (exclusive).
   - **Returns:** A new matrix filled with random values.
 
-### Utility Functions
-
 - **`void matrix_print(Matrix* matrix);`**
-  - Prints the matrix to the console in a readable format.
+  - **Purpose**: Prints the matrix to the console in a readable format.
   - **Parameters:**
     - `matrix`: The matrix to print.
+  - **Return**: None 
 
 - **`bool matrix_scalar_multiply(Matrix* matrix, double scalar);`**
-  - Multiplies every element of the matrix by a scalar.
+  - **Purpose**: Multiplies every element of the matrix by a scalar.
   - **Parameters:**
     - `matrix`: The matrix to scale.
     - `scalar`: The scalar to multiply by.
   - **Returns:** `true` if the operation is successful, otherwise `false`.
 
 - **`bool matrix_fill(Matrix* matrix, double value);`**
-  - Fills the matrix with a specified value.
+  - **Purpose**: Fills the matrix with a specified value.
   - **Parameters:**
     - `matrix`: The matrix to fill.
     - `value`: The value to fill the matrix with.
   - **Returns:** `true` if the operation is successful, otherwise `false`.
 
 - **`double* matrix_to_array(const Matrix* matrix);`**
-  - Converts the matrix to a 1D array.
+  - **Purpose**: Converts the matrix to a 1D array.
   - **Parameters:**
     - `matrix`: The matrix to convert.
   - **Returns:** A pointer to the newly created array containing the matrix elements.
 
 - **`size_t matrix_size(const Matrix* matrix);`**
-  - Returns the total number of elements in the matrix.
+  - **Purpose**: Returns the total number of elements in the matrix.
   - **Parameters:**
     - `matrix`: The matrix to get the size of.
   - **Returns:** The number of elements in the matrix.
 
 - **`void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2);`**
-  - Swaps two rows in the matrix.
+  - **Purpose**: Swaps two rows in the matrix.
   - **Parameters:**
     - `mat`: The matrix in which to swap rows.
     - `row1`: The index of the first row.
     - `row2`: The index of the second row.
 
 - **`void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2);`**
-  - Swaps two columns in the matrix.
+  - **Purpose**: Swaps two columns in the matrix.
   - **Parameters:**
     - `mat`: The matrix in which to swap columns.
     - `col1`: The index of the first column.
     - `col2`: The index of the second column.
 
 - **`void matrix_row_divide(Matrix* matrix, size_t row, double scalar);`**
-  - Divides every element of the specified row by a scalar.
+  - **Purpose**: Divides every element of the specified row by a scalar.
   - **Parameters:**
     - `matrix`: The matrix in which to perform the division.
     - `row`: The index of the row to divide.
     - `scalar`: The scalar to divide by.
 
 - **`void matrix_row_subtract(Matrix* matrix, size_t targetRow, size_t subtractRow, double scalar);`**
-  - Subtracts a scaled version of one row from another row.
+  - **Purpose**: Subtracts a scaled version of one row from another row.
   - **Parameters:**
     - `matrix`: The matrix in which to perform the subtraction.
     - `targetRow`: The row that will be modified.
@@ -335,7 +328,7 @@ To use the Matrix library in your project, include the `matrix.h` header file in
     - `scalar`: The scalar to multiply the subtractRow by before subtracting.
 
 - **`bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func);`**
-  - Applies a function to each element of the specified row.
+  - **Purpose**: Applies a function to each element of the specified row.
   - **Parameters:**
     - `matrix`: The matrix in which to apply the function.
     - `row`: The index of the row to apply the function to.
@@ -343,7 +336,7 @@ To use the Matrix library in your project, include the `matrix.h` header file in
   - **Returns:** `true` if the operation is successful, otherwise `false`.
 
 - **`bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func);`**
-  - Applies a function to each element of the specified column.
+  - **Purpose**: Applies a function to each element of the specified column.
   - **Parameters:**
     - `matrix`: The matrix in which to apply the function.
     - `col`: The index of the column to apply the function to.
@@ -351,7 +344,7 @@ To use the Matrix library in your project, include the `matrix.h` header file in
   - **Returns:** `true` if the operation is successful, otherwise `false`.
 
 - **`bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale);`**
-  - Adds a scaled version of one row to another row.
+  - **Purpose**: Adds a scaled version of one row to another row.
   - **Parameters:**
     - `matrix`: The matrix in which to perform the addition.
     - `targetRow`: The row that will be modified.
@@ -359,76 +352,74 @@ To use the Matrix library in your project, include the `matrix.h` header file in
     - `scale`: The scalar to multiply the sourceRow by before adding.
 
 - **`bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale);`**
-  - Adds a scaled version of one column to another column.
+  - **Purpose**: Adds a scaled version of one column to another column.
   - **Parameters:**
     - `matrix`: The matrix in which to perform the addition.
     - `targetCol`: The column that will be modified.
     - `sourceCol`: The column that will be scaled and added.
     - `scale`: The scalar to multiply the sourceCol by before adding.
 
-### Advanced Matrix Operations
-
 - **`Matrix* matrix_kronecker_product(const Matrix* A, const Matrix* B);`**
-  - Computes the Kronecker product of two matrices.
+  - **Purpose**: Computes the Kronecker product of two matrices.
   - **Parameters:**
     - `A`: First matrix.
     - `B`: Second matrix.
   - **Returns:** A new matrix representing the Kronecker product.
 
 - **`Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol);`**
-  - Generates a Hankel matrix from the first row and last column.
+  - **Purpose**: Generates a Hankel matrix from the first row and last column.
   - **Parameters:**
     - `firstRow`: The first row of the Hankel matrix.
     - `lastCol`: The last column of the Hankel matrix.
   - **Returns:** A new Hankel matrix.
 
 - **`Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol);`**
-  - Generates a Toeplitz matrix from the first row and first column.
+  - **Purpose**: Generates a Toeplitz matrix from the first row and first column.
   - **Parameters:**
     - `firstRow`: The first row of the Toeplitz matrix.
     - `firstCol`: The first column of the Toeplitz matrix.
   - **Returns:** A new Toeplitz matrix.
 
 - **`Matrix* matrix_pascal(size_t n);`**
-  - Generates a Pascal matrix of size `n`.
+  - **Purpose**: Generates a Pascal matrix of size `n`.
   - **Parameters:**
     - `n`: The size of the Pascal matrix.
   - **Returns:** A new Pascal matrix.
 
 - **`Matrix* matrix_vandermonde(const Matrix* matrix, size_t n);`**
-  - Generates a Vandermonde matrix from the input matrix.
+  - **Purpose**: Generates a Vandermonde matrix from the input matrix.
   - **Parameters:**
     - `matrix`: The input matrix.
     - `n`: The number of columns in the Vandermonde matrix.
   - **Returns:** A new Vandermonde matrix.
 
 - **`Matrix* matrix_companion(const Matrix* coefficients, size_t n);`**
-  - Generates a companion matrix from the given coefficients.
+  - **Purpose**: Generates a companion matrix from the given coefficients.
   - **Parameters:**
     - `coefficients`: The coefficients of the polynomial.
     - `n`: The size of the companion matrix.
   - **Returns:** A new companion matrix.
 
 - **`Matrix* matrix_walsh(size_t n);`**
-  - Generates a Walsh matrix of size `n`.
+  - **Purpose**: Generates a Walsh matrix of size `n`.
   - **Parameters:**
     - `n`: The size of the Walsh matrix.
   - **Returns:** A new Walsh matrix.
 
 - **`Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix);`**
-  - Computes the inverse of the matrix using the Gauss-Jordan elimination method.
+  - **Purpose**: Computes the inverse of the matrix using the Gauss-Jordan elimination method.
   - **Parameters:**
     - `matrix`: The matrix to invert.
   - **Returns:** A new matrix representing the inverse, or `NULL` if the matrix is not invertible.
 
 - **`Matrix* matrix_projection(const Matrix* matrix);`**
-  - Computes the projection matrix for the column space of the input matrix.
+  - **Purpose**: Computes the projection matrix for the column space of the input matrix.
   - **Parameters:**
     - `matrix`: The matrix to project.
   - **Returns:** A new matrix representing the projection matrix.
 
 - **`Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size);`**
-  - Generates a Leslie matrix, commonly used in population models, from fecundity and survival coefficients.
+  - **Purpose**: Generates a Leslie matrix, commonly used in population models, from fecundity and survival coefficients.
   - **Parameters:**
     - `f`: Fecundity matrix.
     - `f_size`: Size of the fecundity matrix.
@@ -437,21 +428,21 @@ To use the Matrix library in your project, include the `matrix.h` header file in
   - **Returns:** A new Leslie matrix.
 
 - **`Matrix* matrix_inverse_hilbert(size_t n);`**
-  - Computes the inverse of a Hilbert matrix of size `n x n`.
+  - **Purpose**: Computes the inverse of a Hilbert matrix of size `n x n`.
   - **Parameters:**
     - `n`: The size of the Hilbert matrix.
   
   - **Returns:** A new matrix representing the inverse of the Hilbert matrix.
 
 - **`Matrix* matrix_get_row(const Matrix* matrix, size_t row);`**
-  - Extracts a specific row from the matrix as a new matrix.
+  - **Purpose**: Extracts a specific row from the matrix as a new matrix.
   - **Parameters:**
     - `matrix`: The matrix from which to extract the row.
     - `row`: The index of the row to extract.
   - **Returns:** A new matrix representing the extracted row.
 
 - **`Matrix* matrix_get_col(const Matrix* matrix, size_t col);`**
-  - Extracts a specific column from the matrix as a new matrix.
+  - **Purpose**: Extracts a specific column from the matrix as a new matrix.
   - **Parameters:**
     - `matrix`: The matrix from which to extract the column.
     - `col`: The index of the column to extract.
