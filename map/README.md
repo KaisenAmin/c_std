@@ -33,6 +33,8 @@ The `MapNode` structure represents an individual node in the Red-Black Tree that
   - `struct MapNode* parent`: A pointer to the node's parent.
   - `int color`: The color of the node, used for maintaining the Red-Black Tree's balancing properties. The value is typically either `RED` or `BLACK`.
 
+---
+
 ### `MapEntry`
 The `MapEntry` structure is a simple structure that encapsulates a key-value pair. It represents an element of the map, storing the key and its corresponding value. This structure is typically used when manipulating the elements in the map.
 
@@ -40,11 +42,15 @@ The `MapEntry` structure is a simple structure that encapsulates a key-value pai
   - `KeyType key`: The key associated with the value.
   - `ValueType value`: The value associated with the key.
 
+---
+
 ### `MapIterator`
 The `MapIterator` structure provides a way to traverse the `Map`. The iterator maintains a reference to a node in the Red-Black Tree and is used to iterate over the key-value pairs stored in the map. It can be advanced or reversed to navigate through the elements of the map in order.
 
 - **Fields:**
   - `MapNode* node`: A pointer to the current node in the map that the iterator points to.
+
+---
 
 ### `MapIteratorPair`
 The `MapIteratorPair` structure is a utility structure that holds two iterators. It is often used when performing operations like `equal_range()`, which returns a range of elements between two iterators, or when working with lower and upper bounds in a map.
@@ -53,6 +59,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `MapIterator first`: The first iterator in the pair.
   - `MapIterator second`: The second iterator in the pair.
 
+---
 
 ## Function Explanations
 
@@ -63,6 +70,8 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `map`: A pointer to the `Map` whose comparison function is requested.
 - **Returns:** A pointer to the comparison function. If the `map` is `NULL`, it returns `NULL` and logs an error.
 
+---
+
 ### `MapIteratorPair map_equal_range(const Map* map, KeyType key)`
 - **Purpose**: This function returns a pair of iterators representing the range of elements in the map that match the given key. The first iterator points to the first element not less than the key (lower bound), and the second iterator points to the first element greater than the key (upper bound). This is particularly useful when searching for elements that match or are close to a specific key.
 
@@ -71,6 +80,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `key`: The key to compare the elements against.
 - **Returns:** A `MapIteratorPair` containing two iterators: the first pointing to the lower bound and the second pointing to the upper bound of the key. If the `map` or `key` is `NULL`, it returns an empty iterator pair and logs an error.
 
+---
 
 ### `KeyType map_node_get_key(MapNode* node)`
 - **Purpose**: This function retrieves the key stored in a given map node. It is a helper function for accessing the key of a node in the Red-Black Tree structure.
@@ -78,6 +88,8 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 - **Parameters:**
   - `node`: A pointer to the `MapNode` from which to retrieve the key.
 - **Returns:** The key stored in the node. If the `node` is `NULL`, it returns `NULL` and logs an error.
+
+---
 
 ### `Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue)`
 - **Purpose**: This function creates and initializes a new map. It takes a comparison function used to order the keys in the map and optional deallocation functions for keys and values. The map is implemented as a Red-Black Tree, ensuring balanced insertion, deletion, and lookup operations, all with a time complexity of O(log n).
@@ -88,6 +100,8 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `deallocValue`: A function pointer to deallocate values when a node is deleted. If no deallocation is needed, this can be `NULL`.
 - **Returns:** A pointer to the newly created map. If memory allocation fails or the comparison function is `NULL`, the function logs an error and terminates the program.
 
+---
+
 ### `Map* map_copy(const Map* src)`
 - **Purpose**: This function creates a deep copy of the given map. It duplicates all key-value pairs from the source map and inserts them into a newly created map. The copied map uses the same comparison and deallocation functions as the original.
 
@@ -95,11 +109,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `src`: A pointer to the source `Map` to copy.
 - **Returns:** A pointer to the newly created copy of the map. If the `src` map is `NULL` or memory allocation fails, the function returns `NULL` and logs an error.
 
+---
+
 ### `void map_deallocate(Map* map)`
 - **Purpose**: This function deallocates all memory associated with the `Map`, including its nodes, keys, and values. After calling this function, the map should no longer be used.
 - **Parameters**:
   - `map`: A pointer to the `Map` to be deallocated.
 - **Return**: None.
+
+---
 
 ### `void map_iterator_increment(MapIterator* it)`
 - **Purpose**: This function advances the iterator to the next element in the `Map` according to in-order traversal of the underlying Red-Black Tree.
@@ -107,12 +125,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `it`: A pointer to the `MapIterator` to be incremented.
 - **Return**: None.
 
+---
 
 ### `void map_iterator_decrement(MapIterator* it)`
 - **Purpose**: This function moves the iterator to the previous element in the `Map` according to in-order traversal of the Red-Black Tree.
 - **Parameters**:
   - `it`: A pointer to the `MapIterator` to be decremented.
 - **Return**: None.
+
+---
 
 ### `void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType))`
 - **Purpose**: This function prints all key-value pairs stored in the `Map` using custom print functions provided for keys and values.
@@ -122,6 +143,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `printValue`: A function pointer for printing the value.
 - **Return**: None.
 
+---
 
 ### `void map_swap(Map* map1, Map* map2)`
 - **Purpose**: This function swaps the contents of two `Map` instances. It exchanges their root nodes, sizes, comparison functions, and deallocation functions.
@@ -130,11 +152,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `map2`: A pointer to the second `Map`.
 - **Return**: None.
 
+---
+
 ### `void map_clear(Map* map)`
 - **Purpose**: This function removes all elements from the `Map` and frees any associated memory for keys and values. After calling this function, the map will be empty but still valid for further operations.
 - **Parameters**:
   - `map`: A pointer to the `Map` to be cleared.
 - **Return**: None.
+
+---
 
 ### `MapIterator map_begin(const Map* map)`
 - **Purpose**: To obtain an iterator pointing to the first (smallest) element in the map for traversing its elements in ascending order. Useful for forward traversal of the map starting from the beginning.
@@ -142,11 +168,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `map`: A pointer to the `Map` whose first element is being requested.
 - **Returns**: A `MapIterator` pointing to the first element in the map, or a default iterator if the map is empty or `NULL`.
 
+---
+
 ### `MapIterator map_end(const Map* map)`
 - **Purpose**: To obtain an iterator representing the position after the last element in the map. This iterator acts as a sentinel value marking the end of forward iteration.
 - **Parameters**:
   - `map`: A pointer to the `Map` whose end iterator is being requested.
 - **Returns**: A `MapIterator` representing the end of the map. If the map is `NULL`, a default iterator is returned.
+
+---
 
 ### `MapIterator map_rbegin(const Map* map)`
 - **Purpose**: To get an iterator pointing to the last (largest) element in the map for reverse-order traversal of its elements.
@@ -154,11 +184,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `map`: A pointer to the `Map` whose last element in reverse is being requested.
 - **Returns**: A `MapIterator` pointing to the last element in the map, or a default iterator if the map is empty or `NULL`.
 
+---
+
 ### `MapIterator map_rend(const Map* map)`
 - **Purpose**: To get an iterator representing the position before the first element in reverse order. It acts as a sentinel value marking the end of reverse iteration.
 - **Parameters**:
   - `map`: A pointer to the `Map` whose reverse end iterator is being requested.
 - **Returns**: A `MapIterator` representing the reverse end of the map. If the map is `NULL`, a default iterator is returned.
+
+---
 
 ### `MapIterator map_cbegin(const Map* map)`
 - **Purpose**: To obtain a constant iterator pointing to the first element in the map. This allows for read-only access to the elements of the map starting from the beginning.
@@ -166,11 +200,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `map`: A pointer to the `Map` whose first element is being requested for constant (read-only) access.
 - **Returns**: A `MapIterator` pointing to the first element in the map for read-only access, or a default iterator if the map is empty or `NULL`.
 
+---
+
 ### `MapIterator map_cend(const Map* map)`
 - **Purpose**: To obtain a constant iterator representing the position after the last element in the map, marking the end of read-only iteration.
 - **Parameters**:
   - `map`: A pointer to the `Map` whose constant end iterator is being requested.
 - **Returns**: A `MapIterator` representing the end of the map for read-only access. If the map is `NULL`, a default iterator is returned.
+
+---
 
 ### `MapIterator map_crbegin(const Map* map)`
 - **Purpose**: To get a constant reverse iterator pointing to the last element in the map, allowing read-only traversal in reverse order.
@@ -178,11 +216,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `map`: A pointer to the `Map` whose last element in reverse is being requested for constant (read-only) access.
 - **Returns**: A `MapIterator` pointing to the last element in the map for read-only access, or a default iterator if the map is empty or `NULL`.
 
+---
+
 ### `MapIterator map_crend(const Map* map)`
 - **Purpose**: To get a constant reverse iterator representing the position before the first element in reverse order, marking the end of read-only reverse iteration.
 - **Parameters**:
   - `map`: A pointer to the `Map` whose reverse end iterator is being requested for constant (read-only) access.
 - **Returns**: A `MapIterator` representing the reverse end of the map for read-only access. If the map is `NULL`, a default iterator is returned.
+
+---
 
 ### `MapIterator map_lower_bound(const Map* map, KeyType key)`
 - **Purpose**: To find the first element in the map whose key is not less than the specified key. This is useful for range queries or locating elements that meet a specific threshold.
@@ -191,12 +233,16 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `key`: The key to compare against the elements in the map.
 - **Returns**: A `MapIterator` pointing to the first element not less than the given key, or the end iterator if no such element is found.
 
+---
+
 ### `MapIterator map_upper_bound(const Map* map, KeyType key)`
 - **Purpose**: Finds the first element in the map whose key is strictly greater than the specified key. This is useful for range queries where only elements with keys greater than the given key are of interest.
 - **Parameters**:
   - `map`: A pointer to the `Map` to be searched.
   - `key`: The key to compare against the map's elements.
 - **Returns**: A `MapIterator` pointing to the first element greater than the given key, or the end iterator if no such element exists.
+
+---
 
 ### `MapIterator map_find(const Map* map, KeyType key)`
 - **Purpose**: Searches for an element in the map by its key. If the key is found, it returns an iterator to the element; otherwise, it returns the end iterator.
@@ -205,17 +251,23 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `key`: The key to search for.
 - **Returns**: A `MapIterator` pointing to the element if found, or the end iterator if the key is not found.
 
+---
+
 ### `size_t map_size(const Map* map)`
 - **Purpose**: Returns the number of key-value pairs stored in the map.
 - **Parameters**:
   - `map`: A pointer to the `Map` whose size is to be determined.
 - **Returns**: The number of elements in the map, or `0` if the map is `NULL`.
 
+---
+
 ### `size_t map_max_size(const Map* map)`
 - **Purpose**: Returns the maximum number of elements that can be stored in the map, based on system constraints such as memory. 
 - **Parameters**:
   - `map`: A pointer to the `Map` whose maximum size is to be determined.
 - **Returns**: The theoretical maximum number of elements the map can hold, or `0` if the map is `NULL`.
+
+---
 
 ### `size_t map_count(const Map* map, KeyType key)`
 - **Purpose**: Counts the number of elements in the map that match a specific key. Since maps do not allow duplicate keys, the result will be either `0` (if the key is not found) or `1` (if the key exists).
@@ -224,6 +276,8 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `key`: The key to check for in the map.
 - **Returns**: `1` if the key is found, or `0` if not found or the map is `NULL`.
 
+---
+
 ### `ValueType map_at(const Map* map, KeyType key)`
 - **Purpose**: Retrieves the value associated with the specified key. If the key is not found, it returns `NULL`.
 - **Parameters**:
@@ -231,11 +285,15 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `key`: The key to look up.
 - **Returns**: The value associated with the key, or `NULL` if the key is not found or if the map is `NULL`.
 
+---
+
 ### `ValueType map_node_get_value(MapNode* node)`
 - **Purpose**: Retrieves the value stored in a specific `MapNode`. If the node is `NULL`, it returns `NULL`.
 - **Parameters**:
   - `node`: A pointer to the `MapNode` from which to retrieve the value.
 - **Returns**: The value stored in the node, or `NULL` if the node is `NULL`.
+
+---
 
 ### `bool map_insert(Map* map, KeyType key, ValueType value)`
 - **Purpose**: Inserts a new key-value pair into the map. If the key already exists, the existing value is replaced with the new value. If the key does not exist, a new node is created and inserted.
@@ -245,12 +303,16 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `value`: The value associated with the key.
 - **Returns**: `true` if the insertion or replacement was successful, or `false` if the map or key is `NULL`, or if memory allocation fails.
 
+---
+
 ### `bool map_erase(Map* map, KeyType key)`
 - **Purpose**: Removes the element with the specified key from the map. If the key is found, the corresponding node is deleted, and the Red-Black Tree is rebalanced.
 - **Parameters**:
   - `map`: A pointer to the `Map` from which the element should be erased.
   - `key`: The key of the element to remove.
 - **Returns**: `true` if the element was successfully erased, or `false` if the key was not found or the map is `NULL`.
+
+---
 
 ### `bool map_emplace(Map* map, KeyType key, ValueType value)`
 - **Purpose**: Attempts to insert a new key-value pair into the map without modifying the map if the key already exists. If the insertion is successful, the Red-Black Tree is rebalanced if necessary.
@@ -260,6 +322,8 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
   - `value`: The value to associate with the key.
 - **Returns**: `true` if the key-value pair was successfully inserted, `false` if the key already exists or if the `map` or `key` is `NULL`.
 - **Usage Example**: Use this function to insert key-value pairs into the map only if the key does not already exist.
+
+---
 
 ### `bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value)`
 - **Purpose**: Attempts to insert a new key-value pair into the map using a hint for the insertion position. The hint can help optimize the insertion. If the key already exists, the map is not modified.
@@ -271,6 +335,8 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 - **Returns**: `true` if the key-value pair was successfully inserted, `false` if the key already exists or if the `map` or `key` is `NULL`.
 - **Usage Example**: Use this function to insert key-value pairs when you have an insertion hint, which can optimize the operation.
 
+---
+
 ### `bool map_empty(const Map* map)`
 - **Purpose**: Checks if the map contains any elements.
 - **Parameters**:
@@ -278,9 +344,9 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 - **Returns**: `true` if the map is empty or `NULL`, `false` if it contains elements.
 - **Usage Example**: Use this function to determine if the map is empty before performing operations like insertion or deletion.
 
-### Example Programs
+---
 
-The following examples demonstrate how to use the Map library.
+### Examples
 
 ### Example 1: Create a Map, Insert Elements, and Retrieve Values
 
