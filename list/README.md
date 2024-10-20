@@ -36,11 +36,15 @@ To use the List library in your project, include the `list.h` header file in you
   - `compare`: Optional function for comparing elements in the list; can be `NULL` if not needed.
 - **Return**: Pointer to the newly created list or `NULL` if memory allocation fails.
 
+---
+
 ### `size_t list_length(const List *list)`
 - **Purpose**: Returns the current number of elements in the list.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: The number of elements in the list, or `0` if the list is `NULL`.
+
+---
 
 ### `void *list_front(const List *list)`
 - **Purpose**: Retrieves the value of the first element in the list.
@@ -48,11 +52,15 @@ To use the List library in your project, include the `list.h` header file in you
   - `list`: Pointer to the list.
 - **Return**: Pointer to the value of the first element, or `NULL` if the list is empty or `NULL`.
 
+---
+
 ### `void *list_back(const List *list)`
 - **Purpose**: Retrieves the value of the last element in the list.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: Pointer to the value of the last element, or `NULL` if the list is empty or `NULL`.
+
+---
 
 ### `void *list_insert(List *list, size_t index, void *value)`
 - **Purpose**: Inserts a new element at the specified index.
@@ -62,12 +70,16 @@ To use the List library in your project, include the `list.h` header file in you
   - `value`: Pointer to the value of the new element.
 - **Return**: Pointer to the inserted value, or `NULL` if the insertion fails.
 
+---
+
 ### `void *list_erase(List *list, size_t index)`
 - **Purpose**: Removes an element from the list at the specified index.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `index`: Position of the element to be removed.
 - **Return**: Pointer to the value of the removed element, or `NULL` if the removal fails.
+
+---
 
 ### `void list_resize(List *list, size_t newSize, void *defaultValue)`
 - **Purpose**: Resizes the list to a new size, filling new elements with `defaultValue`.
@@ -77,6 +89,8 @@ To use the List library in your project, include the `list.h` header file in you
   - `defaultValue`: Value to initialize new elements (if added).
 - **Return**: None.
 
+---
+
 ### `void list_swap(List *list1, List *list2)`
 - **Purpose**: Swaps the contents of two lists.
 - **Parameters**:
@@ -84,17 +98,23 @@ To use the List library in your project, include the `list.h` header file in you
   - `list2`: Pointer to the second list.
 - **Return**: None.
 
+---
+
 ### `void list_reverse(List *list)`
 - **Purpose**: Reverses the order of elements in the list.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
 
+---
+
 ### `void list_sort(List *list)`
 - **Purpose**: Sorts the elements in the list using the comparison function.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void list_push_front(List *list, void *value)`
 - **Purpose**: Adds a new element to the front of the list.
@@ -103,6 +123,8 @@ To use the List library in your project, include the `list.h` header file in you
   - `value`: Pointer to the value of the new element.
 - **Return**: None.
 
+---
+
 ### `void list_push_back(List *list, void *value)`
 - **Purpose**: Adds a new element to the back of the list.
 - **Parameters**:
@@ -110,11 +132,15 @@ To use the List library in your project, include the `list.h` header file in you
   - `value`: Pointer to the value of the new element.
 - **Return**: None.
 
+---
+
 ### `void list_pop_front(List *list)`
 - **Purpose**: Removes the first element from the list.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void list_pop_back(List *list)`
 - **Purpose**: Removes the last element from the list.
@@ -122,11 +148,15 @@ To use the List library in your project, include the `list.h` header file in you
   - `list`: Pointer to the list.
 - **Return**: None.
 
+---
+
 ### `void list_clear(List *list)`
 - **Purpose**: Removes all elements from the list.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void list_assign(List *list, void *values, size_t numValues)`
 - **Purpose**: Replaces the contents of the list with a new set of values.
@@ -136,6 +166,8 @@ To use the List library in your project, include the `list.h` header file in you
   - `numValues`: Number of values to assign to the list.
 - **Return**: None.
 
+---
+
 ### `void list_emplace_front(List *list, void *value)`
 - **Purpose**: Adds an element to the front of the list without copying the value.
 - **Parameters**:
@@ -143,12 +175,16 @@ To use the List library in your project, include the `list.h` header file in you
   - `value`: Pointer to the value.
 - **Return**: None.
 
+---
+
 ### `void list_emplace_back(List *list, void *value)`
 - **Purpose**: Adds an element to the back of the list without copying the value.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `value`: Pointer to the value.
 - **Return**: None.
+
+---
 
 ### `void list_splice(List *dest, List *src, Node *pos)`
 - **Purpose**: Moves elements from one list into another at a specified position.
@@ -158,12 +194,16 @@ To use the List library in your project, include the `list.h` header file in you
   - `pos`: Pointer to the position in `dest` where elements from `src` will be inserted.
 - **Return**: None.
 
+---
+
 ### `void list_remove(List *list, void *value)`
 - **Purpose**: Removes all elements matching the given value from the list.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `value`: Pointer to the value to be removed.
 - **Return**: None.
+
+---
 
 ### `void list_remove_if(List *list, ConditionFunction cond)`
 - **Purpose**: Removes elements that match a condition.
@@ -172,11 +212,15 @@ To use the List library in your project, include the `list.h` header file in you
   - `cond`: Function pointer to the condition to be met for removal.
 - **Return**: None.
 
+---
+
 ### `void list_unique(List *list)`
 - **Purpose**: Removes consecutive duplicate elements from a sorted list.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void list_merge(List *list1, List *list2)`
 - **Purpose**: Merges two sorted lists into one sorted list.
@@ -185,12 +229,16 @@ To use the List library in your project, include the `list.h` header file in you
   - `list2`: Pointer to the second list.
 - **Return**: None.
 
+---
+
 ### `bool list_is_less(const List *list1, const List *list2)`
 - **Purpose**: Checks if one list is lexicographically less than another.
 - **Parameters**:
   - `list1`: Pointer to the first list.
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is less than `list2`, otherwise `false`.
+
+---
 
 ### `bool list_is_greater(const List *list1, const List *list2)`
 - **Purpose**: Checks if one list is lexicographically greater than another.
@@ -199,12 +247,16 @@ To use the List library in your project, include the `list.h` header file in you
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is greater than `list2`, otherwise `false`.
 
+---
+
 ### `bool list_is_equal(const List *list1, const List *list2)`
 - **Purpose**: Checks if two lists are lexicographically equal.
 - **Parameters**:
   - `list1`: Pointer to the first list.
   - `list2`: Pointer to the second list.
 - **Return**: `true` if the lists are equal, otherwise `false`.
+
+---
 
 ### `bool list_is_less_or_equal(const List *list1, const List *list2)`
 - **Purpose**: Checks if one list is less than or equal to another lexicographically.
@@ -213,12 +265,16 @@ To use the List library in your project, include the `list.h` header file in you
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is less than or equal to `list2`, otherwise `false`.
 
+---
+
 ### `bool list_is_greater_or_equal(const List *list1, const List *list2)`
 - **Purpose**: Checks if one list is greater than or equal to another lexicographically.
 - **Parameters**:
   - `list1`: Pointer to the first list.
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is greater than or equal to `list2`, otherwise `false`.
+
+---
 
 ### `bool list_is_not_equal(const List *list1, const List *list2)`
 - **Purpose**: Checks if two lists are not lexicographically equal.
@@ -228,6 +284,8 @@ To use the List library in your project, include the `list.h` header file in you
  first list.
   - `list2`: Pointer to the second list.
 - **Return**: `true` if the lists are not equal, otherwise `false`.
+
+---
 
 ## Examples 
 
