@@ -36,6 +36,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns a pointer to the `FileWriter` structure on success, or `NULL` on failure (e.g., invalid `filename` or failure to open the file).
 
+---
+
 ### `FileWriter* file_writer_append(const char* filename, const WriteMode mode)`
 
 - **Purpose**:  
@@ -54,6 +56,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns a pointer to the `FileWriter` structure on success, or `NULL` on failure (e.g., invalid `filename` or failure to open the file).
 
+---
+
 ### `bool file_writer_close(FileWriter* writer)`
 
 - **Purpose**:  
@@ -65,6 +69,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file was successfully closed, or `false` if an error occurred (e.g., if the file was already closed or `fclose` failed).
 
+---
+
 ### `size_t file_writer_get_position(FileWriter* writer)`
 
 - **Purpose**:  
@@ -75,6 +81,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns the current file pointer position as a `size_t`. If an error occurs, the function returns `(size_t)-1`.
+
+---
 
 ### `size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer)`
 
@@ -90,6 +98,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns the number of elements successfully written. If an error occurs (e.g., invalid `FileWriter` structure or buffer), the function returns `0`.
 
+---
+
 ### `bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer)`
 
 - **Purpose**:  
@@ -103,6 +113,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the line was successfully written, or `false` if there was an error.
 
+---
 
 ### `bool file_writer_is_open(FileWriter* writer)`
 
@@ -115,6 +126,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file is open, or `false` if it is not open or if an error occurred.
 
+---
 
 ### `bool file_writer_flush(FileWriter* writer)`
 
@@ -126,6 +138,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the flush operation was successful, or `false` if an error occurred (e.g., invalid `FileWriter` or failed `fflush`).
+
+---
 
 ### `bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding)`
 
@@ -139,6 +153,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the encoding was successfully set, or `false` if there was an error (e.g., invalid `FileWriter` or invalid encoding type).
 
+---
 
 ### `bool file_writer_copy(FileWriter* src_writer, FileWriter* dest_writer)`
 
@@ -152,6 +167,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file content was successfully copied, or `false` if an error occurred (e.g., file reading/writing failure or invalid `FileWriter` structures).
 
+---
 
 ### `const char* file_writer_get_file_name(FileWriter* writer)`
 
@@ -164,6 +180,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns a constant character pointer to the file path if the `FileWriter` is valid, or `NULL` if there is an error.
 
+---
 
 ### `const char* file_writer_get_encoding(FileWriter* writer)`
 
@@ -176,6 +193,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns a constant character pointer representing the encoding type if valid, or `NULL` if there is an error.
 
+---
 
 ### `size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...)`
 
@@ -189,6 +207,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns the number of characters successfully written, or `0` if an error occurs (e.g., invalid `FileWriter` or formatting failure).
 
+---
+
 ### `size_t file_writer_get_size(FileWriter* writer)`
 
 - **Purpose**:  
@@ -199,6 +219,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns the size of the file in bytes, or `0` if an error occurs (e.g., failed `fseek` or invalid `FileWriter`).
+
+---
 
 ### `bool file_writer_lock(FileWriter* writer)`
 
@@ -211,6 +233,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file is successfully locked, or `false` if an error occurred.
 
+---
+
 ### `bool file_writer_unlock(FileWriter* writer)`
 
 - **Purpose**:  
@@ -221,6 +245,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the file is successfully unlocked, or `false` if an error occurred.
+
+---
 
 ### `bool file_writer_seek(FileWriter* writer, long offset, const CursorPosition cursor_pos)`
 
@@ -235,6 +261,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file pointer was successfully moved, or `false` if there was an error.
 
+---
 
 ### `bool file_writer_truncate(FileWriter* writer, size_t size)`
 
@@ -247,6 +274,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the file was successfully truncated, or `false` if an error occurred.
+
+---
 
 ### `bool file_writer_write_batch(FileWriter* writer, const void** buffers, const size_t* sizes, size_t count)`
 
@@ -262,6 +291,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if all buffers were successfully written, or `false` if an error occurred.
 
+---
+
 ### `bool file_writer_append_fmt(FileWriter* writer, const char* format, ...)`
 
 - **Purpose**:  
@@ -273,6 +304,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the formatted text was successfully appended, or `false` if an error occurred.
+
+---
 
 ### FileReader Functions
 
@@ -294,6 +327,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns a pointer to a `FileReader` structure on success, or `NULL` on failure.
 
+---
 
 ### `bool file_reader_close(FileReader* reader)`
 
@@ -306,6 +340,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file was successfully closed, or `false` if an error occurred (e.g., invalid `FileReader` structure or failure to close the file).
 
+---
+
 ### `size_t file_reader_get_position(FileReader* reader)`
 
 - **Purpose**:  
@@ -317,6 +353,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns the current file pointer position as a `size_t`. If an error occurs (such as an invalid `FileReader` structure), the function returns `(size_t)-1`.
 
+---
+
 ### `bool file_reader_is_open(FileReader* reader)`
 
 - **Purpose**:  
@@ -327,6 +365,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the file is open, or `false` if it is not, or if an error occurs (e.g., invalid `FileReader` structure).
+
+---
 
 ### `bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encoding)`
 
@@ -340,6 +380,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the encoding was successfully set, or `false` if an error occurred (e.g., invalid `FileReader` structure or invalid encoding type).
 
+---
+
 ### `const char* file_reader_get_file_name(FileReader* reader)`
 
 - **Purpose**:  
@@ -350,6 +392,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns the absolute file path as a constant string if successful, or `NULL` if there is an error (e.g., invalid `FileReader` structure or `file_path` is `NULL`).
+
+---
 
 ### `bool file_reader_seek(FileReader* reader, long offset, const CursorPosition cursor_pos)`
 
@@ -367,6 +411,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file pointer was successfully moved, or `false` if there was an error (e.g., invalid `FileReader` structure or failed `fseek`).
 
+---
+
 ### `bool file_reader_eof(FileReader* reader)`
 
 - **Purpose**:  
@@ -378,6 +424,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns `true` if the file pointer has reached the end of the file, or `false` if not or if an error occurs (e.g., invalid `FileReader`).
 
+---
+
 ### `size_t file_reader_get_size(FileReader* reader)`
 
 - **Purpose**:  
@@ -388,6 +436,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns the size of the file in bytes, or `0` if an error occurred (e.g., invalid `FileReader` or failed `fseek`).
+
+---
 
 ### `size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* reader)`
 
@@ -403,6 +453,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns the number of elements successfully read, or `0` if an error occurs (e.g., invalid `FileReader` structure or buffer).
 
+---
+
 ### `bool file_reader_read_line(char* buffer, size_t size, FileReader* reader)`
 
 - **Purpose**:  
@@ -415,6 +467,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if a line was successfully read, or `false` if an error occurs (e.g., invalid `FileReader` structure or reading failure).
+
+---
 
 ### `size_t file_reader_read_fmt(FileReader* reader, const char* format, ...)`
 
@@ -429,6 +483,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - **Return Type**:  
   Returns the number of items successfully read, or `0` if an error occurs (e.g., invalid `FileReader` structure or formatting failure).
 
+---
+
 ### `bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer)`
 
 - **Purpose**:  
@@ -440,6 +496,8 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the copy operation was successful, or `false` if an error occurred (e.g., failed reading, writing, or conversion).
+
+---
 
 ### `bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines)`
 
@@ -453,11 +511,11 @@ This library provides a comprehensive set of functions for reading from and writ
 
 - **Return Type**:  
   Returns `true` if the specified number of lines was successfully read, or `false` if an error occurred (e.g., memory allocation failure, invalid `FileReader`, or file reading issues). The buffer will contain the lines that were successfully read.
+---
 
 ## Compilation
 
 For compiling C programs using this library, standard C compilation commands apply, ensuring the `file_io`, `fmt`, `encoding`, and `string` modules are correctly referenced.
-
 
 
 ## Example 1 : How to write in file in `unicode mode` with `file_writer_write` and `file_writer_open`
