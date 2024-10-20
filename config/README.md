@@ -50,6 +50,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**: 
   - A pointer to the `ConfigFile` structure.
 
+---
+
 ### `const char *config_get_value(const ConfigFile *config, const char *section, const char *key);`
 - **Purpose**:Retrieves the value associated with the specified key in the given section.
 
@@ -59,6 +61,8 @@ in these examples i rewrite cpp example in Bitset code
   - `key`: The key whose value is to be retrieved.
 - **Returns**:
   - The value associated with the key, or `NULL` if the key does not exist.
+
+---
 
 ### `void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value);`
 - **Purpose**:Sets or updates the value for a specific key in the given section.
@@ -70,7 +74,9 @@ in these examples i rewrite cpp example in Bitset code
   - `value`: The new value to be assigned to the key.
 - **Returns**:
   - return `None` value.
-  
+
+---
+
 ### `void config_save(const ConfigFile *config, const char *filename);`
 - **Purpose**:Saves the current configuration to the specified file.
 
@@ -80,6 +86,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - return `None` value.
 
+---
+
 ### `void config_remove_section(ConfigFile *config, const char *section);`
 - **Purpose**:Removes an entire section from the configuration.
 
@@ -88,6 +96,8 @@ in these examples i rewrite cpp example in Bitset code
   - `section`: The section to be removed.
 - **Returns**:
   - return `None` value.
+
+---
 
 ### `void config_remove_key(ConfigFile *config, const char *section, const char *key);`
 - **Purpose**:Removes a specific key-value pair from a section in the configuration.
@@ -99,6 +109,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - return `None` value.
 
+---
+
 ### `void config_deallocate(ConfigFile *config);`
 - **Purpose**:Frees all memory associated with the configuration structure.
 
@@ -106,6 +118,8 @@ in these examples i rewrite cpp example in Bitset code
   - `config`: Pointer to the `ConfigFile` structure to be deallocated.
 - **Returns**:
   - return `None` value.
+
+---
 
 ### `bool config_has_section(const ConfigFile *config, const char *section);`
 - **Purpose**:Checks if a specific section exists in the configuration.
@@ -116,6 +130,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - `true` if the section exists, `false` otherwise.
 
+---
+
 ### `bool config_has_key(const ConfigFile *config, const char *section, const char *key);`
 - **Purpose**:Checks if a specific key exists within a section.
 
@@ -125,6 +141,8 @@ in these examples i rewrite cpp example in Bitset code
   - `key`: The key to check for existence.
 - **Returns**:
   - `true` if the key exists, `false` otherwise.
+
+---
 
 ### `int config_get_int(const ConfigFile *config, const char *section, const char *key, int default_value);`
 - **Purpose**:Retrieves an integer value for a specific key, or returns a default value if the key is not found.
@@ -137,6 +155,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - The integer value associated with the key, or the default value if not found.
 
+---
+
 ### `double config_get_double(const ConfigFile *config, const char *section, const char *key, double default_value);`
 - **Purpose**:Retrieves a double value for a specific key, or returns a default value if the key is not found.
 
@@ -147,6 +167,8 @@ in these examples i rewrite cpp example in Bitset code
   - `default_value`: The default value to return if the key does not exist.
 - **Returns**:
   - The double value associated with the key, or the default value if not found.
+
+---
 
 ### `bool config_get_bool(const ConfigFile *config, const char *section, const char *key, bool default_value);`
 - **Purpose**:Retrieves a boolean value for a specific key, or returns a default value if the key is not found.
@@ -159,6 +181,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - The boolean value associated with the key, or the default value if not found.
 
+---
+
 ### `char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size);`
 - **Purpose**:Retrieves an array of strings for a given key in a section.
 
@@ -169,6 +193,8 @@ in these examples i rewrite cpp example in Bitset code
   - `array_size`: Pointer to a size_t variable where the size of the array will be stored.
 - **Returns**:
   - A dynamically allocated array of strings. The caller is responsible for freeing the memory.
+
+---
 
 ### `void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size);`
 - **Purpose**:Sets an array of strings for a given key in a section.
@@ -182,6 +208,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - return `None` value.
 
+---
+
 ### `char *config_get_encrypted_value(const ConfigFile *config, const char *section, const char *key, const char *encryption_key);`
 - **Purpose**:Retrieves an encrypted value for a specific key in a section, and decrypts it using the provided encryption key.
 
@@ -192,6 +220,8 @@ in these examples i rewrite cpp example in Bitset code
   - `encryption_key`: The key to decrypt the value.
 - **Returns**:
   - The decrypted value as a string. The caller is responsible for freeing the memory.
+
+---
 
 ### `void config_set_encrypted_value(ConfigFile *config, const char *section, const char *key, const char *value, const char *encryption_key);`
 - **Purpose**: Sets an encrypted value for a specific key in a section.
@@ -205,6 +235,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - return `None` value.
 
+---
+
 ### `void config_set_comment(ConfigFile *config, const char *section, const char *comment);`
 - **Purpose**:Adds a comment to a specific section in the configuration.
 
@@ -215,13 +247,17 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - return `None` value.
 
-### 18. `ConfigIterator config_get_iterator(const ConfigFile *config);`
+---
+
+### `ConfigIterator config_get_iterator(const ConfigFile *config);`
 - **Purpose**: Initializes an iterator for traversing the configuration entries.
 
 - **Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
 - **Returns**:
   - A `ConfigIterator` structure initialized to the beginning of the configuration.
+
+---
 
 ### `bool config_next_entry(ConfigIterator *iterator, const char **section, const char **key, const char **value);`
 - **Purpose**: Iterates to the next entry in the configuration, returning false if at the end.
@@ -234,6 +270,8 @@ in these examples i rewrite cpp example in Bitset code
 - **Returns**:
   - `true` if there are more entries to iterate over, `false` otherwise.
 
+---
+
 ### `void config_reload(ConfigFile **config_ptr);`
 - **Purpose**: Reloads the configuration from the file, updating the in-memory representation.
 
@@ -241,6 +279,8 @@ in these examples i rewrite cpp example in Bitset code
   - `config_ptr`: Double pointer to the `ConfigFile` structure to be reloaded.
 - **Returns**:
   - return `None` value.
+
+---
 
 ### `void config_register_modification_callback(ConfigFile *config, void (*callback)(const char *section, const char *key, const char *value));`
 - **Purpose**: Registers a callback function to be called upon modifications to the configuration.
@@ -250,6 +290,8 @@ in these examples i rewrite cpp example in Bitset code
   - `callback`: The callback function to be registered.
 - **Returns**:
   - return `None` value.
+
+---
 
 ### `void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size);`
 - **Purpose**: Validates the structure of the configuration against an expected template.
