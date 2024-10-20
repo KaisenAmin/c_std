@@ -32,6 +32,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:
    - The function first checks if the provided `dirpath` is `NULL`. If it is, the function logs an error message and returns `false`.
 
+---
+
 ### `char* dir_dir_name(const char* dirpath)`
 
 - **Purpose**: This function retrieves the name of the directory from a given directory path. If the input is the current directory (`"."`), it will return the name of the current working directory.
@@ -42,6 +44,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:
    - The function first checks if the provided `dirpath` is `NULL`. If so, it logs an error and returns `NULL`.
 
+---
+
 ### `char* dir_current_path(void)`
 
 - **Purpose**: This function retrieves the current working directory's path.
@@ -49,6 +53,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Return Value**: 
   - A dynamically allocated string containing the current working directory, or `NULL` on error. The caller is responsible for freeing this memory.
 
+---
 
 ### `int dir_count(const char* dirpath)`
 
@@ -61,6 +66,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:
    - The function first checks if the `dirpath` is `NULL`. If so, it logs an error and returns `-1`.
 
+---
+
 ### `char* dir_absolute_file_path(const char* relative_path)`
 
 - **Purpose**: This function converts a relative file path to an absolute file path.
@@ -70,6 +77,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - Returns a dynamically allocated string containing the absolute file path, or `NULL` if an error occurs.
 - **Input Validation**:
    - The function checks if the `relative_path` is `NULL`. If so, it logs an error and returns `NULL`.
+
+---
 
 ### `bool dir_cd(const char* dirName)`
 
@@ -82,6 +91,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:
    - The function checks if the `dirName` is `NULL`. If so, it logs an error and returns `false`.
 
+---
+
 ### `bool dir_cd_up()`
 
 - **Purpose**: This function changes the current working directory to the parent directory (i.e., the directory one level up from the current directory).
@@ -92,6 +103,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Logging**: The function logs that it is changing the directory to the parent (`..`).
 - **Calling `dir_cd`**: It calls the `dir_cd` function with `".."` as the argument, which changes the directory to the parent directory.
 - **Return**: It returns the result of the `dir_cd` function.
+
+---
 
 ### `bool dir_remove_directory(const char* dirName)`
 
@@ -104,6 +117,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**: It first checks if the directory name (`dirName`) is `NULL`. If so, it logs an error and returns `false`.
 - **Checking Directory Contents**: It calls the `dir_is_empty` function to check if the directory is empty. If the directory is not empty, it logs an error and returns `false`.
 
+---
+
 ### `bool dir_is_empty(const char* dirName)`
 
 - **Purpose**: This function checks if a directory is empty.
@@ -112,6 +127,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Return Value**: 
   - Returns `true` if the directory is empty, `false` if it is not empty or if an error occurs.
 - **Input Validation**: It checks if the directory name is `NULL`. If so, it logs an error and returns `false`.
+
+---
 
 ### `bool dir_remove_directory_recursive(const char* dirPath)`
 
@@ -122,6 +139,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - Returns `true` if the directory and its contents were successfully removed, or `false` if an error occurred.
 
 - **Input Validation**: It checks if the directory path is `NULL`. If so, it logs an error and returns `false`.
+
+---
 
 ### `bool dir_rename(const char* oldName, const char* newName)`
 
@@ -134,6 +153,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 
 - **Input Validation**: The function first checks if both `oldName` and `newName` are provided. If either is `NULL`, it logs an error and returns `false`.
 
+---
 
 ### `bool dir_is_directory_exists(const char* dirPath)`
 
@@ -145,6 +165,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 
 - **Input Validation**: It checks if `dirPath` is `NULL`. If so, it logs an error and returns `false`.
 
+---
+
 ### `bool dir_is_file_exists(const char* filePath)`
 
 - **Purpose**: This function checks if a file exists at the specified path.
@@ -153,6 +175,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Return Value**:
   - Returns `true` if the file exists, or `false` if it does not exist or if an error occurs.
 - **Input Validation**: It checks if `filePath` is `NULL`. If so, it logs an error and returns `false`.
+
+---
 
 ### `bool dir_copy_file(const char* srcPath, const char* destPath)`
 
@@ -165,6 +189,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 
 - **Input Validation**: The function first checks if both `srcPath` and `destPath` are provided. If either is `NULL`, it logs an error and returns `false`.
 
+---
+
 ### `bool dir_copy_directory(const char* srcDir, const char* destDir)`
 
 - **Purpose**: This function copies an entire directory, including its contents (files and subdirectories), from a source path (`srcDir`) to a destination path (`destDir`).
@@ -175,6 +201,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - Returns `true` if the directory and its contents were successfully copied, or `false` if an error occurred.
 
 - **Input Validation**: The function first checks if both `srcDir` and `destDir` are provided. If either is `NULL`, it logs an error and returns `false`.
+
+---
 
 ### `long long dir_get_directory_size(const char* dirPath)`
 
@@ -189,6 +217,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:  
   The function first checks if the provided `dirPath` is `NULL`. If it is, the function logs an error message and returns `-1`.
 
+---
+
 ### `long long dir_get_file_size(const char* filePath)`
 
 - **Purpose**:  
@@ -202,6 +232,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:  
   The function first checks if the provided `filePath` is `NULL`. If it is, the function logs an error message and returns `-1`.
 
+---
+
 ### `void dir_list_contents(const char* dirPath, DirListOption option, Vector* resultVector)`  
 - **Purpose**:  This function lists the contents of a directory based on the specified option (e.g., files only, directories only, or both). The results are stored in a `Vector`.
 
@@ -212,6 +244,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Return Value**:
   - void: This function does not return any value. The results (directory contents) are instead stored in the resultVector. Errors are handled internally, typically through logging, rather than returning an error code.
 
+---
+
 ### `bool dir_is_file(const char *filePath)`
 
 - **Purpose**: This function checks if the specified path points to a regular file. It returns `true` if the path points to a file and `false` if it does not exist or points to something other than a regular file (e.g., a directory, symbolic link, etc.).
@@ -221,6 +255,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - `true`: If the path points to a regular file.
   - `false`: If the path does not exist, points to something other than a regular file, or if there is an error (such as a `NULL` path or file access issues).
 - **Error Handling**: If the provided `filePath` is `NULL` or the file does not exist, the function logs the error and returns `false`.
+
+---
 
 ### `bool dir_is_directory(const char* dirPath)`
 
@@ -235,6 +271,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:  
   The function first checks if the provided `dirPath` is `NULL`. If it is, the function logs an error message and returns `false`.
 
+---
 
 ### `bool dir_move_file(const char* srcPath, const char* destPath)`
 
@@ -250,6 +287,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Input Validation**:  
   The function checks if both `srcPath` and `destPath` are `NULL`. If either is `NULL`, it logs an error message and returns `false`.
 
+---
+
 ### `bool dir_move_directory(const char* srcPath, const char* destPath)`
 
 - **Purpose**:  
@@ -262,6 +301,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - `false`: If an error occurs (e.g., `NULL` paths, failure to move the directory).
 - **Input Validation**:  
   The function checks if both `srcPath` and `destPath` are `NULL`. If either is `NULL`, it logs an error message and returns `false`.
+
+---
 
 ### `char* dir_get_modified_time(const char* dirPath)`
 
@@ -278,6 +319,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Error Handling**:  
   If the directory path is invalid, or memory allocation fails, the function logs appropriate error messages and returns `NULL`.
 
+---
+
 ### `char* dir_get_creation_time(const char* dirPath)`
 
 - **Purpose**:  
@@ -293,6 +336,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Error Handling**:  
   If the directory path is invalid, or memory allocation fails, the function logs appropriate error messages and returns `NULL`.
 
+---
+
 ### `char* dir_get_home_directory()`
 
 - **Purpose**:  
@@ -304,6 +349,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - `NULL`: If an error occurs (e.g., failure to retrieve the home directory path or memory allocation failure).
 - **Error Handling**:  
   The function logs appropriate error messages if it fails to retrieve or convert the home directory path and returns `NULL` in such cases.
+
+---
 
 ### `DirFileType dir_get_file_type(const char* filePath)`
 
@@ -323,6 +370,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Error Handling**:  
   If the file path is invalid or the file type cannot be determined, the function logs an error and returns `DIR_FILE_TYPE_UNKNOWN`.
 
+---
+
 ### `bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv)`
 
 - **Purpose**:  
@@ -339,6 +388,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   - The function checks if `filePath`, `password`, or `iv` are `NULL`. If any of these are `NULL`, it logs an error and returns `false`.
 - **Error Handling**:  
   - If the file cannot be opened for reading or writing, memory allocation fails, the password is too long, or encryption fails, the function logs appropriate error messages and returns `false`.
+
+---
 
 ### `bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv)`
 
@@ -358,6 +409,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Error Handling**:  
   If the file cannot be opened, memory allocation fails, or decryption fails, the function logs appropriate error messages and returns `false`.
 
+---
+
 ### `bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize)`
 
 - **Purpose**:  
@@ -375,6 +428,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - **Error Handling**:  
   If the file path is invalid, memory allocation fails, or the file owner cannot be retrieved, the function logs appropriate error messages and returns `false`.
 
+---
+
 ### `bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize)`
 
 - **Purpose**:  
@@ -391,6 +446,8 @@ This library is dedicated to directory and file operations, offering comprehensi
   The function checks if `dirPath`, `ownerBuffer`, or `bufferSize` are `NULL` or if `bufferSize` is 0. If any of these conditions are true, it logs an error and returns `false`.
 - **Error Handling**:  
   If an error occurs, such as failure to open the directory or retrieve the owner, the function logs appropriate error messages and returns `false`.
+
+---
 
 ### `bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData)`
 
@@ -414,14 +471,15 @@ This library is dedicated to directory and file operations, offering comprehensi
 --- 
 
 ## Compilation
-To compile a program using the Dir library, include all necessary source files in your compilation command. For example:
+To compile a program using the Dir library, include all necessary source files in your compilation command
+This command compiles with GCC using the C17 standard and enables various optimizations and warnings for better performance and code quality.
 
 ```bash
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./dir/dir.c
 ```
 
-This command compiles with GCC using the C17 standard and enables various optimizations and warnings for better performance and code quality.
-
+---
+### Examples 
 
 ## Example 1 : create directory with `dir_make_directory`
 
