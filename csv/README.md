@@ -35,6 +35,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Initializes the row by setting the `cells` pointer to `NULL`, `size` to `0`, and `capacity` to `0` to indicate an empty row.
   - Logs the success or failure of the operation.
 
+---
+
 ### `void csv_row_destroy(CsvRow *row)`
 
 - **Purpose**: Frees the memory associated with a `CsvRow` structure and its contents.
@@ -45,6 +47,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Frees each individual cell in the `CsvRow`.
   - Frees the array of cells (`row->cells`) and then the `CsvRow` structure itself.
   - Logs each step, including any errors if the `row` is `NULL`.
+
+---
 
 ### `void csv_row_append_cell(CsvRow *row, const char *value)`
 
@@ -58,6 +62,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Uses `string_strdup` to copy the `value` string into the newly created cell.
   - Logs each step of the process, including the new value being appended and any memory allocation failures.
 
+---
+
 ### `char* csv_row_get_cell(const CsvRow *row, size_t index)`
 
 - **Purpose**: Retrieves the value of a cell at a specified index in a `CsvRow`.
@@ -68,6 +74,8 @@ To use this library, include the `csv.h` header in your C project and compile th
 - **Details**:
   - Checks if the index is valid and the `row` is not `NULL`.
   - Logs the outcome, including any errors, and returns the value at the specified index if valid.
+
+---
 
 ### `CsvFile* csv_file_create(char delimiter)`
 
@@ -81,6 +89,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Sets the provided delimiter for separating fields.
   - Logs the success or failure of the memory allocation.
 
+---
+
 ### `void csv_file_destroy(CsvFile *file)`
 
 - **Purpose**: Frees the memory associated with a `CsvFile` structure and its rows.
@@ -92,6 +102,7 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Frees the array of `rows` and the `CsvFile` structure itself.
   - Logs each step, including any errors (e.g., if `file` is `NULL`).
 
+---
 
 ### `void csv_file_read(CsvFile *file, const char *filename)`
 
@@ -106,6 +117,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Each line is parsed into a `CsvRow` using `parse_csv_line` and then appended to the `CsvFile`.
   - Logs each step of the process, including opening, reading, parsing, and closing the file.
 
+---
+
 ### `void csv_file_write(const CsvFile *file, const char *filename)`
 
 - **Purpose**: Writes the contents of a `CsvFile` structure to a specified file.
@@ -119,6 +132,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Writes each row as a new line in the file.
   - Ensures proper memory handling and logs progress, including any errors encountered during file operations.
 
+---
+
 ### `void csv_file_append_row(CsvFile *file, CsvRow *row)`
 
 - **Purpose**: Appends a new row to a `CsvFile` structure.
@@ -131,6 +146,7 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Appends the new row at the end of the `rows` array.
   - Logs the resizing and appending process, including memory allocation checks and errors.
 
+---
 
 ### `CsvRow* csv_file_get_row(const CsvFile *file, size_t index)`
 
@@ -143,6 +159,7 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Performs bounds checking to ensure the index is valid.
   - Logs the process and any errors, such as invalid indices or `NULL` pointers.
 
+---
 
 ### `void csv_file_remove_row(CsvFile *file, size_t index)`
 
@@ -156,6 +173,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Shifts all subsequent rows one position forward to fill the gap left by the removed row.
   - Decreases the size of the `CsvFile` and logs the process, including any errors due to invalid indices or memory issues.
 
+---
+
 ### `void csv_print(const CsvFile *file)`
 
 - **Purpose**: Prints the contents of a `CsvFile` structure to the standard output.
@@ -168,6 +187,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Handles error cases where the `file` is `NULL`.
   - Logs the process and any issues that occur during execution.
 
+---
+
 ### `CsvRow* csv_row_read_next(FileReader *reader, char delimiter)`
 
 - **Purpose**: Reads the next row from a file using a `FileReader` object.
@@ -179,6 +200,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Reads a line from the file and splits it into cells based on the specified delimiter.
   - Handles quoted fields and trims newlines from the end of the line.
   - Logs progress and errors during the reading and parsing of each line.
+
+---
 
 ### `void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colData)`
 
@@ -194,6 +217,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Handles memory reallocation to ensure enough space for the new column.
   - Logs the process, including memory allocation and shifting of cells to make room for the new column.
 
+---
+
 ### `CsvRow* csv_file_get_header(const CsvFile *file)`
 
 - **Purpose**: Retrieves the header row from a `CsvFile`.
@@ -203,6 +228,8 @@ To use this library, include the `csv.h` header in your C project and compile th
 - **Details**:
   - Returns the first row of the `CsvFile`, which is typically considered the header.
   - Logs the process and any issues, such as empty or `NULL` files.
+
+---
 
 ### `void csv_file_set_header(CsvFile *file, CsvRow *header)`
 
@@ -216,6 +243,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - If the file is empty, it checks the capacity and resizes the row array if necessary.
   - The function logs all operations, including memory allocation and row destruction.
 
+---
+
 ### `int csv_row_get_cell_as_int(const CsvRow *row, size_t index)`
 
 - **Purpose**: Retrieves the value of a specific cell in a `CsvRow` and converts it to an integer.
@@ -227,6 +256,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Logs the start of the function, checks for invalid input, and converts the string value of the cell at the given index into an integer.
   - Uses the `atoi` function for conversion.
   - Logs any errors, including invalid indices or null row references.
+
+---
 
 ### `CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm)`
 
@@ -241,6 +272,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - Logs memory allocation and search progress for each row and cell, as well as when matches are found.
   - The function breaks the inner loop after finding the first occurrence in a row, ensuring only the first match per row is returned.
 
+---
+
 ### `bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *format)`
 
 - **Purpose**: Validates the format of a specific cell in a `CsvRow` by comparing the content of the cell to a formatted string.
@@ -253,6 +286,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - The function uses the `snprintf` function to format the cell content into a string and then compares it with the actual cell content.
   - Logs errors for invalid parameters or if the cell doesn't match the format.
 
+---
+
 ### `void csv_file_concatenate(CsvFile *file1, const CsvFile *file2)`
 
 - **Purpose**: Appends all rows from one `CsvFile` (source) to another `CsvFile` (destination). The rows are copied to ensure the source file remains unchanged.
@@ -264,6 +299,8 @@ To use this library, include the `csv.h` header in your C project and compile th
   - For each row in the source file (`file2`), the function creates a new row in the target file (`file1`) and appends all cells from the source row.
   - The source file is not modified, and memory is dynamically allocated for the new rows in the target file.
 
+---
+
 ### `int csv_column_sum(const CsvFile *file, size_t columnIndex)`
 
 - **Purpose**: Sums the integer values of a specific column in a `CsvFile`.
@@ -274,6 +311,8 @@ To use this library, include the `csv.h` header in your C project and compile th
 - **Details**:
   - Iterates through each row in the CSV file and adds the integer values in the specified column.
   - Logs warnings if a row doesn't contain enough columns for the specified index, indicating that the column is out of range.
+
+---
 
 ### `char* csv_export_to_json(const CsvFile *file)`
 
@@ -289,11 +328,7 @@ To use this library, include the `csv.h` header in your C project and compile th
 
 ---
 
-
 ## Example 1
-
-Below is a simple example of how to use this library to read a CSV file and print its contents:
-
 ```c
 #include "csv/csv.h"
 #include "fmt/fmt.h"
