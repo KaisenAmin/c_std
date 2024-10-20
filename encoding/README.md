@@ -27,197 +27,230 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 
 ## Function Descriptions
 
-### Base64 Encoding and Decoding
-- **`char* encoding_base64_encode(const char* input, size_t length)`**: 
+### `char* encoding_base64_encode(const char* input, size_t length)`: 
    - **Description**: Encodes a given binary data into Base64 format. 
    - **Parameters**: 
      - `input`: Pointer to the binary data to be encoded.
      - `length`: The length of the input data.
    - **Returns**: A dynamically allocated string containing the Base64 encoded representation.
 
-- **`char* encoding_base64_decode(const char* input, size_t length)`**:
+---
+
+### `char* encoding_base64_decode(const char* input, size_t length)`:
    - **Description**: Decodes a Base64 encoded string back to its original binary format.
    - **Parameters**: 
      - `input`: Pointer to the Base64 encoded string.
      - `length`: The length of the encoded string.
    - **Returns**: A dynamically allocated string containing the decoded binary data.
 
-### URL Encoding and Decoding
-- **`char* encoding_url_encode(const char* input, size_t length)`**:
+---
+
+### `char* encoding_url_encode(const char* input, size_t length)`:
    - **Description**: Encodes a given string into a URL-friendly format, converting special characters into percent-encoded representations.
    - **Parameters**: 
      - `input`: Pointer to the string to be URL encoded.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated string containing the URL encoded representation.
 
-- **`char* encoding_url_decode(const char* input, size_t lenght)`**:
+---
+
+### `char* encoding_url_decode(const char* input, size_t lenght)`:
    - **Description**: Decodes a percent-encoded URL string back to its original format, interpreting percent-encoded characters.
    - **Parameters**: 
      - `input`: Pointer to the URL encoded string.
      - `length`: The length of the encoded string.
    - **Returns**: A dynamically allocated string containing the decoded string.
 
-### Base32 Encoding and Decoding
-- **`char* encoding_base32_encode(const char* input, size_t length)`**:
+---
+
+### `char* encoding_base32_encode(const char* input, size_t length)`:
    - **Description**: Encodes a given binary data into Base32 format, which is useful in scenarios where case-insensitivity is beneficial.
    - **Parameters**: 
      - `input`: Pointer to the binary data to be encoded.
      - `length`: The length of the input data.
    - **Returns**: A dynamically allocated string containing the Base32 encoded representation.
 
-- **`char* encoding_base32_decode(const char* input, size_t length)`**:
+---
+
+### `char* encoding_base32_decode(const char* input, size_t length)`:
    - **Description**: Decodes a Base32 encoded string back to its original binary format.
    - **Parameters**: 
      - `input`: Pointer to the Base32 encoded string.
      - `length`: The length of the encoded string.
    - **Returns**: A dynamically allocated string containing the decoded binary data.
 
-### Base16 (Hex) Encoding and Decoding
-- **`char* encoding_base16_encode(const char* input, size_t length)`**:
+---
+
+### `char* encoding_base16_encode(const char* input, size_t length)`:
    - **Description**: Encodes binary data into Base16 (hexadecimal) format, which represents each byte of data as two hexadecimal digits.
    - **Parameters**: 
      - `input`: Pointer to the binary data to be encoded.
      - `length`: The length of the input data.
    - **Returns**: A dynamically allocated string containing the Base16 encoded representation.
+---
 
-- **`char* encoding_base16_decode(const char* input, size_t length)`**:
+### `char* encoding_base16_decode(const char* input, size_t length)`:
    - **Description**: Decodes a Base16 (hexadecimal) encoded string back to its original binary format.
    - **Parameters**: 
      - `input`: Pointer to the Base16 encoded string.
      - `length`: The length of the encoded string.
    - **Returns**: A dynamically allocated string containing the decoded binary data.
 
-### Base58 Encoding and Decoding
-- **`char* encoding_base58_encode(const void *data, size_t binsz)`**:
+---
+
+### `char* encoding_base58_encode(const void *data, size_t binsz)`:
    - **Description**: Encodes binary data into Base58 format, commonly used in cryptocurrencies such as Bitcoin.
    - **Parameters**: 
      - `data`: Pointer to the binary data to be encoded.
      - `binsz`: The length of the input data.
    - **Returns**: A dynamically allocated string containing the Base58 encoded representation.
+---
 
-- **`char* encoding_base58_decode(const char *b58, size_t *binszp)`**:
+### `char* encoding_base58_decode(const char *b58, size_t *binszp)`:
    - **Description**: Decodes a Base58 encoded string back to its original binary format.
    - **Parameters**: 
      - `b58`: Pointer to the Base58 encoded string.
      - `binszp`: Pointer to a size_t that will be set to the size of the decoded binary data.
    - **Returns**: A dynamically allocated string containing the decoded binary data.
+---
 
-### Base85 (ASCII85) Encoding and Decoding
-- **`char* encododing_base85_encode(const uint8_t* input, size_t length)`**:
+### `char* encododing_base85_encode(const uint8_t* input, size_t length)`:
    - **Description**: Encodes binary data into Base85 (also known as ASCII85) format, often used in Adobe's PostScript and PDF formats.
    - **Parameters**: 
      - `input`: Pointer to the binary data to be encoded.
      - `length`: The length of the input data.
    - **Returns**: A dynamically allocated string containing the Base85 encoded representation.
+---
 
-- **`uint8_t* encododing_base85_decode(const char* input, size_t length)`**:
+### `uint8_t* encododing_base85_decode(const char* input, size_t length)`:
    - **Description**: Decodes a Base85 encoded string back to its original binary format.
    - **Parameters**: 
      - `input`: Pointer to the Base85 encoded string.
      - `length`: The length of the encoded string.
    - **Returns**: A dynamically allocated string containing the decoded binary data.
 
-### Base91 Encoding and Decoding
-- **`encoding_base91_encode`**:
+---
+
+### `encoding_base91_encode`:
    - **Description**: Encodes binary data into Base91 format, which is more efficient in terms of character use compared to Base64 and Base85.
    - **Parameters**: 
      - `data`: Pointer to the binary data to be encoded.
      - `length`: The length of the input data.
    - **Returns**: A dynamically allocated string containing the Base91 encoded representation.
 
-- **`uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length)`**:
+---
+
+### `uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length)`:
    - **Description**: Decodes a Base91 encoded string back to its original binary format.
    - **Parameters**: 
      - `encoded`: Pointer to the Base91 encoded string.
      - `decoded_length`: Pointer to a size_t that will be set to the size of the decoded binary data.
    - **Returns**: A dynamically allocated string containing the decoded binary data.
 
-### UTF-16 and UTF-32 Conversion Functions
-- **`uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length)`**:
+---
+
+### `uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length)`:
    - **Description**: Converts a UTF-8 encoded string to UTF-16.
    - **Parameters**: 
      - `input`: Pointer to the UTF-8 encoded string.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated UTF-16 encoded string.
 
-- **`uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length)`**:
+---
+
+### `uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length)`:
    - **Description**: Converts a UTF-8 encoded string to UTF-32.
    - **Parameters**: 
      - `input`: Pointer to the UTF-8 encoded string.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated UTF-32 encoded string.
 
-- **`uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length)`**:
+---
+
+### `uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length)`:
    - **Description**: Converts a UTF-16 encoded string to UTF-8.
    - **Parameters**: 
      - `input`: Pointer to the UTF-16 encoded string.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated UTF-8 encoded string.
 
-- **`uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length)`**:
+---
+
+### `uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length)`:
    - **Description**: Converts a UTF-16 encoded string to UTF-32.
    - **Parameters**: 
      - `input`: Pointer to the UTF-16 encoded string.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated UTF-32 encoded string.
 
-- **`uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length)`**:
+---
+
+### `uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length)`:
    - **Description**: Converts a UTF-32 encoded string to UTF-8.
    - **Parameters**: 
      - `input`: Pointer to the UTF-32 encoded string.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated UTF-8 encoded string.
 
-- **`uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length)`**:
+---
+
+### `uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length)`:
    - **Description**: Converts a UTF-32 encoded string to UTF-16.
    - **Parameters**: 
      - `input`: Pointer to the UTF-32 encoded string.
      - `length`: The length of the input string.
    - **Returns**: A dynamically allocated UTF-16 encoded string.
 
-### UTF-8 Validation
-- **`bool encoding_is_utf8(const uint8_t* input, size_t length)`**:
+---
+
+### `bool encoding_is_utf8(const uint8_t* input, size_t length)`:
    - **Description**: Checks whether a given byte sequence is valid UTF-8.
    - **Parameters**: 
      - `input`: Pointer to the byte sequence to check.
      - `length`: The length of the input byte sequence.
    - **Returns**: `true` if the sequence is valid UTF-8, `false` otherwise.
+---
 
-- **`bool encoding_is_utf8_string(const uint8_t** input, size_t length)`**:
+### `bool encoding_is_utf8_string(const uint8_t** input, size_t length)`:
    - **Description**: Checks whether a given string is a valid UTF-8 string.
    - **Parameters**: 
      - `input`: Pointer to a pointer to the string to check.
      - `length`: The length of the input string.
    - **Returns**: `true` if the string is valid UTF-8, `false` otherwise.
 
-### Hexadecimal Dump
-- **`void encoding_hex_dump(const void *data, size_t size)`**:
+---
+
+### `void encoding_hex_dump(const void *data, size_t size)`:
    - **Description**: Produces a hexadecimal dump of the given data, displaying both the hex values and their ASCII representation.
    - **Parameters**: 
      - `data`: Pointer to the data to dump.
      - `size`: The size of the data.
    - **Returns**: Void. The function prints the hexadecimal dump to standard output.
 
-### Windows-Specific UTF-8/Wide
+---
 
  Character Conversion
-- **`wchar_t* encoding_utf8_to_wchar(const char* utf8Str)`** (Windows only):
+### `wchar_t* encoding_utf8_to_wchar(const char* utf8Str)` (Windows only):
    - **Description**: Converts a UTF-8 encoded string to a wide character string (`wchar_t`).
    - **Parameters**: 
      - `utf8Str`: Pointer to the UTF-8 encoded string.
    - **Returns**: A dynamically allocated wide character string.
+---
 
-- **`char* encoding_wchar_to_utf8(const wchar_t* wstr)`**:
+### `char* encoding_wchar_to_utf8(const wchar_t* wstr)`:
    - **Description**: Converts a wide character string (`wchar_t`) to a UTF-8 encoded string.
    - **Parameters**: 
      - `wstr`: Pointer to the wide character string.
    - **Returns**: A dynamically allocated UTF-8 encoded string.
 
-### Initialization Function
-- **`void encoding_initialize(void)`**:
+---
+
+### `void encoding_initialize(void)`:
    - **Description**: Initializes the encoding library, setting the locale for character encoding. This function is typically called at the beginning of the program.
    - **Parameters**: None.
    - **Returns**: Void.
+
+---
 
 
 ## Example 1: Base64 Encoding and Decoding
