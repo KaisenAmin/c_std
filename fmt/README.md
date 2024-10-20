@@ -28,10 +28,6 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 Comprehensive documentation is provided, detailing the functionality and usage of each function in the library. It covers everything from basic string formatting to more advanced features like Unicode processing and file I/O operations.
 
-## Examples
-
-The library includes various examples demonstrating its capabilities. These range from simple formatted console output to complex operations involving dynamic strings and file I/O.
-
 ### Function Descriptions
 
 ### `void fmt_printf(const char* format, ...)`
@@ -46,6 +42,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   This function does not return a value.
 
+---
+
 ### `char* fmt_sprintf(const char* format, ...)`
 
 - **Purpose**:  
@@ -58,6 +56,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns a pointer to the dynamically allocated string containing the formatted text, or `NULL` if memory allocation fails.
 
+---
+
 ### `int fmt_scan(char** output)`
 
 - **Purpose**:  
@@ -68,6 +68,8 @@ The library includes various examples demonstrating its capabilities. These rang
 
 - **Return Type**:  
   Returns `0` on success or a negative value if an error occurred.
+
+---
 
 ### `int fmt_scanln(char** output)`
 
@@ -80,6 +82,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns `0` on success or a negative value if an error occurred.
 
+---
+
 ### `int fmt_scanf(const char* format, ...)`
 
 - **Purpose**:  
@@ -91,6 +95,8 @@ The library includes various examples demonstrating its capabilities. These rang
 
 - **Return Type**:  
   Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
+
+---
 
 ### `int fmt_fprintf(FILE* stream, const char* format, ...)`
 
@@ -105,6 +111,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns the number of characters successfully written, or a negative value if an error occurred.
 
+---
+
 ### `int fmt_fscanf(FILE* stream, const char* format, ...)`
 
 - **Purpose**:  
@@ -117,6 +125,8 @@ The library includes various examples demonstrating its capabilities. These rang
 
 - **Return Type**:  
   Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
+
+---
 
 ### `int fmt_fprintf(FILE* stream, const char* format, ...)`
 
@@ -131,6 +141,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns the number of bytes successfully written, or `-1` if an error occurred.
 
+---
+
 ### `int fmt_fscan(FILE* stream, const char* format, ...)`
 
 - **Purpose**:  
@@ -144,6 +156,7 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
 
+---
 
 ### `int fmt_fscanln(FILE* stream, const char* format, ...)`
 
@@ -157,6 +170,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns the number of input items successfully matched and assigned, or `0` on EOF, or a negative value if an error occurred.
 
+---
+
 ### `int fmt_fscanf(FILE* stream, const char* format, ...)`
 
 - **Purpose**:  
@@ -169,6 +184,7 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
 
+---
 
 ### `void fmt_print(const char* str, ...)`
 
@@ -181,6 +197,8 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   This function does not return a value.
 
+---
+
 ### `void fmt_println(const char* str, ...)`
 
 - **Purpose**:  
@@ -191,6 +209,8 @@ The library includes various examples demonstrating its capabilities. These rang
   - `...`: Additional arguments to be printed.
 - **Return Type**:  
   This function does not return a value.
+
+---
 
 ### `char* fmt_sprintln(const char* first_arg, ...)`
 
@@ -203,6 +223,7 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns a dynamically allocated UTF-8 string containing the formatted text, or `NULL` if memory allocation fails.
 
+---
 
 ### `char* fmt_sprint(const char* first_arg, ...)`
 
@@ -216,6 +237,7 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns a dynamically allocated UTF-8 string containing the formatted text, or `NULL` if memory allocation fails.
 
+---
 
 ### `void fmt_fprint(FILE* stream, const char* str, ...)`
 
@@ -228,6 +250,8 @@ The library includes various examples demonstrating its capabilities. These rang
   - `...`: Additional arguments to be written.
 - **Return Type**:  
   Returns the number of bytes successfully written, or `-1` if an error occurred.
+
+---
 
 ### `void fmt_fprintln(FILE* stream, const char* str, ...)`
 
@@ -242,7 +266,7 @@ The library includes various examples demonstrating its capabilities. These rang
 - **Return Type**:  
   Returns the number of bytes successfully written, or `-1` if an error occurred.
 
-
+---
 
 ## Example 1 : how to show message with `fmt_println` and `fmt_print`
 
