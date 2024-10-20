@@ -36,6 +36,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - Initializes the deque with a middle index for efficient push operations at both ends. Allocates memory for the deque structure and the first block of memory for storing elements.
 
+---
 
 ### `bool deque_empty(const Deque* deque)`
 
@@ -46,6 +47,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - Logs an error if the deque is `NULL` and returns `true`.
 
+---
+
 ### `size_t deque_length(const Deque* deque)`
 
 - **Purpose**: Returns the number of elements in the deque.
@@ -54,6 +57,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: The number of elements in the deque or `0` if the deque is `NULL`.
 - **Details**: 
   - Logs the size of the deque and returns `0` if the deque pointer is `NULL`.
+
+---
 
 ### `void deque_push_front(Deque* deque, void* item)`
 
@@ -65,6 +70,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - Inserts a new item at the front of the deque. If necessary, it allocates a new block at the front to accommodate the new item. Logs errors if the deque or item is `NULL`.
 
+---
+
 ### `void deque_push_back(Deque* deque, const void* item)`
 
 - **Purpose**: Inserts an item at the back of the deque.
@@ -75,6 +82,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - If the deque reaches the back of the allocated block, a new block is added. Logs errors if memory allocation fails or the input is `NULL`.
 
+---
+
 ### `void* deque_front(const Deque* deque)`
 
 - **Purpose**: Retrieves the front element of the deque without removing it.
@@ -84,6 +93,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - Logs errors if the deque is empty or `NULL` and returns the front element if available.
 
+---
 
 ### `void* deque_back(const Deque* deque)`
 
@@ -94,6 +104,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - Logs errors if the deque is empty or `NULL` and returns the back element if available.
 
+---
+
 ### `void deque_pop_front(Deque* deque)`
 
 - **Purpose**: Removes the front element from the deque.
@@ -103,6 +115,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Details**: 
   - Logs errors if the deque is `NULL` or empty. It adjusts the front index, removes memory blocks if necessary, and updates the deque's size.
 
+---
+
 ### `void deque_pop_back(Deque* deque)`
 
 - **Purpose**: Removes the back element from the deque.
@@ -110,6 +124,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: No return value.
 - **Details**: Frees the back element, adjusts the back index, and manages memory blocks when necessary. Logs errors if the deque is empty or `NULL`.
+
+---
 
 ### `void* deque_at(const Deque* deque, size_t index)`
 
@@ -120,6 +136,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: Pointer to the element at the specified index or `NULL` if the index is out of bounds or the deque is `NULL`.
 - **Details**: Logs errors for out-of-bounds access or invalid input.
 
+---
+
 ### `void deque_clear(Deque* deque)`
 
 - **Purpose**: Clears all elements from the deque.
@@ -127,6 +145,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: No return value.
 - **Details**: Frees all elements and blocks, then resets the deque to its initial state. Logs errors for `NULL` input.
+
+---
 
 ### `void deque_deallocate(Deque* deque)`
 
@@ -136,6 +156,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: No return value.
 - **Details**: Frees all elements and memory blocks, and then deallocates the deque structure itself. Logs the deallocation process.
 
+---
+
 ### `void deque_shrink_to_fit(Deque* deque)`
 
 - **Purpose**: Shrinks the deque's memory usage to fit its current size.
@@ -143,6 +165,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: No return value.
 - **Details**: Reduces the memory usage by deallocating excess blocks and reallocating memory to fit the current size of the deque. Logs any errors during the shrinking process.
+
+---
 
 ### `void deque_insert(Deque* deque, size_t index, void* item)`
 
@@ -153,6 +177,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `item`: Pointer to the item to insert.
 - **Details**: If the index is out of bounds or the deque needs to be expanded, memory is reallocated, and elements are shifted to the right to accommodate the new element. Logs errors if the input is invalid.
 
+---
+
 ### `void deque_erase(Deque* deque, size_t index)`
 
 - **Purpose**: Removes an element at a specified index in the deque.
@@ -160,6 +186,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
   - `index`: The position of the element to remove.
 - **Details**: Shifts elements to the left to fill the gap left by the removed element. If blocks become empty, they are deallocated. Logs errors if the index is out of bounds or the deque is `NULL`.
+
+---
 
 ### `void deque_resize(Deque* deque, size_t newSize)`
 
@@ -169,6 +197,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `newSize`: The new size of the deque.
 - **Details**: Expands or shrinks the deque to the new size. If the size is reduced, memory is optimized by deallocating unnecessary blocks. Logs actions and handles memory reallocation.
 
+---
+
 ### `void deque_swap(Deque* deque, Deque* otherDeque)`
 
 - **Purpose**: Swaps the contents of two deques.
@@ -176,6 +206,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the first deque.
   - `otherDeque`: Pointer to the second deque.
 - **Details**: The entire internal structure, size, and blocks of the two deques are swapped.
+
+---
 
 ### `void deque_assign(Deque* deque, size_t n, void* val)`
 
@@ -186,6 +218,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `val`: Pointer to the value to assign to each element.
 - **Details**: Clears the deque and resizes it to hold `n` elements, each initialized to `val`.
 
+---
+
 ### `void deque_emplace_back(Deque* deque, void* item)`
 
 - **Purpose**: Inserts an element at the end of the deque.
@@ -194,6 +228,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `item`: Pointer to the item to insert.
 - **Details**: If the deque’s current block at the back is full, allocates a new block and places the item.
 
+---
+
 ### `void deque_emplace_front(Deque* deque, void* item)`
 
 - **Purpose**: Inserts an element at the front of the deque.
@@ -201,6 +237,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
   - `item`: Pointer to the item to insert.
 - **Details**: If the front block is full, allocates a new block and places the item at the front.
+
+---
 
 ### `void deque_emplace(Deque* deque, size_t index, void* item)`
 
@@ -211,6 +249,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `item`: Pointer to the item to be inserted.
 - **Details**: Inserts an element at the given index. If the index is at the front or back, it delegates to `deque_emplace_front` or `deque_emplace_back`. Otherwise, it shifts elements to make space.
 
+---
+
 ### `size_t deque_max_size(const Deque* deque)`
 
 - **Purpose**: Returns the maximum number of elements the deque can hold.
@@ -218,6 +258,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: The maximum size of the deque, which is typically `SIZE_MAX`.
 - **Details**: Returns the system-defined maximum size the deque can hold.
+
+---
 
 ### `bool deque_is_equal(const Deque* deque1, const Deque* deque2)`
 
@@ -228,6 +270,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: `true` if the deques are equal (same size and elements), `false` otherwise.
 - **Details**: Compares the size and contents of two deques to check for equality.
 
+---
+
 ### `bool deque_is_less(const Deque* deque1, const Deque* deque2)`
 
 - **Purpose**: Compares two deques lexicographically to determine if the first is less than the second.
@@ -236,6 +280,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque2`: Pointer to the second deque.
 - **Return**: `true` if `deque1` is lexicographically less than `deque2`, otherwise `false`.
 - **Details**: Compares elements in sequence, stopping when a difference is found or one deque runs out of elements.
+
+---
 
 ### `bool deque_is_greater(const Deque* deque1, const Deque* deque2)`
 
@@ -246,6 +292,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: `true` if `deque1` is greater than `deque2`, otherwise `false`.
 - **Details**: Uses `deque_is_less` in reverse to determine the result.
 
+---
+
 ### `bool deque_is_not_equal(const Deque* deque1, const Deque* deque2)`
 
 - **Purpose**: Compares two deques for inequality.
@@ -254,6 +302,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque2`: Pointer to the second deque.
 - **Return**: `true` if the deques are not equal, otherwise `false`.
 - **Details**: Returns the negation of `deque_is_equal`.
+
+---
 
 ### `bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2)`
 
@@ -264,6 +314,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: `true` if `deque1` is less than or equal to `deque2`, otherwise `false`.
 - **Details**: Uses `deque_is_less` and `deque_is_equal` to determine the result.
 
+---
+
 ### `bool deque_is_greater_or_equal(const Deque* deque1, const Deque* deque2) `
 
 - **Purpose**: Checks if the first deque is greater than or equal to the second.
@@ -273,6 +325,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: `true` if `deque1` is greater than or equal to `deque2`, otherwise `false`.
 - **Details**: Uses `deque_is_greater` and `deque_is_equal`.
 
+---
+
 ### `DequeIterator deque_begin(const Deque* deque)`
 
 - **Purpose**: Returns an iterator to the first element in the deque.
@@ -280,6 +334,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: An iterator pointing to the first element.
 - **Details**: Initializes an iterator to point to the first element of the deque, or signals an empty deque if necessary.
+
+---
 
 ### `DequeIterator deque_end(const Deque* deque)`
 
@@ -289,6 +345,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: An iterator pointing just past the last element.
 - **Details**: Commonly used as a sentinel in iteration loops.
 
+---
+
 ### `DequeIterator deque_rbegin(const Deque* deque)`
 
 - **Purpose**: Returns a reverse iterator pointing to the last element in the deque.
@@ -296,6 +354,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: A `DequeIterator` pointing to the last element.
 - **Details**: Allows backward traversal of the deque by starting from the last element.
+
+---
 
 ### `DequeIterator deque_rend(const Deque* deque)`
 
@@ -305,6 +365,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: A `DequeIterator` representing the "rend" position (before the first element).
 - **Details**: Typically used to mark the end of reverse iteration.
 
+---
+
 ### `const DequeIterator* deque_cbegin(const Deque* deque)`
 
 - **Purpose**: Returns a constant iterator pointing to the first element in the deque (read-only).
@@ -312,6 +374,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: A pointer to a constant `DequeIterator` pointing to the first element.
 - **Details**: Ensures that the iterator is read-only.
+
+---
 
 ### `const DequeIterator* deque_cend(const Deque* deque)`
 
@@ -321,6 +385,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: A pointer to a constant `DequeIterator` representing the "end" position.
 - **Details**: Used as the sentinel for forward traversal.
 
+---
+
 ### `const DequeIterator* deque_crbegin(const Deque* deque)`
 
 - **Purpose**: Returns a constant reverse iterator pointing to the last element (read-only).
@@ -328,6 +394,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - `deque`: Pointer to the deque.
 - **Return**: A pointer to a constant `DequeIterator` pointing to the last element.
 - **Details**: Used for reverse traversal, ensuring the elements are read-only.
+
+---
 
 ### `const DequeIterator* deque_crend(const Deque* deque)`
 
@@ -337,6 +405,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 - **Return**: A pointer to a constant `DequeIterator` representing the reverse "end" position.
 - **Details**: Used as the sentinel for reverse iteration, ensuring the iterator is read-only.
 
+---
 
 ### `void iterator_increment(DequeIterator* it)`
 
@@ -349,6 +418,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - For **reverse iteration**, it moves the iterator backward. If the beginning of a block is reached, it transitions to the previous block.
   - If the iterator reaches the end or beginning of the deque, the `current` element is set to `NULL`.
 
+---
+
 ### `void iterator_decrement(DequeIterator* it)`
 
 - **Purpose**: Decrements the position of the iterator.
@@ -359,6 +430,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - For **forward iteration**, this function moves the iterator one element backward. If the start of a block is reached, it transitions to the previous block.
   - For **reverse iteration**, it moves the iterator forward. If the end of a block is reached, it transitions to the next block.
   - If the iterator reaches the beginning or end of the deque, the `current` element is set to `NULL`.
+
+---
 
 ### `bool iterator_equals(const DequeIterator* it1, const DequeIterator* it2)`
 
@@ -372,6 +445,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - If either iterator is at the end (or reverse end) position, the comparison is based on whether both iterators are at the end/rend.
   - Logs whether the iterators are equal or not, and handles cases where one or both iterators are `NULL`.
 
+---
+
 ### `void* iterator_get(const DequeIterator* it)`
 
 - **Purpose**: Retrieves the value pointed to by the iterator.
@@ -383,7 +458,6 @@ To use the Deque library in your project, include the `deque.h` header file in y
   - In **reverse iteration**, it returns the element at the current block and index, or `NULL` if the iterator is out of bounds.
   - In **forward iteration**, it retrieves the element from the block and index, or returns `NULL` if the iterator is out of bounds.
   - Logs the position of the iterator and errors if the iterator or deque is `NULL` or out of bounds.
-
 
 ---
 
