@@ -73,7 +73,6 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 - `CRYPTO_MODE_CFB`: Cipher Feedback mode.
 - `CRYPTO_MODE_OFB`: Output Feedback mode.
 
-
 ### Function Descriptions 
 
 ### `uint8_t* crypto_hash_data(const uint8_t* data, size_t length, HashAlgorithm algorithm, size_t *outLength)`
@@ -93,6 +92,8 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 - Depending on the selected algorithm, it either directly calls lower-level hashing functions (like `MD5`, `SHA256`) or uses OpenSSL's `EVP` interfaces for more complex algorithms like SHA3 and Blake2.
 - The function performs error checking, ensuring the `outLength` pointer is valid and that memory allocation succeeds.
 - If any error occurs during the hashing process, the function logs the error, cleans up any allocated resources, and returns `NULL`.
+
+---
 
 ### `void crypto_print_hash(const uint8_t* hash, size_t length)`
 **Purpose**: This function prints cryptographic hash data as a hexadecimal string.
@@ -128,6 +129,8 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 - Error handling ensures that null inputs for critical parameters (e.g., `plaintext`, `key`, `out_len`) lead to early returns with error messages logged.
 - Memory is allocated for the padded plaintext and ciphertext, which must be freed by the caller.
 
+---
+
 ### `void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
 **Purpose**: Decrypts the provided ciphertext using the DES (Data Encryption Standard) algorithm in various modes (ECB, CBC, CFB, or OFB).
 
@@ -151,6 +154,8 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 - If an initialization vector (IV) is not provided, the function defaults to using an IV of all zeros.
 - Memory allocated for the plaintext must be freed by the caller.
 - If any input parameters are invalid (e.g., `ciphertext`, `key`, or `out_len` is `NULL`), the function logs an error and returns `NULL`.
+
+---
 
 ### `void crypto_generate_random_iv(uint8_t *iv, size_t length)`
 **Purpose**: Generates a random Initialization Vector (IV) for cryptographic purposes, using platform-specific methods.
@@ -180,6 +185,8 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 - The function ensures platform compatibility by using preprocessor directives to choose the appropriate method based on whether the platform is Windows or Unix-like.
 - Both implementations use cryptographically secure random sources to generate IVs, ensuring that the IVs are suitable for use in encryption algorithms.
 - If an error occurs (e.g., failure to open `/dev/urandom` or to acquire a cryptographic context), the program will terminate to prevent usage of insecure or uninitialized data.
+
+---
 
 ## Example Programs
 
