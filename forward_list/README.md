@@ -35,11 +35,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `itemSize`: Size of each element in bytes. Must be greater than 0.
 - **Return**: Pointer to the newly created list, or `NULL` if memory allocation fails.
 
+---
+
 ### `void *forward_list_front(const ForwardList *list)`
 - **Purpose**: Retrieves the value of the first element in the `ForwardList`.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: Pointer to the value of the first element, or `NULL` if the list is empty or `NULL`.
+
+---
 
 ### `void forward_list_push_front(ForwardList *list, void *value)`
 - **Purpose**: Adds a new element to the front of the `ForwardList`.
@@ -48,11 +52,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `value`: Pointer to the value to insert at the front of the list.
 - **Return**: None.
 
+---
+
 ### `void forward_list_pop_front(ForwardList *list)`
 - **Purpose**: Removes the first element from the `ForwardList`.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void forward_list_clear(ForwardList *list)`
 - **Purpose**: Removes all elements from the `ForwardList`, resetting it to an empty state.
@@ -60,11 +68,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list`: Pointer to the list.
 - **Return**: None.
 
+---
+
 ### `void forward_list_deallocate(ForwardList *list)`
 - **Purpose**: Frees all memory associated with the `ForwardList`, including nodes and the list itself.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void forward_list_assign(ForwardList *list, void *values, size_t numValues)`
 - **Purpose**: Replaces the contents of the `ForwardList` with values from an array.
@@ -74,12 +86,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `numValues`: Number of values to insert.
 - **Return**: None.
 
+---
+
 ### `void forward_list_emplace_front(ForwardList *list, void *value)`
 - **Purpose**: Inserts a new element at the front of the `ForwardList` without copying the value.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `value`: Pointer to the value to emplace.
 - **Return**: None.
+
+---
 
 ### `void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *value)`
 - **Purpose**: Inserts a new element directly after the specified node (`pos`) in the `ForwardList` without copying the value.
@@ -88,6 +104,8 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `pos`: Pointer to the node after which the new value will be inserted.
   - `value`: Pointer to the value to emplace.
 - **Return**: None.
+
+---
 
 ### `void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues)`
 - **Purpose**: Inserts multiple elements into the `ForwardList` after the specified node (`pos`).
@@ -98,12 +116,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `numValues`: Number of elements to insert.
 - **Return**: None.
 
+---
+
 ### `void forward_list_erase_after(ForwardList *list, ForwardListNode *pos)`
 - **Purpose**: Removes the node immediately after the specified node (`pos`) in the `ForwardList`.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `pos`: Pointer to the node before the node to be erased.
 - **Return**: None.
+
+---
 
 ### `void forward_list_swap(ForwardList *list1, ForwardList *list2)`
 - **Purpose**: Swaps the contents of two `ForwardLists`.
@@ -112,12 +134,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list2`: Pointer to the second list.
 - **Return**: None.
 
+---
+
 ### `void forward_list_resize(ForwardList *list, size_t newSize)`
 - **Purpose**: Resizes the `ForwardList` to contain `newSize` elements.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `newSize`: New desired size of the list.
 - **Return**: None.
+
+---
 
 ### `void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other)`
 - **Purpose**: Moves all elements from the `other` list into the current `list` after the node `pos`.
@@ -127,12 +153,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `other`: Pointer to the source list whose elements will be moved.
 - **Return**: None.
 
+---
+
 ### `void forward_list_remove(ForwardList *list, void *value)`
 - **Purpose**: Removes all elements in the `ForwardList` that match the specified `value`.
 - **Parameters**:
   - `list`: Pointer to the list.
   - `value`: Pointer to the value to remove.
 - **Return**: None.
+
+---
 
 ### `void forward_list_remove_if(ForwardList *list, bool (*condition)(void*))`
 - **Purpose**: Removes all elements from the `ForwardList` that satisfy the condition specified by the `condition` function.
@@ -141,11 +171,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `condition`: Function pointer to the condition function to test each element.
 - **Return**: None.
 
+---
+
 ### `void forward_list_unique(ForwardList *list)`
 - **Purpose**: Removes consecutive duplicate elements from the `ForwardList`.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void forward_list_merge(ForwardList *list1, ForwardList *list2)`
 - **Purpose**: Merges two sorted `ForwardLists` (`list1` and `list2`) into one sorted list stored in `list1`.
@@ -154,11 +188,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list2`: Pointer to the second list, which becomes empty after the merge.
 - **Return**: None.
 
+---
+
 ### `void forward_list_sort(ForwardList *list)`
 - **Purpose**: Sorts the elements of the `ForwardList` in ascending order using merge sort.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: None.
+
+---
 
 ### `void forward_list_reverse(ForwardList *list)`
 - **Purpose**: Reverses the order of the elements in the `ForwardList`.
@@ -166,11 +204,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list`: Pointer to the list.
 - **Return**: None.
 
+---
+
 ### `size_t forward_list_length(const ForwardList *list)`
 - **Purpose**: Returns the number of elements in the `ForwardList`.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: Number of elements in the list.
+
+---
 
 ### `size_t forward_list_max_size(const ForwardList *list)`
 - **Purpose**: Returns the theoretical maximum number of elements the `ForwardList` can hold.
@@ -178,11 +220,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list`: Pointer to the list.
 - **Return**: The maximum number of elements the list can hold, or `(size_t)-1` in case of error.
 
+---
+
 ### `ForwardListNode *forward_list_before_begin(ForwardList *list)`
 - **Purpose**: Returns a pointer to the node before the first node of the `ForwardList`, which is always `NULL` for singly linked lists.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: Always `NULL`.
+
+---
 
 ### `ForwardListNode *forward_list_begin(ForwardList *list)`
 - **Purpose**: Returns a pointer to the first node (head) of the `ForwardList`.
@@ -190,11 +236,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list`: Pointer to the list.
 - **Return**: Pointer to the first node, or `NULL` if the list is empty.
 
+---
+
 ### `ForwardListNode *forward_list_end(ForwardList *list)`
 - **Purpose**: Returns `NULL`, representing the end of the `ForwardList`.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: `NULL`.
+
+---
 
 ### `bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2)`
 - **Purpose**: Compares two `ForwardLists` lexicographically to check if `list1` is less than `list2`.
@@ -203,14 +253,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is lexicographically less than `list2`, `false` otherwise.
 
+---
+
 ### `bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2)`
 - **Purpose**: Compares two `ForwardLists` lexicographically to check if `list1` is greater than `list2`.
 - **Parameters**:
   - `list1`: Pointer to the first list.
   - `list2`: Pointer to the second list.
-- **Return**: `true
+- **Return**: `true` if `list1` is lexicographically greater than `list2`, `false` otherwise.
 
-` if `list1` is lexicographically greater than `list2`, `false` otherwise.
+---
 
 ### `bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2)`
 - **Purpose**: Compares two `ForwardLists` for equality.
@@ -219,12 +271,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list2`: Pointer to the second list.
 - **Return**: `true` if both lists are equal, `false` otherwise.
 
+---
+
 ### `bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *list2)`
 - **Purpose**: Checks if `list1` is lexicographically less than or equal to `list2`.
 - **Parameters**:
   - `list1`: Pointer to the first list.
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is less than or equal to `list2`, `false` otherwise.
+
+---
 
 ### `bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2)`
 - **Purpose**: Checks if `list1` is lexicographically greater than or equal to `list2`.
@@ -233,6 +289,8 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list2`: Pointer to the second list.
 - **Return**: `true` if `list1` is greater than or equal to `list2`, `false` otherwise.
 
+---
+
 ### `bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2)`
 - **Purpose**: Checks if two `ForwardLists` are not equal.
 - **Parameters**:
@@ -240,11 +298,15 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
   - `list2`: Pointer to the second list.
 - **Return**: `true` if the lists are not equal, `false` otherwise.
 
+---
+
 ### `bool forward_list_empty(const ForwardList *list)`
 - **Purpose**: Checks if the `ForwardList` is empty.
 - **Parameters**:
   - `list`: Pointer to the list.
 - **Return**: `true` if the list is empty, `false` otherwise.
+
+---
 
 
 ### Example 1: Create a ForwardList and Push Front with `forward_list_create` and `forward_list_push_front`
