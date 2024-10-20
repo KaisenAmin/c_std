@@ -26,148 +26,145 @@ To use the Priority Queue library in your project, include the `priority_queue.h
 #include "priority_queue/priority_queue.h"
 ```
 
-## API Reference
+## Functions Descriptions 
 
 ### Priority Queue Creation and Deallocation
 
 - **`PriorityQueue* priority_queue_create(size_t itemSize, int (*compare)(const void*, const void*));`**
-
-    Creates a new Priority Queue object. The size of each item in the queue and a comparison function to determine the priority of elements must be specified.
-
+    - **Purpose**: Creates a new Priority Queue object. The size of each item in the queue and a comparison function to determine the priority of elements must be specified.
     - **Parameters:**
         - `itemSize`: The size of the items that will be stored in the priority queue.
         - `compare`: A pointer to the comparison function used to determine the order of elements.
     - **Returns:** A pointer to the newly created Priority Queue object.
 
+---
+
 - **`void priority_queue_deallocate(PriorityQueue* pq);`**
-
-    Deallocates a Priority Queue object, freeing all associated memory.
-
+    - **Purpose**: Deallocates a Priority Queue object, freeing all associated memory.
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object to be deallocated.
 
-### Priority Queue Operations
+---
 
 - **`void priority_queue_push(PriorityQueue* pq, void* item);`**
-
-    Adds an item to the priority queue, maintaining the heap property.
-
+    - **Purpose**: Adds an item to the priority queue, maintaining the heap property.
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
         - `item`: Pointer to the item to be added to the queue.
 
+---
+
 - **`void priority_queue_pop(PriorityQueue* pq);`**
-
-    Removes the top (highest priority) item from the priority queue.
-
+    - **Purpose**: Removes the top (highest priority) item from the priority queue.
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
 
+---
+
 - **`void* priority_queue_top(const PriorityQueue* pq);`**
-
-    Returns a pointer to the top item of the priority queue without removing it.
-
+    - **Purpose**: Returns a pointer to the top item of the priority queue without removing it.
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
     - **Returns:** A pointer to the top item or `NULL` if the queue is empty.
 
+---
+
 - **`bool priority_queue_empty(const PriorityQueue* pq);`**
-
-    Checks if the priority queue is empty.
-
+    - **Purpose**: Checks if the priority queue is empty.
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
     - **Returns:** `true` if the priority queue is empty, otherwise `false`.
 
+---
+
 - **`size_t priority_queue_size(const PriorityQueue* pq);`**
-
-    Returns the number of items currently in the priority queue.
-
+    - **Purpose**: Returns the number of items currently in the priority queue.
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
     - **Returns:** The number of items in the priority queue.
 
+---
+
 - **`void priority_queue_swap(PriorityQueue* pq1, PriorityQueue* pq2);`**
-
-    Swaps the contents of two priority queues.
-
+    - **Purpose**: Swaps the contents of two priority queues.
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
 
-### Relational Operations
+---
 
 - **`bool priority_queue_is_equal(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
-
-    Compares two priority queues to determine if they are equal.
-
+    - **Purpose**: Compares two priority queues to determine if they are equal.
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
     - **Returns:** `true` if the priority queues are equal (contain the same elements in the same order), otherwise `false`.
 
+---
+
 - **`bool priority_queue_is_less(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
-
-    Compares two priority queues to determine if the first queue is less than the second.
-
+    - **Purpose**: Compares two priority queues to determine if the first queue is less than the second.
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
     - **Returns:** `true` if the first priority queue is less than the second (lexicographical comparison), otherwise `false`.
 
+---
+
 - **`bool priority_queue_is_greater(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
-
-    Compares two priority queues to determine if the first queue is greater than the second.
-
+    - **Purpose**: Compares two priority queues to determine if the first queue is greater than the second.
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
     - **Returns:** `true` if the first priority queue is greater than the second (lexicographical comparison), otherwise `false`.
 
-- **`bool priority_queue_is_not_equal(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
+---
 
-    Compares two priority queues to determine if they are not equal.
+- **`bool priority_queue_is_not_equal(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
+    - **Purpose**: Compares two priority queues to determine if they are not equal.
 
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
     - **Returns:** `true` if the priority queues are not equal, otherwise `false`.
 
+---
+
 - **`bool priority_queue_is_less_or_equal(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
-
-    Compares two priority queues to determine if the first queue is less than or equal to the second.
-
+    - **Purpose**: Compares two priority queues to determine if the first queue is less than or equal to the second.
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
     - **Returns:** `true` if the first priority queue is less than or equal to the second, otherwise `false`.
 
-- **`bool priority_queue_is_greater_or_equal(const PriorityQueue* pq1, const PriorityQueue* pq2);`**
+---
 
-    Compares two priority queues to determine if the first queue is greater than or equal to the second.
-
+- **`bool priority_queue_is_greater_or_equal(const PriorityQueue* pq1, const PriorityQueue* pq2);`**s
+    - **Purpose**: Compares two priority queues to determine if the first queue is greater than or equal to the second.
     - **Parameters:**
         - `pq1`: Pointer to the first Priority Queue object.
         - `pq2`: Pointer to the second Priority Queue object.
     - **Returns:** `true` if the first priority queue is greater than or equal to the second, otherwise `false`.
 
-### Front and Back Access Functions
+---
 
 - **`void* priority_queue_front(const PriorityQueue* pq);`**
-
-    Returns a pointer to the front item of the priority queue without removing it. In the context of a priority queue, the "front" typically refers to the element with the highest priority.
+    - **Purpose**: Returns a pointer to the front item of the priority queue without removing it. In the context of a priority queue, the "front" typically refers to the element with the highest priority.
 
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
     - **Returns:** A pointer to the front (highest priority) item, or `NULL` if the queue is empty.
 
-- **`void* priority_queue_back(const PriorityQueue* pq);`**
+---
 
-    Returns a pointer to the back item of the priority queue without removing it. While a priority queue is typically accessed through its "front" (highest priority element), this function can be used to access the "least priority" item.
+- **`void* priority_queue_back(const PriorityQueue* pq);`**
+    - **Purpose**: Returns a pointer to the back item of the priority queue without removing it. While a priority queue is typically accessed through its "front" (highest priority element), this function can be used to access the "least priority" item.
 
     - **Parameters:**
         - `pq`: Pointer to the Priority Queue object.
     - **Returns:** A pointer to the back (lowest priority) item, or `NULL` if the queue is empty.
+
+---
 
 ### Example 1: How to Create a Priority Queue and Push Elements
 
