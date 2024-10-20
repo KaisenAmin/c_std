@@ -45,6 +45,8 @@ The logging system is designed to provide a flexible and configurable way to han
   - If memory allocation fails for the `Log` object, the function logs an error and calls `exit(-1)` to terminate.
   - If the log file cannot be opened, it logs an error and defaults to console output.
 
+---
+
 ### `bool log_set_output(Log* config, LogOutput output)`
 
 - **Purpose**:  
@@ -68,6 +70,8 @@ The logging system is designed to provide a flexible and configurable way to han
   - Logs an error if the configuration object is `NULL`.
   - If the log file cannot be opened, it logs an error and reverts to console output.
 
+---
+
 ### `bool log_enable_timestamp(Log* config, bool enable)`
 
 - **Purpose**:  
@@ -89,6 +93,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs an error if the configuration object is `NULL`.
 
+---
 
 ### `void log_message(Log* config, LogLevel level, const char* message, ...)`
 
@@ -112,6 +117,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs errors if the configuration object is `NULL`, if the message exceeds the rate limit, or if there are formatting issues.
 
+---
 
 ### `void log_deallocate(Log* config)`
 
@@ -131,6 +137,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs an error if the `config` object is `NULL`.
 
+---
 
 ### `bool log_set_log_level(Log* config, LogLevel newLevel)`
 
@@ -152,6 +159,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs an error if the `Log` configuration object is `NULL` or if the specified log level is invalid (outside the range of valid levels).
 
+---
 
 ### `bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable)`
 
@@ -174,6 +182,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs errors if the `config` is `NULL` or the keyword is invalid.
 
+---
 
 ### `bool log_update_keyword_filter(Log* config, const char* newKeyword)`
 
@@ -195,6 +204,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs an error if the `config` is `NULL`, the new keyword is invalid, or the keyword length exceeds the allowed limit.
 
+---
 
 ### `bool log_set_file_path(Log* config, const char* newFilePath)`
 
@@ -215,6 +225,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   - Logs errors if the `config` is `NULL`, the new file path is invalid, or the new log file cannot be opened.
 
+---
 
 ### `bool log_rotate(Log* config, const char* newLogPath, size_t maxSize)`
 
@@ -233,6 +244,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   If the log file size cannot be obtained or the file cannot be renamed, the function logs appropriate errors and returns `false`.
 
+---
 
 ### `void log_suspend(Log* config)`
 
@@ -248,6 +260,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if `config` is `NULL`.
 
+---
 
 ### `void log_resume(Log* config)`
 
@@ -263,6 +276,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if `config` is `NULL`.
 
+---
 
 ### `bool log_set_format(Log* config, const char* format)`
 
@@ -280,6 +294,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if `config` or `format` is invalid.
 
+---
 
 ### `bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible)`
 
@@ -298,6 +313,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if `config` is `NULL` or if the specified log level is out of bounds.
 
+---
 
 ### `bool log_redirect_output(Log* config, const char* newFilePath)`
 
@@ -315,6 +331,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if the `config` is `NULL`, the `newFilePath` is invalid, or the new log file cannot be opened.
 
+---
 
 ### `bool log_set_verbose(Log* config, bool verbose)`
 
@@ -332,6 +349,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if `config` is `NULL`.
 
+---
 
 ### `bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_data)`
 
@@ -350,6 +368,7 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Error Handling**:  
   Logs an error if `config` is `NULL`.
 
+---
 
 ### `bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat)`
 
@@ -367,7 +386,6 @@ The logging system is designed to provide a flexible and configurable way to han
 
 - **Error Handling**:  
   Logs an error if the file size cannot be retrieved, the log file cannot be archived, or the new log file cannot be created.
-
 
 ---
 
