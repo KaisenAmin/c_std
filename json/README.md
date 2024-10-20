@@ -18,7 +18,7 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 ## Function Descriptions
 
 
-### `json_deallocate`
+### `void json_deallocate(JsonElement *element)`
 
 - **Purpose**: Deallocates a `JsonElement` and all of its associated resources.
 - **Parameters**:
@@ -30,7 +30,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - **Other Types** (`JSON_NULL`, `JSON_BOOL`, `JSON_NUMBER`): No special handling is needed; the element is freed.
 - **Return**: No return value (`void`), but frees the memory associated with the `JsonElement`.
 
-### `json_create`
+---
+
+### `JsonElement* json_create(JsonType type)`
 
 - **Purpose**: Creates a new JSON element of the specified type.
 - **Parameters**:
@@ -54,7 +56,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - If an error occurs during memory allocation, the function logs an error and returns `NULL`.
   - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
 
-### `json_parse`
+---
+
+### `JsonElement* json_parse(const char* json_str)`
 
 - **Purpose**: Parses a JSON string and returns the corresponding JSON element tree.
 - **Parameters**:
@@ -73,7 +77,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
   - If the input string contains invalid JSON or if an unexpected token is encountered, the function will return `NULL` and log the corresponding error message.
 
-### `json_read_from_file`
+---
+
+### `JsonElement * json_read_from_file(const char* filename)`
 
 - **Purpose**: Reads a JSON file from disk and parses it into a JSON element tree.
 - **Parameters**:
@@ -87,7 +93,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
   - Ensure the file content is in valid JSON format; otherwise, parsing will fail.
 
-### `json_print`
+---
+
+### `void json_print(const JsonElement* element)`
 
 - **Purpose**: Prints a JSON element and its children in a formatted and human-readable manner.
 - **Parameters**:
@@ -99,7 +107,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Return**: No return value, but the JSON element is printed to the standard output.
 - **Note**: If the input `element` is `NULL`, it prints `"null"`.
 
-### `json_get_element`
+---
+
+### `JsonElement* json_get_element(const JsonElement *element, const char *key_or_index)`
 
 - **Purpose**: Retrieves a specific element from a JSON object or array by key or index.
 - **Parameters**:
@@ -111,7 +121,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Return**: A pointer to the retrieved `JsonElement`, or `NULL` if the key/index is invalid or an error occurs.
 - **Warning**: The returned element is part of the original structure; modifying it will affect the original JSON structure.
 
-### `json_array_size`
+---
+
+### `size_t json_array_size(const JsonElement *array)`
 
 - **Purpose**: Returns the number of elements in a JSON array.
 - **Parameters**:
@@ -121,8 +133,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - This function checks if the provided JSON element is an array and returns its size.
   - If the input is not a valid JSON array or is `NULL`, it logs an error and returns `0`.
 
+---
 
-### `json_object_size`
+### `size_t json_object_size(const JsonElement* object)`
 
 - **Purpose**: Returns the number of key-value pairs in a JSON object.
 - **Parameters**:
@@ -132,7 +145,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - This function checks if the provided JSON element is an object and returns its size.
   - If the input is not a valid JSON object or is `NULL`, it logs an error and returns `0`.
 
-### `json_deep_copy`
+---
+
+### `JsonElement* json_deep_copy(const JsonElement *element)`
 
 - **Purpose**: Creates a deep copy of a JSON element, recursively copying nested elements.
 - **Parameters**:
@@ -143,7 +158,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - If memory allocation fails at any point, it logs an error, deallocates any partially copied data, and returns `NULL`.
 - **Warning**: The caller is responsible for deallocating the returned JSON element using `json_deallocate` to prevent memory leaks.
 
-### `json_type_of_element`
+---
+
+### `JsonType json_type_of_element(const JsonElement *element)`
 
 - **Purpose**: Returns the type of a JSON element.
 - **Parameters**:
@@ -152,7 +169,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**:
   - This function returns the type of the provided JSON element. If the input is `NULL`, the function returns `JSON_NULL`.
 
-### `json_write_to_file`
+---
+
+### `bool json_write_to_file(const JsonElement *element, const char *filename)`
 
 - **Purpose**: Writes a JSON element to a file in serialized JSON format.
 - **Parameters**:
@@ -164,7 +183,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - If the file cannot be opened or the serialization fails, an error is logged, and `false` is returned.
 - **Warning**: The function will overwrite the file if it already exists.
 
-### `json_serialize`
+---
+
+### `char* json_serialize(const JsonElement* element)`
 
 - **Purpose**: Serializes a JSON element into a JSON-formatted string.
 - **Parameters**:
@@ -175,7 +196,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - The caller is responsible for freeing the returned string to prevent memory leaks.
 - **Warning**: The returned string must be freed by the caller.
 
-### `json_compare`
+---
+
+### `bool json_compare(const JsonElement *element1, const JsonElement *element2)`
 
 - **Purpose**: Compares two JSON elements for equality.
 - **Parameters**:
@@ -185,7 +208,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - The function performs a deep comparison, comparing nested elements (arrays, objects) recursively.
   - Elements of different types are considered unequal. Two `NULL` elements are considered equal.
 
-### `json_set_element`
+---
+
+### `bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element)`
 
 - **Purpose**: Sets a value in a JSON object or array at a specified key or index.
 - **Parameters**:
@@ -197,7 +222,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - For objects, the key is used to identify where to set the value. For arrays, the index is used.
   - Replaces existing elements in arrays and adds or updates key-value pairs in objects.
 
-### `json_remove_element`
+---
+
+### `bool json_remove_element(JsonElement *element, const char *key_or_index)`
 
 - **Purpose**: Removes an element from a JSON object or array by key or index.
 - **Parameters**:
@@ -208,7 +235,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - For objects, the key is used to locate and remove the key-value pair.
   - For arrays, the index is used to remove the element at the specified position.
 
-### `json_find`
+---
+
+### `JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data)`
 
 - **Purpose**: Finds an element within a JSON object or array that matches a given predicate.
 - **Parameters**:
@@ -219,7 +248,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - Searches through the elements of a JSON object or array, returning the first element that satisfies the predicate.
 
-### `json_last_error`
+---
+
+### `JsonError json_last_error()`
 
 - **Purpose**: Retrieves the last error that occurred during JSON operations.
 - **Parameters**: None.
@@ -227,7 +258,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - Provides access to the last error that occurred in any JSON operation. 
 
-### `json_merge`
+---
+
+### `JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2)`
 
 - **Purpose**: Merges two JSON objects into a new JSON object.
 - **Parameters**:
@@ -236,7 +269,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - The function creates a new JSON object and merges key-value pairs from both input objects. If a key exists in both objects, the value from the second object is used.
 
-### `json_to_string_array`
+---
+
+### `char** json_to_string_array(const JsonElement *array, size_t *length)`
 
 - **Purpose**: Converts a JSON array of strings into a C-style array of strings.
 - **Parameters**:
@@ -247,7 +282,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - Extracts strings from the JSON array and returns them in a newly allocated array.
   - If the array contains non-string elements or is invalid, `NULL` is returned.
 
-### `json_convert`
+---
+
+### `void* json_convert(const JsonElement *element, JsonType type)`
 
 - **Purpose**: Converts a JSON element to a specified type (e.g., `JSON_STRING`, `JSON_NUMBER`, `JSON_BOOL`, `JSON_ARRAY`, `JSON_OBJECT`).
 - **Parameters**:
@@ -259,7 +296,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
   - Returns `NULL` if the conversion is not supported or if memory allocation fails.
   - The caller is responsible for deallocating the returned element.
 
-### `json_map`
+---
+
+### `JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data)`
 
 - **Purpose**: Applies a transformation function to each element of a JSON array and returns a new JSON array with the transformed elements.
 - **Parameters**:
@@ -270,7 +309,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - If the transformation fails for any element, the operation stops, and the entire result array is deallocated.
 
-### `json_filter`
+---
+
+### `JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data)`
 
 - **Purpose**: Filters elements of a JSON array based on a predicate function and returns a new JSON array with elements that satisfy the predicate.
 - **Parameters**:
@@ -281,7 +322,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - If an error occurs during the operation, the partially constructed result array is deallocated, and `NULL` is returned.
 
-### `json_reduce`
+---
+
+### `void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data)`
 
 - **Purpose**: Applies a reduction function across all elements of a JSON array, accumulating the result.
 - **Parameters**:
@@ -293,7 +336,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - The function iterates over the elements, applying the reduction function and updating the accumulator. If any error occurs, it logs the issue and returns `NULL`.
 
-### `json_format`
+---
+
+### `char* json_format(const JsonElement *element)`
 
 - **Purpose**: Formats a JSON element into a human-readable string.
 - **Parameters**:
@@ -302,7 +347,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**:
   - The returned string is pretty-printed with indentation for readability. The caller is responsible for freeing the string.
 
-### `json_clone`
+---
+
+### `JsonElement* json_clone(const JsonElement *element)`
 
 - **Purpose**: Creates a shallow copy of a JSON element.
 - **Parameters**:
@@ -311,7 +358,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - For JSON objects and arrays, the copy references the same underlying data as the original. For strings, a new copy is allocated. The caller is responsible for deallocating the cloned element.
 
-### `json_get_keys`
+---
+
+### `char** json_get_keys(const JsonElement *object, size_t *num_keys)`
 
 - **Purpose**: Retrieves all the keys from a JSON object.
 - **Parameters**:
@@ -321,7 +370,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - Allocates memory for both the array of keys and each individual key. The caller is responsible for freeing the allocated memory.
 
-### `json_add_to_array`
+---
+
+### `bool json_add_to_array(JsonElement* element1, JsonElement* element2)`
 
 - **Purpose**: Adds an element to a JSON array.
 - **Parameters**:
@@ -331,8 +382,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - Appends the provided element to the end of the JSON array. If the operation fails, it returns `false` and sets an error code.
 
+---
 
-### `json_add_to_object`
+### `bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value)`
 
 - **Purpose**: Adds a key-value pair to a JSON object.
 - **Parameters**:
@@ -343,7 +395,9 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - If the key already exists, its value is replaced. The key is duplicated to ensure independent management in the object. Any existing value is deallocated.
 
-### `json_query`
+---
+
+### `JsonElement* json_query(const JsonElement *element, const char *query)`
 
 - **Purpose**: Queries a JSON element using a dot-separated path.
 - **Parameters**:
@@ -353,6 +407,8 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - **Details**: 
   - The query can include array indexing (e.g., `"array[0].key"`). The function returns the corresponding JSON element or `NULL` if a key or index is missing.
 
+
+---
 
 ## Example 1: How to Read from a JSON File and Parse It `json_read_from_file` and `json_parse`
 This example demonstrates how to read a JSON file and parse it using `json_read_from_file` and `json_parse`.
