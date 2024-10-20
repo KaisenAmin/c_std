@@ -44,6 +44,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - If any error occurs during random byte generation, the function logs the error and exits the program.
   - The generated random bytes are stored in the provided `buffer`.
 
+---
+
 ### `int secrets_randbelow(int n)`
 
 - **Purpose**: Generate a cryptographically secure random integer in the range [0, n).
@@ -54,6 +56,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - This function first calls `secrets_token_bytes` to generate random bytes.
   - It converts the bytes to an integer and then calculates a random number in the range `[0, n)` using modulo operation.
   - Logs both the input and the generated random number.
+
+---
 
 ### `void secrets_token_hex(char *buffer, size_t nbytes)`
 
@@ -68,6 +72,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - The result is stored in the provided `buffer`.
   - Allocates memory dynamically for the random bytes and frees it after use.
 
+---
+
 ### `void secrets_token_urlsafe(char *buffer, size_t nbytes)`
 
 - **Purpose**: Generate a cryptographically secure random URL-safe token.
@@ -81,6 +87,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - The resulting token is stored in the provided `buffer`.
   - Allocates memory dynamically for the random bytes and frees it after use.
 
+---
+
 ### `int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_t length)`
 
 - **Purpose**: Compare two byte sequences in constant time to prevent timing attacks.
@@ -93,6 +101,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - This function compares two byte sequences in constant time to avoid timing attacks. It loops over the sequences and performs a bitwise XOR for each byte, accumulating the result.
   - Even if the sequences differ early on, the function continues to process the entire length, ensuring the time taken does not depend on when the difference is found.
   - Logs the comparison result (`1` for equal, `0` for unequal).
+
+---
 
 ### `void* secrets_choice(const void* seq, size_t size, size_t elem_size)`
 
@@ -108,6 +118,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - It uses `secrets_randbelow` to generate a random index and returns the element at the calculated index.
   - Logs the randomly selected index.
 
+---
+
 ### `unsigned int secrets_randbits(int k)`
 
 - **Purpose**: Generate a non-negative integer with exactly `k` random bits.
@@ -120,8 +132,9 @@ The documentation includes detailed descriptions of all the functions provided b
   - It calls `secrets_token_bytes` to generate random bytes, masks the extra bits using `(1U << k) - 1`, and returns the result.
   - Logs the number of bits requested and the generated random value.
 
+---
 
-## Usage Examples
+## Examples
 
 ## Example 1 : how to use `secrets_choice`
 
