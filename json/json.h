@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Json
+*/
+
 #ifndef JSON_H_
 #define JSON_H_
 

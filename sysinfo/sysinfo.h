@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Sysinfo
+*/
+
 #ifndef SYSINFO_H_
 #define SYSINFO_H_
 

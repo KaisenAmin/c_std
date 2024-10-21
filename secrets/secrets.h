@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Secrets
+*/
+
 #ifndef SECRETS_H_
 #define SECRETS_H_
 

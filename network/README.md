@@ -1,5 +1,677 @@
 # Network Lib in C
 
+
+## TcpSocket 
+
+The `TcpSocket` in your network library serves as a key component for establishing and managing TCP connections. It abstracts the platform-specific details of socket handling, allowing your library to perform operations like connecting, sending, receiving, and managing socket states across both Windows and Unix-like systems.
+
+### Key Roles of `TcpSocket`:
+1. **Cross-platform Socket Management**: It handles differences in socket creation, binding, and communication between Windows and Unix-like systems, using platform-specific API calls (e.g., `WSASocket` for Windows and `socket` for Unix).
+2. **Connection Establishment**: It manages connection processes, including setting up client-server communication with features like `tcp_bind`, `tcp_listen`, and `tcp_connect`.
+3. **Data Transmission**: The `TcpSocket` is used to send and receive data over TCP in both blocking and non-blocking modes.
+4. **SSL/TLS Support**: With integrated SSL/TLS support, `TcpSocket` also facilitates secure communication by associating SSL objects with sockets, performing SSL handshakes, and managing encrypted data transfer.
+5. **Error Handling**: The `TcpSocket` integrates platform-specific error management and reporting, providing feedback and logging for debugging and reliability.
+
+By using `TcpSocket`, your library offers a clean and robust API for handling TCP connections with flexibility and cross-platform compatibility.
+
+### TcpSocket Functions Descriptions 
+
+Certainly! Here's the complete explanation for `tcp_get_last_error`:
+
+---
+
+### `void tcp_get_last_error(TcpStatusInfo* status_info)`
+
+**Purpose**:  
+The `tcp_get_last_error` function retrieves the most recent system-specific error code and formats it into a human-readable message. It stores the error code and a corresponding description in a `TcpStatusInfo` structure. This function is essential for understanding the cause of failures in network operations.
+
+**Parameters**:  
+- `status_info`: A pointer to a `TcpStatusInfo` structure. The function populates this structure with the system error code and a human-readable message.
+
+**Return Value**:  
+This function does not return any value. Instead, it directly modifies the `TcpStatusInfo` structure by setting its `sys_errno` field to the system-specific error code, and the `message` field is filled with a formatted error message.
+
+**Usage Case**:  
+Whenever a network operation (like socket creation, connection, or data transmission) fails, you can call `tcp_get_last_error` to retrieve and log the last error that occurred in the system. It helps in debugging and provides detailed information about the failure.
+
+---
+
+### `bool tcp_is_valid_address(const char* address)`
+
+**Purpose**:  
+The `tcp_is_valid_address` function checks if the given string is a valid IPv4 or IPv6 address. It utilizes the `inet_pton` function to perform the validation. This function helps ensure that network operations are performed with valid IP addresses.
+
+**Parameters**:  
+- `address`: A constant pointer to a string that holds the IP address to be validated.
+
+**Return Value**:  
+- Returns `true` if the `address` is a valid IPv4 or IPv6 address.
+- Returns `false` if the address is invalid or if `inet_pton` fails to convert the address.
+
+**Usage Case**:  
+This function is useful when validating user input or any IP addresses before performing network-related tasks like binding, connecting, or sending data. For instance, if you are writing a server and the user provides an IP address for binding, you can call `tcp_is_valid_address` to ensure that the IP address is valid before proceeding.
+
+---
+
+### `TcpStatus tcp_socket_create(TcpSocket* sock)`
+
+**Purpose**:  
+The `tcp_socket_create` function creates a new TCP socket. It handles the socket creation process for both Windows and Unix-like systems. The created socket is stored in the `sock` parameter.
+
+**Parameters**:  
+- `sock`: A pointer to the `TcpSocket` where the created socket will be stored.
+
+**Return Value**:  
+- Returns `TCP_SUCCESS` if the socket is successfully created.
+- Returns `TCP_ERR_SOCKET` if an error occurs during the creation of the socket.
+
+**Usage Case**:  
+This function is typically used in any application that requires TCP communication. For example, when writing a server or client, you first need to create a TCP socket before binding, listening, or connecting. By calling `tcp_socket_create`, you ensure that the socket is created and ready for further operations.
+
+### `TcpStatus tcp_bind(TcpSocket sock, const char* host, unsigned short port)`
+
+**Purpose**:  
+The `tcp_bind` function binds a TCP socket to a specific host and port. It allows the socket to listen for incoming connections on the given address. If no specific host is provided, or if the host is set to "0.0.0.0", it binds the socket to all available network interfaces.
+
+**Parameters**:  
+- `sock`: The TCP socket to bind.
+- `host`: The host address to bind to. It can be an IP address or a hostname. Passing NULL, an empty string, or "0.0.0.0" binds the socket to all available interfaces.
+- `port`: The port number to bind the socket to.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The socket was successfully bound to the address.
+- `TCP_ERR_RESOLVE`: The provided host address was invalid.
+- `TCP_ERR_BIND`: The socket could not be bound to the specified address.
+
+**Usage Case**:  
+When setting up a server that listens for incoming connections, this function is used to bind a socket to a specific IP address and port before starting to listen for connections.
+
+---
+
+### `TcpStatus tcp_listen(TcpSocket socket, int backlog)`
+
+**Purpose**:  
+The `tcp_listen` function sets a TCP socket to listen for incoming connections. It makes the socket passive, which means it can now accept connections.
+
+**Parameters**:  
+- `socket`: The TCP socket that will be used for listening.
+- `backlog`: The maximum number of pending connections that the socket can queue.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The socket was successfully set to listen.
+- `TCP_ERR_LISTEN`: An error occurred while setting the socket to listen.
+
+**Usage Case**:  
+This function is typically called after binding a socket to a specific host and port, to allow the socket to start listening for incoming connection requests.
+
+---
+
+### `TcpStatus tcp_accept(TcpSocket socket, TcpSocket* client_socket)`
+
+**Purpose**:  
+The `tcp_accept` function accepts an incoming connection on a listening TCP socket. It creates a new socket for the accepted client connection, allowing communication with the connected client.
+
+**Parameters**:  
+- `socket`: The listening socket that is ready to accept a connection.
+- `client_socket`: A pointer to a `TcpSocket` where the new socket for the accepted connection will be stored.
+
+**Return Value**:  
+- `TCP_SUCCESS`: A connection was successfully accepted.
+- `TCP_ERR_WOULD_BLOCK`: The operation would block if the socket is non-blocking and no connections are currently available.
+- `TCP_ERR_ACCEPT`: An error occurred while accepting the connection.
+
+**Usage Case**:  
+In server applications, this function is used after a socket starts listening for connections. When a client attempts to connect, `tcp_accept` is called to establish the connection and create a socket for communication with the client.
+
+---
+
+### `TcpStatus tcp_connect(TcpSocket socket, const char* host, unsigned short port)`
+
+**Purpose**:  
+The `tcp_connect` function establishes a connection to a remote server using a TCP socket. It resolves the provided host address and connects to the server on the specified port.
+
+**Parameters**:  
+- `socket`: The TCP socket to be used for the connection.
+- `host`: The hostname or IP address of the remote server.
+- `port`: The port number on the remote server to connect to.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The connection was successfully established.
+- `TCP_ERR_RESOLVE`: The host could not be resolved.
+- `TCP_ERR_CONNECT`: An error occurred while trying to establish the connection.
+
+**Usage Case**:  
+This function is commonly used in client applications to connect to a server. For example, a client connecting to a web server would use `tcp_connect` to establish the connection before sending requests.
+
+### `TcpStatus tcp_init(void)`
+
+**Purpose**:  
+The `tcp_init` function is used to initialize the network API on Windows systems. It calls `WSAStartup`, which is required for using sockets in Windows. On Unix-like systems, no initialization is required, so the function does nothing on those platforms.
+
+**Parameters**:  
+This function does not take any parameters.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The network API was initialized successfully.
+- `TCP_ERR_SETUP`: The `WSAStartup` call failed on Windows.
+
+**Usage Case**:  
+This function must be called before creating or using any sockets on Windows systems. It is not necessary on Unix-like systems, but calling it does no harm.
+
+---
+
+### `TcpStatus tcp_cleanup(void)`
+
+**Purpose**:  
+The `tcp_cleanup` function cleans up the network API on Windows systems by calling `WSACleanup`. On Unix-like systems, it does nothing, as no cleanup is required.
+
+**Parameters**:  
+This function does not take any parameters.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The cleanup operation was successful.
+
+**Usage Case**:  
+This function is called at the end of the program or when network operations are no longer needed to release resources associated with Winsock on Windows.
+
+---
+
+### `TcpStatus tcp_send(TcpSocket socket, const void* buf, size_t len, size_t* sent)`
+
+**Purpose**:  
+The `tcp_send` function sends data over a TCP socket. It handles sending data for both Windows and Unix-like systems with platform-specific implementations. The function continues to send data until the entire buffer is transmitted.
+
+**Parameters**:  
+- `socket`: The TCP socket through which the data will be sent.
+- `buf`: Pointer to the buffer containing the data to send.
+- `len`: The number of bytes to send from the buffer.
+- `sent`: A pointer to a `size_t` variable where the total number of bytes successfully sent will be stored.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The data was successfully sent.
+- `TCP_ERR_CLOSE`: The connection was closed by the peer.
+- `TCP_ERR_SEND`: An error occurred during sending.
+
+**Usage Case**:  
+This function is typically used in client-server communication to send data to a remote peer. It ensures that the entire buffer is sent before returning.
+
+---
+
+### `TcpStatus tcp_recv(TcpSocket socket, void* buf, size_t len, size_t* received)`
+
+**Purpose**:  
+The `tcp_recv` function receives data from a TCP socket. It reads incoming data into the provided buffer and returns the number of bytes received. The function supports both Windows and Unix-like systems.
+
+**Parameters**:  
+- `socket`: The TCP socket from which to receive data.
+- `buf`: Pointer to the buffer where the received data will be stored.
+- `len`: The length of the buffer.
+- `received`: A pointer to a `size_t` variable where the number of bytes received will be stored.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Data was received successfully.
+- `TCP_ERR_CLOSE`: The connection was closed by the peer.
+- `TCP_ERR_RECV`: An error occurred during receiving.
+
+**Usage Case**:  
+This function is used in client-server applications to receive data from a connected peer. It reads the available data and stores it in the provided buffer for further processing.
+
+---
+
+### `TcpStatus tcp_close(TcpSocket socket)`
+
+**Purpose**:  
+This function closes a TCP socket. It handles the platform-specific logic for closing a socket on both Windows and Unix-like systems.
+
+**Parameters**:  
+- `socket`: The TCP socket that needs to be closed.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The socket was closed successfully.
+- `TCP_ERR_CLOSE`: An error occurred while closing the socket.
+
+**Usage Case**:  
+Use this function to release a TCP socket after it is no longer needed, ensuring that system resources are properly freed.
+
+---
+
+### `TcpStatus tcp_shutdown(TcpSocket socket, TcpShutdownHow how)`
+
+**Purpose**:  
+This function shuts down a TCP socket for receiving, sending, or both. It is useful for signaling that no more data will be transmitted or received on the socket.
+
+**Parameters**:  
+- `socket`: The TCP socket that needs to be shut down.
+- `how`: Specifies whether to shut down receiving (`TCP_SHUTDOWN_RECEIVE`), sending (`TCP_SHUTDOWN_SEND`), or both (`TCP_SHUTDOWN_BOTH`).
+
+**Return Value**:  
+- `TCP_SUCCESS`: The socket was successfully shut down.
+- `TCP_ERR_GENERIC`: An error occurred during the shutdown.
+
+**Usage Case**:  
+Use this function when you want to gracefully close one or both communication channels of a TCP socket.
+
+---
+
+### `TcpStatus tcp_set_timeout(TcpSocket socket, TcpTimeoutOperation operation, long timeout_ms)`
+
+**Purpose**:  
+This function sets the timeout for receiving or sending data on a TCP socket. The timeout value is specified in milliseconds, and it applies to either sending, receiving, or both operations.
+
+**Parameters**:  
+- `socket`: The TCP socket on which to set the timeout.
+- `operation`: The operation to apply the timeout to, either receiving (`TCP_TIMEOUT_RECV`), sending (`TCP_TIMEOUT_SEND`), or both (`TCP_TIMEOUT_BOTH`).
+- `timeout_ms`: The timeout value in milliseconds.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The timeout was set successfully.
+- `TCP_ERR_GENERIC`: An error occurred while setting the timeout.
+
+**Usage Case**:  
+Use this function when you need to control how long a TCP socket should wait before timing out during data transfer operations. This is helpful when dealing with unreliable or slow network connections.
+
+---
+
+### `TcpStatus tcp_resolve_hostname(const char* hostname, char* ip_address, size_t ip_address_len)`
+
+**Purpose**:  
+This function resolves a given hostname (e.g., "www.example.com") to its corresponding IP address (IPv4 or IPv6) and stores the result in a buffer.
+
+**Parameters**:  
+- `hostname`: The hostname to resolve.
+- `ip_address`: A buffer where the resolved IP address will be stored as a string.
+- `ip_address_len`: The size of the `ip_address` buffer.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The hostname was successfully resolved.
+- `TCP_ERR_RESOLVE`: Failed to resolve the hostname.
+- `TCP_ERR_GENERIC`: Failed to convert the IP address to a string or encountered another error during resolution.
+
+**Usage Case**:  
+Use this function when you need to connect to a server by hostname rather than an IP address. It converts the hostname to an IP address so that the application can establish a connection.
+
+---
+
+### `TcpStatus tcp_set_non_blocking(TcpSocket socket, bool enable)`
+
+**Purpose**:  
+This function enables or disables non-blocking mode on a TCP socket. In non-blocking mode, socket operations return immediately, even if they would normally block (e.g., waiting for data).
+
+**Parameters**:  
+- `socket`: The TCP socket on which to set non-blocking mode.
+- `enable`: A boolean flag to enable or disable non-blocking mode (`true` to enable, `false` to disable).
+
+**Return Value**:  
+- `TCP_SUCCESS`: The non-blocking mode was successfully set.
+- `TCP_ERR_GENERIC`: Failed to set or retrieve the socket flags.
+
+**Usage Case**:  
+Use this function when implementing non-blocking network operations, such as in event-driven or asynchronous programming models.
+
+---
+
+### `TcpStatus tcp_get_local_address(TcpSocket socket, char* address, size_t address_len, unsigned short* port)`
+
+**Purpose**:  
+This function retrieves the local IP address and port number to which the socket is bound.
+
+**Parameters**:  
+- `socket`: The TCP socket from which to retrieve the local address.
+- `address`: A buffer where the local IP address will be stored.
+- `address_len`: The size of the `address` buffer.
+- `port`: A pointer to store the local port number.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Successfully retrieved the local address and port.
+- `TCP_ERR_GENERIC`: Failed to retrieve the local address or port.
+
+**Usage Case**:  
+Use this function to determine the local network address and port that a socket is bound to, which can be useful for logging, debugging, or verifying network configurations.
+
+---
+
+### `TcpStatus tcp_get_remote_address(TcpSocket socket, char* address, size_t address_len, unsigned short* port)`
+
+**Purpose**:  
+This function retrieves the remote IP address and port number associated with a connected TCP socket.
+
+**Parameters**:  
+- `socket`: The TCP socket for which the remote address is retrieved.
+- `address`: A buffer to store the remote IP address in string form.
+- `address_len`: The length of the `address` buffer.
+- `port`: A pointer to store the remote port number.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The remote address and port were successfully retrieved.
+- `TCP_ERR_GENERIC`: An error occurred while retrieving the address or port.
+
+**Usage Case**:  
+This function is useful for identifying the remote peer's address in a connected socket, which is often needed for logging or debugging network connections.
+
+---
+
+### `TcpStatus tcp_set_reuse_addr(TcpSocket socket, bool enabled)`
+
+**Purpose**:  
+This function sets the `SO_REUSEADDR` option on a TCP socket, allowing the reuse of local addresses. It is commonly used when you need to bind multiple sockets to the same local address and port.
+
+**Parameters**:  
+- `socket`: The TCP socket on which to set the `SO_REUSEADDR` option.
+- `enabled`: A boolean indicating whether to enable (`true`) or disable (`false`) the option.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The `SO_REUSEADDR` option was successfully set.
+- `TCP_ERR_GENERIC`: An error occurred while setting the option.
+
+**Usage Case**:  
+This function is useful in server applications where multiple sockets need to bind to the same local address for handling different clients.
+
+---
+
+### `TcpStatus tcp_get_peer_name(TcpSocket socket, char* host, size_t host_len, unsigned short* port)`
+
+**Purpose**:  
+This function retrieves the remote IP address and port number of a peer connected to the specified TCP socket.
+
+**Parameters**:  
+- `socket`: The TCP socket for which the peer address is retrieved.
+- `host`: A buffer to store the peer's IP address in string form.
+- `host_len`: The length of the `host` buffer.
+- `port`: A pointer to store the peer's port number.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The peer's address and port were successfully retrieved.
+- `TCP_ERR_GENERIC`: An error occurred while retrieving the peer's address or port.
+
+**Usage Case**:  
+This function is useful for getting information about the peer connected to a socket, such as for logging or auditing purposes.
+
+---
+
+### `TcpStatus tcp_get_sock_name(TcpSocket socket, char* host, size_t host_len, unsigned short* port)`
+
+**Purpose**:  
+This function retrieves the local IP address and port number associated with a TCP socket.
+
+**Parameters**:  
+- `socket`: The TCP socket from which to retrieve the local address.
+- `host`: A buffer to store the IP address in string form.
+- `host_len`: The size of the host buffer.
+- `port`: A pointer to store the port number.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The local address and port were successfully retrieved.
+- `TCP_ERR_GENERIC`: An error occurred while retrieving the address or port.
+
+**Usage Case**:  
+This function is useful for retrieving information about the local socket, especially when you need to know which IP and port it is bound to after it has been created.
+
+---
+
+### `void tcp_set_ssl(TcpSocket socket, SSL* ssl)`
+
+**Purpose**:  
+This function associates an SSL object with a TCP socket, enabling the socket for SSL/TLS communication.
+
+**Parameters**:  
+- `socket`: The TCP socket to associate with an SSL object.
+- `ssl`: The SSL object to associate with the socket.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+This function is typically used when setting up SSL for a specific socket after initializing an SSL context. It allows the socket to use the SSL object for encrypted communication.
+
+---
+
+### `SSL* tcp_get_ssl(TcpSocket socket)`
+
+**Purpose**:  
+This function retrieves the SSL object that has been associated with a specified TCP socket.
+
+**Parameters**:  
+- `socket`: The TCP socket for which to retrieve the associated SSL object.
+
+**Return Value**:  
+- The SSL object associated with the socket, or `NULL` if no SSL object is associated.
+
+**Usage Case**:  
+Useful for retrieving the SSL object when performing SSL-specific operations on a socket, such as sending or receiving encrypted data.
+
+---
+
+### `TcpStatus tcp_enable_ssl(TcpSocket socket)`
+
+**Purpose**:  
+This function creates an SSL object for the specified socket, associates it with the socket, and prepares the socket for secure SSL/TLS communication.
+
+**Parameters**:  
+- `socket`: The TCP socket on which to enable SSL/TLS.
+
+**Return Value**:  
+- `TCP_SUCCESS`: SSL/TLS was successfully enabled on the socket.
+- `TCP_ERR_SETUP`: SSL context is not initialized.
+- `TCP_ERR_GENERIC`: Failed to create or associate an SSL object with the socket.
+
+**Usage Case**:  
+Typically called when you want to enable encrypted communication on an existing TCP socket, ensuring that data sent and received on the socket is protected by SSL/TLS.
+
+---
+
+### `TcpStatus tcp_disable_ssl(TcpSocket socket)`
+
+**Purpose**:  
+This function shuts down SSL/TLS on the specified socket, frees the associated SSL object, and clears any SSL mappings for the socket.
+
+**Parameters**:  
+- `socket`: The TCP socket on which SSL/TLS should be disabled.
+
+**Return Value**:  
+- `TCP_SUCCESS`: SSL/TLS shutdown completed successfully.
+- `TCP_ERR_NO_SSL`: No SSL object was associated with the socket.
+
+**Usage Case**:  
+Called when SSL/TLS communication on a socket is no longer needed. It gracefully shuts down the encrypted connection and releases any associated resources.
+
+---
+
+### `TcpStatus tcp_ssl_init(const char* cert, const char* key)`
+
+**Purpose**:  
+This function initializes SSL/TLS support by creating an SSL context, loading the specified certificate and private key, and verifying that the private key matches the public certificate.
+
+**Parameters**:  
+- `cert`: The path to the PEM-encoded certificate file.
+- `key`: The path to the PEM-encoded private key file.
+
+**Return Value**:  
+- `TCP_SUCCESS`: SSL context initialized successfully, and the certificate and private key were loaded and verified.
+- `TCP_ERR_SETUP`: Failed to create the SSL context.
+- `TCP_ERR_SSL`: Failed to load the certificate, private key, or verify the private key.
+
+**Usage Case**:  
+Called during application startup to initialize SSL/TLS support and set up the necessary certificate and key for secure communication over TCP sockets.
+
+---
+
+### `TcpStatus tcp_ssl_cleanup(void)`
+
+**Purpose**:  
+This function cleans up the SSL context and deallocates OpenSSL resources, freeing any memory associated with the SSL/TLS context and performing OpenSSL cleanup operations.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+- `TCP_SUCCESS`: The SSL context and OpenSSL resources were cleaned up successfully.
+
+**Usage Case**:  
+Called when SSL/TLS functionality is no longer needed to free up resources and ensure proper cleanup of the SSL context and OpenSSL data.
+
+---
+
+### `TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host)`
+
+**Purpose**:  
+This function initiates an SSL/TLS connection to a remote host. It sets up the necessary file descriptor, performs the SSL handshake, and sets the Server Name Indication (SNI) hostname.
+
+**Parameters**:  
+- `socket`: The TCP socket through which the SSL/TLS connection is to be established.
+- `host`: The remote hostname to connect to, used for SNI and resolving the server.
+
+**Return Value**:  
+- `TCP_SUCCESS`: SSL connection was established successfully.
+- `TCP_ERR_SETUP`: SSL context is not initialized.
+- `TCP_ERR_RESOLVE`: The host parameter is invalid.
+- `TCP_ERR_SSL`: Failed to create or set up the SSL object.
+- `TCP_ERR_SSL_HANDSHAKE`: SSL handshake failed.
+
+**Usage Case**:  
+Used to establish secure communication with a remote server using SSL/TLS after setting up a TCP socket.
+
+---
+
+### `TcpStatus tcp_ssl_accept(TcpSocket socket)`
+
+**Purpose**:  
+This function performs the SSL/TLS handshake for a server-side connection, accepting a client connection on the specified TCP socket.
+
+**Parameters**:  
+- `socket`: The TCP socket that is awaiting an SSL/TLS connection.
+
+**Return Value**:  
+- `TCP_SUCCESS`: SSL handshake completed successfully.
+- `TCP_ERR_SETUP`: SSL context is not initialized.
+- `TCP_ERR_SSL`: Failed to associate the socket with an SSL object.
+- `TCP_ERR_SSL_HANDSHAKE`: SSL handshake failed.
+
+**Usage Case**:  
+Used by servers to establish a secure SSL/TLS connection after a client connects to a listening TCP socket.
+
+---
+
+### `TcpStatus tcp_ssl_close(TcpSocket socket)`
+
+**Purpose**:  
+This function initiates the SSL/TLS shutdown sequence for the specified socket and frees the associated SSL object. It also closes the underlying TCP socket.
+
+**Parameters**:  
+- `socket`: The TCP socket that has an active SSL connection.
+
+**Return Value**:  
+- `TCP_SUCCESS`: SSL shutdown and socket closure were successful.
+- `TCP_ERR_NO_SSL`: No SSL object was found for the socket, but the socket was closed normally.
+
+**Usage Case**:  
+Called to close an SSL/TLS connection cleanly and ensure both the SSL session and TCP socket are closed properly.
+
+---
+
+### `TcpStatus tcp_ssl_send(TcpSocket socket, const void* buf, size_t len, size_t* sent)`
+
+**Purpose**:  
+This function sends data over an SSL-encrypted TCP connection. It writes the provided data to the associated SSL connection and handles various SSL errors that may occur during the operation.
+
+**Parameters**:  
+- `socket`: The TCP socket through which data is sent.
+- `buf`: Pointer to the buffer containing the data to send.
+- `len`: Size of the data (in bytes) to be sent.
+- `sent`: Pointer to a variable where the number of bytes sent will be stored (optional).
+
+**Return Value**:  
+- `TCP_SUCCESS`: Data was successfully sent or the operation needs to be retried.
+- `TCP_ERR_SEND`: There was an error during the send operation.
+- `TCP_ERR_NO_SSL`: No SSL context was found for the socket.
+- `TCP_ERR_CLOSE`: The connection was closed by the peer.
+
+**Usage Case**:  
+Use this function to send data securely over an SSL connection, such as for HTTPS or other SSL/TLS-based protocols.
+
+---
+
+### `TcpStatus tcp_ssl_recv(TcpSocket socket, void* buf, size_t len, size_t* received)`
+
+**Purpose**:  
+This function receives data over an SSL-encrypted TCP connection. It reads data from the associated SSL connection and handles various SSL errors that may occur during the operation.
+
+**Parameters**:  
+- `socket`: The TCP socket from which to receive data.
+- `buf`: Pointer to the buffer where the received data will be stored.
+- `len`: Size of the buffer (in bytes).
+- `received`: Pointer to a variable where the number of bytes received will be stored (optional).
+
+**Return Value**:  
+- `TCP_SUCCESS`: Data was successfully received or the operation needs to be retried.
+- `TCP_ERR_RECV`: There was an error during the receive operation.
+- `TCP_ERR_NO_SSL`: No SSL context was found for the socket.
+- `TCP_ERR_CLOSE`: The connection was closed by the peer.
+
+**Usage Case**:  
+Use this function to securely receive data over an SSL connection, typically used for encrypted communications like HTTPS.
+
+---
+
+### `TcpStatus tcp_get_connection_quality(TcpSocket socket, float* rtt, float* variance)`
+
+**Purpose**:  
+This function retrieves TCP connection quality metrics such as round-trip time (RTT) and its variance for a given socket.
+
+**Parameters**:  
+- `socket`: The TCP socket for which to retrieve connection quality metrics.
+- `rtt`: Pointer to a float where the round-trip time (RTT) in milliseconds will be stored.
+- `variance`: Pointer to a float where the RTT variance (in milliseconds) will be stored.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Successfully retrieved RTT and variance.
+- `TCP_ERR_GENERIC`: Failed to retrieve TCP connection quality.
+- `TCP_ERR_UNSUPPORTED`: The platform does not support RTT measurement.
+
+**Usage Case**:  
+Use this function to measure the connection quality for latency-sensitive applications such as video streaming or gaming.
+
+---
+
+### `TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len)`
+
+**Purpose**:  
+This function sends data asynchronously through a non-blocking TCP socket. It ensures the function does not block if the send operation would normally block.
+
+**Parameters**:  
+- `socket`: The non-blocking TCP socket to send data through.
+- `buf`: Pointer to the buffer containing the data to send.
+- `len`: The number of bytes to send from the buffer.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Data was sent successfully.
+- `TCP_ERR_SEND`: An error occurred during sending.
+- `TCP_ERR_WOULD_BLOCK`: The operation would block, but the send was not completed.
+
+**Usage Case**:  
+Useful for applications that need to send data asynchronously, ensuring the application remains responsive without blocking the send operation.
+
+---
+
+### `TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len)`
+
+**Purpose**:  
+This function receives data asynchronously from a non-blocking TCP socket. It ensures the function does not block if no data is available.
+
+**Parameters**:  
+- `socket`: The non-blocking TCP socket to receive data from.
+- `buf`: Pointer to the buffer where the received data will be stored.
+- `len`: The maximum number of bytes to read into the buffer.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Data was received successfully.
+- `TCP_ERR_RECV`: An error occurred during receiving.
+- `TCP_ERR_WOULD_BLOCK`: No data is available, and the operation would block.
+
+**Usage Case**:  
+This function is used for non-blocking operations where the application must remain responsive even when no data is available to be received immediately.
+
+---
+
 ## Example 1 : First server in `TcpSocket`
 
 `This server listens on a specified port and echoes back any received data to the client. It demonstrates basic server setup, including initialization, socket creation, binding, listening, accepting connections, receiving data, and sending data back.`

@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class FileWriter
+*/
+
 #ifndef FILE_WRITER_H_
 #define FILE_WRITER_H_ 
 

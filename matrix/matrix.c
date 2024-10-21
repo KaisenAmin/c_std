@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Matrix
+*/
+
 #include <math.h>
 #include <string.h>
 #include <float.h>

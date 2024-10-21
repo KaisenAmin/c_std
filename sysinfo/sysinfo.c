@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Sysinfo
+*/
+
 #include "sysinfo.h"
 
 #define _GNU_SOURCE

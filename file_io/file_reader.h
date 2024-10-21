@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class FileReader
+*/
+
 #ifndef FILE_READER_H_
 #define FILE_READER_H_
 

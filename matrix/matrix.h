@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Matrix
+*/
+
 #ifndef MATRIX_H_
 #define MATRIX_H_
 

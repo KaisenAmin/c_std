@@ -23,99 +23,181 @@ The `Tuple` structure contains two key elements:
 
 ### Functions:
 
-#### Tuple Creation and Memory Management:
-- **`Tuple* tuple_create(size_t size)`**  
-  Initializes a tuple with the specified number of elements. Each element can hold a different type.
-  - **Parameters**:  
-    - `size`: The number of elements the tuple will contain.  
-  - **Returns**:  
-    - A pointer to the newly created `Tuple` object.
 
-- **`Tuple* tuple_make_tuple(size_t num, ...)`**  
-  A variadic function that initializes a tuple from a list of values, each with its corresponding size.
-  - **Parameters**:  
-    - `num`: The number of elements in the tuple.  
-    - Additional arguments: Data and size pairs for each element.
-  - **Returns**:  
-    - A pointer to the created `Tuple`.
+### `Tuple* tuple_create(size_t size)`  
+- **Purpose**: Allocates memory for a tuple and its elements, initializing each element to `NULL`.  
+- **Parameters**:  
+  - `size`: The number of elements the tuple will contain.  
+- **Returns**:  
+  - A pointer to the newly created `Tuple`, or `NULL` if memory allocation fails.  
+- **Use case**: Used to create a new tuple with a specified number of elements.
 
-- **`Tuple* tuple_tie(size_t num, ...)`**  
-  Ties variables together into a tuple, allowing easy modification of the original variables through the tuple.
-  - **Parameters**:  
-    - `num`: The number of elements in the tuple.  
-    - Additional arguments: Pointers to variables.
-  - **Returns**:  
-    - A pointer to the created `Tuple`.
+---
 
-- **`Tuple* tuple_forward_as_tuple(size_t num, ...)`**  
-  Forwards arguments as a tuple, which is useful in functions where arguments need to be passed together as a tuple.
-  - **Parameters**:  
-    - `num`: The number of elements.  
-    - Additional arguments: Pointers to the data.
-  - **Returns**:  
-    - A pointer to the created `Tuple`.
+### `void tuple_deallocate(Tuple* tuple)`  
+- **Purpose**: Frees all memory associated with the tuple, including the memory used by each element.  
+- **Parameters**:  
+  - `tuple`: A pointer to the `Tuple` to be deallocated.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to clean up and free memory when a tuple is no longer needed.
 
-- **`void tuple_deallocate(Tuple* tuple)`**  
-  Frees the memory associated with a tuple, including its elements.
-  - **Parameters**:  
-    - `tuple`: Pointer to the tuple to be deallocated.
+---
 
-- **`void tuple_swap(Tuple* a, Tuple* b)`**  
-  Swaps the contents of two tuples.
-  - **Parameters**:  
-    - `a`, `b`: The two tuples to be swapped.
+### `bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size)`  
+- **Purpose**: Assigns new data to the specified element of the tuple, allocating memory for the data and replacing any existing data.  
+- **Parameters**:  
+  - `tuple`: A pointer to the `Tuple` in which to set the data.  
+  - `index`: The index of the element to be set.  
+  - `data`: A pointer to the data to be set in the tuple.  
+  - `size`: The size of the data to be set.  
+- **Returns**:  
+  - `true` if the data is successfully set, `false` otherwise.  
+- **Use case**: Used to modify a tuple by inserting or replacing data at a specified position.
 
-#### Tuple Modification and Access:
-- **`bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size)`**  
-  Sets a value at a specific index in the tuple.
-  - **Parameters**:  
-    - `tuple`: The tuple to modify.  
-    - `index`: The index to set the value at.  
-    - `data`: Pointer to the data.  
-    - `size`: Size of the data.
-  - **Returns**:  
-    - `true` if the operation was successful, `false` otherwise.
+---
 
-- **`void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize)`**  
-  Retrieves a value from a specific index in the tuple.
-  - **Parameters**:  
-    - `tuple`: The tuple to retrieve the value from.  
-    - `index`: The index of the value to retrieve.  
-    - `outSize`: Pointer to a size variable where the size of the retrieved value will be stored.
-  - **Returns**:  
-    - A pointer to the value at the specified index.
+### `void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize)`  
+- **Purpose**: Returns a pointer to the data stored at the specified index in the tuple and provides the size of the data.  
+- **Parameters**:  
+  - `tuple`: A pointer to the `Tuple` from which data is to be retrieved.  
+  - `index`: The index of the element to retrieve.  
+  - `outSize`: A pointer to a `size_t` variable where the size of the retrieved data will be stored.  
+- **Returns**:  
+  - A pointer to the data at the specified index, or `NULL` if an error occurs.  
+- **Use case**: Used to access data stored at a specific index in the tuple, useful for retrieving dynamically allocated content.
 
-#### Tuple Comparison:
-- **`bool tuple_is_equal(const Tuple* t1, const Tuple* t2)`**  
-  Compares two tuples for equality.
-  - **Returns**:  
-    - `true` if the tuples are equal, `false` otherwise.
+---
 
-- **`bool tuple_is_less(const Tuple* t1, const Tuple* t2)`**  
-  Returns `true` if `t1` is less than `t2` according to lexicographical order.
+### `Tuple* tuple_make_tuple(size_t num, ...)`  
+- **Purpose**: Creates a new tuple with the specified number of elements, where each element is set using the provided data and size.  
+- **Parameters**:  
+  - `num`: The number of elements to store in the tuple.  
+  - `...`: A variable number of arguments, each consisting of a pointer to data followed by a `size_t` indicating the size of the data.  
+- **Returns**:  
+  - A pointer to the newly created `Tuple`, or `NULL` if creation or element setting fails.  
+- **Use case**: Used to create a tuple and initialize it with multiple pieces of data in one function call.
 
-- **`bool tuple_is_greater(const Tuple* t1, const Tuple* t2)`**  
-  Returns `true` if `t1` is greater than `t2`.
+---
 
-- **`bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2)`**  
-  Returns `true` if the two tuples are not equal.
+### `Tuple* tuple_tie(size_t num, ...)`  
+- **Purpose**: Takes a variable number of pointers and stores them in a newly created tuple. Each element in the tuple is a pointer to the original data.  
+- **Parameters**:  
+  - `num`: The number of pointers to be tied together into the tuple.  
+  - `...`: The variable number of pointers to be tied together.  
+- **Returns**:  
+  - A pointer to the newly created `Tuple`, or `NULL` if the creation fails.  
+- **Use case**: Useful for creating a tuple that references existing variables without copying their values.
 
-- **`bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2)`**  
-  Returns `true` if `t1` is greater than or equal to `t2`.
+---
 
-- **`bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2)`**  
-  Returns `true` if `t1` is less than or equal to `t2`.
+### `void tuple_swap(Tuple* a, Tuple* b)`  
+- **Purpose**: Exchanges the contents of two tuples. After the swap, the first tuple contains the elements of the second tuple and vice versa.  
+- **Parameters**:  
+  - `a`: A pointer to the first `Tuple` object.  
+  - `b`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used when two tuples need to swap their elements and sizes.
 
-- **`bool tuple_is_empty(Tuple* t)`**  
-  Checks if the tuple is empty (i.e., contains no elements).
-  - **Returns**:  
-    - `true` if the tuple is empty, `false` otherwise.
+---
 
-#### Miscellaneous:
-- **`size_t tuple_size(const Tuple* tuple)`**  
-  Returns the number of elements in the tuple.
+### `Tuple* tuple_forward_as_tuple(size_t num, ...)`  
+- **Purpose**: Takes a variable number of arguments and stores them in a newly created tuple. The pointers to the original arguments are stored directly without allocating new memory.  
+- **Parameters**:  
+  - `num`: The number of arguments to be stored in the tuple.  
+  - `...`: A variable number of arguments to be forwarded as a tuple.  
+- **Returns**:  
+  - A pointer to the newly created `Tuple`, or `NULL` if creation fails.  
+- **Use case**: Useful for passing a set of arguments as a tuple without copying the data.
 
+---
 
+### `size_t tuple_size(const Tuple* tuple)`  
+- **Purpose**: Returns the number of elements stored in the tuple.  
+- **Parameters**:  
+  - `tuple`: A pointer to the `Tuple` object.  
+- **Returns**:  
+  - The number of elements in the tuple, or 0 if the tuple is `NULL`.  
+- **Use case**: Used to retrieve the number of elements in a tuple.
+
+---
+
+### `bool tuple_is_equal(const Tuple* t1, const Tuple* t2)`  
+- **Purpose**: Compares two tuples element by element. Returns `true` if the tuples have the same size and their corresponding elements are equal in both size and content.  
+- **Parameters**:  
+  - `t1`: A pointer to the first `Tuple` object.  
+  - `t2`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - `true` if the tuples are equal, `false` otherwise.  
+- **Use case**: Used to check if two tuples are identical in size and content.
+
+---
+
+### `bool tuple_is_less(const Tuple* t1, const Tuple* t2)`  
+- **Purpose**: Compares two tuples element by element and returns `true` if the first tuple is lexicographically less than the second tuple.  
+- **Parameters**:  
+  - `t1`: A pointer to the first `Tuple` object.  
+  - `t2`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - `true` if `t1` is less than `t2`, `false` otherwise.  
+- **Use case**: Used to compare two tuples lexicographically based on their size and content.
+
+---
+
+### `bool tuple_is_greater(const Tuple* t1, const Tuple* t2)`  
+- **Purpose**: Compares two tuples element by element and returns `true` if the first tuple is lexicographically greater than the second tuple.  
+- **Parameters**:  
+  - `t1`: A pointer to the first `Tuple` object.  
+  - `t2`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - `true` if `t1` is greater than `t2`, `false` otherwise.  
+- **Use case**: Used to compare two tuples lexicographically and determine if one is greater than the other.
+
+---
+
+### `bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2)`  
+- **Purpose**: Compares two tuples and returns `true` if the tuples are not equal, i.e., if they differ in size or content.  
+- **Parameters**:  
+  - `t1`: A pointer to the first `Tuple` object.  
+  - `t2`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - `true` if `t1` and `t2` are not equal, `false` otherwise.  
+- **Use case**: Used to check if two tuples are different in size or content.
+
+---
+
+### `bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2)`  
+- **Purpose**: Compares two tuples and returns `true` if the first tuple is greater than or equal to the second tuple according to lexicographical order.  
+- **Parameters**:  
+  - `t1`: A pointer to the first `Tuple` object.  
+  - `t2`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - `true` if `t1` is greater than or equal to `t2`, `false` otherwise.  
+- **Use case**: Used to determine if the first tuple is greater than or equal to the second one.
+
+---
+
+### `bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2)`  
+- **Purpose**: Compares two tuples and returns `true` if the first tuple is less than or equal to the second tuple according to lexicographical order.  
+- **Parameters**:  
+  - `t1`: A pointer to the first `Tuple` object.  
+  - `t2`: A pointer to the second `Tuple` object.  
+- **Returns**:  
+  - `true` if `t1` is less than or equal to `t2`, `false` otherwise.  
+- **Use case**: Used to determine if the first tuple is less than or equal to the second one.
+
+---
+
+### `bool tuple_is_empty(Tuple* t)`  
+- **Purpose**: Checks whether the tuple is empty, i.e., if it contains no elements.  
+- **Parameters**:  
+  - `t`: A pointer to the `Tuple` object.  
+- **Returns**:  
+  - `true` if the tuple is empty or if `t` is `NULL`, `false` otherwise.  
+- **Use case**: Used to verify if a tuple is empty or has no elements.
+
+---
 
 ## Compilation
 To compile a program using the Tuple library, ensure that all relevant source files are included. For a program `main.c` that uses the Tuple library, compile with the following command:

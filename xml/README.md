@@ -32,138 +32,175 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions:
 
-- **`XmlDocument* xml_parse_file(const char* filename)`**  
-  Parses an XML file and returns an `XmlDocument` object. The XML file is loaded, parsed, and converted into an internal structure that represents the document.
+### `XmlDocument* xml_parse_file(const char* filename)`  
+  - **Purpose**: Parses an XML file and returns an `XmlDocument` object. The XML file is loaded, parsed, and converted into an internal structure that represents the document.
   - **Parameters:**  
     - `filename`: The path to the XML file to be parsed.
   - **Returns:**  
     - An `XmlDocument` object representing the parsed XML structure. Returns `NULL` if the file cannot be read or parsed.
 
-- **`XmlDocument* xml_parse_string(const char* xml_content)`**  
-  Parses an XML string and returns an `XmlDocument` object. This function is useful for working with XML content stored in memory.
+---
+
+### `XmlDocument* xml_parse_string(const char* xml_content)`   
+  - **Purpose**: Parses an XML string and returns an `XmlDocument` object. This function is useful for working with XML content stored in memory.
   - **Parameters:**  
     - `xml_content`: A string containing the XML data to be parsed.
   - **Returns:**  
     - An `XmlDocument` object representing the parsed XML content. Returns `NULL` if the parsing fails.
 
-- **`XmlDocument* xml_create_document(const char* root_element_name)`**  
-  Creates a new XML document with a specified root element. The root element is the first element in the document.
+---
+
+### `XmlDocument* xml_create_document(const char* root_element_name)` 
+  - **Purpose**: Creates a new XML document with a specified root element. The root element is the first element in the document.
   - **Parameters:**  
     - `root_element_name`: The name of the root element to be created.
   - **Returns:**  
     - A new `XmlDocument` object with the specified root element.
 
-- **`XmlNode* xml_create_element(XmlDocument* doc, const char* tag_name)`**  
-  Creates a new XML element within the document. The element is not automatically added to the document and must be appended to a parent node.
+---
+
+### `XmlNode* xml_create_element(XmlDocument* doc, const char* tag_name)` 
+  - **Purpose**: Creates a new XML element within the document. The element is not automatically added to the document and must be appended to a parent node.
   - **Parameters:**  
     - `doc`: The XML document where the element will belong.  
     - `tag_name`: The tag name of the element to be created.
   - **Returns:**  
     - An `XmlNode` representing the newly created element.
 
-- **`XmlNode* xml_get_root(XmlDocument* doc)`**  
-  Retrieves the root element of the XML document. This is typically the top-level element that contains all other elements.
+---
+
+### `XmlNode* xml_get_root(XmlDocument* doc)`   
+  - **Purpose**: Retrieves the root element of the XML document. This is typically the top-level element that contains all other elements.
   - **Parameters:**  
     - `doc`: The document from which to retrieve the root element.
   - **Returns:**  
     - The `XmlNode` representing the root element, or `NULL` if no root is found.
 
-- **`XmlNode* xml_find_element_by_tag(XmlNode* root, const char* tag_name)`**  
-  Finds the first child element with a matching tag name. This function searches the immediate children of the specified root node.
+---
+
+### `XmlNode* xml_find_element_by_tag(XmlNode* root, const char* tag_name)`
+  - **Purpose**: Finds the first child element with a matching tag name. This function searches the immediate children of the specified root node.
   - **Parameters:**  
     - `root`: The root node where the search begins.  
     - `tag_name`: The tag name to search for.
   - **Returns:**  
     - The `XmlNode` representing the first found element with the matching tag name, or `NULL` if not found.
 
-- **`XmlNode* xml_get_element(XmlNode* root, ...)`**  
-  Retrieves a specific sub-element based on a variable argument list of tag names. This allows for traversing a path of nested elements.
+---
+
+### `XmlNode* xml_get_element(XmlNode* root, ...)`  
+  - **Purpose**: Retrieves a specific sub-element based on a variable argument list of tag names. This allows for traversing a path of nested elements.
   - **Parameters:**  
     - `root`: The root node where the search begins.  
     - `...`: A variable argument list representing the sequence of tag names to follow.
   - **Returns:**  
     - The `XmlNode` at the specified path, or `NULL` if the path is invalid.
 
-- **`void xml_append_child(XmlNode* parent, XmlNode* child)`**  
-  Appends a child element to a parent node, making it a sub-element of the parent.
+---
+
+### `void xml_append_child(XmlNode* parent, XmlNode* child)`  
+  - **Purpose**: Appends a child element to a parent node, making it a sub-element of the parent.
   - **Parameters:**  
     - `parent`: The parent node to which the child will be appended.  
     - `child`: The child node to be appended.
 
-- **`void xml_set_element_text(XmlNode* element, const char* text)`**  
-  Sets the text content of an XML element. If the element already has text, it will be replaced.
+---
+
+### `void xml_set_element_text(XmlNode* element, const char* text)`  
+  - **Purpose**: Sets the text content of an XML element. If the element already has text, it will be replaced.
   - **Parameters:**  
     - `element`: The XML element whose text will be set.  
     - `text`: The text content to assign to the element.
 
-- **`void xml_set_element_attribute(XmlNode* element, const char* name, const char* value)`**  
-  Sets an attribute for an XML element. If the attribute already exists, its value will be updated; otherwise, a new attribute will be added.
+---
+
+### `void xml_set_element_attribute(XmlNode* element, const char* name, const char* value)` 
+  - **Purpose**: Sets an attribute for an XML element. If the attribute already exists, its value will be updated; otherwise, a new attribute will be added.
   - **Parameters:**  
     - `element`: The element to which the attribute will be added.  
     - `name`: The name of the attribute.  
     - `value`: The value of the attribute.
 
-- **`const char* xml_get_element_text(XmlNode* element)`**  
-  Retrieves the text content of an XML element.
+---
+
+### `const char* xml_get_element_text(XmlNode* element)` 
+  - **Purpose**: Retrieves the text content of an XML element.
   - **Parameters:**  
     - `element`: The XML element from which to retrieve the text.
   - **Returns:**  
     - The text content of the element, or `NULL` if the element has no text.
 
-- **`const char* xml_get_element_attribute(XmlNode* element, const char* name)`**  
-  Retrieves the value of an attribute from an XML element.
+---
+
+### `const char* xml_get_element_attribute(XmlNode* element, const char* name)`  
+  - **Purpose**: Retrieves the value of an attribute from an XML element.
   - **Parameters:**  
     - `element`: The XML element to retrieve the attribute from.  
     - `name`: The name of the attribute to retrieve.
   - **Returns:**  
     - The value of the attribute, or `NULL` if the attribute is not found.
 
-- **`const char* xml_get_tag_name(XmlNode* node)`**  
-  Retrieves the tag name of a given XML node. This is useful for identifying the element type, allowing you to access or manipulate elements based on their tag names.
+---
+
+### `const char* xml_get_tag_name(XmlNode* node)` 
+  - **Purpose**: Retrieves the tag name of a given XML node. This is useful for identifying the element type, allowing you to access or manipulate elements based on their tag names.
   - **Parameters:**  
     - `node`: The node whose tag name is being requested.
   - **Returns:**  
     - The tag name of the node, or `NULL` if the node has no tag name.
 
-- **`char* xml_to_string(XmlDocument* doc)`**  
-  Converts an XML document to a string format, which can then be printed or saved to a file.
+---
+
+### `char* xml_to_string(XmlDocument* doc)`   
+  - **Purpose**: Converts an XML document to a string format, which can then be printed or saved to a file.
   - **Parameters:**  
     - `doc`: The XML document to convert.
   - **Returns:**  
     - A string representing the XML document. The caller is responsible for freeing the string when done.
 
-- **`int xml_save_to_file(XmlDocument* doc, const char* filename)`**  
-  Saves an XML document to a file. The document is converted to its string representation and written to the specified file.
+---
+
+### `int xml_save_to_file(XmlDocument* doc, const char* filename)`  
+  - **Purpose**: Saves an XML document to a file. The document is converted to its string representation and written to the specified file.
   - **Parameters:**  
     - `doc`: The XML document to save.  
     - `filename`: The name of the file to save the document to.
   - **Returns:**  
     - `1` if the document was saved successfully, `0` if there was an error.
 
-- **`void xml_cut(XmlNode* node)`**  
-  Removes a node and its subtags from the document without deallocating memory. This is useful when you want to move or manipulate a node before deletion.
+---
+
+### `void xml_cut(XmlNode* node)`   
+  - **Purpose**: Removes a node and its subtags from the document without deallocating memory. This is useful when you want to move or manipulate a node before deletion.
   - **Parameters:**  
     - `node`: The node to be removed.
 
-- **`void xml_deallocate_document(XmlDocument* doc)`**  
-  Frees the memory used by the entire XML document, including all nodes and attributes.
+---
+
+### `void xml_deallocate_document(XmlDocument* doc)`   
+  - **Purpose**: Frees the memory used by the entire XML document, including all nodes and attributes.
   - **Parameters:**  
     - `doc`: The document to deallocate.
 
-- **`void xml_deallocate_node(XmlNode* node)`**  
-  Frees the memory used by a specific XML node and its children, but does not affect other parts of the document.
+---
+
+- **`void xml_deallocate_node(XmlNode* node)`  
+  - **Purpose**: Frees the memory used by a specific XML node and its children, but does not affect other parts of the document.
   - **Parameters:**  
     - `node`: The node to deallocate.
 
-- **`const char* xml_get_error(XmlDocument* doc)`**  
-  Returns the last error message encountered while parsing the document. If no error occurred, it returns an empty string.
+---
+
+### `const char* xml_get_error(XmlDocument* doc)`  
+  - **Purpose**: Returns the last error message encountered while parsing the document. If no error occurred, it returns an empty string.
   - **Parameters:**  
     - `doc`: The document from which to retrieve the error message.
   - **Returns:**  
     - A string describing the last error, or an empty string if no error occurred.
+---
 
-- **`const char** xml_get_processing_instructions(XmlDocument* doc, const char* target)`**  
-  Retrieves processing instructions for the XML document based on the specified target. Processing instructions provide directions for applications processing the document.
+### `const char** xml_get_processing_instructions(XmlDocument* doc, const char* target)`**  
+  - **Purpose**: Retrieves processing instructions for the XML document based on the specified target. Processing instructions provide directions for applications processing the document.
   - **Parameters:**  
     - `doc`: The document containing the processing instructions.  
     - `target`: The target of the processing instruction to retrieve.

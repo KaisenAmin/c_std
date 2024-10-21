@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class fmt
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

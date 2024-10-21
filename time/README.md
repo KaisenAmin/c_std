@@ -27,111 +27,309 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 ## Function Descriptions
 
-1. **String Conversion**:
-    - **`char* time_to_string(const Time* t)`**: 
-      - Converts a `Time` object to a human-readable string in the format `(HH:MM:SS:MS)` (e.g., `(12:34:56:789)`).
-      - Returns: A dynamically allocated string representing the time.
-      - **Use case**: Useful for displaying the time object in a readable format.
-    
-2. **Current Time Functions**:
-    - **`double time_current_time_in_seconds()`**: 
-      - Retrieves the current system time in seconds since the Unix epoch (January 1, 1970).
-      - Returns: The current time in seconds as a floating-point number.
-    
-    - **`double time_current_time_in_microseconds()`**: 
-      - Retrieves the current system time in microseconds since the Unix epoch.
-      - Returns: The current time in microseconds as a floating-point number.
-    
-    - **`Time* time_current_time(void)`**: 
-      - Returns the current system time as a `Time` object.
-      - **Use case**: Can be used to fetch the precise current time, including milliseconds.
 
-3. **Time Creation**:
-    - **`Time* time_create(int h, int m, int s, int ms)`**: 
-      - Creates a new `Time` object with the specified hours (`h`), minutes (`m`), seconds (`s`), and milliseconds (`ms`).
-      - Returns: A pointer to a dynamically allocated `Time` object.
+### `Time* time_create(int h, int m, int s, int ms)`  
+- **Purpose**: Initializes a `Time` object with the provided hour, minute, second, and millisecond values.  
+- **Parameters**:  
+  - `h`: The hour (0-23).  
+  - `m`: The minute (0-59).  
+  - `s`: The second (0-59).  
+  - `ms`: The millisecond (0-999).  
+- **Returns**:  
+  - A pointer to the newly created `Time` object.  
+- **Use case**: Used to create and initialize a `Time` object with specific values.
 
-    - **`Time* time_from_msecs_since_start_of_day(int msecs)`**: 
-      - Creates a `Time` object from the given milliseconds since the start of the day (00:00:00.000).
-      - **Use case**: Useful for generating a time object relative to the start of a day.
+---
 
-4. **Time Manipulation**:
-    - **`void time_add_msecs(Time *t, int ms)`**: 
-      - Adds the specified number of milliseconds to the `Time` object.
-      - **Use case**: Can be used to increment the time object, handling overflow for seconds, minutes, and hours.
+### `Time* time_current_time(void)`  
+- **Purpose**: Returns the current system time as a `Time` object.  
+- **Parameters**:  
+  - None.  
+- **Returns**:  
+  - A pointer to a `Time` object representing the current system time.  
+- **Use case**: Used to get the system’s current local time in a `Time` object.
 
-    - **`void time_add_secs(Time* t, int s)`**: 
-      - Adds the specified number of seconds to the `Time` object.
-    
-    - **`void time_sleep(unsigned int second)`**: 
-      - Puts the program to sleep (halts execution) for the specified number of seconds.
+---
 
-5. **Time Information Extraction**:
-    - **`int time_hour(const Time* t)`**: 
-      - Returns the hour component of the `Time` object.
-    
-    - **`int time_minute(const Time* t)`**: 
-      - Returns the minute component of the `Time` object.
-    
-    - **`int time_second(const Time* t)`**: 
-      - Returns the second component of the `Time` object.
-    
-    - **`int time_msec(const Time* t)`**: 
-      - Returns the millisecond component of the `Time` object.
+### `bool time_is_valid(const Time* t)`  
+- **Purpose**: Checks if the provided `Time` object is valid, ensuring that the hour, minute, second, and millisecond values fall within acceptable ranges.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object to validate.  
+- **Returns**:  
+  - `true` if the `Time` object is valid, `false` otherwise.  
+- **Use case**: Used to ensure the time values are within valid ranges before performing operations.
 
-6. **Time Calculation**:
-    - **`double time_diff_in_seconds(const Time* from, const Time* to)`**: 
-      - Calculates the difference in seconds between two `Time` objects (`from` and `to`).
-      - Returns: The time difference as a floating-point number in seconds.
-    
-    - **`int time_msecs_since_start_of_day()`**: 
-      - Returns the total number of milliseconds that have passed since the start of the current day (00:00:00.000).
-    
-    - **`int time_msecs_to(Time* from, Time* to)`**: 
-      - Returns the number of milliseconds between two `Time` objects (`from` and `to`).
-    
-    - **`int time_secs_to(Time* from, Time* to)`**: 
-      - Returns the number of seconds between two `Time` objects.
+---
 
-7. **Time Validation**:
-    - **`bool time_is_valid_time(int h, int m, int s, int ms)`**: 
-      - Checks whether the provided hours, minutes, seconds, and milliseconds constitute a valid time.
-      - **Returns**: `true` if the time is valid, `false` otherwise.
-    
-    - **`bool time_is_null(const Time* t)`**: 
-      - Checks if the `Time` object is `null`.
-    
-    - **`bool time_is_valid(const Time* t)`**: 
-      - Validates whether a `Time` object represents a valid time.
+### `void time_add_msecs(Time *t, int ms)`  
+- **Purpose**: Adds the specified number of milliseconds to the provided `Time` object, handling the overflow of milliseconds into seconds, seconds into minutes, and minutes into hours.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+  - `ms`: The number of milliseconds to add.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to increment the time by a specified number of milliseconds, adjusting for overflow.
 
-8. **Relational Functions**:
-    - **`bool time_is_equal(const Time* lhs, const Time* rhs)`**: 
-      - Compares two `Time` objects for equality.
-      - **Returns**: `true` if both times are equal.
-    
-    - **`bool time_is_less_than(const Time* lhs, const Time* rhs)`**: 
-      - Checks if the `lhs` time is less than the `rhs` time.
-    
-    - **`bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs)`**: 
-      - Checks if the `lhs` time is less than or equal to the `rhs` time.
-    
-    - **`bool time_is_greater_than(const Time* lhs, const Time* rhs)`**: 
-      - Checks if the `lhs` time is greater than the `rhs` time.
-    
-    - **`bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs)`**: 
-      - Checks if the `lhs` time is greater than or equal to the `rhs` time.
-    
-    - **`bool time_is_not_equal(const Time* lhs, const Time* rhs)`**: 
-      - Checks if two `Time` objects are not equal.
+---
 
-9. **Time Modification**:
-    - **`bool time_set_hms(Time *t, int h, int m, int s, int ms)`**: 
-      - Sets the hour, minute, second, and millisecond values of a `Time` object.
+### `void time_add_secs(Time* t, int s)`  
+- **Purpose**: Adds the specified number of seconds to the provided `Time` object, handling the overflow of seconds into minutes and minutes into hours.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+  - `s`: The number of seconds to add.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to increment the time by a specified number of seconds, adjusting for overflow.
 
-10. **Memory Management**:
-    - **`void time_deallocate(Time* t)`**: 
-      - Frees the memory allocated for the `Time` object.
-  
+---
+
+### `bool time_is_null(const Time* t)`  
+- **Purpose**: Checks whether the provided `Time` object is `NULL`.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+- **Returns**:  
+  - `true` if the `Time` object is `NULL`, `false` otherwise.  
+- **Use case**: Used to verify if a `Time` object is uninitialized or `NULL`.
+
+---
+
+### `int time_hour(const Time* t)`  
+- **Purpose**: Returns the hour component of the provided `Time` object.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+- **Returns**:  
+  - The hour component of the `Time` object, or `-1` if the `Time` object is `NULL` or invalid.  
+- **Use case**: Used to retrieve the hour from a `Time` object.
+
+---
+
+### `int time_minute(const Time* t)`  
+- **Purpose**: Returns the minute component of the provided `Time` object.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+- **Returns**:  
+  - The minute component of the `Time` object, or `-1` if the `Time` object is `NULL` or invalid.  
+- **Use case**: Used to retrieve the minute from a `Time` object.
+
+---
+
+### `int time_second(const Time* t)`  
+- **Purpose**: Returns the second component of the provided `Time` object.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+- **Returns**:  
+  - The second component of the `Time` object, or `-1` if the `Time` object is `NULL` or invalid.  
+- **Use case**: Used to retrieve the second from a `Time` object.
+
+---
+
+### `int time_msec(const Time* t)`  
+- **Purpose**: Returns the millisecond component of the provided `Time` object.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object.  
+- **Returns**:  
+  - The millisecond component of the `Time` object, or `-1` if the `Time` object is `NULL` or invalid.  
+- **Use case**: Used to retrieve the millisecond value from a `Time` object.
+
+---
+
+### `int time_msecs_since_start_of_day()`  
+- **Purpose**: Returns the number of milliseconds that have elapsed since the start of the day (00:00:00.000).  
+- **Parameters**:  
+  - None.  
+- **Returns**:  
+  - The number of milliseconds since the start of the day, or `-1` if the current time could not be retrieved.  
+- **Use case**: Used to calculate how many milliseconds have passed since midnight.
+
+---
+
+### `int time_msecs_to(Time* from, Time* to)`  
+- **Purpose**: Computes the difference in milliseconds between two `Time` objects (`from` and `to`). The result is adjusted to ensure it is within the range of -86400000 to 86400000 milliseconds.  
+- **Parameters**:  
+  - `from`: A pointer to the starting `Time` object.  
+  - `to`: A pointer to the ending `Time` object.  
+- **Returns**:  
+  - The difference in milliseconds between the two `Time` objects, or `0` if either object is `NULL` or invalid.  
+- **Use case**: Used to calculate the time difference between two `Time` objects in milliseconds.
+
+---
+
+### `int time_secs_to(Time* from, Time* to)`  
+- **Purpose**: Computes the difference in seconds between two `Time` objects (`from` and `to`). The result is adjusted to ensure it is within the range of -86400 and 86400 seconds (the number of seconds in a day).  
+- **Parameters**:  
+  - `from`: A pointer to the starting `Time` object.  
+  - `to`: A pointer to the ending `Time` object.  
+- **Returns**:  
+  - The difference in seconds between the two `Time` objects, or `0` if either `Time` object is `NULL` or invalid.  
+- **Use case**: Used to calculate the time difference in seconds between two `Time` objects.
+
+---
+
+### `bool time_set_hms(Time *t, int h, int m, int s, int ms)`  
+- **Purpose**: Sets the hour, minute, second, and millisecond components of a `Time` object.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object to be modified.  
+  - `h`: The hour (0-23).  
+  - `m`: The minute (0-59).  
+  - `s`: The second (0-59).  
+  - `ms`: The millisecond (0-999).  
+- **Returns**:  
+  - `true` if the time was successfully set, `false` otherwise.  
+- **Use case**: Used to modify the components of a `Time` object.
+
+---
+
+### `char* time_to_string(const Time* t)`  
+- **Purpose**: Converts a `Time` object to a human-readable string in the format "(hh:mm:ss:ms)".  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object to be converted.  
+- **Returns**:  
+  - A string representing the `Time` object, or `NULL` if the `Time` object is `NULL` or invalid.  
+- **Use case**: Used to create a string representation of a `Time` object. The caller is responsible for freeing the allocated memory.
+
+---
+
+### `bool time_is_valid_time(int h, int m, int s, int ms)`  
+- **Purpose**: Checks if the provided hour, minute, second, and millisecond values represent a valid time.  
+- **Parameters**:  
+  - `h`: The hour (0-23).  
+  - `m`: The minute (0-59).  
+  - `s`: The second (0-59).  
+  - `ms`: The millisecond (0-999).  
+- **Returns**:  
+  - `true` if the parameters represent a valid time, `false` otherwise.  
+- **Use case**: Used to validate individual time components.
+
+---
+
+### `Time* time_from_msecs_since_start_of_day(int msecs)`  
+- **Purpose**: Converts a time given in milliseconds since the start of the day into a `Time` object.  
+- **Parameters**:  
+  - `msecs`: The number of milliseconds since the start of the day (must be between 0 and 86399999).  
+- **Returns**:  
+  - A pointer to the newly created `Time` object, or `NULL` if the input is invalid or memory allocation fails.  
+- **Use case**: Used to create a `Time` object from a given number of milliseconds since the start of the day.
+
+---
+
+### `bool time_is_equal(const Time* lhs, const Time* rhs)`  
+- **Purpose**: Checks if two `Time` objects represent the same time.  
+- **Parameters**:  
+  - `lhs`: A pointer to the first `Time` object.  
+  - `rhs`: A pointer to the second `Time` object.  
+- **Returns**:  
+  - `true` if the two `Time` objects are equal, `false` otherwise.  
+- **Use case**: Used to compare two `Time` objects for equality.
+
+---
+
+### `bool time_is_less_than(const Time* lhs, const Time* rhs)`  
+- **Purpose**: Checks if the first `Time` object (`lhs`) represents an earlier time than the second `Time` object (`rhs`).  
+- **Parameters**:  
+  - `lhs`: A pointer to the first `Time` object.  
+  - `rhs`: A pointer to the second `Time` object.  
+- **Returns**:  
+  - `true` if `lhs` is less than `rhs`, `false` otherwise. Returns `false` if either pointer is `NULL` or the `Time` objects are invalid.  
+- **Use case**: Used to compare two `Time` objects to see if one represents an earlier time than the other.
+
+---
+
+### `bool time_is_less_than_or_equal(const Time* lhs, const Time* rhs)`  
+- **Purpose**: Checks if the first `Time` object (`lhs`) represents an earlier or the same time as the second `Time` object (`rhs`).  
+- **Parameters**:  
+  - `lhs`: A pointer to the first `Time` object.  
+  - `rhs`: A pointer to the second `Time` object.  
+- **Returns**:  
+  - `true` if `lhs` is less than or equal to `rhs`, `false` otherwise.  
+- **Use case**: Used to determine if one `Time` object is earlier than or equal to another.
+
+---
+
+### `bool time_is_greater_than(const Time* lhs, const Time* rhs)`  
+- **Purpose**: Checks if the first `Time` object (`lhs`) represents a later time than the second `Time` object (`rhs`).  
+- **Parameters**:  
+  - `lhs`: A pointer to the first `Time` object.  
+  - `rhs`: A pointer to the second `Time` object.  
+- **Returns**:  
+  - `true` if `lhs` is greater than `rhs`, `false` otherwise. Returns `false` if either pointer is `NULL`.  
+- **Use case**: Used to compare two `Time` objects to see if one represents a later time than the other.
+
+---
+
+### `bool time_is_greater_than_or_equal(const Time* lhs, const Time* rhs)`  
+- **Purpose**: Checks if the first `Time` object (`lhs`) represents the same or a later time than the second `Time` object (`rhs`).  
+- **Parameters**:  
+  - `lhs`: A pointer to the first `Time` object.  
+  - `rhs`: A pointer to the second `Time` object.  
+- **Returns**:  
+  - `true` if `lhs` is greater than or equal to `rhs`, `false` otherwise.  
+- **Use case**: Used to determine if one `Time` object is the same or later than another.
+
+---
+
+### `bool time_is_not_equal(const Time* lhs, const Time* rhs)`  
+- **Purpose**: Checks if two `Time` objects do not represent the same time.  
+- **Parameters**:  
+  - `lhs`: A pointer to the first `Time` object.  
+  - `rhs`: A pointer to the second `Time` object.  
+- **Returns**:  
+  - `true` if `lhs` is not equal to `rhs`, `false` otherwise. Returns `true` if either pointer is `NULL`.  
+- **Use case**: Used to determine if two `Time` objects represent different times.
+
+---
+
+### `void time_deallocate(Time* t)`  
+- **Purpose**: Frees the memory allocated for a `Time` object.  
+- **Parameters**:  
+  - `t`: A pointer to the `Time` object to be deallocated.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to free up memory when a `Time` object is no longer needed.
+
+---
+
+### `double time_current_time_in_seconds()`  
+- **Purpose**: Returns the current time in seconds, with fractional seconds represented as a double.  
+- **Parameters**:  
+  - None.  
+- **Returns**:  
+  - The current time in seconds since the Unix epoch as a double.  
+- **Use case**: Used to retrieve the current time in seconds with high precision.
+
+---
+
+### `double time_current_time_in_microseconds()`  
+- **Purpose**: Returns the current time in microseconds, with fractional microseconds represented as a double.  
+- **Parameters**:  
+  - None.  
+- **Returns**:  
+  - The current time in microseconds since the Unix epoch as a double.  
+- **Use case**: Used to retrieve the current time in microseconds with high precision.
+
+---
+
+### `void time_sleep(unsigned int second)`  
+- **Purpose**: Pauses the program for a specified number of seconds.  
+- **Parameters**:  
+  - `second`: The number of seconds to sleep.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to delay execution for a given number of seconds.
+
+---
+
+### `double time_diff_in_seconds(const Time* from, const Time* to)`  
+- **Purpose**: Computes the difference in time between two `Time` objects, returning the result in seconds. The result is adjusted to ensure it is within the range of -86400 to 86400 seconds (the number of seconds in a day).  
+- **Parameters**:  
+  - `from`: A pointer to the starting `Time` object.  
+  - `to`: A pointer to the ending `Time` object.  
+- **Returns**:  
+  - The difference in time between the two `Time` objects in seconds as a double, or `0.0` if either `Time` object is `NULL` or invalid.  
+- **Use case**: Used to calculate the time difference between two `Time` objects in seconds.
+
+---
+
+
 ### Examples 
 
 ## Example 1: `time_create` and `time_to_string`

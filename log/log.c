@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class Log
+*/
+
 #include <string.h>
 #include <time.h> 
 #include <stdlib.h>

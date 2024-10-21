@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class FileReader
+*/
+
 #include <stdlib.h>
 #include <string.h>
 #include "file_reader.h"

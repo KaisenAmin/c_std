@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Random
+*/
+
 #ifndef RANDOM_H_
 #define RANDOM_H_ 
 

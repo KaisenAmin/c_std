@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "tuple.h"
-#include "../fmt/fmt.h"
 
 
 /**

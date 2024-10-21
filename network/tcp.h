@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Tcp
+*/
+
 #ifndef TCP_H_
 #define TCP_H_
 
@@ -7,6 +13,14 @@
 #include <openssl/err.h>
 
 // #define TCP_LOGGING_ENABLE
+
+#ifdef TCP_LOGGING_ENABLE 
+    #define TCP_LOG(fmt, ...) \
+        do { fprintf(stderr, "[TCP LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define TCP_LOG(fmt, ...) do { } while (0)
+#endif
+
 #define MAX_SSL_CONNECTIONS 256
 
 // Define platform-specific includes and types

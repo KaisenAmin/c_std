@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Statistics
+*/
+
 #ifndef STATISTICS_H_
 #define STATISTICS_H_ 
 

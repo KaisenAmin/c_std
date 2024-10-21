@@ -47,6 +47,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns a pointer to the newly created `String` object. Terminates the program if memory allocation fails.
 
+---
+
 #### `String* string_create_with_pool(size_t size)`
 - **Purpose**:  
   Creates a new `String` object that uses a globally initialized memory pool for memory management.
@@ -54,6 +56,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `size`: The size of the global memory pool to be initialized.
 - **Return Value**:  
   - Returns a pointer to the newly created `String` object. Terminates the program if memory allocation or pool initialization fails.
+
+---
 
 #### `String* string_substr(String* str, size_t pos, size_t len)`
 - **Purpose**:  
@@ -65,6 +69,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns a pointer to the newly created `String` object containing the substring. Returns `NULL` if an error occurs.
 
+---
+
 #### `bool string_empty(const String* str)`
 - **Purpose**:  
   Checks if the `String` object is empty, meaning it contains no characters or is `NULL`.
@@ -72,6 +78,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to check.
 - **Return Value**:  
   - Returns `true` if the `String` object is empty or `NULL`, otherwise `false`.
+
+---
 
 #### `bool string_contains(const String* str, const char* substr)`
 - **Purpose**:  
@@ -82,6 +90,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if the substring is found, otherwise `false`.
 
+---
+
 #### `int string_compare(const String* str1, const String* str2)`
 - **Purpose**:  
   Compares two `String` objects lexicographically.
@@ -90,6 +100,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str2`: The second `String` object.
 - **Return Value**:  
   - Returns `0` if both strings are equal, less than `0` if `str1` is less than `str2`, and greater than `0` if `str1` is greater than `str2`.
+
+---
 
 #### `bool string_is_equal(const String* str1, const String* str2)`
 - **Purpose**:  
@@ -100,6 +112,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if the two strings are equal, otherwise `false`.
 
+---
+
 #### `bool string_is_less(const String* str1, const String* str2)`
 - **Purpose**:  
   Checks if the first `String` is lexicographically less than the second.
@@ -108,6 +122,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str2`: The second `String` object.
 - **Return Value**:  
   - Returns `true` if `str1` is less than `str2`, otherwise `false`.
+
+---
 
 #### `bool string_is_greater(const String* str1, const String* str2)`
 - **Purpose**:  
@@ -118,6 +134,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if `str1` is greater than `str2`, otherwise `false`.
 
+---
+
 #### `bool string_is_less_or_equal(const String* str1, const String* str2)`
 - **Purpose**:  
   Checks if the first `String` is lexicographically less than or equal to the second.
@@ -126,6 +144,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str2`: The second `String` object.
 - **Return Value**:  
   - Returns `true` if `str1` is less than or equal to `str2`, otherwise `false`.
+
+---
 
 #### `bool string_is_greater_or_equal(const String* str1, const String* str2)`
 - **Purpose**:  
@@ -136,6 +156,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if `str1` is greater than or equal to `str2`, otherwise `false`.
 
+---
+
 #### `bool string_is_not_equal(const String* str1, const String* str2)`
 - **Purpose**:  
   Compares two `String` objects for inequality.
@@ -145,6 +167,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if the strings are not equal, otherwise `false`.
 
+---
+
 #### `bool string_is_alpha(const String* str)`
 - **Purpose**:  
   Checks if all characters in the `String` object are alphabetic (A-Z, a-z).
@@ -152,6 +176,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to check.
 - **Return Value**:  
   - Returns `true` if all characters are alphabetic, otherwise `false`.
+
+---
 
 #### `bool string_is_digit(const String* str)`
 - **Purpose**:  
@@ -161,6 +187,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if all characters are digits, otherwise `false`.
 
+---
+
 #### `bool string_is_upper(const String* str)`
 - **Purpose**:  
   Checks if all characters in the `String` object are uppercase.
@@ -168,6 +196,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to check.
 - **Return Value**:  
   - Returns `true` if all characters are uppercase, otherwise `false`.
+
+---
 
 #### `bool string_is_lower(const String* str)`
 - **Purpose**:  
@@ -177,6 +207,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - Returns `true` if all characters are lowercase, otherwise `false`.
 
+---
+
 #### `void string_reverse(String* str)`
 - **Purpose**:  
   Reverses the order of characters in the `String` object.
@@ -184,6 +216,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to reverse.
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
+
+---
 
 #### `void string_resize(String *str, size_t newSize)`
 - **Purpose**:  
@@ -194,6 +228,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
 
+---
 
 #### `void string_shrink_to_fit(String *str)`
 - **Purpose**:  
@@ -202,6 +237,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to shrink. Must not be `NULL`.
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
+
+---
 
 #### `void string_append(String *str, const char *strItem)`
 - **Purpose**:  
@@ -212,6 +249,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
 
+---
+
 #### `void string_push_back(String *str, char chItem)`
 - **Purpose**:  
   Appends a single character (`chItem`) to the end of the `String` object. If necessary, the function reallocates memory to accommodate the additional character.
@@ -221,6 +260,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
 
+---
+
 #### `void string_assign(String *str, const char *newStr)`
 - **Purpose**:  
   Replaces the current contents of the `String` object with the contents of `newStr`. If the new string is larger than the current capacity, the function reallocates memory to accommodate it.
@@ -229,6 +270,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `newStr`: The new string to assign. Must not be `NULL`.
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
+
+---
 
 #### `void string_insert(String *str, size_t pos, const char *strItem)`
 - **Purpose**:  
@@ -240,6 +283,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
 
+---
+
 #### `void string_erase(String *str, size_t pos, size_t len)`
 - **Purpose**:  
   This function erases a portion of the `String` object starting at the specified position (`pos`) and spanning a specified length (`len`). If `len` exceeds the remaining length from `pos`, it is adjusted accordingly.
@@ -249,6 +294,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `len`: The number of characters to erase.
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
+
+---
 
 #### `void string_replace(String *str1, const char *oldStr, const char *newStr)`
 - **Purpose**:  
@@ -260,6 +307,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
 
+---
+
 #### `void string_swap(String *str1, String *str2)`
 - **Purpose**:  
   Swaps the contents of two `String` objects.
@@ -269,6 +318,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, swaps the contents of the two `String` objects.
 
+---
+
 #### `void string_pop_back(String *str)`
 - **Purpose**:  
   Removes the last character from the `String` object, reducing its size by one. If the string is empty, the function logs a warning and does nothing.
@@ -277,6 +328,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - No return value, modifies the `String` object in place.
 
+---
+
 #### `void string_deallocate(String *str)`
 - **Purpose**:  
   Deallocates the memory used by the `String` object and its associated resources, including the memory pool. If the `String` object is `NULL`, the function logs a warning and does nothing.
@@ -284,6 +337,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to be deallocated. Must not be `NULL`.
 - **Return Value**:  
   - No return value, frees the `String` and its associated memory.
+
+---
 
 #### `char string_at(const String *str, size_t index)`
 - **Purpose**:  
@@ -294,6 +349,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - The character at the specified index, or `'\0'` if the index is out of range or the `String` is `NULL`.
 
+---
+
 #### `char* string_back(const String *str)`
 - **Purpose**:  
   Returns a pointer to the last character in the `String` object. If the `String` is `NULL` or empty, the function returns `NULL`.
@@ -301,6 +358,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to access. Must not be `NULL` or empty.
 - **Return Value**:  
   - A pointer to the last character in the string, or `NULL` if the string is `NULL` or empty.
+
+---
 
 #### `char* string_front(const String *str)`
 - **Purpose**:  
@@ -310,6 +369,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - A pointer to the first character in the string, or `NULL` if the string is `NULL` or empty.
 
+---
+
 #### `size_t string_length(const String *str)`
 - **Purpose**:  
   Retrieves the current length (size) of the `String` object. If the `String` is `NULL`, the function logs an error and returns `0`.
@@ -317,6 +378,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object whose length is to be determined. Must not be `NULL`.
 - **Return Value**:  
   - The length of the string, or `0` if the `String` is `NULL`.
+
+---
 
 #### `size_t string_capacity(const String *str)`
 - **Purpose**:  
@@ -326,6 +389,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - The capacity of the string, or `0` if the `String` is `NULL`.
 
+---
+
 #### `size_t string_max_size(const String* str)`
 - **Purpose**:  
   Returns the maximum possible size of the `String` object. Typically, this is a large value representing the maximum size the string can have on the system.
@@ -333,6 +398,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object. Must not be `NULL`.
 - **Return Value**:  
   - The maximum possible size of the string, or `0` if the `String` object is `NULL`.
+
+---
 
 #### `size_t string_copy(const String* str, char* buffer, size_t pos, size_t len)`
 - **Purpose**:  
@@ -345,6 +412,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - The number of characters actually copied.
 
+---
+
 #### `int string_find(const String* str, const char* buffer, size_t pos)`
 - **Purpose**:  
   Finds the first occurrence of the substring `buffer` in the `String` object, starting from the position `pos`.
@@ -354,6 +423,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `pos`: The starting position for the search.
 - **Return Value**:  
   - The index of the first occurrence of the substring, or `-1` if not found or an error occurs.
+
+---
 
 #### `int string_rfind(const String* str, const char* buffer, size_t pos)`
 - **Purpose**:  
@@ -365,6 +436,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - The index of the last occurrence of the substring, or `-1` if not found or an error occurs.
 
+---
+
 #### `int string_find_first_of(const String* str, const char* buffer, size_t pos)`
 - **Purpose**:  
   Finds the first occurrence of any character from the `buffer` in the `String` object, starting from the position `pos`.
@@ -374,6 +447,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `pos`: The starting position for the search.
 - **Return Value**:  
   - The index of the first matching character, or `-1` if no match is found or an error occurs.
+
+---
 
 #### `int string_find_last_of(const String* str, const char* buffer, size_t pos)`
 - **Purpose**:  
@@ -385,6 +460,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   - The index of the last matching character, or `-1` if no match is found or an error occurs.
 
+---
+
 #### `int string_find_first_not_of(const String* str, const char* buffer, size_t pos)`
 - **Purpose**:  
   Finds the first character in the `String` object starting from the specified position that does not match any character in the `buffer`.
@@ -394,6 +471,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `pos`: The starting position for the search. Must be within the bounds of the string.
 - **Return Value**:  
   The index of the first non-matching character, or `-1` if all characters match or an error occurs.
+
+---
 
 #### `int string_find_last_not_of(const String* str, const char* buffer, size_t pos)`
 - **Purpose**:  
@@ -405,6 +484,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   The index of the last non-matching character, or `-1` if all characters match or an error occurs.
 
+---
+
 #### `const char* string_data(const String* str)`
 - **Purpose**:  
   Returns the raw string data from the `String` object.
@@ -412,6 +493,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object. Must not be `NULL`.
 - **Return Value**:  
   A pointer to the character array managed by the `String` object, or `NULL` on error.
+
+---
 
 #### `const char* string_c_str(const String* str)`
 - **Purpose**:  
@@ -421,6 +504,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A constant pointer to the C-string, or an empty string (`""`) on error.
 
+---
+
 #### `char* string_begin(const String* str)`
 - **Purpose**:  
   Returns a pointer to the first character in the `String` object.
@@ -428,6 +513,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object. Must not be `NULL`.
 - **Return Value**:  
   A pointer to the first character of the string, or an empty string on error.
+
+---
 
 #### `char* string_end(const String* str)`
 - **Purpose**:  
@@ -437,6 +524,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A pointer to the end of the string, or `NULL` on error.
 
+---
+
 #### `char* string_rbegin(const String* str)`
 - **Purpose**:  
   Returns a pointer to the last character in the `String` object for reverse iteration.
@@ -444,6 +533,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object. Must not be `NULL` or empty.
 - **Return Value**:  
   A pointer to the last character of the string, or `NULL` on error.
+
+---
 
 #### `char* string_rend(const String* str)`
 - **Purpose**:  
@@ -453,6 +544,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A pointer to one position before the first character, or `NULL` on error.
 
+---
+
 #### `const char* string_cbegin(const String* str)`
 - **Purpose**:  
   Returns a constant pointer to the first character of the `String` object's data.
@@ -460,6 +553,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to retrieve the beginning pointer from. Must not be `NULL`.
 - **Return Value**:  
   A constant pointer to the first character of the string, or `NULL` on error.
+
+---
 
 #### `const char* string_cend(const String* str)`
 - **Purpose**:  
@@ -469,6 +564,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A constant pointer to the end of the string, or `NULL` on error.
 
+---
+
 #### `const char* string_crbegin(const String* str)`
 - **Purpose**:  
   Returns a constant pointer to the last character in the `String` object for reverse iteration.
@@ -476,6 +573,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to retrieve the reverse beginning pointer from. Must not be `NULL` or empty.
 - **Return Value**:  
   A constant pointer to the last character of the string, or `NULL` on error.
+
+---
 
 #### `const char* string_crend(const String* str)`
 - **Purpose**:  
@@ -485,6 +584,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A constant pointer to one before the first character, or `NULL` on error.
 
+---
+
 #### `void string_clear(String* str)`
 - **Purpose**:  
   Resets the `String` object, setting its size to zero and making it an empty string.
@@ -492,6 +593,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to clear. Must not be `NULL`.
 - **Return Value**:  
   This function does not return a value.
+
+---
 
 #### `char* string_to_upper(const String* str)`
 - **Purpose**:  
@@ -501,6 +604,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A new C-string with all characters in uppercase. The caller is responsible for freeing the allocated memory.
 
+---
+
 #### `char* string_to_lower(const String* str)`
 - **Purpose**:  
   Converts all characters in the `String` object to lowercase and returns a new C-string with the lowercase characters.
@@ -508,6 +613,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to convert. Must not be `NULL`.
 - **Return Value**:  
   A new C-string with all characters in lowercase. The caller is responsible for freeing the allocated memory.
+
+---
 
 #### `bool string_set_pool_size(String* str, size_t newSize)`
 - **Purpose**:  
@@ -518,6 +625,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   Returns `true` if the pool was successfully resized, otherwise `false`.
 
+---
+
 #### `void string_concatenate(String* str1, const String* str2)`
 - **Purpose**:  
   Concatenates the content of the second `String` object (`str2`) to the first `String` object (`str1`).
@@ -526,6 +635,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str2`: The `String` object whose content will be appended to `str1`. Must not be `NULL`.
 - **Return Value**:  
   This function does not return a value.
+
+---
 
 #### `void string_trim_left(String *str)`
 - **Purpose**:  
@@ -538,6 +649,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   This function does not return a value.
 
+---
+
 #### `void string_trim_right(String *str)`
 - **Purpose**:  
   This function removes all trailing whitespace characters from the `String` object.
@@ -549,6 +662,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   This function does not return a value.
 
+---
+
 #### `void string_trim(String *str)`
 - **Purpose**:  
   This function removes both leading and trailing whitespace characters from the `String` object by combining `string_trim_left` and `string_trim_right`.
@@ -558,6 +673,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Calls the `string_trim_left` and `string_trim_right` functions in sequence to remove both leading and trailing whitespaces.
 - **Return Value**:  
   This function does not return a value.
+
+---
 
 #### `String** string_split(const String *str, const char *delimiter, int *count)`
 - **Purpose**:  
@@ -572,6 +689,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   An array of `String*` containing the split strings, or `NULL` if an error occurs.
 
+---
+
 #### `String* string_join(String **strings, int count, const char *delimiter)`
 - **Purpose**:  
   Joins an array of `String` objects into a single `String` object, separated by a specified delimiter.
@@ -583,6 +702,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Concatenates all the strings in the array into a single `String`, separated by the delimiter.
 - **Return Value**:  
   A new `String` object containing the concatenated result, or `NULL` if an error occurs.
+
+---
 
 #### `void string_replace_all(String *str, const char *oldStr, const char *newStr)`
 - **Purpose**:  
@@ -596,6 +717,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   This function does not return a value.
 
+---
+
 #### `int string_to_int(const String *str)`
 - **Purpose**:  
   This function converts the content of a `String` object to an integer. If the `String` is `NULL` or empty, it returns 0.
@@ -606,6 +729,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Converts the string content to an integer using `atoi`.
 - **Return Value**:  
   The integer value of the `String`'s content or 0 if the string is `NULL` or empty.
+
+---
 
 #### `float string_to_float(const String *str)`
 - **Purpose**:  
@@ -618,6 +743,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   The floating-point value of the `String`'s content or 0.0f if the string is `NULL` or empty.
 
+---
+
 #### `double string_to_double(const String* str)`
 - **Purpose**:  
   Converts the content of a `String` object to a double-precision floating-point number (double).
@@ -628,6 +755,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Converts the string content to a double using `strtod`.
 - **Return Value**:  
   The double value of the `String`'s content or 0.0 if the string is `NULL` or empty.
+
+---
 
 #### `void string_pad_left(String *str, size_t totalLength, char padChar)`
 - **Purpose**:  
@@ -642,6 +771,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   This function does not return a value.
 
+---
+
 #### `void string_pad_right(String *str, size_t totalLength, char padChar)`
 - **Purpose**:  
   Pads the right side of a `String` object with a specified character until it reaches a desired length.
@@ -655,6 +786,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   This function does not return a value.
 
+---
+
 #### `String* string_to_hex(const String *str)`
 - **Purpose**:  
   Converts the content of a `String` object to its hexadecimal representation.
@@ -665,6 +798,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Returns a new `String` object containing the hexadecimal representation.
 - **Return Value**:  
   A new `String` object containing the hexadecimal representation, or `NULL` if an error occurs.
+
+---
 
 #### `String* string_from_hex(const String *hexStr)`
 - **Purpose**:  
@@ -677,6 +812,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A new `String` object containing the decoded ASCII characters, or `NULL` if an error occurs.
 
+---
+
 #### `size_t string_count(const String* str, const char* substr)`
 - **Purpose**:  
   Counts how many times a given substring appears within a `String` object.
@@ -688,6 +825,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   The number of occurrences of `substr`, or `0` if an error occurs.
 
+---
+
 #### `void string_remove(String* str, const char* substr)`
 - **Purpose**:  
   Removes all instances of a specified substring from a `String` object.
@@ -698,6 +837,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Finds and removes all occurrences of `substr` from the string.
 - **Return Value**:  
   This function does not return a value.
+
+---
 
 #### `void string_remove_range(String* str, size_t startPos, size_t endPos)`
 - **Purpose**:  
@@ -711,6 +852,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   This function does not return a value.
 
+---
+
 #### `String* string_from_int(int value)`
 - **Purpose**:  
   Creates a new `String` object from an integer value.
@@ -720,6 +863,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Converts the integer to a string and returns a new `String` object containing the result.
 - **Return Value**:  
   A new `String` object containing the string representation of the integer.
+
+---
 
 #### `char* string_from_int_cstr(int value)`
 - **Purpose**:  
@@ -731,6 +876,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A newly allocated C-string containing the integer's string representation.
 
+---
+
 #### `String* string_from_float(float value)`
 - **Purpose**:  
   Converts a floating-point number to its string representation and returns a new `String` object.
@@ -741,6 +888,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A new `String` object containing the string representation of the float value.
 
+---
+
 #### `String* string_from_double(double value)`
 - **Purpose**:  
   Converts a double-precision floating-point number to its string representation and returns a new `String` object.
@@ -750,6 +899,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Converts the double value into a string and creates a new `String` object.
 - **Return Value**:  
   A new `String` object containing the string representation of the double value.
+
+---
 
 #### `String** string_tokenize(const String* str, const char* delimiters, int* count)`
 - **Purpose**:  
@@ -763,6 +914,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   An array of `String` objects representing the tokens, or `NULL` if an error occurs.
 
+---
+
 #### `int string_compare_ignore_case(const String* str1, const String* str2)`
 - **Purpose**:  
   Compares two `String` objects in a case-insensitive manner.
@@ -774,6 +927,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   An integer indicating the result of the comparison: 0 if equal, negative if `str1` is less than `str2`, and positive if `str1` is greater than `str2`.
 
+---
+
 #### `String* string_base64_encode(const String *input)`
 - **Purpose**:  
   Encodes the content of a `String` object into Base64 format.
@@ -783,6 +938,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - Converts the string's content into Base64 encoding.
 - **Return Value**:  
   A new `String` object containing the Base64-encoded data, or `NULL` if an error occurs.
+
+---
 
 #### `String* string_base64_decode(const String* encodedStr)`
 - **Purpose**:  
@@ -794,6 +951,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:  
   A new `String` object containing the decoded binary data, or `NULL` if an error occurs.
 
+---
+
 #### `void string_format(String* str, const char* format, ...)`
 - **Purpose**:  
   Formats the content of a `String` object based on a format string and additional arguments, similar to how `printf` works.
@@ -803,7 +962,9 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `...`: Additional arguments for formatting.
 - **Functionality**:
   - Formats the content of the string based on the format and arguments and assigns it to the `String` object.
-  
+
+---
+
 #### `String* string_repeat(const String* str, size_t count)`
 - **Purpose**:  
   Creates a new `String` object containing the content of the input `String` repeated a specified number of times.
@@ -812,7 +973,9 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `count`: The number of times to repeat the string.
 - **Functionality**:
   - Repeats the content of the string `count` times and returns a new `String` object.
-  
+
+---
+
 #### `String* string_join_variadic(size_t count, ...)`
 - **Purpose**:  
   Joins multiple `String` objects passed as variadic arguments into a single `String` object.
@@ -821,6 +984,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `...`: The `String` objects to join.
 - **Functionality**:
   - Joins the strings and returns a new `String` object containing the concatenated content.
+
+---
 
 #### `void string_trim_characters(String* str, const char* chars)`
 - **Purpose**:  
@@ -831,6 +996,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Trims any occurrence of the specified characters from both the beginning and the end of the `String` object.
 
+---
+
 #### `void string_shuffle(String* str)`
 - **Purpose**:  
   Shuffles the characters in the `String` object randomly.
@@ -838,6 +1005,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to shuffle. Must not be `NULL`.
 - **Functionality**:
   - Uses the Fisher-Yates algorithm to shuffle the characters in the string randomly.
+
+---
 
 #### `void string_to_title(String* str)`
 - **Purpose**:  
@@ -847,6 +1016,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Capitalizes the first letter of each word while converting the rest of the characters to lowercase.
 
+---
+
 #### `void string_to_capitalize(String* str)`
 - **Purpose**:  
   Capitalizes the first character of the `String` object.
@@ -855,6 +1026,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Converts the first character of the string to uppercase if it exists.
 
+---
+
 #### `void string_to_casefold(String* str)`
 - **Purpose**:  
   Converts all characters in the `String` object to lowercase.
@@ -862,6 +1035,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to convert. Must not be `NULL`.
 - **Functionality**:
   - Iterates through the string and converts each character to lowercase.
+
+---
 
 #### `bool string_starts_with(const String* str, const char* substr)`
 - **Purpose**:  
@@ -872,6 +1047,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Returns `true` if the string starts with `substr`, otherwise `false`.
 
+---
+
 #### `bool string_ends_with(const String* str, const char* substr)`
 - **Purpose**:  
   Checks if the `String` object ends with the specified substring.
@@ -881,6 +1058,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Returns `true` if the string ends with `substr`, otherwise `false`.
 
+---
+
 #### `void string_swap_case(String* str)`
 - **Purpose**:  
   Swaps the case of each character in the `String` object, converting lowercase characters to uppercase and vice versa.
@@ -888,6 +1067,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to swap case. Must not be `NULL`.
 - **Functionality**:
   - Converts lowercase characters to uppercase and vice versa.
+
+---
 
 #### `wchar_t* string_to_unicode(const char* str)`
 - **Purpose**:  
@@ -897,6 +1078,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Converts the string to a wide-character string using `mbstowcs`.
 
+---
+
 #### `String* string_from_unicode(const wchar_t* wstr)`
 - **Purpose**:  
   Converts a wide-character string to a multi-byte C-string and creates a new `String` object from it.
@@ -904,6 +1087,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `wstr`: The wide-character string to convert. Must not be `NULL`.
 - **Functionality**:
   - Converts the wide-character string to a multi-byte string using `wcstombs` and creates a new `String` object.
+
+---
 
 #### `String** string_create_from_initializer(size_t count, ...)`
 - **Purpose**:  
@@ -914,6 +1099,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Converts each C-string to a `String` object and returns an array of pointers to these objects, with the array being null-terminated.
 
+---
+
 #### `char* string_strdup(const char* str)`
 - **Purpose**:  
   Duplicates the provided C-string by allocating new memory and copying its content.
@@ -922,6 +1109,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Allocates memory for a copy of the input string and returns a pointer to the new string.
 
+---
 
 #### `size_t string_length_cstr(const char* str)`
 - **Purpose**:  
@@ -931,6 +1119,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:
   - The length of the C-string, or `0` if the string is `NULL`.
 
+---
+
 #### `size_t string_length_utf8(const char* str)`
 - **Purpose**:  
   Calculates the number of characters in a UTF-8 encoded C-string, correctly accounting for multi-byte characters.
@@ -938,6 +1128,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: A pointer to a UTF-8 encoded C-string. Must not be `NULL`.
 - **Return Value**:
   - The number of UTF-8 characters in the string, or `0` if the string is `NULL`.
+
+---
 
 #### `bool string_to_bool_from_cstr(const char* boolstr)`
 - **Purpose**:  
@@ -947,6 +1139,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:
   - `true` if the string is "true", `false` if it is "false" or any other value (including `NULL`).
 
+---
+
 #### `size_t string_utf8_char_len(char c)`
 - **Purpose**:  
   Determines how many bytes a UTF-8 character occupies based on its first byte.
@@ -954,6 +1148,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `c`: The first byte of the UTF-8 character.
 - **Return Value**:
   - The number of bytes the UTF-8 character occupies (1-4), or `0` if it is not a valid UTF-8 start byte.
+
+---
 
 #### `int string_strcmp(const char* str1, const char* str2)`
 - **Purpose**:  
@@ -966,6 +1162,8 @@ Absolutely, adding a brief description for each function at the top of your READ
     - `0` if they are equal,  
     - `>0` if `str1` is greater than `str2`.
 
+---
+
 #### `char* string_strndup(const char* str, size_t n)`
 - **Purpose**:  
   Duplicates the first `n` characters of a C-string and returns a pointer to the newly allocated memory.
@@ -975,6 +1173,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:
   - A pointer to the newly allocated string, or `NULL` if memory allocation fails.
 
+---
+
 #### `bool string_is_palindrome(const String* str)`
 - **Purpose**:  
   Checks if the content of a `String` object is a palindrome (reads the same forwards and backwards).
@@ -982,6 +1182,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to check.
 - **Return Value**:
   - `true` if the string is a palindrome, `false` otherwise.
+
+---
 
 #### `bool string_is_alnum(const String* str)`
 - **Purpose**:  
@@ -991,6 +1193,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:
   - `true` if the string is alphanumeric, `false` otherwise.
 
+---
+
 #### `bool string_is_title(const String* str)`
 - **Purpose**:  
   Checks if a `String` object is in title case (each word starts with an uppercase letter and all other letters are lowercase).
@@ -999,6 +1203,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Return Value**:
   - `true` if the string is in title case, `false` otherwise.
 
+---
+
 #### `bool string_is_space(const String* str)`
 - **Purpose**:  
   Checks if a `String` object contains only space characters.
@@ -1006,6 +1212,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to check.
 - **Return Value**:
   - `true` if the string contains only spaces, `false` otherwise.
+
+---
 
 #### `bool string_is_printable(const String* str)`
 - **Purpose**:  

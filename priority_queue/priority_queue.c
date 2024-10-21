@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "priority_queue.h"
-#include "../fmt/fmt.h"
 
 
 /**

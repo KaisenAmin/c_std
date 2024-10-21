@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Crypto
+*/
+
 #ifndef CRYPTO_H_
 #define CRYPTO_H_
 

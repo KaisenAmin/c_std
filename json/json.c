@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Json
+*/
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

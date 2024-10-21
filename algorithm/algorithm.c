@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class Algorithm
+*/
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

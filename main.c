@@ -1,18 +1,12 @@
-#include <stdlib.h>
-#include <string.h>
-#include "crypto/crypto.h"
+#include "date/date.h"
 #include "fmt/fmt.h"
 
-
 int main() {
-    const char* exampleData = "The quick brown fox jumps over the lazy dog";
-    size_t dataLength = strlen(exampleData);
-    size_t hashLength = 0;
-    uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_MD4, &hashLength);
+    Date* weekday_date = date_create_ymd(2024, 2, 29, Gregorian);
+    int day_of_week = date_day_of_week(weekday_date);
 
-    fmt_printf("MD4(\"%s\") = ", exampleData);
-    crypto_print_hash(hash, hashLength);
+    fmt_printf("Day of the week for 2024-02-29: %d (1=Monday, 7=Sunday)\n", day_of_week);
 
-    free(hash);
+    date_deallocate(weekday_date);
     return 0;
 }

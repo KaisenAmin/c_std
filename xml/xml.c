@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Xml
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

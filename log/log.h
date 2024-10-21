@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class Log
+*/
+
 #ifndef LOG_H_
 #define LOG_H_
 

@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Statistics
+*/
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>

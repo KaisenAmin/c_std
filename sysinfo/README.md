@@ -31,6 +31,7 @@ The SysInfo library offers a variety of functions to gather information about th
   - `char* interface_name`: The name of the network interface.
   - `char* ip_address`: The IP address associated with the interface.
 
+---
 
 ### `SysinfoDiskPartition` Structure
 
@@ -58,6 +59,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Error Handling**:  
   Logs an error if the vector cannot be created or if any platform-specific functions fail.
 
+---
+
 ### `Vector* sysinfo_process_list()`
 
 - **Purpose**:  
@@ -69,6 +72,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - Returns `NULL` if an error occurs (e.g., failure to allocate memory for the vector).
 - **Error Handling**:  
   Logs errors for failure to capture process snapshots, read directories, or allocate memory.
+
+---
 
 ### `Vector* sysinfo_network_interfaces()`
 
@@ -84,6 +89,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Error Handling**:  
   Logs errors for memory allocation issues or system call failures on both platforms.
 
+---
+
 ### `Vector* sysinfo_open_ports()`
 
 - **Purpose**:  
@@ -96,6 +103,8 @@ The SysInfo library offers a variety of functions to gather information about th
 
 - **Error Handling**:  
   Logs errors if system calls fail or if there is a problem creating the vector.
+
+---
 
 ### `Vector* sysinfo_disk_partitions()`
 
@@ -112,6 +121,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Error Handling**:  
   Logs errors if the vector cannot be created or if system-specific functions fail.
 
+---
+
 ### `void sysinfo_deallocate_network_interfaces(Vector* interfaces)`
 
 - **Purpose**:  
@@ -121,6 +132,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Error Handling**:  
   - If `interfaces` is `NULL`, the function logs a warning and returns without performing any operations.
   - Logs details about each interface being deallocated.
+
+---
 
 ### `void sysinfo_deallocate_disk_partitions(Vector* partitions)`
 
@@ -134,6 +147,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - If `partitions` is `NULL`, the function logs a warning and returns without performing any operations.
   - Logs each partition’s deallocation process and any potential issues (e.g., `NULL` partitions).
 
+---
+
 ### `int sysinfo_cpu_cores()`
 
 - **Purpose**:  
@@ -145,6 +160,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - Returns the total number of CPU cores available on the system.
   - Returns `-1` if an error occurs (e.g., failure to retrieve core count due to system call issues).
+
+---
 
 ### `bool sysinfo_is_virtualized()`
 
@@ -158,6 +175,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - `true`: If the system is detected to be running in a virtualized environment (using `PF_VIRT_FIRMWARE_ENABLED` or `PF_HYPERVISOR_PRESENT` on Windows).
   - `false`: If the system is not running in a virtualized environment.
 
+---
+
 ### `bool sysinfo_is_service_running(const char* service_name)`
 
 - **Purpose**:  
@@ -169,6 +188,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - `true`: If the service or process is running.
   - `false`: If the service or process is not running.
+
+---
 
 ### `double sysinfo_cpu_usage()`
 
@@ -185,6 +206,7 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Usage Example**:  
   Use this function to monitor or log real-time CPU usage for performance tracking or system diagnostics.
 
+---
 
 ### `double sysinfo_memory_usage()`
 
@@ -198,6 +220,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - The memory usage as a percentage (`double`).
   - `-1.0`: If an error occurs (e.g., failure to retrieve memory usage data from the system).
 
+---
+
 ### `char* sysinfo_product_version()`
 
 - **Purpose**:  
@@ -209,6 +233,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - A static string containing the OS version (e.g., `"Windows 10"`, `"Ubuntu 20.04"`).
   - `"unknown"`: If the version cannot be determined.
+
+---
 
 ### `char* sysinfo_product_type()`
 
@@ -222,6 +248,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - A static string containing the OS product type.
   - `"unknown"`: If the product type cannot be determined.
 
+---
+
 ### `char* sysinfo_kernel_version()`
 
 - **Purpose**:  
@@ -233,6 +261,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - A static string containing the kernel version.
   - `"unknown"`: If the kernel version cannot be determined.
+
+---
 
 ### `char* sysinfo_kernel_type()`
 
@@ -246,6 +276,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - A static string containing the kernel type.
   - `"unknown"`: If the kernel type cannot be determined.
 
+---
+
 ### `char* sysinfo_boot_unique_id()`
 
 - **Purpose**:  
@@ -257,6 +289,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - A static string containing the unique boot ID.
   - `"unknown"`: If the boot ID cannot be determined.
+
+---
 
 ### `char* sysinfo_cpu_architecture()`
 
@@ -270,6 +304,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - A static string containing the CPU architecture.
   - `"unknown"`: If the architecture cannot be determined.
 
+---
+
 ### `char* sysinfo_machine_host_name()`
 
 - **Purpose**:  
@@ -281,6 +317,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - A static string containing the machine's host name.
   - `"unknown"`: If the host name cannot be determined.
+
+---
 
 ### `char* sysinfo_machine_unique_id()`
 
@@ -294,6 +332,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - A static string containing the machine's unique ID.
   - `"unknown"`: If the ID cannot be determined.
 
+---
+
 ### `char* sysinfo_pretty_product_name()`
 
 - **Purpose**:  
@@ -304,6 +344,8 @@ The SysInfo library offers a variety of functions to gather information about th
 
 - **Return Value**:  
   - A static string containing the pretty OS product name.
+
+---
 
 ### `char* sysinfo_build_abi()`
 
@@ -317,6 +359,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - A static string containing the ABI details.
   - `"unknown"`: If the ABI cannot be determined.
 
+---
+
 ### `char* sysinfo_system_uptime()`
 
 - **Purpose**:  
@@ -328,6 +372,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - A dynamically allocated string containing the system uptime in days, hours, minutes, and seconds. The caller must free the memory.
   - `NULL`: If the uptime cannot be determined.
+
+---
 
 ### `char* sysinfo_system_locale()`
 
@@ -341,6 +387,8 @@ The SysInfo library offers a variety of functions to gather information about th
   - A dynamically allocated string containing the system locale. The caller must free the returned string.
   - `"unknown"`: If the locale cannot be determined.
 
+---
+
 ### `char* sysinfo_disk_space(const char* path)`
 
 - **Purpose**:  
@@ -352,6 +400,8 @@ The SysInfo library offers a variety of functions to gather information about th
 - **Return Value**:  
   - A string containing the total, used, and available disk space in MB. The caller must free the memory.
   - `NULL`: If the disk space cannot be determined.
+
+---
 
 ### `char** sysinfo_list_bluetooth_devices(int* count)`
 

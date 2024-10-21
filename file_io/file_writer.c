@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class FileWriter
+*/
+
 #if defined(_WIN32) || defined(_WIN64) 
 #include <windows.h>
 #include <io.h> // _get_osfhandle

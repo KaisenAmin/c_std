@@ -111,7 +111,7 @@ if (WIN32)
         crypto
         # config
         # csv
-        # date
+        date
         # forwardlist
         # list
         # numbers

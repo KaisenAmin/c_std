@@ -1,3 +1,9 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2023
+ * @class Cli
+*/
+
 #include <stdlib.h>
 #include <string.h>
 #include "cli.h"

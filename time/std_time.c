@@ -1,7 +1,12 @@
+/**
+ * @author Amin Tahmasebi
+ * @date 2024
+ * @class Time
+*/
+
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
-#include "../fmt/fmt.h"
 #include "std_time.h"
 
 

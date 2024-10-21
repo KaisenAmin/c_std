@@ -28,119 +28,846 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-- `Postgres* postgres_create()`: Allocates and returns a new `Postgres` object.
-- `void postgres_init(Postgres* pg, const char* database, const char* user, const char* password)`: Initializes the `Postgres` object with the given database, user, and password.
-- `bool postgres_connect(Postgres* pg)`: Establishes a connection to the PostgreSQL database.
-- `void postgres_disconnect(Postgres* pg)`: Disconnects from the PostgreSQL database.
-- `PostgresResult* postgres_query(Postgres* pg, const char* query)`: Executes an SQL query and returns the result.
-- `void postgres_clear_result(PostgresResult* pgResult)`: Clears the result of a query.
-- `void postgres_deallocate(Postgres* pg)`: Frees the memory occupied by the `Postgres` object.
-- `bool postgres_execute_non_query(Postgres* pg, const char* command)`: Executes an SQL command that does not return data (e.g., INSERT, UPDATE, DELETE).
-- `bool postgres_begin_transaction(Postgres* pg)`: Executes the SQL command `BEGIN` to start a transaction.
-- `bool postgres_commit_transaction(Postgres* pg)`: Executes the SQL command `COMMIT` to commit the current transaction.
-- `postgres_rollback_transaction(Postgres* pg)`: Execures the SQL command `ROLLBACK` to rollback the current transaction.
-- `const char* postgres_get_last_error(Postgres* pg)`: retrieves the last error message from the PostgreSQL connection.
-- `int postgres_get_affected_rows(Postgres* pg, PostgresResult* pgRes)`: Returns the number of rows affected by the SQL command. If the SQL command that generated the PostgresResult was INSERT, UPDATE or DELETE, this returns a string containing the number of rows affected.
-- `void postgres_print_result(PostgresResult* pgRes)`: function takes a PostgresResult object and prints the results.
-- `int postgres_get_table_row_count(Postgres* pg, const char* tableName)`: function to retrieve the number of rows in a table.
-- `bool postgres_table_exists(Postgres* pg, const char* tableName)`: function to check if table is exists or not.
-- `PostgresResult* postgres_list_tables(Postgres* pg)`: this function list all the tables in the current database.
-- `PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName)`: this function retrieve the column names and their data types for a given table in the database.
-- `bool postgres_execute_prepared(Postgres* pg, const char* stmtName, int nParams, const char* const* paramValues)`: this function execute a parameterized query.This can help prevent SQL injection and make your queries more flexible.
-- `PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName)`: this function fetch the names of all the columns in a given table.This can be useful if you want to know the structure of a table without fetching all its data.
-- `PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName)`: this function retrieves the primary keys of a given table. This can be useful for understanding the structure of a table and its unique constraints.
-- `PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName)`: this function retrieve foreign keys from a given table This function will help you understand the relationships between tables by identifying foreign keys and the tables they reference.
-- `PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName)`: this function retrieve the indexes of a given table. This function will help you understand the indexing strategy used in the table, which is important for optimizing query performance.
-- `PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName)`: this function will help you understand the storage footprint of a table, which is useful for database maintenance and optimization.
-- `int postgres_get_table_index_count(Postgres* pg, const char* tableName)`: This function will help you understand the indexing strategy used in the table, which is crucial for query performance optimization.
-- `PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName)`: This function will be similar to postgres_get_table_schema, but it will return more detailed information, including whether the column allows NULL values and the default value for the column if any.
-- `const char* postgres_get_value(PostgresResult* pgRes, int row, int col)`: This function will provide a more convenient way to get values from the PostgresResult structure.
-- `PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableName)`: This function retrieves all the constraints (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK) of a given table. This function can be very useful for understanding the structure and constraints of a table.
-- `int postgres_num_tuples(PostgresResult* pgRes)`: this function retrieve number of tuples (row) in a PostgresResult object.
-- `int postgres_num_fields(PostgresResult* pgRes)`: this function retrieve number of fields (columns) in a PostgresResult object.
-- `int postgres_backend_pid(Postgres* pg)`: this function retrieves the backend process ID.
-- `int postgres_command_tuples(PostgresResult* pgRes)`: this function will return the number of rows affected by the most recent command executed.
-- `int postgres_binary_tuples(const PostgresResult* pgRes)`: this function will returns 1 if the PGresult contains binary data and 0 if it contains text data. 
-- `int potgres_bytes_size(const PostgresResult* pgRes)`: this function return the size in bytes of the column associated with the given column number. Column number start at 0.[returns the space allocated for this column in a database row]
-- `bool postgres_is_null(const PostgresResult* pgRes, int row, int col)`: Tests a field for a null value. Row and column numbers start at 0. this function return true if field is null and false if it contains a non-null value.
-- `int postgres_reset_start(Postgres* pg)`:  If it returns 0, the reset has failed.
-- `char* postgres_db_value(const Postgres* pg)`: this function return postgres database value.
-- `char* postgres_user_value(const Postgres* pg)`: this function return username value.
-- `char* postgres_password_value(const Postgres* pg)`: this function return password value.
-- `char* postgres_host_value(const Postgres* pg)`: this function return host value.
-- `char* postgres_port_value(const Postgres* pg)`: this function return port number.
-- `char* postgres_object_id_status(const PostgresResult* pgRes)`: Returns a string with the object ID of the inserted row, if the SQL command was an INSERT. (The string will be 0 if the INSERT did not insert exactly one row, or if the target table does not have OIDs.) If the command was not an INSERT, returns an empty string.
 
-- `char* postgres_command_status(PostgresResult* pgRes)`: Returns the command status string from the SQL command that generated the PostgresResutl.
-- `int postgres_protocol_version(const Postgres* pg)`: return the frontend/backend protocol being used .Currently, the possible values are 2 (2.0 protocol), 3 (3.0 protocol), or zero (connection bad). This will not change after connection startup is complete, but it could theoretically change during a connection reset. The 3.0 protocol will normally be used when communicating with PostgreSQL 7.4 or later servers; pre-7.4 servers support only protocol 2.0. 
+### `Postgres* postgres_create()`  
+- **Purpose**: Allocates and creates a new `Postgres` structure.  
+- **Parameters**:  
+  - None.  
+- **Returns**:  
+  - A pointer to the newly allocated `Postgres` structure, or `NULL` if the allocation fails.  
+- **Use case**: Used to initialize a `Postgres` structure before setting connection parameters and connecting to a database.
 
-- `int postgres_server_version(cosnt Postgres* pg)`: Returns an integer representing the backend version. Applications may use this to determine the version of the database server they are connected to. The number is formed by converting the major, minor, and revision numbers into two-decimal-digit numbers and appending them together. For example, version 7.4.2 will be returned as 70402, and version 8.1 will be returned as 80100 (leading zeroes are not shown). Zero is returned if the connection is bad.
+---
 
-- `int postgres_socket_descriptor(const Postgres* pg)`: obtained the file descriptor number of the connection socket to the server. a valid descriptor is equal or grater than 0 and -1 indicates that no server connection is currently open.
+### `void postgres_init(Postgres* pg, const char* database, const char* user, const char* password, const char* host, const char* port)`  
+- **Purpose**: Initializes the `Postgres` structure with database connection parameters, such as database name, user, password, host, and port.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure to be initialized.  
+  - `database`: The name of the database.  
+  - `user`: The username for database access.  
+  - `password`: The password for database access.  
+  - `host`: The hostname or IP address of the database server.  
+  - `port`: The port number on which the database server is listening.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to set the connection parameters for the `Postgres` structure before attempting to connect to the database.
 
-- `int postgres_is_busy(Postgres* pg)`: Returns 'true' if a command is busy, that is, 'false' return indicates that PQgetResult can be called with assurance of not blocking.
+---
 
-- `bool postgres_is_non_blocking(const Postgres* pg)`: this functio return the blocking status of the database connection. Returns 'true' if the connection is set to nonblocking mode and 'false' if blocking.
+### `bool postgres_connect(Postgres* pg)`  
+- **Purpose**: Connects to the PostgreSQL database using the initialized connection parameters.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the connection is successful, `false` otherwise.  
+- **Use case**: Used to establish a connection to the PostgreSQL database after initializing the connection parameters.
 
-- `int postgres_flush(Postgres* pg)`: this function Attempts to flush any queued output data to the server. Returns 0 if successful (or if the send queue is empty), -1 if it failed for some reason, or 1 if it was unable to send all the data in the send queue yet (this case can only occur if the connection is nonblocking). After sending any command or data on a nonblocking connection, call 'postgres_flush'. If it returns 1, wait for the socket to be write-ready and call it again; repeat until it returns 0. Once 'postgres_flush' returns 0, wait for the socket to be read-ready and then read the response as described above.
+---
 
-- `int postgres_set_non_blocking(Postgres* pg, int state)`: this function the nonblocking status of the connection. Sets the state of the connection to nonblocking if arg is 1, or blocking if arg is 0. Returns 0 if OK, -1 if error.
+### `bool postgres_execute_non_query(Postgres* pg, const char* command)`  
+- **Purpose**: Executes a non-query SQL command (e.g., `INSERT`, `UPDATE`, `DELETE`) on the PostgreSQL database.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `command`: The SQL command to be executed.  
+- **Returns**:  
+  - `true` if the command is executed successfully, `false` otherwise.  
+- **Use case**: Used to execute non-query SQL commands that modify the database but do not return results (e.g., `INSERT`, `UPDATE`, `DELETE`).
 
-- `int postgres_get_line(Postgres* pg, char* buffer, int length)`: this function Reads a newline-terminated line of characters (transmitted by the server) into a buffer string of size length. also copies up to length-1 characters into the buffer and converts the terminating newline into a zero byte. PQgetline returns EOF at the end of input, 0 if the entire line has been read, and 1 if the buffer is full but the terminating newline has not yet been read.
-Note that the application must check to see if a new line consists of the two characters \., which indicates that the server has finished sending the results of the COPY command. If the application might receive lines that are more than length-1 characters long, care is needed to be sure it recognizes the \. line correctly (and does not, for example, mistake the end of a long data line for a terminator line).
+---
 
-- `int postgres_put_line(Postgres* pg, const char* buffer)`: Sends a null-terminated string to the server. Returns 0 if OK and EOF if unable to send the string and return -1 if some kind of error happened .The COPY data stream sent by a series of calls to 'postgres_put_line' has the same format as that returned by 'postgres_get_line_async', except that applications are not obliged to send exactly one data row per 'postgres_put_line' call; it is okay to send a partial line or multiple lines per call.
+### `void postgres_disconnect(Postgres* pg)`  
+- **Purpose**: Disconnects from the PostgreSQL database.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to close the connection to the database when it is no longer needed.
 
-- `int postgres_put_bytes(Postgres* pg, const char* buffer, int bytes)`: Sends a non-null-terminated string to the server. Returns 0 if OK and EOF if unable to send the string. This is exactly like 'postgres_put_line', except that the data buffer need not be null-terminated since the number of bytes to send is specified directly. Use this procedure when sending binary data.
+---
 
-- `void postgres_trace(Postgres* pg, FILE* stream)` : Enables tracing of the client/server communication to a debugging file stream.
-- `void postgres_un_trace(Postgres* pg)` : Disables tracing started by 'postgres_trace'.
-- `PostgresResult* postgres_get_result(Postgres* pg)`: 
-- `int postgres_request_cancle(Postgres* pg)`: this function Request that PostgreSQL abandon processing of the current command. The return value is 1 if the cancel request was successfully dispatched, 0 if not. (If not, 'postgres_get_last_error' tells why not.) Successful dispatch is no guarantee that the request will have any effect, however. Regardless of the return value of 'postgres_request_cancle', the application must continue with the normal result-reading sequence using 'postgres_get_result'. If the cancellation is effective, the current command will terminate early and return an error result. If the cancellation fails (say, because the backend was already done processing the command), then there will be no visible result at all.
+### `PostgresResult* postgres_query(Postgres* pg, const char* query)`  
+- **Purpose**: Executes a SQL query on the PostgreSQL database and returns the result.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `query`: The SQL query to be executed.  
+- **Returns**:  
+  - A pointer to the `PostgresResult` structure containing the query result, or `NULL` if an error occurs.  
+- **Use case**: Used to execute SQL queries that return data (e.g., `SELECT` statements).
 
-- `bool postgres_reconnect(Postgres* pg)` : Disconnects from the PostgreSQL database and attempts to reconnect using the stored connection parameters.
+---
 
-- `bool postgres_ping(Postgres* pg)`: Checks if the connection to the PostgreSQL database server is still alive.
+### `void postgres_clear_result(PostgresResult* pgResult)`  
+- **Purpose**: Clears the result set returned by a query and frees the associated memory.  
+- **Parameters**:  
+  - `pgResult`: A pointer to the `PostgresResult` structure to be cleared.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to free up memory after processing a query result.
 
-- `PostgresResult* postgres_query_execution_time(Postgres* pg, const char* query)`: This function executes a given SQL query on the  
-PostgreSQL database, measures the time taken for the query to execute, and returns the result along with the execution time.
+---
 
-- `bool postgres_create_function(Postgres* pg, const char* functionName, const char* returnType, const char* language, const char* functionBody, const char* paramDefinitions)` : This function constructs and executes a SQL `CREATE FUNCTION` command to create a new user-defined function in the PostgreSQL database using the specified parameters.
+### `void postgres_deallocate(Postgres* pg)`  
+- **Purpose**: Deallocates memory and resources associated with the `Postgres` structure.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure to be deallocated.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to clean up and free memory when the `Postgres` structure is no longer needed.
 
-- `bool postgres_drop_function(Postgres* pg, const char* functionName, const char* paramDefinitions)`: This function constructs and executes a SQL `DROP FUNCTION` command to remove a user-defined function from the PostgreSQL database.
+---
 
-- `bool postgres_create_view(Postgres* pg, const char* viewName, const char* query)` : This function constructs and executes a SQL `CREATE VIEW` command to create a new view in the PostgreSQL database using the specified name and query.
+### `bool postgres_begin_transaction(Postgres* pg)`  
+- **Purpose**: Begins a new transaction on the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the transaction begins successfully, `false` otherwise.  
+- **Use case**: Used to start a transaction, allowing multiple queries to be executed as part of a single unit of work.
 
-- `bool postgres_drop_view(Postgres* pg, const char* viewName)` : This function constructs and executes a SQL `DROP VIEW` command to remove a view from the PostgreSQL database.
+---
 
-- `bool postgres_create_trigger(Postgres* pg, const char* triggerName, const char* tableName, const char* timing, const char* event, const char* function)` : This function constructs and executes a SQL `CREATE TRIGGER` command to create a trigger on the specified table. The trigger will call a specified function when a specified event occurs.
+### `bool postgres_commit_transaction(Postgres* pg)`  
+- **Purpose**: Commits the current transaction on the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the transaction is committed successfully, `false` otherwise.  
+- **Use case**: Used to commit all the changes made during the current transaction.
 
-- `bool postgres_drop_trigger(Postgres* pg, const char* triggerName, const char* tableName)` : This function constructs and executes a SQL `DROP TRIGGER` command to remove a trigger from the specified table.
+---
 
-- `bool postgres_create_schema(Postgres* pg, const char* schemaName)` : This function constructs and executes a SQL `CREATE SCHEMA` command to create a new schema in the PostgreSQL database using the specified schema name.
+### `bool postgres_rollback_transaction(Postgres* pg)`  
+- **Purpose**: Rolls back the current transaction on the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the transaction is rolled back successfully, `false` otherwise.  
+- **Use case**: Used to undo all changes made during the current transaction.
 
-- `bool postgres_drop_schema(Postgres* pg, const char* schemaName, bool cascade)`: This function constructs and executes a SQL `DROP SCHEMA` command to drop an existing schema in the PostgreSQL database. The schema can be dropped with the `CASCADE` option to drop all dependent objects.
+---
 
-- `PostgresResult* postgres_query_params(Postgres* pg, const char* query, int nParams, const char* const* paramValues)` : This function allows the execution of parameterized SQL queries to prevent SQL injection. The parameters are passed separately from the query, and PostgreSQL will handle their proper escaping.
+### `const char* postgres_get_last_error(Postgres* pg)`  
+- **Purpose**: Retrieves the last error message reported by the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - A string containing the last error message, or a message indicating the connection is null.  
+- **Use case**: Used to get detailed error information from the PostgreSQL connection.
 
-- `bool postgres_prepare_statement(Postgres* pg, const char* stmtName, const char* query)`: This function prepares a SQL statement, which can be executed multiple times with different parameters.
+---
 
-- `bool postgres_clear_prepared_statement(Postgres* pg, const char* stmtName)`: This function clears a prepared statement, which frees up the associated resources in the PostgreSQL database.
+### `int postgres_get_affected_rows(Postgres* pg, PostgresResult* pgRes)`  
+- **Purpose**: Retrieves the number of rows affected by the last command executed.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `pgRes`: A pointer to the `PostgresResult` structure containing the result of the last command.  
+- **Returns**:  
+  - The number of affected rows, or `-1` if an error occurred.  
+- **Use case**: Used to determine how many rows were modified by a non-query command such as `INSERT`, `UPDATE`, or `DELETE`.
 
-- `bool postgres_savepoint(Postgres* pg, const char* savepointName)` : This function creates a savepoint within the current transaction, allowing you to rollback to this point without affecting the entire transaction.
+---
 
-- `bool postgres_rollback_to_savepoint(Postgres* pg, const char* savepointName)` : This function rolls back the current transaction to a specific savepoint, undoing any changes made after the savepoint was created.
+### `void postgres_print_result(PostgresResult* pgRes)`  
+- **Purpose**: Prints the result of a query in a tabular format.  
+- **Parameters**:  
+  - `pgRes`: A pointer to the `PostgresResult` structure containing the query result.  
+- **Returns**:  
+  - Nothing (void).  
+- **Use case**: Used to display query results in a formatted table for easy readability.
 
-- `bool postgres_send_async_query(Postgres* pg, const char* query)` : This function sends a query to the PostgreSQL server in a non-blocking manner, allowing the application to perform other tasks while the server processes the query.
+---
 
-- `PostgresResult* postgres_get_async_result(Postgres* pg)` : This function retrieves the result of a previously sent asynchronous query. It should be called repeatedly until the result is fully available.
+### `int postgres_get_table_row_count(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the number of rows in a specified table.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose row count is to be retrieved.  
+- **Returns**:  
+  - The number of rows in the table, or `-1` if an error occurred.  
+- **Use case**: Used to quickly get the total number of rows in a specified database table.
 
-- `bool postgres_copy_from_csv(Postgres* pg, const char* tableName, const char* csvFilePath, const char* delimiter)` : Copies data from a CSV file into a specified table using PostgreSQL's COPY command.
+---
 
+### `bool postgres_table_exists(Postgres* pg, const char* tableName)`  
+- **Purpose**: Checks if a table exists in the PostgreSQL database.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table to check for existence.  
+- **Returns**:  
+  - `true` if the table exists, `false` otherwise.  
+- **Use case**: Used to verify the existence of a specific table in the database before performing operations on it.
+
+---
+
+### `PostgresResult* postgres_list_tables(Postgres* pg)`  
+- **Purpose**: Lists all tables in the 'public' schema of the connected PostgreSQL database.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the list of table names, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve a list of all tables in the `public` schema.
+
+---
+
+### `PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the schema of a specified table, including column names and data types.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose schema is to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the table schema, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve detailed information about the columns and data types of a specific table.
+
+---
+
+### `bool postgres_execute_prepared(Postgres* pg, const char* stmtName, int nParams, const char* const* paramValues)`  
+- **Purpose**: Executes a prepared SQL statement with the given parameters.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `stmtName`: The name of the prepared statement.  
+  - `nParams`: The number of parameters in the query.  
+  - `paramValues`: An array of parameter values.  
+- **Returns**:  
+  - `true` if the statement was executed successfully, `false` otherwise.  
+- **Use case**: Used to execute precompiled SQL statements with specific parameter values.
+
+---
+
+### `PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the names of all columns in a specified table.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose columns are to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the column names, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve a list of columns from a specific table in the database.
+
+---
+
+### `PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the primary keys of a specified table.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose primary keys are to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the primary keys, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the primary keys of a table for validation, constraints checking, or schema understanding.
+
+---
+
+### `PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the foreign keys of a specified table.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose foreign keys are to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the foreign keys, or `NULL` if an error occurred.  
+- **Use case**: Used to understand the relationships between tables by retrieving the foreign keys.
+
+---
+
+### `PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the indexes of a specified table.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose indexes are to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the indexes, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the index definitions on a table to improve query performance or understand the indexing strategy.
+
+---
+
+### `PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the size of a specified table in a human-readable format.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose size is to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the table size, or `NULL` if an error occurred.  
+- **Use case**: Used to determine the physical storage size of a table for performance and resource management.
+
+---
+
+### `int postgres_get_table_index_count(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves the number of indexes on a specified table.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table for which the index count is to be retrieved.  
+- **Returns**:  
+  - The number of indexes on the table, or `-1` if an error occurred.  
+- **Use case**: Used to get the number of indexes on a table for optimizing database performance and query execution.
+
+---
+
+### `PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves detailed information about the columns in a specified table, including column names, data types, nullability, and default values.  
+- **Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: The name of the table whose column details are to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the column details, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve comprehensive information about table columns for schema understanding and validation purposes.
+
+---
+
+### `const char* postgres_get_value(PostgresResult* pgRes, int row, int col)`  
+- **Purpose**: Retrieves the value of a specific field in a result set.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+  - `row`: Row index of the field to retrieve.  
+  - `col`: Column index of the field to retrieve.  
+- **Returns**:  
+  - The value of the field as a string, or `NULL` if an error occurred.  
+- **Use case**: Used to access individual cell values in the result set from a query.
+
+---
+
+### `PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableName)`  
+- **Purpose**: Retrieves all constraints on a specified table.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `tableName`: Name of the table whose constraints are to be retrieved.  
+- **Returns**:  
+  - A `PostgresResult` structure containing the table constraints, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve information on primary keys, foreign keys, and other constraints for a table.
+
+---
+
+### `int postgres_num_tuples(const PostgresResult* pgRes)`  
+- **Purpose**: Retrieves the number of tuples (rows) in a result set.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+- **Returns**:  
+  - The number of tuples (rows), or `-1` if an error occurred.  
+- **Use case**: Used to determine the number of rows in a result set after a query.
+
+---
+
+### `int postgres_num_fields(const PostgresResult* pgRes)`  
+- **Purpose**: Retrieves the number of fields (columns) in a result set.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+- **Returns**:  
+  - The number of fields (columns), or `-1` if an error occurred.  
+- **Use case**: Used to determine the number of columns returned by a query.
+
+---
+
+### `int postgres_command_tuples(PostgresResult* pgRes)`  
+- **Purpose**: Retrieves the number of tuples (rows) affected by the last command.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+- **Returns**:  
+  - The number of affected tuples, or `-1` if an error occurred.  
+- **Use case**: Used to check how many rows were affected by commands like `INSERT`, `UPDATE`, or `DELETE`.
+
+---
+
+### `int postgres_backend_pid(Postgres* pg)`  
+- **Purpose**: Retrieves the backend process ID of the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The backend process ID, or `-1` if an error occurred.  
+- **Use case**: Used to get the process ID of the PostgreSQL backend that handles the current connection.
+
+---
+
+### `int postgres_binary_tuples(const PostgresResult* pgRes)`  
+- **Purpose**: Checks if the result set contains binary data.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+- **Returns**:  
+  - `1` if the result set contains binary data, `0` if it contains text data, or `-1` if an error occurred.  
+- **Use case**: Used to determine if the data retrieved by a query is in binary format.
+
+---
+
+### `int postgres_bytes_size(const PostgresResult* pgRes, int colsNumber)`  
+- **Purpose**: Retrieves the size in bytes of the specified column in the result set.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+  - `colsNumber`: The column index to retrieve the size for.  
+- **Returns**:  
+  - The size in bytes of the specified column, or `-1` if an error occurred.  
+- **Use case**: Used to get the size of specific columns in the result set for memory or performance considerations.
+
+---
+
+### `bool postgres_is_null(const PostgresResult* pgRes, int row, int col)`  
+- **Purpose**: Checks if a specific field in the result set is `NULL`.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result set.  
+  - `row`: Row index of the field to check.  
+  - `col`: Column index of the field to check.  
+- **Returns**:  
+  - `true` if the field is `NULL`, `false` otherwise.  
+- **Use case**: Used to check for `NULL` values in a result set.
+
+---
+
+### `void postgres_reset(Postgres* pg)`  
+- **Purpose**: Resets the PostgreSQL connection by closing the existing connection and attempting to reestablish it.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**: None.  
+- **Use case**: Used to reset a connection that has become unusable or needs to be reestablished.
+
+---
+
+### `int postgres_reset_start(Postgres* pg)`  
+- **Purpose**: Starts a reset of the PostgreSQL connection without blocking.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `1` if reset is in progress, `0` if it is not, and `-1` if an error occurred.  
+- **Use case**: Used to initiate a non-blocking reset of the PostgreSQL connection.
+
+---
+
+### `char* postgres_db_value(const Postgres* pg)`  
+- **Purpose**: Retrieves the name of the connected database.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The name of the connected database, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the name of the current database.
+
+---
+
+### `char* postgres_user_value(const Postgres* pg)`  
+- **Purpose**: Retrieves the username used to connect to the database.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The username, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the username used for the connection.
+
+---
+
+### `char* postgres_password_value(const Postgres* pg)`  
+- **Purpose**: Retrieves the password used to connect to the database.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The password, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the password used for the connection.
+
+---
+
+### `char* postgres_host_value(const Postgres* pg)`  
+- **Purpose**: Retrieves the host name or IP address of the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The host name or IP address, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the server's host information.
+
+---
+
+### `char* postgres_port_value(const Postgres* pg)`  
+- **Purpose**: Retrieves the port number of the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The port number, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the port number on which the PostgreSQL server is running.
+
+---
+
+### `char* postgres_object_id_status(const PostgresResult* pgRes)`  
+- **Purpose**: Retrieves the object ID of the inserted row if the last command was an `INSERT`.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result of the last command.  
+- **Returns**:  
+  - A string representing the object ID, or `NULL` if an error occurred.  
+- **Use case**: Used after an `INSERT` statement to retrieve the ID of the newly inserted row.
+
+---
+
+### `char* postgres_command_status(PostgresResult* pgRes)`  
+- **Purpose**: Retrieves the command status string from the SQL command that generated the `PostgresResult`.  
+- **Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result of the last command.  
+- **Returns**:  
+  - The command status string, or `NULL` if an error occurred.  
+- **Use case**: Used to retrieve the status of the last executed SQL command.
+
+---
+
+### `int postgres_protocol_version(const Postgres* pg)`  
+- **Purpose**: Retrieves the protocol version used by the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The protocol version, or `-1` if an error occurred.  
+- **Use case**: Used to check which version of the PostgreSQL protocol is being used.
+
+---
+
+### `int postgres_server_version(const Postgres* pg)`  
+- **Purpose**: Retrieves the server version of the connected PostgreSQL database.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The server version, or `-1` if an error occurred.  
+- **Use case**: Used to check the PostgreSQL server version.
+
+---
+
+### `int postgres_socket_descriptor(const Postgres* pg)`  
+- **Purpose**: Retrieves the socket file descriptor used by the PostgreSQL connection.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - The socket file descriptor, or `-1` if an error occurred.  
+- **Use case**: Used to obtain the socket descriptor for advanced network operations.
+
+---
+
+### `bool postgres_is_busy(Postgres* pg)`  
+- **Purpose**: Checks if the PostgreSQL connection is currently busy processing a command.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the connection is busy, `false` otherwise.  
+- **Use case**: Used to determine if the connection is processing a query.
+
+---
+
+### `bool postgres_is_non_blocking(const Postgres* pg)`  
+- **Purpose**: Checks if the PostgreSQL connection is in non-blocking mode.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the connection is in non-blocking mode, `false` otherwise.  
+- **Use case**: Used to determine whether the connection is set to non-blocking mode.
+
+---
+
+### `int postgres_flush(Postgres* pg)`  
+- **Purpose**: Flushes any queued output data to the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `0` if successful, `-1` if an error occurred, or `1` if the flush could not send all data (in non-blocking mode).  
+- **Use case**: Used to send any unsent data to the PostgreSQL server.
+
+---
+
+### `int postgres_set_non_blocking(Postgres* pg, int state)`  
+- **Purpose**: Sets the PostgreSQL connection to non-blocking or blocking mode.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `state`: `1` to set the connection to non-blocking mode, `0` for blocking mode.  
+- **Returns**:  
+  - `0` if successful, `-1` if an error occurred.  
+- **Use case**: Used to change the mode of the connection between blocking and non-blocking.
+
+---
+
+### `int postgres_get_line(Postgres* pg, char* buffer, int length)`  
+- **Purpose**: Reads a newline-terminated line from the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `buffer`: Buffer to store the line read.  
+  - `length`: Maximum length of the buffer.  
+- **Returns**:  
+  - `0` if the entire line has been read, `1` if the buffer is full but the newline has not been read, or `-1` if an error occurred.  
+- **Use case**: Used to read lines from the PostgreSQL server output.
+
+---
+
+### `int postgres_get_line_async(Postgres* pg, char* buffer, int length)`  
+- **Purpose**: Reads a newline-terminated line asynchronously from the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `buffer`: Buffer to store the line read.  
+  - `length`: Maximum length of the buffer.  
+- **Returns**:  
+  - `0` if the entire line has been read, `1` if the buffer is full but the newline has not been read, or `-1` if an error occurred.  
+- **Use case**: Used to asynchronously read lines from the PostgreSQL server.
+
+---
+
+### `int postgres_put_line(Postgres* pg, const char* buffer)`  
+- **Purpose**: Sends a null-terminated string to the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `buffer`: Null-terminated string to send.  
+- **Returns**:  
+  - `0` if successful, `-1` if an error occurred.  
+- **Use case**: Used to send data lines to the PostgreSQL server.
+
+---
+
+### `int postgres_put_bytes(Postgres* pg, const char* buffer, int bytes)`  
+- **Purpose**: Sends a non-null-terminated string (raw bytes) to the PostgreSQL server.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `buffer`: Buffer containing the data to send.  
+  - `bytes`: Number of bytes to send from the buffer.  
+- **Returns**:  
+  - `0` if successful, `-1` if an error occurred.  
+- **Use case**: Used for sending raw binary data to the server.
+
+---
+
+### `void postgres_trace(Postgres* pg, FILE* stream)`  
+- **Purpose**: Enables tracing of the client/server communication to a debugging file stream.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `stream`: File stream where the trace output will be written.  
+- **Use case**: Useful for debugging communication between the client and the PostgreSQL server.
+
+---
+
+### `void postgres_un_trace(Postgres* pg)`  
+- **Purpose**: Disables tracing of the client/server communication.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Use case**: Used to stop tracing once debugging is completed.
+
+---
+
+### `PostgresResult* postgres_get_result(Postgres* pg)`  
+- **Purpose**: Retrieves the result of the last executed command.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - A pointer to a `PostgresResult` structure containing the command result, or `NULL` if an error occurred.  
+- **Use case**: Used to fetch the result of queries or commands executed previously.
+
+---
+
+### `int postgres_request_cancel(Postgres* pg)`  
+- **Purpose**: Sends a request to cancel the currently executed command.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `0` if the cancellation request was successfully dispatched, or `-1` if an error occurred.  
+- **Use case**: Used to cancel long-running or unresponsive queries.
+
+---
+
+### `bool postgres_reconnect(Postgres* pg)`  
+- **Purpose**: Disconnects from the PostgreSQL database and attempts to reconnect using the stored connection parameters.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if reconnection is successful, `false` otherwise.  
+- **Use case**: Used when connection to the server is lost and reconnection is needed.
+
+---
+
+### `bool postgres_ping(Postgres* pg)`  
+- **Purpose**: Checks if the connection to the PostgreSQL database server is still alive.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+- **Returns**:  
+  - `true` if the connection is alive, `false` otherwise.  
+- **Use case**: Used to verify whether the database server is reachable.
+
+---
+
+### `PostgresResult* postgres_query_execution_time(Postgres* pg, const char* query)`  
+- **Purpose**: Measures and returns the execution time of a query in addition to the query result.  
+- **Parameters**:  
+  - `pg`: Pointer to the `Postgres` structure representing the connection.  
+  - `query`: The SQL query to be executed.  
+- **Returns**:  
+  - A pointer to the `PostgresResult` structure containing the query result and execution time, or `NULL` if an error occurred.  
+- **Use case**: Useful for benchmarking queries and optimizing database performance.
+
+---
+
+### **`postgres_create_function`**  
+- **Purpose**: Creates a user-defined function in the PostgreSQL database using a `CREATE FUNCTION` SQL command.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `functionName`: Name of the function to be created.
+  - `returnType`: The return type of the function (e.g., `integer`, `text`).
+  - `language`: The language used to define the function (e.g., `plpgsql`, `sql`).
+  - `functionBody`: The logic of the function, written in the specified language.
+  - `paramDefinitions`: The definitions of the function parameters (e.g., `param1 integer, param2 integer`).
+- **Returns**:  
+  - `true` if the function is successfully created, `false` otherwise.
+- **Use case**: Useful for adding custom functionality to the database through user-defined functions.
+
+---
+
+### **`postgres_drop_function`**  
+- **Purpose**: Drops a user-defined function from the PostgreSQL database using a `DROP FUNCTION` SQL command.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `functionName`: Name of the function to be dropped.
+  - `paramDefinitions`: The definitions of the function's parameters.
+- **Returns**:  
+  - `true` if the function is successfully dropped, `false` otherwise.
+- **Use case**: Useful for removing user-defined functions from the database when they are no longer needed.
+
+---
+
+### **`postgres_create_view`**  
+- **Purpose**: Creates a view in the PostgreSQL database using a `CREATE VIEW` SQL command.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `viewName`: Name of the view to be created.
+  - `query`: The SQL query that defines the view.
+- **Returns**:  
+  - `true` if the view is successfully created, `false` otherwise.
+- **Use case**: Useful for encapsulating complex SQL queries into reusable views for easier access and abstraction.
+
+---
+
+### **`postgres_drop_view`**  
+- **Purpose**: Drops an existing view from the PostgreSQL database using a `DROP VIEW` SQL command.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `viewName`: Name of the view to be dropped.
+- **Returns**:  
+  - `true` if the view is successfully dropped, `false` otherwise.
+- **Use case**: Useful for removing outdated or unnecessary views from the database.
+
+---
+
+### **`postgres_create_trigger`**  
+- **Purpose**: Creates a trigger on a specified table that invokes a function when a specified event occurs.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `triggerName`: Name of the trigger to be created.
+  - `tableName`: Name of the table where the trigger is applied.
+  - `timing`: Trigger timing (e.g., "BEFORE", "AFTER").
+  - `event`: Event that activates the trigger (e.g., "INSERT", "UPDATE", "DELETE").
+  - `function`: Function called by the trigger.
+- **Returns**:  
+  - `true` if the trigger is successfully created, `false` otherwise.
+- **Use case**: Useful for automating actions in response to database events.
+
+---
+
+### **`postgres_drop_trigger`**  
+- **Purpose**: Drops an existing trigger from a specified table.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `triggerName`: Name of the trigger to be dropped.
+  - `tableName`: Name of the table where the trigger is located.
+- **Returns**:  
+  - `true` if the trigger is successfully dropped, `false` otherwise.
+- **Use case**: Useful for removing database triggers that are no longer needed.
+
+---
+
+### **`postgres_create_schema`**  
+- **Purpose**: Creates a new schema in the PostgreSQL database.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `schemaName`: Name of the schema to be created.
+- **Returns**:  
+  - `true` if the schema is successfully created, `false` otherwise.
+- **Use case**: Useful for organizing and grouping database objects.
+
+---
+
+### **`postgres_drop_schema`**  
+- **Purpose**: Drops an existing schema from the PostgreSQL database.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `schemaName`: Name of the schema to be dropped.
+  - `cascade`: Whether to drop all dependent objects with the schema.
+- **Returns**:  
+  - `true` if the schema is successfully dropped, `false` otherwise.
+- **Use case**: Useful for removing schemas and their associated objects from a database.
+
+---
+
+### **`postgres_query_params`**  
+- **Purpose**: Executes a parameterized SQL query, which helps to prevent SQL injection by passing parameters separately.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `query`: The SQL query to be executed, with parameter placeholders (`$1`, `$2`, etc.).
+  - `nParams`: The number of parameters in the query.
+  - `paramValues`: Array of string values representing the parameters.
+- **Returns**:  
+  - A `PostgresResult` structure containing the result of the query, or `NULL` if an error occurred.
+- **Use case**: Ideal for executing safe, parameterized queries.
+
+---
+
+### **`postgres_prepare_statement`**
+- **Purpose**: Prepares a SQL statement for execution, allowing the query to be executed multiple times with different parameters.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `stmtName`: Name for the prepared statement.
+  - `query`: SQL query to prepare.
+- **Returns**: `true` if the statement is prepared successfully, `false` otherwise.
+- **Use case**: Useful for optimizing repeated query executions by preparing the query once and executing it with different parameters.
+
+---
+
+### **`postgres_clear_prepared_statement`**
+- **Purpose**: Deallocates a prepared SQL statement, freeing up resources.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `stmtName`: Name of the prepared statement to be deallocated.
+- **Returns**: `true` if the statement is cleared successfully, `false` otherwise.
+- **Use case**: Use this to release resources when a prepared statement is no longer needed.
+
+---
+
+### **`postgres_savepoint`**
+- **Purpose**: Creates a savepoint in a transaction, allowing rollback to this point without affecting the entire transaction.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `savepointName`: Name of the savepoint.
+- **Returns**: `true` if the savepoint is created successfully, `false` otherwise.
+- **Use case**: Ideal for saving intermediate states in transactions.
+
+---
+
+### **`postgres_rollback_to_savepoint`**
+- **Purpose**: Rolls back the transaction to a specific savepoint, undoing changes made after the savepoint was created.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `savepointName`: Name of the savepoint to rollback to.
+- **Returns**: `true` if the rollback is successful, `false` otherwise.
+- **Use case**: Useful for error handling within transactions without rolling back the entire transaction.
+
+---
+
+### **`postgres_send_async_query`**
+- **Purpose**: Sends a SQL query to the PostgreSQL server in a non-blocking way, allowing other tasks to be performed while the query is processed.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `query`: SQL query to be sent.
+- **Returns**: `true` if the query was sent successfully, `false` otherwise.
+- **Use case**: Enables non-blocking query execution, useful for high-performance or multi-tasking applications.
+
+---
+
+### **`postgres_get_async_result`**
+- **Purpose**: Retrieves the result of a previously sent asynchronous query.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+- **Returns**: A `PostgresResult` structure containing the query result, or `NULL` if no result is ready yet or an error occurred.
+- **Use case**: Call this function repeatedly until the query result is available.
+
+---
+
+### **`postgres_copy_from_csv`**
+- **Purpose**: Loads data from a CSV file into a specified PostgreSQL table using the `COPY` command.
+- **Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `tableName`: Name of the table to copy data into.
+  - `csvFilePath`: Path to the CSV file.
+  - `delimiter`: Delimiter used in the CSV file (e.g., `,`).
+- **Returns**: `true` if the operation is successful, `false` otherwise.
+- **Use case**: Useful for efficiently loading bulk data into a table from a CSV file.
+
+---
 
 ## Examples
 
-Several examples are provided to demonstrate the usage of the PostgreSQL library in various scenarios, including creating tables and handling query results and etc ... 
 
 ### Example 1: Basic Connection and Query
 

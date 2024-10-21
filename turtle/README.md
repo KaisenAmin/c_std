@@ -86,34 +86,725 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-- `void turtle_create(void)`: Initializes the turtle's position, heading, color, and other settings.
-- `void turtle_close_window(void)`: Closes the drawing window.
-- `void turtle_init_window(int width, int height, const char* title)`: Initializes the drawing window with the specified width, height, and title.
-- `void turtle_set_fps(int fps)`: Sets the frame rate for the drawing window.
-- `void turtle_set_speed(float speed)`: Sets the speed of the turtle's movement.
-- `void turtle_forward(float distance)`: Moves the turtle forward by the specified distance.
-- `void turtle_position(float *x, float *y)`: Retrieves the current position of the turtle.
-- `void turtle_turn(float angle)`: Turns the turtle by the specified angle.
-- `void turtle_right(float angle)`: Turns the turtle to the right by the specified angle.
-- `void turtle_left(float angle)`: Turns the turtle to the left by the specified angle.
-- `void turtle_pen_up(void)`: Lifts the pen, so moving the turtle will not draw.
-- `void turtle_pen_down(void)`: Lowers the pen, so moving the turtle will draw.
-- `void turtle_set_color(unsigned char r, unsigned char g, unsigned char b, unsigned char a)`: Sets the color for drawing.
-- `void turtle_draw(void)`: Draws the lines and shapes created by the turtle.
-- `void turtle_begin_drawing(void)`: Begins the drawing process.
-- `void turtle_clear_background(Color color)`: Clears the background with the specified color.
-- `void turtle_end_drawing(void)`: Ends the drawing process.
-- `void turtle_done(TurtleDrawFunc user_draw)`: Runs the main drawing loop, calling the user-defined drawing function, and keeps the turtle window open until it is manually closed.
-- `void turtle_setposition(float x, float y)`: Moves the turtle to the specified position.
-- `void turtle_set_x(float x)`: Sets the turtle's first coordinate to x, leaving the second coordinate unchanged.
-- `void turtle_set_y(float y)`: Sets the turtle's second coordinate to y, leaving the first coordinate unchanged.
-- `void turtle_set_heading(float angle)`: Sets the orientation of the turtle to the specified angle in degrees, allowing the turtle to face a specific direction.
-- `void turtle_home(void)`: Moves the turtle to the origin (coordinates 0,0) and resets its heading to the initial orientation (0 degrees).
-- `void turtle_circle(float radius, float extent, int steps)`: Draws a circle or an arc with a specified radius and extent, where the extent is the angle of the arc in degrees.
-- `void turtle_dot(float size, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`: Draws a dot at the turtle's current position with the specified size and color.
-- `void turtle_clear_stamp(int stamp_id)`: Removes a previously made stamp identified by the provided stamp_id.
-- `int turtle_stamp(void)`: Creates a stamp at the turtle's current position and returns a unique stamp_id.
 
+### `Turtle *turtle_create(void)`
+
+**Purpose**:  
+This function creates and initializes a new `Turtle` instance. It sets up various turtle attributes like position, heading, pen color, and line drawing structures. This function also allocates memory for storing lines, stamps, and fill points, which are necessary for turtle drawing.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+- A pointer to the newly created `Turtle` structure.
+- If memory allocation fails, the program exits with an error.
+
+**Usage Case**:  
+Use this function when starting a new turtle drawing session to initialize the turtle's state and prepare it for drawing.
+
+---
+
+### `void turtle_deallocate(Turtle *state)`
+
+**Purpose**:  
+Deallocates and cleans up all memory associated with the `Turtle` instance. This includes freeing the memory for the turtle itself, the lines it has drawn, stamps, and any points used for filling shapes.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure that needs to be deallocated.
+
+**Return Value**:  
+This function does not return any value.
+
+**Usage Case**:  
+Call this function when you are done with the turtle to free up memory and avoid memory leaks.
+
+---
+
+### `void turtle_close_window(void)`
+
+**Purpose**:  
+Closes the window used for rendering turtle graphics. This function should be called when the drawing session is over and the window is no longer needed.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+This function does not return any value.
+
+**Usage Case**:  
+Use this function to close the window after completing the turtle drawing, typically at the end of a program or session.
+
+---
+
+### `void turtle_init_window(int width, int height, const char *title)`
+
+**Purpose**:  
+Initializes a window with the specified width, height, and title for turtle graphics rendering. This window is where all turtle-related drawings will appear.
+
+**Parameters**:  
+- `width`: The width of the window in pixels.
+- `height`: The height of the window in pixels.
+- `title`: The title of the window that will appear in the title bar.
+
+**Return Value**:  
+This function does not return any value.
+
+**Usage Case**:  
+Call this function at the start of your turtle graphics session to create a window where drawings can be rendered.
+
+---
+
+### `void turtle_set_fps(int fps)`
+
+**Purpose**:  
+Sets the target frames per second (FPS) for the turtle window, controlling how often the window refreshes and how smoothly graphics are rendered.
+
+**Parameters**:  
+- `fps`: The desired frames per second value.
+
+**Return Value**:  
+This function does not return any value.
+
+**Usage Case**:  
+Use this function to adjust the speed of rendering in your turtle window. A higher FPS will result in smoother animations, while a lower FPS will slow down the rendering process.
+
+--- 
+
+### `void turtle_set_speed(Turtle *state, float speed)`
+
+**Purpose**:  
+This function adjusts the movement speed of the turtle. It also recalculates the step size that determines how far the turtle moves per frame based on the given speed.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure whose speed is being set.
+- `speed`: The desired speed for the turtle as a floating-point value.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to increase or decrease the turtle's movement speed, which directly affects how fast it draws on the screen.
+
+---
+
+### `void turtle_pen_size(Turtle *state, float width)`
+
+**Purpose**:  
+This function sets the thickness of the pen that the turtle uses to draw lines. The thicker the pen, the wider the lines it draws.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure whose pen size is being set.
+- `width`: The desired thickness of the pen as a floating-point value.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to change the thickness of the lines drawn by the turtle. For example, setting a thicker pen size is useful for bold or emphasized drawings.
+
+---
+
+### `float turtle_get_pen_size(Turtle *state)`
+
+**Purpose**:  
+This function retrieves the current thickness (width) of the turtle's pen.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure from which to retrieve the pen size.
+
+**Return Value**:  
+The current pen thickness as a floating-point value.
+
+**Usage Case**:  
+Use this function when you need to know the current pen size, for example, to display it or adjust the drawing style based on it.
+
+---
+
+### `bool turtle_is_down(Turtle *state)`
+
+**Purpose**:  
+This function checks if the turtle's pen is currently down (meaning it is in drawing mode) or up (meaning it is moving without drawing).
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure whose pen state is being checked.
+
+**Return Value**:  
+- `true`: If the pen is down.
+- `false`: If the pen is up.
+
+**Usage Case**:  
+Use this function to determine if the turtle is actively drawing on the screen, which can help in making decisions about when to draw lines.
+
+---
+
+### `void turtle_forward(Turtle *state, float distance)`
+
+**Purpose**:  
+This function moves the turtle forward by a specified distance. If the pen is down, it draws a line along the turtle's path. The movement is broken into smaller steps for smooth transitions, and if the turtle is in fill mode, points are added to the fill buffer.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's state.
+- `distance`: The distance (in units) to move the turtle forward.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to move the turtle forward by a specified amount, either drawing a line or moving without drawing, depending on the pen state.
+
+---
+
+### `void turtle_position(Turtle *state, float *x, float *y)`
+
+**Purpose**:  
+This function retrieves the current x and y coordinates of the turtle's position.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `x`: A pointer to store the x-coordinate of the turtle's position.
+- `y`: A pointer to store the y-coordinate of the turtle's position.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to get the current position of the turtle in the graphical window.
+
+---
+
+### `void turtle_turn(Turtle *state, float angle)`
+
+**Purpose**:  
+This function adjusts the turtle's heading by a specified angle in degrees.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `angle`: The angle (in degrees) to turn the turtle.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to turn the turtle by a specified number of degrees, changing its heading without affecting its position.
+
+---
+
+### `void turtle_right(Turtle *state, float angle)`
+
+**Purpose**:  
+This function turns the turtle to the right (clockwise) by decreasing the turtle's heading by a specified angle.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `angle`: The angle (in degrees) to turn the turtle to the right.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to turn the turtle right, making the turtle face a new direction without moving its position.
+
+---
+
+### `void turtle_left(Turtle *state, float angle)`
+
+**Purpose**:  
+This function turns the turtle to the left (counterclockwise) by increasing the turtle's heading by a specified angle.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `angle`: The angle (in degrees) to turn the turtle to the left.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to turn the turtle left, changing its direction without affecting its current position.
+
+---
+
+### `void turtle_pen_up(Turtle *state)`
+
+**Purpose**:  
+This function lifts the turtle's pen, preventing it from drawing lines while it moves.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want to move the turtle without drawing a line.
+
+---
+
+### `void turtle_pen_down(Turtle *state)`
+
+**Purpose**:  
+This function lowers the turtle's pen, allowing it to draw lines as it moves. When the pen is down, any movement by the turtle will leave a trail (line).
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want the turtle to start drawing as it moves.
+
+---
+
+### `void turtle_set_color(Turtle *state, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`
+
+**Purpose**:  
+This function sets the turtle's pen color using specified RGBA values. The color will be used to draw lines as the turtle moves with the pen down.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `r`: Red component of the color (0-255).
+- `g`: Green component of the color (0-255).
+- `b`: Blue component of the color (0-255).
+- `a`: Alpha (transparency) component of the color (0-255).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to set the pen color of the turtle with specific RGBA values, allowing control over the transparency of the drawing.
+
+---
+
+### `void turtle_color(Turtle *state, const char *pencolor_str, const char *fillcolor_str)`
+
+**Purpose**:  
+This function sets both the pen and fill colors for the turtle using hexadecimal color strings. The pen color is used for drawing lines, while the fill color is used during fill operations.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `pencolor_str`: Hexadecimal string representing the pen color (e.g., "#FF0000" for red).
+- `fillcolor_str`: Hexadecimal string representing the fill color.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to set the pen and fill colors using hex codes, which are commonly used in web and graphics programming.
+
+---
+
+### `void turtle_color_rgb(Turtle *state, unsigned char pr, unsigned char pg, unsigned char pb, unsigned char fr, unsigned char fg, unsigned char fb)`
+
+**Purpose**:  
+This function sets the pen color and fill color for the turtle using RGB values. The pen color is used for drawing lines, and the fill color is used for filling shapes.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `pr`: Red component for the pen color (0-255).
+- `pg`: Green component for the pen color (0-255).
+- `pb`: Blue component for the pen color (0-255).
+- `fr`: Red component for the fill color (0-255).
+- `fg`: Green component for the fill color (0-255).
+- `fb`: Blue component for the fill color (0-255).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to set both pen and fill colors for the turtle using RGB values, providing full control over the drawing and filling colors.
+
+---
+
+### `bool turtle_filling(Turtle *state)`
+
+**Purpose**:  
+This function checks if the turtle is currently in fill mode. When in fill mode, the turtle collects points for creating a filled shape.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+- `true` if the turtle is filling, `false` otherwise.
+
+**Usage Case**:  
+Use this function to check whether the turtle is currently in fill mode, indicating whether the turtle will fill a shape.
+
+---
+
+### `void turtle_begin_fill(Turtle *state)`
+
+**Purpose**:  
+This function starts the fill operation for the turtle. It enables the turtle's filling mode and begins tracking points for the filled shape.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want the turtle to begin collecting points for creating a filled shape.
+
+---
+
+### `void turtle_end_fill(Turtle *state)`
+
+**Purpose**:  
+This function ends the fill operation and draws the filled shape using the points collected during the fill process. The shape is drawn using the turtle's current fill color.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to complete a fill operation and render the filled shape.
+
+---
+
+### `void turtle_draw(Turtle *state)`
+
+**Purpose**:  
+This function renders the current state of the turtle, including the lines it has drawn, any filled shapes, stamps, and the turtle itself. It clears the background before drawing the updated scene.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to render everything the turtle has drawn in the window, ensuring that all visual elements (lines, stamps, turtle, etc.) are updated.
+
+---
+
+### `void turtle_begin_drawing(void)`
+
+**Purpose**:  
+This function begins a drawing operation, preparing the canvas for rendering shapes, lines, or any other drawing instructions.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function at the beginning of any drawing process, before rendering anything on the screen.
+
+---
+
+### `void turtle_clear_background(Color color)`
+
+**Purpose**:  
+This function clears the screen by filling the background with the specified color.
+
+**Parameters**:  
+- `color`: A `Color` structure specifying the RGBA values to fill the background.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to clear the screen before drawing anything new, ensuring that previous frames are erased.
+
+---
+
+### `void turtle_end_drawing(void)`
+
+**Purpose**:  
+This function concludes the current drawing operation, finalizing the rendering process.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to finalize the drawing operation, after all rendering instructions have been issued.
+
+---
+
+### `void turtle_done(Turtle *state, TurtleDrawFunc user_draw)`
+
+**Purpose**:  
+This function runs the main drawing loop for the turtle graphics, rendering the turtle and its drawings repeatedly until the window is closed. It also calls a user-provided drawing function (`user_draw`), allowing custom drawings to be added.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `user_draw`: A function pointer to a user-defined drawing function that takes a `Turtle` pointer as a parameter.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to handle the continuous drawing loop for turtle graphics. You can also pass a custom function to render additional shapes or drawings as needed.
+
+---
+
+### `void turtle_set_position(Turtle *state, float x, float y)`
+
+**Purpose**:  
+This function moves the turtle to the specified `(x, y)` coordinates. If the pen is down, a line is drawn from the current position to the new position. If the turtle is in fill mode, the new position is added to the fill points for future shape filling.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `x`: The new X-coordinate for the turtle's position.
+- `y`: The new Y-coordinate for the turtle's position.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you need to move the turtle to a specific position on the screen. The turtle will draw a line if its pen is down.
+
+---
+
+### `void turtle_set_x(Turtle *state, float x)`
+
+**Purpose**:  
+This function moves the turtle to the specified X-coordinate, keeping the Y-coordinate unchanged. If the pen is down, a line is drawn from the current position to the new X-coordinate. If the turtle is in fill mode, the new position is added to the fill points.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `x`: The new X-coordinate for the turtle's position.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you only want to adjust the X-coordinate of the turtle without changing its Y-coordinate.
+
+---
+
+### `void turtle_set_y(Turtle *state, float y)`
+
+**Purpose**:  
+This function moves the turtle to the specified Y-coordinate, keeping the X-coordinate unchanged. If the pen is down, a line is drawn from the current position to the new Y-coordinate. If the turtle is in fill mode, the new position is added to the fill points.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `y`: The new Y-coordinate for the turtle's position.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want to adjust the Y-coordinate of the turtle while keeping its X-coordinate unchanged.
+
+---
+
+### `void turtle_set_heading(Turtle *state, float to_angle)`
+
+**Purpose**:  
+This function sets the turtle's heading (direction) to a specific angle, in degrees.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `to_angle`: The desired heading angle in degrees.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to change the turtle's direction to a specific angle.
+
+---
+
+### `void turtle_home(Turtle *state)`
+
+**Purpose**:  
+This function moves the turtle back to the home position `(0, 0)` and resets its heading to 0 degrees. If the pen is down, a line is drawn from the turtle's current position to the home position.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to bring the turtle back to its starting position at the center of the screen and reset its heading direction.
+
+---
+
+### `void turtle_circle(Turtle *state, float radius, float extent, int steps)`
+
+**Purpose**:  
+This function draws a circle or an arc with the specified radius, extent (arc angle), and number of steps (resolution). If the number of steps is not provided, it is automatically calculated based on the radius.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `radius`: The radius of the circle.
+- `extent`: The angular extent of the circle or arc in degrees (default is 360 for a full circle).
+- `steps`: The number of steps to divide the circle into. If set to 0, it is automatically calculated.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to draw a full circle or an arc. The number of steps controls how smooth the circle or arc looks. You can also specify how much of the circle to draw using the `extent` parameter.
+
+---
+
+### `void turtle_dot(Turtle *state, float size, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`
+
+**Purpose**:  
+This function draws a dot of the specified size and color at the turtle's current position.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `size`: The size of the dot to be drawn.
+- `r`: The red component of the dot's color (0-255).
+- `g`: The green component of the dot's color (0-255).
+- `b`: The blue component of the dot's color (0-255).
+- `a`: The alpha (transparency) component of the dot's color (0-255).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want the turtle to draw a circular dot at its current location.
+
+---
+
+### `int turtle_stamp(Turtle *state)`
+
+**Purpose**:  
+This function stamps the turtle's current position and pencolor onto the screen. Each stamp is assigned a unique ID, allowing it to be cleared later.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+
+**Return Value**:  
+Returns the unique ID of the created stamp.
+
+**Usage Case**:  
+Use this function when you want to mark the turtle's current location and pencolor without moving the turtle.
+
+---
+
+### `void turtle_clear_stamp(Turtle *state, int stamp_id)`
+
+**Purpose**:  
+This function clears a previously created stamp by its ID, removing it from the screen.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `stamp_id`: The unique ID of the stamp to be cleared.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to remove a specific stamp from the screen based on its unique ID.
+
+---
+
+### `float turtle_distance(Turtle *state, float x, float y)`
+
+**Purpose**:  
+This function calculates and returns the Euclidean distance between the turtle's current position and a specified point.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `x`: The X-coordinate of the point to calculate the distance to.
+- `y`: The Y-coordinate of the point to calculate the distance to.
+
+**Return Value**:  
+Returns the distance between the turtle's current position and the specified point.
+
+**Usage Case**:  
+Use this function when you need to determine how far the turtle is from a particular point on the screen.
+
+---
+
+### `float turtle_distance_turtle(Turtle *state, Tu *other_turtle)`
+
+**Purpose**:  
+This function calculates and returns the Euclidean distance between two turtles.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the current turtle.
+- `other_turtle`: A pointer to another turtle whose distance from the current turtle is to be calculated.
+
+**Return Value**:  
+Returns the distance between the two turtles.
+
+**Usage Case**:  
+Use this function to calculate how far apart two turtles are from each other.
+
+---
+
+### `void turtle_degrees(Turtle *state, float fullcircle)`
+
+**Purpose**:  
+This function sets the turtle's movement mode to use degrees, with the specified number of degrees representing a full circle (typically 360 degrees).
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `fullcircle`: The number of degrees that make up a full circle (e.g., 360 for degrees, or other custom values).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to configure the turtle to work with degrees for its angular movements.
+
+---
+
+### `void turtle_radians(Turtle *state)`
+
+**Purpose**:  
+This function switches the turtle's angular movement to use radians, with `2 * PI` radians representing a full circle.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to switch the turtle to use radians for angular movements, instead of degrees.
+
+--- 
+
+### `float turtle_heading(Turtle *state)`
+
+**Purpose**:  
+This function retrieves the turtle's current heading in degrees, normalized to the full circle degrees (default is 360).
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+
+**Return Value**:  
+Returns the turtle's current heading in degrees, adjusted for the full circle setting.
+
+**Usage Case**:  
+Use this function when you need to know the direction the turtle is currently facing in degrees, particularly when using degrees for movement.
+
+---
+
+### `void turtle_set_background_color(Turtle *state, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`
+
+**Purpose**:  
+This function sets the background color of the drawing window to the specified RGBA values, allowing you to customize the background appearance.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `r`: The red component of the background color (0-255).
+- `g`: The green component of the background color (0-255).
+- `b`: The blue component of the background color (0-255).
+- `a`: The alpha (transparency) component of the background color (0-255).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to change the background color of the turtle's drawing area, making it suitable for different visual designs.
+
+---
 
 ## Examples
 
