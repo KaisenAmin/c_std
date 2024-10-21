@@ -25,6 +25,22 @@ typedef struct {
     void *second;
 } Pair;
 
+typedef enum {
+    TYPE_INT,
+    TYPE_CHAR,
+    TYPE_FLOAT,
+    TYPE_DOUBLE,
+    TYPE_SHORT,
+    TYPE_LONG,
+    TYPE_LONG_LONG,
+    TYPE_UNSIGNED_LONG,
+    TYPE_UNSIGNED_CHAR,
+    TYPE_UNSIGNED_LONG_LONG,
+    TYPE_LONG_DOUBLE,
+    TYPE_UNSIGNED_SHORT,
+    TYPE_UNSIGNED_INT
+} DataType;
+
 // Function pointer types for comparison and operations
 typedef int (*CompareFunc)(const void *, const void *);
 typedef bool (*CompareFuncBool)(const void *, const void *);
@@ -60,7 +76,7 @@ void algorithm_rotate_copy(const void *first, const void *middle, const void *la
 void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp);
 void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp);
 void algorithm_replace_if(void *base, size_t num, size_t size, const void *val, BoolPredicateFunc pred);
-void algorithm_iota(void* first, void* last, void* val, size_t size, size_t type_size);
+void algorithm_iota(void* first, void* last, void* val, size_t size, DataType type);
 
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred);

@@ -2005,76 +2005,145 @@ void* algorithm_end(void* base, size_t num, size_t size) {
  * @param last Pointer to one past the end of the range.
  * @param val Pointer to the initial value to assign to the first element.
  * @param size Size of each element in bytes.
- * @param type_size The size of the type of the elements.
+ * @param type The type of the data being processed (specified as DataType).
  */
-void algorithm_iota(void* first, void* last, void* val, size_t size, size_t type_size) {
+void algorithm_iota(void* first, void* last, void* val, size_t size, DataType type) {
     char* ptr = (char*)first;
 
-    if (type_size == sizeof(int)) {
-        int* value = (int*)val;
-        while (ptr != (char*)last) {
-            *(int*)ptr = *value;
-            ++(*value);
-            ptr += size;  
+    switch (type) {
+        case TYPE_INT: {
+            ALGORITHM_LOG("Handling int\n");
+            int current = *(int*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
         }
-    } 
-    else if (type_size == sizeof(char)) {
-        char* value = (char*)val;
-        while (ptr != (char*)last) {
-            *(char*)ptr = *value;
-            ++(*value);
-            ptr += size;  
+        case TYPE_CHAR: {
+            ALGORITHM_LOG("Handling char\n");
+            char current = *(char*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else if (type_size == sizeof(float)) {
-        float* value = (float*)val;
-        while (ptr != (char*)last) {
-            *(float*)ptr = *value;
-            *value += 1.0f;  
-            ptr += size;  
+        case TYPE_FLOAT: {
+            ALGORITHM_LOG("Handling float\n");
+            float current = *(float*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1.0f;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else if (type_size == sizeof(double)) {
-        double* value = (double*)val;
-        while (ptr != (char*)last) {
-            *(double*)ptr = *value;
-            *value += 1.0;  
-            ptr += size;  
+        case TYPE_DOUBLE: {
+            ALGORITHM_LOG("Handling double\n");
+            double current = *(double*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1.0;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else if (type_size == sizeof(short)) {
-        short* value = (short*)val;
-        while (ptr != (char*)last) {
-            *(short*)ptr = *value;
-            ++(*value);
-            ptr += size;  
+        case TYPE_SHORT: {
+            ALGORITHM_LOG("Handling short\n");
+            short current = *(short*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else if (type_size == sizeof(long)) {
-        long* value = (long*)val;
-        while (ptr != (char*)last) {
-            *(long*)ptr = *value;
-            ++(*value);
-            ptr += size;  
+        case TYPE_LONG: {
+            ALGORITHM_LOG("Handling long\n");
+            long current = *(long*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else if (type_size == sizeof(long long)) {
-        long long* value = (long long*)val;
-        while (ptr != (char*)last) {
-            *(long long*)ptr = *value;
-            ++(*value);
-            ptr += size;  
+        case TYPE_LONG_LONG: {
+            ALGORITHM_LOG("Handling long long\n");
+            long long current = *(long long*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else if (type_size == sizeof(unsigned long)) {
-        unsigned long* value = (unsigned long*)val;
-        while (ptr != (char*)last) {
-            *(unsigned long*)ptr = *value;
-            ++(*value);
-            ptr += size; 
+        case TYPE_UNSIGNED_LONG: {
+            ALGORITHM_LOG("Handling unsigned long\n");
+            unsigned long current = *(unsigned long*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
         }
-    }
-    else {
-        fprintf(stderr, "Unsupported type size: %zu\n", type_size);
+        case TYPE_UNSIGNED_CHAR: {
+            ALGORITHM_LOG("Handling unsigned char\n");
+            unsigned char current = *(unsigned char*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
+        }
+        case TYPE_UNSIGNED_LONG_LONG: {
+            ALGORITHM_LOG("Handling unsigned long long\n");
+            unsigned long long current = *(unsigned long long*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
+        }
+        case TYPE_LONG_DOUBLE: {
+            ALGORITHM_LOG("Handling long double\n");
+            long double current = *(long double*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1.0;
+                ptr += size;
+            }
+            break;
+        }
+        case TYPE_UNSIGNED_INT: {
+            ALGORITHM_LOG("Handling unsignedint\n");
+            unsigned int current = *(unsigned int*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
+        }
+        case TYPE_UNSIGNED_SHORT: {
+            ALGORITHM_LOG("Handling unsigned short\n");
+            unsigned short current = *(unsigned short*)val;
+            while (ptr != (char*)last) {
+                memcpy(ptr, &current, size);
+                current += 1;
+                ptr += size;
+            }
+            break;
+        }
+        default: {
+            ALGORITHM_LOG("Unsupported type.\n");
+            break;
+        }
     }
 }
