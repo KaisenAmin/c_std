@@ -702,14 +702,14 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ---
 
-### `void algorithm_iota(void* first, void* last, void* val, size_t size, size_t type_size)`
+### `void algorithm_iota(void* first, void* last, void* val, size_t size, DataType type)`
 - **Description**: Fills a range `[first, last)` with successive values, starting from `val` and incrementing it for each element. It is a generic implementation that works for various data types such as `int`, `char`, `float`, `double`, `short`, `long`, `long long`, and `unsigned long`. The behavior is similar to C++'s `std::iota`.
 - **Parameters**:
   - `first`: Pointer to the start of the range.
   - `last`: Pointer to one past the end of the range.
   - `val`: Pointer to the initial value that is assigned to the first element. The value is incremented after each assignment.
   - `size`: Size of each element in the array in bytes.
-  - `type_size`: The size of the data type for the elements (e.g., `sizeof(int)`, `sizeof(float)`).
+  - `type`: The enumeration type for showing exactly data type.
 - **Return Value**:  
   No return value. The range is filled in place with incremented values.
 
