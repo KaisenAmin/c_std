@@ -45,7 +45,6 @@ add_subdirectory(span)
 add_subdirectory(queue)
 add_subdirectory(priority_queue)
 add_subdirectory(algorithm)
-add_subdirectory(numeric)
 add_subdirectory(array)
 add_subdirectory(bitset)
 add_subdirectory(cli)
@@ -100,7 +99,7 @@ if (WIN32)
         # span
         queue
         priority_queue
-        # algorithm
+        algorithm
         # array
         # bitset
         # cli
@@ -118,7 +117,6 @@ if (WIN32)
         log
         # dir
         # concurrent
-        # numeric
         # xml
     )
 else()
@@ -169,7 +167,6 @@ else()
         # log
         # dir
         # concurrent
-        # numeric
         xml
     )
 endif()

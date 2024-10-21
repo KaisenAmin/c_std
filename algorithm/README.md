@@ -682,6 +682,39 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ---
 
+### `void* algorithm_begin(void* base)`
+- **Description**: Returns a pointer to the first element of the array. This is equivalent to the C++ `std::begin` function and is useful for iterating over the array or other collections.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+- **Return Value**:  
+  A pointer to the first element of the array.
+
+---
+
+### `void* algorithm_end(void* base, size_t num, size_t size)`
+- **Description**: Returns a pointer to one past the last element of the array. This is equivalent to the C++ `std::end` function and is useful for defining the range [begin, end) in algorithms that iterate over collections.
+- **Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+- **Return Value**:  
+  A pointer to one past the last element of the array. This is used as a boundary for iteration.
+
+---
+
+### `void algorithm_iota(void* first, void* last, void* val, size_t size, size_t type_size)`
+- **Description**: Fills a range `[first, last)` with successive values, starting from `val` and incrementing it for each element. It is a generic implementation that works for various data types such as `int`, `char`, `float`, `double`, `short`, `long`, `long long`, and `unsigned long`. The behavior is similar to C++'s `std::iota`.
+- **Parameters**:
+  - `first`: Pointer to the start of the range.
+  - `last`: Pointer to one past the end of the range.
+  - `val`: Pointer to the initial value that is assigned to the first element. The value is incremented after each assignment.
+  - `size`: Size of each element in the array in bytes.
+  - `type_size`: The size of the data type for the elements (e.g., `sizeof(int)`, `sizeof(float)`).
+- **Return Value**:  
+  No return value. The range is filled in place with incremented values.
+
+---
+
 ## Example 1 : Sorting array of integer using `algorithm_sort`
 
 ```c
@@ -5935,4 +5968,49 @@ Source array:
 1 2 3 4 5 6 7 8 9 10 
 Result array:
 1 3 5 7 9
+```
+
+## Example 140 : How `begin` and `end` Work
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+int main() {
+    int arr[] = {10, 20, 30, 40, 50};
+    size_t num = sizeof(arr) / sizeof(arr[0]);
+    size_t size = sizeof(arr[0]);  
+
+    int* begin = algorithm_begin(arr);
+    int* end = algorithm_end(arr, num, size);
+
+    fmt_printf("Array elements: ");
+    for (int* it = begin; it != end; ++it) {
+        fmt_printf("%d ", *it);
+    }
+    fmt_printf("\n");
+
+    return 0;
+}
+```
+
+## Example 141 : how to put list of data in array with `algorithm_iota`
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+int main() {
+    unsigned long arr[10];
+    unsigned long start_val = 1000;
+    
+    algorithm_iota(arr, arr + 10, &start_val, sizeof(unsigned long), sizeof(unsigned long));
+
+    fmt_printf("Unsigned long array:\n");
+    for (int i = 0; i < 10; ++i) {
+        fmt_printf("%lu\n", arr[i]);
+    }
+
+    return 0;
+}
 ```

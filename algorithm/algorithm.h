@@ -17,7 +17,7 @@
     #define ALGORITHM_LOG(fmt, ...) \
         do { fprintf(stderr, "[ALGORITHM LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define AALGORITHM_LOG(fmt, ...) do { } while (0)
+    #define ALGORITHM_LOG(fmt, ...) do { } while (0)
 #endif
 
 typedef struct {
@@ -60,6 +60,7 @@ void algorithm_rotate_copy(const void *first, const void *middle, const void *la
 void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp);
 void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp);
 void algorithm_replace_if(void *base, size_t num, size_t size, const void *val, BoolPredicateFunc pred);
+void algorithm_iota(void* first, void* last, void* val, size_t size, size_t type_size);
 
 void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp);
 void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
@@ -76,6 +77,8 @@ void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc
 void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp);
 void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp);
 void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp);
+void *algorithm_begin(void* base);
+void *algorithm_end(void* base, size_t num, size_t size);
 
 bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred);
 bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred);

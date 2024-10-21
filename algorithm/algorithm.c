@@ -1970,3 +1970,111 @@ void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_v
 
     ALGORITHM_LOG("[algorithm_replace_if] Success: Replaced %zu elements.", replace_count);
 }
+
+/**
+ * @brief Returns a pointer to the first element of an array.
+ *
+ * @param base Pointer to the start of the array.
+ * @return Pointer to the first element of the array.
+ */
+void* algorithm_begin(void* base) {
+    ALGORITHM_LOG("[algorithm_begin] Info: Returning pointer to the first element.");
+    return base;
+}
+
+/**
+ * @brief Returns a pointer to one past the last element of an array.
+ *
+ * @param base Pointer to the start of the array.
+ * @param num Number of elements in the array.
+ * @param size Size of each element in bytes.
+ * @return Pointer to one past the last element of the array.
+ */
+void* algorithm_end(void* base, size_t num, size_t size) {
+    ALGORITHM_LOG("[algorithm_end] Info: Returning pointer to one past the last element.");
+    return (char*)base + num * size;
+}
+
+/**
+ * @brief Fills a range with successive values, starting from the given value.
+ *
+ * This function assigns successive values to the range `[first, last)`, starting from the value `val`
+ * and incrementing it for each element. It works for integers, characters, floating-point, and several other types.
+ *
+ * @param first Pointer to the start of the range.
+ * @param last Pointer to one past the end of the range.
+ * @param val Pointer to the initial value to assign to the first element.
+ * @param size Size of each element in bytes.
+ * @param type_size The size of the type of the elements.
+ */
+void algorithm_iota(void* first, void* last, void* val, size_t size, size_t type_size) {
+    char* ptr = (char*)first;
+
+    if (type_size == sizeof(int)) {
+        int* value = (int*)val;
+        while (ptr != (char*)last) {
+            *(int*)ptr = *value;
+            ++(*value);
+            ptr += size;  
+        }
+    } 
+    else if (type_size == sizeof(char)) {
+        char* value = (char*)val;
+        while (ptr != (char*)last) {
+            *(char*)ptr = *value;
+            ++(*value);
+            ptr += size;  
+        }
+    }
+    else if (type_size == sizeof(float)) {
+        float* value = (float*)val;
+        while (ptr != (char*)last) {
+            *(float*)ptr = *value;
+            *value += 1.0f;  
+            ptr += size;  
+        }
+    }
+    else if (type_size == sizeof(double)) {
+        double* value = (double*)val;
+        while (ptr != (char*)last) {
+            *(double*)ptr = *value;
+            *value += 1.0;  
+            ptr += size;  
+        }
+    }
+    else if (type_size == sizeof(short)) {
+        short* value = (short*)val;
+        while (ptr != (char*)last) {
+            *(short*)ptr = *value;
+            ++(*value);
+            ptr += size;  
+        }
+    }
+    else if (type_size == sizeof(long)) {
+        long* value = (long*)val;
+        while (ptr != (char*)last) {
+            *(long*)ptr = *value;
+            ++(*value);
+            ptr += size;  
+        }
+    }
+    else if (type_size == sizeof(long long)) {
+        long long* value = (long long*)val;
+        while (ptr != (char*)last) {
+            *(long long*)ptr = *value;
+            ++(*value);
+            ptr += size;  
+        }
+    }
+    else if (type_size == sizeof(unsigned long)) {
+        unsigned long* value = (unsigned long*)val;
+        while (ptr != (char*)last) {
+            *(unsigned long*)ptr = *value;
+            ++(*value);
+            ptr += size; 
+        }
+    }
+    else {
+        fprintf(stderr, "Unsupported type size: %zu\n", type_size);
+    }
+}
