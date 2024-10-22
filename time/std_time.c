@@ -78,7 +78,7 @@ Time* time_current_time(void) {
     struct tm* timeinfo = localtime(&tv.tv_sec);
     Time* timeObject = time_create(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, tv.tv_usec / 1000);
 
-    TIME_LOG("[time_current_time]: Current system time (Unix-like): %02d:%02d:%02d:%03d.", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, tv.tv_usec / 1000);
+    TIME_LOG("[time_current_time]: Current system time (Unix-like): %02d:%02d:%02d:%03d.", (int)timeinfo->tm_hour, (int)timeinfo->tm_min, (int)timeinfo->tm_sec, (int)tv.tv_usec / 1000);
 
     return timeObject;
 #endif
