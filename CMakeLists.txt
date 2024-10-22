@@ -101,7 +101,7 @@ if (WIN32)
         queue
         priority_queue
         algorithm
-        # array
+        array
         # bitset
         # cli
         # deque

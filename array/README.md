@@ -444,6 +444,22 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Number is 42
+Number is 42
+Number is 42
+Number is 42
+Number is 42
+------------------
+Element 0: 42
+Element 1: 42
+Element 2: 42
+Element 3: 42
+Element 4: 42
+```
+
+---
 
 ## Example 2 : check array is `array_empty` or not 
 
@@ -469,6 +485,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Array is not empty.
+```
+
+---
 
 ## Example 3 : `array_front`, `array_back` return ref to first and end of the Array
 
@@ -496,6 +518,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Front element: 1563, Back element: 42
+```
+
+---
 
 ## Example 4 : how to set data in position with `array_set` 
 
@@ -523,6 +551,16 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Element 0: 0
+Element 1: 2
+Element 2: 4
+Element 3: 6
+Element 4: 8
+```
+
+---
 
 ## Example 5: Iterating with `array_begin` and end with Doubles
 
@@ -545,11 +583,20 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Element: 1.500000
+Element: 2.500000
+Element: 3.500000
+Element: 4.500000
+Element: 5.500000
+```
+
+---
 
 ## Example 6 : Using `array_cbegin` and 'cend' with char*
 
 ```c
-
 #include "fmt/fmt.h"
 #include "array/array.h"
 
@@ -568,11 +615,18 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+String: Hello
+String: World
+String: Array
+```
+
+---
 
 ## Example 7 : Using Relational Operators
 
 ```c
-
 #include "fmt/fmt.h"
 #include "array/array.h"
 
@@ -599,8 +653,14 @@ int main() {
 
     return 0;
 }
-
 ```
+**Result**
+```
+Arrays are equal.
+```
+
+---
+
 
 ## Example 8 : Using `array_rbegin` and `array_rend` with float
 
@@ -622,8 +682,16 @@ int main() {
     array_deallocate(floatArray);
     return 0;
 }
-
 ```
+**Result**
+```
+Element: 4.400000
+Element: 3.300000
+Element: 2.200000
+Element: 1.100000
+```
+
+---
 
 ## Example 9 : How to create 2D Array 
 
@@ -667,14 +735,21 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+0 0 0 0 
+1 1 1 1
+2 2 2 2
+```
+
+---
 
 ## Example 10 : Use String object in Array 
 
 ```c
-
 #include "fmt/fmt.h"
 #include "array/array.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     const size_t numStrings = 3; 
@@ -707,13 +782,21 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+String 0: Initial Text - Appended Text
+String 1: Initial Text - Appended Text
+String 2: Initial Text - Appended Text
+```
+
+---
 
 ## Example 11: String Concatenation using Array and String Libraries
 
 This example creates an array of strings and concatenates them into a single string.
 ```c
 #include "array/array.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -750,6 +833,12 @@ int main() {
     return 0;
 }
 ```
+**Resutl**
+```
+Concatenated String: Hello World Array
+```
+
+---
 
 ## Example 12 : A Simple Card Game
 
@@ -816,8 +905,14 @@ int main() {
     array_deallocate(deck);
     return 0;
 }
-
 ```
+**Result**
+```
+2 of Clubs
+Ace of Spades
+```
+
+---
 
 ## Example 13 : `array_copy`
 
@@ -855,6 +950,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Source Array: 0 10 20 30 40 
+Destination Array: 0 10 20 30 40
+```
+
+---
 
 ## Example 14 : `array_sort`
 
@@ -886,6 +988,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Sorted Array: 10 20 30 40 50
+```
+
+---
 
 ## Example 15 : `array_reverse`
 
@@ -917,6 +1025,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Reversed Array: 40 30 20 10 0
+```
+
+---
 
 ## Example 16 : `array_clear`
 
@@ -939,3 +1053,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Array Size After Clear: 0
+```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].
