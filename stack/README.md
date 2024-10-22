@@ -209,6 +209,8 @@ int main() {
 Size of stack is 5
 ```
 
+---
+
 ## Example 2 : use `stack_top`, `stack_pop` and `stack_empty` methods 
 
  gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\vector\vector.c .\stack\stack.c
@@ -249,6 +251,8 @@ Pop value is 50
 After Pop size is 4
 ```
 
+---
+
 ## Example 3 : how to use String Object in Stack 
 
 ```c
@@ -288,6 +292,8 @@ int main() {
 Size of Stack is 3
 AminTahmasebiC Programming
 ```
+
+---
 
 ## Example 4 : all relationals operators as methods in Stack 
 
@@ -331,6 +337,8 @@ stk1 is equal to stk2
 stk1 is less than or equal to stk2
 stk1 is greater than or equal to stk2
 ```
+
+---
 
 ## Example 5 : Using Stack with String Objects for Expression Evaluation
 
@@ -418,6 +426,8 @@ int main() {
 Result: 0
 ```
 
+---
+
 ### Example 6 :Stack of Vectors for Multi-level Undo Functionality
 
 This example shows how a stack of vectors can be used to implement a multi-level undo functionality. Each vector represents a snapshot of a particular state, and we can push and pop these states from the stack to perform undo and redo operations.
@@ -475,6 +485,8 @@ int main() {
 ```
 Current State After Undo: (1, 2) (3, 4) 
 ```
+
+---
 
 ### Example 7 : Checking for Balanced Parentheses
 

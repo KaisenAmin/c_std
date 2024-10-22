@@ -198,6 +198,8 @@ int main() {
 Priority Queue size: 5
 ```
 
+---
+
 ### Example 2: Get Size with `priority_queue_size` and Check if Queue is Empty
 
 ```c
@@ -232,6 +234,8 @@ int main() {
 Priority Queue size: 5
 Is the priority queue empty? No
 ```
+
+---
 
 ### Example 3: Get Top Element with `priority_queue_top`
 
@@ -268,6 +272,8 @@ int main() {
 ```
 Top element: 10
 ```
+
+---
 
 ### Example 4: Get Top Element and Pop
 
@@ -313,6 +319,8 @@ Top element: 10
 New top element after pop: 7
 ```
 
+---
+
 ### Example 5: Sorting Integers in Descending Order
 
 ```c
@@ -354,6 +362,8 @@ int main() {
 Sorted elements in descending order:
 15 10 8 7 5 4 3 
 ```
+
+---
 
 ### Example 6: Merging Two Priority Queues
 
@@ -418,6 +428,8 @@ int main() {
 Merged Priority Queue:
 10 9 8 7 6 5 4 3 2 1 
 ```
+
+---
 
 ### Example 7: Using Priority Queue for Task Scheduling
 

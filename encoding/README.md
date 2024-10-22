@@ -284,6 +284,8 @@ Encoded: SGVsbG8sIFdvcmxkIQ==
 Decoded: Hello, World!
 ```
 
+---
+
 ### Example 2: URL Encoding
 
 In this example, we will encode a URL or a string with special characters using `encoding_url_encode`.
@@ -317,6 +319,8 @@ Original: Hello World! This is a test/example?
 URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
 ```
 
+---
+
 ### Example 3: URL Decoding `encoding_url_decode`
 
 ```c
@@ -347,6 +351,8 @@ URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
 Decoded: Hello World! This is a test/example?
 ```
 
+---
+
 ## Examples 4 : use `encoding_base32_encode`
 
 ```c
@@ -375,6 +381,8 @@ int main() {
 Original: Hello, World!
 Base32 Encoded: JBSWY3DPFQQFO33SNRSCC===
 ```
+
+---
 
 ## Example 5 : use `encoding_base32_decode`
 
@@ -405,6 +413,8 @@ Base32 Encoded: ORSXG5A=
 Decoded: test
 ```
 
+---
+
 ## Example 6 : use `encoding_base16_encode`
 
 ```c
@@ -430,6 +440,8 @@ int main() {
 Original: Hello, World!
 Base16 Encoded: 48656C6C6F2C20576F726C6421
 ```
+
+---
 
 ## Example 7 : use `encoding_base32_decode`
 
@@ -457,6 +469,8 @@ int main() {
 Base16 Encoded: 48656C6C6F2C20576F726C6421
 Decoded: Hello, World!
 ```
+
+---
 
 ## Example 8 : use `encoding_utf32_to_utf16`
 
@@ -491,6 +505,8 @@ int main() {
 ```
 UTF-16 String: D83D DE00 D83D DE03 D83D DE04 D83D DE06 D83D DE09 D83D DE0A \n
 ```
+
+---
 
 ## Example 9 : convert utf16 to utf32 with `encoding_utf16_to_utf32`
 
@@ -539,6 +555,8 @@ UTF-16 String: D83D DE00 D83D DE03 D83D DE04 D83D DE06 D83D DE09 D83D DE0A
 UTF-32 String: 1F600 1F603 1F604 1F606 1F609 1F60A
 ```
 
+---
+
 ### Example 10: Using `encoding_utf16_to_utf8`
 
 ```c
@@ -566,6 +584,8 @@ int main() {
 ```
 UTF-8 Encoded String: Hello World
 ```
+
+---
 
 ### Example 11: Using `encoding_utf32_to_utf8`
 
@@ -595,6 +615,8 @@ int main() {
 UTF-8 Encoded String: Hello World
 ```
 
+---
+
 ## Example 12 : Check data is valid UTF-8 or not with `encoding_is_utf8`
 
 ```c
@@ -603,7 +625,7 @@ UTF-8 Encoded String: Hello World
 #include <stdlib.h>
 
 int main() {
-    // Example 1: Valid UTF-8 string
+    // Valid UTF-8 string
     const uint8_t valid_utf8[] = {0xE2, 0x82, 0xAC}; // € symbol in UTF-8
     size_t length1 = sizeof(valid_utf8);
 
@@ -614,7 +636,7 @@ int main() {
         fmt_printf("String 1 is not valid UTF-8.\n");
     }
 
-    // Example 2: Invalid UTF-8 string
+    //  Invalid UTF-8 string
     const uint8_t invalid_utf8[] = {0xE2, 0x28, 0xA1}; // Invalid sequence
     size_t length2 = sizeof(invalid_utf8);
 
@@ -625,7 +647,7 @@ int main() {
         fmt_printf("String 2 is not valid UTF-8.\n");
     }
 
-    // Example 3: ASCII string (also valid UTF-8)
+    // ASCII string (also valid UTF-8)
     const uint8_t ascii_utf8[] = "Hello, World!";
     size_t length3 = sizeof(ascii_utf8) - 1; // Exclude null terminator
 
@@ -645,6 +667,8 @@ String 2 is not valid UTF-8.
 String 3 is not valid UTF-8.
 ```
 
+---
+
 ## Example 13 : Check data is valid UTF-8 String or not with `encoding_is_utf8_string`
 
 ```c
@@ -652,7 +676,7 @@ String 3 is not valid UTF-8.
 #include "fmt/fmt.h"
 
 int main() {
-    // Example 1: Valid UTF-8 string
+    // Valid UTF-8 string
     const uint8_t valid_utf8[] = {0xE2, 0x82, 0xAC, 0}; // € symbol in UTF-8
     const uint8_t* valid_ptr = valid_utf8;
 
@@ -663,7 +687,7 @@ int main() {
         fmt_printf("Example 1 is not valid UTF-8.\n");
     }
 
-    // Example 2: Invalid UTF-8 string
+    // Invalid UTF-8 string
     const uint8_t invalid_utf8[] = {0xE2, 0x28, 0xA1, 0}; // Invalid sequence
     const uint8_t* invalid_ptr = invalid_utf8;
 
@@ -674,11 +698,11 @@ int main() {
         fmt_printf("Example 2 is not valid UTF-8.\n");
     }
 
-    // Example 3: ASCII string (also valid UTF-8)
+    //ASCII string (also valid UTF-8)
     const uint8_t ascii_utf8[] = "Hello, World!"; // ASCII is a subset of UTF-8
     const uint8_t* ascii_ptr = ascii_utf8;
 
-    if (encoding_is_utf8_string(&ascii_ptr, sizeof(ascii_utf8) - 1)) { // -1 to exclude null terminator
+    if (encoding_is_utf8_string(&ascii_ptr, sizeof(ascii_utf8) - 1)) { 
         fmt_printf("Example 3 is valid UTF-8.\n");
     } 
     else {
@@ -694,6 +718,8 @@ Error: Invalid UTF-8 encoding detected in encoding_is_utf8_string.
 Example 2 is not valid UTF-8.
 Example 3 is valid UTF-8.
 ```
+
+---
 
 ## Example 14 : `encoding_utf8_to_utf16`
 
@@ -727,6 +753,8 @@ int main() {
 UTF-16 Encoded String: 0048 0065 006C 006C 006F 002C 0020 0055 0054 0046 002D 0031 0036 0021 0020 D83D DE0A
 ```
 
+---
+
 ### Example 15 :  `encoding_utf8_to_utf32`
 
 ```c
@@ -735,7 +763,6 @@ UTF-16 Encoded String: 0048 0065 006C 006C 006F 002C 0020 0055 0054 0046 002D 00
 #include <stdlib.h>
 
 int main() {
-    // UTF-8 encoded string
     const uint8_t utf_8_string[] = "Hello, UTF-32! 🌍";
     size_t utf_8_length = sizeof(utf_8_string) - 1; // Exclude null terminator
     uint32_t* utf_32_string = encoding_utf8_to_utf32(utf_8_string, utf_8_length);
@@ -759,6 +786,8 @@ int main() {
 UTF-32 Encoded String: 00000048 00000065 0000006C 0000006C 0000006F 0000002C 00000020 00000055 00000054 00000046 0000002D 00000033 00000032 00000021 00000020 0001F30D
 ```
 
+---
+
 ## Example 16 : `encoding_hex_dump`
 
 ```c
@@ -777,6 +806,8 @@ int main() {
 ```
 00000000  61 6d 69 6e                                      |amin|
 ```
+
+---
 
 ## Example 17 : encode and decode data with Using `encoding_base85_encode` and `encoding_base85_decode`
 
@@ -818,6 +849,8 @@ Encoded ASCII85: 87cURD]it9AH
 Decoded: Hello one
 ```
 
+---
+
 ## Example 18 : encode and decode data with `encoding_base58_encode` and `encode_base58_decode`
 
 ```c
@@ -850,6 +883,8 @@ int main() {
 Base58 Encoded: 72k1xXWG59fYdzSNoA
 Decoded Data: Hello, World!
 ```
+
+---
 
 ## Example 19 : encode and decode data Using `encoding_base91_encode` and `encodinل_base91_decode`
 

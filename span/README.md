@@ -336,6 +336,8 @@ int main() {
 1 2 3 4 5 
 ```
 
+---
+
 ### Example 2 : Vector in Span also use `span_size` and `span_at`
 
 in this example a Vector of integers is created and populated 
@@ -374,6 +376,8 @@ Elements in Span:
 15 20 30 40 50
 ```
 
+---
+
 ## Example 3 : use `char**` in Span 
 
 ```c
@@ -401,6 +405,8 @@ int main() {
 ```
 Vector String Map Csv Array
 ```
+
+---
 
 ### Example 4: Using `span_front` and `span_back` with an Array of Integers
 
@@ -432,6 +438,8 @@ First element: 10
 Last element: 50
 ```
 
+---
+
 ### Example 5: Using `span_front` and `span_back` with an Array of Strings
 
 ```c
@@ -460,6 +468,8 @@ int main() {
 First string: Hello
 Last string: C Programming
 ```
+
+---
 
 ## Example 6 : Using `span_data`` and `span_cdata`
 
@@ -497,6 +507,8 @@ Original data: 1 2 3 4 5
 Modified data: 10 2 3 4 5
 ```
 
+---
+
 ## Example 7 : Using `span_empty`
 
 ```c
@@ -522,6 +534,8 @@ int main() {
 Error: Null data provided to span_create
 ```
 
+---
+
 ## Example 8 : Using `span_size_bytes`
 
 ```c
@@ -543,6 +557,8 @@ int main() {
 ```
 Size of span in bytes: 80
 ```
+
+---
 
 ## Example 9 : Using `span_first`
 
@@ -572,6 +588,8 @@ int main() {
 First three elements: 10 20 30
 ```
 
+---
+
 ## Example 10 : Using `span_last`
 
 ```c
@@ -598,6 +616,8 @@ int main() {
 Last two elements: 40 50 
 ```
 
+---
+
 ## Example 11 : Using `span_subspan`
 
 ```c
@@ -623,6 +643,8 @@ int main() {
 ```
 Middle three elements: 20 30 40 
 ```
+
+---
 
 ## Example 12 : Using relation operators in Span 
 
@@ -660,6 +682,8 @@ Span1 is greater or equal to Span2: false
 Span1 is less or equal to Span2: true
 Error: Span memory pool is NULL in destroy_span_memory_pool
 ```
+
+---
 
 ## Example 13 : Using Iterations functoins like `span_begin`, `span_end` 
 

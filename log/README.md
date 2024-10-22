@@ -407,6 +407,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2 : different log level 
 
 ```c
@@ -429,6 +431,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 3 : Logging with Timestamps Enabled 
 
@@ -454,6 +458,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 4 : set log level with `log_set_log_level`
 
 ```c
@@ -474,6 +480,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 5 : filter keyword in logging with `log_enable_keyword_filter`
 
@@ -496,6 +504,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 6 : update keyword filter with `log_update_keyword_filter`
 
@@ -522,6 +532,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 7 : set file path with `log_set_file_path`
 
 ```c
@@ -545,6 +557,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 8 : This function will ensure that any buffered log messages are immediately written to their output destinations. `log_flush`
 
 ```c
@@ -560,6 +574,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9 : log rotate 
 
@@ -580,6 +596,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 10 : suspend and resume log with `log_suspend` and `log_resume`
 
@@ -602,6 +620,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 11 : set custome format for log message with `log_set_format`
 
 ```c
@@ -618,6 +638,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 12 : show and hide message base on log_level with `log_toggle_level_visibility`
 
@@ -655,6 +677,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 13 : redirect the log output to an other file with `log_redirect_output`
 
 ```c
@@ -677,6 +701,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 14 : set or unset verbosity with `log_set_verbose`
 
@@ -706,6 +732,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 15 : set custome filter on logger `log_set_custom_filter
 
 ```c
@@ -732,6 +760,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 16 : set maximum log file size with  `log_set_max_file_size`
 
 ```c
@@ -752,6 +782,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 17 : rate limiting features 
 

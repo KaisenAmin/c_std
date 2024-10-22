@@ -501,6 +501,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2 : get directory name with `dir_dir_name`
 
 ```c
@@ -523,6 +525,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 3 : how to get current_path with `dir_current_path`
 
 ```c
@@ -543,6 +547,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 4 : count any things in path with `dir_count`
 
@@ -565,6 +571,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 5 : get absolute_path of file with `dir_absolute_path_file`
 
 ```c
@@ -586,6 +594,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 6 : change directory or move up with `dir_cd` and `dir_cd_up`
 
@@ -631,6 +641,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 7 : check if directory is empty delete dir `dir_remove_directory` and `dir_is_empty`
 
 ```c
@@ -657,6 +669,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 8: remove dir recursivly with `dir_remove_directory_recursive`
 
 ```c
@@ -675,6 +689,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9: Renaming a File with `dir_rename`
 
@@ -696,6 +712,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10: Renaming a Directory with `dir_rename`
 
 ```c
@@ -716,6 +734,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 11 : check file exists or not `dir_is_file_exists`
 
 ```c
@@ -735,6 +755,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 12 : check directory is exists or not `dir_is_directory_exists`
 
 ```c
@@ -753,6 +775,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 13 : copy dir and its contents to new location with `dir_copy_directory`
 
@@ -779,6 +803,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 14 : copy file into new location `dir_copy_file`
 
 ```c
@@ -798,6 +824,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 15 :  Calculate the total size of a directory, including all files and subdirectories `dir_get_directory_size`
 
@@ -820,6 +848,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 16 : Calculating the total size of file with `dir_get_file_size`
 
 ```c
@@ -840,6 +870,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 17 : get list of director or files or both with `dir_list_contents`
 
@@ -865,6 +897,8 @@ int main(){
 }
 ```
 
+---
+
 ## Example 18 : check path is dir or file with `dir_is_file` or `dir_is_directory`
 
 ```c
@@ -884,6 +918,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 19 : move file and directoy with these `dir_move_directory` or `dir_move_file`
 
@@ -906,6 +942,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 20 : get last modified file and dir with `dir_get_modified_time`
 
 ```c
@@ -921,6 +959,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 21 : get last creation file and dir with `dir_get_creation_time`
 
 ```c
@@ -935,6 +975,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 22 : get home dir with `dir_get_home_directory`
 
@@ -956,6 +998,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 22 : get file type with `dir_get_file_type`
 
@@ -981,6 +1025,9 @@ int main() {
     return 0;
 }
 ```
+
+---
+
 ## Example 23 : encrypt and decrypt file with des mode cbc `dir_encrypt_file` and `dir_decrypt_file`
 
 ```c
@@ -1012,6 +1059,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 24 : get file owner with `dir_get_file_owner`
 
 ```c
@@ -1032,6 +1081,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 25 : get dir owner with `dir_get_directory_owner`
 
 ```c
@@ -1051,6 +1102,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 26 : search file in path `dir_search`
 
@@ -1092,6 +1145,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 27 : get list of contents `dir_list_contents`
 

@@ -445,6 +445,8 @@ OS Version: 24.04
 OS Version: 10.0
 ```
 
+---
+
 ### Example 2: Get Product Type
 
 ```c
@@ -466,6 +468,8 @@ OS Product Type: Ubuntu
 ```
 OS Product Type: Windows
 ```
+
+---
 
 ### Example 3: Get Kernel Version
 
@@ -489,6 +493,8 @@ Kernel Version: 6.8.0-35-generic
 Kernel Version: 10.0.19045
 ```
 
+---
+
 ### Example 4: Get Kernel Type
 
 ```c
@@ -510,6 +516,8 @@ Kernel Type: Linux
 ```
 Kernel Type: Windows NT
 ```
+
+---
 
 ### Example 5: Get Boot Unique ID
 
@@ -533,6 +541,8 @@ Boot Unique ID: bba30543-fea2-4477-b9e4-5343f8746200
 Boot Unique ID: 22066640
 ```
 
+---
+
 ### Example 6: Get CPU Architecture
 
 ```c
@@ -549,6 +559,8 @@ int main() {
 ```
 CPU Architecture: x86_64
 ```
+
+---
 
 ### Example 7: Get Machine Host Name
 
@@ -572,6 +584,8 @@ Machine Host Name: kaisen-VirtualBox
 Machine Host Name: DESKTOP-DF2A2F9
 ```
 
+---
+
 ### Example 8: Get Machine Unique ID
 
 ```c
@@ -594,6 +608,8 @@ Machine Unique ID: 4229c1dd3d8c41e1a7b9e1102912cde3
 Machine Unique ID: 8ba376a1-9832-45a0-b7bd-5d507e7a1d68
 ```
 
+---
+
 ### Example 9: Get Pretty Product Name
 
 ```c
@@ -615,6 +631,8 @@ Pretty Product Name: Ubuntu 24.04
 ```
 Pretty Product Name: Windows 10 Version 10.0 (Build 19045)
 ```
+
+---
 
 ### Example 10: List Bluetooth Devices
 
@@ -639,6 +657,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 11 : get cpu usage with `sysinfo_cpu_usage`
 
@@ -670,6 +690,8 @@ CPU Usage: 5.60%
 CPU Usage: 3.64%
 ```
 
+---
+
 ## Example 12 : get memory usage percentage with `sysinfo_memory_usage`
 
 ```c
@@ -699,6 +721,8 @@ Memory Usage: 55.60%
 ```
 Memory Usage: 49.64%
 ```
+
+---
 
 ## Example 13 : get disk space and avalible with `sysinfo_disk_space(const char* path)`
 
@@ -733,6 +757,8 @@ Disk Space Info for C:\: Total: 594597 MB, Used: 541148 MB, Available: 53449 MB
 Disk Space Info for /: Total: 59459 MB, Used: 54114 MB, Available: 5344 MB
 ```
 
+---
+
 ## Example 14 : get uptime of os with `sysinfo_system_uptime()`
 
 ```c
@@ -765,6 +791,8 @@ System Uptime: 0 days, 0 hours, 29 minutes, 26 seconds
 System Uptime: 6 days, 2 hours, 29 minutes, 26 seconds
 ```
 
+---
+
 ## Example 15 : get list of running services as Vector in `Vector* sysinfo_running_services()`
 
 ```c
@@ -787,6 +815,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 16 : get number of cpu cores `int sysinfo_cpu_cores()`
 
 ```c
@@ -806,6 +836,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 17 : get list of process with `sysinfo_process_list()`
 
@@ -830,6 +862,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 18 : get list of network interface with `sysinfo_network_interfaces()` also deallocate with `sysinfo_deallocate_network_interfaces()`
 
 ```c
@@ -850,6 +884,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 19 : get list of open listening ports with `sysinfo_open_ports()`
 
@@ -876,6 +912,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 20 : check if system running or virtualized env or not with `sysinfo_is_vitrualized()`
 
 ```c
@@ -896,6 +934,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 21 : get system locale with `sysinfo_system_locale()`
 
 ```c
@@ -911,6 +951,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 22 : check is service running or not with `sysinfo_is_service_running(const char*)`:
 
@@ -932,6 +974,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 23 : get list of partitions as Vector* with `sysinfo_disk_partitions()`
 

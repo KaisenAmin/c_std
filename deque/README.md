@@ -497,6 +497,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 2: Using `deque_at` to Access Elements
 ```c
 #include "deque/deque.h" 
@@ -523,6 +525,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 3: Resizing Deque
 ```c
@@ -564,6 +568,7 @@ int main() {
 }
 ```
 
+---
 
 ## Example 4: Using Deque with Structs
 
@@ -591,6 +596,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 5: Storing char Elements
 
 ```c
@@ -617,6 +624,8 @@ int main(){
 }
 ```
 
+---
+
 ## Example 6 : Storing float Elements
 
 ```c
@@ -637,6 +646,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 7 : Reversing Elements in a Deque
 
@@ -676,6 +687,8 @@ int main(){
     return 0;
 }
 ```
+
+---
 
 ## Example 8 : Nested Deque 
 
@@ -722,6 +735,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 9 : Copying Deque 
 
 ```c
@@ -764,6 +779,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10 : Store Copies of Struct in the Deque
 
 ```c
@@ -805,6 +822,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 11: Shrink to Fit Deque
 
 ```c
@@ -841,6 +860,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 12: Inserting and Erasing Elements
 
@@ -880,6 +901,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 13: Using Emplace Methods
 This example demonstrates the use of `emplace_back`, `emplace_front`, and `emplace` methods for in-place construction.
 
@@ -908,6 +931,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 14: Using Relational Operators
 This example illustrates how to compare two deques using relational operators.
@@ -948,6 +973,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 15: Iterating Using Deque Iterators
 This example demonstrates iterating over a deque using its iterators.
 
@@ -984,6 +1011,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 16 : Reverse Iteration 
 
@@ -1023,6 +1052,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 17 : 'clear' and 'emplace_back'
 
 ```c
@@ -1050,6 +1081,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 18 : Convert example in this url 'https://www.geeksforgeeks.org/deque-cpp-stl/' to Deque 
 
@@ -1096,6 +1129,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 19 : 'crbegin', 'crend'
 

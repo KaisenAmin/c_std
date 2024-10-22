@@ -330,6 +330,10 @@ int main() {
 }
 ```
 
+---
+
+---
+
 ### Example 2: Pop Front Element with `forward_list_pop_front`
 ```c
 #include "forward_list/forward_list.h"
@@ -345,6 +349,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 3: Access Front Element with `forward_list_front`
 ```c
@@ -364,6 +370,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 4: Clear List with `forward_list_clear`
 ```c
@@ -393,6 +401,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 5: Check if List is Empty `forward_list_empty`
 ```c
 #include "forward_list/forward_list.h"
@@ -407,6 +417,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 6: Get List Length with `forward_list_length`
 ```c
@@ -424,6 +436,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 7: Assign Values to List `forward_list_assign`
 ```c
@@ -447,6 +461,8 @@ int main() {
 
 ```
 
+---
+
 ### Example 8: Get before_begin Iterator with `forward_list_before_begin`
 ```c
 #include "forward_list/forward_list.h"
@@ -462,6 +478,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9: Get begin and end Iterator with `forward_list_begin` and `forward_list_end`
 ```c
@@ -482,6 +500,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10: Get max_size with `forward_list_max_size`
 
 ```c
@@ -497,6 +517,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 11: Emplace Front with `forward_list_emplace_front`
 ```c
@@ -520,6 +542,8 @@ int main() {
 
 ```
 
+---
+
 ## Example 12: Emplace After with `forward_list_emplace_after`
 ```c
 #include "forward_list/forward_list.h"
@@ -542,6 +566,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 13: Insert After with `forward_list_insert_after`
 ```c
 #include "forward_list/forward_list.h"
@@ -562,6 +588,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 14: Erase After with `forward_list_erase_after`
 ```c
@@ -585,6 +613,8 @@ int main() {
 }
 
 ```
+
+---
 
 ## Example 15: Swap ForwardLists with `forward_list_swap`
 ```c
@@ -631,6 +661,8 @@ int main() {
 
 ```
 
+---
+
 ## Example 16: Resize List with `forward_list_resize`
 ```c
 #include "forward_list/forward_list.h"
@@ -646,6 +678,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 17: Splice After with `forward_list_splice_after`
 ```c
@@ -671,6 +705,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 18: Remove Element from ForwardList with `forward_list_remove`
 ```c
 #include "forward_list/forward_list.h"
@@ -693,6 +729,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 19: Remove Elements if Condition is Met with `forward_list_remove_if`
 ```c
@@ -721,6 +759,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 20: get unique elements from ForwardList with `forward_list_unique`
 
 ```c
@@ -743,6 +783,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 21 : Relational operators in ForwardList 
 

@@ -357,6 +357,8 @@ Counter 8: 8
 Counter 9: 10
 ```
 
+---
+
 ### Example 2 : get random number and check invalid steps and range in `random_randrange`
 
 ```c
@@ -400,6 +402,9 @@ Value is 4
 Error: invalid range or step value
 Invalid step input.
 ```
+
+---
+
 ### Example 3 : Generate floating point random number with `random_random`
 
 ```c
@@ -426,6 +431,9 @@ Random floating-point number between 0 and 1: 0.478957
 Random floating-point number between 0 and 1: 0.041414
 Random floating-point number between 0 and 1: 0.143132
 ```
+
+---
+
 ### Example 4 : Genrate random floating point numbers between range with `random_uniform`
 
 ```c
@@ -452,6 +460,9 @@ int main() {
 4.704716
 1.116099
 ```
+
+---
+
 ### Example 5: shuffle arrays of different types with `random_shuffle`
 
 ```c
@@ -513,6 +524,8 @@ Shuffled string array:
 fig banana grape date elderberry apple cherry
 ```
 
+---
+
 ### Example 6 : how to choice and element from an array with `random_choice`
 
 ```c
@@ -543,6 +556,9 @@ int main() {
 Random choice from integer array: 7
 Random choice from string array: apple
 ```
+
+---
+
 ### Example 7 : how to set mode between range with `random_triangular`
 
 ```c
@@ -569,6 +585,9 @@ Random triangular number between 1.0 and 10.0 with mode 5.0: 5.182280
 Random triangular number between 1.0 and 10.0 with mode 5.0: 5.509249
 Random triangular number between 1.0 and 10.0 with mode 5.0: 4.765507
 ```
+
+---
+
 ### Example 8 : how to set weight for choices with `random_choices`
 
 ```c
@@ -624,6 +643,9 @@ grape
 elderberry
 grape
 ```
+
+---
+
 ### Example 9 : how to get sequence of unique elements with `random_sample`
 
 ```c
@@ -675,6 +697,8 @@ Python
 C++
 Zig
 ```
+
+---
 
 ### Example 10 : set and get state `random_setstate`, `random_getstate`
 
@@ -731,6 +755,9 @@ Random number 8: 62
 Random number 9: 86
 Random number 10: 58
 ```
+
+---
+
 ### Example 11 : how to generate random number with gauss or normal distrubution `random_gauss`
 
 ```c
@@ -763,6 +790,8 @@ Random Gaussian value: -1.986525
 Random Gaussian value: 1.008667
 ```
 
+---
+
 ### Example 12 : get random number based on log-normal distrubution `random_lognormal`
 
 ```c
@@ -793,6 +822,8 @@ Random Log-Normal value: 4.173639
 Random Log-Normal value: 1.140356
 ```
 
+---
+
 ### Example 13 : random numbers based on gamma distrubution `random_gamma`
 
 ```c
@@ -822,6 +853,9 @@ Random Gamma value: 7.138485
 Random Gamma value: 1.068895
 Random Gamma value: 6.594782
 ```
+
+---
+
 ### Example 14 : generate random number based on pareto distrubution with `random_pareto`
 
 ```c
@@ -852,6 +886,8 @@ Random Pareto value: 1.058269
 Random Pareto value: 1.108613
 ```
 
+---
+
 ### Example 15 : generate random number based on von mises distrubution with `random_vonmises`
 
 ```c
@@ -881,6 +917,8 @@ Random von Mises value: 1.556270
 Random von Mises value: 2.903683
 Random von Mises value: 2.583023
 ```
+
+---
 
 ## Conclusion
 

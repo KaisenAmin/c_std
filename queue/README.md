@@ -205,6 +205,8 @@ int main() {
 Queue size: 5
 ```
 
+---
+
 ### Example 2: Checking If the Queue Is Empty
 
 ```c
@@ -228,6 +230,8 @@ int main() {
 ```
 Is the queue empty? No
 ```
+
+---
 
 ### Example 3: Accessing Front and Back Elements
 
@@ -261,6 +265,8 @@ Front element: 10
 Back element: 50
 ```
 
+---
+
 ### Example 4: Removing Items from the Queue
 
 ```c
@@ -290,6 +296,8 @@ int main() {
 ```
 New front element after pop: 20
 ```
+
+---
 
 ### Example 5: Emplacing Items and Using Relational Operators
 
@@ -325,6 +333,8 @@ int main() {
 Are the queues equal? No
 Is myQueue1 less than myQueue2? Yes
 ```
+
+---
 
 ### Example 6: Swapping Queues
 
@@ -367,6 +377,8 @@ int main() {
 Front element of myQueue1 after swap: 15
 Front element of myQueue2 after swap: 10
 ```
+
+---
 
 ### Example 7: Task Management System Using Queue
 
@@ -420,6 +432,8 @@ Processing Task ID 2: Update documentation
 Processing Task ID 3: Refactor module
 Task queue size after processing: 0
 ```
+
+---
 
 ### Example 8: 2D Queue of String Objects
 
@@ -484,6 +498,8 @@ Processing: String 2-2
 Processing: String 2-3
 Processing: String 2-4
 ```
+
+---
 
 ## Conclusion
 

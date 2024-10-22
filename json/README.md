@@ -434,6 +434,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2: Accessing Nested Elements in a JSON Structure with `json_get_element` and `json_parse`
 This example shows how to access nested elements within a JSON structure. It retrieves the name of the second category from a JSON array.
 
@@ -471,6 +473,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 3: Retrieving a Specific Element in a Nested JSON Object with `json_get_element`
 
 This example demonstrates how to access a nested element inside a JSON object and retrieve a specific field value.
@@ -505,6 +509,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 4: Getting the Size of the `categories` Array
 
 In this example, we parse your JSON string and then get the size of the `categories` array.
@@ -536,6 +542,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 5: Getting the Size of the `contributors` Array in `additional_info`
 
@@ -577,6 +585,8 @@ int main() {
 
 ```
 
+---
+
 ## Example 6 : Getting size of object in json with `json_object_size` 
 
 ```c
@@ -606,6 +616,8 @@ int main() {
 }
 
 ```
+
+---
 
 ## Example 7 : getting the size of the `ratings` object in movie items 
 
@@ -652,6 +664,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 8 : Deep copying parsed json object with `json_deep_copy`
 
 ```c
@@ -695,6 +709,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9 : Using `json_type_of_element`` to Determine the Type of a JSON Element 
 
@@ -741,6 +757,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10 : how to serialize and write json into the file with `json_write_file`
 
 ```c
@@ -769,6 +787,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 11 : Parsing and serializing json with `json_serialize`
 
@@ -812,6 +832,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 12 : how to compare json with `json_compare`
 
 ```c
@@ -851,6 +873,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 13 : how to set element in objects with `json_set_element`
 
@@ -894,6 +918,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 14 : how to set or modify an element within an array in json with `json_set_element`
 
@@ -963,6 +989,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 15 : bench mark read and parse json file with python 
 
@@ -1040,6 +1068,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 17 : Removing an element from json Array with `json_remove_element`
 
 ```c
@@ -1069,6 +1099,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 18: Finding an Element in a JSON Array with `json_find`
 
@@ -1105,6 +1137,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 19: Finding an Element in a JSON Object with `json_find`
 
@@ -1143,6 +1177,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 20: Finding a Boolean Element in a JSON Object with `json_find`
 
 
@@ -1178,6 +1214,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 21: Manipulating and Serializing a JSON Object
 
@@ -1223,6 +1261,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 22 : how to get last_error of json failed parse with `json_last_error`
 
 ```c
@@ -1246,6 +1286,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 23 : how to merge 2 json file and the write into file `json_merge`
 
@@ -1294,6 +1336,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 24 : how to convert array element in json to string_array with `json_to_string_array`
 
@@ -1344,6 +1388,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 25 : how to convert type of json element to other types with `json_convert`
 
@@ -1402,6 +1448,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 26 : read json file and convert data then write to file with `json_convert` and `json_write_to_file`
 
 ```c
@@ -1449,6 +1497,8 @@ int main() {
 }
 
 ```
+
+---
 
 ## Example 27 : convert any kind of data types to an other data with `json_convert`
 
@@ -1498,6 +1548,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 28: Doubling Numbers in a JSON Array
 
 ```c
@@ -1537,6 +1589,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 29: Converting Numbers to Strings in a JSON Array
 
@@ -1581,6 +1635,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 30: Changing Boolean Values in a JSON Array
 
 ```c
@@ -1620,6 +1676,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 31 : how to filter element in json file and then write to file `json_filter`
 
@@ -1687,6 +1745,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 32 : how to sum up the numbers with arrays element in json using `json_reduce`
 
 ```c
@@ -1740,6 +1800,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 33 : concatenates names with `json_reduce`
 
@@ -1806,6 +1868,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 34 : how to format data with `json_format`
 
 ```c
@@ -1842,6 +1906,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 35 : how to create a nested JSON structure with various data types, including arrays and objects.format this with `json_format`
 
@@ -1913,6 +1979,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 36 : Parsing a Single Number as json 
 
 ```c
@@ -1940,6 +2008,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 37 : Parsing a Single String value as json 
 
 ```c
@@ -1961,6 +2031,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 38 : create shallow copy of original json object with `json_clone`
 
@@ -2025,6 +2097,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 39 : Reading JSON from a File and Getting its Keys with `json_get_keys`
 
 ```c
@@ -2061,6 +2135,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 40 : Using a JSON String and Getting its Keys with `json_get_keys`
 
 ```c
@@ -2096,6 +2172,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 41 : how to add items to array element in json with `json_add_to_array` 
 
@@ -2155,6 +2233,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 42 : how to add object to json as new element with `json_add_to_object`
 
 ```c
@@ -2213,6 +2293,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 42 : quering over the json with `json_query`
 
 ```c
@@ -2245,6 +2327,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 43 : set query over json string with `json_query`
 

@@ -315,6 +315,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2: Add Elements Using `list_push_front`
 
 ```c
@@ -346,6 +348,8 @@ int main() {
 
 ```
 
+---
+
 ## Example 3: Pop Elements from Front `list_pop_front`
 
 ```c
@@ -368,6 +372,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 4: Pop Elements from Back with `list_pop_back`
 
@@ -392,6 +398,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 5: Insert Element at Specific Position with `list_insert`
 
 ```c
@@ -413,6 +421,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 6: Erase Element at Specific Position with `list_erase`
 
@@ -437,6 +447,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 7: Clearing the List 
 
 ```c
@@ -458,6 +470,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 8: Resize the List with `list_resize`
 
@@ -489,6 +503,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9: Swap Two Lists with `list_swap`
 
@@ -528,6 +544,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10: Reverse a List with `list_reverse`
 
 ```c
@@ -558,6 +576,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 11: Sort a List with `list_sort`
 
@@ -590,6 +610,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 12: Check if List is Empty with `list_empty`
 
 ```c
@@ -612,6 +634,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 13: Get the Length of the List with `list_length`
 
@@ -638,6 +662,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 14: Assign Values to List with `list_assign`
 
@@ -666,6 +692,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 15: Merge Two Lists with `list_merge`
 
 ```c
@@ -692,6 +720,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 16 : Storing Strings in a List and Sorting
 
@@ -733,6 +763,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 17: Merging Two Lists of Strings
 
 #include "string/string.h"
@@ -772,6 +804,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 18: Filtering Strings from a List
 
 ```c
@@ -810,6 +844,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 19: Concatenating All Strings in a List
 
 ```c
@@ -843,6 +879,8 @@ int main(){
     return 0;
 }
 ```
+
+---
 
 ### Example 20: Reversing Each String in a List
 
@@ -882,6 +920,8 @@ int main() {
 }
 
 ```
+
+---
 
 ## Example 21 : Relational operators in List 
 
@@ -926,6 +966,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 22 : add and remove child 
 

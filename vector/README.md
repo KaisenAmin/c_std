@@ -394,6 +394,8 @@ int main() {
 10
 ```
 
+---
+
 ### Example 2: Strings
 
 ```c
@@ -421,6 +423,8 @@ int main() {
 ```
 Hello, World!
 ```
+
+---
 
 ### Example 3: User-Defined Structures
 
@@ -454,6 +458,8 @@ int main() {
 ```
 ID: 1, Value: 10.50
 ```
+
+---
 
 ### Example 4: Use relational operators
 
@@ -500,6 +506,8 @@ vec1 is not equal to vec2
 vec1 is less than vec2
 vec2 is greater than vec2
 ```
+
+---
 
 ## Example 5: Use at and char*
 
@@ -552,6 +560,8 @@ World
 Example
 ```
 
+---
+
 ## Example 6: how to use 'swap'
 
 ```c
@@ -600,6 +610,8 @@ Contents of vector2 after swap:
 20
 ```
 
+---
+
 ## Example 7: how to use `vector_pop_back`
 
 ```c 
@@ -629,6 +641,8 @@ int main() {
 Popped item: 40
 ```
 
+---
+
 ## Example 8: how to use `vector_front`
 
 ```c 
@@ -657,6 +671,8 @@ int main() {
 First item: 10
 ```
 
+---
+
 ## Example 9: how to use `vector_back`
 
 ```c
@@ -684,6 +700,8 @@ int main() {
 ```
 Last item: 30
 ```
+
+---
 
 ## Example 10: use `vector_data` Returns pointer to the underlying array serving as element storage
 ```c
@@ -717,6 +735,8 @@ Item 1: 20
 Item 2: 30
 ```
 
+---
+
 ## Example 11: `vector_begin`, `vector_end` Return pointer to the first and last element
 
 ```c
@@ -745,6 +765,8 @@ int main() {
 20
 30
 ```
+
+---
 
 ## Example 12: `vector_cbegin`, `vector_cend` Return const pointer to first and last element
 
@@ -775,6 +797,8 @@ int main() {
 30
 ```
 
+---
+
 ## Example 13 : `vector_crbegin`, `vector_crend` Return reverse read-only iteration over the vector
 ```c
 #include "vector/vector.h"
@@ -802,6 +826,8 @@ int main() {
 20
 10
 ```
+
+---
 
 ## Example 14: Using `vector_rbegin` and `vector_rend` for reverse iteration over the vector
 
@@ -831,6 +857,8 @@ int main() {
 20
 10
 ```
+
+---
 
 ## Example 15: `vector_insert` New element to vector 
 
@@ -867,6 +895,8 @@ int main() {
 30
 ```
 
+---
+
 ## Example 16: `vector_erase` element from vector
 
 ```c
@@ -899,6 +929,8 @@ int main() {
 50
 ```
 
+---
+
 ## Example 17: `vector_reserve`
 
 ```c
@@ -924,6 +956,8 @@ int main() {
 ```
 Vector size: 11, Vector capacity: 32
 ```
+
+---
 
 ## Example 18: resize size of the vector with `vector_resize` 
 
@@ -976,6 +1010,8 @@ After resizing to smaller size:
 20
 ```
 
+---
+
 ## Example 19 : `vector_shrink_to_fit` fixed capacity
 
 ```c
@@ -1008,6 +1044,8 @@ int main() {
 Size before shrink_to_fit: 3, Capacity before shrink_to_fit: 32
 Size after shrink_to_fit: 3, Capacity after shrink_to_fit: 3
 ```
+
+---
 
 ## Example 20 : use `vector_emplace` and `vector_emplace_back` insert new element at positin and at the end of 
 
@@ -1051,6 +1089,8 @@ Example
 EmplacedBackString
 ```
 
+---
+
 ## Example 21 : how to use `String` object in Vector
 
 ```c
@@ -1091,6 +1131,8 @@ World
 Example
 ```
 
+---
+
 ## Example 22 : how to use relationals operators in `Vector` 
 
 ```c
@@ -1129,6 +1171,8 @@ int main() {
 ```
 Vector1 is less than Vector2
 ```
+
+---
 
 ### Example 23 : how to use `vector_begin` and `vector_end` with String Object 
 
@@ -1226,6 +1270,8 @@ Watermelon
 Time taken: 1.2074e-05 seconds
 ```
 
+---
+
 ### Example 24 :Vector of Vectors (2D Vector)
 
 This example creates a two-dimensional vector, where each element of the main vector is another vector. This can be useful for matrix-like structures or grid representations.
@@ -1273,6 +1319,8 @@ int main() {
 3 4 5
 6 7 8
 ```
+
+---
 
 ### Example 25 : Vector of Structs with Dynamic String Fields
 
@@ -1323,6 +1371,8 @@ Name: Item1, Description: Description1
 Name: Item2, Description: Description2
 Name: Item3, Description: Description3
 ```
+
+---
 
 ### Example 26 : Vector of Vectors (2D Vector) of Custom Structs 
 

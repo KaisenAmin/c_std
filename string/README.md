@@ -1273,6 +1273,8 @@ Info : String object is null no need to clear in string_clear.
 Hello C Programmers
 ```
 
+---
+
 ## Example 2: `string_shrink_to_fit`, `string_resize`
 
 ```c
@@ -1308,6 +1310,8 @@ String after resize: Hello
 String capacity after shrink to fit: 6
 Info : String object is null no need to clear in string_clear.
 ```
+
+---
 
 ## Example 3: how to `string_assign` new string and `string_erase` some part of String obj also `string_insert` new ...  
 
@@ -1345,6 +1349,8 @@ String after erase: est String
 Info : String object is null no need to clear in string_clear.
 ```
 
+---
+
 ## Example 4: `string_replace` Strings 
 
 ```c
@@ -1365,6 +1371,8 @@ int main() {
 ```
 After replace: Hello There
 ```
+
+---
 
 ## Example 5: `string_swap` two String obj and also `string_pop_back`
 
@@ -1400,6 +1408,8 @@ After replace: Hello There
 After swap, str1: Sample Text, str2: Hello There
 After pop back: Hello Ther
 ```
+
+---
 
 ## Example 6: `string_back` and `string_front` return ref to front and last char of String 
 
@@ -1437,6 +1447,8 @@ Max size is 18446744073709551615
 Info : String object is null no need to clear in string_clear.
 ```
 
+---
+
 ## Example 7 : `string_copy` how to copy some part of String 
 
 ```c
@@ -1460,6 +1472,8 @@ int main() {
 Copied 'World' (5 characters)
 ```
 
+---
+
 ## Example 8 : `string_find` find string in String and return position
 
 ```c
@@ -1481,6 +1495,8 @@ int main() {
 ```
 Found 'World' at position: 7
 ```
+
+---
 
 ## Example 9 : how to use `string_rfind`, `string_find_first_of`, `string_find_last_of`
 
@@ -1517,6 +1533,8 @@ Last occurrence of 'World' found at position: 7
 Info : String object is null no need to clear in string_clear.
 ```
 
+---
+
 ## Example 10 : `string_find_first_not_of`, `string_find_last_not_of`
 
 ```c
@@ -1544,6 +1562,8 @@ First position not matching 'Hello': 1
 Last position not matching 'World': 8
 ```
 
+---
+
 ## Example 11 : `string_data` return pointer to String sequence 
 
 ```c
@@ -1569,6 +1589,8 @@ int main() {
 Data: Hello, World!
 Info : String object is null no need to clear in string_clear.
 ```
+
+---
 
 ## Example 12 : `string_begin`, `string_end` return iterator pointer from begin and end of String sequence
 
@@ -1596,6 +1618,8 @@ int main() {
 Hello amin
 Info : String object is null no need to clear in string_clear.
 ```
+
+---
 
 ## Example 13 : `string_rbeing`, `string_rend` return reverse iterator 
 
@@ -1626,6 +1650,8 @@ String in reverse: nima olleH
 Info : String object is null no need to clear in string_clear.
 ```
 
+---
+
 ## Example 14 : `string_cbegin`, `string_cend`
 
 ```c
@@ -1651,6 +1677,8 @@ int main() {
 String using cbegin and cend: Hello, World!
 ```
 
+---
+
 ## Example 15 : `string_crbegin`, `string_crend` 
 
 ```c
@@ -1675,6 +1703,8 @@ int main() {
 ```
 String in reverse using crbegin and crend: !dlroW ,olleH
 ```
+
+---
 
 ## Example 16 : how to use relationals operators in String 
 
@@ -1713,6 +1743,8 @@ int main() {
 String 1 is less than String 2
 String1 is less than or equal String2
 ```
+
+---
 
 ## Example 17: Manipulate Multiple String 
 
@@ -1765,6 +1797,8 @@ Greeting with name: Hello, Alice
 Sentence: Hello!
 Sentence is less than greeting.
 ```
+
+---
 
 ## Example 18: 2D String Array using Custom String Struct
 
@@ -1828,6 +1862,8 @@ Hello World !
 Goodbye Cruel World
 ```
 
+---
+
 ## Example 19 : bench mark operation in `String` and `std::string` 
 
 gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main .\main.c .\string\string.c
@@ -1878,9 +1914,7 @@ int main() {
 Average Custom Vector Time: 0.007211 seconds
 ```
 
-
-
-```c
+```c++
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -1909,6 +1943,8 @@ int main() {
 ```
 Time taken (std::string): 0.81031 seconds
 ```
+
+---
 
 ## Example 20 : benchmark of `String` and `std::string`
 
@@ -1986,6 +2022,8 @@ int main() {
 Time taken (std::string): 0.0065333 seconds
 ```
 
+---
+
 ### Example 21 : string to Lower or Upper 
 ```c
 #include "string/std_string.h"
@@ -2016,6 +2054,8 @@ To Upper is -> HELLO WORLD
 To Lower is -> hello world
 ```
 
+---
+
 ### Example 22 : Reverse String with `string_reverse`
 
 ```c
@@ -2043,6 +2083,8 @@ Yes 'Hello' exists in str
 Reverse String is dlroW olleH
 ```
 
+---
+
 ### Example 23 : `string_is_digit`
 
 ```c
@@ -2067,6 +2109,8 @@ int main() {
 ```
 The string contains only digits.
 ```
+
+---
 
 ### Example 24 : `string_is_lower`
 
@@ -2096,6 +2140,8 @@ Uppercase: HELLO WORLD
 Lowercase: hello world
 ```
 
+---
+
 ### Example 25 : concatenate two String with `string_concatenate`
 
 ```c
@@ -2120,6 +2166,8 @@ int main() {
 ```
 Concatenated string: Hello World
 ```
+
+---
 
 ### Example 26 : trim String from start, end or both 
 
@@ -2155,6 +2203,8 @@ Info : String object is null no need to clear in string_clear.
 Trimmed Both: 'Hello World'
 ```
 
+---
+
 ### Example 27 : split String with `string_split`
 
 ```c
@@ -2187,6 +2237,8 @@ Split 4: A
 Split 5: Test
 ```
 
+---
+
 ### Example 28 : joins several String objects with `string_join` 
 
 ```c
@@ -2217,6 +2269,8 @@ int main() {
 Joined string: Hello World Again
 ```
 
+---
+
 ### Example 29 : `replace_all` 
 
 ```c
@@ -2239,6 +2293,8 @@ int main() {
 Replaced string: This is a example. This is only a example.
 ```
 
+---
+
 ### Example 30: `string_to_int`
 
 ```c
@@ -2259,6 +2315,8 @@ int main() {
 ```
 Integer value: 12345
 ```
+
+---
 
 ### Example 31: `string_to_float`
 
@@ -2281,6 +2339,8 @@ int main() {
 Float value: 123.45
 ```
 
+---
+
 ### Example 32: `string_pad_left`
 
 ```c
@@ -2302,6 +2362,8 @@ int main() {
 Padded String (Start): '*****hello'
 ```
 
+---
+
 ### Example 33: `string_pad_right`
 
 ```c
@@ -2322,6 +2384,8 @@ int main() {
 ```
 Padded String (End): 'world-----'
 ```
+
+---
 
 ### Example 34 : `string_to_hex`
 
@@ -2348,6 +2412,8 @@ Original String: Hello
 Hexadecimal Representation: 48656c6c6f
 ```
 
+---
+
 ### Example 35 : `string_from_hex`
 
 ```c
@@ -2373,6 +2439,8 @@ Hexadecimal String: 48656c6c6f
 Converted String: Hello
 ```
 
+---
+
 ## Example 36 : `string_count`
 
 ```c
@@ -2394,6 +2462,8 @@ int main() {
 ```
 The substring 'World' appears 2 times in 'Hello World, World!'.
 ```
+
+---
 
 ### Example 37 : `string_remove`
 
@@ -2419,6 +2489,8 @@ Original string: Hello World, World!
 String after removal: Hello , !
 ```
 
+---
+
 ### Example 38 : `string_from_int`
 
 ```c
@@ -2440,6 +2512,8 @@ int main() {
 Integer 123 converted to string: 123
 ```
 
+---
+
 ### Example 39 : `string_from_float`
 
 ```c
@@ -2460,6 +2534,8 @@ int main() {
 ```
 Float 123.456 converted to string: 123.456001
 ```
+
+---
 
 ### Example 40 : `string_tokenize` 
 
@@ -2493,6 +2569,8 @@ Token 4: A
 Token 5: Test
 ```
 
+---
+
 ### Example 40 : `string_to_double` 
 
 ```c
@@ -2514,6 +2592,8 @@ int main() {
 Double value: 123.456000
 ```
 
+---
+
 ### Example 41 : `string_from_double` 
 
 ```c
@@ -2534,6 +2614,8 @@ int main() {
 ```
 String from double: 123.456000
 ```
+
+---
 
 ### Example 42 : `string_compare_ignore_case`
 
@@ -2562,6 +2644,8 @@ int main() {
 ```
 Strings are equal (ignoring case)
 ```
+
+---
 
 ### Example 43 : `string_base64_encode` and `string_base64_decode`
 
@@ -2597,6 +2681,8 @@ Base64 Encoded: SGVsbG8sIFdvcmxkIQ==
 Base64 Decoded: Hello, World!
 ```
 
+---
+
 ### Example 44 : `string_format` 
 
 ```c
@@ -2618,6 +2704,8 @@ int main() {
 ```
 Hello, Alice! You have 5 new messages.
 ```
+
+---
 
 ### Example 45 : `string_repeat`
 
@@ -2641,6 +2729,8 @@ int main() {
 ```
 Repeated String: Hello Hello Hello
 ```
+
+---
 
 ### Example 46 : `string_join_variadic`
 
@@ -2669,6 +2759,8 @@ int main() {
 Joined String: Hello, World!
 ```
 
+---
+
 ## Example 47 : `string_trim_characters`
 
 ```c
@@ -2689,6 +2781,8 @@ int main() {
 ```
 Trimmed String: Hello, World!
 ```
+
+---
 
 ## Example 48 : `string_shuffle`
 
@@ -2713,6 +2807,8 @@ Original String: Hello, World!
 Shuffled String: l,lerdlW!oH o
 ```
 
+---
+
 ### Example 49 : `string_to_title` 
 
 ```c
@@ -2733,6 +2829,8 @@ int main() {
 ```
 Title Case: Hello World
 ```
+
+---
 
 ### Example 50 : `string_to_casefold`
 
@@ -2755,6 +2853,8 @@ int main() {
 Casefolded: hello world
 ```
 
+---
+
 ### Example 51 : `string_remove_range` 
 
 ```c
@@ -2775,6 +2875,8 @@ int main() {
 ```
 After removal: HelloWorld!
 ```
+
+---
 
 ### Example 52 : `string_starts_with`
 
@@ -2797,6 +2899,8 @@ int main() {
 Starts with 'Hello': true
 ```
 
+---
+
 ### Example 53 : `string_ends_with`
 
 ```c
@@ -2818,6 +2922,8 @@ int main() {
 Ends with 'World!': true
 ```
 
+---
+
 ### Example 54 : `string_to_capitalize` 
 
 ```c
@@ -2838,6 +2944,9 @@ int main() {
 ```
 Capitalized: Hello world
 ```
+
+---
+
 ### Example 55 : `string_swap_case` 
 
 ```c
@@ -2858,6 +2967,8 @@ int main() {
 ```
 Swapped Case: hELLO wORLD
 ```
+
+---
 
 ### Example 56 : `string_to_unicode` and `string_from_unicode`
 
@@ -2888,7 +2999,6 @@ int main() {
     }
     fmt_printf("Converted String: %s\n", convertedStr->dataStr);
 
-    // Clean up
     free(unicodeStr);
     string_deallocate(convertedStr);
     
@@ -2900,6 +3010,8 @@ int main() {
 Unicode String: Привет, мир! مرحبا بالعالم
 Converted String: Привет, мир! مرحبا بالعالم
 ```
+
+---
 
 ## Example 57 : define different kind of constants strings 
 
@@ -2919,6 +3031,8 @@ int main() {
 ASCII Letters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 ASCII Lowercase: abcdefghijklmnopqrstuvwxyz
 ```
+
+---
 
 ## Example 58 : How to use `string_length_cstr` and `string_length_utf8`
 
@@ -2942,6 +3056,8 @@ Size of ASCII string is 11
 Size of unicode string is 9
 ```
 
+---
+
 ## Example 59 : Check String object is palindrome or not with `string_is_palindrome`
 
 ```c
@@ -2962,6 +3078,8 @@ int main() {
 ```
 "121 is palindrome 1"
 ```
+
+---
 
 ## Example 60 : Check given string is alpha numeric or not with `string_is_alnum`
 
@@ -2988,6 +3106,8 @@ int main() {
 'amin 15adf' is alnum 0
 'Hello1994' is alnum 1
 ```
+
+
 
 ## Example 61 : Check given string is title or not with `string_is_title`
 
@@ -3031,6 +3151,8 @@ This Is %'!? is title: 1
 Hello world is title: 0
 ```
 
+---
+
 ## Example 62 : Check given string is space or not with `string_is_space`
 
 ```c
@@ -3056,6 +3178,8 @@ int main() {
       is space 1
  is space 0
 ```
+
+---
 
 ## Example 63 : Check given string is printable or not with `string_is_printable`
 

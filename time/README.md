@@ -356,6 +356,8 @@ int main () {
 Time create and to string: (14:30:45:500)
 ```
 
+---
+
 ## Example 2 : Testing `time_add_msecs`
 ```c
 #include <stdlib.h>
@@ -378,6 +380,8 @@ int main() {
 ```
 Add milliseconds: (0:00:01:000)
 ```
+
+---
 
 ## Example 3 :Testing `time_add_secs`
 ```c
@@ -403,6 +407,8 @@ int main() {
 Add seconds: (2:02:03:000)
 ```
 
+---
+
 ## Example 4: Testing `time_current_time`
 ```c
 #include <stdlib.h>
@@ -426,6 +432,8 @@ int main() {
 Current time: (21:21:48:492)
 ```
 
+---
+
 ## Example 5: Testing `time_msecs_since_start_of_day`
 ```c
 #include "fmt/fmt.h"
@@ -442,6 +450,8 @@ int main() {
 ```
 Milliseconds since start of day: 76943088
 ```
+
+---
 
 ## Example 6: Testing `time_msecs_to`
 ```c
@@ -463,6 +473,8 @@ int main() {
 Milliseconds difference: 3600000
 ```
 
+---
+
 ## Example 7: Testing `time_secs_to`
 ```c
 #include "fmt/fmt.h"
@@ -482,6 +494,8 @@ int main() {
 ```
 Seconds difference: 3600
 ```
+
+---
 
 ## Example 8: Testing `time_is_equal`
 ```c
@@ -504,6 +518,8 @@ int main() {
 ```
 Times are equal: true
 ```
+
+---
 
 ## Example 9: Testing `time_is_greater_than` and `time_is_less_than`
 ```c
@@ -529,6 +545,8 @@ Time t11 is less than t12: true
 Time t12 is greater than t11: true
 ```
 
+---
+
 ## Example 10: Testing `time_from_msecs_since_start_of_day`
 ```c
 #include <stdlib.h>
@@ -551,6 +569,8 @@ int main() {
 Time from msecs since start of day: (12:30:00:000)
 ```
 
+---
+
 ## Example 11 : get current time in seconds and microseconds with `time_current_time_in_seconds` and `time_current_time_in_microsecds`
 
 ```c
@@ -569,6 +589,8 @@ int main() {
 Current Time in seconds 1718733335.131222
 Current Time in msec 1718733335132198.000000
 ```
+
+---
 
 ## Example 12: calculate diff Time with `time_diff_in_seconds`
 

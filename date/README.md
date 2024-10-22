@@ -479,6 +479,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2: Current Date in Persian Calendar
 ```c
 #include "date/date.h"
@@ -496,6 +498,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 3: Add 10 Days to a Specific Gregorian Date
 ```c
@@ -518,6 +522,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 4: Add 5 Months to a Specific Persian Date
 ```c
 #include "date/date.h"
@@ -537,6 +543,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 5: Subtract 2 Years from a Gregorian Date
 ```c
@@ -558,6 +566,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 6: Convert Gregorian to Persian Date
 ```c
 #include "date/date.h"
@@ -578,6 +588,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 7: Convert Persian to Gregorian Date
 ```c
 #include "date/date.h"
@@ -596,6 +608,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 8: Create a Persian Date String
 ```c
@@ -616,6 +630,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9: Check Leap Year in Gregorian Calendar
 ```c
@@ -638,6 +654,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10: Check Leap Year in Persian Calendar
 ```c
 #include "date/date.h"
@@ -658,6 +676,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 11: Parse Gregorian Date from String
 ```c
 #include "date/date.h"
@@ -675,6 +695,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 12: Parse Persian Date from String
 ```c
 #include "date/date.h"
@@ -691,6 +713,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 13: Check Date Equality
 ```c
@@ -714,6 +738,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 14: Check Date Less Than
 ```c
 #include "date/date.h"
@@ -735,6 +761,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 15: Check Date Greater Than
 ```c
@@ -758,6 +786,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 16: Get Day of the Week for a Gregorian Date
 ```c
 #include "date/date.h"
@@ -773,6 +803,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 17: Get Day of the Year for a Persian Date
 ```c
@@ -790,6 +822,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 18: Get Week Number for a Gregorian Date
 ```c
 #include "date/date.h"
@@ -806,6 +840,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 19: Check if a Date is Valid
 ```c
@@ -827,6 +863,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 20: Convert Julian Day Number to Gregorian Date
 ```c

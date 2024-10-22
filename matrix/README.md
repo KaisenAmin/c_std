@@ -599,6 +599,8 @@ int main() {
 Value of matrix in row 1 and col 1 is 15.320000
 ```
 
+---
+
 ## Example 2 : how to add two Matrix with `matrix_add`
 
 ```c
@@ -656,6 +658,8 @@ int main() {
 |  3.00000 13.00000 |
 ```
 
+---
+
 ## Example 3 : subtract two matrix with `matrix_subtract`
 
 ```c
@@ -702,6 +706,8 @@ int main() {
 | -2.00000  5.00000 |
 | -7.00000  3.00000 |
 ```
+
+---
 
 ## Example 4 : multiply two Matrix with `matrix_multiply`
 
@@ -761,6 +767,8 @@ int main() {
 |  33.00000 102.00000 |
 ```
 
+---
+
 ## Example 5 : mutiply elements of Matrix with a scalar 
 
 ```c
@@ -809,6 +817,8 @@ Matrix after scalar multiplication by 2.000000:
 | 8.00000 10.00000 12.00000 |
 ```
 
+---
+
 ## Example 6 : check Matrix is square or not 
 
 ```c
@@ -837,6 +847,8 @@ int main() {
 ```
 Matrix is not square
 ```
+
+---
 
 ## Example 7 : create identity matrix and check is equal with other one or not 
 
@@ -881,6 +893,8 @@ int main() {
 Matrix1 and Matrix2 are equal.
 After modification, Matrix1 and Matrix2 are not equal.
 ```
+
+---
 
 ## Example 8 : check Matrix is identity or not 
 
@@ -931,6 +945,8 @@ int main() {
 The matrix is an identity matrix.
 The matrix is not an identity matrix.
 ```
+
+---
 
 ## Example 9 : check Matrix is idempotent or not 
 
@@ -983,6 +999,8 @@ Matrix 1 is idempotent.
 Matrix 2 is not idempotent.
 ```
 
+---
+
 ## Example 10 : check row and columnar Matrix 
 
 ```c
@@ -1025,6 +1043,8 @@ RowMatrix is a row matrix.
 ColumnMatrix is a columnar matrix.
 RegularMatrix is neither a row matrix nor a columnar matrix.
 ```
+
+---
 
 ## Example 11 : get diagonal Matrix as row or columns 
 
@@ -1069,6 +1089,8 @@ Main diagonal as a column matrix:
 Main diagonal as a row matrix:
 | 0 0 0 |
 ```
+
+---
 
 ## Example 12 : get minor diagonal as row and columns 
 
@@ -1130,6 +1152,8 @@ Minor diagonal as a column matrix:
 | 7.00000 |
 ```
 
+---
+
 ## Example 13 : create transpose Matrix 
 
 ```c
@@ -1181,6 +1205,8 @@ Transposed matrix:
 | 3.00000 6.00000 |
 ```
 
+---
+
 ## Example 14 : check Matrix is symmetric or not 
 
 ```c
@@ -1212,6 +1238,8 @@ int main() {
 ```
 Matrix A is symmetric.
 ```
+
+---
 
 ## Example 15 : Matrix is upper or lower triangular.
 
@@ -1261,6 +1289,8 @@ The first matrix is upper triangular.
 The second matrix is lower triangular.
 ```
 
+---
+
 ## Example 16 : is skew symmetric or not 
 
 ```c
@@ -1291,6 +1321,8 @@ int main() {
 ```
 The matrix is skew-symmetric.
 ```
+
+---
 
 ## Example 17: Determinant of a 2X2 Matrix
 
@@ -1349,6 +1381,8 @@ int main() {
 Determinant of the 3x3 matrix is: -306.000000
 ```
 
+---
+
 ## Example 19: Determinant Calculation with Identity Matrix
 
 ```c
@@ -1370,6 +1404,8 @@ int main() {
 ```
 Determinant of the 4x4 identity matrix is: 1.000000
 ```
+
+---
 
 ## Example 20 : sum of diagonal elements of matrix 
 
@@ -1413,6 +1449,8 @@ Matrix:
 | 7.00000 8.00000 9.00000 |
 Trace of the matrix is: 15.000000
 ```
+
+---
 
 ## Example 21 : get inverse of matrix 
 
@@ -1464,6 +1502,8 @@ Inverse Matrix:
 | 0.60000 -0.70000 |
 |-0.20000  0.40000 |
 ```
+
+---
 
 ## Example 22: How to raise a square matrix to an integer power also how to copy 
 
@@ -1534,6 +1574,8 @@ Matrix Raised to Power 2:
 | 15.00000 22.00000 |
 ```
 
+---
+
 ## Example 23 : get rank of matrix 
 
 ```c
@@ -1580,6 +1622,8 @@ Matrix:
 
 Rank of the matrix is: 2
 ```
+
+---
 
 ## Example 24 : check Matrix is diagonal or not 
 
@@ -1641,6 +1685,8 @@ Modified matrix:
 The matrix is not diagonal.
 ```
 
+---
+
 ## Example 25 : Matrix is orthogonal or not 
 
 ```c
@@ -1699,6 +1745,8 @@ Modified matrix:
 |  1.00000  0.00000 |
 The modified matrix is not orthogonal.
 ```
+
+---
 
 ## Example 26 : product matrix Kronecker 
 
@@ -1763,6 +1811,8 @@ Kronecker product of A and B:
 | 18.00000 21.00000 24.00000 28.00000 |
 ```
 
+---
+
 ## Example 27 : create hankel Matrix from first row and last col 
 
 ```c
@@ -1807,6 +1857,8 @@ Hankel Matrix:
 | 3.00000 4.00000 5.00000 6.00000 |
 | 4.00000 5.00000 6.00000 7.00000 |
 ```
+
+---
 
 ## Example 28 : check matrix is hankle or not 
 
@@ -1859,6 +1911,8 @@ Matrix:
 The matrix is Hankel.
 ```
 
+---
+
 ## Example 29 : create matrix from array then create toeplitz matrix 
 
 ```c
@@ -1904,6 +1958,8 @@ Toeplitz Matrix:
 | 3.00000 2.00000 1.00000 4.00000 |
 ```
 
+---
+
 ## Example 30 : create circulant matrix 
 
 ```c
@@ -1933,6 +1989,8 @@ Circulan Matrix:
 | 3.00000 1.00000 2.00000 |
 ```
 
+---
+
 ## Example 31 : create hilbert Matrix 
 
 ```c
@@ -1957,6 +2015,8 @@ Hilbert Matrix :
 | 0.50000 0.33333 0.25000 |
 | 0.33333 0.25000 0.20000 |
 ```
+
+---
 
 ## Example 32 : create helmert matrix 
 
@@ -1984,6 +2044,8 @@ Helmert Matrix :
 | 0.22361  0.22361  0.22361  0.22361 -0.89443 |
 ```
 
+---
+
 ## Example 33 : Cofactor of Matrix 
 
 ```c
@@ -2010,6 +2072,8 @@ Cofactor of Matrix :
 | -51.00000  -1.00000  20.00000 |
 |  21.00000   2.00000 -13.00000 |
 ```
+
+---
 
 ## Example 34 : calculate cholesky decomposition of a Matrix 
 
@@ -2057,6 +2121,8 @@ Cholesky Decomposition (Upper Triangular Matrix):
 |  0.00000  1.00000  5.00000 |
 |  0.00000  0.00000  3.00000 |
 ```
+
+---
 
 ## Example 35 : LU decomposition 
 
@@ -2114,6 +2180,8 @@ Upper Triangular Matrix U:
 | 0.00000  0.00000  3.00000 |
 ```
 
+---
+
 ## Example 36 : QR decomposition 
 
 ```c
@@ -2170,6 +2238,8 @@ Upper Triangular Matrix R:
 | 0.00000    0.00000    0.45750 |
 ```
 
+---
+
 ## Example 37 : Pascal matrix 
 
 ```c
@@ -2195,6 +2265,8 @@ Pascal Matrix :
 | 1.00000  4.00000 10.00000 20.00000 35.00000 |
 | 1.00000  5.00000 15.00000 35.00000 70.00000 |
 ```
+
+---
 
 ## Example 38 : different kind of Norm 
 
@@ -2231,6 +2303,8 @@ Frobenius Norm: 16.881943
 L1 Norm: 18.000000
 Infinity Norm: 24.000000
 ```
+
+---
 
 ## Example 39 : Matrix is positive definite or not 
 
@@ -2277,6 +2351,8 @@ int main() {
 The matrix is positive definite.
 The matrix is not positive definite.
 ```
+
+---
 
 ## Example 40 : generate projection of a Matrix 
 
@@ -2332,6 +2408,8 @@ Projection Matrix P for the column space of A:
 | -0.16667  0.33333  0.83333 |
 ```
 
+---
+
 ## Example 41 : create vandermond matrix from give matrix 
 
 ```c
@@ -2365,6 +2443,8 @@ Vandermond Matrix :
 |  1.00000  1.00000  1.00000 |
 ```
 
+---
+
 ## Example 42 : create companion matrix 
 
 ```c
@@ -2390,6 +2470,8 @@ Companion Matrix :
 |  0.00000 -0.66667 |
 |  1.00000 -0.33333 |
 ```
+
+---
 
 ## Example 43 : How to apply a function to matrix_map also fill and matrix with prefer value 
 
@@ -2448,6 +2530,8 @@ Matrix after applying the sine function:
 | 0.70711 0.70711 0.70711 |
 | 0.70711 0.70711 0.70711 |
 ```
+
+---
 
 ## Example 44 : how to use matrix_row_addition and matrix_col_addition 
 
@@ -2511,6 +2595,8 @@ Matrix after adding first column (scaled by 2) to the third column:
 |  5.00000  7.00000 19.00000 |
 |  7.00000  8.00000 23.00000 |
 ```
+
+---
 
 ## Example 45 : Apply function for specefic row and col 
 
@@ -2577,6 +2663,8 @@ Matrix after applying 'square' function to the first column:
 |  49.00000   8.00000   9.00000 |
 ```
 
+---
+
 ## Example 46 : finding minimum and maximum element of a Matrix 
 
 ```c
@@ -2618,6 +2706,8 @@ Given Matrix:
 Minimum element in the matrix: -9.100000
 Maximum element in the matrix: 7.200000
 ```
+
+---
 
 ## Example 47 : create leslie matrix 
 
@@ -2661,6 +2751,8 @@ Leslie Matrix:
 | 0.00000 0.00000 0.70000 0.00000 |
 ```
 
+---
+
 ## Example 48 : create inverse hilbert Matrix 
 
 ```c
@@ -2690,6 +2782,8 @@ Inverse Hilbert Matrix :
 |   240.00000 -2700.00000  6480.00000 -4200.00000 |
 |  -140.00000  1680.00000 -4200.00000  2800.00000 |
 ```
+
+---
 
 ## Example 49 : get row or col of Matrix as Matrix object 
 
@@ -2750,6 +2844,8 @@ col of matrix :
 | 9.00000 |
 ```
 
+---
+
 ## Example 50 : Matrix to double Array 
 
 ```c
@@ -2789,6 +2885,8 @@ Original Matrix :
 1.000000 2.000000 3.000000 4.000000 5.000000 6.000000 7.000000 8.000000 9.000000
 ```
 
+---
+
 ## Example 51 : get size of Matrix 
 
 ```c
@@ -2816,6 +2914,8 @@ Matrix A Size is 4
 | 1.00000 0.00000 |
 | 1.00000 0.00000 |
 ```
+
+---
 
 ## Example 52 : create random Matrix 
 
@@ -2845,6 +2945,8 @@ Matrix random is :
 | 1.00000 1.00000 7.00000 |
 | 9.00000 5.00000 5.00000 |
 ```
+
+---
 
 ## Example 53 : create walsh matrix 
 

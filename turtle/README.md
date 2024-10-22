@@ -850,6 +850,8 @@ int main(void) {
 A star shape is drawn on the screen.
 ```
 
+---
+
 ### Example 2: Moving the Turtle
 
 ```c
@@ -891,6 +893,8 @@ int main(void) {
 ```
 The turtle moves in a square pattern on the screen.
 ```
+
+---
 
 ### Example 3: Changing the Drawing Color
 
@@ -953,6 +957,8 @@ int main(void) {
 The turtle draws lines in different colors on the screen.
 ```
 
+---
+
 ### Example 4: Using Pen Up and Pen Down
 
 ```c
@@ -994,6 +1000,8 @@ int main(void) {
 The turtle draws two separate lines with a gap in between where the pen is lifted.
 ```
 
+---
+
 ## Example 5 : Setting the turtle position with `turtle_set_position`
 
 ```c
@@ -1034,6 +1042,8 @@ int main(void) {
 The turtle moves to specified positions and draws lines from those points.
 ```
 
+---
+
 ## Example 6: turning the turtle left 
 
 ```c
@@ -1066,6 +1076,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 7 : set x and y with `turtle_set_x | turtle_set_y`
 
@@ -1104,6 +1116,8 @@ int main(void) {
 
 ```
 
+---
+
 ## Example 8 : set heading with `turtle_set_heading`
 ```c
 #include "turtle/turtle.h"
@@ -1137,6 +1151,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 9 : how to send angle to home position with `turtle_home`
 
@@ -1173,6 +1189,8 @@ int main(void) {
 }
 ```
 
+---
+
 ## Example 10 : how to draw a circle with `turtle_circle`
 
 ```c
@@ -1204,6 +1222,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 11 : draw dot with `turtle_dot`
 
@@ -1237,6 +1257,8 @@ int main(void) {
 }
 
 ```
+
+---
 
 ## Example 12 : clear stamp 
 
@@ -1273,6 +1295,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 13 : calculate the distance with `turtle_distance | turtle_distance_turtle`
 
@@ -1321,6 +1345,8 @@ int main(void) {
 }
 ```
 
+---
+
 ## Example 14 : change size of pen also check pen is down or up `turtle_pen_size | turtle_get_pen_size | turtle_is_down`
 
 ```c
@@ -1365,6 +1391,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 15 : star shape 
 
@@ -1419,6 +1447,8 @@ int main(void) {
 }
 ```
 
+---
+
 ## Example 16 : create colorize shape `Circle spiro graph`
 
 ```c
@@ -1468,6 +1498,8 @@ int main(void) {
 }
 ```
 
+---
+
 ## Example 17 : circle 
 
 ```c
@@ -1503,6 +1535,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 18 : Drawing a Spiral Pattern 
 ```c
@@ -1546,6 +1580,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 19 : Drawing a flower Pattern 
 ```c
@@ -1595,6 +1631,8 @@ int main(void) {
 }
 ```
 
+---
+
 ## Example 20 : Drawing a hexagonal Spiral 
 
 ```c
@@ -1638,6 +1676,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 21 : draw a heart 
 
@@ -1694,6 +1734,9 @@ int main(void) {
     return 0;
 }
 ```
+
+---
+
 ## Conclusion
 
 This Turtle Graphics library simplifies the process of drawing graphics in C projects, providing an intuitive interface for moving the turtle and drawing shapes and lines. The provided examples illustrate how to use the library for common graphics tasks.

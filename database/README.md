@@ -902,6 +902,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 2: Executing Non-Query Commands 
 
 ```c
@@ -938,6 +940,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 3: Using Transactions 
 
@@ -993,6 +997,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 4: Using Rollback transaction. 
 
@@ -1053,6 +1059,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 5: get last error 
 
 `in this example just i delete qoute from Toyota in first insertion for checking rollback transaction`
@@ -1111,6 +1119,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 6: Using get affected rows 
 
@@ -1178,6 +1188,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 7: print result of PostgresResult object. 
 
 ```c
@@ -1218,6 +1230,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 8: get table row count 
 
 ```c
@@ -1257,6 +1271,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 9 : check if table exists or not 
 
 ```c
@@ -1294,6 +1310,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 10 : get list of table names and print them with `postgres_list_tables`
 
@@ -1336,6 +1354,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 11 : how to use `postgres_get_table_schema`
 
 ```c
@@ -1377,6 +1397,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 12 : Executes a prepared SQL statement with the given parameters
 
@@ -1436,6 +1458,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 13: get primary keys of tables with `postgres_get_table_primary_keys`
 
@@ -1518,6 +1542,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 14 : get list of primary keys with `postgres_get_table_foreign_keys`
 
 ```c
@@ -1588,6 +1614,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 15 : get list of table indexes with `postgres_get_table_indexes`
 
 ```c
@@ -1653,6 +1681,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 16 : get size of tables with `postgres_get_table_size`
 
 ```c
@@ -1717,6 +1747,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 17 : get index count of tables with `postgres_get_table_index_count`
 
 ```c
@@ -1779,6 +1811,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 18 : get details of columns by `postgres_get_column_details`
 
 ```c
@@ -1820,6 +1854,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 19 : get value from table with `postgres_get_value`
 
@@ -1870,6 +1906,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 20 : get table constraints with `postgres_get_table_constraints`
 
@@ -1932,6 +1970,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 21 : get number of rows and cols with `postgres_num_tuples` and `postgres_num_fields`
 
 ```c
@@ -1983,6 +2023,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 22 : get command tuples with `postgres_command_tuples`
 
@@ -2040,6 +2082,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 23 : check data is binary or text with `postgres_binary_tuples`
 
 ```c
@@ -2089,6 +2133,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 24 : get name, user, password of connection
 
 ```c
@@ -2123,6 +2169,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 25 : Reconnecting to the PostgreSQL Database with `postgres_reconnect`
 
 ```c
@@ -2154,6 +2202,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 26 : Cheking the Connection Status to the PostgreSQL Database with `postgres_ping`
 
@@ -2208,6 +2258,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 27 : Measuring how long a specific query takes to execute with `postgres_query_execution_time`
 
 ```c
@@ -2244,6 +2296,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 28 : create and drop function with `postgres_create_function` and `postgres_drop_function`
 
@@ -2311,6 +2365,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 29 : Create and Drop View with `postgres_create_view` and `postgres_drop_view`
 
 ```c
@@ -2363,6 +2419,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 30 : How to craete trigger and drop it with usage of functions `postgres_create_trigger` and `postgres_drop_trigger`
 
@@ -2490,6 +2548,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 31 : Create and Drop Schema with `postgres_crate_schema` and `postgres_drop_schema`
 
 ```c
@@ -2531,6 +2591,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 32 : Parameterized query with `postgres_query_params` 
 
@@ -2586,6 +2648,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 33 : Prepare Stament and Execute the clear with `postgres_prepare_statement` and `postgres_clear_prepared_statement`
 
 ```c
@@ -2638,6 +2702,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 34 : how to manage transactions in PostgreSQL with savepoints, allowing for fine-grained control over rollback operations. with `postgres_savepoint` and `postgres_rollback_to_savepoint`
 
@@ -2705,6 +2771,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 35 : send and get query result in async way `postgres_send_query` and `postgres_get_async_result`
 
 ```c
@@ -2762,6 +2830,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 36 : copy data from csv file with `postgres_copy_from_csv`
 
 ```c
@@ -2804,6 +2874,9 @@ int main() {
     return 0;
 }
 ```
+
+---
+
 ## Conclusion
 
 This PostgreSQL C library simplifies database interactions in C projects, providing an easy-to-use interface for connecting to PostgreSQL databases, executing queries, and managing results. The provided examples illustrate how to use the library for common database operations.

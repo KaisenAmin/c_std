@@ -311,6 +311,8 @@ int main() {
 0 : ああ、 -- 1 : ああ、 -- 2 : ああ、 -- 3 : ああ、 -- 4 : ああ、 -- 5 : ああ、 -- 6 : ああ、 -- 7 : ああ、 -- 8 : ああ、 -- 9 : ああ、 --
 ```
 
+---
+
 ## Example 2 : write data in console with `fmt_printf`
 
 ```c
@@ -353,6 +355,8 @@ This is a message with Unicode characters: سلام دنیا, ああ、こんに
 Another message: Hello, world!, 42
 ```
 
+---
+
 ## Example 3 : how to use `fmt_sprintln`
 
 Sprintln formats using the default formats for its operands and returns the resulting string. Spaces are always added between operands and a newline is
@@ -389,6 +393,8 @@ This is a message with Unicode characters: سلام دنیا ああ、こんに�
  
 Another message: Hello, world! 42
 ```
+
+---
 
 ## Example 4 : how to use `fmt_sprint`
 
@@ -427,6 +433,8 @@ This is a message with Unicode characters: سلام دنیا ああ、こんに�
 Another message: Hello, world! 42and 15
 ```
 
+---
+
 ## Example 5 : how to use `fmt_sprintf`
 
 ```c
@@ -457,6 +465,8 @@ int main() {
 Number: 42, String: Hello World, Unicode: こんにちは
 امین طهماسبی is 30 years old. Unicode Test: سلام دنیا
 ```
+
+---
 
 ### Example 6: Multi-Language Greeting and Data Display
 
@@ -500,6 +510,8 @@ Hello in English: Hello, In Arabic: مرحبا, In Japanese: こんにちは
 Current Date and Time: (23:45:40:762) 1403-03-31
 ```
 
+---
+
 ### Example 7: International Restaurant Menu Display
 
 This example will simulate displaying a restaurant menu with items in different languages and prices.
@@ -541,6 +553,8 @@ International Restaurant Menu:
 3. Dish: Noodles (麺), Price: $7.25
 ```
 
+---
+
 ## Example 8 : how much `fmt_printf` is fast ? 
 
 ```c
@@ -575,6 +589,9 @@ int main() {
 ```
 test it and see speed of fmt_printf
 ```
+
+---
+
 ## Example 9 : use `fmt_scan`
 
 ```c
@@ -600,6 +617,8 @@ int main() {
 Enter a string: c_std
 You entered: c_std
 ```
+
+---
 
 ## Example 10 : Using `fmt_scan`
 
@@ -629,6 +648,8 @@ int main() {
 Enter a string (fmt_scan):  Hello World
 You entered:  Hello 
 ```
+
+---
 
 ## Example 11 : Using `fmt_scanln`
 
@@ -661,6 +682,8 @@ Enter a string (fmt_scanln): largest c framwork
 You entered: largest
 ```
 
+---
+
 ## Example 12 : how to use `fmt_scanf`
 
 ```c
@@ -690,6 +713,8 @@ Enter your name, age, and salary:  C 50 20.0
 Scanned data: Name: C, Age: 50, Salary: 20.00
 ```
 
+---
+
 ## Example 13 : how to write stream with `fmt_fprint`
 
 ```c
@@ -710,6 +735,9 @@ int main() {
 ```
 Hello, World! こんにちは سلام دنیاThis is an error message on stderr
 ```
+
+---
+
 ## Example 14 : how to write on stream with `fmt_fprintln`
 
 ```c
@@ -731,6 +759,8 @@ int main() {
 This is a line on stdout 
 This is a line on stderr
 ```
+
+---
 
 ## Example 15 : how to write formatted text to file with `fmt_fprintf`
 
@@ -759,6 +789,8 @@ int main() {
 22 bytes written.
 ```
 
+---
+
 ## Example 16 : writing error messatge in stderr using `fmt_fprintf`
 
 ```c
@@ -786,6 +818,8 @@ Error 404: Not Found
 21 bytes written to stderr.
 ```
 
+---
+
 ## Example 17 : Writing message in console using `stdout` and `fmt_fprintf`
 
 ```c
@@ -812,6 +846,8 @@ Amin is 27 years old.
 22 bytes written.
 ```
 
+---
+
 ## Example 18 : Show Emoji 
 
 ```c
@@ -831,6 +867,8 @@ World : 🌍 😡
 Haaaa : 😊🥴
 HelloWorld🤩
 ```
+
+---
 
 ## Example 19 : Scan data from file in formated text with `fmt_fscanf`
 
@@ -861,6 +899,8 @@ int main() {
 Read data: 27, 19.650000, "Hello World"
 ```
 
+---
+
 ## Example 20 : Using `fmt_scanln` with standart input
 
 ```c
@@ -888,6 +928,8 @@ Enter a line of text: Hello World
 You entered: Hello
 ```
 
+---
+
 ## Example 21: Using Emojis with `fmt_fprintf` and `fmt_fprint`
 
 ```c
@@ -905,6 +947,8 @@ int main() {
 Emoji example: 😀 🚀 🌟
 More emojis: 🌍🌈🔥
 ```
+
+---
 
 ## Example 22 : Writing to a file Using `fmt_fprintf` and `fmt_fprint`
 

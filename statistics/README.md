@@ -278,6 +278,8 @@ int main() {
 Mean: 3.000000
 ```
 
+---
+
 ### Example 2 : calculate the median of data with `statistics_median`
 
 ```c
@@ -305,6 +307,8 @@ int main() {
 ```
 Median: 3.000000
 ```
+
+---
 
 ### Example 3 : get low median of sequence of data with `statistics_median_low`
 
@@ -334,6 +338,8 @@ int main() {
 Low Median: -3.40
 ```
 
+---
+
 ### Example 4 : calculate high median of data with `statistics_median_high`
 
 ```c
@@ -361,6 +367,8 @@ int main() {
 ```
 High Median: 5.50
 ```
+
+---
 
 ### Example 5: Calculate the median of grouped continuous data with `statistics_median_grouped`
 
@@ -446,6 +454,8 @@ Grouped Median (interval 3.0): 1.50
 Grouped Median (interval 5.0): 0.50
 ```
 
+---
+
 ### Example 6 : variance of data with or without xbar `statistics_variance`
 
 ```c
@@ -483,6 +493,8 @@ int main() {
 Variance: 0.479667
 Variance with provided mean: 9.665000
 ```
+
+---
 
 ### Example 7 : standar deviation with `statistics_stdev`
 
@@ -524,7 +536,9 @@ Standard Deviation: 50.862560
 Standard Deviation: 0.692580
 ```
 
-### Example 7 : get poplulation variance with `statistics_pvariance`
+---
+
+### Example 8 : get poplulation variance with `statistics_pvariance`
 
 ```c
 #include "statistics/statistics.h"
@@ -568,7 +582,9 @@ Population Variance: 1126.975400
 Population Variance: 1302.687500
 ```
 
-### Example 8 : calculate pstdev of sample data with `statistics_pstdev`
+---
+
+### Example 9 : calculate pstdev of sample data with `statistics_pstdev`
 
 ```c
 #include "statistics/statistics.h"
@@ -607,7 +623,9 @@ Population Standard Deviation: 3.415650
 Population Standard Deviation with provided mean: 3.415650
 ```
 
-### Example 9 : genereate mena value with weight `statistics_fmean`
+---
+
+### Example 10 : genereate mena value with weight `statistics_fmean`
 
 ```c
 #include "fmt/fmt.h"
@@ -646,7 +664,9 @@ Weighted fmean is 4.525000
 Arithmetic mean without weights: 4.250000
 ```
 
-### Example 10 : calculate the geometric_mean of data with `statistics_geometric_mean`
+---
+
+### Example 11 : calculate the geometric_mean of data with `statistics_geometric_mean`
 
 ```c
 #include "fmt/fmt.h"
@@ -672,7 +692,9 @@ int main() {
 Geometric mean: 36.000000
 ```
 
-### Example 11 : calculation harmonic mean with `statistics_harmonic_mean`
+---
+
+### Example 12 : calculation harmonic mean with `statistics_harmonic_mean`
 
 ```c
 #include "fmt/fmt.h"
@@ -707,7 +729,9 @@ Harmonic mean without weights: 48.000000
 Harmonic mean with weights: 56.000000
 ```
 
-### Example 12 : get most common data in array `statistics_mode`
+---
+
+### Example 13 : get most common data in array `statistics_mode`
 
 ```c
 #include "fmt/fmt.h"
@@ -750,7 +774,9 @@ Mode (int): 3
 Mode (str): red
 ```
 
-### Example 13 : list of most frequently occurring values `statistics_multimode`
+---
+
+### Example 14 : list of most frequently occurring values `statistics_multimode`
 
 ```c
 #include "fmt/fmt.h"
@@ -804,7 +830,9 @@ Multimode (int): 3 4
 Multimode (str): red
 ```
 
-### Example 14 : calculate covariance with `statistics_covariance`
+---
+
+### Example 15 : calculate covariance with `statistics_covariance`
 
 ```c
 #include "fmt/fmt.h"
@@ -844,7 +872,9 @@ Covariance (x, z): -7.500000
 Covariance (z, x): -7.500000
 ```
 
-### Example 15 : calculate correlation of two x, y `statistics_correlation`
+---
+
+### Example 16 : calculate correlation of two x, y `statistics_correlation`
 
 ```c
 #include "fmt/fmt.h"
@@ -882,7 +912,9 @@ Pearson correlation (x, y): -1.000000
 Spearman correlation (x, y): -1.000000
 ```
 
-### Example 16 : Calculate slope and intercept of linear regression with `statistics_linear_regression`
+---
+
+### Example 17 : Calculate slope and intercept of linear regression with `statistics_linear_regression`
 
 ```c
 #include "fmt/fmt.h"
@@ -911,6 +943,8 @@ int main() {
 Linear regression (slope, intercept): (3.000000, 0.000000)
 Proportional linear regression (slope, intercept): (3.000000, 0.000000)
 ```
+
+---
 
 ## Conclusion
 

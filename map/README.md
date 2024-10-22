@@ -385,6 +385,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 2: Use Different Types for Keys and Values
 
 ```c
@@ -433,6 +435,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 3: Get the Size of the Map
 
 ```c
@@ -461,6 +465,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 4: Swap Two Map Objects
 
@@ -497,9 +503,9 @@ int main() {
 }
 ```
 
-### Example 5
+---
 
-: Erase a Key-Value Pair
+### Example 5 : Erase a Key-Value Pair
 
 ```c
 #include <stdlib.h>
@@ -547,6 +553,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 6: Increment and Decrement Iterators
 
@@ -602,6 +610,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 7: Lower Bound and Upper Bound
 
 ```c
@@ -653,6 +663,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 8: `map_node_get_key` and `map_node_get_value`
 
@@ -706,6 +718,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 9: Use String Objects in a Map
 
@@ -774,6 +788,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 10: Merging Two Maps
 
 ```c
@@ -835,6 +851,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 11: Filtering a Map Based on a Condition
 
 ```c
@@ -891,6 +909,8 @@ int main() {
 }
 ```
 
+---
+
 ### Example 12: `map_print`
 
 ```c
@@ -930,6 +950,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ### Example 13: `map_copy`
 

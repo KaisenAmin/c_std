@@ -756,6 +756,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2 : client Echo with python example  `TcpSocket`
 
 `A C client connects to a Python server, sends a message, and prints the echoed message received from the server. This example illustrates how to create a TCP client, connect to a server, send and receive data.`
@@ -860,6 +862,7 @@ if __name__ == "__main__":
     main()
 ```
 
+---
 
 ## Example 3 : Non Blocking `TcpSocket` client 
 
@@ -947,6 +950,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 4 : get remote and local address with tcp server in `TcpSocket` 
 
@@ -1057,6 +1062,8 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+---
 
 ## Example 5 : `SSl` Echo Server in `TcpSocket`
 
@@ -1183,6 +1190,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 6 : concurrent server in `TcpSocket`
 
 `This example demonstrates how to set up a secure SSL/TCP server using a custom TCP library, which abstracts the complexity of socket programming and SSL communication. The example covers initializing the network environment, creating a non-blocking TCP socket, configuring SSL, and handling client connections in a multithreaded manner. This approach allows for scalable server applications that can handle multiple client connections concurrently without blocking the main execution thread.`
@@ -1274,6 +1283,8 @@ int handle_client(void* arg) {
     return 0;
 }
 ```
+
+---
 
 ## Example 7 : Simple HttpServer with `TcpSocket`\
 
@@ -1373,6 +1384,8 @@ int main(void) {
     return 0;
 }
 ```
+
+---
 
 ## Example 8: Asynchronous File Server using `TcpSocket`
 
@@ -1508,9 +1521,6 @@ if __name__ == "__main__":
     request_file(filename)
 ```
 
-
-To add your HTTP server example to the README file, you can use the following markdown format:
-
 ---
 
 ## Example 9 : HTTP Server Example
@@ -1561,6 +1571,7 @@ int main() {
 }
 ```
 
+---
 
 ## Example 10 : json api with http and json (add user and get list of users)
 
@@ -1657,6 +1668,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 11 : Create Crud operation and api with http lib (POST, GET, PUT, DELETE)
 

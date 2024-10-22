@@ -638,7 +638,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Match found across lines: %.*s\n", (int)match.length, match.start);
+        fmt_printf("Match found across lines: %.*s\n", match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -679,7 +679,7 @@ int main() {
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
         fmt_printf("Full match: %.*s\n", (int)match.length, match.start);
         for (int i = 0; i < match.group_count; i++) {
-            fmt_printf("Group %d: %.*s\n", i + 1, (int)match.group_lengths[i], match.group_starts[i]);
+            fmt_printf("Group %d: %.*s\n", i + 1, match.group_lengths[i], match.group_starts[i]);
         }
     } 
     else {

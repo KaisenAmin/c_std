@@ -537,6 +537,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2 : how to get cursor position of file with `file_writer_get_position`
 
 This confirms that each character in your string is taking up more than one byte due to UTF-8 encoding, explaining why the file position in your earlier message was greater than the number of characters in the string.
@@ -558,6 +560,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 3 : Using `file_writer_write_line`
 
@@ -588,6 +592,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 4 : Using most of the FileWriter functions 
 
@@ -638,15 +644,13 @@ int main() {
         return 1;
     }
 
-    // Append another line to the file
-    char* additionalString = "اضافه کردن متن به فایل\n"; // "Adding text to the file" in Persian
+    char* additionalString = "اضافه کردن متن به فایل\n"; 
     if (!file_writer_write_line(additionalString, strlen(additionalString), writer)) {
         fmt_printf("Failed to write line to file.\n");
         file_writer_close(writer);
         return 1;
     }
 
-    // Close the file
     if (!file_writer_close(writer)) {
         fmt_printf("Failed to close the file writer.\n");
     }
@@ -654,6 +658,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 5: how to use `file_writer_write_fmt` in `FileWriter`
 
@@ -677,6 +683,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 6 : get file size in `FileWriter` with `file_writer_get_size`
 
 ```c
@@ -694,6 +702,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 7 : get file_path in `FileWriter` with `file_writer_get_file_name` also file encoding with `file_writer_get_encoding`
 
 ```c
@@ -710,6 +720,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 8 : how to copy inforamation of file to an other file in `FileWriter` with `file_writer_copy`
 
@@ -734,6 +746,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 9 : how to lock and unlock file for prevent other proccess to modifying it with `file_writer_lock & unlock`
 
@@ -770,6 +784,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 10 : how to move cursor position in `FileWriter` with `file_writer_seek`
 
 ```c
@@ -790,6 +806,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 11 : how to truncate the file in `FileWriter` with `file_writer_truncate`
 
@@ -820,6 +838,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 12 : how to write multiple buffer in `FileWriter` with `file_writer_write_batch`
 
 ```c
@@ -848,6 +868,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 13 : append formated text to file in `FileWriter` with `file_writer_append_fmt`
 
 ```c
@@ -875,6 +897,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 14 : how to reade from file in `FileReader` with `file_reader_open` and `file_reader_read`
 
 ```c
@@ -899,6 +923,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 15 : how to read line by line in `FileReader` with `file_reader_read_line`
 
 ```c
@@ -917,6 +943,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 16 : how to read line as formated text in `FileReader` with `file_reader_read_fmt`
 
@@ -944,7 +972,9 @@ int main() {
 }
 ```
 
-## Example : how to read number of lines from file in `FileReader` with `file_reader_read_lines`
+---
+
+## Example 17 : how to read number of lines from file in `FileReader` with `file_reader_read_lines`
 
 ```c
 #include "file_io/file_reader.h"

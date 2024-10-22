@@ -239,6 +239,8 @@ Root element: catalog
 Author: John Doe
 ```
 
+---
+
 ### Example 2: Creating and Modifying an XML Document
 
 ```c
@@ -279,6 +281,8 @@ Generated XML:
    <book id="bk101">XML Developer's Guide</book>
 </catalog>
 ```
+
+---
 
 ### Example 3: Setting and Retrieving Element Attributes
 
@@ -330,6 +334,8 @@ int main() {
 Book ID: bk102
 ```
 
+---
+
 ### Example 4: Converting an XML Document to a String
 
 ```c
@@ -358,6 +364,8 @@ XML as string:
    <book>Programming in C</book>
 </catalog>
 ```
+
+---
 
 ### Example 5: Adding Multiple Child Elements and Attributes
 
@@ -392,6 +400,8 @@ Generated XML:
    <book id="bk102">Advanced C Programming</book>
 </catalog>
 ```
+
+---
 
 ## Example 6 : read xml file 
 
@@ -466,6 +476,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 7 : get elements 
 

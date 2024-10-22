@@ -159,6 +159,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 2 : Generate random bits with `secrets_randbits`
 
 ```c
@@ -181,6 +183,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 3 : Generate Secure password with std_string and secrets libs 
 
@@ -221,6 +225,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 4: Generate a ten-character alphanumeric password with at least one lowercase character, at least one uppercase character, and at least three digits
 
@@ -288,6 +294,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 5: Generate a hard-to-guess temporary URL containing a security token suitable for password recovery applications
 
 ```c
@@ -323,6 +331,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 6: securely compare two byte sequences in constant time with `secrets_compare_digest`
 
 ```c
@@ -357,6 +367,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 7: how to generate a cryptographically secure random byte array with `secrets_token_bytes`
 
 ```c
@@ -380,6 +392,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 8 : how to generate a cryptographically secure random token in hexadecimal format with `secrets_token_hex`
 
@@ -406,6 +420,8 @@ int main() {
 }
 ```
 
+---
+
 ## Example 9 : generate cryptographically secure random integers below a specified upper bound with `secrets_randbelow`
 
 ```c
@@ -421,6 +437,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 10 : Generate 5 secrets passwords with some conditions and use Vector and String for save them 
 
