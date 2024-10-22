@@ -96,7 +96,7 @@ if (WIN32)
         # turtle
         # sysinfo
         # stack
-        # secrets
+        secrets
         # span
         queue
         priority_queue

@@ -158,6 +158,11 @@ int main() {
     return 0;
 }
 ```
+**Result is Random**
+```
+Randomly chosen integer: 40
+Randomly chosen string: cherry
+```
 
 ---
 
@@ -182,6 +187,12 @@ int main() {
 
     return 0;
 }
+```
+**Result is Random**
+```
+Random 8-bit integer: 135
+Random 16-bit integer: 15441
+Random 32-bit integer: 2482988267
 ```
 
 ---
@@ -224,6 +235,10 @@ int main() {
     free(alphabet);
     return 0;
 }
+```
+**Result is Random**
+```
+Generated Password: 6MheGa42
 ```
 
 ---
@@ -293,6 +308,10 @@ int main() {
     return 0;
 }
 ```
+**Result is Random**
+```
+Generated Password: Q35HIAJbu9
+```
 
 ---
 
@@ -330,6 +349,10 @@ int main() {
     return 0;
 }
 ```
+**Result is Random**
+```
+Generated URL: https://example.com/reset=FcChO2MzCwkkgwPf
+```
 
 ---
 
@@ -366,6 +389,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+digest1 and digest2 are equal.
+digest1 and digest3 are not equal.
+```
 
 ---
 
@@ -391,6 +419,10 @@ int main() {
 
     return 0;
 }
+```
+**Result is Random**
+```
+Generated Random Bytes: a888fa763cb53abb443e38474efa7a46
 ```
 
 ---
@@ -419,6 +451,10 @@ int main() {
     return 0;
 }
 ```
+**Result is Random**
+```
+Generated Hex Token: e257327c82d4a296c66c48a16f8d78a9
+```
 
 ---
 
@@ -436,6 +472,10 @@ int main() {
 
     return 0;
 }
+```
+**Result is Random**
+```
+Random number below 100: 19
 ```
 
 ---
@@ -522,3 +562,17 @@ int main() {
     return 0;
 }
 ```
+**Result is Random**
+```
+1: zKkI2U7I2A
+2: s2s2A2qrBF
+3: jape59f9Vt
+4: i52cU6v7aU
+5: mAH6q3cri9
+```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

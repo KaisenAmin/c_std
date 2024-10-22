@@ -1,17 +1,18 @@
 #include "fmt/fmt.h"
-#include "array/array.h"
+#include "secrets/secrets.h"
 
 int main() {
-    Array* arr = array_create(sizeof(int), 5);
+    // Generate a random integer with 8 random bits
+    unsigned int random_8bits = secrets_randbits(8);
+    fmt_printf("Random 8-bit integer: %lu\n", random_8bits);
 
-    for (size_t i = 0; i < array_size(arr); ++i) {
-        int value = (int)(i * 10); // Example values: 0, 10, 20, 30, 40
-        array_set(arr, i, &value);
-    }
+    // Generate a random integer with 16 random bits
+    unsigned int random_16bits = secrets_randbits(16);
+    fmt_printf("Random 16-bit integer: %lu\n", random_16bits);
 
-    array_clear(arr);
-    fmt_printf("Array Size After Clear: %zu\n", array_size(arr));
-    
-    array_deallocate(arr);
+    // Generate a random integer with 32 random bits
+    unsigned int random_32bits = secrets_randbits(32);
+    fmt_printf("Random 32-bit integer: %lu\n", random_32bits);
+
     return 0;
 }
