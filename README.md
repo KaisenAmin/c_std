@@ -84,6 +84,10 @@ The project is organized into several subdirectories, each representing a differ
 
 - `Xml`: This XML library in C provides a comprehensive and easy-to-use API for parsing, creating, modifying, and traversing XML documents. It is designed to be lightweight, efficient, and fully cross-platform, making it suitable for embedded systems, desktop applications, and server environments
 
+- `Regex`: The Regex library in C provides functionality to compile, match, and search regular expressions. It offers flexibility with flags for case-insensitive matching, multiline support, and dotall mode. The library is cross-platform, supporting PCRE on Windows and POSIX regex on Linux, simplifying regex-based string operations in C projects.
+
+---
+
 ## Note 
 Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
 

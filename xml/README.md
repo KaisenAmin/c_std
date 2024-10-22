@@ -507,6 +507,155 @@ int main() {
     return 0;
 }
 ```
+
+---
+
+### Example 8: Adding Nested Elements and Modifying Attributes
+
+```c
+#include "xml/xml.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // create root element as `store`
+    XmlDocument* doc = xml_create_document("store");
+
+    // Create 'product' element
+    XmlNode* product = xml_create_element(doc, "product");
+    xml_append_child(xml_get_root(doc), product);
+
+    // Set attributes for 'product' element
+    xml_set_element_attribute(product, "id", "p1001");
+    xml_set_element_attribute(product, "category", "electronics");
+
+    // Create a nested 'name' element and set its text content
+    XmlNode* name = xml_create_element(doc, "name");
+    xml_set_element_text(name, "Laptop");
+    xml_append_child(product, name);
+
+    // Create a nested 'price' element and set its text content
+    XmlNode* price = xml_create_element(doc, "price");
+    xml_set_element_text(price, "1200.00");
+    xml_append_child(product, price);
+
+    xml_set_element_attribute(product, "discounted", "yes");
+
+    char* xml_string = xml_to_string(doc);
+    if (xml_string) {
+        fmt_printf("Generated XML:\n%s\n", xml_string);
+        free(xml_string);
+    }
+
+    if (!xml_save_to_file(doc, "store.xml")) {
+        fmt_fprintf(stderr, "Failed to save the XML document.\n");
+    } 
+    else {
+        fmt_printf("XML saved to 'store.xml'.\n");
+    }
+
+    xml_deallocate_document(doc);
+    return 0;
+}
+```
+
+**Result:**
+```
+Generated XML:
+<store>
+   <product id="p1001" category="electronics" discounted="yes">
+      <name>Laptop</name>
+      <price>1200.00</price>
+   </product>
+</store>
+
+XML saved to 'store.xml'.
+```
+
+---
+
+### Example 9: Traversing and Editing an XML Document
+
+```c
+#include "xml/xml.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* xml_data = "<?xml version='1.0'?><library><book id='b001'><title>Programming in C</title><author>John Doe</author></book></library>";
+    XmlDocument* doc = xml_parse_string(xml_data);
+
+    if (!doc) {
+        fmt_fprintf(stderr, "Failed to parse XML string.\n");
+        return 1;
+    }
+
+    XmlNode* root = xml_get_root(doc);
+    if (!root) {
+        fmt_fprintf(stderr, "Failed to get root element.\n");
+        xml_deallocate_document(doc);
+        return 1;
+    }
+
+    XmlNode* book = xml_find_element_by_tag(root, "book");
+    if (book) {
+        const char* id = xml_get_element_attribute(book, "id");
+        if (id) {
+            fmt_printf("Book ID: %s\n", id);
+        }
+
+        XmlNode* title = xml_find_element_by_tag(book, "title");
+        if (title) {
+            fmt_printf("Original Title: %s\n", xml_get_element_text(title));
+
+            // Modify the book title
+            xml_set_element_text(title, "Advanced C Programming");
+        }
+
+        XmlNode* author = xml_find_element_by_tag(book, "author");
+        if (author) {
+            fmt_printf("Author: %s\n", xml_get_element_text(author));
+        }
+
+        // Add a new 'year' element
+        XmlNode* year = xml_create_element(doc, "year");
+        xml_set_element_text(year, "2024");
+        xml_append_child(book, year);
+    }
+
+    char* updated_xml = xml_to_string(doc);
+    if (updated_xml) {
+        fmt_printf("Updated XML:\n%s\n", updated_xml);
+        free(updated_xml);
+    }
+
+    if (!xml_save_to_file(doc, "library_updated.xml")) {
+        fmt_fprintf(stderr, "Failed to save the updated XML file.\n");
+    } 
+    else {
+        fmt_printf("Updated XML saved to 'library_updated.xml'.\n");
+    }
+
+    xml_deallocate_document(doc);
+    return 0;
+}
+```
+
+**Result:**
+```
+Book ID: b001
+Original Title: Programming in C
+Author: John Doe
+Updated XML:
+<library>
+   <book id="b001">
+      <title>Advanced C Programming</title>
+      <author>John Doe</author>
+      <year>2024</year>
+   </book>
+</library>
+
+Updated XML saved to 'library_updated.xml'.
+```
+
 ## Conclusion
 
 This XML library simplifies the process of working with XML documents in C projects, providing intuitive functions for common XML tasks such as parsing, element manipulation, and serialization. The provided examples illustrate the ease with which this library can be integrated into a variety of C-based applications.

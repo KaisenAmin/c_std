@@ -65,6 +65,7 @@ add_subdirectory(numbers)
 add_subdirectory(json)
 add_subdirectory(secrets)
 add_subdirectory(xml)
+add_subdirectory(regex)
 # Create the main executable
 add_executable(main main.c)
 
@@ -117,7 +118,9 @@ if (WIN32)
         log
         # dir
         # concurrent
-        # xml
+        xml
+        stdregex
+
     )
 else()
     find_package(OpenSSL REQUIRED)
@@ -168,6 +171,7 @@ else()
         # dir
         # concurrent
         xml
+        stdregex
     )
 endif()
 
