@@ -920,7 +920,6 @@ void *vector_at(const Vector *vec, size_t pos) {
         VECTOR_LOG("[vector_at]: Error: Vector is NULL.");
         return NULL;
     }
-
     if (pos < vec->size) {
         void *item = (char *)vec->items + (pos * vec->itemSize);
         VECTOR_LOG("[vector_at]: Returning item at position %zu: %p", pos, item);

@@ -1224,6 +1224,14 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `true` if the string contains only printable characters or is empty, `false` otherwise.
 
 
+---
+
+#### `void string_reserve(String *str, size_t newCapacity)`
+  - **Purpose:** The purpose of `string_reserve` is to ensure that a `String` object has enough capacity to store at least `newCapacity` characters. If the current capacity of the string is less than `newCapacity`, it reallocates memory to increase the capacity. 
+  - **Parameters:**
+   - `str`** (`String*`): A pointer to the `String` object whose capacity you want to reserve. 
+   - `newCapacity` (`size_t`): The minimum number of characters that the `String` object should be able to store.
+  - **Return Value:** The function does not return a value (`void`). If the string's capacity is insufficient, it reallocates memory and increases the capacity. If memory allocation fails, the 
 
 ---
 

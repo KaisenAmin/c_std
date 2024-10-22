@@ -156,5 +156,6 @@ void string_swap(String* str1, String* str2);
 void string_pop_back(String* str);
 void string_deallocate(String* str);
 void string_clear(String* str);
+void string_reserve(String *str, size_t newCapacity);
 
 #endif 

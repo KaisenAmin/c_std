@@ -1544,8 +1544,9 @@ int main() {
         vector_push_back(sourceVec, &values[i]);
     }
 
-    algorithm_copy(sourceVec, vector_size(sourceVec), sizeof(Vector), destVec);
-    
+    algorithm_copy(sourceVec->items, vector_size(sourceVec), sizeof(int), destVec->items);
+    destVec->size = vector_size(sourceVec);
+
     for (size_t i = 0; i < vector_size(destVec); ++i) {
         int *item = (int *)vector_at(destVec, i);
         fmt_printf("%d ", *item);
@@ -1567,7 +1568,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -1576,9 +1577,10 @@ int main() {
 
     fmt_printf("Source is -> %s\n", string_c_str(source));
     
-    algorithm_copy(source, string_length(source), sizeof(String), dest);
-    const char* value = string_c_str(dest);
+    string_reserve(dest, string_length(source));
+    algorithm_copy(string_c_str(source), string_length(source) + 1, sizeof(char), dest->dataStr);
 
+    const char* value = string_c_str(dest);
     fmt_printf("Destination is -> %s\n", value);
 
     string_deallocate(source);
@@ -2133,7 +2135,7 @@ int main() {
 ```
 **Result in C:**
 ```
-C Algorithm sort time: 0.020241 seconds
+C Algorithm sort time: 0.016241 seconds
 ```
 
 `C++`
@@ -2672,8 +2674,6 @@ int main() {
 
 ### Example 63: Converting Floats to Integers `algorithm_transform`
 
-This example converts floating-point numbers to integers by truncating the decimal part.
-
 ```c
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
@@ -2704,8 +2704,6 @@ int main() {
 ```
 
 ### Example 64: Computing Lengths of Strings `algorithm_transform`
-
-This example computes the length of each string in an array of strings.
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3636,7 +3634,7 @@ Character sequence: A B C D E F G H I J
 
 ```c
 #include "algorithm/algorithm.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -4336,7 +4334,7 @@ int main() {
 
     size_t newSize = algorithm_unique_copy(arr, arrSize, sizeof(int), result, compare_ints);
 
-    fmt_printf("Unique elements: ");
+    fmt_printf("Unique elements: \n");
     algorithm_for_each(result, newSize, sizeof(int), print_int);
 
     return 0;
@@ -4742,8 +4740,7 @@ Vector is sorted.
 ```
 
 
-## Example 118 : same as C++ `algorithm_is_sorted`
-` I've used (ptrdiff_t)(size * sizeof(int)) to cast the result of the size calculation to ptrdiff_t`
+## Example 118 : same as C++ `algorithm_is_sorted` I've used (ptrdiff_t)(size * sizeof(int)) to cast the result of the size calculation to ptrdiff_t`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -5396,7 +5393,7 @@ int main() {
 ## Example 128 : Using String object with `algorithm_adjacent_find`
 
 ```c
-#include "string/string.h"
+#include "string/std_string.h"
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 #include <string.h>
@@ -6036,4 +6033,42 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Unsigned long array:
+1000
+1001
+1002
+1003
+1004
+1005
+1006
+1007
+1008
+1009
+
+Unsigned Char array:
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+
+Float array:
+1.500000
+2.500000
+3.500000
+4.500000
+5.500000
+6.500000
+7.500000
+8.500000
+9.500000
+10.500000
 ```

@@ -3714,3 +3714,32 @@ bool string_is_printable(const String* str) {
     STRING_LOG("[string_is_printable]: String contains only printable characters - returning true.");
     return true;
 }
+
+/**
+ * @brief Reserves memory for the string to ensure it has enough capacity.
+ *
+ * This function checks if the string has enough capacity for the specified size.
+ * If the current capacity is insufficient, it reallocates memory to fit the new size.
+ *
+ * @param str The String object to be resized.
+ * @param newCapacity The new capacity size required.
+ */
+void string_reserve(String *str, size_t newCapacity) {
+    if (!str) {
+        return;
+    } 
+
+    if (newCapacity > str->capacitySize) {
+        memory_pool_destroy(str->pool);
+        str->capacitySize = newCapacity + 32;  
+        str->pool = memory_pool_create(str->capacitySize);
+        str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
+
+        if (!str->dataStr) {
+            STRING_LOG("[string_reserve]: Memory allocation failed.");
+            exit(-1);  
+        }
+
+        STRING_LOG("[string_reserve]: Resized string capacity to %zu.", str->capacitySize);
+    }
+}
