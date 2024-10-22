@@ -31,6 +31,9 @@ To use your `std_regex` library with **MSYS2/MinGW64**, you need to install the 
    pacman -S mingw-w64-x86_64-pcre
    ```
 
+### Linux Requirements:
+1. Install `sudo apt-get install libpcre3-dev`
+
 ## Documentation
 
 The library includes detailed function descriptions for compiling and matching regex patterns. Below are the key functions provided by the library.
@@ -438,7 +441,7 @@ Word boundary match found: hello
 #include "fmt/fmt.h"
 
 int main() {
-    const char* pattern = "(\\w+)@(\\w+\\.\\w+)";  // Matches email addresses
+    const char* pattern = "([[:alnum:]_]+)@([[:alnum:]_]+\\.[[:alnum:]_]+)";  // Matches email addresses
     const char* test_string = "Contact: john@example.com";
 
     Regex* regex = regex_compile(pattern, REGEX_DEFAULT);
@@ -501,8 +504,6 @@ Match 1: 3
 Match 2: 4
 Match 3: 123
 ```
-
-Here are two more distinct examples demonstrating additional functionalities of your regex library:
 
 ---
 
@@ -647,7 +648,6 @@ int main() {
     regex_deallocate(regex);
     return 0;
 }
-
 ```
 
 **Result:**

@@ -753,6 +753,8 @@ int main() {
 1 2 3 4 5 6 10 12
 ```
 
+---
+
 ## Example 2: Sorting a Vector of Integers
 
 In this example, we'll create a Vector of integers, sort them using `algorithm_sort`, and then print the sorted integers.
@@ -800,6 +802,8 @@ int main() {
 ```
 1 2 3 4 5 6 10 12
 ```
+
+---
 
 ## Example 3: Sorting a Vector of Custom Structures
 
@@ -856,6 +860,8 @@ ID: 2, Value: 20.50
 ID: 3, Value: 30.50
 ```
 
+---
+
 ## Example 4 : Using `algorithm_find` 
 
 ```c
@@ -886,6 +892,8 @@ int main() {
 ```
 Found 8
 ```
+
+---
 
 ## Example 5 : Using `algorith_find_if`
 
@@ -931,6 +939,8 @@ Found 8
 First even number in Array: 4
 ```
 
+---
+
 ## Example 6: `algorithm_find` with Strings
 
 ```c
@@ -966,6 +976,8 @@ int main() {
 ```
 Found two
 ```
+
+---
 
 ## Example 7: `algorithm_find_if` with Custom Struct
 
@@ -1004,6 +1016,8 @@ int main() {
 Found struct with ID: 2 and Value: 60.50
 ```
 
+---
+
 ## Example 8: `algorithm_find_if_not` with Integers
 
 ```c
@@ -1034,6 +1048,8 @@ int main() {
 ```
 First non-positive number: -1
 ```
+
+---
 
 ## Example 9: `algorithm_find` with Doubles
 
@@ -1075,6 +1091,8 @@ int main() {
 Found 5.500000
 ```
 
+---
+
 ## Example 10: `algorithm_find_if_not` with Characters
 
 ```c
@@ -1107,6 +1125,8 @@ int main() {
 First consonant: b
 ```
 
+---
+
 ## Example 11: Using `algorithm_find_end` with Integers
 
 ```c
@@ -1136,6 +1156,8 @@ int main() {
 ```
 Last occurrence of subsequence found at index: 8
 ```
+
+---
 
 ## Example 12: Using `algorithm_find_first_of` with Characters
 
@@ -1167,6 +1189,8 @@ int main() {
 ```
 First vowel found: e
 ```
+
+---
 
 ## Example 13: `algorithm_find_end` with Double Arrays
 
@@ -1208,6 +1232,8 @@ int main() {
 Last occurrence of subsequence found at index: 5
 ```
 
+---
+
 ## Example 14: `algorithm_find_first_of` with Integer Arrays
 
 ```c
@@ -1239,6 +1265,8 @@ int main() {
 First matching element: 3
 ```
 
+---
+
 ## Example 15: Binary Search on Integer Array `algorithm_binary_search`
 
 ```c
@@ -1268,6 +1296,8 @@ int main() {
 ```
 Value 7 found in the array at index 6.
 ```
+
+---
 
 ## Example 16: Binary Search on Double Array `algorithm_binary_search`
 
@@ -1308,6 +1338,8 @@ int main() {
 Value 4.4 found in the array at index 3.
 ```
 
+---
+
 ## Example 17: Max Element in Integer Array
 
 ```c
@@ -1333,6 +1365,8 @@ int main() {
 ```
 Max element is: 9
 ```
+
+---
 
 ## Example 18: Min Element in Double Array
 
@@ -1369,6 +1403,8 @@ int main() {
 Min element is: 1.1
 ```
 
+---
+
 ## Example 19: Max Element in Char Array
 
 ```c
@@ -1394,6 +1430,8 @@ int main() {
 ```
 Max character is: d
 ```
+
+---
 
 ## Example 20: Min Element in Custom Struct Array
 
@@ -1428,6 +1466,8 @@ int main() {
 Min struct value is: 2.1
 ```
 
+---
+
 ## Example 21 : `algorithm_for_each` using char Array .. to_uppercase 
 
 ```c
@@ -1457,6 +1497,8 @@ int main() {
 HELLO WORLD
 ```
 
+---
+
 ## Example 22 : Using `algorith_for_each` with Integer Array
 
 ```c
@@ -1481,6 +1523,8 @@ int main() {
 1 2 3 4 5
 ```
 
+---
+
 ## Example 23 : `algorithm_copy` char* Array 
 
 ```c
@@ -1502,6 +1546,8 @@ int main() {
 ```
 Copied string: Hello, World!
 ```
+
+---
 
 ## Example 24 : copy Integer Array `algorithm_copy`
 
@@ -1527,6 +1573,8 @@ int main() {
 ```
 1 2 3 4 5 
 ```
+
+---
 
 ## Example 25 : Copy Vector Using `algorithm_copy`
 
@@ -1564,6 +1612,8 @@ int main() {
 1 2 3 4 5 
 ```
 
+---
+
 ## Example 26 : copy String object by `algorithm_copy`
 
 ```c
@@ -1594,6 +1644,8 @@ int main() {
 Source is  Hello C Programmers
 Destination is Hello C Programmers
 ```
+
+---
 
 ## Example 27 : sum of Integers Using `algorithm_accumulate`
 
@@ -1651,6 +1703,8 @@ int main() {
 Concatenated string: Hello, World!
 ```
 
+---
+
 ## Example 29 : Multiply Elements of Array `algorithm_accumulate`
 
 ```c
@@ -1675,6 +1729,8 @@ int main() {
 ```
 Product of array elements: 120
 ```
+
+---
 
 ## Example 30 : Find Maximum element in double Array `algorithm_accumulate`
 
@@ -1703,6 +1759,8 @@ int main() {
 Maximum element: 5.100000
 ```
 
+---
+
 ## Example 31 : compute average of float Array `algorithm_accumulate`
 
 ```c
@@ -1728,6 +1786,8 @@ int main() {
 ```
 Average of array elements: 3.400000
 ```
+
+---
 
 ## Example 32 : Counting Occurence of a Specific element in Array 
 
@@ -1755,6 +1815,8 @@ int main() {
 ```
 Number of occurrences of 3: 4
 ```
+
+---
 
 ## Example 33 : Building String from char Array `algorithm_accumulate`
 
@@ -1785,6 +1847,8 @@ int main() {
 Constructed string: Hello
 ```
 
+---
+
 ## Example 34: Check if All Integers are Positive `algorithm_all_of`
 
 ```c
@@ -1812,6 +1876,8 @@ int main() {
 ```
 All elements are positive.
 ```
+
+---
 
 ## Example 35: Check if All Characters are Uppercase `algorithm_all_of`
 
@@ -1841,6 +1907,8 @@ int main() {
 ```
 Not all characters are uppercase.
 ```
+
+---
 
 ## Example 36: Check if All Values in a Custom Struct Array are Above a Threshold `algorithm_all_of`
 
@@ -1876,6 +1944,8 @@ int main() {
 All struct elements have values above 10.0.
 ```
 
+---
+
 ## Example 37: Check if Any Integer is Negative `algorithm_any_of`
 
 ```c
@@ -1903,6 +1973,8 @@ int main() {
 ```
 At least one element is negative.
 ```
+
+---
 
 ## Example 38: Check if Any Character is a Digit `algorithm_any_of`
 
@@ -1932,6 +2004,8 @@ int main() {
 ```
 At least one character is a digit.
 ```
+
+---
 
 ## Example 39: Check if Any Element in a Custom Struct Array Has a Specific ID `algorithm_any_of`
 
@@ -1967,6 +2041,8 @@ int main() {
 At least one struct element has ID 3.
 ```
 
+---
+
 ## Example 40: Check if No Integer is Negative `algorithm_none_of`
 
 ```c
@@ -1994,6 +2070,8 @@ int main() {
 ```
 No elements are negative.
 ```
+
+---
 
 ## Example 41: Check if No Character is a Vowel `algorithm_none_of`
 
@@ -2024,6 +2102,8 @@ int main() {
 No vowels in the string.
 ```
 
+---
+
 ## Example 42: Check if No Element in an Array is Zero `algorithm_none_of`
 
 ```c
@@ -2051,6 +2131,8 @@ int main() {
 ```
 No elements are zero.
 ```
+
+---
 
 ## Example 43: Check if No Struct Has a Specific Value `algorithm_none_of`
 
@@ -2086,6 +2168,8 @@ int main() {
 ```
 No struct elements have the value 10.0.
 ```
+
+---
 
 ## Example 44 : Using `algorithm_sort` for benchmarking with C++
 `gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\algorithm\algorithm.c`
@@ -2169,6 +2253,8 @@ int main() {
 C++ STL sort time: 0.0192416 seconds
 ```
 
+---
+
 ## Example 45: Filling an Array of Integers `algorithm_fill`
 
 ```c
@@ -2193,6 +2279,8 @@ int main() {
 ```
 7 7 7 7 7 7 7 7 7 7
 ```
+
+---
 
 ## Example 46: Partially Filling an Array of Doubles `algorithm_fill_n`
 
@@ -2219,6 +2307,8 @@ int main() {
 3.14 3.14 3.14 3.14 3.14 0.00 0.00 0.00 0.00 0.00
 ```
 
+---
+
 ## Example 47: Filling a String with a Character `algorithm_fill`
 
 ```c
@@ -2241,6 +2331,8 @@ int main() {
 ```
 AAAAAAAAAA
 ```
+
+---
 
 ## Example 48: Filling a Struct Array `algorithm_fill`
 
@@ -2275,6 +2367,8 @@ Item 3: id = 1, value = 9.99
 Item 4: id = 1, value = 9.99
 ```
 
+---
+
 ## Example 49: Partially Filling an Array of Chars with Different Characters `algorithm_fill_n`
 
 ```c
@@ -2302,6 +2396,8 @@ int main() {
 A A A A A A A A A A A A A N N N N N N N N N N N N N 
 ```
 
+---
+
 ## Example 50: Counting Integers Equal to a Given Value `algorithm_count`
 
 ```c
@@ -2326,6 +2422,8 @@ int main() {
 ```
 Count of 3: 2
 ```
+
+---
 
 ## Example 51: Counting Characters in a String `algorithm_count`
 
@@ -2352,6 +2450,8 @@ int main() {
 Count of 'l': 3
 ```
 
+---
+
 ## Example 52: Counting Even Numbers in an Array `algorithm_count_if`
 
 ```c
@@ -2377,6 +2477,8 @@ int main() {
 Count of even numbers: 5
 ```
 
+---
+
 ## Example 53: Counting Elements Greater Than a Certain Value `algorithm_count_if`
 
 ```c
@@ -2401,6 +2503,8 @@ int main() {
 ```
 Count of numbers greater than 5: 3
 ```
+
+---
 
 ## Example 54: Shuffling an Array of Characters `algorithm_shuffle`
 
@@ -2430,6 +2534,8 @@ int main() {
 ```
 Shuffled String: dWHollelro
 ```
+
+---
 
 ## Example 55: Shuffling an Array of Structs `algorithm_shuffle`
 
@@ -2479,6 +2585,8 @@ ID: 4, Name: Dave
 ID: 2, Name: Bob
 ```
 
+---
+
 ## Example 56 : Usinf Shuffle in Array of integer `algorithm_shuffle`
 
 ```c
@@ -2511,6 +2619,8 @@ int main() {
 10 9 7 4 8 1 6 3 5 2
 ```
 
+---
+
 ## Example 57: Find Lower Bound in an Array of Integers `algorithm_lower_bound`
 ```c
 #include "algorithm/algorithm.h"
@@ -2535,6 +2645,8 @@ int main() {
 Lower bound of 4 is at index: 2
 ```
 
+---
+
 ## Example 58: Find Upper Bound in an Array of Integers `algorithm_upper_bound`
 ```c
 #include "algorithm/algorithm.h"
@@ -2558,6 +2670,8 @@ int main() {
 ```
 Upper bound of 6 is at index: 3
 ```
+
+---
 
 ## Example 59: Lower Bound in an Array of Doubles `algorithm_lower_bound`
 ```c
@@ -2584,6 +2698,8 @@ int main() {
 Lower bound of 4.4 is at index: 2
 ```
 
+---
+
 ## Example 60: Upper Bound in an Array of Characters `algorithm_upper_bound`
 ```c
 #include "algorithm/algorithm.h"
@@ -2607,6 +2723,8 @@ int main() {
 ```
 Upper bound of 'f' is at index: 3
 ```
+
+---
 
 ## Example 61 : `algorithm_transform`
 
@@ -2638,6 +2756,8 @@ int main() {
 ```
 1 4 9 16 25 
 ```
+
+---
 
 ## Example 62: Negating Integers `algorithm_transform`
 
@@ -2672,6 +2792,8 @@ int main() {
 -1 2 -3 4 -5 
 ```
 
+---
+
 ### Example 63: Converting Floats to Integers `algorithm_transform`
 
 ```c
@@ -2702,6 +2824,8 @@ int main() {
 ```
 1 -2 3 -4 5
 ```
+
+---
 
 ### Example 64: Computing Lengths of Strings `algorithm_transform`
 
@@ -2735,6 +2859,8 @@ int main() {
 5 5 7 1 11 
 ```
 
+---
+
 ## Example 65 : sum numbers with `algorithm_reduce`
 
 ```c
@@ -2760,6 +2886,8 @@ int main() {
 ```
 Sum: 15
 ```
+
+---
 
 ## Example 66: Finding the Maximum Value in an Array of Integers `algorithm_reduce`
 
@@ -2792,6 +2920,8 @@ int main() {
 Maximum Value: 9
 ```
 
+---
+
 ### Example 67: Concatenating Strings `algorithm_reduce`
 
 ```c
@@ -2819,6 +2949,8 @@ int main() {
 ```
 Concatenated String: Hello, world!
 ```
+
+---
 
 ### Example 68: Computing the Logical AND of Boolean Values `algorithm_reduce`
 
@@ -2848,6 +2980,8 @@ int main() {
 ```
 Logical AND of flags: false
 ```
+
+---
 
 ## Example 69: Unique Integers in an Array `algorithm_unique`
 
@@ -2881,6 +3015,8 @@ int main() {
 Unique elements: 1 2 3 4
 ```
 
+---
+
 ## Example 70: Unique Characters in a String `algorithm_unique`
 
 This example focuses on removing consecutive duplicate characters in a string.
@@ -2912,6 +3048,8 @@ int main() {
 ```
 Unique characters: abcdefg
 ```
+
+---
 
 ## Example 71: Unique Floats in an Array `algorithm_unique`
 
@@ -2949,6 +3087,8 @@ int main() {
 Unique floats: 1.1 2.2 3.3 4.4 5.5 
 ```
 
+---
+
 ## Example 72: Comparing Integer Arrays `algorithm_equal`
 
 ```c
@@ -2981,6 +3121,8 @@ Arr1 is equal to Arr2: true
 Arr1 is equal to Arr3: false
 ```
 
+---
+
 ### Example 73: Comparing Character Arrays `algorithm_equal`
 
 ```c
@@ -3012,6 +3154,8 @@ int main() {
 Str1 is equal to Str2: true
 Str1 is equal to Str3: false
 ```
+
+---
 
 ### Example 74: Comparing Double Arrays `algorithm_equal`
 
@@ -3051,6 +3195,8 @@ Arr1 is equal to Arr2: true
 Arr1 is equal to Arr3: false
 ```
 
+---
+
 ## Example 75 : Next Permutation of Integer Array `algorithm_next_permutation`
 
 ```c
@@ -3085,6 +3231,8 @@ int main() {
 3 2 1
 ```
 
+---
+
 ## Example 76 : Using with Character `algorithm_next_permutation`
 
 ```c
@@ -3116,6 +3264,8 @@ bca
 cab
 cba
 ```
+
+---
 
 ## Example 77 : With Custom Structures `algorithm_next_permutation`
 
@@ -3155,6 +3305,8 @@ int main() {
 {3, 30.5} {1, 10.5} {2, 20.5}
 {3, 30.5} {2, 20.5} {1, 10.5}
 ```
+
+---
 
 ## Example 78 : Using with Vector Lib `algorithm_next_permutation`
 
@@ -3198,6 +3350,8 @@ int main() {
 3 2 1
 ```
 
+---
+
 ### Example 79: Prev Permutation of Integer Array `algorithm_prev_permutation`
 
 ```c
@@ -3232,6 +3386,8 @@ int main() {
 1 2 3
 ```
 
+---
+
 ### Example 80: Prev Permutation with Characters `algorithm_prev_permutation`
 
 ```c
@@ -3263,6 +3419,8 @@ bac
 acb
 abc
 ```
+
+---
 
 ### Example 81: Using with Vector Library `algorithm_prev_permutation`
 
@@ -3304,6 +3462,8 @@ int main() {
 1 3 2
 1 2 3
 ```
+
+---
 
 ## Example 82 : Partitioning an Array of Integers `algorithm_partition`
 
@@ -3383,6 +3543,8 @@ odd elements: 1 9 3 7 5
 even elements: 6 4 8 2
 ```
 
+---
+
 ## Example 83 : Partitioning a String Based on Uppercase Characters `algorithm_partition`
 
 ```c
@@ -3420,6 +3582,8 @@ int main() {
 Uppercase characters: HW
 Other characters: lloeorld
 ```
+
+---
 
 ## Example 85 : Partitioning an Array of Structures Based on a Positive Value `algorithm_partition`
 
@@ -3465,6 +3629,8 @@ Positive values: {4, 40.5} {2, 20.5}
 Non-positive values: {3, -30.5} {1, -10.5}
 ```
 
+---
+
 ## Example 86: Generating Random Numbers `algorithm_generate`
 
 ```c
@@ -3494,6 +3660,8 @@ int main() {
 ```
 Random numbers: 41 67 34 0 69 24 78 58 62 64 
 ```
+
+---
 
 ## Example 87: Generating Sequential Numbers `algorithm_generate`
 
@@ -3534,6 +3702,8 @@ int main() {
 Sequential numbers: 0 1 2 3 4 5 6 7 8 9
 ```
 
+---
+
 ### Example 88: Filling a Vector with Constant Value `algorithm_generate`
 
 ```c
@@ -3568,6 +3738,8 @@ int main() {
 Constant values: 5 5 5 5 5 5 5 5 5 5 
 ```
 
+---
+
 ### Example 89: Generating a Fixed Number of Random Integers `algorithm_generate_n`
 
 ```c
@@ -3596,6 +3768,8 @@ int main() {
 ```
 Random integers: 41 67 34 0 69 
 ```
+
+---
 
 ### Example 90: Generating a Sequence of Characters `algorithm_generate_n`
 
@@ -3629,6 +3803,8 @@ int main() {
 ```
 Character sequence: A B C D E F G H I J 
 ```
+
+---
 
 ### Example 91: Generating a String Array `algorithm_generate_n`
 
@@ -3667,6 +3843,8 @@ String 2
 String 3
 ```
 
+---
+
 ### Example 92: Generating Floats in a Vector `algorithm_generate_n`
 
 ```c
@@ -3701,6 +3879,8 @@ int main() {
 Generated floats: 0.50 1.00 1.50 2.00 2.50 
 ```
 
+---
+
 ## Example 93 : `algorithm_copy_backward` how to use it 
 
 ```c
@@ -3730,6 +3910,8 @@ int main() {
 ```
 Array after copy_backward: 1 2 3 4 5 6 4 5 6 7 
 ```
+
+---
 
 ## Example 94 : use Vector with `algorithm_copy_backward`
 
@@ -3772,6 +3954,8 @@ int main() {
 ```
 Destination vector after copy_backward: 1 2 3 4 5 
 ```
+
+---
 
 ## Example 95 : Using `algorithm_copy_backward` with a Struct 
 We'll define a simple struct, say Person, with a couple of fields, and then use `algorithm_copy_backward` to copy elements of an array of Person structs.
@@ -3825,6 +4009,8 @@ Name: Dave, Age: 32
 Name: Eve, Age: 29
 ```
 
+---
+
 ## Example 96 : Using `algorithm_copy_if` with Integer Array 
 
 ```c
@@ -3855,6 +4041,8 @@ int main() {
 ```
 1 3 5 0 0 
 ```
+
+---
 
 ## Example 97 : Check number is_even `algorithm_copy_if`
 
@@ -3889,6 +4077,8 @@ int main() {
 ```
 Even numbers: 2 4 6 8 10
 ```
+
+---
 
 ## Example 98 : Using `algorithm_generate` and `algorithm_copy_if` with Vector
 
@@ -3944,6 +4134,8 @@ int main() {
 Elements greater than 5: 6 7 8 9 14 15 16 17 18 19 
 ```
 
+---
+
 ## Example 99 : Using `algorithm_copy_n` with Integer Array
 
 ```c
@@ -3973,6 +4165,8 @@ int main() {
 dest array contains: 10 20 30 40 50 60 70
 ```
 
+---
+
 ### Example 100: Using `algorithm_copy_n` with an Integer Array
 This example copies a specified number of elements from one integer array to another using `algorithm_copy_n`.
 
@@ -3999,6 +4193,8 @@ int main() {
 ```
 First 5 elements of source: 10 20 30 40 50
 ```
+
+---
 
 ### Example 101: Using `algorithm_copy_n` with `Vector`
 In this example, we will use `algorithm_copy_n` to copy a specified number of elements from one `Vector` to another.
@@ -4040,6 +4236,8 @@ int main() {
 ```
 First 5 elements from source: 1 2 3 4 5 
 ```
+
+---
 
 ## Example 102 : Using `algorithm_equal_range` with Integer Array 
 
@@ -4120,6 +4318,8 @@ int main () {
 bounds at positions 2 and 5
 ```
 
+---
+
 ## Example 103 : `algorithm_equal_range` with Array of Doubles 
 
 ```c
@@ -4153,6 +4353,8 @@ int main() {
 ```
 Bounds for 2.5 in double array: 3 and 6
 ```
+
+---
 
 ## Example 104 : Using Array and Vector lib in `algorithm_equal_range`
 
@@ -4192,6 +4394,8 @@ int main() {
 Bounds for 'b' in char array: 3 and 6
 ```
 
+---
+
 ## Example 105 : Using `algorithm_includes` with Integer Array 
 
 ```c
@@ -4228,6 +4432,8 @@ int main() {
 ```
 container includes continent!
 ```
+
+---
 
 ### Example 106: Checking Inclusion of a Subset of Characters
 
@@ -4267,6 +4473,8 @@ int main() {
 ```
 letters array includes the subset!
 ```
+
+---
 
 ### Example 107: Inclusion of Subset of Custom Structs
 
@@ -4313,6 +4521,8 @@ int main() {
 people array includes the subset!
 ```
 
+---
+
 ## Example 108 : `algorithm_unique_copy` with and Integers Array
 
 ```c
@@ -4344,6 +4554,8 @@ int main() {
 ```
 Unique elements: 1 2 3 4
 ```
+
+---
 
 ## Example 109 : `algorithm_unique_copy` with char* 
 
@@ -4377,6 +4589,8 @@ int main() {
 Unique characters: a b c d e f g
 ```
 
+---
+
 #### Example 110: Swapping Integers with `algoritm_swap`
 
 ```c
@@ -4398,6 +4612,8 @@ int main() {
 Before swap: x = 10, y = 20
 After swap: x = 20, y = 10
 ```
+
+---
 
 #### Example 111: Swapping Arrays with `algorithm_swap`
 
@@ -4441,6 +4657,8 @@ arr1: 4 2 3
 arr2: 1 5 6
 ```
 
+---
+
 #### Example 112: Swapping Ranges of Integers with `algorithm_swap_ranges`
 
 ```c
@@ -4483,6 +4701,8 @@ arr1: 10 20 30
 arr2: 1 2 3
 ```
 
+---
+
 #### Example 113: Swapping Partial Ranges of Characters `algorithm_swap_ranges`
 
 ```c
@@ -4511,6 +4731,8 @@ After swap:
 str1: Worlo
 str2: Helld
 ```
+
+---
 
 ## Examples 114 : `algorithm_stable_sort` same as C++ 
 
@@ -4608,6 +4830,8 @@ using default comparison: 1.32 1.41 1.62 1.73 2.58 2.72 3.14 4.67
 using 'compare_as_ints' : 1.41 1.73 1.32 1.62 2.72 2.58 3.14 4.67
 ```
 
+---
+
 ## Example 115 : Using `algorithm_stable_sort` with Struct
 
 ```c
@@ -4664,6 +4888,8 @@ Name: John, Age: 30
 Name: Bob, Age: 30
 ```
 
+---
+
 ## Example 116: Check if an Array of Integers is Sorted `algorithm_is_sorted`
 
 ```c
@@ -4694,6 +4920,8 @@ int main() {
 ```
 Array is sorted.
 ```
+
+---
 
 ## Example 117: Check if a Vector of Doubles is Sorted `algorithm_is_sorted`
 
@@ -4739,6 +4967,7 @@ int main() {
 Vector is sorted.
 ```
 
+---
 
 ## Example 118 : same as C++ `algorithm_is_sorted` I've used (ptrdiff_t)(size * sizeof(int)) to cast the result of the size calculation to ptrdiff_t`
 
@@ -4842,6 +5071,7 @@ foo: 1 2 3 4
 the range is sorted!
 ```
 
+---
 
 ## Example 119 : `algorithm_is_sorted_until` 
 
@@ -4946,6 +5176,8 @@ foo: 1 2 3 4 (4 elements sorted)
 the range is sorted!
 ```
 
+---
+
 ## Example 120 : rotate array of integer with `algorithm_rotate`
 
 ```c
@@ -4973,6 +5205,8 @@ int main() {
 ```
 Rotated array: 4 5 6 7 8 9 1 2 3
 ```
+
+---
 
 ## Example 121 : Using Vector with `algorithm_rotate`
 
@@ -5039,6 +5273,8 @@ int main () {
 myvector contains: 4 5 6 7 8 9 1 2 3
 ```
 
+---
+
 ### Example 122: Rotate Copy an Array of Integers
 
 ```c
@@ -5065,6 +5301,8 @@ int main() {
 ```
 Rotated copied array: 4 5 6 7 1 2 3
 ```
+
+---
 
 ### Example 123: Using Vector with `algorithm_rotate_copy`
 
@@ -5127,6 +5365,8 @@ int main () {
 ```
 myvector contains: 40 50 60 70 10 20 30
 ```
+
+---
 
 ## Example 124 : How to use `algorithm_merge`
 C Algorithm sort time: 0.000002 seconds
@@ -5206,6 +5446,8 @@ int main () {
 Time taken: 2e-05 seconds
 ```
 
+---
+
 ## Example 125 : Point Struct with Using `algorithm_merge`
 
 ```c
@@ -5254,6 +5496,8 @@ int main() {
 ```
 (1, 2) (3, 4) (5, 6) (7, 8) (9, 10) (11, 12) 
 ```
+
+---
 
 ## Example 126 : How to use `algorithm_inplace_merge`
 
@@ -5338,6 +5582,8 @@ int main () {
 The resulting vector contains: 5 10 10 15 20 20 25 30 40 50
 ```
 
+---
+
 ## Example 127 : inplace_merge with struct `algorithm_inplace_merge`
 
 ```c
@@ -5390,6 +5636,8 @@ int main() {
 (1, 2) (3, 1) (4, 3) (5, 5) (6, 4) (7, 6)
 ```
 
+---
+
 ## Example 128 : Using String object with `algorithm_adjacent_find`
 
 ```c
@@ -5441,6 +5689,8 @@ The first pair of repeated elements are: banana
 The second pair of repeated elements are: cherry
 ```
 
+---
+
 ## Example 129 : Using Intger Array with `algorithm_adjacent_find`
 
 ```c
@@ -5479,6 +5729,8 @@ int main() {
 The first pair of repeated elements are: 30
 The second pair of repeated elements are: 10
 ```
+
+---
 
 ## Example 130 : implement `algorithm_mismatch`
 
@@ -5529,6 +5781,8 @@ First mismatching elements: 1 and 10
 Second mismatching elements: 2 and 20
 ```
 
+---
+
 ## Example 131 : `algorithm_is_sequence`
 
 ```c
@@ -5572,6 +5826,8 @@ int main() {
 foo and bar contain the same elements
 ```
 
+---
+
 ## Example 132 : Using Integers Array with `algorithm_search`
 
 ```c
@@ -5604,6 +5860,8 @@ int main() {
 ```
 Subsequence found at position 3
 ```
+
+---
 
 ## Example 133 : Using struct with `algorithm_search`
 
@@ -5644,6 +5902,8 @@ int main() {
 ```
 its equal
 ```
+
+---
 
 ## Example 134 : Use Integer Array with `algorithm_search_n`
 
@@ -5731,6 +5991,8 @@ two 30s found at position 2
 two 10s found at position 5
 ```
 
+---
+
 ## Example 135 : Use `algorithm_remove`
 
 ```c
@@ -5802,6 +6064,8 @@ int main () {
 range contains: 10 30 30 10 10
 ```
 
+---
+
 ## Example 136 : using `algorithm_remove_copy`
 
 ```c
@@ -5842,6 +6106,8 @@ int main() {
 ```
 10 30 30 10 10 0 0 0
 ```
+
+---
 
 ## Example 137: Using `algorithm_replace`
 
@@ -5886,6 +6152,8 @@ After replacement:
 1 2 3 4 -1 -1 -1 8 9 10
 ```
 
+---
+
 ## Example 138: Using `algorithm_replace_if`
 
 ```c
@@ -5927,6 +6195,8 @@ After replacement:
 1 -1 3 -1 5 -1 7 -1 9 -1
 ```
 
+---
+
 ## Example 139: Using `algorithm_remove_copy_if`
 
 ```c
@@ -5967,6 +6237,8 @@ Result array:
 1 3 5 7 9
 ```
 
+---
+
 ## Example 140 : How `begin` and `end` Work
 
 ```c
@@ -5990,6 +6262,8 @@ int main() {
     return 0;
 }
 ```
+
+---
 
 ## Example 141 : how to put list of data in array with `algorithm_iota`
 
