@@ -396,7 +396,12 @@ typedef struct Task {
 void addTask(Queue* queue, int id, const char* desc, int priority) {
     Task task;
     task.id = id;
-    strncpy(task.description, desc, sizeof(task.description));
+
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wstringop-truncation"
+        strncpy(task.description, desc, sizeof(task.description));
+    #pragma GCC diagnostic pop
+
     task.priority = priority;
     queue_emplace(queue, &task, sizeof(Task));
 }
@@ -439,7 +444,7 @@ Task queue size after processing: 0
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "queue/queue.h"
 #include <stdlib.h>
 
@@ -504,3 +509,7 @@ Processing: String 2-4
 ## Conclusion
 
 The Queue library provides a flexible, easy-to-use API for creating and managing dynamic-sized queues in C. With support for standard queue operations and relational comparisons, it is a robust tool for a variety of applications, from simple data structures to complex task management systems.
+
+## License
+
+This library is licensed under the ISC License.
