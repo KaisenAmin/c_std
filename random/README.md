@@ -924,3 +924,7 @@ Random von Mises value: 2.583023
 
 This Random library simplifies the generation of random numbers in C projects, providing an easy-to-use interface for generating random integers within specified ranges. The provided examples illustrate how to use the library for common random number generation tasks.
 
+
+## License
+
+This project is open-source and available under [ISC License].

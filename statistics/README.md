@@ -255,7 +255,6 @@ Several examples are provided to demonstrate the usage of the Statistics library
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -285,7 +284,6 @@ Mean: 3.000000
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -315,7 +313,6 @@ Median: 3.000000
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -345,7 +342,6 @@ Low Median: -3.40
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -375,7 +371,6 @@ High Median: 5.50
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -461,7 +456,6 @@ Grouped Median (interval 5.0): 0.50
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -501,7 +495,6 @@ Variance with provided mean: 9.665000
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -543,7 +536,6 @@ Standard Deviation: 0.692580
 ```c
 #include "statistics/statistics.h"
 #include "fmt/fmt.h"
-
 #include <math.h>
 
 int main() {
@@ -949,3 +941,8 @@ Proportional linear regression (slope, intercept): (3.000000, 0.000000)
 ## Conclusion
 
 The Statistics library in C provides robust functions for calculating various statistical measures such as mean, median, low median, and high median and etc ... These functions are optimized for performance and ease of use, making it an excellent choice for developers needing statistical analysis in their C projects. With clear documentation and examples, the library is straightforward to integrate and apply to different data sets.
+
+## License
+
+This project is open-source and available under [ISC License].
+

@@ -6346,3 +6346,7 @@ Float array:
 9.500000
 10.500000
 ```
+
+## License
+
+This project is open-source and available under [ISC License].
