@@ -620,6 +620,8 @@ int main() {
 Difference in Seconds : 10.007000
 ```
 
+---
+
 ## License
 
 This project is open-source and available under [ISC License].

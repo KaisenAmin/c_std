@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define TIME_LOGGING_ENABLE
+// #define TIME_LOGGING_ENABLE
 
 #ifdef TIME_LOGGING_ENABLE
     #define TIME_LOG(fmt, ...) \
