@@ -360,7 +360,7 @@ int main() {
 **Result:**
 ```
 Sorted elements in descending order:
-15 10 8 7 5 4 3 
+3 4 5 7 8 10 15
 ```
 
 ---
@@ -484,3 +484,9 @@ Executing Task ID: 102, Priority: 2
 Executing Task ID: 105, Priority: 2
 Executing Task ID: 103, Priority: 1
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].
