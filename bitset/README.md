@@ -438,8 +438,11 @@ int main() {
 **Result in C:**
 ```
 Please, enter a binary number: 11010111
-0000000011010111 has 6 bits set.
+Bitset: 0000000011010111
+ has 6 bits set.
 ```
+
+---
 
 ## Example 2 : how to get size of bitset with `bitset_size` and flip it with `bitset_flip`
  
@@ -472,6 +475,8 @@ int main(){
 8
 0011
 ```
+
+---
 
 ## Example 3 : Using `bitset_all` and `bitset_none` and `bitset_any`
 
@@ -532,6 +537,8 @@ any: true
 none: false
 ```
 
+---
+
 ## Example 4 : Using `bitset_any` and `bitset_count`
 
 ```c
@@ -567,7 +574,8 @@ int main() {
 **Result in C:**
 ```
 Please, enter a binary number: 10110
-0000000000010110 has 3 bits set.
+Bitset: 0000000000010110
+has 3 bits set.
 ```
 
 ```cpp
@@ -596,6 +604,8 @@ int main (){
 Please, enter a binary number: 10110
 0000000000010110 has 3 bits set.
 ```
+
+---
 
 ## Example 5 : Manually set bits with `bitset_set`
 
@@ -630,6 +640,8 @@ int main() {
 Bitset: 11001101
 has 5 ones and 3 zeros.
 ```
+
+---
 
 ## Example 6 : use `bitset_print` in Bitset also flip 
 
@@ -681,10 +693,11 @@ Original bitset: 11010010
 After toggling: 00101101 
 ```
 
+---
+
 ## Example 7 : set and print 
 
 ```c
-
 #include "bitset/bitset.h"
 #include "fmt/fmt.h"
 
@@ -748,6 +761,10 @@ Enter a position to set (0-7): 3
 Bitset after setting position 3: 00001000
 ```
 
+---
+
+---
+
 ## Example 8: Set specific bits and convert to unsigned long long
 
 **C Implementation:**
@@ -810,6 +827,8 @@ int main() {
 Bitset: 0000000000000000000000000000000000000000000000000000000010101010
 Converted to unsigned long long: 170
 ```
+
+---
 
 ## Example 9: Check bit status and count set bits
 
@@ -882,6 +901,8 @@ Bit 7 is not set
 Number of set bits: 2
 ```
 
+---
+
 ## Example 10: Converts Bitset Object to String (char*)
 
 **C Implementation:**
@@ -931,6 +952,8 @@ int main() {
 ```
 Bitset String: 00001010
 ```
+
+---
 
 ## Example 11: Bitwise Operations on Two Bitsets
 
@@ -1014,6 +1037,8 @@ Bitset 2: 11001100
 Bitwise AND: 10001000
 ```
 
+---
+
 ## Example 13: Shifting Bits in a Bitset
 
 **C Implementation:**
@@ -1082,6 +1107,8 @@ Original Bitset: 10011001
 Shifted Left by 2: 01100100
 ```
 
+---
+
 ## Example 14 : how to use `and operator` in Bitset with `bitset_and`
 
 ```c
@@ -1134,6 +1161,8 @@ int main() {
 b1 & b2: 0010
 ```
 
+---
+
 ## Example 15 : how to use `or operator` in Bitset with `bitset_or`
 
 ```c
@@ -1159,6 +1188,10 @@ int main() {
     return 0;
 }
 ```
+**Result C**
+```
+b1 | b2: 0111
+```
 
 **C++ Implementation:**
 
@@ -1180,6 +1213,8 @@ int main() {
 ```
 b1 | b2: 0111
 ```
+
+---
 
 ## Example 16 : how to use `xor operator` in Bitset with `bitset_xor`
 
@@ -1206,7 +1241,7 @@ int main() {
 }
 ```
 
-**Result**
+**Result C**
 ```
 b1 ^ b2: 0101
 ```
@@ -1231,6 +1266,8 @@ int main() {
 ```
 b1 ^ b2: 0101
 ```
+
+---
 
 ## Example 17 : not operator in bitset `bitset_not`
 
@@ -1283,6 +1320,8 @@ int main() {
 Original bitset: 0000000010011001
 ~Original bitset: 1111111101100110
 ```
+
+---
 
 ## Example 18 : `shift_to_left` and `shift_to_right`
 
@@ -1343,6 +1382,8 @@ Original Bitset: 11010010
 After left_shift by 2: 01001000
 After right_shift by 3: 00011010
 ```
+
+---
 
 ## Example 19 : check Bitset object are equal or not `bitset_is_equal` and `bitset_is_not_equal`
 
@@ -1418,6 +1459,8 @@ bs1 and bs2 are equal.
 After modification, bs1 and bs2 are not equal.
 ```
 
+---
+
 ## Example 20 : access bit positions with `bitset_at` or modify value of positions `bitset_at_ref`
 
 ```c
@@ -1444,7 +1487,6 @@ int main() {
     return 0;
 }
 ```
-
 **Result c_std:**
 
 ```
@@ -1490,3 +1532,9 @@ b1[6]: 0
 b1[7]: 0
 After setting bit 0, b1 holds 00101011
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].
