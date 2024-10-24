@@ -12,7 +12,7 @@
 
 #define DEFAULT_BLOCK_SIZE 64
 
-// #define DEQUE_LOGGING_ENABLE
+#define DEQUE_LOGGING_ENABLE
 
 #ifdef DEQUE_LOGGING_ENABLE 
     #define DEQUE_LOG(fmt, ...) \
@@ -26,7 +26,7 @@ typedef struct Deque Deque;
 typedef struct DequeIterator DequeIterator;
 
 struct DequeIterator {
-    Deque* deque; 
+    const Deque* deque; 
     bool isReverse;
     // Iterator state and functions
     void* current;         // Pointer to the current element
@@ -85,10 +85,10 @@ DequeIterator deque_end(const Deque* deque);
 DequeIterator deque_rbegin(const Deque* deque);
 DequeIterator deque_rend(const Deque* deque);
 
-const DequeIterator* deque_cbegin(const Deque* deque);
-const DequeIterator* deque_cend(const Deque* deque);
-const DequeIterator* deque_crbegin(const Deque* deque);
-const DequeIterator* deque_crend(const Deque* deque);
+DequeIterator deque_cbegin(const Deque* deque);
+DequeIterator deque_cend(const Deque* deque);
+DequeIterator deque_crbegin(const Deque* deque);
+DequeIterator deque_crend(const Deque* deque);
 
 void* deque_front(const Deque* deque);
 void* deque_back(const Deque* deque);

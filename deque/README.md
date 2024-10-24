@@ -496,6 +496,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Pushed 10 to back
+Pushed 20 to front
+Front: 20, Back: 10
+Popped from front
+Popped from back
+```
 
 ---
 
@@ -525,12 +533,21 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Pushed 1 to back
+Pushed 2 to back
+Pushed 3 to back
+Pushed 4 to back
+Pushed 5 to back
+Deque elements: 1 2 3 4 5
+```
 
 ---
 
 ### Example 3: Resizing Deque
 ```c
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" 
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -543,10 +560,10 @@ int main() {
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
             free(ptr);
-            break; // Exit the loop or return from function
+            break; 
         }
-        *ptr = i; // Set the allocated integer to the value of i
-        deque_push_back(myDeque, ptr); // Push the pointer onto the deque
+        *ptr = i; 
+        deque_push_back(myDeque, ptr); 
 
         fmt_printf("Pushed %d to back\n", i);
     }
@@ -566,6 +583,23 @@ int main() {
     deque_deallocate(myDeque);
     return 0;
 }
+```
+**Result**
+```
+Pushed 0 to back
+Pushed 1 to back
+Pushed 2 to back
+Pushed 3 to back
+Pushed 4 to back
+Pushed 5 to back
+Pushed 6 to back
+Pushed 7 to back
+Pushed 8 to back
+Pushed 9 to back
+Size before resize: 10
+Resized deque to 5 elements
+Size after resize: 5
+Elements in resized deque: 0 1 2 3 4
 ```
 
 ---
@@ -595,13 +629,17 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Front person: 1, Alice
+```
 
 ---
 
 ## Example 5: Storing char Elements
 
 ```c
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" 
 #include "fmt/fmt.h"
 
 typedef struct {
@@ -623,13 +661,17 @@ int main(){
     return 0;
 }
 ```
+**Result**
+```
+Front char: A
+```
 
 ---
 
 ## Example 6 : Storing float Elements
 
 ```c
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" 
 #include "fmt/fmt.h"
 
 int main() {
@@ -646,6 +688,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Back float: 2.500000
+```
 
 ---
 
@@ -653,7 +699,7 @@ int main() {
 
 ```c
 
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" 
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -677,9 +723,7 @@ int main(){
     // Iterate using the length of the deque
     for (size_t i = 0; i < deque_length(reverseDeque); ++i){
         int* valPtr = (int*)deque_at(reverseDeque, deque_length(reverseDeque) - 1 - i);
-
         fmt_printf("%d ", *valPtr);
-        free(valPtr); // Free the memory
     }
     fmt_printf("\n");
 
@@ -687,13 +731,17 @@ int main(){
     return 0;
 }
 ```
+**Result**
+```
+Reversed Deque: 4 3 2 1 0
+```
 
 ---
 
 ## Example 8 : Nested Deque 
 
 ```c
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" 
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -724,7 +772,6 @@ int main() {
         for (size_t j = 0; j < deque_length(innerDeque); ++j) {
             int* valPtr = (int*)deque_at(innerDeque, j);
             fmt_printf("%d ", *valPtr);
-            free(valPtr); // Free the memory allocated for each integer
         }
         fmt_printf("\n");
         deque_deallocate(innerDeque);
@@ -733,6 +780,12 @@ int main() {
     deque_deallocate(outerDeque);
     return 0;
 }
+```
+**Result**
+```
+0 1 2 
+3 4 5
+6 7 8
 ```
 
 ---
@@ -778,6 +831,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Copied Deque: 0 1 2 3 4 
+```
 
 ---
 
@@ -786,7 +843,7 @@ int main() {
 ```c
 #include "deque/deque.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 
@@ -801,25 +858,28 @@ int main() {
     int ages[] = {25, 30, 35};
     
     for (size_t i = 0; i < 3; ++i) {
-        Person* p = malloc(sizeof(Person));  // Dynamically allocate a Person
-        p->name = string_strdup(names[i]);  // Duplicate the name string
+        Person* p = malloc(sizeof(Person)); 
+        p->name = string_strdup(names[i]);  
         p->age = ages[i];
 
-        deque_push_back(people, p);  // Add the Person pointer to the deque
+        deque_push_back(people, p);  
     }
 
     // Access and print people
     for (size_t i = 0; i < deque_length(people); ++i) {
         Person* p = (Person*)deque_at(people, i);
         fmt_printf("Name: %s, Age: %d\n", p->name, p->age);
-
-        free(p->name);  // Free the dynamically allocated name
-        free(p);
     }
 
     deque_deallocate(people);
     return 0;
 }
+```
+**Result**
+```
+Name: Alice, Age: 25
+Name: Bob, Age: 30
+Name: Charlie, Age: 35
 ```
 
 ---
@@ -840,11 +900,11 @@ int main() {
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
             free(ptr);
-            break; // Exit the loop or return from function
+            break; 
         }
 
-        *ptr = i; // Set the allocated integer to the value of i
-        deque_push_back(myDeque, ptr); // Push the pointer onto the deque
+        *ptr = i; 
+        deque_push_back(myDeque, ptr); 
     }
     
     deque_resize(myDeque, 10);
@@ -860,6 +920,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Deque after shrink to fit (Size: 10):
+0 1 2 3 4 5 6 7 8 9
+```
 
 ---
 
@@ -874,17 +939,16 @@ int main() {
     Deque* myDeque = deque_create(sizeof(int));
     int insertVal = 99;
 
-    // Adding elements
     for (int i = 0; i < 5; ++i) {
         int* ptr = malloc(sizeof(int)); 
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
             free(ptr);
-            break; // Exit the loop or return from function
+            break; 
         }
 
-        *ptr = i; // Set the allocated integer to the value of i
-        deque_push_back(myDeque, ptr); // Push the pointer onto the deque
+        *ptr = i; 
+        deque_push_back(myDeque, ptr); 
     }
 
     deque_insert(myDeque, 2, &insertVal);
@@ -896,9 +960,15 @@ int main() {
     }
     fmt_printf("\n");
 
+
     deque_deallocate(myDeque);
     return 0;
 }
+```
+**Result**
+```
+Deque after insert and erase:
+0 99 2 3 4
 ```
 
 ---
@@ -930,6 +1000,12 @@ int main() {
     deque_deallocate(myDeque);
     return 0;
 }
+```
+**Result**
+```
+Size of myQueue 3
+Deque after emplace operations:
+10 10 10
 ```
 
 ---
@@ -972,6 +1048,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Deque1 is less than Deque2
+```
 
 ---
 
@@ -1002,19 +1082,18 @@ int main() {
     }
     fmt_printf("\n");
 
-    // Free the dynamically allocated integers
-    for (size_t i = 0; i < deque_length(myDeque); ++i) {
-        free(deque_at(myDeque, i));
-    }
-    
     deque_deallocate(myDeque);
     return 0;
 }
 ```
+**Result**
+```
+Deque elements: 0 1 2
+```
 
 ---
 
-## Example 16 : Reverse Iteration 
+## Example 16 : 'clear' and 'emplace_back'
 
 ```c
 #include "deque/deque.h"
@@ -1024,49 +1103,11 @@ int main() {
 int main() {
     Deque* myDeque = deque_create(sizeof(int));
 
-    // Adding elements
-    for (int i = 0; i < 3; ++i) {
-        int* newInt = malloc(sizeof(int));
-        *newInt = i;
-        deque_push_back(myDeque, newInt);
+    for (int i = 0; i < 2; ++i) {
+        int* newVal = malloc(sizeof(int));
+        *newVal = 42;  
+        deque_emplace_back(myDeque, newVal);  
     }
-
-    // Reverse iteration
-    DequeIterator rit = deque_rbegin(myDeque);
-    DequeIterator rend = deque_rend(myDeque);
-
-    fmt_printf("Deque elements in reverse: ");
-    while (!iterator_equals(&rit, &rend)) {
-        fmt_printf("%d ", *(int*)iterator_get(&rit));
-        iterator_decrement(&rit);
-    }
-    fmt_printf("\n");
-
-    // Freeing allocated memory
-    for (size_t i = 0; i < deque_length(myDeque); ++i) {
-        free(deque_at(myDeque, i));
-    }
-
-    deque_deallocate(myDeque);
-    return 0;
-}
-```
-
----
-
-## Example 17 : 'clear' and 'emplace_back'
-
-```c
-#include "deque/deque.h"
-#include "fmt/fmt.h"
-#include <stdlib.h>
-
-int main() {
-    Deque* myDeque = deque_create(sizeof(int));
-    int val = 42;
-
-    deque_emplace_back(myDeque, &val);
-    deque_emplace_back(myDeque, &val);
 
     fmt_printf("Deque after emplacing elements: ");
     for (size_t i = 0; i < deque_length(myDeque); ++i) {
@@ -1081,10 +1122,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Deque after emplacing elements: 42 42 
+Deque after clearing: Length = 0
+```
 
 ---
 
-## Example 18 : Convert example in this url 'https://www.geeksforgeeks.org/deque-cpp-stl/' to Deque 
+## Example 17 : Convert example in this url 'https://www.geeksforgeeks.org/deque-cpp-stl/' to Deque 
 
 ```c
 #include "deque/deque.h"
@@ -1102,11 +1148,15 @@ int main() {
     Deque* gquiz = deque_create(sizeof(int));
 
     // Push elements
-    int val1 = 10, val2 = 20, val3 = 30, val4 = 15;
-    deque_push_back(gquiz, &val1);
-    deque_push_front(gquiz, &val2);
-    deque_push_back(gquiz, &val3);
-    deque_push_front(gquiz, &val4);
+    int* val1 = malloc(sizeof(int)); *val1 = 10;
+    int* val2 = malloc(sizeof(int)); *val2 = 20;
+    int* val3 = malloc(sizeof(int)); *val3 = 30;
+    int* val4 = malloc(sizeof(int)); *val4 = 15;
+
+    deque_push_back(gquiz, val1);
+    deque_push_front(gquiz, val2);
+    deque_push_back(gquiz, val3);
+    deque_push_front(gquiz, val4);
 
     fmt_printf("The deque gquiz is : ");
     showdq(gquiz);
@@ -1124,15 +1174,28 @@ int main() {
     deque_pop_back(gquiz);
     showdq(gquiz);
 
-    // Free the deque
+    // Free the deque (deque_clear and deque_deallocate handle all memory cleanup)
     deque_deallocate(gquiz);
+
     return 0;
 }
+```
+**Result**
+```
+The deque gquiz is :    15      20      10      30
+
+gquiz.max_size() : 18446744073709551615
+gquiz.at(2) : 10
+gquiz.front() : 15
+gquiz.back() : 30
+gquiz.pop_front() :     20      10      30
+
+gquiz.pop_back() :      20      10
 ```
 
 ---
 
-## Example 19 : 'crbegin', 'crend'
+## Example 18 : 'crbegin', 'crend'
 
 ```c
 #include "deque/deque.h"
@@ -1159,12 +1222,55 @@ int main() {
     }
     fmt_printf("\n");
 
-    // Freeing allocated memory
-    for (size_t i = 0; i < deque_length(myDeque); ++i) {
-        free(deque_at(myDeque, i));
-    }
-
     deque_deallocate(myDeque);
     return 0;
 }
 ```
+**Result**
+```
+Constant reverse iteration: 4 3 2 1 0
+```
+
+--- 
+
+## Example 19 : `cbegin` and `cend`
+
+```c
+#include "deque/deque.h"
+#include "fmt/fmt.h"
+
+int main() {
+    // Create a deque of integers
+    Deque* myDeque = deque_create(sizeof(int));
+    
+    // Add some elements to the deque
+    int val1 = 10, val2 = 20, val3 = 30;
+    deque_push_back(myDeque, &val1);
+    deque_push_back(myDeque, &val2);
+    deque_push_back(myDeque, &val3);
+
+    // Get constant begin and end iterators
+    const DequeIterator it = deque_cbegin(myDeque);
+    const DequeIterator end = deque_cend(myDeque);
+
+    fmt_printf("Deque elements (constant iteration): ");
+    for (DequeIterator iter = it; !iterator_equals(&iter, &end); iterator_increment(&iter)) {
+        fmt_printf("%d ", *(const int*)iterator_get(&iter)); // Constant access
+    }
+    fmt_printf("\n");
+
+    // Clean up
+    deque_deallocate(myDeque);
+    return 0;
+}
+```
+**Result**
+```
+Deque elements (constant iteration): 10 20 30
+```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].
