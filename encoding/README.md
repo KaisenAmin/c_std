@@ -929,3 +929,10 @@ int main() {
 Encoded: >OwJh>}AdcN[>081Q
 Decoded: Hello, Base91!
 ```
+
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

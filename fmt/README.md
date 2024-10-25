@@ -965,3 +965,9 @@ int main() {
     return 0;
 }
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].
