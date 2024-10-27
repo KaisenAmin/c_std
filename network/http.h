@@ -67,7 +67,6 @@ void http_set_status(HttpResponse* response, int code, const char* message);
 void http_set_json_body(HttpResponse* response, JsonElement* json);
 void http_set_body(HttpResponse* response, const char* body);
 void http_add_header(HttpResponse* response, const char* header, const char* value);
-char* http_serialize_response(HttpResponse* response);
 void http_free_response(HttpResponse* response);
 
 // Server functions
@@ -81,4 +80,5 @@ const char* http_get_header(HttpRequest* req, const char* name);
 const char* http_get_query_param(HttpRequest* req, const char* name);
 void http_send_error(HttpResponse* res, int code, const char* message);
 
+char* http_serialize_response(HttpResponse* response);
 #endif 

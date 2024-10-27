@@ -93,7 +93,7 @@ if (WIN32)
         stdtime
         # statistics
         # tuple
-        # turtle
+        turtle
         # sysinfo
         # stack
         secrets
