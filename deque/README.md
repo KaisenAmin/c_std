@@ -555,11 +555,10 @@ int main() {
     Deque* myDeque = deque_create(sizeof(int));
 
     for (int i = 0; i < 10; ++i) {
-        int* ptr = malloc(sizeof(int));
+        int* ptr = (int*)malloc(sizeof(int));
 
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
-            free(ptr);
             break; 
         }
         *ptr = i; 
@@ -708,10 +707,9 @@ int main(){
 
     // Allocate and push back elements
     for (int i = 0; i < 5; ++i) {
-        int* ptr = malloc(sizeof(int));
+        int* ptr = (int*)malloc(sizeof(int));
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
-            free(ptr);
             exit(-1);
         }
 
@@ -752,11 +750,9 @@ int main() {
         Deque* innerDeque = deque_create(sizeof(int*));
 
         for (int j = 0; j < 3; ++j) {
-            int* valPtr = malloc(sizeof(int));
+            int* valPtr = (int*)malloc(sizeof(int));
             if (valPtr == NULL) {
                 fmt_fprintf(stderr, "Failed to allocate memory\n");
-                
-                free(valPtr);
                 exit(-1);
             }
             *valPtr = i * 3 + j;
@@ -801,11 +797,9 @@ int main() {
     Deque* original = deque_create(sizeof(int));
 
     for (int i = 0; i < 5; ++i) {
-        int* ptr = malloc(sizeof(int));
+        int* ptr = (int*)malloc(sizeof(int));
         if (ptr == NULL) {
             fprintf(stderr, "Failed to allocate memory\n");
-
-            free(ptr);
             exit(-1);
         }
         *ptr = i;
@@ -854,11 +848,11 @@ typedef struct {
 
 int main() {
     Deque* people = deque_create(sizeof(Person));
-    char* names[] = {"Alice", "Bob", "Charlie"};
+    const char* names[] = {"Alice", "Bob", "Charlie"};
     int ages[] = {25, 30, 35};
     
     for (size_t i = 0; i < 3; ++i) {
-        Person* p = malloc(sizeof(Person)); 
+        Person* p = (Person*)malloc(sizeof(Person)); 
         p->name = string_strdup(names[i]);  
         p->age = ages[i];
 
@@ -896,10 +890,9 @@ int main() {
 
     // Adding elements
     for (int i = 0; i < 100; ++i) {
-        int* ptr = malloc(sizeof(int)); 
+        int* ptr = (int*)malloc(sizeof(int)); 
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
-            free(ptr);
             break; 
         }
 
@@ -940,10 +933,9 @@ int main() {
     int insertVal = 99;
 
     for (int i = 0; i < 5; ++i) {
-        int* ptr = malloc(sizeof(int)); 
+        int* ptr = (int*)malloc(sizeof(int)); 
         if (ptr == NULL) {
             fmt_fprintf(stderr, "Failed to allocate memory\n");
-            free(ptr);
             break; 
         }
 
@@ -1025,11 +1017,11 @@ int main() {
 
     // Adding elements
     for (int i = 0; i < 3; ++i) {
-        int *newInt1 = malloc(sizeof(int));
+        int *newInt1 = (int*)malloc(sizeof(int));
         *newInt1 = i;
         deque_push_back(deque1, newInt1);
 
-        int *newInt2 = malloc(sizeof(int));
+        int *newInt2 = (int*)malloc(sizeof(int));
         *newInt2 = val;
         deque_push_back(deque2, newInt2);
     }
@@ -1067,7 +1059,7 @@ int main() {
     Deque* myDeque = deque_create(sizeof(int));
 
     for (int i = 0; i < 3; ++i) {
-        int* newInt = malloc(sizeof(int));
+        int* newInt = (int*)malloc(sizeof(int));
         *newInt = i;
         deque_push_back(myDeque, newInt);
     }
@@ -1104,7 +1096,7 @@ int main() {
     Deque* myDeque = deque_create(sizeof(int));
 
     for (int i = 0; i < 2; ++i) {
-        int* newVal = malloc(sizeof(int));
+        int* newVal = (int*)malloc(sizeof(int));
         *newVal = 42;  
         deque_emplace_back(myDeque, newVal);  
     }
@@ -1148,10 +1140,10 @@ int main() {
     Deque* gquiz = deque_create(sizeof(int));
 
     // Push elements
-    int* val1 = malloc(sizeof(int)); *val1 = 10;
-    int* val2 = malloc(sizeof(int)); *val2 = 20;
-    int* val3 = malloc(sizeof(int)); *val3 = 30;
-    int* val4 = malloc(sizeof(int)); *val4 = 15;
+    int* val1 = (int*)malloc(sizeof(int)); *val1 = 10;
+    int* val2 = (int*)malloc(sizeof(int)); *val2 = 20;
+    int* val3 = (int*)malloc(sizeof(int)); *val3 = 30;
+    int* val4 = (int*)malloc(sizeof(int)); *val4 = 15;
 
     deque_push_back(gquiz, val1);
     deque_push_front(gquiz, val2);
@@ -1207,18 +1199,19 @@ int main() {
 
     // Adding elements
     for (int i = 0; i < 5; ++i) {
-        int* newInt = malloc(sizeof(int));
+        int* newInt = (int*)malloc(sizeof(int));
         *newInt = i;
         deque_push_back(myDeque, newInt);
     }
 
     // Constant reverse iteration
-    const DequeIterator crit = *deque_crbegin(myDeque);
-    const DequeIterator crend = *deque_crend(myDeque);
+    DequeIterator crit = deque_crbegin(myDeque); // Start at last element
+    DequeIterator crend = deque_crend(myDeque); // End at invalid position before first element
 
     fmt_printf("Constant reverse iteration: ");
-    for (DequeIterator it = crit; !iterator_equals(&it, &crend); iterator_increment(&it)) { 
-        fmt_printf("%d ", *(const int*)iterator_get(&it));
+    while (!iterator_equals(&crit, &crend)) {
+        fmt_printf("%d ", *(const int*)iterator_get(&crit));
+        iterator_increment(&crit); // Should move to the previous element
     }
     fmt_printf("\n");
 

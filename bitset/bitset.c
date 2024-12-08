@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bitset.h"
-#include "../fmt/fmt.h"
 
 
 /**
@@ -78,10 +77,10 @@ void bitset_print(const Bitset* bs) {
     }
 
     for (int i = (int)bitset_size(bs) - 1; i >= 0; i--) {
-        fmt_printf("%d", bitset_test(bs, i) ? 1 : 0);
+        printf("%d", bitset_test(bs, i) ? 1 : 0);
     }
 
-    fmt_printf("\n");
+    printf("\n");
     BITSET_LOG("[bitset_print]: Bitset printed successfully.");
 }
 

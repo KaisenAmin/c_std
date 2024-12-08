@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 // #define REGEX_LOGGING_ENABLE
 
 #ifdef REGEX_LOGGING_ENABLE 
@@ -49,5 +53,9 @@ RegexResult regex_search(Regex* regex, const char* string, RegexMatch* match);
 int regex_find_all(Regex* regex, const char* string, RegexMatch* matches, int max_matches);
 void regex_deallocate(Regex* regex);
 const char* regex_error_message(RegexResult result);
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif

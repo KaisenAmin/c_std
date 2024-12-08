@@ -11,6 +11,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 #define BITSET_OUT_OF_RANGE -1
 // #define BITSET_LOGGING_ENABLE
 
@@ -60,5 +64,9 @@ unsigned long long bitset_to_ullong(const Bitset* bs);
 
 char* bitset_to_string(const Bitset* bs);
 unsigned char* bitset_at_ref(Bitset* bs, size_t pos);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

@@ -264,15 +264,15 @@ int main() {
     String* myString = string_create("");
     Stack* stack = stack_create(sizeof(char*));
 
-    char* value1 = "Amin";
+    const char* value1 = "Amin";
     string_append(myString, value1);
     stack_push(stack, &myString);
 
-    char* value2 = "Tahmasebi";
+    const char* value2 = "Tahmasebi";
     string_append(myString, value2);
     stack_push(stack, &myString);
 
-    char* value3 = "C Programming";
+    const char* value3 = "C Programming";
     string_append(myString, value3);
     stack_push(stack, &myString);
 
@@ -349,8 +349,8 @@ This example demonstrates how to use the Stack and String libraries to evaluate 
 #include "fmt/fmt.h"
 #include <ctype.h>
 
-int performOperation(int op1, int op2, char operator) {
-    switch (operator) {
+int performOperation(int op1, int op2, char op) {
+    switch (op) {
         case '+': 
             return op1 + op2;
         case '-': 
@@ -395,10 +395,10 @@ int evaluateExpression(String* expression) {
     }
 
     while (!stack_empty(operators)) {
-        char operator = *(char*)stack_pop(operators);
+        char op = *(char*)stack_pop(operators);
         int op2 = *(int*)stack_pop(values);
         int op1 = *(int*)stack_pop(values);
-        int result = performOperation(op1, op2, operator);
+        int result = performOperation(op1, op2, op);
 
         stack_push(values, &result);
     }

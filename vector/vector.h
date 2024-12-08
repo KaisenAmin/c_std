@@ -11,6 +11,11 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif 
 
 // #define VECTOR_LOGGING_ENABLE
 
@@ -80,5 +85,9 @@ void* vector_rend(Vector* vec);
 size_t vector_size(const Vector* vec);
 size_t vector_capacity(Vector* vec);
 size_t vector_max_size(Vector* vec);
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif 

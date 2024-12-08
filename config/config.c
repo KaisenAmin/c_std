@@ -66,7 +66,7 @@ ConfigFile *config_create(const char *filename) {
         exit(-1);
     }
 
-    ConfigFile *config = malloc(sizeof(ConfigFile));
+    ConfigFile *config = (ConfigFile*)malloc(sizeof(ConfigFile));
     if (!config) {
         CONFIG_LOG("[config_create] Error: Memory allocation failed for ConfigFile.");
         file_reader_close(fr);
@@ -101,7 +101,7 @@ ConfigFile *config_create(const char *filename) {
             CONFIG_LOG("[config_create] Comment found: %s", entry.value);
         }
         else if (writable_trimmed[0] == '[') {
-            current_section = malloc(sizeof(ConfigSection));
+            current_section = (ConfigSection*) malloc(sizeof(ConfigSection));
             if (!current_section) {
                 CONFIG_LOG("[config_create] Error: Memory allocation failed for ConfigSection.");
                 free(writable_trimmed);
@@ -110,13 +110,13 @@ ConfigFile *config_create(const char *filename) {
             }
             
             size_t section_name_length = strlen(writable_trimmed) - 2; // Exclude '[' and ']'
-            current_section->section_name = malloc(section_name_length + 1); // +1 for null terminator
+            current_section->section_name = (char*) malloc(section_name_length + 1); // +1 for null terminator
             strncpy(current_section->section_name, writable_trimmed + 1, section_name_length); // Skip '['
             current_section->section_name[section_name_length] = '\0'; // Null terminate
             current_section->entries = NULL;
             current_section->entry_count = 0;
 
-            config->sections = realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
+            config->sections = (ConfigSection**) realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
             config->sections[config->section_count++] = current_section;
             CONFIG_LOG("[config_create] New section added: [%s]", current_section->section_name);
         } 
@@ -129,7 +129,7 @@ ConfigFile *config_create(const char *filename) {
         }
 
         if (current_section && (entry.isComment || entry.key)) {
-            current_section->entries = realloc(current_section->entries, (current_section->entry_count + 1) * sizeof(ConfigEntry));
+            current_section->entries = (ConfigEntry*) realloc(current_section->entries, (current_section->entry_count + 1) * sizeof(ConfigEntry));
             current_section->entries[current_section->entry_count++] = entry;
         }
 
@@ -272,7 +272,7 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
 
     if (!sec) {
         CONFIG_LOG("[config_set_value] Section '%s' not found, creating a new section.", section);
-        sec = malloc(sizeof(ConfigSection));
+        sec = (ConfigSection *)malloc(sizeof(ConfigSection));
         if (!sec) {
             CONFIG_LOG("[config_set_value] Error: Memory allocation failed for new section.");
             return;
@@ -281,7 +281,7 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         sec->entries = NULL;
         sec->entry_count = 0;
 
-        config->sections = realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
+        config->sections = (ConfigSection **)realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
         if (!config->sections) {
             free(sec->section_name);
             free(sec);
@@ -292,6 +292,7 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         CONFIG_LOG("[config_set_value] New section '%s' created.", section);
     }
 
+    // Check for existing key in the section
     for (size_t j = 0; j < sec->entry_count; ++j) {
         if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) {
             CONFIG_LOG("[config_set_value] Updating existing key '%s' in section '%s'.", key, section);
@@ -303,16 +304,17 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
     }
 
     // Add a new entry
-    sec->entries = realloc(sec->entries, (sec->entry_count + 1) * sizeof(ConfigEntry));
+    sec->entries = (ConfigEntry *)realloc(sec->entries, (sec->entry_count + 1) * sizeof(ConfigEntry));
     if (!sec->entries) {
         CONFIG_LOG("[config_set_value] Error: Memory allocation failed for new entry.");
         return;
     }
 
-    sec->entries[sec->entry_count].key = string_strdup(key); // Allocate and set key
+    sec->entries[sec->entry_count].key = string_strdup(key);   // Allocate and set key
     sec->entries[sec->entry_count].value = string_strdup(value); // Allocate and set value
+    sec->entries[sec->entry_count].isComment = 0; // Mark it as a key-value pair
     sec->entry_count++;
-    
+
     CONFIG_LOG("[config_set_value] New key '%s' with value '%s' added to section '%s'.", key, value, section);
 }
 
@@ -354,7 +356,7 @@ void config_remove_section(ConfigFile *config, const char *section) {
             }
 
             config->section_count--;
-            config->sections = realloc(config->sections, config->section_count * sizeof(ConfigSection *));
+            config->sections = (ConfigSection**) realloc(config->sections, config->section_count * sizeof(ConfigSection *));
             CONFIG_LOG("[config_remove_section] Section '%s' successfully removed.", section);
 
             return;
@@ -402,7 +404,7 @@ void config_remove_key(ConfigFile *config, const char *section, const char *key)
                         sec->entries[k] = sec->entries[k + 1];
                     }
                     sec->entry_count--;
-                    sec->entries = realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
+                    sec->entries = (ConfigEntry*) realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
 
                     CONFIG_LOG("[config_remove_key] Key '%s' successfully removed from section '%s'.", key, section);
                     return;
@@ -664,6 +666,7 @@ bool config_get_bool(const ConfigFile *config, const char *section, const char *
  */
 void config_set_comment(ConfigFile *config, const char *section, const char *comment) {
     CONFIG_LOG("[config_set_comment] Setting comment for section='%s'.", section);
+
     if (!config || !section || !comment) {
         CONFIG_LOG("[config_set_comment] Error: Invalid arguments provided.");
         return;
@@ -671,10 +674,25 @@ void config_set_comment(ConfigFile *config, const char *section, const char *com
 
     for (size_t i = 0; i < config->section_count; ++i) {
         ConfigSection *sec = config->sections[i];
-        if (strcmp(config->sections[i]->section_name, section) == 0) {
-            CONFIG_LOG("[config_set_comment] Found section '%s', setting comment.", section);
-            sec->comment = string_strdup(comment); 
-            return; 
+        if (strcmp(sec->section_name, section) == 0) {
+            CONFIG_LOG("[config_set_comment] Found section '%s', updating comment.", section);
+
+            // Free existing comment memory if any
+            if (sec->comment) {
+                free(sec->comment);
+            }
+
+            // Allocate and copy the new comment
+            size_t new_length = strlen(sec->entries->value) + strlen(comment) + 2;
+            char *updated_comment = (char *)malloc(new_length);
+            snprintf(updated_comment, new_length, "%s\n; %s", sec->entries->value, comment);
+            sec->entries->value = string_strdup(updated_comment);
+            free(updated_comment);
+            // sec->comment = string_strdup(comment);
+            if (!sec->entries->value) {
+                CONFIG_LOG("[config_set_comment] Error: Memory allocation failed for comment.");
+            }
+            return;
         }
     }
 
@@ -878,7 +896,7 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
 
     CONFIG_LOG("[config_get_array] Found %zu elements for key '%s'.", *array_size, key);
 
-    char **array = malloc(*array_size * sizeof(char *)); 
+    char **array = (char**) malloc(*array_size * sizeof(char *)); 
     if (!array) {
         CONFIG_LOG("[config_get_array] Error: Memory allocation failed.");
         *array_size = 0;
@@ -925,7 +943,7 @@ void config_set_array(ConfigFile *config, const char *section, const char *key, 
         total_length += strlen(array[i]) + ((i < array_size - 1) ? 1 : 0); // +1 for comma, if not the last element
     }
 
-    char *combined = malloc(total_length);
+    char *combined = (char*) malloc(total_length);
     if (!combined) {
         CONFIG_LOG("[config_set_array] Error: Memory allocation failed.");
         return;
@@ -974,7 +992,7 @@ char *config_get_encrypted_value(const ConfigFile *config, const char *section, 
     }
 
     size_t value_size = strlen(encrypted_value);
-    char *decrypted_value = malloc(value_size + 1);
+    char *decrypted_value = (char*) malloc(value_size + 1);
     if (!decrypted_value) {
         CONFIG_LOG("[config_get_encrypted_value] Error: Memory allocation failed.");
         return NULL;
@@ -1010,7 +1028,7 @@ void config_set_encrypted_value(ConfigFile *config, const char *section, const c
     }
     
     size_t value_size = strlen(value);
-    char *encrypted_value = malloc(value_size + 1);
+    char *encrypted_value = (char*) malloc(value_size + 1);
     if (!encrypted_value) {
         CONFIG_LOG("[config_set_encrypted_value] Error: Memory allocation failed.");
         return;

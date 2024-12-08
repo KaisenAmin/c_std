@@ -373,16 +373,21 @@ int main() {
 
     map_insert(myMap, &key, &value);
     
-    int *foundValue = map_at(myMap, &lookupKey);
+    int *foundValue = (int*)map_at(myMap, &lookupKey);
     if (foundValue) {
         fmt_printf("Found value: %d\n", *foundValue);
-    } else {
+    } 
+    else {
         fmt_printf("Key not found.\n");
     }
 
     map_deallocate(myMap);
     return 0;
 }
+```
+**Result**
+```
+Found value: 10
 ```
 
 ---
@@ -393,7 +398,7 @@ int main() {
 #include <stdlib.h>
 #include "fmt/fmt.h"
 #include "map/map.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 
 int compare_ints(const KeyType a, const KeyType b) {
@@ -408,11 +413,11 @@ void string_deallocator(void* data) {
 
 int main() {
     Map* myMap = map_create(compare_ints, free, string_deallocator);
-    int* key1 = malloc(sizeof(int));
+    int* key1 = (int*) malloc(sizeof(int));
     *key1 = 1;
 
     char* value1 = string_strdup("Alice");
-    int* key2 = malloc(sizeof(int));
+    int* key2 = (int*) malloc(sizeof(int));
     *key2 = 2;
 
     char* value2 = string_strdup("Bob");
@@ -421,7 +426,7 @@ int main() {
     map_insert(myMap, key2, value2);
 
     int lookupKey = 1;
-    char* foundValue = map_at(myMap, &lookupKey);
+    char* foundValue = (char*) map_at(myMap, &lookupKey);
 
     if (foundValue) {
         fmt_printf("Found value for %d: %s\n", lookupKey, foundValue);
@@ -433,6 +438,10 @@ int main() {
     map_deallocate(myMap);
     return 0;
 }
+```
+**Result**
+```
+Found value for 1: Alice
 ```
 
 ---
@@ -464,6 +473,11 @@ int main() {
     map_deallocate(map1);
     return 0;
 }
+```
+**Result**
+```
+Size: 1
+Value for key 1: Hello
 ```
 
 ---
@@ -502,6 +516,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Value in map3a for key 2: 200
+Value in map3b for key 1: 100
+```
+
 
 ---
 
@@ -525,15 +545,15 @@ int main() {
     Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
 
     for (int i = 0; i < 5; ++i) {
-        int* key = malloc(sizeof(int));
-        int* value = malloc(sizeof(int));
+        int* key = (int*) malloc(sizeof(int));
+        int* value = (int*) malloc(sizeof(int));
         *key = i;
         *value = i * 100;
         map_insert(myMap, key, value);
     }
 
     int searchKey = 3;
-    int* foundValue = map_at(myMap, &searchKey);
+    int* foundValue = (int*) map_at(myMap, &searchKey);
     if (foundValue) {
         fmt_printf("Found value: %d\n", *foundValue);
     } 
@@ -553,6 +573,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Found value: 300
+Key 2 erased.
+```
 
 ---
 
@@ -562,7 +587,7 @@ int main() {
 #include <stdlib.h>
 #include "map/map.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 
 int compare_strings(const KeyType a, const KeyType b) {
@@ -609,6 +634,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Size of Map1 before swap: 2
+Map1 before swap:
+apple: red
+banana: yellow
+Map1 after swap:
+cherry: red
+grape: green
+Before decrementing iterator:
+banana: yellow
+apple: red
+```
 
 ---
 
@@ -644,8 +682,8 @@ int main() {
 
     double keys[] = {1.1, 2.2, 3.3, 4.4, 5.5};
     for (int i = 0; i < 5; ++i) {
-        double* key = malloc(sizeof(double));
-        double* value = malloc(sizeof(double));
+        double* key = (double*) malloc(sizeof(double));
+        double* value = (double*) malloc(sizeof(double));
         *key = keys[i];
         *value = keys[i] * 10;
         
@@ -662,6 +700,11 @@ int main() {
     map_deallocate(myMap);
     return 0;
 }
+```
+**Result**
+```
+Lower bound for 3.000000: 3.300000
+Upper bound for 3.000000: 3.300000
 ```
 
 ---
@@ -698,8 +741,8 @@ int main() {
     double keys[] = {1.1, 2.2, 3.3, 4.4, 5.5};
 
     for (int i = 0; i < 5; ++i) {
-        double* key = malloc(sizeof(double));
-        double* value = malloc(sizeof(double));
+        double* key = (double*) malloc(sizeof(double));
+        double* value = (double*) malloc(sizeof(double));
         *key = keys[i];
         *value = keys[i] * 10;
         map_insert(myMap, key, value);
@@ -718,6 +761,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+1.100000: 11.000000
+2.200000: 22.000000
+3.300000: 33.000000
+4.400000: 44.000000
+5.500000: 55.000000
+```
 
 ---
 
@@ -727,7 +778,7 @@ int main() {
 #include <stdlib.h>
 #include <string.h>
 #include "map/map.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 
@@ -773,7 +824,7 @@ int main() {
     }
 
     String* searchKey = string_create("key1");
-    String** foundValue = map_at(myMap, &searchKey);
+    String** foundValue = (String**) map_at(myMap, &searchKey);
 
     if (foundValue) {
         fmt_printf("Found value for 'key1': %s\n", string_c_str(*foundValue));
@@ -786,6 +837,14 @@ int main() {
     map_deallocate(myMap);
     return 0;
 }
+```
+**Result**
+```
+Map contents:
+key1: Hello
+key2: World
+Removed 'key2' from the map.
+Found value for 'key1': Hello
 ```
 
 ---
@@ -810,8 +869,8 @@ void map_merge(Map* dest, Map* src) {
     for (MapIterator it = map_begin(src);
 
  it.node != map_end(src).node; map_iterator_increment(&it)) {
-        int* key = malloc(sizeof(int));
-        int* value = malloc(sizeof(int));
+        int* key = (int*) malloc(sizeof(int));
+        int* value = (int*) malloc(sizeof(int));
 
         *key = *(int*)map_node_get_key(it.node);
         *value = *(int*)map_node_get_value(it.node);
@@ -824,16 +883,16 @@ int main() {
     Map* map2 = map_create(compare_ints, int_deallocator, int_deallocator);
 
     for (int i = 0; i < 3; ++i) {
-        int* key = malloc(sizeof(int));
-        int* value = malloc(sizeof(int));
+        int* key = (int*) malloc(sizeof(int));
+        int* value = (int*) malloc(sizeof(int));
         *key = i;
         *value = i * 100;
         map_insert(map1, key, value);
     }
 
     for (int i = 2; i < 5; ++i) {
-        int* key = malloc(sizeof(int));
-        int* value = malloc(sizeof(int));
+        int* key = (int*)  malloc(sizeof(int));
+        int* value = (int*) malloc(sizeof(int));
         *key = i;
         *value = i * 200;
         map_insert(map2, key, value);
@@ -849,6 +908,14 @@ int main() {
     map_deallocate(map2);
     return 0;
 }
+```
+**Result**
+```
+0: 0
+1: 100
+2: 400
+3: 600
+4: 800
 ```
 
 ---
@@ -891,8 +958,8 @@ int main() {
     Map* myMap = map_create(compare_ints, int_deallocator, int_deallocator);
 
     for (int i = 0; i < 5; ++i) {
-        int* key = malloc(sizeof(int));
-        int* value = malloc(sizeof(int));
+        int* key = (int*) malloc(sizeof(int));
+        int* value = (int*) malloc(sizeof(int));
         *key = i;
         *value = i * 100;
         map_insert(myMap, key, value);
@@ -907,6 +974,12 @@ int main() {
     map_deallocate(myMap);
     return 0;
 }
+```
+**Result**
+```
+0: 0
+2: 200
+4: 400
 ```
 
 ---
@@ -949,6 +1022,10 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+5: Hello, World
 ```
 
 ---
@@ -993,3 +1070,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+10: 20
+Size of the copied map: 1
+```
+---
+
+## License
+
+This project is open-source and available under [ISC License].

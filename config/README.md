@@ -349,6 +349,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Log Level: دیباگ
+Theme: light
+```
+
+---
 
 ## Example 2: Using Comments and Checking for Sections/Keys
 
@@ -374,6 +381,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Section 'user_preferences' exists.
+Key 'theme' exists in section 'user_preferences'.
+```
+
+---
 
 ## Example 3: Handling Encrypted Values
 
@@ -393,7 +407,7 @@ int main() {
     char *decrypted_api_key = config_get_encrypted_value(config, "advanced", "api_key", encryption_key);
     if (decrypted_api_key) {
         fmt_printf("Decrypted API Key: %s\n", decrypted_api_key);
-        free(decrypted_api_key); // Important to free the memory
+        free(decrypted_api_key); 
     } 
     else {
         fmt_printf("Failed to decrypt API key.\n");
@@ -404,6 +418,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Decrypted API Key: 12345
+```
+
+---
 
 ## Example 4: Iterating Through Configuration Entries
 
@@ -427,6 +447,42 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Section: global, Key: (null), Value: ; This section contains global settings
+Section: global, Key: (null), Value: ; Amin salam
+Section: global, Key: enable_logging, Value: true
+Section: global, Key: log_level, Value: دیباگ
+Section: global, Key: max_connections, Value: 100
+Section: global, Key: type, Value: wifi
+Section: global, Key: connected, Value: true
+Section: user_preferences, Key: (null), Value: # User-specific settings
+Section: user_preferences, Key: theme, Value: تاریک
+Section: user_preferences, Key: font_size, Value: 14
+Section: user_preferences, Key: auto_save_interval, Value: 5
+Section: user_preferences, Key: timezone, Value: GMT+5
+Section: database, Key: (null), Value: # Database connection details
+Section: database, Key: (null), Value: ; salam
+Section: database, Key: host, Value: هاست داخلی
+Section: database, Key: port, Value: 3306
+Section: database, Key: username, Value: dbuser
+Section: database, Key: password, Value: dbpass
+Section: database, Key: database_name, Value: testdb
+Section: paths, Key: (null), Value: # Filesystem paths
+Section: paths, Key: log_directory, Value: /var/log/myapp
+Section: paths, Key: temp_directory, Value: /tmp/myapp
+Section: paths, Key: backup_directory, Value: /var/backup/myapp
+Section: service_endpoints, Key: (null), Value: # Endpoints for various services
+Section: service_endpoints, Key: auth_service, Value: https://auth.example.com
+Section: service_endpoints, Key: data_service, Value: https://data.example.com
+Section: service_endpoints, Key: metrics_service, Value: https://metrics.example.com
+Section: advanced, Key: complexity, Value: high
+Section: advanced, Key: experimental_features, Value: yes
+Section: advanced, Key: retry_attempts, Value: 5
+Section: advanced, Key: timeout_seconds, Value: 30
+```
+
+---
 
 ## Example 5: Handling Arrays of Values
 This example demonstrates how to store and retrieve an array of strings for a given key in a configuration section.
@@ -442,7 +498,7 @@ int main() {
 
     // Define an array of values to store
     const char *server_ips[] = {"192.168.1.1", "192.168.1.2", "192.168.1.3"};
-    config_set_array(config, "network", "server_ips", server_ips, 3); // set on buffer 
+    config_set_array(config, "network", "server_ips", server_ips, 3); 
 
     // Retrieve the array of values
     size_t array_size;
@@ -452,9 +508,9 @@ int main() {
         fmt_printf("Server IPs:\n");
         for (size_t i = 0; i < array_size; ++i) {
             fmt_printf("- %s\n", retrieved_ips[i]);
-            free(retrieved_ips[i]); // Free each string in the array
+            free(retrieved_ips[i]); 
         }
-        free(retrieved_ips); // Free the array itself
+        free(retrieved_ips); 
     }
 
     config_save(config, "sources/modified_config.ini");
@@ -462,6 +518,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Server IPs:
+- server_ips=192.168.1.1
+-  192.168.1.2
+-  192.168.1.3
+```
+
+---
 
 ## Example 6: Validating Configuration Structure
 This example shows how to validate the configuration structure against an expected template, ensuring that required sections are present.
@@ -475,9 +540,9 @@ int main() {
 
     // Expected structure
     const ConfigSection expected_structure[] = {
-        {"global", NULL, 0, NULL},
-        {"user_preferences", NULL, 0, NULL},
-        {"network", NULL, 0, NULL}
+        {(char*)"global", NULL, 0, NULL},
+        {(char*)"user_preferences", NULL, 0, NULL},
+        {(char*)"network", NULL, 0, NULL}
     };
 
     // Validate the structure
@@ -494,6 +559,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Section 'network' is missing in the configuration.
+```
+
+---
 
 ## Example 7 : Dynamic Configuration Management 
 
@@ -503,8 +574,7 @@ This example demonstrates how to dynamically manage a configuration by adding an
 #include "config/config.h"
 #include "fmt/fmt.h"
 
-int main() 
-{
+int main() {
     ConfigFile *config = config_create("sources/config.ini");
 
     fmt_printf("Adding new section and keys...\n");
@@ -536,6 +606,19 @@ int main()
     return 0;
 }
 ```
+**Result**
+```
+Adding new section and keys...
+Saving to dynamic_config.ini...
+Save operation completed.
+Removing key 'another_key'...
+Saving to dynamic_config_modified.ini...
+Save operation completed.
+Reloading configuration...
+Key 'another_key' successfully removed.
+```
+
+---
 
 ## Example 8 : Handling Multiple Configuration Files 
 
@@ -570,11 +653,16 @@ int main() {
         }
     }
     config_save(config1, "sources/merged_config.ini");
+    fmt_println("Configs Merged Successfully");
 
     config_deallocate(config1);
     config_deallocate(config2);
     return 0;
 }
+```
+**Result**
+```
+Configs Merged Successfully
 ```
 
 ---

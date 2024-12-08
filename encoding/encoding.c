@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <limits.h>
 #include "encoding.h"
-// #include "../fmt/fmt.h"
+
 
 
 bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
@@ -712,7 +712,7 @@ char* encoding_base64_encode(const char* input, size_t length) {
     ENCODING_LOG("[encoding_base64_encode] Starting Base64 encoding");
 
     size_t output_length = 4 * ((length + 2) / 3);
-    char* encoded = malloc(output_length + 1); // +1 for null terminator
+    char* encoded = (char*) malloc(output_length + 1); // +1 for null terminator
     if (!encoded) {
         ENCODING_LOG("[encoding_base64_encode] Error: Memory allocation failed.");
         return NULL;
@@ -770,7 +770,7 @@ char* encoding_base64_decode(const char* input, size_t length) {
         output_length--;
     }
 
-    char* decoded = malloc(output_length + 1);
+    char* decoded = (char*) malloc(output_length + 1);
     if (!decoded) {
         ENCODING_LOG("[encoding_base64_decode] Error: Memory allocation failed.");
         return NULL;
@@ -825,7 +825,7 @@ char* encoding_base64_decode(const char* input, size_t length) {
 char* encoding_url_encode(const char* input, size_t length) {
     ENCODING_LOG("[encoding_url_encode] Starting URL encoding");
 
-    char* result = malloc(3 * length + 1); // Worst case scenario, every character needs encoding
+    char* result = (char*) malloc(3 * length + 1); // Worst case scenario, every character needs encoding
     if (!result) {
         ENCODING_LOG("[encoding_url_encode] Error: Memory allocation failed.");
         return NULL;
@@ -868,7 +868,7 @@ char* encoding_url_encode(const char* input, size_t length) {
 char* encoding_url_decode(const char* input, size_t length) {
     ENCODING_LOG("[encoding_url_decode] Starting URL decoding");
 
-    char* result = malloc(length + 1); // Decoded string will be equal or smaller in size
+    char* result = (char*) malloc(length + 1); // Decoded string will be equal or smaller in size
     if (!result) {
         ENCODING_LOG("[encoding_url_decode] Error: Memory allocation failed");
         return NULL;
@@ -930,7 +930,7 @@ char* encoding_base32_encode(const char* input, size_t length) {
     ENCODING_LOG("[encoding_base32_encode] Starting Base32 encoding");
 
     size_t output_length = ((length + 4) / 5) * 8; // Output length including padding
-    char* encoded = malloc(output_length + 1);
+    char* encoded = (char*) malloc(output_length + 1);
 
     if (!encoded) {
         ENCODING_LOG("[encoding_base32_encode] Error: Memory allocation failed.");
@@ -993,7 +993,7 @@ char* encoding_base32_decode(const char* input, size_t length) {
     }
 
     size_t olength = (length / 8) * 5;
-    unsigned char* result = malloc(olength + 1);
+    unsigned char* result = (unsigned char*) malloc(olength + 1);
     if (!result) {
         ENCODING_LOG("[encoding_base32_decode] Error: Memory allocation failed.");
         return NULL;
@@ -1038,7 +1038,7 @@ char* encoding_base32_decode(const char* input, size_t length) {
  */
 char* encoding_base16_encode(const char* input, size_t length) {
     size_t output_length = length * 2;
-    char* encoded = malloc(output_length + 1);
+    char* encoded = (char*) malloc(output_length + 1);
 
     if (!encoded) {
         ENCODING_LOG("[encoding_base16_encode] Error: Memory allocation failed.");
@@ -1103,7 +1103,7 @@ char* encoding_base16_decode(const char* input, size_t length) {
     }
 
     size_t olength = length / 2;
-    char* decoded = malloc(olength + 1);
+    char* decoded = (char*) malloc(olength + 1);
     if (!decoded) {
         ENCODING_LOG("[encoding_base16_decode] Error: Memory allocation failed for decoded string");
         return NULL;
@@ -1154,7 +1154,7 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
     ENCODING_LOG("[encoding_utf32_to_utf16] Starting UTF-32 to UTF-16 conversion");
 
     // Allocate maximum possible size (each UTF-32 character might become two UTF-16 characters)
-    uint16_t* output = malloc(sizeof(uint16_t) * (length * 2 + 1));
+    uint16_t* output = (uint16_t*) malloc(sizeof(uint16_t) * (length * 2 + 1));
     if (!output) {
         ENCODING_LOG("[encoding_utf32_to_utf16] Error: Memory allocation failed");
         return NULL;
@@ -1212,7 +1212,7 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     ENCODING_LOG("[encoding_utf16_to_utf32] Starting UTF-16 to UTF-32 conversion");
 
     // Allocate memory for the worst-case scenario (all characters are non-surrogates)
-    uint32_t* output = malloc(sizeof(uint32_t) * (length + 1));
+    uint32_t* output = (uint32_t*) malloc(sizeof(uint32_t) * (length + 1));
     if (!output) {
         ENCODING_LOG("[encoding_utf16_to_utf32] Error: Memory allocation failed");
         return NULL;
@@ -1602,7 +1602,7 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
 
     // Calculate the maximum possible length of the encoded string
     size_t encoded_max_length = ((length + 3) / 4) * 5 + 2; // +2 for potential padding and null terminator
-    char* encoded = malloc(encoded_max_length);
+    char* encoded = (char*) malloc(encoded_max_length);
     if (!encoded) {
         ENCODING_LOG("[encododing_base85_encode] Error: Memory allocation failed for encoded string");
         return NULL;
@@ -1668,7 +1668,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
 
     // Calculate the maximum possible length of the decoded string
     size_t decoded_max_length = (length / 5) * 4;
-    uint8_t* decoded = malloc(decoded_max_length);
+    uint8_t* decoded = (uint8_t*) malloc(decoded_max_length);
     if (!decoded) {
         ENCODING_LOG("[encododing_base85_decode] Error: Memory allocation failed for decoded string");
         return NULL;
@@ -1729,7 +1729,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
     }
 
     // Resize the output buffer to the actual decoded data length
-    uint8_t* resized_decoded = realloc(decoded, decoded_index + 1); // +1 for null terminator, if needed
+    uint8_t* resized_decoded = (uint8_t*) realloc(decoded, decoded_index + 1); // +1 for null terminator, if needed
     if (!resized_decoded) {
         ENCODING_LOG("[encododing_base85_decode] Error: Reallocation failed");
         free(decoded);
@@ -1764,7 +1764,7 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
 
     ENCODING_LOG("[encoding_base58_encode] Starting Base58 encoding");
 
-    const uint8_t *bin = data;
+    const uint8_t *bin = (const uint8_t*)data;
     int carry;
     size_t i, j, high, zcount = 0;
     size_t size;
@@ -1776,7 +1776,7 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
 
     // Estimate size of Base58 encoded string
     size = (binsz - zcount) * 138 / 100 + 1;
-    uint8_t *buf = malloc(size * sizeof(uint8_t));
+    uint8_t *buf = (uint8_t*) malloc(size * sizeof(uint8_t));
     if (!buf) {
         ENCODING_LOG("[encoding_base58_encode] Error: Memory allocation failed for buffer");
         return NULL;
@@ -1801,7 +1801,7 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
     }
 
     size_t b58sz = zcount + size - j + 1;
-    char *b58 = malloc(b58sz);
+    char *b58 = (char*) malloc(b58sz);
     if (!b58) {
         ENCODING_LOG("[encoding_base58_encode] Error: Memory allocation failed for Base58 encoded result");
         free(buf);
@@ -1844,7 +1844,7 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
 
     size_t b58sz = strlen(b58);
     size_t binsz = b58sz * 733 / 1000 + 1; // Rough estimate of binary size
-    uint8_t *bin = malloc(binsz);
+    uint8_t *bin = (uint8_t*) malloc(binsz);
     if (!bin) {
         ENCODING_LOG("[encoding_base58_decode] Error: Memory allocation failed");
         return NULL;
@@ -1879,7 +1879,7 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     }
 
     *binszp = binsz - j;
-    char *result = malloc(*binszp);
+    char *result = (char*) malloc(*binszp);
     if (!result) {
         ENCODING_LOG("[encoding_base58_decode] Error: Memory allocation failed for result");
         free(bin);
@@ -1914,7 +1914,7 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
 
     size_t len = strlen(encoded);
     *decoded_length = 0;
-    uint8_t* decoded = malloc(len); // Max possible size
+    uint8_t* decoded = (uint8_t*) malloc(len); // Max possible size
     if (!decoded) {
         ENCODING_LOG("[encoding_base91_decode] Error: Memory allocation failed");
         return NULL;
@@ -1988,7 +1988,7 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
     ENCODING_LOG("[encoding_base91_encode] Starting Base91 encoding");
 
     size_t estimated_length = length * 1.23 + 2; // +2 for padding and null terminator
-    char* encoded = malloc(estimated_length);
+    char* encoded = (char*) malloc(estimated_length);
     if (!encoded) {
         ENCODING_LOG("[encoding_base91_encode] Error: Memory allocation failed");
         return NULL;

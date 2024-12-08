@@ -846,9 +846,7 @@ int main(void) {
 
 ```
 **Result:**
-```
-A star shape is drawn on the screen.
-```
+![Image](../sources/Capture1.PNG)
 
 ---
 
@@ -890,9 +888,7 @@ int main(void) {
 }
 ```
 **Result:**
-```
-The turtle moves in a square pattern on the screen.
-```
+![Image](../sources/Capture2.PNG)
 
 ---
 
@@ -953,9 +949,8 @@ int main(void) {
 }
 ```
 **Result:**
-```
-The turtle draws lines in different colors on the screen.
-```
+![Image](../sources/Capture3.PNG)
+
 
 ---
 
@@ -996,9 +991,8 @@ int main(void) {
 
 ```
 **Result:**
-```
-The turtle draws two separate lines with a gap in between where the pen is lifted.
-```
+![Image](../sources/Capture4.PNG)
+
 
 ---
 
@@ -1038,9 +1032,8 @@ int main(void) {
 
 ```
 **Result:**
-```
-The turtle moves to specified positions and draws lines from those points.
-```
+![Image](../sources/Capture5.PNG)
+
 
 ---
 
@@ -1076,6 +1069,8 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture6.PNG)
 
 ---
 
@@ -1113,8 +1108,10 @@ int main(void) {
 
     return 0;
 }
-
 ```
+**Result:**
+![Image](../sources/Capture7.PNG)
+
 
 ---
 
@@ -1151,6 +1148,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture8.PNG)
+
 
 ---
 
@@ -1188,6 +1188,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture9.PNG)
+
 
 ---
 
@@ -1222,6 +1225,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture10.PNG)
+
 
 ---
 
@@ -1257,6 +1263,8 @@ int main(void) {
 }
 
 ```
+**Result:**
+![Image](../sources/Capture11.PNG)
 
 ---
 
@@ -1295,6 +1303,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture12.PNG)
+
 
 ---
 
@@ -1344,6 +1355,10 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture13.PNG)
+
+
 
 ---
 
@@ -1391,6 +1406,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture14.PNG)
+
 
 ---
 
@@ -1446,6 +1464,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture15.PNG)
+
 
 ---
 
@@ -1497,6 +1518,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture16.PNG)
+
 
 ---
 
@@ -1535,6 +1559,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture17.PNG)
+
 
 ---
 
@@ -1542,8 +1569,6 @@ int main(void) {
 ```c
 #include <math.h>
 #include "turtle/turtle.h"
-
-
 
 void draw_spiral(Turtle *state) {
     static bool drawn = false;
@@ -1580,6 +1605,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture18.PNG)
+
 
 ---
 
@@ -1630,6 +1658,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture19.PNG)
+
 
 ---
 
@@ -1676,6 +1707,9 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture20.PNG)
+
 
 ---
 
@@ -1734,10 +1768,12 @@ int main(void) {
     return 0;
 }
 ```
+**Result:**
+![Image](../sources/Capture21.PNG)
+
 
 ---
 
-## Conclusion
+## License
 
-This Turtle Graphics library simplifies the process of drawing graphics in C projects, providing an intuitive interface for moving the turtle and drawing shapes and lines. The provided examples illustrate how to use the library for common graphics tasks.
-
+This project is open-source and available under [ISC License].

@@ -292,7 +292,7 @@ In this example, we will encode a URL or a string with special characters using 
 
 ```c
 #include "encoding/encoding.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 

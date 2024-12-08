@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <time.h>
 #include "matrix.h"
-#include "../fmt/fmt.h"
 
 #define EPSILON 1e-9
 
@@ -510,12 +509,12 @@ void matrix_print(Matrix* matrix) {
     }
 
     for (size_t row = 0; row < matrix->rows; row++) {
-        fmt_printf("| ");
+        printf("| ");
         for (size_t col = 0; col < matrix->cols; col++) {
             size_t index = row * matrix->cols + col;
-            fmt_printf("%*.*lf ", max_width, 5, matrix->data[index]);
+            printf("%*.*lf ", max_width, 5, matrix->data[index]);
         }
-        fmt_printf("|\n");
+        printf("|\n");
     }
 
     MATRIX_LOG("[matrix_print] Success: Matrix printed successfully.");

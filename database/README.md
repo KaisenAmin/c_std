@@ -901,6 +901,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Create Table Done
+```
 
 ---
 
@@ -939,6 +943,12 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+NOTICE:  relation "cars" already exists, skipping
+Table created successfully.
+Data inserted successfully.
 ```
 
 ---
@@ -997,6 +1007,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Transaction started successfully.
+Transaction committed successfully.
+```
 
 ---
 
@@ -1019,7 +1034,7 @@ int main() {
             if (postgres_begin_transaction(pg)) {
                 fmt_printf("Transaction started successfully.\n");
 
-                const char *insertCmd1 = "INSERT INTO cars (brand, model, year) VALUES (Toyota, 'Corolla', 2021);";
+                const char *insertCmd1 = "INSERT INTO cars (brand, model, year) VALUES (Toyota, 'Corolla', 2021);"; // here 
                 const char *insertCmd2 = "INSERT INTO cars (brand, model, year) VALUES ('Honda', 'Civic', 2020);";
 
                 bool success1 = postgres_execute_non_query(pg, insertCmd1);
@@ -1057,6 +1072,11 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Transaction started successfully.
+Error: Failed to execute one or more commands. Rolling back.
 ```
 
 ---
@@ -1118,6 +1138,11 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Transaction started successfully.
+Error: ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ```
 
 ---
@@ -1187,6 +1212,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Transaction started successfully.
+Number of affected rows for first command: 1
+Number of affected rows for second command: 1
+Transaction committed successfully.
+```
 
 ---
 
@@ -1229,6 +1261,20 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
++--------+---------+------+
+| brand  | model   | year |
++--------+---------+------+
+| Toyota | Corolla | 2021 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
++--------+---------+------+
+```
 
 ---
 
@@ -1270,6 +1316,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Number of rows in cars table is 7
+```
 
 ---
 
@@ -1309,6 +1359,10 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Table 'cars' exists.
 ```
 
 ---
@@ -1353,6 +1407,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Tables in the `public` Schema:
++------------+
+| table_name |
++------------+
+| cars       |
++------------+
+```
 
 ---
 
@@ -1396,6 +1459,17 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Schema of table 'cars':
++-------------+-------------------+
+| column_name | data_type         |
++-------------+-------------------+
+| brand       | character varying |
+| model       | character varying |
+| year        | integer           |
++-------------+-------------------+
 ```
 
 ---
@@ -1457,6 +1531,12 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Statement 'insert_car' prepared successfully.
+Prepared statement executed successfully.
+Statement 'insert_car' cleared successfully.
 ```
 
 ---
@@ -1541,6 +1621,23 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Table 'bus' created successfully.
+Table 'owners' created successfully.
+Primary Keys of table 'bus':
++---------+-----------+
+| attname | data_type |
++---------+-----------+
+| id      | integer   |
++---------+-----------+
+Primary Keys of table 'owners':
++----------+-----------+
+| attname  | data_type |
++----------+-----------+
+| owner_id | integer   |
++----------+-----------+
+```
 
 ---
 
@@ -1613,6 +1710,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+NOTICE:  relation "bus" already exists, skipping
+Table 'bus' created successfully.
+NOTICE:  relation "owners" already exists, skipping
+Table 'owners' created successfully.
+Foreign Keys of table 'owners':
++--------------------+-------------+--------------------+---------------------+
+| constraint_name    | column_name | foreign_table_name | foreign_column_name |
++--------------------+-------------+--------------------+---------------------+
+| owners_bus_id_fkey | bus_id      | bus                | id                  |
++--------------------+-------------+--------------------+---------------------+
+```
 
 ---
 
@@ -1680,6 +1790,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+NOTICE:  relation "bus" already exists, skipping
+Table 'bus' created successfully.
+Index on 'brand' column created successfully.
+Indexes of table 'bus':
++---------------+--------------------------------------------------------------+
+| indexname     | indexdef                                                     |
++---------------+--------------------------------------------------------------+
+| bus_pkey      | CREATE UNIQUE INDEX bus_pkey ON public.bus USING btree (id)  |
+| idx_bus_brand | CREATE INDEX idx_bus_brand ON public.bus USING btree (brand) |
++---------------+--------------------------------------------------------------+
+```
 
 ---
 
@@ -1746,6 +1869,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+NOTICE:  relation "bus" already exists, skipping
+Table 'bus' created successfully.
+NOTICE:  relation "idx_bus_brand" already exists, skipping
+Index on 'brand' column created successfully.
+Size of table 'bus':
++-------+
+| size  |
++-------+
+| 24 kB |
++-------+
+```
 
 ---
 
@@ -1810,6 +1946,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+NOTICE:  relation "bus" already exists, skipping
+Table 'bus' created successfully.
+NOTICE:  relation "idx_bus_brand" already exists, skipping
+Index on 'brand' column created successfully.
+Number of indexes on table 'bus': 2
+```
 
 ---
 
@@ -1853,6 +1997,18 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Column details of table 'bus':
++-------------+-------------------+-------------+---------------------------------+
+| column_name | data_type         | is_nullable | column_default                  |
++-------------+-------------------+-------------+---------------------------------+
+| id          | integer           | NO          | nextval('bus_id_seq'::regclass) |
+| brand       | character varying | YES         |                                 |
+| model       | character varying | YES         |                                 |
+| year        | integer           | YES         |                                 |
++-------------+-------------------+-------------+---------------------------------+
 ```
 
 ---
@@ -1905,6 +2061,26 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+NOTICE:  relation "cars" already exists, skipping
+Query Results:
++--------+---------+------+
+| brand  | model   | year |
++--------+---------+------+
+| Toyota | Corolla | 2021 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
+| BMW    | I8      | 2020 |
+| Toyota | Corolla | 2021 |
+| Honda  | Civic   | 2020 |
++--------+---------+------+
+Brand of the first car: Corolla
 ```
 
 ---
@@ -1969,6 +2145,21 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Table 'cars' created successfully.
+Unique index created successfully.
+Constraints of table 'cars':
++-----------------------+-----------------+-------------+--------------------+---------------------+-------------------+
+| constraint_name       | constraint_type | column_name | foreign_table_name | foreign_column_name | check_clause      |
++-----------------------+-----------------+-------------+--------------------+---------------------+-------------------+
+| cars_year_check       | CHECK           |             | cars               | year                | ((year > 1885))   |
+| cars_pkey             | PRIMARY KEY     | id          | cars               | id                  |                   |
+| 2200_68555_1_not_null | CHECK           |             |                    |                     | id IS NOT NULL    |
+| 2200_68555_2_not_null | CHECK           |             |                    |                     | brand IS NOT NULL |
++-----------------------+-----------------+-------------+--------------------+---------------------+-------------------+
+```
+
 
 ---
 
@@ -2022,6 +2213,17 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Number of tuples (rows): 2
+Number of fields (columns): 4
++----+--------+---------+------+
+| id | brand  | model   | year |
++----+--------+---------+------+
+| 1  | Toyota | Corolla | 2021 |
+| 2  | Benz   | S500    | 2020 |
++----+--------+---------+------+
 ```
 
 ---
@@ -2081,6 +2283,17 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Number of rows affected by the delete command: 1
+Query Results:
++----+-------+-------+------+
+| id | brand | model | year |
++----+-------+-------+------+
+| 2  | Honda | Civic | 2020 |
++----+-------+-------+------+
+```
+
 
 ---
 
@@ -2132,6 +2345,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+data is text not binary.
+```
 
 ---
 
@@ -2168,6 +2385,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Database name is mydatabase
+username is myuser
+password is mypassword
+```
 
 ---
 
@@ -2201,6 +2424,11 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Connected to the database successfully.
+Reconnected to the database successfully.
 ```
 
 ---
@@ -2257,6 +2485,20 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Connection to the database is alive.
+Tables in the database:
++------------+
+| table_name |
++------------+
+| bus        |
+| cars       |
+| owners     |
++------------+
+The table 'cars' has 1 rows.
+```
 
 ---
 
@@ -2295,6 +2537,16 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Connected to the database successfully.
+Query executed successfully.
++----+-------+-------+------+
+| id | brand | model | year |
++----+-------+-------+------+
+| 2  | Honda | Civic | 2020 |
++----+-------+-------+------+
 ```
 
 ---
@@ -2364,6 +2616,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+NOTICE:  function add_numbers(pg_catalog.int4,pg_catalog.int4) does not exist, skipping
+Function 'add_numbers' created successfully.
+Function result: 5
+Test passed: Function works as expected.
+Function 'add_numbers' dropped successfully.
+```
 
 ---
 
@@ -2419,6 +2680,18 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+View 'my_view' created successfully.
+View 'my_view' query executed successfully.
++----+-------+
+| id | brand |
++----+-------+
+| 2  | Honda |
++----+-------+
+View 'my_view' dropped successfully.
+```
 
 ---
 
@@ -2439,7 +2712,8 @@ int main() {
         const char* createTableQuery = 
             "CREATE TABLE IF NOT EXISTS info ("
             "id SERIAL PRIMARY KEY, "
-            "name VARCHAR(255));";
+            "name VARCHAR(255));"
+            "age VARCHAR(255));";
         
         if (postgres_execute_non_query(pg, createTableQuery)) {
             fmt_printf("Table 'info' created successfully.\n");
@@ -2547,6 +2821,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Table 'info' created successfully.
+Table 'audit_log' created successfully.
+NOTICE:  function log_update() does not exist, skipping
+Function 'log_update' created successfully.
+Trigger 'trigger_log_update' created successfully on table 'info'.
+Sample row inserted into 'info'.
+Update query executed successfully, trigger should have fired.
+Trigger 'trigger_log_update' dropped successfully from table 'info'.
+Function 'log_update' dropped successfully.
+```
 
 ---
 
@@ -2590,6 +2877,12 @@ int main() {
     postgres_deallocate(pg);
     return 0;
 }
+```
+**Result**
+```
+Connected to the database successfully.
+Schema 'test_schema' created successfully.
+Schema 'test_schema' dropped successfully.
 ```
 
 ---
@@ -2647,6 +2940,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Row inserted successfully.
+Row 1: Name = 1, Age = John Doe
+```
+
 
 ---
 
@@ -2702,6 +3002,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Statement 'insert_info' prepared successfully.
+Row inserted successfully using prepared statement.
+Statement 'insert_info' cleared successfully.
+```
+
 
 ---
 
@@ -2770,6 +3078,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Transaction started.
+Savepoint 'sp1' created.
+Rolled back to savepoint 'sp1'.
+Transaction committed.
+```
 
 ---
 
@@ -2829,6 +3145,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Query sent successfully.
+Row 1: Brand = 2, Model = Honda, Year = Civic
+Row 2: Brand = 3, Model = Toyota, Year = Camry
+```
 
 ---
 
@@ -2874,9 +3197,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Connected to the database successfully.
+Data copied from CSV to table 'cars' successfully.
+```
 
 ---
 
-## Conclusion
+## License
 
-This PostgreSQL C library simplifies database interactions in C projects, providing an easy-to-use interface for connecting to PostgreSQL databases, executing queries, and managing results. The provided examples illustrate how to use the library for common database operations.
+This project is open-source and available under [ISC License].

@@ -176,6 +176,21 @@ To use the Queue library in your project, include the `queue.h` header file in y
     - `q2`: Pointer to the second Queue object.
 - **Returns:** `true` if the first queue is greater than or equal to the second, otherwise `false`.
 
+---
+
+### `void queue_sort(Queue* q, QueueCompareFunc comp)`
+
+- **Purpose**: Sorts the elements in a queue using the specified comparison function. The sorting is performed directly on the underlying vector data of the queue using a quicksort algorithm.
+  
+- **Parameters**:
+  - `q`: Pointer to the `Queue` object to be sorted.
+  - `comp`: A comparison function of type `QueueCompareFunc` (`int (*)(const void*, const void*)`) that defines the order of elements in the queue. The function should return:
+    - A negative value if the first element is less than the second.
+    - Zero if the elements are equal.
+    - A positive value if the first element is greater than the second.
+
+- **Returns**: This function does not return a value.
+
 --- 
 
 ## Examples
@@ -247,8 +262,8 @@ int main() {
         queue_push(myQueue, &values[i]);
     }
 
-    int* front = queue_front(myQueue);
-    int* back = queue_back(myQueue);
+    int* front = (int*)queue_front(myQueue);
+    int* back = (int*)queue_back(myQueue);
 
     if (front && back) {
         fmt_printf("Front element: %d\n", *front);
@@ -282,7 +297,7 @@ int main() {
     }
 
     queue_pop(myQueue);
-    int* front = queue_front(myQueue);
+    int* front = (int*)queue_front(myQueue);
 
     if (front) {
         fmt_printf("New front element after pop: %d\n", *front);
@@ -358,8 +373,8 @@ int main() {
 
     queue_swap(myQueue1, myQueue2);
 
-    int* front1 = queue_front(myQueue1);
-    int* front2 = queue_front(myQueue2);
+    int* front1 = (int*)queue_front(myQueue1);
+    int* front2 = (int*)queue_front(myQueue2);
 
     if (front1 && front2) {
         fmt_printf("Front element of myQueue1 after swap: %d\n", *front1);
@@ -504,11 +519,118 @@ Processing: String 2-3
 Processing: String 2-4
 ```
 
+### Example 9 : Simulate Print 
+
+```c
+#include "fmt/fmt.h"
+#include "queue/queue.h"
+#include <stdlib.h>
+
+typedef struct PrintJob {
+    int id;
+    char description[100];
+} PrintJob;
+
+void addPrintJob(Queue* queue, int id, const char* desc) {
+    PrintJob job;
+    job.id = id;
+    strncpy(job.description, desc, sizeof(job.description) - 1);
+    job.description[sizeof(job.description) - 1] = '\0';
+    queue_emplace(queue, &job, sizeof(PrintJob));
+}
+
+void processPrintQueue(Queue* queue) {
+    while (!queue_empty(queue)) {
+        PrintJob* job = (PrintJob*)queue_front(queue);
+        fmt_printf("Printing Job ID %d: %s\n", job->id, job->description);
+        queue_pop(queue);
+    }
+}
+
+int main() {
+    Queue* printQueue = queue_create(sizeof(PrintJob));
+
+    addPrintJob(printQueue, 1, "Document 1: Report.pdf");
+    addPrintJob(printQueue, 2, "Document 2: Presentation.pptx");
+    addPrintJob(printQueue, 3, "Document 3: Invoice.xlsx");
+
+    fmt_printf("Starting print queue processing...\n");
+    processPrintQueue(printQueue);
+
+    queue_deallocate(printQueue);
+    return 0;
+}
+```
+**Result**
+```
+Starting print queue processing...
+Printing Job ID 1: Document 1: Report.pdf
+Printing Job ID 2: Document 2: Presentation.pptx
+Printing Job ID 3: Document 3: Invoice.xlsx
+```
+
 ---
 
-## Conclusion
+### Example 10 : Task Scheduling with Priorities
+```c
+#include "fmt/fmt.h"
+#include "queue/queue.h"
+#include <stdlib.h>
 
-The Queue library provides a flexible, easy-to-use API for creating and managing dynamic-sized queues in C. With support for standard queue operations and relational comparisons, it is a robust tool for a variety of applications, from simple data structures to complex task management systems.
+typedef struct Task {
+    int priority;
+    char description[100];
+} Task;
+
+int compare_tasks(const void* a, const void* b) {
+    const Task* t1 = (const Task*)a;
+    const Task* t2 = (const Task*)b;
+    return (t1->priority > t2->priority) - (t1->priority < t2->priority);
+}
+
+void print_tasks(const Queue* q) {
+    for (size_t i = 0; i < queue_size(q); ++i) {
+        Task* task = (Task*)vector_at(q->vec, i);
+        fmt_printf("Task: %s (Priority: %d)\n", task->description, task->priority);
+    }
+}
+
+int main() {
+    Queue* taskQueue = queue_create(sizeof(Task));
+
+    Task t1 = {2, "Fix Bug #123"};
+    Task t2 = {3, "Write Documentation"};
+    Task t3 = {1, "Deploy Feature A"};
+
+    queue_push(taskQueue, &t1);
+    queue_push(taskQueue, &t2);
+    queue_push(taskQueue, &t3);
+
+    fmt_printf("Before sorting:\n");
+    print_tasks(taskQueue);
+    
+    fmt_printf("Sorting tasks by priority...\n");
+    queue_sort(taskQueue, compare_tasks);
+
+    print_tasks(taskQueue);
+
+    queue_deallocate(taskQueue);
+    return 0;
+}
+```
+**Result**
+```
+Before sorting:
+Task: Fix Bug #123 (Priority: 2)
+Task: Write Documentation (Priority: 3)
+Task: Deploy Feature A (Priority: 1)
+Sorting tasks by priority...
+Task: Deploy Feature A (Priority: 1)
+Task: Fix Bug #123 (Priority: 2)
+Task: Write Documentation (Priority: 3)
+```
+
+---
 
 ## License
 

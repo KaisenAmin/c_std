@@ -166,7 +166,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Match found: %.*s\n", match.length, match.start);
+        fmt_printf("Match found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -204,7 +204,7 @@ int main() {
 
     fmt_printf("Found %d matches:\n", match_count);
     for (int i = 0; i < match_count; ++i) {
-        fmt_printf("Match %d: %.*s\n", i + 1, matches[i].length, matches[i].start);
+        fmt_printf("Match %d: %.*s\n", i + 1, (int)matches[i].length, matches[i].start);
     }
 
     regex_deallocate(regex);
@@ -238,7 +238,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Case-insensitive match found: %.*s\n", match.length, match.start);
+        fmt_printf("Case-insensitive match found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -273,7 +273,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Multiline match found: %.*s\n", match.length, match.start);
+        fmt_printf("Multiline match found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -308,7 +308,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Dotall match found: %.*s\n", match.length, match.start);
+        fmt_printf("Dotall match found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -348,7 +348,7 @@ int main() {
 
     fmt_printf("Found %d matches:\n", match_count);
     for (int i = 0; i < match_count; ++i) {
-        fmt_printf("Match %d: %.*s\n", i + 1, matches[i].length, matches[i].start);
+        fmt_printf("Match %d: %.*s\n", i + 1, (int)matches[i].length, matches[i].start);
     }
 
     regex_deallocate(regex);
@@ -373,7 +373,7 @@ int main() {
     const char* pattern = "HELLO.*GOODBYE";
     const char* test_string = "hello world!\ngoodbye world!";
 
-    Regex* regex = regex_compile(pattern, REGEX_CASE_INSENSITIVE | REGEX_DOTALL);
+    Regex* regex = regex_compile(pattern, (RegexFlags)(REGEX_CASE_INSENSITIVE | REGEX_DOTALL));
     if (!regex) {
         fmt_printf("Failed to compile regex.\n");
         return 1;
@@ -381,7 +381,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Match found: %.*s\n", match.length, match.start);
+        fmt_printf("Match found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -417,7 +417,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Word boundary match found: %.*s\n", match.length, match.start);
+        fmt_printf("Word boundary match found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -452,7 +452,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Email found: %.*s\n", match.length, match.start);
+        fmt_printf("Email found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -490,7 +490,7 @@ int main() {
 
     fmt_printf("Found %d matches:\n", match_count);
     for (int i = 0; i < match_count; ++i) {
-        fmt_printf("Match %d: %.*s\n", i + 1, matches[i].length, matches[i].start);
+        fmt_printf("Match %d: %.*s\n", i + 1, (int)matches[i].length, matches[i].start);
     }
 
     regex_deallocate(regex);
@@ -528,7 +528,7 @@ int main() {
 
     fmt_printf("Found %d matches:\n", match_count);
     for (int i = 0; i < match_count; ++i) {
-        fmt_printf("Match %d: %.*s\n", i + 1, matches[i].length, matches[i].start);
+        fmt_printf("Match %d: %.*s\n", i + 1, (int)matches[i].length, matches[i].start);
     }
 
     regex_deallocate(regex);
@@ -563,7 +563,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Date found: %.*s\n", match.length, match.start);
+        fmt_printf("Date found: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No valid date found.\n");
@@ -600,7 +600,7 @@ int main() {
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
         fmt_printf("Date found: %.*s\n", match.length, match.start);
         for (int i = 0; i < match.group_count; i++) {
-            fmt_printf("Group %d: %.*s\n", i + 1, match.group_lengths[i], match.group_starts[i]);
+            fmt_printf("Group %d: %.*s\n", i + 1, (int)match.group_lengths[i], match.group_starts[i]);
         }
     } 
     else {
@@ -631,7 +631,7 @@ int main() {
     const char* pattern = "HELLO.*GOODBYE"; 
     const char* test_string = "hello world!\nThis is a test.\nGoodbye world!";
 
-    Regex* regex = regex_compile(pattern, REGEX_CASE_INSENSITIVE | REGEX_MULTILINE | REGEX_DOTALL);
+    Regex* regex = regex_compile(pattern, (RegexFlags)(REGEX_CASE_INSENSITIVE | REGEX_MULTILINE | REGEX_DOTALL));
     if (!regex) {
         fmt_printf("Failed to compile regex.\n");
         return 1;
@@ -639,7 +639,7 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Match found across lines: %.*s\n", match.length, match.start);
+        fmt_printf("Match found across lines: %.*s\n", (int)match.length, match.start);
     } 
     else {
         fmt_printf("No match found.\n");
@@ -679,7 +679,7 @@ int main() {
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
         fmt_printf("Full match: %.*s\n", (int)match.length, match.start);
         for (int i = 0; i < match.group_count; i++) {
-            fmt_printf("Group %d: %.*s\n", i + 1, match.group_lengths[i], match.group_starts[i]);
+            fmt_printf("Group %d: %.*s\n", i + 1, (int)match.group_lengths[i], match.group_starts[i]);
         }
     } 
     else {

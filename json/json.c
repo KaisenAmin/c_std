@@ -27,70 +27,70 @@ static JsonError last_error = {0, ""};
 
 static void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
-        fmt_printf(" ");
+        printf(" ");
     }
 }
 
 static void json_print_internal(const JsonElement* element, int indent) {
     if (!element) {
-        fmt_printf("null");
+        printf("null");
         return;
     }
 
     switch (element->type) {
         case JSON_OBJECT:
-            fmt_printf("{\n");
+            printf("{\n");
             MapIterator it = map_begin(element->value.object_val);
             MapIterator end = map_end(element->value.object_val);
             bool first = true;
             while (it.node != end.node) {
                 if (!first) {
-                    fmt_printf(",\n");
+                    printf(",\n");
                 }
                 print_indent(indent + 2);
-                fmt_printf("\"%s\": ", (char*)it.node->key);
+                printf("\"%s\": ", (char*)it.node->key);
                 json_print_internal((JsonElement*)it.node->value, indent + 2);
                 first = false;
                 map_iterator_increment(&it);
             }
             if (!first) {
-                fmt_printf("\n");
+                printf("\n");
             }
             print_indent(indent - 2);
-            fmt_printf("}");
+            printf("}");
             break;
         case JSON_ARRAY:
-            fmt_printf("[\n");
+            printf("[\n");
             for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
                 print_indent(indent + 2);
                 json_print_internal(*(JsonElement**)vector_at(element->value.array_val, i), indent + 2);
                 if (i < vector_size(element->value.array_val) - 1) {
-                    fmt_printf(",");
+                    printf(",");
                 }
-                fmt_printf("\n");
+                printf("\n");
             }
             print_indent(indent - 2);
-            fmt_printf("]");
+            printf("]");
             break;
         case JSON_STRING:
-            fmt_printf("\"%s\"", element->value.string_val);
+            printf("\"%s\"", element->value.string_val);
             break;
         case JSON_NUMBER:
             if (floor(element->value.number_val) == element->value.number_val) {
-                fmt_printf("%d", (int)element->value.number_val);
+                printf("%d", (int)element->value.number_val);
             } 
             else {
-                fmt_printf("%.2f", element->value.number_val);
+                printf("%.2f", element->value.number_val);
             }
             break;
         case JSON_BOOL:
-            fmt_printf(element->value.bool_val ? "true" : "false");
+            printf(element->value.bool_val ? "true" : "false");
             break;
         case JSON_NULL:
-            fmt_printf("null");
+            printf("null");
             break;
         default:
-            fmt_printf("Unknown type");
+            printf("Unknown type");
     }
 }
 
@@ -1215,13 +1215,13 @@ JsonElement * json_read_from_file(const char* filename) {
 void json_print(const JsonElement* element) {
     if (!element) {
         JSON_LOG("[json_print] Error: The provided JsonElement is NULL in json_print.");
-        fmt_printf("null\n");
+        printf("null\n");
         return;
     }
 
     JSON_LOG("[json_print] Info: Printing JSON element in json_print.");
     json_print_internal(element, 2);
-    fmt_printf("\n");
+    printf("\n");
 }
 
 /**
@@ -1614,7 +1614,7 @@ bool json_compare(const JsonElement *element1, const JsonElement *element2) {
             return true;
         default:
             JSON_LOG("[json_compare] Error: Unknown JSON type %d.", element1->type);
-            fmt_fprintf(stderr, "Error: Unknown JSON type in json_compare.\n");
+            fprintf(stderr, "Error: Unknown JSON type in json_compare.\n");
             return false;
     }
 }

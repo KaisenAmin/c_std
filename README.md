@@ -86,6 +86,8 @@ The project is organized into several subdirectories, each representing a differ
 
 - `Regex`: The Regex library in C provides functionality to compile, match, and search regular expressions. It offers flexibility with flags for case-insensitive matching, multiline support, and dotall mode. The library is cross-platform, supporting PCRE on Windows and POSIX regex on Linux, simplifying regex-based string operations in C projects.
 
+- `UnitTest`: The UnitTest library is a lightweight and powerful framework designed to facilitate unit testing in C. It supports a wide range of features, making it a versatile and indispensable tool for ensuring code reliability and quality in complex projects.
+
 ---
 
 ## Note 

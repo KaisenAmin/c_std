@@ -7,7 +7,6 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include "csv.h"
-#include "../fmt/fmt.h"
 #include "../string/std_string.h"
 
 
@@ -21,7 +20,7 @@
 CsvRow* csv_row_create() {
     CSV_LOG("[csv_row_create]: Function start.");
 
-    CsvRow* row = malloc(sizeof(CsvRow));
+    CsvRow* row = (CsvRow*) malloc(sizeof(CsvRow));
     if (!row) {
         CSV_LOG("[csv_row_create]: Error - Memory allocation failed.");
         exit(-1);
@@ -84,7 +83,7 @@ void csv_row_append_cell(CsvRow *row, const char *value) {
         size_t newCapacity = row->capacity == 0 ? 1 : row->capacity * 2;
         CSV_LOG("[csv_row_append_cell]: Resizing cells array to new capacity %zu.", newCapacity);
 
-        char **newCells = realloc(row->cells, newCapacity * sizeof(char *));
+        char **newCells = (char **)realloc(row->cells, newCapacity * sizeof(char *));
         if (!newCells) {
             CSV_LOG("[csv_row_append_cell]: Error - Memory allocation failed for new cells.");
             return;
@@ -139,7 +138,7 @@ char* csv_row_get_cell(const CsvRow *row, size_t index) {
 CsvFile* csv_file_create(char delimiter) {
     CSV_LOG("[csv_file_create]: Function start.");
 
-    CsvFile* file = malloc(sizeof(CsvFile));
+    CsvFile* file = (CsvFile*)malloc(sizeof(CsvFile));
     if (!file) {
         CSV_LOG("[csv_file_create]: Error - Memory allocation failed.");
         exit(-1);
@@ -288,7 +287,7 @@ void csv_file_write(const CsvFile *file, const char *filename) {
     }
 
     CSV_LOG("[csv_file_write]: Opening file '%s' for writing.", filename);
-    FileWriter* fw = file_writer_open(filename, WRITE_UNICODE); 
+    FileWriter* fw = file_writer_open(filename, WRITE_TEXT); 
     if (!fw) {
         CSV_LOG("[csv_file_write]: Error - Unable to open file '%s' for writing.", filename);
         return;
@@ -302,8 +301,7 @@ void csv_file_write(const CsvFile *file, const char *filename) {
             if (j < row->size - 1)
                 file_writer_write_fmt(fw, "%c", file->delimiter);
         }
-        char newline[] = "\n";
-        file_writer_write_line(newline, 1, fw); // Corrected call
+        file_writer_write_fmt(fw, "\n");
         CSV_LOG("[csv_file_write]: Finished writing row %zu.", i);
     }
 
@@ -332,7 +330,7 @@ void csv_file_append_row(CsvFile *file, CsvRow *row) {
     if (file->size >= file->capacity) {
         size_t newCapacity = file->capacity == 0 ? 1 : file->capacity * 2;
         CSV_LOG("[csv_file_append_row]: Resizing rows array to new capacity %zu.", newCapacity);
-        CsvRow **newRows = realloc(file->rows, newCapacity * sizeof(CsvRow *));
+        CsvRow **newRows = (CsvRow**)realloc(file->rows, newCapacity * sizeof(CsvRow *));
         if (!newRows) {
             CSV_LOG("[csv_file_append_row]: Error - Unable to allocate memory for new rows.");
             return;
@@ -422,12 +420,12 @@ void csv_print(const CsvFile *file) {
         CSV_LOG("[csv_print]: Printing row %zu.", i);
 
         for (size_t j = 0; j < row->size; ++j) {
-            fmt_printf("%s", row->cells[j]);
+            printf("%s", row->cells[j]);
             if (j < row->size - 1) { 
-                fmt_printf("%c", file->delimiter);
+                printf("%c", file->delimiter);
             }
         }
-        fmt_printf("\n");
+        printf("\n");
     }
 
     CSV_LOG("[csv_print]: Function end.");
@@ -508,7 +506,7 @@ void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colDat
         if (row->size == row->capacity) {
             size_t newCapacity = row->capacity == 0 ? 1 : row->capacity * 2;
             CSV_LOG("[csv_file_insert_column]: Resizing row %zu cells to new capacity %zu.", i, newCapacity);
-            char **newCells = realloc(row->cells, newCapacity * sizeof(char *));
+            char **newCells = (char**)realloc(row->cells, newCapacity * sizeof(char *));
 
             if (!newCells) {
                 CSV_LOG("[csv_file_insert_column]: Error - Memory allocation failed for new cells in row %zu.", i);
@@ -582,7 +580,7 @@ void csv_file_set_header(CsvFile *file, CsvRow *header) {
         if (file->size == file->capacity) {
             size_t newCapacity = file->capacity == 0 ? 1 : file->capacity * 2;
             CSV_LOG("[csv_file_set_header]: Resizing rows array to new capacity %zu.", newCapacity);
-            CsvRow **newRows = realloc(file->rows, newCapacity * sizeof(CsvRow *));
+            CsvRow **newRows = (CsvRow**)realloc(file->rows, newCapacity * sizeof(CsvRow *));
 
             if (!newRows) {
                 CSV_LOG("[csv_file_set_header]: Error - Memory allocation failed for new rows.");
@@ -648,7 +646,7 @@ CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) {
 
     size_t foundCount = 0;
     CSV_LOG("[csv_file_find_rows]: Allocating memory for foundRows.");
-    CsvRow **foundRows = malloc((file->size + 1) * sizeof(CsvRow *)); 
+    CsvRow **foundRows = (CsvRow**)malloc((file->size + 1) * sizeof(CsvRow *)); 
 
     if (!foundRows) {
         CSV_LOG("[csv_file_find_rows]: Error - Memory allocation failed for foundRows.");
@@ -672,7 +670,7 @@ CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) {
     foundRows[foundCount] = NULL; 
 
     CSV_LOG("[csv_file_find_rows]: Resizing foundRows to match the exact size.");
-    CsvRow **resizedFoundRows = realloc(foundRows, (foundCount + 1) * sizeof(CsvRow *));
+    CsvRow **resizedFoundRows = (CsvRow**)realloc(foundRows, (foundCount + 1) * sizeof(CsvRow *));
     if (!resizedFoundRows) {
         CSV_LOG("[csv_file_find_rows]: Error - Memory allocation failed during resizing, returning original foundRows.");
         return foundRows; 
@@ -733,7 +731,6 @@ void csv_file_concatenate(CsvFile *file1, const CsvFile *file2) {
 
     if (!file1 || !file2) {
         CSV_LOG("[csv_file_concatenate]: Error - Null parameters provided.");
-        fmt_fprintf(stderr, "Error: Null parameters in csv_file_concatenate.\n");
         return;
     }
 
@@ -772,7 +769,6 @@ int csv_column_sum(const CsvFile *file, size_t columnIndex) {
     CSV_LOG("[csv_column_sum]: Function start.");
     if (!file) {
         CSV_LOG("[csv_column_sum]: Error - Null file provided.");
-        fmt_fprintf(stderr, "Error: File is NULL in csv_column_sum.\n");
         return 0;
     }
 
@@ -791,7 +787,6 @@ int csv_column_sum(const CsvFile *file, size_t columnIndex) {
         } 
         else {
             CSV_LOG("[csv_column_sum]: Warning - Column index out of range in row %zu.", i);
-            fmt_fprintf(stderr, "Warning: Column index out of range in row %zu.\n", i);
         }
     }
 
@@ -816,15 +811,13 @@ char* csv_export_to_json(const CsvFile *file) {
     CSV_LOG("[csv_export_to_json]: Function start.");
     if (!file) {
         CSV_LOG("[csv_export_to_json]: Error - Null CsvFile passed.");
-        fmt_fprintf(stderr, "Error: Null CsvFile passed to csv_export_to_json.\n");
         return NULL;
     }
 
     CSV_LOG("[csv_export_to_json]: Allocating memory for JSON export.");
-    char *json = malloc(BUFFER_SIZE);
+    char *json = (char*)malloc(BUFFER_SIZE);
     if (!json) {
         CSV_LOG("[csv_export_to_json]: Error - Memory allocation failed.");
-        fmt_fprintf(stderr, "Error: Memory allocation failed for JSON export in csv_export_to_json.\n");
         return NULL;
     }
 

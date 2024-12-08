@@ -13,7 +13,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define MATRIX_LOGGING_ENABLE 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
+// #define MATRIX_LOGGING_ENABLE 
 
 #ifdef MATRIX_LOGGING_ENABLE 
     #define MATRIX_LOG(fmt, ...) \
@@ -116,5 +120,9 @@ double matrix_max_element(const Matrix* matrix);
 double* matrix_to_array(const Matrix* matrix);
 int matrix_rank(const Matrix* matrix);
 size_t matrix_size(const Matrix* matrix);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

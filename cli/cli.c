@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cli.h"
-#include "../fmt/fmt.h"
 #include "../string/std_string.h"
+
 
 
 extern char **environ;
@@ -23,7 +23,7 @@ static char** split_string(const char* str, const char* delimiter, int* count) {
     // Get the first token
     token = strtok(strCopy, delimiter);
     while (token != NULL) {
-        tokenArray = realloc(tokenArray, sizeof(char*) * (tokens + 1));
+        tokenArray = (char**)realloc(tokenArray, sizeof(char*) * (tokens + 1));
         tokenArray[tokens++] = string_strdup(token);
         token = strtok(NULL, delimiter);
     }
@@ -52,9 +52,7 @@ CliParser* cli_parser_create(const char *progName) {
     if (progName == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Program name is NULL in cli_parser_create.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif 
+        CLI_LOG("[cli_parser_create] %s", cli_last_error.message);
         return NULL;
     }
 
@@ -62,9 +60,7 @@ CliParser* cli_parser_create(const char *progName) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed for CliParser in cli_parser_create.\n");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif 
+        CLI_LOG("[cli_parser_create] %s", cli_last_error.message);
         return NULL;
     }
 
@@ -76,9 +72,7 @@ CliParser* cli_parser_create(const char *progName) {
     if (parser->progName == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed for program name in cli_parser_create.\n");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_parser_create] %s", cli_last_error.message);
         free(parser); // Free the allocated parser before returning NULL
         return NULL;
     }
@@ -92,17 +86,15 @@ CliParser* cli_parser_create(const char *progName) {
     parser->preExecutionHook = NULL;
     parser->postExecutionHook = NULL;
     parser->preExecutionHookUserData = NULL;
-    parser->pipeliningEnabled = false;
     parser->userData = NULL;
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Parser Created Successfully.\n");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_parser_create] %s", cli_last_error.message);
 
     return parser;
 }
+
 
 /**
  * @brief Deallocates a CLI parser and all associated resources.
@@ -122,9 +114,7 @@ void cli_parser_deallocate(CliParser *parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Attempted to deallocate a NULL CliParser.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
 
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_parser_deallocate] %s", cli_last_error.message);
         return;
     }
 
@@ -138,7 +128,7 @@ void cli_parser_deallocate(CliParser *parser) {
     if (parser->options != NULL) {
         for (size_t i = 0; i < parser->numOptions; i++) {
             if (parser->options[i].longOpt != NULL) {
-                free((void*)parser->options[i].longOpt); 
+                free((void*)parser->options[i].longOpt);
             }
             if (parser->options[i].description != NULL) {
                 free((void*)parser->options[i].description);
@@ -148,7 +138,7 @@ void cli_parser_deallocate(CliParser *parser) {
         parser->options = NULL;
     }
 
-    // Deallocate commands if they exist
+    // Deallocate commands and their aliases if they exist
     if (parser->commands != NULL) {
         for (size_t i = 0; i < parser->numCommands; i++) {
             if (parser->commands[i].name != NULL) {
@@ -157,18 +147,28 @@ void cli_parser_deallocate(CliParser *parser) {
             if (parser->commands[i].description != NULL) {
                 free((void*)parser->commands[i].description);
             }
+
+            // Free each alias in the command's aliases array
+            if (parser->commands[i].aliases != NULL) {
+                for (size_t j = 0; j < parser->commands[i].numAliases; j++) {
+                    if (parser->commands[i].aliases[j] != NULL) {
+                        free((void*)parser->commands[i].aliases[j]);
+                    }
+                }
+                free(parser->commands[i].aliases); // Free the aliases array itself
+                parser->commands[i].aliases = NULL;
+            }
         }
         free(parser->commands);
         parser->commands = NULL;
     }
 
+    // Finally, free the parser structure itself
     free(parser);
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: CliParser deallocated successfully.\n");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_parser_deallocate] %s", cli_last_error.message);
 }
 
 /**
@@ -188,9 +188,7 @@ void cli_set_custom_usage(CliParser *parser, const char *usage) {
     if (parser == NULL || usage == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL argument provided to cli_set_custom_usage.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_custom_usage] %s", cli_last_error.message);
         return;
     }
 
@@ -205,16 +203,12 @@ void cli_set_custom_usage(CliParser *parser, const char *usage) {
     if (parser->usage == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed for custom usage message in cli_set_custom_usage.\n");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_custom_usage] %s", cli_last_error.message);
     } 
     else {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Custom usage message set successfully.\n");
         cli_last_error.code = CLI_SUCCESS;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stdout, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_custom_usage] %s", cli_last_error.message);
     }
 }
 
@@ -234,9 +228,7 @@ void cli_enable_strict_mode(CliParser *parser, bool enable) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_enable_strict_mode.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_enable_strict_mode] %s", cli_last_error.message);
         return;
     }
 
@@ -252,14 +244,7 @@ void cli_enable_strict_mode(CliParser *parser, bool enable) {
         cli_last_error.code = CLI_DISABLE_STRICT_MODE;
     }
 
-    #ifdef CLI_LOGGING_ENABLE 
-        if (parser->strictMode) {
-            fmt_fprintf(stdout, cli_last_error.message);
-        }
-        else {
-            fmt_fprintf(stderr, cli_last_error.message);
-        }
-    #endif
+    CLI_LOG("[cli_enable_strict_mode] %s", cli_last_error.message);
 }
 /** 
  * @brief Sets a custom error handler for the CLI parser.
@@ -278,18 +263,14 @@ void cli_set_error_handler(CliParser *parser, CliErrorHandler handler) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Cannot set error handler on a NULL CliParser.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_error_handler] %s", cli_last_error.message);
         return;
     }
 
     if (handler == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Cannot set error handler on a NULL errorHandler function.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_error_handler] %s", cli_last_error.message);
         return;
     }
 
@@ -298,9 +279,7 @@ void cli_set_error_handler(CliParser *parser, CliErrorHandler handler) {
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Custome Error handler set successfully.\n");
     cli_last_error.code = CLI_SUCCESS;
 
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_set_error_handler] %s", cli_last_error.message);
 }
 
 /**
@@ -317,61 +296,56 @@ void cli_set_error_handler(CliParser *parser, CliErrorHandler handler) {
  * @note false if the `parser` or `command` is NULL, or if a duplicate command name is detected.
  * @note true if the command was successfully registered.
  */
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+// Function to register a command with the CLI parser
 bool cli_register_command(CliParser *parser, const CliCommand *command) {
-    if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_register_command.\n");
+    if (!parser) {
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
+                 "Error: CLI parser is NULL in cli_register_command.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_register_command] %s\n", cli_last_error.message);
         return false;
     }
-    if (command == NULL || command->name == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command or command name is NULL in cli_register_command.\n");
+
+    if (!command || !command->name) {
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
+                 "Error: Command or command name is NULL in cli_register_command.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_register_command] %s\n", cli_last_error.message);
         return false;
     }
 
     // Check for duplicate command names
-    for (size_t i = 0; i < parser->numCommands; i++) {
+    for (size_t i = 0; i < parser->numCommands; ++i) {
         if (strcmp(parser->commands[i].name, command->name) == 0) {
-            snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command '%s' already exists in cli_register_command.\n", command->name);
-            cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND; 
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stderr, cli_last_error.message);
-            #endif
+            snprintf(cli_last_error.message, sizeof(cli_last_error.message),
+                     "Error: Duplicate command '%s' in cli_register_command.", command->name);
+            cli_last_error.code = CLI_ERROR_COMMAND_NOT_FOUND;
+            CLI_LOG("[cli_register_command] %s\n", cli_last_error.message);
             return false;
         }
     }
 
-    // Allocate or resize the commands array
-    void *temp = realloc(parser->commands, (parser->numCommands + 1) * sizeof(CliCommand));
-    if (temp == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed in cli_register_command.\n");
+    // Allocate memory for the new command array
+    CliCommand *newCommands = (CliCommand *)realloc(parser->commands,
+                                                    (parser->numCommands + 1) * sizeof(CliCommand));
+    if (!newCommands) {
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
+                 "Error: Memory allocation failed in cli_register_command.");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_register_command] %s\n", cli_last_error.message);
         return false;
     }
-    parser->commands = temp;
 
-    // Add the new command
+    // Add the new command to the array
+    parser->commands = newCommands;
     parser->commands[parser->numCommands] = *command;
     parser->numCommands++;
 
-    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Command '%s' registered successfully.\n", command->name);
-    cli_last_error.code = CLI_SUCCESS;
-
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_register_command] Debug: Command '%s' registered successfully.\n", command->name);
     return true;
 }
 
@@ -392,24 +366,22 @@ void cli_print_help(const CliParser *parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_print_usage.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
         
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_print_help] %s", cli_last_error.message);
         return;
     }
 
     if (parser->usage) {
-        fmt_fprintf(stdout, "%s\n", parser->usage);
+        CLI_LOG("[cli_print_help] %s\n", parser->usage);
     } 
     else {
-        fmt_fprintf(stdout, "Usage: %s [options] [commands]\n", parser->progName ? parser->progName : "application");
+        CLI_LOG("[cli_print_help] Usage: %s [options] [commands]\n", parser->progName ? parser->progName : "application");
     }
 
     // Print options
     if (parser->options && parser->numOptions > 0) {
-        fmt_fprintf(stdout, "Options:\n");
+        fprintf(stdout, "Options:\n");
         for (size_t i = 0; i < parser->numOptions; i++) {
-            fmt_fprintf(stdout, "  %s, %c\t%s\n",
+            fprintf(stdout, "  %s, %c\t%s\n",
                         parser->options[i].longOpt ? parser->options[i].longOpt : "",
                         parser->options[i].shortOpt ? parser->options[i].shortOpt : ' ',
                         parser->options[i].description ? parser->options[i].description : "");
@@ -418,9 +390,9 @@ void cli_print_help(const CliParser *parser) {
 
     // Print commands
     if (parser->commands && parser->numCommands > 0) {
-        fmt_fprintf(stdout, "Commands:\n");
+        fprintf(stdout, "Commands:\n");
         for (size_t i = 0; i < parser->numCommands; i++) {
-            fmt_fprintf(stdout, "  %s\t%s\n",
+            fprintf(stdout, "  %s\t%s\n",
                         parser->commands[i].name ? parser->commands[i].name : "Unnamed",
                         parser->commands[i].description ? parser->commands[i].description : "No description available");
         }
@@ -429,9 +401,7 @@ void cli_print_help(const CliParser *parser) {
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Usage information printed successfully.\n");
     cli_last_error.code = CLI_SUCCESS;
 
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_print_help] %s", cli_last_error.message);
 }
 
 /**
@@ -449,64 +419,53 @@ void cli_print_help(const CliParser *parser) {
  * @note true if the option was successfully registered.
  */
 bool cli_register_option(CliParser *parser, const CliOption *option) {
-    if (parser == NULL) {
+    if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_register_option.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_register_option] %s", cli_last_error.message);
         return false;
     }
-    if (option == NULL) {
+    if (!option) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Option is NULL in cli_register_option.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_register_option] %s", cli_last_error.message);
         return false;
     }
 
-    // Check for duplicate options by long option or short option
+    // Check for duplicate options
     for (size_t i = 0; i < parser->numOptions; i++) {
         if ((option->longOpt && parser->options[i].longOpt && strcmp(parser->options[i].longOpt, option->longOpt) == 0) ||
-            (option->shortOpt && parser->options[i].shortOpt && option->shortOpt == parser->options[i].shortOpt)) {
-            snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Duplicate option '%s' in cli_register_option.\n", option->longOpt ? option->longOpt : "");
-            cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND; 
-            
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stderr, cli_last_error.message);
-            #endif
+            (option->shortOpt && parser->options[i].shortOpt == option->shortOpt)) {
+            snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Duplicate option '%s'.\n", option->longOpt ? option->longOpt : "");
+            cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
+            CLI_LOG("[cli_register_option] %s", cli_last_error.message);
             return false;
         }
     }
 
-    // Allocate or resize the options array
-    void *temp = realloc(parser->options, (parser->numOptions + 1) * sizeof(CliOption));
-    if (temp == NULL) {
+    // Resize the options array
+    CliOption *temp = (CliOption *)realloc(parser->options, (parser->numOptions + 1) * sizeof(CliOption));
+    if (!temp) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Memory allocation failed in cli_register_option.\n");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_register_option] %s", cli_last_error.message);
         return false;
     }
     parser->options = temp;
 
-    // Add the new option
+    // Copy the option and its userData
     parser->options[parser->numOptions] = *option;
-    parser->numOptions++;
 
+    CLI_LOG("[cli_register_option] Debug: Option '%s' registered with userData=%p.\n",
+            option->longOpt ? option->longOpt : "(unknown)", option->userData);
+
+    parser->numOptions++;
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Option '%s' registered successfully.\n", option->longOpt ? option->longOpt : "");
     cli_last_error.code = CLI_SUCCESS;
-    
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_register_option] %s", cli_last_error.message);
     return true;
 }
+
 
 /**
  * @brief Displays an error message using the CLI parser's error handler.
@@ -526,9 +485,7 @@ void cli_display_error(const CliParser *parser, const char *error) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_display_error.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
         
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_display_error] %s", cli_last_error.message);
         return;
     }
 
@@ -536,9 +493,7 @@ void cli_display_error(const CliParser *parser, const char *error) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL or empty error message provided to cli_display_error.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
         
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_display_error] %s", cli_last_error.message);
         return;
     }
 
@@ -547,14 +502,12 @@ void cli_display_error(const CliParser *parser, const char *error) {
         parser->errorHandler(parser, error, NULL); 
     } 
     else {
-        fmt_fprintf(stderr, "Error: %s\n", error);
+        CLI_LOG("[cli_display_error] Error: %s\n", error);
     }
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error displayed: %s", error);
     cli_last_error.code = CLI_ERROR_NONE; 
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_display_error] %s", cli_last_error.message);
 }
 
 /**
@@ -574,19 +527,15 @@ void cli_print_version(const CliParser *parser, const char *version) {
     if (parser == NULL || version == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_print_version.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_display_error] %s", cli_last_error.message);
         return;
     }
 
-    fmt_fprintf(stdout, "%s version %s\n", parser->progName ? parser->progName : "Application", version);
+    fprintf(stdout, "%s version %s\n", parser->progName ? parser->progName : "Application", version);
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Version information printed successfully.\n");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_display_error] %s", cli_last_error.message);
 }
 
 /**
@@ -602,12 +551,8 @@ void cli_print_version(const CliParser *parser, const char *version) {
  * @note If the `parser` or `name` is NULL, an error is logged and NULL is returned.
  */
 const CliCommand* cli_find_command(const CliParser *parser, const char *name) {
-    if (parser == NULL || name == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_find_command.\n");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+    if (!parser || !name) {
+        CLI_LOG("[cli_find_command] Error: Invalid parser or command name.\n");
         return NULL;
     }
 
@@ -615,9 +560,17 @@ const CliCommand* cli_find_command(const CliParser *parser, const char *name) {
         if (strcmp(parser->commands[i].name, name) == 0) {
             return &parser->commands[i];
         }
+
+        // Check aliases
+        for (size_t j = 0; j < parser->commands[i].numAliases; j++) {
+            if (strcmp(parser->commands[i].aliases[j], name) == 0) {
+                return &parser->commands[i];
+            }
+        }
     }
 
-    return NULL; // Command not found
+    CLI_LOG("[cli_find_command] Warning: Command '%s' not found.\n", name);
+    return NULL;
 }
 
 /**
@@ -637,9 +590,7 @@ const CliOption* cli_find_option(const CliParser *parser, const char *longOpt, c
     if (parser == NULL || (longOpt == NULL && shortOpt == '\0')) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_find_option.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_display_error] %s", cli_last_error.message);
         return NULL;
     }
 
@@ -671,9 +622,7 @@ void cli_update_description(CliParser *parser, const char *name, const char *new
     if (parser == NULL || name == NULL || newDescription == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_update_description.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_update_description] %s", cli_last_error.message);
         return;
     }
 
@@ -709,103 +658,119 @@ void cli_update_description(CliParser *parser, const char *name, const char *new
     if (!found) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: '%s' not found in cli_update_description.\n", name);
         cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_update_description] %s", cli_last_error.message);
         return;
     }
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Description updated successfully for '%s'.\n", name);
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_update_description] %s", cli_last_error.message);
 }
 
 /**
- * @brief Parses command-line arguments based on the registered options and commands.
- *
- * This function processes the command-line arguments, first handling options
- * (those that start with '-' or '--') and then looking for and executing commands.
+ * @brief Parses command-line arguments and executes the corresponding command or options.
  *
  * @param parser A pointer to the `CliParser` instance. Must not be NULL.
- * @param argc The argument count, typically from the main function.
- * @param argv The argument vector, typically from the main function.
+ * @param argc The argument count from `main`.
+ * @param argv The argument vector from `main`.
  *
- * @return `CliStatusCode` indicating the result of the parsing operation.
- *
- * @note CLI_SUCCESS on successful parsing and execution.
- * @note CLI_ERROR_INVALID_ARGUMENT if the parser or arguments are invalid.
- * @note CLI_ERROR_COMMAND_NOT_FOUND if no valid command was found in the arguments.
+ * @return `CliStatusCode` indicating the result of parsing:
+ *         - `CLI_SUCCESS` on success.
+ *         - `CLI_ERROR_INVALID_ARGUMENT` if parser or args are invalid.
+ *         - `CLI_ERROR_PARSE` for unrecognized options.
+ *         - `CLI_ERROR_COMMAND_NOT_FOUND` for unrecognized commands.
  */
 CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[]) {
     if (!parser || argc < 1 || !argv) {
-        fmt_printf("Debug: Invalid CLI parser setup or arguments.\n");
+        CLI_LOG("[cli_parse_args] Error: Invalid parser or arguments.\n");
         return CLI_ERROR_INVALID_ARGUMENT;
     }
 
-    fmt_printf("Debug: Starting argument parsing.\n");
-    bool commandFound = false;
+    CLI_LOG("[cli_parse_args] Debug: Starting argument parsing.\n");
 
-    // First phase: Process all options
+    if(argc == 1) {
+        CLI_LOG("[cli_parse_args] Debug: in argc\n");
+        const CliCommand *command = cli_find_command(parser, argv[0]);
+        if (command) {
+            command->handler(command, argc, argv, command->userData);
+            return CLI_SUCCESS;
+        }
+    }
+
+    // First, process all options (arguments starting with '-' or '--')
     for (int i = 1; i < argc; ++i) {
-        if (argv[i][0] == '-' || argv[i][1] == '-') { // Assuming options start with '-' or '--'
-            bool isOptionProcessed = false;
+        
+     
+        if (argv[i][0] == '-') {
+            bool optionProcessed = false;
 
-            // Check each option group
-            for (size_t j = 0; j < parser->numOptionGroups; ++j) {
-                CliOptionGroup *group = &parser->optionGroups[j];
-                for (size_t k = 0; k < group->numOptions; ++k) {
-                    CliOption *option = &group->options[k];
-                    // Match option by long option or short option
-                    if ((option->longOpt && strcmp(argv[i], option->longOpt) == 0) ||
-                        (option->shortOpt && argv[i][1] == option->shortOpt)) {
-                        fmt_printf("Debug: Matched option %s.\n", argv[i]);
-                        const char *value = NULL;
-                        if (option->optionType != CLI_NO_ARG && i + 1 < argc) {
-                            value = argv[++i]; // Increment i to skip option's argument
-                            fmt_printf("Debug: Option argument %s.\n", value);
-                        }
-                        // Call the option handler with the value
-                        if (option->handler) {
-                            fmt_printf("Debug: Calling handler for option %s with value %s.\n", argv[i], value ? value : "NULL");
-                            option->handler(option, value, option->userData);
-                            isOptionProcessed = true;
-                            break; // Break if the option is processed
-                        }
+            // Loop through registered options
+            for (size_t j = 0; j < parser->numOptions; ++j) {
+                CliOption *option = &parser->options[j];
+
+                // Match long option
+                if (option->longOpt && strcmp(argv[i], option->longOpt) == 0) {
+                    CLI_LOG("[cli_parse_args] Debug: Matched long option '%s'.\n", argv[i]);
+                    const char *value = NULL;
+                    if (option->optionType != CLI_NO_ARG && i + 1 < argc) {
+                        value = argv[++i];
                     }
+                    if (option->handler) {
+                        option->handler(option, value, option->userData);
+                    }
+                    optionProcessed = true;
+                    break;
                 }
-                if (isOptionProcessed) break; // Break the outer loop if the option is processed
+
+                // Match short option
+                if (option->shortOpt && argv[i][1] == option->shortOpt && argv[i][2] == '\0') {
+                    CLI_LOG("[cli_parse_args] Debug: Matched short option '-%c'.\n", option->shortOpt);
+                    const char *value = NULL;
+                    if (option->optionType != CLI_NO_ARG && i + 1 < argc) {
+                        value = argv[++i];
+                    }
+                    if (option->handler) {
+                        option->handler(option, value, option->userData);
+                    }
+                    optionProcessed = true;
+                    break;
+                }
             }
-            if (!isOptionProcessed) {
-                fmt_printf("Debug: Unrecognized option %s.\n", argv[i]);
-                // You might want to handle unrecognized options here
+
+            if (!optionProcessed) {
+                CLI_LOG("[cli_parse_args] Warning: Unrecognized option '%s'.\n", argv[i]);
+                if (parser->errorHandler) {
+                    parser->errorHandler(parser, argv[i], parser->userData);
+                }
+                return CLI_ERROR_PARSE;
             }
         }
     }
 
-    // Second phase: Look for command
+    // Then, process commands (non-option arguments)
     for (int i = 1; i < argc; ++i) {
-        if (!(argv[i][0] == '-' || argv[i][1] == '-')) { // This is not an option, treat it as a command
-            const CliCommand *command = cli_find_command(parser, argv[i]);
+        if (argv[i][0] != '-') { // Skip options
+            const char *commandName = argv[i];
+            const CliCommand *command = cli_find_command(parser, commandName);
             if (command) {
-                fmt_printf("Debug: Found command %s. Calling handler.\n", argv[i]);
+                CLI_LOG("[cli_parse_args] Debug: Matched command '%s'. Calling handler.\n", commandName);
                 command->handler(command, argc - i - 1, &argv[i + 1], command->userData);
-                commandFound = true;
-                break; // Stop processing after command is found
+                return CLI_SUCCESS;
+            } else {
+                CLI_LOG("[cli_parse_args] Warning: Unrecognized command '%s'.\n", commandName);
+                if (parser->errorHandler) {
+                    parser->errorHandler(parser, commandName, parser->userData);
+                }
+                return CLI_ERROR_COMMAND_NOT_FOUND;
             }
         }
     }
 
-    if (!commandFound) {
-        fmt_printf("Debug: No valid command found. Consider printing help here.\n");
-        // Optionally print help or handle the absence of a valid command
-        return CLI_ERROR_COMMAND_NOT_FOUND;
-    }
-
-    fmt_printf("Debug: Command processed successfully.\n");
-    return CLI_SUCCESS;
+    CLI_LOG("[cli_parse_args] Debug: No commands executed. Argument parsing completed successfully.\n");
+    return CLI_ERROR_COMMAND_NOT_FOUND;
 }
+
+
 
 /**
  * @brief Retrieves the last error that occurred in the CLI parser.
@@ -821,15 +786,10 @@ CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[]) {
 CliError cli_get_last_error(const CliParser *parser) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: cli_get_last_status called with NULL parser.\n");
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: cli_get_last_status called with NULL parser.\n");
-        #endif
+        CLI_LOG("[cli_get_last_error] %s", cli_last_error.message);
         return cli_last_error;
     }
-
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "Success: Parser arg is not null in cli_get_last_error.\n");
-    #endif 
+    CLI_LOG("[cli_get_last_error] Success: Parser arg is not null in cli_get_last_error.\n");
     return cli_last_error;
 }
 
@@ -849,27 +809,22 @@ CliError cli_get_last_error(const CliParser *parser) {
  */
 void cli_set_default_command_handler(CliParser *parser, CliCommandHandler handler) {
     if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to cli_set_default_command_handler.");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: NULL parser provided to ");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_default_command_handler] %s", cli_last_error.message);
+      
         return;
     }
 
     if (handler == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Warning: NULL handler provided to cli_set_default_command_handler. Default handler cleared.");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Warning: NULL handler provided to Default handler cleared.");
         cli_last_error.code = CLI_SUCCESS; 
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_default_command_handler] %s", cli_last_error.message);
     } 
     else {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Default command handler set successfully.");
         cli_last_error.code = CLI_SUCCESS;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_default_command_handler] %s", cli_last_error.message);
     }
 
     parser->defaultCommandHandler = handler;
@@ -893,20 +848,16 @@ void cli_set_default_command_handler(CliParser *parser, CliCommandHandler handle
  */
 bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt) {
     if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_unregister_option.");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in .");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_unregister_option] %s", cli_last_error.message);
         return false;
     }
 
     if (longOpt == NULL && shortOpt == '\0') {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Both long and short option identifiers are NULL or empty in cli_unregister_option.");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Both long and short option identifiers are NULL or empty in .");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_unregister_option] %s", cli_last_error.message);
         return false;
     }
 
@@ -933,19 +884,15 @@ bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt
 
             snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Option '%s' unregistered successfully.", longOpt ? longOpt : shortOpt ? &shortOpt : "N/A");
             cli_last_error.code = CLI_SUCCESS;
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-            #endif
+            CLI_LOG("[cli_unregister_option] %s", cli_last_error.message);
             return true;
         }
     }
 
     // Option not found
-    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Option '%s' not found in cli_unregister_option.", longOpt ? longOpt : shortOpt ? &shortOpt : "N/A");
+    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Option '%s' not found in.", longOpt ? longOpt : shortOpt ? &shortOpt : "N/A");
     cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_unregister_option] %s", cli_last_error.message);
 
     return false;
 }
@@ -966,20 +913,16 @@ bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt
  */
 bool cli_unregister_command(CliParser *parser, const char *name) {
     if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL in cli_unregister_command.");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Parser is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_unregister_command] %s", cli_last_error.message);
         return false;
     }
 
     if (name == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command name is NULL in cli_unregister_command.");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command name is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_unregister_command] %s", cli_last_error.message);
         return false;
     }
 
@@ -1001,18 +944,14 @@ bool cli_unregister_command(CliParser *parser, const char *name) {
 
             snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Command '%s' unregistered successfully.", name);
             cli_last_error.code = CLI_SUCCESS;
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-            #endif
+            CLI_LOG("[cli_unregister_command] %s", cli_last_error.message);
             return true;
         }
     }
 
-    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command '%s' not found in cli_unregister_command.", name);
+    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Command '%s' not found.", name);
     cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_unregister_command] %s", cli_last_error.message);
 
     return false;
 }
@@ -1038,9 +977,7 @@ bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], co
     if (parser == NULL || argv == NULL || delimiter == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error: Invalid arguments provided to cli_parse_args_with_delimiter.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_parse_args_with_delimiter] %s", cli_last_error.message);
         return false;
     }
 
@@ -1053,7 +990,7 @@ bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], co
 
         if (splitCount > 1) {
             // Argument contains the delimiter and was split
-            newArgv = realloc(newArgv, sizeof(char*) * (totalArgs + splitCount));
+            newArgv = (char**)realloc(newArgv, sizeof(char*) * (totalArgs + splitCount));
             for (int j = 0; j < splitCount; ++j) {
                 newArgv[totalArgs++] = splitArgs[j];
             }
@@ -1061,7 +998,7 @@ bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], co
         }
          else {
             // Argument does not contain the delimiter, or splitting failed
-            newArgv = realloc(newArgv, sizeof(char*) * (totalArgs + 1));
+            newArgv = (char**)realloc(newArgv, sizeof(char*) * (totalArgs + 1));
             newArgv[totalArgs++] = argv[i];
             if (splitCount == 1) {
                 free(splitArgs[0]);
@@ -1099,55 +1036,23 @@ bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], co
  */
 void cli_add_option_group(CliParser *parser, const char *groupName, const CliOption *options, size_t numOptions) {
     if (parser == NULL || groupName == NULL || options == NULL || numOptions == 0) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid arguments provided to cli_add_option_group.\n");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid arguments provided.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_add_option_group] %s", cli_last_error.message);
         return;
     }
 
-    // Allocate memory for the new option group
-    CliOptionGroup *newGroup = realloc(parser->optionGroups, sizeof(CliOptionGroup) * (parser->numOptionGroups + 1));
-    if (newGroup == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Memory allocation failed for new option group in cli_add_option_group.\n");
-        cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
-        return;
-    }
-    parser->optionGroups = newGroup;
-
-    // Initialize the new option group
-    CliOptionGroup *group = &parser->optionGroups[parser->numOptionGroups];
-    group->groupName = string_strdup(groupName);
-    group->numOptions = numOptions;
-    group->options = malloc(sizeof(CliOption) * numOptions);
-    if (group->options == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Memory allocation failed for options in new option group in cli_add_option_group.\n");
-        cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
-        return;
-    }
-
-    // Copy the options into the new group
+    // Register each option directly to the parser
     for (size_t i = 0; i < numOptions; i++) {
-        group->options[i] = options[i];
+        if (!cli_register_option(parser, &options[i])) {
+            CLI_LOG("[cli_add_option_group] Error: Failed to register option '%s'.\n",
+                    options[i].longOpt ? options[i].longOpt : "(unknown)");
+        }
     }
 
-    parser->numOptionGroups++;
-
-    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Option group '%s' added successfully.\n", groupName);
-    cli_last_error.code = CLI_SUCCESS;
-
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "Option group '%s' added successfully.\n", groupName);
-    #endif
+    CLI_LOG("[cli_add_option_group] Group '%s' with %zu options registered successfully.\n", groupName, numOptions);
 }
+
 
 /**
  * @brief Removes an option group from the CLI parser by its name.
@@ -1163,11 +1068,9 @@ void cli_add_option_group(CliParser *parser, const char *groupName, const CliOpt
  */
 void cli_remove_option_group(CliParser *parser, const char *groupName) {
     if (parser == NULL || groupName == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid arguments provided to cli_remove_option_group: parser or groupName is NULL.\n");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid arguments provided: parser or groupName is NULL.\n");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_remove_option_group] %s", cli_last_error.message);
         return;
     }
 
@@ -1188,13 +1091,11 @@ void cli_remove_option_group(CliParser *parser, const char *groupName) {
                 parser->optionGroups = NULL;
             } 
             else {
-                CliOptionGroup *temp = realloc(parser->optionGroups, sizeof(CliOptionGroup) * parser->numOptionGroups);
+                CliOptionGroup *temp = (CliOptionGroup*)realloc(parser->optionGroups, sizeof(CliOptionGroup) * parser->numOptionGroups);
                 if (temp == NULL) {
-                    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Memory reallocation failed in cli_remove_option_group.\n");
+                    snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Memory reallocation failed.\n");
                     cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-                    #ifdef CLI_LOGGING_ENABLE
-                        fmt_fprintf(stderr, cli_last_error.message);
-                    #endif
+                    CLI_LOG("[cli_remove_option_group] %s", cli_last_error.message);
                     return;
                 }
                 parser->optionGroups = temp;
@@ -1202,18 +1103,14 @@ void cli_remove_option_group(CliParser *parser, const char *groupName) {
 
             snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Option group '%s' removed successfully.\n", groupName);
             cli_last_error.code = CLI_SUCCESS;
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stdout, cli_last_error.message);
-            #endif
+            CLI_LOG("[cli_remove_option_group] %s", cli_last_error.message);
             return;
         }
     }
 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Option group '%s' not found in cli_remove_option_group.\n", groupName);
     cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_remove_option_group] %s", cli_last_error.message);
 }
 
 /**
@@ -1230,45 +1127,42 @@ void cli_remove_option_group(CliParser *parser, const char *groupName) {
  * @note If the `parser` is NULL, the function logs an error and exits without entering interactive mode.
  */
 void cli_enter_interactive_mode(CliParser *parser, const char *prompt) {
-    if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Invalid parser provided to cli_enter_interactive_mode.\n");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, cli_last_error.message);
-        #endif
+    if (!parser || !prompt) {
+        CLI_LOG("[cli_enter_interactive_mode] Error: Invalid parser or prompt.\n");
         return;
     }
 
-    char inputBuffer[1024]; 
-    fmt_printf("%s ", prompt);
-    while (fgets(inputBuffer, sizeof(inputBuffer), stdin)) {
-        // Remove trailing newline, if present
-        inputBuffer[strcspn(inputBuffer, "\n")] = 0;
+    char inputBuffer[1024];
+    printf("%s", prompt);
 
-        if (strcmp(inputBuffer, "exit") == 0 || strcmp(inputBuffer, "quit") == 0) {
+    while (fgets(inputBuffer, sizeof(inputBuffer), stdin)) {
+        inputBuffer[strcspn(inputBuffer, "\n")] = '\0'; // Remove newline character
+
+        if (strcmp(inputBuffer, "exit") == 0) {
+            printf("Exiting interactive mode.\n");
             break;
         }
 
-        // Tokenize the input to simulate argc/argv
-        char *argv[64]; // Adjust size as necessary
+        char *argv[64];
         int argc = 0;
         char *token = strtok(inputBuffer, " ");
-        while (token != NULL && argc < (int)(sizeof(argv) / sizeof(argv[0]) - 1)) {
+        while (token && argc < 64) {
             argv[argc++] = token;
             token = strtok(NULL, " ");
         }
-        argv[argc] = NULL; // NULL-terminate the argument list
 
         if (argc > 0) {
-            // Parse and execute the command
-            cli_parse_args(parser, argc, argv);
+            CLI_LOG("[cli_enter_interactive_mode] Parsed command: '%s' with %d args.\n", argv[0], argc - 1);
+            CliStatusCode status = cli_parse_args(parser, argc, argv);
+            if (status != CLI_SUCCESS) {
+                fprintf(stderr, "Error: Command '%s' failed with status %d\n", argv[0], status);
+            }
         }
-        fmt_printf("%s ", prompt); // Display the prompt again for the next input
-    }
 
-    // Print a goodbye message or perform any cleanup before exiting interactive mode
-    fmt_printf("Exiting interactive mode.\n");
+        printf("%s", prompt);
+    }
 }
+
 
 /**
  * @brief Sets a custom error message for a specific option when its validation fails.
@@ -1290,27 +1184,21 @@ void cli_set_option_error_message(CliParser *parser, const char *longOpt, char s
     if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Parser cannot be NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_error_message] %s", cli_last_error.message);
         return;
     }
 
     if (!longOpt && shortOpt == '\0') {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Both longOpt and shortOpt cannot be empty.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_error_message] %s", cli_last_error.message);
         return;
     }
 
     if (!errorMessage) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Error message cannot be NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_error_message] %s", cli_last_error.message);
         return;
     }
 
@@ -1328,9 +1216,7 @@ void cli_set_option_error_message(CliParser *parser, const char *longOpt, char s
             if (!parser->options[i].customErrorMessage) {
                 snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Failed to allocate memory for custom error message.");
                 cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-                #ifdef CLI_LOGGING_ENABLE
-                    fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-                #endif
+                CLI_LOG("[cli_set_option_error_message] %s", cli_last_error.message);
                 return;
             }
 
@@ -1342,16 +1228,12 @@ void cli_set_option_error_message(CliParser *parser, const char *longOpt, char s
     if (!found) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Option not found.");
         cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_error_message] %s", cli_last_error.message);;
     } 
     else {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Custom error message set successfully.");
         cli_last_error.code = CLI_SUCCESS;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_error_message] %s", cli_last_error.message);
     }
 }
 
@@ -1374,21 +1256,17 @@ bool cli_validate_option_argument(const CliOption *option, const char *value) {
     // Validate input parameters
     if (option == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
-                 "Error: Option is NULL in cli_validate_option_argument.");
+                 "Error: Option is NULL in.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_validate_option_argument] %s", cli_last_error.message);
         return false;
     }
 
     if (value == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
-                 "Error: Value is NULL in cli_validate_option_argument.");
+                 "Error: Value is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_validate_option_argument] %s", cli_last_error.message);
         return false;
     }
 
@@ -1406,18 +1284,16 @@ bool cli_validate_option_argument(const CliOption *option, const char *value) {
                          "Error: Validation failed for the given option argument.");
             }
             cli_last_error.code = CLI_ERROR_VALIDATION_FAILED;
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-            #endif
+            CLI_LOG("[cli_validate_option_argument] %s", cli_last_error.message);
             return false;
         }
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Validation Passed in cli_validate_option_argument.\n");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Validation Passed.\n");
         cli_last_error.code = CLI_SUCCESS;
         return true; // Validation passed
     } 
     else {
         // No validator provided, assume the value is valid
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Validation Passed in cli_validate_option_argument.\n");
+        snprintf(cli_last_error.message, sizeof(cli_last_error.message), "Success: Validation Passed.\n");
         cli_last_error.code = CLI_SUCCESS;
         return true;
     }
@@ -1440,11 +1316,9 @@ void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
     // Validate the input parameters
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
-                 "Error: Parser is NULL in cli_set_pre_execution_hook.");
+                 "Error: Parser is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_pre_execution_hook] %s", cli_last_error.message);
         return;
     }
 
@@ -1457,9 +1331,7 @@ void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
     snprintf(cli_last_error.message, sizeof(cli_last_error.message), 
              hook ? "Pre-execution hook set successfully." : "Pre-execution hook cleared.");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_set_pre_execution_hook] %s", cli_last_error.message);
 }
 
 /**
@@ -1479,11 +1351,9 @@ void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook) {
 void cli_set_post_execution_hook(CliParser *parser, CliPostExecutionHook hook) {
     if (parser == NULL) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Parser is NULL in cli_set_post_execution_hook.");
+                 "Error: Parser is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_post_execution_hook] %s", cli_last_error.message);
         return;
     }
 
@@ -1493,45 +1363,9 @@ void cli_set_post_execution_hook(CliParser *parser, CliPostExecutionHook hook) {
     snprintf(cli_last_error.message, sizeof(cli_last_error.message),
              hook ? "Post-execution hook set successfully." : "Post-execution hook cleared.");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_set_post_execution_hook] %s", cli_last_error.message);
 }
 
-/**
- * @brief Enables or disables the pipelining feature in the CLI parser.
- *
- * Pipelining allows the output of one command to be used as the input for another command.
- * This function toggles the feature based on the `enable` parameter.
- *
- * @param parser A pointer to the `CliParser` instance. Must not be NULL.
- * @param enable A boolean value indicating whether to enable (`true`) or disable (`false`) pipelining.
- *
- * @return void
- *
- * @note If the `parser` is NULL, the function will log an error and return without enabling/disabling pipelining.
- */
-void cli_enable_pipelining(CliParser *parser, bool enable) {
-    if (parser == NULL) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Parser is NULL in cli_enable_pipelining.");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return;
-    }
-
-    // Set or unset the pipelining feature based on the 'enable' parameter
-    parser->pipeliningEnabled = enable;
-
-    snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-             "Pipelining %s successfully.", enable ? "enabled" : "disabled");
-    cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-    fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
-}
 
 /**
  * @brief Registers an alias for an existing command in the CLI parser.
@@ -1553,61 +1387,32 @@ void cli_enable_pipelining(CliParser *parser, bool enable) {
  * @note true if the alias was successfully added.
  */
 bool cli_register_command_alias(CliParser *parser, const char *commandName, const char *alias) {
-    if (!parser) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Parser is NULL in cli_register_command_alias.");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+    if (!parser || !commandName || !alias) {
+        CLI_LOG("[cli_register_command_alias] Error: Invalid arguments.\n");
         return false;
     }
 
-    if (!commandName || !alias) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Command name or alias is NULL in cli_register_command_alias.");
-        cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
+    // Find the original command
+    for (size_t i = 0; i < parser->numCommands; i++) {
+        if (strcmp(parser->commands[i].name, commandName) == 0) {
+            // Reallocate memory for the new alias
+            const char **newAliases = (const char**)realloc(parser->commands[i].aliases, 
+                sizeof(char *) * (parser->commands[i].numAliases + 1));
+            if (!newAliases) {
+                CLI_LOG("[cli_register_command_alias] Error: Memory allocation failed.\n");
+                return false;
+            }
 
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return false;
+            parser->commands[i].aliases = newAliases;
+            parser->commands[i].aliases[parser->commands[i].numAliases] = strdup(alias);
+            parser->commands[i].numAliases++;
+            CLI_LOG("[cli_register_command_alias] Alias '%s' registered for command '%s'.\n", alias, commandName);
+            return true;
+        }
     }
 
-    // Ensure the command exists
-    const CliCommand* originalCommand = cli_find_command(parser, commandName);
-    if (!originalCommand) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Command '%s' does not exist.", commandName);
-        cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return false;
-    }
-
-    // Ensure the alias does not already exist as a command
-    if (cli_find_command(parser, alias)) {
-        snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Alias '%s' already exists as a command.", alias);
-        cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
-        return false;
-    }
-
-    // Create a new command with the same handler and user data as the original
-    CliCommand aliasCommand = {
-        .name = string_strdup(alias), // Ensure you handle memory allocation and deallocation properly
-        .handler = originalCommand->handler,
-        .description = originalCommand->description, // You may choose to share the description or provide a custom one
-        .userData = originalCommand->userData
-    };
-
-    // Register the alias command
-    return cli_register_command(parser, &aliasCommand);
+    CLI_LOG("[cli_register_command_alias] Error: Command '%s' not found.\n", commandName);
+    return false;
 }
 
 /**
@@ -1629,19 +1434,17 @@ bool cli_register_command_alias(CliParser *parser, const char *commandName, cons
 bool cli_prompt_confirmation(const char *promptMessage) {
     if (!promptMessage) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: promptMessage is NULL in cli_prompt_confirmation.");
+                 "Error: promptMessage is NULL .");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
+        CLI_LOG("[cli_prompt_confirmation] %s", cli_last_error.message);
 
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "Error: Prompt message is NULL.\n");
-        #endif
         return false;
     }
 
-    fmt_printf("%s (y/n): ", promptMessage);
+    CLI_LOG("%s (y/n): ", promptMessage);
     char response[4]; // Buffer for user input; large enough for "y\n" or "n\n" and null terminator
     if (fgets(response, sizeof(response), stdin) == NULL) {
-        fmt_fprintf(stderr, "Error reading input.\n");
+        CLI_LOG("Error reading input.\n");
         return false;
     }
 
@@ -1655,7 +1458,7 @@ bool cli_prompt_confirmation(const char *promptMessage) {
         return false;
     } 
     else {
-        fmt_fprintf(stderr, "Invalid input. Please enter 'y' or 'n'.\n");
+        CLI_LOG("Invalid input. Please enter 'y' or 'n'.\n");
         return cli_prompt_confirmation(promptMessage); // Recursive call to re-prompt the user
     }
 }
@@ -1684,11 +1487,9 @@ bool cli_prompt_confirmation(const char *promptMessage) {
 bool cli_process_option_group(CliParser *parser, const char *groupName, int argc, char *argv[]) {
     if (!parser || !groupName || argc < 1 || !argv) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Invalid arguments provided to cli_process_option_group.");
+                 "Invalid arguments provided .");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_process_option_group] %s", cli_last_error.message);
         return false;
     }
 
@@ -1707,9 +1508,7 @@ bool cli_process_option_group(CliParser *parser, const char *groupName, int argc
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
                  "Option group '%s' not found.", groupName);
         cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_process_option_group] %s", cli_last_error.message);
         return false;
     }
 
@@ -1734,9 +1533,7 @@ bool cli_process_option_group(CliParser *parser, const char *groupName, int argc
             snprintf(cli_last_error.message, sizeof(cli_last_error.message),
                      "Required option '%s' not found in group '%s'.", option->longOpt, groupName);
             cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-            #endif
+            CLI_LOG("[cli_process_option_group] %s", cli_last_error.message);
             return false;
         }
     }
@@ -1744,9 +1541,7 @@ bool cli_process_option_group(CliParser *parser, const char *groupName, int argc
     snprintf(cli_last_error.message, sizeof(cli_last_error.message),
              "Option group '%s' processed successfully.", groupName);
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_process_option_group] %s", cli_last_error.message);
     return true;
 }
 
@@ -1773,11 +1568,9 @@ bool cli_process_option_group(CliParser *parser, const char *groupName, int argc
 bool cli_add_option_alias(CliParser *parser, const char *optionName, const char *alias) {
     if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Parser is NULL in cli_add_option_alias.");
+                 "Error: Parser is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
         return false;
     }
 
@@ -1785,9 +1578,7 @@ bool cli_add_option_alias(CliParser *parser, const char *optionName, const char 
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
                  "Error: optionName or alias is NULL in cli_add_option_alias.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
         return false;
     }
 
@@ -1802,11 +1593,9 @@ bool cli_add_option_alias(CliParser *parser, const char *optionName, const char 
 
     if (!originalOption) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Original option '%s' not found in cli_add_option_alias.", optionName);
+                 "Error: Original option '%s' not found.", optionName);
         cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
         return false;
     }
 
@@ -1816,22 +1605,18 @@ bool cli_add_option_alias(CliParser *parser, const char *optionName, const char 
             snprintf(cli_last_error.message, sizeof(cli_last_error.message),
                      "Error: Alias '%s' already exists.", alias);
             cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-            #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-            #endif
+            CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
             return false;
         }
     }
 
     // Expand the options array to accommodate the new alias option
-    CliOption *newOptions = realloc(parser->options, sizeof(CliOption) * (parser->numOptions + 1));
+    CliOption *newOptions = (CliOption*)realloc(parser->options, sizeof(CliOption) * (parser->numOptions + 1));
     if (!newOptions) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Memory allocation failed in cli_add_option_alias.");
+                 "Error: Memory allocation failed.");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
         return false;
     }
     parser->options = newOptions;
@@ -1841,11 +1626,9 @@ bool cli_add_option_alias(CliParser *parser, const char *optionName, const char 
     aliasOption.longOpt = string_strdup(alias); // Duplicate the alias name
     if (!aliasOption.longOpt) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: strdup failed for alias name in cli_add_option_alias.");
+                 "Error: strdup failed for alias name.");
         cli_last_error.code = CLI_ERROR_ALLOCATION_FAILED;
-        #ifdef CLI_LOGGING_ENABLE
-            fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
         return false;
     }
 
@@ -1855,9 +1638,7 @@ bool cli_add_option_alias(CliParser *parser, const char *optionName, const char 
     snprintf(cli_last_error.message, sizeof(cli_last_error.message),
              "Success: Option alias '%s' added for '%s'.", alias, optionName);
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_add_option_alias] %s", cli_last_error.message);
 
     return true;
 }
@@ -1895,21 +1676,17 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
     // Validate parser and option names
     if (!parser) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Parser is NULL in cli_set_option_dependencies.");
+                 "Error: Parser is NULL.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_dependencies] %s", cli_last_error.message);
         return false;
     }
 
     if ((!longOpt && shortOpt == '\0') || (!dependsOnLongOpt && dependsOnShortOpt == '\0')) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Both source and dependency options cannot be NULL or empty in cli_set_option_dependencies.");
+                 "Error: Both source and dependency options cannot be NULL or empty.");
         cli_last_error.code = CLI_ERROR_INVALID_ARGUMENT;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_dependencies] %s", cli_last_error.message);
         return false;
     }
 
@@ -1932,11 +1709,9 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
 
             if (!foundDependency) {
                 snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                         "Error: Dependency option '%s' not found in cli_set_option_dependencies.", dependsOnLongOpt ? dependsOnLongOpt : "N/A");
+                         "Error: Dependency option '%s' not found.", dependsOnLongOpt ? dependsOnLongOpt : "N/A");
                 cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-                #ifdef CLI_LOGGING_ENABLE
-                fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-                #endif
+                CLI_LOG("[cli_set_option_dependencies] %s", cli_last_error.message);
                 return false;
             }
 
@@ -1948,11 +1723,9 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
 
     if (!foundOption) {
         snprintf(cli_last_error.message, sizeof(cli_last_error.message),
-                 "Error: Source option '%s' not found in cli_set_option_dependencies.", longOpt ? longOpt : "N/A");
+                 "Error: Source option '%s' not found .", longOpt ? longOpt : "N/A");
         cli_last_error.code = CLI_ERROR_OPTION_NOT_FOUND;
-        #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stderr, "%s\n", cli_last_error.message);
-        #endif
+        CLI_LOG("[cli_set_option_dependencies] %s", cli_last_error.message);
         return false;
     }
 
@@ -1960,8 +1733,6 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
     snprintf(cli_last_error.message, sizeof(cli_last_error.message),
              "Success: Option dependency between '%s' and '%s' set successfully.", longOpt ? longOpt : "N/A", dependsOnLongOpt ? dependsOnLongOpt : "N/A");
     cli_last_error.code = CLI_SUCCESS;
-    #ifdef CLI_LOGGING_ENABLE
-        fmt_fprintf(stdout, "%s\n", cli_last_error.message);
-    #endif
+    CLI_LOG("[cli_set_option_dependencies] %s", cli_last_error.message);
     return true;
 }

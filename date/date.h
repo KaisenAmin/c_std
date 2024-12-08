@@ -11,6 +11,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 // #define DATE_LOGGING_ENABLE 
 
 #ifdef DATE_LOGGING_ENABLE 
@@ -76,5 +80,9 @@ char* date_to_string(const Date* date, const char* format);
 #if defined(_WIN32) || defined(_WIN64)
 char* win_strptime(const char *buf, const char *fmt, struct tm *tm);
 #endif
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif // DATE_H

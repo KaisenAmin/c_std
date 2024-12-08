@@ -272,7 +272,7 @@ Comprehensive documentation is provided, detailing the functionality and usage o
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 void println() {
     for (int index = 0; index < 10; index++) {
@@ -317,7 +317,7 @@ int main() {
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -347,7 +347,7 @@ int main() {
 **Result:**
 ```
 This is a message with Unicode characters: سلام دنیا ああ、こんにちは
- This is a message with Unicode characters: سلام دنیا ああ、こんにちは
+This is a message with Unicode characters: سلام دنیا ああ、こんにちは
  
 Another message: امین طهماسبی 42
 and 15 امینThis is a message: Hello, world!
@@ -363,7 +363,7 @@ Sprintln formats using the default formats for its operands and returns the resu
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -402,7 +402,7 @@ Sprint formats using the default formats for its operands and returns the result
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -439,7 +439,7 @@ Another message: Hello, world! 42and 15
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -449,7 +449,7 @@ int main() {
         free(message); 
     }
 
-    char* name = "امین طهماسبی";
+    const char* name = "امین طهماسبی";
     int age = 30;
     message = fmt_sprintf("%s is %d years old. Unicode Test: %s\n", name, age, "سلام دنیا");
     if (message) {
@@ -474,8 +474,8 @@ This example will display greetings in multiple languages and show formatted dat
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
-#include "time/time.h"
+#include "string/std_string.h"
+#include "time/std_time.h"
 #include "date/date.h"
 #include <stdlib.h>
 
@@ -488,7 +488,7 @@ int main() {
         free(greeting);
     }
 
-    char *format = "%Y-%m-%d";
+    const char *format = "%Y-%m-%d";
     Time* current_time = time_current_time();
     Date* current_date = date_current_date(Persian);
 
@@ -518,7 +518,7 @@ This example will simulate displaying a restaurant menu with items in different 
 
 ```c
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -559,7 +559,7 @@ International Restaurant Menu:
 
 ```c
 #include "fmt/fmt.h"
-#include "time/time.h"
+#include "time/std_time.h"
 #include <time.h>
 
 
@@ -696,7 +696,7 @@ int main() {
     char name[50];
 
     fmt_print("Enter your name, age, and salary: ");
-    fmt_scanf("%s %d %f", name, &age, &salary);
+    fmt_scanf("%[^\n]s %d %f", name, &age, &salary);
 
     char* message = fmt_sprintf("Name: %s, Age: %d, Salary: %.2f", name, age, salary);
     if (message) {
@@ -709,8 +709,8 @@ int main() {
 ```
 **Result:**
 ```
-Enter your name, age, and salary:  C 50 20.0 
-Scanned data: Name: C, Age: 50, Salary: 20.00
+Enter your name, age, and salary: "amin tahmasebi" 50 20.32
+Scanned data: Name: "amin tahmasebi" 50 20.32, Age: 551, Salary: 227470.88
 ```
 
 ---

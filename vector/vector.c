@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "vector.h"
-#include "../fmt/fmt.h"
 
 
 static MemoryPoolVector *memory_pool_create(size_t size);
@@ -22,7 +21,7 @@ static MemoryPoolVector *memory_pool_create(size_t size) {
         return NULL;
     }
 
-    MemoryPoolVector *pool = malloc(sizeof(MemoryPoolVector));
+    MemoryPoolVector *pool = (MemoryPoolVector*) malloc(sizeof(MemoryPoolVector));
     if (!pool) {
         VECTOR_LOG("[memory_pool_create]: Error: Failed to allocate memory for MemoryPoolVector structure.");
         return NULL;

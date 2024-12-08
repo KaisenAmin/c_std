@@ -80,8 +80,8 @@ RegexResult regex_match(Regex* regex, const char* string, RegexMatch* match) {
         match->group_count = rc - 1;  // Subtract 1 because rc includes the whole match as group 0
 
         // Allocate memory for storing group information
-        match->group_starts = malloc(match->group_count * sizeof(char*));
-        match->group_lengths = malloc(match->group_count * sizeof(size_t));
+        match->group_starts = (const char**) malloc(match->group_count * sizeof(char*));
+        match->group_lengths = (size_t*) malloc(match->group_count * sizeof(size_t));
 
         for (int i = 1; i <= match->group_count; i++) {
             match->group_starts[i-1] = string + ovector[2 * i];

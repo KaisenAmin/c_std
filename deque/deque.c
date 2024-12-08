@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 #include "deque.h"
-#include "../fmt/fmt.h"
 
 
 /**
@@ -125,7 +124,7 @@ void deque_push_front(Deque* deque, void* item) {
     // Check if a new block is needed at the front
     if (deque->frontIndex == 0) {
         DEQUE_LOG("[deque_push_front] Allocating new block at the front.");
-        void*** newBlocks = realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1)); // Allocate a new block at the front
+        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1)); // Allocate a new block at the front
         if (!newBlocks) {
             DEQUE_LOG("[deque_push_front] Error: Memory allocation failed.");
             return; 
@@ -655,7 +654,7 @@ void deque_resize(Deque* deque, size_t newSize) {
             DEQUE_LOG("[deque_resize] Freed block at index: %zu.", i);
         }
 
-        void*** newBlocks = realloc(deque->blocks, sizeof(void**) * optimalBlockCount);
+        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * optimalBlockCount);
         if (!newBlocks) {
             DEQUE_LOG("[deque_resize] Error: Memory allocation failed during block reduction.");
             return; 
@@ -770,14 +769,14 @@ void deque_emplace_back(Deque* deque, void* item) {
 
     // Handle inserting the item in a new block if necessary
     if (deque->backIndex == deque->blockSize - 1) {
-        void*** newBlocks = realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
         if (!newBlocks) {
             free(newItem);  
             DEQUE_LOG("[deque_emplace_back] Error: Memory allocation for new block failed.");
             return;
         }
         deque->blocks = newBlocks;
-        deque->blocks[deque->blockCount] = malloc(sizeof(void*) * deque->blockSize);
+        deque->blocks[deque->blockCount] = (void**)malloc(sizeof(void*) * deque->blockSize);
         if (!deque->blocks[deque->blockCount]) {
             free(newItem);
             free(newBlocks); 
@@ -818,14 +817,14 @@ void deque_emplace_front(Deque* deque, void* item) {
     // Check if a new block is needed at the front
     if (deque->frontIndex == 0) {
         DEQUE_LOG("[deque_emplace_front] Allocating new block for deque at the front.");
-        void*** newBlocks = realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
         if (!newBlocks) {
             DEQUE_LOG("[deque_emplace_front] Error: Memory allocation failed.");
             return; 
         }
 
         memmove(newBlocks + 1, newBlocks, sizeof(void**) * deque->blockCount);
-        newBlocks[0] = malloc(sizeof(void*) * deque->blockSize);
+        newBlocks[0] = (void**)malloc(sizeof(void*) * deque->blockSize);
         if (!newBlocks[0]) {
             DEQUE_LOG("[deque_emplace_front] Error: Memory allocation failed for new block.");
             return; 
@@ -883,13 +882,13 @@ void deque_emplace(Deque* deque, size_t index, void* item) {
     // Check if a new block is needed
     if (deque->size == deque->blockSize * deque->blockCount) {
         DEQUE_LOG("[deque_emplace] Allocating new block for the deque.");
-        void*** newBlocks = realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
         if (!newBlocks) {
             DEQUE_LOG("[deque_emplace] Error: Memory allocation failed.");
             return; 
         }
 
-        newBlocks[deque->blockCount] = malloc(sizeof(void*) * deque->blockSize);
+        newBlocks[deque->blockCount] = (void**)malloc(sizeof(void*) * deque->blockSize);
         if (!newBlocks[deque->blockCount]) {
             DEQUE_LOG("[deque_emplace] Error: Memory allocation failed for new block.");
             return;

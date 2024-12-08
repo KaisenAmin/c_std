@@ -12,6 +12,10 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
 // #define FILE_WRITER_LOGGING_ENABLE
 
 #ifdef FILE_WRITER_LOGGING_ENABLE 
@@ -74,5 +78,9 @@ bool file_writer_append_fmt(FileWriter* writer, const char* format, ...);
 
 const char* file_writer_get_file_name(FileWriter* writer);
 const char* file_writer_get_encoding(FileWriter* writer);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

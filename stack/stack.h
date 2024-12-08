@@ -9,6 +9,11 @@
 #define STACK_H_
 
 #include <stdio.h>
+
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 #define STACK_LOGGING_ENABLE 
 
 #ifdef STACK_LOGGING_ENABLE
@@ -45,5 +50,9 @@ void stack_emplace(const Stack* stk, void* item);
 void stack_clear(const Stack* stk);
 void stack_swap(Stack* stk1, Stack* stk2);
 void stack_deallocate(Stack* stk);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

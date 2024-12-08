@@ -9,6 +9,11 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif 
 
 #define DEFAULT_BLOCK_SIZE 64
 
@@ -94,5 +99,9 @@ void* deque_front(const Deque* deque);
 void* deque_back(const Deque* deque);
 void* iterator_get(const DequeIterator* it);
 void* deque_at(const Deque* deque, size_t index);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

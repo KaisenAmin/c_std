@@ -10,7 +10,12 @@
 
 #include <stdio.h>
 
-#define SPAN_LOGGING_ENABLE 
+
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
+// #define SPAN_LOGGING_ENABLE 
 
 #ifdef SPAN_LOGGING_ENABLE 
     #define SPAN_LOG(fmt, ...) \
@@ -62,5 +67,10 @@ bool span_empty(const Span* span);
 
 size_t span_size_bits(const Span* span);
 size_t span_size(const Span* span);
+
+#ifdef __cplusplus 
+}
+#endif 
+
 
 #endif // SPAN_H_

@@ -10,6 +10,10 @@
 #include <raylib.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 #define TURTLE_LOGGING_ENABLE
 
 #ifdef TURTLE_LOGGING_ENABLE
@@ -118,5 +122,9 @@ float turtle_get_pen_size(Turtle *state);
 
 bool turtle_filling(Turtle *state);
 bool turtle_is_down(Turtle *state);
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif 

@@ -470,11 +470,13 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 int main() {
     Date* current_gregorian = date_current_date(Gregorian);
     if (current_gregorian) {
-        fmt_fmt_printf("Current Gregorian Date: %d-%d-%d\n", current_gregorian->year, current_gregorian->month, current_gregorian->day);
-        free(current_gregorian);
+        fmt_printf("Current Gregorian Date: %d-%d-%d\n", current_gregorian->year, current_gregorian->month, current_gregorian->day);
+        date_deallocate(current_gregorian);
+    }
+    else {
+      fmt_fprintf(stderr, "Can not allocate memory for date object\n");
     }
     
-    date_deallocate(current_gregorian);
     return 0;
 }
 ```
@@ -490,11 +492,13 @@ int main() {
 int main() {
     Date* current_persian = date_current_date(Persian);
     if (current_persian) {
-        fmt_fmt_printf("Current Persian Date: %d-%d-%d\n", current_persian->year, current_persian->month, current_persian->day);
-        free(current_persian);
+        fmt_printf("Current Persian Date: %d-%d-%d\n", current_persian->year, current_persian->month, current_persian->day);
+        date_deallocate(current_persian);
+    }
+    else {
+      fmt_fprintf(stderr, "Can not allocate memory for date object\n");
     }
 
-    date_deallocate(current_persian);
     return 0;
 }
 ```
@@ -511,13 +515,15 @@ int main() {
     Date* specific_date = date_create_ymd(2024, 1, 15, Gregorian);
     Date* new_date = date_add_days(specific_date, 10);
     
-    if (new_date) {
-        fmt_fmt_printf("New Gregorian Date: %d-%d-%d\n", new_date->year, new_date->month, new_date->day);
-        free(new_date);
+    if (new_date && specific_date) {
+        fmt_printf("New Gregorian Date: %d-%d-%d\n", new_date->year, new_date->month, new_date->day);
+        date_deallocate(specific_date);   
+        date_deallocate(new_date);
     }
-    
-    date_deallocate(specific_date);   
-    date_deallocate(new_date);
+    else {
+        fmt_fprintf(stderr, "Can not allocate memory for date object\n");
+    }
+
     return 0;
 }
 ```
@@ -533,13 +539,16 @@ int main() {
 int main() {
     Date* persian_date = date_create_ymd(1402, 7, 1, Persian);
     Date* new_persian_date = date_add_months(persian_date, 5);
-    if (new_persian_date) {
+
+    if (new_persian_date && persian_date) {
         fmt_printf("New Persian Date: %d-%d-%d\n", new_persian_date->year, new_persian_date->month, new_persian_date->day);
-        free(new_persian_date);
+        date_deallocate(persian_date);    
+        date_deallocate(new_persian_date);
+    }
+    else {
+        fmt_fprintf(stderr, "Can not allocate memory for date object\n");
     }
 
-    date_deallocate(persian_date);    
-    date_deallocate(new_persian_date);
     return 0;
 }
 ```
@@ -555,13 +564,17 @@ int main() {
 int main() {
     Date* date_to_subtract = date_create_ymd(2024, 5, 20, Gregorian);
     Date* subtracted_date = date_add_years(date_to_subtract, -2);
-    if (subtracted_date) {
+    
+    if (subtracted_date && date_to_subtract) {
         fmt_printf("Subtracted Gregorian Date: %d-%d-%d\n", subtracted_date->year, subtracted_date->month, subtracted_date->day);
-        free(subtracted_date);
+        date_deallocate(date_to_subtract);    
+        date_deallocate(subtracted_date);
+    }
+    else {
+        fmt_fprintf(stderr, "Can not allocate memory for date object\n");
     }
 
-    date_deallocate(date_to_subtract);    
-    date_deallocate(subtracted_date);
+    
     return 0;
 }
 ```
@@ -577,13 +590,16 @@ int main() {
 int main() {
     Date* gregorian_for_conversion = date_create_ymd(2024, 3, 21, Gregorian);
     Date* converted_persian = date_gregorian_to_solar(gregorian_for_conversion);
-    if (converted_persian) {
-        fmt_printf("Converted to Persian: %d-%d-%d\n", converted_persian->year, converted_persian->month, converted_persian->day);
-        free(converted_persian);
-    }
 
-    date_deallocate(gregorian_for_conversion);
-    date_deallocate(converted_persian);
+    if (converted_persian && gregorian_for_conversion) {
+        fmt_printf("Converted to Persian: %d-%d-%d\n", converted_persian->year, converted_persian->month, converted_persian->day);
+        date_deallocate(gregorian_for_conversion);
+        date_deallocate(converted_persian);
+    }
+    else {
+        fmt_fprintf(stderr, "Can not allocate memory for date object\n");
+    }
+    
     return 0;
 }
 ```
@@ -599,12 +615,18 @@ int main() {
     // show error here because this date is not valid 1403 i leap year not 1402
     Date* persian_for_conversion = date_create_ymd(1402, 12, 30, Persian);
     Date* converted_gregorian = date_solar_to_gregorian(persian_for_conversion);
-    if (converted_gregorian) {
+    
+    if (converted_gregorian && persian_for_conversion) {
         fmt_printf("Converted to Gregorian: %d-%d-%d\n", converted_gregorian->year, converted_gregorian->month, converted_gregorian->day);
+
         date_deallocate(converted_gregorian);
+        date_deallocate(persian_for_conversion);
+    }
+    else {
+        fmt_fprintf(stderr, "Can not allocate memory for date object\n");
     }
 
-    date_deallocate(persian_for_conversion);
+    
     return 0;
 }
 ```
@@ -619,8 +641,9 @@ int main() {
 
 int main() {
     Date* persian_date_string = date_create_ymd(1402, 5, 14, Persian);
-    char* format = "%Y-%m-%d";
+    const char* format = "%Y-%m-%d";
     char* date_str = date_to_string(persian_date_string, format);
+
     if (date_str) {
         fmt_printf("Persian Date String: %s\n", date_str);
         free(date_str);
@@ -710,6 +733,7 @@ int main() {
         fmt_printf("Parsed Persian Date: %d-%d-%d\n", parsed_persian_date->year, parsed_persian_date->month, parsed_persian_date->day);
         date_deallocate(parsed_persian_date);
     }
+
     return 0;
 }
 ```
@@ -782,6 +806,7 @@ int main() {
 
     date_deallocate(date3);
     date_deallocate(date4);
+    
     return 0;
 }
 ```

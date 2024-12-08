@@ -9,6 +9,11 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
+
+#ifdef __cplusplus 
+extern "C" {
+#endif 
 
 #define MAP_LOGGING_ENABLE
 
@@ -99,5 +104,9 @@ bool map_erase(Map* map, KeyType key);
 bool map_emplace(Map* map, KeyType key, ValueType value);
 bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value);
 bool map_empty(const Map* map);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

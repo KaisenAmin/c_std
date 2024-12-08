@@ -11,6 +11,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 #define LIST_LOGGING_ENABLE
 
 #ifdef LIST_LOGGING_ENABLE 
@@ -86,4 +90,8 @@ bool list_is_greater_or_equal(const List *list1, const List *list2);
 bool list_is_not_equal(const List *list1, const List *list2);
 bool list_empty(const List *list);
 
-#endif // LIST_H_
+#ifdef __cplusplus 
+}
+#endif 
+
+#endif 

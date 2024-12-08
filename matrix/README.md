@@ -607,7 +607,7 @@ Value of matrix in row 1 and col 1 is 15.320000
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
 #include "random/random.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 void fillMatrix(Matrix *mat) {
     matrix_set(mat, 0, 0, random_randint(1, 10));
@@ -2981,3 +2981,9 @@ Matrix walsh is :
 |  1.00000  1.00000 -1.00000 -1.00000 -1.00000 -1.00000  1.00000  1.00000 |
 |  1.00000 -1.00000 -1.00000  1.00000 -1.00000  1.00000  1.00000 -1.00000 |
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

@@ -7,6 +7,15 @@
 #ifndef TUPLE_H_
 #define TUPLE_H_
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 // #define TUPLE_LOGGING_ENABLE
 
 #ifdef TUPLE_LOGGING_ENABLE
@@ -15,11 +24,6 @@
 #else
     #define TUPLE_LOG(fmt, ...) do { } while (0)
 #endif
-
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdarg.h>
 
 typedef struct {
     void* data;
@@ -50,5 +54,9 @@ bool tuple_is_empty(Tuple* t);
 
 void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize);
 size_t tuple_size(const Tuple* tuple);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

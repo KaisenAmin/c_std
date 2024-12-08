@@ -235,8 +235,19 @@ int main() {
 ```
 **Result:**
 ```
+<?xml version="1.0"?>
+<catalog>
+   
+   <author>Gambardella, Matthew</author>
+   <title>XML Developer's Guide</title>
+   <genre>Computer</genre>
+   <price>44.95</price>
+   <publish_date>2000-10-01</publish_date>
+   <description>An in-depth look at creating applications with XML.</description>
+</catalog>
+
 Root element: catalog
-Author: John Doe
+Author: Gambardella, Matthew
 ```
 
 ---
@@ -268,7 +279,7 @@ int main() {
     xml_set_element_attribute(book, "id", "bk101");
     xml_set_element_text(book, "XML Developer's Guide");
 
-    xml_save_to_file(doc, "C:/Users/asus/OneDrive/Desktop/project/c_std/sources/output.xml");
+    xml_save_to_file(doc, "./output.xml");
     xml_deallocate_document(doc);
 
     return 0;
@@ -331,6 +342,8 @@ int main() {
 ```
 **Result:**
 ```
+Root internal node pointer: 000001fe02512490
+Root tag name assigned correctly: catalog
 Book ID: bk102
 ```
 
@@ -413,7 +426,7 @@ Generated XML:
 
 
 int main() {
-    XmlDocument* doc = xml_parse_file("C:/Users/asus/OneDrive/Desktop/project/c_std/sources/xml_sample.xml");
+    XmlDocument* doc = xml_parse_file("./sources/xml_sample.xml");
 
     if (doc == NULL) {
         fmt_fprintf(stderr, "Failed to parse the XML file.\n");
@@ -465,7 +478,7 @@ int main() {
         free(xml_string);
     }
 
-    if (!xml_save_to_file(doc, "C:/Users/asus/OneDrive/Desktop/project/c_std/sources/updated_xml_sample.xml")) {
+    if (!xml_save_to_file(doc, "./updated_xml_sample.xml")) {
         fmt_fprintf(stderr, "Failed to save the updated XML file.\n");
     } 
     else {
@@ -475,6 +488,132 @@ int main() {
     xml_deallocate_document(doc);
     return 0;
 }
+```
+**Result**
+```
+Author node found, tag name: author
+Author: Gambardella, Matthew
+Updated XML:
+<catalog>
+   <book id="bk101" updated="yes">
+      <author>Gambardella, Matthew</author>
+      <title>Updated XML Developer's Guide</title>
+      <genre>Computer</genre>
+      <price>44.95</price>
+      <publish_date>2000-10-01</publish_date>
+      <description>An in-depth look at creating applications
+      with XML.</description>
+   </book>
+   <book id="bk102">
+      <author>Ralls, Kim</author>
+      <title>Midnight Rain</title>
+      <genre>Fantasy</genre>
+      <price>5.95</price>
+      <publish_date>2000-12-16</publish_date>
+      <description>A former architect battles corporate zombies,
+      an evil sorceress, and her own childhood to become queen
+      of the world.</description>
+   </book>
+   <book id="bk103">
+      <author>Corets, Eva</author>
+      <title>Maeve Ascendant</title>
+      <genre>Fantasy</genre>
+      <price>5.95</price>
+      <publish_date>2000-11-17</publish_date>
+      <description>After the collapse of a nanotechnology
+      society in England, the young survivors lay the
+      foundation for a new society.</description>
+   </book>
+   <book id="bk104">
+      <author>Corets, Eva</author>
+      <title>Oberon's Legacy</title>
+      <genre>Fantasy</genre>
+      <price>5.95</price>
+      <publish_date>2001-03-10</publish_date>
+      <description>In post-apocalypse England, the mysterious
+      agent known only as Oberon helps to create a new life
+      for the inhabitants of London. Sequel to Maeve
+      Ascendant.</description>
+   </book>
+   <book id="bk105">
+      <author>Corets, Eva</author>
+      <title>The Sundered Grail</title>
+      <genre>Fantasy</genre>
+      <price>5.95</price>
+      <publish_date>2001-09-10</publish_date>
+      <description>The two daughters of Maeve, half-sisters,
+      battle one another for control of England. Sequel to
+      Oberon's Legacy.</description>
+   </book>
+   <book id="bk106">
+      <author>Randall, Cynthia</author>
+      <title>Lover Birds</title>
+      <genre>Romance</genre>
+      <price>4.95</price>
+      <publish_date>2000-09-02</publish_date>
+      <description>When Carla meets Paul at an ornithology
+      conference, tempers fly as feathers get ruffled.</description>
+   </book>
+   <book id="bk107">
+      <author>Thurman, Paula</author>
+      <title>Splish Splash</title>
+      <genre>Romance</genre>
+      <price>4.95</price>
+      <publish_date>2000-11-02</publish_date>
+      <description>A deep sea diver finds true love twenty
+      thousand leagues beneath the sea.</description>
+   </book>
+   <book id="bk108">
+      <author>Knorr, Stefan</author>
+      <title>Creepy Crawlies</title>
+      <genre>Horror</genre>
+      <price>4.95</price>
+      <publish_date>2000-12-06</publish_date>
+      <description>An anthology of horror stories about roaches,
+      centipedes, scorpions  and other insects.</description>
+   </book>
+   <book id="bk109">
+      <author>Kress, Peter</author>
+      <title>Paradox Lost</title>
+      <genre>Science Fiction</genre>
+      <price>6.95</price>
+      <publish_date>2000-11-02</publish_date>
+      <description>After an inadvertant trip through a Heisenberg
+      Uncertainty Device, James Salway discovers the problems
+      of being quantum.</description>
+   </book>
+   <book id="bk110">
+      <author>O'Brien, Tim</author>
+      <title>Microsoft .NET: The Programming Bible</title>
+      <genre>Computer</genre>
+      <price>36.95</price>
+      <publish_date>2000-12-09</publish_date>
+      <description>Microsoft's .NET initiative is explored in
+      detail in this deep programmer's reference.</description>
+   </book>
+   <book id="bk111">
+      <author>O'Brien, Tim</author>
+      <title>MSXML3: A Comprehensive Guide</title>
+      <genre>Computer</genre>
+      <price>36.95</price>
+      <publish_date>2000-12-01</publish_date>
+      <description>The Microsoft MSXML3 parser is covered in
+      detail, with attention to XML DOM interfaces, XSLT processing,
+      SAX and more.</description>
+   </book>
+   <book id="bk112">
+      <author>Galos, Mike</author>
+      <title>Visual Studio 7: A Comprehensive Guide</title>
+      <genre>Computer</genre>
+      <price>49.95</price>
+      <publish_date>2001-04-16</publish_date>
+      <description>Microsoft Visual Studio 7 is explored in depth,
+      looking at how Visual Basic, Visual C++, C#, and ASP+ are
+      integrated into a comprehensive development
+      environment.</description>
+   </book>
+</catalog>
+Updated XML saved to 'updated_xml_sample.xml'.
 ```
 
 ---
@@ -519,6 +658,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Title: 'XML Developer's Guide'
+Author: 'John Doe'
+```
 
 ---
 
@@ -532,11 +676,9 @@ int main() {
     // create root element as `store`
     XmlDocument* doc = xml_create_document("store");
 
-    // Create 'product' element
     XmlNode* product = xml_create_element(doc, "product");
     xml_append_child(xml_get_root(doc), product);
 
-    // Set attributes for 'product' element
     xml_set_element_attribute(product, "id", "p1001");
     xml_set_element_attribute(product, "category", "electronics");
 
@@ -668,6 +810,8 @@ Updated XML:
 Updated XML saved to 'library_updated.xml'.
 ```
 
-## Conclusion
+---
 
-This XML library simplifies the process of working with XML documents in C projects, providing intuitive functions for common XML tasks such as parsing, element manipulation, and serialization. The provided examples illustrate the ease with which this library can be integrated into a variety of C-based applications.
+## License
+
+This project is open-source and available under [ISC License].

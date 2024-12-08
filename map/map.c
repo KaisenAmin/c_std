@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "map.h"
-#include "../fmt/fmt.h"
 
 
 // Define the Red-Black Tree color constants
@@ -1526,9 +1525,9 @@ void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValu
         MAP_LOG("[map_print] : Printing key-value pair.");
 
         printKey(map_node_get_key(it.node));
-        fmt_printf(": ");
+        printf(": ");
         printValue(map_node_get_value(it.node));
-        fmt_printf("\n");
+        printf("\n");
     }
     MAP_LOG("[map_print] : Map printing completed.");
 }

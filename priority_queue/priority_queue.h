@@ -9,6 +9,10 @@
 
 #include "../vector/vector.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 // #define PQUEUE_LOGGING_ENABLE
 
 #ifdef PQUEUE_LOGGING_ENABLE 
@@ -34,5 +38,9 @@ void priority_queue_pop(PriorityQueue* pq);
 void priority_queue_deallocate(PriorityQueue* pq);
 void priority_queue_swap(PriorityQueue* pq1, PriorityQueue* pq2);
 void priority_queue_push(PriorityQueue* pq, void* item);
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif 

@@ -646,9 +646,7 @@ int main() {
     char** devices = sysinfo_list_bluetooth_devices(&count);
 
     fmt_printf("Found %d Bluetooth devices:\n", count);
-    for
-
- (int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         fmt_printf("%s\n", devices[i]);
         free(devices[i]);
     }
@@ -923,7 +921,6 @@ int main() {
 #include <stdlib.h>
 
 int main() {
-    
     if (sysinfo_is_virtualized()) {
         fmt_printf("The system is running in a virtualized environment.\n");
     } 
@@ -1000,3 +997,9 @@ int main() {
     return 0;
 }
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

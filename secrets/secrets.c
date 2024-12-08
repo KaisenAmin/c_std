@@ -74,7 +74,7 @@ int secrets_randbelow(int n) {
  */
 void secrets_token_hex(char *buffer, size_t nbytes) {
     SECRETS_LOG("[secrets_token_hex]: Entering secrets_token_hex with nbytes: %zu", nbytes);
-    unsigned char *bytes = malloc(nbytes);
+    unsigned char *bytes = (unsigned char *) malloc(nbytes);
     secrets_token_bytes(bytes, nbytes);
     
     for (size_t i = 0; i < nbytes; i++) {
@@ -97,7 +97,7 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789-_";
 
-    unsigned char *bytes = malloc(nbytes);
+    unsigned char *bytes = (unsigned char *) malloc(nbytes);
     secrets_token_bytes(bytes, nbytes);
 
     for (size_t i = 0; i < nbytes; i++) {

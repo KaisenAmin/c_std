@@ -3,7 +3,6 @@
  * @date 2023 
  * @class String
 */
-#include <stdio.h>
 #include <string.h>
 #include <strings.h>  // For functions like strcasecmp (POSIX-specific)
 #include <stdlib.h>
@@ -62,7 +61,7 @@ static void destroy_global_memory_pool() {
 
 static MemoryPoolString *memory_pool_create(size_t size) {
     STRING_LOG("[memory_pool_create]: Creating memory pool with size %zu.", size);
-    MemoryPoolString *pool = malloc(sizeof(MemoryPoolString));
+    MemoryPoolString *pool = (MemoryPoolString*) malloc(sizeof(MemoryPoolString));
 
     if (pool) {
         pool->pool = malloc(size);
@@ -148,7 +147,7 @@ String* string_create(const char* initialStr) {
         exit(-1);
     }
 
-    str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
+    str->dataStr = (char*) memory_pool_allocate(str->pool, str->capacitySize);
     if (!str->dataStr) {
         STRING_LOG("[string_create]: Error: Memory pool allocation failed in string_create.");
         memory_pool_destroy(str->pool);
@@ -586,7 +585,7 @@ void string_resize(String *str, size_t newSize) {
     else if (newSize > str->size) {
         if (newSize >= str->capacitySize) {
             size_t newCapacity = newSize + 1;
-            char *newData = memory_pool_allocate(str->pool, newCapacity);
+            char *newData = (char*)memory_pool_allocate(str->pool, newCapacity);
 
             if (!newData) {
                 STRING_LOG("[string_resize]: Error - Memory allocation failed.\n");
@@ -625,7 +624,7 @@ void string_shrink_to_fit(String *str) {
     if (str->dataStr != NULL) {
         // Allocate new space from the memory pool
         size_t newCapacity = str->size + 1; // +1 for null terminator
-        char *newData = memory_pool_allocate(str->pool, newCapacity);
+        char *newData = (char*)memory_pool_allocate(str->pool, newCapacity);
 
         if (newData == NULL) {
             STRING_LOG("[string_shrink_to_fit]: Error - Memory allocation failed.\n");
@@ -670,7 +669,7 @@ void string_append(String *str, const char *strItem) {
 
     if (str->size + strItemLength >= str->capacitySize) {
         size_t newCapacity = str->size + strItemLength + 1;
-        char *newData = memory_pool_allocate(str->pool, newCapacity);
+        char *newData = (char*)memory_pool_allocate(str->pool, newCapacity);
 
         if (!newData) {
             STRING_LOG("[string_append]: Error - Memory allocation failed.\n");
@@ -706,7 +705,7 @@ void string_push_back(String* str, char chItem) {
     }
     if (str->size + 1 >= str->capacitySize) {
         size_t newCapacity = str->capacitySize * 2;
-        char* newData = memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
+        char* newData = (char*)memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
         
         if (!newData) {
             STRING_LOG("[string_push_back]: Error - Memory allocation failed.\n");
@@ -751,7 +750,7 @@ void string_assign(String *str, const char *newStr) {
 
     size_t newStrLength = strlen(newStr);
     if (newStrLength + 1 > str->capacitySize) {
-        char *newData = memory_pool_allocate(str->pool, newStrLength + 1);
+        char *newData = (char*)memory_pool_allocate(str->pool, newStrLength + 1);
         if (!newData) {
             STRING_LOG("[string_assign]: Error - Memory allocation failed.\n");
             return;
@@ -799,7 +798,7 @@ void string_insert(String *str, size_t pos, const char *strItem) {
 
     if (newTotalLength + 1 > str->capacitySize) {
         size_t newCapacity = newTotalLength + 1;
-        char *newData = memory_pool_allocate(str->pool, newCapacity);
+        char *newData =(char*)memory_pool_allocate(str->pool, newCapacity);
         if (!newData) {
             STRING_LOG("[string_insert]: Error - Memory allocation failed.\n");
             return;
@@ -890,7 +889,7 @@ void string_replace(String *str1, const char *oldStr, const char *newStr) {
 
     if (newSize + 1 > str1->capacitySize) {
         size_t newCapacity = newSize + 1;
-        char *newData = memory_pool_allocate(str1->pool, newCapacity);
+        char *newData = (char*)memory_pool_allocate(str1->pool, newCapacity);
         if (!newData) {
             STRING_LOG("[string_replace]: Error - Memory allocation failed.\n");
             return;  // Handle allocation error
@@ -1453,11 +1452,11 @@ const char *string_c_str(const String *str) {
 char *string_begin(const String *str) {
     if (str == NULL) { 
         STRING_LOG("[string_begin]: Error - Invalid input (NULL String).\n");
-        return ""; 
+        return NULL; 
     }
     if (str->dataStr == NULL) {
         STRING_LOG("[string_begin]: Error - Uninitialized String.\n");
-        return ""; 
+        return NULL; 
     }
     STRING_LOG("[string_begin]: Returning the beginning of the string.\n");
     return str->dataStr;  
@@ -1711,7 +1710,7 @@ bool string_set_pool_size(String* str, size_t newSize) {
     // If the string already has data, reallocate it in the new pool
     if (str->size > 0 && str->dataStr) {
         STRING_LOG("[string_set_pool_size]: Reallocating string data in new memory pool.\n");
-        char* newData = memory_pool_allocate(str->pool, str->size + 1); // +1 for null terminator
+        char* newData = (char*)memory_pool_allocate(str->pool, str->size + 1); // +1 for null terminator
         if (!newData) {
             STRING_LOG("[string_set_pool_size]: Error - Failed to allocate memory for string data in new pool.\n");
             memory_pool_destroy(str->pool);
@@ -1882,7 +1881,7 @@ String** string_split(const String *str, const char *delimiter, int *count) {
         return NULL;
     }
 
-    String **splits = malloc(sizeof(String*) * num_splits);
+    String **splits = (String**)malloc(sizeof(String*) * num_splits);
     if (splits == NULL) {
         STRING_LOG("[string_split]: Error - Memory allocation failed for splits array.");
         return NULL;
@@ -2432,7 +2431,7 @@ char* string_from_int_cstr(int value) {
     char buffer[12];
     sprintf(buffer, "%d", value);
 
-    char* result = malloc(strlen(buffer) + 1); // +1 for null-terminator
+    char* result = (char*)malloc(strlen(buffer) + 1); // +1 for null-terminator
     if (result) {
         strcpy(result, buffer);
         STRING_LOG("[string_from_int_cstr]: Successfully created C-string from int.");
@@ -2537,7 +2536,7 @@ String** string_tokenize(const String* str, const char* delimiters, int* count) 
     STRING_LOG("[string_tokenize]: Number of tokens found: %zu.", num_tokens);
 
     // Allocate array of String pointers
-    String** tokens = malloc(num_tokens * sizeof(String*));
+    String** tokens = (String**)malloc(num_tokens * sizeof(String*));
     if (tokens == NULL) {
         STRING_LOG("[string_tokenize]: Error - Memory allocation failed for tokens array.");
         return NULL;
@@ -3196,7 +3195,7 @@ wchar_t* string_to_unicode(const char* str) {
         return NULL;
     }
 
-    wchar_t* wstr = malloc(len * sizeof(wchar_t));
+    wchar_t* wstr = (wchar_t*)malloc(len * sizeof(wchar_t));
     if (!wstr) {
         STRING_LOG("[string_to_unicode]: Error - Memory allocation failed.");
         return NULL;
@@ -3231,7 +3230,7 @@ String* string_from_unicode(const wchar_t* wstr) {
         return NULL;
     }
 
-    char* str = malloc(len + 1);  // +1 for null terminator
+    char* str = (char*)malloc(len + 1);  // +1 for null terminator
     if (!str) {
         STRING_LOG("[string_from_unicode]: Error - Memory allocation failed.");
         return NULL;
@@ -3312,7 +3311,7 @@ char* string_strdup(const char* str) {
         return NULL;
     }
 
-    char* new_str = malloc(strlen(str) + 1);
+    char* new_str = (char*)malloc(strlen(str) + 1);
     if (new_str == NULL) {
         STRING_LOG("[string_strdup]: Error - Memory allocation failed for string: %s.", str);
         return NULL;
@@ -3733,7 +3732,7 @@ void string_reserve(String *str, size_t newCapacity) {
         memory_pool_destroy(str->pool);
         str->capacitySize = newCapacity + 32;  
         str->pool = memory_pool_create(str->capacitySize);
-        str->dataStr = memory_pool_allocate(str->pool, str->capacitySize);
+        str->dataStr = (char*)memory_pool_allocate(str->pool, str->capacitySize);
 
         if (!str->dataStr) {
             STRING_LOG("[string_reserve]: Memory allocation failed.");

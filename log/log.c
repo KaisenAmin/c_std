@@ -8,8 +8,6 @@
 #include <time.h> 
 #include <stdlib.h>
 #include "log.h"
-#include "../file_io/file_writer.h"
-#include "../file_io/file_reader.h"
 #include "../string/std_string.h"
 
 
@@ -57,7 +55,7 @@ Log* log_init() {
     }
 
     config->file_reader = NULL;
-    config->enable_timestamp = true;
+    config->enable_timestamp = false;
     config->enable_log_level = true;
     config->suspended = false;
 
@@ -220,10 +218,10 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
 
     // Log to the specified output
     if (config->output == LOG_OUTPUT_CONSOLE || config->output == LOG_OUTPUT_BOTH) {
-        fmt_fprintf(stdout, "%s\n", log_buffer);
+        fprintf(stdout, "%s\n", log_buffer);
     }
     if ((config->output == LOG_OUTPUT_FILE || config->output == LOG_OUTPUT_BOTH) && config->file_writer) {
-        fmt_fprintf(config->file_writer->file_writer, "%s\n", log_buffer);
+        fprintf(config->file_writer->file_writer, "%s\n", log_buffer);
     }
 }
 

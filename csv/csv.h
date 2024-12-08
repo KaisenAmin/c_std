@@ -9,6 +9,10 @@
 
 #include "../file_io/file_reader.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 #define BUFFER_SIZE 1024
 // #define CSV_LOGGING_ENABLE 
 
@@ -67,5 +71,9 @@ int csv_row_get_cell_as_int(const CsvRow *row, size_t index);
 int csv_column_sum(const CsvFile *file, size_t columnIndex); 
 
 bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *format); 
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif

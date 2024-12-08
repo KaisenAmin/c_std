@@ -1,24 +1,19 @@
-#include "regex/std_regex.h"
+#include "csv/csv.h"
 #include "fmt/fmt.h"
 
+
+
 int main() {
-    const char* pattern = "HELLO.*GOODBYE"; 
-    const char* test_string = "hello world!\nThis is a test.\nGoodbye world!";
+    CsvFile* csv = csv_file_create(',');
+    CsvRow* newRow = csv_row_create();
 
-    Regex* regex = regex_compile(pattern, REGEX_CASE_INSENSITIVE | REGEX_MULTILINE | REGEX_DOTALL);
-    if (!regex) {
-        fmt_printf("Failed to compile regex.\n");
-        return 1;
-    }
+    csv_row_append_cell(newRow, "New Cell 1");
+    csv_row_append_cell(newRow, "New Cell 2");
+    csv_row_append_cell(newRow, "سلول جدید 3");
 
-    RegexMatch match;
-    if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Match found across lines: %.*s\n", match.length, match.start);
-    } 
-    else {
-        fmt_printf("No match found.\n");
-    }
+    csv_file_append_row(csv, newRow); // Append the new row to the CSV file
+    csv_file_write(csv, "C:\\Users\\asus\\OneDrive\\Desktop\\project\\c_std\\sources\\updated_file.csv");  
 
-    regex_deallocate(regex);
+    csv_file_destroy(csv);
     return 0;
 }

@@ -10,7 +10,11 @@
 #include <stdint.h>
 #include "../vector/vector.h"
 
-#define DIR_LOGGING_ENABLE
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
+// #define DIR_LOGGING_ENABLE
 
 #ifdef DIR_LOGGING_ENABLE 
     #define DIR_LOG(fmt, ...) \
@@ -68,5 +72,9 @@ DirFileType dir_get_file_type(const char* filePath);
 
 long long dir_get_directory_size(const char* dirPath);
 long long dir_get_file_size(const char* filePath);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

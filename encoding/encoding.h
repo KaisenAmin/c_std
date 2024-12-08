@@ -12,6 +12,10 @@
 #include <stdbool.h>
 #include <locale.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
 // #define ENCODING_LOGGING_ENABLE 
 
 #ifdef ENCODING_LOGGING_ENABLE 
@@ -82,5 +86,9 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length);
 
 bool encoding_is_utf8(const uint8_t* input, size_t length);
 bool encoding_is_utf8_string(const uint8_t** input, size_t length);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif // ENCODING_H

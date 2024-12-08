@@ -393,6 +393,7 @@ The logging system is designed to provide a flexible and configurable way to han
 
 ```c
 #include "log/log.h"
+#include "fmt/fmt.h"
 #include <stdlib.h>
 
 int main() {
@@ -402,9 +403,16 @@ int main() {
         fmt_fprintf(stderr, "Error: Can not Create log object.\n");
         exit(-1);
     }
+    else {
+      fmt_println("Successfully Initialize Log");
+    }
 
     return 0;
 }
+```
+**Result**
+```
+Successfully Initialize Log
 ```
 
 ---
@@ -413,6 +421,7 @@ int main() {
 
 ```c
 #include "log/log.h"
+#include "fmt/fmt.h"
 
 int main() {
     Log* logger = log_init();
@@ -431,6 +440,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+[DEBUG] - This is a debug message - might not be displayed.
+[INFO] - This is an info message.
+[WARN] - This is a warning message.
+[ERROR] - This is an error message.
+```
 
 ---
 
@@ -438,6 +454,7 @@ int main() {
 
 ```c
 #include "log/log.h"
+#include "fmt/fmt.h"
 
 int main() {
     Log* logger = log_init();
@@ -457,6 +474,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+2024-11-28 00:08:40 [INFO] - Application started with timestamp.
+2024-11-28 00:08:40 [WARN] - Low disk space warning logged with timestamp.
+2024-11-28 00:08:40 [ERROR] - File not found error logged with timestamp.
+```
 
 ---
 
@@ -464,13 +487,14 @@ int main() {
 
 ```c
 #include "log/log.h"
+#include "fmt/fmt.h"
 
 int main() {
     Log* logger = log_init();
 
     // Initially set the log level to INFO
     log_set_log_level(logger, LOG_LEVEL_INFO);
-    log_message(logger, LOG_LEVEL_INFO, "This is an info message. Debug messages will not be shown.");
+    log_message(logger, LOG_LEVEL_WARN, "This is an info message. Debug messages will not be shown.");
 
     // Change log level to DEBUG to see more detailed logging
     log_set_log_level(logger, LOG_LEVEL_DEBUG);
@@ -480,6 +504,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [WARN] - This is an info message. Debug messages will not be shown.
+ [DEBUG] - Debug level set. This debug message is now visible.
+```
 
 ---
 
@@ -487,6 +516,7 @@ int main() {
 
 ```c
 #include "log/log.h"
+
 
 int main() {
     Log* logger = log_init();
@@ -503,6 +533,11 @@ int main() {
     log_deallocate(logger);
     return 0;
 }
+```
+**Result**
+```
+ [ERROR] - An error occurred.
+ [INFO] - Info level log, keyword filter disabled.
 ```
 
 ---
@@ -531,6 +566,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [INFO] - Initial info message.
+ [ERROR] - Initial error message.
+ [ERROR] - An error occurred after update.
+ [INFO] - Info level log, keyword filter disabled.
+```
 
 ---
 
@@ -556,6 +598,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [INFO] - Logging to the initial file.
+ [INFO] - Logging to the new file.
+```
 
 ---
 
@@ -574,6 +621,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [ERROR] - An unexpected error occurred.
+```
 
 ---
 
@@ -581,6 +632,7 @@ int main() {
 
 ```c
 #include "log/log.h"
+#include "fmt/fmt.h"
 
 int main() {
     Log* logger = log_init();
@@ -595,6 +647,10 @@ int main() {
     log_deallocate(logger);
     return 0;
 }
+```
+**Result**
+```
+ [INFO] - This is an informational message.
 ```
 
 ---
@@ -619,6 +675,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [INFO] - Logging has been resumed.
+```
 
 ---
 
@@ -637,6 +697,10 @@ int main() {
     log_deallocate(logger);
     return 0;
 }
+```
+**Result**
+```
+[] [INFO] - Custom formatted log message.
 ```
 
 ---
@@ -676,6 +740,17 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [DEBUG] - This is a debug message.
+ [INFO] - This is an info message.
+ [WARN] - This is a warning message.
+ [ERROR] - This is an error message.
+ [WARN] - This WARNING message is still visible.
+ [ERROR] - This ERROR message is still visible.
+ [DEBUG] - DEBUG messages are visible again.
+ [INFO] - INFO messages are visible again.
+```
 
 ---
 
@@ -700,6 +775,11 @@ int main() {
     log_deallocate(logger);
     return 0;
 }
+```
+**Result**
+```
+ [INFO] - Logging to the initial file.
+ [INFO] - Logging to a new file after redirection.
 ```
 
 ---
@@ -731,6 +811,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [DEBUG] - This is a verbose debug message.
+ [INFO] - This is a verbose info message.
+ [WARN] - This is a warning message.
+ [ERROR] - This is an error message.
+ [WARN] - This warning message is still visible.
+ [ERROR] - This error message is still visible.
+```
 
 ---
 
@@ -743,6 +832,7 @@ int main() {
 bool custom_log_filter(LogLevel level, const char* message, void* user_data) {
     (void)level;
     const char* required_substring = (const char*)user_data;
+
     return strstr(message, required_substring) != NULL;
 }
 
@@ -758,6 +848,10 @@ int main() {
     log_deallocate(logger);
     return 0;
 }
+```
+**Result**
+```
+[INFO] - This is an important info message.
 ```
 
 ---
@@ -781,6 +875,14 @@ int main() {
     log_deallocate(logger);
     return 0;
 }
+```
+**Result**
+```
+ [INFO] - Log message number 927
+ [INFO] - Log message number 928
+ [INFO] - Log message number 929
+ [INFO] - Log message number 930
+ [INFO] - Log message number 931
 ```
 
 ---
@@ -812,3 +914,25 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+ [INFO] - This is info message 0
+ [DEBUG] - This is debug message 0
+ [WARN] - This is a warning message 0
+ [INFO] - This is info message 1
+ [DEBUG] - This is debug message 1
+ [INFO] - This is info message 2
+ [DEBUG] - This is debug message 2
+ [WARN] - This is a warning message 2
+ [INFO] - This is info message 3
+ [DEBUG] - This is debug message 3
+ [INFO] - This is info message 4
+ [DEBUG] - This is debug message 4
+ [WARN] - This is a warning message 4
+```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

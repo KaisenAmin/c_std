@@ -385,7 +385,7 @@ Elements in Span:
 #include "fmt/fmt.h"
 
 int main() {
-    char *array[] = {"Vector", "String", "Map", "Csv", "Array"};
+    const char *array[] = {"Vector", "String", "Map", "Csv", "Array"};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
 
     // Create a span and copy the data from the array
@@ -447,7 +447,7 @@ Last element: 50
 #include "fmt/fmt.h"
 
 int main() {
-    char* strings[] = {"Hello", "World", "Example", "C Programming"};
+    const char* strings[] = {"Hello", "World", "Example", "C Programming"};
     size_t arraySize = sizeof(strings) / sizeof(strings[0]);
     Span* span = span_create(strings, arraySize, sizeof(char*));
 
@@ -695,14 +695,14 @@ int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span* span = span_create(array, 5, sizeof(int));
 
-    for (int* ptr = span_begin(span); ptr != span_end(span); ptr = span_increment(span, ptr)) {
+    for (int* ptr = (int*)span_begin(span); ptr != span_end(span); ptr = (int*)span_increment(span, ptr)) {
         if (ptr) {
             fmt_printf("%d ", *ptr);
         }
     }
     fmt_printf("\n");
 
-    for (int* ptr = span_rbegin(span); ptr != span_rend(span); ptr = (int*)span_decrement(span, ptr)) {
+    for (int* ptr = (int*)span_rbegin(span); ptr != span_rend(span); ptr = (int*)span_decrement(span, ptr)) {
         if (ptr) {
             fmt_printf("%d ", *ptr);
         }

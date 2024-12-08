@@ -390,12 +390,20 @@ int main(int argc, char *argv[]) {
         fmt_fprintf(stderr, "Failed to create CLI parser\n");
         return -1;
     }
-
+    else {
+        fmt_println("Parser Create Successfully");
+    }
     // Deallocate the CLI parser and all associated resources
     cli_parser_deallocate(parser);
     return 0;
 }
 ```
+**Result**
+```
+Parser Create Successfully 
+```
+
+---
 
 ## Example 2 : setting custome usage message `cli_set_custom_usage`
 
@@ -403,27 +411,120 @@ int main(int argc, char *argv[]) {
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 
-int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
 
+void help_option_handler(const CliOption *option, const char *value, void *userData) {
+    if (!userData) {
+        fmt_fprintf(stderr, "Error: userData is NULL in helpOption handler.\n");
+        return;
+    }
+    CliParser *parser = (CliParser *)userData;
+    cli_print_help(parser);
+}
+
+void version_option_handler(const CliOption *option, const char *value, void *userData) {
+    if (!userData) {
+        fmt_fprintf(stderr, "Error: userData is NULL in versionOption handler.\n");
+        return;
+    }
+    fmt_printf("Version: MyApp v1.0.0\n");
+}
+
+int main(int argc, char *argv[]) {
+    fmt_printf("Creating CLI parser...\n");
     CliParser *parser = cli_parser_create("MyApp");
-    if (parser == NULL) {
+
+    if (!parser) {
         fmt_fprintf(stderr, "Failed to create CLI parser\n");
         return -1;
     }
+    fmt_printf("CLI parser created successfully.\n");
 
-    // Set a custom usage message
     const char *customUsage = "Usage: MyApp [options]\n"
                               "Options:\n"
                               "  -h, --help    Display this help message\n"
                               "  -v, --version Display version information\n";
+    fmt_printf("Setting custom usage message...\n");
     cli_set_custom_usage(parser, customUsage);
+    fmt_printf("Custom usage message set successfully.\n");
+
+    // Help Option
+    CliOption helpOption = {
+        .longOpt = "--help",
+        .shortOpt = 'h',
+        .optionType = CLI_NO_ARG,
+        .handler = help_option_handler,
+        .validator = NULL,
+        .description = "Display this help message",
+        .userData = parser,
+        .customErrorMessage = NULL,
+        .optionValidator = NULL,
+        .validationErrorMessage = NULL
+    };
+
+    // Version Option
+    CliOption versionOption = {
+        .longOpt = "--version",
+        .shortOpt = 'v',
+        .optionType = CLI_NO_ARG,
+        .handler = version_option_handler,
+        .validator = NULL,
+        .description = "Display version information",
+        .userData = parser,
+        .customErrorMessage = NULL,
+        .optionValidator = NULL,
+        .validationErrorMessage = NULL
+    };
+
+    cli_register_option(parser, &helpOption);
+    cli_register_option(parser, &versionOption);
+    fmt_printf("Options registered successfully.\n");
+
+    fmt_printf("Testing argument parsing...\n");
+    CliStatusCode status = cli_parse_args(parser, argc, argv);
+
+    if (status != CLI_SUCCESS) {
+        fmt_fprintf(stderr, "Failed to parse arguments. Error: %d\n", status);
+    } 
+    else {
+        fmt_printf("Arguments parsed successfully.\n");
+    }
 
     cli_parser_deallocate(parser);
     return 0;
 }
 ```
+**Result**
+```
+./main --help
+
+Creating CLI parser...
+CLI parser created successfully.
+Setting custom usage message...
+Custom usage message set successfully.
+Registering options...
+Options registered successfully.
+Testing argument parsing...
+Options:
+  --help, h     Display this help message
+  --version, v  Display version information
+Arguments parsed successfully.
+Deallocating CLI parser...
+
+ ./main --version
+
+Creating CLI parser...
+CLI parser created successfully.
+Setting custom usage message...
+Custom usage message set successfully.
+Registering options...
+Options registered successfully.
+Testing argument parsing...
+Version: MyApp v1.0.0
+Arguments parsed successfully.
+Deallocating CLI parser...
+```
+
+---
 
 ## Example 3: Enabling Strict Mode in CLI Parser with 1 `cli_enable_strict_mode`
 
@@ -431,9 +532,38 @@ int main(int argc, char *argv[]) {
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 
+
+void greet_option_handler(const CliOption *option, const char *value, void *userData) {
+    if (value == NULL) {
+        fmt_fprintf(stderr, "Error: Missing value for --greet\n");
+        return;
+    }
+    const char *appName = (const char *)userData;
+    fmt_printf("Hello, %s! Welcome to %s\n", value, appName ? appName : "Unknown App");
+}
+
+void version_option_handler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
+    const char *appName = (const char *)userData;
+    fmt_printf("%s version 1.0.0\n", appName ? appName : "Unknown App");
+}
+
+void help_option_handler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
+    CliParser *parser = (CliParser *)userData;
+    cli_print_help(parser);
+}
+
+void unrecognized_option_handler(const CliParser *parser, const char *arg, void *userData) {
+    fmt_fprintf(stderr, "Error: Unrecognized option '%s'.\n", arg);
+    fmt_printf("Use '--help' to see available options.\n");
+    cli_print_help(parser);
+}
+
 int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
+    fmt_printf("Creating CLI parser...\n");
 
     CliParser *parser = cli_parser_create("MyStrictApp");
     if (parser == NULL) {
@@ -441,14 +571,122 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // Enable strict mode
     cli_enable_strict_mode(parser, true);
+    const char *customUsage = "Usage: MyStrictApp [options] [commands]\n"
+                          "\nOptions:\n"
+                          "  --greet <name>  Greet a user by name\n"
+                          "  --version       Show version information\n"
+                          "  -h, --help      Display this help message\n"
+                          "\nCommands:\n"
+                          "  (No commands are currently supported)\n";
+    cli_set_custom_usage(parser, customUsage);
+
+
+    // Register the --greet option
+    CliOption greetOption = {
+        .longOpt = "--greet",
+        .shortOpt = '\0',
+        .optionType = CLI_REQUIRED_ARG,
+        .handler = greet_option_handler,
+        .description = "Greet a user by name",
+        .userData = (void *)"MyStrictApp", 
+    };
+
+    // Register the --version option
+    CliOption versionOption = {
+        .longOpt = "--version",
+        .shortOpt = '\0',
+        .optionType = CLI_NO_ARG,
+        .handler = version_option_handler,
+        .description = "Show version information",
+        .userData = (void *)"MyStrictApp", 
+    };
+
+    // Register the --help option
+    CliOption helpOption = {
+        .longOpt = "--help",
+        .shortOpt = 'h',
+        .optionType = CLI_NO_ARG,
+        .handler = help_option_handler,
+        .description = "Display this help message",
+        .userData = parser,
+    };
+
+    cli_register_option(parser, &greetOption);
+    cli_register_option(parser, &versionOption);
+    cli_register_option(parser, &helpOption);
+
+    // Set the error handler for unrecognized options
+    cli_set_error_handler(parser, (CliErrorHandler)unrecognized_option_handler);
+
+    fmt_printf("Testing CLI argument parsing...\n");
+    CliStatusCode status = cli_parse_args(parser, argc, argv);
+
+    if (status == CLI_SUCCESS) {
+        fmt_printf("Arguments parsed successfully.\n");
+    } 
+    else {
+        fmt_fprintf(stderr, "Failed to parse arguments. Error code: %d\n", status);
+    }
 
     cli_parser_deallocate(parser);
+    fmt_printf("MyStrictApp execution completed.\n");
+
     return 0;
 }
 ```
+**Result**
+```
+./main --test
 
+Creating CLI parser...
+Error: Unrecognized option '--test'.
+Use '--help' to see available options.
+Options:
+  --greet,      Greet a user by name
+  --help, h     Display this help message
+Failed to parse arguments. Error code: 1
+
+./main --greet "best programmer"
+
+Creating CLI parser...
+Testing CLI argument parsing...
+Hello, best programmer! Welcome to MyStrictApp
+Arguments parsed successfully.
+Creating CLI parser...
+Testing CLI argument parsing...
+MyStrictApp version 1.0.0
+Arguments parsed successfully.
+
+./main --help 
+
+Creating CLI parser...
+Testing CLI argument parsing...
+Options:
+  --greet,      Greet a user by name
+  --version,    Show version information
+  --help, h     Display this help message
+Arguments parsed successfully.
+
+./main -h  
+
+Creating CLI parser...
+Testing CLI argument parsing...
+Options:
+  --greet,      Greet a user by name
+  --version,    Show version information
+  --help, h     Display this help message
+Arguments parsed successfully.
+
+./main --version
+
+Creating CLI parser...
+Testing CLI argument parsing...
+MyStrictApp version 1.0.0
+Arguments parsed successfully.
+```
+
+---
 
 ## Example 4 : set Custom error handler with `cli_set_error_handler`
 
@@ -456,32 +694,83 @@ int main(int argc, char *argv[]) {
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 
-// Custom error handler function
 void customErrorHandler(const CliParser *parser, const char *error, void *userData) {
     (void)parser;
-    (void)userData;
+    const char *appName = (const char *)userData;
 
-    fmt_fprintf(stderr, "Custom Error: %s\n", error);
-    // Additional error handling logic can be placed here
+    fmt_fprintf(stderr, "[%s Error] %s\n", appName ? appName : "Application", error);
+    cli_print_help(parser);
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
-    
     CliParser *parser = cli_parser_create("ExampleApp");
     if (parser == NULL) {
         fmt_fprintf(stderr, "Failed to create CLI parser\n");
         return -1;
     }
 
+    const char *customUsage = "Usage: ExampleApp [options]\n"
+                              "Options:\n"
+                              "  --example  An example option\n"
+                              "  --help     Show this help message\n";
+    cli_set_custom_usage(parser, customUsage);
+
     // Set the custom error handler
     cli_set_error_handler(parser, customErrorHandler);
 
+    // Add the --help option
+    CliOption helpOption = {
+        .longOpt = "--help",
+        .shortOpt = 'h',
+        .optionType = CLI_NO_ARG,
+        .handler = NULL,
+        .description = "Show this help message",
+        .userData = parser,
+    };
+
+    cli_register_option(parser, &helpOption);
+
+    fmt_printf("Testing CLI parser with invalid arguments...\n");
+    const char *testArgs[] = {"ExampleApp", "--invalid"};
+    CliStatusCode status = cli_parse_args(parser, argc, (char**)testArgs);
+
+    if (status != CLI_SUCCESS) {
+        fmt_fprintf(stderr, "Parser returned an error. Error code: %d\n", status);
+    }
+
     cli_parser_deallocate(parser);
+    fmt_printf("CLI parser test completed.\n");
+
     return 0;
 }
 ```
+**Result**
+```
+./main --help
+
+[Application Error] --invalid
+Options:
+  --help, h     Show this help message
+Parser returned an error. Error code: 1
+
+./main --invalid
+
+Testing CLI parser with invalid arguments...
+[Application Error] --invalid
+Options:
+  --help, h     Show this help message
+Parser returned an error. Error code: 1
+
+./main h
+
+Testing CLI parser with invalid arguments...
+[Application Error] --invalid
+Options:
+  --help, h     Show this help message
+Parser returned an error. Error code: 1
+```
+
+---
 
 ## Example 5: Registering and Using a Command with `cli_register_command`
 
@@ -490,61 +779,101 @@ int main(int argc, char *argv[]) {
 #include "fmt/fmt.h"
 #include <string.h>
 
+// Greet Command Handler
 void greetCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)command; // Unused parameter
-    (void)userData; // Unused parameter
-
-    if (argc > 1) {
-        fmt_fprintf(stdout, "Hello, %s!\n", argv[1]);
+    (void)command;
+    (void)userData;
+    if (argc > 0) {
+        fmt_printf("Hello, %s!\n", argv[0]);
     } 
     else {
-        fmt_fprintf(stdout, "Hello, world!\n");
+        fmt_printf("Hello, world!\n");
+    }
+}
+
+// Farewell Command Handler
+void farewellCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
+    (void)command;
+    (void)userData;
+    if (argc > 0) {
+        fmt_printf("Goodbye, %s!\n", argv[0]);
+    } 
+    else {
+        fmt_printf("Goodbye, world!\n");
     }
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
+    if (argc < 2) {
+        fmt_fprintf(stderr, "Usage: %s <command> [arguments]\n", argv[0]);
+        return -1;
+    }
 
-    CliParser *parser = cli_parser_create("GreetApp");
-    if (parser == NULL) {
+    // Create the parser
+    CliParser *parser = cli_parser_create("DynamicCommandApp");
+    if (!parser) {
         fmt_fprintf(stderr, "Failed to create CLI parser\n");
         return -1;
     }
 
-    // Define the "greet" command
+    // Register the "greet" command
     CliCommand greetCommand = {
         .name = "greet",
         .handler = greetCommandHandler,
         .description = "Greets the user. Usage: greet [name]",
         .userData = NULL
     };
-
-    // Register the "greet" command with the parser
     if (!cli_register_command(parser, &greetCommand)) {
         fmt_fprintf(stderr, "Failed to register 'greet' command\n");
-        cli_parser_deallocate(parser);
-        return -1;
     }
 
-    // Simulate command-line input
-    char *fakeArgs[] = {"greet", "John Doe"};
-    int fakeArgc = 2;
-
-    // Check if the first argument matches the "greet" command
-    if (fakeArgc >= 1 && strcmp(fakeArgs[0], greetCommand.name) == 0) {
-        greetCommand.handler(&greetCommand, fakeArgc - 1, &fakeArgs[1], greetCommand.userData);
-    } 
-    else {
-        fmt_fprintf(stderr, "Unknown command: %s\n", fakeArgs[0]);
+    // Register the "farewell" command
+    CliCommand farewellCommand = {
+        .name = "farewell",
+        .handler = farewellCommandHandler,
+        .description = "Bids farewell to the user. Usage: farewell [name]",
+        .userData = NULL
+    };
+    if (!cli_register_command(parser, &farewellCommand)) {
+        fmt_fprintf(stderr, "Failed to register 'farewell' command\n");
     }
 
+    // Parse real command-line arguments
+    CliStatusCode status = cli_parse_args(parser, argc, argv);
+    if (status != CLI_SUCCESS) {
+        fmt_fprintf(stderr, "Error: Command not recognized or failed to execute.\n");
+    }
+
+    // Deallocate the parser
     cli_parser_deallocate(parser);
     return 0;
 }
+
+```
+**Result**
+```
+./main greet Alice
+Hello, Alice!
+
+./main greet
+Hello, world!
+
+./main greet Amin 
+Hello, Amin!
+
+./main farewell Programmer
+Goodbye, Programmer!
+
+./main farewell unknown   
+Goodbye, unknown!
+
+./main unknown
+Error: Command not recognized or failed to execute.
 ```
 
-### Example 6: Demonstrating `cli_print_usage` with Commands and Options `cli_register_option`
+---
+
+### Example 6: Demonstrating `cli_print_help` with Commands and Options `cli_register_option`
 
 ```c
 #include "cli/cli.h"
@@ -564,7 +893,7 @@ void helpOptionHandler(const CliOption *option, const char *value, void *userDat
     (void)value;
     (void)userData;
     CliParser *parser = (CliParser *)userData;
-    cli_print_usage(parser);
+    cli_print_help(parser);
 }
 
 int main(int argc, char *argv[]) {
@@ -629,6 +958,43 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+**Result**
+```
+./main
+
+Options:
+Commands:
+  greet Greets the user. Usage: greet [name]
+
+./main --help 
+
+Options:
+  --help, h     Display this help message
+Commands:
+  greet Greets the user. Usage: greet [name]
+
+./main greet Amin
+
+Hello, Amin!
+
+./main greet Amin
+
+Hello, Amin!
+
+./main greet
+
+Hello, world!
+
+./main invalid   
+
+Options:
+  --help, h     Display this help message
+Commands:
+  greet Greets the user. Usage: greet [name]
+
+```
+
+---
 
 ## Example 7 : display error with `cli_display_errors`
 
@@ -695,6 +1061,23 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+**Result**
+```
+./main
+Custom Error: Unrecognized command: 'none'
+
+./main greet 
+Hello, world!
+
+./main greet Programmer
+Hello, Programmer!
+
+./main invalid
+Custom Error: Unrecognized command: 'invalid'
+
+```
+
+---
 
 ## Example 8 : Using `cli_find_option` and `cli_print_version`
 
@@ -704,11 +1087,11 @@ int main(int argc, char *argv[]) {
 #include <string.h>
 
 void versionOptionHandler(const CliOption *option, const char *value, void *userData) {
-    (void)option; // Unused parameter
-    (void)value;  // Unused parameter
-    (void)userData; // Unused parameter
+    (void)option; 
+    (void)value;  
 
-    cli_print_version(userData, "1.0.0");
+    const CliParser *parser = (const CliParser *)userData;
+    cli_print_version(parser, "1.0.0");
 }
 
 int main(int argc, char *argv[]) {
@@ -725,10 +1108,14 @@ int main(int argc, char *argv[]) {
         .handler = versionOptionHandler,
         .validator = NULL,
         .description = "Prints the version of the application",
-        .userData = NULL
+        .userData = parser 
     };
 
-    cli_register_option(parser, &versionOption);
+    if (!cli_register_option(parser, &versionOption)) {
+        fmt_fprintf(stderr, "Failed to register '--version' option\n");
+        cli_parser_deallocate(parser);
+        return -1;
+    }
 
     if (argc > 1) {
         const CliOption *foundOption = cli_find_option(parser, argv[1], '\0');
@@ -747,6 +1134,19 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+**Result**
+```
+./main --version
+VersionApp version 1.0.0
+
+./main --unknown
+Unknown option: --unknown
+
+./main
+No options provided. Use --version to print the version.
+```
+
+---
 
 ## Example 9 : Using `cli_find_command`
 
@@ -756,10 +1156,10 @@ int main(int argc, char *argv[]) {
 #include <string.h>
 
 void helpCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)command; // Unused parameter
-    (void)argc;    // Unused parameter
-    (void)argv;    // Unused parameter
-    (void)userData; // Unused parameter
+    (void)command; 
+    (void)argc;    
+    (void)argv;    
+    (void)userData; 
 
     fmt_fprintf(stdout, "Available commands:\n");
     fmt_fprintf(stdout, "  help    - Displays this help message\n");
@@ -798,20 +1198,34 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+**Result**
+```
+./main help
+Available commands:
+  help    - Displays this help message
+
+./main invalid
+Unknown command: invalid
+
+./main
+No command provided. Use 'help' for more information.
+```
+
+---
 
 ## Example 10 : update cli description with `cli_update_description`
 
 ```c
 #include "cli/cli.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 void greetCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)command; // Unused parameter
-    (void)userData; // Unused parameter
+    (void)command; 
+    (void)userData; 
 
-    if (argc > 1) {
-        fmt_fprintf(stdout, "Greetings, %s! How are you today?\n", argv[1]);
+    if (argc > 0) {
+        fmt_fprintf(stdout, "Greetings, %s! How are you today?\n", argv[0]);
     } 
     else {
         fmt_fprintf(stdout, "Hello, world! How are you today?\n");
@@ -819,11 +1233,8 @@ void greetCommandHandler(const CliCommand *command, int argc, char *argv[], void
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc;    // Unused parameter
-    (void)argv;    // Unused parameter
-    CliParser *parser = cli_parser_create("GreetApp");
-
-    if (parser == NULL) {
+    CliParser *parser = cli_parser_create("DemoApp");
+    if (!parser) {
         fmt_fprintf(stderr, "Failed to create CLI parser\n");
         return -1;
     }
@@ -835,22 +1246,67 @@ int main(int argc, char *argv[]) {
         .userData = NULL
     };
 
-    cli_register_command(parser, &greetCommand);
+    if (!cli_register_command(parser, &greetCommand)) {
+        fmt_fprintf(stderr, "Failed to register 'greet' command\n");
+        cli_parser_deallocate(parser);
+        return -1;
+    }
 
-    // Update the "greet" command description
-    cli_update_description(parser, "greet", "Greet someone by name with a friendly message. Usage: greet [name]", true);
+    const char *newDescription = "Say hello with a personalized message. Usage: greet [name]";
+    cli_update_description(parser, "greet", newDescription, true);
+
+    if (argc > 1) {
+        CliStatusCode status = cli_parse_args(parser, argc, argv);
+        if (status != CLI_SUCCESS) {
+            fmt_fprintf(stderr, "Failed to parse arguments\n");
+        }
+    } 
+    else {
+        fmt_fprintf(stdout, "No command provided. Use 'help' for more information.\n");
+    }
+
+    // Display the updated command descriptions
+    fmt_printf("\nUpdated Commands:\n");
+    for (size_t i = 0; i < parser->numCommands; i++) {
+        fmt_printf("  %s: %s\n", parser->commands[i].name, parser->commands[i].description);
+    }
 
     cli_parser_deallocate(parser);
     return 0;
 }
 ```
+**Result**
+```
+./main 
+No command provided. Use 'help' for more information.
+Updated Commands:
+  greet: Say hello with a personalized message. Usage: greet [name]
+
+
+./main greet Amin
+Greetings, Amin! How are you today?
+
+Updated Commands:
+  greet: Say hello with a personalized message. Usage: greet [name]
+
+./main greet
+Hello, world! How are you today?
+
+Updated Commands:
+  greet: Say hello with a personalized message. Usage: greet [name]
+
+./main invalid
+Failed to parse arguments
+
+Updated Commands:
+  greet: Say hello with a personalized message. Usage: greet [name]
+
+```
+
+---
+
 
 ## Example 11 : how to send parameters 
-
-**python .\compile.py r subtract 10 20**
-**python .\compile.py r add 10 20**
-**python .\compile.py r --version**
-**python .\compile.py r --help**
 
 ```c
 #include "cli/cli.h"
@@ -858,30 +1314,30 @@ int main(int argc, char *argv[]) {
 #include <string.h>
 #include <stdlib.h>
 
-// Command Handlers
 void addCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
     (void)command;
-    if (argc != 3) {
-        fmt_printf("Usage: %s add <num1> <num2>\n", (char *)userData);
+    const char *appName = (const char *)userData; 
+    if (argc != 2) {
+        fmt_printf("Usage: %s add <num1> <num2>\n", appName ? appName : "calc");
         return;
     }
-    int num1 = atoi(argv[1]);
-    int num2 = atoi(argv[2]);
-    fmt_printf("Addition is %d\n", num1 + num2);
+    int num1 = atoi(argv[0]);
+    int num2 = atoi(argv[1]);
+    fmt_printf("Addition is %d + %d = %d\n", num1, num2, num1 + num2);
 }
 
 void subtractCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
     (void)command;
-    if (argc != 3) {
-        fmt_printf("Usage: %s subtract <num1> <num2>\n", (char *)userData);
+    const char *appName = (const char *)userData; 
+    if (argc != 2) {
+        fmt_printf("Usage: %s subtract <num1> <num2>\n", appName ? appName : "calc");
         return;
     }
-    int num1 = atoi(argv[1]);
-    int num2 = atoi(argv[2]);
-    fmt_printf("Subtraction is %d\n", num1 - num2);
+    int num1 = atoi(argv[0]);
+    int num2 = atoi(argv[1]);
+    fmt_printf("Subtraction is %d - %d = %d\n", num1, num2, num1 - num2);
 }
 
-// Option Handlers
 void helpOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)option;
     (void)value;
@@ -891,15 +1347,14 @@ void helpOptionHandler(const CliOption *option, const char *value, void *userDat
 
 void versionOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)option;
-    (void)userData;
     (void)value;
+    (void)userData;
     fmt_printf("Version 1.0.0\n");
 }
 
 int main(int argc, char *argv[]) {
     CliParser *parser = cli_parser_create("calc");
 
-    // Set custom usage message
     cli_set_custom_usage(parser, "calc [command] [options]\n"
                                   "Commands:\n"
                                   "  add <num1> <num2>     Add two numbers\n"
@@ -908,15 +1363,37 @@ int main(int argc, char *argv[]) {
                                   "  --help, -h             Show this help message\n"
                                   "  --version, -v          Show version information");
 
-    // Register commands
-    CliCommand addCommand = {.name = "add", .handler = addCommandHandler, .description = "Add two numbers"};
-    CliCommand subtractCommand = {.name = "subtract", .handler = subtractCommandHandler, .description = "Subtract two numbers"};
+    CliCommand addCommand = {
+        .name = "add",
+        .handler = addCommandHandler,
+        .description = "Add two numbers",
+        .userData = (void *)"calc"
+    };
+
+    CliCommand subtractCommand = {
+        .name = "subtract",
+        .handler = subtractCommandHandler,
+        .description = "Subtract two numbers",
+        .userData = (void *)"calc"
+    };
+
     cli_register_command(parser, &addCommand);
     cli_register_command(parser, &subtractCommand);
 
-    // Register options
-    CliOption helpOption = {.longOpt = "--help", .shortOpt = 'h', .handler = helpOptionHandler, .description = "Show help message", .userData = (void *)parser};
-    CliOption versionOption = {.longOpt = "--version", .shortOpt = 'v', .handler = versionOptionHandler, .description = "Show version information"};
+    CliOption helpOption = {
+        .longOpt = "--help",
+        .shortOpt = 'h',
+        .handler = helpOptionHandler,
+        .description = "Show help message",
+        .userData = parser
+    };
+    CliOption versionOption = {
+        .longOpt = "--version",
+        .shortOpt = 'v',
+        .handler = versionOptionHandler,
+        .description = "Show version information"
+    };
+
     cli_register_option(parser, &helpOption);
     cli_register_option(parser, &versionOption);
 
@@ -943,88 +1420,63 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+**Result**
+```
+/main add 10 20
+Addition is 10 + 20 = 30
 
-## Example 12 : register gree with cli parser 
+./main subtract 30 50
+Subtraction is 30 - 50 = -20
 
-**python compile.py r --version**
-**python compile.py r greet amin**
+./main --version
+Version 1.0.0
 
-```c
-#include "cli/cli.h"
-#include "fmt/fmt.h"
+./main --help
+Options:
+  --help, h     Show help message
+  --version, v  Show version information
+Commands:
+  add   Add two numbers
+  subtract      Subtract two numbers
 
-// Command Handlers
-void greetCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)userData;
-    (void)command;
-    fmt_printf("Hello, %s!\n", argc > 1 ? argv[1] : "World");
-}
+./main invalid
+Unknown command or option. Use '--help' for usage information.
 
-void versionCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)userData;
-    (void)command;
-    (void)argc;
-    (void)argv;
-    fmt_printf("Version 1.0.0\n");
-}
-
-int main(int argc, char *argv[]) {
-    CliParser *parser = cli_parser_create("ExampleApp");
-    if (!parser) {
-        fmt_fprintf(stderr, "Failed to create CLI parser\n");
-        return 1;
-    }
-
-    CliCommand greetCommand = {
-        .name = "greet",
-        .handler = greetCommandHandler,
-        .description = "Greets a user",
-        .userData = NULL
-    };
-
-    CliCommand versionCommand = {
-        .name = "--version",
-        .handler = versionCommandHandler,
-        .description = "Shows version",
-        .userData = NULL
-    };
-
-    if (!cli_register_command(parser, &greetCommand)) {
-        fmt_fprintf(stderr, "Failed to register 'greet' command\n");
-    }
-
-    if (!cli_register_command(parser, &versionCommand)) {
-        fmt_fprintf(stderr, "Failed to register '--version' command\n");
-    }
-
-    cli_parse_args(parser, argc, argv);
-
-    cli_parser_deallocate(parser);
-    return 0;
-}
+./main
+No command provided. Use '--help' for usage information.
 ```
 
-## Example 13 : interactive mode 
+---
 
-**python compile.py r calculate 10 20**
-**python compile.py r --interactive**
+
+## Example 12 : interactive mode 
 
 ```c
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
-// Command Handler
 void calculateCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)userData;
     (void)command;
-    if (argc != 3) {
+    (void)userData;
+
+    if (argc != 2 && argc != 3) { 
         fmt_printf("Usage: calculate <number1> <number2>\n");
         return;
     }
 
-    int num1 = atoi(argv[1]);
-    int num2 = atoi(argv[2]);
+    int num1, num2;
+    if (argc == 2) {
+        // Single mode
+        num1 = atoi(argv[0]);
+        num2 = atoi(argv[1]);
+    } 
+    else {
+        // Interactive mode
+        num1 = atoi(argv[1]);
+        num2 = atoi(argv[2]);
+    }
+
     fmt_printf("Sum: %d\n", num1 + num2);
 }
 
@@ -1032,11 +1484,27 @@ void calculateCommandHandler(const CliCommand *command, int argc, char *argv[], 
 void interactiveOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)option;
     (void)value;
+
     CliParser *parser = (CliParser *)userData;
 
     fmt_printf("Entering interactive mode. Type 'exit' to quit.\n");
     cli_enter_interactive_mode(parser, "> ");
 }
+
+void helpOptionHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
+    CliParser *parser = (CliParser *)userData;
+
+    cli_print_help(parser);
+}
+
+void versionOptionHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
+    fmt_printf("Version 1.0.0\n");
+}
+
 
 int main(int argc, char *argv[]) {
     CliParser *parser = cli_parser_create("InteractiveApp");
@@ -1064,98 +1532,78 @@ int main(int argc, char *argv[]) {
         fmt_fprintf(stderr, "Failed to register 'calculate' command\n");
     }
 
-    if (!cli_register_option(parser, &interactiveOption)) {
-        fmt_fprintf(stderr, "Failed to register '--interactive' option\n");
-    }
 
-    cli_parse_args(parser, argc, argv);
+    CliOption helpOption = {
+        .longOpt = "--help",
+        .shortOpt = 'h',
+        .optionType = CLI_NO_ARG,
+        .handler = helpOptionHandler,
+        .description = "Show help message",
+        .userData = parser
+    };
 
-    cli_parser_deallocate(parser);
-    return 0;
-}
-```
-
-## Example 14 : Using Option Groups and Pipelining
-
-**This example demonstrates how to use option groups and enable pipelining for advanced command-line parsing scenarios**
-
-`this will enable verbose mode in your program`
-**python compile.py r --versbose**
-`this will proccess command data`
-**python compile.py r process one two**
-
-```c
-#include "cli/cli.h"
-#include "fmt/fmt.h"
-#include <stdlib.h>
-
-// Option handler for setting verbose mode
-void verboseOptionHandler(const CliOption *option, const char *value, void *userData) {
-    (void)option;
-    (void)value; 
-    bool *verboseMode = (bool *)userData;
-    *verboseMode = true;
-    fmt_printf("Verbose mode enabled\n");
-}
-
-// Command handler for a 'process' command
-void processCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
-    (void)command;
-    (void)userData; 
-    fmt_printf("Processing with %d arguments\n", argc);
-    for (int i = 0; i < argc; ++i) {
-        fmt_printf("Arg %d: %s\n", i + 1, argv[i]);
-    }
-}
-
-int main(int argc, char *argv[]) {
-    bool verboseMode = false;
-    CliParser *parser = cli_parser_create("PipelineApp");
-
-    CliOption verboseOption = {
-        .longOpt = "--verbose",
+    CliOption versionOption = {
+        .longOpt = "--version",
         .shortOpt = 'v',
         .optionType = CLI_NO_ARG,
-        .handler = verboseOptionHandler,
-        .description = "Enable verbose output",
-        .userData = &verboseMode
+        .handler = versionOptionHandler,
+        .description = "Show version information"
     };
 
-    CliCommand processCommand = {
-        .name = "process",
-        .handler = processCommandHandler,
-        .description = "Process data",
-        .userData = NULL
-    };
+    cli_register_option(parser, &helpOption);
+    cli_register_option(parser, &versionOption);
+    cli_register_option(parser, &interactiveOption);
 
-    cli_register_option(parser, &verboseOption);
-    cli_register_command(parser, &processCommand);
-
-    // Enable pipelining to allow command outputs to be used as inputs for other commands
-    cli_enable_pipelining(parser, true);
     cli_parse_args(parser, argc, argv);
 
     cli_parser_deallocate(parser);
     return 0;
 }
 ```
+**Result**
+```
+./main calculate 10 20  
+Sum: 30
 
-## Example 15: Interactive Mode and Command Aliases
+./main --help        
+Options:
+  --help, h     Show help message
+  --version, v  Show version information
+  --interactive,        Enters interactive mode
+Commands:
+  calculate     Performs a simple addition
 
-`entering an interactive mode and using command aliases to provide alternative names for commands`
-**python compile.py r**
+./main --version     
+Version 1.0.0
+
+./main --interactive  
+Entering interactive mode. Type 'exit' to quit.
+> invalid
+Error: Command 'invalid' failed with status 8
+> test 1 0
+Error: Command 'test' failed with status 8
+> calculate 20 20
+Sum: 40
+> exit
+Exiting interactive mode.
+
+```
+
+---
+
+## Example 13: Interactive Mode and Command Aliases
+
 ```c
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
-// Command handler for exiting the application
 void exitCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
     (void)command;
     (void)argc;
     (void)argv;
     (void)userData;
-    fmt_printf("Exiting application.\n");
+    fmt_printf("Exiting via command: %s\n", command->name);
     exit(0);
 }
 
@@ -1176,42 +1624,49 @@ int main() {
     };
 
     cli_register_command(parser, &exitCommand);
-
-    // Register an alias for the 'exit' command
+    cli_register_command_alias(parser, "exit", "fuck");
     cli_register_command_alias(parser, "exit", "quit");
 
-    // Enter interactive mode immediately for demonstration purposes
     enterInteractiveMode(parser);
 
     cli_parser_deallocate(parser);
     return 0;
 }
 ```
+**Result**
+```
+./main
+Interactive mode. Type 'exit' or 'quit' to exit.
+>exit
+Exiting interactive mode.
+
+./main
+>invalid
+Error: Command 'invalid' failed with status 8
+>quit
+Exiting via command: quit
+
+./main
+Interactive mode. Type 'exit' or 'quit' to exit.
+>fuck
+Exiting via command: fuck
+
+```
+
+---
+
 
 ## Example 16 : running server with different mode 
 
-`start server with port`
-**python .\compile.py r start --port 8080**
-
-`enabling verbose mode`
-**python .\compile.py r start -v**
-**python .\compile.py r start --port 8080 --verbose**
-
-`Specifiyin a log file`
-**python .\compile.py r start --port 8080 --log-file "server.log"**
-
-`Combining Multiple Options`
-**python .\compile.py r start --verbose --port 8080 --log-file "server.log"**
 ```c
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 #include <string.h>
 
-int globalPort = 0; // Global variable to store the port
-bool verboseMode = false; // Global variable to store the verbose flag
+int globalPort = 0;
+bool verboseMode = false;
 
-// Custom validator for the port option
 bool validatePort(const char *value, void *userData) {
     (void)userData;
     long port = strtol(value, NULL, 10);
@@ -1222,7 +1677,6 @@ bool validatePort(const char *value, void *userData) {
     return true;
 }
 
-// Handler for the --port option
 void portOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)userData;
     (void)option;
@@ -1231,7 +1685,6 @@ void portOptionHandler(const CliOption *option, const char *value, void *userDat
     fmt_printf("Port set to %d\n", globalPort);
 }
 
-// Handler for the --verbose option
 void verboseOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)userData;
     (void)option;
@@ -1240,33 +1693,39 @@ void verboseOptionHandler(const CliOption *option, const char *value, void *user
     fmt_printf("Verbose mode enabled\n");
 }
 
-// Handler for the --log-file option
-void logFileOptionHandler(const CliOption *option, const char *value, void *userData) {
-    (void)userData;
-    (void)option;
-    if (value == NULL || strlen(value) == 0) {
-        fmt_printf("Log file name must be provided\n");
-        exit(EXIT_FAILURE);
-    }
-    fmt_printf("Logging to file: %s\n", value);
-}
-
-// Handler for the server start command
 void startServerCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
     (void)command;
     (void)userData;
     (void)argc;
     (void)argv;
-    fmt_printf("Server started on port %d...\n", globalPort);
-    if (verboseMode) {
-        fmt_printf("Verbose mode is ON\n");
+
+    if (globalPort <= 0) {
+        fmt_printf("Error: Port not specified or invalid. Use --port to set a valid port.\n");
+        return;
     }
+    fmt_printf("Server started on port %d...\n", globalPort);
+
+    if (verboseMode) {
+        fmt_printf("[VERBOSE] Verbose mode is ON. Logging detailed server operations.\n");
+    }
+}
+
+void helpOptionHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
+
+    CliParser *parser = (CliParser *)userData;
+    if (parser == NULL) {
+        fmt_printf("Error: Parser is NULL.\n");
+        return;
+    }
+
+    cli_print_help(parser);
+    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]) {
     CliParser *parser = cli_parser_create("ServerApp");
-
-    // Register the start server command
     CliCommand startServerCommand = {
         .name = "start",
         .handler = startServerCommandHandler,
@@ -1276,18 +1735,58 @@ int main(int argc, char *argv[]) {
     CliOption serverOptions[] = {
         {.longOpt = "--port", .shortOpt = 'p', .optionType = CLI_REQUIRED_ARG, .handler = portOptionHandler, .validator = validatePort, .description = "Set server port"},
         {.longOpt = "--verbose", .shortOpt = 'v', .optionType = CLI_NO_ARG, .handler = verboseOptionHandler, .description = "Enable verbose output"},
-        {.longOpt = "--log-file", .shortOpt = 'l', .optionType = CLI_REQUIRED_ARG, .handler = logFileOptionHandler, .description = "Specify log file"},
+    };
+
+    CliOption helpOption = {
+        .longOpt = "--help",
+        .shortOpt = 'h',
+        .optionType = CLI_NO_ARG,
+        .handler = helpOptionHandler,
+        .description = "Show help message",
+        .userData = parser
     };
 
     cli_register_command(parser, &startServerCommand);
     cli_add_option_group(parser, "Server Options", serverOptions, sizeof(serverOptions) / sizeof(CliOption));
-    cli_parse_args(parser, argc, argv);
+    cli_register_option(parser, &helpOption);
+
+    if (cli_parse_args(parser, argc, argv) != CLI_SUCCESS) {
+        fmt_printf("Error: Failed to parse arguments\n");
+        cli_print_help(parser);
+        cli_parser_deallocate(parser);
+        exit(EXIT_FAILURE);
+    }
 
     cli_parser_deallocate(parser);
     return 0;
 }
 ```
+**Result**
+```
+./main start --port 8080
+Port set to 8080
+Server started on port 8080...
 
+
+./main start --port 8080 --verbose
+Port set to 8080
+Verbose mode enabled
+Server started on port 8080...
+Verbose mode is ON. Logging detailed server operations.
+Verbose mode flag is set to true.
+
+./main start
+Error: Port not specified or invalid. Use --port to set a valid port.
+
+./main --help
+Error: Failed to parse arguments
+Options:
+  --port, p     Set server port
+  --verbose, v  Enable verbose output
+  --help, h     Show help message
+Commands:
+  start Starts the server
+```
 
 ---
 

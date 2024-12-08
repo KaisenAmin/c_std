@@ -9,19 +9,19 @@
 #include <time.h>
 #include "postgres.h"
 #include "../string/std_string.h"
-#include "../fmt/fmt.h"
+
 
 
 #define CON_INFO_SIZE 256 
 
 static void print_line(int nFields, int *widths) {
     for (int i = 0; i < nFields; i++) {
-        fmt_printf("+");
+        printf("+");
         for (int j = 0; j < widths[i] + 2; j++) {
-            fmt_printf("-");
+            printf("-");
         }
     }
-    fmt_printf("+\n");
+    printf("+\n");
 }
 
 /**
@@ -365,17 +365,17 @@ void postgres_print_result(PostgresResult* pgRes) {
         // Print header
         print_line(nFields, widths);
         for (int i = 0; i < nFields; i++) {
-            fmt_printf("| %-*s ", widths[i], PQfname(pgRes->result, i));
+            printf("| %-*s ", widths[i], PQfname(pgRes->result, i));
         }
-        fmt_printf("|\n");
+        printf("|\n");
         print_line(nFields, widths);
 
         // Print rows
         for (int i = 0; i < nRows; i++) {
             for (int j = 0; j < nFields; j++) {
-                fmt_printf("| %-*s ", widths[j], PQgetvalue(pgRes->result, i, j));
+                printf("| %-*s ", widths[j], PQgetvalue(pgRes->result, i, j));
             }
-            fmt_printf("|\n");
+            printf("|\n");
         }
         print_line(nFields, widths);
 

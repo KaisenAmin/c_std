@@ -625,17 +625,25 @@ size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    char buffer[2048]; // Adjust the buffer size as necessary
+    char buffer[2048]; // Adjust buffer size as necessary
     vsnprintf(buffer, sizeof(buffer), format, args);
 
     // Write the formatted string to the file
-    size_t written = file_writer_write(buffer, strlen(buffer), 1, writer);
+    size_t written = fwrite(buffer, 1, strlen(buffer), writer->file_writer);
+    fflush(writer->file_writer);
 
     va_end(args);
 
-    FILE_WRITER_LOG("[file_writer_write_fmt] Written %zu characters to the file.", written);
+    if (written != strlen(buffer)) {
+        FILE_WRITER_LOG("[file_writer_write_fmt] Error: Failed to write full data to the file.");
+    } 
+    else {
+        FILE_WRITER_LOG("[file_writer_write_fmt] Successfully written %zu characters to the file.", written);
+    }
+
     return written;
 }
+
 
 /**
  * @brief Retrieves the current size of the file associated with the `FileWriter`.

@@ -9,9 +9,13 @@
 
 // #include <stddef.h>
 // #include <stdarg.h>
-// #include <stdio.h>
+#include <stdio.h>
 #include "../file_io/file_writer.h"
 #include "../file_io/file_reader.h"
+
+#ifdef __cplusplus 
+extern "C" {
+#endif 
 
 // #define FMT_LOGGING_ENABLE
 
@@ -51,5 +55,9 @@ int fmt_fprintf(FILE* stream, const char* format, ...);
 int fmt_fscan(FILE* stream, const char* format, ...);
 int fmt_fscanln(FILE* stream, const char* format, ...);
 int fmt_fscanf(FILE* stream, const char* format, ...);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

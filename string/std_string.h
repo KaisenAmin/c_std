@@ -9,6 +9,11 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif 
 
 // #define STRING_LOGGING_ENABLE
 
@@ -157,5 +162,9 @@ void string_pop_back(String* str);
 void string_deallocate(String* str);
 void string_clear(String* str);
 void string_reserve(String *str, size_t newCapacity);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif 

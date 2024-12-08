@@ -10,7 +10,11 @@
 #include <stdio.h>
 #include "../vector/vector.h"
 
-#define SYSINFO_LOGGING_ENABLE
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
+// #define SYSINFO_LOGGING_ENABLE
 
 #ifdef SYSINFO_LOGGING_ENABLE
     #define SYSINFO_LOG(fmt, ...) \
@@ -65,5 +69,9 @@ char* sysinfo_system_locale();
 char* sysinfo_disk_space(const char* path);
 
 char** sysinfo_list_bluetooth_devices(int* count);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

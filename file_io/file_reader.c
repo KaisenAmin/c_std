@@ -335,33 +335,56 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
         FILE_READER_LOG("[file_reader_read] Error: Invalid argument (FileReader or buffer is NULL).");
         return 0;
     }
+
     if (reader->mode == READ_BINARY || reader->mode == READ_UNBUFFERED || reader->mode == READ_BUFFERED) {
         size_t elements_read = fread(buffer, size, count, reader->file_reader);
         FILE_READER_LOG("[file_reader_read] Read %zu elements from binary or unbuffered file.", elements_read);
         return elements_read;
     }
 
-    // For text reading, handle UTF-16 to UTF-8 conversion
-    if (reader->mode == READ_TEXT || reader->mode == READ_UNICODE) {
-        char* rawBuffer = (char*)malloc(sizeof(char) * (count + 1));  // +1 for null-termination
+    if (reader->mode == READ_TEXT) {
+        size_t elements_read = fread(buffer, size, count, reader->file_reader);
+        ((char*)buffer)[elements_read] = '\0'; // Null-terminate
+        FILE_READER_LOG("[file_reader_read] Read %zu elements from text file.", elements_read);
+        return elements_read;
+    }
+
+    // For Unicode (UTF-16) reading, handle conversion to UTF-8
+    if (reader->mode == READ_UNICODE) {
+        wchar_t* rawBuffer = (wchar_t*)malloc(sizeof(wchar_t) * (count + 1)); // Buffer for UTF-16 data
         if (!rawBuffer) {
             FILE_READER_LOG("[file_reader_read] Error: Memory allocation failed.");
             return 0;
         }
 
-        size_t actualRead = fread(rawBuffer, sizeof(char), count, reader->file_reader);
-        rawBuffer[actualRead] = '\0';  // Null-terminate the buffer
+        size_t actualRead = fread(rawBuffer, sizeof(wchar_t), count, reader->file_reader);
+        rawBuffer[actualRead] = L'\0'; // Null-terminate the UTF-16 buffer
 
-        memcpy(buffer, rawBuffer, actualRead);
-        free(rawBuffer);  
+        // Convert UTF-16 to UTF-8
+        char* utf8Buffer = (char*) encoding_utf16_to_utf8((uint16_t*)rawBuffer, actualRead);
+        free(rawBuffer);
 
-        FILE_READER_LOG("[file_reader_read] Read %zu elements from text/Unicode file.", actualRead);
-        return actualRead;
+        if (!utf8Buffer) {
+            FILE_READER_LOG("[file_reader_read] Error: UTF-16 to UTF-8 conversion failed.");
+            return 0;
+        }
+
+        size_t utf8Length = strlen(utf8Buffer);
+
+        // Copy converted UTF-8 data to the output buffer
+        size_t bytesToCopy = (utf8Length < count * size) ? utf8Length : count * size - 1;
+        memcpy(buffer, utf8Buffer, bytesToCopy);
+        ((char*)buffer)[bytesToCopy] = '\0'; // Null-terminate the output buffer
+        free(utf8Buffer);
+
+        FILE_READER_LOG("[file_reader_read] Read %zu UTF-16 elements and converted to UTF-8 (%zu bytes).", actualRead, bytesToCopy);
+        return bytesToCopy;
     }
 
     FILE_READER_LOG("[file_reader_read] Error: Unsupported read mode.");
     return 0;
 }
+
 
 /**
  * @brief Reads a line of text from the file.
@@ -538,7 +561,7 @@ bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines
         return false;
     }
 
-    *buffer = malloc(num_lines * sizeof(char*));
+    *buffer = (char**) malloc(num_lines * sizeof(char*));
     if (!*buffer) {
         FILE_READER_LOG("[file_reader_read_lines] Error: Memory allocation failed for buffer.");
         return false;

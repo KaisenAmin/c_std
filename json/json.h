@@ -10,6 +10,11 @@
 #include "../fmt/fmt.h"
 #include "../vector/vector.h"
 #include "../map/map.h"
+#include <stdio.h>
+
+#ifdef __cplusplus 
+extern "C" {
+#endif
 
 // #define JSON_LOGGING_ENABLE
 
@@ -145,5 +150,9 @@ JsonError json_last_error();
 
 void json_print(const JsonElement* element);
 void json_deallocate(JsonElement *element);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

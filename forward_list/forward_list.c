@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "forward_list.h"
-#include "../fmt/fmt.h"
 
 
 /**
@@ -28,7 +27,7 @@ ForwardList *forward_list_create(size_t itemSize) {
         exit(-1);
     }
 
-    ForwardList *list = malloc(sizeof(ForwardList));
+    ForwardList *list = (ForwardList*) malloc(sizeof(ForwardList));
     if (!list) {
         FORWARD_LIST_LOG("[forward_list_create] Error: Memory allocation failed for ForwardList.");
         exit(-1);
@@ -127,7 +126,7 @@ void forward_list_push_front(ForwardList *list, void *value) {
         return;
     }
 
-    ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
+    ForwardListNode *newNode = (ForwardListNode*) malloc(sizeof(ForwardListNode));
     if (!newNode) {
         FORWARD_LIST_LOG("[forward_list_push_front] Memory allocation failed for new node.");
         return;
@@ -409,13 +408,23 @@ void forward_list_emplace_front(ForwardList *list, void *value) {
         return;
     }
 
-    ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
+    // Allocate memory for the new node
+    ForwardListNode *newNode = (ForwardListNode*) malloc(sizeof(ForwardListNode));
     if (newNode == NULL) { 
         FORWARD_LIST_LOG("[forward_list_emplace_front] Memory allocation failed for newNode.");
         return;
     }
 
-    newNode->value = value;
+    // Allocate memory for the value and copy it
+    newNode->value = malloc(list->itemSize);
+    if (newNode->value == NULL) {
+        FORWARD_LIST_LOG("[forward_list_emplace_front] Memory allocation failed for node value.");
+        free(newNode);
+        return;
+    }
+    memcpy(newNode->value, value, list->itemSize);
+
+    // Insert the new node at the front of the list
     newNode->next = list->head;
     list->head = newNode;
     list->size++;
@@ -458,16 +467,28 @@ void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *v
         return;
     }
 
-    ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
+    // Allocate memory for the new node
+    ForwardListNode *newNode = (ForwardListNode*) malloc(sizeof(ForwardListNode));
     if (newNode == NULL) { 
         FORWARD_LIST_LOG("[forward_list_emplace_after] Error: Unable to allocate memory for new node.");
         return;
     }
-    newNode->value = value;
+
+    // Allocate memory for the value and copy it
+    newNode->value = malloc(list->itemSize);
+    if (newNode->value == NULL) {
+        FORWARD_LIST_LOG("[forward_list_emplace_after] Error: Memory allocation failed for node value.");
+        free(newNode);  // Free the node itself before returning
+        return;
+    }
+    memcpy(newNode->value, value, list->itemSize);  // Deep copy the value
+
+    // Insert the new node after the specified position
     newNode->next = pos->next;
     pos->next = newNode;
     list->size++;
-    FORWARD_LIST_LOG("[forward_list_emplace_after] Inserted value after the specified position.");
+
+    FORWARD_LIST_LOG("[forward_list_emplace_after] Inserted value after the specified position. New size: %zu.", list->size);
 }
 
 /**
@@ -504,7 +525,7 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
     // Regular insertion after a given node
     for (size_t i = 0; i < numValues; ++i) {
         void *currentValue = (char *)value + i * list->itemSize;
-        ForwardListNode *newNode = malloc(sizeof(ForwardListNode));
+        ForwardListNode *newNode = (ForwardListNode*) malloc(sizeof(ForwardListNode));
         if (newNode == NULL) {
             FORWARD_LIST_LOG("[forward_list_insert_after] Error: Memory allocation failed for new node.");
             return;

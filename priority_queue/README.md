@@ -258,7 +258,7 @@ int main() {
         priority_queue_push(pq, &values[i]);
     }
 
-    int* top = priority_queue_top(pq);
+    int* top = (int*)priority_queue_top(pq);
     if (top) {
         fmt_printf("Top element: %d\n", *top);
     }
@@ -296,13 +296,13 @@ int main() {
         priority_queue_push(pq, &values[i]);
     }
 
-    int* top = priority_queue_top(pq);
+    int* top = (int*)priority_queue_top(pq);
     if (top) {
         fmt_printf("Top element: %d\n", *top);
     }
     // Pop the top element and access the new top
     priority_queue_pop(pq);
-    top = priority_queue_top(pq);
+    top = (int*)priority_queue_top(pq);
 
     if (top) {
         fmt_printf("New top element after pop: %d\n", *top);
@@ -344,7 +344,7 @@ int main() {
 
     fmt_printf("Sorted elements in descending order:\n");
     while (!priority_queue_empty(pq)) {
-        int* top = priority_queue_top(pq);
+        int* top = (int*)priority_queue_top(pq);
         if (top) {
             fmt_printf("%d ", *top);
         }
@@ -380,7 +380,7 @@ static int compare_ints(const void* a, const void* b) {
 
 void merge_priority_queues(PriorityQueue* destination, PriorityQueue* source) {
     while (!priority_queue_empty(source)) {
-        int* top = priority_queue_top(source);
+        int* top = (int*)priority_queue_top(source);
 
         priority_queue_push(destination, top);
         priority_queue_pop(source);
@@ -407,7 +407,7 @@ int main() {
 
     fmt_printf("Merged Priority Queue:\n");
     while (!priority_queue_empty(mergedPQ)) {
-        int* top = priority_queue_top(mergedPQ);
+        int* top = (int*)priority_queue_top(mergedPQ);
         fmt_printf("%d ", *top);
 
         priority_queue_pop(mergedPQ);
@@ -445,11 +445,12 @@ struct Task {
 };
 
 static int compare_tasks(const void* a, const void* b) {
-    const Task* taskA = a;
-    const Task* taskB = b;
+    const Task* taskA = (const Task*)a;
+    const Task* taskB = (const Task*)b;
 
     return (taskA->priority > taskB->priority) - (taskA->priority < taskB->priority);
 }
+
 
 int main() {
     PriorityQueue* taskQueue = priority_queue_create(sizeof(Task), compare_tasks);
@@ -465,7 +466,7 @@ int main() {
 
     fmt_printf("Executing tasks in priority order:\n");
     while (!priority_queue_empty(taskQueue)) {
-        Task* topTask = priority_queue_top(taskQueue);
+        Task* topTask = (Task*)priority_queue_top(taskQueue);
         fmt_printf("Executing Task ID: %d, Priority: %d\n", topTask->taskID, topTask->priority);
         priority_queue_pop(taskQueue);
     }

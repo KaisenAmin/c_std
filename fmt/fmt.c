@@ -126,7 +126,7 @@ char* __fmt_sprintln(const char* first_arg, ...) {
     wchar_t* wstr = encoding_utf8_to_wchar(first_arg);
     if (wstr) {
         wstr_total_len = wcslen(wstr);
-        wstr_total = malloc((wstr_total_len + 1) * sizeof(wchar_t));
+        wstr_total = (wchar_t*)malloc((wstr_total_len + 1) * sizeof(wchar_t));
         if (!wstr_total) {
             free(wstr);
             return NULL;
@@ -140,7 +140,7 @@ char* __fmt_sprintln(const char* first_arg, ...) {
         wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
             size_t new_len = wstr_total_len + wcslen(wstr) + 1;
-            wchar_t* new_wstr_total = realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
+            wchar_t* new_wstr_total = (wchar_t*) realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
             if (!new_wstr_total) {
                 free(wstr);
                 free(wstr_total);
@@ -205,7 +205,7 @@ char* __fmt_sprint(const char* first_arg, ...) {
     wchar_t* wstr = encoding_utf8_to_wchar(first_arg);
     if (wstr) {
         wstr_total_len = wcslen(wstr);
-        wstr_total = malloc((wstr_total_len + 1) * sizeof(wchar_t));
+        wstr_total = (wchar_t*) malloc((wstr_total_len + 1) * sizeof(wchar_t));
         if (!wstr_total) {
             free(wstr);
             return NULL;
@@ -219,7 +219,7 @@ char* __fmt_sprint(const char* first_arg, ...) {
         wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
             size_t new_len = wstr_total_len + wcslen(wstr) + 1;
-            wchar_t* new_wstr_total = realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
+            wchar_t* new_wstr_total = (wchar_t*) realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
             if (!new_wstr_total) {
                 free(wstr);
                 free(wstr_total);

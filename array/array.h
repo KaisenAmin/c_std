@@ -7,7 +7,13 @@
 #ifndef ARRAY_H_
 #define ARRAY_H_
 
+#include <stdio.h>
 #include "../vector/vector.h"
+
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 
 // #define ARRAY_LOGGING_ENABLE 
 
@@ -63,5 +69,8 @@ void array_reverse(Array* arr);
 void array_sort(Array* arr, int (*compare)(const void*, const void*));
 void array_copy(Array* dest, const Array* src);
 
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

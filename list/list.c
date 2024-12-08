@@ -26,7 +26,7 @@ List *list_create(size_t itemSize, CompareFunction compare) {
         exit(-1);
     }
 
-    List *list = malloc(sizeof(List));
+    List *list = (List*) malloc(sizeof(List));
     if (!list) {
         LIST_LOG("[list_create] Error: Cannot allocate memory for list.");
         exit(-1);
@@ -122,7 +122,7 @@ void *list_insert(List *list, size_t index, void *value) {
         return list->tail->value;
     }
 
-    Node *newNode = malloc(sizeof(Node));
+    Node *newNode = (Node*) malloc(sizeof(Node));
     if (!newNode) {
         LIST_LOG("[list_insert] : Error: Memory allocation failed for newNode in list_insert.");
         return NULL;
@@ -381,7 +381,7 @@ void list_push_front(List *list, void *value) {
         return;
     }
 
-    Node *newNode = malloc(sizeof(Node));
+    Node *newNode = (Node*) malloc(sizeof(Node));
     if (!newNode) {
         LIST_LOG("[list_push_front] : Error: Memory allocation failed for newNode in list_push_front.");
         return;
@@ -427,7 +427,7 @@ void list_push_back(List *list, void *value) {
         return;
     }
 
-    Node *newNode = malloc(sizeof(Node));
+    Node *newNode = (Node*) malloc(sizeof(Node));
     if (!newNode) {
         LIST_LOG("[list_push_back] : Error: Memory allocation failed for newNode in list_push_back.");
         return;
@@ -793,7 +793,7 @@ void list_emplace_front(List *list, void *value) {
         return;
     }
 
-    Node *newNode = malloc(sizeof(Node));
+    Node *newNode = (Node*) malloc(sizeof(Node));
     if (!newNode) {
         LIST_LOG("[list_emplace_front] : Error: Memory allocation failed for newNode in list_emplace_front.");
         return;
@@ -832,7 +832,7 @@ void list_emplace_back(List *list, void *value) {
         return;
     }
 
-    Node *newNode = malloc(sizeof(Node));
+    Node *newNode = (Node*) malloc(sizeof(Node));
     if (!newNode) {
         LIST_LOG("[list_emplace_back] : Error: Memory allocation failed for newNode in list_emplace_back.");
         return;

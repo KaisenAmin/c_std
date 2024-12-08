@@ -327,12 +327,13 @@ int main() {
 static bool compare_string(const void* a, const void* b){
     const char* str_a = *(const char**)a;
     const char* str_b = *(const char**)b;
+
     return strcmp(str_a, str_b) == 0;
 }
 
 int main() {
-    List *myList = list_create(sizeof(char*), compare_string);
-    char* values[] = {"c++", "C", "Python", "Golang", "Rust"};
+    List *myList = list_create(sizeof(char*), (CompareFunction)compare_string);
+    const char* values[] = {"c++", "C", "Python", "Golang", "Rust"};
 
     for (int i = 0; i < 5; ++i) { 
         list_push_front(myList, &values[i]);
@@ -346,6 +347,14 @@ int main() {
     return 0;
 }
 
+```
+**Result**
+```
+Rust
+Golang
+Python
+C
+c++
 ```
 
 ---
@@ -503,6 +512,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+50
+40
+30
+20
+10
+0
+0
+0
+0
+0
+```
 
 ---
 
@@ -543,6 +565,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+100
+200
+300
+400
+500
+```
 
 ---
 
@@ -575,6 +605,14 @@ int main() {
     list_deallocate(myList);
     return 0;
 }
+```
+**Result**
+```
+10
+20
+30
+40
+50
 ```
 
 ---
@@ -609,6 +647,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+10
+20
+30
+40
+50
+```
 
 ---
 
@@ -633,6 +679,10 @@ int main() {
     list_deallocate(myList);
     return 0;
 }
+```
+**Result**
+```
+Yes its empty
 ```
 
 ---
@@ -662,6 +712,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Size of List 1
+```
 
 ---
 
@@ -690,6 +744,14 @@ int main() {
     list_deallocate(myList);
     return 0;
 }
+```
+**Result**
+```
+1
+2
+3
+4
+5
 ```
 
 ---
@@ -729,7 +791,7 @@ int main() {
 // Function to compare two strings in the list
 #include "fmt/fmt.h"
 #include "list/list.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 static int compare_strings(const void* a, const void* b) {
     String* strA = *(String**)a;
@@ -761,6 +823,12 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Apple
+Banana
+Cherry
 ```
 
 ---
@@ -803,6 +871,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Hello
+World
+Example
+Text
+```
 
 ---
 
@@ -843,6 +918,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Apple
+Banana
+```
 
 ---
 
@@ -878,6 +958,10 @@ int main(){
 
     return 0;
 }
+```
+**Result**
+```
+Concatenated String: Hello, world!
 ```
 
 ---
@@ -919,6 +1003,12 @@ int main() {
     return 0;
 }
 
+```
+**Result**
+```
+Reversed String: olleH
+Reversed String: dlroW
+Reversed String: elpmaxE
 ```
 
 ---
@@ -965,6 +1055,15 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+List 1 is less than List 2: true
+List 1 is greater than List 2: false
+List 1 is equal to List 2: false
+List 1 is less than or equal to List 2: true
+List 1 is greater than or equal to List 2: false
+List 1 is not equal to List 2: true
 ```
 
 ---
@@ -1042,3 +1141,14 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Marry
+Sally
+```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

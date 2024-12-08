@@ -347,6 +347,22 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Contents of the CSV file:
+1,"Eldon Base for stackable storage shelf, platinum",Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",Barry French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
+3,"Cardinal Slant-D� Ring Binder, Heavy Gauge Vinyl",Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+6,G.E. Longer-Life Indoor Recessed Floodlight Bulbs,Carlos Soltero,515,4.43,6.64,4.95,Nunavut,Office Furnishings,0.37
+7,"Angle-D Binders with Locking Rings, Label Holders",Carl Jackson,613,-54.04,7.3,7.72,Nunavut,Binders and Binder Accessories,0.38
+8,"SAFCO Mobile Desk Side File, Wire Frame",Carl Jackson,613,127.70,42.76,6.22,Nunavut,Storage & Organization,
+9,"SAFCO Commercial Wire Shelving, Black",Monica Federle,643,-695.26,138.14,35,Nunavut,Storage & Organization,
+10,Xerox 198,Dorothy Badders,678,-226.36,4.98,8.33,Nunavut,Paper,0.38
+```
+
+---
 
 ## Example 2: Appending Rows to CSV
 
@@ -369,6 +385,12 @@ int main() {
     return 0;
 }
 ```
+**Result in file**
+```
+New Cell 1,New Cell 2,سلول جدید 3
+```
+
+---
 
 ## Example 2: Removing Rows from CSV
 
@@ -376,8 +398,7 @@ int main() {
 #include "csv/csv.h"
 #include "fmt/fmt.h"
 
-int main() 
-{
+int main() {
     CsvFile* csv = csv_file_create(',');
 
     csv_file_read(csv, "sources/test.csv"); // Read an existing CSV file
@@ -389,6 +410,21 @@ int main()
     return 0;
 }
 ```
+**Result**
+```
+Contents of the CSV file:
+1,"Eldon Base for stackable storage shelf, platinum",Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+3,"Cardinal Slant-D� Ring Binder, Heavy Gauge Vinyl",Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+6,G.E. Longer-Life Indoor Recessed Floodlight Bulbs,Carlos Soltero,515,4.43,6.64,4.95,Nunavut,Office Furnishings,0.37
+7,"Angle-D Binders with Locking Rings, Label Holders",Carl Jackson,613,-54.04,7.3,7.72,Nunavut,Binders and Binder Accessories,0.38
+8,"SAFCO Mobile Desk Side File, Wire Frame",Carl Jackson,613,127.70,42.76,6.22,Nunavut,Storage & Organization,
+9,"SAFCO Commercial Wire Shelving, Black",Monica Federle,643,-695.26,138.14,35,Nunavut,Storage & Organization,
+10,Xerox 198,Dorothy Badders,678,-226.36,4.98,8.33,Nunavut,Paper,0.38
+```
+
+---
 
 ## Example 3: Exporting CSV to JSON
 
@@ -424,6 +460,84 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Csv file is Data is 
+Order ID,Product Name,Customer,Quantity,Discount,Tax,Profit,Region,Category,Rating
+1,"Eldon Base for stackable storage shelf, platinum",Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",Barry French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
+3,"Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl",Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+
+---
+
+JSON Output:
+[
+  {
+    "Order ID": "1",
+    "Product Name": ""Eldon Base for stackable storage shelf, platinum"",
+    "Customer": "Muhammed MacIntyre",
+    "Quantity": "3",
+    "Discount": "-213.25",
+    "Tax": "38.94",
+    "Profit": "35",
+    "Region": "Nunavut",
+    "Category": "Storage & Organization",
+    "Rating": "0.8"
+  },
+  {
+    "Order ID": "2",
+    "Product Name": ""1.7 Cubic Foot Compact ""Cube"" Office Refrigerators"",
+    "Customer": "Barry French",
+    "Quantity": "293",
+    "Discount": "457.81",
+    "Tax": "208.16",
+    "Profit": "68.02",
+    "Region": "Nunavut",
+    "Category": "Appliances",
+    "Rating": "0.58"
+  },
+  {
+    "Order ID": "3",
+    "Product Name": ""Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl"",
+    "Customer": "Barry French",
+    "Quantity": "293",
+    "Discount": "46.71",
+    "Tax": "8.69",
+    "Profit": "2.99",
+    "Region": "Nunavut",
+    "Category": "Binders and Binder Accessories",
+    "Rating": "0.39"
+  },
+  {
+    "Order ID": "4",
+    "Product Name": "R380",
+    "Customer": "Clay Rozendal",
+    "Quantity": "483",
+    "Discount": "1198.97",
+    "Tax": "195.99",
+    "Profit": "3.99",
+    "Region": "Nunavut",
+    "Category": "Telephones and Communication",
+    "Rating": "0.58"
+  },
+  {
+    "Order ID": "5",
+    "Product Name": "Holmes HEPA Air Purifier",
+    "Customer": "Carlos Soltero",
+    "Quantity": "515",
+    "Discount": "30.94",
+    "Tax": "21.78",
+    "Profit": "5.94",
+    "Region": "Nunavut",
+    "Category": "Appliances",
+    "Rating": "0.5"
+  }
+]
+```
+
+---
 
 ## Example 4: Inserting Columns into CSV
 
@@ -451,6 +565,17 @@ int main() {
     return 0;
 }
 ```
+**Result in file_with_new_column.csv**
+```
+Order ID,Product Name,Column Header,Customer,Quantity,Discount,Tax,Profit,Region,Category,Rating
+1,"Eldon Base for stackable storage shelf, platinum",Data 1,Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",Data 2,Barry French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
+3,"Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl",(null),Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,(null),Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,(null),Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+```
+
+---
 
 ## Example 5 : Concatenate two file 
 ```c
@@ -472,6 +597,22 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Order ID,Product Name,Customer,Quantity,Discount,Tax,Profit,Region,Category,Rating
+1,"Eldon Base for stackable storage shelf, platinum",Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",Barry French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
+3,"Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl",Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+1,"Eldon Base for stackable storage shelf, platinum",Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",Barry French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
+3,"Cardinal Slant-D� Ring Binder, Heavy Gauge Vinyl",Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+```
+
+---
 
 ## Example 6 : find value in rows 
 ```c
@@ -481,9 +622,9 @@ int main() {
 
 int main() {
     CsvFile* csv = csv_file_create(',');
-    csv_file_read(csv, "sources/test_10.csv"); // Read a CSV file
+    csv_file_read(csv, "sources/test_10.csv"); 
 
-    const char* searchTerm = "Air"; // Define the search term
+    const char* searchTerm = "Barry"; 
     CsvRow** foundRows = csv_file_find_rows(csv, searchTerm); // Search for rows
 
     // Print found rows
@@ -499,6 +640,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Found Row 0:
+2 "1.7 Cubic Foot Compact ""Cube"" Office Refrigerators" Barry French 293 457.81 208.16 68.02 Nunavut Appliances 0.58
+Found Row 1:
+3 "Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl" Barry French 293 46.71 8.69 2.99 Nunavut Binders and Binder Accessories 0.39
+```
+
+---
 
 ## Example 7 :  If the string from the cell can be converted to an integer and back to a string without changing its content, it's considered valid. 
 
@@ -516,7 +666,7 @@ int main(){
     for (size_t i = 0; i < csv->size; ++i) {
         CsvRow* row = csv_file_get_row(csv, i);
         if (row != NULL) {
-            char* cell = csv_row_get_cell(row, 2); // Get the third cell (Quantity Ordered)
+            char* cell = csv_row_get_cell(row, 2); // Get the third cell 
             int value = atoi(cell); // Attempt to convert the cell to an integer
             char *buffer = fmt_sprintf("%d", value);
 
@@ -530,6 +680,25 @@ int main(){
     return 0;
 }
 ```
+**Result**
+```
+ g++ -std=c++17 -Wno-deprecated-declarations -o main main.cpp .\csv.c .\fmt.c .\std_string.c .\encoding.c .\file_writer.c .\file_reader.c | ./main
+Value is Customer
+Row 1 - Quantity Ordered 'Customer' is invalid
+Value is Muhammed MacIntyre
+Row 2 - Quantity Ordered 'Muhammed MacIntyre' is invalid
+Value is 10
+Row 3 - Quantity Ordered '10' is valid
+Value is Barry French
+Row 4 - Quantity Ordered 'Barry French' is invalid
+Value is Clay Rozendal
+Row 5 - Quantity Ordered 'Clay Rozendal' is invalid
+Value is Carlos Soltero
+Row 6 - Quantity Ordered 'Carlos Soltero' is invalid
+PS C:\Users\asus\OneDrive\Desktop\stack>
+```
+
+---
 
 ## Example 8 : Just how header work 
 ```c
@@ -543,12 +712,19 @@ int main() {
     csv_row_append_cell(header, "Column1");
     csv_row_append_cell(header, "Column2");
     csv_row_append_cell(header, "Column3");
-    csv_file_set_header(csv, header);
-
-    csv_file_read(csv, "sources/test_10.csv"); // Read an existing CSV file (excluding the header)
+    csv_file_read(csv, "./test_10.csv"); 
     
-    CsvRow* retrievedHeader = csv_file_get_header(csv); // Get and print the header row
-    fmt_printf("Header Row:\n");
+    fmt_println("**Header Row Before set new header**");
+    CsvRow* retrievedHeader = csv_file_get_header(csv);
+
+    for (size_t i = 0; i < retrievedHeader->size; ++i) {
+        fmt_printf("%s ", retrievedHeader->cells[i]);
+    }
+
+    csv_file_set_header(csv, header);
+    retrievedHeader = csv_file_get_header(csv); // Get and print the header row
+
+    fmt_printf("\n**Header Row After set new headers**\n");
 
     for (size_t i = 0; i < retrievedHeader->size; ++i) {
         fmt_printf("%s ", retrievedHeader->cells[i]);
@@ -559,6 +735,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+**Header Row Before set new header** 
+Order ID Product Name Customer Quantity Discount Tax Profit Region Category Rating
+**Header Row After set new headers**
+Column1 Column2 Column3
+```
+
+---
 
 ## Example 9 : Finding cell value and convert it to Integer 
 ```c
@@ -566,12 +751,11 @@ int main() {
 #include "csv/csv.h"
 #include "fmt/fmt.h"
 
-int main()
-{
+int main() { 
     CsvFile* csv = csv_file_create(',');
     csv_file_read(csv, "sources/test_10.csv"); // Read a CSV file
 
-    CSVRow* row = csv_file_get_row(csv, 2); // Get the third row (index 2)
+    CsvRow* row = csv_file_get_row(csv, 2); // Get the third row (index 2)
     if (row != NULL)
     {
         int value = csv_row_get_cell_as_int(row, 0);  // Convert the value of the first cell to an integer
@@ -582,8 +766,13 @@ int main()
 
     return 0;
 }
-
 ```
+**Result**
+```
+Value of the first cell in third row as integer: 2
+```
+
+---
 
 ## Example 10 : Printgin CSV file to Console 
 ```c
@@ -600,14 +789,23 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Order ID,Product Name,Customer,Quantity,Discount,Tax,Profit,Region,Category,Rating
+1,"Eldon Base for stackable storage shelf, platinum",Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
+2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",10, French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
+3,"Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl",Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+```
+
+---
 
 ## Example 11 : Using String lib with Csv 
 
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\csv\csv.c
-
 ```c
 #include "csv/csv.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <string.h>
 #include <ctype.h>
@@ -617,7 +815,7 @@ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 void to_uppercase(String *str) {
     char* data = (char*) malloc(string_length(str) * sizeof(char));
     if (!data) {
-        perror("Can not allocate Memory");
+        fmt_fprintf(stderr, "Error: Can not allocate Memory");
         exit(-1);
     }
 
@@ -630,9 +828,9 @@ void to_uppercase(String *str) {
 }
 
 int main() {
-    const char *input_filename = "sources/test_10.csv"; // Replace with your CSV file's path
-    const char *output_filename = "sources/output.csv"; // Output CSV file's path
-    char delimiter = ','; // Specify the delimiter used in your CSV file
+    const char *input_filename = "sources/test_10.csv"; 
+    const char *output_filename = "sources/output.csv"; 
+    char delimiter = ','; 
     CsvFile* myCSV = csv_file_create(delimiter);
 
     csv_file_read(myCSV, input_filename);
@@ -643,19 +841,32 @@ int main() {
 
         for (size_t cellIndex = 0; cellIndex < row->size; ++cellIndex) {
             char* cellValue = csv_row_get_cell(row, cellIndex);
-            String* cellString = string_create(cellValue); // Create a String object from the cell value
+            String* cellString = string_create(cellValue); 
 
-            to_uppercase(cellString);   // Convert to uppercase and append text
+            to_uppercase(cellString);  
             string_append(cellString, " MODIFIED");
 
-            free(row->cells[cellIndex]); // Free the original cell value
+            free(row->cells[cellIndex]); 
             row->cells[cellIndex] = strdup(string_c_str(cellString));
-            string_deallocate(cellString);  // Deallocate the String object
+            string_deallocate(cellString);  
         }
     }
 
-    csv_file_write(myCSV, output_filename); // Write the modified CSV to a new file
+    csv_file_write(myCSV, output_filename);
     csv_file_destroy(myCSV); 
     return 0;
 }
 ```
+**Result**
+```
+ORDER ID MODIFIED,PRODUCT NAME MODIFIED,CUSTOMER MODIFIED,QUANTITY MODIFIED,DISCOUNT MODIFIED,TAX MODIFIED,PROFIT MODIFIED,REGION MODIFIED,CATEGORY MODIFIED,RATING MODIFIED
+1 MODIFIED,"ELDON BASE FOR STACKABLE STORAGE SHELF, PLATINUM" MODIFIED,MUHAMMED MACINTYRE MODIFIED,3 MODIFIED,-213.25 MODIFIED,38.94 MODIFIED,35 MODIFIED,NUNAVUT MODIFIED,STORAGE & ORGANIZATION MODIFIED,0.8 MODIFIED
+2 MODIFIED,"1.7 CUBIC FOOT COMPACT ""CUBE"" OFFICE REFRIGERATORS" MODIFIED,10 MODIFIED, FRENCH MODIFIED,293 MODIFIED,457.81 MODIFIED,208.16 MODIFIED,68.02 MODIFIED,NUNAVUT MODIFIED,APPLIANCES MODIFIED,0.58 MODIFIED
+3 MODIFIED,"CARDINAL SLANT-D RING BINDER, HEAVY GAUGE VINYL" MODIFIED,BARRY FRENCH MODIFIED,293 MODIFIED,46.71 MODIFIED,8.69 MODIFIED,2.99 MODIFIED,NUNAVUT MODIFIED,BINDERS AND BINDER ACCESSORIES MODIFIED,0.39 MODIFIED
+4 MODIFIED,R380 MODIFIED,CLAY ROZENDAL MODIFIED,483 MODIFIED,1198.97 MODIFIED,195.99 MODIFIED,3.99 MODIFIED,NUNAVUT MODIFIED,TELEPHONES AND COMMUNICATION MODIFIED,0.58 MODIFIED
+5 MODIFIED,HOLMES HEPA AIR PURIFIER MODIFIED,CARLOS SOLTERO MODIFIED,515 MODIFIED,30.94 MODIFIED,21.78 MODIFIED,5.94 MODIFIED,NUNAVUT MODIFIED,APPLIANCES MODIFIED,0.5 MODIFIED
+```
+
+## License
+
+This project is open-source and available under [ISC License].

@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include "queue.h"
+#include "../algorithm/algorithm.h"
 
 
 /**
@@ -128,6 +129,32 @@ void queue_push(Queue* q, void* item) {
     vector_push_back(q->vec, item);
     QUEUE_LOG("[queue_push]: Item pushed to queue");
 }
+
+/**
+ * @brief Sorts the elements of the queue in place using the specified comparison function.
+ *
+ * This function sorts the elements of a `Queue` object by directly operating
+ * on the underlying vector data using a non-stable quicksort algorithm. The
+ * sorting order is determined by the user-provided comparison function.
+ *
+ * @param q Pointer to the `Queue` object to be sorted.
+ * @param comp Comparison function used to order the elements. It should return:
+ *             - A negative value if the first element is less than the second.
+ *             - Zero if the two elements are equal.
+ *             - A positive value if the first element is greater than the second.
+ *
+ * @note The function does nothing if the `Queue` or its underlying vector is NULL.
+ */
+void queue_sort(Queue* q, QueueCompareFunc comp) {
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_sort]: Error: Queue or vector is NULL.");
+        return;
+    }
+
+    algorithm_sort(vector_data(q->vec), vector_size(q->vec), q->vec->itemSize, comp);
+    QUEUE_LOG("[queue_sort]: Queue sorted successfully.");
+}
+
 /**
  * @brief Returns a pointer to the front element in the queue.
  * 

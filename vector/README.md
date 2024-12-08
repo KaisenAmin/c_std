@@ -529,9 +529,9 @@ int main() {
     }
 
     Vector *stringVector = vector_create(sizeof(char*));
-    char *str1 = "Hello";
-    char *str2 = "World";
-    char *str3 = "Example";
+    const char *str1 = "Hello";
+    const char *str2 = "World";
+    const char *str3 = "Example";
 
     vector_push_back(stringVector, &str1);
     vector_push_back(stringVector, &str2);
@@ -1337,8 +1337,8 @@ typedef struct {
 
 int main() {
     Vector* items = vector_create(sizeof(Item));
-    char* names[] = {"Item1", "Item2", "Item3"};
-    char* descriptions[] = {"Description1", "Description2", "Description3"};
+    const char* names[] = {"Item1", "Item2", "Item3"};
+    const char* descriptions[] = {"Description1", "Description2", "Description3"};
 
     for (int i = 0; i < 3; i++) {
         Item item;
@@ -1456,3 +1456,9 @@ Name: Person_1_0, Age: 10
 Name: Person_1_1, Age: 11
 Name: Person_1_2, Age: 12
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

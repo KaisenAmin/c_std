@@ -329,8 +329,10 @@ int main() {
     return 0;
 }
 ```
-
----
+**Result**
+```
+10
+```
 
 ---
 
@@ -362,13 +364,17 @@ int main() {
     int value = 10;
 
     forward_list_push_front(list, &value);
-    int *frontValue = forward_list_front(list);
+    int *frontValue = (int*)forward_list_front(list);
 
     fmt_printf("Front value: %d\n", *frontValue);
 
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+Front value: 10
 ```
 
 ---
@@ -400,6 +406,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+10 20 30 
+
+```
 
 ---
 
@@ -416,6 +427,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+Is list empty? Yes
 ```
 
 ---
@@ -435,6 +450,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+List length: 3
 ```
 
 ---
@@ -460,6 +479,10 @@ int main() {
 }
 
 ```
+**Result**
+```
+10 20 30
+```
 
 ---
 
@@ -477,6 +500,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+Node: 0000000000000000
 ```
 
 ---
@@ -499,6 +526,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+10
+20
+30
+```
 
 ---
 
@@ -516,6 +549,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+Max size: 18446744073709551615
 ```
 
 ---
@@ -541,6 +578,10 @@ int main() {
 }
 
 ```
+**Result**
+```
+10
+```
 
 ---
 
@@ -565,6 +606,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+10 10
+```
 
 ---
 
@@ -587,6 +632,11 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+20
+10
 ```
 
 ---
@@ -612,6 +662,10 @@ int main() {
     return 0;
 }
 
+```
+**Result**
+```
+10 30
 ```
 
 ---
@@ -660,6 +714,13 @@ int main() {
 }
 
 ```
+**Result**
+```
+List1 after swap: 
+6 5 4
+List2 after swap: 
+3 2 1
+```
 
 ---
 
@@ -677,6 +738,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+Size of the list after resizing: 3
 ```
 
 ---
@@ -704,6 +769,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+10 20 30
+```
 
 ---
 
@@ -728,6 +797,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+10 30
 ```
 
 ---
@@ -758,6 +831,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+15 25
+```
 
 ---
 
@@ -782,6 +859,10 @@ int main() {
     forward_list_deallocate(list);
     return 0;
 }
+```
+**Result**
+```
+10 20 30
 ```
 
 ---
@@ -825,6 +906,13 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+List1 is less than List2
+List1 is not equal to List2
+```
+
+---
 
 ## License
 

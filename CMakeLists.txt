@@ -66,6 +66,7 @@ add_subdirectory(json)
 add_subdirectory(secrets)
 add_subdirectory(xml)
 add_subdirectory(regex)
+add_subdirectory(unittest)
 # Create the main executable
 add_executable(main main.c)
 
@@ -87,39 +88,41 @@ if (WIN32)
         ssl
         pq
         # Optional modules that are commented out:
-        # random
+        random
         # map
         vector
         stdtime
-        # statistics
+        statistics
         # tuple
         turtle
         # sysinfo
-        # stack
+        stack
         secrets
-        # span
+        span
+        algorithm
         queue
         priority_queue
-        algorithm
+        
         array
         bitset
         # cli
         deque
         json
         # matrix
-        # fileio
+        fileio
         crypto
-        # config
-        # csv
+        config
+        csv
         date
-        # forwardlist
+        forwardlist
         # list
-        # numbers
+        numbers
         log
         # dir
         # concurrent
         xml
         stdregex
+        unittest
 
     )
 else()
@@ -172,6 +175,7 @@ else()
         # concurrent
         xml
         stdregex
+        unittest
     )
 endif()
 

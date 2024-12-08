@@ -9,6 +9,11 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif 
 
 // #define CONFIG_LOGGING_ENABLE 
 
@@ -88,5 +93,9 @@ bool config_has_key(const ConfigFile *config, const char *section, const char *k
 int config_get_int(const ConfigFile *config, const char *section, const char *key, int default_value);
 double config_get_double(const ConfigFile *config, const char *section, const char *key, double default_value);
 ConfigIterator config_get_iterator(const ConfigFile *config); // Get an iterator for the config file
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif // CONFIG_H_

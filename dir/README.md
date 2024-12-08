@@ -500,6 +500,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Directory کایزن created successfully.
+```
 
 ---
 
@@ -524,6 +528,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Directory name: 'کایزن'
+```
 
 ---
 
@@ -546,6 +554,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Current directory path: 'C:\Users\asus\Hell\Desktop\stack'
 ```
 
 ---
@@ -570,6 +582,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Failed to count files and directories in 'C:\Users\Science\Desktop\projects\C\c_std'.
+```
 
 ---
 
@@ -581,7 +597,7 @@ int main() {
 #include <stdlib.h>
 
 int main() {
-    const char* relativePath = "کایزن/amin.txt"; // .,/ or any path
+    const char* relativePath = "./کایزن/amin.txt"; // .,/ or any path
     char* absolutePath = dir_absolute_file_path(relativePath);
 
     if (absolutePath) {
@@ -593,6 +609,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Absolute file path: 'C:\Users\asus\OneDrive\Desktop\stack\کایزن\amin.txt'
 ```
 
 ---
@@ -640,6 +660,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Failed to change directory.
+Moved up one directory.
+Current directory path: 'C:\Users\asus\OneDrive\Desktop'
+```
 
 ---
 
@@ -650,7 +676,7 @@ int main() {
 #include "fmt/fmt.h"
 
 int main() {
-    const char* dirName = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\کایزن";
+    const char* dirName = "C:\\Users\\asus\\OneDrive\\Desktop\\stack\\کایزن";
 
     if (dir_is_empty(dirName)) {
         fmt_printf("Directory '%s' is empty.\n", dirName);
@@ -668,6 +694,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Successfully removed directory 'C:\Users\asus\OneDrive\Desktop\stack\کایزن'.
+```
 
 ---
 
@@ -678,7 +708,7 @@ int main() {
 #include "fmt/fmt.h"
 
 int main() {
-    const char* dirName = "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\کایزن";
+    const char* dirName = "C:\\Users\\asus\\OneDrive\\Desktop\\stack\\کایزن";
 
     if (dir_remove_directory_recursive(dirName)) {
         fmt_printf("Successfully removed directory '%s'.\n", dirName);
@@ -688,6 +718,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Successfully removed directory 'C:\Users\asus\OneDrive\Desktop\stack\کایزن'.
 ```
 
 ---
@@ -711,6 +745,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+File renamed successfully from './tester.txt' to './amin.txt'.
+```
 
 ---
 
@@ -733,6 +771,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Directory renamed successfully from './one' to './کایزن'.
+```
 
 ---
 
@@ -743,7 +785,7 @@ int main() {
 #include "fmt/fmt.h"
 
 int main() {
-    const char* dirPath = "./dir/dir.h"; // Replace with the directory path you want to check
+    const char* dirPath = "./کایزن/amin.txt"; // Replace with the directory path you want to check
 
     if (dir_is_file_exists(dirPath)) {
         fmt_printf("File '%s' exists.\n", dirPath);
@@ -753,6 +795,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+File './کایزن/amin.txt'
 ```
 
 ---
@@ -775,6 +821,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Directory './کایزن'
+```
 
 ---
 
@@ -786,9 +836,9 @@ int main() {
 
 int main() {
     const char* sourceDir = "./کایزن"; // Replace with your source directory path
-    const char* destinationDir = "C:\\Users\\Science\\Desktop\\کایزن"; // Replace with your destination directory path
+    const char* destinationDir = "C:\\Users\\asus\\OneDrive\\Desktop"; // Replace with your destination directory path
 
-    if (dir_make_directory("C:\\Users\\Science\\Desktop\\کایزن")) {
+    if (dir_make_directory("C:\\Users\\asus\\OneDrive\\Desktop\\کایزن")) {
         if (dir_copy_directory(sourceDir, destinationDir)) {
             fmt_printf("Directory copied successfully from '%s' to '%s'.\n", sourceDir, destinationDir);
         } 
@@ -801,6 +851,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Directory copied successfully from './کایزن' to 'C:\Users\asus\OneDrive\Desktop'.
 ```
 
 ---
@@ -823,6 +877,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+File copied successfully from './کایزن/amin.txt' to 'C:\Users\asus\OneDrive\Desktop\amin.txt'.
 ```
 
 ---
@@ -847,6 +905,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Total size of directory './کایزن' is: 10 bytes. // data in amin.txt is Hello amin
+```
 
 ---
 
@@ -869,6 +931,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Total size of file './کایزن/amin.txt' is: 10 bytes.
 ```
 
 ---
@@ -896,6 +962,18 @@ int main(){
     return 0;
 }
 ```
+**Result**
+```
+Dark Souls II Scholar of the First Sin.lnk
+DARK SOULS REMASTERED.lnk
+desktop.ini
+Docker Desktop.lnk
+ELDEN RING Shadow of the Erdtree.lnk
+Lively Wallpaper.lnk
+MayaVPN.lnk
+Mirage.lnk
+project
+```
 
 ---
 
@@ -917,6 +995,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Yes "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\main.c" is path
 ```
 
 ---
@@ -941,6 +1023,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Move to new location
+```
 
 ---
 
@@ -958,6 +1044,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Last Modified Time is 2024-11-28 21:49:45
+```
 
 ---
 
@@ -974,6 +1064,10 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Creation Time is 2024-11-26 13:46:42
 ```
 
 ---
@@ -997,6 +1091,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Home Directory: C:\Users\amin
 ```
 
 ---
@@ -1024,6 +1122,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+Regular File 
 ```
 
 ---
@@ -1058,6 +1160,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+File encrypted successfully
+File decrypted successfully.
+```
 
 ---
 
@@ -1079,6 +1186,10 @@ int main() {
     }
     return 0;
 }
+```
+**Result**
+```
+The owner of 'C:\\Users\\Science\\Desktop\\new_one.txt' is: asus
 ```
 
 ---
@@ -1102,6 +1213,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+The owner of 'C:\\Users\\Science\\Desktop\\one' is: asus
+```
 
 ---
 
@@ -1109,7 +1224,7 @@ int main() {
 
 ```c
 #include "dir/dir.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -1145,6 +1260,19 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Found file: CMakeLists.txt
+Found file: destination_file.txt
+Found file: locked_file.txt
+Found file: log.txt
+Found file: new_log.txt
+Found file: new_log_file.txt
+Found file: old_log.txt
+Found file: output.txt
+Found file: test_uni.txt
+Found file: text_uni.txt
+```
 
 ---
 
@@ -1170,6 +1298,22 @@ int main(){
     vector_deallocate(foundItems);
     return 0;
 }
+```
+**Result**
+```
+amin.txt
+CapCut.lnk
+Dark Souls II Scholar of the First Sin.lnk
+DARK SOULS REMASTERED.lnk
+desktop.ini
+Docker Desktop.lnk
+ELDEN RING Shadow of the Erdtree.lnk
+Lively Wallpaper.lnk
+Mirage.lnk
+one
+project
+Project1
+Silent Hill 2 Remake.lnk
 ```
 
 ---

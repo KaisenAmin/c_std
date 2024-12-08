@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "span.h"
-#include "../fmt/fmt.h"
 
 
 typedef struct MemoryPoolSpan {

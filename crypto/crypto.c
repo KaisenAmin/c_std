@@ -304,7 +304,7 @@ void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* ke
     *out_len = padded_len;
 
     CRYPTO_LOG("[crypto_des_encrypt] Allocating memory for padded plaintext (size: %zu)", padded_len);
-    uint8_t* padded_plaintext = calloc(padded_len, sizeof(uint8_t));
+    uint8_t* padded_plaintext = (uint8_t*) calloc(padded_len, sizeof(uint8_t));
     if (!padded_plaintext) {
         CRYPTO_LOG("[crypto_des_encrypt] Memory allocation failed for padded plaintext");
         return NULL;
@@ -312,7 +312,7 @@ void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* ke
     memcpy(padded_plaintext, plaintext, len);
 
     CRYPTO_LOG("[crypto_des_encrypt] Allocating memory for ciphertext (size: %zu)", padded_len);
-    uint8_t* ciphertext = malloc(padded_len);
+    uint8_t* ciphertext = (uint8_t*) malloc(padded_len);
     if (!ciphertext) {
         CRYPTO_LOG("[crypto_des_encrypt] Memory allocation failed for ciphertext");
         free(padded_plaintext);
@@ -402,7 +402,7 @@ void* crypto_des_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* k
 
     CRYPTO_LOG("[crypto_des_decrypt] Starting decryption");
     *out_len = len;
-    uint8_t* plaintext = malloc(len);
+    uint8_t* plaintext = (uint8_t*) malloc(len);
     if (!plaintext) {
         CRYPTO_LOG("[crypto_des_decrypt] Failed to allocate memory for plaintext");
         return NULL;

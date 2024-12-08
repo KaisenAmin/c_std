@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 // #define SECRETS_LOGGING_ENABLE 
 
 #ifdef SECRETS_LOGGING_ENABLE
@@ -28,5 +32,9 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes);
 
 void* secrets_choice(const void* seq, size_t size, size_t elem_size);
 unsigned int secrets_randbits(int k);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

@@ -619,7 +619,7 @@ bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateF
 void algorithm_fill(void *first, void *last, size_t size, const void *val) {
     ALGORITHM_LOG("[algorithm_fill] Info: Filling range with value.");
 
-    for (char *ptr = first; ptr != last; ptr += size) {
+    for (char *ptr = (char*)first; ptr != last; ptr += size) {
         memcpy(ptr, val, size);
     }
 
@@ -637,7 +637,7 @@ void algorithm_fill(void *first, void *last, size_t size, const void *val) {
 void algorithm_fill_n(void *first, size_t n, size_t size, const void *val) {
     ALGORITHM_LOG("[algorithm_fill_n] Info: Filling first %zu elements with value.", n);
 
-    for (char *ptr = first; n > 0; ptr += size, n--) {
+    for (char *ptr = (char*)first; n > 0; ptr += size, n--) {
         memcpy(ptr, val, size);
     }
 
@@ -718,7 +718,7 @@ void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberG
 
     if (num > 1) {
         char *arr = (char *)base;
-        char *temp = malloc(size);
+        char *temp = (char*) malloc(size);
 
         if (!temp) {
             ALGORITHM_LOG("[algorithm_shuffle] Error: Memory allocation failed for temp.");

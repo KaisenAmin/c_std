@@ -10,6 +10,9 @@
 #include <stdbool.h>
 #include <libpq-fe.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
 
 // #define POSTGRES_LOGGING_ENABLE 
 
@@ -118,4 +121,8 @@ int postgres_put_line(Postgres* pg, const char* buffer);
 int postgres_put_bytes(Postgres* pg, const char* buffer, int bytes);
 int postgres_request_cancle(Postgres* pg);
 
+#ifdef __cplusplus
+}
+#endif
+ 
 #endif 

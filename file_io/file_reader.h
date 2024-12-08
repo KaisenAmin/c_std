@@ -12,7 +12,12 @@
 // #include <stddef.h>
 #include "file_writer.h"
 
-// #define FILE_READER_LOGGING_ENABLE
+
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
+#define FILE_READER_LOGGING_ENABLE
 
 #ifdef FILE_READER_LOGGING_ENABLE 
     #define FILE_READER_LOG(fmt, ...) \
@@ -60,5 +65,9 @@ size_t file_reader_get_size(FileReader* reader);
 size_t file_reader_read_fmt(FileReader* reader, const char* format, ...);
 
 const char* file_reader_get_file_name(FileReader* reader);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

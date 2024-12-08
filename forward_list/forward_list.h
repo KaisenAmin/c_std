@@ -9,8 +9,13 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
-// #define FORWARD_LIST_LOGGING_ENABLE
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
+#define FORWARD_LIST_LOGGING_ENABLE
 
 #ifdef FORWARD_LIST_LOGGING_ENABLE 
     #define FORWARD_LIST_LOG(fmt, ...) \
@@ -70,5 +75,9 @@ bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *
 bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2);
 bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2);
 bool forward_list_empty(const ForwardList *list);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

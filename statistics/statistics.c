@@ -5,7 +5,6 @@
 */
 
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "statistics.h"
@@ -180,7 +179,7 @@ static int statistics_compare_index_struct(const void* a, const void* b) {
 static void statistics_rank_data(const double* data, size_t n, double* ranked_data) {
     STATISTICS_LOG("[statistics_rank_data]: Entering function with n = %zu", n);
 
-    __StatisticsIndexedValue* indexed_data = malloc(n * sizeof(__StatisticsIndexedValue));
+    __StatisticsIndexedValue* indexed_data = (__StatisticsIndexedValue*)malloc(n * sizeof(__StatisticsIndexedValue));
     if (indexed_data == NULL) {
         STATISTICS_LOG("[statistics_rank_data]: Error: memory allocation failed.");
         return;
@@ -245,8 +244,8 @@ static double statistics_sum_of_squares(const double* data, size_t n) {
 static double statistics_spearman_correlation(const double* x, const double* y, size_t n) {
     STATISTICS_LOG("[statistics_spearman_correlation]: Entering function with n = %zu", n);
 
-    double* x_ranked = malloc(n * sizeof(double));
-    double* y_ranked = malloc(n * sizeof(double));
+    double* x_ranked = (double*)malloc(n * sizeof(double));
+    double* y_ranked = (double*)malloc(n * sizeof(double));
     if (x_ranked == NULL || y_ranked == NULL) {
         STATISTICS_LOG("[statistics_spearman_correlation]: Error: memory allocation failed.");
         
@@ -328,7 +327,7 @@ double statistics_median(const double* data, size_t n) {
         return NAN;
     }
 
-    double* sorted_data = malloc(n * sizeof(double));
+    double* sorted_data = (double*)malloc(n * sizeof(double));
     if (sorted_data == NULL) {
         STATISTICS_LOG("[statistics_median]: Error: memory allocation failed.");
         return NAN;
@@ -380,7 +379,7 @@ double statistics_median_low(const double* data, size_t n) {
         return NAN;
     }
 
-    double* sorted_data = malloc(n * sizeof(double));
+    double* sorted_data = (double*)malloc(n * sizeof(double));
     if (sorted_data == NULL) {
         STATISTICS_LOG("[statistics_median_low]: Error: memory allocation failed.");
         return NAN;
@@ -431,7 +430,7 @@ double statistics_median_high(const double* data, size_t n) {
         return NAN;
     }
 
-    double* sorted_data = malloc(n * sizeof(double));
+    double* sorted_data = (double*)malloc(n * sizeof(double));
     if (sorted_data == NULL) {
         STATISTICS_LOG("[statistics_median_high]: Error: memory allocation failed.");
         return NAN;
@@ -481,7 +480,7 @@ double statistics_median_grouped(const double* data, size_t n, double interval) 
         return NAN;
     }
 
-    double* sorted_data = malloc(n * sizeof(double));
+    double* sorted_data = (double*)malloc(n * sizeof(double));
     if (sorted_data == NULL) {
         STATISTICS_LOG("[statistics_median_grouped]: Error: memory allocation failed.");
         return NAN;
@@ -839,7 +838,7 @@ void* statistics_mode(void* data, size_t n, size_t size) {
         return NULL;
     }
 
-    __StatisticsElementCount* counts = malloc(n * sizeof(__StatisticsElementCount));
+    __StatisticsElementCount* counts = (__StatisticsElementCount*) malloc(n * sizeof(__StatisticsElementCount));
     if (counts == NULL) {
         STATISTICS_LOG("[statistics_mode]: Error: memory allocation for counts failed.");
         return NULL;
@@ -913,7 +912,7 @@ void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count
         return NULL;
     }
 
-    __StatisticsElementCount* counts = malloc(n * sizeof(__StatisticsElementCount));
+    __StatisticsElementCount* counts = (__StatisticsElementCount*) malloc(n * sizeof(__StatisticsElementCount));
     if (counts == NULL) {
         STATISTICS_LOG("[statistics_multimode]: Error: memory allocation for counts failed.");
         return NULL;
@@ -1064,8 +1063,8 @@ double statistics_correlation(const double* x, const double* y, size_t n, Correl
     }
 
     STATISTICS_LOG("[statistics_correlation]: Allocating memory for copies of x and y.");
-    double* x_copy = malloc(n * sizeof(double));
-    double* y_copy = malloc(n * sizeof(double));
+    double* x_copy = (double*) malloc(n * sizeof(double));
+    double* y_copy = (double*) malloc(n * sizeof(double));
 
     if (x_copy == NULL || y_copy == NULL) {
         STATISTICS_LOG("[statistics_correlation]: Error: memory allocation failed.");
@@ -1140,8 +1139,8 @@ LinearRegression statistics_linear_regression(const double* x, const double* y, 
         ybar = statistics_mean(y, n);
         STATISTICS_LOG("[statistics_linear_regression]: xbar = %f, ybar = %f", xbar, ybar);
 
-        double* x_centered = malloc(n * sizeof(double));
-        double* y_centered = malloc(n * sizeof(double));
+        double* x_centered = (double*) malloc(n * sizeof(double));
+        double* y_centered = (double*) malloc(n * sizeof(double));
 
         if (x_centered == NULL || y_centered == NULL) {
             STATISTICS_LOG("[statistics_linear_regression]: Error: memory allocation failed.");

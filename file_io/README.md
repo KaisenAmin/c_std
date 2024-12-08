@@ -536,6 +536,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Written 20 item(s) to Unicode file.
+```
 
 ---
 
@@ -560,6 +564,11 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Written 10 item(s) to Unicode file.
+Cursor position is 24
+```
 
 ---
 
@@ -568,7 +577,7 @@ int main() {
 ```c
 #include "fmt/fmt.h"
 #include "file_io/file_writer.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
@@ -579,18 +588,22 @@ int main() {
         size_t written = file_writer_write_line((char*)string_c_str(buffer), string_length(buffer), writer);
 
         if (written) {
-            fmt_print("write in file was successfully.\n", FMT_END_ARGS);
+            fmt_print("write in file was successfully.\n");
         }
         else {
-            fmt_print("Can not write to file.\n", FMT_END_ARGS);
+            fmt_print("Can not write to file.\n");
         }
         file_writer_close(writer);
     }
     else {
-        fmt_print("file is opened\n", FMT_END_ARGS);
+        fmt_print("file is opened\n");
     }
     return 0;
 }
+```
+**Result**
+```
+write in file was successfully.
 ```
 
 ---
@@ -600,7 +613,7 @@ int main() {
 ```c
 #include "fmt/fmt.h"
 #include "file_io/file_writer.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <string.h>
 
 int main() {
@@ -629,7 +642,7 @@ int main() {
 
     // Get and print the current position in the file
     size_t position = file_writer_get_position(writer);
-    fmt_println("Current position in the file:", string_from_int_cstr((int)position), FMT_END_ARGS);
+    fmt_println("Current position in the file:", string_from_int_cstr((int)position));
 
     // Close the file
     if (!file_writer_close(writer)) {
@@ -644,8 +657,8 @@ int main() {
         return 1;
     }
 
-    char* additionalString = "اضافه کردن متن به فایل\n"; 
-    if (!file_writer_write_line(additionalString, strlen(additionalString), writer)) {
+    const char* additionalString = "اضافه کردن متن به فایل\n"; 
+    if (!file_writer_write_line((char*)additionalString, strlen(additionalString), writer)) {
         fmt_printf("Failed to write line to file.\n");
         file_writer_close(writer);
         return 1;
@@ -657,6 +670,11 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+Current position in the file: 38
+Failed to open file for appending.
 ```
 
 ---
@@ -682,6 +700,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Its Correct 46
+```
 
 ---
 
@@ -701,6 +723,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Size of file is 88
+```
 
 ---
 
@@ -719,6 +745,11 @@ int main() {
     file_writer_close(writer);
     return 0;
 }
+```
+**Result**
+```
+filePath is : ./text_uni.txt
+Encoding Type is : ENCODING_UTF16
 ```
 
 ---
@@ -745,6 +776,10 @@ int main() {
     file_writer_close(dest_writer);
     return 0;
 }
+```
+**Result**
+```
+File copy successful.
 ```
 
 ---
@@ -806,6 +841,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Successfully moved the file cursor.
+```
 
 ---
 
@@ -818,9 +857,9 @@ int main() {
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_TEXT);
-    char* message = "Hello C/C++ Programmers in all over the world.";
+    const char* message = "Hello C/C++ Programmers in all over the world.";
 
-    if (!file_writer_write_line(message, strlen(message), writer)) {
+    if (!file_writer_write_line((char*)message, strlen(message), writer)) {
         fmt_printf("Failed to write line in file\n");
         return -1;
     }
@@ -837,6 +876,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+File Successfully truncated to 10 bytes.
+```
 
 ---
 
@@ -845,7 +888,7 @@ int main() {
 ```c
 #include "fmt/fmt.h"
 #include "file_io/file_writer.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
@@ -866,6 +909,10 @@ int main() {
     file_writer_close(writer);
     return 0;
 }
+```
+**Result**
+```
+Successfully wrote buffers to file.
 ```
 
 ---
@@ -896,6 +943,10 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Successfully appended formatted text to the file.
+```
 
 ---
 
@@ -922,6 +973,17 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Read 382 bytes from Unicode file.
+Content:
+Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
+This is another line with number: 123.456000
+Name: John Doe, Age: 30, Occupation: Software Developer
+This is another line with number: 123.456000
+Name: John Doe, Age: 30, Occupation: Software Developer
+This is another line with number: 123.456000
+```
 
 ---
 
@@ -943,6 +1005,15 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Line: Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
+Line: This is another line with number: 123.456000
+Line: Name: John Doe, Age: 30, Occupation: Software Developer
+Line: This is another line with number: 123.456000
+Line: Name: John Doe, Age: 30, Occupation: Software Developer
+Line: This is another line with number: 123.456000
+```
 
 ---
 
@@ -958,8 +1029,8 @@ int main() {
     double doubleValue;
     char strValue[100];
 
-    // Assuming the file contains a line formatted like "int: %d, double: %lf, string: %s"
-    size_t itemsRead = file_reader_read_fmt(reader, "int: %d, double: %lf, string: %99s", &intValue, &doubleValue, strValue);
+    // Assuming the file contains a line formatted like "int: %d, double: %lf, string: %s" int: 10, double: 20.2, string: amin tahmasebi
+    size_t itemsRead = file_reader_read_fmt(reader, "int: %d, double: %lf, string: %[^\n]s", &intValue, &doubleValue, strValue);
     if (itemsRead > 0) {
         fmt_printf("Read values: int = %d, double = %lf, string = %s\n", intValue, doubleValue, strValue);
     } 
@@ -970,6 +1041,10 @@ int main() {
     file_reader_close(reader);
     return 0;
 }
+```
+**Result**
+```
+Read values: int = 10, double = 20.200000, string = amin tahmasebi
 ```
 
 ---
@@ -1000,6 +1075,18 @@ int main() {
     file_reader_close(reader);
     return 0;
 }
+```
+**Result**
+```
+Line 1: Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
+
+Line 2: This is another line with number: 123.456000
+
+Line 3: Name: John Doe, Age: 30, Occupation: Software Developer
+
+Line 4: This is another line with number: 123.456000
+
+Line 5: Name: John Doe, Age: 30, Occupation: Software Developer
 ```
 
 ---

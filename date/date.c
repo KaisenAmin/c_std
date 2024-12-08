@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "date.h"
-#include "../time/std_time.h"
+#include "std_time.h"
 
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -917,6 +917,7 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     }
 
     if (!date_is_valid_ymd(y, m, d, type)) {
+        fprintf(stderr, "Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         DATE_LOG("Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         free(date); // Release the allocated memory
         return NULL;
@@ -1354,12 +1355,13 @@ int date_week_number(const Date* date, int* yearNumber) {
     if (date->calendarType == Gregorian) {
         // ISO week number calculation for Gregorian calendar
         week = ((dayOfYear - wday + 10) / 7);
+        Date temp_date = {date->year, 12, 31, Gregorian};
 
         if (yearNumber != NULL) {
             if (week < 1) {
                 *yearNumber = date->year - 1;
             } 
-            else if (week == 53 && (date_day_of_year(&(Date){date->year, 12, 31, Gregorian}) - wday) < 28) {
+            else if (week == 53 && (date_day_of_year(&temp_date) - wday) < 28) {
                 *yearNumber = date->year + 1;
             } 
             else {
@@ -1786,11 +1788,15 @@ char* date_to_string(const Date* date, const char* format) {
     if (date->calendarType == Gregorian) {
         // Prepare a struct tm from the Date struct for Gregorian calendar
         struct tm tm_date = {
-            .tm_year = date->year - 1900,  // tm_year expects years since 1900
-            .tm_mon = date->month - 1,     // tm_mon expects months from 0 to 11
+            .tm_sec = 0,
+            .tm_min = 0,
+            .tm_hour = 0,
             .tm_mday = date->day,
-            .tm_isdst = -1  // Let the function determine whether DST is in effect
+            .tm_mon = date->month - 1,
+            .tm_year = date->year - 1900,
+            .tm_isdst = -1
         };
+
         // Format the date using strftime
         if (strftime(date_str, 80, format, &tm_date) == 0) {
             DATE_LOG("Error: Failed to format date in date_to_string.\n");

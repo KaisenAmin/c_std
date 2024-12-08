@@ -786,3 +786,9 @@ Tuple1 is less or equal to Tuple2: true
 Tuple1 is empty: false
 Empty Tuple is empty: true
 ```
+
+---
+
+## License
+
+This project is open-source and available under [ISC License].

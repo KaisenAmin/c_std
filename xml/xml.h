@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 // #define XML_LOGGING_ENABLE 
 
 #ifdef XML_LOGGING_ENABLE
@@ -83,5 +87,9 @@ const char* xml_get_tag_name(XmlNode* node);
 const char** xml_get_processing_instructions(XmlDocument* doc, const char* target);
 char* xml_to_string(XmlDocument* doc);
 int xml_save_to_file(XmlDocument* doc, const char* filename);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif

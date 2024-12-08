@@ -10,6 +10,11 @@
 #include <stdio.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
+
 #define RANDOM_LOGGING_ENABLE
 
 #ifdef RANDOM_LOGGING_ENABLE
@@ -43,5 +48,9 @@ double random_pareto(double shape, double scale);
 double random_beta(double alpha, double beta);
 double random_weibull(double shape, double scale);
 double random_vonmises(double mu, double kappa);
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif 

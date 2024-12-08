@@ -10,6 +10,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif 
 
 #define STATISTICS_LOGGING_ENABLE 
 
@@ -64,5 +69,9 @@ LinearRegression statistics_linear_regression(const double* x, const double* y, 
 
 void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count);
 void* statistics_mode(void* data, size_t n, size_t size);
+
+#ifdef __cplusplus 
+}
+#endif 
 
 #endif 

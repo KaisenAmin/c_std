@@ -10,7 +10,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include "../fmt/fmt.h"
+#include <stdio.h>
+#include "../file_io/file_writer.h"
+#include "../file_io/file_reader.h"
+
+#ifdef __cplusplus 
+extern "C" {
+#endif
 
 #define MAX_KEYWORD_LENGTH 512
 // #define LOG_ENABLE_LOGGING
@@ -96,4 +102,8 @@ bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_dat
 // Sets a maximum log file size. When the size is reached, the log file is archived and a new log file is started.
 bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat);
 
-#endif // LOG_H_
+#ifdef __cplusplus 
+}
+#endif 
+
+#endif 

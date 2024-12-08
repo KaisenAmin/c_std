@@ -10,6 +10,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 // #define TIME_LOGGING_ENABLE
 
 #ifdef TIME_LOGGING_ENABLE
@@ -18,7 +22,6 @@
 #else
     #define TIME_LOG(fmt, ...) do { } while (0)
 #endif
-
 
 typedef struct {
     int hour;    // Stores the hour part of the time (0-23)
@@ -60,5 +63,9 @@ bool time_is_not_equal(const Time* lhs, const Time* rhs);
 bool time_set_hms(Time *t, int h, int m, int s, int ms);
 bool time_is_null(const Time* t);
 bool time_is_valid(const Time* t);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // QTIME_H

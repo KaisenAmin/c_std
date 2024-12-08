@@ -431,7 +431,7 @@ int main() {
     for (size_t i = 0; i < array_size(intArray); i++) {
         fmt_printf("Number is %d\n", *(int*)array_at(intArray, i));
     }
-    fmt_println("------------------", FMT_END_ARGS);
+    fmt_println("------------------");
 
     for (size_t i = 0; i < array_size(intArray); ++i) {
         int* element = (int*)array_at(intArray, i);
@@ -602,7 +602,7 @@ Element: 5.500000
 
 int main() {
     Array* stringArray = array_create(sizeof(char*), 3);
-    char* strings[] = {"Hello", "World", "Array"};
+    const char* strings[] = {"Hello", "World", "Array"};
 
     for (size_t i = 0; i < array_size(stringArray); ++i) { 
         array_set(stringArray, i, &strings[i]);
@@ -879,14 +879,27 @@ Array* initializeDeck() {
     Array* deck = array_create(sizeof(Card), 52);
     int index = 0;
 
-    for (Suit suit = CLUBS; suit <= SPADES; suit++) {
-        for (Rank rank = TWO; rank <= ACE; rank++) {
+    for (Suit suit = CLUBS; suit <= SPADES; 
+    #ifdef __cplusplus
+        suit = static_cast<Suit>(suit + 1))
+    #else 
+        suit++)
+    #endif  
+    {
+        for (Rank rank = TWO; rank <= ACE; 
+    #ifdef __cplusplus
+        rank = static_cast<Rank>(rank + 1))
+    #else 
+        rank++)
+    #endif  
+       {
             Card card = { suit, rank };
             array_set(deck, index++, &card);
         }
     }
     return deck;
 }
+
 
 void printCard(const Card* card) {
     const char* suits[] = { "Clubs", "Diamonds", "Hearts", "Spades" };

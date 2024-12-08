@@ -207,6 +207,7 @@ The library includes several example programs demonstrating how to use the vario
 13. **DES Encryption in ECB Mode Example:** Encrypts and decrypts a string using DES in ECB mode.
 14. **Random IV Generation and CBC Encryption Example:** Demonstrates random IV generation and DES encryption/decryption in CBC mode.
 
+---
 
 ## Example 1 : use `MD4` algorithm `crypto_hash_data` and `crypto_print_hash`
 ```c
@@ -229,6 +230,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+MD4("The quick brown fox jumps over the lazy dog") = 1bee69a46ba811185c194762abaeae90
+```
+
+---
 
 ## Example 2 : how to use `MD5`
 
@@ -251,8 +258,13 @@ int main() {
     free(hash);
     return 0;
 }
-
 ```
+**Result**
+```
+MD5("سلام") = 78903c575b0dda53c4a7644a2dd36d0e
+```
+
+---
 
 ## Example 3 : How to Use `SHA-1`
 
@@ -276,6 +288,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA-1("Hello World") = 0a4d55a8d778e5022fab701977c5d840bbc486d0
+```
+
+---
 
 ## Example 4 :`SHA-224`
 
@@ -299,6 +317,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA-224("Hello World") = c4890faffdb0105d991a461e668e276685401b02eab1ef4372795047
+```
+
+---
 
 ## Example 5 : `SHA-256`
 
@@ -322,6 +346,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA-256("Hello World") = a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e
+```
+
+---
 
 ## Example 6 : `SHA-384`
 
@@ -345,6 +375,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA-384("امین طهماسبی") = 638af16caec28354e9683d50e8504038c5af7c3f0313e54366c608552127bad296d2b139b96926eedc2dfa5187125c87
+```
+
+---
 
 ## Example 7 : `SHA-512`
 
@@ -368,6 +404,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA-512("امین طهماسبی") = aa49758be6a253211043b32d327f7084182a04bbbdc0c26a608d5f2674f0e06a60806077d2a1b7fc12e97db1a840ad4b603182123082af50c7a3d1867a222cb0
+```
+
+---
 
 ## Example 8 : `SHA3-224`
 
@@ -391,6 +433,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA3-224("امین طهماسبی") = ddb8b6722b535a95aebf14b11648b60296330b82d8292a5880b4884f
+```
+
+---
 
 ## Example 9 : How to use `SHA3-256`
 
@@ -415,6 +463,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA-256("امین طهماسبی") = 1886c3f57e943ae493fa42a2dbcaeb8e672d3131e0229014d00175e214402117
+```
+
+---
 
 ## Example 10 : How to use `SHA3-384`
 
@@ -438,6 +492,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA3-384("امین طهماسبی") = 1e33aa77d69c1db1b55606d707cafc6cc622bebd58561727a715d6969342f1e4a77dddf2a4c8a4f4136a2046feb54750
+```
+
+---
 
 ## Example 11 : How to use `SHA3-512`
 
@@ -461,6 +521,12 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+SHA3-512("امین طهماسبی") = 77953bcbd41ec669833036e52d64c3d409bae8164af841735b113e3e9344b170cceda6640fcfb85f7a59cb6d1472773f8eca426fde80ca4ff6fe555cb9ff5d1f
+```
+
+---
 
 ## Example 12 : How to use `OFB` mode with `crypto_des_encrypt`
 
@@ -510,6 +576,13 @@ int main() {
 }
 
 ```
+**Result**
+```
+Encrypted text: bbc09bb6b902b921ba2a316cabfa1019
+Decrypted text: Hello World
+```
+
+---
 
 ## Example 13 : How to use `ECB` mode with `crypto_des_encrypt`
 
@@ -541,6 +614,13 @@ int main() {
 }
 
 ```
+**Result**
+```
+ECB Encrypted: 92c71e526502038398375d833b4af95d
+ECB Decrypted: Hello World
+```
+
+---
 
 ## Example 14 : Generate random IV for `CBC` mode `crypto_des_encrypt`
 
@@ -575,6 +655,11 @@ int main() {
     return 0;
 }
 
+```
+**Result**
+```
+CBC Encrypted: 5248fc59b5a3056881a0337d50d011c2
+CBC Decrypted: Hello World
 ```
 
 ---
