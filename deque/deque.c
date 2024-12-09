@@ -1198,14 +1198,14 @@ DequeIterator deque_rend(const Deque* deque) {
  * @return A constant DequeIterator pointing to the first element of the deque.
  */
 DequeIterator deque_cbegin(const Deque* deque) {
-    DequeIterator it = {0};
     if (!deque) {
         DEQUE_LOG("[deque_cbegin] Error: Deque is NULL.");
-        return it;  // Return an empty iterator
+        return (DequeIterator){0};  // Return an empty iterator
     }
 
-    it = deque_begin(deque);  // Use regular begin logic
-    it.deque = deque;         // Make sure the deque pointer is const
+    DequeIterator it = deque_begin(deque);
+    it.deque = deque;  // Ensure the iterator refers to the correct deque
+    it.current = deque->blocks[it.blockIndex] + it.indexInBlock;  // Point to the first element
     DEQUE_LOG("[deque_cbegin] Constant begin iterator created at blockIndex: %zu, indexInBlock: %zu", it.blockIndex, it.indexInBlock);
     return it;
 }
@@ -1220,14 +1220,14 @@ DequeIterator deque_cbegin(const Deque* deque) {
  * @return A constant DequeIterator representing the end position of the deque.
  */
 DequeIterator deque_cend(const Deque* deque) {
-    DequeIterator it = {0};
     if (!deque) {
         DEQUE_LOG("[deque_cend] Error: Deque is NULL.");
-        return it;  // Return an empty iterator
+        return (DequeIterator){0};  // Return an empty iterator
     }
 
-    it = deque_end(deque);  // Use regular end logic
-    it.deque = deque;       // Make sure the deque pointer is const
+    DequeIterator it = deque_end(deque);
+    it.deque = deque;  // Ensure the iterator refers to the correct deque
+    it.current = NULL;  // End iterator doesn't point to a valid element
     DEQUE_LOG("[deque_cend] Constant end iterator created.");
     return it;
 }
@@ -1275,13 +1275,13 @@ DequeIterator deque_crend(const Deque* deque) {
 }
 
 /**
- * @brief Increments the position of the iterator.
+ * @brief Moves the iterator to the previous position for reverse iteration.
  *
- * This function moves the iterator one position forward in the deque. If the iterator
- * is a reverse iterator, it moves backward instead. It handles boundary conditions,
- * such as moving between blocks of the deque.
+ * For reverse iterators, this function decrements the iterator's position, moving backwards
+ * through the deque. It properly handles moving between blocks and invalidates the iterator
+ * when it reaches the reverse end.
  *
- * @param it Pointer to the iterator to increment.
+ * @param it Pointer to the iterator to increment (move backward).
  */
 void iterator_increment(DequeIterator* it) {
     if (!it || !it->deque) {
@@ -1289,27 +1289,21 @@ void iterator_increment(DequeIterator* it) {
         return;
     }
 
-    // Increment to the next element
     it->indexInBlock++;
-    
-    // Move to the next block if needed
-    if (it->indexInBlock >= it->deque->blockSize) {
+    if (it->indexInBlock >= it->deque->blockSize) {  // Move to the next block
         it->blockIndex++;
         it->indexInBlock = 0;
-        DEQUE_LOG("[iterator_increment] Forward iteration - Moved to next block. blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
     }
 
-    // If the iterator has moved beyond the last valid element, mark it as invalid (NULL)
-    if (it->blockIndex >= it->deque->blockCount || (it->blockIndex == it->deque->blockCount - 1 && it->indexInBlock > it->deque->backIndex)) {
+    if (it->blockIndex >= it->deque->blockCount ||  // Check if out of bounds
+        (it->blockIndex == it->deque->blockCount - 1 && it->indexInBlock > it->deque->backIndex)) {
         it->current = NULL;
         DEQUE_LOG("[iterator_increment] Reached end of deque, iterator is now NULL.");
-    } 
-    else {
-        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
-        DEQUE_LOG("[iterator_increment] Forward iteration - Updated current element.");
+    } else {
+        it->current = it->deque->blocks[it->blockIndex] + it->indexInBlock;
+        DEQUE_LOG("[iterator_increment] Updated iterator position: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
     }
 }
-
 
 
 /**
@@ -1327,42 +1321,27 @@ void iterator_decrement(DequeIterator* it) {
         return;
     }
 
-    // Check if we're already at the front of the deque
-    if (it->blockIndex == 0 && it->indexInBlock == it->deque->frontIndex) {
-        it->current = NULL;  // We've reached the front, mark the iterator as NULL
-        DEQUE_LOG("[iterator_decrement] Reached the beginning of the deque. Iterator is now NULL.");
-        return;
-    }
-
-    if (it->indexInBlock > 0) {
-        // Move to the previous element in the current block
-        it->indexInBlock--;
-        DEQUE_LOG("[iterator_decrement] Moved to previous element in the same block. indexInBlock: %zu", it->indexInBlock);
-    } 
-    else {
-        // Move to the previous block if we're not at the first block
-        if (it->blockIndex > 0) {
-            it->blockIndex--;
-            it->indexInBlock = it->deque->blockSize - 1;
-            DEQUE_LOG("[iterator_decrement] Moved to previous block. blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
-        } else {
-            it->current = NULL;  // If we go out of bounds, mark the iterator as NULL
-            DEQUE_LOG("[iterator_decrement] Reached the first element in the deque. Iterator is now NULL.");
+    if (it->indexInBlock == 0) {  // Move to the previous block
+        if (it->blockIndex == 0) {
+            it->current = NULL;  // Reached the reverse end
+            DEQUE_LOG("[iterator_decrement] Reached reverse end of deque, iterator is now NULL.");
             return;
         }
+        it->blockIndex--;
+        it->indexInBlock = it->deque->blockSize - 1;
+    } else {
+        it->indexInBlock--;
     }
 
-    // Update the current pointer to the new element
-    if (it->blockIndex == 0 && it->indexInBlock < it->deque->frontIndex) {
-        it->current = NULL;  // If we go before the front of the deque, mark it as NULL
-        DEQUE_LOG("[iterator_decrement] Iterator went out of bounds, setting current to NULL.");
-    } 
-    else {
-        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
-        DEQUE_LOG("[iterator_decrement] Updated current element at blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
+    // Update current pointer
+    if (it->blockIndex < it->deque->blockCount) {
+        it->current = it->deque->blocks[it->blockIndex] + it->indexInBlock;
+        DEQUE_LOG("[iterator_decrement] Reverse iteration - Updated iterator position: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
+    } else {
+        it->current = NULL;
+        DEQUE_LOG("[iterator_decrement] Reverse iteration - Iterator is now invalid.");
     }
 }
-
 
 /**
  * @brief Compares two iterators for equality.
