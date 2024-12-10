@@ -1,15 +1,36 @@
 #ifndef UNITTEST_H_
 #define UNITTEST_H_
 
+#if defined(_WIN32)
+#include <windows.h>
+#include <io.h>
+#define F_OK 0
+#define access _access
+
+#elif defined(__MACH__) && defined(__APPLE__)
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#elif defined(_POSIX_VERSION)
+#include <sys/time.h>
+#include <unistd.h>
+#endif
 
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <time.h>
+#include <float.h>
+#include "../regex/std_regex.h"
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define MAX_STUBS 100
+#define MAX_ARGS 10
 
 // track memory allocations
 typedef struct MemoryRecord {
@@ -20,17 +41,62 @@ typedef struct MemoryRecord {
     struct MemoryRecord* next;
 } MemoryRecord;
 
+// Mocking Structure
+typedef struct MockCall {
+    char* function_name;
+    int call_count;
+    size_t arg_count;
+    char* actual_args[MAX_ARGS];
+    int index; 
+    struct MockCall* next;
+} MockCall;
+
+typedef struct MockRegistry {
+    MockCall* head;
+} MockRegistry;
+
+// Stubbing
+typedef struct {
+    const char* function_name;
+    const char* arg;  
+    void* return_value;
+} Stub;
+
 extern size_t total_memory_allocated;
 
 void add_memory_record(void* address, size_t size, const char* file, int line);
 void remove_memory_record(void* address);
 void print_memory_leaks();
-void* unittest_malloc(size_t size, const char* file, int line);
 void unittest_free(void* ptr);
+void unittest_set_timeout(double timeout_ms);
+void unittest_verify_mock_call(const char* function_name, size_t arg_count, void** expected_args, int call_index);
+void unittest_verify_mock_call_count(const char* function_name, int expected_count);
+void unittest_register_mock_call(const char* function_name, size_t arg_count, void** args);
+void unittest_register_stub(const char* function_name, const char* query, void* return_value);
+void unittest_free_generated_data(void* data);
+void unittest_display_progress(int completed, int total);
+
+void* unittest_malloc(size_t size, const char* file, int line);
+void* unittest_get_stub_return_value(const char* function_name, const char* query);
+
 double unittest_timer_real(void);
 double unittest_timer_cpu(void);
-void unittest_set_timeout(double timeout_ms);
+double unittest_generate_random_double(double min, double max);
+double* unittest_generate_edge_case_doubles(size_t* size);
+
 size_t unittest_get_memory_usage(void);
+
+MockCall* unittest_get_mock_call(const char* function_name);
+MockCall* unittest_get_mock_call_by_index(const char* function_name, int call_index);
+
+int unittest_generate_random_int(int min, int max);
+int* unittest_generate_edge_case_integers(size_t* size);
+
+float unittest_generate_random_float(float min, float max); 
+float* unittest_generate_edge_case_floats(size_t* size);
+
+char** unittest_generate_edge_case_strings(size_t* size);
+char* unittest_generate_random_string(size_t length);
 
 extern void (*unittest_setup)(void);
 extern void (*unittest_teardown)(void);
@@ -50,20 +116,39 @@ extern int unittest_status;
 extern int unittest_skipped;
 extern double unittest_timeout_ms;
 
-/* Timers */
+// Timers
 extern double unittest_real_timer;
 extern double unittest_proc_timer;
+extern int unittest_summary_only; 
 
 extern char unittest_last_message[UNITTEST_MESSAGE_LEN];
-extern int unittest_retry_count; //Retry count for tests
+extern int unittest_retry_count;
 
 extern void* unittest_param;
 
 #define UNITTEST_CASE(method_name) static void method_name(void)
 #define UNITTEST_SUITE(suite_name) static void suite_name(void)
 #define UNITTEST_RETRY_COUNT(count) do { unittest_retry_count = count; } while (0)
-#define UNITTEST_SAFE_BLOCK(block) do { block } while (0)
+#define UNITTEST_SAFE_BLOCK(...) do { __VA_ARGS__ } while (0)
 #define UNITTEST_EXIT_CODE (unittest_fail > 0 ? 1 : 0)
+#define UNITTEST_COLOR_GREEN "\033[32m"
+#define UNITTEST_COLOR_RED "\033[31m"
+#define UNITTEST_COLOR_RESET "\033[0m"
+
+#define UNITTEST_LOG_SUCCESS(...) \
+    if (!unittest_summary_only) { \
+        printf(UNITTEST_COLOR_GREEN __VA_ARGS__); \
+        printf(UNITTEST_COLOR_RESET); \
+    }
+
+#define UNITTEST_LOG_FAILURE(...) \
+    if (!unittest_summary_only) { \
+        printf(UNITTEST_COLOR_RED __VA_ARGS__); \
+        printf(UNITTEST_COLOR_RESET); \
+    }
+
+
+#define UNITTEST_LOG(...) if (!unittest_summary_only) { printf(__VA_ARGS__); }
 
 /* Run Test Suite */
 #define UNITTEST_RUN_SUITE(suite_name) UNITTEST_SAFE_BLOCK(\
@@ -85,7 +170,7 @@ extern void* unittest_param;
 )
 
 /* Run a Test Case */
-#define UNITTEST_RUN_TEST(test) UNITTEST_SAFE_BLOCK(\
+#define UNITTEST_RUN_TEST(test, total_tests) UNITTEST_SAFE_BLOCK(\
     int retries = unittest_retry_count; \
     while (retries >= 0) { \
         double start_time = unittest_timer_real(); \
@@ -109,47 +194,55 @@ extern void* unittest_param;
         if (unittest_status == 0) { \
             break; /* Test passed, exit retry loop */ \
         } else { \
-            printf("Test failed: %s. Retrying...\n", #test); \
+            printf("\033[31mTest failed: %s. Retrying...\033[0m\n", #test); \
             retries--; \
         } \
         if (unittest_teardown) (*unittest_teardown)(); \
     } \
+    unittest_display_progress(unittest_run, total_tests); \
     if (retries < 0) { \
         unittest_fail++; \
-        printf("Test ultimately failed after retries: %s\n", #test); \
+        printf("\033[31mTest ultimately failed after retries: %s\033[0m\n", #test); \
+    } else { \
+        printf("\033[32mTest passed: %s\033[0m\n", #test); \
     } \
 )
+
 
 /* Report Results */
 #define UNITTEST_REPORT() UNITTEST_SAFE_BLOCK(\
     double unittest_end_real_timer = unittest_timer_real(); \
     double unittest_end_proc_timer = unittest_timer_cpu(); \
-    printf("\n\n%d tests, %d assertions, %d failures, %d skipped\n", unittest_run, unittest_assert, unittest_fail, unittest_skipped); \
+    printf("\n\n\033[32m%d tests\033[0m, \033[32m%d assertions\033[0m, \033[31m%d failures\033[0m, \033[33m%d skipped\033[0m\n", \
+        unittest_run, unittest_assert, unittest_fail, unittest_skipped); \
     if (unittest_skipped > 0) { \
-        printf("\nSkipped Tests:\n---------------\n%s\n", unittest_last_message); \
+        printf("\033[33m\nSkipped Tests:\n---------------\n%s\n\033[0m", unittest_last_message); \
     } \
     if (unittest_real_timer > 0) { \
-        printf("\nFinished in %.8f seconds (real) %.8f seconds (proc)\n\n", \
+        printf("\nFinished in \033[32m%.8f seconds (real)\033[0m \033[32m%.8f seconds (proc)\033[0m\n\n", \
             unittest_end_real_timer - unittest_real_timer, \
             unittest_end_proc_timer - unittest_proc_timer); \
     } else { \
-        printf("\nTiming information not available.\n\n"); \
+        printf("\n\033[31mTiming information not available.\033[0m\n\n"); \
     } \
     if (unittest_fail > 0) { \
         exit(1); /* Non-zero exit for failures */ \
     } \
 )
 
+
 #define unittest_check(test) UNITTEST_SAFE_BLOCK(\
     unittest_assert++;\
     if (!(test)) {\
         snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: %s", __func__, __FILE__, __LINE__, #test);\
         unittest_status = 1;\
+        UNITTEST_LOG("\033[31m%s\n\033[0m", unittest_last_message);\
         return;\
     } else {\
-        printf(".");\
+        UNITTEST_LOG(".");\
     }\
 )
+
 
 #define unittest_fail(message) UNITTEST_SAFE_BLOCK(\
     unittest_assert++;\
@@ -158,16 +251,19 @@ extern void* unittest_param;
     return;\
 )
 
-#define unittest_assert(test, message) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert(test, message_format, ...) UNITTEST_SAFE_BLOCK(\
     unittest_assert++;\
     if (!(test)) {\
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: %s", __func__, __FILE__, __LINE__, message);\
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format,\
+                 __func__, __FILE__, __LINE__, ##__VA_ARGS__);\
         unittest_status = 1;\
+        fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */\
         return;\
     } else {\
         printf(".");\
     }\
 )
+
 
 #define unittest_assert_int_eq(expected, actual, message_format, ...) UNITTEST_SAFE_BLOCK(\
     int unittest_tmp_e = (expected); \
@@ -278,6 +374,70 @@ extern void* unittest_param;
     } \
 )
 
+#define unittest_assert_array_float_eq(expected, actual, size, epsilon, message_format, ...) UNITTEST_SAFE_BLOCK(\
+    unittest_assert++; \
+    int unittest_arrays_equal = 1; \
+    for (size_t i = 0; i < size; i++) { \
+        if (fabs((expected)[i] - (actual)[i]) > (epsilon)) { \
+            unittest_arrays_equal = 0; \
+            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
+                "%s failed:\n\t%s:%d: " message_format " (index %zu: expected %.6f, got %.6f)", \
+                __func__, __FILE__, __LINE__, ##__VA_ARGS__, i, (expected)[i], (actual)[i]); \
+            fprintf(stderr, "%s\n", unittest_last_message); \
+            break; \
+        } \
+    } \
+    if (!unittest_arrays_equal) { \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+)
+
+#define unittest_assert_array_double_eq(expected, actual, size, epsilon, message_format, ...) UNITTEST_SAFE_BLOCK(\
+    unittest_assert++; \
+    int unittest_arrays_equal = 1; \
+    for (size_t i = 0; i < size; i++) { \
+        if (fabs((expected)[i] - (actual)[i]) > (epsilon)) { \
+            unittest_arrays_equal = 0; \
+            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
+                "%s failed:\n\t%s:%d: " message_format " (index %zu: expected %.12f, got %.12f)", \
+                __func__, __FILE__, __LINE__, ##__VA_ARGS__, i, (expected)[i], (actual)[i]); \
+            fprintf(stderr, "%s\n", unittest_last_message); \
+            break; \
+        } \
+    } \
+    if (!unittest_arrays_equal) { \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+)
+
+#define unittest_assert_array_struct_eq(expected, actual, size, comparator, message_format, ...) UNITTEST_SAFE_BLOCK(\
+    unittest_assert++; \
+    int unittest_arrays_equal = 1; \
+    for (size_t i = 0; i < size; i++) { \
+        if (!(comparator(&(expected)[i], &(actual)[i]))) { \
+            unittest_arrays_equal = 0; \
+            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
+                "%s failed:\n\t%s:%d: " message_format " (index %zu)", \
+                __func__, __FILE__, __LINE__, ##__VA_ARGS__, i); \
+            fprintf(stderr, "%s\n", unittest_last_message); \
+            break; \
+        } \
+    } \
+    if (!unittest_arrays_equal) { \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+)
+
+
 #define UNITTEST_PARAM_TEST(test, param) UNITTEST_SAFE_BLOCK(\
     if (unittest_setup) (*unittest_setup)();\
     unittest_status = 0;\
@@ -319,6 +479,160 @@ extern void* unittest_param;
     } \
 )
 
+// Assert that a string matches a regex pattern
+#define unittest_assert_regex_match(pattern, string, flags, message_format, ...) UNITTEST_SAFE_BLOCK(\
+    Regex* unittest_regex = regex_compile(pattern, flags); \
+    if (!unittest_regex) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Failed to compile regex: %s", \
+                 __func__, __FILE__, __LINE__, pattern); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_status = 1; \
+        return; \
+    } \
+    RegexMatch unittest_match; \
+    RegexResult unittest_result = regex_search(unittest_regex, string, &unittest_match); \
+    if (unittest_result != REGEX_SUCCESS) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
+                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        regex_deallocate(unittest_regex); \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+    regex_deallocate(unittest_regex); \
+)
+
+// Assert a captured regex group matches the expected string
+#define unittest_assert_regex_group(pattern, input, group_index, expected, flags, message_format, ...) UNITTEST_SAFE_BLOCK( \
+    Regex* regex = regex_compile((pattern), (flags)); \
+    if (!regex) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Regex compilation failed for pattern '%s'", \
+                 __func__, __FILE__, __LINE__, (pattern)); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_fail++; \
+        return; \
+    } \
+    RegexMatch match; \
+    RegexResult result = regex_search(regex, (input), &match); \
+    if (result != REGEX_SUCCESS) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Regex search failed for input '%s'", \
+                 __func__, __FILE__, __LINE__, (input)); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_fail++; \
+        regex_deallocate(regex); \
+        return; \
+    } \
+    if ((group_index) < 0 || (group_index) >= match.group_count) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Group index %d out of bounds", \
+                 __func__, __FILE__, __LINE__, (group_index)); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_fail++; \
+        regex_deallocate(regex); \
+        return; \
+    } \
+    const char* group_start = match.group_starts[(group_index)]; \
+    size_t group_length = match.group_lengths[(group_index)]; \
+    if (strncmp(group_start, (expected), group_length) != 0) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
+                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_fail++; \
+    } else { \
+        printf("."); \
+    } \
+    regex_deallocate(regex); \
+)
+
+#define unittest_assert_file_eq(file1, file2, message_format, ...) UNITTEST_SAFE_BLOCK( \
+    unittest_assert++; \
+    FILE *unittest_f1 = fopen((file1), "rb"); \
+    FILE *unittest_f2 = fopen((file2), "rb"); \
+    int unittest_files_equal = 1; \
+    if (!unittest_f1 || !unittest_f2) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
+            "%s failed:\n\t%s:%d: Unable to open file(s): '%s', '%s'", \
+            __func__, __FILE__, __LINE__, (file1), (file2)); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_status = 1; \
+        if (unittest_f1) fclose(unittest_f1); \
+        if (unittest_f2) fclose(unittest_f2); \
+        return; \
+    } \
+    char unittest_buf1[1024], unittest_buf2[1024]; \
+    size_t unittest_read1, unittest_read2; \
+    int unittest_line_number = 1; \
+    while ((unittest_read1 = fread(unittest_buf1, 1, sizeof(unittest_buf1), unittest_f1)) > 0 && \
+           (unittest_read2 = fread(unittest_buf2, 1, sizeof(unittest_buf2), unittest_f2)) > 0) { \
+        if (unittest_read1 != unittest_read2 || memcmp(unittest_buf1, unittest_buf2, unittest_read1) != 0) { \
+            unittest_files_equal = 0; \
+            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
+                "%s failed:\n\t%s:%d: " message_format " (file content differs at line %d)", \
+                __func__, __FILE__, __LINE__, ##__VA_ARGS__, unittest_line_number); \
+            fprintf(stderr, "%s\n", unittest_last_message); \
+            break; \
+        } \
+        unittest_line_number++; \
+    } \
+    if (!feof(unittest_f1) || !feof(unittest_f2)) { \
+        unittest_files_equal = 0; \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
+            "%s failed:\n\t%s:%d: " message_format " (file lengths differ)", \
+            __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+    } \
+    fclose(unittest_f1); \
+    fclose(unittest_f2); \
+    if (!unittest_files_equal) { \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+)
+
+#define unittest_assert_file_exists(filepath, message_format, ...) UNITTEST_SAFE_BLOCK({ \
+    unittest_assert++; \
+    if (access((filepath), F_OK) != 0) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
+                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+})
+
+#define unittest_assert_file_not_exists(filepath, message_format, ...) UNITTEST_SAFE_BLOCK({ \
+    unittest_assert++; \
+    if (access((filepath), F_OK) == 0) { \
+        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
+                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
+        unittest_status = 1; \
+        return; \
+    } else { \
+        printf("."); \
+    } \
+})
+
+// Macros for Mock Functions
+#define UNITTEST_MOCK_FUNCTION(func_name, ...) \
+    void func_name(__VA_ARGS__);
+
+#define UNITTEST_MOCK_FUNCTION_WITH_STUB(func_name, return_type, ...) \
+    return_type func_name(__VA_ARGS__);
+
+#define UNITTEST_VERIFY_CALL_COUNT(func, count) \
+    unittest_verify_mock_call_count(#func, count)
+
+#define UNITTEST_VERIFY_ARGUMENTS(func, ...) \
+    do { \
+        void* args[] = {__VA_ARGS__}; \
+        unittest_verify_mock_call(#func, sizeof(args) / sizeof(args[0]), args); \
+    } while (0)
 
 #ifdef __cplusplus
 }
