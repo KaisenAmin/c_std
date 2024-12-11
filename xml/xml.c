@@ -756,7 +756,7 @@ static ezxml_t ezxml_parse_fp(FILE *fp)
 static ezxml_t ezxml_parse_fd(int fd)
 {
     ezxml_root_t root;
-    struct _stat64i32 st;
+    struct stat st;
     size_t l;
     void *m;
 

@@ -95,7 +95,7 @@ if (WIN32)
         statistics
         # tuple
         turtle
-        # sysinfo
+        sysinfo
         stack
         secrets
         span

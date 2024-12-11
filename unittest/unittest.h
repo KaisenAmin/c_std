@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include <limits.h>
 #include <float.h>
 #include "../regex/std_regex.h"
 

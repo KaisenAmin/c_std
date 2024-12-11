@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __linux__
+#include <sys/stat.h>
+#endif 
+
 #ifdef __cplusplus 
 extern "C" {
 #endif 
