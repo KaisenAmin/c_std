@@ -314,7 +314,12 @@ int serial_list_ports(SerialPortInformation** ports, size_t* count) {
             strncmp(entry->d_name, "ttyACM", 6) == 0) { // Modem interfaces
 
             char full_path[256] = {0};
-            snprintf(full_path, sizeof(full_path), "/dev/%s", entry->d_name);
+            if (strlen(entry->d_name) + 5 < sizeof(full_path)) { // 5 for "/dev/"
+                snprintf(full_path, sizeof(full_path), "/dev/%s", entry->d_name);
+            } else {
+                SERIAL_LOG("[serial_list_ports]: Warning - Port name too long, skipping: %s", entry->d_name);
+                continue;
+            }
 
             struct stat stat_buf;
             if (stat(full_path, &stat_buf) == 0 && S_ISCHR(stat_buf.st_mode)) {
@@ -335,7 +340,13 @@ int serial_list_ports(SerialPortInformation** ports, size_t* count) {
                 }
 
                 snprintf((*ports)[port_index].name, sizeof((*ports)[port_index].name), "%s", full_path);
-                snprintf((*ports)[port_index].description, sizeof((*ports)[port_index].description), "Serial Port %s", entry->d_name);
+                if (strlen(entry->d_name) + 12 < sizeof((*ports)[port_index].description)) { // 12 for "Serial Port "
+                    snprintf((*ports)[port_index].description, sizeof((*ports)[port_index].description), "Serial Port %s", entry->d_name);
+                } 
+                else {
+                    SERIAL_LOG("[serial_list_ports]: Warning - Port description too long, skipping: %s", entry->d_name);
+                    continue;
+                }
                 snprintf((*ports)[port_index].hardware_id, sizeof((*ports)[port_index].hardware_id), "N/A");
 
                 port_index++;
@@ -358,6 +369,24 @@ int serial_list_ports(SerialPortInformation** ports, size_t* count) {
 void serial_free_ports(SerialPortInformation* ports) {
     SERIAL_LOG("[serial_free_ports]: Freeing memory for serial port list.");
     free(ports);
+}
+
+static speed_t get_baud_rate_constant(int baud_rate) {
+    switch (baud_rate) {
+        case 9600: 
+            return B9600;
+        case 19200: 
+            return B19200;
+        case 38400: 
+            return B38400;
+        case 57600: 
+            return B57600;
+        case 115200: 
+            return B115200;
+        default:
+            SERIAL_LOG("[get_baud_rate_constant]: Unsupported baud rate %d", baud_rate);
+            return 0;
+    }
 }
 
 /**
@@ -420,8 +449,15 @@ int serial_configure(SerialPort* port, const SerialConfig* config) {
         return -1;
     }
 
-    cfsetispeed(&options, config->baud_rate);
-    cfsetospeed(&options, config->baud_rate);
+    speed_t baud_rate_constant = get_baud_rate_constant(config->baud_rate);
+    if (baud_rate_constant == 0) {
+        SERIAL_LOG("[serial_configure]: Invalid baud rate %d", config->baud_rate);
+        return -1;
+    }
+
+    cfsetispeed(&options, baud_rate_constant);
+    cfsetospeed(&options, baud_rate_constant);
+
 
     options.c_cflag &= ~CSIZE;
     options.c_cflag |= (config->data_bits == 7 ? CS7 : CS8);
