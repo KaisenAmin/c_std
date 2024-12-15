@@ -1,0 +1,9 @@
+# serial_port/CMakeLists.txt
+add_library(stdserial SHARED serial_port.c)
+target_include_directories(stdserial PUBLIC ${CMAKE_SOURCE_DIR}/serial_port)
+
+if (WIN32)
+    target_link_libraries(stdserial setupapi)
+else() 
+    target_link_libraries(stdserial)
+endif()

@@ -67,6 +67,7 @@ add_subdirectory(secrets)
 add_subdirectory(xml)
 add_subdirectory(regex)
 add_subdirectory(unittest)
+add_subdirectory(serial_port)
 # Create the main executable
 add_executable(main main.c)
 
@@ -123,6 +124,7 @@ if (WIN32)
         xml
         stdregex
         unittest
+        stdserial
 
     )
 else()
@@ -176,6 +178,7 @@ else()
         xml
         stdregex
         unittest
+        stdserial
     )
 endif()
 
