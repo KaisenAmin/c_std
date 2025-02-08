@@ -371,23 +371,23 @@ void serial_free_ports(SerialPortInformation* ports) {
     free(ports);
 }
 
-static speed_t get_baud_rate_constant(int baud_rate) {
-    switch (baud_rate) {
-        case 9600: 
-            return B9600;
-        case 19200: 
-            return B19200;
-        case 38400: 
-            return B38400;
-        case 57600: 
-            return B57600;
-        case 115200: 
-            return B115200;
-        default:
-            SERIAL_LOG("[get_baud_rate_constant]: Unsupported baud rate %d", baud_rate);
-            return 0;
-    }
-}
+// static speed_t get_baud_rate_constant(int baud_rate) {
+//     switch (baud_rate) {
+//         case 9600: 
+//             return CBR_9600;
+//         case 19200: 
+//             return CBR_19200;
+//         case 38400: 
+//             return CBR_38400;
+//         case 57600: 
+//             return CBR_57600;
+//         case 115200: 
+//             return CBR_115200;
+//         default:
+//             SERIAL_LOG("[get_baud_rate_constant]: Unsupported baud rate %d", baud_rate);
+//             return 0;
+//     }
+// }
 
 /**
  * @brief Configure a serial port.

@@ -88,6 +88,7 @@ The project is organized into several subdirectories, each representing a differ
 
 - `UnitTest`: The UnitTest library is a lightweight and powerful framework designed to facilitate unit testing in C. It supports a wide range of features, making it a versatile and indispensable tool for ensuring code reliability and quality in complex projects.
 
+- `BigInt`: The BigInt library in C provides a robust interface for performing arbitrary-precision integer arithmetic. It leverages the power of the GMP (GNU Multiple Precision Arithmetic) library under the hood, offering C developers a familiar API for creating, manipulating, and performing arithmetic on large integers that exceed the limitations of standard C integer types
 ---
 
 ## Note 

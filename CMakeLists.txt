@@ -68,6 +68,9 @@ add_subdirectory(xml)
 add_subdirectory(regex)
 add_subdirectory(unittest)
 add_subdirectory(serial_port)
+add_subdirectory(plot)
+add_subdirectory(bigint)
+add_subdirectory(evalexpr)
 # Create the main executable
 add_executable(main main.c)
 
@@ -89,42 +92,45 @@ if (WIN32)
         ssl
         pq
         # Optional modules that are commented out:
-        random
+        # random
         # map
-        vector
-        stdtime
-        statistics
+        # vector
+        # stdtime
+        # statistics
         # tuple
-        turtle
-        sysinfo
-        stack
-        secrets
-        span
-        algorithm
-        queue
-        priority_queue
+        # turtle
+        # sysinfo
+        # stack
+        # secrets
+        # span
+        # algorithm
+        # queue
+        # priority_queue
         
-        array
-        bitset
+        # array
+        # bitset
         # cli
-        deque
-        json
+        # deque
+        # json
         # matrix
-        fileio
-        crypto
-        config
-        csv
-        date
-        forwardlist
+        # fileio
+        # crypto
+        # config
+        # csv
+        # date
+        # forwardlist
         # list
-        numbers
-        log
+        # numbers
+        # log
         # dir
         # concurrent
-        xml
-        stdregex
-        unittest
-        stdserial
+        # xml
+        # stdregex
+        # unittest
+        # stdserial
+        # plot
+        # bigint
+        evalexpr
 
     )
 else()
@@ -175,10 +181,13 @@ else()
         # log
         # dir
         # concurrent
-        xml
-        stdregex
-        unittest
-        stdserial
+        # xml
+        # stdregex
+        # unittest
+        # stdserial
+        # plot
+        # bigint
+        evalexpr
     )
 endif()
 
