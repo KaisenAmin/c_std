@@ -1,6 +1,6 @@
 /**
  * @author amin tahmasebi
- * @date 2024
+ * @date 2025
  * @class BigInt
  */
 
@@ -15,7 +15,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
- 
+
+// #define BIGINT_LOGGING_ENABLE
+
 #ifdef BIGINT_LOGGING_ENABLE
     #define BIGINT_LOG(fmt, ...) \
         do { fprintf(stderr, "[BIGINT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
@@ -51,6 +53,10 @@ BigInt* bigint_inc(const BigInt* a);
 BigInt* bigint_dec(const BigInt* a);
 BigInt* bigint_modinv(const BigInt* a, const BigInt* modulus);
 BigInt* bigint_sqrt_exact(const BigInt* a);
+BigInt* bigint_and(const BigInt* a, const BigInt* b);
+BigInt* bigint_or(const BigInt* a, const BigInt* b);
+BigInt* bigint_xor(const BigInt* a, const BigInt* b);
+
 
 void bigint_deallocate(BigInt* bi);
 void bigint_normalize(BigInt* bi);

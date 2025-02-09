@@ -71,6 +71,7 @@ add_subdirectory(serial_port)
 add_subdirectory(plot)
 add_subdirectory(bigint)
 add_subdirectory(evalexpr)
+add_subdirectory(bigfloat)
 # Create the main executable
 add_executable(main main.c)
 
@@ -128,9 +129,10 @@ if (WIN32)
         # stdregex
         # unittest
         # stdserial
-        # plot
-        # bigint
+        plot
+        bigint
         evalexpr
+        bigfloat
 
     )
 else()
@@ -188,6 +190,7 @@ else()
         # plot
         # bigint
         evalexpr
+        bigfloat
     )
 endif()
 

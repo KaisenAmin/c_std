@@ -1177,3 +1177,75 @@ unsigned long bigint_log2(const BigInt* a) {
 
     return log2_val;
 }
+
+/**
+ * @brief Computes the bitwise AND of two BigInts.
+ *
+ * @param a Pointer to the first BigInt.
+ * @param b Pointer to the second BigInt.
+ * @return Pointer to a new BigInt representing a & b, or NULL on error.
+ */
+BigInt* bigint_and(const BigInt* a, const BigInt* b) {
+    if (!a || !b) {
+        BIGINT_LOG("[bigint_and]: One or both input BigInts are NULL.");
+        return NULL;
+    }
+
+    BigInt* res = bigint_create();
+    if (!res) {
+        BIGINT_LOG("[bigint_and]: Memory allocation failed.");
+        return NULL;
+    }
+
+    mpz_and(res->value, a->value, b->value);
+    BIGINT_LOG("[bigint_and]: Computed bitwise AND successfully.");
+    return res;
+}
+
+/**
+ * @brief Computes the bitwise OR of two BigInts.
+ *
+ * @param a Pointer to the first BigInt.
+ * @param b Pointer to the second BigInt.
+ * @return Pointer to a new BigInt representing a | b, or NULL on error.
+ */
+BigInt* bigint_or(const BigInt* a, const BigInt* b) {
+    if (!a || !b) {
+        BIGINT_LOG("[bigint_or]: One or both input BigInts are NULL.");
+        return NULL;
+    }
+
+    BigInt* res = bigint_create();
+    if (!res) {
+        BIGINT_LOG("[bigint_or]: Memory allocation failed.");
+        return NULL;
+    }
+
+    mpz_ior(res->value, a->value, b->value);
+    BIGINT_LOG("[bigint_or]: Computed bitwise OR successfully.");
+    return res;
+}
+
+/**
+ * @brief Computes the bitwise XOR of two BigInts.
+ *
+ * @param a Pointer to the first BigInt.
+ * @param b Pointer to the second BigInt.
+ * @return Pointer to a new BigInt representing a ^ b, or NULL on error.
+ */
+BigInt* bigint_xor(const BigInt* a, const BigInt* b) {
+    if (!a || !b) {
+        BIGINT_LOG("[bigint_xor]: One or both input BigInts are NULL.");
+        return NULL;
+    }
+
+    BigInt* res = bigint_create();
+    if (!res) {
+        BIGINT_LOG("[bigint_xor]: Memory allocation failed.");
+        return NULL;
+    }
+
+    mpz_xor(res->value, a->value, b->value);
+    BIGINT_LOG("[bigint_xor]: Computed bitwise XOR successfully.");
+    return res;
+}

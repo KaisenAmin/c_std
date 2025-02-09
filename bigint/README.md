@@ -701,6 +701,77 @@ To use the BigInt library in your project:
   - Iterates over the string, accumulating the sum of numeric digits while ignoring non-digit characters (such as a minus sign).
   - Logs the computed sum for debugging.
 
+---
+
+### **`BigInt* bigint_and(const BigInt* a, const BigInt* b)`**
+
+- **Purpose**:  
+  Computes the **bitwise AND** operation between two BigInts.
+
+- **Parameters**:  
+  - `a`: A pointer to the first **BigInt** operand.
+  - `b`: A pointer to the second **BigInt** operand.
+
+- **Return**:  
+  - A **pointer** to a new **BigInt** representing the result of `a & b`.
+  - Returns `NULL` if **memory allocation fails** or if either input is `NULL`.
+
+- **Details**:  
+  - The function first **validates** that both input BigInts are not `NULL`.
+  - A **new BigInt** is allocated using `bigint_create()`.
+  - The **bitwise AND** operation is performed using **GMP's `mpz_and()`** function.
+  - The result is stored in the newly allocated BigInt.
+  - The function logs **errors** and **successful computation** if logging is enabled.
+  - The caller is responsible for **deallocating** the returned BigInt.
+
+---
+
+### **`BigInt* bigint_or(const BigInt* a, const BigInt* b)`**
+
+- **Purpose**:  
+  Computes the **bitwise OR** operation between two BigInts.
+
+- **Parameters**:  
+  - `a`: A pointer to the first **BigInt** operand.
+  - `b`: A pointer to the second **BigInt** operand.
+
+- **Return**:  
+  - A **pointer** to a new **BigInt** representing the result of `a | b`.
+  - Returns `NULL` if **memory allocation fails** or if either input is `NULL`.
+
+- **Details**:  
+  - The function first **validates** that both input BigInts are not `NULL`.
+  - A **new BigInt** is allocated using `bigint_create()`.
+  - The **bitwise OR** operation is performed using **GMP's `mpz_ior()`** function.
+  - The result is stored in the newly allocated BigInt.
+  - The function logs **errors** and **successful computation** if logging is enabled.
+  - The caller is responsible for **deallocating** the returned BigInt.
+
+---
+
+### **`BigInt* bigint_xor(const BigInt* a, const BigInt* b)`**
+
+- **Purpose**:  
+  Computes the **bitwise XOR** operation between two BigInts.
+
+- **Parameters**:  
+  - `a`: A pointer to the first **BigInt** operand.
+  - `b`: A pointer to the second **BigInt** operand.
+
+- **Return**:  
+  - A **pointer** to a new **BigInt** representing the result of `a ^ b`.
+  - Returns `NULL` if **memory allocation fails** or if either input is `NULL`.
+
+- **Details**:  
+  - The function first **validates** that both input BigInts are not `NULL`.
+  - A **new BigInt** is allocated using `bigint_create()`.
+  - The **bitwise XOR** operation is performed using **GMP's `mpz_xor()`** function.
+  - The result is stored in the newly allocated BigInt.
+  - The function logs **errors** and **successful computation** if logging is enabled.
+  - The caller is responsible for **deallocating** the returned BigInt.
+
+---
+
 ### Example 1: Creating a BigInt Using `bigint_create`
 
 This example shows how to create a new BigInt (which is initialized to 0) and print its value.
