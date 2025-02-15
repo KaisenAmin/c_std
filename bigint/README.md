@@ -1853,8 +1853,6 @@ int main(void) {
 ```
 
 **Sample Output:**  
-*(Actual output will depend on the input value)*
-
 ```
 Sum of digits of a: 90
 Comparison of |a| and | -a |: 0 (0 means equal)

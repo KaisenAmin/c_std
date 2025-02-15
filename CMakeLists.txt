@@ -72,6 +72,7 @@ add_subdirectory(plot)
 add_subdirectory(bigint)
 add_subdirectory(evalexpr)
 add_subdirectory(bigfloat)
+add_subdirectory(audio)
 # Create the main executable
 add_executable(main main.c)
 
@@ -129,10 +130,11 @@ if (WIN32)
         # stdregex
         # unittest
         # stdserial
-        plot
-        bigint
-        evalexpr
-        bigfloat
+        # plot
+        # bigint
+        # evalexpr
+        # bigfloat
+        audio
 
     )
 else()
@@ -191,6 +193,7 @@ else()
         # bigint
         evalexpr
         bigfloat
+        audio
     )
 endif()
 
