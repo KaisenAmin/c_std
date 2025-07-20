@@ -89,6 +89,10 @@ The project is organized into several subdirectories, each representing a differ
 - `UnitTest`: The UnitTest library is a lightweight and powerful framework designed to facilitate unit testing in C. It supports a wide range of features, making it a versatile and indispensable tool for ensuring code reliability and quality in complex projects.
 
 - `BigInt`: The BigInt library in C provides a robust interface for performing arbitrary-precision integer arithmetic. It leverages the power of the GMP (GNU Multiple Precision Arithmetic) library under the hood, offering C developers a familiar API for creating, manipulating, and performing arithmetic on large integers that exceed the limitations of standard C integer types
+
+- `HashMap`: The HashMap library provides a dynamic, hash-table-based associative array implementation similar to `std::unordered_map` in C++. It offers O(1) average time complexity for insertions, deletions, and lookups. The library supports custom hash functions, comparison functions, and memory deallocation callbacks, making it flexible for various data types. Features include automatic rehashing, iterator support, bucket interface, and built-in hash functions for common types like strings and integers.
+
+- `Sort`: The Sort library provides a comprehensive, generic sorting library for C that offers multiple sorting algorithms with performance statistics, benchmarking, and search capabilities. It includes 8+ sorting algorithms (Insertion, QuickSort, MergeSort, HeapSort, BubbleSort, Selection, Shell, Introspective), specialized algorithms (Counting Sort, Radix Sort, Bucket Sort), optimized variants, adaptive sorting, search functions (binary search, lower/upper bounds), utility functions (array validation, reverse, shuffle), and benchmarking capabilities. The library features generic design using function pointers, performance tracking, and comprehensive documentation with complete working examples.
 ---
 
 ## Note 
@@ -120,14 +124,22 @@ To build the project using CMake, follow these steps:
    - Run CMake to generate the build files for your system:
 
      ```bash
+     # Using Unix Makefiles (Linux/macOS)
      cmake -G "Unix Makefiles" ..
+     
+     # Using Ninja (faster, cross-platform)
+     cmake -G "Ninja" ..
      ```
 
 4. **Compile the Project**:
-   - Once the build files are generated, compile the project using `make` (or another build tool depending on your system):
+   - Once the build files are generated, compile the project:
 
      ```bash
+     # If using Unix Makefiles
      make
+     
+     # If using Ninja
+     cmake --build .
      ```
 
 5. **Run the Compiled Program**:
@@ -155,11 +167,23 @@ If you add new modules, you need to update the `CMakeLists.txt` file to include 
    - After editing `CMakeLists.txt`, re-run CMake in the `build` directory:
 
      ```bash
+     # If using Unix Makefiles
      cmake -G "Unix Makefiles" ..
+     
+     # If using Ninja
+     cmake -G "Ninja" ..
      ```
 
 3. **Compile Again**:
-   - Use `make` or another build tool to compile the updated project.
+   - Use the appropriate build tool to compile the updated project:
+
+     ```bash
+     # If using Unix Makefiles
+     make
+     
+     # If using Ninja
+     cmake --build .
+     ```
 
 
 This project utilizes a Python script (`compile.py`) for easy compilation of modules, making the build process straightforward and efficient.

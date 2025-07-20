@@ -3,7 +3,13 @@ project(c_std)
 
 # Set the C standard
 set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g  -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s")
+
+# Platform-specific compiler flags
+if (WIN32 AND MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /O2 /W3")
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3 -march=native -funroll-loops -Wall -Wextra -pedantic -Wno-deprecated-declarations -s")
+endif()
 
 
 # Platform-specific linker flags
@@ -72,7 +78,9 @@ add_subdirectory(plot)
 add_subdirectory(bigint)
 add_subdirectory(evalexpr)
 add_subdirectory(bigfloat)
-add_subdirectory(audio)
+# add_subdirectory(audio)
+add_subdirectory(hashmap)
+add_subdirectory(sort)
 # Create the main executable
 add_executable(main main.c)
 
@@ -99,6 +107,8 @@ if (WIN32)
         # vector
         # stdtime
         # statistics
+        hashmap
+        sort
         # tuple
         # turtle
         # sysinfo
@@ -108,7 +118,6 @@ if (WIN32)
         # algorithm
         # queue
         # priority_queue
-        
         # array
         # bitset
         # cli
@@ -134,7 +143,7 @@ if (WIN32)
         # bigint
         # evalexpr
         # bigfloat
-        audio
+        # audio
 
     )
 else()

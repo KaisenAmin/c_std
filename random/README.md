@@ -920,9 +920,91 @@ Random von Mises value: 2.583023
 
 ---
 
+## Integration with Statistics Library
+
+The Random library works seamlessly with the Statistics library to provide comprehensive data analysis capabilities. Here's an example of how to use both libraries together:
+
+### Example: Statistical Analysis of Random Data
+
+```c
+#include "random/random.h"
+#include "statistics/statistics.h"
+#include <stdio.h>
+
+int main() {
+    // Set seed for reproducible results
+    random_seed(42);
+    
+    // Generate random data from different distributions
+    double data[1000];
+    for (int i = 0; i < 1000; i++) {
+        if (i < 333) {
+            // Gaussian distribution
+            data[i] = random_gauss(50.0, 10.0);
+        } else if (i < 666) {
+            // Uniform distribution
+            data[i] = random_uniform(30.0, 70.0);
+        } else {
+            // Exponential distribution
+            data[i] = random_expo(0.1);
+        }
+    }
+    
+    // Calculate statistical measures
+    double mean = statistics_mean(data, 1000);
+    double median = statistics_median(data, 1000);
+    double variance = statistics_variance(data, 1000, false, 0.0);
+    double stdev = statistics_stdev(data, 1000, false, 0.0);
+    
+    printf("Statistical Analysis of Random Data:\n");
+    printf("Mean: %.4f\n", mean);
+    printf("Median: %.4f\n", median);
+    printf("Variance: %.4f\n", variance);
+    printf("Standard Deviation: %.4f\n", stdev);
+    
+    return 0;
+}
+```
+
+### Example: Correlation Analysis with Random Data
+
+```c
+#include "random/random.h"
+#include "statistics/statistics.h"
+#include <stdio.h>
+
+int main() {
+    random_seed(12345);
+    
+    // Generate correlated data
+    double x[500], y[500];
+    for (int i = 0; i < 500; i++) {
+        x[i] = i + random_gauss(0.0, 2.0);
+        y[i] = 2.0 * x[i] + random_gauss(0.0, 5.0);
+    }
+    
+    // Calculate correlation
+    double correlation = statistics_correlation(x, y, 500, CORRELATION_LINEAR);
+    double spearman = statistics_correlation(x, y, 500, CORRELATION_RANKED);
+    
+    printf("Correlation Analysis:\n");
+    printf("Pearson correlation: %.4f\n", correlation);
+    printf("Spearman correlation: %.4f\n", spearman);
+    
+    // Linear regression
+    LinearRegression regression = statistics_linear_regression(x, y, 500, false);
+    printf("Linear Regression: y = %.4f * x + %.4f\n", 
+           regression.slope, regression.intercept);
+    
+    return 0;
+}
+```
+
 ## Conclusion
 
 This Random library simplifies the generation of random numbers in C projects, providing an easy-to-use interface for generating random integers within specified ranges. The provided examples illustrate how to use the library for common random number generation tasks.
+
+When combined with the Statistics library, it provides powerful capabilities for generating random data and performing comprehensive statistical analysis, making it ideal for scientific computing, data analysis, and simulation applications.
 
 
 ## License
