@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <wchar.h>
 #include <ctype.h>
 #include "../encoding/encoding.h"
@@ -18,6 +19,7 @@
 #endif
 
 
+
 /**
  * @brief Prints a formatted string to the console without a newline.
  * Handles Unicode on Windows and uses standard output on other platforms.
@@ -25,26 +27,26 @@
 void __fmt_print(const char* str, ...) {
     va_list args;
     va_start(args, str);
-    
+
 #if defined(_WIN32) || defined(_WIN64)
     DWORD written;
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
         wchar_t* wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
-            WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr, wcslen(wstr), &written, NULL);
-            WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), L"", 1, &written, NULL);  // Space separator
+            WriteConsoleW(hOut, wstr, (DWORD)wcslen(wstr), &written, NULL);
             free(wstr);
         }
     }
-    WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), NULL, 1, &written, NULL);
-#else 
+#else
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
-        printf("%s", arg);  // do not need space seperator
+        fputs(arg, stdout);
     }
-#endif 
+#endif
 
     va_end(args);
 }
+
 
 /**
  * @brief Prints a formatted string to the console with a newline.
@@ -56,24 +58,36 @@ void __fmt_println(const char* str, ...) {
 
 #if defined(_WIN32) || defined(_WIN64)
     DWORD written;
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    bool first = true;
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
+        if (!first) {
+            WriteConsoleW(hOut, L" ", 1, &written, NULL);  // separator between args
+        }
+        first = false;
+
         wchar_t* wstr = encoding_utf8_to_wchar(arg);
         if (wstr) {
-            WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr, wcslen(wstr), &written, NULL);
-            WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), L" ", 1, &written, NULL); // Space separator
+            WriteConsoleW(hOut, wstr, (DWORD)wcslen(wstr), &written, NULL);
             free(wstr);
         }
     }
-    WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), L"\n", 1, &written, NULL); // New line
-#else 
+    WriteConsoleW(hOut, L"\n", 1, &written, NULL);
+#else
+    bool first = true;
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
-        printf("%s ", arg);  // Space separator already included
+        if (!first) {
+            fputc(' ', stdout);
+        }
+        first = false;
+        fputs(arg, stdout);
     }
-    printf("\n");
-#endif 
+    fputc('\n', stdout);
+#endif
 
     va_end(args);
 }
+
 
 /**
  * @brief Prints a formatted string to the standard output.
@@ -111,6 +125,7 @@ void fmt_printf(const char* format, ...) {
     va_end(args);
 }
 
+
 /**
  * @brief Constructs a formatted string with spaces between arguments and a newline at the end.
  * Handles Unicode on Windows and returns a dynamically allocated UTF-8 string.
@@ -127,12 +142,21 @@ char* __fmt_sprintln(const char* first_arg, ...) {
     if (wstr) {
         wstr_total_len = wcslen(wstr);
         wstr_total = (wchar_t*)malloc((wstr_total_len + 1) * sizeof(wchar_t));
+
         if (!wstr_total) {
             free(wstr);
+            va_end(args);
             return NULL;
         }
+
         wcscpy(wstr_total, wstr);
         free(wstr);
+    } 
+    else {
+        
+        wstr_total = (wchar_t*)malloc(sizeof(wchar_t));
+        if (!wstr_total) { va_end(args); return NULL; }
+        wstr_total[0] = L'\0';
     }
 
     const char* arg;
@@ -141,54 +165,80 @@ char* __fmt_sprintln(const char* first_arg, ...) {
         if (wstr) {
             size_t new_len = wstr_total_len + wcslen(wstr) + 1;
             wchar_t* new_wstr_total = (wchar_t*) realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
+
             if (!new_wstr_total) {
                 free(wstr);
                 free(wstr_total);
+                va_end(args);
                 return NULL;
             }
+
             wstr_total = new_wstr_total;
             wcscat(wstr_total, L" ");
             wcscat(wstr_total, wstr);
             wstr_total_len = new_len;
+
             free(wstr);
         }
     }
+
+    wchar_t* with_nl = (wchar_t*)realloc(wstr_total, (wstr_total_len + 2) * sizeof(wchar_t));
+    if (!with_nl) {
+        free(wstr_total);
+        va_end(args);
+        return NULL;
+    }
+    wstr_total = with_nl;
     wcscat(wstr_total, L"\n");
 
     char* result = encoding_wchar_to_utf8(wstr_total);
     free(wstr_total);
-#else
-    size_t size = 256;
-    char* result = malloc(size);
-    if (!result) return NULL;
 
-    strcpy(result, first_arg);
+    va_end(args);
+#else
     size_t len = strlen(first_arg);
+    size_t cap = len + 16;
+    char* result = (char*)malloc(cap);
+    
+    if (!result) { 
+        va_end(args); 
+        return NULL; 
+    }
+    memcpy(result, first_arg, len + 1);
 
     const char* arg;
     while ((arg = va_arg(args, const char*)) != NULL) {
         size_t arg_len = strlen(arg);
-        if (len + arg_len + 2 >= size) {
-            size = len + arg_len + 2;
-            char* new_result = realloc(result, size);
-            if (!new_result) {
-                free(result);
-                return NULL;
-            }
+        // Need room for " " + arg + "\n" + '\0' eventually = arg_len + 3.
+        if (len + arg_len + 3 > cap) {
+            cap = (len + arg_len + 3) * 2;
+            char* new_result = (char*)realloc(result, cap);
+            if (!new_result) { free(result); va_end(args); return NULL; }
             result = new_result;
         }
-        strcat(result, " ");
-        strcat(result, arg);
-        len += arg_len + 1;
+        result[len++] = ' ';
+        memcpy(result + len, arg, arg_len);
+        len += arg_len;
     }
 
-    strcat(result, "\n");
+    if (len + 2 > cap) {
+        char* new_result = (char*)realloc(result, len + 2);
+        if (!new_result) { 
+            free(result); 
+            va_end(args); 
+            return NULL; 
+        }
+        result = new_result;
+    }
+    result[len++] = '\n';
+    result[len] = '\0';
 
     va_end(args);
 #endif
 
     return result;
 }
+
 
 /**
  * @brief Constructs a formatted string with spaces between arguments but without a newline at the end.
@@ -206,12 +256,20 @@ char* __fmt_sprint(const char* first_arg, ...) {
     if (wstr) {
         wstr_total_len = wcslen(wstr);
         wstr_total = (wchar_t*) malloc((wstr_total_len + 1) * sizeof(wchar_t));
-        if (!wstr_total) {
-            free(wstr);
-            return NULL;
+
+        if (!wstr_total) { 
+            free(wstr); 
+            va_end(args); 
+            return NULL; 
         }
+
         wcscpy(wstr_total, wstr);
         free(wstr);
+    } 
+    else {
+        wstr_total = (wchar_t*)malloc(sizeof(wchar_t));
+        if (!wstr_total) { va_end(args); return NULL; }
+        wstr_total[0] = L'\0';
     }
 
     const char* arg;
@@ -220,51 +278,59 @@ char* __fmt_sprint(const char* first_arg, ...) {
         if (wstr) {
             size_t new_len = wstr_total_len + wcslen(wstr) + 1;
             wchar_t* new_wstr_total = (wchar_t*) realloc(wstr_total, (new_len + 1) * sizeof(wchar_t));
+
             if (!new_wstr_total) {
                 free(wstr);
                 free(wstr_total);
+                va_end(args);
                 return NULL;
             }
+
             wstr_total = new_wstr_total;
             wcscat(wstr_total, L" ");
             wcscat(wstr_total, wstr);
             wstr_total_len = new_len;
+
             free(wstr);
         }
     }
 
     char* result = encoding_wchar_to_utf8(wstr_total);
     free(wstr_total);
+    va_end(args);
 #else
-    size_t size = 256;
-    char* result = malloc(size);
-    if (!result) return NULL;
-
-    strcpy(result, first_arg);
     size_t len = strlen(first_arg);
+    size_t cap = len + 16;
+    char* result = (char*)malloc(cap);
+
+    if (!result) { 
+        va_end(args); 
+        return NULL; 
+    }
+    memcpy(result, first_arg, len + 1);
 
     const char* arg;
     while ((arg = va_arg(args, const char*)) != NULL) {
         size_t arg_len = strlen(arg);
-        if (len + arg_len + 2 >= size) {
-            size = len + arg_len + 2;
-            char* new_result = realloc(result, size);
-            if (!new_result) {
-                free(result);
-                return NULL;
-            }
+        // Need " " + arg + '\0' = arg_len + 2.
+        if (len + arg_len + 2 > cap) {
+            cap = (len + arg_len + 2) * 2;
+            char* new_result = (char*)realloc(result, cap);
+            if (!new_result) { free(result); va_end(args); return NULL; }
             result = new_result;
         }
-        strcat(result, " ");
-        strcat(result, arg);
-        len += arg_len + 1;
+        result[len++] = ' ';
+        memcpy(result + len, arg, arg_len);
+        len += arg_len;
     }
+    result[len] = '\0';
 
     va_end(args);
 #endif
 
     return result;
 }
+
 
 /**
  * @brief Formats a string and returns it as a dynamically allocated string.
@@ -279,17 +345,30 @@ char* __fmt_sprint(const char* first_arg, ...) {
  * The caller is responsible for freeing this memory. Returns `NULL` if memory allocation fails.
  */
 char* fmt_sprintf(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
+    if (!format) return NULL;
 
-    char format_buffer[2048];
-    vsnprintf(format_buffer, 2048, format, args); // Use args as-is
+    va_list args1, args2;
+    va_start(args1, format);
+    va_copy(args2, args1);
 
-    char* result = string_strdup(format_buffer); // Duplicate the formatted string
+    int needed = vsnprintf(NULL, 0, format, args1);
+    va_end(args1);
+    if (needed < 0) {
+        va_end(args2);
+        return NULL;
+    }
 
-    va_end(args);
+    char* result = (char*)malloc((size_t)needed + 1);
+    if (!result) {
+        va_end(args2);
+        return NULL;
+    }
+    vsnprintf(result, (size_t)needed + 1, format, args2);
+    va_end(args2);
+
     return result;
 }
+
 
 /**
  * @brief Scans a string from standard input until space, newline, or EOF.
@@ -305,9 +384,8 @@ char* fmt_sprintf(const char* format, ...) {
 int fmt_scan(char** output) {
     char buffer[1024];
     int result = 0;
-
-    // Read from standard input character by character
     size_t i = 0;
+
     for (; i < sizeof(buffer) - 1; ++i) {
         int ch = getchar();
         if (ch == EOF || ch == '\n' || ch == ' ') {
@@ -315,27 +393,26 @@ int fmt_scan(char** output) {
         }
         buffer[i] = (char)ch;
     }
-    buffer[i] = '\0'; // Null-terminate the string
+    buffer[i] = '\0'; 
 
     if (i == 0) {
-        return (feof(stdin)) ? 0 : -1; // Handle EOF or error
+        return (feof(stdin)) ? 0 : -1; 
     }
 
 #if defined(_WIN32) || defined(_WIN64)
-    // Convert input from console's encoding to UTF-8
     wchar_t* wbuffer = encoding_utf8_to_wchar(buffer);
     if (!wbuffer) {
-        return -1; // Conversion error
+        return -1; 
     }
     *output = encoding_wchar_to_utf8(wbuffer);
     free(wbuffer);
 #else
-    // On non-Windows platforms, assume the input is already UTF-8
     *output = string_strdup(buffer);
 #endif
 
     return result; // Return the result of the reading process
 }
+
 
 /**
  * @brief Reads a line of input from the standard input until a newline or space.
@@ -356,21 +433,19 @@ int fmt_scanln(char** output) {
         int ch = getchar();
         if (ch == EOF || ch == '\n' || ch == ' ') {
             if (ch == ' ') {
-                // Consume the rest of the line
                 while ((ch = getchar()) != '\n' && ch != EOF);
             }
             break;
         }
         buffer[i] = (char)ch;
     }
-    buffer[i] = '\0'; // Null-terminate the string
+    buffer[i] = '\0';
 
     if (i == 0) {
-        return (feof(stdin)) ? 0 : -1; // Handle EOF or error
+        return (feof(stdin)) ? 0 : -1; 
     }
 
 #if defined(_WIN32) || defined(_WIN64)
-    // Convert input from console's encoding to UTF-8
     wchar_t* wbuffer = encoding_utf8_to_wchar(buffer);
     if (!wbuffer) {
         return -1; // Conversion error
@@ -384,6 +459,7 @@ int fmt_scanln(char** output) {
 
     return result; // Return the result of the reading process
 }
+
 
 /**
  * @brief Scans formatted input from the standard input.
@@ -406,6 +482,7 @@ int fmt_scanf(const char* format, ...) {
     return items_scanned;
 }
 
+
 /**
  * @brief Writes a formatted string to the specified file stream without adding a newline.
  * Handles multiple arguments, writing them sequentially to the stream.
@@ -418,22 +495,23 @@ int __fmt_fprint(FILE* stream, const char* str, ...) {
     va_list args;
     va_start(args, str);
 
-    int bytes_written = 0;
-    int result;
+    size_t bytes_written = 0;
 
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
-        result = fwrite(arg, sizeof(char), strlen(arg), stream);
-        if (result < 0) {
-            FMT_LOG("[__fmt_fprint] Error writing to stream.\n");
+        size_t arg_len = strlen(arg);
+        size_t written = fwrite(arg, 1, arg_len, stream);
+        if (written != arg_len) {
+            FMT_LOG("[__fmt_fprint] Short write to stream.\n");
             va_end(args);
             return -1;
         }
-        bytes_written += result;
+        bytes_written += written;
     }
 
     va_end(args);
-    return bytes_written;
+    return (int)bytes_written;
 }
+
 
 /**
  * @brief Writes a formatted string to the specified file stream, adding spaces and a newline.
@@ -448,44 +526,41 @@ int __fmt_fprintln(FILE* stream, const char* str, ...) {
     va_list args;
     va_start(args, str);
 
-    int bytes_written = 0;
-    int result;
+    size_t bytes_written = 0;
+    bool first = true;
 
     for (const char* arg = str; arg != NULL; arg = va_arg(args, const char*)) {
-        result = fwrite(arg, sizeof(char), strlen(arg), stream);
-        if (result < 0) {
-            FMT_LOG("[__fmt_fprintln] Error writing to stream.\n");
+        if (!first) {
+            if (fputc(' ', stream) == EOF) {
+                FMT_LOG("[__fmt_fprintln] Error writing space.\n");
+                va_end(args);
+                return -1;
+            }
+            bytes_written++;
+        }
+        first = false;
+
+        size_t arg_len = strlen(arg);
+        size_t written = fwrite(arg, 1, arg_len, stream);
+        if (written != arg_len) {
+            FMT_LOG("[__fmt_fprintln] Short write to stream.\n");
             va_end(args);
             return -1;
         }
-        bytes_written += result;
-
-        const char* space = " ";
-        result = fwrite(space, sizeof(char), strlen(space), stream);
-
-        if (result < 0) {
-            FMT_LOG("[__fmt_fprintln] Error writing space to stream.\n");
-            va_end(args);
-            return -1;
-        }
-
-        bytes_written += result;
+        bytes_written += written;
     }
 
-    const char* newline = "\n";
-    result = fwrite(newline, sizeof(char), strlen(newline), stream);
-
-    if (result < 0) {
-        FMT_LOG("[__fmt_fprintln] Error writing newline to stream.\n");
+    if (fputc('\n', stream) == EOF) {
+        FMT_LOG("[__fmt_fprintln] Error writing newline.\n");
         va_end(args);
         return -1;
     }
-
-    bytes_written += result;
+    bytes_written++;
 
     va_end(args);
-    return bytes_written;
+    return (int)bytes_written;
 }
+
 
 /**
  * @brief Outputs formatted text to the given file stream.
@@ -508,24 +583,16 @@ int fmt_fprintf(FILE* stream, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    char buffer[2048]; // Define a suitable buffer size for formatted output
-    int formatted_bytes = vsnprintf(buffer, sizeof(buffer), format, args);
-    if (formatted_bytes < 0) {
-        FMT_LOG("[fmt_fprintf] Error formatting string for fmt_fprintf.\n");
-        va_end(args);
-        return -1;
-    }
-
-    int bytes_written = fwrite(buffer, sizeof(char), formatted_bytes, stream);
-    if (bytes_written < formatted_bytes) {
-        FMT_LOG("[fmt_fprintf] Error writing to file in fmt_fprintf.\n");
-        va_end(args);
-        return -1;
-    }
-
+    int bytes_written = vfprintf(stream, format, args);
     va_end(args);
+
+    if (bytes_written < 0) {
+        FMT_LOG("[fmt_fprintf] Error formatting/writing string.\n");
+        return -1;
+    }
     return bytes_written;
 }
+
 
 /**
  * @brief Scans formatted input from a file stream.
@@ -548,12 +615,12 @@ int fmt_fscan(FILE* stream, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    // Implementation: Use fscanf or a similar function to read and parse the input
     int items_scanned = vfscanf(stream, format, args);
 
     va_end(args);
     return items_scanned;
 }
+
 
 /**
  * @brief Scans formatted input from a file stream, reading one line at a time.
@@ -576,19 +643,17 @@ int fmt_fscanln(FILE* stream, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    // Implementation: You'll need a custom implementation to handle newline.
-    // Read the line first, then parse it using sscanf.
     char line[1024];
     if (fgets(line, sizeof(line), stream) == NULL) {
         return (feof(stream)) ? 0 : -1; // EOF or error
     }
 
-    // Parse the line
     int items_scanned = vsscanf(line, format, args);
 
     va_end(args);
     return items_scanned;
 }
+
 
 /**
  * @brief Scans formatted input from a file stream.
@@ -611,7 +676,6 @@ int fmt_fscanf(FILE* stream, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    // Use vfscanf to read and parse the input
     int items_scanned = vfscanf(stream, format, args);
 
     va_end(args);

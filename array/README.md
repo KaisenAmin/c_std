@@ -9,14 +9,11 @@ The Array library is a part of a project to reimplement C++ standard library fea
 
 ## Compilation
 
-To compile the Array library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
+The Array library is a header-only library — all macros and inline helpers live in `array/array.h`. To compile a program that uses it:
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./array/array.c 
+gcc -std=c17 -O2 -Wall -Wextra -o main ./main.c -I.
 ```
-
-Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
 
 ## Usage
 
@@ -31,15 +28,16 @@ To use the Array library in your project, include the `array.h` header file in y
 ---
 
 ### `array_create(type, N, name)`
-- **Purpose**:  
-  Declares a new fixed‑size array type named `name` that contains exactly `N` elements of the specified type. The array storage is allocated on the stack.
-  
-- **Parameters**:  
+**Purpose**: Declares a new fixed-size array type named `name` that contains exactly `N` elements of the specified type. The array storage is allocated on the stack.
+
+**Parameters**:
   - `type`: The element type.
-  - `N`: The number of elements (must be a compile‑time constant).
-  - `name`: The new type name for this fixed‑size array.
-  
-- **Usage Example**:  
+  - `N`: The number of elements (must be a compile-time constant).
+  - `name`: The new type name for this fixed-size array.
+
+**Return Value**: None (declares a new type at file scope).
+
+**Usage Case**:
   ```c
   #include "array/array.h"
   
@@ -55,16 +53,14 @@ To use the Array library in your project, include the `array.h` header file in y
 ---
 
 ### `array_size(arr)`
-- **Purpose**:  
-  Returns the number of elements in the array. Since the array is fixed‑size, this value is computed at compile time.
-  
-- **Parameters**:  
-  - `arr`: An instance of a fixed‑size array (declared using `array_create`).
-  
-- **Return Value**:  
-  The number of elements in the array.
-  
-- **Usage Example**:  
+**Purpose**: Returns the number of elements in the array. Since the array is fixed-size, this value is computed at compile time.
+
+**Parameters**:
+  - `arr`: An instance of a fixed-size array (declared using `array_create`).
+
+**Return Value**: The number of elements in the array.
+
+**Usage Case**:
   ```c
   ArrayInt5 arr;
   fmt_printf("Size: %zu\n", array_size(arr));  // Prints "Size: 5"
@@ -73,17 +69,15 @@ To use the Array library in your project, include the `array.h` header file in y
 ---
 
 ### `array_at(arr, index)`
-- **Purpose**:  
-  Retrieves the element at the specified index (with no bounds checking).
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  - `index`: The index of the desired element (0‑based).
-  
-- **Return Value**:  
-  The element at the given index.
-  
-- **Usage Example**:  
+**Purpose**: Retrieves the element at the specified index (with no bounds checking).
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+  - `index`: The index of the desired element (0-based).
+
+**Return Value**: The element at the specified position (lvalue for `array_at`).
+
+**Usage Case**:
   ```c
   array_at(arr, 2) = 42;
   fmt_printf("Element 2: %d\n", array_at(arr, 2));
@@ -91,138 +85,122 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_begin(arr)`  
-- **Purpose**:  
-  Returns a pointer to the first element of the array.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  A pointer to the first element.
-  
-- **Usage Example**:  
+### `array_begin(arr)`
+**Purpose**: Returns a pointer to the first element of the array.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: A pointer to the underlying data.
+
+**Usage Case**:
   ```c
   int* p = array_begin(arr);
   ```
 
 ---
 
-### `array_end(arr)`  
-- **Purpose**:  
-  Returns a pointer to one past the last element of the array.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  A pointer to one element past the last element.
-  
-- **Usage Example**:  
+### `array_end(arr)`
+**Purpose**: Returns a pointer to one past the last element of the array.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: A pointer to the underlying data.
+
+**Usage Case**:
   ```c
   int* end = array_end(arr);
   ```
 
 ---
 
-### `array_front(arr)`  
-- **Purpose**:  
-  Returns the first element of the array (by value).
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  The first element.
-  
-- **Usage Example**:  
+### `array_front(arr)`
+**Purpose**: Returns the first element of the array (by value).
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: The element at the specified position (lvalue for `array_at`).
+
+**Usage Case**:
   ```c
   fmt_printf("First: %d\n", array_front(arr));
   ```
 
 ---
 
-### `array_back(arr)`  
-- **Purpose**:  
-  Returns the last element of the array (by value).
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  The last element.
-  
-- **Usage Example**:  
+### `array_back(arr)`
+**Purpose**: Returns the last element of the array (by value).
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: The element at the specified position (lvalue for `array_at`).
+
+**Usage Case**:
   ```c
   fmt_printf("Last: %d\n", array_back(arr));
   ```
 
 ---
 
-### `array_data(arr)`  
-- **Purpose**:  
-  Returns a pointer to the underlying data of the array (equivalent to `array_begin`).
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  A pointer to the first element.
-  
-- **Usage Example**:  
+### `array_data(arr)`
+**Purpose**: Returns a pointer to the underlying data of the array (equivalent to `array_begin`).
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: A pointer to the underlying data.
+
+**Usage Case**:
   ```c
   int* data = array_data(arr);
   ```
 
 ---
 
-### `array_fill(arr, value)`  
-- **Purpose**:  
-  Fills every element of the array with the given value.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_fill(arr, value)`
+**Purpose**: Fills every element of the array with the given value.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `value`: The value to assign to each element.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   array_fill(arr, 42);  // sets every element to 42
   ```
 
 ---
 
-### `array_reverse(arr)`  
-- **Purpose**:  
-  Reverses the order of elements in the array in place.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+### `array_reverse(arr)`
+**Purpose**: Reverses the order of elements in the array in place.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   array_reverse(arr);
   ```
 
 ---
 
-### `array_sort(arr, compare)`  
-- **Purpose**:  
-  Sorts the elements of the array in place using the specified comparison function.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_sort(arr, compare)`
+**Purpose**: Sorts the elements of the array in place using the specified comparison function.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `compare`: A pointer to a comparison function (compatible with qsort), which should return an integer less than, equal to, or greater than zero.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   int compare_ints(const void *a, const void *b) {
       int ia = *(const int*)a;
@@ -234,109 +212,96 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_copy(dest, src)`  
-- **Purpose**:  
-  Copies the contents of the source array into the destination array.  
-  **Note:** Both arrays must be of the same type and fixed size.
-  
-- **Parameters**:  
-  - `dest`: The destination fixed‑size array.
-  - `src`: The source fixed‑size array.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+### `array_copy(dest, src)`
+**Purpose**: Copies the contents of the source array into the destination array. Both arrays must be of the same type and fixed size.
+
+**Parameters**:
+  - `dest`: The destination fixed-size array.
+  - `src`: The source fixed-size array.
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   array_copy(dest, src);
   ```
 
 ---
 
-### `array_swap(arr1, arr2)`  
-- **Purpose**:  
-  Exchanges the contents of the two arrays. Both arrays must be of the same type and fixed size.
-  
-- **Parameters**:  
-  - `arr1`: The first fixed‑size array.
-  - `arr2`: The second fixed‑size array.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+### `array_swap(arr1, arr2)`
+**Purpose**: Exchanges the contents of the two arrays. Both arrays must be of the same type and fixed size.
+
+**Parameters**:
+  - `arr1`: The first fixed-size array.
+  - `arr2`: The second fixed-size array.
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   array_swap(arr1, arr2);
   ```
 
 ---
 
-### `array_clear(arr)`  
-- **Purpose**:  
-  Clears the array by setting all bytes of its storage to zero.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+### `array_clear(arr)`
+**Purpose**: Clears the array by setting all bytes of its storage to zero.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   array_clear(arr);
   ```
 
 ---
 
-### `array_find(arr, key, cmp)`  
-- **Purpose**:  
-  Searches the array for an element that is equal to the provided key using the specified comparison function.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_find(arr, key, cmp)`
+**Purpose**: Searches the array for an element that is equal to the provided key using the specified comparison function.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `key`: A pointer to the key to search for.
   - `cmp`: A comparison function that takes two `const void*` arguments and returns 0 when equal.
-  
-- **Return Value**:  
-  A pointer to the matching element if found, or `NULL` if no element matches.
-  
-- **Usage Example**:  
+
+**Return Value**: A pointer to the matching element if found, or `NULL` if no element matches.
+
+**Usage Case**:
   ```c
   int *found = array_find(arr, &key, compare_ints);
   ```
 
 ---
 
-### `array_find_if(arr, predicate)`  
-- **Purpose**:  
-  Searches the array for an element that satisfies the given predicate.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_find_if(arr, predicate)`
+**Purpose**: Searches the array for an element that satisfies the given predicate.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `predicate`: A function pointer with the signature `bool predicate(const void*)` that returns `true` for a matching element.
-  
-- **Return Value**:  
-  A pointer to the first element for which the predicate returns `true`, or `NULL` if none do.
-  
-- **Usage Example**:  
+
+**Return Value**: A pointer to the first element for which the predicate returns `true`, or `NULL` if none do.
+
+**Usage Case**:
   ```c
   int *found = array_find_if(arr, is_42);
   ```
 
 ---
 
-### `array_for_each(arr, func)`  
-- **Purpose**:  
-  Applies a user‑provided function to every element in the array.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_for_each(arr, func)`
+**Purpose**: Applies a user-provided function to every element in the array.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `func`: A function pointer that accepts a pointer to an element.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   void print_int(void *elem) { fmt_printf("%d ", *(int*)elem); }
   array_for_each(arr, print_int);
@@ -344,20 +309,17 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_transform(src, dest, func)`  
-- **Purpose**:  
-  Applies a transformation function to each element of the source array and stores the result in the destination array.  
-  Both arrays must be of the same type and fixed size.
-  
-- **Parameters**:  
-  - `src`: The source fixed‑size array.
-  - `dest`: The destination fixed‑size array.
+### `array_transform(src, dest, func)`
+**Purpose**: Applies a transformation function to each element of the source array and stores the result in the destination array. Both arrays must be of the same type and fixed size.
+
+**Parameters**:
+  - `src`: The source fixed-size array.
+  - `dest`: The destination fixed-size array.
   - `func`: A transformation function with signature `void func(const void *src_elem, void *dest_elem)`.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   void increment(const void *src, void *dest) {
       *(int*)dest = *(const int*)src + 1;
@@ -367,22 +329,17 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_reduce(arr, result, reduce_func)`  
-- **Purpose**:  
-  Reduces the array to a single value by repeatedly applying a binary reduction function.  
-  The reduction function should combine two elements into a single result.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_reduce(arr, result, reduce_func)`
+**Purpose**: Reduces the array to a single value by repeatedly applying a binary reduction function. The reduction function should combine two elements into a single result.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `result`: A pointer to memory (at least the size of one element) where the result will be stored.
-  - `reduce_func`: A function with the signature  
-    `void reduce_func(const void *accumulator, const void *element, void *result)`  
-    that combines the accumulator and the next element.
-  
-- **Return Value**:  
-  No return value.
-  
-- **Usage Example**:  
+  - `reduce_func`: A function with the signature `void reduce_func(const void *accumulator, const void *element, void *result)` that combines the accumulator and the next element.
+
+**Return Value**: None.
+
+**Usage Case**:
   ```c
   void add_reduce(const void *a, const void *b, void *result) {
       *(int*)result = *(const int*)a + *(const int*)b;
@@ -393,72 +350,64 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_count_if(arr, predicate)`  
-- **Purpose**:  
-  Counts the number of elements in the array that satisfy the given predicate.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_count_if(arr, predicate)`
+**Purpose**: Counts the number of elements in the array that satisfy the given predicate.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `predicate`: A function pointer with the signature `bool predicate(const void*)` that returns `true` for matching elements.
-  
-- **Return Value**:  
-  The number of elements for which the predicate returns `true`.
-  
-- **Usage Example**:  
+
+**Return Value**: The number of elements for which the predicate returns `true`.
+
+**Usage Case**:
   ```c
   size_t count = array_count_if(arr, is_42);
   ```
 
 ---
 
-### `array_any_of(arr, predicate)`  
-- **Purpose**:  
-  Checks if any element in the array satisfies the given predicate.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_any_of(arr, predicate)`
+**Purpose**: Checks if any element in the array satisfies the given predicate.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `predicate`: A predicate function with signature `bool predicate(const void*)`.
-  
-- **Return Value**:  
-  `true` if at least one element satisfies the predicate, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if at least one element satisfies the predicate, `false` otherwise.
+
+**Usage Case**:
   ```c
   bool found = array_any_of(arr, is_42);
   ```
 
 ---
 
-### `array_all_of(arr, predicate)`  
-- **Purpose**:  
-  Checks if every element in the array satisfies the given predicate.
-  
-- **Parameters**:  
-  - `arr`: A fixed‑size array instance.
+### `array_all_of(arr, predicate)`
+**Purpose**: Checks if every element in the array satisfies the given predicate.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
   - `predicate`: A predicate function with signature `bool predicate(const void*)`.
-  
-- **Return Value**:  
-  `true` if all elements satisfy the predicate, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if all elements satisfy the predicate, `false` otherwise.
+
+**Usage Case**:
   ```c
   bool all = array_all_of(arr, geq_10);
   ```
 
 ---
 
-### `array_is_equal(arr1, arr2)`  
-- **Purpose**:  
-  Compares two fixed‑size arrays lexicographically to determine if they are equal.
-  
-- **Parameters**:  
+### `array_is_equal(arr1, arr2)`
+**Purpose**: Compares two fixed-size arrays lexicographically to determine if they are equal.
+
+**Parameters**:
   - `arr1`: The first array.
   - `arr2`: The second array.
-  
-- **Return Value**:  
-  `true` if the arrays have identical contents, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if the arrays have identical contents, `false` otherwise.
+
+**Usage Case**:
   ```c
   if (array_is_equal(arr1, arr2))
       fmt_println("Arrays are equal.");
@@ -466,18 +415,16 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_is_less(arr1, arr2)`  
-- **Purpose**:  
-  Checks if the first array is lexicographically less than the second.
-  
-- **Parameters**:  
+### `array_is_less(arr1, arr2)`
+**Purpose**: Checks if the first array is lexicographically less than the second.
+
+**Parameters**:
   - `arr1`: The first array.
   - `arr2`: The second array.
-  
-- **Return Value**:  
-  `true` if `arr1` is lexicographically less than `arr2`, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if `arr1` is lexicographically less than `arr2`, `false` otherwise.
+
+**Usage Case**:
   ```c
   if (array_is_less(arr1, arr2))
       fmt_println("First array is less.");
@@ -485,18 +432,16 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_is_greater(arr1, arr2)`  
-- **Purpose**:  
-  Checks if the first array is lexicographically greater than the second.
-  
-- **Parameters**:  
+### `array_is_greater(arr1, arr2)`
+**Purpose**: Checks if the first array is lexicographically greater than the second.
+
+**Parameters**:
   - `arr1`: The first array.
   - `arr2`: The second array.
-  
-- **Return Value**:  
-  `true` if `arr1` is lexicographically greater than `arr2`, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if `arr1` is lexicographically greater than `arr2`, `false` otherwise.
+
+**Usage Case**:
   ```c
   if (array_is_greater(arr1, arr2))
       fmt_println("First array is greater.");
@@ -504,18 +449,16 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_is_not_equal(arr1, arr2)`  
-- **Purpose**:  
-  Checks if two arrays differ in content.
-  
-- **Parameters**:  
+### `array_is_not_equal(arr1, arr2)`
+**Purpose**: Checks if two arrays differ in content.
+
+**Parameters**:
   - `arr1`: The first array.
   - `arr2`: The second array.
-  
-- **Return Value**:  
-  `true` if the arrays are not equal, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if the arrays are not equal, `false` otherwise.
+
+**Usage Case**:
   ```c
   if (array_is_not_equal(arr1, arr2))
       fmt_println("Arrays differ.");
@@ -523,18 +466,16 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_is_less_or_equal(arr1, arr2)`  
-- **Purpose**:  
-  Checks if the first array is lexicographically less than or equal to the second.
-  
-- **Parameters**:  
+### `array_is_less_or_equal(arr1, arr2)`
+**Purpose**: Checks if the first array is lexicographically less than or equal to the second.
+
+**Parameters**:
   - `arr1`: The first array.
   - `arr2`: The second array.
-  
-- **Return Value**:  
-  `true` if `arr1` is less than or equal to `arr2`, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if `arr1` is less than or equal to `arr2`, `false` otherwise.
+
+**Usage Case**:
   ```c
   if (array_is_less_or_equal(arr1, arr2))
       fmt_println("First array is less or equal.");
@@ -542,18 +483,16 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
-### `array_is_greater_or_equal(arr1, arr2)`  
-- **Purpose**:  
-  Checks if the first array is lexicographically greater than or equal to the second.
-  
-- **Parameters**:  
+### `array_is_greater_or_equal(arr1, arr2)`
+**Purpose**: Checks if the first array is lexicographically greater than or equal to the second.
+
+**Parameters**:
   - `arr1`: The first array.
   - `arr2`: The second array.
-  
-- **Return Value**:  
-  `true` if `arr1` is greater than or equal to `arr2`, `false` otherwise.
-  
-- **Usage Example**:  
+
+**Return Value**: `true` if `arr1` is greater than or equal to `arr2`, `false` otherwise.
+
+**Usage Case**:
   ```c
   if (array_is_greater_or_equal(arr1, arr2))
       fmt_println("First array is greater or equal.");
@@ -593,7 +532,7 @@ Number is 42
 
 ---
 
-### Example 2: Check If an Array Is “Empty” (All Zeros) Using `array_clear` and `array_all_of`
+### Example 2: Check If an Array Is "Empty" (All Zeros) Using `array_clear` and `array_all_of`
 
 ```c
 #include "fmt/fmt.h"
@@ -1367,7 +1306,7 @@ All true? no
 
 ### Example 20: Array of Pointers to `int` – Swapping and Copying
 
-This example demonstrates the use of an array of pointers. Two fixed‑size arrays of int pointers are created; their contents are swapped and then one array is copied over the other.
+This example demonstrates the use of an array of pointers. Two fixed-size arrays of int pointers are created; their contents are swapped and then one array is copied over the other.
 
 ```c
 #include "fmt/fmt.h"

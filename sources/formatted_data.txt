@@ -1,0 +1,1 @@
+int: 10, double: 20.200000, string: amin tahmasebi

@@ -220,6 +220,12 @@ void matrix_row_divide(Matrix* matrix, size_t row, double scalar) {
         MATRIX_LOG("[matrix_row_divide] Error: Invalid row index or matrix is null.\n");
         return;
     }
+    // Guard against division by zero — would otherwise produce +/-inf or NaN
+    // and silently corrupt downstream operations.
+    if (scalar == 0.0) {
+        MATRIX_LOG("[matrix_row_divide] Error: division by zero requested.\n");
+        return;
+    }
     for (size_t col = 0; col < matrix->cols; col++) {
         matrix->data[row * matrix->cols + col] /= scalar;
     }
@@ -537,11 +543,13 @@ double matrix_get(const Matrix* matrix, size_t row, size_t col) {
 
     if (!matrix) {
         MATRIX_LOG("[matrix_get] Error: Matrix object is null.");
-        exit(-1);
+        // Project convention: libraries never abort. Return 0.0 on invalid
+        // input — callers that care about correctness should validate first.
+        return 0.0;
     }
     if (row >= matrix->rows || col >= matrix->cols) {
         MATRIX_LOG("[matrix_get] Error: Row or column out of bounds. Requested row = %zu, col = %zu.", row, col);
-        exit(-1);
+        return 0.0;
     }
 
     size_t index = row * matrix->cols + col;
@@ -708,17 +716,21 @@ bool matrix_is_identity(const Matrix* matrix) {
         return false;
     }
 
+    // Use a tolerance check rather than strict equality — products like
+    // A * A^-1 land very close to identity but rarely exactly there in
+    // floating-point arithmetic.
     for (size_t i = 0; i < matrix->rows; i++) {
         for (size_t j = 0; j < matrix->cols; j++) {
             size_t index = i * matrix->cols + j;
+            double v = matrix->data[index];
             if (i == j) {
-                if (matrix->data[index] != 1.0) {
-                    MATRIX_LOG("[matrix_is_identity] Element at (%zu, %zu) is not 1.", i, j);
+                if (!is_effectively_zero(v - 1.0)) {
+                    MATRIX_LOG("[matrix_is_identity] Element at (%zu, %zu) is not 1 (got %g).", i, j, v);
                     return false;
                 }
-            } 
-            else if (matrix->data[index] != 0.0) {
-                MATRIX_LOG("[matrix_is_identity] Element at (%zu, %zu) is not 0.", i, j);
+            }
+            else if (!is_effectively_zero(v)) {
+                MATRIX_LOG("[matrix_is_identity] Element at (%zu, %zu) is not 0 (got %g).", i, j, v);
                 return false;
             }
         }
@@ -1169,6 +1181,10 @@ bool matrix_is_skew_symmetric(const Matrix* matrix) {
 double matrix_determinant(const Matrix* matrix) {
     MATRIX_LOG("[matrix_determinant] Entering function");
 
+    if (!matrix) {
+        MATRIX_LOG("[matrix_determinant] Error: Matrix is NULL.");
+        return 0.0;
+    }
     if (matrix->rows != matrix->cols) {
         MATRIX_LOG("[matrix_determinant] Error: Determinant can only be calculated for square matrices.");
         return 0.0;
@@ -1359,8 +1375,10 @@ Matrix* matrix_inverse(const Matrix* matrix) {
     }
 
     double det = matrix_determinant(matrix);
-    if (det == 0) {
-        MATRIX_LOG("[matrix_inverse] Error: Matrix is singular (det = 0) and cannot be inverted.");
+    // Use a tolerance check rather than strict equality — for floating-point
+    // matrices, a "singular" determinant rarely lands at exact 0.
+    if (is_effectively_zero(det)) {
+        MATRIX_LOG("[matrix_inverse] Error: Matrix is singular (det ~ 0) and cannot be inverted.");
         return NULL;
     }
 
@@ -1445,39 +1463,59 @@ Matrix* matrix_power(const Matrix* matrix, int power) {
         return matrix_create_identity(matrix->rows);
     }
 
-    // Initialize result as a copy of the original matrix for power = 1
-    Matrix* result = matrix_copy(matrix);
-    if (power == 1) {
-        MATRIX_LOG("[matrix_power] Power is 1, returning a copy of the matrix.");
-        return result;
+    // The previous exponentiation-by-squaring was incorrect: it conflated
+    // "result" with "running base", so matrix_power(A, 3) returned A^4 and
+    // similar off-by-one errors for other exponents.
+    //
+    // Correct binary exp-by-squaring needs a separate `base` that gets
+    // squared each iteration, and a `result` that accumulates base-products
+    // whenever the corresponding bit of `power` is set:
+    //
+    //     result = I
+    //     base   = A
+    //     while power > 0:
+    //         if (power & 1): result *= base
+    //         power >>= 1
+    //         if (power):     base *= base
+    Matrix* result = matrix_create_identity(matrix->rows);
+    if (!result) {
+        MATRIX_LOG("[matrix_power] Error: Failed to allocate identity result.");
+        return NULL;
+    }
+    Matrix* base = matrix_copy(matrix);
+    if (!base) {
+        MATRIX_LOG("[matrix_power] Error: Failed to allocate base copy.");
+        matrix_deallocate(result);
+        return NULL;
     }
 
-    Matrix* temp = NULL;
-    while (power > 1) {
-        if (power % 2 == 0) {
-            temp = matrix_multiply(result, result);
-            if (!temp) {
+    unsigned int p = (unsigned int)power;
+    while (p > 0) {
+        if (p & 1u) {
+            Matrix* t = matrix_multiply(result, base);
+            if (!t) {
                 MATRIX_LOG("[matrix_power] Error: Matrix multiplication failed.");
                 matrix_deallocate(result);
-                return NULL;
-            }
-
-            matrix_deallocate(result);
-            result = temp;
-            power /= 2;
-        } 
-        else {
-            temp = matrix_multiply(result, matrix);
-            if (!temp) {
-                MATRIX_LOG("[matrix_power] Error: Matrix multiplication failed.");
-                matrix_deallocate(result);
+                matrix_deallocate(base);
                 return NULL;
             }
             matrix_deallocate(result);
-            result = temp;
-            power--;
+            result = t;
+        }
+        p >>= 1;
+        if (p) {
+            Matrix* t = matrix_multiply(base, base);
+            if (!t) {
+                MATRIX_LOG("[matrix_power] Error: base square failed.");
+                matrix_deallocate(result);
+                matrix_deallocate(base);
+                return NULL;
+            }
+            matrix_deallocate(base);
+            base = t;
         }
     }
+    matrix_deallocate(base);
 
     MATRIX_LOG("[matrix_power] Success: Matrix raised to power successfully.");
     return result;
@@ -2230,15 +2268,30 @@ bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R) {
     *R = matrix_create(n, n);
     if (!*Q || !*R) {
         MATRIX_LOG("[matrix_qr_decomposition] Error: Memory allocation failed for Q and R.");
+        if (*Q) { 
+            matrix_deallocate(*Q); 
+            *Q = NULL; 
+        }
+        if (*R) { 
+            matrix_deallocate(*R); 
+            *R = NULL; 
+        }
         return false;
     }
 
     // Log memory allocation for temporary vectors
     MATRIX_LOG("[matrix_qr_decomposition] Allocating memory for temporary vectors.");
-    double* a_col = (double*)malloc(sizeof(double) * m);
-    double* q_col = (double*)malloc(sizeof(double) * m);
+
+    double* a_col = (double*)calloc(m, sizeof(double));
+    double* q_col = (double*)calloc(m, sizeof(double));
     if (!a_col || !q_col) {
         MATRIX_LOG("[matrix_qr_decomposition] Error: Memory allocation failed for column vectors.");
+
+        free(a_col);
+        free(q_col);
+        matrix_deallocate(*Q); *Q = NULL;
+        matrix_deallocate(*R); *R = NULL;
+        
         return false;
     }
 
@@ -3324,8 +3377,9 @@ Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
     }
     MATRIX_LOG("[matrix_random] Matrix created with size %zux%zu", row, col);
 
+    size_t range = (end > start) ? (end - start) : 1;
     for (size_t i = 0; i < matrix_size(matrix); i++) {
-        matrix->data[i] = (rand() % end) + start;
+        matrix->data[i] = (double)((rand() % range) + start);
     }
     MATRIX_LOG("[matrix_random] Matrix filled with random values in range [%zu, %zu)", start, end);
 

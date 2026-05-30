@@ -28,436 +28,427 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 ## Function Descriptions
 
-### `bool date_is_valid(const Date* date)`
-
-- **Purpose**: Checks whether a `Date` object represents a valid date by validating the year, month, and day fields according to the specified calendar type (Gregorian or Persian).
-- **Parameters**:
-  - `date`: A pointer to the `Date` object that needs to be validated.
-- **Return**: Returns `true` if the `Date` object is valid, otherwise `false`.
-- **Details**:
-  - If the `Date` pointer is `NULL`, the function logs an error message and returns `false`.
-  - The function calls `date_is_valid_ymd` internally, passing the year, month, day, and calendar type to validate the date components.
-  - This function ensures that no operations are performed on invalid or uninitialized `Date` objects.
-
----
-
-### `Date* date_create(CalendarType type) `
-
-- **Purpose**: Creates a new `Date` object and initializes it with invalid values to represent a "null" date (for later initialization).
-- **Parameters**:
-  - `type`: The `CalendarType` (either Gregorian or Persian) to be used for the new `Date`.
-- **Return**: A pointer to the newly created `Date` object.
-- **Details**:
-  - Allocates memory for the `Date` object.
-  - Initializes the `year`, `month`, and `day` fields to `-1`, which signifies that the date is not yet set.
-  - Sets the `calendarType` to the provided value (Gregorian or Persian).
-  - If memory allocation fails, it logs an error message and exits the program with a failure status.
+### `Date* date_create(CalendarType type)`
+**Purpose**: Allocates a Date object with all fields set to -1 (representing an uninitialized "null" date) and the given calendar type.
+**Parameters**:
+- `type`: The calendar type (Gregorian or Persian) for the new Date.
+**Return Value**: Pointer to the newly allocated Date, or NULL on allocation failure.
+**Usage Case**: Use when you need a blank date to fill in later with `date_set_date`.
 
 ---
 
 ### `Date* date_create_ymd(int y, int m, int d, CalendarType type)`
-
-- **Purpose**: Creates a new `Date` object with the specified year, month, day, and calendar type, and validates the provided date components.
-- **Parameters**:
-  - `y`: The year component of the date.
-  - `m`: The month component of the date.
-  - `d`: The day component of the date.
-  - `type`: The `CalendarType` (either Gregorian or Persian) to be used for the new `Date`.
-- **Return**: A pointer to the newly created `Date` object if the date is valid. If the date is invalid, it logs an error, frees the allocated memory, and returns `NULL`.
-- **Details**:
-  - Allocates memory for the `Date` object.
-  - Validates the `year`, `month`, and `day` components by calling the `date_is_valid_ymd` function.
-  - If the provided date components are invalid, it logs an error message, frees the allocated memory, and returns `NULL` without exiting the program.
-  - If the date is valid, it initializes the `Date` object with the given values and returns the pointer to the new object.
+**Purpose**: Allocates and initializes a Date from explicit year/month/day components, validating them against the calendar rules.
+**Parameters**:
+- `y`: The year component.
+- `m`: The month component.
+- `d`: The day component.
+- `type`: The calendar type (Gregorian or Persian).
+**Return Value**: Pointer to the newly allocated Date, or NULL if the date is invalid or allocation fails.
+**Usage Case**: Use for the most common case of creating a known date.
 
 ---
 
-### `bool date_is_null(const Date* date)`
-
-- **Purpose**: Checks whether a given `Date` object is `NULL`.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object to be checked.
-- **Return**: Returns `true` if the `Date` object is `NULL`, otherwise returns `false`.
-- **Details**:
-  - If the `Date` object is `NULL`, the function logs a warning message and returns `true`.
-  - If the `Date` object is valid (not `NULL`), the function returns `false`.
-
----
-
-### `Date* date_add_days(const Date* orig_date, int ndays)`
-
-- **Purpose**: Adds or subtracts a specified number of days to/from a given date.
-- **Parameters**:
-  - `orig_date`: A pointer to the original `Date` object to which the days will be added.
-  - `ndays`: The number of days to add (can be negative to subtract days).
-- **Return**: Returns a pointer to the newly created `Date` object with the adjusted date.
-- **Details**:
-  - The function creates a new `Date` object and adjusts the day, month, and year fields based on the number of days added or subtracted.
-  - It handles month and year overflows/underflows and adjusts accordingly based on the calendar type (Gregorian or Persian).
-  - If the `orig_date` is `NULL` or invalid, it logs an error and returns `NULL`.
-  - The function uses a loop to handle cases where adding or subtracting days may result in moving between months or years.
-
----
-
-### `Date* date_add_months(const Date* orig_date, int nmonths)`
-
-- **Purpose**: Adds a specified number of months to a given date.
-- **Parameters**:
-  - `orig_date`: A pointer to the original `Date` object to which the months will be added.
-  - `nmonths`: The number of months to add.
-- **Return**: Returns a pointer to the newly created `Date` object with the adjusted date.
-- **Details**:
-  - The function creates a new `Date` object and adjusts the month and year fields based on the number of months added.
-  - It handles month overflows (e.g., going from December to January) and adjusts the year accordingly.
-  - If the day in the original date exceeds the number of days in the resulting month, it is adjusted to the last valid day of the month.
-  - If the `orig_date` is `NULL` or invalid, the function logs an error and returns `NULL`.
-  - The function accounts for the Persian calendar's unique behavior, where some years have 13 months.
-
----
-
-### `Date* date_add_years(const Date* orig_date, int nyears)`
-
-- **Purpose**: Adds a specified number of years to a given date and adjusts the result to ensure the date remains valid, considering leap years.
-- **Parameters**:
-  - `orig_date`: A pointer to the original `Date` object.
-  - `nyears`: The number of years to add.
-- **Return**: A pointer to the newly created `Date` object with the adjusted date.
-- **Details**:
-  - If the original date is invalid or `NULL`, it logs an error and exits the program.
-  - The function creates a new `Date` object and adds the specified number of years.
-  - For leap years, the function adjusts the date if it falls on a day that doesn't exist in non-leap years (e.g., February 29 in a Gregorian leap year or the extra day in the Persian calendar).
-
----
-
-### `void date_get_date(const Date* date, int *year, int *month, int *day)`
-
-- **Purpose**: Retrieves the year, month, and day from a `Date` object.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-  - `year`: A pointer to an integer where the year will be stored.
-  - `month`: A pointer to an integer where the month will be stored.
-  - `day`: A pointer to an integer where the day will be stored.
-- **Return**: None (void).
-- **Details**:
-  - If the `Date` object or any of the output pointers (`year`, `month`, or `day`) are `NULL`, it logs an error and returns without performing any actions.
-  - It assigns the year, month, and day values from the `Date` object to the provided pointers.
-
----
-
-### `int date_day(const Date* date)`
-
-- **Purpose**: Retrieves the day of the month from a `Date` object.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The day of the month, or `-1` if the date is invalid or `NULL`.
-- **Details**:
-  - If the `Date` object is `NULL` or invalid, it logs an error and returns `-1`.
-  - Otherwise, it returns the day value from the `Date` object.
-
----
-
-### `int date_month(const Date* date)`
-
-- **Purpose**: Retrieves the month from a `Date` object.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The month value, or `-1` if the date is invalid or `NULL`.
-- **Details**:
-  - If the `Date` object is `NULL` or invalid, it logs an error and returns `-1`.
-  - Otherwise, it returns the month value from the `Date` object.
-
----
-
-### `int date_year(const Date* date)`
-
-- **Purpose**: Retrieves the year from a `Date` object.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The year value, or `-1` if the date is invalid or `NULL`.
-- **Details**:
-  - If the `Date` object is `NULL` or invalid, it logs an error and returns `-1`.
-  - Otherwise, it returns the year value from the `Date` object.
-
----
-
-### `int date_day_of_week(const Date* date)`
-
-- **Purpose**: Returns the day of the week for the given `Date` object, with Monday as 1 through Sunday as 7.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The day of the week (1 = Monday, ..., 7 = Sunday), or `-1` if there is an error (e.g., a `NULL` date or unsupported calendar type).
-- **Details**:
-  - The function converts the given date to a Julian Day Number (JDN) using either the Gregorian or Persian calendar conversion functions.
-  - The JDN is then used to calculate the day of the week.
-
----
-
-### `int date_day_of_year(const Date* date)`
-
-- **Purpose**: Calculates the day of the year for the given `Date` object (from 1 to 365 or 366 in a leap year).
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The day of the year (1 to 365/366), or `-1` if there is an error (e.g., a `NULL` date or unsupported calendar type).
-- **Details**:
-  - For the Gregorian calendar, it uses a static array to determine the cumulative days before the month, adjusting for leap years if necessary.
-  - For the Persian calendar, it handles leap year logic for the 12th month.
-
----
-
-### `int date_days_in_month(const Date* date)`
-
-- **Purpose**: Returns the number of days in the month for the provided `Date` object.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The number of days in the month, or `-1` if there is an error (e.g., a `NULL` date or unsupported calendar type).
-- **Details**:
-  - For the Gregorian calendar, February has 28 days, and the function adds a day if it is a leap year.
-  - For the Persian calendar, the first 6 months have 31 days, the next 5 months have 30 days, and the 12th month has 29 or 30 days depending on whether it’s a leap year.
-
----
-
-### `int date_days_in_year(const Date* date)`
-
-- **Purpose**: Returns the total number of days in the year for the provided `Date` object, considering leap years if applicable.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: The total number of days in the year (365 or 366), or `-1` if there is an error (e.g., a `NULL` date or unsupported calendar type).
-- **Details**:
-  - For the Gregorian calendar, the function returns 366 if it’s a leap year, or 365 otherwise.
-  - For the Persian calendar, the function similarly checks for leap years and returns 366 or 365 accordingly.
-
----
-
-### `int date_week_number(const Date* date, int* yearNumber)`
-
-- **Purpose**: Calculates the ISO 8601 week number for a given date. The function considers both the Gregorian and Persian calendars and optionally returns the year the week belongs to.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-  - `yearNumber`: A pointer to an integer where the year the week belongs to will be stored (optional, can be `NULL`).
-- **Return**: The ISO 8601 week number, or `-1` in case of an error (e.g., `NULL` date or unsupported calendar type).
-- **Details**:
-  - For the Gregorian calendar, it calculates the ISO week number by adjusting the day of the year and the day of the week, and it checks edge cases for weeks at the beginning or end of the year.
-  - For the Persian calendar, it uses a simplified calculation for the week number based on the day of the year.
-  - If `yearNumber` is provided, it adjusts the year when the week number indicates the week belongs to the previous or following year.
-
----
-
-### `int date_days_to(const Date* from, const Date* to)`
-
-- **Purpose**: Calculates the number of days between two dates. Both dates must belong to the same calendar type (Gregorian or Persian).
-- **Parameters**:
-  - `from`: A pointer to the start `Date` object.
-  - `to`: A pointer to the end `Date` object.
-- **Return**: The number of days between the two dates, or `-1` in case of an error (e.g., mismatched calendar types or invalid dates).
-- **Details**:
-  - The function checks for `NULL` date pointers, validates both dates, and ensures both dates use the same calendar type.
-  - It converts both dates to their Julian Day Numbers (JDN) and returns the difference between them, which represents the number of days between the two dates.
-
----
-
-### `bool date_is_equal(const Date* lhs, const Date* rhs)`
-
-- **Purpose**: Compares two `Date` objects for equality. It checks if both dates have the same year, month, day, and calendar type.
-- **Parameters**:
-  - `lhs`: A pointer to the first `Date` object.
-  - `rhs`: A pointer to the second `Date` object.
-- **Return**: Returns `true` if the dates are equal; otherwise, returns `false`.
-- **Details**: The function validates both dates and ensures they share the same calendar type before comparing the year, month, and day fields.
-
----
-
-### `bool date_is_less_than(const Date* lhs, const Date* rhs)`
-
-- **Purpose**: Determines if the first date is earlier than the second date.
-- **Parameters**:
-  - `lhs`: A pointer to the first `Date` object.
-  - `rhs`: A pointer to the second `Date` object.
-- **Return**: Returns `true` if the first date is earlier than the second; otherwise, returns `false`.
-- **Details**: This function first compares the year, then the month, and finally the day to determine which date is earlier. It also validates that both dates are from the same calendar type.
-
----
-
-### `bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs)`
-
-- **Purpose**: Determines if the first date is earlier than or equal to the second date.
-- **Parameters**:
-  - `lhs`: A pointer to the first `Date` object.
-  - `rhs`: A pointer to the second `Date` object.
-- **Return**: Returns `true` if the first date is earlier than or equal to the second; otherwise, returns `false`.
-- **Details**: It checks if the first date is less than or equal to the second using the `date_is_less_than` and `date_is_equal` functions.
-
----
-
-### `bool date_is_greater_than(const Date* lhs, const Date* rhs)`
-
-- **Purpose**: Determines if the first date is later than the second date.
-- **Parameters**:
-  - `lhs`: A pointer to the first `Date` object.
-  - `rhs`: A pointer to the second `Date` object.
-- **Return**: Returns `true` if the first date is later than the second; otherwise, returns `false`.
-- **Details**: The function compares the year, then the month, and finally the day to check if the first date is later. It ensures that both dates are valid and belong to the same calendar type.
-
----
-
-### `bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs)`
-
-- **Purpose**: Determines if the first date is later than or equal to the second date.
-- **Parameters**:
-  - `lhs`: A pointer to the first `Date` object.
-  - `rhs`: A pointer to the second `Date` object.
-- **Return**: Returns `true` if the first date is later than or equal to the second; otherwise, returns `false`.
-- **Details**: This function uses `date_is_greater_than` and `date_is_equal` to check the relationship between the two dates.
-
----
-
-### `bool date_is_not_equals(const Date* lhs, const Date* rhs)`
-
-- **Purpose**: Compares two `Date` objects and checks if they are not equal.
-- **Parameters**:
-  - `lhs`: A pointer to the first `Date` object.
-  - `rhs`: A pointer to the second `Date` object.
-- **Return**: Returns `true` if the dates are not equal; otherwise, returns `false`.
-- **Details**: It simply negates the result of the `date_is_equal` function to check if the two dates are not equal.
-
----
-
-### `bool date_is_leap_year_y(int year, CalendarType type)`
-
-- **Purpose**: Determines if a given year is a leap year based on the calendar type (Gregorian or Persian).
-- **Parameters**:
-  - `year`: The year to check.
-  - `type`: The calendar type (Gregorian or Persian).
-- **Return**: Returns `true` if the year is a leap year; otherwise, returns `false`.
-- **Details**: For the Gregorian calendar, the function follows the standard leap year rules. For the Persian calendar, it uses the `is_persian_leap_year` function to check if the year is a leap year. If the calendar type is unsupported, it returns `false`.
-
----
-
-### `bool date_is_leap_year(const Date* date)`
-
-- **Purpose**: Checks if the year of the given `Date` object is a leap year.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-- **Return**: Returns `true` if the year is a leap year, based on the calendar type (Gregorian or Persian); otherwise, returns `false`.
-- **Details**: This function validates if the `Date` is not null and then uses `date_is_leap_year_y` to determine if the year is a leap year based on the `Date` object's calendar type.
-
----
-
-### `bool date_set_date(Date* date, int year, int month, int day, CalendarType type)`
-
-- **Purpose**: Sets the year, month, day, and calendar type of a `Date` object. It also validates the parameters to ensure the date is valid for the specified calendar type.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object.
-  - `year`: The year to set.
-  - `month`: The month to set (valid range: 1-12).
-  - `day`: The day to set (1-31 depending on the month and calendar type).
-  - `type`: The calendar type (Gregorian or Persian).
-- **Return**: Returns `true` if the date was successfully set and valid; otherwise, returns `false`.
-- **Details**: This function checks if the parameters are valid (e.g., month is between 1 and 12, the day is valid for the month and year). It updates the date fields if all validations pass.
+### `Date* date_clone(const Date* date)`
+**Purpose**: Creates an independent copy of `date` with all fields duplicated.
+**Parameters**:
+- `date`: Pointer to the Date object to copy.
+**Return Value**: Pointer to the new copy, or NULL if `date` is NULL or allocation fails.
+**Usage Case**: Use when you need to preserve the original while modifying a copy.
 
 ---
 
 ### `Date* date_current_date(CalendarType type)`
-
-- **Purpose**: Retrieves the current date and returns it as a new `Date` object, based on the provided calendar type (Gregorian or Persian).
-- **Parameters**:
-  - `type`: The calendar type (Gregorian or Persian).
-- **Return**: Returns a pointer to the newly allocated `Date` object representing the current date. If an error occurs (e.g., memory allocation failure or unsupported calendar type), it returns `NULL`.
-- **Details**: The function gets the current system time, then, depending on the calendar type, either returns the current Gregorian date or converts it to a Persian date using the `date_gregorian_to_solar` function. The caller is responsible for freeing the memory of the returned `Date` object.
+**Purpose**: Returns a newly allocated Date representing today in either the Gregorian or Persian calendar.
+**Parameters**:
+- `type`: The calendar type (Gregorian or Persian).
+**Return Value**: Pointer to a new Date for today, or NULL on allocation failure or unsupported type.
+**Usage Case**: Use to timestamp records with today’s date.
 
 ---
 
 ### `Date* date_from_string(const char* string, const char* format, CalendarType type)`
-
-- **Purpose**: Creates a `Date` object from a string representation of a date based on a specified format and calendar type (Gregorian or Persian).
-- **Parameters**:
-  - `string`: The string containing the date to be parsed.
-  - `format`: The format string specifying how the date is formatted (e.g., `"%Y-%m-%d"` for Gregorian).
-  - `type`: The calendar type, either `Gregorian` or `Persian`.
-- **Return**: Returns a pointer to a newly allocated `Date` object, or `NULL` if the parsing or memory allocation fails.
-- **Details**:
-  - For the **Gregorian calendar**, the function uses the `strptime` function (or `win_strptime` on Windows) to parse the string according to the provided format. It then adjusts the `tm` structure values into a `Date` object.
-  - For the **Persian calendar**, a simpler approach is used, parsing the string directly in the `"YYYY-MM-DD"` format using `sscanf`.
-  - Memory is allocated dynamically for the `Date` object, and it is up to the caller to free this memory.
-
----
-
-### `char* date_to_string(const Date* date, const char* format)`
-
-- **Purpose**: Converts a `Date` object into a formatted string according to a specified format. It supports both the Gregorian and Persian calendars.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object to be converted to a string.
-  - `format`: A format string that specifies how to format the date. For Gregorian dates, it follows the rules of the `strftime` function, and for Persian dates, it uses a custom format (`"YYYY-MM-DD"`).
-- **Return**: Returns a pointer to a dynamically allocated string containing the formatted date, or `NULL` if an error occurs (e.g., invalid input or memory allocation failure).
-- **Details**:
-  - For the **Gregorian calendar**, the function converts the `Date` object into a `tm` structure and uses `strftime` to generate the formatted date string.
-  - For the **Persian calendar**, the function uses a custom formatting method, outputting the date as `"YYYY-MM-DD"` using `snprintf`.
-  - Memory for the date string is dynamically allocated, and the caller is responsible for freeing it.
-
----
-
-### `long date_to_julian_day(const Date* date)`
-
-- **Purpose**: Converts a Gregorian `Date` object into a Julian Day Number (JDN), which is a continuous count of days since the beginning of the Julian Period. 
-- **Parameters**:
-  - `date`: A pointer to the `Date` object in the Gregorian calendar to be converted.
-- **Return**: The corresponding Julian Day Number as a `long`. Returns `-1` if the date is `NULL` or invalid.
-- **Details**:
-  - The function first checks the validity of the input `Date` object.
-  - It calculates the Julian Day Number using a formula that takes into account the year, month, and day of the Gregorian date.
-  - The function returns the computed Julian Day Number.
+**Purpose**: Parses a date string according to `format` for the Gregorian calendar (via `strptime`) or in `"YYYY-MM-DD"` format for the Persian calendar.
+**Parameters**:
+- `string`: The date string to parse (e.g. `"2024-04-15"`).
+- `format`: The format string (e.g. `"%Y-%m-%d"`); ignored for Persian dates.
+- `type`: The calendar type (Gregorian or Persian).
+**Return Value**: Pointer to a new Date, or NULL on parse failure.
+**Usage Case**: Use to deserialize dates from text files or user input.
 
 ---
 
 ### `Date* date_from_julian_day(long jd)`
-
-- **Purpose**: Converts a Julian Day Number (JDN) into a `Date` object in the Gregorian calendar.
-- **Parameters**:
-  - `jd`: The Julian Day Number to be converted.
-- **Return**: A pointer to a dynamically allocated `Date` object corresponding to the given Julian Day Number. Returns `NULL` if the Julian Day Number is invalid or if memory allocation fails.
-- **Details**:
-  - The function uses a series of mathematical transformations to convert the Julian Day Number into a Gregorian date.
-  - It handles leap years and other calendar adjustments.
-  - The function allocates memory for a new `Date` object and assigns the computed year, month, and day to it.
-
----
-
-### `Date* date_gregorian_to_solar(const Date* gregorian_date)`
-
-- **Purpose**: Converts a Gregorian date to the corresponding date in the Persian (Jalali) calendar.
-- **Parameters**:
-  - `gregorian_date`: A pointer to the `Date` object in the Gregorian calendar to be converted.
-- **Return**: A pointer to a dynamically allocated `Date` object in the Persian calendar. Returns `NULL` if the input date is `NULL` or if memory allocation fails.
-- **Details**:
-  - The function computes the number of days between the Gregorian date and the start of the Jalali calendar.
-  - It then uses this day count to calculate the corresponding Jalali year, month, and day.
-  - The function allocates a new `Date` object for the Persian date and sets the `calendarType` to `Persian`.
-
----
-
-### `Date* date_solar_to_gregorian(const Date* solar_date)`
-
-- **Purpose**: Converts a given Persian (Jalali) date to its equivalent Gregorian date.
-- **Parameters**:
-  - `solar_date`: A pointer to the `Date` object representing the Persian date.
-- **Return**: A pointer to a dynamically allocated `Date` object representing the corresponding Gregorian date. Returns `NULL` if the input date is `NULL` or memory allocation fails.
-- **Details**:
-  - The function first checks if the Persian date is valid, ensuring that the date is within the range of the Persian calendar and adjusting for leap years.
-  - It calculates the total number of days since the base date in the Persian calendar and then converts these days into the equivalent Gregorian date.
-  - The calculation includes handling leap years and month/day conversions based on both the Persian and Gregorian calendars.
-  - The result is stored in a newly allocated `Date` object, which the caller is responsible for freeing later.
-  - The function handles memory allocation errors and invalid date checks.
+**Purpose**: Converts a Julian Day Number to a Gregorian Date.
+**Parameters**:
+- `jd`: The Julian Day Number to convert.
+**Return Value**: Pointer to a new Gregorian Date, or NULL on allocation failure.
+**Usage Case**: Use to convert Julian Day values back to calendar dates.
 
 ---
 
 ### `void date_deallocate(Date* date)`
+**Purpose**: Frees the memory allocated for a Date object.
+**Parameters**:
+- `date`: Pointer to the Date object to free. Safe to call with NULL.
+**Return Value**: None.
+**Usage Case**: Use at the end of a Date’s lifetime to avoid memory leaks.
 
-- **Purpose**: Frees the memory associated with a dynamically allocated `Date` object.
-- **Parameters**:
-  - `date`: A pointer to the `Date` object to be deallocated.
-- **Return**: None.
-- **Details**:
-  - The function checks if the provided pointer is `NULL`. If it is, a warning is printed, and no memory deallocation occurs.
-  - If the pointer is valid, the memory allocated for the `Date` object is freed using the `free` function.
+---
+
+### `bool date_set_date(Date* date, int year, int month, int day, CalendarType type)`
+**Purpose**: Updates an existing Date object in-place after validating the year/month/day against the calendar rules.
+**Parameters**:
+- `date`: Pointer to the Date object to update.
+- `year`: The new year value.
+- `month`: The new month value (1–12).
+- `day`: The new day value.
+- `type`: The calendar type (Gregorian or Persian).
+**Return Value**: `true` on success, `false` if any argument is invalid.
+**Usage Case**: Use to reuse an existing Date object with new values.
+
+---
+
+### `void date_get_date(const Date* date, int* year, int* month, int* day)`
+**Purpose**: Writes the year, month, and day of `date` into the three output pointers.
+**Parameters**:
+- `date`: Pointer to the Date object.
+- `year`: Output pointer for the year.
+- `month`: Output pointer for the month.
+- `day`: Output pointer for the day.
+**Return Value**: None. Does nothing if `date` or any output pointer is NULL.
+**Usage Case**: Use to extract all three components in a single call.
+
+---
+
+### `int date_year(const Date* date)`
+**Purpose**: Returns the year field of `date`.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: The year, or -1 if `date` is NULL or invalid.
+**Usage Case**: Use for quick read-only access to the year component.
+
+---
+
+### `int date_month(const Date* date)`
+**Purpose**: Returns the month field (1–12) of `date`.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: The month, or -1 if `date` is NULL or invalid.
+**Usage Case**: Use for quick read-only access to the month component.
+
+---
+
+### `int date_day(const Date* date)`
+**Purpose**: Returns the day-of-month field of `date`.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: The day, or -1 if `date` is NULL or invalid.
+**Usage Case**: Use for quick read-only access to the day component.
+
+---
+
+### `bool date_is_null(const Date* date)`
+**Purpose**: Returns true if `date` is a NULL pointer, false otherwise.
+**Parameters**:
+- `date`: Pointer to the Date object to check.
+**Return Value**: `true` if `date` is NULL, `false` otherwise.
+**Usage Case**: Use as a null-safety guard before any other date operation.
+
+---
+
+### `bool date_is_valid(const Date* date)`
+**Purpose**: Returns true if the year, month, and day fields represent a real date in the declared calendar.
+**Parameters**:
+- `date`: Pointer to the Date object to validate.
+**Return Value**: `true` if valid, `false` for NULL or out-of-range fields.
+**Usage Case**: Use before arithmetic or comparison operations to avoid undefined behaviour.
+
+---
+
+### `bool date_is_leap_year(const Date* date)`
+**Purpose**: Returns true if the year of `date` is a leap year in its calendar (Gregorian or Persian).
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: `true` if the year is a leap year, `false` if `date` is NULL.
+**Usage Case**: Use to determine February/Esfand day counts.
+
+---
+
+### `bool date_is_leap_year_y(int year, CalendarType type)`
+**Purpose**: Returns true if `year` is a leap year in the specified calendar, without needing a Date object.
+**Parameters**:
+- `year`: The year to check.
+- `type`: The calendar type (Gregorian or Persian).
+**Return Value**: `true` if the year is a leap year, `false` otherwise.
+**Usage Case**: Use when you only have a year number, not a full Date.
+
+---
+
+### `bool date_is_weekend(const Date* date)`
+**Purpose**: Returns true if `date` falls on a weekend: Saturday or Sunday for Gregorian, Friday for Persian.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: `true` if weekend, `false` for NULL or invalid dates.
+**Usage Case**: Use to skip non-working days in scheduling logic.
+
+---
+
+### `int date_compare(const Date* lhs, const Date* rhs)`
+**Purpose**: Three-way comparison returning a negative value if `lhs < rhs`, 0 if equal, positive if `lhs > rhs`.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: Negative, zero, or positive integer; `INT_MIN` on error or calendar mismatch.
+**Usage Case**: Use for sorting or binary search over date arrays.
+
+---
+
+### `bool date_is_equal(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns true if both dates have identical year, month, day, and calendar type.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: `true` if both dates are identical, `false` otherwise.
+**Usage Case**: Use to test exact date equality.
+
+---
+
+### `bool date_is_not_equals(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns true if the two dates differ in any field.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: `true` if the dates differ, `false` if they are equal.
+**Usage Case**: Use when inequality is the primary condition.
+
+---
+
+### `bool date_is_less_than(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns true if `lhs` is chronologically earlier than `rhs`.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: `true` if `lhs` is earlier, `false` otherwise.
+**Usage Case**: Use to sort dates or enforce ordering constraints.
+
+---
+
+### `bool date_is_less_than_or_equal(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns true if `lhs` is earlier than or the same as `rhs`.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: `true` if `lhs <= rhs`, `false` otherwise.
+**Usage Case**: Use in range checks where the boundary date is inclusive.
+
+---
+
+### `bool date_is_greater_than(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns true if `lhs` is chronologically later than `rhs`.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: `true` if `lhs` is later, `false` otherwise.
+**Usage Case**: Use to check whether a deadline has passed.
+
+---
+
+### `bool date_is_greater_than_or_equal(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns true if `lhs` is later than or the same as `rhs`.
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: `true` if `lhs >= rhs`, `false` otherwise.
+**Usage Case**: Use in range checks where the upper boundary is inclusive.
+
+---
+
+### `Date* date_add_days(const Date* date, int ndays)`
+**Purpose**: Returns a new Date that is `ndays` days after (or before, if negative) `date`.
+**Parameters**:
+- `date`: Pointer to the original Date object.
+- `ndays`: Number of days to add (negative to subtract).
+**Return Value**: Pointer to a new Date, or NULL if `date` is NULL or invalid. Caller must `date_deallocate` the result.
+**Usage Case**: Use for day-offset calculations.
+
+---
+
+### `Date* date_add_months(const Date* date, int nmonths)`
+**Purpose**: Returns a new Date that is `nmonths` months later, clamping the day to the last day of the target month if necessary.
+**Parameters**:
+- `date`: Pointer to the original Date object.
+- `nmonths`: Number of months to add.
+**Return Value**: Pointer to a new Date, or NULL on error. Caller must `date_deallocate` the result.
+**Usage Case**: Use for monthly recurrence logic.
+
+---
+
+### `Date* date_add_years(const Date* date, int nyears)`
+**Purpose**: Returns a new Date that is `nyears` years later (or earlier if negative), adjusting for leap-year edge cases such as Feb 29.
+**Parameters**:
+- `date`: Pointer to the original Date object.
+- `nyears`: Number of years to add (negative to subtract).
+**Return Value**: Pointer to a new Date, or NULL on error. Caller must `date_deallocate` the result.
+**Usage Case**: Use for annual anniversaries.
+
+---
+
+### `Date* date_min(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns a pointer to the earlier of the two dates (not a copy — returns one of the input pointers).
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: Pointer to the earlier Date, or NULL if either input is NULL or they are from different calendars.
+**Usage Case**: Use to find the earliest of two dates.
+
+---
+
+### `Date* date_max(const Date* lhs, const Date* rhs)`
+**Purpose**: Returns a pointer to the later of the two dates (not a copy).
+**Parameters**:
+- `lhs`: Pointer to the first Date object.
+- `rhs`: Pointer to the second Date object.
+**Return Value**: Pointer to the later Date, or NULL on error.
+**Usage Case**: Use to find the latest of two dates.
+
+---
+
+### `Date* date_first_day_of_month(const Date* date)`
+**Purpose**: Returns a new Date for the first day of `date`’s month and year.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Pointer to a new Date for day 1 of the same month/year. Caller must `date_deallocate` the result.
+**Usage Case**: Use to anchor a month-start boundary.
+
+---
+
+### `Date* date_last_day_of_month(const Date* date)`
+**Purpose**: Returns a new Date for the last day of `date`’s month and year.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Pointer to a new Date for the last day of the same month/year. Caller must `date_deallocate` the result.
+**Usage Case**: Use to anchor a month-end boundary.
+
+---
+
+### `int date_days_to(const Date* from, const Date* to)`
+**Purpose**: Returns the signed number of days from `from` to `to` (positive if `to` is later).
+**Parameters**:
+- `from`: Pointer to the start Date object.
+- `to`: Pointer to the end Date object.
+**Return Value**: Signed day count, or -1 on error. Both dates must share a calendar.
+**Usage Case**: Use to compute durations.
+
+---
+
+### `int date_day_of_week(const Date* date)`
+**Purpose**: Returns 1 for Monday through 7 for Sunday.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Weekday number (1–7), or -1 on error or unsupported calendar.
+**Usage Case**: Use to determine which weekday a date falls on.
+
+---
+
+### `int date_day_of_year(const Date* date)`
+**Purpose**: Returns the day number within the year (1–365 or 1–366).
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Day-of-year (1–366), or -1 on error.
+**Usage Case**: Use to compute how far into a year a date is.
+
+---
+
+### `int date_days_in_month(const Date* date)`
+**Purpose**: Returns the number of days in `date`’s month (e.g. 28–31 for Gregorian, 29–31 for Persian).
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Days in the month, or -1 on error.
+**Usage Case**: Use to validate day fields or build calendar grids.
+
+---
+
+### `int date_days_in_year(const Date* date)`
+**Purpose**: Returns 365 or 366 depending on whether `date`’s year is a leap year.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: 365 or 366, or -1 on error.
+**Usage Case**: Use to compute day-of-year offsets.
+
+---
+
+### `int date_week_number(const Date* date, int* yearNumber)`
+**Purpose**: Returns the ISO 8601 week number (1–53). If `yearNumber` is non-NULL, it is updated only when the week belongs to an adjacent year.
+**Parameters**:
+- `date`: Pointer to the Date object.
+- `yearNumber`: Output pointer updated for edge-case weeks that belong to an adjacent year; may be NULL.
+**Return Value**: ISO week number (1–53), or -1 on error.
+**Usage Case**: Use for week-based scheduling or reporting.
+
+---
+
+### `int date_quarter(const Date* date)`
+**Purpose**: Returns the quarter of the year (1–4) based on the month.
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Quarter number (1–4), or -1 if `date` is NULL or invalid.
+**Usage Case**: Use to group dates by financial or reporting quarter.
+
+---
+
+### `const char* date_weekday_name(const Date* date)`
+**Purpose**: Returns a static English string for the weekday (e.g. `"Monday"`, `"Tuesday"`, ...).
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Static weekday name string, or NULL on error. Do not free the returned string.
+**Usage Case**: Use for display purposes.
+
+---
+
+### `const char* date_month_name(const Date* date)`
+**Purpose**: Returns a static string for the month name in the date’s calendar (Gregorian: `"January"` ... `"December"`; Persian: `"Farvardin"` ... `"Esfand"`).
+**Parameters**:
+- `date`: Pointer to the Date object.
+**Return Value**: Static month name string, or NULL on error. Do not free the returned string.
+**Usage Case**: Use for display purposes.
+
+---
+
+### `Date* date_gregorian_to_solar(const Date* gregorian_date)`
+**Purpose**: Converts a Gregorian Date to the equivalent Persian (Jalali) Date.
+**Parameters**:
+- `gregorian_date`: Pointer to the Gregorian Date object to convert.
+**Return Value**: Pointer to a new Persian Date. Caller must `date_deallocate` the result. Returns NULL on error.
+**Usage Case**: Use to translate between calendar systems.
+
+---
+
+### `Date* date_solar_to_gregorian(const Date* solar_date)`
+**Purpose**: Converts a Persian Date to the equivalent Gregorian Date.
+**Parameters**:
+- `solar_date`: Pointer to the Persian Date object to convert.
+**Return Value**: Pointer to a new Gregorian Date. Caller must `date_deallocate` the result. Returns NULL on error.
+**Usage Case**: Use to translate a Persian date back to the Gregorian calendar.
+
+---
+
+### `long date_to_julian_day(const Date* date)`
+**Purpose**: Returns the Julian Day Number for a Gregorian Date.
+**Parameters**:
+- `date`: Pointer to the Gregorian Date object.
+**Return Value**: The Julian Day Number as a `long`, or -1 on error.
+**Usage Case**: Use to convert dates to a common continuous count for arithmetic across month/year boundaries.
+
+---
+
+### `char* date_to_string(const Date* date, const char* format)`
+**Purpose**: Returns a heap-allocated string with the date formatted according to `format`. For Gregorian dates, `format` follows `strftime` conventions; for Persian dates, the output is always `"YYYY-MM-DD"`.
+**Parameters**:
+- `date`: Pointer to the Date object to format.
+- `format`: Format string (follows `strftime` for Gregorian; ignored for Persian).
+**Return Value**: Heap-allocated formatted string. Caller must `free` the result. Returns NULL on error.
+**Usage Case**: Use to serialize a date to a display or storage string.
 
 ---
 
@@ -481,6 +472,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+Current Gregorian Date: 2026-5-28
+```
+> Note: Output reflects today's date on the current machine.
+
 ---
 
 ## Example 2: Current Date in Persian Calendar
@@ -502,6 +499,12 @@ int main() {
     return 0;
 }
 ```
+
+**Result**
+```
+Current Persian Date: 1405-3-7
+```
+> Note: Output reflects today's date converted to the Persian calendar.
 
 ---
 
@@ -528,6 +531,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+New Gregorian Date: 2024-1-25
+```
+
 ---
 
 ## Example 4: Add 5 Months to a Specific Persian Date
@@ -551,6 +559,11 @@ int main() {
 
     return 0;
 }
+```
+
+**Result**
+```
+New Persian Date: 1402-12-1
 ```
 
 ---
@@ -579,6 +592,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Subtracted Gregorian Date: 2022-5-20
+```
+
 ---
 
 ## Example 6: Convert Gregorian to Persian Date
@@ -604,6 +622,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Converted to Persian: 1403-1-2
+```
+
 ---
 
 ## Example 7: Convert Persian to Gregorian Date
@@ -612,23 +635,30 @@ int main() {
 #include "fmt/fmt.h"
 
 int main() {
-    // show error here because this date is not valid 1403 i leap year not 1402
+    /* 1402 is NOT a leap year, so month 12 has only 29 days.
+       date_create_ymd returns NULL for invalid dates.
+       (1403 IS a leap year and would accept 1403-12-30.) */
     Date* persian_for_conversion = date_create_ymd(1402, 12, 30, Persian);
+
+    if (!persian_for_conversion) {
+        fmt_fprintf(stderr, "Invalid date: 1402-12-30 does not exist (1402 is not a leap year).\n");
+        return 1;
+    }
+
     Date* converted_gregorian = date_solar_to_gregorian(persian_for_conversion);
-    
-    if (converted_gregorian && persian_for_conversion) {
-        fmt_printf("Converted to Gregorian: %d-%d-%d\n", converted_gregorian->year, converted_gregorian->month, converted_gregorian->day);
-
+    if (converted_gregorian) {
+        fmt_printf("Converted to Gregorian: %d-%d-%d\n",
+                   converted_gregorian->year, converted_gregorian->month, converted_gregorian->day);
         date_deallocate(converted_gregorian);
-        date_deallocate(persian_for_conversion);
     }
-    else {
-        fmt_fprintf(stderr, "Can not allocate memory for date object\n");
-    }
-
-    
+    date_deallocate(persian_for_conversion);
     return 0;
 }
+```
+
+**Result**
+```
+Invalid date: 1402-12-30 does not exist (1402 is not a leap year).
 ```
 
 ---
@@ -654,6 +684,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Persian Date String: 1402-05-14
+```
+
 ---
 
 ## Example 9: Check Leap Year in Gregorian Calendar
@@ -675,6 +710,11 @@ int main() {
     date_deallocate(leap_year_gregorian);
     return 0;
 }
+```
+
+**Result**
+```
+2024 is a leap year in Gregorian calendar.
 ```
 
 ---
@@ -699,6 +739,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+1403 is a leap year in Persian calendar.
+```
+
 ---
 
 ## Example 11: Parse Gregorian Date from String
@@ -716,6 +761,11 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Parsed Gregorian Date: 2024-4-15
 ```
 
 ---
@@ -736,6 +786,11 @@ int main() {
 
     return 0;
 }
+```
+
+**Result**
+```
+Parsed Persian Date: 1402-7-22
 ```
 
 ---
@@ -762,6 +817,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+The dates are equal.
+```
+
 ---
 
 ### Example 14: Check Date Less Than
@@ -784,6 +844,11 @@ int main() {
     date_deallocate(later_date);
     return 0;
 }
+```
+
+**Result**
+```
+Early date is less than later date.
 ```
 
 ---
@@ -811,6 +876,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Date3 is greater than date4.
+```
+
 ---
 
 ## Example 16: Get Day of the Week for a Gregorian Date
@@ -829,6 +899,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Day of the week for 2024-02-29: 4 (1=Monday, 7=Sunday)
+```
+
 ---
 
 ### Example 17: Get Day of the Year for a Persian Date
@@ -845,6 +920,11 @@ int main() {
     date_deallocate(day_of_year_date);
     return 0;
 }
+```
+
+**Result**
+```
+Day of the year for 1402-12-01: 337
 ```
 
 ---
@@ -866,6 +946,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+Week number for 2024-04-15: 16, Year: 0
+```
+> Note: `Year` is 0 because `date_week_number` only updates `yearNumber` for edge-case weeks that belong to an adjacent year; for normal mid-year weeks the caller's initial value is preserved.
+
 ---
 
 ## Example 19: Check if a Date is Valid
@@ -874,7 +960,7 @@ int main() {
 #include "fmt/fmt.h"
 
 int main() {
-    // date is invalid because feb consists of 29 days
+    // Date is invalid because February has at most 29 days (in a leap year).
     Date* invalid_date = date_create_ymd(2024, 2, 30, Gregorian);
     
     if (date_is_valid(invalid_date)) {
@@ -887,6 +973,11 @@ int main() {
     date_deallocate(invalid_date);
     return 0;
 }
+```
+
+**Result**
+```
+The date is invalid.
 ```
 
 ---
@@ -913,6 +1004,11 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Gregorian Date: 2021-12-31
 ```
 
 ---

@@ -27,228 +27,259 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 
 ## Function Descriptions
 
-### `char* encoding_base64_encode(const char* input, size_t length)`: 
-   - **Description**: Encodes a given binary data into Base64 format. 
-   - **Parameters**: 
-     - `input`: Pointer to the binary data to be encoded.
-     - `length`: The length of the input data.
-   - **Returns**: A dynamically allocated string containing the Base64 encoded representation.
+### `void encoding_initialize(void)`
+**Purpose**: Initializes the encoding library by setting the locale for character encoding. Call this once at program start before using any other encoding functions.
+**Parameters**: None.
+**Return Value**: None.
+**Usage Case**: Call at the beginning of `main()` to ensure correct locale-dependent behavior across all codec functions.
 
 ---
 
-### `char* encoding_base64_decode(const char* input, size_t length)`:
-   - **Description**: Decodes a Base64 encoded string back to its original binary format.
-   - **Parameters**: 
-     - `input`: Pointer to the Base64 encoded string.
-     - `length`: The length of the encoded string.
-   - **Returns**: A dynamically allocated string containing the decoded binary data.
+### `char* encoding_base16_encode(const char* input, size_t length)`
+**Purpose**: Encodes binary data into Base16 (hexadecimal) format, representing each byte as two uppercase hexadecimal digits.
+**Parameters**:
+- `input`: Pointer to the binary data to encode.
+- `length`: Number of bytes to encode.
+**Return Value**: A dynamically allocated null-terminated string containing the hex-encoded output, or `NULL` on allocation failure. The caller must `free()` the result.
+**Usage Case**: Use when you need a human-readable hexadecimal representation of raw bytes (e.g., checksums, binary protocol dumps).
 
 ---
 
-### `char* encoding_url_encode(const char* input, size_t length)`:
-   - **Description**: Encodes a given string into a URL-friendly format, converting special characters into percent-encoded representations.
-   - **Parameters**: 
-     - `input`: Pointer to the string to be URL encoded.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated string containing the URL encoded representation.
+### `char* encoding_base16_decode(const char* input, size_t length)`
+**Purpose**: Decodes a Base16 (hexadecimal) encoded string back to its original binary data.
+**Parameters**:
+- `input`: Pointer to the hex-encoded string (uppercase or lowercase hex digits).
+- `length`: Length of the encoded string (must be even).
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Reverse of `encoding_base16_encode`; use to recover binary data from a hex string.
 
 ---
 
-### `char* encoding_url_decode(const char* input, size_t lenght)`:
-   - **Description**: Decodes a percent-encoded URL string back to its original format, interpreting percent-encoded characters.
-   - **Parameters**: 
-     - `input`: Pointer to the URL encoded string.
-     - `length`: The length of the encoded string.
-   - **Returns**: A dynamically allocated string containing the decoded string.
+### `char* encoding_base32_encode(const char* input, size_t length)`
+**Purpose**: Encodes binary data into Base32 format using the standard RFC 4648 alphabet, which is case-insensitive and suitable for use in filenames and DNS labels.
+**Parameters**:
+- `input`: Pointer to the binary data to encode.
+- `length`: Number of bytes to encode.
+**Return Value**: A dynamically allocated null-terminated Base32 string (padded with `=`), or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when a case-insensitive encoding is needed, such as in TOTP/HOTP secrets or certain network protocols.
 
 ---
 
-### `char* encoding_base32_encode(const char* input, size_t length)`:
-   - **Description**: Encodes a given binary data into Base32 format, which is useful in scenarios where case-insensitivity is beneficial.
-   - **Parameters**: 
-     - `input`: Pointer to the binary data to be encoded.
-     - `length`: The length of the input data.
-   - **Returns**: A dynamically allocated string containing the Base32 encoded representation.
+### `char* encoding_base32_decode(const char* input, size_t length)`
+**Purpose**: Decodes a Base32 encoded string back to its original binary data.
+**Parameters**:
+- `input`: Pointer to the Base32 encoded string (with or without padding).
+- `length`: Length of the encoded string.
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Reverse of `encoding_base32_encode`; use to recover binary data from a Base32 string.
 
 ---
 
-### `char* encoding_base32_decode(const char* input, size_t length)`:
-   - **Description**: Decodes a Base32 encoded string back to its original binary format.
-   - **Parameters**: 
-     - `input`: Pointer to the Base32 encoded string.
-     - `length`: The length of the encoded string.
-   - **Returns**: A dynamically allocated string containing the decoded binary data.
+### `char* encoding_base58_encode(const void* data, size_t binsz)`
+**Purpose**: Encodes binary data into Base58 format using the Bitcoin alphabet, which omits visually ambiguous characters (`0`, `O`, `I`, `l`).
+**Parameters**:
+- `data`: Pointer to the binary data to encode.
+- `binsz`: Number of bytes to encode.
+**Return Value**: A dynamically allocated null-terminated Base58 string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use for cryptocurrency addresses, short identifiers, or any context where a compact alphanumeric encoding without ambiguous characters is required.
 
 ---
 
-### `char* encoding_base16_encode(const char* input, size_t length)`:
-   - **Description**: Encodes binary data into Base16 (hexadecimal) format, which represents each byte of data as two hexadecimal digits.
-   - **Parameters**: 
-     - `input`: Pointer to the binary data to be encoded.
-     - `length`: The length of the input data.
-   - **Returns**: A dynamically allocated string containing the Base16 encoded representation.
----
-
-### `char* encoding_base16_decode(const char* input, size_t length)`:
-   - **Description**: Decodes a Base16 (hexadecimal) encoded string back to its original binary format.
-   - **Parameters**: 
-     - `input`: Pointer to the Base16 encoded string.
-     - `length`: The length of the encoded string.
-   - **Returns**: A dynamically allocated string containing the decoded binary data.
+### `char* encoding_base58_decode(const char* b58, size_t* binszp)`
+**Purpose**: Decodes a Base58 encoded string back to its original binary data.
+**Parameters**:
+- `b58`: Pointer to the null-terminated Base58 encoded string.
+- `binszp`: Pointer to a `size_t` that is set to the length of the decoded binary data on success.
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Reverse of `encoding_base58_encode`; use to recover binary data from a Base58 string.
 
 ---
 
-### `char* encoding_base58_encode(const void *data, size_t binsz)`:
-   - **Description**: Encodes binary data into Base58 format, commonly used in cryptocurrencies such as Bitcoin.
-   - **Parameters**: 
-     - `data`: Pointer to the binary data to be encoded.
-     - `binsz`: The length of the input data.
-   - **Returns**: A dynamically allocated string containing the Base58 encoded representation.
----
-
-### `char* encoding_base58_decode(const char *b58, size_t *binszp)`:
-   - **Description**: Decodes a Base58 encoded string back to its original binary format.
-   - **Parameters**: 
-     - `b58`: Pointer to the Base58 encoded string.
-     - `binszp`: Pointer to a size_t that will be set to the size of the decoded binary data.
-   - **Returns**: A dynamically allocated string containing the decoded binary data.
----
-
-### `char* encododing_base85_encode(const uint8_t* input, size_t length)`:
-   - **Description**: Encodes binary data into Base85 (also known as ASCII85) format, often used in Adobe's PostScript and PDF formats.
-   - **Parameters**: 
-     - `input`: Pointer to the binary data to be encoded.
-     - `length`: The length of the input data.
-   - **Returns**: A dynamically allocated string containing the Base85 encoded representation.
----
-
-### `uint8_t* encododing_base85_decode(const char* input, size_t length)`:
-   - **Description**: Decodes a Base85 encoded string back to its original binary format.
-   - **Parameters**: 
-     - `input`: Pointer to the Base85 encoded string.
-     - `length`: The length of the encoded string.
-   - **Returns**: A dynamically allocated string containing the decoded binary data.
+### `char* encoding_base64_encode(const char* input, size_t length)`
+**Purpose**: Encodes binary data into Base64 format using the standard RFC 4648 alphabet.
+**Parameters**:
+- `input`: Pointer to the binary data to encode.
+- `length`: Number of bytes to encode.
+**Return Value**: A dynamically allocated null-terminated Base64 string (padded with `=`), or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use for encoding binary attachments in email (MIME), embedding binary data in JSON or XML, or any transport medium that only handles text.
 
 ---
 
-### `encoding_base91_encode`:
-   - **Description**: Encodes binary data into Base91 format, which is more efficient in terms of character use compared to Base64 and Base85.
-   - **Parameters**: 
-     - `data`: Pointer to the binary data to be encoded.
-     - `length`: The length of the input data.
-   - **Returns**: A dynamically allocated string containing the Base91 encoded representation.
+### `char* encoding_base64_decode(const char* input, size_t length)`
+**Purpose**: Decodes a Base64 encoded string back to its original binary data.
+**Parameters**:
+- `input`: Pointer to the Base64 encoded string.
+- `length`: Length of the encoded string.
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Reverse of `encoding_base64_encode`; use to recover binary data from a Base64 string.
 
 ---
 
-### `uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length)`:
-   - **Description**: Decodes a Base91 encoded string back to its original binary format.
-   - **Parameters**: 
-     - `encoded`: Pointer to the Base91 encoded string.
-     - `decoded_length`: Pointer to a size_t that will be set to the size of the decoded binary data.
-   - **Returns**: A dynamically allocated string containing the decoded binary data.
+### `char* encoding_base85_encode(const uint8_t* input, size_t length)`
+**Purpose**: Encodes binary data into Base85 (Ascii85) format, which is more compact than Base64 and is used in Adobe PostScript and PDF formats.
+**Parameters**:
+- `input`: Pointer to the binary data to encode.
+- `length`: Number of bytes to encode.
+**Return Value**: A dynamically allocated null-terminated Ascii85 string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when you need a compact printable encoding for embedding binary data in text-based formats like PDF or PostScript.
 
 ---
 
-### `uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length)`:
-   - **Description**: Converts a UTF-8 encoded string to UTF-16.
-   - **Parameters**: 
-     - `input`: Pointer to the UTF-8 encoded string.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated UTF-16 encoded string.
+### `uint8_t* encoding_base85_decode(const char* input, size_t length)`
+**Purpose**: Decodes a Base85 (Ascii85) encoded string back to its original binary data.
+**Parameters**:
+- `input`: Pointer to the Ascii85 encoded string.
+- `length`: Length of the encoded string.
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Reverse of `encoding_base85_encode`; use to recover binary data from an Ascii85 encoded string.
 
 ---
 
-### `uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length)`:
-   - **Description**: Converts a UTF-8 encoded string to UTF-32.
-   - **Parameters**: 
-     - `input`: Pointer to the UTF-8 encoded string.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated UTF-32 encoded string.
+### `char* encoding_base91_encode(const uint8_t* data, size_t length)`
+**Purpose**: Encodes binary data into Base91 format, which is more space-efficient than Base64 and Base85 by using 91 printable ASCII characters.
+**Parameters**:
+- `data`: Pointer to the binary data to encode.
+- `length`: Number of bytes to encode.
+**Return Value**: A dynamically allocated null-terminated Base91 string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when you need the most compact printable ASCII encoding possible, such as embedding binary data in URLs or email bodies with a minimal overhead.
 
 ---
 
-### `uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length)`:
-   - **Description**: Converts a UTF-16 encoded string to UTF-8.
-   - **Parameters**: 
-     - `input`: Pointer to the UTF-16 encoded string.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated UTF-8 encoded string.
+### `uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length)`
+**Purpose**: Decodes a Base91 encoded string back to its original binary data.
+**Parameters**:
+- `encoded`: Pointer to the null-terminated Base91 encoded string.
+- `decoded_length`: Pointer to a `size_t` that is set to the number of decoded bytes on success.
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Reverse of `encoding_base91_encode`; use to recover binary data from a Base91 encoded string.
 
 ---
 
-### `uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length)`:
-   - **Description**: Converts a UTF-16 encoded string to UTF-32.
-   - **Parameters**: 
-     - `input`: Pointer to the UTF-16 encoded string.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated UTF-32 encoded string.
+### `char* encoding_url_encode(const char* input, size_t length)`
+**Purpose**: Percent-encodes a string so it is safe for use in a URL, converting spaces and special characters to `%XX` sequences.
+**Parameters**:
+- `input`: Pointer to the string to encode.
+- `length`: Length of the input string.
+**Return Value**: A dynamically allocated null-terminated percent-encoded string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when constructing URLs that must include arbitrary text in query parameters or path components.
 
 ---
 
-### `uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length)`:
-   - **Description**: Converts a UTF-32 encoded string to UTF-8.
-   - **Parameters**: 
-     - `input`: Pointer to the UTF-32 encoded string.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated UTF-8 encoded string.
+### `char* encoding_url_decode(const char* input, size_t length)`
+**Purpose**: Decodes a percent-encoded URL string back to its original form, interpreting `%XX` sequences as the corresponding byte values.
+**Parameters**:
+- `input`: Pointer to the percent-encoded URL string.
+- `length`: Length of the encoded string.
+**Return Value**: A dynamically allocated null-terminated decoded string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when parsing URL query parameters or path components that may contain percent-encoded characters.
 
 ---
 
-### `uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length)`:
-   - **Description**: Converts a UTF-32 encoded string to UTF-16.
-   - **Parameters**: 
-     - `input`: Pointer to the UTF-32 encoded string.
-     - `length`: The length of the input string.
-   - **Returns**: A dynamically allocated UTF-16 encoded string.
+### `uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length)`
+**Purpose**: Converts a UTF-8 encoded byte sequence to a null-terminated UTF-16 encoded string.
+**Parameters**:
+- `input`: Pointer to the UTF-8 byte sequence.
+- `length`: Number of bytes in the input.
+**Return Value**: A dynamically allocated null-terminated `uint16_t` array containing the UTF-16 representation, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when interfacing with Windows APIs or other systems that expect UTF-16 strings.
 
 ---
 
-### `bool encoding_is_utf8(const uint8_t* input, size_t length)`:
-   - **Description**: Checks whether a given byte sequence is valid UTF-8.
-   - **Parameters**: 
-     - `input`: Pointer to the byte sequence to check.
-     - `length`: The length of the input byte sequence.
-   - **Returns**: `true` if the sequence is valid UTF-8, `false` otherwise.
----
-
-### `bool encoding_is_utf8_string(const uint8_t** input, size_t length)`:
-   - **Description**: Checks whether a given string is a valid UTF-8 string.
-   - **Parameters**: 
-     - `input`: Pointer to a pointer to the string to check.
-     - `length`: The length of the input string.
-   - **Returns**: `true` if the string is valid UTF-8, `false` otherwise.
+### `uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length)`
+**Purpose**: Converts a UTF-8 encoded byte sequence to a null-terminated UTF-32 encoded string.
+**Parameters**:
+- `input`: Pointer to the UTF-8 byte sequence.
+- `length`: Number of bytes in the input.
+**Return Value**: A dynamically allocated null-terminated `uint32_t` array containing the UTF-32 representation, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when you need one-`uint32_t`-per-codepoint storage for easy random access into a Unicode string.
 
 ---
 
-### `void encoding_hex_dump(const void *data, size_t size)`:
-   - **Description**: Produces a hexadecimal dump of the given data, displaying both the hex values and their ASCII representation.
-   - **Parameters**: 
-     - `data`: Pointer to the data to dump.
-     - `size`: The size of the data.
-   - **Returns**: Void. The function prints the hexadecimal dump to standard output.
+### `uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length)`
+**Purpose**: Converts a UTF-16 encoded string to a null-terminated UTF-8 byte sequence.
+**Parameters**:
+- `input`: Pointer to the UTF-16 encoded string.
+- `length`: Number of `uint16_t` code units in the input (excluding the null terminator).
+**Return Value**: A dynamically allocated null-terminated `uint8_t` array containing the UTF-8 representation, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when converting Windows UTF-16 strings to portable UTF-8 for storage or transmission.
 
 ---
 
- Character Conversion
-### `wchar_t* encoding_utf8_to_wchar(const char* utf8Str)` (Windows only):
-   - **Description**: Converts a UTF-8 encoded string to a wide character string (`wchar_t`).
-   - **Parameters**: 
-     - `utf8Str`: Pointer to the UTF-8 encoded string.
-   - **Returns**: A dynamically allocated wide character string.
----
-
-### `char* encoding_wchar_to_utf8(const wchar_t* wstr)`:
-   - **Description**: Converts a wide character string (`wchar_t`) to a UTF-8 encoded string.
-   - **Parameters**: 
-     - `wstr`: Pointer to the wide character string.
-   - **Returns**: A dynamically allocated UTF-8 encoded string.
+### `uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length)`
+**Purpose**: Converts a UTF-16 encoded string to a null-terminated UTF-32 encoded string, combining surrogate pairs into single codepoints.
+**Parameters**:
+- `input`: Pointer to the UTF-16 encoded string.
+- `length`: Number of `uint16_t` code units in the input (excluding the null terminator).
+**Return Value**: A dynamically allocated null-terminated `uint32_t` array, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when converting from a UTF-16 source (e.g., Windows) to a codepoint-per-element format for processing.
 
 ---
 
-### `void encoding_initialize(void)`:
-   - **Description**: Initializes the encoding library, setting the locale for character encoding. This function is typically called at the beginning of the program.
-   - **Parameters**: None.
-   - **Returns**: Void.
+### `uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length)`
+**Purpose**: Converts a UTF-32 encoded string to a null-terminated UTF-16 encoded string, encoding supplementary plane codepoints as surrogate pairs.
+**Parameters**:
+- `input`: Pointer to the UTF-32 encoded string.
+- `length`: Number of `uint32_t` codepoints in the input (excluding the null terminator).
+**Return Value**: A dynamically allocated null-terminated `uint16_t` array, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when you need to pass a codepoint array to a UTF-16 API (e.g., Windows `wchar_t` functions).
+
+---
+
+### `uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length)`
+**Purpose**: Converts a UTF-32 encoded string to a null-terminated UTF-8 byte sequence.
+**Parameters**:
+- `input`: Pointer to the UTF-32 encoded string.
+- `length`: Number of `uint32_t` codepoints in the input (excluding the null terminator).
+**Return Value**: A dynamically allocated null-terminated `uint8_t` array containing the UTF-8 representation, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when serializing codepoints to portable UTF-8 for file I/O or network transmission.
+
+---
+
+### `bool encoding_is_utf8(const uint8_t* input, size_t length)`
+**Purpose**: Validates a single UTF-8 codepoint sequence of exactly `length` bytes (1–4). Returns `false` for any `length` outside that range or for an ill-formed sequence.
+**Parameters**:
+- `input`: Pointer to the start of the byte sequence.
+- `length`: Number of bytes in the single codepoint sequence (must be 1–4).
+**Return Value**: `true` if the sequence is a valid UTF-8 codepoint encoding, `false` otherwise.
+**Usage Case**: Use as a low-level building block when iterating over a UTF-8 string codepoint-by-codepoint. For validating a whole string, use `encoding_is_utf8_string`.
+
+---
+
+### `bool encoding_is_utf8_string(const uint8_t** input, size_t length)`
+**Purpose**: Validates an entire UTF-8 byte sequence of `length` bytes by checking each codepoint in turn. On success the pointer `*input` is advanced past the validated bytes.
+**Parameters**:
+- `input`: Pointer to a pointer to the UTF-8 byte sequence. Updated to point past the valid portion on success.
+- `length`: Number of bytes to validate.
+**Return Value**: `true` if all `length` bytes form a valid UTF-8 string, `false` as soon as an ill-formed sequence is found.
+**Usage Case**: Use when you need to validate a multi-character UTF-8 string before processing it.
+
+---
+
+### `void encoding_hex_dump(const void* data, size_t size)`
+**Purpose**: Prints a formatted hex + ASCII dump of the given data to standard output, showing byte offsets, hex values, and printable ASCII characters.
+**Parameters**:
+- `data`: Pointer to the data to dump.
+- `size`: Number of bytes to dump.
+**Return Value**: None.
+**Usage Case**: Use for debugging binary buffers, inspecting file contents, or logging raw protocol data.
+
+---
+
+### `wchar_t* encoding_utf8_to_wchar(const char* utf8Str)` (Windows only)
+**Purpose**: Converts a UTF-8 encoded string to a wide character (`wchar_t`) string using the Windows `MultiByteToWideChar` API.
+**Parameters**:
+- `utf8Str`: Pointer to the null-terminated UTF-8 encoded string.
+**Return Value**: A dynamically allocated null-terminated `wchar_t` string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when you need to pass a UTF-8 string to a Windows API that requires `wchar_t` (wide-string) input.
+
+---
+
+### `char* encoding_wchar_to_utf8(const wchar_t* wstr)`
+**Purpose**: Converts a wide character (`wchar_t`) string to a UTF-8 encoded string.
+**Parameters**:
+- `wstr`: Pointer to the null-terminated wide character string.
+**Return Value**: A dynamically allocated null-terminated UTF-8 string, or `NULL` on failure. The caller must `free()` the result.
+**Usage Case**: Use when converting Windows `wchar_t` strings to portable UTF-8 for storage, logging, or transmission.
 
 ---
 
@@ -260,6 +291,7 @@ This example demonstrates encoding a string to Base64 and then decoding it back 
 #include "encoding/encoding.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main() {
     const char* text = "Hello, World!";
@@ -278,7 +310,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Encoded: SGVsbG8sIFdvcmxkIQ==
 Decoded: Hello, World!
@@ -313,7 +345,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Original: Hello World! This is a test/example?
 URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
@@ -345,7 +377,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 URL Encoded: Hello%20World%21%20This%20is%20a%20test%2Fexample%3F
 Decoded: Hello World! This is a test/example?
@@ -376,7 +408,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Original: Hello, World!
 Base32 Encoded: JBSWY3DPFQQFO33SNRSCC===
@@ -407,7 +439,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Base32 Encoded: ORSXG5A=
 Decoded: test
@@ -435,7 +467,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Original: Hello, World!
 Base16 Encoded: 48656C6C6F2C20576F726C6421
@@ -443,7 +475,7 @@ Base16 Encoded: 48656C6C6F2C20576F726C6421
 
 ---
 
-## Example 7 : use `encoding_base32_decode`
+## Example 7 : use `encoding_base16_decode`
 
 ```c
 #include "encoding/encoding.h"
@@ -464,7 +496,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Base16 Encoded: 48656C6C6F2C20576F726C6421
 Decoded: Hello, World!
@@ -501,7 +533,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 UTF-16 String: D83D DE00 D83D DE03 D83D DE04 D83D DE06 D83D DE09 D83D DE0A \n
 ```
@@ -546,10 +578,11 @@ int main() {
     fmt_printf("\n");
 
     free(utf16_string);
+    free(calc);
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 UTF-16 String: D83D DE00 D83D DE03 D83D DE04 D83D DE06 D83D DE09 D83D DE0A 
 UTF-32 String: 1F600 1F603 1F604 1F606 1F609 1F60A
@@ -580,7 +613,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 UTF-8 Encoded String: Hello World
 ```
@@ -610,7 +643,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 UTF-8 Encoded String: Hello World
 ```
@@ -660,7 +693,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 String 1 is valid UTF-8.
 String 2 is not valid UTF-8.
@@ -711,10 +744,9 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Example 1 is valid UTF-8.
-Error: Invalid UTF-8 encoding detected in encoding_is_utf8_string.
 Example 2 is not valid UTF-8.
 Example 3 is valid UTF-8.
 ```
@@ -748,7 +780,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 UTF-16 Encoded String: 0048 0065 006C 006C 006F 002C 0020 0055 0054 0046 002D 0031 0036 0021 0020 D83D DE0A
 ```
@@ -781,7 +813,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 UTF-32 Encoded String: 00000048 00000065 0000006C 0000006C 0000006F 0000002C 00000020 00000055 00000054 00000046 0000002D 00000033 00000032 00000021 00000020 0001F30D
 ```
@@ -802,7 +834,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 00000000  61 6d 69 6e                                      |amin|
 ```
@@ -820,13 +852,13 @@ int main() {
 int main() {
     const uint8_t data[] = "Hello one";
     size_t data_size = sizeof(data) - 1; // Exclude null terminator
-    char* encoded = encododing_base85_encode(data, data_size);
+    char* encoded = encoding_base85_encode(data, data_size);
 
     if (encoded) {
         fmt_printf("Encoded ASCII85: %s\n", encoded);
 
         const size_t input_len = strlen(encoded);
-        uint8_t* decoded_result = encododing_base85_decode(encoded, input_len);
+        uint8_t* decoded_result = encoding_base85_decode(encoded, input_len);
         if (decoded_result) {
             fmt_printf("Decoded: %s\n", decoded_result);
             free(decoded_result);
@@ -843,7 +875,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Encoded ASCII85: 87cURD]it9AH
 Decoded: Hello one
@@ -851,7 +883,7 @@ Decoded: Hello one
 
 ---
 
-## Example 18 : encode and decode data with `encoding_base58_encode` and `encode_base58_decode`
+## Example 18 : encode and decode data with `encoding_base58_encode` and `encoding_base58_decode`
 
 ```c
 #include <stdlib.h>
@@ -878,7 +910,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Base58 Encoded: 72k1xXWG59fYdzSNoA
 Decoded Data: Hello, World!
@@ -886,7 +918,7 @@ Decoded Data: Hello, World!
 
 ---
 
-## Example 19 : encode and decode data Using `encoding_base91_encode` and `encodinل_base91_decode`
+## Example 19 : encode and decode data Using `encoding_base91_encode` and `encoding_base91_decode`
 
 ```c
 #include <stdlib.h>
@@ -924,7 +956,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**:
 ```
 Encoded: >OwJh>}AdcN[>081Q
 Decoded: Hello, Base91!

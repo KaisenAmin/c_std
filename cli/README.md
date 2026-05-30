@@ -10,26 +10,15 @@ The CLI Library is a versatile and easy-to-use tool for parsing command-line arg
 
 ## Compilation
 
-To compile the Cli library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
+To compile the CLI library along with your main program, use the following GCC command:
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./cli/cli.c 
-g++ -std=c++14 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.cpp
-
+gcc -std=c17 -O2 -Wall -Wextra -o main ./main.c ./cli/cli.c ./fmt/fmt.c ./string/std_string.c ./encoding/encoding.c -I.
 ```
-
-Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
 
 ## Usage
 
 To use the Cli library in your project, include the `cli.h` header file in your source code.
-
-in these examples i rewrite cpp example in Bitset code 
-
-```c
-#include "cli/cli.h"
-```
 
 ---
 
@@ -38,88 +27,88 @@ in these examples i rewrite cpp example in Bitset code
 ### CLI Parser Management
 
 ### `CliParser* cli_parser_create(const char *progName)`
-- **Description:** Initializes a new CLI parser with the specified program name. The program name is used in usage messages and helps identify the application when displaying help or error messages.
-- **Parameters:** 
+**Purpose**: Initializes a new CLI parser with the specified program name. The program name is used in usage messages and helps identify the application when displaying help or error messages.
+**Parameters**:
   - `progName`: The name of the program (e.g., `"MyApp"`).
-- **Returns:** A pointer to the `CliParser` structure, or `NULL` if memory allocation fails.
-- **Usage Example:** `CliParser *parser = cli_parser_create("MyApp");`
+**Return Value**: A pointer to the `CliParser` structure, or `NULL` if memory allocation fails.
+**Usage Case**: `CliParser *parser = cli_parser_create("MyApp");`
 
 ### `void cli_parser_deallocate(CliParser *parser)`
-- **Description:** Frees all resources allocated by the CLI parser, including options, commands, and other dynamically allocated memory. This function should be called at the end of the program to prevent memory leaks.
-- **Parameters:** 
+**Purpose**: Frees all resources allocated by the CLI parser, including options, commands, and other dynamically allocated memory. This function should be called at the end of the program to prevent memory leaks.
+**Parameters**:
   - `parser`: The `CliParser` instance to be deallocated.
-- **Returns:** Nothing.
-- **Usage Example:** `cli_parser_deallocate(parser);`
+**Return Value**: None.
+**Usage Case**: `cli_parser_deallocate(parser);`
 
 ### Command and Option Registration
 
 ### `bool cli_register_command(CliParser *parser, const CliCommand *command)`
-- **Description:** Registers a new command with the CLI parser. Commands define specific actions or behaviors in the application that can be triggered by command-line arguments.
-- **Parameters:** 
+**Purpose**: Registers a new command with the CLI parser. Commands define specific actions or behaviors in the application that can be triggered by command-line arguments.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `command`: A pointer to the `CliCommand` structure that defines the command.
-- **Returns:** `true` if the command is registered successfully, `false` otherwise.
-- **Usage Example:** 
+**Return Value**: `true` if the command is registered successfully, `false` otherwise.
+**Usage Case**:
   ```c
   CliCommand myCommand = {.name = "greet", .handler = greetCommandHandler};
   cli_register_command(parser, &myCommand);
   ```
 
 ### `bool cli_unregister_command(CliParser *parser, const char *name)`
-- **Description:** Removes a previously registered command from the parser.
-- **Parameters:** 
+**Purpose**: Removes a previously registered command from the parser.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `name`: The name of the command to be removed.
-- **Returns:** `true` if the command is unregistered successfully, `false` otherwise.
-- **Usage Example:** `cli_unregister_command(parser, "greet");`
+**Return Value**: `true` if the command is unregistered successfully, `false` otherwise.
+**Usage Case**: `cli_unregister_command(parser, "greet");`
 
 ### `bool cli_register_option(CliParser *parser, const CliOption *option)`
-- **Description:** Registers a new option with the CLI parser. Options allow users to modify the behavior of commands or the application itself via command-line arguments.
-- **Parameters:** 
+**Purpose**: Registers a new option with the CLI parser. Options allow users to modify the behavior of commands or the application itself via command-line arguments.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `option`: A pointer to the `CliOption` structure that defines the option.
-- **Returns:** `true` if the option is registered successfully, `false` otherwise.
-- **Usage Example:** 
+**Return Value**: `true` if the option is registered successfully, `false` otherwise.
+**Usage Case**:
   ```c
   CliOption helpOption = {.longOpt = "--help", .shortOpt = 'h'};
   cli_register_option(parser, &helpOption);
   ```
 
 ### `bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt)`
-- **Description:** Unregisters an option from the parser using its long or short identifier.
-- **Parameters:** 
+**Purpose**: Unregisters an option from the parser using its long or short identifier.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `longOpt`: The long option name (e.g., `"--help"`).
   - `shortOpt`: The short option character (e.g., `'h'`).
-- **Returns:** `true` if the option is unregistered successfully, `false` otherwise.
-- **Usage Example:** `cli_unregister_option(parser, "--help", 'h');`
+**Return Value**: `true` if the option is unregistered successfully, `false` otherwise.
+**Usage Case**: `cli_unregister_option(parser, "--help", 'h');`
 
 ### Command and Option Handling
 
 ### `const CliOption* cli_find_option(const CliParser *parser, const char *longOpt, char shortOpt)`
-- **Description:** Searches for and returns a pointer to an option by its long name or short character.
-- **Parameters:** 
+**Purpose**: Searches for and returns a pointer to an option by its long name or short character.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `longOpt`: The long option name (e.g., `"--help"`).
   - `shortOpt`: The short option character (e.g., `'h'`).
-- **Returns:** A pointer to the `CliOption` if found, or `NULL` if not found.
-- **Usage Example:** `const CliOption *opt = cli_find_option(parser, "--help", 'h');`
+**Return Value**: A pointer to the `CliOption` if found, or `NULL` if not found.
+**Usage Case**: `const CliOption *opt = cli_find_option(parser, "--help", 'h');`
 
 ### `const CliCommand* cli_find_command(const CliParser *parser, const char *name)`
-- **Description:** Searches for and returns a pointer to a command by its name.
-- **Parameters:** 
+**Purpose**: Searches for and returns a pointer to a command by its name.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `name`: The name of the command to find (e.g., `"greet"`).
-- **Returns:** A pointer to the `CliCommand` if found, or `NULL` if not found.
-- **Usage Example:** `const CliCommand *cmd = cli_find_command(parser, "greet");`
+**Return Value**: A pointer to the `CliCommand` if found, or `NULL` if not found.
+**Usage Case**: `const CliCommand *cmd = cli_find_command(parser, "greet");`
 
 ### `void cli_set_default_command_handler(CliParser *parser, CliCommandHandler handler)`
-- **Description:** Sets a default command handler to be used when no specific command is matched.
-- **Parameters:** 
+**Purpose**: Sets a default command handler to be used when no specific command is matched.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `handler`: A function pointer to the command handler.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   void defaultHandler(const CliCommand *cmd, int argc, char *argv[], void *userData) {
       printf("Default command executed.\n");
@@ -128,14 +117,14 @@ in these examples i rewrite cpp example in Bitset code
   ```
 
 ### `void cli_add_option_group(CliParser *parser, const char *groupName, const CliOption *options, size_t numOptions)`
-- **Description:** Groups related options together under a named group for better organization in help messages.
-- **Parameters:** 
+**Purpose**: Groups related options together under a named group for better organization in help messages.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `groupName`: The name of the option group.
   - `options`: An array of `CliOption` structures representing the options in the group.
   - `numOptions`: The number of options in the group.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   CliOption serverOptions[] = {
       {.longOpt = "--port", .shortOpt = 'p'},
@@ -145,22 +134,22 @@ in these examples i rewrite cpp example in Bitset code
   ```
 
 ### `void cli_remove_option_group(CliParser *parser, const char *groupName)`
-- **Description:** Removes a previously defined option group from the parser.
-- **Parameters:** 
+**Purpose**: Removes a previously defined option group from the parser.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `groupName`: The name of the option group to remove.
-- **Returns:** Nothing.
-- **Usage Example:** `cli_remove_option_group(parser, "Server Options");`
+**Return Value**: None.
+**Usage Case**: `cli_remove_option_group(parser, "Server Options");`
 
 ### Error Handling
 
 ### `void cli_set_error_handler(CliParser *parser, CliErrorHandler handler)`
-- **Description:** Sets a custom function to handle parsing errors.
-- **Parameters:** 
+**Purpose**: Sets a custom function to handle parsing errors.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `handler`: A function pointer to the error handler.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   void customErrorHandler(const CliParser *parser, const char *error, void *userData) {
       fprintf(stderr, "Error: %s\n", error);
@@ -169,98 +158,96 @@ in these examples i rewrite cpp example in Bitset code
   ```
 
 ### `void cli_display_error(const CliParser *parser, const char *error)`
-- **Description:** Displays an error message using the configured error handler. If no custom handler is set, the error is printed to `stderr`.
-- **Parameters:** 
+**Purpose**: Displays an error message using the configured error handler. If no custom handler is set, the error is printed to `stderr`.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `error`: The error message to be displayed.
-- **Returns:** Nothing.
-- **Usage Example:** `cli_display_error(parser, "Invalid command.");`
+**Return Value**: None.
+**Usage Case**: `cli_display_error(parser, "Invalid command.");`
 
 ### `CliError cli_get_last_error(const CliParser *parser)`
-- **Description:** Retrieves the last error that occurred during parsing.
-- **Parameters:** 
+**Purpose**: Retrieves the last error that occurred during parsing.
+**Parameters**:
   - `parser`: The `CliParser` instance.
-- **Returns:** The last `CliError` encountered.
-- **Usage Example:** `CliError lastError = cli_get_last_error(parser);`
+**Return Value**: The last `CliError` encountered.
+**Usage Case**: `CliError lastError = cli_get_last_error(parser);`
 
 ### Parsing Arguments
 
 ### `CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[])`
-- **Description:** Parses command-line arguments according to the configured options and commands. This function is the core of the CLI parsing process.
-- **Parameters:** 
+**Purpose**: Parses command-line arguments according to the configured options and commands. This function is the core of the CLI parsing process.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `argc`: The argument count (number of command-line arguments).
   - `argv`: The argument vector (array of command-line arguments).
-- **Returns:** A status code (`CliStatusCode`) indicating success or the type of error encountered.
-- **Usage Example:** `CliStatusCode status = cli_parse_args(parser, argc, argv);`
+**Return Value**: A status code (`CliStatusCode`) indicating success or the type of error encountered.
+**Usage Case**: `CliStatusCode status = cli_parse_args(parser, argc, argv);`
 
 ### `bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], const char *delimiter)`
-- **Description:** Parses command-line arguments using a specified delimiter, allowing for more complex argument structures
-
-.
-- **Parameters:** 
+**Purpose**: Parses command-line arguments using a specified delimiter, allowing for more complex argument structures.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `argc`: The argument count.
   - `argv`: The argument vector.
   - `delimiter`: The delimiter used to separate command arguments.
-- **Returns:** `true` if parsing succeeds, `false` otherwise.
-- **Usage Example:** `cli_parse_args_with_delimiter(parser, argc, argv, ",");`
+**Return Value**: `true` if parsing succeeds, `false` otherwise.
+**Usage Case**: `cli_parse_args_with_delimiter(parser, argc, argv, ",");`
 
 ### `bool cli_process_option_group(CliParser *parser, const char *groupName, int argc, char *argv[])`
-- **Description:** Parses command-line arguments for a specific option group.
-- **Parameters:** 
+**Purpose**: Parses command-line arguments for a specific option group.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `groupName`: The name of the option group to process.
   - `argc`: The argument count.
   - `argv`: The argument vector.
-- **Returns:** `true` if the options in the group are processed successfully, `false` otherwise.
-- **Usage Example:** `cli_process_option_group(parser, "Server Options", argc, argv);`
+**Return Value**: `true` if the options in the group are processed successfully, `false` otherwise.
+**Usage Case**: `cli_process_option_group(parser, "Server Options", argc, argv);`
 
 ### Miscellaneous Functions
 
 ### `void cli_print_help(const CliParser *parser)`
-- **Description:** Prints a detailed help message, including descriptions of all options and commands. This function is typically used when the user requests help with a `--help` or `-h` option.
-- **Parameters:** 
+**Purpose**: Prints a detailed help message, including descriptions of all options and commands. This function is typically used when the user requests help with a `--help` or `-h` option.
+**Parameters**:
   - `parser`: The `CliParser` instance.
-- **Returns:** Nothing.
-- **Usage Example:** `cli_print_help(parser);`
+**Return Value**: None.
+**Usage Case**: `cli_print_help(parser);`
 
 ### `void cli_print_version(const CliParser *parser, const char *version)`
-- **Description:** Prints the version information of the application.
-- **Parameters:** 
+**Purpose**: Prints the version information of the application.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `version`: The version string to be displayed.
-- **Returns:** Nothing.
-- **Usage Example:** `cli_print_version(parser, "1.0.0");`
+**Return Value**: None.
+**Usage Case**: `cli_print_version(parser, "1.0.0");`
 
 ### `void cli_set_custom_usage(CliParser *parser, const char *usage)`
-- **Description:** Allows setting a custom usage message, overriding the default usage message generated by the parser.
-- **Parameters:** 
+**Purpose**: Allows setting a custom usage message, overriding the default usage message generated by the parser.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `usage`: The custom usage message.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   cli_set_custom_usage(parser, "Usage: MyApp [options]");
   ```
 
 ### `void cli_enable_strict_mode(CliParser *parser, bool enable)`
-- **Description:** Enables or disables strict mode, where unrecognized options trigger errors instead of being ignored. This mode is useful for ensuring that only valid options are passed to the program.
-- **Parameters:** 
+**Purpose**: Enables or disables strict mode, where unrecognized options trigger errors instead of being ignored. This mode is useful for ensuring that only valid options are passed to the program.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `enable`: A boolean value (`true` to enable, `false` to disable).
-- **Returns:** Nothing.
-- **Usage Example:** `cli_enable_strict_mode(parser, true);`
+**Return Value**: None.
+**Usage Case**: `cli_enable_strict_mode(parser, true);`
 
 ### `void cli_update_description(CliParser *parser, const char *name, const char *newDescription, bool isCommand)`
-- **Description:** Updates the description of an option or command. This can be useful for dynamic help messages or changing descriptions based on context.
-- **Parameters:** 
+**Purpose**: Updates the description of an option or command. This can be useful for dynamic help messages or changing descriptions based on context.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `name`: The name of the option or command.
   - `newDescription`: The new description string.
   - `isCommand`: A boolean value indicating whether the name refers to a command (`true`) or an option (`false`).
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   cli_update_description(parser, "greet", "Greets the user in a friendly manner", true);
   ```
@@ -268,54 +255,46 @@ in these examples i rewrite cpp example in Bitset code
 ### Interactive Mode and Pipelining
 
 ### `void cli_enter_interactive_mode(CliParser *parser, const char *prompt)`
-- **Description:** Enters an interactive mode where commands can be input repeatedly. This mode is useful for applications that require continuous user interaction.
-- **Parameters:** 
+**Purpose**: Enters an interactive mode where commands can be input repeatedly. This mode is useful for applications that require continuous user interaction.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `prompt`: The prompt string to display in the interactive mode.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   cli_enter_interactive_mode(parser, ">");
   ```
 
-### `void cli_enable_pipelining(CliParser *parser, bool enable)`
-- **Description:** Enables or disables pipelining, allowing the output of one command to be used as input for another, enhancing scripting capabilities.
-- **Parameters:** 
-  - `parser`: The `CliParser` instance.
-  - `enable`: A boolean value (`true` to enable, `false` to disable).
-- **Returns:** Nothing.
-- **Usage Example:** `cli_enable_pipelining(parser, true);`
-
 ### Aliases and Dependencies
 
 ### `bool cli_register_command_alias(CliParser *parser, const char *commandName, const char *alias)`
-- **Description:** Registers an alias for a command, allowing users to use alternative names for commands.
-- **Parameters:** 
+**Purpose**: Registers an alias for a command, allowing users to use alternative names for commands.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `commandName`: The name of the command to alias.
   - `alias`: The alias name.
-- **Returns:** `true` if the alias is registered successfully, `false` otherwise.
-- **Usage Example:** `cli_register_command_alias(parser, "greet", "hello");`
+**Return Value**: `true` if the alias is registered successfully, `false` otherwise.
+**Usage Case**: `cli_register_command_alias(parser, "greet", "hello");`
 
 ### `bool cli_add_option_alias(CliParser *parser, const char *optionName, const char *alias)`
-- **Description:** Registers an alias for an option, allowing users to use alternative names for options.
-- **Parameters:** 
+**Purpose**: Registers an alias for an option, allowing users to use alternative names for options.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `optionName`: The name of the option to alias.
   - `alias`: The alias name.
-- **Returns:** `true` if the alias is registered successfully, `false` otherwise.
-- **Usage Example:** `cli_add_option_alias(parser, "--verbose", "-v");`
+**Return Value**: `true` if the alias is registered successfully, `false` otherwise.
+**Usage Case**: `cli_add_option_alias(parser, "--verbose", "-v");`
 
 ### `bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char shortOpt, const char *dependsOnLongOpt, char dependsOnShortOpt)`
-- **Description:** Defines dependencies between options, where the presence of one option requires the presence of another.
-- **Parameters:** 
+**Purpose**: Defines dependencies between options, where the presence of one option requires the presence of another.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `longOpt`: The long option name that has a dependency.
   - `shortOpt`: The short option character that has a dependency.
   - `dependsOnLongOpt`: The long option name that is required.
   - `dependsOnShortOpt`: The short option character that is required.
-- **Returns:** `true` if the dependency is set successfully, `false` otherwise.
-- **Usage Example:** 
+**Return Value**: `true` if the dependency is set successfully, `false` otherwise.
+**Usage Case**:
   ```c
   cli_set_option_dependencies(parser, "--verbose", 'v', "--log-file", 'l');
   ```
@@ -323,19 +302,19 @@ in these examples i rewrite cpp example in Bitset code
 ### Validation and Confirmation
 
 ### `bool cli_validate_option_argument(const CliOption *option, const char *value)`
-- **Description:** Validates the argument passed to an option, typically used to check if the value meets certain criteria (e.g., a valid port number).
-- **Parameters:** 
+**Purpose**: Validates the argument passed to an option, typically used to check if the value meets certain criteria (e.g., a valid port number).
+**Parameters**:
   - `option`: The `CliOption` to validate.
   - `value`: The argument value to validate.
-- **Returns:** `true` if the argument is valid, `false` otherwise.
-- **Usage Example:** `cli_validate_option_argument(option, "8080");`
+**Return Value**: `true` if the argument is valid, `false` otherwise.
+**Usage Case**: `cli_validate_option_argument(option, "8080");`
 
 ### `bool cli_prompt_confirmation(const char *promptMessage)`
-- **Description:** Prompts the user for confirmation with a customizable message and waits for a Y/N response.
-- **Parameters:** 
+**Purpose**: Prompts the user for confirmation with a customizable message and waits for a Y/N response.
+**Parameters**:
   - `promptMessage`: The message to display in the confirmation prompt.
-- **Returns:** `true` if the user confirms (Y), `false` otherwise (N).
-- **Usage Example:** 
+**Return Value**: `true` if the user confirms (Y), `false` otherwise (N).
+**Usage Case**:
   ```c
   bool confirmed = cli_prompt_confirmation("Are you sure you want to continue? (Y/N)");
   ```
@@ -343,12 +322,12 @@ in these examples i rewrite cpp example in Bitset code
 ### Hooks for Execution
 
 ### `void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook)`
-- **Description:** Registers a function to be called before any command execution, allowing for preparation or validation tasks.
-- **Parameters:** 
+**Purpose**: Registers a function to be called before any command execution, allowing for preparation or validation tasks.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `hook`: A function pointer to the pre-execution hook.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   void preExecutionHook(const CliParser *parser) {
       printf("Preparing to execute a command...\n");
@@ -357,12 +336,12 @@ in these examples i rewrite cpp example in Bitset code
   ```
 
 ### `void cli_set_post_execution_hook(CliParser *parser, CliPostExecutionHook hook)`
-- **Description:** Registers a function to be called after any command execution, allowing for cleanup or logging tasks.
-- **Parameters:** 
+**Purpose**: Registers a function to be called after any command execution, allowing for cleanup or logging tasks.
+**Parameters**:
   - `parser`: The `CliParser` instance.
   - `hook`: A function pointer to the post-execution hook.
-- **Returns:** Nothing.
-- **Usage Example:** 
+**Return Value**: None.
+**Usage Case**:
   ```c
   void postExecutionHook(const CliParser *parser) {
       printf("Command execution completed.\n");
@@ -391,7 +370,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     else {
-        fmt_println("Parser Create Successfully");
+        fmt_printf("Parser Create Successfully\n");
     }
     // Deallocate the CLI parser and all associated resources
     cli_parser_deallocate(parser);
@@ -400,7 +379,7 @@ int main(int argc, char *argv[]) {
 ```
 **Result**
 ```
-Parser Create Successfully 
+Parser Create Successfully
 ```
 
 ---
@@ -413,6 +392,8 @@ Parser Create Successfully
 
 
 void help_option_handler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
     if (!userData) {
         fmt_fprintf(stderr, "Error: userData is NULL in helpOption handler.\n");
         return;
@@ -422,6 +403,8 @@ void help_option_handler(const CliOption *option, const char *value, void *userD
 }
 
 void version_option_handler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)value;
     if (!userData) {
         fmt_fprintf(stderr, "Error: userData is NULL in versionOption handler.\n");
         return;
@@ -501,27 +484,33 @@ Creating CLI parser...
 CLI parser created successfully.
 Setting custom usage message...
 Custom usage message set successfully.
-Registering options...
 Options registered successfully.
 Testing argument parsing...
 Options:
-  --help, h     Display this help message
-  --version, v  Display version information
+  --help, h	Display this help message
+  --version, v	Display version information
 Arguments parsed successfully.
-Deallocating CLI parser...
 
- ./main --version
+./main --version
 
 Creating CLI parser...
 CLI parser created successfully.
 Setting custom usage message...
 Custom usage message set successfully.
-Registering options...
 Options registered successfully.
 Testing argument parsing...
 Version: MyApp v1.0.0
 Arguments parsed successfully.
-Deallocating CLI parser...
+
+./main
+
+Creating CLI parser...
+CLI parser created successfully.
+Setting custom usage message...
+Custom usage message set successfully.
+Options registered successfully.
+Testing argument parsing...
+Arguments parsed successfully.
 ```
 
 ---
@@ -891,7 +880,6 @@ void greetCommandHandler(const CliCommand *command, int argc, char *argv[], void
 void helpOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)option;
     (void)value;
-    (void)userData;
     CliParser *parser = (CliParser *)userData;
     cli_print_help(parser);
 }
@@ -1219,6 +1207,7 @@ No command provided. Use 'help' for more information.
 #include "cli/cli.h"
 #include "fmt/fmt.h"
 #include "string/std_string.h"
+#include <stdlib.h>
 
 void greetCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
     (void)command; 
@@ -1271,6 +1260,7 @@ int main(int argc, char *argv[]) {
         fmt_printf("  %s: %s\n", parser->commands[i].name, parser->commands[i].description);
     }
 
+    free((void *)greetCommand.description); // free the string_strdup'd description owned by main
     cli_parser_deallocate(parser);
     return 0;
 }
@@ -1624,7 +1614,7 @@ int main() {
     };
 
     cli_register_command(parser, &exitCommand);
-    cli_register_command_alias(parser, "exit", "fuck");
+    cli_register_command_alias(parser, "exit", "quit2");
     cli_register_command_alias(parser, "exit", "quit");
 
     enterInteractiveMode(parser);
@@ -1641,6 +1631,7 @@ Interactive mode. Type 'exit' or 'quit' to exit.
 Exiting interactive mode.
 
 ./main
+Interactive mode. Type 'exit' or 'quit' to exit.
 >invalid
 Error: Command 'invalid' failed with status 8
 >quit
@@ -1648,13 +1639,135 @@ Exiting via command: quit
 
 ./main
 Interactive mode. Type 'exit' or 'quit' to exit.
->fuck
-Exiting via command: fuck
-
+>quit2
+Exiting via command: quit2
 ```
 
 ---
 
+## Example 14 : Pre/Post Execution Hooks with `cli_set_pre_execution_hook` and `cli_set_post_execution_hook`
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+
+void preHook(const CliParser *parser, void *userData) {
+    (void)parser;
+    (void)userData;
+    fmt_printf("[pre-hook] About to execute command.\n");
+}
+
+void postHook(const CliParser *parser, void *userData) {
+    (void)parser;
+    (void)userData;
+    fmt_printf("[post-hook] Command execution finished.\n");
+}
+
+void greetHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
+    (void)command;
+    (void)userData;
+    fmt_printf("Hello, %s!\n", argc > 0 ? argv[0] : "world");
+}
+
+int main(int argc, char *argv[]) {
+    CliParser *parser = cli_parser_create("HookApp");
+    cli_set_pre_execution_hook(parser, preHook);
+    cli_set_post_execution_hook(parser, postHook);
+
+    CliCommand greetCommand = {
+        .name = "greet",
+        .handler = greetHandler,
+        .description = "Greet a user",
+        .userData = NULL
+    };
+    cli_register_command(parser, &greetCommand);
+
+    cli_parse_args(parser, argc, argv);
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+```
+./main greet Alice
+[pre-hook] About to execute command.
+Hello, Alice!
+[post-hook] Command execution finished.
+
+./main greet
+[pre-hook] About to execute command.
+Hello, world!
+[post-hook] Command execution finished.
+```
+
+---
+
+## Example 15 : Option Alias and Argument Validation with `cli_add_option_alias`, `cli_validate_option_argument`, and `cli_get_last_error`
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+
+bool validateNumber(const char *value, void *userData) {
+    (void)userData;
+    if (!value || !*value) return false;
+    for (int i = 0; value[i]; i++) {
+        if (value[i] < '0' || value[i] > '9') return false;
+    }
+    return true;
+}
+
+void countHandler(const CliOption *option, const char *value, void *userData) {
+    (void)userData;
+    if (!cli_validate_option_argument(option, value)) {
+        fmt_fprintf(stderr, "Invalid value for --count: '%s' (must be a non-negative integer)\n", value);
+        return;
+    }
+    fmt_printf("Count set to: %s\n", value);
+}
+
+int main(int argc, char *argv[]) {
+    CliParser *parser = cli_parser_create("AliasApp");
+
+    CliOption countOption = {
+        .longOpt = "--count",
+        .shortOpt = 'c',
+        .optionType = CLI_REQUIRED_ARG,
+        .handler = countHandler,
+        .validator = validateNumber,
+        .description = "Set a numeric count"
+    };
+    cli_register_option(parser, &countOption);
+    cli_add_option_alias(parser, "--count", "--num");  /* --num is now a synonym */
+
+    CliStatusCode status = cli_parse_args(parser, argc, argv);
+    if (status != CLI_SUCCESS) {
+        CliError err = cli_get_last_error(parser);
+        fmt_fprintf(stderr, "Parse error (code %d): %s\n", err.code, err.message);
+    }
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+```
+./main --count 5
+Count set to: 5
+
+./main --num 10
+Count set to: 10
+
+./main -c 3
+Count set to: 3
+
+./main --count abc
+Invalid value for --count: 'abc' (must be a non-negative integer)
+```
+
+---
 
 ## Example 16 : running server with different mode 
 
@@ -1679,7 +1792,10 @@ bool validatePort(const char *value, void *userData) {
 
 void portOptionHandler(const CliOption *option, const char *value, void *userData) {
     (void)userData;
-    (void)option;
+    if (!cli_validate_option_argument(option, value)) {
+        fmt_fprintf(stderr, "Invalid port: %s (must be 1-65535)\n", value);
+        return;
+    }
     long port = strtol(value, NULL, 10);
     globalPort = (int)port;
     fmt_printf("Port set to %d\n", globalPort);
@@ -1763,29 +1879,606 @@ int main(int argc, char *argv[]) {
 ```
 **Result**
 ```
-./main start --port 8080
+Note: global options (--port, --verbose) must appear BEFORE the command name.
+
+./main --port 8080 start
 Port set to 8080
 Server started on port 8080...
 
-
-./main start --port 8080 --verbose
+./main --port 8080 --verbose start
 Port set to 8080
 Verbose mode enabled
 Server started on port 8080...
-Verbose mode is ON. Logging detailed server operations.
-Verbose mode flag is set to true.
+[VERBOSE] Verbose mode is ON. Logging detailed server operations.
 
 ./main start
 Error: Port not specified or invalid. Use --port to set a valid port.
 
+./main --port bad_value start
+Invalid port: bad_value (must be 1-65535)
+Error: Port not specified or invalid. Use --port to set a valid port.
+
 ./main --help
-Error: Failed to parse arguments
 Options:
-  --port, p     Set server port
-  --verbose, v  Enable verbose output
-  --help, h     Show help message
+  --port, p	Set server port
+  --verbose, v	Enable verbose output
+  --help, h	Show help message
 Commands:
-  start Starts the server
+  start	Starts the server
+```
+
+---
+
+## Example 17 : Grouping related options with `cli_add_option_group` and `cli_process_option_group`
+
+Option groups let you register and process a set of related options together. `cli_process_option_group` scans the arguments and invokes each matched option's handler.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+
+void verboseHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option; (void)value; (void)userData;
+    fmt_printf("  [logging] verbose enabled\n");
+}
+
+void levelHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option; (void)userData;
+    fmt_printf("  [logging] level = %s\n", value ? value : "(none)");
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("app");
+
+    CliOption logging[] = {
+        { .longOpt = "--verbose", .shortOpt = 'V', .optionType = CLI_NO_ARG,
+          .handler = verboseHandler, .description = "Enable verbose logging" },
+        { .longOpt = "--level", .shortOpt = 'l', .optionType = CLI_REQUIRED_ARG,
+          .handler = levelHandler, .description = "Set the log level" },
+    };
+    cli_add_option_group(parser, "Logging", logging, 2);
+
+    /* Simulated command line: app --verbose --level debug */
+    char *argv[] = { "app", "--verbose", "--level", "debug" };
+    int argc = 4;
+
+    fmt_printf("Processing 'Logging' group:\n");
+    bool ok = cli_process_option_group(parser, "Logging", argc, argv);
+    fmt_printf("group processed: %s\n", ok ? "yes" : "no");
+
+    cli_remove_option_group(parser, "Logging");
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+Processing 'Logging' group:
+  [logging] verbose enabled
+  [logging] level = debug
+group processed: yes
+```
+
+---
+
+## Example 18 : `--key=value` syntax with `cli_parse_args_with_delimiter`
+
+`cli_parse_args_with_delimiter` splits each argument on a delimiter before parsing, so a single `--name=Alice` token is expanded to `--name` `Alice`.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+
+void nameHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option; (void)userData;
+    fmt_printf("Hello, %s!\n", value ? value : "(anonymous)");
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("greet");
+
+    CliOption nameOpt = {
+        .longOpt = "--name", .shortOpt = 'n', .optionType = CLI_REQUIRED_ARG,
+        .handler = nameHandler, .description = "Who to greet"
+    };
+    cli_register_option(parser, &nameOpt);
+
+    /* The user typed:  greet --name=Alice
+       The "=" delimiter splits "--name=Alice" into "--name" "Alice". */
+    char *argv[] = { "greet", "--name=Alice" };
+    int argc = 2;
+
+    bool ok = cli_parse_args_with_delimiter(parser, argc, argv, "=");
+    fmt_printf("parse ok: %s\n", ok ? "yes" : "no");
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+Hello, Alice!
+parse ok: yes
+```
+
+---
+
+## Example 19 : Validating an option argument with a custom validator
+
+Attach a `CliArgumentValidator` and a `validationErrorMessage` to an option, then check candidate values with `cli_validate_option_argument`; on failure the message is available via `cli_get_last_error`.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+#include <ctype.h>
+
+/* CliArgumentValidator: bool (const char* value, void* userData) */
+bool isPositiveInt(const char *value, void *userData) {
+    (void)userData;
+    if (!value || !*value) {
+        return false;
+    }
+    for (const char *p = value; *p; ++p) {
+        if (!isdigit((unsigned char)*p)) {
+            return false;
+        }
+    }
+    return atoi(value) > 0;
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("server");
+
+    CliOption portOpt = {
+        .longOpt = "--port", .shortOpt = 'p', .optionType = CLI_REQUIRED_ARG,
+        .description = "TCP port (positive integer)",
+        .validator = isPositiveInt,
+        .validationErrorMessage = "port must be a positive integer"
+    };
+    cli_register_option(parser, &portOpt);
+
+    const char *inputs[] = { "8080", "0", "abc" };
+    for (int i = 0; i < 3; ++i) {
+        if (cli_validate_option_argument(&portOpt, inputs[i])) {
+            fmt_printf("'%s' -> valid\n", inputs[i]);
+        } 
+        else {
+            CliError err = cli_get_last_error(parser);
+            fmt_printf("'%s' -> rejected: %s\n", inputs[i], err.message);
+        }
+    }
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+'8080' -> valid
+'0' -> rejected: port must be a positive integer
+'abc' -> rejected: port must be a positive integer
+```
+
+---
+
+## Example 20 : Removing registrations with `cli_unregister_option` and `cli_unregister_command`
+
+Options and commands can be removed at runtime; afterwards `cli_find_option` / `cli_find_command` no longer find them.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+
+void optHandler(const CliOption *o, const char *v, void *u) { (void)o; (void)v; (void)u; }
+void cmdHandler(const CliCommand *c, int argc, char *argv[], void *u) {
+    (void)c; (void)argc; (void)argv; (void)u;
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("tool");
+
+    CliOption debugOpt = {
+        .longOpt = "--debug", .shortOpt = 'd', .optionType = CLI_NO_ARG,
+        .handler = optHandler, .description = "Enable debug output"
+    };
+    cli_register_option(parser, &debugOpt);
+
+    CliCommand buildCmd = {
+        .name = "build", .handler = cmdHandler, .description = "Build the project"
+    };
+    cli_register_command(parser, &buildCmd);
+
+    fmt_printf("before: option=%s, command=%s\n",
+               cli_find_option(parser, "--debug", 'd') ? "found" : "missing",
+               cli_find_command(parser, "build")       ? "found" : "missing");
+
+    cli_unregister_option(parser, "--debug", 'd');
+    cli_unregister_command(parser, "build");
+
+    fmt_printf("after:  option=%s, command=%s\n",
+               cli_find_option(parser, "--debug", 'd') ? "found" : "missing",
+               cli_find_command(parser, "build")       ? "found" : "missing");
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+before: option=found, command=found
+after:  option=missing, command=missing
+```
+
+---
+
+## Example 21 : Declaring option dependencies with `cli_set_option_dependencies`
+
+Declare that one option is only meaningful alongside another. The call validates that both options are registered, so a dependency on an unknown option is reported via `cli_get_last_error`.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+
+void noop(const CliOption *o, const char *v, void *u) { (void)o; (void)v; (void)u; }
+
+int main(void) {
+    CliParser *parser = cli_parser_create("convert");
+
+    CliOption outOpt = {
+        .longOpt = "--output", .shortOpt = 'o', .optionType = CLI_REQUIRED_ARG,
+        .handler = noop, .description = "Output file"
+    };
+    CliOption fmtOpt = {
+        .longOpt = "--format", .shortOpt = 'f', .optionType = CLI_REQUIRED_ARG,
+        .handler = noop, .description = "Output format"
+    };
+    cli_register_option(parser, &outOpt);
+    cli_register_option(parser, &fmtOpt);
+
+    /* --output is only meaningful together with --format. */
+    bool ok = cli_set_option_dependencies(parser, "--output", 'o', "--format", 'f');
+    fmt_printf("declare (--output needs --format): %s\n", ok ? "ok" : "failed");
+
+    /* Declaring a dependency on an option that doesn't exist fails. */
+    bool bad = cli_set_option_dependencies(parser, "--output", 'o', "--missing", 0);
+    if (!bad) {
+        CliError err = cli_get_last_error(parser);
+        fmt_printf("declare (--output needs --missing): failed -> %s\n", err.message);
+    }
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+declare (--output needs --format): ok
+declare (--output needs --missing): failed -> Error: Dependency option '--missing' not found.
+```
+
+---
+
+## Example 22 : Collecting repeated options into a `Vector` (integrates `vector`)
+
+A `CLI_REQUIRED_ARG` option may appear many times. Here the `--tag` handler pushes each value into a `Vector` passed through `userData`, so the parser becomes a collector of repeated flags.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include "vector/vector.h"
+#include "string/std_string.h"
+#include <stdlib.h>
+
+/* The --tag option may be repeated; each value is collected into a Vector
+   passed through userData. We store a strdup'd copy (char*) per tag. */
+void tagHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    Vector *tags = (Vector *)userData;
+    if (value && tags) {
+        char *copy = string_strdup(value);
+        vector_push_back(tags, &copy);
+    }
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("tagger");
+    Vector *tags = vector_create(sizeof(char *));
+
+    CliOption tagOpt = {
+        .longOpt = "--tag", .shortOpt = 't', .optionType = CLI_REQUIRED_ARG,
+        .handler = tagHandler, .description = "Add a tag (repeatable)",
+        .userData = tags
+    };
+    cli_register_option(parser, &tagOpt);
+
+    /* Simulated command line: tagger --tag red --tag green --tag blue */
+    char *argv[] = { "tagger", "--tag", "red", "--tag", "green", "--tag", "blue" };
+    int argc = 7;
+
+    cli_parse_args(parser, argc, argv);
+
+    fmt_printf("Collected %zu tag(s):\n", vector_size(tags));
+    for (size_t i = 0; i < vector_size(tags); ++i) {
+        char *t = *(char **)vector_at(tags, i);
+        fmt_printf("  [%zu] %s\n", i, t);
+        free(t);
+    }
+
+    vector_deallocate(tags);
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+Collected 3 tag(s):
+  [0] red
+  [1] green
+  [2] blue
+```
+
+---
+
+## Example 23 : Transforming an option value with the `String` library (integrates `string`)
+
+An option value is just a `const char*`. Wrapping it in a `String` lets you reuse the rich text helpers — here `string_to_upper` and `string_to_lower` echo the `--name` value in both cases.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include "string/std_string.h"
+#include <stdlib.h>
+
+/* --name <value> : echo the value upper-cased and lower-cased using the
+   String library's case helpers. */
+void nameHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)userData;
+    if (!value) {
+        return;
+    }
+    String *s = string_create(value);
+    char *upper = string_to_upper(s);
+    char *lower = string_to_lower(s);
+
+    fmt_printf("original: %s\n", value);
+    fmt_printf("upper:    %s\n", upper);
+    fmt_printf("lower:    %s\n", lower);
+
+    free(upper);
+    free(lower);
+    string_deallocate(s);
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("namecase");
+
+    CliOption nameOpt = {
+        .longOpt = "--name", .shortOpt = 'n', .optionType = CLI_REQUIRED_ARG,
+        .handler = nameHandler, .description = "Print the name in upper and lower case"
+    };
+    cli_register_option(parser, &nameOpt);
+
+    /* Simulated command line: namecase --name MixedCase */
+    char *argv[] = { "namecase", "--name", "MixedCase" };
+    int argc = 3;
+
+    cli_parse_args(parser, argc, argv);
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+original: MixedCase
+upper:    MIXEDCASE
+lower:    mixedcase
+```
+
+---
+
+## Example 24 : A command that emits JSON output (integrates `json`)
+
+A command handler can produce structured output. Here the `info` command builds a `JSON_OBJECT` with the `json` library and prints its compact serialization. Note that `json_serialize` emits object keys in sorted order.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include "json/json.h"
+#include "string/std_string.h"
+#include <stdlib.h>
+
+/* The "info" command builds a JSON object describing the app and prints the
+   compact serialization produced by the JSON library. */
+void infoCommandHandler(const CliCommand *command, int argc, char *argv[], void *userData) {
+    (void)command;
+    (void)argc;
+    (void)argv;
+    (void)userData;
+
+    JsonElement *root = json_create(JSON_OBJECT);
+
+    JsonElement *name = json_create(JSON_STRING);
+    name->value.string_val = string_strdup("namecase");
+    json_add_to_object(root, "app", name);
+
+    JsonElement *version = json_create(JSON_STRING);
+    version->value.string_val = string_strdup("1.0.0");
+    json_add_to_object(root, "version", version);
+
+    JsonElement *ok = json_create(JSON_BOOL);
+    ok->value.bool_val = true;
+    json_add_to_object(root, "ready", ok);
+
+    char *text = json_serialize(root);
+    fmt_printf("%s\n", text);
+
+    free(text);
+    json_deallocate(root);
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("infoapp");
+
+    CliCommand infoCmd = {
+        .name = "info", .handler = infoCommandHandler,
+        .description = "Emit application info as JSON"
+    };
+    cli_register_command(parser, &infoCmd);
+
+    /* Simulated command line: infoapp info */
+    char *argv[] = { "infoapp", "info" };
+    int argc = 2;
+
+    cli_parse_args(parser, argc, argv);
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+{"app": "namecase", "ready": true, "version": "1.0.0"}
+```
+
+---
+
+## Example 25 : Splitting a delimited option value (integrates `string`)
+
+Reuse `string_split` to turn one comma-separated `--fields` argument into individual values. Each returned `String*` (and the array itself) is freed once consumed.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include "string/std_string.h"
+#include <stdlib.h>
+
+/* --fields a,b,c : split the comma-separated value into individual fields
+   using the String library's split helper. */
+void fieldsHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    (void)userData;
+    if (!value) {
+        return;
+    }
+    String *s = string_create(value);
+    int count = 0;
+    String **parts = string_split(s, ",", &count);
+
+    fmt_printf("split into %d field(s):\n", count);
+    for (int i = 0; i < count; ++i) {
+        fmt_printf("  %d: %s\n", i + 1, string_c_str(parts[i]));
+        string_deallocate(parts[i]);
+    }
+    free(parts);
+    string_deallocate(s);
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("splitter");
+
+    CliOption fieldsOpt = {
+        .longOpt = "--fields", .shortOpt = 'f', .optionType = CLI_REQUIRED_ARG,
+        .handler = fieldsHandler, .description = "Comma-separated fields to split"
+    };
+    cli_register_option(parser, &fieldsOpt);
+
+    /* Simulated command line: splitter --fields name,age,email */
+    char *argv[] = { "splitter", "--fields", "name,age,email" };
+    int argc = 3;
+
+    cli_parse_args(parser, argc, argv);
+
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+split into 3 field(s):
+  1: name
+  2: age
+  3: email
+```
+
+---
+
+## Example 26 : Accumulating numeric options and reducing them (integrates `vector`)
+
+Each `--add <n>` pushes an integer into a `Vector<int>`. After parsing, the program walks the vector to compute a running total — a small map/reduce over repeated flags.
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include "vector/vector.h"
+#include <stdlib.h>
+
+/* Each --add <n> pushes an integer into a Vector<int>; after parsing we sum
+   the collected numbers. */
+void addHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
+    Vector *nums = (Vector *)userData;
+    if (value && nums) {
+        int n = atoi(value);
+        vector_push_back(nums, &n);
+    }
+}
+
+int main(void) {
+    CliParser *parser = cli_parser_create("sum");
+    Vector *nums = vector_create(sizeof(int));
+
+    CliOption addOpt = {
+        .longOpt = "--add", .shortOpt = 'a', .optionType = CLI_REQUIRED_ARG,
+        .handler = addHandler, .description = "Add a number to the running set (repeatable)",
+        .userData = nums
+    };
+    cli_register_option(parser, &addOpt);
+
+    /* Simulated command line: sum --add 4 --add 8 --add 15 --add 16 */
+    char *argv[] = { "sum", "--add", "4", "--add", "8", "--add", "15", "--add", "16" };
+    int argc = 9;
+
+    cli_parse_args(parser, argc, argv);
+
+    long total = 0;
+    for (size_t i = 0; i < vector_size(nums); ++i) {
+        total += *(int *)vector_at(nums, i);
+    }
+    fmt_printf("count = %zu\n", vector_size(nums));
+    fmt_printf("sum   = %ld\n", total);
+
+    vector_deallocate(nums);
+    cli_parser_deallocate(parser);
+    return 0;
+}
+```
+
+**Result**
+
+```
+count = 4
+sum   = 43
 ```
 
 ---

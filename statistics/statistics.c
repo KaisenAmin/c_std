@@ -9,6 +9,8 @@
 #include <string.h>
 #include "statistics.h"
 
+
+
 /**
  * @brief This function performs a binary search to find the index where a value x should be inserted in the 
  * sorted array data while maintaining the order. It returns the index where x could be inserted without 
@@ -38,6 +40,7 @@ static size_t bisect_left(const double* data, size_t n, double x) {
     return lo;
 }
 
+
 /**
  * @brief Similar to bisect_left, but it returns the index where x should 
  * be inserted to the right of existing elements that are equal to x. This is useful when handling duplicate values.
@@ -66,6 +69,7 @@ static size_t bisect_right(const double* data, size_t n, double x) {
     return lo;
 }
 
+
 /**
  * @brief Calculates the sum of the elements in the array data with n elements.
  */
@@ -82,6 +86,7 @@ static double statistics_sum(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_sum]: Exiting with total sum: %f", total);
     return total;
 }
+
 
 /**
  * @brief Checks if there are any negative elements in the array data. 
@@ -102,6 +107,7 @@ static bool fail_neg(const double* data, size_t n) {
     return false;
 }
 
+
 /**
  * @brief Compares two elements based on their memory content using memcmp. 
  * This function is useful for comparing elements of different types in generic data structures.
@@ -114,20 +120,25 @@ static int statistics_compare_elements(const void* a, const void* b, size_t size
     return result;
 }
 
+
 /**
  * @brief Compares two elements of the type __StatisticsElementCount based on their count field. 
  * This function is used to sort elements by their frequency in statistics functions like mode.
  */
 static int statistics_compare_counts(const void* a, const void* b) {
-    __StatisticsElementCount* elemA = (__StatisticsElementCount*)a;
-    __StatisticsElementCount* elemB = (__StatisticsElementCount*)b;
+    const __StatisticsElementCount* elemA = (const __StatisticsElementCount*)a;
+    const __StatisticsElementCount* elemB = (const __StatisticsElementCount*)b;
 
     STATISTICS_LOG("[statistics_compare_counts]: Comparing counts: %zu vs %zu", elemA->count, elemB->count);
-    int result = elemB->count - elemA->count;
-    STATISTICS_LOG("[statistics_compare_counts]: Result of comparison: %d", result);
-
-    return result;
+    if (elemA->count > elemB->count) {
+        return -1;
+    }
+    if (elemA->count < elemB->count) {
+        return 1;
+    }
+    return 0;
 }
+
 
 /**
  * @brief Compares two double values. It returns -1 if the first value is less than the second,
@@ -152,6 +163,7 @@ static int statistics_compare_doubles(const void* a, const void* b) {
     return 0;
 }
 
+
 /**
  * @brief A comparator function used for sorting __StatisticsIndexedValue structures, 
  * which hold both the original value and its index in the dataset. It sorts based on the value field.
@@ -175,14 +187,16 @@ static int statistics_compare_index_struct(const void* a, const void* b) {
     return 0;
 }
 
+
 // this helper function function has been corrected to handle ties by averaging the ranks of tied values.
-static void statistics_rank_data(const double* data, size_t n, double* ranked_data) {
+// Returns true on success, false on allocation failure (so callers don't use uninitialized data).
+static bool statistics_rank_data(const double* data, size_t n, double* ranked_data) {
     STATISTICS_LOG("[statistics_rank_data]: Entering function with n = %zu", n);
 
     __StatisticsIndexedValue* indexed_data = (__StatisticsIndexedValue*)malloc(n * sizeof(__StatisticsIndexedValue));
     if (indexed_data == NULL) {
         STATISTICS_LOG("[statistics_rank_data]: Error: memory allocation failed.");
-        return;
+        return false;
     }
 
     for (size_t i = 0; i < n; i++) {
@@ -213,7 +227,9 @@ static void statistics_rank_data(const double* data, size_t n, double* ranked_da
 
     free(indexed_data);
     STATISTICS_LOG("[statistics_rank_data]: Exiting function.");
+    return true;
 }
+
 
 static double statistics_sumprod(const double* x, const double* y, size_t n) {
     STATISTICS_LOG("[statistics_sumprod]: Entering function with n = %zu", n);
@@ -226,6 +242,7 @@ static double statistics_sumprod(const double* x, const double* y, size_t n) {
     STATISTICS_LOG("[statistics_sumprod]: Sum of products = %f", sum);
     return sum;
 }
+
 
 // helper functin for add square of each element in data 
 static double statistics_sum_of_squares(const double* data, size_t n) {
@@ -240,40 +257,60 @@ static double statistics_sum_of_squares(const double* data, size_t n) {
     return sum;
 }
 
-// this helper function calculates Spearman's rank correlation by transforming the ranks and recomputing the differences and sums.
+
+// Computes Spearman's rank correlation via Pearson on the ranks. The simple
+// 1 - 6*sum(d^2)/(n*(n^2-1)) shortcut only matches when there are no tied
+// values; with ties (which the ranker above averages) it returns a slightly
+// different number than SciPy / Python `statistics`. Pearson-on-ranks is the
+// general definition and reduces to the shortcut formula when no ties exist.
 static double statistics_spearman_correlation(const double* x, const double* y, size_t n) {
     STATISTICS_LOG("[statistics_spearman_correlation]: Entering function with n = %zu", n);
+
+    if (n < 2) {
+        STATISTICS_LOG("[statistics_spearman_correlation]: n < 2, returning NAN.");
+        return NAN;
+    }
 
     double* x_ranked = (double*)malloc(n * sizeof(double));
     double* y_ranked = (double*)malloc(n * sizeof(double));
     if (x_ranked == NULL || y_ranked == NULL) {
         STATISTICS_LOG("[statistics_spearman_correlation]: Error: memory allocation failed.");
-        
         free(x_ranked);
         free(y_ranked);
-
         return NAN;
     }
 
-    statistics_rank_data(x, n, x_ranked);
-    statistics_rank_data(y, n, y_ranked);
+    if (!statistics_rank_data(x, n, x_ranked) || !statistics_rank_data(y, n, y_ranked)) {
+        free(x_ranked);
+        free(y_ranked);
+        return NAN;
+    }
 
-    // Calculate d^2
-    double d_squared_sum = 0.0;
+    double xbar = statistics_mean(x_ranked, n);
+    double ybar = statistics_mean(y_ranked, n);
+
+    double sxy = 0.0, sxx = 0.0, syy = 0.0;
     for (size_t i = 0; i < n; i++) {
-        double d = x_ranked[i] - y_ranked[i];
-        d_squared_sum += d * d;
+        double dx = x_ranked[i] - xbar;
+        double dy = y_ranked[i] - ybar;
+        sxy += dx * dy;
+        sxx += dx * dx;
+        syy += dy * dy;
     }
 
     free(x_ranked);
     free(y_ranked);
 
-    // Spearman's rank correlation coefficient
-    double spearman_rho = 1 - (6 * d_squared_sum) / (n * (n * n - 1));
-    STATISTICS_LOG("[statistics_spearman_correlation]: Spearman's rho = %f", spearman_rho);
+    if (sxx == 0.0 || syy == 0.0) {
+        STATISTICS_LOG("[statistics_spearman_correlation]: Zero variance in ranks, returning NAN.");
+        return NAN;
+    }
 
-    return spearman_rho;
+    double rho = sxy / sqrt(sxx * syy);
+    STATISTICS_LOG("[statistics_spearman_correlation]: Spearman's rho = %f", rho);
+    return rho;
 }
+
 
 /**
  * @brief This function calculates the arithmetic mean (average) of the given data points.
@@ -304,6 +341,7 @@ double statistics_mean(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_mean]: Sum = %f, Mean = %f", sum, sum / n);
     return sum / n;
 }
+
 
 /**
  * @brief This function calculates the median of the given data points.
@@ -352,6 +390,7 @@ double statistics_median(const double* data, size_t n) {
 
     free(sorted_data);
     STATISTICS_LOG("[statistics_median]: Exiting function.");
+
     return median;
 }
 
@@ -406,6 +445,7 @@ double statistics_median_low(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_median_low]: Exiting function.");
     return median_low;
 }
+
 
 /**
  * @brief This function calculates the high median of the given data points.
@@ -509,8 +549,10 @@ double statistics_median_grouped(const double* data, size_t n, double interval) 
 
     free(sorted_data);
     STATISTICS_LOG("[statistics_median_grouped]: Exiting function.");
+
     return median_grouped;
 }
+
 
 /**
  * @brief This function calculates the sample variance of the given data points.
@@ -574,6 +616,7 @@ double statistics_stdev(const double* data, size_t n, bool xbar_provided, double
     return stdev;
 }
 
+
 /**
  * @brief This function calculates the population variance of the given data points.
  * Optionally, it can use a provided mean (mu) instead of computing it from the data.
@@ -609,6 +652,7 @@ double statistics_pvariance(const double* data, size_t n, bool mu_provided, doub
     return pvariance;
 }
 
+
 /**
  * @brief This function calculates the population standard deviation of the given data points.
  * Optionally, it can use a provided mean (mu) instead of computing it from the data.
@@ -635,6 +679,7 @@ double statistics_pstdev(const double* data, size_t n, bool mu_provided, double 
     STATISTICS_LOG("[statistics_pstdev]: Standard deviation = %f", stdev);
     return stdev;
 }
+
 
 /**
  * @brief This function calculates the arithmetic mean (average) of the given data points.
@@ -688,9 +733,11 @@ double statistics_fmean(const double* data, size_t n, const double* weights) {
 
         double weighted_mean = num / den;
         STATISTICS_LOG("[statistics_fmean]: Weighted mean = %f", weighted_mean);
+
         return weighted_mean;
     }
 }
+
 
 /**
  * @brief This function calculates the geometric mean of the given data points.
@@ -717,24 +764,24 @@ double statistics_geometric_mean(const double* data, size_t n) {
         return NAN;
     }
 
-    double total = 0.0;
+    bool has_zero = false;
     for (size_t i = 0; i < n; i++) {
-        if (data[i] > 0.0) {
-            total += log(data[i]);
-        } 
-        else if (data[i] == 0.0) {
-            STATISTICS_LOG("[statistics_geometric_mean]: Data contains zero, returning 0.0.");
-            return 0.0;
-        } 
-        else {
+        if (data[i] < 0.0) {
             STATISTICS_LOG("[statistics_geometric_mean]: Error: No negative inputs allowed. Invalid value: %f", data[i]);
             return NAN;
         }
+        if (data[i] == 0.0) {
+            has_zero = true;
+        }
+    }
+    if (has_zero) {
+        STATISTICS_LOG("[statistics_geometric_mean]: Data contains zero, returning 0.0.");
+        return 0.0;
     }
 
-    if (total == -INFINITY) {
-        STATISTICS_LOG("[statistics_geometric_mean]: Sum of logs is -INFINITY, returning 0.0.");
-        return 0.0;
+    double total = 0.0;
+    for (size_t i = 0; i < n; i++) {
+        total += log(data[i]);
     }
 
     double mean_log = total / n;
@@ -743,6 +790,7 @@ double statistics_geometric_mean(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_geometric_mean]: Geometric mean = %f", geo_mean);
     return geo_mean;
 }
+
 
 /**
  * @brief This function calculates the harmonic mean of the given data points. Optionally, it can use
@@ -811,6 +859,7 @@ double statistics_harmonic_mean(const double* data, size_t n, const double* weig
     STATISTICS_LOG("[statistics_harmonic_mean]: Harmonic mean = %f", harmonic_mean);
     return harmonic_mean;
 }
+
 
 /**
  * @brief This function computes the mode of the given data set. If there are multiple elements with the same highest
@@ -898,17 +947,19 @@ void* statistics_mode(void* data, size_t n, size_t size) {
  * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr
  *       and returns `NULL`.
  * @note If memory allocation fails, the function prints an error message to stderr and returns `NULL`.
- */
+ */                                           
 void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count) {
     STATISTICS_LOG("[statistics_multimode]: Entering function with n = %zu, size = %zu", n, size);
 
+    if (mode_count) {
+        *mode_count = 0;
+    }
     if (data == NULL) {
         STATISTICS_LOG("[statistics_multimode]: Error: data argument is null.");
         return NULL;
     }
     if (n == 0) {
         STATISTICS_LOG("[statistics_multimode]: Error: number of elements is zero.");
-        *mode_count = 0;
         return NULL;
     }
 
@@ -975,12 +1026,15 @@ void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count
     }
 
     free(counts);
-    *mode_count = mode_elements_count;
+    if (mode_count) {
+        *mode_count = mode_elements_count;
+    }
 
-    STATISTICS_LOG("[statistics_multimode]: Exiting function with mode_count = %zu", *mode_count);
+    STATISTICS_LOG("[statistics_multimode]: Exiting function with mode_count = %zu", mode_elements_count);
 
     return modes;
 }
+
 
 /**
  * @brief This function calculates the covariance between the given data points.
@@ -1021,8 +1075,10 @@ double statistics_covariance(const double* x, const double* y, size_t n) {
 
     double result = sxy / (n - 1);
     STATISTICS_LOG("[statistics_covariance]: Result = %f", result);
+
     return result;
 }
+
 
 /**
  * @brief This function calculates the correlation coefficient between the given data points. It supports
@@ -1094,10 +1150,16 @@ double statistics_correlation(const double* x, const double* y, size_t n, Correl
     free(x_copy);
     free(y_copy);
 
+    if (sxx == 0.0 || syy == 0.0) {
+        STATISTICS_LOG("[statistics_correlation]: Error: at least one variable has zero variance.");
+        return NAN;
+    }
+
     double result = sxy / sqrt(sxx * syy);
     STATISTICS_LOG("[statistics_correlation]: Result = %f", result);
     return result;
 }
+
 
 /**
  * @brief This function performs linear regression on the given data points. If `proportional` is `true`,

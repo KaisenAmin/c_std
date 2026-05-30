@@ -14,6 +14,7 @@
 
 
 
+
 bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
 #define UNI_REPLACEMENT_CHAR (uint32_t)0x0000FFFD
@@ -43,8 +44,7 @@ static const char trailingBytesForUTF8[256] = {
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
     2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5
 };
-static const uint32_t offsetsFromUTF8[6] = { 0x00000000UL, 0x00003080UL, 0x000E2080UL, 
-                     0x03C82080UL, 0xFA082080UL, 0x82082080UL };
+static const uint32_t offsetsFromUTF8[6] = { 0x00000000UL, 0x00003080UL, 0x000E2080UL, 0x03C82080UL, 0xFA082080UL, 0x82082080UL };
 static const unsigned int halfBase = 0x0010000UL;
 static const unsigned int halfMask = 0x3FFUL;
 static const char b58digits_ordered[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -61,6 +61,7 @@ static const int8_t b58digits_map[] = {
 static const char BASE91_ALPHABET[] = 
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     "!#$%&()*+,./:;<=>?@[]^_`{|}~\"";
+
 
 /**
  * This function finds the index of a character within the BASE91_ALPHABET array, which is used for Base91 decoding. 
@@ -80,10 +81,13 @@ static int base91_decode_value(char c) {
     return -1;
 }
 
+
 /**
- * This function verifies whether a given sequence of bytes is valid UTF-8 by checking the leading 
- * byte and its corresponding continuation bytes. It handles various cases, including overlong sequences 
- * and invalid characters, ensuring the input adheres to UTF-8 encoding rules.
+ * Validates a SINGLE UTF-8 sequence (one codepoint's worth of bytes: 1–4).
+ * `length` must be in [1, 4]; values outside that range return false.
+ * To validate a whole UTF-8 string call `encoding_is_utf8_string`, which
+ * walks the bytes codepoint-by-codepoint and invokes this helper per
+ * sequence.
  */
 bool encoding_is_utf8(const uint8_t* input, size_t length) {
     ENCODING_LOG("[encoding_is_utf8] Validating UTF-8 encoding for input sequence of length: %zu", length);
@@ -164,14 +168,13 @@ bool encoding_is_utf8(const uint8_t* input, size_t length) {
     return true;
 }
 
+
 /**
  * This function converts a UTF-16 encoded string to UTF-8. It handles surrogate pairs by converting 
  * them to their corresponding UTF-32 representation before encoding them as UTF-8, ensuring proper handling 
  * of all UTF-16 characters, including edge cases.
  */
-static ConversionResult ConvertUTF16toUTF8 (
-        const uint16_t** sourceStart, const uint16_t* sourceEnd, 
-        uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
+static ConversionResult ConvertUTF16toUTF8 (const uint16_t** sourceStart, const uint16_t* sourceEnd, uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
     
     ENCODING_LOG("[ConvertUTF16toUTF8] Starting UTF-16 to UTF-8 conversion");
 
@@ -186,6 +189,7 @@ static ConversionResult ConvertUTF16toUTF8 (
         const uint32_t byteMark = 0x80; 
         const uint16_t* oldSource = source; /* In case we have to back up because of target overflow. */
         ch = *source++;
+
         /* If we have a surrogate pair, convert to UTF32 first. */
         if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_HIGH_END) {
             /* If the 16 bits following the high surrogate are in the source buffer... */
@@ -205,7 +209,7 @@ static ConversionResult ConvertUTF16toUTF8 (
                     break;
                 }
             } 
-            else { /* We don't have the 16 bits following the high surrogate. */
+            else { 
                 ENCODING_LOG("[ConvertUTF16toUTF8] Error: Source exhausted, missing low surrogate");
                 --source; /* return to the high surrogate */
                 result = sourceExhausted;
@@ -213,15 +217,14 @@ static ConversionResult ConvertUTF16toUTF8 (
             }
         } 
         else if (flags == strictConversion) {
-            /* UTF-16 surrogate values are illegal in UTF-32 */
             if (ch >= UNI_SUR_LOW_START && ch <= UNI_SUR_LOW_END) {
                 ENCODING_LOG("[ConvertUTF16toUTF8] Error: Unpaired low surrogate in strict mode");
-                --source; /* return to the illegal value itself */
+                --source; 
                 result = sourceIllegal;
                 break;
             }
         }
-        /* Figure out how many bytes the result will require */
+        /* how many bytes the result will require */
         if (ch < (uint32_t)0x80) {      
             bytesToWrite = 1;
         } 
@@ -247,7 +250,7 @@ static ConversionResult ConvertUTF16toUTF8 (
             target -= bytesToWrite; result = targetExhausted; 
             break;
         }
-        switch (bytesToWrite) { /* note: everything falls through. */
+        switch (bytesToWrite) { /* everything falls through. */
             case 4: 
             *--target = (uint8_t)((ch | byteMark) & byteMask); ch >>= 6;
             // fall through
@@ -266,19 +269,18 @@ static ConversionResult ConvertUTF16toUTF8 (
     }
     *sourceStart = source;
     *targetStart = target;
-    ENCODING_LOG("[ConvertUTF16toUTF8] Conversion completed");
 
+    ENCODING_LOG("[ConvertUTF16toUTF8] Conversion completed");
     return result;
 }
+
 
 /**
  * This function converts a UTF-32 encoded string to UTF-8. It processes each UTF-32 character,
  * determining how many bytes are needed in UTF-8, and encodes the character accordingly, 
  * while replacing any illegal UTF-32 values with a replacement character.
  */
-static ConversionResult ConvertUTF32toUTF8 (
-        const uint32_t** sourceStart, const uint32_t* sourceEnd, 
-        uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
+static ConversionResult ConvertUTF32toUTF8 (const uint32_t** sourceStart, const uint32_t* sourceEnd, uint8_t** targetStart, uint8_t* targetEnd, ConversionFlags flags) {
     
     ENCODING_LOG("[ConvertUTF32toUTF8] Starting UTF-32 to UTF-8 conversion");
     ConversionResult result = conversionOK;
@@ -291,8 +293,8 @@ static ConversionResult ConvertUTF32toUTF8 (
         const uint32_t byteMask = 0xBF;
         const uint32_t byteMark = 0x80; 
         ch = *source++;
+
         if (flags == strictConversion ) {
-            /* UTF-16 surrogate values are illegal in UTF-32 */
             if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END) {
                 ENCODING_LOG("[ConvertUTF32toUTF8] Error: Illegal surrogate in strict mode at 0x%X", ch);
                 --source; /* return to the illegal value itself */
@@ -349,19 +351,18 @@ static ConversionResult ConvertUTF32toUTF8 (
     }
     *sourceStart = source;
     *targetStart = target;
-    ENCODING_LOG("[ConvertUTF32toUTF8] Conversion completed");
 
+    ENCODING_LOG("[ConvertUTF32toUTF8] Conversion completed");
     return result;
 }
+
 
 /**
  * This function converts a UTF-8 encoded string to UTF-16. It iterates through the source UTF-8 string, 
  * decodes each character, and checks for any invalid sequences. It handles cases where characters need to be split 
  * into surrogate pairs in UTF-16 or replaced with a replacement character for illegal sequences.
  */
-static ConversionResult ConvertUTF8toUTF16 (
-        const uint8_t** sourceStart, const uint8_t* sourceEnd, 
-        uint16_t** targetStart, uint16_t* targetEnd, ConversionFlags flags) {
+static ConversionResult ConvertUTF8toUTF16 (const uint8_t** sourceStart, const uint8_t* sourceEnd, uint16_t** targetStart, uint16_t* targetEnd, ConversionFlags flags) {
 
     ENCODING_LOG("[ConvertUTF8toUTF16] Starting UTF-8 to UTF-16 conversion");
     ConversionResult result = conversionOK;
@@ -377,12 +378,12 @@ static ConversionResult ConvertUTF8toUTF16 (
             result = sourceExhausted; 
             break;
         }
-        /* Do this check whether lenient or strict */
         if (!encoding_is_utf8(source, extraBytesToRead + 1)) {
             ENCODING_LOG("[ConvertUTF8toUTF16] Error: Illegal UTF-8 sequence detected");
             result = sourceIllegal;
             break;
         }
+
         /*
          * The cases all fall through. See "Note A" below.
          */
@@ -410,7 +411,7 @@ static ConversionResult ConvertUTF8toUTF16 (
 
         if (target >= targetEnd) {
             ENCODING_LOG("[ConvertUTF8toUTF16] Error: Target buffer exhausted");
-            source -= (extraBytesToRead+1); /* Back up source pointer! */
+            source -= (extraBytesToRead+1); 
             result = targetExhausted; break;
         }
         if (ch <= UNI_MAX_BMP) { /* Target is a character <= 0xFFFF */
@@ -418,7 +419,7 @@ static ConversionResult ConvertUTF8toUTF16 (
             if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END) {
                 if (flags == strictConversion) {
                     ENCODING_LOG("[ConvertUTF8toUTF16] Error: Illegal surrogate found in strict mode");
-                    source -= (extraBytesToRead+1); /* return to the illegal value itself */
+                    source -= (extraBytesToRead+1); 
                     result = sourceIllegal;
                     break;
                 } 
@@ -437,7 +438,7 @@ static ConversionResult ConvertUTF8toUTF16 (
                 ENCODING_LOG("[ConvertUTF8toUTF16] Error: Illegal UTF-16 code point in strict mode");
                 result = sourceIllegal;
                 source -= (extraBytesToRead+1); /* return to the start */
-                break; /* Bail out; shouldn't continue */
+                break; 
             } 
             else {
                 ENCODING_LOG("[ConvertUTF8toUTF16] Replacing out-of-range character with replacement character");
@@ -447,13 +448,14 @@ static ConversionResult ConvertUTF8toUTF16 (
         else {
             /* target is a character in range 0xFFFF - 0x10FFFF. */
             if (target + 1 >= targetEnd) {
-                source -= (extraBytesToRead+1); /* Back up source pointer! */
+                source -= (extraBytesToRead+1); 
                 ENCODING_LOG("[ConvertUTF8toUTF16] Error: Target buffer exhausted for surrogate pair");
                 result = targetExhausted; break;
             }
             ch -= halfBase;
             *target++ = (uint16_t)((ch >> halfShift) + UNI_SUR_HIGH_START);
             *target++ = (uint16_t)((ch & halfMask) + UNI_SUR_LOW_START);
+
             ENCODING_LOG("[ConvertUTF8toUTF16] Successfully decoded surrogate pair: 0x%X", ch);
         }
     }
@@ -463,6 +465,7 @@ static ConversionResult ConvertUTF8toUTF16 (
 
     return result;
 }
+
 
 /**
  * This function converts a UTF-8 encoded string to UTF-32. It processes the UTF-8 input by decoding each character, 
@@ -519,7 +522,7 @@ ConversionResult ConvertUTF8toUTF32 (
 
         if (target >= targetEnd) {
             ENCODING_LOG("[ConvertUTF8toUTF32] Error: Target buffer exhausted");
-            source -= (extraBytesToRead+1); /* Back up the source pointer! */
+            source -= (extraBytesToRead+1); 
             result = targetExhausted; break;
         }
         if (ch <= UNI_MAX_LEGAL_UTF32) {
@@ -530,7 +533,7 @@ ConversionResult ConvertUTF8toUTF32 (
             if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END) {
                 if (flags == strictConversion) {
                     ENCODING_LOG("[ConvertUTF8toUTF32] Error: Illegal surrogate found in strict mode");
-                    source -= (extraBytesToRead+1); /* return to the illegal value itself */
+                    source -= (extraBytesToRead+1); 
                     result = sourceIllegal;
                     break;
                 } 
@@ -544,7 +547,7 @@ ConversionResult ConvertUTF8toUTF32 (
                 ENCODING_LOG("[ConvertUTF8toUTF32] Successfully decoded character: 0x%X", ch);
             }
         } 
-        else { /* i.e., ch > UNI_MAX_LEGAL_UTF32 */
+        else { 
             ENCODING_LOG("[ConvertUTF8toUTF32] Error: Invalid UTF-32 code point");
             result = sourceIllegal;
             *target++ = UNI_REPLACEMENT_CHAR;
@@ -553,8 +556,10 @@ ConversionResult ConvertUTF8toUTF32 (
     *sourceStart = source;
     *targetStart = target;
     ENCODING_LOG("[ConvertUTF8toUTF32] Conversion completed");
+
     return result;
 }
+
 
 /**
  * This function decodes a single Base32 character. If the character is between 'A' and 'Z', 
@@ -582,6 +587,7 @@ static int decode_char(unsigned char c) {
     return retval;
 }
 
+
 /**
  * Given a block id between 0 and 7 inclusive, this will return the index of
  * the octet in which this block starts. For example, given 3 it will return 1
@@ -601,6 +607,7 @@ static int get_octet(int block) {
     
     return octet;
 }
+
 
 /**
  * Given a block id between 0 and 7 inclusive, this will return how many bits
@@ -649,6 +656,7 @@ static unsigned char shift_right(unsigned char byte, signed char offset) {
     return result;
 }
 
+
 /**
  * Shift the byte to the left by the specified offset
  * This function calls shift_right with the negative of the offset,
@@ -661,6 +669,7 @@ static unsigned char shift_left(unsigned char byte, signed char offset) {
 
     return result;
 }
+
 
 static int decode_sequence(const unsigned char *coded, unsigned char *plain) {
     ENCODING_LOG("[decode_sequence] Starting sequence decoding");
@@ -692,6 +701,7 @@ static int decode_sequence(const unsigned char *coded, unsigned char *plain) {
     ENCODING_LOG("[decode_sequence] Decoding completed successfully");
     return 5;
 }
+
 
 /**
  * @brief Encodes binary data into Base64 format.
@@ -742,6 +752,7 @@ char* encoding_base64_encode(const char* input, size_t length) {
     return encoded;
 }
 
+
 /**
  * @brief Decodes a Base64 encoded string back to binary data.
  *
@@ -760,6 +771,16 @@ char* encoding_base64_decode(const char* input, size_t length) {
     if (length % 4 != 0) {
         ENCODING_LOG("[encoding_base64_decode] Error: Invalid input length. Length must be a multiple of 4.");
         return NULL;
+    }
+
+    if (length == 0) {
+        char* empty = (char*) malloc(1);
+        if (!empty) {
+            return NULL;
+        }
+
+        empty[0] = '\0';
+        return empty;
     }
 
     size_t output_length = length / 4 * 3;
@@ -884,13 +905,32 @@ char* encoding_url_decode(const char* input, size_t length) {
                 return NULL;
             }
 
-            static const char hex[] = "0123456789ABCDEF";
             char hi = input[++i];
             char lo = input[++i];
-            int hi_index = strchr(hex, toupper(hi)) - hex;
-            int lo_index = strchr(hex, toupper(lo)) - hex;
+            int hi_index, lo_index;
+            unsigned char uh = (unsigned char)toupper((unsigned char)hi);
+            unsigned char ul = (unsigned char)toupper((unsigned char)lo);
 
-            if (hi_index < 0 || hi_index >= 16 || lo_index < 0 || lo_index >= 16) {
+            if (uh >= '0' && uh <= '9') {      
+                hi_index = uh - '0';
+            }
+            else if (uh >= 'A' && uh <= 'F') {
+                hi_index = uh - 'A' + 10;
+            }
+            else {                             
+                hi_index = -1;
+            }
+            if (ul >= '0' && ul <= '9') {     
+                lo_index = ul - '0';
+            }
+            else if (ul >= 'A' && ul <= 'F') { 
+                lo_index = ul - 'A' + 10;
+            }
+            else {                         
+                lo_index = -1;
+            }
+
+            if (hi_index < 0 || lo_index < 0) {
                 ENCODING_LOG("[encoding_url_decode] Error: Invalid hex characters in percent-encoding");
                 free(result);
                 return NULL;
@@ -911,6 +951,7 @@ char* encoding_url_decode(const char* input, size_t length) {
     return result;
 }
 
+
 /**
  * @brief Encodes binary data into Base32 format.
  *
@@ -929,7 +970,7 @@ char* encoding_url_decode(const char* input, size_t length) {
 char* encoding_base32_encode(const char* input, size_t length) {
     ENCODING_LOG("[encoding_base32_encode] Starting Base32 encoding");
 
-    size_t output_length = ((length + 4) / 5) * 8; // Output length including padding
+    size_t output_length = ((length + 4) / 5) * 8; 
     char* encoded = (char*) malloc(output_length + 1);
 
     if (!encoded) {
@@ -1078,7 +1119,8 @@ char* encoding_base16_decode(const char* input, size_t length) {
         return NULL;
     }
 
-    static const unsigned char base16_decode[128] = {
+
+    static const unsigned char base16_decode[256] = {
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1092,6 +1134,23 @@ char* encoding_base16_decode(const char* input, size_t length) {
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
@@ -1116,7 +1175,7 @@ char* encoding_base16_decode(const char* input, size_t length) {
         if (a == 0xFF || b == 0xFF) {
             ENCODING_LOG("[encoding_base16_decode] Error: Invalid character encountered");
             free(decoded);
-            return NULL; // Invalid character
+            return NULL; 
         }
 
         decoded[j++] = (a << 4) | b;
@@ -1188,6 +1247,7 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
     return output;
 }
 
+
 /**
  * @brief Converts a UTF-16 encoded string to a UTF-32 encoded string.
  *
@@ -1211,7 +1271,7 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     }
     ENCODING_LOG("[encoding_utf16_to_utf32] Starting UTF-16 to UTF-32 conversion");
 
-    // Allocate memory for the worst-case scenario (all characters are non-surrogates)
+    // Allocate memory for the worst-case scenario 
     uint32_t* output = (uint32_t*) malloc(sizeof(uint32_t) * (length + 1));
     if (!output) {
         ENCODING_LOG("[encoding_utf16_to_utf32] Error: Memory allocation failed");
@@ -1222,15 +1282,12 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
     for (size_t i = 0; i < length; ++i) {
         uint32_t ch = input[i];
 
-        // Check for high surrogate
         if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_HIGH_END) {
-            // Ensure there's a following character for the low surrogate
             if (i + 1 < length) {
                 uint32_t ch2 = input[i + 1];
-                // Check for low surrogate and construct the full code point
                 if (ch2 >= UNI_SUR_LOW_START && ch2 <= UNI_SUR_LOW_END) {
                     ch = ((ch - UNI_SUR_HIGH_START) << 10) + (ch2 - UNI_SUR_LOW_START) + 0x10000;
-                    i++; // Skip the low surrogate
+                    i++; 
                 } 
                 else {
                     ENCODING_LOG("[encoding_utf16_to_utf32] Error: Invalid surrogate pair");
@@ -1247,12 +1304,12 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
         output[j++] = ch;
     }
 
-    // Null-terminate the output
     output[j] = 0;
     ENCODING_LOG("[encoding_utf16_to_utf32] Conversion completed successfully, length: %zu", j);
 
     return output;
 }
+
 
 /**
  * @brief Converts a UTF-16 encoded string to a UTF-8 encoded string.
@@ -1277,7 +1334,6 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
 
     ENCODING_LOG("[encoding_utf16_to_utf8] Starting UTF-16 to UTF-8 conversion");
 
-    // Estimate maximum output size (4 bytes per UTF-16 character)
     size_t maxOutLength = length * 4;
     uint8_t* output = (uint8_t*)malloc(maxOutLength);
     if (!output) {
@@ -1289,8 +1345,6 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     const uint16_t* sourceEnd = input + length;
     uint8_t* targetStart = output;
     uint8_t* targetEnd = output + maxOutLength;
-
-    // Perform the UTF-16 to UTF-8 conversion using lenient conversion method
     ConversionResult result = ConvertUTF16toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
 
     if (result != conversionOK) {
@@ -1308,11 +1362,12 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
         return NULL;
     }
 
-    resizedOutput[actualLength] = '\0'; // Null-terminate the UTF-8 string
+    resizedOutput[actualLength] = '\0'; 
     ENCODING_LOG("[encoding_utf16_to_utf8] Conversion completed successfully, length: %zu", actualLength);
 
     return resizedOutput;
 }
+
 
 /**
  * @brief Converts a UTF-32 encoded string to a UTF-8 encoded string.
@@ -1349,7 +1404,6 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     uint8_t* targetStart = output;
     uint8_t* targetEnd = output + maxOutLength;
 
-    // Perform the UTF-32 to UTF-8 conversion using lenient conversion method
     ConversionResult result = ConvertUTF32toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
     if (result != conversionOK) {
         ENCODING_LOG("[encoding_utf32_to_utf8] Error: Conversion from UTF-32 to UTF-8 failed");
@@ -1371,6 +1425,7 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
 
     return resizedOutput;
 }
+
 
 /**
  * @brief Validates whether the provided string is a valid UTF-8 string.
@@ -1410,6 +1465,7 @@ bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
     return true;
 }
 
+
 /**
  * @brief Converts a UTF-8 encoded string to a UTF-16 encoded string.
  *
@@ -1433,8 +1489,6 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
 
     ENCODING_LOG("[encoding_utf8_to_utf16] Starting UTF-8 to UTF-16 conversion");
 
-    // Estimate maximum output size (each UTF-8 character can be at most 4 bytes,
-    // but can translate to at most 2 UTF-16 characters)
     size_t maxOutLength = length * 2;
     uint16_t* output = (uint16_t*)malloc(maxOutLength * sizeof(uint16_t));
     if (!output) {
@@ -1456,20 +1510,21 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
         return NULL;
     }
 
-    // Resize the output to the actual UTF-16 string length
+
     size_t actualLength = targetStart - output;
-    uint16_t* resizedOutput = (uint16_t*)realloc(output, actualLength * sizeof(uint16_t) + 1);
+    uint16_t* resizedOutput = (uint16_t*)realloc(output, (actualLength + 1) * sizeof(uint16_t));
     if (!resizedOutput) {
         ENCODING_LOG("[encoding_utf8_to_utf16] Error: Reallocation failed");
         free(output);
         return NULL;
     }
 
-    resizedOutput[actualLength] = '\0'; // Null-terminate the UTF-16 string
+    resizedOutput[actualLength] = 0; // Null-terminate the UTF-16 string
     ENCODING_LOG("[encoding_utf8_to_utf16] Conversion completed successfully, length: %zu", actualLength);
 
     return resizedOutput;
 }
+
 
 /**
  * @brief Converts a UTF-8 encoded string to a UTF-32 encoded string.
@@ -1493,13 +1548,11 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     }
     ENCODING_LOG("[encoding_utf8_to_utf32] Starting UTF-8 to UTF-32 conversion");
 
-    // Estimate maximum output size (each UTF-8 character can be at most 4 bytes,
-    // translating to a single UTF-32 character)
     size_t maxOutLength = length;
     uint32_t* output = (uint32_t*)malloc(maxOutLength * sizeof(uint32_t));
     if (!output) {
         ENCODING_LOG("[encoding_utf8_to_utf32] Error: Memory allocation failed");
-        return NULL; // Memory allocation failed
+        return NULL; 
     }
 
     const uint8_t* sourceStart = input;
@@ -1515,11 +1568,10 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
         return NULL;
     }
 
-    // Resize the output to the actual UTF-32 string length
     size_t actualLength = targetStart - output;
     uint32_t* resizedOutput = (uint32_t*)realloc(output, (actualLength + 1) * sizeof(uint32_t));
     if (resizedOutput) {
-        resizedOutput[actualLength] = 0; // Null-terminate the UTF-32 string
+        resizedOutput[actualLength] = 0; 
         ENCODING_LOG("[encoding_utf8_to_utf32] Conversion completed successfully, length: %zu", actualLength);
         return resizedOutput;
     }
@@ -1527,6 +1579,7 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     ENCODING_LOG("[encoding_utf8_to_utf32] Error: Memory reallocation failed");
     return output;
 }
+
 
 /**
  * @brief Converts a UTF-8 encoded string to a UTF-32 encoded string.
@@ -1556,7 +1609,6 @@ void encoding_hex_dump(const void *data, size_t size) {
     for (i = 0; i < size; i += 16) {
         printf("%08zx  ", i); // Print the offset
 
-        // Print hex values
         for (j = 0; j < 16; j++) {
             if (i + j < size) {
                 printf("%02x ", byte[i + j]);
@@ -1579,6 +1631,7 @@ void encoding_hex_dump(const void *data, size_t size) {
     ENCODING_LOG("[encoding_hex_dump] Hex dump completed successfully");
 }
 
+
 /**
  * @brief Encodes binary data into a Base85 encoded string.
  *
@@ -1593,18 +1646,17 @@ void encoding_hex_dump(const void *data, size_t size) {
  *
  * @note The caller is responsible for freeing the returned encoded string.
  */
-char* encododing_base85_encode(const uint8_t* input, size_t length) {
+char* encoding_base85_encode(const uint8_t* input, size_t length) {
     if (input == NULL || length == 0) {
-        ENCODING_LOG("[encododing_base85_encode] Error: Invalid input or length");
+        ENCODING_LOG("[encoding_base85_encode] Error: Invalid input or length");
         return NULL;
     }
-    ENCODING_LOG("[encododing_base85_encode] Starting Base85 encoding");
+    ENCODING_LOG("[encoding_base85_encode] Starting Base85 encoding");
 
-    // Calculate the maximum possible length of the encoded string
     size_t encoded_max_length = ((length + 3) / 4) * 5 + 2; // +2 for potential padding and null terminator
     char* encoded = (char*) malloc(encoded_max_length);
     if (!encoded) {
-        ENCODING_LOG("[encododing_base85_encode] Error: Memory allocation failed for encoded string");
+        ENCODING_LOG("[encoding_base85_encode] Error: Memory allocation failed for encoded string");
         return NULL;
     }
 
@@ -1618,7 +1670,7 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
         for (size_t i = 0; i < chunk_len; ++i) {
             acc = (acc << 8) | input[input_index++];
         }
-        if (chunk_len < 4) { // Add padding if the chunk is less than 4 bytes
+        if (chunk_len < 4) { 
             acc <<= (4 - chunk_len) * 8; // Padding
         }
         if (acc == 0 && chunk_len == 4) { // Special case for 'z' when 4 bytes are zero
@@ -1639,10 +1691,11 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
     }
 
     encoded[encoded_index] = '\0';
-    ENCODING_LOG("[encododing_base85_encode] Encoding completed successfully");
+    ENCODING_LOG("[encoding_base85_encode] Encoding completed successfully");
 
     return encoded;
 }
+
 
 /**
  * @brief Decodes a Base85 encoded string back into its original binary form.
@@ -1658,19 +1711,18 @@ char* encododing_base85_encode(const uint8_t* input, size_t length) {
  *
  * @note The caller is responsible for freeing the returned decoded data.
  */
-uint8_t* encododing_base85_decode(const char* input, size_t length) {
+uint8_t* encoding_base85_decode(const char* input, size_t length) {
     if (input == NULL || length == 0) {
-        ENCODING_LOG("[encododing_base85_decode] Error: Invalid input or length");
+        ENCODING_LOG("[encoding_base85_decode] Error: Invalid input or length");
         return NULL;
     }
 
-    ENCODING_LOG("[encododing_base85_decode] Starting Base85 decoding");
+    ENCODING_LOG("[encoding_base85_decode] Starting Base85 decoding");
 
-    // Calculate the maximum possible length of the decoded string
-    size_t decoded_max_length = (length / 5) * 4;
+    size_t decoded_max_length = length * 4 + 4;
     uint8_t* decoded = (uint8_t*) malloc(decoded_max_length);
     if (!decoded) {
-        ENCODING_LOG("[encododing_base85_decode] Error: Memory allocation failed for decoded string");
+        ENCODING_LOG("[encoding_base85_decode] Error: Memory allocation failed for decoded string");
         return NULL;
     }
 
@@ -1682,7 +1734,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
             continue;
         }
         if (input[input_index] == 'z') {
-            // Special case: 'z' represents four zero bytes
+            // Special case 'z' represents four zero bytes
             memset(decoded + decoded_index, 0, 4);
             decoded_index += 4;
             input_index++;
@@ -1700,7 +1752,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
 
             char ch = input[input_index++];
             if (ch < 33 || ch > 117) {
-                ENCODING_LOG("[encododing_base85_decode] Error: Invalid character encountered");
+                ENCODING_LOG("[encoding_base85_decode] Error: Invalid character encountered");
                 free(decoded);
                 return NULL; 
             }
@@ -1719,28 +1771,28 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
 
         for (int i = 3; i >= 0; --i) {
             if (i < padding) {
-                break; // Ignore padding bytes
+                break; 
             }
             decoded[decoded_index++] = (acc >> (i * 8)) & 0xFF;
         }
         if (count < 5) {
-            break; // End of data
+            break; 
         }
     }
 
-    // Resize the output buffer to the actual decoded data length
     uint8_t* resized_decoded = (uint8_t*) realloc(decoded, decoded_index + 1); // +1 for null terminator, if needed
     if (!resized_decoded) {
-        ENCODING_LOG("[encododing_base85_decode] Error: Reallocation failed");
+        ENCODING_LOG("[encoding_base85_decode] Error: Reallocation failed");
         free(decoded);
         return NULL;
     }
 
-    resized_decoded[decoded_index] = '\0'; 
-    ENCODING_LOG("[encododing_base85_decode] Decoding completed successfully");
+    resized_decoded[decoded_index] = '\0';
+    ENCODING_LOG("[encoding_base85_decode] Decoding completed successfully");
 
     return resized_decoded;
 }
+
 
 /**
  * @brief Encodes binary data into a Base58 encoded string.
@@ -1756,7 +1808,7 @@ uint8_t* encododing_base85_decode(const char* input, size_t length) {
  *
  * @note The caller is responsible for freeing the returned encoded string.
  */
-char *encoding_base58_encode(const void *data, size_t binsz) {
+char* encoding_base58_encode(const void *data, size_t binsz) {
     if (!data) {
         ENCODING_LOG("[encoding_base58_encode] Error: Invalid input data");
         return NULL;
@@ -1777,6 +1829,7 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
     // Estimate size of Base58 encoded string
     size = (binsz - zcount) * 138 / 100 + 1;
     uint8_t *buf = (uint8_t*) malloc(size * sizeof(uint8_t));
+
     if (!buf) {
         ENCODING_LOG("[encoding_base58_encode] Error: Memory allocation failed for buffer");
         return NULL;
@@ -1795,7 +1848,6 @@ char *encoding_base58_encode(const void *data, size_t binsz) {
         }
     }
 
-    // Skip leading zeros in the buffer
     for (j = 0; j < size && !buf[j]; ++j) {
         // Skip leading zeros in binary
     }
@@ -1843,6 +1895,13 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     ENCODING_LOG("[encoding_base58_decode] Starting Base58 decoding");
 
     size_t b58sz = strlen(b58);
+
+    /* Count leading '1' characters — each represents a leading zero byte. */
+    size_t zcount = 0;
+    while (zcount < b58sz && b58[zcount] == '1') {
+        zcount++;
+    }
+
     size_t binsz = b58sz * 733 / 1000 + 1; // Rough estimate of binary size
     uint8_t *bin = (uint8_t*) malloc(binsz);
     if (!bin) {
@@ -1860,7 +1919,7 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
         if (b58[i] & 0x80 || b58digits_map[(unsigned char)b58[i]] == -1) {
             ENCODING_LOG("[encoding_base58_decode] Error: Invalid Base58 character encountered");
             free(bin);
-            return NULL; // Invalid Base58 character
+            return NULL; 
         }
 
         for (carry = b58digits_map[(unsigned char)b58[i]], j = binsz - 1; (j > high) || carry; --j) {
@@ -1869,29 +1928,37 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
             carry /= 256;
 
             if (!j) {
-                break; // Avoid wraparound
+                break; 
             }
         }
         high = j;
     }
 
+    /* Skip residual zero bytes in the work buffer */
     for (j = 0; j < binsz && !bin[j]; ++j) {
     }
 
-    *binszp = binsz - j;
-    char *result = (char*) malloc(*binszp);
+    /* Final size = preserved leading zero bytes + meaningful binary data. */
+    *binszp = zcount + (binsz - j);
+    char *result = (char*) malloc(*binszp ? *binszp : 1);
+
     if (!result) {
         ENCODING_LOG("[encoding_base58_decode] Error: Memory allocation failed for result");
         free(bin);
         return NULL;
     }
 
-    memcpy(result, bin + j, *binszp);
+    if (zcount) {
+        memset(result, 0, zcount);
+    }
+
+    memcpy(result + zcount, bin + j, binsz - j);
     ENCODING_LOG("[encoding_base58_decode] Decoding completed successfully, decoded length: %zu", *binszp);
 
     free(bin);
     return result;
 }
+
 
 /**
  * @brief Decodes a Base91 encoded string into its original binary form.
@@ -1915,6 +1982,7 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     size_t len = strlen(encoded);
     *decoded_length = 0;
     uint8_t* decoded = (uint8_t*) malloc(len); // Max possible size
+
     if (!decoded) {
         ENCODING_LOG("[encoding_base91_decode] Error: Memory allocation failed");
         return NULL;
@@ -1930,7 +1998,7 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
         if (c == -1) {
             ENCODING_LOG("[encoding_base91_decode] Error: Invalid character encountered");
             free(decoded);
-            return NULL; // Invalid character
+            return NULL; 
         }
 
         if (v < 0) {
@@ -1968,6 +2036,7 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
     ENCODING_LOG("[encoding_base91_decode] Decoding completed successfully, decoded length: %zu", *decoded_length);
     return decoded;
 }
+
 
 /**
  * @brief Encodes binary data into a Base91 encoded string.
@@ -2041,6 +2110,7 @@ char* encoding_base91_encode(const uint8_t* data, size_t length) {
 
     encoded[index] = '\0';
     ENCODING_LOG("[encoding_base91_encode] Encoding completed successfully");
+
     return encoded;
 }
 
@@ -2148,6 +2218,7 @@ char* encoding_wchar_to_utf8(const wchar_t* wstr) {
     ENCODING_LOG("[encoding_wchar_to_utf8] Conversion successful");
     return utf8Str;
 }
+
 
 /**
  * @brief Initializes the encoding library by setting the locale for character encoding.

@@ -1,288 +1,725 @@
-# C++ Standard Library and Qt, Python etc Implementation in C
+# C STL — C++ Standard Library & Python-style utilities, reimplemented in C
 
-This project aims to reimplement the C++ standard library functionality using the C programming language. It provides C developers with tools and libraries commonly available in C++, enabling better data structure management, algorithm implementation, and feature usage while staying within the C language's ecosystem.
+<p align="center">
+  <img src="sources/c_std_wallpaper.png" alt="c_std — C++ STL & Python-style utilities, reimplemented in pure C17" width="900">
+</p>
 
-## A Personal Note from Me
+This project reimplements a large slice of the **C++ Standard Library** (containers,
+algorithms, smart pointers, …) together with many **Python-style conveniences**
+(`statistics`, `random`, `secrets`, `json`, `regex`, …) in pure **C17**. The goal is
+to give C developers familiar, well-documented building blocks — dynamic arrays,
+maps, strings, JSON, networking, big integers, and much more — without leaving the C
+ecosystem.
 
-I undertake this project out of a deep affection for the C programming language. It is my belief that C remains an essential tool for any computer engineer or programmer, providing the foundation necessary to build efficient and robust software. My love for C drives this endeavor, aiming to enrich the language with the familiar conveniences found in C++.
 
-### Project Structure
+## Highlights
 
-The project is organized into several subdirectories, each representing a different module of the standard library:
+- **Zero memory leaks.** Every module, test suite, and README example is verified
+  under Valgrind (`--leak-check=full`) — `0 leaks, 0 errors`. Network/socket code is
+  additionally checked for descriptor leaks (`--track-fds=yes`).
 
-- `Array`: The Array library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::array` in C++.
+- **Cross-platform.** Builds and runs on **Windows** (MSVC and MinGW-w64) and
+  **Linux** (GCC/Clang), with POSIX/Win32 backends behind one API. Compiles cleanly
+  under `-Wall -Wextra`.
 
-- `ForwardList`: The ForwardList library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size ForwardList, offering similar functionality to `std::forward_list` in C++. its single linked list.
+- **Pure C17.** No C++ — just portable standard C with thin platform shims.
 
-- `List`: The List library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size List, offering similar functionality to `std::list` in C++. its double linked list
+- **40+ modules.** Containers, algorithms, smart pointers, strings, JSON/XML/CSV/INI,
+  networking (TCP/UDP/HTTP), crypto & JWT, arbitrary-precision math, graphics, and more.
 
-- `Queue`: The Queue library is part of a project aimed at reimplementing C++ standard library features in C. It provides a generic container that encapsulates dynamic-sized Queues, offering functionality similar to `std::queue` in C++.
+- **Familiar APIs.** Modeled on the C++ STL (`vector`, `map`, `unique_ptr`, …) and the
+  Python standard library (`random`, `statistics`, `json`, `regex`, `turtle`, …).
 
-- `Stack`: The Stack library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::stack` in C++.
+- **Heavily tested with true results.** Deep per-module test suites, plus runnable
+  examples in every README whose shown output is captured from a real run.
 
-- `String`: The String library is a part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic size arrays, offering similar functionality to `std::string` in C++.
+- **Fast & predictable.** Efficient data structures (pooled `vector` growth, O(1)
+  average `hashmap`, O(log n) `map`), clear ownership rules and deallocators.
 
-- `Vector`: This Vector library, is an implementation that mimics the functionality of the C++ `std::vector`. It aims to provide dynamic array capabilities to C programs. The Vector library allows for creating dynamic arrays that can resize automatically when elements are added or removed. It supports various operations such as inserting, deleting, and accessing elements, as well as more advanced functionalities like memory pooling for efficient allocation and deallocation of elements.
+- **CMake build.** Build the whole library, a single module, or one example at a time,
+  with GCC, Clang, or MSVC.
 
-- `PriorityQueue`: The Priority Queue library is part of a project to reimplement C++ standard library features in C. It provides a generic container that encapsulates dynamic-sized priority queues, offering similar functionality to `std::priority_queue` in C++.
+## A personal note
 
-- `Deque`: The Deque library provides a generic container that mimics the functionality of `std::deque` in C++. It offers a dynamic-size double-ended queue (deque) that allows fast insertion and removal of elements from both ends. 
-
-- `CsvFile`, `CsvRow`: This library provides a simple and efficient way to read, manipulate, and write CSV (Comma-Separated Values) files . It offers functions for creating and destroying CSV rows and files, reading and writing CSV files, and performing various operations like appending rows, inserting columns, and exporting data in JSON format.
-
-- `ConfigFile`: The ConfigFile library is a versatile and easy-to-use solution for handling configuration files. It allows developers to read, modify, and save configurations in the standard INI file format. The library supports sections, key-value pairs, and comments, making it ideal for managing configuration data in various C applications.
-
-- `Map`: The Map library provides a generic implementation of a map (also known as an associative array). This map is implemented as a Red-Black Tree, which is a type of self-balancing binary search tree. This ensures efficient operations like insertion, deletion, and lookup, all with a time complexity of O(log n). similar to `std::map`
-
-- `Span`: The Span library is a custom C implementation inspired by the C++ `std::span` container. It provides a view over a contiguous sequence of elements, allowing for efficient and safe access without owning the underlying data.
-
-- `Algorithm`: The Algorithm library is a versatile collection of functions designed to bring the power and flexibility of C++ STL `<algorithm>` functionality to C programming. It provides a suite of generic algorithms for a variety of operations on arrays and other data structures, ranging from searching and sorting to transforming and accumulating elements.
-
-- `Encoding`: The Encoding library is a versatile tool designed for efficient and user-friendly encoding and decoding operations. While it currently supports Base64 encoding and decoding, the library is structured to accommodate additional encoding methods in the future. The library's extensible architecture ensures it can be adapted to include other encoding types such as Base16, Base32, and URL encoding, catering to a wide range of applications and data formats.
-
-- `Numbers`: The Numbers library in C provides constants for common mathematical values, analogous to the `<numbers>` header introduced in C++20. It offers a simple way to access important mathematical constants in C programming, enhancing the precision and readability of mathematical computations.
-
-- `Crypto`: Provides tools for cryptographic operations. This module might include functions for encryption and decryption, hashing, and secure random number generation. It's intended to offer C developers basic cryptographic utilities.
-
-- `Time`: The Time library in C is a comprehensive tool designed for handling time-related operations. Inspired by the functionality of more advanced languages, this library provides a robust set of functions for manipulating and comparing time values in C programs.
-
-- `Date`: The Date library in C offers a robust solution for handling and manipulating dates in both Gregorian and Persian calendars. This library is particularly useful for applications requiring operations on dates, such as calculations, conversions, and comparisons. Its comprehensive set of functions simplifies complex date-related tasks in C programming.
-
-- `Dir`: This library is dedicated to directory and file operations, offering comprehensive functionality to manage and manipulate files and directories on the filesystem. It is designed to provide a straightforward and efficient way to interact with the filesystem in C programming.
-
-- `Tuple`: This library offers a versatile implementation of tuples, structures that can hold a fixed number of elements of potentially different types. It's designed for efficiency and ease of use in a variety of applications, from data structures to systems programming. its similar to `std::tuple`
-
-- `FileWriter`: The FileWriter library is a versatile tool designed for file writing operations in C. It provides functionalities similar to higher-level languages, offering various modes for writing text and binary files, including support for Unicode (UTF-8 and UTF-16).
-
-- `FileReader`: The FileReader library is a versatile tool designed for file reading operations in C.
-
-- `fmt`: The fmt library is a comprehensive formatting and I/O library, inspired by the `fmt` package in Go. It offers a wide range of formatting options and is designed to work seamlessly with multilingual and Unicode text.
-
-- `Json`: The Json library is a comprehensive and efficient tool designed for parsing, generating, and manipulating JSON data. It aims to provide a robust and user-friendly interface for handling JSON objects and arrays, enabling seamless integration of JSON functionality into C projects.
-
-- `Log`: The Log library offers a flexible and powerful logging system for C projects, enabling detailed message logging across various levels (DEBUG, INFO, WARN, ERROR, FATAL). It supports multiple output destinations (console, file, or both), timestamp inclusion, log level configuration, and keyword filtering to refine log output. Integrated with file I/O operations and customizable settings, it enhances diagnostic and monitoring capabilities in development and production environments.
-
-- `Cli`: The CLI library provides a comprehensive solution for parsing command-line arguments in C projects, supporting options, commands, and subcommands with both short and long names. It features advanced functionalities like custom error handling, option grouping, interactive mode, and pipelining support, making it versatile for both simple and complex CLI applications. This library simplifies command-line parsing, validation, and execution, offering a robust foundation for building user-friendly command-line interfaces.
-
-- `Network`: The Network library provides support for TCP and UDP protocols, enabling the development of networked applications. It includes functions for creating sockets, binding, listening, connecting, sending, and receiving data over both TCP and UDP connections.
-
-- `Database`: The Database library offers tools for interacting with PostgreSQL databases. It includes functions for connecting to databases, executing queries, retrieving results, and handling transactions. This library aims to simplify database operations in C by providing a high-level API.
-
-- `Matrix`: The Matrix library provides tools for matrix operations, including creation, manipulation, and mathematical computations on matrices. It is designed to support a wide range of matrix operations needed in scientific computing and data analysis.
-
-- `Random`: This random library provides functionality like python random module for working with probablity and randomly numbers and elements. 
-
-- `Statistics`: This Statistics library in C provides a set of functions for calculating mathematical statistics of numeric data. exactly like python statistics module .
-
-- `SysInfo`: The SysInfo library provides a set of functions for retrieving detailed information about the operating system and hardware of a machine. It is designed to work on both Windows and Linux systems, though it is not tested on macOS. The library is lightweight and easy to integrate into C projects, offering developers essential system details such as OS version, kernel type, CPU architecture, and more.
-
-- `Turtle`: The Turtle Graphics library in C provides functions for drawing shapes and lines using a "turtle" that moves around the screen. Inspired by the Python `turtle` module, this library allows C developers to easily create graphics and animations.
-
-- `HttpRequest and HttpResponse` :The Http library provides functionality for creating and handling HTTP servers and clients. It includes support for routing, request parsing, response generation, and handling various HTTP methods (GET, POST, etc.). This library simplifies the development of web-based applications in C, enabling easy integration of HTTP functionality into C projects.
-
-- `Secrets`: This Secrets library provides a simple interface for generating secure random numbers, tokens, and performing cryptographic operations like constant-time comparison. This makes it a suitable choice for any C project requiring secure random number generation and cryptographic security.
-
-- `Xml`: This XML library in C provides a comprehensive and easy-to-use API for parsing, creating, modifying, and traversing XML documents. It is designed to be lightweight, efficient, and fully cross-platform, making it suitable for embedded systems, desktop applications, and server environments
-
-- `Regex`: The Regex library in C provides functionality to compile, match, and search regular expressions. It offers flexibility with flags for case-insensitive matching, multiline support, and dotall mode. The library is cross-platform, supporting PCRE on Windows and POSIX regex on Linux, simplifying regex-based string operations in C projects.
-
-- `UnitTest`: The UnitTest library is a lightweight and powerful framework designed to facilitate unit testing in C. It supports a wide range of features, making it a versatile and indispensable tool for ensuring code reliability and quality in complex projects.
-
-- `BigInt`: The BigInt library in C provides a robust interface for performing arbitrary-precision integer arithmetic. It leverages the power of the GMP (GNU Multiple Precision Arithmetic) library under the hood, offering C developers a familiar API for creating, manipulating, and performing arithmetic on large integers that exceed the limitations of standard C integer types
-
-- `HashMap`: The HashMap library provides a dynamic, hash-table-based associative array implementation similar to `std::unordered_map` in C++. It offers O(1) average time complexity for insertions, deletions, and lookups. The library supports custom hash functions, comparison functions, and memory deallocation callbacks, making it flexible for various data types. Features include automatic rehashing, iterator support, bucket interface, and built-in hash functions for common types like strings and integers.
-
-- `Sort`: The Sort library provides a comprehensive, generic sorting library for C that offers multiple sorting algorithms with performance statistics, benchmarking, and search capabilities. It includes 8+ sorting algorithms (Insertion, QuickSort, MergeSort, HeapSort, BubbleSort, Selection, Shell, Introspective), specialized algorithms (Counting Sort, Radix Sort, Bucket Sort), optimized variants, adaptive sorting, search functions (binary search, lower/upper bounds), utility functions (array validation, reverse, shuffle), and benchmarking capabilities. The library features generic design using function pointers, performance tracking, and comprehensive documentation with complete working examples.
----
-
-## Note 
-Each module in the project comes with a `.c` source file, a `.h` header file, and a `README.md` file. These README files offer detailed explanations of each module's functionality, usage examples, and any other relevant information, ensuring that developers can easily understand and utilize the components of the library.
-
-## Compilation and Execution
-
-
-### CMake Support
-
-This project now supports building with CMake, a powerful cross-platform build system that simplifies the process of compiling and linking code.
-
-### Building with CMake
-
-To build the project using CMake, follow these steps:
-
-1. **Install CMake**:
-   - Ensure that CMake is installed on your system. You can download it from the [official website](https://cmake.org/download/) or use a package manager like `apt`, `brew`, or `choco` depending on your operating system.
-
-2. **Create a Build Directory**:
-   - Navigate to the root directory of the project and create a build directory:
-
-     ```bash
-     mkdir build
-     cd build
-     ```
-
-3. **Generate Build Files**:
-   - Run CMake to generate the build files for your system:
-
-     ```bash
-     # Using Unix Makefiles (Linux/macOS)
-     cmake -G "Unix Makefiles" ..
-     
-     # Using Ninja (faster, cross-platform)
-     cmake -G "Ninja" ..
-     ```
-
-4. **Compile the Project**:
-   - Once the build files are generated, compile the project:
-
-     ```bash
-     # If using Unix Makefiles
-     make
-     
-     # If using Ninja
-     cmake --build .
-     ```
-
-5. **Run the Compiled Program**:
-   - After compilation, the executable and shared libraries will be located in the `build` directory. You can run the executable directly:
-
-     ```bash
-     ./main
-     ```
-
-   - On Linux, ensure to set the `LD_LIBRARY_PATH` if you're using shared libraries:
-
-     ```bash
-     export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
-     ./build/main
-     ```
-
-### Adding Modules with CMake
-
-If you add new modules, you need to update the `CMakeLists.txt` file to include them. This file is used by CMake to configure the build process. Here's how to add a new module:
-
-1. **Edit `CMakeLists.txt`**:
-   - Add the new module's source files to the `add_library` or `add_executable` commands in the `CMakeLists.txt` file.
-
-2. **Re-run CMake**:
-   - After editing `CMakeLists.txt`, re-run CMake in the `build` directory:
-
-     ```bash
-     # If using Unix Makefiles
-     cmake -G "Unix Makefiles" ..
-     
-     # If using Ninja
-     cmake -G "Ninja" ..
-     ```
-
-3. **Compile Again**:
-   - Use the appropriate build tool to compile the updated project:
-
-     ```bash
-     # If using Unix Makefiles
-     make
-     
-     # If using Ninja
-     cmake --build .
-     ```
-
-
-This project utilizes a Python script (`compile.py`) for easy compilation of modules, making the build process straightforward and efficient.
-
-### Requirements
-- Python 3.10 or higher
-- GCC compiler (ensure it's added to your system's PATH)
-- **Linux Users**: Make sure to install the necessary development libraries:
-  ```bash
-  sudo apt-get update
-  sudo apt install build-essential git cmake libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev wayland-protocols libwayland-dev pkg-config libxinerama-dev libxkbcommon-dev
-  sudo apt-get install libssl-dev libpq-dev libraylib-dev
-  ```
-
-### Using the compile.py Script
-
-To compile the entire project, simply run the `compile.py` script with the `b` argument:
-
-```bash
-python compile.py b
-```
-
-This command compiles all source files and produces an executable in the `./build` directory.
-
-### Running the Compiled Program
-
-To compile and immediately run the compiled program, use the `r` argument:
-
-```bash
-python compile.py r
-```
-
-On Linux, make sure to set the `LD_LIBRARY_PATH` before running the program:
-
-```bash
-export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
-./build/main
-```
-
-### Compiling to Shared Libraries Only
-
-To compile only the shared libraries (DLLs or `.so` files) for each module, use the `l` argument:
-
-```bash
-python compile.py l
-```
-
-This command compiles all source files into shared libraries in the `./build` directory without producing an executable.
-
-### Adding New Modules
-
-If you add new modules or directories containing `.c` files, simply include their paths in the `source_directories` list within the `compile.py` script. The script automatically finds and compiles all `.c` files in the specified directories.
-
-### Streamlined Build Process
-
-The use of `compile.py` eliminates the need for traditional makefiles or manual compilation commands, providing a simple and unified build process. The script handles dependencies, includes, and linking, ensuring a hassle-free compilation experience.
-
-## Manual Compilation Using GCC
-
-For developers who prefer manual compilation or need to integrate the project into other build systems, the source files can be compiled using the GCC command line. While the `compile.py` script is recommended for its convenience and automated handling of file dependencies, manual compilation offers flexibility for advanced use cases.
-
-### Requirements for Manual Compilation
-- GCC compiler (ensure it's added to your system's PATH)
-- C17 standard support in GCC
-
-### Compiling with GCC
-
-To manually compile a specific module or your entire project, you can use the GCC command with the `-std=c17` flag to ensure compliance with the C17 standard. Here's an example command to compile a program with the `vector` module:
-
-```bash
-gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o your_program your_program.c vector.c
-```
-
-In this command:
-- `-std=c17` specifies the use of the C17 standard.
-- `-O3`, `-march=native`, `-flto`, and `-funroll-loops` are optimization flags.
-- `-Wall`, `-Wextra`, and `-pedantic` enable additional warnings for better code quality.
-- `-s` strips the binary for a smaller executable size.
-- `your_program.c` is your main C source file.
-- `vector.c` is the source file for the `vector` module (include other `.c` files as needed).
-- `your_program` is the output executable file.
-
-### Customizing the Compilation
-
-You can modify the GCC command to suit your specific requirements, such as including additional modules, linking libraries, or adjusting optimization levels. This approach offers full
-
- control over the compilation process, allowing you to tailor it to your project's needs.
+I undertake this project out of a deep affection for the C programming language. C
+remains an essential tool for any computer engineer, providing the foundation needed
+to build efficient and robust software. This effort aims to enrich the language with
+the conveniences found in higher-level standard libraries.
 
 ---
 
-## Individual READMEs for Libraries
+## Table of contents
 
-Each library module comes with its own README.md file, providing detailed instructions, sample code, function descriptions, and other relevant usage information.
+- [Highlights](#highlights)
+- [Modules](#modules)
+- [Dependencies](#dependencies)
+- [Installing the dependencies](#installing-the-dependencies)
+  - [Windows (MSYS2 / MinGW-w64)](#windows-msys2--mingw-w64)
+  - [Debian / Ubuntu](#debian--ubuntu)
+  - [Fedora](#fedora)
+- [Building with CMake](#building-with-cmake)
+  - [Build everything](#build-everything)
+  - [Build / run one piece at a time](#build--run-one-piece-at-a-time)
+  - [Choosing a compiler (GCC / Clang / MSVC)](#choosing-a-compiler-gcc--clang--msvc)
+  - [Build options](#build-options)
+- [Examples](#examples)
+- [Per-module documentation](#per-module-documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Contribution
+---
 
-Contributions are welcome. Whether it's extending existing libraries, improving performance, or fixing bugs, your help is appreciated. Fork the repository, make your changes, and submit a pull request.
+## Modules
+
+Every module lives in its own directory with a `.c` source, a `.h` header, and a
+`README.md` containing a full API reference and runnable examples.
+
+### Containers
+| Module | Analogous to | Description |
+|--------|--------------|-------------|
+| `array` | `std::array` | Fixed-size array wrapper with bounds-checked access. |
+| `vector` | `std::vector` | Dynamic, automatically resizing array with memory pooling. |
+| `string` | `std::string` | Growable string with a rich manipulation API (`string/std_string.h`). |
+| `list` | `std::list` | Doubly linked list. |
+| `forward_list` | `std::forward_list` | Singly linked list. |
+| `deque` | `std::deque` | Double-ended queue with fast insertion/removal at both ends. |
+| `queue` | `std::queue` | FIFO queue. |
+| `stack` | `std::stack` | LIFO stack. |
+| `priority_queue` | `std::priority_queue` | Heap-backed priority queue with a custom comparator. |
+| `span` | `std::span` | Non-owning view over a contiguous sequence. |
+| `bitset` | `std::bitset` | Fixed-size sequence of bits with bitwise operations. |
+| `map` | `std::map` | Ordered associative container (Red-Black tree, O(log n)). |
+| `hashmap` | `std::unordered_map` | Hash table with O(1) average insert/lookup and automatic rehashing. |
+| `tuple` | `std::tuple` | Fixed-size heterogeneous collection. |
+| `variant` | `std::variant` | Type-safe tagged union with a visitor interface. |
+| `uniqueptr` | `std::unique_ptr` | RAII smart pointer with automatic, scope-based cleanup. |
+
+### Algorithms & numerics
+| Module | Description |
+|--------|-------------|
+| `algorithm` | Generic algorithms inspired by `<algorithm>`: sort, search, transform, accumulate, … |
+| `sort` | Stand-alone sorting library: 8+ algorithms, benchmarking and search helpers. |
+| `statistics` | Mean, median, variance, … (mirrors Python's `statistics`). |
+| `random` | Pseudo-random numbers and sequence helpers (mirrors Python's `random`). |
+| `secrets` | Cryptographically secure random numbers/tokens and constant-time comparison. |
+| `numbers` | Mathematical constants (header-only, like C++20 `<numbers>`). |
+| `matrix` | Matrix creation, manipulation and linear-algebra operations. |
+| `bigint` | Arbitrary-precision integers (backed by **GMP**). |
+| `bigfloat` | Arbitrary-precision floating point (backed by **MPFR**). |
+| `evalexpr` | Runtime arithmetic-expression evaluator. |
+
+### Text, data & I/O
+| Module | Description |
+|--------|-------------|
+| `fmt` | Formatting / I/O library inspired by Go's `fmt`, with Unicode support. |
+| `encoding` | Base64 / Base32 / Base16 / URL encoding and decoding. |
+| `json` | Parse, generate and manipulate JSON. |
+| `xml` | Parse, create, modify and traverse XML documents. |
+| `csv` | Read, write and manipulate CSV files. |
+| `config` | Read/modify/save INI-style configuration files. |
+| `regex` | Regular-expression compile/match/search (PCRE on Windows, POSIX on Linux). |
+| `cli` | Command-line argument/option/sub-command parser. |
+| `log` | Leveled logging (DEBUG…FATAL) to console and/or file. |
+| `file_io` | `FileReader` / `FileWriter` with text and binary (UTF-8/UTF-16) modes. |
+| `dir` | Directory and filesystem manipulation. |
+
+### Time & date
+| Module | Description |
+|--------|-------------|
+| `time` | Time measurement and manipulation (`time/std_time.h`). |
+| `date` | Gregorian and Persian calendar dates, conversions and arithmetic. |
+
+### System & concurrency
+| Module | Description |
+|--------|-------------|
+| `sysinfo` | OS / hardware information (Windows & Linux). |
+| `concurrent` | Threads, mutexes, condition variables, semaphore and a thread pool. |
+| `serial_port` | Serial-port (RS-232) communication. |
+
+### Security
+| Module | Description |
+|--------|-------------|
+| `crypto` | Hashing, encryption/decryption and other primitives (backed by **OpenSSL**). |
+| `jwt` | JSON Web Token creation/verification (HS/RS/ES/PS families). |
+
+### Networking & databases
+| Module | Description |
+|--------|-------------|
+| `network` | TCP and UDP sockets plus a small HTTP server/client. |
+| `database` | PostgreSQL client built on **libpq** (optional — only built when libpq is present). |
+
+### Graphics
+| Module | Description |
+|--------|-------------|
+| `plot` | 2-D plotting (line/scatter/bar) built on **raylib**. |
+| `turtle` | Turtle graphics, inspired by Python's `turtle` (built on **raylib**). |
+
+### Testing
+| Module | Description |
+|--------|-------------|
+| `unittest` | Lightweight unit-testing framework (assertions, suites, fixtures). |
+
+---
+
+## Dependencies
+
+To build the whole project you need:
+
+**Build tools**
+- **CMake** ≥ 3.15
+- A **C17** compiler — GCC, Clang, or MSVC
+- A generator — **Ninja** (recommended) or Make / Visual Studio
+
+**Third-party libraries** (installed system-wide via your package manager)
+
+| Library | Used by | Required? |
+|---------|---------|-----------|
+| **OpenSSL** (`libssl`, `libcrypto`) | `crypto`, `jwt`, `network` | Yes |
+| **raylib** | `plot`, `turtle` | Yes |
+| **GMP** | `bigint` | Yes |
+| **MPFR** | `bigfloat` | Yes |
+| **PostgreSQL / libpq** | `database` | Optional — the `database` module is skipped automatically if libpq is missing |
+| **pthreads** | `concurrent`, `network` | Provided by the toolchain (winpthread on Windows) |
+
+> The project no longer uses the old `compile.py` script — the build is **CMake-only**.
+
+---
+
+## Installing the dependencies
+
+### Windows (MSYS2 / MinGW-w64)
+
+Install [MSYS2](https://www.msys2.org/) (this project assumes it lives at `C:\msys64`).
+Open the **“MSYS2 MinGW x64”** shell and run:
+
+```bash
+pacman -Syu          # update once (re-open the shell if it asks you to)
+
+pacman -S --needed \
+  mingw-w64-x86_64-toolchain \
+  mingw-w64-x86_64-clang \
+  mingw-w64-x86_64-cmake \
+  mingw-w64-x86_64-ninja \
+  mingw-w64-x86_64-openssl \
+  mingw-w64-x86_64-raylib \
+  mingw-w64-x86_64-gmp \
+  mingw-w64-x86_64-mpfr \
+  mingw-w64-x86_64-postgresql
+```
+
+Always build from the **MinGW x64** shell (not the plain *MSYS* shell) so that
+`C:\msys64\mingw64\bin` is on the `PATH` and CMake picks up the right compiler and
+libraries.
+
+### Debian / Ubuntu
+
+```bash
+sudo apt update
+sudo apt install \
+  build-essential clang cmake ninja-build pkg-config \
+  libssl-dev libgmp-dev libmpfr-dev libpq-dev libraylib-dev
+```
+
+> `libraylib-dev` is available on Debian 12+ / Ubuntu 22.04+. On older releases,
+> install raylib from source (<https://github.com/raysan5/raylib>) or omit the
+> `plot`/`turtle` modules.
+
+### Fedora
+
+```bash
+sudo dnf install \
+  gcc clang cmake ninja-build pkgconf-pkg-config \
+  openssl-devel gmp-devel mpfr-devel libpq-devel raylib-devel
+```
+
+---
+
+## Building with CMake
+
+All commands are run from the project root (`c_std/`).
+
+### Build everything
+
+```bash
+# Configure (Ninja generator recommended). Omit -G for the platform default.
+cmake -S . -B build -G Ninja
+
+# Build the library, the main demo, and every example
+cmake --build build
+
+# Build and run the main demo (runs from the project root so ./sources is reachable)
+cmake --build build --target run
+```
+
+Binaries are written to `build/bin/`.
+
+### Build / run one piece at a time
+
+The project is fully modular — you can compile a single module or a single example
+without building the rest:
+
+```bash
+# Compile just one module's objects
+cmake --build build --target vector
+
+# Compile every module library (no executables)
+cmake --build build --target modules
+
+# Build a single example, then run it from the project root
+cmake --build build --target json_example
+./build/bin/json_example
+
+# Build every example at once
+cmake --build build --target examples
+```
+
+> Run the example binaries from the **project root** (e.g. `./build/bin/csv_example`)
+> so that examples which read data files under `./sources/` can find them.
+
+### Choosing a compiler (GCC / Clang / MSVC)
+
+The build is compiler-agnostic and targets the **C17** standard.
+
+```bash
+# GCC (default on MSYS2 / Linux)
+cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=gcc
+
+# Clang
+cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang
+# On MSYS2, `clang` is usually the CLANG64 toolchain, whose linker does not search
+# the MinGW-w64 library directory. If you installed the dependencies into mingw64,
+# point clang's linker at them:
+#   cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang \
+#         -DCMAKE_EXE_LINKER_FLAGS="-LC:/msys64/mingw64/lib"
+
+# MSVC — from an “x64 Native Tools Command Prompt for VS”
+cmake -S . -B build -G "Ninja"            # or: -G "Visual Studio 17 2022"
+cmake --build build --config Release
+```
+
+On MSVC, install the third-party libraries with [vcpkg](https://vcpkg.io)
+(`vcpkg install openssl raylib gmp mpfr libpq`) and pass
+`-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake` when configuring.
+
+### Build options
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `C_STD_BUILD_MAIN` | `ON` | Build the `main` demo executable. |
+| `C_STD_BUILD_EXAMPLES` | `ON` | Build the per-module example programs in `examples/`. |
+
+```bash
+cmake -S . -B build -DC_STD_BUILD_EXAMPLES=OFF
+```
+
+---
+
+## Examples
+
+The `examples/` directory contains a small, self-contained program for (almost)
+every module — `examples/<module>_example.c` — taken from that module's `README.md`.
+Each one is compiled by CMake into its own executable named `<module>_example`, so
+you can build and run them individually (see
+[Build / run one piece at a time](#build--run-one-piece-at-a-time)).
+
+A few examples are **compile-only** because they need external resources at run time:
+`network` (sockets), `database` (a running PostgreSQL server), `serial_port`
+(hardware), and `plot` / `turtle` (open a graphical window).
+
+---
+
+## Quick examples
+
+A taste of a few modules. Each snippet is a complete program; the per-module
+`README.md` files have many more (with expected output).
+
+### vector — a growable typed array
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Vector* v = vector_create(sizeof(int));
+    for (int i = 1; i <= 5; ++i) {
+        vector_push_back(v, &i);
+    }
+
+    int sum = 0;
+    for (size_t i = 0; i < vector_size(v); ++i) {
+        sum += *(int*)vector_at(v, i);
+    }
+
+    fmt_printf("size=%zu sum=%d\n", vector_size(v), sum);
+    vector_deallocate(v);
+    return 0;
+}
+```
+```
+size=5 sum=15
+```
+
+### json — parse and pretty-print
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    JsonElement* root = json_parse("{\"lib\": \"c_std\", \"version\": 1.0, \"tags\": [\"c\", \"stl\"]}");
+
+    json_print(root);
+    json_deallocate(root);
+
+    return 0;
+}
+```
+```
+{
+    "lib": "c_std",
+    "tags": [
+      "c",
+      "stl"
+  ],
+    "version": 1
+}
+```
+
+### csv — build a row and export
+
+```c
+#include "csv/csv.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    CsvFile* csv = csv_file_create(',');
+    CsvRow*  row = csv_row_create();
+
+    csv_row_append_cell(row, "Alice");
+    csv_row_append_cell(row, "30");
+    csv_file_append_row(csv, row);
+
+    char* out = csv_file_export_to_string(csv);
+    fmt_printf("%s", out);
+
+    free(out);
+    csv_file_destroy(csv);
+    return 0;
+}
+```
+```
+Alice,30
+```
+
+### config — load an INI file and read values
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+#include <stdio.h>
+
+int main(void) {
+    /* write a small INI file, then load and read it */
+    FILE* f = fopen("app.ini", "w");
+    fputs("[server]\nhost = localhost\nport = 8080\n", f);
+    fclose(f);
+
+    ConfigFile* cfg = config_create("app.ini");
+    fmt_printf("host=%s port=%d\n",
+               config_get_value(cfg, "server", "host"),
+               config_get_int(cfg, "server", "port", 0));
+
+    config_deallocate(cfg);
+    remove("app.ini");
+
+    return 0;
+}
+```
+```
+host=localhost port=8080
+```
+
+### random — deterministic with a fixed seed
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    random_seed(42);
+    fmt_printf("dice rolls: %d %d %d\n", random_randint(1, 6), random_randint(1, 6), random_randint(1, 6));
+    
+    return 0;
+}
+```
+```
+dice rolls: 4 5 1
+```
+
+### crypto — SHA-256 of a string
+
+```c
+#include "crypto/crypto.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    size_t   n;
+    uint8_t* h   = crypto_hash_string("hello", CRYPTO_SHA256, &n);
+    char*    hex = crypto_hash_to_hex(h, n);
+
+    fmt_printf("sha256(\"hello\") = %s\n", hex);
+
+    free(hex);
+    free(h);
+
+    return 0;
+}
+```
+```
+sha256("hello") = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+```
+
+### concurrent — spawn a thread and join it
+
+```c
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+
+static int worker(void* arg) { *(int*)arg += 41; return 0; }
+
+int main(void) {
+    int value = 1;
+    Thread t;
+
+    thread_create(&t, worker, &value);
+    thread_join(t, NULL);
+    fmt_printf("value=%d\n", value);
+
+    return 0;
+}
+```
+```
+value=42
+```
+
+### thread_pool — run 100 tasks on 4 workers
+
+```c
+#include "concurrent/thread_pool.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+
+static Mutex m;
+static int counter = 0;
+
+static int task(void* arg) { 
+    (void)arg; 
+
+    mutex_lock(&m); 
+    counter++; 
+    mutex_unlock(&m); 
+
+    return 0; 
+}
+
+int main(void) {
+    mutex_init(&m, MUTEX_PLAIN);
+    ThreadPool* pool = thread_pool_create(4);
+
+
+    for (int i = 0; i < 100; ++i) {
+        thread_pool_add_task(pool, task, NULL);
+    }
+    thread_pool_wait(pool);
+    fmt_printf("ran %d tasks\n", counter);
+
+    thread_pool_destroy(pool);
+    mutex_destroy(&m);
+
+    return 0;
+}
+```
+```
+ran 100 tasks
+```
+
+### udp — open a socket and bind to an ephemeral port
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_bind(sock, NULL, 0);                 /* any address, kernel-chosen port */
+
+    char host[INET6_ADDRSTRLEN];
+    unsigned short port = 0;
+
+    udp_get_local_address(sock, host, sizeof(host), &port);
+    fmt_printf("udp socket bound to an ephemeral port: %s\n", port != 0 ? "yes" : "no");
+
+    udp_close(sock);
+    udp_cleanup();
+
+    return 0;
+}
+```
+```
+udp socket bound to an ephemeral port: yes
+```
+
+### tcp — create a listening server socket
+
+```c
+#include "network/tcp.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    tcp_init();
+    TcpSocket server;
+
+    tcp_socket_create(&server);
+    tcp_set_reuse_addr(server, true);
+    tcp_bind(server, "127.0.0.1", 0);        /* ephemeral port */
+    tcp_listen(server, 1);
+
+    char host[INET6_ADDRSTRLEN];
+    unsigned short port = 0;
+
+    tcp_get_sock_name(server, host, sizeof(host), &port);
+    fmt_printf("tcp server on %s, port assigned: %s\n", host, port != 0 ? "yes" : "no");
+
+    tcp_close(server);
+    tcp_cleanup();
+
+    return 0;
+}
+```
+```
+tcp server on 127.0.0.1, port assigned: yes
+```
+
+### http — build and serialize a response (no network)
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    HttpResponse res = {0};
+
+    http_set_status(&res, 200, "OK");
+    http_set_body(&res, "Hello, world!");
+
+    char* raw = http_serialize_response(&res);
+    fmt_printf("%s", raw);
+
+    free(raw);
+    http_free_response(&res);
+
+    return 0;
+}
+```
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+Hello, world!
+```
+
+### plot — render a line chart to a PNG
+
+```c
+#include "plot/plot.h"
+
+int main(void) {
+    Plot* p = plot_create("y = x * x", "x", "y");
+
+    float ys[10];
+    for (int i = 0; i < 10; ++i) ys[i] = (float)(i * i);
+
+    PlotColor blue = {34, 102, 204, 255};
+    plot_add_line(p, ys, 10, "squares", blue);
+
+    plot_export_image(p, "plot_example.png");   /* writes a PNG to disk */
+    plot_destroy(p);
+    
+    return 0;
+}
+```
+
+![plot example output](sources/plot_example.png)
+
+### turtle — turtle graphics, saved as a PNG
+
+`turtle` is built on raylib; here we draw four nested squares and save the
+canvas with the built-in `turtle_save_image` (a wrapper over raylib's
+`TakeScreenshot`, so you don't need to include `raylib.h`). Turtle coordinates
+are screen pixels (origin top-left).
+
+```c
+#include "turtle/turtle.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+
+    turtle_init_window(420, 420, "c_std turtle");
+    turtle_set_fps(60);
+    turtle_set_speed(t, 100);                    /* fast (0 would never finish) */
+    turtle_set_background_color(t, 255, 255, 255, 255);
+    turtle_pen_size(t, 4);
+
+    unsigned char colors[4][3] = {{220,50,50}, {40,160,60}, {40,90,210}, {200,140,30}};
+    for (int s = 0; s < 4; ++s) {
+        float side = 80.0f + s * 60.0f;
+
+        turtle_pen_up(t);
+        turtle_set_position(t, 210.0f - side / 2.0f, 210.0f + side / 2.0f);  /* center it */
+        turtle_set_heading(t, 0);
+        turtle_pen_down(t);
+        turtle_set_pen_color_rgb(t, colors[s][0], colors[s][1], colors[s][2], 255);
+
+        for (int i = 0; i < 4; ++i) {            /* one square */
+            turtle_forward(t, side);
+            turtle_right(t, 90);
+        }
+    }
+    turtle_draw(t);
+
+    turtle_save_image("turtle_example.png");     /* built-in screenshot helper */
+    turtle_deallocate(t);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+![turtle example output](sources/turtle_example.png)
+
+---
+
+## Per-module documentation
+
+Each module ships its own `README.md` with a complete API reference, function
+descriptions, and runnable examples that include their expected output. Start with
+the module directory you are interested in — e.g. [`vector/README.md`](vector/README.md),
+[`json/README.md`](json/README.md), or [`algorithm/README.md`](algorithm/README.md).
+
+---
+
+## Contributing
+
+Contributions are welcome — extending libraries, improving performance, or fixing
+bugs. Fork the repository, make your changes, and submit a pull request. New modules
+just need their directory added to the `C_STD_MODULES` list in `CMakeLists.txt`.
 
 ## License
 
-This project is open-source and available under [ISC License](LICENSE).
-
+This project is open-source and available under the [ISC License](LICENSE).

@@ -22,7 +22,7 @@ The Vector library allows for creating dynamic arrays that can resize automatica
 To use this library, include `vector.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
 
 ```bash
-gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./vector/vector.c ./string/string.c
+gcc -std=c17 -O2 -Wall -Wextra -o test.exe test.c vector/vector.c string/std_string.c -I.
 ```
 
 ## Documentation
@@ -31,331 +31,493 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions:
 
-### `Vector* vector_create(size_t itemSize)`   
-  - **Purpose**: Initializes and returns a new vector capable of storing elements of the specified size.
-  - **Parameters:**  
-    - `itemSize`: The size in bytes of each element that will be stored in the vector.
-  - **Returns:**  
-    - A pointer to the newly created vector. Returns `NULL` if memory allocation fails.
+### `Vector* vector_create(size_t itemSize)`
+
+**Purpose**: Initializes and returns a new vector capable of storing elements of the specified size.
+
+**Parameters**:
+- `itemSize`: The size in bytes of each element that will be stored in the vector.
+
+**Return Value**: A pointer to the newly created vector. Returns `NULL` if memory allocation fails.
+
+**Usage Case**: Use at the start to create a typed dynamic array before pushing elements.
 
 ---
 
-### `bool vector_is_equal(const Vector* vec1, const Vector* vec2)`  
-  - **Purpose**: Compares two vectors and checks if they are equal in terms of both size and content.
-  - **Parameters:**  
-    - `vec1`: The first vector to compare.  
-    - `vec2`: The second vector to compare.
-  - **Returns:**  
-    - `true` if both vectors have identical elements in the same order, otherwise `false`.
+### `bool vector_is_equal(const Vector* vec1, const Vector* vec2)`
+
+**Purpose**: Compares two vectors and checks if they are equal in terms of both size and content.
+
+**Parameters**:
+- `vec1`: The first vector to compare.
+- `vec2`: The second vector to compare.
+
+**Return Value**: `true` if both vectors have identical elements in the same order, otherwise `false`.
+
+**Usage Case**: Use when you need to verify that two vectors hold the same sequence of elements.
 
 ---
 
-### `bool vector_is_less(const Vector* vec1, const Vector* vec2)`  
-  - **Purpose**: Checks if the first vector is lexicographically less than the second vector.
-  - **Parameters:**  
-    - `vec1`: The first vector to compare.  
-    - `vec2`: The second vector to compare.
-  - **Returns:**  
-    - `true` if `vec1` is lexicographically smaller than `vec2`, otherwise `false`.
+### `bool vector_is_less(const Vector* vec1, const Vector* vec2)`
+
+**Purpose**: Checks if the first vector is lexicographically less than the second vector.
+
+**Parameters**:
+- `vec1`: The first vector to compare.
+- `vec2`: The second vector to compare.
+
+**Return Value**: `true` if `vec1` is lexicographically smaller than `vec2`, otherwise `false`.
+
+**Usage Case**: Use for sorting or ordering comparisons between two vectors.
 
 ---
 
-### `bool vector_is_greater(const Vector* vec1, const Vector* vec2)` 
-  - **Purpose**: Checks if the first vector is lexicographically greater than the second vector.
-  - **Parameters:**  
-    - `vec1`: The first vector to compare.  
-    - `vec2`: The second vector to compare.
-  - **Returns:**  
-    - `true` if `vec1` is lexicographically greater than `vec2`, otherwise `false`.
+### `bool vector_is_greater(const Vector* vec1, const Vector* vec2)`
+
+**Purpose**: Checks if the first vector is lexicographically greater than the second vector.
+
+**Parameters**:
+- `vec1`: The first vector to compare.
+- `vec2`: The second vector to compare.
+
+**Return Value**: `true` if `vec1` is lexicographically greater than `vec2`, otherwise `false`.
+
+**Usage Case**: Use for sorting or ordering comparisons between two vectors.
 
 ---
 
-### `bool vector_is_not_equal(const Vector* vec1, const Vector* vec2)`   
-  - **Purpose**: Compares two vectors and checks if they are not equal.
-  - **Parameters:**  
-    - `vec1`: The first vector to compare.  
-    - `vec2`: The second vector to compare.
-  - **Returns:**  
-    - `true` if the vectors are not equal, otherwise `false`.
+### `bool vector_is_not_equal(const Vector* vec1, const Vector* vec2)`
+
+**Purpose**: Compares two vectors and checks if they are not equal.
+
+**Parameters**:
+- `vec1`: The first vector to compare.
+- `vec2`: The second vector to compare.
+
+**Return Value**: `true` if the vectors are not equal, otherwise `false`.
+
+**Usage Case**: Use when you need to detect differences between two vectors.
 
 ---
 
-### `bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2)`   
-  - **Purpose**: Checks if the first vector is lexicographically greater than or equal to the second vector.
-  - **Parameters:**  
-    - `vec1`: The first vector to compare.  
-    - `vec2`: The second vector to compare.
-  - **Returns:**  
-    - `true` if `vec1` is greater than or equal to `vec2`, otherwise `false`.
+### `bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2)`
+
+**Purpose**: Checks if the first vector is lexicographically greater than or equal to the second vector.
+
+**Parameters**:
+- `vec1`: The first vector to compare.
+- `vec2`: The second vector to compare.
+
+**Return Value**: `true` if `vec1` is greater than or equal to `vec2`, otherwise `false`.
+
+**Usage Case**: Use in conditional checks where equality or greater order is acceptable.
 
 ---
 
-### `bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2)`   
-  - **Purpose**: Checks if the first vector is lexicographically less than or equal to the second vector.
-  - **Parameters:**  
-    - `vec1`: The first vector to compare.  
-    - `vec2`: The second vector to compare.
-  - **Returns:**  
-    - `true` if `vec1` is less than or equal to `vec2`, otherwise `false`.
+### `bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2)`
+
+**Purpose**: Checks if the first vector is lexicographically less than or equal to the second vector.
+
+**Parameters**:
+- `vec1`: The first vector to compare.
+- `vec2`: The second vector to compare.
+
+**Return Value**: `true` if `vec1` is less than or equal to `vec2`, otherwise `false`.
+
+**Usage Case**: Use in conditional checks where equality or lesser order is acceptable.
 
 ---
 
-### `bool vector_is_empty(Vector* vec)`  
-  - **Purpose**: Checks if the vector is empty, meaning it contains no elements.
-  - **Parameters:**  
-    - `vec`: The vector to check.
-  - **Returns:**  
-    - `true` if the vector is empty, otherwise `false`.
+### `bool vector_is_empty(Vector* vec)`
+
+**Purpose**: Checks if the vector is empty, meaning it contains no elements.
+
+**Parameters**:
+- `vec`: The vector to check.
+
+**Return Value**: `true` if the vector is empty, otherwise `false`.
+
+**Usage Case**: Use before accessing elements to guard against operating on an empty vector.
 
 ---
 
-### `bool vector_reserve(Vector* vec, size_t size)`  
-  - **Purpose**: Allocates enough memory for the vector to hold at least the specified number of elements without resizing. This is useful for preallocating memory to avoid frequent reallocations.
-  - **Parameters:**  
-    - `vec`: The vector to reserve space for.  
-    - `size`: The minimum number of elements to reserve capacity for.
-  - **Returns:**  
-    - `true` if memory allocation is successful, otherwise `false`.
+### `bool vector_reserve(Vector* vec, size_t size)`
+
+**Purpose**: Allocates enough memory for the vector to hold at least the specified number of elements without resizing.
+
+**Parameters**:
+- `vec`: The vector to reserve space for.
+- `size`: The minimum number of elements to reserve capacity for.
+
+**Return Value**: `true` if memory allocation is successful, otherwise `false`.
+
+**Usage Case**: Use when you know ahead of time how many elements will be added, to avoid repeated reallocations.
 
 ---
 
-### `bool vector_push_back(Vector* vec, const void* item)`   
-  - **Purpose**: Adds an item to the end of the vector, resizing the vector if necessary.
-  - **Parameters:**  
-    - `vec`: The vector to which the item is added.  
-    - `item`: A pointer to the item being added to the vector.
-  - **Returns:**  
-    - `true` if the operation succeeds, otherwise `false` (e.g., memory allocation failure).
+### `bool vector_push_back(Vector* vec, const void* item)`
+
+**Purpose**: Adds an item to the end of the vector, resizing the vector if necessary.
+
+**Parameters**:
+- `vec`: The vector to which the item is added.
+- `item`: A pointer to the item being added to the vector.
+
+**Return Value**: `true` if the operation succeeds, otherwise `false` (e.g., memory allocation failure).
+
+**Usage Case**: Use to append elements one at a time to the end of the vector.
 
 ---
 
-### `bool vector_emplace_back(Vector *vec, void *item, size_t itemSize)`   
-  - **Purpose**: Constructs an item in place at the end of the vector, potentially avoiding copying and allowing more efficient insertion.
-  - **Parameters:**  
-    - `vec`: The vector to add the item to.  
-    - `item`: A pointer to the item to be added.  
-    - `itemSize`: The size of the item being added.
-  - **Returns:**  
-    - `true` if successful, otherwise `false`.
+### `bool vector_emplace_back(Vector* vec, void* item, size_t itemSize)`
+
+**Purpose**: Constructs an item in place at the end of the vector, potentially avoiding copying and allowing more efficient insertion.
+
+**Parameters**:
+- `vec`: The vector to add the item to.
+- `item`: A pointer to the item to be added.
+- `itemSize`: The size of the item being added.
+
+**Return Value**: `true` if successful, otherwise `false`.
+
+**Usage Case**: Use when inserting items at the end with explicit size control for efficiency.
 
 ---
 
-### `void vector_erase(Vector* vec, size_t pos, size_t len)`   
-  - **Purpose**: Erases a range of elements from the vector, starting at the specified position and removing the specified number of elements.
-  - **Parameters:**  
-    - `vec`: The vector from which elements will be removed.  
-    - `pos`: The starting position of the elements to be removed.  
-    - `len`: The number of elements to erase.
+### `void vector_erase(Vector* vec, size_t pos, size_t len)`
+
+**Purpose**: Erases a range of elements from the vector, starting at the specified position and removing the specified number of elements.
+
+**Parameters**:
+- `vec`: The vector from which elements will be removed.
+- `pos`: The starting position of the elements to be removed.
+- `len`: The number of elements to erase.
+
+**Return Value**: None.
+
+**Usage Case**: Use to remove a contiguous block of elements from any position in the vector.
 
 ---
 
-### `void vector_insert(Vector* vec, size_t pos, void* item)`   
-  - **Purpose**: Inserts an item into the vector at the specified position, shifting subsequent elements to the right.
-  - **Parameters:**  
-    - `vec`: The vector where the item will be inserted.  
-    - `pos`: The index at which the item will be inserted.  
-    - `item`: A pointer to the item to insert.
+### `void vector_insert(Vector* vec, size_t pos, void* item)`
+
+**Purpose**: Inserts an item into the vector at the specified position, shifting subsequent elements to the right.
+
+**Parameters**:
+- `vec`: The vector where the item will be inserted.
+- `pos`: The index at which the item will be inserted.
+- `item`: A pointer to the item to insert.
+
+**Return Value**: None.
+
+**Usage Case**: Use to add an element at a specific index rather than at the end.
 
 ---
 
-### `void vector_resize(Vector* vec, size_t size)`   
-  - **Purpose**: Resizes the vector to contain the specified number of elements. If the new size is larger, additional elements will be uninitialized.
-  - **Parameters:**  
-    - `vec`: The vector to resize.  
-    - `size`: The new size of the vector.
+### `void vector_resize(Vector* vec, size_t size)`
+
+**Purpose**: Resizes the vector to contain the specified number of elements. If the new size is larger, additional elements will be zero-initialized.
+
+**Parameters**:
+- `vec`: The vector to resize.
+- `size`: The new size of the vector.
+
+**Return Value**: None.
+
+**Usage Case**: Use to explicitly set the number of elements, growing or shrinking the vector.
 
 ---
 
-### `void vector_shrink_to_fit(Vector* vec)`  
-  - **Purpose**: Shrinks the capacity of the vector to match its current size, freeing any excess allocated memory.
-  - **Parameters:**  
-    - `vec`: The vector to shrink.
+### `void vector_shrink_to_fit(Vector* vec)`
+
+**Purpose**: Shrinks the capacity of the vector to match its current size, freeing any excess allocated memory.
+
+**Parameters**:
+- `vec`: The vector to shrink.
+
+**Return Value**: None.
+
+**Usage Case**: Use after many removals to reclaim unused memory.
 
 ---
 
-### `void vector_clear(Vector* vec)`   
-  - **Purpose**: Clears all elements from the vector, setting its size to 0 but maintaining its current capacity.
-  - **Parameters:**  
-    - `vec`: The vector to clear.
+### `void vector_clear(Vector* vec)`
+
+**Purpose**: Clears all elements from the vector, setting its size to 0 but maintaining its current capacity.
+
+**Parameters**:
+- `vec`: The vector to clear.
+
+**Return Value**: None.
+
+**Usage Case**: Use to empty the vector for reuse without releasing its allocated memory.
 
 ---
 
-### `void vector_swap(Vector* vec1, Vector* vec2)`  
-  - **Purpose**: Swaps the contents of two vectors, exchanging their sizes, capacities, and elements.
-  - **Parameters:**  
-    - `vec1`: The first vector.  
-    - `vec2`: The second vector.
+### `void vector_swap(Vector* vec1, Vector* vec2)`
+
+**Purpose**: Swaps the contents of two vectors, exchanging their sizes, capacities, and elements.
+
+**Parameters**:
+- `vec1`: The first vector.
+- `vec2`: The second vector.
+
+**Return Value**: None.
+
+**Usage Case**: Use to exchange the contents of two vectors efficiently without copying elements.
 
 ---
 
-### `void vector_assign(Vector* vec, size_t pos, void* item)`   
-  - **Purpose**: Assigns a new value to the element at the specified position.
-  - **Parameters:**  
-    - `vec`: The vector to modify.  
-    - `pos`: The position of the element to assign a new value to.  
-    - `item`: A pointer to the new item.
+### `void vector_assign(Vector* vec, size_t pos, void* item)`
+
+**Purpose**: Assigns a new value to the element at the specified position.
+
+**Parameters**:
+- `vec`: The vector to modify.
+- `pos`: The position of the element to assign a new value to.
+- `item`: A pointer to the new item.
+
+**Return Value**: None.
+
+**Usage Case**: Use to update an existing element at a known index.
 
 ---
 
-### `void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize)`   
-  - **Purpose**: Constructs an item in place at the specified position within the vector.
-  - **Parameters:**  
-    - `vec`: The vector where the item will be constructed.  
-    - `pos`: The index at which to construct the item.  
-    - `item`: A pointer to the item to be placed.  
-    - `itemSize`: The size of the item.
+### `void vector_emplace(Vector* vec, size_t pos, void* item, size_t itemSize)`
+
+**Purpose**: Constructs an item in place at the specified position within the vector.
+
+**Parameters**:
+- `vec`: The vector where the item will be constructed.
+- `pos`: The index at which to construct the item.
+- `item`: A pointer to the item to be placed.
+- `itemSize`: The size of the item.
+
+**Return Value**: None.
+
+**Usage Case**: Use to insert an element at an arbitrary position with explicit size control.
 
 ---
 
-### `void vector_deallocate(Vector *vec)`   
-  - **Purpose**: Frees all memory associated with the vector, including its elements and the vector structure itself.
-  - **Parameters:**  
-    - `vec`: The vector to deallocate.
+### `void vector_deallocate(Vector* vec)`
+
+**Purpose**: Frees all memory associated with the vector, including its elements and the vector structure itself.
+
+**Parameters**:
+- `vec`: The vector to deallocate.
+
+**Return Value**: None.
+
+**Usage Case**: Call when done using a vector to release all its memory.
 
 ---
 
-### `const void* vector_cbegin(Vector* vec)` 
-  - **Purpose**: Returns a constant pointer to the first element in the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A constant pointer to the first element of the vector.
+### `const void* vector_cbegin(Vector* vec)`
+
+**Purpose**: Returns a constant pointer to the first element in the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A constant pointer to the first element of the vector.
+
+**Usage Case**: Use for read-only forward iteration from the beginning.
 
 ---
 
-### `const void* vector_cend(Vector* vec)`   
-  - **Purpose**: Returns a constant pointer to the element following the last element in the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A constant pointer to the element following the last element.
+### `const void* vector_cend(Vector* vec)`
+
+**Purpose**: Returns a constant pointer to the element following the last element in the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A constant pointer to one past the last element (end sentinel).
+
+**Usage Case**: Use as the end bound for read-only forward iteration.
 
 ---
 
-### `const void* vector_crbegin(Vector* vec)`   
-  - **Purpose**: Returns a constant pointer to the first element of the reversed vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A constant pointer to the first element in the reversed vector.
+### `const void* vector_crbegin(Vector* vec)`
+
+**Purpose**: Returns a constant pointer to the first element of the reversed vector (i.e., the last element).
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A constant pointer to the last element of the vector.
+
+**Usage Case**: Use for read-only reverse iteration starting from the last element.
 
 ---
 
-### `const void* vector_crend(Vector* vec)`   
-  - **Purpose**: Returns a constant pointer to the element following the last element of the reversed vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A constant pointer to the element after the last in the reversed vector.
+### `const void* vector_crend(Vector* vec)`
+
+**Purpose**: Returns a constant pointer to the element preceding the first element in the reversed vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A constant pointer to one before the first element (reverse-end sentinel).
+
+**Usage Case**: Use as the end bound for read-only reverse iteration.
 
 ---
 
-### `void* vector_begin(Vector* vec)`  
-  - **Purpose**: Returns a pointer to the first element in the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the first element.
+### `void* vector_begin(Vector* vec)`
+
+**Purpose**: Returns a pointer to the first element in the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to the first element.
+
+**Usage Case**: Use to start forward iteration over the vector's elements.
 
 ---
 
-### `void* vector_end(Vector* vec)`  
-  - **Purpose**: Returns a pointer to the element following the last element in the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the element following the last.
+### `void* vector_end(Vector* vec)`
+
+**Purpose**: Returns a pointer to the element following the last element in the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to one past the last element (end sentinel).
+
+**Usage Case**: Use as the end bound for forward iteration.
 
 ---
 
-### `void* vector_pop_back(Vector* vec)`   
-  - **Purpose**: Removes the last element from the vector and returns a pointer to it.
-  - **Parameters:**  
-    - `vec`: The vector to modify.
-  - **Returns:**  
-    - A pointer to the last element removed.
+### `void* vector_pop_back(Vector* vec)`
+
+**Purpose**: Removes the last element from the vector and returns a pointer to it.
+
+**Parameters**:
+- `vec`: The vector to modify.
+
+**Return Value**: A pointer to the removed last element.
+
+**Usage Case**: Use to retrieve and remove the last element from the vector.
 
 ---
 
-- **`void* vector_front(Vector* vec)`**  
-  - **Purpose**: Returns a pointer to the first element in the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the first element.
+### `void* vector_front(Vector* vec)`
+
+**Purpose**: Returns a pointer to the first element in the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to the first element.
+
+**Usage Case**: Use when you need to read or modify the first element without removing it.
 
 ---
 
-### `void* vector_back(Vector* vec)`   
-  - **Purpose**: Returns a pointer to the last element in the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the last element.
+### `void* vector_back(Vector* vec)`
+
+**Purpose**: Returns a pointer to the last element in the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to the last element.
+
+**Usage Case**: Use when you need to read or modify the last element without removing it.
 
 ---
 
-### `void* vector_data(Vector* vec)`   
-  - **Purpose**: Returns a pointer to the underlying array used by the vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the underlying array of elements.
+### `void* vector_data(Vector* vec)`
+
+**Purpose**: Returns a pointer to the underlying array used by the vector.
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to the underlying array of elements.
+
+**Usage Case**: Use when you need direct access to the raw array, such as for passing to C APIs.
 
 ---
 
-### `void* vector_at(const Vector* vec, size_t pos)`   
-  - **Purpose**: Returns a pointer to the element at the specified position.
-  - **Parameters:**  
-    - `vec`: The vector to access.  
-    - `pos`: The position of the element to access.
-  - **Returns:**  
-    - A pointer to the element at the specified position.
+### `void* vector_at(const Vector* vec, size_t pos)`
+
+**Purpose**: Returns a pointer to the element at the specified position.
+
+**Parameters**:
+- `vec`: The vector to access.
+- `pos`: The position of the element to access.
+
+**Return Value**: A pointer to the element at the specified position.
+
+**Usage Case**: Use for random access to any element by index.
 
 ---
 
-### `void* vector_rbegin(Vector* vec)` 
-  - **Purpose**: Returns a pointer to the first element of the reversed vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the first element of the reversed vector.
+### `void* vector_rbegin(Vector* vec)`
+
+**Purpose**: Returns a pointer to the last element in the vector (start of reverse iteration).
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to the last element of the vector.
+
+**Usage Case**: Use to start reverse iteration over the vector's elements.
 
 ---
 
-### `void* vector_rend(Vector* vec)`   
-  - **Purpose**: Returns a pointer to the element following the last element of the reversed vector.
-  - **Parameters:**  
-    - `vec`: The vector to access.
-  - **Returns:**  
-    - A pointer to the element following the last in the reversed vector.
+### `void* vector_rend(Vector* vec)`
+
+**Purpose**: Returns a pointer to the element preceding the first element of the vector (end of reverse iteration).
+
+**Parameters**:
+- `vec`: The vector to access.
+
+**Return Value**: A pointer to one before the first element (reverse-end sentinel).
+
+**Usage Case**: Use as the end bound for reverse iteration.
 
 ---
 
-### `size_t vector_size(const Vector* vec)`   
-  - **Purpose**: Returns the number of elements currently stored in the vector.
-  - **Parameters:**  
-    - `vec`: The vector whose size is to be returned.
-  - **Returns:**  
-    - The number of elements in the vector.
+### `size_t vector_size(const Vector* vec)`
+
+**Purpose**: Returns the number of elements currently stored in the vector.
+
+**Parameters**:
+- `vec`: The vector whose size is to be returned.
+
+**Return Value**: The number of elements in the vector.
+
+**Usage Case**: Use to check how many elements are currently stored before iterating or accessing.
 
 ---
 
-### `size_t vector_capacity(Vector* vec)` 
-  - **Purpose**: Returns the total capacity of the vector (the number of elements it can store without resizing).
-  - **Parameters:**  
-    - `vec`: The vector whose capacity is to be returned.
-  - **Returns:**  
-    - The capacity of the vector.
+### `size_t vector_capacity(Vector* vec)`
+
+**Purpose**: Returns the total capacity of the vector (the number of elements it can store without resizing).
+
+**Parameters**:
+- `vec`: The vector whose capacity is to be returned.
+
+**Return Value**: The capacity of the vector.
+
+**Usage Case**: Use to understand how much space is pre-allocated before a reallocation occurs.
 
 ---
 
-### `size_t vector_max_size(Vector* vec)`   
-  - **Purpose**: Returns the maximum number of elements that the vector can hold, based on the system's limitations.
-  - **Parameters:**  
-    - `vec`: The vector whose maximum size is to be returned.
-  - **Returns:**  
-    - The maximum number of elements the vector can hold.
+### `size_t vector_max_size(Vector* vec)`
+
+**Purpose**: Returns the maximum number of elements that the vector can hold, based on the system's limitations.
+
+**Parameters**:
+- `vec`: The vector whose maximum size is to be returned.
+
+**Return Value**: The maximum number of elements the vector can hold.
+
+**Usage Case**: Use to guard against requesting sizes larger than what the system can support.
 
 ---
 
@@ -368,7 +530,7 @@ Several examples are provided to demonstrate the usage of the Vector library in 
 #include "vector/vector.h"
 ```
 
-### Example 1: Integers
+## Example 1: Integers
 
 ```c
 #include "vector/vector.h"
@@ -389,14 +551,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 10
 ```
 
 ---
 
-### Example 2: Strings
+## Example 2: Strings
 
 ```c
 #include "vector/vector.h"
@@ -419,14 +581,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Hello, World!
 ```
 
 ---
 
-### Example 3: User-Defined Structures
+## Example 3: User-Defined Structures
 
 ```c
 #include "vector/vector.h"
@@ -454,14 +616,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 ID: 1, Value: 10.50
 ```
 
 ---
 
-### Example 4: Use relational operators
+## Example 4: Use relational operators
 
 ```c
 #include "vector/vector.h"
@@ -491,7 +653,7 @@ int main() {
         fmt_printf("vec1 is less than vec2\n");
     }
     if (vector_is_greater(vec2, vec1)) {
-        fmt_printf("vec2 is greater than vec2\n");
+        fmt_printf("vec2 is greater than vec1\n");
     }
     // Cleanup
     vector_deallocate(vec1);
@@ -500,11 +662,11 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 vec1 is not equal to vec2
 vec1 is less than vec2
-vec2 is greater than vec2
+vec2 is greater than vec1
 ```
 
 ---
@@ -550,7 +712,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 10
 20
@@ -582,13 +744,13 @@ int main() {
 
     vector_swap(vector1, vector2);
 
-    fmt_println("Contents of vector1 after swap:");
+    fmt_printf("Contents of vector1 after swap:\n");
     for (size_t i = 0; i < vector_size(vector1); ++i) {
         int* item = (int*) vector_at(vector1, i);
         fmt_printf("%d\n", *item);
     }
 
-    fmt_println("Contents of vector2 after swap:");
+    fmt_printf("Contents of vector2 after swap:\n");
     for (size_t i = 0; i < vector_size(vector2); ++i) {
         int* item = (int*)vector_at(vector2, i);
         fmt_printf("%d\n", *item);
@@ -600,9 +762,9 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
-Contents of vector1 after swap: 
+Contents of vector1 after swap:
 30
 40
 Contents of vector2 after swap:
@@ -636,7 +798,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Popped item: 40
 ```
@@ -666,7 +828,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First item: 10
 ```
@@ -696,7 +858,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Last item: 30
 ```
@@ -728,7 +890,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Item 0: 10
 Item 1: 20
@@ -759,7 +921,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 10
 20
@@ -790,7 +952,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 10
 20
@@ -820,7 +982,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 30
 20
@@ -851,7 +1013,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 30
 20
@@ -887,7 +1049,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 25
 10
@@ -922,7 +1084,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 10
 40
@@ -952,7 +1114,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Vector size: 11, Vector capacity: 32
 ```
@@ -979,7 +1141,7 @@ int main() {
 
     for (size_t i = 0; i < vector_size(intVector); ++i) {
         int* item = (int*) vector_at(intVector, i);
-        fmt_printf("%d\n", *item); // The last two elements will be zero-initialized
+        fmt_printf("%d\n", *item); 
     }
 
     // Resize to a smaller size (2)
@@ -997,7 +1159,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 After resizing to larger size:
 10
@@ -1039,7 +1201,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Size before shrink_to_fit: 3, Capacity before shrink_to_fit: 32
 Size after shrink_to_fit: 3, Capacity after shrink_to_fit: 3
@@ -1079,7 +1241,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Hello
 NewString
@@ -1124,7 +1286,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Hello
 World
@@ -1167,14 +1329,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Vector1 is less than Vector2
 ```
 
 ---
 
-### Example 23 : how to use `vector_begin` and `vector_end` with String Object 
+## Example 23 : how to use `vector_begin` and `vector_end` with String Object
 
 ```c
 #include "string/std_string.h"
@@ -1218,6 +1380,8 @@ int main() {
     fmt_printf("%s", string_c_str(concat));
     fmt_printf("Time taken: %lf seconds\n", time_elapsed);
 
+    time_deallocate(start_time);
+    time_deallocate(end_time);
     string_deallocate(concat);
     return 0;
 }
@@ -1272,7 +1436,7 @@ Time taken: 1.2074e-05 seconds
 
 ---
 
-### Example 24 :Vector of Vectors (2D Vector)
+## Example 24: Vector of Vectors (2D Vector)
 
 This example creates a two-dimensional vector, where each element of the main vector is another vector. This can be useful for matrix-like structures or grid representations.
 ```c
@@ -1313,16 +1477,16 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 0 1 2 
-3 4 5
-6 7 8
+3 4 5 
+6 7 8 
 ```
 
 ---
 
-### Example 25 : Vector of Structs with Dynamic String Fields
+## Example 25: Vector of Structs with Dynamic String Fields
 
 This example demonstrates how to use the Vector library to store a collection of structs, where each struct contains dynamically allocated string fields (using the String library).
 ```c
@@ -1365,7 +1529,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Name: Item1, Description: Description1
 Name: Item2, Description: Description2
@@ -1374,7 +1538,7 @@ Name: Item3, Description: Description3
 
 ---
 
-### Example 26 : Vector of Vectors (2D Vector) of Custom Structs 
+## Example 26: Vector of Vectors (2D Vector) of Custom Structs
 
 ```c
 #include <stdlib.h>
@@ -1447,7 +1611,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Name: Person_0_0, Age: 0
 Name: Person_0_1, Age: 1
@@ -1455,6 +1619,241 @@ Name: Person_0_2, Age: 2
 Name: Person_1_0, Age: 10
 Name: Person_1_1, Age: 11
 Name: Person_1_2, Age: 12
+```
+
+---
+
+## Example 27 : sort and search a Vector with the `Algorithm` library
+
+This example stores integers in a vector, then sorts the vector's underlying storage in place with `algorithm_sort` and locates a value with `algorithm_find`. `vector_data` exposes the contiguous buffer the algorithm functions operate on.
+
+```c
+#include "vector/vector.h"
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+static int compare_ints(const void* a, const void* b) {
+    int x = *(const int*)a;
+    int y = *(const int*)b;
+    return (x > y) - (x < y);
+}
+
+int main(void) {
+    Vector* vec = vector_create(sizeof(int));
+    int values[] = {42, 7, 19, 3, 25, 11};
+
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        vector_push_back(vec, &values[i]);
+    }
+
+    // Sort the vector's underlying storage in place with algorithm_sort
+    algorithm_sort(vector_data(vec), vector_size(vec), sizeof(int), compare_ints);
+
+    fmt_printf("Sorted: ");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        fmt_printf("%d ", *(int*)vector_at(vec, i));
+    }
+    fmt_printf("\n");
+
+    // Search the sorted data with algorithm_find
+    int key = 19;
+    int* found = (int*)algorithm_find(vector_data(vec), vector_size(vec), sizeof(int), &key, compare_ints);
+    if (found) {
+        fmt_printf("Found %d at index %ld\n", *found, (long)(found - (int*)vector_data(vec)));
+    }
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+**Result**
+```
+Sorted: 3 7 11 19 25 42 
+Found 19 at index 3
+```
+
+---
+
+## Example 28 : build a delimited `String` from a Vector of integers
+
+This example converts each integer in a vector to a `String` with `string_from_int` and appends it to a running `String` to produce a comma-separated list. Each temporary piece is deallocated as soon as it is appended.
+
+```c
+#include "vector/vector.h"
+#include "string/std_string.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Vector* vec = vector_create(sizeof(int));
+    int values[] = {10, 20, 30, 40};
+
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        vector_push_back(vec, &values[i]);
+    }
+
+    // Build a single comma-separated String from the vector's integers
+    String* csv = string_create("");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        int* item = (int*)vector_at(vec, i);
+        String* piece = string_from_int(*item);
+
+        if (i > 0) {
+            string_append(csv, ", ");
+        }
+        string_append(csv, string_c_str(piece));
+        string_deallocate(piece);
+    }
+
+    fmt_printf("Joined: %s\n", string_c_str(csv));
+    fmt_printf("Length: %zu\n", string_length(csv));
+
+    string_deallocate(csv);
+    vector_deallocate(vec);
+    return 0;
+}
+```
+**Result**
+```
+Joined: 10, 20, 30, 40
+Length: 14
+```
+
+---
+
+## Example 29 : copy a fixed `Array` into a Vector and reduce it
+
+This example uses the compile-time fixed-size `Array` library as a data source: every element is copied into a dynamic `Vector`, and `array_reduce` collapses the fixed array down to a single sum.
+
+```c
+#include "vector/vector.h"
+#include "array/array.h"
+#include "fmt/fmt.h"
+
+array_create(int, 5, ArrayInt5);
+
+static void sum_reduce(const void* acc, const void* elem, void* out) {
+    *(int*)out = *(const int*)acc + *(const int*)elem;
+}
+
+int main(void) {
+    // A compile-time fixed array as the source of data
+    ArrayInt5 fixed = { .data = {5, 10, 15, 20, 25} };
+
+    // Copy every element of the fixed array into a dynamic vector
+    Vector* vec = vector_create(sizeof(int));
+    for (size_t i = 0; i < array_size(fixed); ++i) {
+        int v = array_at(fixed, i);
+        vector_push_back(vec, &v);
+    }
+
+    fmt_printf("Vector contents: ");
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        fmt_printf("%d ", *(int*)vector_at(vec, i));
+    }
+    fmt_printf("\n");
+
+    // Reduce the fixed array to a single sum using the array API
+    int total = 0;
+    array_reduce(fixed, &total, sum_reduce);
+
+    fmt_printf("Sum from array_reduce: %d\n", total);
+    fmt_printf("Vector size: %zu\n", vector_size(vec));
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+**Result**
+```
+Vector contents: 5 10 15 20 25 
+Sum from array_reduce: 75
+Vector size: 5
+```
+
+---
+
+## Example 30 : serialize a Vector of numbers as a `Json` array
+
+This example walks a vector of `double` values, wraps each in a `JSON_NUMBER` element, appends them to a `JSON_ARRAY`, and serializes the result. The serialized buffer returned by `json_serialize` is `free`d and the whole element tree is released with `json_deallocate`.
+
+```c
+#include "vector/vector.h"
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    Vector* vec = vector_create(sizeof(double));
+    double values[] = {1.5, 2.0, 3.25, 4.0};
+
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        vector_push_back(vec, &values[i]);
+    }
+
+    // Build a JSON array element from the vector's numbers
+    JsonElement* arr = json_create(JSON_ARRAY);
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        double* item = (double*)vector_at(vec, i);
+        JsonElement* num = json_create(JSON_NUMBER);
+        num->value.number_val = *item;
+        json_add_to_array(arr, num);
+    }
+
+    fmt_printf("Array size: %zu\n", json_array_size(arr));
+
+    char* serialized = json_serialize(arr);
+    fmt_printf("JSON: %s\n", serialized);
+    free(serialized);
+
+    json_deallocate(arr);
+    vector_deallocate(vec);
+    return 0;
+}
+```
+**Result**
+```
+Array size: 4
+JSON: [1.5, 2, 3.25, 4]
+```
+
+---
+
+## Example 31 : compute descriptive statistics over a Vector
+
+Because `vector_data` returns a contiguous block, a vector of `double` can be handed straight to the `Statistics` library. This example computes the mean, median, and population standard deviation of the stored samples.
+
+```c
+#include "vector/vector.h"
+#include "statistics/statistics.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Vector* vec = vector_create(sizeof(double));
+    double samples[] = {2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0};
+
+    for (size_t i = 0; i < sizeof(samples) / sizeof(samples[0]); ++i) {
+        vector_push_back(vec, &samples[i]);
+    }
+
+    // vector_data gives a contiguous double[] the statistics API can read directly
+    const double* data = (const double*)vector_data(vec);
+    size_t n = vector_size(vec);
+
+    fmt_printf("Count:  %zu\n", n);
+    fmt_printf("Mean:   %.4f\n", statistics_mean(data, n));
+    fmt_printf("Median: %.4f\n", statistics_median(data, n));
+    fmt_printf("Pstdev: %.4f\n", statistics_pstdev(data, n, false, 0.0));
+
+    vector_deallocate(vec);
+    return 0;
+}
+```
+**Result**
+```
+Count:  8
+Mean:   5.0000
+Median: 4.5000
+Pstdev: 2.0000
 ```
 
 ---

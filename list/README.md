@@ -27,263 +27,380 @@ To use the List library in your project, include the `list.h` header file in you
 #include "list/list.h"
 ```
 
-## Functions Explanations 
+## Functions Explanations
 
-### `List *list_create(size_t itemSize, CompareFunction compare)`
-- **Purpose**: Initializes a new list structure with a specified item size and optional comparison function for sorting and comparing elements.
-- **Parameters**:
-  - `itemSize`: Size of each item in the list in bytes.
-  - `compare`: Optional function for comparing elements in the list; can be `NULL` if not needed.
-- **Return**: Pointer to the newly created list or `NULL` if memory allocation fails.
-
----
-
-### `size_t list_length(const List *list)`
-- **Purpose**: Returns the current number of elements in the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: The number of elements in the list, or `0` if the list is `NULL`.
+### `List* list_create(size_t itemSize, CompareFunction compare)`
+**Purpose**: Allocates and initializes a new doubly-linked list.
+**Parameters**:
+- `itemSize`: The size of each element in bytes; must be greater than 0.
+- `compare`: The element comparator used by `list_sort`, `list_remove`, and the relational operators; may be `NULL` when those operations are not needed.
+**Return Value**: A pointer to the new list, or `NULL` if `itemSize` is 0 or allocation fails.
+**Usage Case**: Call once at the start to create a typed list before pushing any elements.
 
 ---
 
-### `void *list_front(const List *list)`
-- **Purpose**: Retrieves the value of the first element in the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: Pointer to the value of the first element, or `NULL` if the list is empty or `NULL`.
+### `void list_deallocate(List* list)`
+**Purpose**: Frees all nodes and their element data, then frees the list struct itself.
+**Parameters**:
+- `list`: Pointer to the list to destroy; does nothing if `NULL`.
+**Return Value**: None.
+**Usage Case**: Call when the list is no longer needed to avoid memory leaks.
 
 ---
 
-### `void *list_back(const List *list)`
-- **Purpose**: Retrieves the value of the last element in the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: Pointer to the value of the last element, or `NULL` if the list is empty or `NULL`.
+### `size_t list_length(const List* list)`
+**Purpose**: Returns the number of elements currently in the list.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: The element count, or `0` if `list` is `NULL`.
+**Usage Case**: Use to check how many items are stored before iterating or resizing.
 
 ---
 
-### `void *list_insert(List *list, size_t index, void *value)`
-- **Purpose**: Inserts a new element at the specified index.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `index`: Position where the new element will be inserted.
-  - `value`: Pointer to the value of the new element.
-- **Return**: Pointer to the inserted value, or `NULL` if the insertion fails.
+### `bool list_empty(const List* list)`
+**Purpose**: Reports whether the list contains no elements.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: `true` if the list contains no elements or is `NULL`, `false` otherwise.
+**Usage Case**: Use as a guard before calling `list_front` or `list_pop_front` to avoid operating on an empty list.
 
 ---
 
-### `void *list_erase(List *list, size_t index)`
-- **Purpose**: Removes an element from the list at the specified index.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `index`: Position of the element to be removed.
-- **Return**: Pointer to the value of the removed element, or `NULL` if the removal fails.
+### `void* list_front(const List* list)`
+**Purpose**: Returns a pointer to the value of the first element.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: Pointer to the first element's value, or `NULL` if the list is empty or `NULL`.
+**Usage Case**: Peek at the head of a queue-style list without removing the element.
 
 ---
 
-### `void list_resize(List *list, size_t newSize, void *defaultValue)`
-- **Purpose**: Resizes the list to a new size, filling new elements with `defaultValue`.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `newSize`: New desired size of the list.
-  - `defaultValue`: Value to initialize new elements (if added).
-- **Return**: None.
+### `void* list_back(const List* list)`
+**Purpose**: Returns a pointer to the value of the last element.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: Pointer to the last element's value, or `NULL` if the list is empty or `NULL`.
+**Usage Case**: Peek at the tail of a stack- or queue-style list without removing the element.
 
 ---
 
-### `void list_swap(List *list1, List *list2)`
-- **Purpose**: Swaps the contents of two lists.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: None.
+### `void list_push_front(List* list, void* value)`
+**Purpose**: Copies `itemSize` bytes from `value` and prepends the new element at the front of the list.
+**Parameters**:
+- `list`: Pointer to the list.
+- `value`: Pointer to the data to copy into the new front node.
+**Return Value**: None.
+**Usage Case**: Use when implementing a stack (LIFO) or when order requires new items to appear first.
 
 ---
 
-### `void list_reverse(List *list)`
-- **Purpose**: Reverses the order of elements in the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: None.
+### `void list_push_back(List* list, void* value)`
+**Purpose**: Copies `itemSize` bytes from `value` and appends the new element at the back of the list.
+**Parameters**:
+- `list`: Pointer to the list.
+- `value`: Pointer to the data to copy into the new back node.
+**Return Value**: None.
+**Usage Case**: Use when building a queue (FIFO) or accumulating items in insertion order.
 
 ---
 
-### `void list_sort(List *list)`
-- **Purpose**: Sorts the elements in the list using the comparison function.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: None.
+### `void list_pop_front(List* list)`
+**Purpose**: Removes and frees the first element.
+**Parameters**:
+- `list`: Pointer to the list; does nothing if the list is empty or `NULL`.
+**Return Value**: None.
+**Usage Case**: Dequeue the head element in a FIFO processing loop.
 
 ---
 
-### `void list_push_front(List *list, void *value)`
-- **Purpose**: Adds a new element to the front of the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `value`: Pointer to the value of the new element.
-- **Return**: None.
+### `void list_pop_back(List* list)`
+**Purpose**: Removes and frees the last element.
+**Parameters**:
+- `list`: Pointer to the list; does nothing if the list is empty or `NULL`.
+**Return Value**: None.
+**Usage Case**: Pop the top element in a LIFO stack implemented with this list.
 
 ---
 
-### `void list_push_back(List *list, void *value)`
-- **Purpose**: Adds a new element to the back of the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `value`: Pointer to the value of the new element.
-- **Return**: None.
+### `void list_emplace_front(List* list, void* value)`
+**Purpose**: Inserts an element at the front by storing `value` directly without an extra copy (the pointer itself is stored).
+**Parameters**:
+- `list`: Pointer to the list.
+- `value`: Pointer to store directly in the new front node.
+**Return Value**: None.
+**Usage Case**: Use when the caller manages element lifetime and wants to avoid the copy overhead of `list_push_front`.
 
 ---
 
-### `void list_pop_front(List *list)`
-- **Purpose**: Removes the first element from the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: None.
+### `void list_emplace_back(List* list, void* value)`
+**Purpose**: Inserts an element at the back by storing `value` directly without an extra copy.
+**Parameters**:
+- `list`: Pointer to the list.
+- `value`: Pointer to store directly in the new back node.
+**Return Value**: None.
+**Usage Case**: Use when the caller manages element lifetime and wants to avoid the copy overhead of `list_push_back`.
 
 ---
 
-### `void list_pop_back(List *list)`
-- **Purpose**: Removes the last element from the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: None.
+### `void* list_insert(List* list, size_t index, void* value)`
+**Purpose**: Inserts a copy of `value` at position `index` (0-based), shifting elements at `index` and beyond.
+**Parameters**:
+- `list`: Pointer to the list.
+- `index`: Zero-based position at which to insert the new element.
+- `value`: Pointer to the data to copy into the new node.
+**Return Value**: A pointer to the inserted value, or `NULL` if the insertion fails.
+**Usage Case**: Insert an element at an arbitrary position, such as maintaining a sorted-by-index structure.
 
 ---
 
-### `void list_clear(List *list)`
-- **Purpose**: Removes all elements from the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: None.
+### `void* list_erase(List* list, size_t index)`
+**Purpose**: Removes the element at position `index`.
+**Parameters**:
+- `list`: Pointer to the list.
+- `index`: Zero-based position of the element to remove.
+**Return Value**: A pointer to the removed element's value (caller is responsible for freeing it if necessary), or `NULL` on failure.
+**Usage Case**: Delete a specific element by position when the index is known.
 
 ---
 
-### `void list_assign(List *list, void *values, size_t numValues)`
-- **Purpose**: Replaces the contents of the list with a new set of values.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `values`: Pointer to the array of values.
-  - `numValues`: Number of values to assign to the list.
-- **Return**: None.
+### `void list_clear(List* list)`
+**Purpose**: Removes and frees all elements, leaving the list empty but the list struct valid.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: None.
+**Usage Case**: Reset a list for reuse without deallocating the list struct itself.
 
 ---
 
-### `void list_emplace_front(List *list, void *value)`
-- **Purpose**: Adds an element to the front of the list without copying the value.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `value`: Pointer to the value.
-- **Return**: None.
+### `void list_assign(List* list, void* values, size_t numValues)`
+**Purpose**: Replaces the entire list contents with copies of the `numValues` elements from the `values` array, clearing any previous contents first.
+**Parameters**:
+- `list`: Pointer to the list.
+- `values`: Pointer to the source array of elements.
+- `numValues`: Number of elements to copy from `values`.
+**Return Value**: None.
+**Usage Case**: Bulk-initialize or replace list contents from a C array in one call.
 
 ---
 
-### `void list_emplace_back(List *list, void *value)`
-- **Purpose**: Adds an element to the back of the list without copying the value.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `value`: Pointer to the value.
-- **Return**: None.
+### `void list_resize(List* list, size_t newSize, void* defaultValue)`
+**Purpose**: Grows or shrinks the list to `newSize`; if growing, appends copies of `defaultValue` for each new slot; if shrinking, removes elements from the back.
+**Parameters**:
+- `list`: Pointer to the list.
+- `newSize`: The desired number of elements after the operation.
+- `defaultValue`: Pointer to the value used to fill new slots when growing.
+**Return Value**: None.
+**Usage Case**: Pre-allocate or trim a list to a known size, filling gaps with a sentinel value.
 
 ---
 
-### `void list_splice(List *dest, List *src, Node *pos)`
-- **Purpose**: Moves elements from one list into another at a specified position.
-- **Parameters**:
-  - `dest`: Pointer to the destination list.
-  - `src`: Pointer to the source list.
-  - `pos`: Pointer to the position in `dest` where elements from `src` will be inserted.
-- **Return**: None.
+### `void list_swap(List* list1, List* list2)`
+**Purpose**: Swaps the full contents (head, tail, size, itemSize, comparators) of two lists in O(1).
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: None.
+**Usage Case**: Exchange two lists cheaply without copying all elements, for example after building a temporary list.
 
 ---
 
-### `void list_remove(List *list, void *value)`
-- **Purpose**: Removes all elements matching the given value from the list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `value`: Pointer to the value to be removed.
-- **Return**: None.
+### `void list_reverse(List* list)`
+**Purpose**: Reverses the order of all elements in-place.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: None.
+**Usage Case**: Flip iteration order after building a list by prepending, or to implement reverse-sorted output.
 
 ---
 
-### `void list_remove_if(List *list, ConditionFunction cond)`
-- **Purpose**: Removes elements that match a condition.
-- **Parameters**:
-  - `list`: Pointer to the list.
-  - `cond`: Function pointer to the condition to be met for removal.
-- **Return**: None.
+### `void list_sort(List* list)`
+**Purpose**: Sorts the elements in-place using the comparator supplied at `list_create`.
+**Parameters**:
+- `list`: Pointer to the list; requires a non-NULL comparator set at creation time.
+**Return Value**: None.
+**Usage Case**: Sort an unsorted list before calling `list_unique` or `list_merge`.
 
 ---
 
-### `void list_unique(List *list)`
-- **Purpose**: Removes consecutive duplicate elements from a sorted list.
-- **Parameters**:
-  - `list`: Pointer to the list.
-- **Return**: None.
+### `void list_splice(List* dest, List* src, Node* pos)`
+**Purpose**: Moves all nodes from `src` into `dest`, inserting them before `pos`; after the operation `src` is empty.
+**Parameters**:
+- `dest`: Pointer to the destination list.
+- `src`: Pointer to the source list whose nodes are moved.
+- `pos`: Node in `dest` before which the `src` nodes are inserted.
+**Return Value**: None.
+**Usage Case**: Concatenate or interleave two lists without copying element data.
 
 ---
 
-### `void list_merge(List *list1, List *list2)`
-- **Purpose**: Merges two sorted lists into one sorted list.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: None.
+### `void list_remove(List* list, void* value)`
+**Purpose**: Removes all nodes whose stored value compares equal to `value` using the list's comparator.
+**Parameters**:
+- `list`: Pointer to the list; requires a non-NULL comparator.
+- `value`: Pointer to the value to match against each element.
+**Return Value**: None.
+**Usage Case**: Delete every occurrence of a specific value from the list in one call.
 
 ---
 
-### `bool list_is_less(const List *list1, const List *list2)`
-- **Purpose**: Checks if one list is lexicographically less than another.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: `true` if `list1` is less than `list2`, otherwise `false`.
+### `void list_remove_if(List* list, ConditionFunction cond)`
+**Purpose**: Removes every element for which `cond` returns `true`.
+**Parameters**:
+- `list`: Pointer to the list.
+- `cond`: Predicate function called with a pointer to each element's value.
+**Return Value**: None.
+**Usage Case**: Filter out elements that satisfy an arbitrary condition, such as all values above a threshold.
 
 ---
 
-### `bool list_is_greater(const List *list1, const List *list2)`
-- **Purpose**: Checks if one list is lexicographically greater than another.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: `true` if `list1` is greater than `list2`, otherwise `false`.
+### `void list_unique(List* list)`
+**Purpose**: Removes consecutive duplicate elements; the list should be sorted first to eliminate all duplicates.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: None.
+**Usage Case**: Deduplicate a sorted list after calling `list_sort`.
 
 ---
 
-### `bool list_is_equal(const List *list1, const List *list2)`
-- **Purpose**: Checks if two lists are lexicographically equal.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: `true` if the lists are equal, otherwise `false`.
+### `void list_merge(List* list1, List* list2)`
+**Purpose**: Merges all nodes from `list2` into `list1`; both lists must already be sorted, and `list2` is empty after the call.
+**Parameters**:
+- `list1`: Pointer to the destination sorted list.
+- `list2`: Pointer to the source sorted list.
+**Return Value**: None.
+**Usage Case**: Combine two pre-sorted lists into one sorted list without extra allocation.
 
 ---
 
-### `bool list_is_less_or_equal(const List *list1, const List *list2)`
-- **Purpose**: Checks if one list is less than or equal to another lexicographically.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: `true` if `list1` is less than or equal to `list2`, otherwise `false`.
+### `Node* list_begin(const List* list)`
+**Purpose**: Returns a pointer to the first node (head) for use in forward iteration.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: Pointer to the head node, or `NULL` if the list is empty or `NULL`.
+**Usage Case**: Start a forward loop: `for (Node* n = list_begin(l); n != list_end(l); n = n->next)`.
 
 ---
 
-### `bool list_is_greater_or_equal(const List *list1, const List *list2)`
-- **Purpose**: Checks if one list is greater than or equal to another lexicographically.
-- **Parameters**:
-  - `list1`: Pointer to the first list.
-  - `list2`: Pointer to the second list.
-- **Return**: `true` if `list1` is greater than or equal to `list2`, otherwise `false`.
+### `Node* list_end(const List* list)`
+**Purpose**: Returns `NULL`, which serves as the past-the-end sentinel for forward iteration.
+**Parameters**:
+- `list`: Pointer to the list (parameter accepted for symmetry; return value is always `NULL`).
+**Return Value**: `NULL`.
+**Usage Case**: Use as the loop termination condition in a forward iteration over the list.
 
 ---
 
-### `bool list_is_not_equal(const List *list1, const List *list2)`
-- **Purpose**: Checks if two lists are not lexicographically equal.
-- **Parameters**:
-  - `list1`: Pointer to the
+### `Node* list_rbegin(const List* list)`
+**Purpose**: Returns a pointer to the last node (tail) for reverse iteration.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: Pointer to the tail node, or `NULL` if the list is empty or `NULL`.
+**Usage Case**: Start a reverse loop: `for (Node* n = list_rbegin(l); n != list_rend(l); n = n->prev)`.
 
- first list.
-  - `list2`: Pointer to the second list.
-- **Return**: `true` if the lists are not equal, otherwise `false`.
+---
+
+### `Node* list_rend(const List* list)`
+**Purpose**: Returns `NULL`, the past-the-beginning sentinel for reverse iteration.
+**Parameters**:
+- `list`: Pointer to the list (parameter accepted for symmetry; return value is always `NULL`).
+**Return Value**: `NULL`.
+**Usage Case**: Use as the loop termination condition in a reverse iteration over the list.
+
+---
+
+### `const Node* list_cbegin(const List* list)`
+**Purpose**: Same as `list_begin` but returns a `const Node*`, signalling read-only intent.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: `const` pointer to the head node, or `NULL` if the list is empty or `NULL`.
+**Usage Case**: Iterate forward over a list in a context where elements must not be modified.
+
+---
+
+### `const Node* list_cend(const List* list)`
+**Purpose**: Same as `list_end` but returns a `const Node*`.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: `NULL` (as `const Node*`).
+**Usage Case**: Termination sentinel for a const-correct forward iteration loop.
+
+---
+
+### `const Node* list_crbegin(const List* list)`
+**Purpose**: Same as `list_rbegin` but returns a `const Node*`.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: `const` pointer to the tail node, or `NULL` if the list is empty or `NULL`.
+**Usage Case**: Iterate in reverse over a list in a read-only context.
+
+---
+
+### `const Node* list_crend(const List* list)`
+**Purpose**: Same as `list_rend` but returns a `const Node*`.
+**Parameters**:
+- `list`: Pointer to the list.
+**Return Value**: `NULL` (as `const Node*`).
+**Usage Case**: Termination sentinel for a const-correct reverse iteration loop.
+
+---
+
+### `bool list_is_equal(const List* list1, const List* list2)`
+**Purpose**: Returns `true` if both lists have the same length and every corresponding element compares equal via the comparator.
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: `true` if the lists are element-wise equal, `false` otherwise.
+**Usage Case**: Assert that two lists hold identical contents after a copy or merge operation.
+
+---
+
+### `bool list_is_not_equal(const List* list1, const List* list2)`
+**Purpose**: Returns `true` if the two lists differ in length or any corresponding elements differ.
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: `true` if the lists are not equal, `false` otherwise.
+**Usage Case**: Detect that two lists have diverged, for example after a modification to one of them.
+
+---
+
+### `bool list_is_less(const List* list1, const List* list2)`
+**Purpose**: Returns `true` if `list1` is lexicographically less than `list2`.
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: `true` if `list1` is lexicographically less than `list2`, `false` otherwise.
+**Usage Case**: Order two lists, for example when using them as keys in a sorted structure.
+
+---
+
+### `bool list_is_less_or_equal(const List* list1, const List* list2)`
+**Purpose**: Returns `true` if `list1` is lexicographically less than or equal to `list2`.
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: `true` if `list1` is lexicographically less than or equal to `list2`, `false` otherwise.
+**Usage Case**: Use in range checks or sorting predicates where equality is acceptable.
+
+---
+
+### `bool list_is_greater(const List* list1, const List* list2)`
+**Purpose**: Returns `true` if `list1` is lexicographically greater than `list2`.
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: `true` if `list1` is lexicographically greater than `list2`, `false` otherwise.
+**Usage Case**: Determine which of two lists sorts later, for example when implementing a priority scheme.
+
+---
+
+### `bool list_is_greater_or_equal(const List* list1, const List* list2)`
+**Purpose**: Returns `true` if `list1` is lexicographically greater than or equal to `list2`.
+**Parameters**:
+- `list1`: Pointer to the first list.
+- `list2`: Pointer to the second list.
+**Return Value**: `true` if `list1` is lexicographically greater than or equal to `list2`, `false` otherwise.
+**Usage Case**: Use in sorting predicates or assertions where equality with the second list is also acceptable.
 
 ---
 
@@ -304,13 +421,11 @@ int main() {
     List *myList = list_create(sizeof(int), compare_ints);
     int values[] = {10, 20, 30, 40, 50};
 
-    for (int i = 0; i < 5; ++i) { 
+    for (int i = 0; i < 5; ++i) {
         list_push_back(myList, &values[i]);
     }
 
     list_deallocate(myList);
-    list_deallocate(myList);
-    
     return 0;
 }
 ```
@@ -324,15 +439,15 @@ int main() {
 #include "fmt/fmt.h"
 #include "list/list.h"
 
-static bool compare_string(const void* a, const void* b){
+static int compare_string(const void* a, const void* b){
     const char* str_a = *(const char**)a;
     const char* str_b = *(const char**)b;
 
-    return strcmp(str_a, str_b) == 0;
+    return strcmp(str_a, str_b);
 }
 
 int main() {
-    List *myList = list_create(sizeof(char*), (CompareFunction)compare_string);
+    List *myList = list_create(sizeof(char*), compare_string);
     const char* values[] = {"c++", "C", "Python", "Golang", "Rust"};
 
     for (int i = 0; i < 5; ++i) { 
@@ -437,6 +552,7 @@ int main() {
 
 ```c
 #include "list/list.h"
+#include <stdlib.h>
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -449,7 +565,7 @@ int main() {
     int value = 100;
 
     list_push_back(myList, &value);
-    list_erase(myList, 0); // Erase the first element
+    free(list_erase(myList, 0)); // Erase the first element and free the returned value
 
     list_deallocate(myList);
     return 0;
@@ -581,6 +697,7 @@ int main() {
 ```c
 #include "fmt/fmt.h"
 #include "list/list.h"
+
 
 static int compare_ints(const void* a, const void* b) {
     int int_a = *(const int*)a;
@@ -835,16 +952,15 @@ Cherry
 
 ### Example 17: Merging Two Lists of Strings
 
-#include "string/string.h"
-
 ```c
 #include "fmt/fmt.h"
 #include "list/list.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     List* list1 = list_create(sizeof(String*), NULL);
     List* list2 = list_create(sizeof(String*), NULL);
+
     String* str1 = string_create("Hello");
     String* str2 = string_create("World");
     String* str3 = string_create("Example");
@@ -865,6 +981,7 @@ int main() {
     string_deallocate(str2);
     string_deallocate(str3);
     string_deallocate(str4);
+    
     list_deallocate(list1);
     list_deallocate(list2);
 
@@ -886,7 +1003,7 @@ Text
 ```c
 #include "fmt/fmt.h"
 #include "list/list.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 // Condition function to filter out short strings
 static bool filter_short_strings(void* value) {
@@ -931,7 +1048,7 @@ Banana
 ```c
 #include "fmt/fmt.h"
 #include "list/list.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main(){
     List* stringList = list_create(sizeof(String*), NULL);
@@ -971,7 +1088,7 @@ Concatenated String: Hello, world!
 ```c
 #include "fmt/fmt.h"
 #include "list/list.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     List* stringList = list_create(sizeof(String*), NULL);
@@ -1073,7 +1190,7 @@ List 1 is not equal to List 2: true
 ```c
 #include "list/list.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 

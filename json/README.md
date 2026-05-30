@@ -17,396 +17,333 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 
 ## Function Descriptions
 
-
-### `void json_deallocate(JsonElement *element)`
-
-- **Purpose**: Deallocates a `JsonElement` and all of its associated resources.
-- **Parameters**:
-  - `element`: A pointer to the `JsonElement` to be deallocated. If `NULL`, the function does nothing.
-- **Details**:
-  - **`JSON_STRING`**: Frees the memory associated with the string value.
-  - **`JSON_ARRAY`**: Recursively deallocates all elements within the array, then deallocates the array itself.
-  - **`JSON_OBJECT`**: Deallocates the entire object, including all key-value pairs in the object map.
-  - **Other Types** (`JSON_NULL`, `JSON_BOOL`, `JSON_NUMBER`): No special handling is needed; the element is freed.
-- **Return**: No return value (`void`), but frees the memory associated with the `JsonElement`.
-
----
-
-### `JsonElement* json_create(JsonType type)`
-
-- **Purpose**: Creates a new JSON element of the specified type.
-- **Parameters**:
-  - `type`: The type of JSON element to create. This can be one of the following:
-    - `JSON_NULL`
-    - `JSON_BOOL`
-    - `JSON_NUMBER`
-    - `JSON_STRING`
-    - `JSON_ARRAY`
-    - `JSON_OBJECT`
-- **Details**:
-  - Allocates memory for a `JsonElement` and initializes it based on the provided type:
-    - **`JSON_NULL`**: No value is needed.
-    - **`JSON_BOOL`**: Initializes to `false`.
-    - **`JSON_NUMBER`**: Initializes to `0.0`.
-    - **`JSON_STRING`**: Initializes to `NULL`.
-    - **`JSON_ARRAY`**: Allocates memory for a dynamic array to hold elements.
-    - **`JSON_OBJECT`**: Allocates memory for a map to hold key-value pairs.
-- **Return**: A pointer to the newly created `JsonElement`, or `NULL` if memory allocation fails or if an invalid type is provided.
-- **Warnings**: 
-  - If an error occurs during memory allocation, the function logs an error and returns `NULL`.
-  - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
-
----
+**Parsing / reading**
 
 ### `JsonElement* json_parse(const char* json_str)`
-
-- **Purpose**: Parses a JSON string and returns the corresponding JSON element tree.
-- **Parameters**:
-  - `json_str`: The JSON-formatted string to be parsed.
-- **Details**:
-  - This function parses the given JSON string into a `JsonElement` structure, handling various JSON types such as:
-    - **Objects**
-    - **Arrays**
-    - **Strings**
-    - **Numbers**
-    - **Booleans**
-    - **Null values**
-  - If the parsing encounters an error, the function logs the error and returns `NULL`.
-- **Return**: A pointer to the root `JsonElement` of the parsed structure, or `NULL` if parsing fails.
-- **Warnings**:
-  - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
-  - If the input string contains invalid JSON or if an unexpected token is encountered, the function will return `NULL` and log the corresponding error message.
+**Purpose**: Parses a JSON-formatted string into a `JsonElement` tree.
+**Parameters**:
+- `json_str`: The JSON-formatted string to parse.
+**Return Value**: Pointer to the root `JsonElement` of the parsed tree, or `NULL` on any parse error (retrievable via `json_last_error`).
+**Usage Case**: Use whenever you have a JSON string in memory and need to work with its data programmatically.
 
 ---
 
-### `JsonElement * json_read_from_file(const char* filename)`
-
-- **Purpose**: Reads a JSON file from disk and parses it into a JSON element tree.
-- **Parameters**:
-  - `filename`: Path to the JSON file to be read.
-- **Details**:
-  - This function opens the specified JSON file, reads its content, and parses it into a `JsonElement` structure.
-  - It handles errors related to file operations (e.g., file not found, read errors) and JSON parsing.
-  - If any error occurs (such as failure to open the file, memory allocation failure, or invalid JSON), the function logs the error and returns `NULL`.
-- **Return**: A pointer to the root `JsonElement` of the parsed JSON structure, or `NULL` if reading or parsing fails.
-- **Warnings**:
-  - The caller is responsible for deallocating the returned `JsonElement` using `json_deallocate` to avoid memory leaks.
-  - Ensure the file content is in valid JSON format; otherwise, parsing will fail.
+### `JsonElement* json_parse_with_options(const char* json_str, JsonParseOptions options)`
+**Purpose**: Like `json_parse` but accepts a `JsonParseOptions` struct for extended parsing behavior.
+**Parameters**:
+- `json_str`: The JSON-formatted string to parse.
+- `options`: A `JsonParseOptions` struct reserved for future extension (strict mode, comment support, etc.); currently identical in behavior to `json_parse`.
+**Return Value**: Pointer to the root `JsonElement` of the parsed tree, or `NULL` on parse error.
+**Usage Case**: Use in place of `json_parse` when you want forward-compatible code that can later adopt new parsing options without a call-site change.
 
 ---
 
-### `void json_print(const JsonElement* element)`
-
-- **Purpose**: Prints a JSON element and its children in a formatted and human-readable manner.
-- **Parameters**:
-  - `element`: The JSON element to be printed.
-- **Details**:
-  - This function formats and prints the `JsonElement` and its children to standard output.
-  - It handles all JSON types, including objects, arrays, strings, numbers, booleans, and null.
-  - Proper indentation is applied for better readability.
-- **Return**: No return value, but the JSON element is printed to the standard output.
-- **Note**: If the input `element` is `NULL`, it prints `"null"`.
+### `JsonElement* json_read_from_file(const char* filename)`
+**Purpose**: Opens a file, reads its entire content, and parses it as JSON.
+**Parameters**:
+- `filename`: Path to the JSON file to read.
+**Return Value**: Pointer to the root `JsonElement`, or `NULL` if the file cannot be opened, a read error occurs, or the content is not valid JSON.
+**Usage Case**: Use to load JSON configuration files, data files, or any JSON stored on disk.
 
 ---
 
-### `JsonElement* json_get_element(const JsonElement *element, const char *key_or_index)`
+**Construction / cloning**
 
-- **Purpose**: Retrieves a specific element from a JSON object or array by key or index.
-- **Parameters**:
-  - `element`: The JSON element (must be an object or array).
-  - `key_or_index`: The key (for objects) or index (for arrays) of the element to retrieve.
-- **Details**:
-  - This function accesses a JSON object by key or a JSON array by index.
-  - If the input is not an object or array, or if the key or index is invalid, it logs an error and returns `NULL`.
-- **Return**: A pointer to the retrieved `JsonElement`, or `NULL` if the key/index is invalid or an error occurs.
-- **Warning**: The returned element is part of the original structure; modifying it will affect the original JSON structure.
+### `JsonElement* json_create(JsonType type)`
+**Purpose**: Allocates and zero-initializes a new `JsonElement` of the specified type.
+**Parameters**:
+- `type`: One of `JSON_NULL`, `JSON_BOOL`, `JSON_NUMBER`, `JSON_STRING`, `JSON_ARRAY`, or `JSON_OBJECT`.
+**Return Value**: Pointer to the new element (`JSON_ARRAY` gets an empty `Vector`; `JSON_OBJECT` gets an empty `Map`; `JSON_BOOL` initializes to `false`; `JSON_NUMBER` initializes to `0.0`), or `NULL` on OOM or invalid type.
+**Usage Case**: Use to build a JSON structure from scratch before populating it with values.
 
 ---
 
-### `size_t json_array_size(const JsonElement *array)`
+### `JsonElement* json_clone(const JsonElement* element)`
+**Purpose**: Creates a shallow copy of `element`.
+**Parameters**:
+- `element`: The `JsonElement` to clone.
+**Return Value**: Pointer to the new shallow copy (objects and arrays reference the same underlying `Vector`/`Map`; strings get a new allocation), or `NULL` on OOM.
+**Usage Case**: Use when you need a lightweight duplicate that shares nested structure with the original and mutations to shared children are acceptable.
 
-- **Purpose**: Returns the number of elements in a JSON array.
-- **Parameters**:
-  - `array`: The JSON element representing an array.
-- **Return**: The number of elements in the array, or `0` if the input is not a valid JSON array.
-- **Details**:
-  - This function checks if the provided JSON element is an array and returns its size.
-  - If the input is not a valid JSON array or is `NULL`, it logs an error and returns `0`.
+---
+
+### `JsonElement* json_deep_copy(const JsonElement* element)`
+**Purpose**: Creates a fully independent deep copy of `element`, recursively copying all nested arrays and objects.
+**Parameters**:
+- `element`: The `JsonElement` to copy.
+**Return Value**: Pointer to the deep copy, or `NULL` on OOM (partially allocated memory is freed before returning `NULL`).
+**Usage Case**: Use when you need to modify a copy without affecting the original tree.
+
+---
+
+**Destruction**
+
+### `void json_deallocate(JsonElement* element)`
+**Purpose**: Frees all memory owned by `element` and the element struct itself, recursively.
+**Parameters**:
+- `element`: Pointer to the `JsonElement` to free; safe to call with `NULL` (no-op).
+**Return Value**: `None`.
+**Usage Case**: Call on every `JsonElement*` you own (from `json_parse`, `json_create`, `json_deep_copy`, etc.) to avoid memory leaks.
+
+---
+
+**Serialization / writing**
+
+### `char* json_serialize(const JsonElement* element)`
+**Purpose**: Serializes `element` to a compact JSON string with no extra whitespace.
+**Parameters**:
+- `element`: The `JsonElement` to serialize.
+**Return Value**: A heap-allocated string the caller must `free`, or `NULL` on OOM.
+**Usage Case**: Use when you need a minimal-size JSON string, e.g. for network transmission or storage.
+
+---
+
+### `char* json_format(const JsonElement* element)`
+**Purpose**: Serializes `element` to a pretty-printed JSON string with indentation for human readability.
+**Parameters**:
+- `element`: The `JsonElement` to format.
+**Return Value**: A heap-allocated string the caller must `free`, or `NULL` on OOM.
+**Usage Case**: Use for debugging, logging, or any situation where a human will read the JSON output.
+
+---
+
+### `char* json_generate_schema(const JsonElement* element)`
+**Purpose**: Inspects `element` and generates a JSON Schema (draft-style) string describing its structure.
+**Parameters**:
+- `element`: The `JsonElement` whose structure to describe.
+**Return Value**: A heap-allocated schema string the caller must `free`, or `NULL` on OOM or unsupported structure.
+**Usage Case**: Use to auto-generate a schema for validation or documentation from an existing JSON document.
+
+---
+
+### `bool json_write_to_file(const JsonElement* element, const char* filename)`
+**Purpose**: Serializes `element` and writes the result to `filename`, overwriting any existing file.
+**Parameters**:
+- `element`: The `JsonElement` to serialize and write.
+- `filename`: Destination file path.
+**Return Value**: `true` on success, `false` if the file cannot be opened or serialization fails.
+**Usage Case**: Use to persist a JSON structure to disk after constructing or modifying it in memory.
+
+---
+
+**Element access**
+
+### `JsonElement* json_get_element(const JsonElement* element, const char* key_or_index)`
+**Purpose**: Retrieves a child element from a JSON object by string key, or from a JSON array by zero-based integer index.
+**Parameters**:
+- `element`: The `JSON_OBJECT` or `JSON_ARRAY` to look inside.
+- `key_or_index`: String key (for objects) or stringified integer index (for arrays).
+**Return Value**: Borrowed pointer to the matching child element (part of the original tree), or `NULL` if not found.
+**Usage Case**: Use for single-level access to a known key or index without writing a full query path.
+
+---
+
+### `JsonElement* json_query(const JsonElement* element, const char* query)`
+**Purpose**: Navigates a dot-separated path through `element`, with `[N]` notation for array indexing.
+**Parameters**:
+- `element`: The root `JsonElement` to query.
+- `query`: Dot-separated path string, e.g. `"categories[0].items[1].title"`.
+**Return Value**: The element at the specified path, or `NULL` if any step along the path fails.
+**Usage Case**: Use for concise, deep access to nested data without chaining multiple `json_get_element` calls.
+
+---
+
+### `char** json_get_keys(const JsonElement* object, size_t* num_keys)`
+**Purpose**: Returns a heap-allocated array of heap-allocated key strings for a `JSON_OBJECT`.
+**Parameters**:
+- `object`: The `JSON_OBJECT` whose keys to retrieve.
+- `num_keys`: Output pointer; receives the number of keys.
+**Return Value**: Array of `char*` (caller must `free` each string and then the array), or `NULL` on error.
+**Usage Case**: Use to enumerate all keys in a JSON object when the key names are not known at compile time.
+
+---
+
+### `char** json_to_string_array(const JsonElement* array, size_t* length)`
+**Purpose**: Converts a `JSON_ARRAY` of `JSON_STRING` elements into a C-style `char**` array.
+**Parameters**:
+- `array`: The `JSON_ARRAY` to convert; must contain only `JSON_STRING` elements.
+- `length`: Output pointer; receives the number of strings.
+**Return Value**: Array of `char*` (caller must `free` each string and the array), or `NULL` if any element is not a string or on OOM.
+**Usage Case**: Use when you need to pass a JSON string list to C APIs that work with `char**`.
+
+---
+
+### `size_t json_array_size(const JsonElement* array)`
+**Purpose**: Returns the number of elements in a `JSON_ARRAY`.
+**Parameters**:
+- `array`: The `JSON_ARRAY` to measure.
+**Return Value**: Element count, or `0` if `array` is `NULL` or not an array.
+**Usage Case**: Use before iterating over an array by index to determine loop bounds.
 
 ---
 
 ### `size_t json_object_size(const JsonElement* object)`
-
-- **Purpose**: Returns the number of key-value pairs in a JSON object.
-- **Parameters**:
-  - `object`: The JSON element representing an object.
-- **Return**: The number of key-value pairs in the object, or `0` if the input is not a valid JSON object.
-- **Details**:
-  - This function checks if the provided JSON element is an object and returns its size.
-  - If the input is not a valid JSON object or is `NULL`, it logs an error and returns `0`.
+**Purpose**: Returns the number of key-value pairs in a `JSON_OBJECT`.
+**Parameters**:
+- `object`: The `JSON_OBJECT` to measure.
+**Return Value**: Key-value pair count, or `0` if `object` is `NULL` or not an object.
+**Usage Case**: Use to check how many fields an object contains before iterating its keys.
 
 ---
 
-### `JsonElement* json_deep_copy(const JsonElement *element)`
-
-- **Purpose**: Creates a deep copy of a JSON element, recursively copying nested elements.
-- **Parameters**:
-  - `element`: The JSON element to be copied.
-- **Return**: A pointer to the newly created deep copy of the JSON element, or `NULL` if memory allocation fails.
-- **Details**:
-  - The function makes a deep copy of the provided JSON element, including its nested elements in the case of arrays and objects.
-  - If memory allocation fails at any point, it logs an error, deallocates any partially copied data, and returns `NULL`.
-- **Warning**: The caller is responsible for deallocating the returned JSON element using `json_deallocate` to prevent memory leaks.
+### `JsonType json_type_of_element(const JsonElement* element)`
+**Purpose**: Returns the `JsonType` enum value of `element`.
+**Parameters**:
+- `element`: The `JsonElement` to inspect.
+**Return Value**: The `JsonType` enum value, or `JSON_NULL` if `element` is `NULL`.
+**Usage Case**: Use to branch on an element's type before accessing its value union.
 
 ---
 
-### `JsonType json_type_of_element(const JsonElement *element)`
+**Modifiers**
 
-- **Purpose**: Returns the type of a JSON element.
-- **Parameters**:
-  - `element`: The JSON element whose type is to be determined.
-- **Return**: The type of the JSON element, or `JSON_NULL` if the input is `NULL`.
-- **Details**:
-  - This function returns the type of the provided JSON element. If the input is `NULL`, the function returns `JSON_NULL`.
-
----
-
-### `bool json_write_to_file(const JsonElement *element, const char *filename)`
-
-- **Purpose**: Writes a JSON element to a file in serialized JSON format.
-- **Parameters**:
-  - `element`: The JSON element to serialize and write to a file.
-  - `filename`: The name of the file to which the JSON data will be written.
-- **Return**: `true` if the JSON element was successfully written to the file; `false` otherwise.
-- **Details**:
-  - This function serializes a JSON element and writes it to a specified file.
-  - If the file cannot be opened or the serialization fails, an error is logged, and `false` is returned.
-- **Warning**: The function will overwrite the file if it already exists.
+### `bool json_set_element(JsonElement* element, const char* key_or_index, JsonElement* new_element)`
+**Purpose**: Adds or replaces a value in a `JSON_OBJECT` by key, or replaces an element in a `JSON_ARRAY` by index.
+**Parameters**:
+- `element`: The `JSON_OBJECT` or `JSON_ARRAY` to modify.
+- `key_or_index`: String key (for objects) or stringified integer index (for arrays).
+- `new_element`: The new `JsonElement` to insert or replace with.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use to update or add a single field in an object or to overwrite a specific array slot.
 
 ---
 
-### `char* json_serialize(const JsonElement* element)`
-
-- **Purpose**: Serializes a JSON element into a JSON-formatted string.
-- **Parameters**:
-  - `element`: The JSON element to serialize.
-- **Return**: A dynamically allocated string containing the serialized JSON, or `NULL` if an error occurs.
-- **Details**:
-  - The function converts a JSON element into its string representation in JSON format.
-  - The caller is responsible for freeing the returned string to prevent memory leaks.
-- **Warning**: The returned string must be freed by the caller.
-
----
-
-### `bool json_compare(const JsonElement *element1, const JsonElement *element2)`
-
-- **Purpose**: Compares two JSON elements for equality.
-- **Parameters**:
-  - `element1`, `element2`: The two JSON elements to compare.
-- **Return**: `true` if the elements are equal; `false` otherwise.
-- **Details**:
-  - The function performs a deep comparison, comparing nested elements (arrays, objects) recursively.
-  - Elements of different types are considered unequal. Two `NULL` elements are considered equal.
-
----
-
-### `bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element)`
-
-- **Purpose**: Sets a value in a JSON object or array at a specified key or index.
-- **Parameters**:
-  - `element`: The JSON object or array in which to set the value.
-  - `key_or_index`: The key (for objects) or index (for arrays) where the value should be set.
-  - `new_element`: The new JSON element to set at the specified key or index.
-- **Return**: `true` if the value was successfully set; `false` otherwise.
-- **Details**:
-  - For objects, the key is used to identify where to set the value. For arrays, the index is used.
-  - Replaces existing elements in arrays and adds or updates key-value pairs in objects.
-
----
-
-### `bool json_remove_element(JsonElement *element, const char *key_or_index)`
-
-- **Purpose**: Removes an element from a JSON object or array by key or index.
-- **Parameters**:
-  - `element`: The JSON object or array from which to remove an element.
-  - `key_or_index`: The key (for objects) or index (for arrays) identifying the element to remove.
-- **Return**: `true` if the element was successfully removed; `false` otherwise.
-- **Details**: 
-  - For objects, the key is used to locate and remove the key-value pair.
-  - For arrays, the index is used to remove the element at the specified position.
-
----
-
-### `JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data)`
-
-- **Purpose**: Finds an element within a JSON object or array that matches a given predicate.
-- **Parameters**:
-  - `element`: The JSON object or array to search.
-  - `predicate`: Function pointer to the predicate used to test elements.
-  - `user_data`: Additional data passed to the predicate function.
-- **Return**: Pointer to the first matching JSON element, or `NULL` if no match is found.
-- **Details**: 
-  - Searches through the elements of a JSON object or array, returning the first element that satisfies the predicate.
-
----
-
-### `JsonError json_last_error()`
-
-- **Purpose**: Retrieves the last error that occurred during JSON operations.
-- **Parameters**: None.
-- **Return**: A `JsonError` struct containing the error code and message of the last error.
-- **Details**: 
-  - Provides access to the last error that occurred in any JSON operation. 
-
----
-
-### `JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2)`
-
-- **Purpose**: Merges two JSON objects into a new JSON object.
-- **Parameters**:
-  - `element1`, `element2`: The JSON objects to merge.
-- **Return**: A new JSON object containing the merged contents, or `NULL` if an error occurs.
-- **Details**: 
-  - The function creates a new JSON object and merges key-value pairs from both input objects. If a key exists in both objects, the value from the second object is used.
-
----
-
-### `char** json_to_string_array(const JsonElement *array, size_t *length)`
-
-- **Purpose**: Converts a JSON array of strings into a C-style array of strings.
-- **Parameters**:
-  - `array`: The JSON array to convert. Must contain only `JSON_STRING` elements.
-  - `length`: Pointer to a variable where the number of strings will be stored.
-- **Return**: A C-style array of strings, or `NULL` if an error occurs.
-- **Details**: 
-  - Extracts strings from the JSON array and returns them in a newly allocated array.
-  - If the array contains non-string elements or is invalid, `NULL` is returned.
-
----
-
-### `void* json_convert(const JsonElement *element, JsonType type)`
-
-- **Purpose**: Converts a JSON element to a specified type (e.g., `JSON_STRING`, `JSON_NUMBER`, `JSON_BOOL`, `JSON_ARRAY`, `JSON_OBJECT`).
-- **Parameters**:
-  - `element`: The JSON element to convert.
-  - `type`: The target type for the conversion.
-- **Return**: A new `JsonElement` of the specified type, or `NULL` if the conversion fails.
-- **Details**: 
-  - Handles conversion between JSON types (e.g., number to string, string to number, boolean to string).
-  - Returns `NULL` if the conversion is not supported or if memory allocation fails.
-  - The caller is responsible for deallocating the returned element.
-
----
-
-### `JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data)`
-
-- **Purpose**: Applies a transformation function to each element of a JSON array and returns a new JSON array with the transformed elements.
-- **Parameters**:
-  - `array`: The JSON array to transform. Must be of type `JSON_ARRAY`.
-  - `map_func`: A function that takes a JSON element and user data as arguments and returns a transformed JSON element.
-  - `user_data`: Optional user data to pass to the mapping function. Can be `NULL`.
-- **Return**: A new JSON array containing the transformed elements, or `NULL` if an error occurs.
-- **Details**: 
-  - If the transformation fails for any element, the operation stops, and the entire result array is deallocated.
-
----
-
-### `JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data)`
-
-- **Purpose**: Filters elements of a JSON array based on a predicate function and returns a new JSON array with elements that satisfy the predicate.
-- **Parameters**:
-  - `array`: The JSON array to filter. Must be of type `JSON_ARRAY`.
-  - `predicate`: A function that takes a JSON element and user data as arguments and returns `true` if the element should be included in the result.
-  - `user_data`: Optional user data to pass to the predicate function. Can be `NULL`.
-- **Return**: A new JSON array containing the elements that satisfy the predicate, or `NULL` if an error occurs.
-- **Details**: 
-  - If an error occurs during the operation, the partially constructed result array is deallocated, and `NULL` is returned.
-
----
-
-### `void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data)`
-
-- **Purpose**: Applies a reduction function across all elements of a JSON array, accumulating the result.
-- **Parameters**:
-  - `array`: The JSON array to reduce. Must be of type `JSON_ARRAY`.
-  - `reduce_func`: The function to apply to each element and the accumulator. Takes a JSON element, the current accumulator, and user data as arguments.
-  - `initial_value`: The initial value for the accumulator.
-  - `user_data`: Optional user data to pass to the reduction function.
-- **Return**: The final accumulated value, or `NULL` if an error occurs.
-- **Details**: 
-  - The function iterates over the elements, applying the reduction function and updating the accumulator. If any error occurs, it logs the issue and returns `NULL`.
-
----
-
-### `char* json_format(const JsonElement *element)`
-
-- **Purpose**: Formats a JSON element into a human-readable string.
-- **Parameters**:
-  - `element`: The JSON element to format.
-- **Return**: A dynamically allocated string containing the formatted JSON, or `NULL` if an error occurs.
-- **Details**:
-  - The returned string is pretty-printed with indentation for readability. The caller is responsible for freeing the string.
-
----
-
-### `JsonElement* json_clone(const JsonElement *element)`
-
-- **Purpose**: Creates a shallow copy of a JSON element.
-- **Parameters**:
-  - `element`: The JSON element to clone.
-- **Return**: A pointer to the newly cloned JSON element, or `NULL` if an error occurs.
-- **Details**: 
-  - For JSON objects and arrays, the copy references the same underlying data as the original. For strings, a new copy is allocated. The caller is responsible for deallocating the cloned element.
-
----
-
-### `char** json_get_keys(const JsonElement *object, size_t *num_keys)`
-
-- **Purpose**: Retrieves all the keys from a JSON object.
-- **Parameters**:
-  - `object`: The JSON object from which to retrieve the keys.
-  - `num_keys`: A pointer to a `size_t` variable where the number of keys will be stored.
-- **Return**: A dynamically allocated array of strings containing the keys, or `NULL` if an error occurs.
-- **Details**: 
-  - Allocates memory for both the array of keys and each individual key. The caller is responsible for freeing the allocated memory.
+### `bool json_remove_element(JsonElement* element, const char* key_or_index)`
+**Purpose**: Removes a key-value pair from a `JSON_OBJECT`, or an element from a `JSON_ARRAY` by index.
+**Parameters**:
+- `element`: The `JSON_OBJECT` or `JSON_ARRAY` to modify.
+- `key_or_index`: String key (for objects) or stringified integer index (for arrays).
+**Return Value**: `true` on success, `false` if the key/index is not found.
+**Usage Case**: Use to delete a field from an object or drop an item from an array.
 
 ---
 
 ### `bool json_add_to_array(JsonElement* element1, JsonElement* element2)`
-
-- **Purpose**: Adds an element to a JSON array.
-- **Parameters**:
-  - `element1`: The JSON array to which the element will be added.
-  - `element2`: The JSON element to add to the array.
-- **Return**: `true` if the element was successfully added, `false` otherwise.
-- **Details**: 
-  - Appends the provided element to the end of the JSON array. If the operation fails, it returns `false` and sets an error code.
+**Purpose**: Appends `element2` to the end of the `JSON_ARRAY` `element1`.
+**Parameters**:
+- `element1`: The `JSON_ARRAY` to append to.
+- `element2`: The `JsonElement` to append.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use to build up an array incrementally by pushing new elements onto the end.
 
 ---
 
 ### `bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value)`
-
-- **Purpose**: Adds a key-value pair to a JSON object.
-- **Parameters**:
-  - `object`: The JSON object to which the key-value pair will be added.
-  - `key`: The key as a string.
-  - `value`: The value to associate with the key.
-- **Return**: `true` if the key-value pair was successfully added or replaced, `false` otherwise.
-- **Details**: 
-  - If the key already exists, its value is replaced. The key is duplicated to ensure independent management in the object. Any existing value is deallocated.
+**Purpose**: Inserts or replaces the key-value pair (`key`, `value`) in `object`; the key is duplicated internally.
+**Parameters**:
+- `object`: The `JSON_OBJECT` to modify.
+- `key`: The string key (duplicated internally).
+- `value`: The `JsonElement` value to associate with `key`.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use to add named fields to a JSON object that is being constructed programmatically.
 
 ---
 
-### `JsonElement* json_query(const JsonElement *element, const char *query)`
+### `JsonElement* json_merge(const JsonElement* element1, const JsonElement* element2)`
+**Purpose**: Creates a new `JSON_OBJECT` containing all key-value pairs from both objects; keys from `element2` take precedence on conflict.
+**Parameters**:
+- `element1`: First `JSON_OBJECT` to merge.
+- `element2`: Second `JSON_OBJECT` to merge; its values win on duplicate keys.
+**Return Value**: New merged `JSON_OBJECT`, or `NULL` on OOM or if either input is not a `JSON_OBJECT`.
+**Usage Case**: Use to combine two configuration or data objects into a single unified object.
 
-- **Purpose**: Queries a JSON element using a dot-separated path.
-- **Parameters**:
-  - `element`: The JSON element to query.
-  - `query`: The query string, using dot notation to specify the path to the desired element.
-- **Return**: The JSON element found at the specified path, or `NULL` if the element could not be found or if an error occurs.
-- **Details**: 
-  - The query can include array indexing (e.g., `"array[0].key"`). The function returns the corresponding JSON element or `NULL` if a key or index is missing.
+---
 
+**Functional pipelines**
+
+### `JsonElement* json_find(const JsonElement* element, JsonPredicate predicate, void* user_data)`
+**Purpose**: Searches an array or object for the first element satisfying `predicate(elem, user_data)`.
+**Parameters**:
+- `element`: The `JSON_ARRAY` or `JSON_OBJECT` to search.
+- `predicate`: A function returning `true` for the desired element.
+- `user_data`: Arbitrary context pointer forwarded to `predicate`.
+**Return Value**: Borrowed pointer to the first matching element, or `NULL` if not found.
+**Usage Case**: Use to locate a specific item inside a JSON collection without manually iterating.
+
+---
+
+### `JsonElement* json_filter(const JsonElement* array, JsonPredicate predicate, void* user_data)`
+**Purpose**: Builds a new `JSON_ARRAY` containing copies of every element from `array` for which `predicate` returns `true`.
+**Parameters**:
+- `array`: The `JSON_ARRAY` to filter.
+- `predicate`: A function returning `true` for elements to keep.
+- `user_data`: Arbitrary context pointer forwarded to `predicate`.
+**Return Value**: New `JSON_ARRAY` with matching elements, or `NULL` on OOM.
+**Usage Case**: Use to extract a subset of items from a JSON array based on custom criteria.
+
+---
+
+### `JsonElement* json_map(const JsonElement* array, JsonMapFunction map_func, void* user_data)`
+**Purpose**: Applies `map_func(elem, user_data)` to every element of `array` and collects results into a new `JSON_ARRAY`.
+**Parameters**:
+- `array`: The `JSON_ARRAY` to transform.
+- `map_func`: A function that receives each element and returns a new transformed element.
+- `user_data`: Arbitrary context pointer forwarded to `map_func`.
+**Return Value**: New `JSON_ARRAY` with transformed elements, or `NULL` on OOM or if `map_func` returns `NULL` for any element.
+**Usage Case**: Use to apply a uniform transformation to every item in a JSON array, such as converting numbers to strings.
+
+---
+
+### `void* json_reduce(const JsonElement* array, JsonReduceFunction reduce_func, void* initial_value, void* user_data)`
+**Purpose**: Folds `array` left using `reduce_func(elem, accumulator, user_data)`, starting with `initial_value`.
+**Parameters**:
+- `array`: The `JSON_ARRAY` to reduce.
+- `reduce_func`: A function that combines the current element with the running accumulator.
+- `initial_value`: The starting accumulator value.
+- `user_data`: Arbitrary context pointer forwarded to `reduce_func`.
+**Return Value**: The final accumulator value (owned by the caller), or `NULL` on error.
+**Usage Case**: Use to aggregate array data, such as summing numbers or concatenating strings.
+
+---
+
+**Comparison / validation / conversion**
+
+### `bool json_compare(const JsonElement* element1, const JsonElement* element2)`
+**Purpose**: Performs a deep recursive equality comparison of two JSON elements.
+**Parameters**:
+- `element1`: First element to compare.
+- `element2`: Second element to compare.
+**Return Value**: `true` if equal (two `NULL` pointers are equal; elements of different types are not), `false` otherwise.
+**Usage Case**: Use to verify that two independently parsed or constructed JSON trees are structurally identical.
+
+---
+
+### `bool json_validate(const JsonElement* element, const char* schema_json)`
+**Purpose**: Validates `element` against the JSON Schema supplied as a JSON string in `schema_json`.
+**Parameters**:
+- `element`: The `JsonElement` to validate.
+- `schema_json`: A JSON Schema document encoded as a JSON string.
+**Return Value**: `true` if `element` conforms to the schema, `false` if validation fails or the schema cannot be parsed.
+**Usage Case**: Use to enforce structure and type constraints on parsed JSON before processing it.
+
+---
+
+### `void* json_convert(const JsonElement* element, JsonType type)`
+**Purpose**: Converts `element` to the requested `type` and returns a new `JsonElement*` cast to `void*`.
+**Parameters**:
+- `element`: The `JsonElement` to convert.
+- `type`: The target `JsonType` (e.g., `JSON_STRING`, `JSON_NUMBER`).
+**Return Value**: Newly allocated `JsonElement*` (cast to `void*`) that the caller must deallocate with `json_deallocate`, or `NULL` if the conversion is unsupported or OOM.
+**Usage Case**: Use to coerce a JSON value to a different type, such as converting a number field to its string representation.
+
+---
+
+**Diagnostics**
+
+### `JsonError json_last_error(void)`
+**Purpose**: Returns a `JsonError` struct describing the most recent error set by any JSON operation.
+**Parameters**: None.
+**Return Value**: `JsonError` struct `{int code; char message[256];}` where `code == 0` means no error.
+**Usage Case**: Call immediately after a JSON function returns `NULL` or `false` to retrieve a human-readable error description.
+
+---
+
+### `void json_print(const JsonElement* element)`
+**Purpose**: Pretty-prints `element` to stdout with indentation.
+**Parameters**:
+- `element`: The `JsonElement` to print; if `NULL`, prints `"null"`.
+**Return Value**: `None`.
+**Usage Case**: Use for quick interactive debugging or diagnostic output of any JSON element.
 
 ---
 
@@ -431,6 +368,79 @@ int main() {
     }
     
     return 0;
+}
+```
+
+**Result**
+```
+Successfully parsed JSON file.
+{
+    "additional_info": {
+      "active": true,
+      "budget": 500000,
+      "contributors": [
+        "Alice",
+        "Bob",
+        "Charlie"
+    ],
+      "numbers": [
+        10,
+        20,
+        30,
+        40
+    ]
+  },
+    "categories": [
+      {
+        "items": [
+          {
+            "author": "K&R",
+            "available": true,
+            "title": "C Programming",
+            "year": 1988
+        },
+          {
+            "author": "Martin",
+            "available": false,
+            "title": "Clean Code",
+            "year": 2008
+        },
+          {
+            "author": "Abelson",
+            "available": true,
+            "title": "SICP",
+            "year": 1996
+        }
+      ],
+        "name": "Books"
+    },
+      {
+        "items": [
+          {
+            "director": "A. Coder",
+            "ratings": {
+              "IMDB": 8.70,
+              "Rotten Tomatoes": "94%"
+          },
+            "released_year": 2023,
+            "title": "The JSON Saga"
+        },
+          {
+            "director": "B. Script",
+            "ratings": {
+              "IMDB": 7.50,
+              "Rotten Tomatoes": "88%"
+          },
+            "released_year": 2022,
+            "title": "Parse Hard"
+        }
+      ],
+        "name": "Movies"
+    }
+  ],
+    "supports_unicode": true,
+    "unicode_sample": "Hello",
+    "version": 1.20
 }
 ```
 
@@ -473,6 +483,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+Successfully parsed JSON file.
+Second category name: Movies
+```
+
 ---
 
 ## Example 3: Retrieving a Specific Element in a Nested JSON Object with `json_get_element`
@@ -509,6 +525,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+Successfully parsed JSON file.
+Budget: 500000.00
+```
+
 ---
 
 ## Example 4: Getting the Size of the `categories` Array
@@ -541,6 +563,11 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+The 'categories' array has 2 elements.
 ```
 
 ---
@@ -585,6 +612,11 @@ int main() {
 
 ```
 
+**Result**
+```
+The 'contributors' array has 3 elements.
+```
+
 ---
 
 ## Example 6 : Getting size of object in json with `json_object_size` 
@@ -615,6 +647,11 @@ int main() {
     return 0;
 }
 
+```
+
+**Result**
+```
+The 'additional_info' object has 4 key-value pairs.
 ```
 
 ---
@@ -664,6 +701,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+The 'ratings' object of the first movie has 2 key-value pairs.
+```
+
 ---
 
 ## Example 8 : Deep copying parsed json object with `json_deep_copy`
@@ -710,9 +752,17 @@ int main() {
 }
 ```
 
+**Result**
+```
+Successfully parsed JSON file.
+Deep copy created successfully.
+Size of 'categories' array in deep copy: 2
+Size of 'additional_info' object in deep copy: 4
+```
+
 ---
 
-## Example 9 : Using `json_type_of_element`` to Determine the Type of a JSON Element 
+## Example 9 : Using `json_type_of_element` to Determine the Type of a JSON Element 
 
 ```c
 #include "json/json.h"
@@ -757,9 +807,17 @@ int main() {
 }
 ```
 
+**Result**
+```
+Successfully parsed JSON string.
+Type of 'name' element: String
+Type of 'age' element: Number
+Type of 'is_student' element: Boolean
+```
+
 ---
 
-## Example 10 : how to serialize and write json into the file with `json_write_file`
+## Example 10 : how to serialize and write json into the file with `json_write_to_file`
 
 ```c
 #include "json/json.h"
@@ -786,6 +844,11 @@ int main() {
     json_deallocate(jsonElement);
     return 0;
 }
+```
+
+**Result**
+```
+Successfully wrote JSON to file './sources/output_json_example.json'.
 ```
 
 ---
@@ -832,6 +895,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+Serialized JSON:
+{"address": {"city": "Anytown", "street": "123 Main St"}, "age": 30, "is_student": false, "name": "John Doe", "scores": [95, 85, 75]}
+```
+
 ---
 
 ## Example 12 : how to compare json with `json_compare`
@@ -872,6 +941,12 @@ int main() {
 
     return 0;
 }
+```
+
+**Result**
+```
+JSON 1 and JSON 2 are equal.
+JSON 1 and JSON 3 are not equal.
 ```
 
 ---
@@ -917,6 +992,11 @@ int main() {
     json_deallocate(jsonElement);
     return 0;
 }
+```
+
+**Result**
+```
+Successfully wrote modified JSON to file './sources/json_modified.json'.
 ```
 
 ---
@@ -990,6 +1070,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Successfully wrote modified JSON to file './sources/json_modified.json'.
+```
+
 ---
 
 ## Example 15 : bench mark read and parse json file with python 
@@ -1019,6 +1104,12 @@ int main() {
     return 0;
 }
 ```
+
+**Result**
+```
+c_std JSON Library Time: 0.00224908 seconds
+```
+(The exact time varies from run to run; the value above is representative.)
 
 *Python Code*
 
@@ -1068,6 +1159,15 @@ int main() {
 }
 ```
 
+**Result**
+```
+Age removed successfully.
+{
+    "email": "johndoe@example.com",
+    "name": "John Doe"
+}
+```
+
 ---
 
 ## Example 17 : Removing an element from json Array with `json_remove_element`
@@ -1098,6 +1198,17 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Element at index 1 removed successfully.
+[
+    1,
+    3,
+    4,
+    5
+]
 ```
 
 ---
@@ -1136,6 +1247,11 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Found element: 20
 ```
 
 ---
@@ -1177,6 +1293,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Found matching string: New York
+```
+
 ---
 
 ## Example 20: Finding a Boolean Element in a JSON Object with `json_find`
@@ -1215,6 +1336,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Found boolean element with value 'true'.
+```
+
 ---
 
 ## Example 21: Manipulating and Serializing a JSON Object
@@ -1222,6 +1348,8 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
+#include "string/std_string.h"
+#include <stdlib.h>
 
 int main() {
     const char* jsonString = "{\"name\": \"Alice\", \"age\": 25}";
@@ -1261,6 +1389,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+Serialized JSON:
+{"age": 26, "profession": "Engineer"}
+```
+
 ---
 
 ## Example 22 : how to get last_error of json failed parse with `json_last_error`
@@ -1285,6 +1419,11 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Failed to parse JSON: Error Code 1, Message: Error while parsing JSON at position 2: 
 ```
 
 ---
@@ -1336,6 +1475,83 @@ int main() {
     return 0;
 }
 ```
+
+**Result**
+```
+Merged JSON:
+{
+    "additional_info": {
+      "active": true,
+      "budget": 500000,
+      "contributors": [
+        "Alice",
+        "Bob",
+        "Charlie"
+    ],
+      "numbers": [
+        10,
+        20,
+        30,
+        40
+    ]
+  },
+    "categories": [
+      {
+        "items": [
+          {
+            "author": "K&R",
+            "available": false,
+            "title": "C Programming",
+            "year": 1988
+        },
+          {
+            "author": "Martin",
+            "available": false,
+            "title": "Clean Code",
+            "year": 2008
+        },
+          {
+            "author": "Abelson",
+            "available": true,
+            "title": "SICP",
+            "year": 1996
+        }
+      ],
+        "name": "Books"
+    },
+      {
+        "items": [
+          {
+            "director": "A. Coder",
+            "ratings": {
+              "IMDB": 8.70,
+              "Rotten Tomatoes": "94%"
+          },
+            "released_year": 2023,
+            "title": "The JSON Saga"
+        },
+          {
+            "director": "B. Script",
+            "ratings": {
+              "IMDB": 7.50,
+              "Rotten Tomatoes": "88%"
+          },
+            "released_year": 2022,
+            "title": "Parse Hard"
+        }
+      ],
+        "name": "Movies"
+    }
+  ],
+    "count": 42,
+    "extra_key": "extra_value",
+    "supports_unicode": true,
+    "unicode_sample": "Hello",
+    "version": 1.20
+}
+Successfully write merged json into file
+```
+(This example merges `./sources/json_modified.json` produced by Examples 13/14 — where the first book's `available` is `false` — with `./sources/test_json.json`.)
 
 ---
 
@@ -1389,6 +1605,14 @@ int main() {
 }
 ```
 
+**Result**
+```
+Contributors:
+  [0] Alice
+  [1] Bob
+  [2] Charlie
+```
+
 ---
 
 ## Example 25 : how to convert type of json element to other types with `json_convert`
@@ -1396,18 +1620,18 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
+/* json_convert returns void* (actually JsonElement*). Cast and deallocate with json_deallocate. */
 int main() {
     JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
 
     // Example: Convert the 'version' element to a string
     JsonElement* versionElement = json_get_element(jsonElement, "version");
     if (versionElement) {
-        char* versionStr = (char*)json_convert(versionElement, JSON_STRING);
+        JsonElement* versionStr = (JsonElement*)json_convert(versionElement, JSON_STRING);
         if (versionStr) {
-            fmt_printf("Version as string: %s\n", versionStr);
-            free(versionStr);
+            fmt_printf("Version as string: %s\n", versionStr->value.string_val);
+            json_deallocate(versionStr);
         } 
         else {
             fmt_printf("Failed to convert 'version' to string.\n");
@@ -1417,10 +1641,10 @@ int main() {
     // Example: Convert the 'supports_unicode' element to a string
     JsonElement* unicodeElement = json_get_element(jsonElement, "supports_unicode");
     if (unicodeElement) {
-        char* unicodeStr = (char*)json_convert(unicodeElement, JSON_STRING);
+        JsonElement* unicodeStr = (JsonElement*)json_convert(unicodeElement, JSON_STRING);
         if (unicodeStr) {
-            fmt_printf("Supports Unicode as string: %s\n", unicodeStr);
-            free(unicodeStr);
+            fmt_printf("Supports Unicode as string: %s\n", unicodeStr->value.string_val);
+            json_deallocate(unicodeStr);
         } 
         else {
             fmt_printf("Failed to convert 'supports_unicode' to string.\n");
@@ -1432,10 +1656,10 @@ int main() {
     if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
         JsonElement* budgetElement = json_get_element(additionalInfo, "budget");
         if (budgetElement) {
-            char* budgetStr = (char*)json_convert(budgetElement, JSON_STRING);
+            JsonElement* budgetStr = (JsonElement*)json_convert(budgetElement, JSON_STRING);
             if (budgetStr) {
-                fmt_printf("Budget as string: %s\n", budgetStr);
-                free(budgetStr);
+                fmt_printf("Budget as string: %s\n", budgetStr->value.string_val);
+                json_deallocate(budgetStr);
             } 
             else {
                 fmt_printf("Failed to convert 'budget' to string.\n");
@@ -1448,6 +1672,13 @@ int main() {
 }
 ```
 
+**Result**
+```
+Version as string: 1.2
+Failed to convert 'supports_unicode' to string.
+Budget as string: 500000
+```
+
 ---
 
 ## Example 26 : read json file and convert data then write to file with `json_convert` and `json_write_to_file`
@@ -1455,18 +1686,16 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
+/* json_convert returns void* (actually JsonElement*). Pass directly to json_set_element. */
 int main() {
     JsonElement* jsonElement = json_read_from_file("./sources/json_example.json");
 
     // Convert the 'version' element to a string and update the JSON structure
     JsonElement* versionElement = json_get_element(jsonElement, "version");
     if (versionElement) {
-        char* versionStr = (char*)json_convert(versionElement, JSON_STRING);
-        if (versionStr) {
-            JsonElement* newVersionElement = json_create(JSON_STRING);
-            newVersionElement->value.string_val = versionStr;
+        JsonElement* newVersionElement = (JsonElement*)json_convert(versionElement, JSON_STRING);
+        if (newVersionElement) {
             json_set_element(jsonElement, "version", newVersionElement);
         }
     }
@@ -1476,10 +1705,8 @@ int main() {
     if (additionalInfo && additionalInfo->type == JSON_OBJECT) {
         JsonElement* budgetElement = json_get_element(additionalInfo, "budget");
         if (budgetElement) {
-            char* budgetStr = (char*)json_convert(budgetElement, JSON_STRING);
-            if (budgetStr) {
-                JsonElement* newBudgetElement = json_create(JSON_STRING);
-                newBudgetElement->value.string_val = budgetStr;
+            JsonElement* newBudgetElement = (JsonElement*)json_convert(budgetElement, JSON_STRING);
+            if (newBudgetElement) {
                 json_set_element(additionalInfo, "budget", newBudgetElement);
             }
         }
@@ -1496,6 +1723,11 @@ int main() {
     return 0;
 }
 
+```
+
+**Result**
+```
+Modified JSON successfully written to './sources/modified_json.json'.
 ```
 
 ---
@@ -1548,6 +1780,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Converted JSON successfully written to './sources/converted_json.json'.
+```
+
 ---
 
 ## Example 28: Doubling Numbers in a JSON Array
@@ -1590,6 +1827,18 @@ int main() {
 }
 ```
 
+**Result**
+```
+Doubled numbers array:
+[
+    2,
+    4,
+    6,
+    8,
+    10
+]
+```
+
 ---
 
 ## Example 29: Converting Numbers to Strings in a JSON Array
@@ -1597,6 +1846,7 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 // Function to convert a number to a string
@@ -1633,6 +1883,18 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Numbers converted to strings:
+[
+    "1",
+    "2",
+    "3.5",
+    "4",
+    "5"
+]
 ```
 
 ---
@@ -1675,6 +1937,17 @@ int main() {
     }
     return 0;
 }
+```
+
+**Result**
+```
+Inverted boolean array:
+[
+    false,
+    true,
+    false,
+    true
+]
 ```
 
 ---
@@ -1745,6 +2018,26 @@ int main() {
 }
 ```
 
+**Result**
+```
+Available books:
+[
+    {
+      "author": "K&R",
+      "available": true,
+      "title": "C Programming",
+      "year": 1988
+  },
+    {
+      "author": "Abelson",
+      "available": true,
+      "title": "SICP",
+      "year": 1996
+  }
+]
+Filtered JSON successfully written to './sources/filtered_books.json'.
+```
+
 ---
 
 ## Example 32 : how to sum up the numbers with arrays element in json using `json_reduce`
@@ -1801,6 +2094,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Sum of numbers in the array: 100.000000
+```
+
 ---
 
 ## Example 33 : concatenates names with `json_reduce`
@@ -1808,7 +2106,7 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -1868,6 +2166,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Concatenated names: Alice,Bob,Charlie
+```
+
 ---
 
 ## Example 34 : how to format data with `json_format`
@@ -1875,7 +2178,7 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -1907,6 +2210,16 @@ int main() {
 }
 ```
 
+**Result**
+```
+Formatted JSON:
+{
+  "age": 30,
+  "isStudent": true,
+  "name": "John Doe"
+}
+```
+
 ---
 
 ## Example 35 : how to create a nested JSON structure with various data types, including arrays and objects.format this with `json_format`
@@ -1914,7 +2227,7 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include <stdlib.h>
 
 int main() {
@@ -1979,6 +2292,25 @@ int main() {
 }
 ```
 
+**Result**
+```
+Formatted JSON:
+{
+  "address": {
+    "city": "Anytown",
+    "street": "123 Main St"
+  },
+  "age": 30,
+  "hobbies": [
+    "Reading",
+    "Hiking"
+  ],
+  "isStudent": true,
+  "name": "John Doe"
+}
+JSON successfully written to './sources/output_json.json'.
+```
+
 ---
 
 ## Example 36 : Parsing a Single Number as json 
@@ -2008,6 +2340,11 @@ int main() {
 }
 ```
 
+**Result**
+```
+Parsed JSON number: 42.000000
+```
+
 ---
 
 ## Example 37 : Parsing a Single String value as json 
@@ -2032,13 +2369,18 @@ int main() {
 }
 ```
 
+**Result**
+```
+Parsed JSON string: Hello, world!
+```
+
 ---
 
 ## Example 38 : create shallow copy of original json object with `json_clone`
 
 ```c
 #include "json/json.h"
-#include "string/string.h"
+#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -2097,6 +2439,32 @@ int main() {
 }
 ```
 
+**Result**
+```
+Original JSON:
+{
+    "age": 30,
+    "hobbies": [
+      "Reading",
+      "Hiking",
+      "Gaming"
+  ],
+    "isStudent": true,
+    "name": "John Doe"
+}
+
+Cloned and modified JSON:
+{
+    "age": 35,
+    "hobbies": [
+      "Reading",
+      "Hiking"
+  ],
+    "isStudent": true,
+    "name": "John Doe"
+}
+```
+
 ---
 
 ## Example 39 : Reading JSON from a File and Getting its Keys with `json_get_keys`
@@ -2133,6 +2501,16 @@ int main() {
 
     return 0;
 }
+```
+
+**Result**
+```
+Keys in JSON object:
+  Key 1: additional_info
+  Key 2: categories
+  Key 3: supports_unicode
+  Key 4: unicode_sample
+  Key 5: version
 ```
 
 ---
@@ -2173,6 +2551,14 @@ int main() {
 }
 ```
 
+**Result**
+```
+Keys in JSON object:
+  Key 1: age
+  Key 2: city
+  Key 3: name
+```
+
 ---
 
 ## Example 41 : how to add items to array element in json with `json_add_to_array` 
@@ -2180,6 +2566,7 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
+#include "string/std_string.h"
 
 int main() {
     JsonElement* root = json_read_from_file("./sources/json_example.json");
@@ -2192,11 +2579,11 @@ int main() {
 
     // Set properties on the new movie object
     JsonElement* title = json_create(JSON_STRING);
-    title->value.string_val = "JSON's Adventure";
+    title->value.string_val = string_strdup("JSON's Adventure");
     json_set_element(newMovie, "title", title);
 
     JsonElement* director = json_create(JSON_STRING);
-    director->value.string_val = "Chris Coder";
+    director->value.string_val = string_strdup("Chris Coder");
     json_set_element(newMovie, "director", director);
 
     JsonElement* releasedYear = json_create(JSON_NUMBER);
@@ -2210,7 +2597,7 @@ int main() {
     json_set_element(ratings, "IMDB", imdbRating);
 
     JsonElement* rtRating = json_create(JSON_STRING);
-    rtRating->value.string_val = "92%";
+    rtRating->value.string_val = string_strdup("92%");
     json_set_element(ratings, "Rotten Tomatoes", rtRating);
     json_set_element(newMovie, "ratings", ratings);
     
@@ -2233,6 +2620,12 @@ int main() {
 }
 ```
 
+**Result**
+```
+add successfully to array
+Write to file successfully.
+```
+
 ---
 
 ## Example 42 : how to add object to json as new element with `json_add_to_object`
@@ -2240,7 +2633,7 @@ int main() {
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     JsonElement* root = json_read_from_file("./sources/json_example.json");
@@ -2281,8 +2674,9 @@ int main() {
         return 1;
     }
 
-    // add to root object 
-    if (!json_add_to_object(root, "additional_info", jsonObject)) {
+    // add to root object under a new key (the file already contains
+    // "additional_info", so we use a fresh key to add a brand-new element)
+    if (!json_add_to_object(root, "book_info", jsonObject)) {
         fmt_printf("Can not add new object to root");
     }
 
@@ -2293,14 +2687,93 @@ int main() {
 }
 ```
 
+**Result**
+```
+{
+    "additional_info": {
+      "active": true,
+      "budget": 500000,
+      "contributors": [
+        "Alice",
+        "Bob",
+        "Charlie"
+    ],
+      "numbers": [
+        10,
+        20,
+        30,
+        40
+    ]
+  },
+    "book_info": {
+      "author": {
+        "name": "John Doe"
+    },
+      "title": "Introduction to JSON",
+      "year": 2024
+  },
+    "categories": [
+      {
+        "items": [
+          {
+            "author": "K&R",
+            "available": true,
+            "title": "C Programming",
+            "year": 1988
+        },
+          {
+            "author": "Martin",
+            "available": false,
+            "title": "Clean Code",
+            "year": 2008
+        },
+          {
+            "author": "Abelson",
+            "available": true,
+            "title": "SICP",
+            "year": 1996
+        }
+      ],
+        "name": "Books"
+    },
+      {
+        "items": [
+          {
+            "director": "A. Coder",
+            "ratings": {
+              "IMDB": 8.70,
+              "Rotten Tomatoes": "94%"
+          },
+            "released_year": 2023,
+            "title": "The JSON Saga"
+        },
+          {
+            "director": "B. Script",
+            "ratings": {
+              "IMDB": 7.50,
+              "Rotten Tomatoes": "88%"
+          },
+            "released_year": 2022,
+            "title": "Parse Hard"
+        }
+      ],
+        "name": "Movies"
+    }
+  ],
+    "supports_unicode": true,
+    "unicode_sample": "Hello",
+    "version": 1.20
+}
+```
+
 ---
 
-## Example 42 : quering over the json with `json_query`
+## Example 43 : querying over the json with `json_query`
 
 ```c
 #include "json/json.h"
 #include "fmt/fmt.h"
-#include "string/string.h"
+#include "string/std_string.h"
 
 int main() {
     JsonElement* root = json_read_from_file("./sources/json_example.json");
@@ -2328,9 +2801,15 @@ int main() {
 }
 ```
 
+**Result**
+```
+Title of the first book: C Programming
+IMDB rating of 'The JSON Saga': 8.7
+```
+
 ---
 
-## Example 43 : set query over json string with `json_query`
+## Example 44 : set query over json string with `json_query`
 
 ```c
 #include "json/json.h"
@@ -2412,6 +2891,262 @@ int main() {
     json_deallocate(root);
     return 0;
 }
+```
+
+**Result**
+```
+Price of Laptop A: 1200.00
+Tech site rating of 'Smartphone B': 9.0
+```
+
+---
+
+## Example 45 : building a JSON array from a `Vector` with `json_add_to_array`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "vector/vector.h"
+#include <stdlib.h>
+
+int main(void) {
+    // Build a JSON array of squares from a Vector of integers.
+    Vector* numbers = vector_create(sizeof(int));
+    for (int i = 1; i <= 5; ++i) {
+        int sq = i * i;
+        vector_push_back(numbers, &sq);
+    }
+
+    JsonElement* array = json_create(JSON_ARRAY);
+    for (size_t i = 0; i < vector_size(numbers); ++i) {
+        int* value = (int*)vector_at(numbers, i);
+        JsonElement* number = json_create(JSON_NUMBER);
+        number->value.number_val = (double)(*value);
+        json_add_to_array(array, number);
+    }
+
+    char* serialized = json_serialize(array);
+    fmt_printf("JSON array built from a Vector: %s\n", serialized);
+    fmt_printf("Number of elements: %zu\n", json_array_size(array));
+
+    free(serialized);
+    json_deallocate(array);
+    vector_deallocate(numbers);
+    return 0;
+}
+```
+
+**Result**
+```
+JSON array built from a Vector: [1, 4, 9, 16, 25]
+Number of elements: 5
+```
+
+---
+
+## Example 46 : composing a JSON value from a `String` with `string_append`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "string/std_string.h"
+#include <stdlib.h>
+
+int main(void) {
+    // Use the String type to assemble a full-name value, then store it in JSON.
+    String* fullName = string_create("");
+    string_append(fullName, "Ada");
+    string_append(fullName, " ");
+    string_append(fullName, "Lovelace");
+
+    JsonElement* person = json_create(JSON_OBJECT);
+
+    JsonElement* nameElement = json_create(JSON_STRING);
+    nameElement->value.string_val = string_strdup(string_c_str(fullName));
+    json_add_to_object(person, "name", nameElement);
+
+    JsonElement* lengthElement = json_create(JSON_NUMBER);
+    lengthElement->value.number_val = (double)string_length(fullName);
+    json_add_to_object(person, "name_length", lengthElement);
+
+    char* serialized = json_serialize(person);
+    fmt_printf("Person object: %s\n", serialized);
+
+    free(serialized);
+    string_deallocate(fullName);
+    json_deallocate(person);
+    return 0;
+}
+```
+
+**Result**
+```
+Person object: {"name": "Ada Lovelace", "name_length": 12}
+```
+
+---
+
+## Example 47 : round-tripping JSON through a file with `file_writer` and `file_reader`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    const char* path = "json_roundtrip.json";
+
+    // Build a small JSON object and serialize it.
+    JsonElement* config = json_create(JSON_OBJECT);
+    JsonElement* host = json_create(JSON_STRING);
+    host->value.string_val = strdup("localhost");
+    json_add_to_object(config, "host", host);
+    JsonElement* port = json_create(JSON_NUMBER);
+    port->value.number_val = 8080;
+    json_add_to_object(config, "port", port);
+
+    char* serialized = json_serialize(config);
+
+    // Write the serialized text to a file using FileWriter.
+    FileWriter* writer = file_writer_open(path, WRITE_TEXT);
+    file_writer_write(serialized, sizeof(char), strlen(serialized), writer);
+    file_writer_close(writer);
+
+    // Read the file back using FileReader.
+    FileReader* reader = file_reader_open(path, READ_TEXT);
+    size_t size = file_reader_get_size(reader);
+    char* buffer = (char*)malloc(size + 1);
+    size_t read = file_reader_read(buffer, sizeof(char), size, reader);
+    buffer[read] = '\0';
+    file_reader_close(reader);
+
+    // Parse the text that came from disk and query a field.
+    JsonElement* parsed = json_parse(buffer);
+    JsonElement* portValue = json_get_element(parsed, "port");
+    fmt_printf("Read from file: %s\n", buffer);
+    fmt_printf("Parsed port value: %.0f\n", portValue->value.number_val);
+
+    free(serialized);
+    free(buffer);
+    json_deallocate(config);
+    json_deallocate(parsed);
+    remove(path);
+
+    return 0;
+}
+```
+
+**Result**
+```
+Read from file: {"host": "localhost", "port": 8080}
+Parsed port value: 8080
+```
+
+---
+
+## Example 48 : collecting numbers from a JSON array into a `Vector`
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "vector/vector.h"
+#include <stdlib.h>
+#include <stdio.h>
+
+int main(void) {
+    // Parse a JSON array of temperatures, then move them into a Vector to
+    // compute statistics with the vector API.
+    const char* jsonString = "[18.5, 21.0, 19.5, 23.0, 20.0]";
+    JsonElement* array = json_parse(jsonString);
+
+    Vector* temps = vector_create(sizeof(double));
+    for (size_t i = 0; i < json_array_size(array); ++i) {
+        char index[32];
+        snprintf(index, sizeof(index), "%zu", i);
+        JsonElement* item = json_get_element(array, index);
+        if (item && item->type == JSON_NUMBER) {
+            double value = item->value.number_val;
+            vector_push_back(temps, &value);
+        }
+    }
+
+    double sum = 0.0;
+    for (size_t i = 0; i < vector_size(temps); ++i) {
+        sum += *(double*)vector_at(temps, i);
+    }
+    double average = sum / (double)vector_size(temps);
+
+    fmt_printf("Collected %zu temperatures into a Vector\n", vector_size(temps));
+    fmt_printf("Average temperature: %.2f\n", average);
+
+    vector_deallocate(temps);
+    json_deallocate(array);
+
+    return 0;
+}
+```
+
+**Result**
+```
+Collected 5 temperatures into a Vector
+Average temperature: 20.40
+```
+
+---
+
+## Example 49 : turning a `Map` of key/value pairs into a JSON object
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include "map/map.h"
+#include <stdlib.h>
+#include <string.h>
+
+static int compare_strings(const KeyType a, const KeyType b) {
+    return strcmp((const char*)a, (const char*)b);
+}
+
+int main(void) {
+    // Store price data in a Map, then turn the Map into a JSON object.
+    Map* prices = map_create(compare_strings, NULL, NULL);
+
+    static const char* fruits[] = { "apple", "banana", "cherry" };
+    static double cost[] = { 0.50, 0.25, 2.0 };
+    for (int i = 0; i < 3; ++i) {
+        map_insert(prices, (KeyType)fruits[i], (ValueType)&cost[i]);
+    }
+
+    JsonElement* object = json_create(JSON_OBJECT);
+    for (MapIterator it = map_begin(prices); it.node != map_end(prices).node;
+         map_iterator_increment(&it)) {
+        const char* key = (const char*)map_node_get_key(it.node);
+        double* value = (double*)map_node_get_value(it.node);
+
+        JsonElement* number = json_create(JSON_NUMBER);
+        number->value.number_val = *value;
+        json_add_to_object(object, key, number);
+    }
+
+    char* serialized = json_serialize(object);
+    fmt_printf("JSON object built from a Map: %s\n", serialized);
+    fmt_printf("Number of keys: %zu\n", json_object_size(object));
+
+    free(serialized);
+    json_deallocate(object);
+    map_deallocate(prices);
+    
+    return 0;
+}
+```
+
+**Result**
+```
+JSON object built from a Map: {"apple": 0.5, "banana": 0.25, "cherry": 2}
+Number of keys: 3
 ```
 
 ---

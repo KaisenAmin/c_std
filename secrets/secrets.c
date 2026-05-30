@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <stdint.h>     /* SIZE_MAX */
 #include "secrets.h"
 
 #ifdef _WIN32
@@ -47,6 +48,8 @@ void secrets_token_bytes(unsigned char *buffer, size_t size) {
 #endif
     SECRETS_LOG("[secrets_token_bytes]: Exiting secrets_token_bytes");
 }
+
+
 /**
  * @brief Generate a cryptographically secure random integer in the range [0, n).
  * 
@@ -55,14 +58,24 @@ void secrets_token_bytes(unsigned char *buffer, size_t size) {
  */
 int secrets_randbelow(int n) {
     SECRETS_LOG("[secrets_randbelow]: Entering secrets_randbelow with n: %d", n);
-    unsigned char buffer[sizeof(int)];
-    secrets_token_bytes(buffer, sizeof(buffer));
+    if (n <= 0) {
+        SECRETS_LOG("[secrets_randbelow]: Error: n must be positive, got %d", n);
+        return 0;
+    }
 
-    int random_value = *(int *)buffer;
-    int result = abs(random_value) % n;
+    /* Rejection sampling for unbiased output, matching Python's
+     * `secrets.randbelow`. The previous `% n` was biased toward low
+     * residues whenever `n` did not divide 2^32 evenly. */
+    unsigned int un    = (unsigned int)n;
+    unsigned int limit = (UINT_MAX / un) * un;   /* largest exact multiple of n */
+    unsigned int random_value;
+    do {
+        unsigned char buffer[sizeof(unsigned int)];
+        secrets_token_bytes(buffer, sizeof(buffer));
+        memcpy(&random_value, buffer, sizeof(random_value));
+    } while (random_value >= limit);
 
-    SECRETS_LOG("[secrets_randbelow]: Generated random value: %d", result);
-    return result;
+    return (int)(random_value % un);
 }
 
 
@@ -74,15 +87,29 @@ int secrets_randbelow(int n) {
  */
 void secrets_token_hex(char *buffer, size_t nbytes) {
     SECRETS_LOG("[secrets_token_hex]: Entering secrets_token_hex with nbytes: %zu", nbytes);
+    if (!buffer || nbytes == 0) {
+        if (buffer) buffer[0] = '\0';
+        return;
+    }
+
     unsigned char *bytes = (unsigned char *) malloc(nbytes);
+    if (!bytes) {
+        SECRETS_LOG("[secrets_token_hex]: Error: malloc failed");
+        buffer[0] = '\0';
+        return;
+    }
     secrets_token_bytes(bytes, nbytes);
-    
+
     for (size_t i = 0; i < nbytes; i++) {
         sprintf(buffer + (i * 2), "%02x", bytes[i]);
     }
+
+    buffer[nbytes * 2] = '\0';
     free(bytes);
+
     SECRETS_LOG("[secrets_token_hex]: Exiting secrets_token_hex");
 }
+
 
 /**
  * @brief Generate a cryptographically secure random URL-safe token.
@@ -97,16 +124,29 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789-_";
 
+    if (!buffer || nbytes == 0) {
+        if (buffer) buffer[0] = '\0';
+        return;
+    }
+
     unsigned char *bytes = (unsigned char *) malloc(nbytes);
+    if (!bytes) {
+        SECRETS_LOG("[secrets_token_urlsafe]: Error: malloc failed");
+        buffer[0] = '\0';
+        return;
+    }
     secrets_token_bytes(bytes, nbytes);
 
     for (size_t i = 0; i < nbytes; i++) {
         buffer[i] = urlsafe_table[bytes[i] % 64];
     }
 
+    buffer[nbytes] = '\0';
     free(bytes);
+
     SECRETS_LOG("[secrets_token_urlsafe]: Exiting secrets_token_urlsafe");
 }
+
 
 /**
  * @brief Compare two byte sequences in constant time to prevent timing attacks.
@@ -128,6 +168,7 @@ int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_
     return result == 0;
 }
 
+
 /**
  * @brief Select a random element from a sequence (array) using cryptographically secure randomness.
  * 
@@ -138,16 +179,28 @@ int secrets_compare_digest(const unsigned char *a, const unsigned char *b, size_
  */
 void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
     SECRETS_LOG("[secrets_choice]: Entering secrets_choice with size: %zu, elem_size: %zu", size, elem_size);
-    if (size == 0) {
-        SECRETS_LOG("[secrets_choice]: Error: Cannot choose from an empty sequence");
+    if (!seq || size == 0) {
+        SECRETS_LOG("[secrets_choice]: Error: NULL seq or empty sequence");
         return NULL;
     }
 
-    int random_index = secrets_randbelow(size);
-    SECRETS_LOG("[secrets_choice]: Selected random index: %d", random_index);
+    /* Rejection sampling so every index has the same probability. The
+     * previous `% size` biased toward low indices for any size that did
+     * not divide 2^(8*sizeof(size_t)) evenly. */
+    size_t limit = (SIZE_MAX / size) * size;
+    size_t random_value;
+    do {
+        unsigned char buffer[sizeof(size_t)];
+        secrets_token_bytes(buffer, sizeof(buffer));
+        memcpy(&random_value, buffer, sizeof(random_value));
+    } while (random_value >= limit);
 
-    return (void*)((char*)seq + (random_index * elem_size)); 
+    size_t random_index = random_value % size;
+
+    SECRETS_LOG("[secrets_choice]: Selected random index: %zu", random_index);
+    return (void*)((char*)seq + (random_index * elem_size));
 }
+
 
 /**
  * @brief Generate a non-negative integer with exactly k random bits.
@@ -157,15 +210,22 @@ void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
  */
 unsigned int secrets_randbits(int k) {
     SECRETS_LOG("[secrets_randbits]: Entering secrets_randbits with k: %d", k);
-    if (k <= 0 || k > (int)(sizeof(unsigned int) * CHAR_BIT)) {
-        SECRETS_LOG("[secrets_randbits]: Error: k must be between 1 and %llu", sizeof(unsigned int) * CHAR_BIT);
-        exit(EXIT_FAILURE);
+
+    const int max_bits = (int)(sizeof(unsigned int) * CHAR_BIT);
+    if (k <= 0 || k > max_bits) {
+        SECRETS_LOG("[secrets_randbits]: Error: k must be in [1, %d], got %d", max_bits, k);
+        return 0;
     }
-    
+
     unsigned int random_value = 0;
     secrets_token_bytes((unsigned char *)&random_value, sizeof(random_value));
-    random_value &= (1U << k) - 1;
-    SECRETS_LOG("[secrets_randbits]: Generated random bits: %u", random_value);
+
+    // (1U << k) is UB when k == 32 (shift by full width). Mask only when
+    // k < max_bits; otherwise keep all bits.
+    if (k < max_bits) {
+        random_value &= (1U << k) - 1;
+    }
     
+    SECRETS_LOG("[secrets_randbits]: Generated random bits: %u", random_value);
     return random_value;
 }

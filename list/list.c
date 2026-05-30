@@ -23,23 +23,25 @@
 List *list_create(size_t itemSize, CompareFunction compare) {
     if (itemSize == 0) {
         LIST_LOG("[list_create] Error: Item size must be greater than 0.");
-        exit(-1);
+        return NULL;
     }
 
     List *list = (List*) malloc(sizeof(List));
     if (!list) {
         LIST_LOG("[list_create] Error: Cannot allocate memory for list.");
-        exit(-1);
+        return NULL;
     }
 
     list->head = list->tail = NULL;
     list->size = 0;
     list->itemSize = itemSize;
-    list->compare = compare; 
+    list->compare = compare;
+    list->condition = NULL;
 
     LIST_LOG("[list_create] List created successfully with item size %zu.", itemSize);
     return list;
 }
+
 
 /**
  * @brief Returns a pointer to the value at the front of the list.
@@ -63,6 +65,8 @@ void *list_front(const List *list) {
     LIST_LOG("[list_front] Returning value at the front of the list.");
     return list->head->value;
 }
+
+
 /**
  * @brief Returns a pointer to the value at the back of the list.
  *
@@ -85,6 +89,7 @@ void *list_back(const List *list) {
     LIST_LOG("[list_back] : Returning value from the back of the list.");
     return list->tail->value;
 }
+
 
 /**
  * @brief Inserts a new element at the specified index in the list.
@@ -158,6 +163,7 @@ void *list_insert(List *list, size_t index, void *value) {
     return newNode->value;
 }
 
+
 /**
  * @brief Erases an element from the list at the specified index.
  *
@@ -217,6 +223,7 @@ void *list_erase(List *list, size_t index) {
     return removedValue;
 }
 
+
 /**
  * @brief Resizes the list to the specified new size.
  *
@@ -258,6 +265,7 @@ void list_resize(List *list, size_t newSize, void *defaultValue) {
     LIST_LOG("[list_resize] : List resized successfully. New size: %zu", list->size);
 }
 
+
 /**
  * @brief Swaps the contents of two lists.
  *
@@ -273,24 +281,13 @@ void list_swap(List *list1, List *list2) {
     }
     LIST_LOG("[list_swap] : Swapping lists...");
 
-    Node *tempHead = list1->head; 
-    list1->head = list2->head;
-    list2->head = tempHead;
-
-    Node *tempTail = list1->tail; 
-    list1->tail = list2->tail;
-    list2->tail = tempTail;
-
-    size_t tempSize = list1->size; 
-    list1->size = list2->size;
-    list2->size = tempSize;
-
-    size_t tempItemSize = list1->itemSize; 
-    list1->itemSize = list2->itemSize;
-    list2->itemSize = tempItemSize;
+    List tmp = *list1;
+    *list1 = *list2;
+    *list2 = tmp;
 
     LIST_LOG("[list_swap] : Lists swapped successfully.");
 }
+
 
 /**
  * @brief Reverses the order of elements in the list.
@@ -326,6 +323,7 @@ void list_reverse(List *list) {
 
     LIST_LOG("[list_reverse] : List reversed successfully.");
 }
+
 
 /**
  * @brief Sorts the elements of the list in ascending order.
@@ -365,6 +363,7 @@ void list_sort(List* list) {
 
     LIST_LOG("[list_sort] : List sorted successfully.");
 }
+
 
 /**
  * @brief Adds a new element to the front of the list.
@@ -412,6 +411,7 @@ void list_push_front(List *list, void *value) {
     LIST_LOG("[list_push_front] : Node added to the front of the list. New size: %zu", list->size);
 }
 
+
 /**
  * @brief Adds a new element to the back of the list.
  *
@@ -457,6 +457,7 @@ void list_push_back(List *list, void *value) {
     LIST_LOG("[list_push_back] : Node successfully added to the list. New size: %zu", list->size);
 }
 
+
 /**
  * @brief Removes the first element from the list.
  *
@@ -491,6 +492,7 @@ void list_pop_front(List *list) {
 
     LIST_LOG("[list_pop_front] : First element removed from the list. New size: %zu", list->size);
 }
+
 
 /**
  * @brief Removes the last element from the list.
@@ -530,6 +532,7 @@ void list_pop_back(List *list) {
     LIST_LOG("[list_pop_back] : Last element removed from the list. New size: %zu", list->size);
 }
 
+
 /**
  * @brief Clears all elements from the list.
  *
@@ -557,6 +560,7 @@ void list_clear(List *list) {
     LIST_LOG("[list_clear] : List cleared successfully. Size is now 0.");
 }
 
+
 /**
  * @brief Checks if the list is empty.
  *
@@ -575,6 +579,7 @@ bool list_empty(const List *list) {
     return list->head == NULL;
 }
 
+
 /**
  * @brief Returns the number of elements in the list.
  *
@@ -590,6 +595,7 @@ size_t list_length(const List *list) {
     }
     return list->size;
 }
+
 
 /**
  * @brief Deallocates the list and frees all associated memory.
@@ -610,6 +616,7 @@ void list_deallocate(List *list) {
     LIST_LOG("[list_deallocate] : List deallocated successfully.");
 }
 
+
 /**
  * @brief Returns an iterator to the first element of the list.
  *
@@ -627,6 +634,7 @@ Node *list_begin(const List *list) {
     }
     return list->head;
 }
+
 
 /**
  * @brief Returns an iterator to the element following the last element of the list.
@@ -646,6 +654,7 @@ Node *list_end(const List *list) {
     return NULL; 
 }
 
+
 /**
  * @brief Returns a reverse iterator to the last element of the list.
  *
@@ -662,6 +671,7 @@ Node *list_rbegin(const List *list) {
     }
     return list->tail;
 }
+
 
 /**
  * @brief Returns a reverse iterator to the element preceding the first element of the list.
@@ -697,6 +707,7 @@ const Node *list_cbegin(const List *list) {
     return list->head;
 }
 
+
 /**
  * @brief Returns a constant iterator to the end of the list.
  *
@@ -713,6 +724,7 @@ const Node *list_cend(const List* list) {
     }
     return NULL;
 }
+
 
 /**
  * @brief Returns a constant reverse iterator to the last element of the list.
@@ -731,6 +743,7 @@ const Node *list_crbegin(const List* list) {
     return list->tail;
 }
 
+
 /**
  * @brief Returns a constant reverse iterator to the theoretical element preceding the first element of the list.
  *
@@ -747,6 +760,7 @@ const Node *list_crend(const List* list) {
     }
     return NULL;
 }
+
 
 /**
  * @brief Assigns values to the list from an array.
@@ -776,6 +790,7 @@ void list_assign(List *list, void *values, size_t numValues) {
     }
     LIST_LOG("[list_assign] : List assigned with %zu values.", numValues);
 }
+
 
 /**
  * @brief Inserts an element at the front of the list without copying.
@@ -854,6 +869,7 @@ void list_emplace_back(List *list, void *value) {
     LIST_LOG("[list_emplace_back] : Node emplaced at back. List size is now: %zu", list->size);
 }
 
+
 /**
  * @brief Splices elements from one list into another at a specified position.
  * 
@@ -914,6 +930,7 @@ void list_splice(List *dest, List *src, Node *pos) {
     LIST_LOG("[list_splice] : Splicing completed. Destination list size: %zu. Source list is now empty.", dest->size);
 }
 
+
 /**
  * @brief Removes elements equal to a specified value from the list.
  * 
@@ -970,6 +987,7 @@ void list_remove(List *list, void *value) {
     LIST_LOG("[list_remove] : Finished removing nodes. Final list size: %zu", list->size);
 }
 
+
 /**
  * @brief Removes elements from the list that satisfy a given condition.
  * 
@@ -1022,6 +1040,7 @@ void list_remove_if(List *list, ConditionFunction cond) {
     LIST_LOG("[list_remove_if] : Finished removing nodes based on condition. Final list size: %zu", list->size);
 }
 
+
 /**
  * @brief Removes consecutive duplicate elements from the list.
  * 
@@ -1073,6 +1092,7 @@ void list_unique(List *list) {
 
     LIST_LOG("[list_unique] : Finished removing duplicates, final list size: %zu", list->size);
 }
+
 
 /**
  * @brief Merges two sorted lists into the first list, maintaining sort order.
@@ -1148,6 +1168,7 @@ void list_merge(List *list1, List *list2) {
     LIST_LOG("[list_merge] : Merge completed. Final list1 size: %zu. List2 is now empty.", list1->size);
 }
 
+
 /**
  * @brief Checks if the first list is lexicographically less than the second list.
  * 
@@ -1165,32 +1186,28 @@ bool list_is_less(const List *list1, const List *list2) {
         LIST_LOG("[list_is_less] : Error: Null pointer provided for one or both lists in list_is_less.");
         return false;
     }
-    LIST_LOG("[list_is_less] : Comparing if list1 is less than list2.");
-
-    if (list1->size != list2->size) {
-        LIST_LOG("[list_is_less] : Lists have different sizes: list1->size = %zu, list2->size = %zu", list1->size, list2->size);
-        return list1->size < list2->size;
+    if (list1->compare == NULL) {
+        LIST_LOG("[list_is_less] : Error: list1 has no compare function.");
+        return false;
     }
+    LIST_LOG("[list_is_less] : Comparing if list1 is less than list2 lexicographically.");
 
     Node *node1 = list1->head;
     Node *node2 = list2->head;
 
     while (node1 != NULL && node2 != NULL) {
-        int val1 = *(int *)(node1->value);
-        int val2 = *(int *)(node2->value);
-
-        LIST_LOG("[list_is_less] : Comparing node values: val1 = %d, val2 = %d", val1, val2);
-        if (val1 != val2) {
-            LIST_LOG("[list_is_less] : Returning comparison result: %d", val1 < val2);
-            return val1 < val2;
+        int cmp = list1->compare(node1->value, node2->value);
+        if (cmp != 0) {
+            return cmp < 0;
         }
         node1 = node1->next;
         node2 = node2->next;
     }
 
-    LIST_LOG("[list_is_less] : Lists are equal, returning false.");
-    return false; // Lists are equal
+    // Common prefix is equal: shorter list is "less".
+    return node1 == NULL && node2 != NULL;
 }
+
 
 /**
  * @brief Checks if the first list is lexicographically greater than the second list.
@@ -1212,6 +1229,7 @@ bool list_is_greater(const List *list1, const List *list2) {
 
     return result;
 }
+
 
 /**
  * @brief Checks if two lists are lexicographically equal.
@@ -1251,6 +1269,7 @@ bool list_is_equal(const List *list1, const List *list2) {
     return true;
 }
 
+
 /**
  * @brief Checks if the first list is lexicographically less than or equal to the second list.
  * 
@@ -1271,6 +1290,7 @@ bool list_is_less_or_equal(const List *list1, const List *list2) {
     return result;
 }
 
+
 /**
  * @brief Checks if the first list is lexicographically greater than or equal to the second list.
  * 
@@ -1289,6 +1309,7 @@ bool list_is_greater_or_equal(const List *list1, const List *list2) {
 
     return result;
 }
+
 
 /**
  * @brief Checks if two lists are not lexicographically equal.

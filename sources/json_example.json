@@ -1,59 +1,38 @@
 {
-  "library": "JSON Test Library",
-  "version": 1.0,
-  "unicode_sample": "こんにちは世界 (Hello World in Japanese)",
-  "ascii_sample": "Hello, World!",
+  "version": 1.2,
   "supports_unicode": true,
+  "unicode_sample": "Hello",
   "categories": [
     {
-      "id": 1,
       "name": "Books",
       "items": [
-        {
-          "title": "Learning JSON",
-          "author": "John Doe",
-          "published_year": 2020,
-          "available": true
-        },
-        {
-          "title": "Advanced JSON Processing",
-          "author": "Jane Smith",
-          "published_year": 2021,
-          "available": false
-        }
+        {"title": "C Programming", "author": "K&R",    "available": true,  "year": 1988},
+        {"title": "Clean Code",    "author": "Martin", "available": false, "year": 2008},
+        {"title": "SICP",          "author": "Abelson","available": true,  "year": 1996}
       ]
     },
     {
-      "id": 2,
       "name": "Movies",
       "items": [
         {
           "title": "The JSON Saga",
-          "director": "Alice Johnson",
-          "released_year": 2019,
-          "ratings": {
-            "IMDB": 7.8,
-            "Rotten Tomatoes": "85%"
-          }
+          "director": "A. Coder",
+          "released_year": 2023,
+          "ratings": {"IMDB": 8.7, "Rotten Tomatoes": "94%"}
         },
         {
-          "title": "JSON Unleashed",
-          "director": "Bob Brown",
-          "released_year": 2018,
-          "ratings": {
-            "IMDB": 6.5,
-            "Rotten Tomatoes": "75%"
-          }
+          "title": "Parse Hard",
+          "director": "B. Script",
+          "released_year": 2022,
+          "ratings": {"IMDB": 7.5, "Rotten Tomatoes": "88%"}
         }
       ]
     }
   ],
-  "notes": null,
   "additional_info": {
-    "contributors": ["Sam", "Alex", "Maria"],
-    "numbers": [15, 20, 30, 40],
-    "started": "2023-01-15",
-    "budget": 500000.5,
-    "name": "amin tahmasebi"
+    "budget": 500000.0,
+    "contributors": ["Alice", "Bob", "Charlie"],
+    "numbers": [10, 20, 30, 40],
+    "active": true
   }
 }

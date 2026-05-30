@@ -2,41 +2,50 @@
  * @author Amin Tahmasebi
  * @date 2024
  * @class Json
-*/
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in json.c (file-level convention).
+ */
 
 #ifndef JSON_H_
 #define JSON_H_
 
+#include <stdio.h>
 #include "../fmt/fmt.h"
 #include "../vector/vector.h"
 #include "../map/map.h"
-#include <stdio.h>
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-// #define JSON_LOGGING_ENABLE
 
-#ifdef JSON_LOGGING_ENABLE 
+/* #define JSON_LOGGING_ENABLE */
+
+#ifdef JSON_LOGGING_ENABLE
     #define JSON_LOG(fmt, ...) \
         do { fprintf(stderr, "[JSON LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define JSON_LOG(fmt, ...) do { } while (0)
+    #define JSON_LOG(...) do { } while (0)
 #endif
 
-#define JSON_ERROR_NONE 0
-#define JSON_ERROR_SYNTAX 1
-#define JSON_ERROR_UNEXPECTED_TOKEN 2
-#define JSON_ERROR_MEMORY 3
-#define JSON_CREATION_FAILED 4
-#define JSON_TRANSFORM_FAILED 5
-#define JSON_ERROR_INSERTION_FAILED 6
-#define JSON_ERROR_INVALID_VALUE 7
-#define JSON_ERROR_INVALID_KEY 8
-#define JSON_ERROR_TYPE 9 
 
-// JSON data types
+/* ------------------------------------------------------------------ */
+/* Error codes                                                        */
+/* ------------------------------------------------------------------ */
+
+#define JSON_ERROR_NONE             0
+#define JSON_ERROR_SYNTAX           1
+#define JSON_ERROR_UNEXPECTED_TOKEN 2
+#define JSON_ERROR_MEMORY           3
+#define JSON_CREATION_FAILED        4
+#define JSON_TRANSFORM_FAILED       5
+#define JSON_ERROR_INSERTION_FAILED 6
+#define JSON_ERROR_INVALID_VALUE    7
+#define JSON_ERROR_INVALID_KEY      8
+#define JSON_ERROR_TYPE             9
+
+
 typedef enum {
     JSON_NULL,
     JSON_BOOL,
@@ -46,41 +55,44 @@ typedef enum {
     JSON_OBJECT
 } JsonType;
 
-// JSON value union
+
 typedef union {
-    bool bool_val;
-    double number_val;
-    char *string_val;
-    Vector *array_val;
-    Map *object_val;
+    bool    bool_val;
+    double  number_val;
+    char*   string_val;
+    Vector* array_val;
+    Map*    object_val;
 } JsonValue;
 
-// JSON element struct
+
 typedef struct {
-    JsonType type;
+    JsonType  type;
     JsonValue value;
 } JsonElement;
 
-// Forward declarations for JSON array and object
-typedef struct JsonArray JsonArray; // Struct representing a JSON array, possibly using a vector or list for storing elements.
-typedef struct JsonObject JsonObject; // Struct representing a JSON object, possibly using a map or hash table for storing key-value pairs.
 
-// Function pointer types for operations
-typedef bool (*JsonPredicate)(const JsonElement*, void*);
-typedef JsonElement* (*JsonMapFunction)(const JsonElement*, void*);
-typedef void* (*JsonReduceFunction)(const JsonElement*, void*, void*);
+typedef struct JsonArray  JsonArray;
+typedef struct JsonObject JsonObject;
 
-// JSON parsing options (placeholder for extensibility)
+/* Callbacks used by `json_find`, `json_filter`, `json_map`, `json_reduce`. */
+typedef bool         (*JsonPredicate)     (const JsonElement*, void*);
+typedef JsonElement* (*JsonMapFunction)   (const JsonElement*, void*);
+typedef void*        (*JsonReduceFunction)(const JsonElement*, void*, void*);
+
 typedef struct {
-    int a;
-    // Define parsing options here (e.g., strict mode, allow comments)
+    int a;        /* parser options (strict mode, allow comments, ...) */
 } JsonParseOptions;
 
-// Error handling
+
 typedef struct {
-    int code;
+    int  code;
     char message[256];
 } JsonError;
+
+
+/* ------------------------------------------------------------------ */
+/* Tokenizer (exposed for streaming parsers)                          */
+/* ------------------------------------------------------------------ */
 
 typedef enum {
     JSON_TOKEN_OBJECT_START,
@@ -94,65 +106,113 @@ typedef enum {
     JSON_TOKEN_COLON,
     JSON_TOKEN_COMMA,
     JSON_TOKEN_EOF,
-    JSON_TOKEN_ERROR,
-    
+    JSON_TOKEN_ERROR
 } JsonTokenType;
+
 
 typedef struct {
     JsonTokenType type;
-    char* value; // for strings, numbers
+    char*         value;   /* for strings, numbers */
 } JsonToken;
 
-// Parser state
+
 typedef struct {
-    char* input;
-    size_t input_len;
-    size_t position;
+    char*     input;
+    size_t    input_len;
+    size_t    position;
     JsonToken current_token;
     JsonError error;
 } JsonParserState;
 
-JsonElement* json_parse(const char *json_str);
-JsonElement* json_read_from_file(const char *filename);
-JsonElement* json_get_element(const JsonElement *element, const char *key_or_index);
-JsonElement* json_query(const JsonElement *element, const char *query);
-JsonElement* json_merge(const JsonElement *element1, const JsonElement *element2);
-JsonElement* json_deep_copy(const JsonElement *element);
-JsonElement* json_parse_with_options(const char *json_str, JsonParseOptions options);
-JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void *user_data);
-JsonElement* json_filter(const JsonElement *array, JsonPredicate predicate, void *user_data);
-JsonElement* json_map(const JsonElement *array, JsonMapFunction map_func, void *user_data);
-JsonElement* json_create(JsonType type);
-JsonElement* json_clone(const JsonElement *element);
 
-char* json_serialize(const JsonElement *element);
-char* json_format(const JsonElement *element);
-char* json_generate_schema(const JsonElement* element);
+/* ------------------------------------------------------------------ */
+/* Parsing / reading                                                  */
+/* ------------------------------------------------------------------ */
 
-char** json_to_string_array(const JsonElement *array, size_t *length);
-char** json_get_keys(const JsonElement *object, size_t *num_keys);
+JsonElement*  json_parse                       (const char* json_str);
+JsonElement*  json_parse_with_options          (const char* json_str, JsonParseOptions options);
+JsonElement*  json_read_from_file              (const char* filename);
 
-bool json_write_to_file(const JsonElement *element, const char *filename);
-bool json_set_element(JsonElement *element, const char *key_or_index, JsonElement *new_element);
-bool json_remove_element(JsonElement *element, const char *key_or_index);
-bool json_validate(const JsonElement *element, const char *schema_json);
-bool json_compare(const JsonElement *element1, const JsonElement *element2);
-bool json_add_to_array(JsonElement* element1, JsonElement* element2);
-bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value);
 
-void* json_convert(const JsonElement *element, JsonType type);
-void* json_reduce(const JsonElement *array, JsonReduceFunction reduce_func, void *initial_value, void *user_data);
-size_t json_array_size(const JsonElement *array);
-size_t json_object_size(const JsonElement *object);
+/* ------------------------------------------------------------------ */
+/* Construction / cloning                                             */
+/* ------------------------------------------------------------------ */
 
-JsonType json_type_of_element(const JsonElement *element);
-JsonError json_last_error();
+JsonElement*  json_create                      (JsonType type);
+JsonElement*  json_clone                       (const JsonElement* element);
+JsonElement*  json_deep_copy                   (const JsonElement* element);
 
-void json_print(const JsonElement* element);
-void json_deallocate(JsonElement *element);
 
-#ifdef __cplusplus 
+/* ------------------------------------------------------------------ */
+/* Destruction                                                        */
+/* ------------------------------------------------------------------ */
+
+void          json_deallocate                  (JsonElement* element);
+
+
+/* ------------------------------------------------------------------ */
+/* Serialization / writing                                            */
+/* ------------------------------------------------------------------ */
+
+char*         json_serialize                   (const JsonElement* element);
+char*         json_format                      (const JsonElement* element);
+char*         json_generate_schema             (const JsonElement* element);
+bool          json_write_to_file               (const JsonElement* element, const char* filename);
+
+
+/* ------------------------------------------------------------------ */
+/* Element access                                                     */
+/* ------------------------------------------------------------------ */
+
+JsonElement*  json_get_element                 (const JsonElement* element, const char* key_or_index);
+JsonElement*  json_query                       (const JsonElement* element, const char* query);
+char**        json_get_keys                    (const JsonElement* object, size_t* num_keys);
+char**        json_to_string_array             (const JsonElement* array, size_t* length);
+size_t        json_array_size                  (const JsonElement* array);
+size_t        json_object_size                 (const JsonElement* object);
+JsonType      json_type_of_element             (const JsonElement* element);
+
+
+/* ------------------------------------------------------------------ */
+/* Modifiers                                                          */
+/* ------------------------------------------------------------------ */
+
+bool          json_set_element                 (JsonElement* element, const char* key_or_index, JsonElement* new_element);
+bool          json_remove_element              (JsonElement* element, const char* key_or_index);
+bool          json_add_to_array                (JsonElement* element1, JsonElement* element2);
+bool          json_add_to_object               (JsonElement* object, const char* key, JsonElement* value);
+JsonElement*  json_merge                       (const JsonElement* element1, const JsonElement* element2);
+
+
+/* ------------------------------------------------------------------ */
+/* Functional pipelines                                               */
+/* ------------------------------------------------------------------ */
+
+JsonElement*  json_find                        (const JsonElement* element, JsonPredicate predicate, void* user_data);
+JsonElement*  json_filter                      (const JsonElement* array,   JsonPredicate predicate, void* user_data);
+JsonElement*  json_map                         (const JsonElement* array,   JsonMapFunction map_func, void* user_data);
+void*         json_reduce                      (const JsonElement* array,   JsonReduceFunction reduce_func, void* initial_value, void* user_data);
+
+
+/* ------------------------------------------------------------------ */
+/* Comparison / validation / conversion                               */
+/* ------------------------------------------------------------------ */
+
+bool          json_compare                     (const JsonElement* element1, const JsonElement* element2);
+bool          json_validate                    (const JsonElement* element, const char* schema_json);
+void*         json_convert                     (const JsonElement* element, JsonType type);
+
+
+/* ------------------------------------------------------------------ */
+/* Diagnostics                                                        */
+/* ------------------------------------------------------------------ */
+
+JsonError     json_last_error                  (void);
+void          json_print                       (const JsonElement* element);
+
+
+#ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif 

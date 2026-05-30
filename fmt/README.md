@@ -31,240 +31,156 @@ Comprehensive documentation is provided, detailing the functionality and usage o
 ### Function Descriptions
 
 ### `void fmt_printf(const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_printf` function prints a formatted string to the standard output (`stdout`), similar to the standard `printf` function. On Windows platforms, it supports Unicode by converting the format string from UTF-8 to UTF-16 and using `vfwprintf` for wide-character printing.
-
-- **Parameters**:
-  - `format`: The format string specifying how to format the output.
-  - `...`: Additional arguments to be formatted according to the format string.
-
-- **Return Type**:  
-  This function does not return a value.
-
----
-
-### `char* fmt_sprintf(const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_sprintf` function formats a string according to the specified format string and returns it as a dynamically allocated string. The caller is responsible for freeing the memory allocated for the string.
-
-- **Parameters**:
-  - `format`: The format string specifying how to format the output.
-  - `...`: Additional arguments to be formatted according to the format string.
-
-- **Return Type**:  
-  Returns a pointer to the dynamically allocated string containing the formatted text, or `NULL` if memory allocation fails.
-
----
-
-### `int fmt_scan(char** output)`
-
-- **Purpose**:  
-  The `fmt_scan` function reads a string from the standard input until a space, newline, or EOF is encountered. The input is stored in a dynamically allocated string, and the caller is responsible for freeing the memory.
-
-- **Parameters**:
-  - `output`: A pointer to a `char*` that will be set to the dynamically allocated string containing the input.
-
-- **Return Type**:  
-  Returns `0` on success or a negative value if an error occurred.
-
----
-
-### `int fmt_scanln(char** output)`
-
-- **Purpose**:  
-  The `fmt_scanln` function reads a line of input from the standard input until a newline or space is encountered. The input is stored in a dynamically allocated string, and the caller is responsible for freeing the memory.
-
-- **Parameters**:
-  - `output`: A pointer to a `char*` that will be set to the dynamically allocated string containing the input.
-
-- **Return Type**:  
-  Returns `0` on success or a negative value if an error occurred.
-
----
-
-### `int fmt_scanf(const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_scanf` function scans input from the standard input according to the specified format string, similar to the standard `scanf` function.
-
-- **Parameters**:
-  - `format`: The format string specifying how to parse the input.
-  - `...`: Additional arguments corresponding to the format string to store the parsed input.
-
-- **Return Type**:  
-  Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
-
----
-
-### `int fmt_fprintf(FILE* stream, const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_fprintf` function writes formatted output to a specified file stream, similar to the standard `fprintf` function.
-
-- **Parameters**:
-  - `stream`: A pointer to the `FILE` structure representing the file to write to.
-  - `format`: The format string specifying how to format the output.
-  - `...`: Additional arguments to be formatted according to the format string.
-
-- **Return Type**:  
-  Returns the number of characters successfully written, or a negative value if an error occurred.
-
----
-
-### `int fmt_fscanf(FILE* stream, const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_fscanf` function scans input from a specified file stream according to the provided format string, similar to the standard `fscanf` function.
-
-- **Parameters**:
-  - `stream`: A pointer to the `FILE` structure representing the file to read from.
-  - `format`: The format string specifying how to parse the input.
-  - `...`: Additional arguments corresponding to the format string to store the parsed input.
-
-- **Return Type**:  
-  Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
-
----
-
-### `int fmt_fprintf(FILE* stream, const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_fprintf` function outputs formatted text to the given file stream, similar to the standard `fprintf` function. It formats a string according to the specified format string and writes the formatted text to the file stream.
-
-- **Parameters**:
-  - `stream`: The file stream to which the formatted output will be written.
-  - `format`: The format string specifying how to format the output.
-  - `...`: Additional arguments to be formatted according to the format string.
-
-- **Return Type**:  
-  Returns the number of bytes successfully written, or `-1` if an error occurred.
-
----
-
-### `int fmt_fscan(FILE* stream, const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_fscan` function reads formatted input from the specified file stream according to the provided format string, similar to the standard `fscanf` function.
-
-- **Parameters**:
-  - `stream`: The file stream to read from.
-  - `format`: The format string specifying how to parse the input.
-  - `...`: Additional arguments corresponding to the format string, where the parsed input will be stored.
-
-- **Return Type**:  
-  Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
-
----
-
-### `int fmt_fscanln(FILE* stream, const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_fscanln` function reads a single line of input from the specified file stream and parses it according to the provided format string.
-
-- **Parameters**:
-  - `stream`: The file stream to read from.
-  - `format`: The format string specifying how to parse the input.
-  - `...`: Additional arguments corresponding to the format string, where the parsed input will be stored.
-- **Return Type**:  
-  Returns the number of input items successfully matched and assigned, or `0` on EOF, or a negative value if an error occurred.
-
----
-
-### `int fmt_fscanf(FILE* stream, const char* format, ...)`
-
-- **Purpose**:  
-  The `fmt_fscanf` function reads formatted input from the specified file stream according to the provided format string, similar to `fscanf`.
-
-- **Parameters**:
-  - `stream`: The file stream to read from.
-  - `format`: The format string specifying how to parse the input.
-  - `...`: Additional arguments corresponding to the format string, where the parsed input will be stored.
-- **Return Type**:  
-  Returns the number of input items successfully matched and assigned, or a negative value if an error occurred.
+**Purpose**: Prints a formatted string to stdout using printf-style format specifiers.
+**Parameters**:
+- `format`: The printf-style format string controlling output layout.
+- `...`: Additional arguments to be formatted according to the format string.
+**Return Value**: None.
+**Usage Case**: Use as the primary formatted-output function throughout application code; on Windows it converts UTF-8 to UTF-16 for proper Unicode output via `vfwprintf`.
 
 ---
 
 ### `void fmt_print(const char* str, ...)`
-
-- **Purpose**:  
-  This function prints a formatted string to the console without a newline. On Windows, it converts the arguments from UTF-8 to UTF-16 for Unicode support and prints them using `WriteConsoleW`. On other platforms, it uses the standard `printf` function to print the strings.
-
-- **Parameters**:
-  - `str`: The first argument in the format string.
-  - `...`: Additional arguments to be printed.
-- **Return Type**:  
-  This function does not return a value.
+**Purpose**: Prints one or more string arguments to stdout concatenated without spaces or a trailing newline.
+**Parameters**:
+- `str`: The first string argument to print.
+- `...`: Additional string arguments; terminate the list with `NULL` (handled automatically by the `fmt_print(...)` macro).
+**Return Value**: None.
+**Usage Case**: Use when you need to print multiple strings side by side without separators; on Windows uses `WriteConsoleW` for Unicode output.
 
 ---
 
 ### `void fmt_println(const char* str, ...)`
-
-- **Purpose**:  
-  This function prints a formatted string to the console, adding a space separator between each argument and a newline at the end. It also handles Unicode on Windows platforms.
-
-- **Parameters**:
-  - `str`: The first argument in the format string.
-  - `...`: Additional arguments to be printed.
-- **Return Type**:  
-  This function does not return a value.
+**Purpose**: Prints one or more string arguments to stdout with a space between each argument and a newline at the end.
+**Parameters**:
+- `str`: The first string argument to print.
+- `...`: Additional string arguments to print space-separated.
+**Return Value**: None.
+**Usage Case**: Use for Go-style "println" output where space-separated arguments and an automatic newline are desired; handles Unicode on Windows.
 
 ---
 
-### `char* fmt_sprintln(const char* first_arg, ...)`
-
-- **Purpose**:  
-  This function constructs a formatted string with spaces between the arguments and a newline at the end. It handles Unicode conversion on Windows and returns a dynamically allocated UTF-8 string that must be freed by the caller.
-
-- **Parameters**:
-  - `first_arg`: The first argument to be printed.
-  - `...`: Additional arguments to be included in the string.
-- **Return Type**:  
-  Returns a dynamically allocated UTF-8 string containing the formatted text, or `NULL` if memory allocation fails.
+### `char* fmt_sprintf(const char* format, ...)`
+**Purpose**: Formats a string using printf-style specifiers and returns it as a heap-allocated string.
+**Parameters**:
+- `format`: The printf-style format string controlling output layout.
+- `...`: Additional arguments to be formatted according to the format string.
+**Return Value**: A pointer to the newly allocated formatted string, or `NULL` on allocation failure; the caller must `free` the result.
+**Usage Case**: Use when you need to build a formatted string in memory before printing or storing it.
 
 ---
 
 ### `char* fmt_sprint(const char* first_arg, ...)`
-
-- **Purpose**:  
-  This function constructs a formatted string with spaces between the arguments but without a newline at the end. It handles Unicode on Windows and returns a dynamically allocated UTF-8 string that must be freed by the caller.
-
-- **Parameters**:
-  - `first_arg`: The first argument to be printed.
-  - `...`: Additional arguments to be included in the string.
-
-- **Return Type**:  
-  Returns a dynamically allocated UTF-8 string containing the formatted text, or `NULL` if memory allocation fails.
+**Purpose**: Concatenates one or more string arguments into a heap-allocated result string without a trailing newline.
+**Parameters**:
+- `first_arg`: The first string argument to include.
+- `...`: Additional string arguments to concatenate (with a space between non-adjacent strings).
+**Return Value**: A pointer to the newly allocated string, or `NULL` on allocation failure; the caller must `free` the result.
+**Usage Case**: Use to assemble multi-part strings in memory without immediately printing them.
 
 ---
 
-### `void fmt_fprint(FILE* stream, const char* str, ...)`
-
-- **Purpose**:  
-  This function writes a formatted string to the specified file stream without adding a newline. It handles multiple arguments, writing them sequentially to the stream.
-
-- **Parameters**:
-  - `stream`: The file stream where the output will be written.
-  - `str`: The first string to be written.
-  - `...`: Additional arguments to be written.
-- **Return Type**:  
-  Returns the number of bytes successfully written, or `-1` if an error occurred.
+### `char* fmt_sprintln(const char* first_arg, ...)`
+**Purpose**: Like `fmt_sprint` but adds a space between each argument and appends a newline at the end.
+**Parameters**:
+- `first_arg`: The first string argument to include.
+- `...`: Additional string arguments to append space-separated.
+**Return Value**: A pointer to the newly allocated string, or `NULL` on allocation failure; the caller must `free` the result.
+**Usage Case**: Use when you need a Go-style sprintln result as a heap string for later use.
 
 ---
 
-### `void fmt_fprintln(FILE* stream, const char* str, ...)`
+### `int fmt_scan(char** output)`
+**Purpose**: Reads one whitespace-delimited token from stdin into a heap-allocated string.
+**Parameters**:
+- `output`: A pointer to a `char*` that will be set to the allocated buffer containing the token; the caller must `free` it.
+**Return Value**: `0` on success, or a negative value on error.
+**Usage Case**: Use for simple single-word input reading from standard input.
 
-- **Purpose**:  
-  This function writes a formatted string to the specified file stream, adding spaces between the arguments and a newline at the end.
+---
 
-- **Parameters**:
-  - `stream`: The file stream where the output will be written.
-  - `str`: The first string to be written.
-  - `...`: Additional arguments to be written.
+### `int fmt_scanln(char** output)`
+**Purpose**: Reads up to the next newline or whitespace from stdin into a heap-allocated string.
+**Parameters**:
+- `output`: A pointer to a `char*` that will be set to the allocated buffer containing the input; the caller must `free` it.
+**Return Value**: `0` on success, or a negative value on error.
+**Usage Case**: Use when reading a line or word from interactive input.
 
-- **Return Type**:  
-  Returns the number of bytes successfully written, or `-1` if an error occurred.
+---
+
+### `int fmt_scanf(const char* format, ...)`
+**Purpose**: Scans stdin using a printf-style format string, storing parsed values in the variadic arguments.
+**Parameters**:
+- `format`: The format string specifying how to parse the input.
+- `...`: Pointers to variables where the parsed values will be stored.
+**Return Value**: The number of items successfully matched, or a negative value on error.
+**Usage Case**: Use as a formatted replacement for standard `scanf`.
+
+---
+
+### `int fmt_fprintf(FILE* stream, const char* format, ...)`
+**Purpose**: Writes formatted output to `stream` using printf-style format specifiers.
+**Parameters**:
+- `stream`: The `FILE*` to write formatted output to (e.g. `stdout`, `stderr`, or any open file).
+- `format`: The printf-style format string controlling output layout.
+- `...`: Additional arguments to be formatted according to the format string.
+**Return Value**: The number of bytes written, or a negative value on error.
+**Usage Case**: Use to write formatted text to `stdout`, `stderr`, or any open `FILE*`.
+
+---
+
+### `int fmt_fprint(FILE* stream, const char* str, ...)`
+**Purpose**: Writes one or more string arguments to `stream` concatenated without spaces or a trailing newline.
+**Parameters**:
+- `stream`: The `FILE*` to write to.
+- `str`: The first string argument to write.
+- `...`: Additional string arguments to write sequentially.
+**Return Value**: The number of bytes written, or `-1` on error.
+**Usage Case**: Use to write multi-part strings to a file or stream without separators.
+
+---
+
+### `int fmt_fprintln(FILE* stream, const char* str, ...)`
+**Purpose**: Writes one or more string arguments to `stream` with a space between each and a newline at the end.
+**Parameters**:
+- `stream`: The `FILE*` to write to.
+- `str`: The first string argument to write.
+- `...`: Additional string arguments to write space-separated.
+**Return Value**: The number of bytes written, or `-1` on error.
+**Usage Case**: Use for Go-style newline-terminated stream output.
+
+---
+
+### `int fmt_fscan(FILE* stream, const char* format, ...)`
+**Purpose**: Reads formatted input from `stream` using a printf-style format string.
+**Parameters**:
+- `stream`: The `FILE*` to read from.
+- `format`: The format string specifying how to parse the input.
+- `...`: Pointers to variables where the parsed values will be stored.
+**Return Value**: The number of items matched, or a negative value on error.
+**Usage Case**: Use to parse structured data from a file or any `FILE*`.
+
+---
+
+### `int fmt_fscanln(FILE* stream, const char* format, ...)`
+**Purpose**: Reads a single line from `stream` and parses it according to the format string.
+**Parameters**:
+- `stream`: The `FILE*` to read one line from.
+- `format`: The format string specifying how to parse the line.
+- `...`: Pointers to variables where the parsed values will be stored.
+**Return Value**: The number of items matched, `0` on EOF, or a negative value on error.
+**Usage Case**: Use when you need to parse exactly one line at a time from a file.
+
+---
+
+### `int fmt_fscanf(FILE* stream, const char* format, ...)`
+**Purpose**: Reads formatted input from `stream`, identical in behavior to standard `fscanf`.
+**Parameters**:
+- `stream`: The `FILE*` to read from.
+- `format`: The format string specifying how to parse the input.
+- `...`: Pointers to variables where the parsed values will be stored.
+**Return Value**: The number of items matched, or a negative value on error.
+**Usage Case**: Use as a formatted replacement for standard `fscanf` with any file stream.
 
 ---
 
@@ -273,17 +189,22 @@ Comprehensive documentation is provided, detailing the functionality and usage o
 ```c
 #include "fmt/fmt.h"
 #include "string/std_string.h"
+#include <stdlib.h>
 
 void println() {
     for (int index = 0; index < 10; index++) {
-        fmt_println(string_from_int_cstr(index), ":", "سلام دنیا");
+        char* num = string_from_int_cstr(index);
+        fmt_println(num, ":", "سلام دنیا");
+        free(num);
     }
 }
 
 // japanese
 void print() {
     for (int index = 0; index < 10; index++) {
-        fmt_print(string_from_int_cstr(index), ":", "ああ、 --");
+        char* num = string_from_int_cstr(index);
+        fmt_print(num, ":", "ああ、 --");
+        free(num);
     }
 }
 
@@ -329,7 +250,9 @@ int main() {
         free(message);
     }
 
-    message = fmt_sprintln("Another message:", "امین طهماسبی", string_from_int_cstr(42));
+    char* num = string_from_int_cstr(42);
+    message = fmt_sprintln("Another message:", "امین طهماسبی", num);
+    free(num);
     if (message) {
         fmt_printf("%s", message);
         fmt_printf("and %d %s", 15, "امین"); 
@@ -375,7 +298,9 @@ int main() {
         free(message);
     }
 
-    message = fmt_sprintln("Another message:", "Hello, world!", string_from_int_cstr(42));
+    char* num = string_from_int_cstr(42);
+    message = fmt_sprintln("Another message:", "Hello, world!", num);
+    free(num);
     if (message) {
         fmt_printf("%s", message);
         fmt_printf("and %d %s", 15, "امین"); 
@@ -414,7 +339,9 @@ int main() {
         free(message);
     }
 
-    message = fmt_sprint("Another message:", "Hello, world!", string_from_int_cstr(42));
+    char* num = string_from_int_cstr(42);
+    message = fmt_sprint("Another message:", "Hello, world!", num);
+    free(num);
     if (message) {
         fmt_printf("%s", message);
         fmt_printf("and %d", 15);
@@ -492,8 +419,11 @@ int main() {
     Time* current_time = time_current_time();
     Date* current_date = date_current_date(Persian);
 
-    char* datetime = fmt_sprintf("Current Date and Time: %s %s\n", time_to_string(current_time), 
-                                            date_to_string(current_date, format));
+    char* time_str = time_to_string(current_time);
+    char* date_str = date_to_string(current_date, format);
+    char* datetime = fmt_sprintf("Current Date and Time: %s %s\n", time_str, date_str);
+    free(time_str);
+    free(date_str);
     if (datetime) {
         fmt_printf("%s", datetime);
         free(datetime);
@@ -894,9 +824,9 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result** (when `./sources/input.txt` contains `25 19.365 Hello World`)**:**
 ```
-Read data: 27, 19.650000, "Hello World"
+Read data: 25, 19.365000, Hello World
 ```
 
 ---
@@ -964,6 +894,10 @@ int main() {
     file_writer_close(writer);
     return 0;
 }
+```
+**Result:**
+```
+(no console output — both strings are written to ./output.txt)
 ```
 
 ---

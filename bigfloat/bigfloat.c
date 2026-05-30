@@ -1,5 +1,6 @@
 #include "bigfloat.h"
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * @brief Creates a new BigFloat initialized to 0.0.
@@ -12,7 +13,11 @@ BigFloat* bigfloat_create(void) {
         return NULL;
     }
 
-    mpfr_init(bf->value); // Default is 0.0
+    // NOTE: mpfr_init alone leaves the value as NaN per the MPFR spec.
+    // Set explicitly to +0 so the BigFloat actually starts at zero and
+    // operations like is_zero() / add(zero, x) behave as documented.
+    mpfr_init(bf->value);
+    mpfr_set_zero(bf->value, +1);
     BIGFLOAT_LOG("[bigfloat_create]: Initialized BigFloat to 0.0.");
 
     return bf;
@@ -351,10 +356,14 @@ int bigfloat_compare(const BigFloat* a, const BigFloat* b) {
         return 0; // Defaulting to equal if invalid input
     }
 
+    // MPFR's mpfr_cmp returns any "negative / zero / positive" int — not
+    // strictly -1/0/1. Normalize so callers can rely on the documented
+    // contract (e.g., `if (bigfloat_compare(a, b) == -1)`).
     int cmp_result = mpfr_cmp(a->value, b->value);
-    BIGFLOAT_LOG("[bigfloat_compare]: Comparison result = %d", cmp_result);
+    int normalized = (cmp_result < 0) ? -1 : (cmp_result > 0) ? 1 : 0;
+    BIGFLOAT_LOG("[bigfloat_compare]: Comparison result = %d", normalized);
 
-    return cmp_result;
+    return normalized;
 }
 
 /**
@@ -402,17 +411,29 @@ char* bigfloat_to_string(const BigFloat* a) {
         return NULL;
     }
 
-    // Allocate a buffer for string representation
-    size_t buf_size = 128; 
-    char* str = malloc(buf_size);
-    if (!str) {
-        BIGFLOAT_LOG("[bigfloat_to_string]: Memory allocation failed.");
+    // Use mpfr_asprintf so the buffer grows to fit any value. The old
+    // fixed 128-byte buffer overflowed for values whose magnitude or
+    // precision needed more characters (e.g. >1e80 with %.50Rf).
+    char* mpfr_str = NULL;
+    int n = mpfr_asprintf(&mpfr_str, "%.50Rf", a->value);
+    if (n < 0 || !mpfr_str) {
+        BIGFLOAT_LOG("[bigfloat_to_string]: mpfr_asprintf failed.");
         return NULL;
     }
 
-    mpfr_sprintf(str, "%.50Rf", a->value);  // 50 decimal places precision
-    BIGFLOAT_LOG("[bigfloat_to_string]: Converted BigFloat to string: %s", str);
+    // mpfr_asprintf allocates with the GMP/MPFR allocator. Copy into a
+    // malloc'd buffer so the caller can use plain free() to release it.
+    size_t len = (size_t)n;
+    char* str = malloc(len + 1);
+    if (!str) {
+        BIGFLOAT_LOG("[bigfloat_to_string]: Memory allocation failed.");
+        mpfr_free_str(mpfr_str);
+        return NULL;
+    }
+    memcpy(str, mpfr_str, len + 1);
+    mpfr_free_str(mpfr_str);
 
+    BIGFLOAT_LOG("[bigfloat_to_string]: Converted BigFloat to string: %s", str);
     return str;
 }
 

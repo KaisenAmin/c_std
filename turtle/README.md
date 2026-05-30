@@ -18,8 +18,6 @@ The Turtle Graphics library in C provides functions for drawing shapes and lines
 
 ## Installation and Compilation
 
-### Installing Dependencies
-
 To use this library, you need to have the `raylib` library installed. Follow the instructions below for your operating system:
 
 #### Linux
@@ -803,6 +801,354 @@ None.
 
 **Usage Case**:  
 Use this function to change the background color of the turtle's drawing area, making it suitable for different visual designs.
+
+
+### `void turtle_backward(Turtle *state, float distance)`
+
+**Purpose**:  
+Moves the turtle in the opposite of its current heading by the specified distance. This is a thin wrapper around `turtle_forward(state, -distance)`.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current state.
+- `distance`: The distance (in units) to move the turtle backward.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want to reverse the turtle's direction of movement without changing its heading angle.
+
+---
+
+### `float turtle_get_x(const Turtle *state)`
+
+**Purpose**:  
+Returns the turtle's current X-coordinate in O(1) time.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (returns `0.0f`).
+
+**Return Value**:  
+The current X-coordinate as a `float`, or `0.0f` if `state` is `NULL`.
+
+**Usage Case**:  
+Use this function to read the turtle's horizontal position without modifying it.
+
+---
+
+### `float turtle_get_y(const Turtle *state)`
+
+**Purpose**:  
+Returns the turtle's current Y-coordinate in O(1) time.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (returns `0.0f`).
+
+**Return Value**:  
+The current Y-coordinate as a `float`, or `0.0f` if `state` is `NULL`.
+
+**Usage Case**:  
+Use this function to read the turtle's vertical position without modifying it.
+
+---
+
+### `float turtle_get_speed(const Turtle *state)`
+
+**Purpose**:  
+Returns the turtle's current movement speed as last set by `turtle_set_speed`.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (returns `0.0f`).
+
+**Return Value**:  
+The current speed value as a `float`, or `0.0f` if `state` is `NULL`.
+
+**Usage Case**:  
+Use this function to inspect the turtle's speed, for example when saving and restoring state.
+
+---
+
+### `void turtle_get_pen_color(const Turtle *state, unsigned char *r, unsigned char *g, unsigned char *b, unsigned char *a)`
+
+**Purpose**:  
+Reads back the turtle's current pen color into the provided RGBA out-pointers.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (all outputs set to 0).
+- `r`: Destination for the red channel. Pass `NULL` to skip.
+- `g`: Destination for the green channel. Pass `NULL` to skip.
+- `b`: Destination for the blue channel. Pass `NULL` to skip.
+- `a`: Destination for the alpha channel. Pass `NULL` to skip.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to inspect or save the pen color without modifying it, for example to restore it after a temporary color change.
+
+---
+
+### `void turtle_get_fill_color(const Turtle *state, unsigned char *r, unsigned char *g, unsigned char *b, unsigned char *a)`
+
+**Purpose**:  
+Reads back the turtle's current fill color into the provided RGBA out-pointers.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (all outputs set to 0).
+- `r`: Destination for the red channel. Pass `NULL` to skip.
+- `g`: Destination for the green channel. Pass `NULL` to skip.
+- `b`: Destination for the blue channel. Pass `NULL` to skip.
+- `a`: Destination for the alpha channel. Pass `NULL` to skip.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to inspect the fill color currently used by `turtle_begin_fill` / `turtle_end_fill`, for example before overriding it temporarily.
+
+---
+
+### `void turtle_get_background_color(const Turtle *state, unsigned char *r, unsigned char *g, unsigned char *b, unsigned char *a)`
+
+**Purpose**:  
+Reads back the drawing window's current background color into the provided RGBA out-pointers.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (all outputs set to 0).
+- `r`: Destination for the red channel. Pass `NULL` to skip.
+- `g`: Destination for the green channel. Pass `NULL` to skip.
+- `b`: Destination for the blue channel. Pass `NULL` to skip.
+- `a`: Destination for the alpha channel. Pass `NULL` to skip.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to read the background color before changing it, allowing it to be restored later.
+
+---
+
+### `void turtle_reset(Turtle *state)`
+
+**Purpose**:  
+Resets the turtle to its initial state: clears every drawn line, stamp, and fill point, and restores the turtle's position, heading, pen state, colors, and speed to their defaults. Buffer capacities are preserved so subsequent draws do not trigger immediate reallocation.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure to reset.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function to restart a drawing session from scratch without reallocating memory, for example at the beginning of a new animation frame or when replaying a sequence.
+
+---
+
+### `void turtle_clear(Turtle *state)`
+
+**Purpose**:  
+Clears every drawn line, stamp, and fill point from the buffer, but leaves the turtle exactly where it is with its current heading, colors, and pen state intact.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure to clear.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function in animation loops where you want to erase the previous frame's drawing while keeping the turtle in its current position and configuration.
+
+---
+
+### `bool turtle_undo(Turtle *state)`
+
+**Purpose**:  
+Removes the most recently drawn line segment from the internal draw buffer — the C equivalent of Logo's classic `undo` command.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL`.
+
+**Return Value**:  
+`true` if a line was successfully removed, `false` if the buffer was already empty or `state` is `NULL`.
+
+**Usage Case**:  
+Use this function to implement an undo feature in interactive drawing applications, or to step backward through a recorded drawing sequence.
+
+---
+
+### `float turtle_towards(const Turtle *state, float x, float y)`
+
+**Purpose**:  
+Calculates and returns the bearing in degrees (0..360) from the turtle's current position to the point `(x, y)`. Zero degrees points east, 90 degrees points south (screen coordinates), and so on.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure representing the turtle's current position. May be `NULL` (returns `0.0f`).
+- `x`: The X-coordinate of the target point.
+- `y`: The Y-coordinate of the target point.
+
+**Return Value**:  
+The bearing angle in degrees as a `float`.
+
+**Usage Case**:  
+Use this function to compute the angle the turtle must face before walking toward a target point, typically followed by `turtle_set_heading` or `turtle_face_towards`.
+
+---
+
+### `void turtle_face_towards(Turtle *state, float x, float y)`
+
+**Purpose**:  
+Points the turtle at the target point `(x, y)` by setting its heading to the result of `turtle_towards(state, x, y)`. The turtle's position is not changed.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `x`: The X-coordinate of the target point.
+- `y`: The Y-coordinate of the target point.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function as a convenience shorthand for the common pattern of computing a bearing and immediately applying it, for example when navigating a turtle through a sequence of waypoints.
+
+---
+
+### `int turtle_get_line_count(const Turtle *state)`
+
+**Purpose**:  
+Returns the number of line segments currently stored in the draw buffer.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (returns `0`).
+
+**Return Value**:  
+The number of drawn line segments as an `int`, or `0` on `NULL` input.
+
+**Usage Case**:  
+Use this function for diagnostic output, progress reporting, or to check whether any lines have been drawn before performing a clear or undo.
+
+---
+
+### `int turtle_get_stamp_count(const Turtle *state)`
+
+**Purpose**:  
+Returns the number of stamps currently stored in the stamp buffer.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. May be `NULL` (returns `0`).
+
+**Return Value**:  
+The number of active stamps as an `int`, or `0` on `NULL` input.
+
+**Usage Case**:  
+Use this function to check how many stamps are currently visible on the canvas, for example before deciding whether to call `turtle_clear_stamp`.
+
+---
+
+### `void turtle_set_pen_color_rgb(Turtle *state, unsigned char r, unsigned char g, unsigned char b, unsigned char a)`
+
+**Purpose**:  
+Sets the turtle's pen color using individual RGBA byte values, leaving the fill color completely untouched. This is functionally identical to `turtle_set_color` but the longer name makes the intent explicit — only the pen color is changed.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `r`: Red component of the pen color (0–255).
+- `g`: Green component of the pen color (0–255).
+- `b`: Blue component of the pen color (0–255).
+- `a`: Alpha (transparency) component of the pen color (0–255).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Use this function when you want to change only the pen color while deliberately preserving the current fill color, avoiding subtle bugs that arise from accidentally overwriting the fill color.
+
+---
+
+### `void turtle_write(Turtle *state, const char *text, int fontSize, Color color)`
+
+**Purpose**:  
+Draws a text label at the turtle's current position. The label is recorded (like a line) and re-rendered every frame, so it persists across `turtle_draw` / `turtle_done`. Uses raylib's built-in font. The string is copied internally, so the caller's buffer need not outlive the call.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `text`: The NUL-terminated string to draw. NULL is a no-op.
+- `fontSize`: Text height in pixels.
+- `color`: The text color (a raylib `Color`).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Annotate drawings — label points, axes, or shapes (the analogue of Python turtle's `write`).
+
+---
+
+### `void turtle_write_at(Turtle *state, float x, float y, const char *text, int fontSize, Color color)`
+
+**Purpose**:  
+Like `turtle_write`, but draws the label at an explicit `(x, y)` screen position instead of at the turtle's current position.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure.
+- `x`, `y`: Screen coordinates (pixels, origin top-left) for the text.
+- `text`: The NUL-terminated string to draw. NULL is a no-op.
+- `fontSize`: Text height in pixels.
+- `color`: The text color.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Place titles, captions or a legend at fixed locations independent of where the turtle currently is.
+
+---
+
+### `bool turtle_save_image(const char *filename)`
+
+**Purpose**:  
+Saves the current window contents to an image file, wrapping raylib's `TakeScreenshot` so callers don't need to include `raylib.h`. Call it after rendering a frame (`turtle_draw`, or inside a `turtle_done` callback) and before `turtle_close_window`. The format is inferred from the extension — use `.png`.
+
+**Parameters**:  
+- `filename`: Output path (relative to the working directory). NULL is rejected.
+
+**Return Value**:  
+`true` if a screenshot was requested, `false` if `filename` is NULL.
+
+**Usage Case**:  
+Produce a PNG of a drawing for documentation or headless rendering, without touching raylib directly.
+
+---
+
+### `void turtle_clear_stamps(Turtle *state)`
+
+**Purpose**:  
+Removes every stamp from the canvas at once — the bulk companion to `turtle_clear_stamp` (which removes a single stamp by id). Lines and text labels are left untouched.
+
+**Parameters**:  
+- `state`: A pointer to the `Turtle` structure. NULL is a no-op.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Reset all stamped markers between animation phases without clearing the drawn path.
+
+---
+
+### `void turtle_screen_size(int *width, int *height)`
+
+**Purpose**:  
+Reports the current drawing window size in pixels, wrapping raylib's `GetScreenWidth` / `GetScreenHeight`. Must be called after `turtle_init_window`.
+
+**Parameters**:  
+- `width`: If non-NULL, receives the window width.
+- `height`: If non-NULL, receives the window height.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Center or scale a drawing to the window — e.g. compute the midpoint as `(width/2, height/2)`.
 
 ---
 
@@ -1771,6 +2117,772 @@ int main(void) {
 **Result:**
 ![Image](../sources/Capture21.PNG)
 
+
+---
+
+## Example A — Read where the turtle is
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    fmt_printf("start at (%.0f, %.0f)\n", turtle_get_x(t), turtle_get_y(t));
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+start at (400, 300)
+```
+
+---
+
+## Example B — Read back pen / fill / background colors
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_color(t, 200, 60, 30, 255);
+    turtle_set_background_color(t, 240, 240, 250, 255);
+
+    unsigned char r, g, b, a;
+    turtle_get_pen_color(t, &r, &g, &b, &a);
+    fmt_printf("pen        = %u %u %u %u\n", r, g, b, a);
+
+    turtle_get_background_color(t, &r, &g, &b, &a);
+    fmt_printf("background = %u %u %u %u\n", r, g, b, a);
+
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+pen        = 200 60 30 255
+background = 240 240 250 255
+```
+
+---
+
+## Example C — `turtle_reset` brings everything back to start
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 100.f, 100.f);
+    turtle_set_heading (t, 90.f);
+    turtle_pen_up(t);
+
+    turtle_reset(t);
+    fmt_printf("pos = (%.0f, %.0f), heading = %.0f, pen down = %d\n",
+               turtle_get_x(t), turtle_get_y(t),
+               turtle_heading(t), turtle_is_down(t));
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+pos = (400, 300), heading = 0, pen down = 1
+```
+
+---
+
+## Example D — `turtle_clear` keeps the turtle where it is
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 250.f, 250.f);
+    turtle_pen_up(t);
+
+    /* Pretend we added some lines (we'd normally call forward here). */
+    t->lines[t->lineCount++] = (Line){{0,0},{1,1},BLACK,1.0f};
+    t->lines[t->lineCount++] = (Line){{0,0},{1,1},BLACK,1.0f};
+
+    turtle_clear(t);   /* drawings gone, state preserved */
+
+    fmt_printf("lines  = %d\n",        turtle_get_line_count(t));
+    fmt_printf("pos    = (%.0f, %.0f)\n", turtle_get_x(t), turtle_get_y(t));
+    fmt_printf("pen up = %d\n",        !turtle_is_down(t));
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+lines  = 0
+pos    = (250, 250)
+pen up = 1
+```
+
+---
+
+## Example E — `turtle_undo` rolls back one line
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    /* Stuff three fake line segments. */
+    for (int i = 0; i < 3; ++i)
+        t->lines[t->lineCount++] = (Line){{0,0},{1,1},BLACK,1.0f};
+
+    fmt_printf("before: %d\n", turtle_get_line_count(t));
+    turtle_undo(t);
+    fmt_printf("after : %d\n", turtle_get_line_count(t));
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+before: 3
+after : 2
+```
+
+---
+
+## Example F — `turtle_towards` gives the bearing to a point
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 100.f, 100.f);
+
+    fmt_printf("east  -> %.1f\n", turtle_towards(t, 200.f, 100.f));
+    fmt_printf("south -> %.1f\n", turtle_towards(t, 100.f, 200.f));
+    fmt_printf("west  -> %.1f\n", turtle_towards(t,   0.f, 100.f));
+    fmt_printf("north -> %.1f\n", turtle_towards(t, 100.f,   0.f));
+
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+east  -> 0.0
+south -> 90.0
+west  -> 180.0
+north -> 270.0
+```
+
+---
+
+## Example G — `turtle_face_towards` aims at the cursor without moving
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 100.f, 100.f);
+
+    turtle_face_towards(t, 200.f, 200.f);
+    fmt_printf("heading = %.1f\n", turtle_heading(t));
+
+    turtle_face_towards(t, 100.f,   0.f);
+    fmt_printf("heading = %.1f\n", turtle_heading(t));
+
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+heading = 45.0
+heading = 270.0
+```
+
+---
+
+## Example H — Counts make for cheap progress reporting
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    t->lines[t->lineCount++] = (Line){{0,0},{1,1},BLACK,1.0f};
+    t->stamps[t->stampCount++] = (Stamp){{0,0},BLACK,1};
+    t->stamps[t->stampCount++] = (Stamp){{0,0},BLACK,2};
+
+    fmt_printf("lines=%d stamps=%d\n",
+               turtle_get_line_count(t),
+               turtle_get_stamp_count(t));
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+lines=1 stamps=2
+```
+
+---
+
+## Example I — Set pen color without touching fill
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    /* Give fill an obvious value first. */
+    turtle_color_rgb(t, 0,0,0, 200, 200, 50);
+
+    turtle_set_pen_color_rgb(t, 30, 60, 90, 255);
+
+    unsigned char r, g, b, a;
+    turtle_get_pen_color (t, &r, &g, &b, &a);
+    fmt_printf("pen  = %u %u %u %u\n", r, g, b, a);
+    turtle_get_fill_color(t, &r, &g, &b, &a);
+    fmt_printf("fill = %u %u %u %u (unchanged)\n", r, g, b, a);
+
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+pen  = 30 60 90 255
+fill = 200 200 50 255 (unchanged)
+```
+
+---
+
+## Example J — `turtle_get_speed` round-trips
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_speed(t, 4.0f);
+    fmt_printf("speed = %.1f\n", turtle_get_speed(t));
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+speed = 4.0
+```
+
+---
+
+## Example K — Backward = forward(-d)
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+/* This example needs a window because turtle_forward animates;
+ * if you're in a headless test, validate state manually instead. */
+int main(void) {
+    turtle_init_window(640, 480, "backward demo");
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 320.f, 240.f);
+    turtle_set_heading (t, 0.f);
+
+    turtle_forward (t, 100.f);   /* +100 along x */
+    turtle_backward(t, 50.f);    /* go back 50  */
+
+    fmt_printf("final x = %.0f (expected 370)\n", turtle_get_x(t));
+    turtle_deallocate(t);
+    turtle_close_window();
+    return 0;
+}
+```
+
+---
+
+## Example L — Drive a turtle to a target with `face_towards` + `forward`
+
+```c
+#include "turtle/turtle.h"
+
+int main(void) {
+    turtle_init_window(640, 480, "homing turtle");
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 100.f, 100.f);
+    turtle_pen_down(t);
+
+    float tx = 500.f, ty = 400.f;
+    turtle_face_towards(t, tx, ty);
+    turtle_forward(t, turtle_distance(t, tx, ty));
+
+    turtle_done(t, NULL);
+    turtle_close_window();
+    return 0;
+}
+```
+
+The turtle walks in a single straight line from `(100, 100)` to
+`(500, 400)`, regardless of its previous heading.
+
+---
+
+## Example M — Animation loop with `turtle_clear` for redraw
+
+```c
+#include "turtle/turtle.h"
+
+static void redraw(Turtle* t) {
+    /* Each frame: clear the previous drawing, then re-draw whatever
+       is current. This pattern keeps the line buffer from growing
+       without bound when you regenerate the scene every frame. */
+    turtle_clear(t);
+    /* ... your shape-drawing code here ... */
+    (void)t;
+}
+
+int main(void) {
+    turtle_init_window(640, 480, "redraw");
+    Turtle* t = turtle_create();
+    turtle_done(t, redraw);
+    turtle_deallocate(t);
+    turtle_close_window();
+    return 0;
+}
+```
+
+---
+
+## Example N — Mid-program palette swap with reset
+
+```c
+#include "turtle/turtle.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_set_color(t, 200, 60, 30, 255);
+    turtle_set_position(t, 100.f, 100.f);
+
+    /* Wipe everything and start fresh with the default palette. */
+    turtle_reset(t);
+
+    unsigned char r, g, b, a;
+    turtle_get_pen_color(t, &r, &g, &b, &a);
+    fmt_printf("pen after reset = %u %u %u %u\n", r, g, b, a);
+
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Output**
+
+```
+pen after reset = 0 0 0 255
+```
+
+---
+
+## Example O — Build a tour: walk between N points using `towards`
+
+```c
+#include "turtle/turtle.h"
+
+
+int main(void) {
+    turtle_init_window(640, 480, "tour");
+    Turtle* t = turtle_create();
+    turtle_set_position(t, 100.f, 240.f);
+    turtle_pen_down(t);
+
+    /* Visit each waypoint in order. */
+    Vector2 waypoints[] = {
+        {200.f, 100.f}, {400.f, 100.f}, {540.f, 240.f},
+        {400.f, 380.f}, {200.f, 380.f}, {100.f, 240.f},
+    };
+    for (int i = 0; i < 6; ++i) {
+        turtle_face_towards(t, waypoints[i].x, waypoints[i].y);
+        turtle_forward(t, turtle_distance(t, waypoints[i].x, waypoints[i].y));
+    }
+
+    turtle_done(t, NULL);
+    turtle_close_window();
+    return 0;
+}
+```
+
+A simple "visit each waypoint" loop that draws a closed hexagon-ish
+shape — no manual angle math.
+
+---
+
+## Example 22: Rainbow Square Spiral
+
+Each iteration draws one side of a growing square, rotating the hue
+slightly each time to produce a full-spectrum spiral on a dark background.
+
+```c
+#include <math.h>
+#include "turtle/turtle.h"
+
+
+void draw_rainbow_spiral(Turtle *state) {
+    static bool drawn = false;
+
+    if (!drawn) {
+        turtle_set_background_color(state, 10, 10, 30, 255);
+        int side = 10;
+
+        for (int i = 0; i < 100; i++) {
+            float hue = (float)(i * 3.6f);
+            unsigned char r = (unsigned char)(127 * (1.0 + cos(DEG2RAD * hue)));
+            unsigned char g = (unsigned char)(127 * (1.0 + sin(DEG2RAD * hue)));
+            unsigned char b = (unsigned char)(255 - r);
+
+            turtle_set_color(state, r, g, b, 255);
+            turtle_forward(state, (float)side);
+            turtle_right(state, 89.0f);
+
+            side += 2;
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    Turtle *state = turtle_create();
+
+    turtle_init_window(800, 600, "Rainbow Square Spiral");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 10.0f);
+    turtle_done(state, draw_rainbow_spiral);
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+**Result:**
+![Image](../sources/Capture22.PNG)
+
+---
+
+## Example 23: Bullseye / Concentric Rings
+
+Draws concentric filled rings (red/white/blue) to produce a target pattern.
+Each ring is drawn as a full circle at the appropriate radius.
+
+```c
+#include "turtle/turtle.h"
+
+
+void draw_bullseye(Turtle *state) {
+    static bool drawn = false;
+
+    if (!drawn) {
+        turtle_set_background_color(state, 255, 255, 255, 255);
+
+        unsigned char ring_colors[5][3] = {
+            {255, 0,   0},    /* outermost – red   */
+            {255, 255, 255},  /* white             */
+            {0,   0,   200},  /* blue              */
+            {255, 255, 255},  /* white             */
+            {255, 0,   0}     /* innermost – red   */
+        };
+
+        for (int ring = 4; ring >= 0; ring--) {
+            float radius = (float)(ring + 1) * 40.0f;
+            unsigned char *c = ring_colors[ring];
+
+            turtle_set_color(state, c[0], c[1], c[2], 255);
+            turtle_pen_up(state);
+            turtle_set_position(state, 400.0f, 300.0f + radius);
+            turtle_pen_down(state);
+            turtle_set_heading(state, 0.0f);
+            turtle_circle(state, radius, 360.0f, 60);
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    Turtle *state = turtle_create();
+
+    turtle_init_window(800, 600, "Bullseye");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 10.0f);
+    turtle_done(state, draw_bullseye);
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+**Result:**
+![Image](../sources/Capture23.PNG)
+
+---
+
+## Example 24: Sunburst — Radial Lines from Centre
+
+72 coloured lines radiate outward from the screen centre, each tinted
+by its angular position using a cosine/sine hue formula.
+
+```c
+#include <math.h>
+#include "turtle/turtle.h"
+
+
+void draw_sunburst(Turtle *state) {
+    static bool drawn = false;
+
+    if (!drawn) {
+        turtle_set_background_color(state, 0, 0, 0, 255);
+        turtle_pen_size(state, 2.0f);
+
+        for (int angle = 0; angle < 360; angle += 5) {
+            unsigned char r = (unsigned char)(127 + 127 * cos(DEG2RAD * angle));
+            unsigned char g = (unsigned char)(127 + 127 * sin(DEG2RAD * angle));
+            unsigned char b = (unsigned char)(255 - r);
+
+            turtle_set_color(state, r, g, b, 255);
+            turtle_pen_up(state);
+            turtle_set_position(state, 400.0f, 300.0f);
+            turtle_pen_down(state);
+            turtle_set_heading(state, (float)angle);
+            turtle_forward(state, 220.0f);
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    Turtle *state = turtle_create();
+
+    turtle_init_window(800, 600, "Sunburst");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 10.0f);
+    turtle_done(state, draw_sunburst);
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+**Result:**
+![Image](../sources/Capture24.PNG)
+
+---
+
+## Example 25: Nested Polygons (triangle → nonagon)
+
+Draws seven polygons (3 to 9 sides) centred at the turtle's start
+position, each slightly larger and in a different colour.
+
+```c
+#include <math.h>
+#include "turtle/turtle.h"
+
+
+
+void draw_nested_polygons(Turtle *state) {
+    static bool drawn = false;
+    if (!drawn) {
+        turtle_set_background_color(state, 20, 20, 40, 255);
+
+        for (int sides = 3; sides <= 9; sides++) {
+            float hue = (float)((sides - 3) * 50);
+            unsigned char r = (unsigned char)(127 + 127 * cos(DEG2RAD * hue));
+            unsigned char g = (unsigned char)(127 + 127 * sin(DEG2RAD * hue));
+            unsigned char b = (unsigned char)(200 - r / 2);
+
+            turtle_set_color(state, r, g, b, 255);
+            turtle_pen_up(state);
+            turtle_set_position(state, 400.0f, 300.0f);
+            turtle_pen_down(state);
+            turtle_set_heading(state, 0.0f);
+
+            float len = (float)(sides * 20);
+            float ext = 360.0f / (float)sides;
+
+            for (int i = 0; i < sides; i++) {
+                turtle_forward(state, len);
+                turtle_left(state, ext);
+            }
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    Turtle *state = turtle_create();
+    turtle_init_window(800, 600, "Nested Polygons");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 10.0f);
+    turtle_done(state, draw_nested_polygons);
+    turtle_deallocate(state);
+    turtle_close_window();
+    return 0;
+}
+```
+
+**Result:**
+![Image](../sources/Capture25.PNG)
+
+---
+
+## Example 26: Zigzag Sine Wave
+
+The turtle traces a sine wave across the screen using `turtle_set_position`
+for each sample point, applying a gradient colour to each segment.
+
+```c
+#include <math.h>
+#include "turtle/turtle.h"
+
+
+
+void draw_sine_wave(Turtle *state) {
+    static bool drawn = false;
+    
+    if (!drawn) {
+        turtle_set_background_color(state, 0, 0, 0, 255);
+        turtle_pen_size(state, 2.0f);
+        turtle_pen_up(state);
+        turtle_set_position(state, 50.0f, 300.0f);
+        turtle_pen_down(state);
+
+        int steps = 140;
+        float step_x   = 5.0f;
+        float amplitude = 100.0f;
+        float freq      = 0.08f;
+
+        for (int i = 0; i < steps; i++) {
+            float nx = 50.0f + (float)i * step_x;
+            float ny = 300.0f + amplitude * sinf((float)i * freq * 2.0f * 3.14159f);
+            unsigned char r = (unsigned char)(127 + 127 * cos(DEG2RAD * i * 2.5f));
+            unsigned char g = (unsigned char)(127 + 127 * sin(DEG2RAD * i * 2.5f));
+            unsigned char b = (unsigned char)(255 - r);
+
+            turtle_set_color(state, r, g, b, 255);
+            turtle_pen_up(state);
+            turtle_set_position(state, nx, ny);
+            turtle_pen_down(state);
+
+            float nx2 = 50.0f + (float)(i + 1) * step_x;
+            float ny2 = 300.0f + amplitude * sinf((float)(i + 1) * freq * 2.0f * 3.14159f);
+
+            turtle_set_position(state, nx2, ny2);
+        }
+        drawn = true;
+    }
+}
+
+int main(void) {
+    Turtle *state = turtle_create();
+
+    turtle_init_window(800, 600, "Sine Wave");
+    turtle_set_fps(60);
+    turtle_set_speed(state, 10.0f);
+    turtle_done(state, draw_sine_wave);
+    turtle_deallocate(state);
+    turtle_close_window();
+
+    return 0;
+}
+```
+
+**Result:**
+![Image](../sources/Capture26.PNG)
+
+---
+
+## Example 27: Labels + screenshot with `turtle_write_at`, `turtle_screen_size`, `turtle_save_image`
+
+Draw a centered title with `turtle_write_at`, size the layout from
+`turtle_screen_size`, then save the canvas to a PNG with `turtle_save_image`
+(no need to include `raylib.h`).
+
+```c
+#include "turtle/turtle.h"
+
+int main(void) {
+    Turtle* t = turtle_create();
+    turtle_init_window(420, 420, "c_std turtle");
+    turtle_set_fps(60);
+    turtle_set_speed(t, 100);
+    turtle_set_background_color(t, 255, 255, 255, 255);
+    turtle_pen_size(t, 4);
+
+    int w = 0, h = 0;
+    turtle_screen_size(&w, &h);                       /* 420 x 420 */
+    turtle_write_at(t, w / 2 - 78, 18, "nested squares", 22, (Color){30, 90, 200, 255});
+
+    unsigned char colors[3][3] = {{220, 50, 50}, {40, 160, 60}, {40, 90, 210}};
+    for (int s = 0; s < 3; ++s) {
+        float side = 90.0f + s * 70.0f;
+        turtle_pen_up(t);
+        turtle_set_position(t, w / 2.0f - side / 2.0f, h / 2.0f + side / 2.0f + 24.0f);
+        turtle_set_heading(t, 0);
+        turtle_pen_down(t);
+        turtle_set_pen_color_rgb(t, colors[s][0], colors[s][1], colors[s][2], 255);
+        for (int i = 0; i < 4; ++i) {
+            turtle_forward(t, side);
+            turtle_right(t, 90);
+        }
+    }
+    turtle_draw(t);
+
+    turtle_save_image("turtle_labels.png");
+    turtle_deallocate(t);
+    turtle_close_window();
+    return 0;
+}
+```
+
+**Result:**
+![Image](../sources/turtle_labels.png)
 
 ---
 

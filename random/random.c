@@ -13,7 +13,45 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static unsigned int rand_state;
+
+
+/* Internal PRNG state. The module now owns its generator (xorshift32)
+   instead of relying on libc rand(), so getstate/setstate can actually
+   snapshot and restore the sequence — rand()'s state is opaque and not
+   round-trippable through a single integer. */
+static unsigned int rand_state = 1u;
+
+/* Advance and return the next 32-bit value. Marsaglia xorshift32. */
+static unsigned int prng_next32(void) {
+    unsigned int x = rand_state;
+    if (x == 0) {
+        x = 2463534242u;  /* xorshift requires non-zero state */
+    }  
+
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    rand_state = x;
+
+    return x;
+}
+
+
+/* Internal helper: random size_t in [0, n). Used by shuffle/choice/sample. */
+static size_t random_index(size_t n) {
+    if (n == 0) {
+        return 0;
+    }
+    if (n <= 0xFFFFFFFFu) {
+        return (size_t)(prng_next32() % (unsigned int)n);
+    }
+    /* For very large n (>= 2^32), compose two draws into a 64-bit value. */
+    unsigned long long hi = (unsigned long long)prng_next32() << 32;
+    unsigned long long lo = (unsigned long long)prng_next32();
+
+    return (size_t)((hi | lo) % (unsigned long long)n);
+}
+
 
 /**
  * @brief This function sets the seed for the random number generator, allowing
@@ -24,7 +62,10 @@ static unsigned int rand_state;
 void random_seed(unsigned int seed) {
     RANDOM_LOG("[random_seed]: Entering with seed: %u", seed);
 
-    rand_state = seed;
+    /* Seed both the internal xorshift state and libc rand(). Internal
+       generator is what now drives every public random_* function;
+       libc rand() is kept seeded for any caller that still pokes at it. */
+    rand_state = seed ? seed : 1u;
     srand(seed);
 
     RANDOM_LOG("[random_seed]: Seed set to: %u", seed);
@@ -51,7 +92,7 @@ int random_randint(int a, int b) {
         b = temp;
     }
 
-    int result = a + rand() % (b - a + 1);
+    int result = a + (int)(prng_next32() % (unsigned int)(b - a + 1));
     RANDOM_LOG("[random_randint]: Generated random integer: %d in range [%d, %d]", result, a, b);
     RANDOM_LOG("[random_randint]: Exiting with result: %d", result);
 
@@ -85,7 +126,7 @@ int random_randrange(int a, int b, int step) {
     int num_steps = (range + abs(step) - 1) / abs(step);
     RANDOM_LOG("[random_randrange]: Calculated num_steps: %d", num_steps);
 
-    int random_step = rand() % num_steps;
+    int random_step = (int)(prng_next32() % (unsigned int)num_steps);
     RANDOM_LOG("[random_randrange]: Generated random_step: %d", random_step);
 
     int result = a + random_step * step;
@@ -104,7 +145,8 @@ int random_randrange(int a, int b, int step) {
 double random_random() {
     RANDOM_LOG("[random_random]: Entering");
 
-    double result = rand() / (double)RAND_MAX;
+    /* 2^32 in the denominator so the value is strictly less than 1.0. */
+    double result = (double)prng_next32() / 4294967296.0;
     RANDOM_LOG("[random_random]: Generated random double: %f in range [0, 1)", result);
 
     RANDOM_LOG("[random_random]: Exiting with result: %f", result);
@@ -131,31 +173,34 @@ double random_uniform(double a, double b) {
         b = temp;
     }
 
-    double result = a + (rand() / (double)RAND_MAX) * (b - a);
+    double result = a + ((double)prng_next32() / 4294967296.0) * (b - a);
     RANDOM_LOG("[random_uniform]: Exiting random_uniform with result: %f", result);
 
     return result;
 }
 
+
 /**
- * @brief Generates a random integer with a specified number of random bits.
+ * @brief Generates a non-negative random integer with the requested number
+ *        of random bits.
  *
- * @param a The number of random bits to generate (must be > 0 and <= 32).
- * @return A random integer with `a` random bits. Returns -1 for invalid input.
+ * @param a Number of random bits to generate (must be 1..31 inclusive).
+ *          Note: 32 is rejected because filling all 32 bits of a signed `int`
+ *          would set the sign bit and produce negative results — callers
+ *          expect a non-negative integer in `[0, 2^a)`.
+ *
+ * @return A non-negative integer in `[0, 2^a)`, or -1 on invalid `a`.
  */
 int random_getrandbits(int a) {
     RANDOM_LOG("[random_getrandbits]: Entering random_getrandbits with a: %d", a);
 
-    if (a <= 0 || a > (int)(sizeof(int) * 8)) {
-        RANDOM_LOG("[random_getrandbits]: Error: a is out of valid range (1 to 32).");
-        return -1; // invalid input
+    if (a <= 0 || a > 31) {
+        RANDOM_LOG("[random_getrandbits]: Error: a is out of valid range (1 to 31).");
+        return -1;
     }
 
-    int result = 0;
-    for (int i = 0; i < a; i++) {
-        result = (result << 1) | (rand() & 1);
-        RANDOM_LOG("[random_getrandbits]: Generated random bit: %d, current result: %d", (rand() & 1), result);
-    }
+    unsigned int v = prng_next32();
+    int result = (int)(v & ((1U << a) - 1U));
 
     RANDOM_LOG("[random_getrandbits]: Exiting random_getrandbits with result: %d", result);
     return result;
@@ -185,7 +230,7 @@ void random_shuffle(void *array, size_t n, size_t size) {
 
     char* arr = (char*)array;
     for (size_t i = 0; i < n - 1; i++) {
-        size_t j = i + random_randint(0, n - i - 1);
+        size_t j = i + random_index(n - i);
         RANDOM_LOG("[random_shuffle]: Swapping element %zu with element %zu", i, j);
 
         void* temp = malloc(size);
@@ -227,7 +272,7 @@ void* random_choice(void* array, size_t n, size_t size) {
         return NULL;
     }
 
-    size_t index = random_randint(0, n - 1);
+    size_t index = random_index(n);
     RANDOM_LOG("[random_choice]: Selected index: %zu", index);
 
     void* result = (char*)array + index * size;
@@ -235,6 +280,7 @@ void* random_choice(void* array, size_t n, size_t size) {
 
     return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the Triangular distribution.
@@ -311,12 +357,8 @@ void random_choices(void *array, size_t n, size_t size, size_t num_choices, void
         RANDOM_LOG("[random_choices]: Error: number of choices is zero in random_choices.");
         return;
     }
-    if (weights == NULL) {
-        RANDOM_LOG("[random_choices]: Error: weights array is NULL in random_choices.");
-        return;
-    }
 
-    // Allocate memory for cumulative weights
+
     double *cumulative_weights = (double *)malloc(n * sizeof(double));
     if (cumulative_weights == NULL) {
         RANDOM_LOG("[random_choices]: Error: memory allocation failed for cumulative_weights in random_choices.");
@@ -325,11 +367,12 @@ void random_choices(void *array, size_t n, size_t size, size_t num_choices, void
 
     // Calculate cumulative weights
     RANDOM_LOG("[random_choices]: Calculating cumulative weights.");
-    cumulative_weights[0] = weights[0];
+    cumulative_weights[0] = weights ? weights[0] : 1.0;
     RANDOM_LOG("[random_choices]: cumulative_weights[0] = %f", cumulative_weights[0]);
-    
+
     for (size_t i = 1; i < n; i++) {
-        cumulative_weights[i] = cumulative_weights[i - 1] + weights[i];
+        double w = weights ? weights[i] : 1.0;
+        cumulative_weights[i] = cumulative_weights[i - 1] + w;
         RANDOM_LOG("[random_choices]: cumulative_weights[%zu] = %f", i, cumulative_weights[i]);
     }
 
@@ -353,6 +396,7 @@ void random_choices(void *array, size_t n, size_t size, size_t num_choices, void
     RANDOM_LOG("[random_choices]: Freed cumulative_weights memory.");
     RANDOM_LOG("[random_choices]: Exiting random_choices.");
 }
+
 
 /**
  * @brief Samples a specified number of unique random elements from an array.
@@ -395,23 +439,21 @@ void random_sample(void *array, size_t n, size_t size, size_t num_samples, void 
         return;
     }
 
-    // Initialize indices
     RANDOM_LOG("[random_sample]: Initializing indices.");
     for (size_t i = 0; i < n; i++) {
         indices[i] = i;
     }
 
-    // Shuffle the first num_samples elements
     RANDOM_LOG("[random_sample]: Shuffling array indices to select %zu samples.", num_samples);
     for (size_t i = 0; i < num_samples; i++) {
-        size_t j = i + random_randint(0, n - i - 1);
+        size_t j = i + random_index(n - i);
         RANDOM_LOG("[random_sample]: Swapping indices[%zu] with indices[%zu]", i, j);
+
         size_t temp = indices[i];
         indices[i] = indices[j];
         indices[j] = temp;
     }
 
-    // Copy the selected elements into the samples array
     RANDOM_LOG("[random_sample]: Copying selected samples to output array.");
     for (size_t i = 0; i < num_samples; i++) {
         memcpy((char *)samples + i * size, (char *)array + indices[i] * size, size);
@@ -421,6 +463,7 @@ void random_sample(void *array, size_t n, size_t size, size_t num_samples, void 
     free(indices);
     RANDOM_LOG("[random_sample]: Exiting random_sample.");
 }
+
 
 /**
  * @brief This function sets the state of the random number generator to the specified value.
@@ -443,6 +486,7 @@ void random_setstate(const unsigned int *state) {
     RANDOM_LOG("[random_setstate]: Exiting random_setstate");
 }
 
+
 /**
  * @brief This function retrieves the current state of the random number generator.
  * 
@@ -462,6 +506,7 @@ void random_getstate(unsigned int *state) {
 
     RANDOM_LOG("[random_getstate]: Exiting random_getstate");
 }
+
 
 /**
  * @brief Generates a random double number based on the Gaussian (normal) distribution.
@@ -509,6 +554,7 @@ double random_gauss(double mean, double stddev) {
     return result;
 }
 
+
 /**
  * @brief Generates a random double number based on the Exponential distribution.
  *
@@ -540,6 +586,7 @@ double random_expo(double lambda) {
     return result;
 }
 
+
 /**
  * @brief Generates a random double number based on the Log-normal distribution.
  *
@@ -559,6 +606,7 @@ double random_lognormal(double mean, double stddev) {
 
     return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the Gamma distribution.
@@ -582,9 +630,9 @@ double random_gamma(double shape, double scale) {
     }
 
     if (shape < 1.0) {
-        // Johnk's generator for shape < 1
         RANDOM_LOG("[random_gamma]: Using Johnk's generator for shape < 1");
         double expo;
+
         do {
             expo = random_random();
             RANDOM_LOG("[random_gamma]: Generated expo: %f", expo);
@@ -595,7 +643,6 @@ double random_gamma(double shape, double scale) {
         return result;
     }
 
-    // Marsaglia and Tsang's method for shape >= 1
     RANDOM_LOG("[random_gamma]: Using Marsaglia and Tsang's method for shape >= 1");
     double d = shape - 1.0 / 3.0;
     double c = 1.0 / sqrt(9.0 * d);
@@ -620,6 +667,7 @@ double random_gamma(double shape, double scale) {
     RANDOM_LOG("[random_gamma]: Exiting random_gamma (Marsaglia and Tsang's) with result: %f", result);
     return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the Beta distribution.
@@ -679,6 +727,7 @@ double random_pareto(double shape, double scale) {
     return result;
 }
 
+
 /**
  * @brief Generates a random double number based on the Weibull distribution.
  * which is a continuous probability distribution.
@@ -707,6 +756,7 @@ double random_weibull(double shape, double scale) {
 
     return result;
 }
+
 
 /**
  * @brief Generates a random double number based on the von Mises distribution.

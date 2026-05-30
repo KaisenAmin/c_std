@@ -57,10 +57,12 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
     return MapViewOfFile(h, FILE_MAP_READ, 0, 0, length);
 }
 
+
 int munmap(void* addr, size_t length) {
     (void)length;  // Cast to void to suppress unused parameter warning
     return UnmapViewOfFile(addr) ? 0 : -1;
 }
+
 
 long sysconf(int name) {
     if (name == _SC_PAGESIZE) {
@@ -97,6 +99,7 @@ struct ezxml_root {       // additional data for the root tag
     short standalone;     // non-zero if <?xml standalone="yes"?>
     char err[EZXML_ERRL]; // error string
 };
+
 
 static ezxml_t ezxml_parse_str(char *s, size_t len);
 static ezxml_t ezxml_parse_fd(int fd);
@@ -172,13 +175,6 @@ static ezxml_t ezxml_child(ezxml_t xml, const char *name) {
     return xml;
 }
 
-// returns the Nth tag with the same name in the same subsection or NULL if not
-// static ezxml_t ezxml_idx(ezxml_t xml, int idx) {
-//     for (; xml && idx; idx--) {
-//         xml = xml->next;
-//     }
-//     return xml;
-// }
 
 // returns the value of the requested tag attribute or NULL if not found
 static const char *ezxml_attr(ezxml_t xml, const char *attr)
@@ -197,23 +193,6 @@ static const char *ezxml_attr(ezxml_t xml, const char *attr)
     return (root->attr[i][j]) ? root->attr[i][j + 1] : NULL; // found default
 }
 
-// same as ezxml_get but takes an already initialized va_list
-// static ezxml_t ezxml_vget(ezxml_t xml, va_list ap) {
-//     if (!xml) {
-//         fprintf(stderr, "xml is NULL!\n");
-//         return NULL;
-//     }
-
-//     char *name = va_arg(ap, char *);
-//     int idx = -1;
-
-//     if (name && *name) {
-//         idx = va_arg(ap, int);    
-//         xml = ezxml_child(xml, name);
-//     }
-
-//     return (idx < 0) ? xml : ezxml_vget(ezxml_idx(xml, idx), ap);
-// }
 
 // returns a null terminated array of processing instructions for the given
 static const char **ezxml_pi(ezxml_t xml, const char *target) {
@@ -233,6 +212,7 @@ static const char **ezxml_pi(ezxml_t xml, const char *target) {
 
     return (const char **)((root->pi[i]) ? root->pi[i] + 1 : EZXML_NIL);
 }
+
 
 // set an error string and return root
 static ezxml_t ezxml_err(ezxml_root_t root, char *s, const char *err, ...) {
@@ -338,8 +318,7 @@ static void ezxml_open_tag(ezxml_root_t root, char *name, char **attr) {
 }
 
 // called when parser finds character content between open and closing tag
-static void ezxml_char_content(ezxml_root_t root, char *s, size_t len, char t)
-{
+static void ezxml_char_content(ezxml_root_t root, char *s, size_t len, char t) {
     ezxml_t xml = root->cur;
     char *m = s;
     size_t l;
@@ -394,8 +373,7 @@ static int ezxml_ent_ok(char *name, char *s, char **ent) {
 }
 
 // called when the parser finds a processing instruction
-static void ezxml_proc_inst(ezxml_root_t root, char *s, size_t len)
-{
+static void ezxml_proc_inst(ezxml_root_t root, char *s, size_t len) {
     int i = 0, j = 1;
     char *target = s;
 
@@ -431,8 +409,7 @@ static void ezxml_proc_inst(ezxml_root_t root, char *s, size_t len)
 }
 
 // called when the parser finds an internal doctype subset
-static short ezxml_internal_dtd(ezxml_root_t root, char *s, size_t len)
-{
+static short ezxml_internal_dtd(ezxml_root_t root, char *s, size_t len) {
     char q, *c, *t, *n = NULL, *v, **ent, **pe;
     int i, j;
     
@@ -536,8 +513,7 @@ static short ezxml_internal_dtd(ezxml_root_t root, char *s, size_t len)
 
 // Converts a UTF-16 string to UTF-8. Returns a new string that must be freed
 // or NULL if no conversion was needed.
-static char *ezxml_str2utf8(char **s, size_t *len)
-{
+static char *ezxml_str2utf8(char **s, size_t *len) {
     char *u;
     size_t l = 0, sl, max = *len;
     long c, d;
@@ -971,6 +947,7 @@ static const char *ezxml_error(ezxml_t xml) {
     return (xml) ? ((ezxml_root_t)xml)->err : "";
 }
 
+
 // returns a new empty ezxml structure with the given root tag name
 static ezxml_t ezxml_new(const char *name)
 {
@@ -985,6 +962,7 @@ static ezxml_t ezxml_new(const char *name)
     root->attr = root->pi = (char ***)(root->xml.attr = EZXML_NIL);
     return &root->xml;
 }
+
 
 // inserts an existing tag into an ezxml structure
 static ezxml_t ezxml_insert(ezxml_t xml, ezxml_t dest, size_t off)
@@ -1028,6 +1006,7 @@ static ezxml_t ezxml_insert(ezxml_t xml, ezxml_t dest, size_t off)
     return xml;
 }
 
+
 // Adds a child tag. off is the offset of the child tag relative to the start
 // of the parent tag's character content. Returns the child tag.
 static ezxml_t ezxml_add_child(ezxml_t xml, const char *name, size_t off) {
@@ -1044,6 +1023,7 @@ static ezxml_t ezxml_add_child(ezxml_t xml, const char *name, size_t off) {
     return ezxml_insert(child, xml, off);
 }
 
+
 // sets the character content for the given tag and returns the tag
 static ezxml_t ezxml_set_txt(ezxml_t xml, const char *txt) {
     if (! xml) {
@@ -1058,6 +1038,7 @@ static ezxml_t ezxml_set_txt(ezxml_t xml, const char *txt) {
     
     return xml;
 }
+
 
 // Sets the given tag attribute or adds a new attribute if not found. A value
 // of NULL will remove the specified attribute. Returns the tag given.
@@ -1124,6 +1105,7 @@ static ezxml_t ezxml_set_attr(ezxml_t xml, const char *name, const char *value) 
     return xml;
 }
 
+
 // sets a flag for the given tag and returns the tag
 static ezxml_t ezxml_set_flag(ezxml_t xml, short flag) {
     if (xml) {
@@ -1131,6 +1113,7 @@ static ezxml_t ezxml_set_flag(ezxml_t xml, short flag) {
     }
     return xml;
 }
+
 
 // removes a tag along with its subtags without freeing its memory
 static ezxml_t ezxml_cut(ezxml_t xml) {
@@ -1171,7 +1154,7 @@ static ezxml_t ezxml_cut(ezxml_t xml) {
                 cur = cur->next;
             }
             if (cur->next) {
-                cur->next = cur->next->next; // patch next list
+                cur->next = cur->next->next; 
             }
         }        
     }
@@ -1186,6 +1169,53 @@ static ezxml_t ezxml_document_root(ezxml_t doc) {
     return doc;
 }
 
+/* ------------------------------------------------------------------ */
+/* Wrapper registry: the document owns every XmlNode wrapper it hands  */
+/* out so callers only need xml_deallocate_document() to release them.  */
+/* ------------------------------------------------------------------ */
+
+/* Register `node` with `doc` so xml_deallocate_document frees it later.
+ * Sets node->owner = doc. Returns the node (or node unchanged if doc is
+ * NULL or the registry could not grow — the wrapper then stays
+ * caller-owned, which never happens for the library's own examples). */
+static XmlNode* xml__doc_register(XmlDocument* doc, XmlNode* node) {
+    if (!doc || !node) {
+        return node;
+    }
+    if (doc->reg_count == doc->reg_cap) {
+        size_t new_cap = doc->reg_cap ? doc->reg_cap * 2 : 8;
+        XmlNode** grown = (XmlNode**)realloc(doc->reg_nodes, new_cap * sizeof(XmlNode*));
+        if (!grown) {
+            XML_LOG("[xml__doc_register] Error: failed to grow wrapper registry.");
+            return node; /* leave unregistered rather than crash */
+        }
+        doc->reg_nodes = grown;
+        doc->reg_cap = new_cap;
+    }
+    doc->reg_nodes[doc->reg_count++] = node;
+    node->owner = doc;
+    return node;
+}
+
+/* Remove `node` from its owning document's registry (if any) so that a
+ * subsequent xml_deallocate_document does not free the wrapper a second
+ * time. Used by xml_deallocate_node when the caller frees a wrapper
+ * (e.g. a detached subtree) explicitly. */
+static void xml__doc_unregister(XmlNode* node) {
+    XmlDocument* doc = (node) ? node->owner : NULL;
+    if (!doc || !doc->reg_nodes) {
+        return;
+    }
+    for (size_t i = 0; i < doc->reg_count; ++i) {
+        if (doc->reg_nodes[i] == node) {
+            doc->reg_nodes[i] = doc->reg_nodes[doc->reg_count - 1];
+            doc->reg_count--;
+            node->owner = NULL;
+            return;
+        }
+    }
+}
+
 /**
  * @brief Parses an XML file and returns a corresponding XmlDocument structure.
  * 
@@ -1196,6 +1226,10 @@ static ezxml_t ezxml_document_root(ezxml_t doc) {
  * @return A pointer to the XmlDocument structure representing the parsed XML file, or NULL if an error occurs.
  */
 XmlDocument* xml_parse_file(const char* filename) {
+    if (!filename) {
+        XML_LOG("[xml_parse_file] Error: filename is NULL.");
+        return NULL;
+    }
     XML_LOG("[xml_parse_file] Parsing XML file: %s", filename);
 
     ezxml_t xml = ezxml_parse_file(filename);
@@ -1204,24 +1238,28 @@ XmlDocument* xml_parse_file(const char* filename) {
         return NULL;
     }
 
-    XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
+    XmlDocument* doc = (XmlDocument*)calloc(1, sizeof(XmlDocument));
     if (!doc) {
         XML_LOG("[xml_parse_file] Error: Failed to allocate memory for XmlDocument.");
+        ezxml_free(xml);
         return NULL;
     }
 
-    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    doc->root = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!doc->root) {
         XML_LOG("[xml_parse_file] Error: Failed to allocate memory for root XmlNode.");
+        ezxml_free(xml);
         free(doc);
         return NULL;
     }
 
     doc->root->internal_node = (void*)xml;
+    doc->root->owner = doc;
     XML_LOG("[xml_parse_file] Successfully parsed XML file: %s", filename);
-    
+
     return doc;
 }
+
 
 /**
  * @brief Parses an XML string and returns a corresponding XmlDocument structure.
@@ -1233,6 +1271,10 @@ XmlDocument* xml_parse_file(const char* filename) {
  * @return A pointer to the XmlDocument structure representing the parsed XML string, or NULL if an error occurs.
  */
 XmlDocument* xml_parse_string(const char* xml_content) {
+    if (!xml_content) {
+        XML_LOG("[xml_parse_string] Error: xml_content is NULL.");
+        return NULL;
+    }
     XML_LOG("[xml_parse_string] Parsing XML string content.");
 
     size_t len = strlen(xml_content);
@@ -1249,7 +1291,7 @@ XmlDocument* xml_parse_string(const char* xml_content) {
         return NULL;
     }
 
-    XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
+    XmlDocument* doc = (XmlDocument*)calloc(1, sizeof(XmlDocument));
     if (!doc) {
         XML_LOG("[xml_parse_string] Error: Failed to allocate memory for XmlDocument.");
         ezxml_free(xml);  // Free the ezxml structure before returning
@@ -1257,7 +1299,7 @@ XmlDocument* xml_parse_string(const char* xml_content) {
         return NULL;
     }
 
-    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    doc->root = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!doc->root) {
         XML_LOG("[xml_parse_string] Error: Failed to allocate memory for root XmlNode.");
         ezxml_free(xml);
@@ -1267,10 +1309,21 @@ XmlDocument* xml_parse_string(const char* xml_content) {
     }
 
     doc->root->internal_node = (void*)xml;
+    doc->root->owner = doc;
+
+    // ezxml_parse_str() stores xml_copy in root->m but, unlike ezxml_parse_fp()/
+    // ezxml_parse_fd(), never flags it as malloced. Mark len = -1 so ezxml_free()
+    // (invoked by xml_deallocate_document) releases xml_copy; otherwise this
+    // strdup()ed buffer leaks once per parse. Done only on the success path: the
+    // error paths above still own xml_copy explicitly and free it themselves, so
+    // marking it here keeps ownership unambiguous and avoids any double free.
+    ((ezxml_root_t)xml)->len = (size_t)-1;
+
     XML_LOG("[xml_parse_string] Successfully parsed XML string content.");
-    
+
     return doc;
 }
+
 
 /**
  * @brief Creates a new XML document with the specified root element name.
@@ -1283,22 +1336,27 @@ XmlDocument* xml_parse_string(const char* xml_content) {
  * @return A pointer to the newly created XmlDocument structure, or NULL if an error occurs.
  */
 XmlDocument* xml_create_document(const char* root_element_name) {
-    XML_LOG("[xml_create_document] Creating new XML document with root element: %s", root_element_name);
+    XML_LOG("[xml_create_document] Creating new XML document with root element: %s", root_element_name ? root_element_name : "(null)");
 
-    ezxml_t xml = ezxml_new(root_element_name); // Use ezxml to create a new document
+    if (!root_element_name || !*root_element_name) {
+        XML_LOG("[xml_create_document] Error: root_element_name is NULL or empty.");
+        return NULL;
+    }
+
+    ezxml_t xml = ezxml_new(root_element_name); 
     if (!xml) {
         XML_LOG("[xml_create_document] Error: Failed to create root element: %s", root_element_name);
         return NULL;
     }
 
-    XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
+    XmlDocument* doc = (XmlDocument*)calloc(1, sizeof(XmlDocument));
     if (!doc) {
         XML_LOG("[xml_create_document] Error: Failed to allocate memory for XmlDocument.");
         ezxml_free(xml);
         return NULL;
     }
 
-    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    doc->root = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!doc->root) {
         XML_LOG("[xml_create_document] Error: Failed to allocate memory for root XmlNode.");
         ezxml_free(xml);
@@ -1307,10 +1365,12 @@ XmlDocument* xml_create_document(const char* root_element_name) {
     }
 
     doc->root->internal_node = (void*)xml; // Store the internal ezxml pointer
+    doc->root->owner = doc;
     XML_LOG("[xml_create_document] Successfully created XML document with root element: %s", root_element_name);
 
     return doc;
 }
+
 
 /**
  * @brief Creates a new XML element with the specified tag name.
@@ -1324,30 +1384,61 @@ XmlDocument* xml_create_document(const char* root_element_name) {
  * @return A pointer to the newly created XmlNode structure, or NULL if an error occurs.
  */
 XmlNode* xml_create_element(XmlDocument* doc, const char* tag_name) {
-    (void)doc;
-    XML_LOG("[xml_create_element] Creating new XML element with tag name: %s", tag_name);
+    XML_LOG("[xml_create_element] Creating new XML element with tag name: %s",
+            tag_name ? tag_name : "(null)");
 
-    ezxml_t new_elem = ezxml_new(tag_name);  // Create an isolated ezxml node
-    if (!new_elem) {
-        XML_LOG("[xml_create_element] Error: Failed to create element with tag name: %s", tag_name);
+    if (!tag_name || !*tag_name) {
+        XML_LOG("[xml_create_element] Error: tag_name is NULL or empty.");
         return NULL;
     }
 
-    XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
+    /* Build a plain, child-style ezxml node (NOT a root via ezxml_new): a
+     * created element is meant to be appended into a document tree, so it
+     * must not carry the per-root entity/attribute/PI tables that ezxml_new
+     * allocates — those would be orphaned (leaked) once the node is demoted
+     * to a child by ezxml_insert, since ezxml_free only releases root tables
+     * for parent-less nodes. The strdup'd name is owned by this ezxml node
+     * (EZXML_NAMEM) so ezxml_free releases it. */
+    char* name_copy = strdup(tag_name);
+    if (!name_copy) {
+        XML_LOG("[xml_create_element] Error: Failed to copy tag name.");
+        return NULL;
+    }
+
+    ezxml_t new_elem = (ezxml_t)calloc(1, sizeof(struct ezxml));
+    if (!new_elem) {
+        XML_LOG("[xml_create_element] Error: Failed to create element with tag name: %s", tag_name);
+        free(name_copy);
+        return NULL;
+    }
+    new_elem->name  = name_copy;
+    new_elem->attr  = EZXML_NIL;
+    new_elem->txt   = (char*)"";
+    new_elem->flags = EZXML_NAMEM;
+
+    XmlNode* node = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!node) {
         XML_LOG("[xml_create_element] Error: Failed to allocate memory for XmlNode.");
-        ezxml_free(new_elem);
+        free(name_copy);
+        free(new_elem);
         return NULL;
     }
 
     node->internal_node = (void*)new_elem;   // Store the new element
-    node->tag_name = new_elem->name;         // Set the tag name
-    node->text = new_elem->txt;              // Set the text content (initially empty)
+    node->tag_name = new_elem->name;         // Borrowed pointer (owned by ezxml node)
+    node->text = new_elem->txt;              // Borrowed pointer (owned by ezxml node)
+
+    /* Register the wrapper with the document (when one is supplied) so the
+     * struct is freed by xml_deallocate_document. Once the element is
+     * appended via xml_append_child, its ezxml node becomes part of the
+     * document tree and is freed there exactly once. */
+    xml__doc_register(doc, node);
 
     XML_LOG("[xml_create_element] Successfully created XML element with tag name: %s", tag_name);
 
     return node;
 }
+
 
 /**
  * @brief Retrieves the root element of the XML document.
@@ -1372,31 +1463,23 @@ XmlNode* xml_get_root(XmlDocument* doc) {
         return NULL;
     }
 
-    XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
+    XmlNode* node = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!node) {
         XML_LOG("[xml_get_root] Error: Failed to allocate memory for XmlNode.");
         return NULL;
     }
 
     node->internal_node = (void*)root;
+    node->tag_name = root->name;   // Borrowed pointer (owned by ezxml tree)
+    node->text = root->txt;        // Borrowed pointer (owned by ezxml tree)
 
-    if (!root->name) {
-        XML_LOG("[xml_get_root] Error: Root element has no tag name.");
-        free(node);
-        return NULL;
-    }
+    /* The document owns this wrapper; xml_deallocate_document frees it. */
+    xml__doc_register(doc, node);
 
-    node->tag_name = strdup(root->name); 
-    if (!node->tag_name) {
-        XML_LOG("[xml_get_root] Error: Failed to allocate memory for tag name.");
-        free(node);
-        return NULL;
-    }
-
-    node->text = root->txt; 
-    XML_LOG("[xml_get_root] Successfully retrieved root element: %s", node->tag_name);
+    XML_LOG("[xml_get_root] Successfully retrieved root element: %s", node->tag_name ? node->tag_name : "(null)");
     return node;
 }
+
 
 /**
  * @brief Finds an XML element by its tag name.
@@ -1408,35 +1491,88 @@ XmlNode* xml_get_root(XmlDocument* doc) {
  * @param tag_name The tag name of the element to search for.
  * @return Pointer to the found XmlNode structure, or NULL if not found or an error occurs.
  */
+/* Depth-first descendant search for the first ezxml node whose tag
+ * matches `tag_name`. Internal helper used by xml_find_element_by_tag. */
+static ezxml_t xml_find_descendant_ez(ezxml_t node, const char* tag_name) {
+    if (!node) {
+        return NULL;
+    }
+    if (node->name && strcmp(node->name, tag_name) == 0) {
+        return node;
+    }
+    for (ezxml_t c = node->child; c; c = c->ordered) {
+        ezxml_t hit = xml_find_descendant_ez(c, tag_name);
+        if (hit) {
+            return hit;
+        }
+    }
+    return NULL;
+}
+
+
+/**
+ * @brief Find the first descendant element with a given tag name.
+ *
+ * Walks the children of @p root and, for each child, recursively descends
+ * (via `xml_find_descendant_ez`) looking for an element whose tag matches
+ * @p tag_name. Returns the first match in document order. Stops as soon
+ * as a match is found — the result is the FIRST hit, not all hits.
+ *
+ * @param root      The XmlNode whose subtree should be searched. May be NULL
+ *                  (the function safely returns NULL).
+ * @param tag_name  Tag name to search for. Case-sensitive (matches ezxml's
+ *                  convention). May be NULL (the function returns NULL).
+ *
+ * @return A newly-allocated `XmlNode*` wrapper around the matching element,
+ *         or NULL if:
+ *           - @p root or @p tag_name is NULL,
+ *           - no descendant has that tag,
+ *           - memory allocation for the wrapper failed.
+ *         The returned wrapper is owned by the document that @p root
+ *         belongs to: it is freed automatically by
+ *         `xml_deallocate_document`. Do NOT `free()` it yourself.
+ *
+ * @note The underlying ezxml node and the wrapper's `tag_name`/`text`
+ *       pointers are borrowed from the document tree and must never be
+ *       freed individually.
+ */
 XmlNode* xml_find_element_by_tag(XmlNode* root, const char* tag_name) {
     XML_LOG("[xml_find_element_by_tag] Searching for element with tag name: %s", tag_name);
-    
+
     if (!root || !tag_name) {
         XML_LOG("[xml_find_element_by_tag] Error: Invalid root node or tag name.");
         return NULL;
     }
 
     ezxml_t xml = (ezxml_t)root->internal_node;
-    ezxml_t child = ezxml_child(xml, tag_name);
+    ezxml_t child = NULL;
+    for (ezxml_t c = xml ? xml->child : NULL; c && !child; c = c->ordered) {
+        child = xml_find_descendant_ez(c, tag_name);
+    }
 
     if (!child) {
         XML_LOG("[xml_find_element_by_tag] Warning: Element with tag name '%s' not found.", tag_name);
         return NULL;
     }
 
-    XmlNode* result = (XmlNode*)malloc(sizeof(XmlNode));
+    XmlNode* result = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!result) {
         XML_LOG("[xml_find_element_by_tag] Error: Failed to allocate memory for XmlNode.");
         return NULL;
     }
 
     result->internal_node = (void*)child;
-    result->tag_name = child->name;
-    result->text = child->txt;
+    result->tag_name = child->name;   // Borrowed (owned by ezxml tree)
+    result->text = child->txt;        // Borrowed (owned by ezxml tree)
+
+    /* Inherit the owning document from the input wrapper so the document
+     * frees this wrapper in xml_deallocate_document. */
+    xml__doc_register(root->owner, result);
 
     XML_LOG("[xml_find_element_by_tag] Successfully found element with tag name: %s", tag_name);
     return result;
 }
+
 
 /**
  * @brief Prints an XML node to the standard output.
@@ -1459,12 +1595,14 @@ void xml_print(XmlNode* node) {
     if (xml_str) {
         printf("%s\n", xml_str);
         XML_LOG("[xml_print] Successfully printed XML node.");
+        
         free(xml_str);
     } 
     else {
         XML_LOG("[xml_print] Error: Failed to convert node to XML string.");
     }
 }
+
 
 /**
  * @brief Appends a child node to a parent node.
@@ -1495,6 +1633,7 @@ void xml_append_child(XmlNode* parent, XmlNode* child) {
     XML_LOG("[xml_append_child] Successfully appended child node.");
 }
 
+
 /**
  * @brief Sets the text content of an XML element.
  * 
@@ -1507,14 +1646,15 @@ void xml_append_child(XmlNode* parent, XmlNode* child) {
 void xml_set_element_text(XmlNode* element, const char* text) {
     XML_LOG("[xml_set_element_text] Setting text for XML element.");
 
-    if (!element || !text) {
+    if (!element || !element->internal_node || !text) {
         XML_LOG("[xml_set_element_text] Error: Element or text is NULL.");
         return;
     }
 
-    ezxml_set_txt((ezxml_t)element->internal_node, text);
+    ezxml_set_txt_d((ezxml_t)element->internal_node, text);
     XML_LOG("[xml_set_element_text] Successfully set text for XML element.");
 }
+
 
 /**
  * @brief Sets an attribute for an XML element.
@@ -1529,14 +1669,15 @@ void xml_set_element_text(XmlNode* element, const char* text) {
 void xml_set_element_attribute(XmlNode* element, const char* name, const char* value) {
     XML_LOG("[xml_set_element_attribute] Setting attribute for XML element.");
 
-    if (!element || !name || !value) {
+    if (!element || !element->internal_node || !name || !value) {
         XML_LOG("[xml_set_element_attribute] Error: Element, name, or value is NULL.");
         return;
     }
 
-    ezxml_set_attr((ezxml_t)element->internal_node, name, value);
+    ezxml_set_attr_d((ezxml_t)element->internal_node, name, value);
     XML_LOG("[xml_set_element_attribute] Successfully set attribute '%s' with value '%s'.", name, value);
 }
+
 
 /**
  * @brief Deallocates an XML document and its contents.
@@ -1554,12 +1695,30 @@ void xml_deallocate_document(XmlDocument* doc) {
         return;
     }
 
-    ezxml_free((ezxml_t)doc->root->internal_node);  
-    free(doc->root);  
-    free(doc);        
+    /* Free every wrapper handed out by getters / xml_create_element. Only the
+     * wrapper struct is released here: internal_node points into the ezxml
+     * tree (freed once, below) and tag_name/text are borrowed from it. */
+    if (doc->reg_nodes) {
+        for (size_t i = 0; i < doc->reg_count; ++i) {
+            free(doc->reg_nodes[i]);
+        }
+        free(doc->reg_nodes);
+        doc->reg_nodes = NULL;
+        doc->reg_count = doc->reg_cap = 0;
+    }
+
+    if (doc->root) {
+        /* Free the ezxml document tree exactly once. */
+        if (doc->root->internal_node) {
+            ezxml_free((ezxml_t)doc->root->internal_node);
+        }
+        free(doc->root);
+    }
+    free(doc);
 
     XML_LOG("[xml_deallocate_document] Successfully deallocated XML document.");
 }
+
 
 /**
  * @brief Deallocates an XML node and its contents.
@@ -1577,10 +1736,26 @@ void xml_deallocate_node(XmlNode* node) {
         return;
     }
 
-    ezxml_free((ezxml_t)node->internal_node);  
-    free(node);  
+    /* If this wrapper is registered with a document, remove it from that
+     * registry first so xml_deallocate_document does not free the wrapper a
+     * second time (which would be a double free). */
+    xml__doc_unregister(node);
+
+    /* Free the underlying ezxml node. This is intended for a node that is no
+     * longer part of a live document tree: either a standalone element that
+     * was never appended, or a subtree previously detached with xml_cut. A
+     * detached node still has its parent pointer set, so ezxml_free takes the
+     * safe branch and only releases the subtree's own allocations — it does
+     * NOT touch the document's root-level entity/PI/attribute tables. */
+    ezxml_free((ezxml_t)node->internal_node);
+
+    /* tag_name/text are borrowed from the ezxml node (freed above), so only
+     * the wrapper struct itself is released here. */
+    free(node);
+
     XML_LOG("[xml_deallocate_node] Successfully deallocated XML node.");
 }
+
 
 /**
  * @brief Copies the provided text to a new dynamically allocated memory block.
@@ -1603,6 +1778,7 @@ char* xml_copy_text(const char* text) {
 
     size_t len = strlen(text) + 1;  
     char* copy = (char*)malloc(len);
+
     if (copy) {
         strncpy(copy, text, len);   
         XML_LOG("[xml_copy_text] Successfully copied text.");
@@ -1613,6 +1789,7 @@ char* xml_copy_text(const char* text) {
 
     return copy;
 }
+
 
 /**
  * @brief Retrieves the text content of an XML element.
@@ -1650,6 +1827,7 @@ const char* xml_get_element_text(XmlNode* element) {
     return NULL;  
 }
 
+
 /**
  * @brief Retrieves the tag name of an XML element.
  * 
@@ -1670,6 +1848,7 @@ const char* xml_get_tag_name(XmlNode* node) {
     XML_LOG("[xml_get_tag_name] Error: Node or internal node is NULL.");
     return NULL;  
 }
+
 
 /**
  * @brief Retrieves the value of an attribute for a given XML element.
@@ -1702,6 +1881,7 @@ const char* xml_get_element_attribute(XmlNode* element, const char* name) {
     return attr_value;
 }
 
+
 /**
  * @brief Converts the XML document to a string representation.
  * 
@@ -1731,6 +1911,7 @@ char* xml_to_string(XmlDocument* doc) {
 
     return xml_str;
 }
+
 
 /**
  * @brief Saves the XML document to a file.
@@ -1773,6 +1954,7 @@ int xml_save_to_file(XmlDocument* doc, const char* filename) {
     return 1; 
 }
 
+
 /**
  * @brief Removes an XML node and its subtags without freeing the memory.
  * 
@@ -1794,6 +1976,7 @@ void xml_cut(XmlNode* node) {
     ezxml_cut((ezxml_t)node->internal_node);  // Use ezxml to remove the node
     XML_LOG("[xml_cut] Successfully removed the XML node.");
 }
+
 
 /**
  * @brief Retrieves the last XML parsing error, or an empty string if no errors occurred.
@@ -1824,6 +2007,7 @@ const char* xml_get_error(XmlDocument* doc) {
     return error;
 }
 
+
 /**
  * @brief Parses XML data from a file pointer (stream).
  * 
@@ -1848,23 +2032,25 @@ XmlDocument* xml_parse_file_stream(FILE* fp) {
         return NULL;  
     }
 
-    XmlDocument* doc = (XmlDocument*)malloc(sizeof(XmlDocument));
+    XmlDocument* doc = (XmlDocument*)calloc(1, sizeof(XmlDocument));
     if (!doc) {
         XML_LOG("[xml_parse_file_stream] Error: Memory allocation failed for XmlDocument.");
         return NULL;
     }
 
-    doc->root = (XmlNode*)malloc(sizeof(XmlNode));
+    doc->root = (XmlNode*)calloc(1, sizeof(XmlNode));
     if (!doc->root) {
         XML_LOG("[xml_parse_file_stream] Error: Memory allocation failed for XmlNode.");
         free(doc);
         return NULL;
     }
 
-    doc->root->internal_node = (void*)xml; 
+    doc->root->internal_node = (void*)xml;
+    doc->root->owner = doc;
     XML_LOG("[xml_parse_file_stream] Successfully parsed XML from file stream.");
     return doc;  
 }
+
 
 /**
  * @brief Retrieves processing instructions from the XML document based on a given target.
@@ -1898,6 +2084,7 @@ const char** xml_get_processing_instructions(XmlDocument* doc, const char* targe
 
     return instructions;
 }
+
 
 /**
  * @brief Retrieves a nested XML element from the root node by tag names.
@@ -1937,6 +2124,7 @@ XmlNode* xml_get_element(XmlNode* root, ...) {
         if (!current_node) {
             XML_LOG("[xml_get_element] Error: Element '%s' not found.", tag_name);
             va_end(args);
+
             return NULL;
         }
 
@@ -1946,14 +2134,17 @@ XmlNode* xml_get_element(XmlNode* root, ...) {
     va_end(args);
 
     if (current_node) {
-        XmlNode* node = (XmlNode*)malloc(sizeof(XmlNode));
+        XmlNode* node = (XmlNode*)calloc(1, sizeof(XmlNode));
         if (node) {
             node->internal_node = (void*)current_node;
-            node->tag_name = strdup(current_node->name);
-            node->text = current_node->txt;
+            node->tag_name = current_node->name;   // Borrowed (owned by ezxml tree)
+            node->text = current_node->txt;        // Borrowed (owned by ezxml tree)
 
-            XML_LOG("[xml_get_element] Successfully retrieved element '%s'.", node->tag_name);
-        } 
+            /* Document owns this wrapper; freed by xml_deallocate_document. */
+            xml__doc_register(root->owner, node);
+
+            XML_LOG("[xml_get_element] Successfully retrieved element '%s'.", node->tag_name ? node->tag_name : "(null)");
+        }
         else {
             XML_LOG("[xml_get_element] Error: Memory allocation failed for XmlNode.");
         }
@@ -1963,4 +2154,353 @@ XmlNode* xml_get_element(XmlNode* root, ...) {
 
     XML_LOG("[xml_get_element] Error: Could not retrieve the element.");
     return NULL;
+}
+
+
+/**
+ * @brief Count the DIRECT children of an XML element.
+ *
+ * Counts only first-level (immediate) children — does NOT recurse.
+ * Use @ref xml_count_elements_by_tag when you want every descendant
+ * with a given tag name.
+ *
+ * @param node Element whose children should be counted. May be NULL.
+ *
+ * @return Number of direct children. Returns 0 when @p node is NULL,
+ *         when @p node lacks an internal ezxml node, or when the
+ *         element has no children.
+ *
+ * @code
+ *   XmlDocument* d = xml_parse_string(
+ *       "<order><item/><item/><item/></order>");
+ *   XmlNode* root = xml_get_root(d);
+ *   size_t n = xml_count_children(root);   // 3
+ *   xml_deallocate_document(d);
+ * @endcode
+ */
+size_t xml_count_children(const XmlNode* node) {
+    XML_LOG("[xml_count_children]: enter node=%p", (const void*)node);
+
+    if (!node || !node->internal_node) {
+        XML_LOG("[xml_count_children]: NULL receiver -> 0");
+        return 0;
+    }
+
+    ezxml_t e = (ezxml_t)node->internal_node;
+    size_t n = 0;
+    for (ezxml_t c = e->child; c; c = c->ordered) {
+        ++n;
+    }
+
+    XML_LOG("[xml_count_children]: exit -> %zu", n);
+    return n;
+}
+
+
+/**
+ * @brief Snapshot the direct children of @p node as an array of wrappers.
+ *
+ * Returns a freshly-malloc'd, NULL-terminated array of `XmlNode*`
+ * wrappers — one per direct child. Each wrapper's `internal_node` points
+ * into the underlying ezxml document; the `tag_name` and `text` fields
+ * are borrowed pointers (do NOT free them individually). The document
+ * must remain alive while you hold any of these wrappers.
+ *
+ * @param node       Element whose children to enumerate. May be NULL.
+ * @param out_count  Receives the number of children (excluding the
+ *                   trailing NULL). May be NULL if the caller doesn't
+ *                   need it.
+ *
+ * @return Newly-allocated `XmlNode**` (NULL-terminated), or NULL on bad
+ *         input / OOM. The wrappers themselves are owned by the document
+ *         and are released by `xml_deallocate_document`; the **caller frees
+ *         only the returned array** with `free()` (do NOT free the
+ *         individual wrappers):
+ *
+ * @code
+ *   size_t n = 0;
+ *   XmlNode** kids = xml_get_children(root, &n);
+ *   for (size_t i = 0; i < n; ++i) {
+ *       printf("[%zu] %s\n", i, xml_get_tag_name(kids[i]));
+ *   }
+ *   free(kids);   // free the array; wrappers belong to the document
+ * @endcode
+ */
+XmlNode** xml_get_children(XmlNode* node, size_t* out_count) {
+    XML_LOG("[xml_get_children]: enter node=%p out_count=%p", (void*)node, (void*)out_count);
+    if (out_count) {
+        *out_count = 0;
+    }
+    if (!node || !node->internal_node) {
+        XML_LOG("[xml_get_children]: NULL receiver -> NULL");
+        return NULL;
+    }
+
+    ezxml_t e = (ezxml_t)node->internal_node;
+
+    /* First pass: count the direct children. */
+    size_t n = 0;
+    for (ezxml_t c = e->child; c; c = c->ordered) {
+        ++n;
+    }
+
+    XmlNode** arr = (XmlNode**)calloc(n + 1, sizeof(XmlNode*));
+    if (!arr) {
+        XML_LOG("[xml_get_children]: calloc for wrapper array failed -> NULL");
+        return NULL;
+    }
+
+    /* Second pass: wrap each child. If any allocation fails, unwind. */
+    size_t i = 0;
+    for (ezxml_t c = e->child; c; c = c->ordered, ++i) {
+        XmlNode* w = (XmlNode*)calloc(1, sizeof(XmlNode));
+        if (!w) {
+            XML_LOG("[xml_get_children]: calloc for wrapper %zu failed", i);
+            for (size_t j = 0; j < i; ++j) {
+                free(arr[j]);
+            }
+            free(arr);
+            return NULL;
+        }
+        w->internal_node = (void*)c;
+        w->tag_name      = c->name;
+        w->text          = c->txt;
+        xml__doc_register(node->owner, w);   /* document owns each wrapper */
+        arr[i] = w;
+    }
+    arr[n] = NULL;
+    if (out_count) {
+        *out_count = n;
+    }
+    XML_LOG("[xml_get_children]: exit -> %p (%zu wrappers)", (void*)arr, n);
+    return arr;
+}
+
+
+/* DFS helper: first descendant whose `attr_name` attribute equals
+ * `attr_value`. If @p attr_value is NULL, matches any element that
+ * carries the attribute regardless of its value. */
+static ezxml_t xml_find_descendant_by_attr_ez(ezxml_t node, const char* attr_name, const char* attr_value) {
+    if (!node) {
+        return NULL;
+    }
+    const char* v = ezxml_attr(node, attr_name);
+    if (v && (attr_value == NULL || strcmp(v, attr_value) == 0)) {
+        return node;
+    }
+    for (ezxml_t c = node->child; c; c = c->ordered) {
+        ezxml_t hit = xml_find_descendant_by_attr_ez(c, attr_name, attr_value);
+        if (hit) {
+            return hit;
+        }
+    }
+    return NULL;
+}
+
+
+/**
+ * @brief Find the first descendant element carrying a specific attribute.
+ *
+ * Walks the subtree rooted at @p root (depth-first, document order) and
+ * returns the first element whose attribute named @p attr_name equals
+ * @p attr_value. If @p attr_value is NULL, matches any element that
+ * *has* that attribute, regardless of its value.
+ *
+ * @param root       Root of the subtree to search. May be NULL.
+ * @param attr_name  Attribute name to look for (case-sensitive). May NOT be NULL.
+ * @param attr_value Attribute value to match. NULL means "any value".
+ *
+ * @return Newly-allocated `XmlNode*` wrapper around the match, or NULL
+ *         if no element matches / on bad input / OOM.
+ *
+ * @note The returned wrapper is owned by the document and is released by
+ *       `xml_deallocate_document` — do NOT `free()` it yourself. Its
+ *       `tag_name` and `text` fields point into the document and must
+ *       NOT be freed individually. See `xml_find_element_by_tag` for
+ *       the same ownership convention. (If you detach the matched
+ *       subtree with `xml_cut`, free it with `xml_deallocate_node`.)
+ *
+ * @code
+ *   // Find <user id="42">...</user> anywhere in the tree.
+ *   XmlNode* hit = xml_find_element_by_attribute(root, "id", "42");
+ *   if (hit) {
+ *       printf("tag=%s text=%s\n", hit->tag_name, hit->text);
+ *   }
+ * @endcode
+ */
+XmlNode* xml_find_element_by_attribute(XmlNode* root, const char* attr_name, const char* attr_value) {
+    XML_LOG("[xml_find_element_by_attribute] Searching for [%s=%s].", attr_name ? attr_name : "(null)", attr_value ? attr_value : "(any)");
+    if (!root || !root->internal_node || !attr_name) {
+        XML_LOG("[xml_find_element_by_attribute] Invalid input.");
+        return NULL;
+    }
+
+    ezxml_t e = (ezxml_t)root->internal_node;
+    /* Check the root element itself first, then its descendants. */
+    ezxml_t hit = NULL;
+    const char* v = ezxml_attr(e, attr_name);
+
+    if (v && (attr_value == NULL || strcmp(v, attr_value) == 0)) {
+        hit = e;
+    }
+    if (!hit) {
+        for (ezxml_t c = e->child; c && !hit; c = c->ordered) {
+            hit = xml_find_descendant_by_attr_ez(c, attr_name, attr_value);
+        }
+    }
+    if (!hit) {
+        XML_LOG("[xml_find_element_by_attribute] No match.");
+        return NULL;
+    }
+
+    XmlNode* w = (XmlNode*)calloc(1, sizeof(XmlNode));
+    if (!w) {
+        XML_LOG("[xml_find_element_by_attribute] Error: calloc failed.");
+        return NULL;
+    }
+    w->internal_node = (void*)hit;
+    w->tag_name = hit->name;   // Borrowed (owned by ezxml tree)
+    w->text     = hit->txt;    // Borrowed (owned by ezxml tree)
+
+    /* Document owns this wrapper; freed by xml_deallocate_document (or by
+     * xml_deallocate_node if the caller detaches it with xml_cut first). */
+    xml__doc_register(root->owner, w);
+    return w;
+}
+
+/**
+ * @brief Remove a named attribute from an element.
+ *
+ * Calls into the underlying ezxml primitive that drops both the name
+ * and value (and any strdup'd memory the library owned for them).
+ * Removing an attribute that doesn't exist is silently a no-op and
+ * returns 1 (success) — symmetric with `xml_set_element_attribute`
+ * which silently creates missing attributes.
+ *
+ * @param element  Element whose attribute should be removed. May be NULL.
+ * @param name     Attribute name. May be NULL.
+ * @return 1 on success (attribute removed OR it wasn't there to begin with);
+ *         0 if @p element / @p name is NULL.
+ *
+ * @code
+ *   xml_set_element_attribute(node, "draft", "yes");
+ *   xml_remove_element_attribute(node, "draft");   // gone
+ * @endcode
+ */
+int xml_remove_element_attribute(XmlNode* element, const char* name) {
+    XML_LOG("[xml_remove_element_attribute]: enter element=%p name=%s", (void*)element, name ? name : "(null)");
+
+    if (!element || !element->internal_node || !name) {
+        XML_LOG("[xml_remove_element_attribute]: NULL receiver / name -> 0");
+        return 0;
+    }
+
+    ezxml_t e = (ezxml_t)element->internal_node;
+    if (!e->attr || e->attr == EZXML_NIL) {
+        XML_LOG("[xml_remove_element_attribute]: element has no attributes, no-op success");
+        return 1;
+    }
+
+    /* Find the slot index `l` of the attribute named `name`. */
+    int l = 0;
+    while (e->attr[l] && strcmp(e->attr[l], name) != 0) {
+        l += 2;
+    }
+    if (!e->attr[l]) {
+        XML_LOG("[xml_remove_element_attribute]: '%s' not found, silent no-op success", name);
+        return 1;
+    }
+
+    /* Find the terminating NULL at slot `c`. */
+    int c = l;
+    while (e->attr[c]) {
+        c += 2;
+    }
+
+    /* Slot `c + 1` holds ezxml's per-attribute metadata byte array,
+       which we need to update in lock-step. */
+    char* meta = e->attr[c + 1];
+    if (meta) {
+        /* Free name/value if they were malloc'd (NAMEM / TXTM flags
+           indicate that the corresponding string pointer was allocated
+           by ezxml and is owned by it). */
+        if (meta[l / 2] & EZXML_NAMEM) {
+            free(e->attr[l]);
+        }
+        if (meta[l / 2] & EZXML_TXTM) {
+            free(e->attr[l + 1]);
+        }
+        /* Drop the byte for the removed pair: shift metadata down by 1
+           starting at the slot we're removing. */
+        size_t bytes_after = (size_t)((c - l) / 2);   /* incl. terminator */
+        memmove(meta + (l / 2), meta + (l / 2) + 1, bytes_after);
+    }
+
+    /* Shift the attribute slots themselves. We move `c - l - 2` words
+       (i.e., the name/value pairs strictly AFTER the one being removed
+       — NOT the NULL slot at attr[c]), then write the new terminator
+       explicitly. The metadata pointer that lived at attr[c+1] migrates
+       to attr[c-1]. */
+    if (c > l + 2) {
+        memmove(e->attr + l, e->attr + l + 2, (size_t)(c - l - 2) * sizeof(char*));
+    }
+    e->attr[c - 2] = NULL;       /* new terminator */
+    e->attr[c - 1] = meta;       /* metadata pointer in its new slot */
+
+    XML_LOG("[xml_remove_element_attribute]: exit ok ('%s' removed)", name);
+    return 1;
+}
+
+
+/* Recursive helper: count every descendant (NOT including @p node
+ * itself) whose tag matches @p tag_name. */
+static size_t xml_count_descendants_by_tag_ez(ezxml_t node, const char* tag_name) {
+    if (!node) {
+        return 0;
+    }
+    size_t n = 0;
+    for (ezxml_t c = node->child; c; c = c->ordered) {
+        if (c->name && strcmp(c->name, tag_name) == 0) {
+            ++n;
+        }
+        n += xml_count_descendants_by_tag_ez(c, tag_name);
+    }
+    return n;
+}
+
+
+/**
+ * @brief Count every descendant element with the given tag name.
+ *
+ * Walks the entire subtree rooted at @p root. Does NOT include @p root
+ * itself in the count — only its strict descendants are considered.
+ * Case-sensitive comparison (matches ezxml convention).
+ *
+ * @param root      Subtree root. May be NULL.
+ * @param tag_name  Tag to count. May be NULL.
+ *
+ * @return Number of matching descendants. 0 on bad input.
+ *
+ * @code
+ *   XmlDocument* d = xml_parse_string(
+ *       "<library>"
+ *         "<book><title>A</title></book>"
+ *         "<book><title>B</title></book>"
+ *         "<book><title>C</title></book>"
+ *       "</library>");
+ *   size_t n = xml_count_elements_by_tag(xml_get_root(d), "book");  // 3
+ *   xml_deallocate_document(d);
+ * @endcode
+ */
+size_t xml_count_elements_by_tag(XmlNode* root, const char* tag_name) {
+    XML_LOG("[xml_count_elements_by_tag]: enter root=%p tag_name=%s",
+            (void*)root, tag_name ? tag_name : "(null)");
+    if (!root || !root->internal_node || !tag_name) {
+        XML_LOG("[xml_count_elements_by_tag]: NULL receiver / tag -> 0");
+        return 0;
+    }
+    size_t n = xml_count_descendants_by_tag_ez((ezxml_t)root->internal_node, tag_name);
+    XML_LOG("[xml_count_elements_by_tag]: exit -> %zu", n);
+
+    return n;
 }

@@ -10,6 +10,8 @@
 #include "../string/std_string.h"
 
 
+
+
 /**
  * @brief Creates a new, empty CsvRow structure.
  *
@@ -23,7 +25,7 @@ CsvRow* csv_row_create() {
     CsvRow* row = (CsvRow*) malloc(sizeof(CsvRow));
     if (!row) {
         CSV_LOG("[csv_row_create]: Error - Memory allocation failed.");
-        exit(-1);
+        return NULL;
     }
     row->cells = NULL;
     row->size = 0;
@@ -32,6 +34,7 @@ CsvRow* csv_row_create() {
     CSV_LOG("[csv_row_create]: CsvRow created successfully.");
     return row;
 }
+
 
 /**
  * @brief Destroys a CsvRow structure and frees its memory.
@@ -61,6 +64,7 @@ void csv_row_destroy(CsvRow *row) {
 
     CSV_LOG("[csv_row_destroy]: Function end.");
 }
+
 
 /**
  * @brief Appends a cell to a CsvRow.
@@ -102,6 +106,8 @@ void csv_row_append_cell(CsvRow *row, const char *value) {
     row->size++;
     CSV_LOG("[csv_row_append_cell]: Function end.");
 }
+
+
 /**
  * @brief Retrieves the value of a cell at a specified index in a CsvRow.
  *
@@ -126,6 +132,7 @@ char* csv_row_get_cell(const CsvRow *row, size_t index) {
     return row->cells[index];
 }
 
+
 /**
  * @brief Creates a new CsvFile structure with a specified delimiter.
  *
@@ -141,7 +148,7 @@ CsvFile* csv_file_create(char delimiter) {
     CsvFile* file = (CsvFile*)malloc(sizeof(CsvFile));
     if (!file) {
         CSV_LOG("[csv_file_create]: Error - Memory allocation failed.");
-        exit(-1);
+        return NULL;
     }
 
     file->rows = NULL;
@@ -152,6 +159,7 @@ CsvFile* csv_file_create(char delimiter) {
     CSV_LOG("[csv_file_create]: CsvFile created successfully with delimiter '%c'.", delimiter);
     return file;
 }
+
 
 /**
  * @brief Destroys a CsvFile structure and frees its memory.
@@ -180,6 +188,7 @@ void csv_file_destroy(CsvFile *file) {
     free(file);
     CSV_LOG("[csv_file_destroy]: Function end.");
 }
+
 
 static void parse_csv_line(const char *line, char delimiter, CsvRow *row) {
     CSV_LOG("[parse_csv_line]: Function start.");
@@ -227,6 +236,7 @@ static void parse_csv_line(const char *line, char delimiter, CsvRow *row) {
     CSV_LOG("[parse_csv_line]: Function end.");
 }
 
+
 /**
  * @brief Reads the contents of a CSV file into a CsvFile structure.
  *
@@ -269,14 +279,18 @@ void csv_file_read(CsvFile *file, const char *filename) {
     CSV_LOG("[csv_file_read]: Function end.");
 }
 
+
 /**
  * @brief Writes the contents of a CSV file to a specified file.
  *
- * This function takes a CsvFile object and writes its contents to a file
- * specified by the filename. Each row in the CSV file is written to the file,
- * with cells separated by the specified delimiter.
+ * Each row is emitted as `cell<delim>cell<delim>...<delim>cell\n`. The
+ * file is opened in BINARY mode (`"wb"`) so the output is byte-identical
+ * across platforms — no C-runtime CRLF translation on Windows. This also
+ * means `csv_file_write` and `csv_file_export_to_string` produce
+ * **byte-equal** output, so disk and in-memory round-trips behave the
+ * same everywhere.
  *
- * @param file The CsvFile object to write to a file.
+ * @param file     The CsvFile object to write to a file.
  * @param filename The name of the file where the CSV data will be written.
  */
 void csv_file_write(const CsvFile *file, const char *filename) {
@@ -286,8 +300,9 @@ void csv_file_write(const CsvFile *file, const char *filename) {
         return;
     }
 
-    CSV_LOG("[csv_file_write]: Opening file '%s' for writing.", filename);
-    FileWriter* fw = file_writer_open(filename, WRITE_TEXT); 
+    CSV_LOG("[csv_file_write]: Opening file '%s' for writing (binary).", filename);
+
+    FileWriter* fw = file_writer_open(filename, WRITE_BINARY);
     if (!fw) {
         CSV_LOG("[csv_file_write]: Error - Unable to open file '%s' for writing.", filename);
         return;
@@ -298,9 +313,11 @@ void csv_file_write(const CsvFile *file, const char *filename) {
         CsvRow *row = file->rows[i];
         for (size_t j = 0; j < row->size; ++j) {
             file_writer_write_fmt(fw, "%s", row->cells[j]);
-            if (j < row->size - 1)
+            if (j < row->size - 1) {
                 file_writer_write_fmt(fw, "%c", file->delimiter);
+            }
         }
+
         file_writer_write_fmt(fw, "\n");
         CSV_LOG("[csv_file_write]: Finished writing row %zu.", i);
     }
@@ -310,6 +327,7 @@ void csv_file_write(const CsvFile *file, const char *filename) {
 
     CSV_LOG("[csv_file_write]: Function end.");
 }
+
 
 /**
  * @brief Appends a new row to a CSV file.
@@ -331,10 +349,12 @@ void csv_file_append_row(CsvFile *file, CsvRow *row) {
         size_t newCapacity = file->capacity == 0 ? 1 : file->capacity * 2;
         CSV_LOG("[csv_file_append_row]: Resizing rows array to new capacity %zu.", newCapacity);
         CsvRow **newRows = (CsvRow**)realloc(file->rows, newCapacity * sizeof(CsvRow *));
+        
         if (!newRows) {
             CSV_LOG("[csv_file_append_row]: Error - Unable to allocate memory for new rows.");
             return;
         }
+
         file->rows = newRows;
         file->capacity = newCapacity;
     }
@@ -368,6 +388,7 @@ CsvRow* csv_file_get_row(const CsvFile *file, size_t index) {
     return file->rows[index];
 }
 
+
 /**
  * @brief Removes a row from a CSV file at the specified index.
  *
@@ -394,10 +415,10 @@ void csv_file_remove_row(CsvFile *file, size_t index) {
         file->rows[i] = file->rows[i + 1];
     }
 
-    // Decrease the size of the file
     file->size--;
     CSV_LOG("[csv_file_remove_row]: Function end.");
 }
+
 
 /**
  * @brief Prints the contents of a CSV file to the standard output.
@@ -431,6 +452,7 @@ void csv_print(const CsvFile *file) {
     CSV_LOG("[csv_print]: Function end.");
 }
 
+
 /**
  * @brief Reads the next row from a file using a FileReader object.
  *
@@ -455,21 +477,19 @@ CsvRow* csv_row_read_next(FileReader *reader, char delimiter) {
         return NULL; // No more lines to read or error occurred
     }
 
-    buffer[strcspn(buffer, "\r\n")] = 0; 
+    buffer[strcspn(buffer, "\r\n")] = 0;
     CSV_LOG("[csv_row_read_next]: Read line: %s", buffer);
 
     CsvRow *row = csv_row_create();
-    char *token = strtok(buffer, &delimiter);
-
-    while (token) {
-        CSV_LOG("[csv_row_read_next]: Adding cell: %s", token);
-        csv_row_append_cell(row, token);
-        token = strtok(NULL, &delimiter);
+    if (!row) {
+        return NULL;
     }
+    parse_csv_line(buffer, delimiter, row);
 
     CSV_LOG("[csv_row_read_next]: Function end.");
     return row;
 }
+
 
 /**
  * @brief Inserts a new column into a CSV file at the specified index.
@@ -532,6 +552,7 @@ void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colDat
     CSV_LOG("[csv_file_insert_column]: Function end.");
 }
 
+
 /**
  * @brief Retrieves the header row from a CSV file.
  *
@@ -552,6 +573,7 @@ CsvRow* csv_file_get_header(const CsvFile *file) {
     CSV_LOG("[csv_file_get_header]: Returning the first row as the header.");
     return file->rows[0]; 
 }
+
 
 /**
  * @brief Sets a new header row for a CSV file.
@@ -586,6 +608,7 @@ void csv_file_set_header(CsvFile *file, CsvRow *header) {
                 CSV_LOG("[csv_file_set_header]: Error - Memory allocation failed for new rows.");
                 return;
             }
+
             file->rows = newRows;
             file->capacity = newCapacity;
         }
@@ -597,6 +620,7 @@ void csv_file_set_header(CsvFile *file, CsvRow *header) {
 
     CSV_LOG("[csv_file_set_header]: Function end.");
 }
+
 
 /**
  * @brief Retrieves a cell value from a CSV row as an integer.
@@ -625,6 +649,7 @@ int csv_row_get_cell_as_int(const CsvRow *row, size_t index) {
     
     return value;
 }
+
 
 /**
  * @brief Finds rows in a CSV file that contain a specific search term.
@@ -656,6 +681,7 @@ CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) {
     for (size_t i = 0; i < file->size; ++i) {
         CsvRow* row = file->rows[i];
         CSV_LOG("[csv_file_find_rows]: Processing row %zu.", i);
+
         for (size_t j = 0; j < row->size; ++j) {
             CSV_LOG("[csv_file_find_rows]: Checking cell %zu in row %zu.", j, i);
             if (strstr(row->cells[j], searchTerm)) {
@@ -671,6 +697,7 @@ CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) {
 
     CSV_LOG("[csv_file_find_rows]: Resizing foundRows to match the exact size.");
     CsvRow **resizedFoundRows = (CsvRow**)realloc(foundRows, (foundCount + 1) * sizeof(CsvRow *));
+
     if (!resizedFoundRows) {
         CSV_LOG("[csv_file_find_rows]: Error - Memory allocation failed during resizing, returning original foundRows.");
         return foundRows; 
@@ -679,6 +706,7 @@ CsvRow** csv_file_find_rows(const CsvFile *file, const char* searchTerm) {
     CSV_LOG("[csv_file_find_rows]: Function end.");
     return resizedFoundRows; 
 }
+
 
 /**
  * @brief Validates the format of a specific cell in a CSV row.
@@ -705,6 +733,37 @@ bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *forma
     char* cell = row->cells[index];
     char buffer[256];
 
+    {
+        const char* p = format;
+        int percent_count = 0;
+        bool has_other = false;
+
+        while (*p) {
+            if (*p == '%') {
+                ++p;
+                if (*p == '%') { 
+                    ++p; 
+                    continue; 
+                }  
+                while (*p && (*p == '-' || *p == '+' || *p == ' ' || *p == '#' || *p == '0' || (*p >= '0' && *p <= '9') || *p == '.')) {
+                    ++p; 
+                }
+                if (*p != 's') {
+                    has_other = true;
+                    break;
+                }
+                ++percent_count;
+            }
+            if (*p) {
+                ++p;
+            }
+        }
+        if (has_other || percent_count != 1) {
+            CSV_LOG("[csv_validate_cell_format]: Format must contain exactly one %%s specifier.");
+            return false;
+        }
+    }
+
     CSV_LOG("[csv_validate_cell_format]: Formatting the cell value with the given format.");
     snprintf(buffer, sizeof(buffer), format, cell);
 
@@ -716,6 +775,7 @@ bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *forma
     
     return result;
 }
+
 
 /**
  * @brief Concatenates the rows of one CSV file into another.
@@ -754,6 +814,7 @@ void csv_file_concatenate(CsvFile *file1, const CsvFile *file2) {
     CSV_LOG("[csv_file_concatenate]: Function end.");
 }
 
+
 /**
  * @brief Sums the values of a specific column in a CSV file.
  *
@@ -782,6 +843,7 @@ int csv_column_sum(const CsvFile *file, size_t columnIndex) {
         if (columnIndex < row->size) {
             char *cell = row->cells[columnIndex];
             int cellValue = atoi(cell);
+
             CSV_LOG("[csv_column_sum]: Adding value %d from row %zu, column %zu.", cellValue, i, columnIndex);
             sum += cellValue;
         } 
@@ -795,6 +857,8 @@ int csv_column_sum(const CsvFile *file, size_t columnIndex) {
     
     return sum;
 }
+
+
 /**
  * @brief Exports a CSV file to a JSON format string.
  *
@@ -807,6 +871,66 @@ int csv_column_sum(const CsvFile *file, size_t columnIndex) {
  * @return A string containing the JSON representation of the CSV file.
  * The caller is responsible for freeing the allocated memory.
  */
+/* Helper: append `s` to the end of *json (cap is its current allocation,
+ * len is current strlen). Grows *json on demand. Returns false on OOM. */
+static bool json_append(char** json, size_t* cap, size_t* len, const char* s) {
+    size_t slen = strlen(s);
+    if (*len + slen + 1 > *cap) {
+        size_t new_cap = (*len + slen + 1) * 2;
+        char* new_json = (char*)realloc(*json, new_cap);
+
+        if (!new_json) {
+            return false;
+        }
+
+        *json = new_json;
+        *cap = new_cap;
+    }
+    memcpy(*json + *len, s, slen + 1);  // include terminator
+    *len += slen;
+    return true;
+}
+
+/**
+ * @brief Serialize a CsvFile to a JSON array string.
+ *
+ * Produces a JSON array of objects: every CsvRow becomes one object,
+ * and each cell within that row is exposed as `"field<n>": "<value>"`
+ * where `<n>` is the zero-based column index. The output is indented
+ * for readability and terminated with a newline.
+ *
+ * Example output for a 2-row, 3-column file:
+
+ * @note Column names are positional — `field0`, `field1`, ... —
+ *       not derived from a header row. If you want the header's cell
+ *       values as JSON keys, transform the result yourself with the
+ *       `json` library, or pre-process the CsvFile first.
+ *
+ * @note Cell values are inserted verbatim into the JSON string. If a
+ *       cell contains a literal `"` or `\\`, the output will not be
+ *       strictly RFC 8259 compliant. Quote and escape your input
+ *       upstream if you need bulletproof JSON.
+ *
+ * @warning The returned string is heap-allocated. The caller takes
+ *          ownership and MUST release it with `free()`.
+ *
+ * @param file Source CsvFile. May not be NULL.
+ *
+ * @return Newly-allocated NUL-terminated JSON string on success;
+ *         NULL if @p file is NULL or any internal allocation failed.
+ *
+ * @code
+ * CsvFile* f = csv_file_create(',');
+ * csv_file_read(f, "people.csv");
+ *
+ * char* j = csv_export_to_json(f);
+ * if (j) {
+ *     puts(j);
+ *     free(j);
+ * }
+ * csv_file_destroy(f);
+ * @endcode
+ */
 char* csv_export_to_json(const CsvFile *file) {
     CSV_LOG("[csv_export_to_json]: Function start.");
     if (!file) {
@@ -814,38 +938,570 @@ char* csv_export_to_json(const CsvFile *file) {
         return NULL;
     }
 
-    CSV_LOG("[csv_export_to_json]: Allocating memory for JSON export.");
-    char *json = (char*)malloc(BUFFER_SIZE);
+    size_t cap = 256;
+    size_t len = 0;
+    char* json = (char*)malloc(cap);
     if (!json) {
-        CSV_LOG("[csv_export_to_json]: Error - Memory allocation failed.");
         return NULL;
     }
+    json[0] = '\0';
 
-    CSV_LOG("[csv_export_to_json]: Initializing JSON string with '['.");
-    strcpy(json, "[\n");
+    if (!json_append(&json, &cap, &len, "[\n")) { free(json); return NULL; }
 
     for (size_t i = 0; i < file->size; ++i) {
         CsvRow *row = file->rows[i];
-
-        CSV_LOG("[csv_export_to_json]: Processing row %zu.", i);
-        strcat(json, "  {\n");
-        
-        for (size_t j = 0; j < row->size; ++j) {
-            char *cell = row->cells[j];
-            char line[128]; // Assuming each cell content and field name fit in 128 characters
-            
-            CSV_LOG("[csv_export_to_json]: Processing cell %zu in row %zu.", j, i);
-            sprintf(line, "    \"field%zu\": \"%s\"%s\n", j, cell, j < row->size - 1 ? "," : "");
-            strcat(json, line);
+        if (!json_append(&json, &cap, &len, "  {\n")) { 
+            free(json); 
+            return NULL; 
         }
 
-        CSV_LOG("[csv_export_to_json]: Finished processing row %zu.", i);
-        strcat(json, i < file->size - 1 ? "  },\n" : "  }\n");
+        for (size_t j = 0; j < row->size; ++j) {
+            const char *cell = row->cells[j];
+            // Size each line precisely: field name (up to 32 digits) + cell length + 12 fixed chars.
+            size_t cell_len = strlen(cell);
+            size_t line_cap = cell_len + 64;
+            char *line = (char*)malloc(line_cap);
+            if (!line) { 
+                free(json); 
+                return NULL; 
+            }
+            snprintf(line, line_cap, "    \"field%zu\": \"%s\"%s\n", j, cell, (j < row->size - 1) ? "," : "");
+            bool ok = json_append(&json, &cap, &len, line);
+            free(line);
+
+            if (!ok) { 
+                free(json); 
+                return NULL; 
+            }
+        }
+        if (!json_append(&json, &cap, &len, (i < file->size - 1) ? "  },\n" : "  }\n")) {
+            free(json);
+            return NULL;
+        }
     }
 
-    CSV_LOG("[csv_export_to_json]: Finalizing JSON string with ']' and newline.");
-    strcat(json, "]\n");
+    if (!json_append(&json, &cap, &len, "]\n")) { 
+        free(json); 
+        return NULL; 
+    }
 
     CSV_LOG("[csv_export_to_json]: Function end.");
     return json;
+}
+
+
+/**
+ * @brief Parse a CSV document held in memory.
+ *
+ * Identical semantics to `csv_file_read`, but reads from a NUL-terminated
+ * string instead of a file. Splits on `\n`, with trailing `\r` (from
+ * CRLF) tolerated. Quoted cells containing the delimiter are honored
+ * via the existing `parse_csv_line` helper. Rows are APPENDED to `file`,
+ * so calling this twice with two strings concatenates them.
+ *
+ * NULL inputs and the empty string are safe no-ops.
+ *
+ * @param file Target CsvFile (already created via `csv_file_create`).
+ * @param data NUL-terminated CSV text.
+ */
+void csv_file_load_from_string(CsvFile *file, const char *data) {
+    CSV_LOG("[csv_file_load_from_string]: Function start.");
+    if (!file || !data) {
+        CSV_LOG("[csv_file_load_from_string]: NULL input; no-op.");
+        return;
+    }
+    const char *p = data;
+    while (*p) {
+        const char *line_end = strchr(p, '\n');
+        size_t line_len = line_end ? (size_t)(line_end - p) : strlen(p);
+
+        /* Skip wholly-empty lines (matches csv_file_read which also
+           appends an empty row only when the line had content). */
+        if (line_len == 0) {
+            if (!line_end) {
+                break;
+            }
+            p = line_end + 1;
+            continue;
+        }
+
+        /* Allocate a temporary buffer just big enough for this line. */
+        char *line = (char*)malloc(line_len + 1);
+        if (!line) {
+            CSV_LOG("[csv_file_load_from_string]: malloc(%zu) failed.", line_len + 1);
+            return;
+        }
+        memcpy(line, p, line_len);
+        line[line_len] = '\0';
+
+        /* Trim trailing \r left over from CRLF line endings. */
+        if (line_len > 0 && line[line_len - 1] == '\r') {
+            line[line_len - 1] = '\0';
+        }
+
+        CsvRow *row = csv_row_create();
+        if (row) {
+            parse_csv_line(line, file->delimiter, row);
+            csv_file_append_row(file, row);
+        }
+        free(line);
+
+        if (!line_end) {
+            break;
+        }
+        p = line_end + 1;
+    }
+    CSV_LOG("[csv_file_load_from_string]: parsed %zu row(s) (cumulative).", file->size);
+}
+
+
+/**
+ * @brief Find the index of the column whose header equals `columnName`.
+ *
+ * The header is the first row of `file`. Comparison is case-sensitive
+ * and exact.
+ *
+ * @return The column index on match, or -1 if there's no header, no
+ *         match, or `file` / `columnName` is NULL.
+ */
+int csv_file_find_column_index(const CsvFile *file, const char *columnName) {
+    CSV_LOG("[csv_file_find_column_index]: Function start.");
+
+    if (!file || !columnName || file->size == 0) {
+        CSV_LOG("[csv_file_find_column_index]: missing file/name/header; returning -1.");
+        return -1;
+    }
+
+    CsvRow *header = file->rows[0];
+    for (size_t i = 0; i < header->size; ++i) {
+        if (header->cells[i] && strcmp(header->cells[i], columnName) == 0) {
+            CSV_LOG("[csv_file_find_column_index]: '%s' found at index %zu.", columnName, i);
+            return (int)i;
+        }
+    }
+
+    CSV_LOG("[csv_file_find_column_index]: '%s' not found.", columnName);
+    return -1;
+}
+
+
+/**
+ * @brief Fetch a cell by COLUMN NAME using `file`'s header row.
+ *
+ * Equivalent to `csv_row_get_cell(row, csv_file_find_column_index(file, name))`,
+ * but with proper NULL handling at each step. Returns NULL if the file
+ * has no header, the column isn't present, or the row is shorter than
+ * the resolved column index. The returned pointer is borrowed (owned by
+ * `row`) — do not free it.
+ */
+char* csv_row_get_cell_by_name(const CsvFile *file, const CsvRow *row, const char *columnName) {
+    CSV_LOG("[csv_row_get_cell_by_name]: Function start.");
+    if (!file || !row || !columnName) {
+        CSV_LOG("[csv_row_get_cell_by_name]: NULL input.");
+        return NULL;
+    }
+
+    int idx = csv_file_find_column_index(file, columnName);
+    if (idx < 0) {
+        CSV_LOG("[csv_row_get_cell_by_name]: column '%s' not in header.", columnName);
+        return NULL;
+    }
+    if ((size_t)idx >= row->size) {
+        CSV_LOG("[csv_row_get_cell_by_name]: row too short for column index %d.", idx);
+        return NULL;
+    }
+
+    return row->cells[idx];
+}
+
+
+/**
+ * @brief Extract one column as a NULL-terminated array of borrowed strings.
+ *
+ * The returned array is malloc'd and ends in a NULL sentinel. Each entry
+ * points into one of the source rows — do NOT free the individual
+ * strings; just `free()` the array itself when done. Rows shorter than
+ * `columnIndex` contribute a NULL entry (count is still incremented),
+ * so the array index aligns with the row index.
+ *
+ * @param file        Source file.
+ * @param columnIndex Index of the column to extract.
+ * @param outCount    Receives the number of entries (excluding the
+ *                    trailing NULL). May be NULL.
+ * @param skipHeader  If true, the first row (header) is excluded.
+ * @return Newly-allocated NULL-terminated array, or NULL on bad input.
+ */
+char** csv_file_get_column(const CsvFile *file, size_t columnIndex, size_t *outCount, bool skipHeader) {
+    CSV_LOG("[csv_file_get_column]: Function start.");
+    if (outCount) {
+        *outCount = 0;
+    }
+    if (!file) {
+        CSV_LOG("[csv_file_get_column]: NULL file.");
+        return NULL;
+    }
+    size_t start = (skipHeader && file->size > 0) ? 1 : 0;
+    size_t n = (file->size > start) ? (file->size - start) : 0;
+
+    char **out = (char**)malloc((n + 1) * sizeof(char*));
+    if (!out) {
+        CSV_LOG("[csv_file_get_column]: malloc failed.");
+        return NULL;
+    }
+
+    size_t k = 0;
+    for (size_t i = start; i < file->size; ++i) {
+        CsvRow *row = file->rows[i];
+        out[k++] = (row && columnIndex < row->size) ? row->cells[columnIndex] : NULL;
+    }
+    out[k] = NULL;
+    if (outCount) { 
+        *outCount = k;
+    }
+
+    CSV_LOG("[csv_file_get_column]: column %zu has %zu entries (skipHeader=%d).", columnIndex, k, (int)skipHeader);
+    return out;
+}
+
+
+/**
+ * @brief Drop a column from every row in the file.
+ *
+ * Symmetric to `csv_file_insert_column`. Frees the removed cell strings
+ * and shifts subsequent cells left within each row. Rows that don't
+ * reach `columnIndex` are left untouched (so this is safe on jagged
+ * CSVs). NULL file and out-of-range index are silent no-ops.
+ */
+void csv_file_remove_column(CsvFile *file, size_t columnIndex) {
+    CSV_LOG("[csv_file_remove_column]: Function start.");
+    if (!file) {
+        CSV_LOG("[csv_file_remove_column]: NULL file.");
+        return;
+    }
+    for (size_t i = 0; i < file->size; ++i) {
+        CsvRow *row = file->rows[i];
+        if (!row || columnIndex >= row->size) {
+            continue;
+        }
+        free(row->cells[columnIndex]);
+
+        for (size_t j = columnIndex; j + 1 < row->size; ++j) {
+            row->cells[j] = row->cells[j + 1];
+        }
+        row->size--;
+    }
+    CSV_LOG("[csv_file_remove_column]: removed column %zu from %zu row(s).", columnIndex, file->size);
+}
+
+
+/* qsort thunk for csv_file_sort — read the index + direction from a
+   small fixed struct passed via the (POSIX) qsort_s isn't portable, so
+   we use file-static state instead. Not thread-safe, but neither is the
+   rest of this library. */
+static size_t g_sort_col   = 0;
+static int    g_sort_sign  = 1;   /* +1 ascending, -1 descending */
+
+static int csv_sort_cmp(const void *a, const void *b) {
+    CsvRow * const *pa = (CsvRow * const *)a;
+    CsvRow * const *pb = (CsvRow * const *)b;
+    const CsvRow *ra = *pa;
+    const CsvRow *rb = *pb;
+    /* Treat missing cells as empty string for ordering purposes. */
+    const char *va = (ra && g_sort_col < ra->size) ? ra->cells[g_sort_col] : "";
+    const char *vb = (rb && g_sort_col < rb->size) ? rb->cells[g_sort_col] : "";
+    return g_sort_sign * strcmp(va ? va : "", vb ? vb : "");
+}
+
+
+/**
+ * @brief Sort the rows of `file` by the string value in `columnIndex`.
+ *
+ * In-place. Uses `qsort`; not stable across equal keys. Missing cells
+ * are treated as empty strings for ordering purposes. Comparison is by
+ * `strcmp`, so `"10"` < `"2"` — for numeric sort, project or pad the
+ * column first.
+ *
+ * @param file        File to sort.
+ * @param columnIndex Column whose string value is the sort key.
+ * @param ascending   true → A→Z; false → Z→A.
+ * @param skipHeader  true → row 0 stays put; the rest are sorted.
+ *                    false → every row participates.
+ */
+void csv_file_sort(CsvFile *file, size_t columnIndex, bool ascending, bool skipHeader) {
+    CSV_LOG("[csv_file_sort]: Function start.");
+    if (!file || file->size < 2) {
+        CSV_LOG("[csv_file_sort]: nothing to sort.");
+        return;
+    }
+
+    size_t start = (skipHeader && file->size > 0) ? 1 : 0;
+    size_t n     = file->size - start;
+    if (n < 2) { 
+        return;
+    }
+
+    g_sort_col  = columnIndex;
+    g_sort_sign = ascending ? 1 : -1;
+    qsort(file->rows + start, n, sizeof(CsvRow*), csv_sort_cmp);
+
+    CSV_LOG("[csv_file_sort]: sorted %zu row(s) on column %zu (asc=%d).", n, columnIndex, (int)ascending);
+}
+
+
+/**
+ * @brief Build a new CsvFile containing only rows that satisfy `predicate`.
+ *
+ * Generic, closure-by-convention filter — the predicate receives a
+ * `userdata` pointer the caller supplies, so you can filter by any
+ * criterion (column value, regex match, range check, …) without writing
+ * a new function per filter.
+ *
+ * Each kept row is DEEP-copied — the result is independently
+ * destroyable and the source is not modified.
+ *
+ * @param file       Source file.
+ * @param predicate  Called once per non-header row. Returning true keeps
+ *                   the row in the result.
+ * @param userdata   Opaque pointer forwarded to `predicate`. May be NULL.
+ * @param keepHeader If true and the source has a header, the header is
+ *                   copied unconditionally (without consulting `predicate`).
+ * @return Newly-allocated CsvFile (caller must `csv_file_destroy` it),
+ *         or NULL on bad input / OOM.
+ */
+CsvFile* csv_file_filter(const CsvFile *file, CsvRowPredicate predicate, void *userdata, bool keepHeader) {
+    CSV_LOG("[csv_file_filter]: Function start.");
+    if (!file || !predicate) {
+        CSV_LOG("[csv_file_filter]: NULL file or predicate.");
+        return NULL;
+    }
+
+    CsvFile *out = csv_file_create(file->delimiter);
+    if (!out) {
+        return NULL;
+    }
+
+    size_t start = 0;
+    if (keepHeader && file->size > 0) {
+        /* Deep-copy the header. */
+        CsvRow *src = file->rows[0];
+        CsvRow *dst = csv_row_create();
+        if (!dst) { csv_file_destroy(out); return NULL; }
+        for (size_t j = 0; j < src->size; ++j) {
+            csv_row_append_cell(dst, src->cells[j] ? src->cells[j] : "");
+        }
+        csv_file_append_row(out, dst);
+        start = 1;
+    }
+
+    for (size_t i = start; i < file->size; ++i) {
+        CsvRow *src = file->rows[i];
+        if (!predicate(src, userdata)) {
+            continue;
+        }
+
+        CsvRow *dst = csv_row_create();
+        if (!dst) { 
+            csv_file_destroy(out); 
+            return NULL; 
+        }
+
+        for (size_t j = 0; j < src->size; ++j) {
+            csv_row_append_cell(dst, src->cells[j] ? src->cells[j] : "");
+        }
+        csv_file_append_row(out, dst);
+    }
+
+    CSV_LOG("[csv_file_filter]: kept %zu of %zu row(s).", out->size, file->size);
+    return out;
+}
+
+
+/**
+ * @brief Replace the value at cell `index` of `row` in place.
+ *
+ * Fills the glaring gap that without this function the library can
+ * APPEND cells (`csv_row_append_cell`) but never modify an existing
+ * one. The new value is copied (`string_strdup`) so the caller may
+ * free its buffer immediately after. The old value's memory is
+ * released, so there's no leak from repeated overwrites — even when
+ * the new string is much shorter than the old one.
+ *
+ * @param row   Target row.
+ * @param index 0-based cell index. Must be < `row->size`.
+ * @param value New cell value. Empty string is allowed; NULL is not.
+ * @return true on success, false if `row`/`value` is NULL, the index
+ *         is out of range, or memory allocation fails.
+ */
+bool csv_row_set_cell(CsvRow *row, size_t index, const char *value) {
+    CSV_LOG("[csv_row_set_cell]: Function start.");
+    if (!row || !value || index >= row->size) {
+        CSV_LOG("[csv_row_set_cell]: invalid input (row=%p, value=%p, index=%zu, size=%zu).", (void*)row, (const void*)value, index, row ? row->size : 0);
+        return false;
+    }
+
+    char *dup = string_strdup(value);
+    if (!dup) {
+        CSV_LOG("[csv_row_set_cell]: string_strdup failed.");
+        return false;
+    }
+    free(row->cells[index]);
+    row->cells[index] = dup;
+
+    CSV_LOG("[csv_row_set_cell]: cell %zu set to '%s'.", index, value);
+    return true;
+}
+
+/**
+ * @brief Build a new CsvFile with duplicate rows removed by one column's value.
+ *
+ * Keeps the FIRST occurrence of every distinct value seen in
+ * `columnIndex`. Subsequent rows with the same key value are dropped.
+ * Rows shorter than `columnIndex` are treated as if their key were the
+ * empty string (so all "short" rows collapse to one).
+ *
+ * Comparison is `strcmp`-exact and case-sensitive. The result is a deep
+ * copy — the source file is untouched and the result is independently
+ * destroyable.
+ *
+ * Complexity is O(N²) in the number of rows (no hash table). Fine for
+ * the typical CSV sizes this library targets; if you need O(N) on
+ * millions of rows, sort by the key first and walk linearly.
+ *
+ * @param file        Source file.
+ * @param columnIndex Column whose value is the dedup key.
+ * @param keepHeader  If true and `file` has rows, row 0 is copied
+ *                    unconditionally (not considered for dedup).
+ * @return Newly-allocated CsvFile (caller must `csv_file_destroy`), or
+ *         NULL on bad input / OOM.
+ */
+CsvFile* csv_file_unique_by_column(const CsvFile *file, size_t columnIndex, bool keepHeader) {
+    CSV_LOG("[csv_file_unique_by_column]: Function start.");
+    if (!file) {
+        CSV_LOG("[csv_file_unique_by_column]: NULL file.");
+        return NULL;
+    }
+    CsvFile *out = csv_file_create(file->delimiter);
+    if (!out) { 
+        return NULL;
+    }
+
+    size_t start = 0;
+    if (keepHeader && file->size > 0) {
+        CsvRow *src = file->rows[0];
+        CsvRow *dst = csv_row_create();
+        if (!dst) { csv_file_destroy(out); return NULL; }
+        for (size_t j = 0; j < src->size; ++j) {
+            csv_row_append_cell(dst, src->cells[j] ? src->cells[j] : "");
+        }
+        csv_file_append_row(out, dst);
+        start = 1;
+    }
+
+    for (size_t i = start; i < file->size; ++i) {
+        CsvRow *row = file->rows[i];
+        const char *key = (columnIndex < row->size && row->cells[columnIndex]) ? row->cells[columnIndex] : "";
+
+        bool seen = false;
+        size_t scan_start = (keepHeader && out->size > 0) ? 1 : 0;
+        for (size_t k = scan_start; k < out->size && !seen; ++k) {
+            CsvRow *prev = out->rows[k];
+            const char *prev_key = (columnIndex < prev->size && prev->cells[columnIndex]) ? prev->cells[columnIndex] : "";
+            if (strcmp(key, prev_key) == 0) {
+                seen = true;
+            }
+        }
+        if (seen) { 
+            continue;
+        }
+
+        CsvRow *dst = csv_row_create();
+        if (!dst) { 
+            csv_file_destroy(out); 
+            return NULL; 
+        }
+        for (size_t j = 0; j < row->size; ++j) {
+            csv_row_append_cell(dst, row->cells[j] ? row->cells[j] : "");
+        }
+        csv_file_append_row(out, dst);
+    }
+
+    CSV_LOG("[csv_file_unique_by_column]: %zu unique row(s) (from %zu).", out->size, file->size);
+    return out;
+}
+
+
+/**
+ * @brief Serialize the whole file to a malloc'd in-memory string.
+ *
+ * Symmetric to `csv_file_load_from_string`. Cells are joined with
+ * `file->delimiter`; rows end in a single `\n`. The returned string is
+ * NUL-terminated and owned by the caller — free it with `free()`.
+ *
+ * Does NOT add CSV-style quote escaping for cells that contain the
+ * delimiter, quotes, or newlines (matches `csv_file_write`'s policy).
+ *
+ * Output is **byte-identical** to what `csv_file_write` produces on
+ * every platform: both always emit `\n`-only line endings. `csv_file_write`
+ * opens the destination in binary mode precisely so this guarantee
+ * holds on Windows too.
+ *
+ * @param file Source file.
+ * @return Newly-allocated NUL-terminated CSV string, or NULL on bad
+ *         input / OOM. For an empty file the string is `""` (length 0).
+ */
+char* csv_file_export_to_string(const CsvFile *file) {
+    CSV_LOG("[csv_file_export_to_string]: Function start.");
+    if (!file) {
+        CSV_LOG("[csv_file_export_to_string]: NULL file.");
+        return NULL;
+    }
+
+    size_t cap = 256;
+    size_t len = 0;
+    char *out = (char*)malloc(cap);
+    if (!out) { 
+        return NULL;
+    }
+    out[0] = '\0';
+
+    for (size_t i = 0; i < file->size; ++i) {
+        CsvRow *row = file->rows[i];
+        for (size_t j = 0; j < row->size; ++j) {
+            const char *cell = row->cells[j] ? row->cells[j] : "";
+            size_t cell_len = strlen(cell);
+
+            /* Reserve room for the cell + delimiter + newline + NUL. */
+            if (len + cell_len + 2 >= cap) {
+                size_t new_cap = (len + cell_len + 2) * 2;
+                char *nb = (char*)realloc(out, new_cap);
+                if (!nb) { 
+                    free(out); 
+                    return NULL; 
+                }
+                out = nb;
+                cap = new_cap;
+            }
+            memcpy(out + len, cell, cell_len);
+            len += cell_len;
+            if (j + 1 < row->size) {
+                out[len++] = file->delimiter;
+            }
+        }
+
+        if (len + 2 >= cap) {
+            size_t new_cap = (len + 2) * 2;
+            char *nb = (char*)realloc(out, new_cap);
+
+            if (!nb) { 
+                free(out); 
+                return NULL; 
+            }
+            out = nb;
+            cap = new_cap;
+        }
+        out[len++] = '\n';
+    }
+    out[len] = '\0';
+    CSV_LOG("[csv_file_export_to_string]: emitted %zu bytes from %zu row(s).", len, file->size);
+    return out;
 }

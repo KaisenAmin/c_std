@@ -137,12 +137,96 @@ The library includes detailed function descriptions for compiling and matching r
 
 ---
 
+### `void regex_match_free(RegexMatch* match)`
+
+- **Purpose**: Frees the per-match capture-group buffers (`group_starts` and `group_lengths`) that `regex_match` / `regex_search` / `regex_find_all` allocate on every successful match. Call this once you're done with a `RegexMatch`; for arrays of matches (e.g. from `regex_find_all`), call once per entry.
+- **Parameters**:
+  - `match`: The `RegexMatch` to free. Safe to call with `NULL` or a zeroed/already-freed match.
+- **Note**: Without this call, every successful match leaks memory.
+
+---
+
 ### `const char* regex_error_message(RegexResult result)`
 
 - **Purpose**: Converts a regex result code to a human-readable error message.
 - **Parameters**:
   - `result`: The result code, such as `REGEX_COMPILE_ERROR`.
 - **Return**: A string representing the error message.
+
+---
+
+The following seven helpers were added in the production-hardening pass. Each one is pure C built on top of PCRE — no platform-specific code, no global state, no `exit()` calls — and works identically on Windows, Linux, macOS, and BSD.
+
+### `int regex_test(const char* pattern, const char* string, RegexFlags flags)`
+
+- **Purpose**: One-shot "does this match?" check. Compiles, searches, and deallocates internally so the caller doesn't have to manage a `Regex` lifetime.
+- **Parameters**:
+  - `pattern`: Regex pattern to compile.
+  - `string`: Input string to test.
+  - `flags`: Regex flags (e.g. `REGEX_CASE_INSENSITIVE`).
+- **Return**:
+  - `1` if the pattern is found in the string.
+  - `0` if it is not found.
+  - `-1` on NULL inputs or compile error.
+
+---
+
+### `int regex_count_matches(const char* pattern, const char* string, RegexFlags flags)`
+
+- **Purpose**: Counts every non-overlapping occurrence of `pattern` in `string`.
+- **Parameters**:
+  - `pattern`, `string`, `flags`: Same as `regex_test`.
+- **Return**: Number of matches, or `-1` on error.
+- **Notes**: Handles zero-length matches (`\b`, `^$`, …) by advancing one byte per zero-width hit so the walk always terminates.
+
+---
+
+### `char* regex_replace(const char* pattern, const char* string, const char* replacement, RegexFlags flags)`
+
+- **Purpose**: Returns a freshly-allocated copy of `string` with **every** match of `pattern` replaced by the **literal** text `replacement`.
+- **Parameters**:
+  - `pattern`, `string`, `flags`: As above.
+  - `replacement`: Literal text to substitute. Backreferences such as `$1` or `\1` are **not** expanded.
+- **Return**: New string (caller must `free()`), or `NULL` on compile failure / OOM / NULL inputs.
+
+---
+
+### `char* regex_replace_first(const char* pattern, const char* string, const char* replacement, RegexFlags flags)`
+
+- **Purpose**: Same as `regex_replace` but only the **first** match is substituted.
+- **Return**: New string (caller must `free()`), or `NULL` on error.
+
+---
+
+### `char** regex_split(const char* pattern, const char* string, RegexFlags flags, int* out_count)`
+
+- **Purpose**: Splits `string` at every non-empty match of `pattern`.
+- **Parameters**:
+  - `pattern`, `string`, `flags`: As above.
+  - `out_count`: Filled with the number of tokens emitted (excluding the trailing `NULL` sentinel).
+- **Return**: A heap-allocated, `NULL`-terminated array of heap-allocated C strings, or `NULL` on error. Empty tokens are kept at adjacent separator positions (matches `re.split` in Python).
+- **Free with**: `regex_split_free`.
+
+---
+
+### `void regex_split_free(char** tokens, int count)`
+
+- **Purpose**: Frees the token array returned by `regex_split`.
+- **Parameters**:
+  - `tokens`: Array returned by `regex_split`. `NULL` is safe.
+  - `count`: Number of tokens. Pass `-1` to scan for the `NULL` sentinel instead.
+
+---
+
+### `char* regex_match_group(const RegexMatch* match, int group_index)`
+
+- **Purpose**: Copies the requested group out of a `RegexMatch` into a freshly-allocated, NUL-terminated C string.
+- **Parameters**:
+  - `match`: A successful `RegexMatch` from `regex_match` / `regex_search` / `regex_find_all`.
+  - `group_index`:
+    - `0` — the whole match.
+    - `1..group_count` — the corresponding capturing group.
+- **Return**: New string (caller must `free()`), or `NULL` if `match` is `NULL`, the index is out of range, or allocation fails.
 
 ---
 
@@ -458,6 +542,7 @@ int main() {
         fmt_printf("No match found.\n");
     }
 
+    regex_match_free(&match);
     regex_deallocate(regex);
     return 0;
 }
@@ -529,6 +614,7 @@ int main() {
     fmt_printf("Found %d matches:\n", match_count);
     for (int i = 0; i < match_count; ++i) {
         fmt_printf("Match %d: %.*s\n", i + 1, (int)matches[i].length, matches[i].start);
+        regex_match_free(&matches[i]);
     }
 
     regex_deallocate(regex);
@@ -569,7 +655,9 @@ int main() {
         fmt_printf("No valid date found.\n");
     }
 
+    regex_match_free(&match);
     regex_deallocate(regex);
+
     return 0;
 }
 ```
@@ -598,7 +686,8 @@ int main() {
 
     RegexMatch match;
     if (regex_search(regex, test_string, &match) == REGEX_SUCCESS) {
-        fmt_printf("Date found: %.*s\n", match.length, match.start);
+        fmt_printf("Date found: %.*s\n", (int)match.length, match.start);
+
         for (int i = 0; i < match.group_count; i++) {
             fmt_printf("Group %d: %.*s\n", i + 1, (int)match.group_lengths[i], match.group_starts[i]);
         }
@@ -607,7 +696,9 @@ int main() {
         fmt_printf("No valid date found.\n");
     }
 
+    regex_match_free(&match);
     regex_deallocate(regex);
+
     return 0;
 }
 ```
@@ -686,7 +777,9 @@ int main() {
         fmt_printf("No match found.\n");
     }
 
+    regex_match_free(&match);
     regex_deallocate(regex);
+
     return 0;
 }
 ```
@@ -697,6 +790,492 @@ Full match: 123-apple-orange
 Group 1: 123
 Group 2: apple
 Group 3: orange
+```
+
+---
+
+### Example 16: One-shot match test with `regex_test`
+
+Use `regex_test` when you just need a yes/no answer and don't want to manage a `Regex` lifetime.
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* email = "alli.rashiddi@gmail.com";
+
+    if (regex_test("^[^@\\s]+@[^@\\s]+\\.[a-zA-Z]{2,}$", email, REGEX_DEFAULT) == 1) {
+        fmt_printf("Looks like an email.\n");
+    } 
+    else {
+        fmt_printf("Not an email.\n");
+    }
+    return 0;
+}
+```
+
+**Result:**
+```
+Looks like an email.
+```
+
+---
+
+### Example 17: Counting occurrences with `regex_count_matches`
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+
+
+int main() {
+    const char* text = "production-ready, battle-hardened, tested";
+
+    int vowels = regex_count_matches("[aeiou]", text, REGEX_DEFAULT);
+    int words  = regex_count_matches("\\b[a-z]+\\b", text, REGEX_DEFAULT);
+
+    fmt_printf("Vowel count: %d\n", vowels);
+    fmt_printf("Word count:  %d\n", words);
+    
+    return 0;
+}
+```
+
+**Result:**
+```
+Vowel count: 13
+Word count:  5
+```
+
+---
+
+### Example 18: Replacing every match with `regex_replace`
+
+`regex_replace` returns a freshly-allocated string the caller owns. Replacement text is **literal** — backreferences such as `$1` are not expanded.
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    char* out = regex_replace("[aeiou]", "production", "*", REGEX_DEFAULT);
+    fmt_printf("%s\n", out);  // pr*d*ct**n
+    free(out);
+
+    /* Also handy for normalising whitespace. */
+    char* trimmed = regex_replace("\\s+", "  hello   world  ", " ", REGEX_DEFAULT);
+    fmt_printf("[%s]\n", trimmed);  // [ hello world ]
+    free(trimmed);
+
+    return 0;
+}
+```
+
+**Result:**
+```
+pr*d*ct**n
+[ hello world ]
+```
+
+---
+
+### Example 19: Replacing only the first match with `regex_replace_first`
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    char* out = regex_replace_first("[0-9]+", "abc123def456", "###", REGEX_DEFAULT);
+    fmt_printf("%s\n", out);  // abc###def456
+
+    free(out);
+    return 0;
+}
+```
+
+**Result:**
+```
+abc###def456
+```
+
+---
+
+### Example 20: Splitting a string with `regex_split` + `regex_split_free`
+
+`regex_split` keeps empty tokens at adjacent separators (matches Python's `re.split`).
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+
+
+int main() {
+    int n = 0;
+    char** parts = regex_split("\\s*,\\s*",
+                               "alpha, beta ,  gamma",
+                               REGEX_DEFAULT, &n);
+
+    for (int i = 0; i < n; i++) {
+        fmt_printf("[%d] %s\n", i, parts[i]);
+    }
+
+    regex_split_free(parts, n);
+    return 0;
+}
+```
+
+**Result:**
+```
+[0] alpha
+[1] beta
+[2] gamma
+```
+
+---
+
+### Example 21: Extracting groups with `regex_match_group`
+
+`regex_match_group(&m, 0)` returns the whole match; positive indices return capturing groups.
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    Regex* r = regex_compile("(\\d{4})-(\\d{2})-(\\d{2})", REGEX_DEFAULT);
+    RegexMatch m;
+
+    if (regex_search(r, "Release on 2026-05-26.", &m) == REGEX_SUCCESS) {
+        char* whole = regex_match_group(&m, 0);
+        char* year  = regex_match_group(&m, 1);
+        char* month = regex_match_group(&m, 2);
+        char* day   = regex_match_group(&m, 3);
+
+        fmt_printf("match = %s\n", whole);
+        fmt_printf("year  = %s\n", year);
+        fmt_printf("month = %s\n", month);
+        fmt_printf("day   = %s\n", day);
+
+        free(whole); 
+        free(year); 
+        free(month); 
+        free(day);
+        regex_match_free(&m);
+    }
+
+    regex_deallocate(r);
+    return 0;
+}
+```
+
+**Result:**
+```
+match = 2026-05-26
+year  = 2026
+month = 05
+day   = 26
+```
+
+---
+
+### Example 22: End-to-end pipeline — split, filter, replace
+
+Combining the new helpers gives a concise "data cleanup" pipeline.
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main() {
+    const char* csv = "alpha,beta42,gamma,delta7,epsilon";
+
+    /* 1) Split into fields. */
+    int n = 0;
+    char** fields = regex_split(",", csv, REGEX_DEFAULT, &n);
+
+    /* 2) Count fields that contain a digit. */
+    int with_digit = 0;
+    for (int i = 0; i < n; i++) {
+        if (regex_test("[0-9]", fields[i], REGEX_DEFAULT) == 1) {
+            with_digit++;
+        }
+    }
+    fmt_printf("Fields containing a digit: %d / %d\n", with_digit, n);
+
+    /* 3) Anonymise the letter-runs. */
+    char* anon = regex_replace("[a-z]+", csv, "X", REGEX_DEFAULT);
+    fmt_printf("Anonymised: %s\n", anon);
+    free(anon);
+
+    regex_split_free(fields, n);
+    return 0;
+}
+```
+
+**Result:**
+```
+Fields containing a digit: 2 / 5
+Anonymised: X,X42,X,X7,X
+```
+
+---
+
+### Example 23: Building a report from matches with the `String` library
+
+Pair `regex_find_all` with the `String` library to extract every lowercase word, upper-case it, and join the results into a single report string.
+
+```c
+#include "regex/std_regex.h"
+#include "string/std_string.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    const char* text = "the quick brown fox";
+
+    Regex* re = regex_compile("[a-z]+", REGEX_DEFAULT);
+    if (!re) {
+        fmt_printf("Failed to compile regex.\n");
+        return 1;
+    }
+
+    RegexMatch matches[16];
+    int n = regex_find_all(re, text, matches, 16);
+
+    /* Build an UPPER-CASED, comma-joined report with the String library. */
+    String* report = string_create("");
+    for (int i = 0; i < n; ++i) {
+        char* word = regex_match_group(&matches[i], 0);  /* whole match   */
+        String* w  = string_create(word);
+        char* up   = string_to_upper(w);                 /* heap C-string */
+
+        if (i > 0) {
+            string_append(report, ", ");
+        }
+        string_append(report, up);
+
+        free(up);
+        string_deallocate(w);
+        free(word);
+        regex_match_free(&matches[i]);
+    }
+
+    fmt_printf("Found %d words\n", n);
+    fmt_printf("Report: %s\n", string_c_str(report));
+
+    string_deallocate(report);
+    regex_deallocate(re);
+    return 0;
+}
+```
+
+**Result:**
+```
+Found 4 words
+Report: THE, QUICK, BROWN, FOX
+```
+
+---
+
+### Example 24: Collecting matches into a `Vector`
+
+Use `regex_find_all` to pull every HTTP status code out of a log line and store each one as a heap string inside a `Vector`.
+
+```c
+#include "regex/std_regex.h"
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    const char* log = "GET /index 200, POST /login 403, GET /data 200, DELETE /x 500";
+
+    Regex* re = regex_compile("\\b[1-5][0-9][0-9]\\b", REGEX_DEFAULT); /* HTTP codes */
+    if (!re) {
+        fmt_printf("Failed to compile regex.\n");
+        return 1;
+    }
+
+    RegexMatch matches[16];
+    int n = regex_find_all(re, log, matches, 16);
+
+    /* Collect every matched status code into a Vector of heap strings. */
+    Vector* codes = vector_create(sizeof(char*));
+    for (int i = 0; i < n; ++i) {
+        char* code = regex_match_group(&matches[i], 0);
+        vector_push_back(codes, &code);
+        regex_match_free(&matches[i]);
+    }
+
+    fmt_printf("Collected %zu status codes:\n", vector_size(codes));
+    for (size_t i = 0; i < vector_size(codes); ++i) {
+        char* code = *(char**)vector_at(codes, i);
+        fmt_printf("  [%zu] %s\n", i, code);
+        free(code);
+    }
+
+    vector_deallocate(codes);
+    regex_deallocate(re);
+    return 0;
+}
+```
+
+**Result:**
+```
+Collected 4 status codes:
+  [0] 200
+  [1] 403
+  [2] 200
+  [3] 500
+```
+
+---
+
+### Example 25: A tiny `grep` over a file written with `file_io`
+
+Write a log file with the `FileWriter`, then read it back line-by-line with the `FileReader` and print only the lines that match — a minimal `grep`.
+
+```c
+#include "regex/std_regex.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+#include <stdio.h>
+
+int main(void) {
+    const char* path = "rgx_grep_demo.txt";
+
+    /* 1) Write a small log file with the FileWriter. */
+    FileWriter* w = file_writer_open(path, WRITE_TEXT);
+    file_writer_write_fmt(w, "2026-05-30 INFO  service started\n");
+    file_writer_write_fmt(w, "2026-05-30 WARN  disk almost full\n");
+    file_writer_write_fmt(w, "2026-05-30 ERROR connection refused\n");
+    file_writer_write_fmt(w, "2026-05-30 INFO  request handled\n");
+    file_writer_write_fmt(w, "2026-05-30 ERROR timeout reached\n");
+    file_writer_close(w);
+
+    /* 2) grep: print only the lines that match, using regex_test per line. */
+    FileReader* r = file_reader_open(path, READ_TEXT);
+    char line[256];
+    int hits = 0;
+    while (file_reader_read_line(line, sizeof(line), r)) {
+        if (regex_test("\\b(WARN|ERROR)\\b", line, REGEX_DEFAULT) == 1) {
+            fmt_printf("%s\n", line);
+            hits++;
+        }
+    }
+    file_reader_close(r);
+
+    fmt_printf("matched %d line(s)\n", hits);
+
+    remove(path);
+    return 0;
+}
+```
+
+**Result:**
+```
+2026-05-30 WARN  disk almost full
+2026-05-30 ERROR connection refused
+2026-05-30 ERROR timeout reached
+matched 3 line(s)
+```
+
+---
+
+### Example 26: Base64-encoding a captured group with the `encoding` library
+
+Capture a token with a group, then hand the extracted text to the `encoding` library's Base64 encoder.
+
+```c
+#include "regex/std_regex.h"
+#include "encoding/encoding.h"
+#include "fmt/fmt.h"
+#include <string.h>
+#include <stdlib.h>
+
+int main(void) {
+    const char* input = "token=OpenSesame; ttl=60";
+
+    Regex* re = regex_compile("token=([A-Za-z0-9]+)", REGEX_DEFAULT);
+    if (!re) {
+        fmt_printf("Failed to compile regex.\n");
+        return 1;
+    }
+
+    RegexMatch m;
+    if (regex_search(re, input, &m) == REGEX_SUCCESS) {
+        char* secret = regex_match_group(&m, 1);   /* capturing group 1 */
+
+        /* Base64-encode the extracted secret with the encoding library. */
+        char* b64 = encoding_base64_encode(secret, strlen(secret));
+        fmt_printf("secret    = %s\n", secret);
+        fmt_printf("base64    = %s\n", b64);
+
+        free(b64);
+        free(secret);
+        regex_match_free(&m);
+    } 
+    else {
+        fmt_printf("No token found.\n");
+    }
+
+    regex_deallocate(re);
+    return 0;
+}
+```
+
+**Result:**
+```
+secret    = OpenSesame
+base64    = T3BlblNlc2FtZQ==
+```
+
+---
+
+### Example 27: Counting categories into a fixed-size `array`
+
+`regex_count_matches` is perfect for tallying. Here the three tallies are stored in a compile-time `array` and summed.
+
+```c
+#include "regex/std_regex.h"
+#include "array/array.h"
+#include "fmt/fmt.h"
+
+array_create(int, 3, Counts3);
+
+int main(void) {
+    const char* text = "cat dog cat bird dog cat fish dog bird";
+
+    /* Count three categories with regex_count_matches, store in a fixed array. */
+    Counts3 counts;
+    array_at(counts, 0) = regex_count_matches("\\bcat\\b",  text, REGEX_DEFAULT);
+    array_at(counts, 1) = regex_count_matches("\\bdog\\b",  text, REGEX_DEFAULT);
+    array_at(counts, 2) = regex_count_matches("\\bbird\\b", text, REGEX_DEFAULT);
+
+    const char* names[3] = { "cat", "dog", "bird" };
+    int total = 0;
+    for (size_t i = 0; i < array_size(counts); ++i) {
+        fmt_printf("%-4s : %d\n", names[i], array_at(counts, i));
+        total += array_at(counts, i);
+    }
+    fmt_printf("total: %d\n", total);
+    return 0;
+}
+```
+
+**Result:**
+```
+cat  : 3
+dog  : 3
+bird : 2
+total: 8
 ```
 
 ---

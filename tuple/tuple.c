@@ -9,6 +9,7 @@
 #include "tuple.h"
 
 
+
 /**
  * @brief This function allocates memory for a tuple and its elements based on the given size.
  * Each element is initialized to `NULL`.
@@ -24,22 +25,24 @@ Tuple* tuple_create(size_t size) {
     Tuple* tuple = (Tuple*)malloc(sizeof(Tuple));
     if (!tuple) {
         TUPLE_LOG("[tuple_create]: Error: Memory allocation failed for tuple.");
-        exit(-1);
+        return NULL;
     }
 
     tuple->size = size;
-    TUPLE_LOG("[tuple_create]: Allocating memory for %zu tuple elements.", size);
-
-    tuple->elements = (TupleElement*)calloc(size, sizeof(TupleElement));
-    if (!tuple->elements) {
-        TUPLE_LOG("[tuple_create]: Error: Memory allocation failed for tuple elements.");
-        free(tuple);
-        exit(-1);
+    tuple->elements = NULL;
+    if (size > 0) {
+        tuple->elements = (TupleElement*)calloc(size, sizeof(TupleElement));
+        if (!tuple->elements) {
+            TUPLE_LOG("[tuple_create]: Error: Memory allocation failed for tuple elements.");
+            free(tuple);
+            return NULL;
+        }
     }
 
     TUPLE_LOG("[tuple_create]: Tuple created successfully with size %zu.", size);
     return tuple;
 }
+
 
 /**
  * @brief This function frees all memory associated with the tuple, including the memory used by each element.
@@ -67,6 +70,8 @@ void tuple_deallocate(Tuple* tuple) {
     
     TUPLE_LOG("[tuple_deallocate]: Deallocated successfully.");
 }
+
+
 /**
  * @brief This function assigns new data to the specified element of the tuple. 
  * It allocates memory for the new data and copies it into the tuple, replacing any existing data.
@@ -113,6 +118,7 @@ bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size) {
     return true;
 }
 
+
 /**
  * @brief This function returns a pointer to the data stored at the given index in the tuple.
  * It also provides the size of the data through the `outSize` parameter.
@@ -145,6 +151,7 @@ void* tuple_get(const Tuple* tuple, size_t index, size_t* outSize) {
 
     return tuple->elements[index].data;
 }
+
 
 /**
  * @brief This function creates a new tuple with the specified number of elements. 
@@ -186,6 +193,7 @@ Tuple* tuple_make_tuple(size_t num, ...) {
     return tuple;
 }
 
+
 /**
  * @brief This function takes a variable number of pointers and stores them in a newly created tuple. 
  * Each element in the tuple is a pointer to the original data. This is useful for creating a 
@@ -226,6 +234,7 @@ Tuple* tuple_tie(size_t num, ...) {
     return tuple;
 }
 
+
 /**
  * @brief This function exchanges the contents of the two provided tuples. 
  * After the swap, the first tuple will contain the elements of the second tuple and vice versa.
@@ -257,8 +266,10 @@ void tuple_swap(Tuple* a, Tuple* b) {
     TupleElement* tempElements = a->elements;
     a->elements = b->elements;
     b->elements = tempElements;
+
     TUPLE_LOG("[tuple_swap]: Swapped elements.");
 }
+
 
 /**
  * @brief This function takes a variable number of arguments and stores them in a newly created tuple. 
@@ -285,8 +296,13 @@ Tuple* tuple_forward_as_tuple(size_t num, ...) {
 
     for (size_t i = 0; i < num; ++i) {
         void* pointer = va_arg(args, void*);
-        tuple->elements[i].data = pointer; // Store the pointer directly
-        tuple->elements[i].size = sizeof(pointer);
+        if (!tuple_set(tuple, i, &pointer, sizeof(void*))) {
+            TUPLE_LOG("[tuple_forward_as_tuple]: Error: Failed to set pointer at index %zu.", i);
+            va_end(args);
+            tuple_deallocate(tuple);
+
+            return NULL;
+        }
         TUPLE_LOG("[tuple_forward_as_tuple]: Element %zu set with data: %p", i, pointer);
     }
 
@@ -296,6 +312,7 @@ Tuple* tuple_forward_as_tuple(size_t num, ...) {
     return tuple;
 }
 
+
 /**
  * @brief This function returns the number of elements stored in the given tuple.
  * 
@@ -303,16 +320,10 @@ Tuple* tuple_forward_as_tuple(size_t num, ...) {
  * @return The number of elements in the tuple, or 0 if the tuple is `NULL`.
  */
 size_t tuple_size(const Tuple* tuple) {
-    TUPLE_LOG("[tuple_size]: Entering with tuple: %p", (void*)tuple);
-
-    if (tuple == NULL) {
-        TUPLE_LOG("[tuple_size]: Error: Tuple is NULL.");
-        return 0;
-    }
-
-    TUPLE_LOG("[tuple_size]: Returning size: %zu", tuple->size);
-    return tuple->size;
+    /* NULL is a legal answer, not an error case. Keep the function silent in that case. */
+    return tuple ? tuple->size : 0;
 }
+
 
 /**
  * @brief This function compares two tuples element by element. It returns `true` if the tuples 
@@ -352,6 +363,7 @@ bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
     TUPLE_LOG("[tuple_is_equal]: Tuples are equal.");
     return true;
 }
+
 
 /**
  * @brief This function compares two tuples element by element. It returns `true` if the first tuple 
@@ -405,6 +417,7 @@ bool tuple_is_less(const Tuple* t1, const Tuple* t2) {
     return result;
 }
 
+
 /**
  * @brief This function compares two tuples element by element. It returns `true` if the first tuple 
  * is lexicographically greater than the second tuple. The comparison is done based on the size 
@@ -457,6 +470,7 @@ bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
     return result;
 }
 
+
 /**
  * @brief This function compares two tuples element by element. It returns `true` if the tuples are 
  * not equal, i.e., if they differ in size or content.
@@ -484,6 +498,7 @@ bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2) {
 
     return result;
 }
+
 
 /**
  * @brief This function compares two tuples element by element. It returns `true` if the first tuple 
@@ -513,6 +528,7 @@ bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2) {
     return result;
 }
 
+
 /**
  * @brief This function compares two tuples element by element. It returns `true` if the first tuple 
  * is less than or equal to the second tuple according to lexicographical order.
@@ -539,6 +555,7 @@ bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2) {
 
     return result;
 }
+
 
 /**
  * @brief Checks if the tuple is empty.

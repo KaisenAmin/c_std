@@ -2,7 +2,14 @@
  * @author Amin Tahmasebi
  * @date 2023
  * @class Log
-*/
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in log.c (file-level convention).
+ *
+ * Lightweight leveled logger with console+file output, timestamp /
+ * level visibility toggles, keyword filtering, rate limiting and
+ * size-based rotation.
+ */
 
 #ifndef LOG_H_
 #define LOG_H_
@@ -11,24 +18,34 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
 #include "../file_io/file_writer.h"
 #include "../file_io/file_reader.h"
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MAX_KEYWORD_LENGTH 512
-// #define LOG_ENABLE_LOGGING
 
-#ifdef LOG_LOGGING_ENABLE 
+/* ------------------------------------------------------------------ */
+/* Limits                                                             */
+/* ------------------------------------------------------------------ */
+
+#define MAX_KEYWORD_LENGTH 512
+#define LOG_MAX_PATH       1024
+
+
+/* #define LOG_LOGGING_ENABLE */
+
+#ifdef LOG_LOGGING_ENABLE
     #define LOG_LOG(fmt, ...) \
         do { fprintf(stderr, "[LOG LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define LOG_LOG(fmt, ...) do { } while (0)
+    #define LOG_LOG(...) do { } while (0)
 #endif
 
-// Log levels
+
+
 typedef enum {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -37,73 +54,102 @@ typedef enum {
     LOG_LEVEL_FATAL
 } LogLevel;
 
-// Log output options
+
 typedef enum {
     LOG_OUTPUT_CONSOLE,
     LOG_OUTPUT_FILE,
     LOG_OUTPUT_BOTH
 } LogOutput;
 
+/* Optional per-record filter callback. Return true to keep, false to
+ * drop. `user_data` is the cookie passed to `log_set_custom_filter`. */
 typedef bool (*LogFilterFunction)(LogLevel level, const char* message, void* user_data);
 
-// Log configuration structure
 typedef struct {
-    LogLevel level;
-    LogOutput output;
-    FileWriter* file_writer;
-    FileReader* file_reader;
-    bool enable_timestamp;
-    bool enable_log_level;
-    char keyword_filter[MAX_KEYWORD_LENGTH]; 
-    bool is_keyword_filter_enabled; 
-    bool suspended;
-    char format[256];
-    bool level_visibility[LOG_LEVEL_FATAL + 1];
-    LogFilterFunction custom_filter; 
-    void* custom_filter_user_data;
-    unsigned int rate_limit_interval; // Time interval for rate limiting in seconds.
-    unsigned int rate_limit_count;    // Maximum count of logs allowed in the interval.
-    unsigned int log_counts[LOG_LEVEL_FATAL + 1]; // Count of logs for each level in the current interval.
-    time_t last_reset_time; // Last reset time for rate limiting.
+    LogLevel           level;
+    LogOutput          output;
+    FileWriter*        file_writer;
+    FileReader*        file_reader;
+    bool               enable_timestamp;
+    bool               enable_log_level;
+    char               keyword_filter[MAX_KEYWORD_LENGTH];
+    bool               is_keyword_filter_enabled;
+    bool               suspended;
+    char               format[256];
+    bool               level_visibility[LOG_LEVEL_FATAL + 1];
+    LogFilterFunction  custom_filter;
+    void*              custom_filter_user_data;
+    unsigned int       rate_limit_interval;            /* seconds                              */
+    unsigned int       rate_limit_count;               /* max logs per interval                */
+    unsigned int       log_counts[LOG_LEVEL_FATAL + 1];/* counts in the current interval       */
+    unsigned long      total_log_counts[LOG_LEVEL_FATAL + 1];/* cumulative emitted, per level   */
+    time_t             last_reset_time;                /* last interval reset                  */
+    char               current_file_path[LOG_MAX_PATH];/* currently open log file              */
 } Log;
 
-// Initialize the logging system
-Log* log_init();
 
-// Log a message at a specified level
-void log_message(Log* config, LogLevel level, const char* message, ...);
-void log_flush(Log* config);
-void log_suspend(Log* config);
-void log_resume(Log* config);
+/* ------------------------------------------------------------------ */
+/* Construction / destruction                                         */
+/* ------------------------------------------------------------------ */
 
-// Clean up the logging system
-void log_deallocate(Log* config);
+Log*    log_init                          (void);
+void    log_deallocate                    (Log* config);
 
-// Set the log output
-bool log_set_output(Log* config, LogOutput output);
 
-// Enable or disable timestamps in log messages
-bool log_enable_timestamp(Log* config, bool enable);
-bool log_set_log_level(Log* config, LogLevel newLevel);
+/* ------------------------------------------------------------------ */
+/* Emitting                                                           */
+/* ------------------------------------------------------------------ */
 
-// Enable filtering of log messages by keywords
-bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable);
-bool log_update_keyword_filter(Log* config, const char* newKeyword);
-bool log_set_file_path(Log* config, const char* newFilePath);
-bool log_rotate(Log* config, const char* newLogPath, size_t maxSize);
-bool log_set_format(Log* config, const char* format);
+void    log_message                       (Log* config, LogLevel level, const char* message, ...);
+void    log_flush                         (Log* config);
+void    log_suspend                       (Log* config);
+void    log_resume                        (Log* config);
 
-// Toggle visibility of specific log levels
-bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible);
-bool log_redirect_output(Log* config, const char* newFilePath);
-bool log_set_verbose(Log* config, bool verbose);
-bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_data);
 
-// Sets a maximum log file size. When the size is reached, the log file is archived and a new log file is started.
-bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat);
+/* ------------------------------------------------------------------ */
+/* Output / sink                                                      */
+/* ------------------------------------------------------------------ */
 
-#ifdef __cplusplus 
+bool    log_set_output                    (Log* config, LogOutput output);
+bool    log_set_file_path                 (Log* config, const char* newFilePath);
+bool    log_redirect_output               (Log* config, const char* newFilePath);
+bool    log_rotate                        (Log* config, const char* newLogPath, size_t maxSize);
+bool    log_set_max_file_size             (Log* config, size_t maxSize, const char* archivePathFormat);
+
+
+/* ------------------------------------------------------------------ */
+/* Formatting / level visibility                                      */
+/* ------------------------------------------------------------------ */
+
+bool    log_set_log_level                 (Log* config, LogLevel newLevel);
+bool    log_set_format                    (Log* config, const char* format);
+bool    log_enable_timestamp              (Log* config, bool enable);
+bool    log_toggle_level_visibility       (Log* config, LogLevel level, bool visible);
+bool    log_set_verbose                   (Log* config, bool verbose);
+
+
+/* ------------------------------------------------------------------ */
+/* Filtering                                                          */
+/* ------------------------------------------------------------------ */
+
+bool    log_enable_keyword_filter         (Log* config, const char* keyword, bool enable);
+bool    log_update_keyword_filter         (Log* config, const char* newKeyword);
+bool    log_set_custom_filter             (Log* config, LogFilterFunction filter, void* user_data);
+
+
+/* ------------------------------------------------------------------ */
+/* Introspection                                                      */
+/* ------------------------------------------------------------------ */
+
+const char*   log_level_to_string         (LogLevel level);
+bool          log_set_level_from_string   (Log* config, const char* level_str);
+bool          log_is_level_enabled        (const Log* config, LogLevel level);
+bool          log_set_rate_limit          (Log* config, unsigned int max_logs_per_interval, unsigned int interval_seconds);
+unsigned long log_get_message_count       (const Log* config, LogLevel level);
+
+
+#ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif 

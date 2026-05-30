@@ -28,69 +28,81 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 ## Function Descriptions
 
 ### `void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp)`
-- **Description**: Performs a stable sort using the merge sort algorithm, which preserves the relative order of equal elements.
-- **Parameters**:
+
+**Purpose**: Performs a stable sort using the merge sort algorithm, which preserves the relative order of equal elements.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
   - `comp`: Comparison function to define the order of elements.
-- **Return Value**:  
-  No return value. The array is sorted in place.
+
+**Return Value**: No return value. The array is sorted in place.
 
 ---
 
 ### `void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp)`
-- **Description**: Uses quicksort to sort an array. This is a non-stable sort, which means the relative order of equal elements may not be preserved.
-- **Parameters**:
+
+**Purpose**: Uses quicksort to sort an array. This is a non-stable sort, which means the relative order of equal elements may not be preserved.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
   - `comp`: Comparison function to define the order of elements.
-- **Return Value**:  
-  No return value. The array is sorted in place.
+
+**Return Value**: No return value. The array is sorted in place.
 
 ---
 
 ### `void *algorithm_find(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
-- **Description**: Finds the first element in the array that matches the provided value.
-- **Parameters**:
+
+**Purpose**: Finds the first element in the array that matches the provided value.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
   - `val`: Pointer to the value to find.
   - `comp`: Comparison function used to check for equality between elements.
-- **Return Value**:  
-  Returns a pointer to the first matching element if found; otherwise, returns `NULL`.
+
+**Return Value**: Returns a pointer to the first matching element if found; otherwise, returns `NULL`.
 
 ---
 
 ### `void *algorithm_find_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
-- **Description**: Finds the first element in the array that satisfies the given predicate.
-- **Parameters**:
+
+**Purpose**: Finds the first element in the array that satisfies the given predicate.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
   - `pred`: Predicate function that returns true if the element matches the condition.
-- **Return Value**:  
-  Returns a pointer to the first matching element if found; otherwise, returns `NULL`.
+
+**Return Value**: Returns a pointer to the first matching element if found; otherwise, returns `NULL`.
 
 ---
 
 ### `void *algorithm_find_if_not(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
-- **Description**: Finds the first element in the array that does not satisfy the given predicate.
-- **Parameters**:
+
+**Purpose**: Finds the first element in the array that does not satisfy the given predicate.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
   - `pred`: Predicate function that returns true if the element should be skipped.
-- **Return Value**:  
-  Returns a pointer to the first element that does not satisfy the predicate; otherwise, returns `NULL`.
+
+**Return Value**: Returns a pointer to the first element that does not satisfy the predicate; otherwise, returns `NULL`.
 
 ---
 
 ### `void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
-- **Description**: Finds the last occurrence of a subsequence within a larger array.
-- **Parameters**:
+
+**Purpose**: Finds the last occurrence of a subsequence within a larger array.
+
+**Parameters**:
   - `base1`: Pointer to the main array.
   - `num1`: Number of elements in the main array.
   - `size1`: Size of each element in the main array.
@@ -98,14 +110,16 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
   - `num2`: Number of elements in the subsequence array.
   - `size2`: Size of each element in the subsequence array.
   - `comp`: Comparison function to compare elements.
-- **Return Value**:  
-  Returns a pointer to the last occurrence of the subsequence in the main array if found; otherwise, returns `NULL`.
+
+**Return Value**: Returns a pointer to the last occurrence of the subsequence in the main array if found; otherwise, returns `NULL`.
 
 ---
 
 ### `void *algorithm_find_first_of(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
-- **Description**: Finds the first occurrence of any element from one array in another array.
-- **Parameters**:
+
+**Purpose**: Finds the first occurrence of any element from one array in another array.
+
+**Parameters**:
   - `base1`: Pointer to the main array.
   - `num1`: Number of elements in the main array.
   - `size1`: Size of each element in the main array.
@@ -113,233 +127,273 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
   - `num2`: Number of elements in the search array.
   - `size2`: Size of each element in the search array.
   - `comp`: Comparison function to compare elements.
-- **Return Value**:  
-  Returns a pointer to the first matching element in the main array if found; otherwise, returns `NULL`.
+
+**Return Value**: Returns a pointer to the first matching element in the main array if found; otherwise, returns `NULL`.
 
 ---
 
 ### `size_t algorithm_binary_search(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
 
-- **Purpose**: Performs a binary search on a sorted array to find the index of a specific value.
-- **Parameters**:
+**Purpose**: Performs a binary search on a sorted array to find the index of a specific value.
+
+**Parameters**:
   - `base`: Pointer to the sorted array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in the array.
   - `val`: Pointer to the value to find.
   - `comp`: Comparison function used to compare elements.
-- **Return**: Index of the found element, or `(size_t)-1` if not found.
-- **Use Case**: Efficiently finding an element in a sorted array.
+
+**Return Value**: Index of the found element, or `(size_t)-1` if not found.
+
+**Usage Case**: Efficiently finding an element in a sorted array.
 
 ---
 
 ### `void *algorithm_max_element(const void *base, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Finds the maximum element in an array based on a comparison function.
-- **Parameters**:
+**Purpose**: Finds the maximum element in an array based on a comparison function.
+
+**Parameters**:
   - `base`: Pointer to the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `comp`: Comparison function that returns a negative value if the first element is less than the second, zero if they are equal, and a positive value if the first element is greater.
-- **Return**: Pointer to the maximum element, or `NULL` if the array is empty.
+
+**Return Value**: Pointer to the maximum element, or `NULL` if the array is empty.
 
 ---
 
 ### `void *algorithm_min_element(const void *base, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Finds the minimum element in an array based on a comparison function.
-- **Parameters**:
+**Purpose**: Finds the minimum element in an array based on a comparison function.
+
+**Parameters**:
   - Same as `algorithm_max_element`.
-- **Return**: Pointer to the minimum element, or `NULL` if the array is empty.
+
+**Return Value**: Pointer to the minimum element, or `NULL` if the array is empty.
 
 ---
 
 ### `void algorithm_for_each(void *base, size_t num, size_t size, ForEachOpFunc op)`
 
-- **Purpose**: Applies a function to each element in an array.
-- **Parameters**:
+**Purpose**: Applies a function to each element in an array.
+
+**Parameters**:
   - `base`: Pointer to the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `op`: A function to apply to each element.
-- **Return**: None. The function performs an operation on each element.
+
+**Return Value**: None. The function performs an operation on each element.
 
 ---
 
 ### `void algorithm_copy(const void *source, size_t num, size_t size, void *dest)`
 
-- **Purpose**: Copies elements from a source array to a destination array.
-- **Parameters**:
+**Purpose**: Copies elements from a source array to a destination array.
+
+**Parameters**:
   - `source`: Pointer to the source array.
   - `num`: Number of elements to copy.
   - `size`: Size of each element.
   - `dest`: Pointer to the destination array.
-- **Return**: None. The elements are copied from the source to the destination.
+
+**Return Value**: None. The elements are copied from the source to the destination.
 
 ---
 
 ### `void *algorithm_accumulate(const void *base, size_t num, size_t size, void *init, AccumulateOpFunc op)`
 
-- **Purpose**: Accumulates a result by applying an operation to each element and an initial value.
-- **Parameters**:
+**Purpose**: Accumulates a result by applying an operation to each element and an initial value.
+
+**Parameters**:
   - `base`: Pointer to the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `init`: Pointer to the initial value and where the result will be stored.
   - `op`: A function that defines how to accumulate the values.
-- **Return**: Pointer to the accumulated result, which is the same as `init`.
+
+**Return Value**: Pointer to the accumulated result, which is the same as `init`.
 
 ---
 
 ### `bool algorithm_all_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
 
-- **Purpose**: Checks if all elements in a range satisfy a predicate.
-- **Parameters**:
+**Purpose**: Checks if all elements in a range satisfy a predicate.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `pred`: Predicate function that returns `true` if the element satisfies the condition.
-- **Return**: `true` if all elements satisfy the predicate, otherwise `false`.
+
+**Return Value**: `true` if all elements satisfy the predicate, otherwise `false`.
 
 ---
 
 ### `bool algorithm_any_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
 
-- **Purpose**: Checks if any element in a range satisfies a predicate.
-- **Parameters**:
+**Purpose**: Checks if any element in a range satisfies a predicate.
+
+**Parameters**:
   - Same as `algorithm_all_of`.
-- **Return**: `true` if any element satisfies the predicate, otherwise `false`.
+
+**Return Value**: `true` if any element satisfies the predicate, otherwise `false`.
 
 ---
 
 ### `bool algorithm_none_of(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
 
-- **Purpose**: Checks if none of the elements in a range satisfy a predicate.
-- **Parameters**:
+**Purpose**: Checks if none of the elements in a range satisfy a predicate.
+
+**Parameters**:
   - Same as `algorithm_all_of`.
-- **Return**: `true` if none of the elements satisfy the predicate, otherwise `false`.
+
+**Return Value**: `true` if none of the elements satisfy the predicate, otherwise `false`.
 
 ---
 
 ### `void algorithm_fill(void *first, void *last, size_t size, const void *val)`
 
-- **Purpose**: Fills a range of elements with a specified value.
-- **Parameters**:
+**Purpose**: Fills a range of elements with a specified value.
+
+**Parameters**:
   - `first`: Pointer to the start of the range.
   - `last`: Pointer to the end of the range.
   - `size`: Size of each element.
   - `val`: Value to fill the range with.
-- **Return**: None. The range is modified in place.
+
+**Return Value**: None. The range is modified in place.
 
 ---
 
 ### `void algorithm_fill_n(void *first, size_t n, size_t size, const void *val)`
 
-- **Purpose**: Fills the first `n` elements of a range with a specified value.
-- **Parameters**:
+**Purpose**: Fills the first `n` elements of a range with a specified value.
+
+**Parameters**:
   - `first`: Pointer to the start of the range.
   - `n`: Number of elements to fill.
   - Same as `algorithm_fill`.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `size_t algorithm_count(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
 
-- **Purpose**: Counts the number of occurrences of a value in a range.
-- **Parameters**:
+**Purpose**: Counts the number of occurrences of a value in a range.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements.
   - `size`: Size of each element.
   - `val`: Value to count.
   - `comp`: Comparison function that returns `0` if elements are equal.
-- **Return**: The number of occurrences of `val` in the array.
+
+**Return Value**: The number of occurrences of `val` in the array.
 
 ---
 
 ### `size_t algorithm_count_if(const void *base, size_t num, size_t size, BoolPredicateFunc pred)`
 
-- **Purpose**: Counts the number of elements in a range that satisfy a predicate.
-- **Parameters**:
+**Purpose**: Counts the number of elements in a range that satisfy a predicate.
+
+**Parameters**:
   - Same as `algorithm_count`, except instead of a value to compare, a predicate function `pred` is provided.
-- **Return**: The number of elements that satisfy the predicate.
+
+**Return Value**: The number of elements that satisfy the predicate.
 
 ---
 
 ### `void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng)`
 
-- **Purpose**: Randomly shuffles the elements of an array.
-- **Parameters**:
+**Purpose**: Randomly shuffles the elements of an array.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `rng`: Random number generator function.
-- **Return**: None. The array is shuffled in place.
+
+**Return Value**: None. The array is shuffled in place.
 
 ---
 
 ### `void *algorithm_lower_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
 
-- **Purpose**: Finds the first position in a sorted range where a value can be inserted without violating the order.
-- **Parameters**:
+**Purpose**: Finds the first position in a sorted range where a value can be inserted without violating the order.
+
+**Parameters**:
   - `base`: Pointer to the sorted array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `val`: Value to insert.
   - `comp`: Comparison function used to compare elements.
-- **Return**: Pointer to the first position where `val` can be inserted.
+
+**Return Value**: Pointer to the first position where `val` can be inserted.
 
 ---
 
 ### `void *algorithm_upper_bound(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
 
-- **Purpose**: Finds the first position in a sorted range where the elements are greater than a specified value.
-- **Parameters**: Same as `algorithm_lower_bound`.
-- **Return**: Pointer to the first position where elements are greater than `val`.
+**Purpose**: Finds the first position in a sorted range where the elements are greater than a specified value.
+
+**Parameters**: Same as `algorithm_lower_bound`.
+
+**Return Value**: Pointer to the first position where elements are greater than `val`.
 
 ---
 
 ### `void algorithm_transform(const void *base, size_t num, size_t size, void *result, TransformFunc op)`
 
-- **Purpose**: Transforms each element in an array and stores the result in another array.
-- **Parameters**:
+**Purpose**: Transforms each element in an array and stores the result in another array.
+
+**Parameters**:
   - `base`: Pointer to the input array.
   - `num`: Number of elements.
   - `size`: Size of each element.
   - `result`: Pointer to the output array.
   - `op`: Function that defines the transformation.
-- **Return**: None. The transformed elements are stored in the result array.
+
+**Return Value**: None. The transformed elements are stored in the result array.
 
 ---
 
 ### `void *algorithm_reduce(const void *base, size_t num, size_t size, void *init, ReduceFunc op)`
 
-- **Purpose**: Reduces a range of elements to a single value using a specified binary operation.
-- **Parameters**:
+**Purpose**: Reduces a range of elements to a single value using a specified binary operation.
+
+**Parameters**:
   - `base`: Pointer to the input array.
   - `num`: Number of elements.
   - `size`: Size of each element.
   - `init`: Initial value and result storage.
   - `op`: Binary operation function.
-- **Return**: Pointer to the accumulated result (`init`).
+
+**Return Value**: Pointer to the accumulated result (`init`).
 
 ---
 
 ### `size_t algorithm_unique(void *base, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Removes consecutive duplicate elements from a sorted array.
-- **Parameters**:
+**Purpose**: Removes consecutive duplicate elements from a sorted array.
+
+**Parameters**:
   - `base`: Pointer to the sorted array.
   - `num`: Number of elements.
   - `size`: Size of each element.
   - `comp`: Comparison function used to compare elements.
-- **Return**: The number of unique elements remaining in the array.
+
+**Return Value**: The number of unique elements remaining in the array.
 
 ---
 
 ### `bool algorithm_equal(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
 
-- **Purpose**: Compares two ranges to determine if they contain the same elements in the same order.
-- **Parameters**:
+**Purpose**: Compares two ranges to determine if they contain the same elements in the same order.
+
+**Parameters**:
   - `base1`: Pointer to the first array.
   - `num1`: Number of elements in the first array.
   - `size1`: Size of each element in the first array.
@@ -347,371 +401,446 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
   - `num2`: Number of elements in the second array.
   - `size2`: Size of each element in the second array.
   - `comp`: Comparison function to compare elements.
-- **Return**: `true` if the two ranges are equal, `false` otherwise.
+
+**Return Value**: `true` if the two ranges are equal, `false` otherwise.
 
 ---
 
 ### `bool algorithm_next_permutation(void *first, void *last, size_t size, CompareFuncBool comp) `
 
-- **Purpose**: Rearranges elements into the next lexicographical permutation.
-- **Parameters**:
+**Purpose**: Rearranges elements into the next lexicographical permutation.
+
+**Parameters**:
   - `first`: Pointer to the start of the range.
   - `last`: Pointer to one past the end of the range.
   - `size`: Size of each element.
   - `comp`: Comparison function to compare elements.
-- **Return**: `true` if the next permutation is generated, `false` if the range is reset to the smallest permutation.
+
+**Return Value**: `true` if the next permutation is generated, `false` if the range is reset to the smallest permutation.
 
 ---
 
 ### `bool algorithm_prev_permutation(void *first, void *last, size_t size, CompareFuncBool comp)`
 
-- **Purpose**: Rearranges elements into the previous lexicographical permutation.
-- **Parameters**: Same as `algorithm_next_permutation`.
-- **Return**: `true` if the previous permutation is generated, `false` if the range is reset to the largest permutation.
+**Purpose**: Rearranges elements into the previous lexicographical permutation.
+
+**Parameters**: Same as `algorithm_next_permutation`.
+
+**Return Value**: `true` if the previous permutation is generated, `false` if the range is reset to the largest permutation.
 
 ---
 
 ### `void *algorithm_partition(void *base, size_t num, size_t size, BoolPredicateFunc pred)`
 
-- **Purpose**: Partitions a range of elements so that all elements for which the predicate returns `true` appear before those for which it returns `false`.
-- **Parameters**:
+**Purpose**: Partitions a range of elements so that all elements for which the predicate returns `true` appear before those for which it returns `false`.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements.
   - `size`: Size of each element.
   - `pred`: Predicate function that returns `true` for elements to appear before others.
-- **Return**: Pointer to the first element in the second group (where `pred` returns `false`).
+
+**Return Value**: Pointer to the first element in the second group (where `pred` returns `false`).
 
 ---
 
 ### `void algorithm_generate(void *first, void *last, size_t size, GeneratorFunc gen)`
 
-- **Purpose**: Fills a range with values generated by a generator function.
-- **Parameters**:
+**Purpose**: Fills a range with values generated by a generator function.
+
+**Parameters**:
   - `first`: Pointer to the start of the range.
   - `last`: Pointer to the end of the range.
   - `size`: Size of each element.
   - `gen`: Generator function that produces values.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_generate_n(void *first, size_t n, size_t size, GeneratorFunc gen)`
 
-- **Purpose**: This function fills the first `n` elements of a range with values produced by a generator function. It applies the generator function `gen` to generate values and stores them sequentially in the memory region starting from `first`.
+**Purpose**: This function fills the first `n` elements of a range with values produced by a generator function. It applies the generator function `gen` to generate values and stores them sequentially in the memory region starting from `first`.
 
-- **Parameters**:
+**Parameters**:
   - `first`: Pointer to the beginning of the memory region where the values will be stored.
   - `n`: The number of elements to generate.
   - `size`: The size of each element in bytes.
   - `gen`: A generator function that returns the value to be stored in each element.
-- **Return**: No return value.
-- **Use Case**: Use this function to populate an array or data structure with values generated on the fly, such as initializing a set of random numbers or filling a range with a specific pattern.
+
+**Return Value**: No return value.
+
+**Usage Case**: Use this function to populate an array or data structure with values generated on the fly, such as initializing a set of random numbers or filling a range with a specific pattern.
 
 ---
 
 ### `void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result)`
 
-- **Purpose**: Copies elements from one range to another in reverse order.
-- **Parameters**:
+**Purpose**: Copies elements from one range to another in reverse order.
+
+**Parameters**:
   - `first`: Pointer to the start of the range.
   - `last`: Pointer to the end of the range.
   - `size`: Size of each element.
   - `result`: Pointer to the destination array.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred)`
 
-- **Purpose**: Copies elements from one array to another if they satisfy a predicate function.
-- **Parameters**:
+**Purpose**: Copies elements from one array to another if they satisfy a predicate function.
+
+**Parameters**:
   - `first`, `last`: Source range.
   - `size`: Size of each element.
   - `result`: Destination array.
   - `pred`: Predicate function that determines which elements to copy.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_copy_n(const void *first, size_t n, size_t size, void *result)`
 
-- **Purpose**: Copies the first `n` elements from one array to another.
-- **Parameters**:
+**Purpose**: Copies the first `n` elements from one array to another.
+
+**Parameters**:
   - `first`: Pointer to the start of the source array.
   - `n`: Number of elements to copy.
   - `size`: Size of each element.
   - `result`: Destination array.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `Pair algorithm_equal_range(const void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
 
-- **Purpose**: Finds the range of elements equal to a specified value in a sorted array.
-- **Parameters**:
+**Purpose**: Finds the range of elements equal to a specified value in a sorted array.
+
+**Parameters**:
   - `base`: Pointer to the sorted array.
   - `num`: Number of elements.
   - `size`: Size of each element.
   - `val`: Pointer to the value to search for.
   - `comp`: Comparison function.
-- **Return**: A `Pair` structure with `first` pointing to the first element equal to `val` and `second` pointing to one past the last.
+
+**Return Value**: A `Pair` structure with `first` pointing to the first element equal to `val` and `second` pointing to one past the last.
 
 ---
 
 ### `bool algorithm_includes(const void *first1, size_t num1, size_t size1, const void *first2, size_t num2, size_t size2, CompareFunc comp)`
 
-- **Purpose**: Determines if all elements of a sorted range are included in another sorted range.
-- **Parameters**:
+**Purpose**: Determines if all elements of a sorted range are included in another sorted range.
+
+**Parameters**:
   - `first1`, `num1`, `size1`: The main array.
   - `first2`, `num2`, `size2`: The array whose elements are being checked for inclusion.
   - `comp`: Comparison function.
-- **Return**: `true` if all elements of `first2` are included in `first1`, `false` otherwise.
+
+**Return Value**: `true` if all elements of `first2` are included in `first1`, `false` otherwise.
 
 ---
 
 ### `size_t algorithm_unique_copy(const void *first, size_t num, size_t size, void *result, CompareFunc comp)`
 
-- **Purpose**: Copies unique elements from a sorted array to a new array.
-- **Parameters**:
+**Purpose**: Copies unique elements from a sorted array to a new array.
+
+**Parameters**:
   - `first`, `num`, `size`: Source array.
   - `result`: Destination array.
   - `comp`: Comparison function to determine uniqueness.
-- **Return**: Number of unique elements copied.
+
+**Return Value**: Number of unique elements copied.
 
 ---
 
 ### `void algorithm_swap(void *a, void *b, size_t size)`
 
-- **Purpose**: Swaps the values of two elements.
-- **Parameters**:
+**Purpose**: Swaps the values of two elements.
+
+**Parameters**:
   - `a`, `b`: Pointers to the elements to swap.
   - `size`: Size of each element.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_swap_ranges(void *first1, void *first2, size_t num, size_t size)`
 
-- **Purpose**: Swaps elements between two ranges.
-- **Parameters**:
+**Purpose**: Swaps elements between two ranges.
+
+**Parameters**:
   - `first1`, `first2`: Pointers to the start of the ranges.
   - `num`: Number of elements to swap.
   - `size`: Size of each element.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `bool algorithm_is_sorted(const void *base, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Checks if the elements in a range are sorted in non-decreasing order.
-- **Parameters**:
+**Purpose**: Checks if the elements in a range are sorted in non-decreasing order.
+
+**Parameters**:
   - `base`, `num`, `size`: The array to check.
   - `comp`: Comparison function to check the order.
-- **Return**: `true` if the range is sorted, `false` otherwise.
+
+**Return Value**: `true` if the range is sorted, `false` otherwise.
 
 ---
 
 ### `void *algorithm_is_sorted_until(const void *base, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Finds the first position in a range where the elements are no longer sorted in non-decreasing order.
-- **Parameters**:
+**Purpose**: Finds the first position in a range where the elements are no longer sorted in non-decreasing order.
+
+**Parameters**:
   - `base`, `num`, `size`: The array to check.
   - `comp`: Comparison function to check the order.
-- **Return**: Pointer to the first element where the sequence is no longer sorted, or the end of the array if it's fully sorted.
+
+**Return Value**: Pointer to the first element where the sequence is no longer sorted, or the end of the array if it's fully sorted.
 
 ---
 
 ### `void algorithm_rotate(void *first, void *middle, void *last, size_t size)`
 
-- **Purpose**: Rotates elements in a range, shifting elements between `first`, `middle`, and `last`.
-- **Parameters**:
+**Purpose**: Rotates elements in a range, shifting elements between `first`, `middle`, and `last`.
+
+**Parameters**:
   - `first`, `middle`, `last`: Pointers to the start, middle, and end of the range to rotate.
   - `size`: Size of each element.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_rotate_copy(const void *first, const void *middle, const void *last, size_t size, void *result)`
 
-- **Purpose**: Rotates elements in a range and copies the result to another destination array.
-- **Parameters**:
+**Purpose**: Rotates elements in a range and copies the result to another destination array.
+
+**Parameters**:
   - `first`, `middle`, `last`: Pointers to the start, middle, and end of the range to rotate.
   - `size`: Size of each element.
   - `result`: Pointer to the destination array where the rotated elements are copied.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_merge(const void *base1, size_t num1, const void *base2, size_t num2, size_t size, void *result, CompareFunc comp)`
 
-- **Purpose**: Merges two sorted arrays into a single sorted array.
-- **Parameters**:
+**Purpose**: Merges two sorted arrays into a single sorted array.
+
+**Parameters**:
   - `base1`, `num1`: The first sorted array.
   - `base2`, `num2`: The second sorted array.
   - `size`: Size of each element.
   - `result`: Pointer to the array where the merged result will be stored.
   - `comp`: Comparison function to determine the order.
-- **Return**: None.
+
+**Return Value**: None.
 
 ---
 
 ### `void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Merges two sorted halves of an array in place.
-- **Parameters**:
+**Purpose**: Merges two sorted halves of an array in place.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `middle`: Index of the middle element.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
   - `comp`: Comparison function to order elements.
-- **Description**: This function rearranges elements between two sorted parts of an array into one merged sorted array.
+
+**Purpose**: This function rearranges elements between two sorted parts of an array into one merged sorted array.
 
 ---
 
 ### `void *algorithm_adjacent_find(const void *base, size_t num, size_t size, CompareFunc comp)`
 
-- **Purpose**: Finds the first occurrence of two consecutive elements that are equal.
-- **Parameters**:
+**Purpose**: Finds the first occurrence of two consecutive elements that are equal.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
   - `comp`: Comparison function to check equality.
-- **Return**: Pointer to the first element of the first pair of consecutive equal elements, or `NULL` if no match is found.
+
+**Return Value**: Pointer to the first element of the first pair of consecutive equal elements, or `NULL` if no match is found.
 
 ---
 
 ### `Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp)`
 
-- **Purpose**: Finds the first position where two ranges differ.
-- **Parameters**:
+**Purpose**: Finds the first position where two ranges differ.
+
+**Parameters**:
   - `base1`, `num1`, `size1`: First array details.
   - `base2`, `num2`, `size2`: Second array details.
   - `comp`: Comparison function to compare elements.
-- **Return**: A `Pair` where `first` and `second` point to the first differing elements in the two arrays. If the ranges are equal, both pointers are `NULL`.
+
+**Return Value**: A `Pair` where `first` and `second` point to the first differing elements in the two arrays. If the ranges are equal, both pointers are `NULL`.
 
 ---
 
 ### `bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
 
-- **Purpose**: Checks if two arrays are permutations of each other.
-- **Parameters**:
+**Purpose**: Checks if two arrays are permutations of each other.
+
+**Parameters**:
   - `base1`, `num1`, `size1`: First array details.
   - `base2`, `num2`, `size2`: Second array details.
   - `comp`: Comparison function to compare elements.
-- **Return**: `true` if the arrays are permutations of each other, `false` otherwise.
+
+**Return Value**: `true` if the arrays are permutations of each other, `false` otherwise.
 
 ---
 
 ### `const void* algorithm_search(const void* first1, const void* last1, size_t size1, const void* first2, const void* last2, size_t size2, CompareFuncBool comp)`
 
-- **Purpose**: Searches for the first occurrence of a sequence within another sequence.
-- **Parameters**:
+**Purpose**: Searches for the first occurrence of a sequence within another sequence.
+
+**Parameters**:
   - `first1`, `last1`, `size1`: Details of the first sequence (array).
   - `first2`, `last2`, `size2`: Details of the second sequence to search for.
   - `comp`: Comparison function to compare elements between sequences.
-- **Return**: Pointer to the first element of the first occurrence of `first2` within `first1`. Returns `last1` if not found.
+
+**Return Value**: Pointer to the first element of the first occurrence of `first2` within `first1`. Returns `last1` if not found.
 
 ---
 
 ### `const void *algorithm_search_n(const void *first, const void* last, size_t size, size_t count, const void *val, CompareFuncBool comp)`
 
-- **Purpose**: Searches for a sequence of `n` identical elements within a range.
-- **Parameters**:
+**Purpose**: Searches for a sequence of `n` identical elements within a range.
+
+**Parameters**:
   - `first`, `last`, `size`: Details of the range (array).
   - `count`: Number of consecutive elements to search for.
   - `val`: Pointer to the value that the elements should match.
   - `comp`: Comparison function to compare elements with `val`.
-- **Return**: Pointer to the first element of the found sequence, or `last` if not found.
+
+**Return Value**: Pointer to the first element of the found sequence, or `last` if not found.
 
 ---
 
 ### `void *algorithm_remove(void *base, size_t num, size_t size, const void *val, CompareFunc comp)`
 
-- **Purpose**: Removes elements that match a specified value from an array.
-- **Parameters**:
+**Purpose**: Removes elements that match a specified value from an array.
+
+**Parameters**:
   - `base`, `num`, `size`: Details of the array.
   - `val`: Pointer to the value to remove from the array.
   - `comp`: Comparison function to compare elements with `val`.
-- **Return**: Pointer to the new end of the array after the matching elements are removed.
+
+**Return Value**: Pointer to the new end of the array after the matching elements are removed.
 
 ---
 
 ### `void algorithm_remove_copy(const void *source, size_t num, size_t size, void *result, const void *val, CompareFunc comp)`
 
-- **Purpose**: Copies elements from a source array to a destination array, excluding elements that match a specified value.
-- **Parameters**:
+**Purpose**: Copies elements from a source array to a destination array, excluding elements that match a specified value.
+
+**Parameters**:
   - `source`, `num`, `size`: Details of the source array.
   - `result`: Pointer to the destination array.
   - `val`: Pointer to the value to exclude.
   - `comp`: Comparison function to compare elements with `val`.
-- **Return**: No return value, but copies elements excluding those that match `val`.
+
+**Return Value**: No return value, but copies elements excluding those that match `val`.
 
 ---
 
 ### `size_t algorithm_remove_copy_if(const void *source, size_t num, size_t size, void *result, BoolPredicateFunc pred)`
 
-- **Purpose**: Removes elements from the source array based on a predicate function and copies the remaining elements to the result array.
-- **Parameters**:
+**Purpose**: Removes elements from the source array based on a predicate function and copies the remaining elements to the result array.
+
+**Parameters**:
   - `source`, `num`, `size`: Details of the source array.
   - `result`: Pointer to the destination array.
   - `pred`: Predicate function to determine if an element should be removed.
-- **Return**: The number of elements copied to the result array.
+
+**Return Value**: The number of elements copied to the result array.
 
 ---
 
 ### `void algorithm_replace(void *base, size_t num, size_t size, const void *old_val, const void *new_val, CompareFunc comp)`
 
-- **Purpose**: Replaces occurrences of a value in an array.
-- **Parameters**:
+**Purpose**: Replaces occurrences of a value in an array.
+
+**Parameters**:
   - `base`, `num`, `size`: Details of the array.
   - `old_val`: Pointer to the value to replace.
   - `new_val`: Pointer to the new value.
   - `comp`: Comparison function to compare elements with `old_val`.
-- **Return**: No return value, but replaces elements matching `old_val` with `new_val`.
+
+**Return Value**: No return value, but replaces elements matching `old_val` with `new_val`.
 
 ---
 
 ### `void algorithm_replace_if(void *base, size_t num, size_t size, const void *new_val, BoolPredicateFunc pred)`
 
-- **Purpose**: Replaces elements in an array based on a predicate function.
-- **Parameters**:
+**Purpose**: Replaces elements in an array based on a predicate function.
+
+**Parameters**:
   - `base`, `num`, `size`: Details of the array.
   - `new_val`: Pointer to the value to replace the elements with.
   - `pred`: Predicate function that determines if an element should be replaced.
-- **Return**: No return value, but replaces elements that satisfy the predicate with `new_val`.
+
+**Return Value**: No return value, but replaces elements that satisfy the predicate with `new_val`.
 
 ---
 
 ### `void* algorithm_begin(void* base)`
-- **Description**: Returns a pointer to the first element of the array. This is equivalent to the C++ `std::begin` function and is useful for iterating over the array or other collections.
-- **Parameters**:
+
+**Purpose**: Returns a pointer to the first element of the array. This is equivalent to the C++ `std::begin` function and is useful for iterating over the array or other collections.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
-- **Return Value**:  
-  A pointer to the first element of the array.
+
+**Return Value**: A pointer to the first element of the array.
 
 ---
 
 ### `void* algorithm_end(void* base, size_t num, size_t size)`
-- **Description**: Returns a pointer to one past the last element of the array. This is equivalent to the C++ `std::end` function and is useful for defining the range [begin, end) in algorithms that iterate over collections.
-- **Parameters**:
+
+**Purpose**: Returns a pointer to one past the last element of the array. This is equivalent to the C++ `std::end` function and is useful for defining the range [begin, end) in algorithms that iterate over collections.
+
+**Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element in bytes.
-- **Return Value**:  
-  A pointer to one past the last element of the array. This is used as a boundary for iteration.
+
+**Return Value**: A pointer to one past the last element of the array. This is used as a boundary for iteration.
 
 ---
 
-### `void algorithm_iota(void* first, void* last, void* val, size_t size, DataType type)`
-- **Description**: Fills a range `[first, last)` with successive values, starting from `val` and incrementing it for each element. It is a generic implementation that works for various data types such as `int`, `char`, `float`, `double`, `short`, `long`, `long long`, and `unsigned long`. The behavior is similar to C++'s `std::iota`.
-- **Parameters**:
-  - `first`: Pointer to the start of the range.
-  - `last`: Pointer to one past the end of the range.
-  - `val`: Pointer to the initial value that is assigned to the first element. The value is incremented after each assignment.
-  - `size`: Size of each element in the array in bytes.
-  - `type`: The enumeration type for showing exactly data type.
-- **Return Value**:  
-  No return value. The range is filled in place with incremented values.
+### `void algorithm_iota(void* first, void* last, const void* start, size_t size, IncrementFunc increment)`
+
+**Purpose**: Fill the half-open range `[first, last)` with `start, ++start, ++start, ...`. Truly generic — works for any type (built-in numeric OR user struct) because the caller supplies the `++` semantics as a function pointer (`IncrementFunc`). Matches C++'s `std::iota`.
+
+  For the common case of built-in numeric types this library ships ready-made incrementers (`algorithm_inc_int`, `algorithm_inc_double`, etc.) so the call stays a one-liner. For a user struct or a custom step, write a three-line incrementer.
+
+**Parameters**:
+  - `first`: Pointer to the first element of the range.
+  - `last`: Pointer one past the last element (half-open `[first, last)`).
+  - `start`: Pointer to the initial value. **Not modified** — read once.
+  - `size`: Bytes per element.
+  - `increment`: Function that does `++` on a working value of `size` bytes.
+
+- **Behavior on edge cases** (all safe — no crashes):
+  - Any of `first`, `last`, `start`, `increment` NULL → no-op.
+  - `size == 0` → no-op.
+  - `first == last` → no-op.
+  - `first > last` → no-op (range is empty by convention).
+  - If `(last - first)` isn't a multiple of `size`, only the leading complete slots are written.
+
+- **Ready-made incrementers** (all in `algorithm.h`):  
+  `algorithm_inc_int`, `_char`, `_short`, `_long`, `_long_long`, `_uchar`, `_ushort`, `_uint`, `_ulong`, `_ulong_long`, `_float`, `_double`, `_long_double`, `_int8`, `_int16`, `_int32`, `_int64`, `_uint8`, `_uint16`, `_uint32`, `_uint64`, `_size_t`.
 
 ---
 
@@ -748,7 +877,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 2 3 4 5 6 10 12
 ```
@@ -798,7 +927,7 @@ int main() {
     return EXIT_SUCCESS;
 }
 ```
-***Result:**
+**Result**
 ```
 1 2 3 4 5 6 10 12
 ```
@@ -853,7 +982,7 @@ int main() {
     return EXIT_SUCCESS;
 }
 ```
-**Result:**
+**Result**
 ```
 ID: 1, Value: 10.50
 ID: 2, Value: 20.50
@@ -888,14 +1017,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Found 8
 ```
 
 ---
 
-## Example 5 : Using `algorith_find_if`
+## Example 5 : Using `algorithm_find_if`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -933,7 +1062,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Found 8
 First even number in Array: 4
@@ -972,7 +1101,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Found two
 ```
@@ -1011,7 +1140,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Found struct with ID: 2 and Value: 60.50
 ```
@@ -1044,7 +1173,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First non-positive number: -1
 ```
@@ -1086,7 +1215,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Found 5.500000
 ```
@@ -1120,7 +1249,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First consonant: b
 ```
@@ -1152,10 +1281,11 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
-Last occurrence of subsequence found at index: 8
+Last occurrence of subsequence found at index: 6
 ```
+*(The subsequence `{2, 3}` appears at index 1 and again at index 6 — index 6 is the last occurrence.)*
 
 ---
 
@@ -1185,7 +1315,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First vowel found: e
 ```
@@ -1227,10 +1357,11 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
-Last occurrence of subsequence found at index: 5
+Last occurrence of subsequence found at index: 6
 ```
+*(The subsequence `{2.2, 3.3}` appears at index 1 and at index 6 — index 6 is the last occurrence.)*
 
 ---
 
@@ -1260,7 +1391,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First matching element: 3
 ```
@@ -1292,7 +1423,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Value 7 found in the array at index 6.
 ```
@@ -1333,7 +1464,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Value 4.4 found in the array at index 3.
 ```
@@ -1361,7 +1492,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Max element is: 9
 ```
@@ -1398,7 +1529,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Min element is: 1.1
 ```
@@ -1426,7 +1557,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Max character is: d
 ```
@@ -1461,7 +1592,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Min struct value is: 2.1
 ```
@@ -1492,14 +1623,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 HELLO WORLD
 ```
 
 ---
 
-## Example 22 : Using `algorith_for_each` with Integer Array
+## Example 22 : Using `algorithm_for_each` with Integer Array
 
 ```c
 #include "algorithm/algorithm.h"
@@ -1518,7 +1649,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 2 3 4 5
 ```
@@ -1542,7 +1673,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Copied string: Hello, World!
 ```
@@ -1569,7 +1700,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 2 3 4 5 
 ```
@@ -1607,7 +1738,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 2 3 4 5 
 ```
@@ -1639,7 +1770,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Source is  Hello C Programmers
 Destination is Hello C Programmers
@@ -1667,7 +1798,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Sum of array: 15
 ```
@@ -1698,7 +1829,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Concatenated string: Hello, World!
 ```
@@ -1725,7 +1856,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Product of array elements: 120
 ```
@@ -1754,7 +1885,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Maximum element: 5.100000
 ```
@@ -1782,7 +1913,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Average of array elements: 3.400000
 ```
@@ -1811,7 +1942,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Number of occurrences of 3: 4
 ```
@@ -1842,7 +1973,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Constructed string: Hello
 ```
@@ -1872,7 +2003,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 All elements are positive.
 ```
@@ -1903,7 +2034,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Not all characters are uppercase.
 ```
@@ -1939,7 +2070,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 All struct elements have values above 10.0.
 ```
@@ -1969,7 +2100,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 At least one element is negative.
 ```
@@ -2000,7 +2131,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 At least one character is a digit.
 ```
@@ -2036,7 +2167,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 At least one struct element has ID 3.
 ```
@@ -2066,7 +2197,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 No elements are negative.
 ```
@@ -2097,7 +2228,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 No vowels in the string.
 ```
@@ -2127,7 +2258,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 No elements are zero.
 ```
@@ -2164,7 +2295,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 No struct elements have the value 10.0.
 ```
@@ -2258,7 +2389,7 @@ C++ STL sort time: 0.0192416 seconds
 ## Example 45: Filling an Array of Integers `algorithm_fill`
 
 ```c
-#include "algorithm.h"
+#include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -2275,7 +2406,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 7 7 7 7 7 7 7 7 7 7
 ```
@@ -2302,7 +2433,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 3.14 3.14 3.14 3.14 3.14 0.00 0.00 0.00 0.00 0.00
 ```
@@ -2327,7 +2458,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 AAAAAAAAAA
 ```
@@ -2358,7 +2489,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Item 0: id = 1, value = 9.99
 Item 1: id = 1, value = 9.99
@@ -2391,7 +2522,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 A A A A A A A A A A A A A N N N N N N N N N N N N N 
 ```
@@ -2418,7 +2549,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Count of 3: 2
 ```
@@ -2445,7 +2576,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Count of 'l': 3
 ```
@@ -2472,7 +2603,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Count of even numbers: 5
 ```
@@ -2499,7 +2630,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Count of numbers greater than 5: 3
 ```
@@ -2530,7 +2661,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Shuffled String: dWHollelro
 ```
@@ -2575,7 +2706,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Shuffled People:
 ID: 5, Name: Eve
@@ -2587,7 +2718,7 @@ ID: 2, Name: Bob
 
 ---
 
-## Example 56 : Usinf Shuffle in Array of integer `algorithm_shuffle`
+## Example 56 : Using Shuffle in Array of integer `algorithm_shuffle`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -2614,7 +2745,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 10 9 7 4 8 1 6 3 5 2
 ```
@@ -2640,7 +2771,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Lower bound of 4 is at index: 2
 ```
@@ -2666,7 +2797,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Upper bound of 6 is at index: 3
 ```
@@ -2693,7 +2824,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Lower bound of 4.4 is at index: 2
 ```
@@ -2719,7 +2850,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Upper bound of 'f' is at index: 3
 ```
@@ -2752,7 +2883,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 4 9 16 25 
 ```
@@ -2787,14 +2918,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 -1 2 -3 4 -5 
 ```
 
 ---
 
-### Example 63: Converting Floats to Integers `algorithm_transform`
+## Example 63: Converting Floats to Integers `algorithm_transform`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -2820,21 +2951,24 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 -2 3 -4 5
 ```
 
 ---
 
-### Example 64: Computing Lengths of Strings `algorithm_transform`
+## Example 64: Computing Lengths of Strings `algorithm_transform`
 
 ```c
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 #include <string.h>
 
-void string_length(void *output, const void *input) {
+/* Renamed from string_length to avoid colliding with the std_string library's
+   own string_length() symbol (pulled in via fmt), which caused a multiple-
+   definition link error. */
+void compute_strlen(void *output, const void *input) {
     const char *inputStr = *(const char **)input;
     *(size_t *)output = strlen(inputStr);
 }
@@ -2844,7 +2978,7 @@ int main() {
     size_t outputArray[5];
     size_t numElements = sizeof(inputArray) / sizeof(inputArray[0]);
 
-    algorithm_transform(inputArray, numElements, sizeof(const char *), outputArray, string_length);
+    algorithm_transform(inputArray, numElements, sizeof(const char *), outputArray, compute_strlen);
 
     for (size_t i = 0; i < numElements; ++i) {
         fmt_printf("%zu ", outputArray[i]);
@@ -2854,7 +2988,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 5 5 7 1 11 
 ```
@@ -2882,7 +3016,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Sum: 15
 ```
@@ -2915,14 +3049,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Maximum Value: 9
 ```
 
 ---
 
-### Example 67: Concatenating Strings `algorithm_reduce`
+## Example 67: Concatenating Strings `algorithm_reduce`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -2945,14 +3079,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Concatenated String: Hello, world!
 ```
 
 ---
 
-### Example 68: Computing the Logical AND of Boolean Values `algorithm_reduce`
+## Example 68: Computing the Logical AND of Boolean Values `algorithm_reduce`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -2976,7 +3110,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Logical AND of flags: false
 ```
@@ -3010,7 +3144,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Unique elements: 1 2 3 4
 ```
@@ -3044,7 +3178,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Unique characters: abcdefg
 ```
@@ -3082,7 +3216,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Unique floats: 1.1 2.2 3.3 4.4 5.5 
 ```
@@ -3115,7 +3249,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Arr1 is equal to Arr2: true
 Arr1 is equal to Arr3: false
@@ -3123,7 +3257,7 @@ Arr1 is equal to Arr3: false
 
 ---
 
-### Example 73: Comparing Character Arrays `algorithm_equal`
+## Example 73: Comparing Character Arrays `algorithm_equal`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3149,7 +3283,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Str1 is equal to Str2: true
 Str1 is equal to Str3: false
@@ -3157,7 +3291,7 @@ Str1 is equal to Str3: false
 
 ---
 
-### Example 74: Comparing Double Arrays `algorithm_equal`
+## Example 74: Comparing Double Arrays `algorithm_equal`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3189,7 +3323,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Arr1 is equal to Arr2: true
 Arr1 is equal to Arr3: false
@@ -3221,7 +3355,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 2 3 
 1 3 2
@@ -3255,7 +3389,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 abc
 acb
@@ -3296,7 +3430,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 {1, 10.5} {2, 20.5} {3, 30.5} 
 {1, 10.5} {3, 30.5} {2, 20.5}
@@ -3340,7 +3474,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 2 3 
 1 3 2
@@ -3352,7 +3486,7 @@ int main() {
 
 ---
 
-### Example 79: Prev Permutation of Integer Array `algorithm_prev_permutation`
+## Example 79: Prev Permutation of Integer Array `algorithm_prev_permutation`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3376,7 +3510,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 3 2 1 
 3 1 2
@@ -3388,7 +3522,7 @@ int main() {
 
 ---
 
-### Example 80: Prev Permutation with Characters `algorithm_prev_permutation`
+## Example 80: Prev Permutation with Characters `algorithm_prev_permutation`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3410,7 +3544,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 cba
 cab
@@ -3422,7 +3556,7 @@ abc
 
 ---
 
-### Example 81: Using with Vector Library `algorithm_prev_permutation`
+## Example 81: Using with Vector Library `algorithm_prev_permutation`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3453,7 +3587,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 3 2 1 
 3 1 2
@@ -3577,10 +3711,49 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Uppercase characters: HW
 Other characters: lloeorld
+```
+
+---
+
+## Example 84 : Partitioning an Integer Array into Even and Odd `algorithm_partition`
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+bool is_even(const void *a) {
+    return (*(const int *)a % 2) == 0;
+}
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t size = sizeof(arr) / sizeof(arr[0]);
+
+    int *partition_point = (int *)algorithm_partition(arr, size, sizeof(int), is_even);
+
+    fmt_printf("Even elements: ");
+    for (int *ptr = arr; ptr != partition_point; ptr++) {
+        fmt_printf("%d ", *ptr);
+    }
+    fmt_printf("\n");
+
+    fmt_printf("Odd elements: ");
+    for (int *ptr = partition_point; ptr != arr + size; ptr++) {
+        fmt_printf("%d ", *ptr);
+    }
+    fmt_printf("\n");
+
+    return 0;
+}
+```
+**Result**
+```
+Even elements: 2 4 6 8 10 
+Odd elements: 1 3 5 7 9
 ```
 
 ---
@@ -3623,7 +3796,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Positive values: {4, 40.5} {2, 20.5} 
 Non-positive values: {3, -30.5} {1, -10.5}
@@ -3656,7 +3829,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Random numbers: 41 67 34 0 69 24 78 58 62 64 
 ```
@@ -3697,14 +3870,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Sequential numbers: 0 1 2 3 4 5 6 7 8 9
 ```
 
 ---
 
-### Example 88: Filling a Vector with Constant Value `algorithm_generate`
+## Example 88: Filling a Vector with Constant Value `algorithm_generate`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3733,14 +3906,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Constant values: 5 5 5 5 5 5 5 5 5 5 
 ```
 
 ---
 
-### Example 89: Generating a Fixed Number of Random Integers `algorithm_generate_n`
+## Example 89: Generating a Fixed Number of Random Integers `algorithm_generate_n`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3764,14 +3937,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Random integers: 41 67 34 0 69 
 ```
 
 ---
 
-### Example 90: Generating a Sequence of Characters `algorithm_generate_n`
+## Example 90: Generating a Sequence of Characters `algorithm_generate_n`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3799,14 +3972,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Character sequence: A B C D E F G H I J 
 ```
 
 ---
 
-### Example 91: Generating a String Array `algorithm_generate_n`
+## Example 91: Generating a String Array `algorithm_generate_n`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3835,7 +4008,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Generated strings: 
 String 1
@@ -3845,7 +4018,7 @@ String 3
 
 ---
 
-### Example 92: Generating Floats in a Vector `algorithm_generate_n`
+## Example 92: Generating Floats in a Vector `algorithm_generate_n`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -3874,7 +4047,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Generated floats: 0.50 1.00 1.50 2.00 2.50 
 ```
@@ -3906,7 +4079,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Array after copy_backward: 1 2 3 4 5 6 4 5 6 7 
 ```
@@ -3950,7 +4123,7 @@ int main() {
 }
 
 ```
-**Result:**
+**Result**
 ```
 Destination vector after copy_backward: 1 2 3 4 5 
 ```
@@ -3999,7 +4172,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Destination array after copy_backward:
 Name: Alice, Age: 30
@@ -4037,7 +4210,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 1 3 5 0 0 
 ```
@@ -4073,7 +4246,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Even numbers: 2 4 6 8 10
 ```
@@ -4129,7 +4302,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Elements greater than 5: 6 7 8 9 14 15 16 17 18 19 
 ```
@@ -4160,14 +4333,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 dest array contains: 10 20 30 40 50 60 70
 ```
 
 ---
 
-### Example 100: Using `algorithm_copy_n` with an Integer Array
+## Example 100: Using `algorithm_copy_n` with an Integer Array
 This example copies a specified number of elements from one integer array to another using `algorithm_copy_n`.
 
 ```c
@@ -4189,14 +4362,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First 5 elements of source: 10 20 30 40 50
 ```
 
 ---
 
-### Example 101: Using `algorithm_copy_n` with `Vector`
+## Example 101: Using `algorithm_copy_n` with `Vector`
 In this example, we will use `algorithm_copy_n` to copy a specified number of elements from one `Vector` to another.
 
 ```c
@@ -4232,7 +4405,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First 5 elements from source: 1 2 3 4 5 
 ```
@@ -4313,7 +4486,7 @@ int main () {
   return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 bounds at positions 2 and 5
 ```
@@ -4349,7 +4522,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Bounds for 2.5 in double array: 3 and 6
 ```
@@ -4389,7 +4562,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Bounds for 'b' in char array: 3 and 6
 ```
@@ -4428,14 +4601,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 container includes continent!
 ```
 
 ---
 
-### Example 106: Checking Inclusion of a Subset of Characters
+## Example 106: Checking Inclusion of a Subset of Characters
 
 This example checks if a subset of characters is included in a larger set of characters.
 
@@ -4469,14 +4642,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 letters array includes the subset!
 ```
 
 ---
 
-### Example 107: Inclusion of Subset of Custom Structs
+## Example 107: Inclusion of Subset of Custom Structs
 
 This example checks if a set of custom structs contains a subset based on a specific field. Assume we have a struct `Person` with `age` and `name`.
 
@@ -4516,7 +4689,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 people array includes the subset!
 ```
@@ -4550,7 +4723,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Unique elements: 1 2 3 4
 ```
@@ -4584,14 +4757,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Unique characters: a b c d e f g
 ```
 
 ---
 
-#### Example 110: Swapping Integers with `algoritm_swap`
+## Example 110: Swapping Integers with `algoritm_swap`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -4607,7 +4780,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Before swap: x = 10, y = 20
 After swap: x = 20, y = 10
@@ -4615,7 +4788,7 @@ After swap: x = 20, y = 10
 
 ---
 
-#### Example 111: Swapping Arrays with `algorithm_swap`
+## Example 111: Swapping Arrays with `algorithm_swap`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -4647,7 +4820,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Before swap:
 arr1: 1 2 3 
@@ -4659,7 +4832,7 @@ arr2: 1 5 6
 
 ---
 
-#### Example 112: Swapping Ranges of Integers with `algorithm_swap_ranges`
+## Example 112: Swapping Ranges of Integers with `algorithm_swap_ranges`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -4691,7 +4864,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Before swap:
 arr1: 1 2 3 
@@ -4703,7 +4876,7 @@ arr2: 1 2 3
 
 ---
 
-#### Example 113: Swapping Partial Ranges of Characters `algorithm_swap_ranges`
+## Example 113: Swapping Partial Ranges of Characters `algorithm_swap_ranges`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -4722,7 +4895,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Before swap:
 str1: Hello
@@ -4879,7 +5052,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 People sorted by age:
 Name: Carol, Age: 22
@@ -4916,7 +5089,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Array is sorted.
 ```
@@ -4962,7 +5135,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Vector is sorted.
 ```
@@ -5201,7 +5374,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Rotated array: 4 5 6 7 8 9 1 2 3
 ```
@@ -5238,7 +5411,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Rotated vector: 4 5 6 7 8 9 1 2 3
 ```
@@ -5275,7 +5448,7 @@ myvector contains: 4 5 6 7 8 9 1 2 3
 
 ---
 
-### Example 122: Rotate Copy an Array of Integers
+## Example 122: Rotate Copy an Array of Integers
 
 ```c
 #include "algorithm/algorithm.h"
@@ -5297,14 +5470,14 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Rotated copied array: 4 5 6 7 1 2 3
 ```
 
 ---
 
-### Example 123: Using Vector with `algorithm_rotate_copy`
+## Example 123: Using Vector with `algorithm_rotate_copy`
 
 ```c
 #include "algorithm/algorithm.h"
@@ -5333,7 +5506,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Rotated copied vector: 40 50 60 70 10 20 30
 ```
@@ -5369,81 +5542,44 @@ myvector contains: 40 50 60 70 10 20 30
 ---
 
 ## Example 124 : How to use `algorithm_merge`
-C Algorithm sort time: 0.000002 seconds
 
 ```c
 #include "algorithm/algorithm.h"
-#include "array/array.h"
 #include "fmt/fmt.h"
-#include <time.h>
 
 int compare_ints(const void* a, const void* b) {
-	int one = *(const int*)a;
-	int two = *(const int*)b;
-
-	return (one > two) - (one < two);
+    int one = *(const int*)a;
+    int two = *(const int*)b;
+    return (one > two) - (one < two);
 }
 
 void print_int(void* number) {
-	fmt_printf("%d ", *(int*)number);
+    fmt_printf("%d ", *(int*)number);
 }
 
 int main() {
-	struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    int first[] = {5, 10, 15, 20, 25};
+    int second[] = {10, 20, 30, 40, 50};
+    size_t size_first = sizeof(first) / sizeof(first[0]);
+    size_t size_second = sizeof(second) / sizeof(second[0]);
+    int result[10];
 
-	int first[] = {5,10,15,20,25};
-  	int second[] = {50,40,30,20,10};
-	size_t size_first = sizeof(first) / sizeof(first[0]);
-	size_t size_second = sizeof(second) / sizeof(first[0]);
-	Array* arr = array_create(sizeof(int), 10);
+    algorithm_sort(first, size_first, sizeof(int), compare_ints);
+    algorithm_sort(second, size_second, sizeof(int), compare_ints);
+    algorithm_merge(first, size_first, second, size_second, sizeof(int), result, compare_ints);
 
-	algorithm_sort(first, size_first, sizeof(int), compare_ints);
-	algorithm_sort(second, size_second, sizeof(int), compare_ints);
-	algorithm_merge(first, size_first, second, size_second, sizeof(int), array_begin(arr), compare_ints);
-	
-	clock_gettime(CLOCK_MONOTONIC, &end);
-
-    double timeTaken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    fmt_printf("C Algorithm sort time: %f seconds\n", timeTaken);
-
-	array_deallocate(arr);
-    return 0;
-}
-```
-**Result in C:**
-```
-C Algorithm sort time: 0.000019 seconds
-```
-
-`C++ Time Take : 4.375e-06 seconds`
-
-```cpp
-#include <iostream>     // For std::cout
-#include <algorithm>    // For std::merge, std::sort
-#include <vector>       // For std::vector
-#include <chrono>       // For std::chrono
-
-int main () {
-    auto start = std::chrono::high_resolution_clock::now();
-    int first[] = {5,10,15,20,25};
-    int second[] = {50,40,30,20,10};
-    std::vector<int> v(10);
-
-    std::sort (first, first + 5);
-    std::sort (second, second + 5);
-    std::merge (first, first + 5, second, second + 5, v.begin());
-
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = stop - start;
-    std::cout << "Time taken: " << duration.count() << " seconds\n";
+    fmt_printf("Merged array: ");
+    for (size_t i = 0; i < size_first + size_second; i++) {
+        fmt_printf("%d ", result[i]);
+    }
+    fmt_printf("\n");
 
     return 0;
 }
 ```
-**Result in C++:**
+**Result**
 ```
-Time taken: 2e-05 seconds
+Merged array: 5 10 10 15 20 20 25 30 40 50
 ```
 
 ---
@@ -5452,9 +5588,7 @@ Time taken: 2e-05 seconds
 
 ```c
 #include "algorithm/algorithm.h"
-#include "array/array.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
 typedef struct {
     int x;
@@ -5478,21 +5612,21 @@ int main() {
     Point second[] = {{7, 8}, {9, 10}, {11, 12}};
     size_t size_first = sizeof(first) / sizeof(first[0]);
     size_t size_second = sizeof(second) / sizeof(second[0]);
-    Array* arr = array_create(sizeof(Point), size_first + size_second);
+    Point result[6];
 
     algorithm_sort(first, size_first, sizeof(Point), compare_points);
     algorithm_sort(second, size_second, sizeof(Point), compare_points);
-    algorithm_merge(first, size_first, second, size_second, sizeof(Point), array_begin(arr), compare_points);
+    algorithm_merge(first, size_first, second, size_second, sizeof(Point), result, compare_points);
 
-    for (size_t i = 0; i < array_size(arr); i++) {
-        print_point(array_at(arr, i));
+    for (size_t i = 0; i < size_first + size_second; i++) {
+        print_point(&result[i]);
     }
+    fmt_printf("\n");
 
-    array_deallocate(arr);
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 (1, 2) (3, 4) (5, 6) (7, 8) (9, 10) (11, 12) 
 ```
@@ -5503,9 +5637,7 @@ int main() {
 
 ```c
 #include "algorithm/algorithm.h"
-#include "array/array.h"
 #include "fmt/fmt.h"
-#include <stdlib.h>
 
 int compare_ints(const void* a, const void* b) {
     int arg1 = *(const int*)a;
@@ -5519,67 +5651,31 @@ int main() {
     size_t size_first = sizeof(first) / sizeof(first[0]);
     size_t size_second = sizeof(second) / sizeof(second[0]);
     size_t total_size = size_first + size_second;
-    Array* arr = array_create(sizeof(int), total_size);
+    int arr[10];
 
     // Sort both arrays in ascending order
     algorithm_sort(first, size_first, sizeof(int), compare_ints);
     algorithm_sort(second, size_second, sizeof(int), compare_ints);
 
-    // Copy sorted arrays into `arr`
-    algorithm_copy(first, size_first, sizeof(int), array_begin(arr));
-    algorithm_copy(second, size_second, sizeof(int), array_at(arr, size_first));
+    // Copy sorted arrays into arr
+    algorithm_copy(first, size_first, sizeof(int), arr);
+    algorithm_copy(second, size_second, sizeof(int), arr + size_first);
 
-    // Inplace merge within `arr`
-    algorithm_inplace_merge(array_begin(arr), size_first, total_size, sizeof(int), compare_ints);
+    // Inplace merge within arr
+    algorithm_inplace_merge(arr, size_first, total_size, sizeof(int), compare_ints);
 
     fmt_printf("The resulting array contains:");
     for (size_t i = 0; i < total_size; i++) {
-        int* p = (int*)array_at(arr, i);
-        fmt_printf(" %d", *p);
+        fmt_printf(" %d", arr[i]);
     }
     fmt_printf("\n");
 
-    array_deallocate(arr);
     return 0;
 }
 ```
-**Result in C:**
+**Result**
 ```
 The resulting array contains: 5 10 10 15 20 20 25 30 40 50
-```
-
-`C++ Version`
-
-```c
-#include <iostream>     // std::cout
-#include <algorithm>    // std::inplace_merge, std::sort, std::copy
-#include <vector>       // std::vector
-
-int main () {
-  int first[] = {5,10,15,20,25};
-  int second[] = {50,40,30,20,10};
-  std::vector<int> v(10);
-  std::vector<int>::iterator it;
-
-  std::sort (first,first+5);
-  std::sort (second,second+5);
-
-  it=std::copy (first, first+5, v.begin());
-     std::copy (second,second+5,it);
-
-  std::inplace_merge (v.begin(),v.begin()+5,v.end());
-
-  std::cout << "The resulting vector contains:";
-  for (it=v.begin(); it!=v.end(); ++it)
-    std::cout << ' ' << *it;
-  std::cout << '\n';
-
-  return 0;
-}
-```
-**Result in C++:**
-```
-The resulting vector contains: 5 10 10 15 20 20 25 30 40 50
 ```
 
 ---
@@ -5588,7 +5684,6 @@ The resulting vector contains: 5 10 10 15 20 20 25 30 40 50
 
 ```c
 #include "algorithm/algorithm.h"
-#include "array/array.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 
@@ -5615,23 +5710,22 @@ int main() {
     size_t size_first = sizeof(first) / sizeof(first[0]);
     size_t size_second = sizeof(second) / sizeof(second[0]);
     size_t total_size = size_first + size_second;
-
-    Array* arr = array_create(sizeof(Point), total_size);
+    Point arr[6];
 
     algorithm_sort(first, size_first, sizeof(Point), compare_points);
     algorithm_sort(second, size_second, sizeof(Point), compare_points);
 
-    algorithm_copy(first, size_first, sizeof(Point), array_begin(arr));
-    algorithm_copy(second, size_second, sizeof(Point), array_at(arr, size_first));
+    algorithm_copy(first, size_first, sizeof(Point), arr);
+    algorithm_copy(second, size_second, sizeof(Point), arr + size_first);
 
-    algorithm_inplace_merge(array_begin(arr), size_first, total_size, sizeof(Point), compare_points);
-	algorithm_for_each(array_begin(arr), total_size, sizeof(Point), print_point);
+    algorithm_inplace_merge(arr, size_first, total_size, sizeof(Point), compare_points);
+    algorithm_for_each(arr, total_size, sizeof(Point), print_point);
+    fmt_printf("\n");
 
-    array_deallocate(arr);
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 (1, 2) (3, 1) (4, 3) (5, 5) (6, 4) (7, 6)
 ```
@@ -5645,6 +5739,7 @@ int main() {
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 #include <string.h>
+#include <stdlib.h>
 
 int compare_strings(const void *a, const void *b) {
     const String *str1 = *(const String **)a;
@@ -5680,10 +5775,11 @@ int main() {
     for (size_t i = 0; i < num_elements; i++) {
         string_deallocate(mystrings[i]);
     }
+    free(mystrings);
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 The first pair of repeated elements are: banana
 The second pair of repeated elements are: cherry
@@ -5724,7 +5820,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 The first pair of repeated elements are: 30
 The second pair of repeated elements are: 10
@@ -5772,10 +5868,11 @@ int main() {
         fmt_printf("Second mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
     }
 
+    vector_deallocate(vec);
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 First mismatching elements: 1 and 10
 Second mismatching elements: 2 and 20
@@ -5783,17 +5880,16 @@ Second mismatching elements: 2 and 20
 
 ---
 
-## Example 131 : `algorithm_is_sequence`
+## Example 131 : `algorithm_is_permutation`
 
 ```c
-#include "array/array.h"
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
 #include <time.h>
 
 void random_number_generator(void *output) {
-    *(int *)output = (rand() % 5) + 1; 
+    *(int *)output = (rand() % 5) + 1;
 }
 
 int compare_ints(const void *a, const void *b) {
@@ -5803,25 +5899,26 @@ int compare_ints(const void *a, const void *b) {
 }
 
 int main() {
-	srand(time(NULL));
-    Array* foo = array_create(sizeof(int), 5);
-	Array* bar = array_create(sizeof(int), 5);
+    srand(time(NULL));
+    int foo[5];
+    int bar[5];
+    size_t n = sizeof(foo) / sizeof(foo[0]);
 
-	algorithm_generate(array_begin(foo), array_end(foo), sizeof(int), random_number_generator);
-	algorithm_generate(array_begin(bar), array_end(bar), sizeof(int), random_number_generator);
+    algorithm_generate(foo, foo + n, sizeof(int), random_number_generator);
+    algorithm_generate(bar, bar + n, sizeof(int), random_number_generator);
 
-	if (algorithm_is_permutation(array_begin(foo), array_size(foo), sizeof(int), 
-									array_begin(bar), array_size(bar), sizeof(int), compare_ints)) {
-			fmt_printf("foo and bar contain the same elements");
-	}
-
-	array_deallocate(foo);
-	array_deallocate(bar);
+    if (algorithm_is_permutation(foo, n, sizeof(int),
+                                 bar, n, sizeof(int), compare_ints)) {
+        fmt_printf("foo and bar contain the same elements\n");
+    }
+    else {
+        fmt_printf("foo and bar do not contain the same elements\n");
+    }
 
     return EXIT_SUCCESS;
 }
 ```
-**Result:**
+**Result**
 ```
 foo and bar contain the same elements
 ```
@@ -5856,7 +5953,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Subsequence found at position 3
 ```
@@ -5898,7 +5995,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 its equal
 ```
@@ -6027,6 +6124,7 @@ int main() {
         fmt_printf("%d ", *begin);
     }
 
+    vector_deallocate(vec);
     return 0;
 }
 ```
@@ -6102,7 +6200,7 @@ int main() {
 }
 
 ```
-**Result:**
+**Result**
 ```
 10 30 30 10 10 0 0 0
 ```
@@ -6144,7 +6242,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Before replacement:
 1 2 3 4 5 5 5 8 9 10 
@@ -6172,7 +6270,7 @@ int main() {
 
     fmt_printf("Before replacement:\n");
     for (int i = 0; i < 10; ++i) {
-        printf("%d ", arr[i]);
+        fmt_printf("%d ", arr[i]);
     }
     fmt_printf("\n");
 
@@ -6187,7 +6285,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Before replacement:
 1 2 3 4 5 6 7 8 9 10 
@@ -6229,7 +6327,7 @@ int main() {
     return 0;
 }
 ```
-**Result:**
+**Result**
 ```
 Source array:
 1 2 3 4 5 6 7 8 9 10 
@@ -6262,48 +6360,78 @@ int main() {
     return 0;
 }
 ```
+**Result**
+```
+Array elements: 10 20 30 40 50
+```
 
 ---
 
-## Example 141 : how to put list of data in array with `algorithm_iota`
+## Example 141 : fill a range with successive values using `algorithm_iota`
+
+`algorithm_iota` takes a function pointer for the `++` operation, so it works for built-in numerics, user structs, and any custom step you can describe in a few lines of code.
 
 ```c
 #include "algorithm/algorithm.h"
 #include "fmt/fmt.h"
 
+/* (1) Custom struct: walk a diagonal. */
+typedef struct { int x, y; } Point;
+static void inc_diag(void* p) {
+    Point* pt = p;
+    pt->x++;
+    pt->y++;
+}
 
-int main() {
+/* (2) Custom step: bump by 5. */
+static void inc_by_5(void* p) { *(int*)p += 5; }
+
+int main(void) {
+    /* --- Built-in: 1000..1009 with the shipped incrementer --- */
     unsigned long arr_ulong[10];
     unsigned long start_ulong = 1000;
-    
-    algorithm_iota(algorithm_begin(arr_ulong), algorithm_end(arr_ulong, 10, sizeof(unsigned long)), &start_ulong, sizeof(unsigned long), TYPE_UNSIGNED_LONG);
+    algorithm_iota(arr_ulong, arr_ulong + 10,
+                   &start_ulong, sizeof(unsigned long),
+                   algorithm_inc_ulong);
 
     fmt_printf("Unsigned long array:\n");
-    for (int i = 0; i < 10; ++i) {
-        fmt_printf("%lu\n", arr_ulong[i]);
-    }
+    for (int i = 0; i < 10; ++i) fmt_printf("%lu\n", arr_ulong[i]);
     fmt_printf("\n");
 
+    /* --- Built-in: 'A'..'J' --- */
     unsigned char arr_char[10];
-    unsigned char start_char = 'A'; 
-    
-    algorithm_iota(arr_char, arr_char + 10, &start_char, sizeof(unsigned char), TYPE_UNSIGNED_CHAR);
+    unsigned char start_char = 'A';
+    algorithm_iota(arr_char, arr_char + 10,
+                   &start_char, sizeof(unsigned char),
+                   algorithm_inc_uchar);
+    fmt_printf("Char array: ");
+    for (int i = 0; i < 10; ++i) fmt_printf("%c", arr_char[i]);
+    fmt_printf("\n\n");
 
-    fmt_printf("Unsigned Char array:\n");
-    for (int i = 0; i < 10; ++i) {
-        fmt_printf("%c\n", arr_char[i]);
-    }
+    /* --- Built-in: 1.5, 2.5, ..., 10.5 --- */
+    float arr_float[10];
+    float start_float = 1.5f;
+    algorithm_iota(arr_float, arr_float + 10,
+                   &start_float, sizeof(float),
+                   algorithm_inc_float);
+    fmt_printf("Float array:\n");
+    for (int i = 0; i < 10; ++i) fmt_printf("%.1f\n", arr_float[i]);
     fmt_printf("\n");
 
-    float arr_float[10];
-    float start_float = 1.5f; 
+    /* --- Custom struct (no library change needed) --- */
+    Point pts[5];
+    Point origin = { 0, 100 };
+    algorithm_iota(pts, pts + 5, &origin, sizeof(Point), inc_diag);
+    fmt_printf("Diagonal points: ");
+    for (int i = 0; i < 5; ++i) fmt_printf("(%d,%d) ", pts[i].x, pts[i].y);
+    fmt_printf("\n\n");
 
-    algorithm_iota(arr_float, arr_float + 10, &start_float, sizeof(float), TYPE_FLOAT);
-
-    fmt_printf("Float array:\n");
-    for (int i = 0; i < 10; ++i) {
-        fmt_printf("%f\n", arr_float[i]);
-    }
+    /* --- Custom step --- */
+    int by5[6]; int s = 100;
+    algorithm_iota(by5, by5 + 6, &s, sizeof(int), inc_by_5);
+    fmt_printf("Step-by-5: ");
+    for (int i = 0; i < 6; ++i) fmt_printf("%d ", by5[i]);
+    fmt_printf("\n");
 
     return 0;
 }
@@ -6322,29 +6450,23 @@ Unsigned long array:
 1008
 1009
 
-Unsigned Char array:
-A
-B
-C
-D
-E
-F
-G
-H
-I
-J
+Char array: ABCDEFGHIJ
 
 Float array:
-1.500000
-2.500000
-3.500000
-4.500000
-5.500000
-6.500000
-7.500000
-8.500000
-9.500000
-10.500000
+1.5
+2.5
+3.5
+4.5
+5.5
+6.5
+7.5
+8.5
+9.5
+10.5
+
+Diagonal points: (0,100) (1,101) (2,102) (3,103) (4,104)
+
+Step-by-5: 100 105 110 115 120 125
 ```
 
 ## License

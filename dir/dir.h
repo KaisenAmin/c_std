@@ -2,35 +2,50 @@
  * @author Amin Tahmasebi
  * @date 2024
  * @class Dir
-*/
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in dir.c (file-level convention).
+ *
+ * Cross-platform filesystem helpers — directory traversal, path
+ * manipulation, copy/move, predicates, and a small encryption pair.
+ */
 
-#ifndef DIR_H_ 
+#ifndef DIR_H_
 #define DIR_H_
 
 #include <stdint.h>
 #include "../vector/vector.h"
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-// #define DIR_LOGGING_ENABLE
 
-#ifdef DIR_LOGGING_ENABLE 
+/* #define DIR_LOGGING_ENABLE */
+
+#ifdef DIR_LOGGING_ENABLE
     #define DIR_LOG(fmt, ...) \
         do { fprintf(stderr, "[DIR LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define DIR_LOG(fmt, ...) do { } while (0)
+    #define DIR_LOG(...) do { } while (0)
 #endif
 
+
+
+/* Per-match callback for `dir_search`. Return true to continue
+ * walking, false to stop. */
 typedef bool (*DirCompareFunc)(const char* filePath, void* userData);
 
+
+/* Filter for `dir_list_contents` / `dir_list_recursive`. */
 typedef enum {
     DIR_LIST_FILES,
     DIR_LIST_DIRECTORIES,
     DIR_LIST_ALL
 } DirListOption;
 
+
+/* Result of `dir_get_file_type`. */
 typedef enum {
     DIR_FILE_TYPE_UNKNOWN,
     DIR_FILE_TYPE_REGULAR,
@@ -38,43 +53,98 @@ typedef enum {
     DIR_FILE_TYPE_SYMLINK
 } DirFileType;
 
-bool dir_make_directory(const char* dirpath);
-bool dir_cd(const char* dirName);
-bool dir_cd_up();
-bool dir_is_empty(const char* dirName);
-bool dir_remove_directory(const char* dirName);
-bool dir_remove_directory_recursive(const char* dirPath);
-bool dir_rename(const char* oldName, const char* newName);
-bool dir_is_directory_exists(const char* dirPath);
-bool dir_is_file_exists(const char* filePath);
-bool dir_copy_file(const char* srcPath, const char* destPath);
-bool dir_copy_directory(const char* srcDir, const char* destDir);
-bool dir_is_file(const char* filePath);
-bool dir_is_directory(const char* filePath);
-bool dir_move_file(const char* srcPath, const char* destPath);
-bool dir_move_directory(const char* srcPath, const char* destPath);
-bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv);
-bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv);
-bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize);
-bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize);
-bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData);
 
-char* dir_get_creation_time(const char* dirPath);
-char* dir_get_modified_time(const char* dirPath);
-char* dir_dir_name(const char* dirpath);
-char* dir_current_path(void);
-char* dir_absolute_file_path(const char* relative_path);
-char* dir_get_home_directory();
+/* ------------------------------------------------------------------ */
+/* Directory creation / navigation                                    */
+/* ------------------------------------------------------------------ */
 
-int dir_count(const char* dirpath);
-void dir_list_contents(const char* dirPath, DirListOption option, Vector* result);
-DirFileType dir_get_file_type(const char* filePath);
+bool         dir_make_directory               (const char* dirpath);
+bool         dir_make_directories             (const char* dirpath);
+bool         dir_cd                           (const char* dirName);
+bool         dir_cd_up                        (void);
 
-long long dir_get_directory_size(const char* dirPath);
-long long dir_get_file_size(const char* filePath);
 
-#ifdef __cplusplus 
+/* ------------------------------------------------------------------ */
+/* Existence / type predicates                                        */
+/* ------------------------------------------------------------------ */
+
+bool         dir_is_directory_exists          (const char* dirPath);
+bool         dir_is_file_exists               (const char* filePath);
+bool         dir_is_directory                 (const char* filePath);
+bool         dir_is_file                      (const char* filePath);
+bool         dir_is_empty                     (const char* dirName);
+bool         dir_is_absolute_path             (const char* path);
+DirFileType  dir_get_file_type                (const char* filePath);
+
+
+/* ------------------------------------------------------------------ */
+/* Removal / rename                                                   */
+/* ------------------------------------------------------------------ */
+
+bool         dir_remove_directory             (const char* dirName);
+bool         dir_remove_directory_recursive   (const char* dirPath);
+bool         dir_rename                       (const char* oldName, const char* newName);
+
+
+/* ------------------------------------------------------------------ */
+/* Copy / move                                                        */
+/* ------------------------------------------------------------------ */
+
+bool         dir_copy_file                    (const char* srcPath, const char* destPath);
+bool         dir_copy_directory               (const char* srcDir,  const char* destDir);
+bool         dir_move_file                    (const char* srcPath, const char* destPath);
+bool         dir_move_directory               (const char* srcPath, const char* destPath);
+
+
+/* ------------------------------------------------------------------ */
+/* Listing / traversal / search                                       */
+/* ------------------------------------------------------------------ */
+
+void         dir_list_contents                (const char* dirPath, DirListOption option, Vector* result);
+void         dir_list_recursive               (const char* dirPath, DirListOption option, Vector* result);
+bool         dir_search                       (const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData);
+int          dir_count                        (const char* dirpath);
+
+
+/* ------------------------------------------------------------------ */
+/* Path manipulation                                                  */
+/* ------------------------------------------------------------------ */
+
+char         dir_path_separator               (void);
+char*        dir_join_path                    (const char* a, const char* b);
+char*        dir_base_name                    (const char* path);
+char*        dir_dir_name                     (const char* dirpath);
+char*        dir_extension                    (const char* path);
+char*        dir_change_extension             (const char* path, const char* newExt);
+char*        dir_normalize_path               (const char* path);
+char*        dir_absolute_file_path           (const char* relative_path);
+char*        dir_current_path                 (void);
+char*        dir_get_home_directory           (void);
+char*        dir_temp_directory               (void);
+
+
+/* ------------------------------------------------------------------ */
+/* Metadata                                                           */
+/* ------------------------------------------------------------------ */
+
+char*        dir_get_creation_time            (const char* dirPath);
+char*        dir_get_modified_time            (const char* dirPath);
+long long    dir_get_directory_size           (const char* dirPath);
+long long    dir_get_file_size                (const char* filePath);
+bool         dir_get_file_owner               (const char* filePath, char* ownerBuffer, size_t bufferSize);
+bool         dir_get_directory_owner          (const char* dirPath,  char* ownerBuffer, size_t bufferSize);
+
+
+/* ------------------------------------------------------------------ */
+/* Encryption                                                         */
+/* ------------------------------------------------------------------ */
+
+bool         dir_encrypt_file                 (const char* filePath, const char* password, uint8_t* iv);
+bool         dir_decrypt_file                 (const char* filePath, const char* password, uint8_t* iv);
+
+
+#ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif 

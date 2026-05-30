@@ -26,545 +26,1340 @@ To use the Matrix library in your project, include the `matrix.h` header file in
 #include "matrix/matrix.h"
 ```
 
-## Matrix Library API Overview
-
-### `Matrix* matrix_create(size_t rows, size_t cols);` 
-  - **Purpose**: Creates a new matrix with the specified number of rows and columns.
-  - **Parameters:**
-    - `rows`: Number of rows in the matrix.
-    - `cols`: Number of columns in the matrix.
-  - **Returns:** A pointer to the newly created matrix.
+## Function Descriptions
 
 ---
 
-### `void matrix_deallocate(Matrix* matrix);` 
-  - **Purpose**: Deallocates the memory associated with the matrix.
-  - **Parameters:**
-    - `matrix`: Pointer to the matrix to be deallocated.
+### `Matrix* matrix_create(size_t rows, size_t cols)`
+
+**Purpose**:  
+Allocates a new zero-initialised matrix with the given dimensions.
+
+**Parameters**:  
+- `rows`: Number of rows.  
+- `cols`: Number of columns.
+
+**Return Value**:  
+Pointer to the newly created `Matrix`, or `NULL` on allocation failure or if `rows`/`cols` is 0.
+
+**Usage Case**:  
+First step for any matrix computation. All elements start at 0.0; use `matrix_set` or `matrix_fill` to populate them.
 
 ---
 
-### `Matrix* matrix_create_identity(size_t n);` 
-  - **Purpose**: Creates an `n x n` identity matrix where all the diagonal elements are 1, and all other elements are 0.
-  - **Parameters:**
-    - `n`: Size of the identity matrix (number of rows and columns).
-  - **Returns:** A pointer to the newly created identity matrix.
+### `void matrix_deallocate(Matrix* matrix)`
+
+**Purpose**:  
+Frees all memory owned by the matrix (the data array and the struct itself). Safe to call with `NULL`.
+
+**Parameters**:  
+- `matrix`: Matrix to destroy. May be `NULL`.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Always call when a matrix is no longer needed to prevent memory leaks.
 
 ---
 
-### `Matrix* matrix_create_submatrix(const Matrix* matrix, size_t excludeRow, size_t excludeCol);` 
-  - **Purpose**: Creates a submatrix by removing the specified row and column from the original matrix.
-  - **Parameters:**
-    - `matrix`: The original matrix.
-    - `excludeRow`: The index of the row to exclude.
-    - `excludeCol`: The index of the column to exclude.
-  - **Returns:** A pointer to the newly created submatrix.
+### `Matrix* matrix_copy(const Matrix* matrix)`
+
+**Purpose**:  
+Creates a deep, independent copy of `matrix` with the same dimensions and element values.
+
+**Parameters**:  
+- `matrix`: Source matrix to copy. Must not be `NULL`.
+
+**Return Value**:  
+Newly allocated `Matrix*` the caller must free with `matrix_deallocate`, or `NULL` on failure.
+
+**Usage Case**:  
+Snapshot a matrix before a destructive operation (e.g., in-place factorisation), or pass a copy to another subsystem without transferring ownership.
 
 ---
 
-### `Matrix* matrix_from_array(const double* data, size_t rows, size_t cols);` 
-  - **Purpose**: Creates a matrix from a 1D array of data, filling it row by row.
-  - **Parameters:**
-    - `data`: Pointer to the array containing the matrix data.
-    - `rows`: Number of rows in the matrix.
-    - `cols`: Number of columns in the matrix.
-  - **Returns:** A pointer to the newly created matrix.
+### `Matrix* matrix_from_array(const double* data, size_t rows, size_t cols)`
+
+**Purpose**:  
+Creates a matrix and fills it row-by-row from a flat 1-D array of `rows × cols` doubles.
+
+**Parameters**:  
+- `data`: Pointer to the source data (row-major order). Must not be `NULL`.  
+- `rows`: Number of rows.  
+- `cols`: Number of columns.
+
+**Return Value**:  
+Pointer to the newly created matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Initialise a matrix from a C array literal without writing individual `matrix_set` calls.
 
 ---
 
-### `Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2);` 
-  - **Purpose**: Adds two matrices element-wise.
-  - **Parameters:**
-    - `matrix1`: First matrix.
-    - `matrix2`: Second matrix.
-  - **Returns:** A new matrix containing the sum of the two matrices.
+### `Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end)`
+
+**Purpose**:  
+Fills a newly created `row × col` matrix with random integers in the range `[start, end)`.
+
+**Parameters**:  
+- `row`: Number of rows.  
+- `col`: Number of columns.  
+- `start`: Minimum value (inclusive).  
+- `end`: Maximum value (exclusive).
+
+**Return Value**:  
+Pointer to the randomly filled matrix, or `NULL` on allocation failure.
+
+**Usage Case**:  
+Generate random test data or initialise Monte-Carlo simulations.
 
 ---
 
-### `Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2);` 
-  - **Purpose**: Subtracts one matrix from another element-wise.
-  - **Parameters:**
-    - `matrix1`: First matrix.
-    - `matrix2`: Second matrix.
-  - **Returns:** A new matrix containing the difference of the two matrices.
+### `void matrix_print(Matrix* matrix)`
+
+**Purpose**:  
+Prints the matrix to `stdout` in a human-readable row-by-row format with 5 decimal places per element.
+
+**Parameters**:  
+- `matrix`: Matrix to print. May be `NULL` (prints nothing).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Quick console inspection during development or debugging.
 
 ---
 
-### `Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2);` 
-  - **Purpose**: Multiplies two matrices using standard matrix multiplication.
-  - **Parameters:**
-    - `matrix1`: First matrix.
-    - `matrix2`: Second matrix.
-  - **Returns:** A new matrix containing the product of the two matrices.
+### `Matrix* matrix_create_identity(size_t n)`
+
+**Purpose**:  
+Creates an `n × n` identity matrix (diagonal elements = 1, all others = 0).
+
+**Parameters**:  
+- `n`: Size of the square matrix.
+
+**Return Value**:  
+Pointer to the identity matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Starting point for matrix inversion algorithms or as a neutral element in matrix multiplication.
 
 ---
 
-### `bool matrix_is_square(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is square (i.e., the number of rows equals the number of columns).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is square, otherwise `false`.
+### `Matrix* matrix_hilbert(size_t n)`
+
+**Purpose**:  
+Generates an `n × n` Hilbert matrix where `H[i][j] = 1 / (i + j + 1)`.
+
+**Parameters**:  
+- `n`: Size of the matrix.
+
+**Return Value**:  
+Pointer to the Hilbert matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Classic ill-conditioned test matrix for numerical analysis benchmarks.
 
 ---
 
-### `bool matrix_is_equal(const Matrix* matrix1, const Matrix* matrix2);` 
-  - **Purpose**: Checks if two matrices are equal element-wise.
-  - **Parameters:**
-    - `matrix1`: First matrix.
-    - `matrix2`: Second matrix.
-  - **Returns:** `true` if the matrices are equal, otherwise `false`.
+### `Matrix* matrix_inverse_hilbert(size_t n)`
+
+**Purpose**:  
+Computes the exact integer inverse of the n×n Hilbert matrix using the closed-form formula.
+
+**Parameters**:  
+- `n`: Size of the matrix.
+
+**Return Value**:  
+Pointer to the inverse Hilbert matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Companion to `matrix_hilbert` for numerical conditioning experiments.
 
 ---
 
-### `bool matrix_is_identity(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is an identity matrix.
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is an identity matrix, otherwise `false`.
+### `Matrix* matrix_pascal(size_t n)`
+
+**Purpose**:  
+Generates an `n × n` Pascal matrix where each element is a binomial coefficient.
+
+**Parameters**:  
+- `n`: Size of the matrix.
+
+**Return Value**:  
+Pointer to the Pascal matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Combinatorics, polynomial arithmetic, and numerical analysis.
 
 ---
 
-### `bool matrix_is_idempotent(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is idempotent (i.e., `A * A = A`).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is idempotent, otherwise `false`.
+### `Matrix* matrix_helmert(size_t n, bool full)`
+
+**Purpose**:  
+Generates an `n × n` Helmert matrix — an orthogonal matrix used in multivariate statistics.
+
+**Parameters**:  
+- `n`: Size of the matrix.  
+- `full`: If `true`, returns the full Helmert matrix; otherwise, the reduced (normalised) form.
+
+**Return Value**:  
+Pointer to the Helmert matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Contrast coding in ANOVA, principal component preprocessing.
 
 ---
 
-### `bool matrix_is_symmetric(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is symmetric (i.e., `A[i][j] == A[j][i]`).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is symmetric, otherwise `false`.
+### `Matrix* matrix_walsh(size_t n)`
+
+**Purpose**:  
+Generates an `n × n` Walsh–Hadamard matrix (entries ±1, `n` must be a power of 2).
+
+**Parameters**:  
+- `n`: Size of the matrix (must be a power of 2).
+
+**Return Value**:  
+Pointer to the Walsh matrix, or `NULL` if `n` is not a power of 2 or allocation fails.
+
+**Usage Case**:  
+Signal processing, error-correcting codes, and fast Walsh–Hadamard transforms.
 
 ---
 
-### `bool matrix_is_upper_triangular(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is upper triangular.
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is upper triangular, otherwise `false`.
+### `Matrix* matrix_vandermonde(const Matrix* matrix, size_t n)`
+
+**Purpose**:  
+Generates a Vandermonde matrix where each row is a geometric progression of the corresponding input element: `V[i][j] = matrix[i]^j`.
+
+**Parameters**:  
+- `matrix`: 1×m input row matrix containing the base values.  
+- `n`: Number of columns (degree + 1).
+
+**Return Value**:  
+Pointer to the Vandermonde matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Polynomial interpolation, least-squares curve fitting.
 
 ---
 
-### `bool matrix_is_lower_triangular(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is lower triangular.
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is lower triangular, otherwise `false`.
+### `Matrix* matrix_companion(const Matrix* coefficients, size_t n)`
+
+**Purpose**:  
+Constructs the companion matrix of a monic polynomial given its coefficients.
+
+**Parameters**:  
+- `coefficients`: 1×n row matrix of polynomial coefficients (highest degree first).  
+- `n`: Number of coefficients (= degree of polynomial).
+
+**Return Value**:  
+Pointer to the `(n-1) × (n-1)` companion matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Finding polynomial roots by computing matrix eigenvalues.
 
 ---
 
-### `bool matrix_is_skew_symmetric(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is skew-symmetric (i.e., `A[i][j] == -A[j][i]`).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is skew-symmetric, otherwise `false`.
+### `Matrix* matrix_circulant(const Matrix* firstRow)`
+
+**Purpose**:  
+Generates a circulant matrix where each row is a cyclic right-shift of the previous row.
+
+**Parameters**:  
+- `firstRow`: 1×n row matrix defining the first row.
+
+**Return Value**:  
+Pointer to the `n × n` circulant matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Discrete convolution, cyclic shift operators, and fast Fourier transform-based algorithms.
 
 ---
 
-### `bool matrix_is_diagonal(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is diagonal (i.e., all off-diagonal elements are zero).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is diagonal, otherwise `false`.
+### `Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol)`
+
+**Purpose**:  
+Generates a Hankel matrix where element `[i][j]` equals `firstRow[0][i+j]` (anti-diagonal-constant).
+
+**Parameters**:  
+- `firstRow`: 1×n row matrix defining the first row.  
+- `lastCol`: m×1 column matrix defining the last column.
+
+**Return Value**:  
+Pointer to the Hankel matrix, or `NULL` on failure.
+
+**Usage Case**:  
+System identification, signal processing, moment problems.
 
 ---
 
-### `bool matrix_is_orthogonal(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is orthogonal (i.e., `A * A^T = I`).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is orthogonal, otherwise `false`.
+### `Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol)`
+
+**Purpose**:  
+Generates a Toeplitz matrix where each descending diagonal is constant, defined by the first row and first column.
+
+**Parameters**:  
+- `firstRow`: 1×n row matrix.  
+- `firstCol`: m×1 column matrix. The `[0][0]` element must be the same in both.
+
+**Return Value**:  
+Pointer to the `m × n` Toeplitz matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Convolution operators, time-series modelling, and linear prediction.
 
 ---
 
-### `bool matrix_is_hankel(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is a Hankel matrix (constant along anti-diagonals).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is a Hankel matrix, otherwise `false`.
+### `Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size)`
+
+**Purpose**:  
+Generates a Leslie matrix used in discrete population dynamics. The first row holds fecundity coefficients; the sub-diagonal holds survival coefficients.
+
+**Parameters**:  
+- `f`: 1×f_size fecundity matrix.  
+- `f_size`: Number of age classes (determines matrix size).  
+- `s`: 1×s_size survival matrix (`s_size` must equal `f_size - 1`).  
+- `s_size`: Number of survival coefficients.
+
+**Return Value**:  
+Pointer to the `f_size × f_size` Leslie matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Age-structured population models in ecology and demography.
 
 ---
 
-### `bool matrix_is_toeplitz(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is a Toeplitz matrix (constant along diagonals).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is a Toeplitz matrix, otherwise `false`.
+### `Matrix* matrix_fiedler(const Matrix* matrix)`
+
+**Purpose**:  
+Creates a Fiedler matrix where `F[i][j] = |matrix[0][i] - matrix[0][j]|`.
+
+**Parameters**:  
+- `matrix`: 1×n row matrix whose elements define the pairwise differences.
+
+**Return Value**:  
+Pointer to the `n × n` Fiedler matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Graph theory (algebraic connectivity), spectral analysis.
 
 ---
 
-### `bool matrix_is_positive_definite(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is positive definite.
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is positive definite, otherwise `false`.
+### `Matrix* matrix_block_diag(size_t count, ...)`
+
+**Purpose**:  
+Creates a block-diagonal matrix by placing `count` matrices along the diagonal of a larger zero matrix.
+
+**Parameters**:  
+- `count`: Number of block matrices to include.  
+- `...`: `count` pointers of type `Matrix*`, each becoming one diagonal block.
+
+**Return Value**:  
+Pointer to the assembled block-diagonal matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Building structured system matrices in control theory, block-structured linear systems.
 
 ---
 
-### `bool matrix_is_sparse(const Matrix* matrix);` 
-  - **Purpose**: Checks if the matrix is sparse (i.e., contains mostly zero elements).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is sparse, otherwise `false`.
+### `double matrix_get(const Matrix* matrix, size_t row, size_t col)`
+
+**Purpose**:  
+Returns the scalar value at position `(row, col)` in the matrix.
+
+**Parameters**:  
+- `matrix`: Source matrix.  
+- `row`: Zero-based row index.  
+- `col`: Zero-based column index.
+
+**Return Value**:  
+The element value, or `0.0` on out-of-bounds access or `NULL` input.
+
+**Usage Case**:  
+Read individual elements for inspection, output formatting, or conditional logic.
 
 ---
 
-### `bool matrix_is_row(const Matrix* matrix);` 
-  - **Purpose**:- Checks if the matrix is a row matrix (i.e., has only one row).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is a row matrix, otherwise `false`.
+### `bool matrix_set(Matrix* matrix, size_t row, size_t col, double value)`
+
+**Purpose**:  
+Assigns `value` to position `(row, col)` in the matrix.
+
+**Parameters**:  
+- `matrix`: Destination matrix.  
+- `row`: Zero-based row index.  
+- `col`: Zero-based column index.  
+- `value`: The scalar to assign.
+
+**Return Value**:  
+`true` on success; `false` if indices are out of range or `matrix` is `NULL`.
+
+**Usage Case**:  
+Populate individual elements after creating a matrix with `matrix_create`.
 
 ---
 
-### `bool matrix_is_columnar(const Matrix* matrix);` 
-  - **Purpose**:  Checks if the matrix is a column matrix (i.e., has only one column).
-  - **Parameters:**
-    - `matrix`: The matrix to check.
-  - **Returns:** `true` if the matrix is a column matrix, otherwise `false`.
+### `bool matrix_fill(Matrix* matrix, double value)`
+
+**Purpose**:  
+Sets every element of the matrix to the same scalar `value`.
+
+**Parameters**:  
+- `matrix`: Matrix to fill.  
+- `value`: Value to assign to all elements.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` input.
+
+**Usage Case**:  
+Quickly initialise a matrix to zero, one, or any constant before further computation.
 
 ---
 
-### `bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U);` 
-  - **Purpose**: Performs LU decomposition of the matrix into lower (L) and upper (U) triangular matrices.
-  - **Parameters:**
-    - `matrix`: The matrix to decompose.
-    - `L`: Pointer to the lower triangular matrix.
-    - `U`: Pointer to the upper triangular matrix.
-  - **Returns:** `true` if the decomposition is successful, otherwise `false`.
+### `double* matrix_to_array(const Matrix* matrix)`
+
+**Purpose**:  
+Copies the matrix data into a newly allocated flat 1-D array in row-major order.
+
+**Parameters**:  
+- `matrix`: Source matrix.
+
+**Return Value**:  
+Heap-allocated `double[]` of `rows × cols` elements the caller must `free()`, or `NULL` on failure.
+
+**Usage Case**:  
+Pass matrix data to a C library function that expects a raw array (e.g., BLAS, FFTW).
 
 ---
 
-### `bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R);` 
-  - **Purpose**: Performs QR decomposition of the matrix into orthogonal (Q) and upper triangular (R) matrices.
-  - **Parameters:**
-    - `A`: The matrix to decompose.
-    - `Q`: Pointer to the orthogonal matrix.
-    - `R`: Pointer to the upper triangular matrix.
-  - **Returns:** `true` if the decomposition is successful, otherwise `false`.
+### `size_t matrix_size(const Matrix* matrix)`
+
+**Purpose**:  
+Returns the total number of elements in the matrix (`rows × cols`).
+
+**Parameters**:  
+- `matrix`: Matrix to query. May be `NULL` (returns `0`).
+
+**Return Value**:  
+Element count, or `0` on `NULL` input.
+
+**Usage Case**:  
+Loop bound when iterating over the raw data pointer.
 
 ---
 
-### `Matrix* matrix_cholesky_decomposition(const Matrix* matrix);` 
-  - **Purpose**: Performs Cholesky decomposition of the matrix (must be positive definite).
-  - **Parameters:**
-    - `matrix`: The matrix to decompose.
-  - **Returns:** A new matrix representing the Cholesky factor.
+### `Matrix* matrix_get_row(const Matrix* matrix, size_t row)`
+
+**Purpose**:  
+Extracts the specified row as a new 1×cols matrix.
+
+**Parameters**:  
+- `matrix`: Source matrix.  
+- `row`: Zero-based row index.
+
+**Return Value**:  
+Newly allocated 1×cols `Matrix*`, or `NULL` on out-of-bounds or allocation failure.
+
+**Usage Case**:  
+Isolate a row for dot-product computations or sub-problem decomposition.
 
 ---
 
-### `Matrix* matrix_transpose(const Matrix* matrix);` 
-  - **Purpose**: Transposes the matrix (swaps rows and columns).
-  - **Parameters:**
-    - `matrix`: The matrix to transpose.
-  - **Returns:** A new matrix representing the transpose of the input matrix.
+### `Matrix* matrix_get_col(const Matrix* matrix, size_t col)`
+
+**Purpose**:  
+Extracts the specified column as a new rows×1 matrix.
+
+**Parameters**:  
+- `matrix`: Source matrix.  
+- `col`: Zero-based column index.
+
+**Return Value**:  
+Newly allocated rows×1 `Matrix*`, or `NULL` on out-of-bounds or allocation failure.
+
+**Usage Case**:  
+Isolate a column vector for Gram–Schmidt orthogonalisation or regression.
 
 ---
 
-### `Matrix* matrix_adjugate(const Matrix* matrix);` 
-  - **Purpose**: Computes the adjugate (adjoint) of the matrix.
-  - **Parameters:**
-    - `matrix`: The matrix to compute the adjugate for.
-  - **Returns:** A new matrix representing the adjugate.
+### `void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2)`
+
+**Purpose**:  
+Swaps the contents of two rows in place.
+
+**Parameters**:  
+- `mat`: Matrix to modify.  
+- `row1`, `row2`: Zero-based indices of the rows to swap.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Partial pivoting in Gaussian elimination, row permutation in LU decomposition.
 
 ---
 
-### `Matrix* matrix_inverse(const Matrix* matrix);` 
-  - **Purpose**: Computes the inverse of the matrix.
-  - **Parameters:**
-    - `matrix`: The matrix to invert.
-  - **Returns:** A new matrix representing the inverse.
+### `void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2)`
+
+**Purpose**:  
+Swaps the contents of two columns in place.
+
+**Parameters**:  
+- `mat`: Matrix to modify.  
+- `col1`, `col2`: Zero-based indices of the columns to swap.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Column pivoting in QR decomposition, reordering feature columns.
 
 ---
 
-### `Matrix* matrix_power(const Matrix* matrix, int power);` 
-  - **Purpose**: Raises the matrix to the specified integer power.
-  - **Parameters:**
-    - `matrix`: The matrix to raise to a power.
-    - `power`: The power to raise the matrix to.
-  - **Returns:** A new matrix representing the matrix raised to the given power.
+### `void matrix_row_divide(Matrix* matrix, size_t row, double scalar)`
+
+**Purpose**:  
+Divides every element of the specified row by `scalar`.
+
+**Parameters**:  
+- `matrix`: Matrix to modify.  
+- `row`: Zero-based row index.  
+- `scalar`: Divisor (must not be zero).
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Row normalisation step in Gauss-Jordan elimination.
 
 ---
 
-### `Matrix* matrix_circulant(const Matrix* firstRow);` 
-  - **Purpose**: Generates a circulant matrix from the first row. In a circulant matrix, each row is a cyclic shift of the previous row.
-  - **Parameters:**
-    - `firstRow`: The first row of the circulant matrix.
-  - **Returns:** A new circulant matrix.
+### `void matrix_row_subtract(Matrix* matrix, size_t targetRow, size_t subtractRow, double scalar)`
+
+**Purpose**:  
+Subtracts `scalar × subtractRow` from `targetRow` element-wise (`targetRow -= scalar × subtractRow`).
+
+**Parameters**:  
+- `matrix`: Matrix to modify.  
+- `targetRow`: Row to be updated.  
+- `subtractRow`: Row to scale and subtract.  
+- `scalar`: Scale factor applied to `subtractRow`.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Row reduction step in Gaussian elimination for solving linear systems.
 
 ---
 
-### `Matrix* matrix_helmert(size_t n, bool full);` 
-  - **Purpose**: Generates a Helmert matrix, which is an orthogonal matrix used in multivariate statistics.
-  - **Parameters:**
-    - `n`: Size of the Helmert matrix (number of rows and columns).
-    - `full`: If `true`, returns a full Helmert matrix; otherwise, returns a reduced Helmert matrix.
-  - **Returns:** A new Helmert matrix.
+### `bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale)`
+
+**Purpose**:  
+Adds `scale × sourceRow` to `targetRow` element-wise (`targetRow += scale × sourceRow`).
+
+**Parameters**:  
+- `matrix`: Matrix to modify.  
+- `targetRow`: Row to be updated.  
+- `sourceRow`: Row to scale and add.  
+- `scale`: Scale factor applied to `sourceRow`.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` input or out-of-range indices.
+
+**Usage Case**:  
+Elementary row operations in Gauss-Jordan elimination, linear combination of rows.
 
 ---
 
-### `Matrix* matrix_fiedler(const Matrix* matrix);` 
-  - **Purpose**: Creates a Fiedler matrix, where each element is the absolute difference between two elements of the input matrix.
-  - **Parameters:**
-    - `matrix`: The matrix to use as a reference for generating the Fiedler matrix.
-  - **Returns:** A new Fiedler matrix.
+### `bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale)`
+
+**Purpose**:  
+Adds `scale × sourceCol` to `targetCol` element-wise (`targetCol += scale × sourceCol`).
+
+**Parameters**:  
+- `matrix`: Matrix to modify.  
+- `targetCol`: Column to be updated.  
+- `sourceCol`: Column to scale and add.  
+- `scale`: Scale factor applied to `sourceCol`.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` input or out-of-range indices.
+
+**Usage Case**:  
+Elementary column operations, column normalisation.
 
 ---
 
-### `Matrix* matrix_block_diag(size_t count, ...);` 
-  - **Purpose**: Creates a block diagonal matrix from multiple matrices. Each input matrix becomes a block along the diagonal of the resulting matrix.
-  - **Parameters:**
-    - `count`: The number of matrices to include.
-    - `...`: Variable number of matrices.
-  - **Returns:** A new block diagonal matrix.
+### `bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func)`
+
+**Purpose**:  
+Applies the scalar function `func` to every element of the specified row in place.
+
+**Parameters**:  
+- `matrix`: Matrix to modify.  
+- `row`: Zero-based row index.  
+- `func`: A `double (*)(double)` callback.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` input or out-of-range index.
+
+**Usage Case**:  
+Apply activation functions (ReLU, sigmoid), element-wise transforms on a single row.
 
 ---
 
-### `Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end);` 
-  - **Purpose**: Generates a matrix filled with random values within the specified range.
-  - **Parameters:**
-    - `row`: Number of rows in the matrix.
-    - `col`: Number of columns in the matrix.
-    - `start`: The minimum random value (inclusive).
-    - `end`: The maximum random value (exclusive).
-  - **Returns:** A new matrix filled with random values.
+### `bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func)`
+
+**Purpose**:  
+Applies the scalar function `func` to every element of the specified column in place.
+
+**Parameters**:  
+- `matrix`: Matrix to modify.  
+- `col`: Zero-based column index.  
+- `func`: A `double (*)(double)` callback.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` input or out-of-range index.
+
+**Usage Case**:  
+Column-wise normalisation, element-wise transforms on a single column.
 
 ---
 
-### `void matrix_print(Matrix* matrix);` 
-  - **Purpose**: Prints the matrix to the console in a readable format.
-  - **Parameters:**
-    - `matrix`: The matrix to print.
-  - **Return**: None 
+### `Matrix* matrix_add(const Matrix* matrix1, const Matrix* matrix2)`
+
+**Purpose**:  
+Returns a new matrix equal to the element-wise sum `matrix1 + matrix2`. Both matrices must have identical dimensions.
+
+**Parameters**:  
+- `matrix1`: First operand.  
+- `matrix2`: Second operand.
+
+**Return Value**:  
+Newly allocated sum matrix, or `NULL` on dimension mismatch or allocation failure.
+
+**Usage Case**:  
+Superimpose two matrices, accumulate gradient updates in neural network training.
 
 ---
 
-### `bool matrix_scalar_multiply(Matrix* matrix, double scalar);` 
-  - **Purpose**: Multiplies every element of the matrix by a scalar.
-  - **Parameters:**
-    - `matrix`: The matrix to scale.
-    - `scalar`: The scalar to multiply by.
-  - **Returns:** `true` if the operation is successful, otherwise `false`.
+### `Matrix* matrix_subtract(const Matrix* matrix1, const Matrix* matrix2)`
+
+**Purpose**:  
+Returns a new matrix equal to the element-wise difference `matrix1 - matrix2`.
+
+**Parameters**:  
+- `matrix1`: Minuend.  
+- `matrix2`: Subtrahend.
+
+**Return Value**:  
+Newly allocated difference matrix, or `NULL` on dimension mismatch or allocation failure.
+
+**Usage Case**:  
+Compute residuals, centre data, or implement gradient descent update steps.
 
 ---
 
-### `bool matrix_fill(Matrix* matrix, double value);` 
-  - **Purpose**: Fills the matrix with a specified value.
-  - **Parameters:**
-    - `matrix`: The matrix to fill.
-    - `value`: The value to fill the matrix with.
-  - **Returns:** `true` if the operation is successful, otherwise `false`.
+### `Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2)`
+
+**Purpose**:  
+Computes the standard matrix product `matrix1 × matrix2`. `matrix1.cols` must equal `matrix2.rows`.
+
+**Parameters**:  
+- `matrix1`: Left operand (m × k).  
+- `matrix2`: Right operand (k × n).
+
+**Return Value**:  
+Newly allocated m × n product matrix, or `NULL` on size mismatch or allocation failure.
+
+**Usage Case**:  
+Core operation in linear algebra, neural network forward passes, coordinate transforms.
 
 ---
 
-### `double* matrix_to_array(const Matrix* matrix);` 
-  - **Purpose**: Converts the matrix to a 1D array.
-  - **Parameters:**
-    - `matrix`: The matrix to convert.
-  - **Returns:** A pointer to the newly created array containing the matrix elements.
+### `Matrix* matrix_kronecker_product(const Matrix* A, const Matrix* B)`
+
+**Purpose**:  
+Computes the Kronecker (tensor) product of two matrices, yielding a matrix of size `(A.rows × B.rows) × (A.cols × B.cols)`.
+
+**Parameters**:  
+- `A`: Left matrix.  
+- `B`: Right matrix.
+
+**Return Value**:  
+Newly allocated Kronecker product matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Quantum computing simulation, composite system state representation, block matrix construction.
 
 ---
 
-### `size_t matrix_size(const Matrix* matrix);` 
-  - **Purpose**: Returns the total number of elements in the matrix.
-  - **Parameters:**
-    - `matrix`: The matrix to get the size of.
-  - **Returns:** The number of elements in the matrix.
+### `Matrix* matrix_power(const Matrix* matrix, int power)`
+
+**Purpose**:  
+Raises a square matrix to an integer power. Handles zero power (returns identity) and negative powers (inverts first).
+
+**Parameters**:  
+- `matrix`: Square matrix to exponentiate.  
+- `power`: Integer exponent (may be negative).
+
+**Return Value**:  
+Newly allocated result matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Markov chain transition probabilities, discrete-time dynamical systems.
 
 ---
 
-### `void matrix_swap_rows(Matrix* mat, size_t row1, size_t row2);` 
-  - **Purpose**: Swaps two rows in the matrix.
-  - **Parameters:**
-    - `mat`: The matrix in which to swap rows.
-    - `row1`: The index of the first row.
-    - `row2`: The index of the second row.
+### `Matrix* matrix_map(const Matrix* matrix, MatrixFunc func)`
+
+**Purpose**:  
+Returns a new matrix where every element `e` is replaced by `func(e)`.
+
+**Parameters**:  
+- `matrix`: Source matrix.  
+- `func`: A `double (*)(double)` callback applied element-wise.
+
+**Return Value**:  
+Newly allocated transformed matrix, or `NULL` on `NULL` input or allocation failure.
+
+**Usage Case**:  
+Apply `sin`, `exp`, `fabs`, or any custom activation function to every matrix element without modifying the original.
 
 ---
 
-### `void matrix_swap_cols(Matrix* mat, size_t col1, size_t col2);` 
-  - **Purpose**: Swaps two columns in the matrix.
-  - **Parameters:**
-    - `mat`: The matrix in which to swap columns.
-    - `col1`: The index of the first column.
-    - `col2`: The index of the second column.
+### `bool matrix_scalar_multiply(Matrix* matrix, double scalar)`
+
+**Purpose**:  
+Multiplies every element of `matrix` by `scalar` in place.
+
+**Parameters**:  
+- `matrix`: Matrix to scale.  
+- `scalar`: Multiplier.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` input.
+
+**Usage Case**:  
+Scale a matrix by a constant (e.g., normalise by dividing by the norm: `matrix_scalar_multiply(m, 1.0/norm)`).
 
 ---
 
-### `void matrix_row_divide(Matrix* matrix, size_t row, double scalar);` 
-  - **Purpose**: Divides every element of the specified row by a scalar.
-  - **Parameters:**
-    - `matrix`: The matrix in which to perform the division.
-    - `row`: The index of the row to divide.
-    - `scalar`: The scalar to divide by.
+### `Matrix* matrix_transpose(const Matrix* matrix)`
+
+**Purpose**:  
+Returns a new matrix that is the transpose of `matrix` (rows and columns swapped).
+
+**Parameters**:  
+- `matrix`: Matrix to transpose.
+
+**Return Value**:  
+Newly allocated transpose matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Compute `A^T A` for least-squares problems, convert between row and column vectors.
 
 ---
 
-### `void matrix_row_subtract(Matrix* matrix, size_t targetRow, size_t subtractRow, double scalar);` 
-  - **Purpose**: Subtracts a scaled version of one row from another row.
-  - **Parameters:**
-    - `matrix`: The matrix in which to perform the subtraction.
-    - `targetRow`: The row that will be modified.
-    - `subtractRow`: The row that will be scaled and subtracted.
-    - `scalar`: The scalar to multiply the subtractRow by before subtracting.
+### `Matrix* matrix_inverse(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the inverse of a square matrix using LU decomposition with the adjugate formula.
+
+**Parameters**:  
+- `matrix`: Square matrix to invert.
+
+**Return Value**:  
+Newly allocated inverse matrix, or `NULL` if the matrix is singular or not square.
+
+**Usage Case**:  
+Solve linear systems `Ax = b` via `x = A^{-1} b`, compute pseudo-inverses.
 
 ---
 
-### `bool matrix_apply_to_row(Matrix* matrix, size_t row, MatrixFunc func);` 
-  - **Purpose**: Applies a function to each element of the specified row.
-  - **Parameters:**
-    - `matrix`: The matrix in which to apply the function.
-    - `row`: The index of the row to apply the function to.
-    - `func`: The function to apply to each element of the row.
-  - **Returns:** `true` if the operation is successful, otherwise `false`.
+### `Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the inverse of a square matrix using Gauss-Jordan elimination on the augmented matrix `[A | I]`.
+
+**Parameters**:  
+- `matrix`: Square matrix to invert.
+
+**Return Value**:  
+Newly allocated inverse matrix, or `NULL` if the matrix is singular, not square, or allocation fails.
+
+**Usage Case**:  
+Alternative to `matrix_inverse` — numerically explicit and easy to trace step-by-step.
 
 ---
 
-### `bool matrix_apply_to_col(Matrix* matrix, size_t col, MatrixFunc func);` 
-  - **Purpose**: Applies a function to each element of the specified column.
-  - **Parameters:**
-    - `matrix`: The matrix in which to apply the function.
-    - `col`: The index of the column to apply the function to.
-    - `func`: The function to apply to each element of the column.
-  - **Returns:** `true` if the operation is successful, otherwise `false`.
+### `Matrix* matrix_adjugate(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the adjugate (classical adjoint) of a square matrix: the transpose of the cofactor matrix.
+
+**Parameters**:  
+- `matrix`: Square matrix.
+
+**Return Value**:  
+Newly allocated adjugate matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Compute the inverse via `A^{-1} = adj(A) / det(A)`, used in symbolic matrix inversion.
 
 ---
 
-### `bool matrix_row_addition(Matrix* matrix, size_t targetRow, size_t sourceRow, double scale);` 
-  - **Purpose**: Adds a scaled version of one row to another row.
-  - **Parameters:**
-    - `matrix`: The matrix in which to perform the addition.
-    - `targetRow`: The row that will be modified.
-    - `sourceRow`: The row that will be scaled and added.
-    - `scale`: The scalar to multiply the sourceRow by before adding.
+### `Matrix* matrix_cofactor(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the cofactor matrix where each element `C[i][j] = (-1)^{i+j} × M_{ij}`, with `M_{ij}` the minor obtained by deleting row `i` and column `j`.
+
+**Parameters**:  
+- `matrix`: Square matrix.
+
+**Return Value**:  
+Newly allocated cofactor matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Building block for adjugate and determinant computations; Cramer's rule.
 
 ---
 
-### `bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, double scale);` 
-  - **Purpose**: Adds a scaled version of one column to another column.
-  - **Parameters:**
-    - `matrix`: The matrix in which to perform the addition.
-    - `targetCol`: The column that will be modified.
-    - `sourceCol`: The column that will be scaled and added.
-    - `scale`: The scalar to multiply the sourceCol by before adding.
+### `Matrix* matrix_create_submatrix(const Matrix* matrix, size_t excludeRow, size_t excludeCol)`
+
+**Purpose**:  
+Creates a submatrix by deleting one row and one column from `matrix`.
+
+**Parameters**:  
+- `matrix`: Source matrix.  
+- `excludeRow`: Zero-based index of the row to remove.  
+- `excludeCol`: Zero-based index of the column to remove.
+
+**Return Value**:  
+Newly allocated `(rows-1) × (cols-1)` matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Computing minors for cofactor expansion of the determinant.
 
 ---
 
-### `Matrix* matrix_kronecker_product(const Matrix* A, const Matrix* B);` 
-  - **Purpose**: Computes the Kronecker product of two matrices.
-  - **Parameters:**
-    - `A`: First matrix.
-    - `B`: Second matrix.
-  - **Returns:** A new matrix representing the Kronecker product.
+### `Matrix* matrix_projection(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the orthogonal projection matrix onto the column space of `matrix`: `P = A(A^T A)^{-1} A^T`.
+
+**Parameters**:  
+- `matrix`: Input matrix `A` (must have full column rank).
+
+**Return Value**:  
+Newly allocated square projection matrix, or `NULL` on failure (e.g., `A^T A` is singular).
+
+**Usage Case**:  
+Least-squares regression, orthogonal projection in subspace methods.
 
 ---
 
-### `Matrix* matrix_hankel(const Matrix* firstRow, const Matrix* lastCol);` 
-  - **Purpose**: Generates a Hankel matrix from the first row and last column.
-  - **Parameters:**
-    - `firstRow`: The first row of the Hankel matrix.
-    - `lastCol`: The last column of the Hankel matrix.
-  - **Returns:** A new Hankel matrix.
+### `Matrix* matrix_get_main_diagonal_as_column(const Matrix* matrix)`
+
+**Purpose**:  
+Extracts the main diagonal elements of a square matrix into a new n×1 column vector.
+
+**Parameters**:  
+- `matrix`: Square source matrix.
+
+**Return Value**:  
+Newly allocated n×1 matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Inspect diagonal entries (e.g., eigenvalues of a diagonal matrix), compute the trace manually.
 
 ---
 
-### `Matrix* matrix_toeplitz(const Matrix* firstRow, const Matrix* firstCol);` 
-  - **Purpose**: Generates a Toeplitz matrix from the first row and first column.
-  - **Parameters:**
-    - `firstRow`: The first row of the Toeplitz matrix.
-    - `firstCol`: The first column of the Toeplitz matrix.
-  - **Returns:** A new Toeplitz matrix.
+### `Matrix* matrix_get_main_diagonal_as_row(const Matrix* matrix)`
+
+**Purpose**:  
+Extracts the main diagonal elements of a square matrix into a new 1×n row vector.
+
+**Parameters**:  
+- `matrix`: Square source matrix.
+
+**Return Value**:  
+Newly allocated 1×n matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Feed diagonal entries into a function expecting a row vector.
 
 ---
 
-### `Matrix* matrix_pascal(size_t n);` 
-  - **Purpose**: Generates a Pascal matrix of size `n`.
-  - **Parameters:**
-    - `n`: The size of the Pascal matrix.
-  - **Returns:** A new Pascal matrix.
+### `Matrix* matrix_get_minor_diagonal_as_row(const Matrix* matrix)`
+
+**Purpose**:  
+Extracts the anti-diagonal (minor diagonal) elements into a new 1×n row vector. Element `[0][n-1]` comes first.
+
+**Parameters**:  
+- `matrix`: Square source matrix.
+
+**Return Value**:  
+Newly allocated 1×n matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Inspect the anti-diagonal of a matrix, check for persymmetry.
 
 ---
 
-### `Matrix* matrix_vandermonde(const Matrix* matrix, size_t n);` 
-  - **Purpose**: Generates a Vandermonde matrix from the input matrix.
-  - **Parameters:**
-    - `matrix`: The input matrix.
-    - `n`: The number of columns in the Vandermonde matrix.
-  - **Returns:** A new Vandermonde matrix.
+### `Matrix* matrix_get_minor_diagonal_as_column(const Matrix* matrix)`
+
+**Purpose**:  
+Extracts the anti-diagonal elements into a new n×1 column vector.
+
+**Parameters**:  
+- `matrix`: Square source matrix.
+
+**Return Value**:  
+Newly allocated n×1 matrix, or `NULL` on failure.
+
+**Usage Case**:  
+Feed anti-diagonal entries into a function expecting a column vector.
 
 ---
 
-### `Matrix* matrix_companion(const Matrix* coefficients, size_t n);` 
-  - **Purpose**: Generates a companion matrix from the given coefficients.
-  - **Parameters:**
-    - `coefficients`: The coefficients of the polynomial.
-    - `n`: The size of the companion matrix.
-  - **Returns:** A new companion matrix.
+### `bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U)`
+
+**Purpose**:  
+Performs LU decomposition of a square matrix without pivoting: `matrix = L × U`, where `L` is unit lower triangular and `U` is upper triangular.
+
+**Parameters**:  
+- `matrix`: Square matrix to factorise.  
+- `L`: Output pointer filled with the lower triangular factor.  
+- `U`: Output pointer filled with the upper triangular factor.
+
+**Return Value**:  
+`true` on success; `false` if the matrix is not square, has a zero pivot, or allocation fails.
+
+**Usage Case**:  
+Solving linear systems, computing determinants, matrix inversion.
 
 ---
 
-### `Matrix* matrix_walsh(size_t n);` 
-  - **Purpose**: Generates a Walsh matrix of size `n`.
-  - **Parameters:**
-    - `n`: The size of the Walsh matrix.
-  - **Returns:** A new Walsh matrix.
+### `bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R)`
+
+**Purpose**:  
+Performs QR decomposition using the Gram-Schmidt process: `A = Q × R`, where `Q` is orthogonal and `R` is upper triangular.
+
+**Parameters**:  
+- `A`: Matrix to decompose (must have at least as many rows as columns).  
+- `Q`: Output pointer filled with the orthogonal factor.  
+- `R`: Output pointer filled with the upper triangular factor.
+
+**Return Value**:  
+`true` on success; `false` on dimension error or allocation failure.
+
+**Usage Case**:  
+Least-squares solving, eigenvalue algorithms, numerical stability improvements over LU.
 
 ---
 
-### `Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix);` 
-  - **Purpose**: Computes the inverse of the matrix using the Gauss-Jordan elimination method.
-  - **Parameters:**
-    - `matrix`: The matrix to invert.
-  - **Returns:** A new matrix representing the inverse, or `NULL` if the matrix is not invertible.
+### `Matrix* matrix_cholesky_decomposition(const Matrix* matrix)`
+
+**Purpose**:  
+Performs Cholesky decomposition of a symmetric positive-definite matrix: returns the upper triangular `U` such that `matrix = U^T × U`.
+
+**Parameters**:  
+- `matrix`: Symmetric positive-definite square matrix.
+
+**Return Value**:  
+Newly allocated upper triangular Cholesky factor, or `NULL` if the matrix is not positive definite or allocation fails.
+
+**Usage Case**:  
+Solving positive-definite systems (e.g., normal equations), sampling from multivariate Gaussian distributions.
 
 ---
 
-### `Matrix* matrix_projection(const Matrix* matrix);` 
-  - **Purpose**: Computes the projection matrix for the column space of the input matrix.
-  - **Parameters:**
-    - `matrix`: The matrix to project.
-  - **Returns:** A new matrix representing the projection matrix.
+### `double matrix_determinant(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the scalar determinant of a square matrix using LU decomposition.
+
+**Parameters**:  
+- `matrix`: Square matrix.
+
+**Return Value**:  
+Determinant value, or `0.0` on non-square input or `NULL`.
+
+**Usage Case**:  
+Test for invertibility (`det ≠ 0`), compute signed volume of a parallelepiped.
 
 ---
 
-### `Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size);` 
-  - **Purpose**: Generates a Leslie matrix, commonly used in population models, from fecundity and survival coefficients.
-  - **Parameters:**
-    - `f`: Fecundity matrix.
-    - `f_size`: Size of the fecundity matrix.
-    - `s`: Survival matrix.
-    - `s_size`: Size of the survival matrix.
-  - **Returns:** A new Leslie matrix.
+### `double matrix_trace(const Matrix* matrix)`
+
+**Purpose**:  
+Returns the sum of the main diagonal elements of a square matrix.
+
+**Parameters**:  
+- `matrix`: Square matrix.
+
+**Return Value**:  
+Trace (sum of diagonal entries), or `0.0` on non-square or `NULL` input.
+
+**Usage Case**:  
+Quick invariant check; trace equals the sum of eigenvalues.
 
 ---
 
-### `Matrix* matrix_inverse_hilbert(size_t n);` 
-  - **Purpose**: Computes the inverse of a Hilbert matrix of size `n x n`.
-  - **Parameters:**
-    - `n`: The size of the Hilbert matrix.
-  
-  - **Returns:** A new matrix representing the inverse of the Hilbert matrix.
+### `double matrix_frobenius_norm(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the Frobenius norm: the square root of the sum of the squares of all elements.
+
+**Parameters**:  
+- `matrix`: Input matrix.
+
+**Return Value**:  
+Frobenius norm as a `double`, or `0.0` on `NULL` input.
+
+**Usage Case**:  
+Measure overall matrix magnitude; regularisation term in optimisation (ridge regression).
 
 ---
 
-### `Matrix* matrix_get_row(const Matrix* matrix, size_t row);`
-  - **Purpose**: Extracts a specific row from the matrix as a new matrix.
-  - **Parameters:**
-    - `matrix`: The matrix from which to extract the row.
-    - `row`: The index of the row to extract.
-  - **Returns:** A new matrix representing the extracted row.
+### `double matrix_l1_norm(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the L1 (maximum absolute column sum) norm.
+
+**Parameters**:  
+- `matrix`: Input matrix.
+
+**Return Value**:  
+L1 norm, or `0.0` on `NULL` input.
+
+**Usage Case**:  
+Operator norm bound, sparse matrix analysis.
 
 ---
 
-### `Matrix* matrix_get_col(const Matrix* matrix, size_t col);`
-  - **Purpose**: Extracts a specific column from the matrix as a new matrix.
-  - **Parameters:**
-    - `matrix`: The matrix from which to extract the column.
-    - `col`: The index of the column to extract.
-  - **Returns:** A new matrix representing the extracted column.
+### `double matrix_infinity_norm(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the infinity (maximum absolute row sum) norm.
+
+**Parameters**:  
+- `matrix`: Input matrix.
+
+**Return Value**:  
+Infinity norm, or `0.0` on `NULL` input.
+
+**Usage Case**:  
+Bound on the maximum row-wise perturbation; iterative solver convergence checks.
+
+---
+
+### `double matrix_min_element(const Matrix* matrix)`
+
+**Purpose**:  
+Returns the smallest element value across the entire matrix.
+
+**Parameters**:  
+- `matrix`: Input matrix.
+
+**Return Value**:  
+Minimum element value, or `0.0` on `NULL` input.
+
+**Usage Case**:  
+Data range inspection, clipping, and normalisation.
+
+---
+
+### `double matrix_max_element(const Matrix* matrix)`
+
+**Purpose**:  
+Returns the largest element value across the entire matrix.
+
+**Parameters**:  
+- `matrix`: Input matrix.
+
+**Return Value**:  
+Maximum element value, or `0.0` on `NULL` input.
+
+**Usage Case**:  
+Data range inspection, clipping, softmax denominator, and normalisation.
+
+---
+
+### `int matrix_rank(const Matrix* matrix)`
+
+**Purpose**:  
+Computes the rank (number of linearly independent rows or columns) using Gaussian elimination with tolerance-based zero detection.
+
+**Parameters**:  
+- `matrix`: Input matrix.
+
+**Return Value**:  
+Rank as a non-negative integer, or `0` on `NULL` input or failure.
+
+**Usage Case**:  
+Detect linear dependence, verify full-rank conditions before inversion or least-squares solving.
+
+---
+
+### `bool matrix_is_equal(const Matrix* matrix1, const Matrix* matrix2)`
+
+**Purpose**:  
+Returns `true` if both matrices have the same dimensions and identical elements (exact floating-point comparison).
+
+**Parameters**:  
+- `matrix1`, `matrix2`: Matrices to compare.
+
+**Return Value**:  
+`true` if equal; `false` on dimension mismatch, element difference, or `NULL` input.
+
+**Usage Case**:  
+Post-operation correctness assertions, unit test verification.
+
+---
+
+### `bool matrix_is_square(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` when the matrix has the same number of rows and columns.
+
+**Parameters**:  
+- `matrix`: Matrix to check.
+
+**Return Value**:  
+`true` if square; `false` otherwise or on `NULL` input.
+
+**Usage Case**:  
+Guard before operations that require square matrices (determinant, inversion, eigenvalues).
+
+---
+
+### `bool matrix_is_row(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if the matrix has exactly one row.
+
+**Parameters**:  
+- `matrix`: Matrix to check.
+
+**Return Value**:  
+`true` for a 1×n matrix; `false` otherwise.
+
+**Usage Case**:  
+Validate that a matrix represents a row vector before dot-product or concatenation.
+
+---
+
+### `bool matrix_is_columnar(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if the matrix has exactly one column.
+
+**Parameters**:  
+- `matrix`: Matrix to check.
+
+**Return Value**:  
+`true` for an n×1 matrix; `false` otherwise.
+
+**Usage Case**:  
+Validate that a matrix represents a column vector before outer-product or norm computations.
+
+---
+
+### `bool matrix_is_identity(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if the matrix is an identity matrix (square, ones on main diagonal, zeros elsewhere).
+
+**Parameters**:  
+- `matrix`: Matrix to check.
+
+**Return Value**:  
+`true` if identity; `false` otherwise.
+
+**Usage Case**:  
+Verify that `A × A^{-1} = I` after inversion, check for neutral element in multiplication.
+
+---
+
+### `bool matrix_is_idempotent(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if `A² = A` (idempotent / projection matrix condition).
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if idempotent; `false` otherwise or if not square.
+
+**Usage Case**:  
+Verify projection matrices in regression analysis or QR-based projectors.
+
+---
+
+### `bool matrix_is_symmetric(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if `A[i][j] == A[j][i]` for all `i, j` (exact equality). The matrix must be square.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if symmetric; `false` otherwise.
+
+**Usage Case**:  
+Pre-condition check before Cholesky decomposition, covariance matrix validation.
+
+---
+
+### `bool matrix_is_skew_symmetric(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if `A[i][j] == -A[j][i]` for all `i, j` (and diagonal elements are zero). Matrix must be square.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if skew-symmetric; `false` otherwise.
+
+**Usage Case**:  
+Validate cross-product matrices, antisymmetric operator checks.
+
+---
+
+### `bool matrix_is_diagonal(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if all off-diagonal elements are zero.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if diagonal; `false` otherwise.
+
+**Usage Case**:  
+Fast-path detection for diagonal matrices where multiplication is O(n) instead of O(n³).
+
+---
+
+### `bool matrix_is_upper_triangular(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if all elements below the main diagonal are zero.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if upper triangular; `false` otherwise.
+
+**Usage Case**:  
+Validate the U factor after LU/QR decomposition; enable efficient back-substitution.
+
+---
+
+### `bool matrix_is_lower_triangular(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if all elements above the main diagonal are zero.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if lower triangular; `false` otherwise.
+
+**Usage Case**:  
+Validate the L factor after LU decomposition; enable efficient forward-substitution.
+
+---
+
+### `bool matrix_is_orthogonal(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if `A × A^T = I` (columns are orthonormal). Uses exact element equality — floating-point computed matrices may not pass.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if orthogonal; `false` otherwise.
+
+**Usage Case**:  
+Validate rotation matrices, the Q factor in QR decomposition.
+
+---
+
+### `bool matrix_is_hankel(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if the matrix is a Hankel matrix (every element on each anti-diagonal is equal).
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if Hankel; `false` otherwise.
+
+**Usage Case**:  
+Verify that a matrix produced by `matrix_hankel` was stored correctly, or check a data matrix for Hankel structure.
+
+---
+
+### `bool matrix_is_toeplitz(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if the matrix is a Toeplitz matrix (every element on each diagonal is equal).
+
+**Parameters**:  
+- `matrix`: Matrix to check (need not be square).
+
+**Return Value**:  
+`true` if Toeplitz; `false` otherwise.
+
+**Usage Case**:  
+Detect convolution structure in a matrix, validate output of `matrix_toeplitz`.
+
+---
+
+### `bool matrix_is_positive_definite(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if the matrix is symmetric and positive definite. Uses Cholesky decomposition as the positive-definiteness test.
+
+**Parameters**:  
+- `matrix`: Square matrix to check.
+
+**Return Value**:  
+`true` if positive definite; `false` otherwise (or if not symmetric / not square).
+
+**Usage Case**:  
+Pre-condition check before Cholesky factorisation, covariance matrix validation, convexity checks.
+
+---
+
+### `bool matrix_is_sparse(const Matrix* matrix)`
+
+**Purpose**:  
+Returns `true` if more than half of the elements are exactly zero (a simple density-based sparsity heuristic).
+
+**Parameters**:  
+- `matrix`: Matrix to check.
+
+**Return Value**:  
+`true` if the zero ratio exceeds 0.5; `false` otherwise.
+
+**Usage Case**:  
+Choose between dense and sparse algorithms at runtime; warn when dense storage is wasteful.
 
 ---
 
@@ -666,7 +1461,7 @@ int main() {
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
 #include "random/random.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 void fillMatrix(Matrix *mat) {
     matrix_set(mat, 0, 0, random_randint(1, 10));
@@ -715,7 +1510,7 @@ int main() {
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
 #include "random/random.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 void fillMatrix(Matrix *mat) {
     matrix_set(mat, 0, 0, random_randint(1, 10));
@@ -839,7 +1634,8 @@ int main() {
     else {
         fmt_printf("Matrix is not square");
     }
-    
+
+    matrix_deallocate(mat);
     return 0;
 }
 ```
@@ -1083,11 +1879,11 @@ int main() {
 **Result:**
 ```
 Main diagonal as a column matrix:
-| 0 |
-| 0 |
-| 0 |
+| 0.00000 |
+| 0.00000 |
+| 0.00000 |
 Main diagonal as a row matrix:
-| 0 0 0 |
+| 0.00000 0.00000 0.00000 |
 ```
 
 ---
@@ -2360,6 +3156,7 @@ The matrix is not positive definite.
 #include "matrix/matrix.h"
 #include "fmt/fmt.h"
 
+
 int main() {
     double matrix[] = {
         1, 2,
@@ -2721,7 +3518,7 @@ int main() {
     size_t f_size = sizeof(f) / sizeof(f[0]);
     size_t s_size = sizeof(s) / sizeof(s[0]);
 
-    Matrix* fl = matrix_from_array(f, 1, 3);
+    Matrix* fl = matrix_from_array(f, 1, 4);
     Matrix* sl = matrix_from_array(s, 1, 3);
     
     if (!fl || !sl) {
@@ -2745,7 +3542,7 @@ int main() {
 **Result:**
 ```
 Leslie Matrix:
-| 0.10000 2.00000 1.00000 0.00000 |
+| 0.10000 2.00000 1.00000 0.10000 |
 | 0.20000 0.00000 0.00000 0.00000 |
 | 0.00000 0.80000 0.00000 0.00000 |
 | 0.00000 0.00000 0.70000 0.00000 |

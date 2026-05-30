@@ -4,58 +4,73 @@
 **Release Date:** 2023
 **License:** ISC License
 
-The Span library is a custom C implementation inspired by the C++ `std::span` container. It provides a view over a contiguous sequence of elements, allowing for efficient and safe access without owning the underlying data.
+The Span library is a custom C implementation inspired by the C++ `std::span` container. It provides a non-owning view over a contiguous sequence of elements, allowing for efficient and safe access without copying or owning the underlying data.
 
 ## Features
-- **Non-owning:** Spans do not own the data they point to.
-- **Memory-efficient:** Utilizes a memory pool for managing memory allocations.
-- **Safe Access:** Provides bounds-checked access to elements.
-- **Flexible:** Can be used with any contiguous data structure like arrays.
-- **Iterator Support:** Supports iterator-like access to elements.
+- **Truly non-owning:** A `Span` records a pointer + element count + element size. It does **not** allocate, copy, or free the data. Mutations through the span are visible in the original storage and vice versa.
+- **Two construction styles:**
+  - `Span span_view(...)` — value-type constructor, no heap (closest to `std::span`).
+  - `Span* span_create(...)` — heap-allocated wrapper, retained for backward compatibility.
+- **`std::span`-style sizing:** `span_size()` returns the **element count**. Use `span_size_bytes()` for the byte count.
+- **Bounds-checked access** via `span_at()`, with explicit `SpanError` reporting on failure.
+- **Subviews** (`span_first`, `span_last`, `span_subspan`) return non-owning views by value.
+- **Iterators** (`span_begin/end`, `span_rbegin/rend`, `span_increment/decrement`) with `NULL` as the safe reverse-end sentinel (no undefined-behaviour pointer arithmetic).
+- **Library code never calls `exit()`** — failures set `span_last_error`.
 
 ## Usage
 To use the Span library, include the `span.h` header file in your C source file.
 
 ## Compilation
-To compile the Span library along with your main program, ensure all source files are in the correct directory and use a command similar to:
+To compile your program together with the Span library, list both source files:
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main your_program .\span\span.c
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s \
+    -o main your_program.c ./span/span.c
 ```
 
+Some examples also depend on the `vector` module; if so, add `./vector/vector.c` to the command line.
 
 ### Structure Definition
 
 #### **`Span`**
-- **Definition**: A span is a non-owning view over a contiguous block of data. The `Span` structure represents this view.
-  
-  **Fields**:
-  - `void* data`: A pointer to the data block.
-  - `size_t size`: The number of elements in the span.
-  - `size_t elemSize`: The size (in bytes) of each element in the span.
+- **Definition**: A `Span` is a non-owning view over a contiguous block of data. The `Span` structure is a small value type:
+
+  ```c
+  typedef struct {
+      void*  data;     // pointer to user-owned storage (NOT freed by Span)
+      size_t size;     // NUMBER OF ELEMENTS in the view (not bytes)
+      size_t elemSize; // size of each element in bytes
+  } Span;
+  ```
+
+  > **Breaking-change note (vs. the original Span):**
+  > `size` is now the element count (matching `std::span::size()`). Previously it stored the byte count. If you were doing `span->size / sizeof(T)`, drop the division and use `span->size` directly. Use `span_size_bytes()` when you need the byte count.
 
 ---
 
 ### Function Descriptions
+ُ
 
+### `Span span_view(void* data, size_t elemCount, size_t elemSize)`
+  - **Purpose**: Creates a non-owning view as a value (closest to `std::span`). No heap allocation, no copy.
+  - **Parameters**: `data` (pointer to externally-owned storage), `elemCount`, `elemSize`.
+  - **Returns**: A `Span` value. Returns an empty span on invalid arguments (and sets `span_last_error`).
+  - **Use case**: Preferred when you don't need a heap-allocated wrapper. Pass spans by value.
+
+---
 
 ### `Span* span_create(void* data, size_t elemCount, size_t elemSize)`
-  - **Purpose**: Creates a new span that points to the given data with the specified number of elements (`elemCount`) and size of each element (`elemSize`).
-  - **Parameters**:
-    - `data`: A pointer to the data block.
-    - `elemCount`: The number of elements in the span.
-    - `elemSize`: The size of each element in bytes.
-  - **Returns**: A pointer to the newly created `Span`.
-  - **Use case**: Used when you want a non-owning view over an array or block of data without copying it.
+  - **Purpose**: Heap-allocated wrapper around a non-owning view. The data is **not** copied. Passing `data == NULL` with `elemCount == 0` creates a valid empty span.
+  - **Parameters**: `data`, `elemCount`, `elemSize`.
+  - **Returns**: A pointer to a newly allocated `Span`, or `NULL` on allocation failure / invalid arguments (sets `span_last_error`).
+  - **Use case**: When you want a long-lived `Span` you can pass around by pointer. The underlying data continues to be managed by its original owner.
 
 ---
 
 ### `void span_destroy(Span* span)`
-  - **Purpose**: Destroys the span and cleans up its resources.
-  - **Parameters**:
-    - `span`: The span to be destroyed.
+  - **Purpose**: Frees the `Span` struct allocated by `span_create`. **Does not free the data** (the span never owned it). Safe to call with `NULL`.
+  - **Parameters**: `span`.
   - **Returns**: `void`.
-  - **Use case**: Use when a span is no longer needed to release its resources, although the data itself (pointed by `data`) is not deallocated by this function.
 
 ---
 
@@ -195,6 +210,8 @@ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
   - **Returns**: A new `Span` with the last `count` elements.
   - **Use case**: Useful when working with the end of the data block.
 
+---
+
 ### `Span span_subspan(Span* span, size_t offset, size_t count)`
   - **Purpose**: Returns a new span starting at the specified `offset` and consisting of `count` elements.
   - **Parameters**:
@@ -276,31 +293,33 @@ gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 ---
 
 ### `size_t span_size(const Span* span)`
-  - **Purpose**: Returns the number of elements in the span.
-  - **Parameters**:
-    - `span`: The span whose size is being queried.
-  - **Returns**: The number of elements in the span.
-  - **Use case**: Useful for determining the length of the span.
-
----
-
-### `size_t span_size_bits(const Span* span)`
-    - **Purpose**: Returns the total size of the span in bits.
-    - **Parameters**:
-      - `span`: The span whose size is being queried.
-    - **Returns**: The size of the span in bits.
-    - **Use case**: Used when working with bit-level data operations.
+  - **Purpose**: Returns the **number of elements** in the span (matches `std::span::size()`).
+  - **Parameters**: `span`.
+  - **Returns**: Element count.
 
 ---
 
 ### `size_t span_size_bytes(const Span* span)`
-    - **Purpose**: Returns the total size of the span in bytes.
-    - **Parameters**:
-      - `span`: The span whose size is being queried.
-    - **Returns**: The size of the span in bytes.
-    - **Use case**: Useful for memory or buffer-related operations where byte size is important.
+  - **Purpose**: Returns the total size of the span in bytes (`size * elemSize`). Matches `std::span::size_bytes()`.
+  - **Parameters**: `span`.
+  - **Returns**: Byte count.
 
 ---
+
+### `size_t span_size_bits(const Span* span)`
+  - **Purpose**: Returns the total size of the span in bits (`size * elemSize * CHAR_BIT`).
+  - **Parameters**: `span`.
+  - **Returns**: Bit count.
+
+---
+
+### `size_t span_elem_size(const Span* span)`
+  - **Purpose**: Returns `elemSize` (bytes per element).
+  - **Parameters**: `span`.
+  - **Returns**: Element size in bytes.
+
+---
+
 
 ### Examples 
 
@@ -311,6 +330,8 @@ This example demonstrates how to create a span from an array of integers and acc
 ```c
 #include "span/span.h"
 #include "fmt/fmt.h"
+
+
 
 int main() {
     int array[] = {1, 2, 3, 4, 5};
@@ -346,6 +367,8 @@ in this example a Vector of integers is created and populated
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
+
 int main() {
     Vector* intVector = vector_create(sizeof(int));
     int array[] = {15, 20, 30, 40, 50};
@@ -358,7 +381,7 @@ int main() {
     Span* span = span_create(data, vector_size(intVector), sizeof(int));
 
     fmt_printf("Elements in Span:\n");
-    for (size_t i = 0; i < span_size(span) / sizeof(int); ++i) {
+    for (size_t i = 0; i < span_size(span); ++i) {
         int* value = (int*) span_at(span, i);
         fmt_printf("%d ", *value);
     }
@@ -373,7 +396,7 @@ int main() {
 **Result:**
 ```
 Elements in Span:
-15 20 30 40 50
+15 20 30 40 50 
 ```
 
 ---
@@ -384,11 +407,13 @@ Elements in Span:
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
+
 int main() {
     const char *array[] = {"Vector", "String", "Map", "Csv", "Array"};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
 
-    // Create a span and copy the data from the array
+    
     Span* mySpan = span_create(array, arraySize, sizeof(char*));
     char** spanData = (char**)mySpan->data;
 
@@ -403,7 +428,7 @@ int main() {
 ```
 **Result:**
 ```
-Vector String Map Csv Array
+Vector String Map Csv Array 
 ```
 
 ---
@@ -413,6 +438,8 @@ Vector String Map Csv Array
 ```c
 #include "span/span.h"
 #include "fmt/fmt.h"
+
+
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
@@ -446,6 +473,8 @@ Last element: 50
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
+
 int main() {
     const char* strings[] = {"Hello", "World", "Example", "C Programming"};
     size_t arraySize = sizeof(strings) / sizeof(strings[0]);
@@ -477,6 +506,8 @@ Last string: C Programming
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
+
 int main() {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
@@ -484,11 +515,12 @@ int main() {
 
     int* data = (int*)span_data(span);
     fmt_printf("Original data: ");
+    
     for (size_t i = 0; i < arraySize; ++i) { 
         fmt_printf("%d ", data[i]);
     }
     fmt_printf("\n");
-    data[0] = 10; // Modifying the first element
+    data[0] = 10;
 
     const int* constData = (const int*)span_cdata(span);
     fmt_printf("Modified data: ");
@@ -504,7 +536,7 @@ int main() {
 **Result:**
 ```
 Original data: 1 2 3 4 5 
-Modified data: 10 2 3 4 5
+Modified data: 10 2 3 4 5 
 ```
 
 ---
@@ -514,6 +546,7 @@ Modified data: 10 2 3 4 5
 ```c
 #include "span/span.h"
 #include "fmt/fmt.h"
+
 
 int main() {
     Span* span = span_create(NULL, 0, 0); // Creating an empty span
@@ -531,23 +564,25 @@ int main() {
 ```
 **Result:**
 ```
-Error: Null data provided to span_create
+Span is empty
 ```
 
 ---
 
-## Example 8 : Using `span_size_bytes`
+## Example 8 : Using `span_size_bytes` and `span_size_bits`
 
 ```c
 #include "span/span.h"
 #include "fmt/fmt.h"
+
 
 int main() {
     int array[] = {1, 2, 3, 4, 5};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
     Span* span = span_create(array, arraySize, sizeof(int));
 
-    fmt_printf("Size of span in bytes: %zu\n", span_size_bits(span));
+    fmt_printf("Size of span in bytes: %zu\n", span_size_bytes(span));
+    fmt_printf("Size of span in bits:  %zu\n", span_size_bits(span));
 
     span_destroy(span);
     return 0;
@@ -555,7 +590,8 @@ int main() {
 ```
 **Result:**
 ```
-Size of span in bytes: 80
+Size of span in bytes: 20
+Size of span in bits:  160
 ```
 
 ---
@@ -566,6 +602,7 @@ Size of span in bytes: 80
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
 int main() {
     int array[] = {10, 20, 30, 40, 50};
     size_t arraySize = sizeof(array) / sizeof(array[0]);
@@ -574,7 +611,7 @@ int main() {
     Span firstThree = span_first(span, 3);
     fmt_printf("First three elements: ");
 
-    for (size_t i = 0; i < firstThree.size / sizeof(int); ++i) { 
+    for (size_t i = 0; i < firstThree.size; ++i) { 
         fmt_printf("%d ", ((int*)firstThree.data)[i]);
     }
     fmt_printf("\n");
@@ -585,7 +622,7 @@ int main() {
 ```
 **Result:**
 ```
-First three elements: 10 20 30
+First three elements: 10 20 30 
 ```
 
 ---
@@ -596,13 +633,14 @@ First three elements: 10 20 30
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
 int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span *span = span_create(array, 5, sizeof(int));
 
     Span lastTwo = span_last(span, 2);
     fmt_printf("Last two elements: ");
-    for (size_t i = 0; i < lastTwo.size / sizeof(int); ++i) { 
+    for (size_t i = 0; i < lastTwo.size; ++i) { 
         fmt_printf("%d ", ((int*)lastTwo.data)[i]);
     }
     fmt_printf("\n");
@@ -624,13 +662,14 @@ Last two elements: 40 50
 #include "span/span.h"
 #include "fmt/fmt.h"
 
+
 int main() {
     int array[] = {10, 20, 30, 40, 50};
     Span *span = span_create(array, 5, sizeof(int));
 
     Span middleSpan = span_subspan(span, 1, 3);
     fmt_printf("Middle three elements: ");
-    for (size_t i = 0; i < middleSpan.size / sizeof(int); ++i) { 
+    for (size_t i = 0; i < middleSpan.size; ++i) { 
         fmt_printf("%d ", ((int*)middleSpan.data)[i]);
     }
     fmt_printf("\n");
@@ -651,6 +690,7 @@ Middle three elements: 20 30 40
 ```c
 #include "span/span.h"
 #include "fmt/fmt.h"
+
 
 int main() {
     int array1[] = {1, 2, 3, 4, 5};
@@ -680,7 +720,6 @@ Span1 is greater than Span2: false
 Span1 is not equal to Span2: true
 Span1 is greater or equal to Span2: false
 Span1 is less or equal to Span2: true
-Error: Span memory pool is NULL in destroy_span_memory_pool
 ```
 
 ---
@@ -690,6 +729,7 @@ Error: Span memory pool is NULL in destroy_span_memory_pool
 ```c
 #include "span/span.h"
 #include "fmt/fmt.h"
+
 
 int main() {
     int array[] = {10, 20, 30, 40, 50};
@@ -716,5 +756,9 @@ int main() {
 **Result:**
 ```
 10 20 30 40 50 
-50 40 30 20 10
+50 40 30 20 10 
 ```
+
+## License
+
+This project is open-source and available under the ISC License.

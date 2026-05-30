@@ -80,18 +80,14 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 **Purpose**: This function computes a cryptographic hash of the provided data using a specified cryptographic algorithm (e.g., MD5, SHA-256, SHA3-512). The result is returned as a dynamically allocated array of bytes, with the length of the hash stored in the `outLength` parameter.
 
 **Parameters**:
-- `data`: A pointer to the input data that needs to be hashed.
-- `length`: The length (in bytes) of the input data.
-- `algorithm`: Specifies which cryptographic hash algorithm to use (e.g., `CRYPTO_MD5`, `CRYPTO_SHA256`).
-- `outLength`: A pointer to a variable where the length of the computed hash will be stored.
+  - `data`: A pointer to the input data that needs to be hashed.
+  - `length`: The length (in bytes) of the input data.
+  - `algorithm`: Specifies which cryptographic hash algorithm to use (e.g., `CRYPTO_MD5`, `CRYPTO_SHA256`).
+  - `outLength`: A pointer to a variable where the length of the computed hash will be stored.
 
-**Returns**: A pointer to the computed hash (as a byte array), or `NULL` if an error occurs (e.g., memory allocation failure or unsupported algorithm). The caller is responsible for freeing the memory allocated for the hash.
+**Return Value**: A pointer to the computed hash (as a byte array), or `NULL` if an error occurs (e.g., memory allocation failure or unsupported algorithm). The caller is responsible for freeing the memory allocated for the hash.
 
-**Details**:
-- The function supports multiple cryptographic algorithms, including MD5, SHA-256, SHA3, SHAKE, Blake2, RIPEMD, and others.
-- Depending on the selected algorithm, it either directly calls lower-level hashing functions (like `MD5`, `SHA256`) or uses OpenSSL's `EVP` interfaces for more complex algorithms like SHA3 and Blake2.
-- The function performs error checking, ensuring the `outLength` pointer is valid and that memory allocation succeeds.
-- If any error occurs during the hashing process, the function logs the error, cleans up any allocated resources, and returns `NULL`.
+**Usage Case**: Use as the core primitive for all hashing needs. The function supports multiple cryptographic algorithms, including MD5, SHA-256, SHA3, SHAKE, Blake2, RIPEMD, and others. Depending on the selected algorithm, it either directly calls lower-level hashing functions (like `MD5`, `SHA256`) or uses OpenSSL's `EVP` interfaces for more complex algorithms like SHA3 and Blake2. The function performs error checking, ensuring the `outLength` pointer is valid and that memory allocation succeeds. If any error occurs during the hashing process, the function logs the error, cleans up any allocated resources, and returns `NULL`.
 
 ---
 
@@ -99,35 +95,27 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 **Purpose**: This function prints cryptographic hash data as a hexadecimal string.
 
 **Parameters**:
-- `hash`: A pointer to the byte array containing the hash data.
-- `length`: The number of bytes in the hash data.
+  - `hash`: A pointer to the byte array containing the hash data.
+  - `length`: The number of bytes in the hash data.
 
-**Details**:
-- The function converts each byte of the hash into two hexadecimal characters and prints the result.
-- If the `hash` parameter is `NULL`, it logs an error message and prints "No hash data to print."
+**Return Value**: None.
+
+**Usage Case**: Use to quickly dump a digest to stdout during development or debugging. The function converts each byte of the hash into two hexadecimal characters and prints the result. If the `hash` parameter is `NULL`, it logs an error message and prints "No hash data to print."
 
 ### `void* crypto_des_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
 **Purpose**: Encrypts the given plaintext using the DES (Data Encryption Standard) algorithm in various modes (ECB, CBC, CFB, OFB).
 
 **Parameters**:
-- `plaintext`: A pointer to the plaintext data that needs to be encrypted.
-- `len`: The length of the plaintext data in bytes.
-- `key`: A pointer to the encryption key (must be 8 bytes for DES).
-- `iv`: A pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If `NULL`, an IV of all zeros is used.
-- `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
-- `out_len`: A pointer to a variable that will store the length of the encrypted data.
+  - `plaintext`: A pointer to the plaintext data that needs to be encrypted.
+  - `len`: The length of the plaintext data in bytes.
+  - `key`: A pointer to the encryption key (must be 8 bytes for DES).
+  - `iv`: A pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If `NULL`, an IV of all zeros is used.
+  - `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
+  - `out_len`: A pointer to a variable that will store the length of the encrypted data.
 
-**Returns**: A pointer to the encrypted data (ciphertext) or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the ciphertext.
+**Return Value**: A pointer to the encrypted data (ciphertext) or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the ciphertext.
 
-**Details**:
-- The plaintext is padded to ensure its length is a multiple of the DES block size (8 bytes).
-- The function uses DES encryption based on the mode of operation specified.
-  - ECB (Electronic Codebook)
-  - CBC (Cipher Block Chaining)
-  - CFB (Cipher Feedback)
-  - OFB (Output Feedback)
-- Error handling ensures that null inputs for critical parameters (e.g., `plaintext`, `key`, `out_len`) lead to early returns with error messages logged.
-- Memory is allocated for the padded plaintext and ciphertext, which must be freed by the caller.
+**Usage Case**: Use to encrypt data with DES in one of four modes (ECB, CBC, CFB, OFB). The plaintext is padded to ensure its length is a multiple of the DES block size (8 bytes). Error handling ensures that null inputs for critical parameters (e.g., `plaintext`, `key`, `out_len`) lead to early returns with error messages logged. Memory is allocated for the padded plaintext and ciphertext, which must be freed by the caller.
 
 ---
 
@@ -135,56 +123,221 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 **Purpose**: Decrypts the provided ciphertext using the DES (Data Encryption Standard) algorithm in various modes (ECB, CBC, CFB, or OFB).
 
 **Parameters**:
-- `ciphertext`: A pointer to the ciphertext data that needs to be decrypted.
-- `len`: The length of the ciphertext data in bytes.
-- `key`: A pointer to the decryption key (must be 8 bytes for DES).
-- `iv`: A pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If `NULL`, an IV of all zeros is used.
-- `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
-- `out_len`: A pointer to a variable that will store the length of the decrypted data.
+  - `ciphertext`: A pointer to the ciphertext data that needs to be decrypted.
+  - `len`: The length of the ciphertext data in bytes.
+  - `key`: A pointer to the decryption key (must be 8 bytes for DES).
+  - `iv`: A pointer to the initialization vector (IV) for modes that require it (CBC, CFB, OFB). If `NULL`, an IV of all zeros is used.
+  - `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
+  - `out_len`: A pointer to a variable that will store the length of the decrypted data.
 
-**Returns**: A pointer to the decrypted data (plaintext), or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the decrypted data.
+**Return Value**: A pointer to the decrypted data (plaintext), or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the decrypted data.
 
-**Details**:
-- The function decrypts the provided ciphertext using DES based on the specified mode of operation:
-  - ECB (Electronic Codebook)
-  - CBC (Cipher Block Chaining)
-  - CFB (Cipher Feedback)
-  - OFB (Output Feedback)
-- The ciphertext is processed in blocks of 8 bytes (the DES block size), and memory is allocated for the plaintext.
-- If an initialization vector (IV) is not provided, the function defaults to using an IV of all zeros.
-- Memory allocated for the plaintext must be freed by the caller.
-- If any input parameters are invalid (e.g., `ciphertext`, `key`, or `out_len` is `NULL`), the function logs an error and returns `NULL`.
+**Usage Case**: Use to decrypt DES ciphertext produced by `crypto_des_encrypt`. The ciphertext is processed in blocks of 8 bytes (the DES block size), and memory is allocated for the plaintext. If an initialization vector (IV) is not provided, the function defaults to using an IV of all zeros. Memory allocated for the plaintext must be freed by the caller. If any input parameters are invalid (e.g., `ciphertext`, `key`, or `out_len` is `NULL`), the function logs an error and returns `NULL`.
 
 ---
 
 ### `void crypto_generate_random_iv(uint8_t *iv, size_t length)`
-**Purpose**: Generates a random Initialization Vector (IV) for cryptographic purposes, using platform-specific methods.
+**Purpose**: Generates a cryptographically secure random Initialization Vector (IV) using platform-specific methods (CryptGenRandom on Windows, /dev/urandom on POSIX).
 
 **Parameters**:
-- `iv`: A pointer to the buffer where the generated IV will be stored.
-- `length`: The length (in bytes) of the IV to generate.
+  - `iv`: Pointer to the buffer where the generated IV will be stored.
+  - `length`: The length in bytes of the IV to generate.
 
-**Platform-specific Implementations**:
-1. **Windows (using Cryptographic API)**:
-   - Acquires a cryptographic context via the `CryptAcquireContext` function.
-   - Generates random bytes using the `CryptGenRandom` function.
-   - Releases the cryptographic context.
-   
-   **Error Handling**:
-   - If the cryptographic context cannot be acquired or if random bytes cannot be generated, the function logs the error and terminates the program.
+**Return Value**: None.
 
-2. **Unix-like systems (using `/dev/urandom`)**:
-   - Opens the `/dev/urandom` file to read cryptographically secure random bytes.
-   - Reads the specified number of random bytes into the IV buffer.
-   - Closes the file once done.
-   
-   **Error Handling**:
-   - If the file cannot be opened or the read operation fails, the function logs the error and terminates the program.
+**Usage Case**: Use before encrypting with CBC, CFB, or OFB mode to produce a unique, unpredictable IV. The function terminates the program if the platform CSPRNG fails, preventing use of an uninitialized IV.
 
-**Notes**:
-- The function ensures platform compatibility by using preprocessor directives to choose the appropriate method based on whether the platform is Windows or Unix-like.
-- Both implementations use cryptographically secure random sources to generate IVs, ensuring that the IVs are suitable for use in encryption algorithms.
-- If an error occurs (e.g., failure to open `/dev/urandom` or to acquire a cryptographic context), the program will terminate to prevent usage of insecure or uninitialized data.
+---
+
+## Additional Helpers (8)
+
+These cover the most common production scenarios that aren't covered
+by the raw hash / DES primitives above: hashing strings and files,
+serializing digests, computing HMACs, comparing secrets safely, and
+generating CSPRNG bytes.
+
+### `uint8_t* crypto_hash_string(const char* str, HashAlgorithm algorithm, size_t* outLength)`
+**Purpose**: Hash a NUL-terminated C string. Convenience wrapper around `crypto_hash_data` that supplies `strlen(str)` for you.
+
+**Parameters**:
+  - `str`: NUL-terminated input string. NULL → returns NULL.
+  - `algorithm`: Hash algorithm to use (same enum set as `crypto_hash_data`).
+  - `outLength`: Receives the hash length on success. Must be non-NULL.
+
+**Return Value**: Heap-allocated hash bytes the caller must `free`, or NULL on any error.
+
+**Usage Case**: Use instead of `crypto_hash_data` when your input is already a C string, to avoid computing `strlen` manually.
+
+---
+
+### `char* crypto_hash_to_hex(const uint8_t* hash, size_t length)`
+**Purpose**: Convert a binary hash to a lowercase hex string of length `2 * length`.
+
+**Parameters**:
+  - `hash`: Hash bytes to encode.
+  - `length`: Number of bytes in `hash`.
+
+**Return Value**: Heap-allocated NUL-terminated hex string the caller must `free`, or NULL on NULL input or allocation failure.
+
+**Usage Case**: Use to display or store a digest as a human-readable string for logging, file output, or comparison with published test vectors.
+
+---
+
+### `char* crypto_hash_to_base64(const uint8_t* hash, size_t length)`
+**Purpose**: Convert a binary hash (or any byte buffer) to a base64-encoded string. Wraps OpenSSL's `EVP_EncodeBlock`; result is NUL-terminated with no line breaks.
+
+**Parameters**:
+  - `hash`: Bytes to encode.
+  - `length`: Number of bytes.
+
+**Return Value**: Heap-allocated base64 string the caller must `free`, or NULL on failure.
+
+**Usage Case**: Use for storing or transmitting digests in config files, HTTP headers, or JSON where binary data is not allowed.
+
+---
+
+### `uint8_t* crypto_hash_file(const char* path, HashAlgorithm algorithm, size_t* outLength)`
+**Purpose**: Stream-hash the contents of a file. Reads in 64 KiB chunks and never holds the whole file in memory.
+
+**Parameters**:
+  - `path`: Filesystem path. NULL → returns NULL.
+  - `algorithm`: Any `HashAlgorithm` value (SHAKE-128/256 not supported by this wrapper).
+  - `outLength`: Receives the hash length on success.
+
+**Return Value**: Heap-allocated digest the caller must `free`, or NULL on error (missing file, bad algorithm, etc.).
+
+**Usage Case**: Use to hash large files (disk images, release archives) without loading them into RAM.
+
+---
+
+### `uint8_t* crypto_hmac(const uint8_t* data, size_t data_len, const uint8_t* key, size_t key_len, HashAlgorithm algorithm, size_t* outLength)`
+**Purpose**: Compute an HMAC (Hash-based Message Authentication Code) — the standard primitive for symmetric-key message authentication.
+
+**Parameters**:
+  - `data`, `data_len`: Message bytes.
+  - `key`, `key_len`: HMAC key (any length; long keys are hashed internally).
+  - `algorithm`: Hash algorithm driving the HMAC (HMAC-SHA256 is the common production choice).
+  - `outLength`: Receives the MAC length on success.
+
+**Return Value**: Heap-allocated MAC bytes the caller must `free`, or NULL on bad input or unsupported algorithm.
+
+**Usage Case**: Use to authenticate messages, sign API payloads, or verify webhook deliveries. Pair with `crypto_verify_hmac` for constant-time MAC verification.
+
+---
+
+### `bool crypto_constant_time_equal(const void* a, const void* b, size_t length)`
+**Purpose**: Constant-time byte equality. Compares `length` bytes from `a` and `b`; runtime does NOT depend on the position of the first differing byte.
+
+**Parameters**:
+  - `a`, `b`: Pointers to the two buffers.
+  - `length`: Number of bytes to compare.
+
+**Return Value**: `true` if all `length` bytes are equal, `false` otherwise. Returns `false` if either pointer is NULL. Zero length returns `true`.
+
+**Usage Case**: Always use this instead of `memcmp` when comparing MACs, tokens, or any secret-derived value to prevent timing side-channel attacks.
+
+---
+
+### `void crypto_random_bytes(uint8_t* buffer, size_t length)`
+**Purpose**: Fill a buffer with cryptographically-secure random bytes, wrapping OpenSSL's `RAND_bytes`.
+
+**Parameters**:
+  - `buffer`: Destination buffer.
+  - `length`: Number of bytes to fill.
+
+**Return Value**: None. NULL or zero-length input is a safe no-op. On CSPRNG failure the buffer is zero-filled (the function never aborts the process).
+
+**Usage Case**: Use to generate keys, IVs, nonces, session tokens, or any value that must be unpredictable.
+
+---
+
+### `const char* crypto_hash_algorithm_name(HashAlgorithm algorithm)`
+**Purpose**: Return a human-readable name for a `HashAlgorithm` enum value. The returned pointer is to a static, immutable string.
+
+**Parameters**:
+  - `algorithm`: The enum value to look up.
+
+**Return Value**: A constant string (e.g. `"SHA-256"`, `"BLAKE2b-512"`, `"RIPEMD-160"`). Unknown enum values return `"UNKNOWN"`. Never NULL.
+
+**Usage Case**: Use for log messages, error reporting, and any display context where the enum value needs a printable name.
+
+---
+
+## Additional Helpers, Batch 2 (5)
+
+Round-trip decoders, password-based key derivation, and safe
+verification wrappers — the helpers most production code reaches for
+the day after it's deployed.
+
+### `uint8_t* crypto_hash_from_hex(const char* hex, size_t* outLength)`
+**Purpose**: Inverse of `crypto_hash_to_hex` — parse a lowercase or uppercase hex string back to a byte array.
+
+**Parameters**:
+  - `hex`: NUL-terminated hex string with an even number of characters. NULL → NULL.
+  - `outLength`: Receives the decoded byte length on success.
+
+**Return Value**: Heap-allocated bytes the caller must `free`, or NULL on bad input (odd length, invalid hex digit, NULL).
+
+**Usage Case**: Use when hashes arrive as strings (config files, HTTP headers, signed manifests) and you need to compare them against a freshly computed digest.
+
+---
+
+### `uint8_t* crypto_hash_from_base64(const char* b64, size_t* outLength)`
+**Purpose**: Inverse of `crypto_hash_to_base64` — decode a base64 string back to raw bytes.
+
+**Parameters**:
+  - `b64`: NUL-terminated base64 string, padded to a multiple of 4 with `=`. NULL → NULL.
+  - `outLength`: Receives the decoded byte length.
+
+**Return Value**: Heap-allocated bytes the caller must `free`, or NULL on error.
+
+**Usage Case**: Use when digests or MACs arrive as base64 (JSON payloads, HTTP headers) and need to be decoded for byte-level comparison.
+
+---
+
+### `uint8_t* crypto_pbkdf2(const char* password, size_t password_len, const uint8_t* salt, size_t salt_len, int iterations, size_t key_len, HashAlgorithm algorithm)`
+**Purpose**: Password-Based Key Derivation Function 2 (PBKDF2). Stretches a low-entropy password into a high-entropy key using iterated HMAC.
+
+**Parameters**:
+  - `password`, `password_len`: Password bytes (need not be NUL-terminated).
+  - `salt`, `salt_len`: Per-user random salt (at least 16 bytes recommended).
+  - `iterations`: Work factor; OWASP recommends at least 600 000 for HMAC-SHA256 (as of 2023). Must be > 0.
+  - `key_len`: Desired output key length in bytes (e.g. 32 for a 256-bit key).
+  - `algorithm`: Hash algorithm driving the inner HMAC; typically `CRYPTO_SHA256` or `CRYPTO_SHA512`.
+
+**Return Value**: Heap-allocated derived key the caller must `free`, or NULL on bad input or unsupported algorithm.
+
+**Usage Case**: Store `(salt, iterations, derived_key)` in the user database instead of the raw password. On login, re-derive with the stored salt+iterations and compare with `crypto_constant_time_equal`.
+
+---
+
+### `bool crypto_verify_hmac(const uint8_t* data, size_t data_len, const uint8_t* key, size_t key_len, const uint8_t* mac, size_t mac_len, HashAlgorithm algorithm)`
+**Purpose**: Verify an incoming MAC in a single safe call — computes the expected HMAC over `data` with `key`, then constant-time compares it against `mac`.
+
+**Parameters**:
+  - `data`, `data_len`: Message bytes.
+  - `key`, `key_len`: Shared HMAC key.
+  - `mac`, `mac_len`: Received MAC to verify.
+  - `algorithm`: Hash algorithm.
+
+**Return Value**: `true` if the MAC verifies; `false` on length mismatch, content mismatch, or any NULL input.
+
+**Usage Case**: Use for every incoming MAC validation (API signatures, JWT, webhook delivery). Combines `crypto_hmac` and `crypto_constant_time_equal` into one call so there is no way to accidentally use `memcmp`.
+
+---
+
+### `uint8_t* crypto_hmac_file(const char* path, const uint8_t* key, size_t key_len, HashAlgorithm algorithm, size_t* outLength)`
+**Purpose**: Stream-compute HMAC over a file's contents. Reads the file in 64 KiB chunks via `HMAC_Update` — never holds the whole file in memory.
+
+**Parameters**:
+  - `path`: Filesystem path. NULL → NULL.
+  - `key`, `key_len`: Shared HMAC key.
+  - `algorithm`: Hash algorithm. SHAKE variants are not supported.
+  - `outLength`: Receives the MAC length on success.
+
+**Return Value**: Heap-allocated MAC bytes the caller must `free`, or NULL on any error.
+
+**Usage Case**: Use to sign or verify release artifacts, large log files, or any file whose integrity you need to check without loading it fully into RAM.
 
 ---
 
@@ -456,7 +609,7 @@ int main() {
     size_t hashLength = 0;
     uint8_t* hash = crypto_hash_data((const uint8_t*)exampleData, dataLength, CRYPTO_SHA3_256, &hashLength);
 
-    fmt_printf("SHA-256(\"%s\") = ", exampleData);
+    fmt_printf("SHA3-256(\"%s\") = ", exampleData);
     crypto_print_hash(hash, hashLength);
 
     free(hash);
@@ -465,7 +618,7 @@ int main() {
 ```
 **Result**
 ```
-SHA-256("امین طهماسبی") = 1886c3f57e943ae493fa42a2dbcaeb8e672d3131e0229014d00175e214402117
+SHA3-256("امین طهماسبی") = 1886c3f57e943ae493fa42a2dbcaeb8e672d3131e0229014d00175e214402117
 ```
 
 ---
@@ -658,8 +811,493 @@ int main() {
 ```
 **Result**
 ```
-CBC Encrypted: 5248fc59b5a3056881a0337d50d011c2
+CBC Encrypted: <varies — random IV used each run>
 CBC Decrypted: Hello World
+```
+
+---
+
+## Example 15 : `crypto_hash_string` — hash a NUL-terminated string
+
+Convenience wrapper that fills in `strlen` for you. Verified against the
+published `SHA-256("abc")` test vector.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    size_t n = 0;
+    uint8_t* h = crypto_hash_string("abc", CRYPTO_SHA256, &n);
+    crypto_print_hash(h, n);
+    /* ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad */
+    free(h);
+    return 0;
+}
+```
+**Result**
+```
+ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+```
+
+---
+
+## Example 16 : `crypto_hash_to_hex` — pretty-print a digest
+
+`crypto_print_hash` writes to stdout. When you need the hex AS a
+string — for logging, comparison, or storing in a file — use this.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    size_t n = 0;
+    uint8_t* h = crypto_hash_string("hello", CRYPTO_SHA256, &n);
+    char* hex = crypto_hash_to_hex(h, n);
+    printf("sha256(hello) = %s\n", hex);
+    /* sha256(hello) = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 */
+    free(hex);
+    free(h);
+    return 0;
+}
+```
+**Result**
+```
+sha256(hello) = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+```
+
+---
+
+## Example 17 : `crypto_hash_to_base64` — base64-encode a digest
+
+Use this for storing digests in JSON, HTTP headers, or anywhere
+ASCII-only is required and you want fewer characters than hex.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    size_t n = 0;
+    uint8_t* h = crypto_hash_string("hello", CRYPTO_SHA256, &n);
+    char* b64 = crypto_hash_to_base64(h, n);
+    printf("base64 = %s\n", b64);
+    /* base64 = LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ= */
+    free(b64);
+    free(h);
+    return 0;
+}
+```
+**Result**
+```
+base64 = LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=
+```
+
+---
+
+## Example 18 : `crypto_hash_file` — streaming hash of a file
+
+Reads the file in 64 KiB chunks — safe for arbitrarily large files.
+Pair with `crypto_hash_to_hex` to print the result the way `sha256sum`
+does.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s <path>\n", argv[0]);
+        return 1;
+    }
+
+    size_t n = 0;
+    uint8_t* h = crypto_hash_file(argv[1], CRYPTO_SHA256, &n);
+    if (!h) {
+        fprintf(stderr, "failed to hash '%s'\n", argv[1]);
+        return 1;
+    }
+
+    char* hex = crypto_hash_to_hex(h, n);
+    printf("%s  %s\n", hex, argv[1]);
+    free(hex);
+    free(h);
+    return 0;
+}
+```
+**Result**
+```
+(requires a file path as command-line argument)
+<sha256hex>  <path>
+```
+
+---
+
+## Example 19 : `crypto_hmac` — message authentication
+
+HMAC-SHA256 is the production-grade primitive for "did this message
+come from someone who knows our shared secret?" Verified against the
+canonical test vector for key=`"key"` and msg=`"The quick brown fox..."`.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* msg = "The quick brown fox jumps over the lazy dog";
+    const char* key = "key";
+    size_t mac_len = 0;
+
+    uint8_t* mac = crypto_hmac((const uint8_t*)msg, strlen(msg),
+                               (const uint8_t*)key, strlen(key),
+                               CRYPTO_SHA256, &mac_len);
+
+    char* hex = crypto_hash_to_hex(mac, mac_len);
+    printf("HMAC-SHA256 = %s\n", hex);
+    /* HMAC-SHA256 = f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8 */
+    free(hex);
+    free(mac);
+    return 0;
+}
+```
+**Result**
+```
+HMAC-SHA256 = f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8
+```
+
+---
+
+## Example 20 : `crypto_constant_time_equal` — timing-safe MAC compare
+
+The single most important security-critical helper here. **Always** use
+this — never `memcmp` — when comparing MACs, tokens, hashes, or any
+secret-derived value. `memcmp` short-circuits on the first mismatching
+byte, leaking timing information that lets remote attackers brute-force
+the secret one byte at a time.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+/* Verify an incoming request: re-compute the MAC and compare it
+   timing-safely against the one the client supplied. */
+static bool verify(const char* body, const char* key, const uint8_t* received_mac) {
+    size_t n = 0;
+    uint8_t* expected = crypto_hmac((const uint8_t*)body, strlen(body),
+                                    (const uint8_t*)key,  strlen(key),
+                                    CRYPTO_SHA256, &n);
+    bool ok = crypto_constant_time_equal(expected, received_mac, n);
+    free(expected);
+    return ok;
+}
+
+int main(void) {
+    const char* body = "amount=100";
+    const char* key  = "shared_secret";
+
+    /* Pretend client computed and sent this same MAC. */
+    size_t n = 0;
+    uint8_t* sent = crypto_hmac((const uint8_t*)body, strlen(body),
+                                (const uint8_t*)key,  strlen(key),
+                                CRYPTO_SHA256, &n);
+
+    printf("verify: %s\n", verify(body, key, sent) ? "ok" : "REJECT");
+    /* verify: ok */
+
+    /* Flip one byte → reject. */
+    sent[0] ^= 0xFF;
+    printf("verify: %s\n", verify(body, key, sent) ? "ok" : "REJECT");
+    /* verify: REJECT */
+
+    free(sent);
+    return 0;
+}
+```
+**Result**
+```
+verify: ok
+verify: REJECT
+```
+
+---
+
+## Example 21 : `crypto_random_bytes` — generate a fresh secret key
+
+The general-purpose CSPRNG entry point. Use it for keys, IVs, nonces,
+session tokens, anything that has to be unpredictable.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    /* Generate a 32-byte (256-bit) key. */
+    uint8_t key[32];
+    crypto_random_bytes(key, sizeof(key));
+
+    char* hex = crypto_hash_to_hex(key, sizeof(key));
+    printf("new key: %s\n", hex);
+    /* Output is different on every run. */
+    free(hex);
+    return 0;
+}
+```
+**Result**
+```
+new key: <64 random hex characters — different on every run>
+```
+
+---
+
+## Example 22 : `crypto_hash_algorithm_name` — pretty-print the algorithm
+
+Useful for log messages and error reporting. Returns a static string
+so it does not need to be freed.
+
+```c
+#include <stdio.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    HashAlgorithm algos[] = {
+        CRYPTO_MD5, CRYPTO_SHA1, CRYPTO_SHA256,
+        CRYPTO_SHA3_256, CRYPTO_BLAKE2B_512, CRYPTO_RIPEMD_160
+    };
+    for (size_t i = 0; i < sizeof(algos) / sizeof(algos[0]); ++i) {
+        printf("algorithm %2d -> %s\n", algos[i], crypto_hash_algorithm_name(algos[i]));
+    }
+    /* algorithm  1 -> MD5
+       algorithm  2 -> SHA-1
+       algorithm  4 -> SHA-256
+       ... */
+    return 0;
+}
+```
+**Result**
+```
+algorithm  1 -> MD5
+algorithm  2 -> SHA-1
+algorithm  4 -> SHA-256
+algorithm  8 -> SHA3-256
+algorithm 13 -> BLAKE2b-512
+algorithm 16 -> RIPEMD-160
+```
+
+---
+
+## Example 23 : `crypto_hash_from_hex` — parse a hash string
+
+Pairs with `crypto_hash_to_hex` for a clean round-trip. Useful when
+hashes arrive as strings (config files, HTTP headers, signed manifests).
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    /* Pretend we read this from a release manifest. */
+    const char* expected_hex =
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+    size_t en = 0;
+    uint8_t* expected = crypto_hash_from_hex(expected_hex, &en);
+
+    /* Compute the actual hash. */
+    size_t an = 0;
+    uint8_t* actual = crypto_hash_string("abc", CRYPTO_SHA256, &an);
+
+    bool match = (en == an) && crypto_constant_time_equal(expected, actual, en);
+    printf("hash match: %s\n", match ? "yes" : "NO");
+    /* hash match: yes */
+
+    free(expected); free(actual);
+    return 0;
+}
+```
+**Result**
+```
+hash match: yes
+```
+
+---
+
+## Example 24 : `crypto_hash_from_base64` — decode a base64 digest
+
+Inverse of `crypto_hash_to_base64`. The base64 form is more compact
+than hex (33% vs 100% overhead), so it's a popular choice for
+transmitting digests in JSON / HTTP headers.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* b64 = "AAECAwQFBgcICQoLDA0ODw==";  // bytes 0x00..0x0F
+
+    size_t n = 0;
+    uint8_t* bytes = crypto_hash_from_base64(b64, &n);
+    printf("decoded %zu bytes: ", n);
+    for (size_t i = 0; i < n; ++i) printf("%02x ", bytes[i]);
+    printf("\n");
+    /* decoded 16 bytes: 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f */
+
+    free(bytes);
+    return 0;
+}
+```
+**Result**
+```
+decoded 16 bytes: 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 
+```
+
+---
+
+## Example 25 : `crypto_pbkdf2` — store and verify a password
+
+The right way to store passwords. Generate a random salt per user,
+PBKDF2-stretch the password with a high iteration count, store
+`(salt, iterations, derived_key)`. On login, re-run PBKDF2 with the
+stored salt+iterations and constant-time-compare the result.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    /* === Registration === */
+    uint8_t salt[16];
+    crypto_random_bytes(salt, sizeof(salt));
+    int iters = 600000;            /* OWASP min for HMAC-SHA256 (2023) */
+
+    const char* password = "hunter2";
+    uint8_t* stored = crypto_pbkdf2(password, strlen(password),
+                                    salt, sizeof(salt),
+                                    iters, 32, CRYPTO_SHA256);
+    /* In real code: write (salt, iters, stored) to your user DB. */
+
+    /* === Login === */
+    const char* attempt = "hunter2";   // try "wrongpass" for a failed login
+    uint8_t* derived = crypto_pbkdf2(attempt, strlen(attempt),
+                                     salt, sizeof(salt),
+                                     iters, 32, CRYPTO_SHA256);
+
+    bool ok = crypto_constant_time_equal(stored, derived, 32);
+    printf("login: %s\n", ok ? "accepted" : "rejected");
+
+    free(stored); free(derived);
+    return 0;
+}
+```
+**Result**
+```
+login: accepted
+```
+
+---
+
+## Example 26 : `crypto_verify_hmac` — one-call safe MAC verification
+
+The canonical "validate an incoming signed request" pattern. Combines
+`crypto_hmac` and `crypto_constant_time_equal` into one call so there's
+no way to accidentally use `memcmp` and leak timing.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* body = "transfer_amount=42";
+    const char* secret = "shared_signing_key";
+
+    /* Client side: compute the MAC over the body. */
+    size_t mac_len = 0;
+    uint8_t* mac = crypto_hmac((const uint8_t*)body, strlen(body),
+                               (const uint8_t*)secret, strlen(secret),
+                               CRYPTO_SHA256, &mac_len);
+
+    /* Server side: verify in one safe call. */
+    bool ok = crypto_verify_hmac((const uint8_t*)body, strlen(body),
+                                 (const uint8_t*)secret, strlen(secret),
+                                 mac, mac_len, CRYPTO_SHA256);
+    printf("verify: %s\n", ok ? "ok" : "REJECT");        /* ok */
+
+    /* Tamper with the body — verification must fail. */
+    const char* tampered = "transfer_amount=99999";
+    ok = crypto_verify_hmac((const uint8_t*)tampered, strlen(tampered),
+                            (const uint8_t*)secret, strlen(secret),
+                            mac, mac_len, CRYPTO_SHA256);
+    printf("verify (tampered): %s\n", ok ? "ok" : "REJECT");    /* REJECT */
+
+    free(mac);
+    return 0;
+}
+```
+**Result**
+```
+verify: ok
+verify (tampered): REJECT
+```
+
+---
+
+## Example 27 : `crypto_hmac_file` — sign or verify a release archive
+
+Streaming HMAC over a file. Print it like `sha256sum` does, store it
+alongside the artifact, and verify on the consumer side.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+
+int main(int argc, char** argv) {
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <path> <key>\n", argv[0]);
+        return 1;
+    }
+
+    size_t n = 0;
+    uint8_t* mac = crypto_hmac_file(argv[1],
+                                    (const uint8_t*)argv[2],
+                                    (size_t)strlen(argv[2]),
+                                    CRYPTO_SHA256, &n);
+    if (!mac) {
+        fprintf(stderr, "failed to MAC '%s'\n", argv[1]);
+        return 1;
+    }
+
+    char* hex = crypto_hash_to_hex(mac, n);
+    printf("%s  %s\n", hex, argv[1]);
+
+    free(hex); free(mac);
+    return 0;
+}
+```
+**Result**
+```
+(requires a file path and key as command-line arguments)
+<hmac-sha256-hex>  <path>
 ```
 
 ---

@@ -1,1 +1,1 @@
-27 19.65 "Hello World"
+25 19.365 Hello World

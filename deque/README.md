@@ -26,438 +26,384 @@ To use the Deque library in your project, include the `deque.h` header file in y
 
 ## Function Descriptions
 
-
 ### `Deque* deque_create(size_t itemSize)`
-
-- **Purpose**: Creates a new deque with a specified item size.
-- **Parameters**:
-  - `itemSize`: The size of each item in the deque. Must be greater than 0.
-- **Return**: Pointer to the newly created deque or `NULL` if memory allocation fails.
-- **Details**: 
-  - Initializes the deque with a middle index for efficient push operations at both ends. Allocates memory for the deque structure and the first block of memory for storing elements.
-
----
-
-### `bool deque_empty(const Deque* deque)`
-
-- **Purpose**: Checks if the deque is empty.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: `true` if the deque is empty or `NULL`, `false` otherwise.
-- **Details**: 
-  - Logs an error if the deque is `NULL` and returns `true`.
-
----
-
-### `size_t deque_length(const Deque* deque)`
-
-- **Purpose**: Returns the number of elements in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: The number of elements in the deque or `0` if the deque is `NULL`.
-- **Details**: 
-  - Logs the size of the deque and returns `0` if the deque pointer is `NULL`.
-
----
-
-### `void deque_push_front(Deque* deque, void* item)`
-
-- **Purpose**: Inserts an item at the front of the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `item`: Pointer to the item to be inserted.
-- **Return**: No return value.
-- **Details**: 
-  - Inserts a new item at the front of the deque. If necessary, it allocates a new block at the front to accommodate the new item. Logs errors if the deque or item is `NULL`.
-
----
-
-### `void deque_push_back(Deque* deque, const void* item)`
-
-- **Purpose**: Inserts an item at the back of the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `item`: Pointer to the item to be inserted.
-- **Return**: No return value.
-- **Details**: 
-  - If the deque reaches the back of the allocated block, a new block is added. Logs errors if memory allocation fails or the input is `NULL`.
-
----
-
-### `void* deque_front(const Deque* deque)`
-
-- **Purpose**: Retrieves the front element of the deque without removing it.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: Pointer to the front element or `NULL` if the deque is empty or `NULL`.
-- **Details**: 
-  - Logs errors if the deque is empty or `NULL` and returns the front element if available.
-
----
-
-### `void* deque_back(const Deque* deque)`
-
-- **Purpose**: Retrieves the back element of the deque without removing it.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: Pointer to the back element or `NULL` if the deque is empty or `NULL`.
-- **Details**: 
-  - Logs errors if the deque is empty or `NULL` and returns the back element if available.
-
----
-
-### `void deque_pop_front(Deque* deque)`
-
-- **Purpose**: Removes the front element from the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: No return value.
-- **Details**: 
-  - Logs errors if the deque is `NULL` or empty. It adjusts the front index, removes memory blocks if necessary, and updates the deque's size.
-
----
-
-### `void deque_pop_back(Deque* deque)`
-
-- **Purpose**: Removes the back element from the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: No return value.
-- **Details**: Frees the back element, adjusts the back index, and manages memory blocks when necessary. Logs errors if the deque is empty or `NULL`.
-
----
-
-### `void* deque_at(const Deque* deque, size_t index)`
-
-- **Purpose**: Retrieves the element at the specified index in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `index`: The index of the element to retrieve.
-- **Return**: Pointer to the element at the specified index or `NULL` if the index is out of bounds or the deque is `NULL`.
-- **Details**: Logs errors for out-of-bounds access or invalid input.
+**Purpose**: Allocates a new empty deque that holds elements of `itemSize` bytes.
+**Parameters**:
+- `itemSize`: Size in bytes of each element stored in the deque; must be greater than 0.
+**Return Value**: Pointer to the newly created deque, or `NULL` on OOM or if `itemSize` is 0.
+**Usage Case**: Call once at the start of any program that needs a double-ended queue, passing `sizeof` your element type.
 
 ---
 
 ### `void deque_clear(Deque* deque)`
-
-- **Purpose**: Clears all elements from the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: No return value.
-- **Details**: Frees all elements and blocks, then resets the deque to its initial state. Logs errors for `NULL` input.
+**Purpose**: Removes all elements and resets the deque to its initial empty state, but keeps the deque struct itself valid for reuse.
+**Parameters**:
+- `deque`: Pointer to the deque to clear.
+**Return Value**: None.
+**Usage Case**: Use when you want to empty a deque and refill it without destroying and recreating the deque object.
 
 ---
 
 ### `void deque_deallocate(Deque* deque)`
-
-- **Purpose**: Deallocates all memory associated with the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: No return value.
-- **Details**: Frees all elements and memory blocks, and then deallocates the deque structure itself. Logs the deallocation process.
-
----
-
-### `void deque_shrink_to_fit(Deque* deque)`
-
-- **Purpose**: Shrinks the deque's memory usage to fit its current size.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: No return value.
-- **Details**: Reduces the memory usage by deallocating excess blocks and reallocating memory to fit the current size of the deque. Logs any errors during the shrinking process.
+**Purpose**: Frees all element data, all blocks, the block-pointer array, and the deque struct itself.
+**Parameters**:
+- `deque`: Pointer to the deque to free.
+**Return Value**: None.
+**Usage Case**: Call at the end of a deque’s lifetime to release all associated memory; the pointer must not be used after this call.
 
 ---
 
-### `void deque_insert(Deque* deque, size_t index, void* item)`
-
-- **Purpose**: Inserts an element at a specified index in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `index`: The position where the element will be inserted.
-  - `item`: Pointer to the item to insert.
-- **Details**: If the index is out of bounds or the deque needs to be expanded, memory is reallocated, and elements are shifted to the right to accommodate the new element. Logs errors if the input is invalid.
-
----
-
-### `void deque_erase(Deque* deque, size_t index)`
-
-- **Purpose**: Removes an element at a specified index in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `index`: The position of the element to remove.
-- **Details**: Shifts elements to the left to fill the gap left by the removed element. If blocks become empty, they are deallocated. Logs errors if the index is out of bounds or the deque is `NULL`.
-
----
-
-### `void deque_resize(Deque* deque, size_t newSize)`
-
-- **Purpose**: Resizes the deque to the specified size.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `newSize`: The new size of the deque.
-- **Details**: Expands or shrinks the deque to the new size. If the size is reduced, memory is optimized by deallocating unnecessary blocks. Logs actions and handles memory reallocation.
-
----
-
-### `void deque_swap(Deque* deque, Deque* otherDeque)`
-
-- **Purpose**: Swaps the contents of two deques.
-- **Parameters**:
-  - `deque`: Pointer to the first deque.
-  - `otherDeque`: Pointer to the second deque.
-- **Details**: The entire internal structure, size, and blocks of the two deques are swapped.
-
----
-
-### `void deque_assign(Deque* deque, size_t n, void* val)`
-
-- **Purpose**: Assigns a specified value to a range of elements in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `n`: The number of elements to assign.
-  - `val`: Pointer to the value to assign to each element.
-- **Details**: Clears the deque and resizes it to hold `n` elements, each initialized to `val`.
-
----
-
-### `void deque_emplace_back(Deque* deque, void* item)`
-
-- **Purpose**: Inserts an element at the end of the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `item`: Pointer to the item to insert.
-- **Details**: If the deque’s current block at the back is full, allocates a new block and places the item.
-
----
-
-### `void deque_emplace_front(Deque* deque, void* item)`
-
-- **Purpose**: Inserts an element at the front of the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `item`: Pointer to the item to insert.
-- **Details**: If the front block is full, allocates a new block and places the item at the front.
-
----
-
-### `void deque_emplace(Deque* deque, size_t index, void* item)`
-
-- **Purpose**: Inserts an element at the specified position in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-  - `index`: The position at which to insert the element.
-  - `item`: Pointer to the item to be inserted.
-- **Details**: Inserts an element at the given index. If the index is at the front or back, it delegates to `deque_emplace_front` or `deque_emplace_back`. Otherwise, it shifts elements to make space.
+### `size_t deque_length(const Deque* deque)`
+**Purpose**: Returns the number of elements currently in the deque.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: The current element count, or `0` if `deque` is NULL.
+**Usage Case**: Use to query how many elements are stored before iterating or indexing.
 
 ---
 
 ### `size_t deque_max_size(const Deque* deque)`
-
-- **Purpose**: Returns the maximum number of elements the deque can hold.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: The maximum size of the deque, which is typically `SIZE_MAX`.
-- **Details**: Returns the system-defined maximum size the deque can hold.
-
----
-
-### `bool deque_is_equal(const Deque* deque1, const Deque* deque2)`
-
-- **Purpose**: Compares two deques for equality.
-- **Parameters**:
-  - `deque1`: Pointer to the first deque.
-  - `deque2`: Pointer to the second deque.
-- **Return**: `true` if the deques are equal (same size and elements), `false` otherwise.
-- **Details**: Compares the size and contents of two deques to check for equality.
+**Purpose**: Returns the theoretical maximum number of elements the deque can hold.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: `SIZE_MAX`, or `0` if `deque` is NULL.
+**Usage Case**: Use for upper-bound checks or to mirror the interface of C++ `std::deque::max_size`.
 
 ---
 
-### `bool deque_is_less(const Deque* deque1, const Deque* deque2)`
-
-- **Purpose**: Compares two deques lexicographically to determine if the first is less than the second.
-- **Parameters**:
-  - `deque1`: Pointer to the first deque.
-  - `deque2`: Pointer to the second deque.
-- **Return**: `true` if `deque1` is lexicographically less than `deque2`, otherwise `false`.
-- **Details**: Compares elements in sequence, stopping when a difference is found or one deque runs out of elements.
+### `bool deque_empty(const Deque* deque)`
+**Purpose**: Reports whether the deque contains no elements.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: `true` if the deque has no elements or is NULL, `false` otherwise.
+**Usage Case**: Use as a guard before calling `deque_front`, `deque_back`, or `deque_pop_front`/`deque_pop_back`.
 
 ---
 
-### `bool deque_is_greater(const Deque* deque1, const Deque* deque2)`
-
-- **Purpose**: Determines if the first deque is greater than the second by reversing the comparison using `deque_is_less`.
-- **Parameters**:
-  - `deque1`: Pointer to the first deque.
-  - `deque2`: Pointer to the second deque.
-- **Return**: `true` if `deque1` is greater than `deque2`, otherwise `false`.
-- **Details**: Uses `deque_is_less` in reverse to determine the result.
-
----
-
-### `bool deque_is_not_equal(const Deque* deque1, const Deque* deque2)`
-
-- **Purpose**: Compares two deques for inequality.
-- **Parameters**:
-  - `deque1`: Pointer to the first deque.
-  - `deque2`: Pointer to the second deque.
-- **Return**: `true` if the deques are not equal, otherwise `false`.
-- **Details**: Returns the negation of `deque_is_equal`.
+### `void deque_resize(Deque* deque, size_t newSize)`
+**Purpose**: Grows or shrinks the deque to exactly `newSize` elements.
+**Parameters**:
+- `deque`: Pointer to the deque to resize.
+- `newSize`: The desired number of elements after the call.
+**Return Value**: None.
+**Usage Case**: Use to truncate a deque or to pre-extend it with zero-initialized slots before filling them in.
 
 ---
 
-### `bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2)`
-
-- **Purpose**: Checks if the first deque is less than or equal to the second.
-- **Parameters**:
-  - `deque1`: Pointer to the first deque.
-  - `deque2`: Pointer to the second deque.
-- **Return**: `true` if `deque1` is less than or equal to `deque2`, otherwise `false`.
-- **Details**: Uses `deque_is_less` and `deque_is_equal` to determine the result.
+### `void deque_shrink_to_fit(Deque* deque)`
+**Purpose**: Releases any over-allocated blocks so that memory usage matches the current element count exactly.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: None.
+**Usage Case**: Call after a large batch of removals when memory efficiency is important.
 
 ---
 
-### `bool deque_is_greater_or_equal(const Deque* deque1, const Deque* deque2) `
+### `void* deque_front(const Deque* deque)`
+**Purpose**: Returns a pointer to the first element without removing it.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: Pointer to the first element, or `NULL` if the deque is empty or NULL.
+**Usage Case**: Peek at the front element before deciding whether to pop it.
 
-- **Purpose**: Checks if the first deque is greater than or equal to the second.
-- **Parameters**:
-  - `deque1`: Pointer to the first deque.
-  - `deque2`: Pointer to the second deque.
-- **Return**: `true` if `deque1` is greater than or equal to `deque2`, otherwise `false`.
-- **Details**: Uses `deque_is_greater` and `deque_is_equal`.
+---
+
+### `void* deque_back(const Deque* deque)`
+**Purpose**: Returns a pointer to the last element without removing it.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: Pointer to the last element, or `NULL` if the deque is empty or NULL.
+**Usage Case**: Peek at the back element before deciding whether to pop it.
+
+---
+
+### `void* deque_at(const Deque* deque, size_t index)`
+**Purpose**: Returns a pointer to the element at the given index.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `index`: Zero-based position of the element to retrieve.
+**Return Value**: Pointer to the element at `index`, or `NULL` if `index` is out of bounds or `deque` is NULL.
+**Usage Case**: Use for random access to any element by position.
+
+---
+
+### `void deque_push_front(Deque* deque, void* item)`
+**Purpose**: Copies `itemSize` bytes from `item` and prepends the new element at the front.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `item`: Pointer to the data to copy into the new front element.
+**Return Value**: None.
+**Usage Case**: Use when implementing a queue or stack that requires efficient O(1) prepending.
+
+---
+
+### `void deque_push_back(Deque* deque, const void* item)`
+**Purpose**: Copies `itemSize` bytes from `item` and appends the new element at the back.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `item`: Pointer to the data to copy into the new back element.
+**Return Value**: None.
+**Usage Case**: The standard way to add elements to the end of the deque.
+
+---
+
+### `void deque_pop_front(Deque* deque)`
+**Purpose**: Removes the front element, adjusting the front index and freeing an empty leading block if one becomes vacant.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: None.
+**Usage Case**: Use to consume elements from the front, e.g., when processing a FIFO queue.
+
+---
+
+### `void deque_pop_back(Deque* deque)`
+**Purpose**: Removes the back element, adjusting the back index and freeing an empty trailing block if one becomes vacant.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: None.
+**Usage Case**: Use to remove the last element, e.g., when implementing a stack or undo buffer.
+
+---
+
+### `void deque_emplace_front(Deque* deque, void* item)`
+**Purpose**: Inserts an element at the front without an extra copy by delegating to `deque_push_front`.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `item`: Pointer to the data to place at the front.
+**Return Value**: None.
+**Usage Case**: Use in place of `deque_push_front` when in-place construction semantics are desired for consistency with C++ `emplace_front`.
+
+---
+
+### `void deque_emplace_back(Deque* deque, void* item)`
+**Purpose**: Inserts an element at the back without an extra copy by delegating to `deque_push_back`.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `item`: Pointer to the data to place at the back.
+**Return Value**: None.
+**Usage Case**: Use in place of `deque_push_back` when in-place construction semantics are desired for consistency with C++ `emplace_back`.
+
+---
+
+### `void deque_emplace(Deque* deque, size_t index, void* item)`
+**Purpose**: Inserts an element at `index`, delegating to `deque_emplace_front` or `deque_emplace_back` for boundary indices and shifting elements otherwise.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `index`: Zero-based position at which to insert the new element.
+- `item`: Pointer to the data to insert.
+**Return Value**: None.
+**Usage Case**: Use for arbitrary-position in-place insertion when the exact index is known at call time.
+
+---
+
+### `void deque_insert(Deque* deque, size_t index, void* item)`
+**Purpose**: Inserts a copy of `item` at position `index`, shifting elements at `index` and beyond one position toward the back.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `index`: Zero-based position at which to insert the element.
+- `item`: Pointer to the data to copy and insert.
+**Return Value**: None.
+**Usage Case**: Use to splice a new value into the middle of the deque at a known index.
+
+---
+
+### `void deque_erase(Deque* deque, size_t index)`
+**Purpose**: Removes the element at `index`, shifting elements beyond `index` one position toward the front and freeing any empty blocks.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `index`: Zero-based position of the element to remove.
+**Return Value**: None.
+**Usage Case**: Use to delete a specific element by position without destroying the entire deque.
+
+---
+
+### `void deque_assign(Deque* deque, size_t n, void* val)`
+**Purpose**: Clears the deque and fills it with `n` copies of `val`.
+**Parameters**:
+- `deque`: Pointer to the deque.
+- `n`: Number of copies to fill.
+- `val`: Pointer to the value to copy into each element.
+**Return Value**: None.
+**Usage Case**: Use to reinitialize a deque with a uniform value, equivalent to `deque_clear` followed by `n` push_backs of `val`.
+
+---
+
+### `void deque_swap(Deque* deque, Deque* otherDeque)`
+**Purpose**: Swaps all internal state (blocks, size, indices, itemSize) between two deques in O(1).
+**Parameters**:
+- `deque`: Pointer to the first deque.
+- `otherDeque`: Pointer to the second deque.
+**Return Value**: None.
+**Usage Case**: Use to exchange the contents of two deques cheaply without copying elements.
 
 ---
 
 ### `DequeIterator deque_begin(const Deque* deque)`
-
-- **Purpose**: Returns an iterator to the first element in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: An iterator pointing to the first element.
-- **Details**: Initializes an iterator to point to the first element of the deque, or signals an empty deque if necessary.
+**Purpose**: Returns an iterator pointing to the first element.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` positioned at the first element; signals an empty deque if the deque is empty.
+**Usage Case**: Use as the starting point for a forward iteration loop.
 
 ---
 
 ### `DequeIterator deque_end(const Deque* deque)`
-
-- **Purpose**: Returns an iterator to the position just past the last element in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: An iterator pointing just past the last element.
-- **Details**: Commonly used as a sentinel in iteration loops.
+**Purpose**: Returns a sentinel iterator representing the position just past the last element.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` sentinel used as the loop terminator for forward iteration.
+**Usage Case**: Compare against this value in a `while (!iterator_equals(&it, &end))` loop to detect the end of forward traversal.
 
 ---
 
 ### `DequeIterator deque_rbegin(const Deque* deque)`
-
-- **Purpose**: Returns a reverse iterator pointing to the last element in the deque.
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: A `DequeIterator` pointing to the last element.
-- **Details**: Allows backward traversal of the deque by starting from the last element.
+**Purpose**: Returns a reverse iterator pointing to the last element.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` positioned at the last element for reverse traversal.
+**Usage Case**: Use as the starting point for a reverse iteration loop.
 
 ---
 
 ### `DequeIterator deque_rend(const Deque* deque)`
-
-- **Purpose**: Returns a reverse iterator pointing to the position before the first element (i.e., the "rend" position).
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: A `DequeIterator` representing the "rend" position (before the first element).
-- **Details**: Typically used to mark the end of reverse iteration.
-
----
-
-### `const DequeIterator* deque_cbegin(const Deque* deque)`
-
-- **Purpose**: Returns a constant iterator pointing to the first element in the deque (read-only).
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: A pointer to a constant `DequeIterator` pointing to the first element.
-- **Details**: Ensures that the iterator is read-only.
+**Purpose**: Returns a reverse sentinel iterator representing the position before the first element.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` sentinel used as the loop terminator for reverse iteration.
+**Usage Case**: Compare against this value in a `while (!iterator_equals(&it, &rend))` loop to detect the end of reverse traversal.
 
 ---
 
-### `const DequeIterator* deque_cend(const Deque* deque)`
-
-- **Purpose**: Returns a constant iterator pointing just past the last element (read-only).
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: A pointer to a constant `DequeIterator` representing the "end" position.
-- **Details**: Used as the sentinel for forward traversal.
-
----
-
-### `const DequeIterator* deque_crbegin(const Deque* deque)`
-
-- **Purpose**: Returns a constant reverse iterator pointing to the last element (read-only).
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: A pointer to a constant `DequeIterator` pointing to the last element.
-- **Details**: Used for reverse traversal, ensuring the elements are read-only.
+### `DequeIterator deque_cbegin(const Deque* deque)`
+**Purpose**: Same as `deque_begin` but signals read-only intent; returns a `DequeIterator` by value.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` positioned at the first element.
+**Usage Case**: Use when you want to communicate that the iteration will not modify the deque’s elements.
 
 ---
 
-### `const DequeIterator* deque_crend(const Deque* deque)`
+### `DequeIterator deque_cend(const Deque* deque)`
+**Purpose**: Same as `deque_end` but signals read-only intent.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` sentinel for the end of forward const-iteration.
+**Usage Case**: Use as the loop terminator when iterating with `deque_cbegin`.
 
-- **Purpose**: Returns a constant reverse iterator pointing to the position before the first element (read-only).
-- **Parameters**:
-  - `deque`: Pointer to the deque.
-- **Return**: A pointer to a constant `DequeIterator` representing the reverse "end" position.
-- **Details**: Used as the sentinel for reverse iteration, ensuring the iterator is read-only.
+---
+
+### `DequeIterator deque_crbegin(const Deque* deque)`
+**Purpose**: Same as `deque_rbegin` but signals read-only intent.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` positioned at the last element for const reverse traversal.
+**Usage Case**: Use as the starting point for a read-only reverse iteration loop.
+
+---
+
+### `DequeIterator deque_crend(const Deque* deque)`
+**Purpose**: Same as `deque_rend` but signals read-only intent.
+**Parameters**:
+- `deque`: Pointer to the deque.
+**Return Value**: A `DequeIterator` sentinel for the end of reverse const-iteration.
+**Usage Case**: Use as the loop terminator when iterating with `deque_crbegin`.
 
 ---
 
 ### `void iterator_increment(DequeIterator* it)`
-
-- **Purpose**: Increments the position of the iterator.
-- **Parameters**:
-  - `it`: Pointer to the `DequeIterator` that will be incremented.
-- **Return**: No return value.
-- **Details**: 
-  - For **forward iteration**, this function moves the iterator one element forward. If the end of a block is reached, it transitions to the next block.
-  - For **reverse iteration**, it moves the iterator backward. If the beginning of a block is reached, it transitions to the previous block.
-  - If the iterator reaches the end or beginning of the deque, the `current` element is set to `NULL`.
+**Purpose**: Advances `it` one position forward (for forward iterators) or one position backward (for reverse iterators), setting `it->current` to `NULL` when the end or beginning is reached.
+**Parameters**:
+- `it`: Pointer to the `DequeIterator` to advance.
+**Return Value**: None.
+**Usage Case**: Call inside a traversal loop to step to the next element.
 
 ---
 
 ### `void iterator_decrement(DequeIterator* it)`
-
-- **Purpose**: Decrements the position of the iterator.
-- **Parameters**:
-  - `it`: Pointer to the `DequeIterator` that will be decremented.
-- **Return**: No return value.
-- **Details**: 
-  - For **forward iteration**, this function moves the iterator one element backward. If the start of a block is reached, it transitions to the previous block.
-  - For **reverse iteration**, it moves the iterator forward. If the end of a block is reached, it transitions to the next block.
-  - If the iterator reaches the beginning or end of the deque, the `current` element is set to `NULL`.
+**Purpose**: Moves `it` one position backward (for forward iterators) or one position forward (for reverse iterators), setting `it->current` to `NULL` when the boundary is crossed.
+**Parameters**:
+- `it`: Pointer to the `DequeIterator` to step back.
+**Return Value**: None.
+**Usage Case**: Call to move an iterator backward, e.g., to walk a deque in reverse using a forward iterator.
 
 ---
 
 ### `bool iterator_equals(const DequeIterator* it1, const DequeIterator* it2)`
-
-- **Purpose**: Compares two iterators for equality.
-- **Parameters**:
-  - `it1`: Pointer to the first `DequeIterator`.
-  - `it2`: Pointer to the second `DequeIterator`.
-- **Return**: `true` if the iterators are equal, `false` otherwise.
-- **Details**:
-  - This function checks if both iterators point to the same position in the deque by comparing their `blockIndex` and `indexInBlock`.
-  - If either iterator is at the end (or reverse end) position, the comparison is based on whether both iterators are at the end/rend.
-  - Logs whether the iterators are equal or not, and handles cases where one or both iterators are `NULL`.
+**Purpose**: Returns `true` if both iterators point to the same position (same block index and same index within the block), or if both are at the same sentinel.
+**Parameters**:
+- `it1`: Pointer to the first `DequeIterator`.
+- `it2`: Pointer to the second `DequeIterator`.
+**Return Value**: `true` if the iterators are at the same position, `false` otherwise.
+**Usage Case**: Use as the loop condition to detect when an iterator has reached the end or rend sentinel.
 
 ---
 
 ### `void* iterator_get(const DequeIterator* it)`
+**Purpose**: Returns a pointer to the element at the iterator’s current position.
+**Parameters**:
+- `it`: Pointer to the `DequeIterator` whose current element is requested.
+**Return Value**: Pointer to the current element, or `NULL` if the iterator is out of bounds.
+**Usage Case**: Dereference an iterator to read or write the element it points to.
 
-- **Purpose**: Retrieves the value pointed to by the iterator.
-- **Parameters**:
-  - `it`: Pointer to the `DequeIterator` from which to retrieve the value.
-- **Return**: A pointer to the value at the current position of the iterator, or `NULL` if the iterator is out of bounds.
-- **Details**:
-  - The function returns the value located at the current position of the iterator, handling both forward and reverse iteration.
-  - In **reverse iteration**, it returns the element at the current block and index, or `NULL` if the iterator is out of bounds.
-  - In **forward iteration**, it retrieves the element from the block and index, or returns `NULL` if the iterator is out of bounds.
-  - Logs the position of the iterator and errors if the iterator or deque is `NULL` or out of bounds.
+---
+
+### `bool deque_is_equal(const Deque* deque1, const Deque* deque2)`
+**Purpose**: Returns `true` if both deques have the same length and every corresponding element is byte-equal.
+**Parameters**:
+- `deque1`: Pointer to the first deque.
+- `deque2`: Pointer to the second deque.
+**Return Value**: `true` if the deques are equal, `false` otherwise.
+**Usage Case**: Use to check whether two deques hold identical sequences of elements.
+
+---
+
+### `bool deque_is_not_equal(const Deque* deque1, const Deque* deque2)`
+**Purpose**: Returns `true` if the deques differ in length or any element.
+**Parameters**:
+- `deque1`: Pointer to the first deque.
+- `deque2`: Pointer to the second deque.
+**Return Value**: `true` if the deques are not equal, `false` otherwise.
+**Usage Case**: Use as the inequality counterpart to `deque_is_equal`, equivalent to `!deque_is_equal(d1, d2)`.
+
+---
+
+### `bool deque_is_less(const Deque* deque1, const Deque* deque2)`
+**Purpose**: Returns `true` if `deque1` is lexicographically less than `deque2`.
+**Parameters**:
+- `deque1`: Pointer to the first deque.
+- `deque2`: Pointer to the second deque.
+**Return Value**: `true` if `deque1` compares less than `deque2`, `false` otherwise.
+**Usage Case**: Use for sorting or ordering comparisons between two deques.
+
+---
+
+### `bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2)`
+**Purpose**: Returns `true` if `deque1` is lexicographically less than or equal to `deque2`.
+**Parameters**:
+- `deque1`: Pointer to the first deque.
+- `deque2`: Pointer to the second deque.
+**Return Value**: `true` if `deque1` is less than or equal to `deque2`, `false` otherwise.
+**Usage Case**: Use when you need a non-strict ordering comparison between two deques.
+
+---
+
+### `bool deque_is_greater(const Deque* deque1, const Deque* deque2)`
+**Purpose**: Returns `true` if `deque1` is lexicographically greater than `deque2`.
+**Parameters**:
+- `deque1`: Pointer to the first deque.
+- `deque2`: Pointer to the second deque.
+**Return Value**: `true` if `deque1` compares greater than `deque2`, `false` otherwise.
+**Usage Case**: Use to check whether one deque is ordered after another in lexicographic order.
+
+---
+
+### `bool deque_is_greater_or_equal(const Deque* deque1, const Deque* deque2)`
+**Purpose**: Returns `true` if `deque1` is lexicographically greater than or equal to `deque2`.
+**Parameters**:
+- `deque1`: Pointer to the first deque.
+- `deque2`: Pointer to the second deque.
+**Return Value**: `true` if `deque1` is greater than or equal to `deque2`, `false` otherwise.
+**Usage Case**: Use when you need a non-strict descending ordering comparison between two deques.
 
 ---
 
@@ -465,7 +411,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 
 ### Example 1: Basic Push and Pop Operations
 ```c
-#include "deque/deque.h" // Include your bitset header file
+#include "deque/deque.h" // Include your deque header file
 #include "fmt/fmt.h"
 
 int main() {
@@ -555,15 +501,7 @@ int main() {
     Deque* myDeque = deque_create(sizeof(int));
 
     for (int i = 0; i < 10; ++i) {
-        int* ptr = (int*)malloc(sizeof(int));
-
-        if (ptr == NULL) {
-            fmt_fprintf(stderr, "Failed to allocate memory\n");
-            break; 
-        }
-        *ptr = i; 
-        deque_push_back(myDeque, ptr); 
-
+        deque_push_back(myDeque, &i);
         fmt_printf("Pushed %d to back\n", i);
     }
     fmt_printf("Size before resize: %zu\n", deque_length(myDeque));
@@ -705,16 +643,8 @@ Back float: 2.500000
 int main(){
     Deque* reverseDeque = deque_create(sizeof(int));
 
-    // Allocate and push back elements
     for (int i = 0; i < 5; ++i) {
-        int* ptr = (int*)malloc(sizeof(int));
-        if (ptr == NULL) {
-            fmt_fprintf(stderr, "Failed to allocate memory\n");
-            exit(-1);
-        }
-
-        *ptr = i;
-        deque_push_back(reverseDeque, ptr);
+        deque_push_back(reverseDeque, &i);
     }
     fmt_printf("Reversed Deque: ");
 
@@ -747,16 +677,11 @@ int main() {
     Deque* outerDeque = deque_create(sizeof(Deque*));
 
     for (int i = 0; i < 3; ++i) {
-        Deque* innerDeque = deque_create(sizeof(int*));
+        Deque* innerDeque = deque_create(sizeof(int));
 
         for (int j = 0; j < 3; ++j) {
-            int* valPtr = (int*)malloc(sizeof(int));
-            if (valPtr == NULL) {
-                fmt_fprintf(stderr, "Failed to allocate memory\n");
-                exit(-1);
-            }
-            *valPtr = i * 3 + j;
-            deque_push_back(innerDeque, valPtr);
+            int val = i * 3 + j;
+            deque_push_back(innerDeque, &val);
         }
         deque_push_back(outerDeque, &innerDeque);
     }
@@ -766,8 +691,7 @@ int main() {
         Deque* innerDeque = *(Deque**)deque_at(outerDeque, i);
 
         for (size_t j = 0; j < deque_length(innerDeque); ++j) {
-            int* valPtr = (int*)deque_at(innerDeque, j);
-            fmt_printf("%d ", *valPtr);
+            fmt_printf("%d ", *(int*)deque_at(innerDeque, j));
         }
         fmt_printf("\n");
         deque_deallocate(innerDeque);
@@ -780,8 +704,8 @@ int main() {
 **Result**
 ```
 0 1 2 
-3 4 5
-6 7 8
+3 4 5 
+6 7 8 
 ```
 
 ---
@@ -799,11 +723,12 @@ int main() {
     for (int i = 0; i < 5; ++i) {
         int* ptr = (int*)malloc(sizeof(int));
         if (ptr == NULL) {
-            fprintf(stderr, "Failed to allocate memory\n");
+            fmt_fprintf(stderr, "Failed to allocate memory\n");
             exit(-1);
         }
         *ptr = i;
         deque_push_back(original, ptr);
+        free(ptr);   /* deque copies the value; free the allocation */
     }
 
     // Copying the deque
@@ -857,12 +782,18 @@ int main() {
         p->age = ages[i];
 
         deque_push_back(people, p);  
+        free(p);   /* deque copies the struct; free the holder (name still owned by the copy) */
     }
 
     // Access and print people
     for (size_t i = 0; i < deque_length(people); ++i) {
         Person* p = (Person*)deque_at(people, i);
         fmt_printf("Name: %s, Age: %d\n", p->name, p->age);
+    }
+
+    // Free the strdup'd names held by the copied structs
+    for (size_t i = 0; i < deque_length(people); ++i) {
+        free(((Person*)deque_at(people, i))->name);
     }
 
     deque_deallocate(people);
@@ -898,6 +829,7 @@ int main() {
 
         *ptr = i; 
         deque_push_back(myDeque, ptr); 
+        free(ptr);   /* deque copies the value; free the allocation */
     }
     
     deque_resize(myDeque, 10);
@@ -941,6 +873,7 @@ int main() {
 
         *ptr = i; 
         deque_push_back(myDeque, ptr); 
+        free(ptr);   /* deque copies the value; free the allocation */
     }
 
     deque_insert(myDeque, 2, &insertVal);
@@ -1020,19 +953,16 @@ int main() {
         int *newInt1 = (int*)malloc(sizeof(int));
         *newInt1 = i;
         deque_push_back(deque1, newInt1);
+        free(newInt1);   /* deque copies the value; free the allocation */
 
         int *newInt2 = (int*)malloc(sizeof(int));
         *newInt2 = val;
         deque_push_back(deque2, newInt2);
+        free(newInt2);   /* deque copies the value; free the allocation */
     }
 
     if (deque_is_less(deque1, deque2)) {
         fmt_printf("Deque1 is less than Deque2\n");
-    }
-
-    for (size_t i = 0; i < 3; ++i) {
-        free(deque_at(deque1, i));
-        free(deque_at(deque2, i));
     }
 
     deque_deallocate(deque1);
@@ -1062,6 +992,7 @@ int main() {
         int* newInt = (int*)malloc(sizeof(int));
         *newInt = i;
         deque_push_back(myDeque, newInt);
+        free(newInt);   /* deque copies the value; free the allocation */
     }
 
     DequeIterator it = deque_begin(myDeque);
@@ -1099,6 +1030,7 @@ int main() {
         int* newVal = (int*)malloc(sizeof(int));
         *newVal = 42;  
         deque_emplace_back(myDeque, newVal);  
+        free(newVal);   /* deque copies the value; free the allocation */
     }
 
     fmt_printf("Deque after emplacing elements: ");
@@ -1125,6 +1057,7 @@ Deque after clearing: Length = 0
 ## Example 17 : Convert example in this url 'https://www.geeksforgeeks.org/deque-cpp-stl/' to Deque 
 
 ```c
+#include <stdlib.h>
 #include "deque/deque.h"
 #include "fmt/fmt.h"
 
@@ -1149,6 +1082,13 @@ int main() {
     deque_push_front(gquiz, val2);
     deque_push_back(gquiz, val3);
     deque_push_front(gquiz, val4);
+
+    // deque_push_* copy the item bytes into the deque, so the caller's
+    // original allocations can be freed right away.
+    free(val1);
+    free(val2);
+    free(val3);
+    free(val4);
 
     fmt_printf("The deque gquiz is : ");
     showdq(gquiz);
@@ -1202,6 +1142,7 @@ int main() {
         int* newInt = (int*)malloc(sizeof(int));
         *newInt = i;
         deque_push_back(myDeque, newInt);
+        free(newInt);   /* deque copies the value; free the allocation */
     }
 
     // Constant reverse iteration

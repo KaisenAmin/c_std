@@ -45,7 +45,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `initialStr`: The initial string to be stored in the `String` object. Can be `NULL` for an empty string.
 - **Return Value**:  
-  - Returns a pointer to the newly created `String` object. Terminates the program if memory allocation fails.
+  - Returns a pointer to the newly created `String` object, or `NULL` if memory allocation fails.
 
 ---
 
@@ -55,7 +55,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `size`: The size of the global memory pool to be initialized.
 - **Return Value**:  
-  - Returns a pointer to the newly created `String` object. Terminates the program if memory allocation or pool initialization fails.
+  - Returns a pointer to the newly created `String` object, or `NULL` if memory allocation or pool initialization fails.
 
 ---
 
@@ -1227,11 +1227,12 @@ Absolutely, adding a brief description for each function at the top of your READ
 ---
 
 #### `void string_reserve(String *str, size_t newCapacity)`
-  - **Purpose:** The purpose of `string_reserve` is to ensure that a `String` object has enough capacity to store at least `newCapacity` characters. If the current capacity of the string is less than `newCapacity`, it reallocates memory to increase the capacity. 
+  - **Purpose:** Ensures that a `String` object has enough capacity to store at least `newCapacity` characters. If the current capacity of the string is less than `newCapacity`, the function reallocates memory to increase it. If the current capacity already meets or exceeds `newCapacity`, no action is taken and the function returns immediately.
   - **Parameters:**
-   - `str`** (`String*`): A pointer to the `String` object whose capacity you want to reserve. 
-   - `newCapacity` (`size_t`): The minimum number of characters that the `String` object should be able to store.
-  - **Return Value:** The function does not return a value (`void`). If the string's capacity is insufficient, it reallocates memory and increases the capacity. If memory allocation fails, the 
+    - `str` (`String*`): A pointer to the `String` object whose capacity you want to reserve. Must not be `NULL`.
+    - `newCapacity` (`size_t`): The minimum number of characters (not including the null terminator) that the `String` object should be able to store after the call.
+  - **Return Value:** `void`. If memory allocation fails, the function logs an error and leaves the string in its original state without changing its capacity or content.
+  - **Use case:** Call this function before a series of `string_append` or `string_push_back` operations when the final size is known in advance, to avoid repeated reallocations and improve performance.
 
 ---
 
@@ -1536,10 +1537,14 @@ int main() {
 **Result:**
 ```
 Last 'o' found at position: 4
-First occurrence of 'World' found at position: 7
-Last occurrence of 'World' found at position: 7
-Info : String object is null no need to clear in string_clear.
+First occurrence of 'World' found at position: 2
+Last occurrence of 'World' found at position: 11
 ```
+
+> `string_find_first_of` / `string_find_last_of` treat `buffer` as a **set of
+> characters** (matching C++ `std::string::find_first_of`), not as a substring.
+> For `"Hello, World!"` and set `"World" = {W,o,r,l,d}`, the first match is `'l'`
+> at index 2 and the last is `'d'` at index 11.
 
 ---
 
@@ -1566,9 +1571,15 @@ int main() {
 ```
 **Result:**
 ```
-First position not matching 'Hello': 1
-Last position not matching 'World': 8
+First position not matching 'Hello': 5
+Last position not matching 'World': 12
 ```
+
+> **Fix:** The original README listed `1` and `8`.  
+> `string_find_first_not_of` treats `buffer` as a **character set**.  
+> For `"Hello, World!"` and set `"Hello"` = {H,e,l,o}:  
+> positions 0–4 (H,e,l,l,o) are **in** the set; `','` at index **5** is the first character **not** in it.  
+> `string_find_last_not_of` with set `"World"` = {W,o,r,l,d}: scanning from the end, `'!'` at index **12** is the last character not in the set.
 
 ---
 
@@ -1913,6 +1924,7 @@ int main() {
     for (int i = 0; i < ARRAY_SIZE; i++) { 
         string_deallocate(stringArray[i]);
     }
+    free(stringArray);
 
     return 0;
 }

@@ -29,7 +29,11 @@ The library is designed to be lightweight, efficient, and easy to integrate into
 To use this library, include `serial_port.h` in your project and compile the source files. Example command for GCC:
 
 ```bash
-gcc -std=c17 -O3 -Wall -Wextra -pedantic -o main main.c serial_port/serial_port.c
+# Linux / macOS
+gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c
+
+# Windows (MSYS2 MinGW64) — requires SetupAPI for port enumeration
+gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c -lsetupapi
 ```
 
 
@@ -151,9 +155,39 @@ gcc -std=c17 -O3 -Wall -Wextra -pedantic -o main main.c serial_port/serial_port.
 
 ---
 
-#### `const char* serial_get_last_error()`
-- **Purpose**: Retrieves the last error message.
-- **Return**: String describing the last error.
+#### `bool serial_is_open(const SerialPort* port)`
+- **Purpose**: Returns `true` when `port` holds a valid OS handle and
+  is safe to read from / write to. Returns `false` for NULL or a
+  zero-initialised struct.
+
+---
+
+#### `int serial_bytes_available(SerialPort* port)`
+- **Purpose**: How many bytes are sitting in the input queue right now.
+  Useful for sizing the next `serial_read` exactly, or for polling
+  without blocking. Returns -1 on error.
+
+---
+
+#### `int serial_flush_input(SerialPort* port)`
+- **Purpose**: Discard everything currently in the input buffer.
+  Windows: `PurgeComm(PURGE_RXCLEAR | PURGE_RXABORT)`. POSIX:
+  `tcflush(TCIFLUSH)`. Returns 0 on success.
+
+---
+
+#### `int serial_flush_output(SerialPort* port)`
+- **Purpose**: Block until the output buffer is drained. Windows:
+  `FlushFileBuffers`. POSIX: `tcdrain`. Useful before closing the port
+  so the last few bytes actually reach the wire.
+
+---
+
+#### `int serial_set_timeouts(SerialPort* port, int read_ms, int write_ms)`
+- **Purpose**: Configure read and write timeouts in milliseconds. Pass
+  `0` for either value to disable that timeout. On Windows this calls
+  `SetCommTimeouts`; on POSIX it programs `VMIN`/`VTIME`. (POSIX
+  `write_ms` is ignored — `write()` blocks until the kernel drains.)
 
 ---
 
@@ -162,7 +196,7 @@ gcc -std=c17 -O3 -Wall -Wextra -pedantic -o main main.c serial_port/serial_port.
 ### Example 1 : open and close also init and cleanup `serial-port`
 
 ```c
-#include "serial_port.h"
+#include "serial_port/serial_port.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -226,7 +260,7 @@ Serial port library cleaned up successfully.
 ### Example 2 : get list of open serial ports 
 
 ```c
-#include "serial_port.h"
+#include "serial_port/serial_port.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -265,7 +299,7 @@ Freed port list memory.
 ### Example 3 : Serial Configurations 
 
 ```c
-#include "serial_port.h"
+#include "serial_port/serial_port.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -314,7 +348,7 @@ int main() {
     fmt_printf("  Data Bits: %d\n", current_config.data_bits);
     fmt_printf("  Parity: %s\n", current_config.parity == SERIAL_PARITY_NONE ? "None" :current_config.parity == SERIAL_PARITY_ODD ? "Odd" : "Even");
     fmt_printf("  Stop Bits: %s\n", current_config.stop_bits == SERIAL_STOP_BITS_ONE ? "One" : "Two");
-    fmt_printf("  Flow Control: %s\n", current_config.flow_control == SERIAL_FLOW_CONTROL_NONE ? "None" :current_config.flow_control == SERIAL_FLOW_CONTROL_HARDWAR? "Hardware" : "Software");
+    fmt_printf("  Flow Control: %s\n", current_config.flow_control == SERIAL_FLOW_CONTROL_NONE ? "None" : current_config.flow_control == SERIAL_FLOW_CONTROL_HARDWARE ? "Hardware" : "Software");
 
     if (serial_close(&port) != 0) {
         fmt_printf("Failed to close serial port %s.\n", port_name);
@@ -353,8 +387,9 @@ Serial port library cleaned up successfully.
 ### Example 4 : write and read over serial port 
 
 ```c
-#include "serial_port.h"
+#include "serial_port/serial_port.h"
 #include "fmt/fmt.h"
+#include <string.h>
 
 int main() {
     const char* port_name = "COM1"; 
@@ -461,24 +496,27 @@ Sent 19 bytes: Hello, Serial Port!
 ### Example 5 : none blocking read 
 
 ```c
-#include "serial_port.h"
+#include "serial_port/serial_port.h"
 #include "fmt/fmt.h"
+#include <string.h>
+
 
 void on_serial_event(int event, void* user_data) {
     fmt_printf("Serial event occurred: %d\n", event);
     (void)user_data;
 }
 
+
 int main() {
     const char* port_name = "COM4";
     SerialPort port;
 
     if (serial_init() != 0) {
-        fmt_printf("Failed to initialize serial port library. Error: %s\n", serial_get_last_error());
+        fmt_printf("Failed to initialize serial port library.\n");
         return -1;
     }
     if (serial_open(port_name, &port) != 0) {
-        fmt_printf("Failed to open port %s. Error: %s\n", port_name, serial_get_last_error());
+        fmt_printf("Failed to open port %s.\n", port_name);
         serial_cleanup();
         return -1;
     }
@@ -492,53 +530,274 @@ int main() {
     };
 
     if (serial_configure(&port, &config) != 0) {
-        fmt_printf("Failed to configure serial port %s. Error: %s\n", port_name, serial_get_last_error());
+        fmt_printf("Failed to configure serial port %s.\n", port_name);
         serial_close(&port);
         serial_cleanup();
         return -1;
     }
 
     if (serial_set_event_callback(&port, on_serial_event, NULL) != 0) {
-        fmt_printf("Failed to set event callback. Error: %s\n", serial_get_last_error());
+        fmt_printf("Failed to set event callback.\n");
     }
 
     char buffer[256] = {0};
     int bytes_read = serial_read_nonblocking(&port, buffer, sizeof(buffer));
+
     if (bytes_read > 0) {
         fmt_printf("Received %d bytes: %s\n", bytes_read, buffer);
-    } else {
-        fmt_printf("No data received. Error: %s\n", serial_get_last_error());
+    } 
+    else {
+        fmt_printf("No data received.\n");
     }
 
     const char* message = "Hello, COM1!";
     int bytes_written = serial_write(&port, message, strlen(message));
+    
     if (bytes_written > 0) {
         fmt_printf("Sent %d bytes: %s\n", bytes_written, message);
     } 
     else {
-        fmt_printf("Failed to send data. Error: %s\n", serial_get_last_error());
+        fmt_printf("Failed to send data.\n");
     }
+
+    serial_close(&port);
+    serial_cleanup();
+
+    return 0;
+}
+```
+**Result (when COM4 is present and no data is waiting):**
+```
+No data received.
+```
+
+**Result (when COM4 is present and data is waiting):**
+```
+Received 12 bytes: Hello, World!
+Sent 12 bytes: Hello, COM1!
+```
+
+---
+
+### Example 6 : check open state with `serial_is_open`
+
+```c
+#include "serial_port/serial_port.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    serial_init();
+
+    SerialPort port;
+    memset(&port, 0, sizeof port);
+    fmt_printf("before open: is_open = %d\n", serial_is_open(&port));
+
+#if defined(_WIN32) || defined(_WIN64)
+    const char* name = "COM1";
+#else
+    const char* name = "/dev/ttyS0";
+#endif
+
+    if (serial_open(name, &port) == 0) {
+        fmt_printf("after open:  is_open = %d\n", serial_is_open(&port));
+        serial_close(&port);
+        fmt_printf("after close: is_open = %d\n", serial_is_open(&port));
+    } else {
+        fmt_printf("open failed — port not present on this machine\n");
+    }
+
+    serial_cleanup();
+    return 0;
+}
+```
+
+**Sample output (port present)**
+
+```
+before open: is_open = 0
+after open:  is_open = 1
+after close: is_open = 0
+```
+
+---
+
+### Example 7 : poll incoming bytes with `serial_bytes_available`
+
+```c
+#include "serial_port/serial_port.h"
+#include "fmt/fmt.h"
+#include <string.h>
+#include <time.h>
+
+int main(void) {
+    serial_init();
+
+    SerialPort port;
+#if defined(_WIN32) || defined(_WIN64)
+    if (serial_open("COM1", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#else
+    if (serial_open("/dev/ttyS0", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#endif
+
+    /* Wait up to 1 second for at least 1 byte to show up. */
+    char buf[128];
+    for (int i = 0; i < 100; ++i) {
+        int n = serial_bytes_available(&port);
+
+        if (n > 0) {
+            if ((size_t)n > sizeof(buf)) {
+                n = (int)sizeof(buf);
+            }
+
+            int got = serial_read(&port, buf, (size_t)n);
+            fmt_printf("read %d bytes\n", got);
+
+            break;
+        }
+        struct timespec ts = {.tv_sec = 0, .tv_nsec = 10 * 1000 * 1000};
+        nanosleep(&ts, NULL);
+    }
+
+    serial_close(&port);
+    serial_cleanup();
+
+    return 0;
+}
+```
+
+`serial_bytes_available` returns the input-queue size in O(1) without
+touching the data, so polling like this never consumes a byte you
+weren't planning to read.
+
+---
+
+### Example 8 : `serial_flush_input` before re-reading
+
+```c
+#include "serial_port/serial_port.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    serial_init();
+
+    SerialPort port;
+#if defined(_WIN32) || defined(_WIN64)
+    if (serial_open("COM1", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#else
+    if (serial_open("/dev/ttyS0", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#endif
+
+    /* Discard whatever was sitting in the buffer when we attached so
+       our next read starts from a clean slate. */
+    serial_flush_input(&port);
+    fmt_printf("input queue cleared (bytes_available = %d)\n", serial_bytes_available(&port));
+
+    serial_close(&port);
+    serial_cleanup();
+
+    return 0;
+}
+```
+
+---
+
+### Example 9 : drain output before closing with `serial_flush_output`
+
+```c
+#include "serial_port/serial_port.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    serial_init();
+
+    SerialPort port;
+#if defined(_WIN32) || defined(_WIN64)
+    if (serial_open("COM1", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#else
+    if (serial_open("/dev/ttyS0", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#endif
+
+    const char* msg = "STATUS?\r\n";
+    serial_write(&port, msg, strlen(msg));
+
+    /* Block until the kernel has actually pushed the bytes out the
+       UART before we close. Without this you can lose the tail of
+       the message. */
+    serial_flush_output(&port);
 
     serial_close(&port);
     serial_cleanup();
     return 0;
 }
 ```
-**Result**
-```
-[SERIAL LOG] [serial_init]: Initializing the serial port library.
-[SERIAL LOG] [serial_init]: Windows-specific initialization not required.
-[SERIAL LOG] [serial_init]: Serial port library initialized successfully.
-[SERIAL LOG] [serial_open]: Attempting to open port 'COM4'.
-[SERIAL LOG] [serial_open]: Port 'COM4' opened successfully on Windows.
-[SERIAL LOG] [serial_configure]: Configuring serial port 'COM4'.
-[SERIAL LOG] [serial_configure]: Serial port 'COM4' configured successfully.
-[SERIAL LOG] [serial_set_event_callback]: Setting event callback for port 'COM4'.
-[SERIAL LOG] [serial_set_event_callback]: Event callback set successfully for port 'COM4'.
-[SERIAL LOG] [serial_read_nonblocking]: Attempting to read up to 256 bytes from port 'COM4'.
+
+---
+
+### Example 10 : `serial_set_timeouts` for bounded reads
+
+```c
+#include "serial_port/serial_port.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    serial_init();
+
+    SerialPort port;
+#if defined(_WIN32) || defined(_WIN64)
+    if (serial_open("COM1", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#else
+    if (serial_open("/dev/ttyS0", &port) != 0) { 
+        serial_cleanup(); 
+        return 1; 
+    }
+#endif
+
+    /* Cap each read at 500ms — if nothing arrives, serial_read returns 0. */
+    serial_set_timeouts(&port, 500, 0);
+
+    char buf[64];
+    int n = serial_read(&port, buf, sizeof buf);
+    if (n  > 0) {
+        fmt_printf("got %d bytes\n", n);
+    }
+    else if (n == 0) {
+        fmt_printf("timeout — no data within 500ms\n");
+    }
+    else {            
+        fmt_printf("read error\n");
+    }
+
+    serial_close(&port);
+    serial_cleanup();
+    
+    return 0;
+}
 ```
 
---- 
+---
 
 ## License
 

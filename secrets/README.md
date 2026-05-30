@@ -31,12 +31,12 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-### `void secrets_token_bytes(unsigned char *buffer, size_t size)`
+### `void secrets_token_bytes(unsigned char *buffer, size_t nbytes)`
 
 - **Purpose**: Generate cryptographically secure random bytes.
 - **Parameters**:
   - `buffer`: Pointer to the byte array where random bytes will be stored.
-  - `size`: Number of bytes to generate.
+  - `nbytes`: Number of bytes to generate.
 - **Return**: No return value.
 - **Details**:
   - This function generates random bytes using platform-specific methods.
@@ -53,9 +53,9 @@ The documentation includes detailed descriptions of all the functions provided b
   - `n`: Upper limit (exclusive).
 - **Return**: A cryptographically secure random integer between 0 and `n-1`.
 - **Details**:
-  - This function first calls `secrets_token_bytes` to generate random bytes.
-  - It converts the bytes to an integer and then calculates a random number in the range `[0, n)` using modulo operation.
-  - Logs both the input and the generated random number.
+  - This function calls `secrets_token_bytes` to generate random bytes and converts them to an unsigned integer.
+  - It uses **rejection sampling** (discarding values ≥ the largest exact multiple of `n`) to eliminate modulo bias, ensuring every output in `[0, n)` is equally probable.
+  - Returns `0` immediately when `n ≤ 0`.
 
 ---
 
@@ -114,9 +114,9 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Return**: A pointer to the randomly selected element or `NULL` if the sequence is empty.
 - **Details**:
   - This function chooses a random element from a sequence using cryptographically secure randomness.
-  - It first checks if the sequence is empty (if `size == 0`) and logs an error if so.
-  - It uses `secrets_randbelow` to generate a random index and returns the element at the calculated index.
-  - Logs the randomly selected index.
+  - Returns `NULL` immediately when `seq == NULL` or `size == 0`.
+  - Uses **rejection sampling** (reading raw `size_t` bytes and discarding values ≥ the largest exact multiple of `size`) to guarantee an unbiased index.
+  - Returns a pointer to the selected element inside the original sequence — the element is not copied.
 
 ---
 
@@ -175,15 +175,15 @@ Randomly chosen string: cherry
 int main() {
     // Generate a random integer with 8 random bits
     unsigned int random_8bits = secrets_randbits(8);
-    fmt_printf("Random 8-bit integer: %lu\n", random_8bits);
+    fmt_printf("Random 8-bit integer: %u\n", random_8bits);
 
     // Generate a random integer with 16 random bits
     unsigned int random_16bits = secrets_randbits(16);
-    fmt_printf("Random 16-bit integer: %lu\n", random_16bits);
+    fmt_printf("Random 16-bit integer: %u\n", random_16bits);
 
     // Generate a random integer with 32 random bits
     unsigned int random_32bits = secrets_randbits(32);
-    fmt_printf("Random 32-bit integer: %lu\n", random_32bits);
+    fmt_printf("Random 32-bit integer: %u\n", random_32bits);
 
     return 0;
 }
@@ -211,7 +211,7 @@ Random 32-bit integer: 2482988267
 int main() {
     size_t ascii_len = string_length_cstr(STRING_ASCII_LETTERS);
     size_t digits_len = string_length_cstr(STRING_DIGITS);
-    char* alphabet = (char*) malloc(sizeof(char) * (ascii_len + digits_len));
+    char* alphabet = (char*) malloc(sizeof(char) * (ascii_len + digits_len + 1));
 
     if (!alphabet) {
         fmt_fprintf(stderr, "Error: Can not allocate memory");

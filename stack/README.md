@@ -8,14 +8,14 @@ The Stack library is a part of a project to reimplement C++ standard library fea
 
 ## Compilation
 
-To compile the Stack library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
+The Stack module is implemented on top of the project's `vector` module, so `vector.c` must be compiled together with `stack.c`. A typical command line is:
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./stack/stack.c
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s \
+    -o main ./main.c ./stack/stack.c ./vector/vector.c
 ```
 
-Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
+If your program also uses other modules (e.g. `string`, `fmt`), append their `.c` files (`./string/std_string.c`, `./fmt/fmt.c`, ...). Ensure GCC is installed and on your `PATH`, and that the source files keep the directory layout shown in the project.
 
 ## Usage
 
@@ -174,12 +174,86 @@ To use the Stack library in your project, include the `stack.h` header file in y
 ---
 
 ### `void stack_deallocate(Stack* stk)`
-- **Purpose**: Deallocates the stack, freeing up the memory used by the stack.
+- **Purpose**: Deallocates the stack, freeing up the memory used by the stack. Passing `NULL` is a safe no-op.
 - **Parameters**: 
     - `stk`: The stack to deallocate.
 - **Returns**: `void`.
 - **Use case**: This function is essential for freeing the memory used by the stack once it is no longer needed, preventing memory leaks.
 
+---
+
+### `bool stack_pop_void(Stack* stk)`
+- **Purpose**: Removes the top element from the stack and discards it — the exact C analog of C++ `std::stack::pop()`.
+- **Parameters**:
+    - `stk`: The stack to pop from.
+- **Returns**: `true` on success, `false` if the stack is `NULL` or empty.
+- **Use case**: Use when you want to discard the top element without reading it. Safer than `stack_pop()` because there is no dangling-pointer risk.
+
+---
+
+### `bool stack_pop_value(Stack* stk, void* out_buf)`
+- **Purpose**: Copies the top element (`itemSize` bytes) into `out_buf`, then removes it. **Prefer this over the legacy `stack_pop()`**, whose returned pointer is only valid until the next modifying call.
+- **Parameters**:
+    - `stk`: The stack to pop from.
+    - `out_buf`: Destination buffer for the copied value; pass `NULL` to just drop the element.
+- **Returns**: `true` on success, `false` if the stack is `NULL` or empty.
+- **Use case**: Preferred way to read-and-remove an element safely. The caller owns the copy and there is no lifetime concern.
+
+---
+
+### `Stack* stack_copy(const Stack* src)`
+- **Purpose**: Creates an independent deep copy of `src`. Every element is duplicated; subsequent modifications to either stack do not affect the other.
+- **Parameters**:
+    - `src`: The stack to copy. May be `NULL` (returns `NULL`).
+- **Returns**: A pointer to the new stack, or `NULL` on allocation failure or `NULL` input.
+- **Use case**: Snapshot the current stack state for rollback, undo, or parallel processing.
+
+---
+
+### `bool stack_assign(Stack* dest, const Stack* src)`
+- **Purpose**: Replaces `dest`'s contents with a deep copy of `src`. `dest` is cleared first, then every element from `src` is copied in.
+- **Parameters**:
+    - `dest`: Target stack (must already exist and have the same `itemSize` as `src`).
+    - `src`: Source stack.
+- **Returns**: `true` on success. `false` if either pointer is `NULL`, if the underlying vector cannot be reserved, or if the element sizes differ.
+- **Use case**: Reassign an existing stack without reallocating its wrapper struct.
+
+---
+
+### `bool stack_reserve(Stack* stk, size_t new_capacity)`
+- **Purpose**: Pre-allocates storage in the underlying vector so that at least `new_capacity` elements can be pushed without triggering a reallocation.
+- **Parameters**:
+    - `stk`: The stack to reserve space for.
+    - `new_capacity`: Minimum number of elements to accommodate.
+- **Returns**: `true` on success, `false` if `stk` is `NULL` or the underlying `vector_reserve` fails.
+- **Use case**: Avoids repeated reallocations when the final size is known in advance.
+
+---
+
+### `size_t stack_capacity(const Stack* stk)`
+- **Purpose**: Returns the total number of elements the stack can hold before the next reallocation.
+- **Parameters**:
+    - `stk`: The stack to query. May be `NULL` (returns `0`).
+- **Returns**: Current capacity, or `0` on `NULL` input.
+- **Use case**: Inspect how much headroom is available without pushing an element.
+
+---
+
+### `size_t stack_item_size(const Stack* stk)`
+- **Purpose**: Returns the size in bytes of each element stored in the stack.
+- **Parameters**:
+    - `stk`: The stack to query. May be `NULL` (returns `0`).
+- **Returns**: The `itemSize` passed to `stack_create`, or `0` on `NULL` input.
+- **Use case**: Useful for generic code that manipulates stacks through `void*` without knowing the element type at compile time.
+
+---
+
+### Behavioral notes
+
+- `stack_push` now returns `bool` (`false` on allocation failure or NULL args). Old code that ignores the return value still compiles.
+- `stack_emplace` now returns a `void*` to the just-inserted top element (mirrors C++17 `std::stack::emplace`'s return). `NULL` on failure.
+- `stack_swap` refuses to swap stacks with differing element sizes; it sets `STACK_ERROR_ITEM_SIZE_MISMATCH` and leaves both stacks untouched.
+- `stack_is_equal(NULL, NULL)` returns `true` (consistent with `stack_is_not_equal(NULL, NULL) == false`).
 
 ---
 
@@ -198,7 +272,7 @@ int main() {
     for (int i = 0; i < 5; i++) {
         stack_push(stack, &arr[i]);
     }
-    fmt_printf("Size of stack is %d\n", stack_size(stack));
+    fmt_printf("Size of stack is %zu\n", stack_size(stack));
 
     stack_deallocate(stack);
     return 0;
@@ -213,7 +287,10 @@ Size of stack is 5
 
 ## Example 2 : use `stack_top`, `stack_pop` and `stack_empty` methods 
 
- gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c .\string\string.c .\vector\vector.c .\stack\stack.c
+```bash
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s \
+    -o main ./main.c ./string/std_string.c ./vector/vector.c ./stack/stack.c
+```
 
  also you can use cmake and ... 
 
@@ -299,7 +376,6 @@ AminTahmasebiC Programming
 
 ```c
 #include "stack/stack.h"
-#include "string/std_string.h"
 #include "fmt/fmt.h"
 
 int main() {
@@ -349,6 +425,8 @@ This example demonstrates how to use the Stack and String libraries to evaluate 
 #include "fmt/fmt.h"
 #include <ctype.h>
 
+
+
 int performOperation(int op1, int op2, char op) {
     switch (op) {
         case '+': 
@@ -363,6 +441,7 @@ int performOperation(int op1, int op2, char op) {
             return 0;
     }
 }
+
 
 int evaluateExpression(String* expression) {
     Stack* values = stack_create(sizeof(int));
@@ -384,6 +463,7 @@ int evaluateExpression(String* expression) {
                     int op2 = *(int*)stack_pop(values);
                     int op1 = *(int*)stack_pop(values);
                     int result = performOperation(op1, op2, topOp);
+
                     stack_push(values, &result);
                 } 
                 else {
@@ -411,6 +491,7 @@ int evaluateExpression(String* expression) {
     return finalResult;
 }
 
+
 int main() {
     String* expr = string_create("3+2*2+1-8");
     int result = evaluateExpression(expr);
@@ -436,10 +517,12 @@ This example shows how a stack of vectors can be used to implement a multi-level
 #include "vector/vector.h"
 #include "fmt/fmt.h"
 
+
 typedef struct {
     int x;
     int y;
 } Point;
+
 
 void printVector(Vector* vec) {
     for (size_t i = 0; i < vector_size(vec); i++) {
@@ -448,6 +531,7 @@ void printVector(Vector* vec) {
     }
     fmt_printf("\n");
 }
+
 
 int main() {
     Stack* history = stack_create(sizeof(Vector*));
@@ -515,9 +599,7 @@ bool isBalanced(String* input) {
             char topChar = *(char*)stack_top(stack);
             stack_pop(stack);
 
-            if ((currentChar == ')' && topChar != '(') ||
-                (currentChar == ']' && topChar != '[') ||
-                (currentChar == '}' && topChar != '{')) {
+            if ((currentChar == ')' && topChar != '(') || (currentChar == ']' && topChar != '[') || (currentChar == '}' && topChar != '{')) {
                 stack_deallocate(stack);
                 return false;
             }
@@ -534,10 +616,10 @@ int main() {
     String* str = string_create("{[()]}");
 
     if (isBalanced(str)) {
-        fmt_printf("The string %s is balanced.\n", str->dataStr);
+        fmt_printf("The string %s is balanced.\n", string_c_str(str));
     }
     else {
-        fmt_printf("The string %s is not balanced.\n", str->dataStr);
+        fmt_printf("The string %s is not balanced.\n", string_c_str(str));
     }
 
     string_deallocate(str);
@@ -548,3 +630,214 @@ int main() {
 ```
 The string {[()]} is balanced.
 ```
+
+---
+
+## Example 8: `stack_pop_void` and `stack_pop_value`
+
+Demonstrates the two safe pop variants. `stack_pop_void` discards the top element without reading it; `stack_pop_value` copies it into a caller-owned buffer before dropping it.
+
+```c
+#include "stack/stack.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Stack *stk = stack_create(sizeof(int));
+    int vals[] = {10, 20, 30};
+    for (int i = 0; i < 3; i++) stack_push(stk, &vals[i]);
+
+    /* Discard 30 silently */
+    stack_pop_void(stk);
+    fmt_printf("After pop_void, size = %zu\n", stack_size(stk));  /* 2 */
+
+    /* Copy 20 into a local variable, then drop */
+    int out = 0;
+    stack_pop_value(stk, &out);
+    fmt_printf("pop_value gave: %d, size = %zu\n", out, stack_size(stk)); /* 20, 1 */
+
+    /* Pass NULL to just drop without reading */
+    stack_pop_value(stk, NULL);
+    fmt_printf("After final drop, empty = %s\n", stack_empty(stk) ? "true" : "false");
+
+    stack_deallocate(stk);
+    return 0;
+}
+```
+**Result:**
+```
+After pop_void, size = 2
+pop_value gave: 20, size = 1
+After final drop, empty = true
+```
+
+---
+
+## Example 9: `stack_copy` — independent deep copy
+
+`stack_copy` produces a fully independent clone. Pushing onto or popping from one stack does not affect the other.
+
+```c
+#include "stack/stack.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Stack *src = stack_create(sizeof(int));
+    int vals[] = {1, 2, 3, 4, 5};
+    for (int i = 0; i < 5; i++) stack_push(src, &vals[i]);
+
+    Stack *dst = stack_copy(src);
+    fmt_printf("src size = %zu, dst size = %zu\n", stack_size(src), stack_size(dst));
+
+    /* Push onto src — dst must not change */
+    int extra = 99;
+    stack_push(src, &extra);
+    fmt_printf("after push on src: src=%zu  dst=%zu\n", stack_size(src), stack_size(dst));
+
+    fmt_printf("dst top = %d\n", *(int*)stack_top(dst));   /* still 5 */
+
+    stack_deallocate(src);
+    stack_deallocate(dst);
+
+    return 0;
+}
+```
+**Result:**
+```
+src size = 5, dst size = 5
+after push on src: src=6  dst=5
+dst top = 5
+```
+
+---
+
+## Example 10: `stack_assign` — replace stack contents
+
+`stack_assign` replaces the destination stack's contents with a deep copy of the source, without reallocating the `Stack` wrapper itself.
+
+```c
+#include "stack/stack.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Stack *s1 = stack_create(sizeof(int));
+    Stack *s2 = stack_create(sizeof(int));
+
+    int v1[] = {10, 20, 30};
+    int v2[] = {100, 200};
+    for (int i = 0; i < 3; i++) stack_push(s1, &v1[i]);
+    for (int i = 0; i < 2; i++) stack_push(s2, &v2[i]);
+
+    fmt_printf("before assign: s2 size = %zu, top = %d\n", stack_size(s2), *(int*)stack_top(s2));
+
+    stack_assign(s2, s1);
+
+    fmt_printf("after assign:  s2 size = %zu, top = %d\n", stack_size(s2), *(int*)stack_top(s2));
+
+    /* Modifying s1 must NOT affect s2 */
+    int extra = 999;
+    stack_push(s1, &extra);
+    fmt_printf("s1 size = %zu, s2 size = %zu (independent)\n", stack_size(s1), stack_size(s2));
+
+    stack_deallocate(s1);
+    stack_deallocate(s2);
+
+    return 0;
+}
+```
+**Result:**
+```
+before assign: s2 size = 2, top = 200
+after assign:  s2 size = 3, top = 30
+s1 size = 4, s2 size = 3 (independent)
+```
+
+---
+
+## Example 11: `stack_reserve`, `stack_capacity`, `stack_item_size`
+
+Pre-allocate storage to avoid repeated reallocations when the maximum load is known.
+
+```c
+#include "stack/stack.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Stack *stk = stack_create(sizeof(double));
+
+    fmt_printf("item size    = %zu bytes\n", stack_item_size(stk));
+
+    /* Reserve space for 200 doubles upfront */
+    stack_reserve(stk, 200);
+    fmt_printf("capacity after reserve(200) = %zu\n", stack_capacity(stk));
+    fmt_printf("size after reserve           = %zu\n", stack_size(stk));
+
+    for (int i = 0; i < 10; i++) {
+        double d = (double)i * 1.5;
+        stack_push(stk, &d);
+    }
+
+    fmt_printf("size after 10 pushes = %zu\n", stack_size(stk));
+    fmt_printf("capacity unchanged   = %zu\n", stack_capacity(stk));
+
+    stack_deallocate(stk);
+    return 0;
+}
+```
+**Result:**
+```
+item size    = 8 bytes
+capacity after reserve(200) = 200
+size after reserve           = 0
+size after 10 pushes = 10
+capacity unchanged   = 200
+```
+
+---
+
+## Example 12: `stack_swap`
+
+Swaps the entire contents of two stacks in O(1) — only the internal vector pointers are exchanged.
+
+```c
+#include "stack/stack.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Stack *s1 = stack_create(sizeof(int));
+    Stack *s2 = stack_create(sizeof(int));
+
+    int a = 10; stack_push(s1, &a);
+    int b = 20; stack_push(s2, &b);
+
+    fmt_printf("before swap: s1 top = %d, s2 top = %d\n", *(int*)stack_top(s1), *(int*)stack_top(s2));
+
+    stack_swap(s1, s2);
+
+    fmt_printf("after  swap: s1 top = %d, s2 top = %d\n", *(int*)stack_top(s1), *(int*)stack_top(s2));
+
+    /* Swap between stacks with different item sizes is a safe */
+    Stack *s3 = stack_create(sizeof(double));
+    double x = 3.14; 
+
+    stack_push(s3, &x);
+    stack_swap(s1, s3);   /* refused: int ≠ double */
+    fmt_printf("s1 top unchanged = %d\n", *(int*)stack_top(s1));
+
+    stack_deallocate(s1);
+    stack_deallocate(s2);
+    stack_deallocate(s3);
+
+    return 0;
+}
+```
+**Result:**
+```
+before swap: s1 top = 10, s2 top = 20
+after  swap: s1 top = 20, s2 top = 10
+s1 top unchanged = 20
+```
+
+
+## License
+
+This project is open-source and available under the ISC License.

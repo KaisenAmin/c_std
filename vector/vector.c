@@ -13,6 +13,7 @@ static MemoryPoolVector *memory_pool_create(size_t size);
 static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolVector *pool);
 
+
 static MemoryPoolVector *memory_pool_create(size_t size) {
     VECTOR_LOG("[memory_pool_create]: Entering with pool size: %zu", size);
     
@@ -41,6 +42,7 @@ static MemoryPoolVector *memory_pool_create(size_t size) {
     return pool;
 }
 
+
 static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
     VECTOR_LOG("[memory_pool_allocate]: Entering with pool: %p, size: %zu", (void*)pool, size);
     
@@ -64,6 +66,7 @@ static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
     return mem;
 }
 
+
 static void memory_pool_destroy(MemoryPoolVector *pool) {
     VECTOR_LOG("[memory_pool_destroy]: Entering with pool: %p", (void*)pool);
     
@@ -77,6 +80,7 @@ static void memory_pool_destroy(MemoryPoolVector *pool) {
     
     VECTOR_LOG("[memory_pool_destroy]: Successfully destroyed the memory pool.");
 }
+
 
 /**
  * @brief This function allocates memory for a new vector, initializes its internal structure, and 
@@ -99,36 +103,42 @@ static void memory_pool_destroy(MemoryPoolVector *pool) {
  */
 Vector* vector_create(size_t itemSize) {
     VECTOR_LOG("[vector_create]: Entering with itemSize: %zu", itemSize);
-    
+
+    if (itemSize == 0) {
+        VECTOR_LOG("[vector_create]: Error: itemSize must be greater than 0.");
+        return NULL;
+    }
+
     Vector* vec = (Vector*)malloc(sizeof(Vector));
     if (!vec) {
         VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector structure.");
-        exit(-1); // Handle allocation failure
+        return NULL;
     }
-    
+
     vec->size = 0;
     vec->capacitySize = 32; // Initial capacity
     vec->itemSize = itemSize;
-    
+
     size_t initialPoolSize = 100000;
     vec->pool = memory_pool_create(initialPoolSize);
     if (!vec->pool) {
-        free(vec);
         VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector pool.");
-        exit(-1);
+        free(vec);
+        return NULL;
     }
 
     vec->items = memory_pool_allocate(vec->pool, vec->capacitySize * itemSize);
     if (!vec->items) {
+        VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector items.");
         memory_pool_destroy(vec->pool);
         free(vec);
-        VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector items.");
-        exit(-1);
+        return NULL;
     }
 
     VECTOR_LOG("[vector_create]: Successfully created vector at %p with capacity %zu.", (void*)vec, vec->capacitySize);
     return vec;
 }
+
 
 /**
  * @brief This function compares two vectors to determine if they are equal in size and content. 
@@ -166,6 +176,7 @@ bool vector_is_equal(const Vector* vec1, const Vector* vec2) {
 
     return result;
 }
+
 
 /**
  * @brief This function compares two vectors element by element to determine if the first vector (`vec1`) 
@@ -307,6 +318,7 @@ bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2) {
     return result;
 }
 
+
 /**
  * @brief This function compares two vectors lexicographically to check if the first vector (`vec1`) 
  * is less than or equal to the second vector (`vec2`). The comparison is based on the elements 
@@ -339,6 +351,7 @@ bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) {
     return result;
 }
 
+
 /**
  * @brief This function checks if the vector contains any elements. It returns `true` if the vector 
  * is empty (i.e., its size is 0) and `false` otherwise.
@@ -365,6 +378,7 @@ bool vector_is_empty(Vector *vec) {
 
     return isEmpty;
 }
+
 
 /**
  * @brief This function removes a specified number of elements starting from a given position in 
@@ -446,7 +460,7 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
     if (vec->size == vec->capacitySize) {
         VECTOR_LOG("[vector_insert]: Resizing vector to accommodate new element.");
 
-        size_t newCapacity = vec->capacitySize * 2; // Double the capacity
+        size_t newCapacity = vec->capacitySize ? vec->capacitySize * 2 : 8;
         void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
 
         if (!newItems) {
@@ -455,8 +469,7 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
         }
 
         memcpy(newItems, vec->items, pos * vec->itemSize); // Copy elements before insertion position
-        memcpy((char *)newItems + (pos + 1) * vec->itemSize, (char *)vec->items + pos * vec->itemSize, 
-                (vec->size - pos) * vec->itemSize); // Copy elements after insertion position
+        memcpy((char *)newItems + (pos + 1) * vec->itemSize, (char *)vec->items + pos * vec->itemSize, (vec->size - pos) * vec->itemSize); // Copy elements after insertion position
 
         vec->items = newItems;
         vec->capacitySize = newCapacity;
@@ -471,6 +484,7 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
     vec->size++;
     VECTOR_LOG("[vector_insert]: Inserted new element at position %zu. New size: %zu", pos, vec->size);
 }
+
 
 /**
  * @brief This function ensures that the vector has enough capacity to hold at least the specified 
@@ -524,6 +538,7 @@ bool vector_reserve(Vector *vec, size_t size) {
     return true;
 }
 
+
 /**
  * @brief This function adjusts the size of the vector to the specified value. If the new size 
  * is greater than the current size, the vector is expanded, and the new elements are 
@@ -552,7 +567,10 @@ void vector_resize(Vector *vec, size_t size) {
 
     if (size > vec->capacitySize) {
         VECTOR_LOG("[vector_resize]: Current capacity (%zu) is less than new size. Resizing...", vec->capacitySize);
-        vector_reserve(vec, size);
+        if (!vector_reserve(vec, size)) {
+            VECTOR_LOG("[vector_resize]: Error: reserve failed; aborting resize.");
+            return;
+        }
     }
 
     if (vec->size < size) {
@@ -596,9 +614,7 @@ void vector_shrink_to_fit(Vector *vec) {
     }
 
     if (vec->size == 0) {
-        VECTOR_LOG("[vector_shrink_to_fit]: Vector is empty. Deallocating memory.");
-        free(vec->items);
-        vec->items = NULL;
+        VECTOR_LOG("[vector_shrink_to_fit]: Vector is empty. Capacity set to 0.");
         vec->capacitySize = 0;
         return;
     }
@@ -616,6 +632,7 @@ void vector_shrink_to_fit(Vector *vec) {
 
     VECTOR_LOG("[vector_shrink_to_fit]: Shrink successful. New capacity: %zu", vec->capacitySize);
 }
+
 
 /**
  * @brief This function exchanges the contents of `vec1` and `vec2`, including their size, capacity, 
@@ -641,21 +658,9 @@ void vector_swap(Vector *vec1, Vector *vec2) {
         return;
     }
 
-    void *tempItems = vec1->items;
-    vec1->items = vec2->items;
-    vec2->items = tempItems;
-
-    size_t tempSize = vec1->size;
-    vec1->size = vec2->size;
-    vec2->size = tempSize;
-
-    size_t tempCapacity = vec1->capacitySize;
-    vec1->capacitySize = vec2->capacitySize;
-    vec2->capacitySize = tempCapacity;
-
-    size_t tempItemSize = vec1->itemSize;
-    vec1->itemSize = vec2->itemSize;
-    vec2->itemSize = tempItemSize;
+    Vector tmp = *vec1;
+    *vec1 = *vec2;
+    *vec2 = tmp;
 
     VECTOR_LOG("[vector_swap]: Swapped vectors. vec1: %p, vec2: %p", (void*)vec1, (void*)vec2);
 }
@@ -697,6 +702,7 @@ void vector_assign(Vector *vec, size_t pos, void *item) {
     VECTOR_LOG("[vector_assign]: Assigned new item at position %zu.", pos);
 }
 
+
 /**
  * @brief This function inserts a new element into the vector at the specified position by copying 
  * the given item into the vector's storage. If necessary, the vector's capacity is expanded 
@@ -736,7 +742,7 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
     }
     if (vec->size == vec->capacitySize) {
         VECTOR_LOG("[vector_emplace]: Resizing vector to new capacity.");
-        vector_reserve(vec, vec->capacitySize * 2);
+        vector_reserve(vec, vec->capacitySize ? vec->capacitySize * 2 : 8);
     }
 
     char *base = (char *)vec->items;
@@ -749,6 +755,7 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
 
     VECTOR_LOG("[vector_emplace]: Inserted new item at position %zu. New size: %zu", pos, vec->size);
 }
+
 
 /**
  * @brief This function adds a new element to the end of the vector by copying the given item 
@@ -787,7 +794,9 @@ bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
     }
     if (vec->size >= vec->capacitySize) {
         VECTOR_LOG("[vector_emplace_back]: Vector capacity exceeded. Resizing...");
-        if (!vector_reserve(vec, vec->capacitySize * 2)) {
+        /* Same 0*2=0 guard as the other growth paths. */
+        size_t nextCap = vec->capacitySize ? vec->capacitySize * 2 : 8;
+        if (!vector_reserve(vec, nextCap)) {
             VECTOR_LOG("[vector_emplace_back]: Error: Resizing vector failed.");
             return false; // vector_reserve failed, indicate failure
         }
@@ -831,7 +840,8 @@ bool vector_push_back(Vector *vec, const void *item) {
 
     if (vec->size >= vec->capacitySize) {
         VECTOR_LOG("[vector_push_back]: Vector capacity exceeded. Resizing...");
-        size_t newCapacity = vec->capacitySize * 2; // Example growth strategy
+
+        size_t newCapacity = vec->capacitySize ? vec->capacitySize * 2 : 8;
         void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
 
         if (!newItems) {
@@ -1019,13 +1029,10 @@ const void *vector_cbegin(Vector *vec) {
         VECTOR_LOG("[vector_cbegin]: Error: Vector is NULL.");
         return NULL;
     }
-    if (vec->size == 0) {
-        VECTOR_LOG("[vector_cbegin]: Error: Vector is empty.");
-        return NULL;
-    }
 
+    // For empty vector, cbegin == cend (both point at items). The standard
+    // iteration loop `for (it = cbegin; it != cend; ...)` then runs zero times.
     VECTOR_LOG("[vector_cbegin]: Returning constant begin pointer: %p", (const void*)vec->items);
-    VECTOR_LOG("[vector_cbegin]: Exiting.");
     return (const void *)vec->items;
 }
 
@@ -1054,17 +1061,12 @@ const void *vector_cend(Vector *vec) {
         VECTOR_LOG("[vector_cend]: Error: Vector is NULL.");
         return NULL;
     }
-    if (vec->size == 0) {
-        VECTOR_LOG("[vector_cend]: Error: Vector is empty.");
-        return NULL;
-    }
-
+    // For empty vector, this returns the same pointer as cbegin (items + 0).
     const void *end_ptr = (const void *)((char *)vec->items + (vec->size * vec->itemSize));
     VECTOR_LOG("[vector_cend]: Returning constant end pointer: %p", end_ptr);
-    VECTOR_LOG("[vector_cend]: Exiting.");
-
     return end_ptr;
 }
+
 
 /**
  * @brief This function provides a read-only pointer to the last element stored in the vector. 
@@ -1099,6 +1101,7 @@ const void *vector_crbegin(Vector *vec) {
 
     return rbegin_ptr;
 }
+
 
 /**
  * @brief This function provides a read-only pointer to the position just before the first element 
@@ -1187,15 +1190,9 @@ void *vector_end(Vector *vec) {
         VECTOR_LOG("[vector_end]: Error: Vector is NULL.");
         return NULL;
     }
-    if (vec->size == 0) {
-        VECTOR_LOG("[vector_end]: Error: Vector is empty.");
-        return NULL;
-    }
-
-    void *end_ptr = (char *)vec->items + (vec->size * vec->itemSize); // One past the last element
+    // For empty vector, this equals begin (items + 0) so iteration runs 0 times.
+    void *end_ptr = (char *)vec->items + (vec->size * vec->itemSize);
     VECTOR_LOG("[vector_end]: Returning end pointer: %p", (void*)end_ptr);
-
-    VECTOR_LOG("[vector_end]: Exiting.");
     return end_ptr;
 }
 
@@ -1237,50 +1234,36 @@ void *vector_pop_back(Vector *vec) {
     return popped_element;
 }
 
+
 /**
- * @brief This function resets the vector by setting its size to zero, effectively removing all 
- * elements. Optionally, it can also reduce the capacity of the vector to a smaller size 
- * to free up memory. This is useful when you want to reuse the vector without retaining 
- * the current elements.
- * 
- * @param vec A pointer to the Vector instance that should be cleared. The vector must 
- * have been initialized before calling this function.
- * 
- * @return void
- *  
- * @note Ensure that the vector is not NULL before calling this function. If the 
- * vector is NULL, the function returns immediately without performing any operations. 
- * If `VECTOR_LOGGING_ENABLE` is defined, an error message is logged to `stderr`.
+ * @brief Remove all elements; capacity is preserved.
+ *
+ * Matches std::vector::clear() — size is set to 0, capacity is left
+ * intact. Reuses the existing buffer for subsequent push_backs.
+ *
+ * @param vec  Vector to clear. NULL is a safe no-op.
+ *
+ * @note If your vector stores pointers to heap-owned objects, free
+ *       them before calling clear() — this function only zeroes the
+ *       size counter; it does NOT call per-element destructors.
+ *       Call vector_shrink_to_fit() afterwards if you want to
+ *       release the backing storage too.
  */
 void vector_clear(Vector *vec) {
     VECTOR_LOG("[vector_clear]: Entering with vector: %p", (void*)vec);
 
     if (!vec) {
         VECTOR_LOG("[vector_clear]: Error: Vector is NULL.");
-        return; // Handle the error as per your application's needs
+        return;
     }
 
+    // Reset size only; preserve capacity. Matches C++ std::vector::clear semantics
+    // and avoids the cost of reallocating (which on a bump pool can't reclaim).
+    // Use vector_shrink_to_fit to release capacity.
     vec->size = 0;
-    VECTOR_LOG("[vector_clear]: Vector size set to 0.");
-
-    // Optionally reduce capacity. Choose an appropriate size for your use case.
-    size_t reducedCapacity = 4; // Or some other small size
-    if (vec->capacitySize > reducedCapacity) {
-        VECTOR_LOG("[vector_clear]: Reducing capacity to %zu.", reducedCapacity);
-        
-        void *newItems = memory_pool_allocate(vec->pool, reducedCapacity * vec->itemSize);
-        if (newItems != NULL || reducedCapacity == 0) {
-            vec->items = newItems;
-            vec->capacitySize = reducedCapacity;
-            VECTOR_LOG("[vector_clear]: Capacity reduced, new capacity: %zu.", reducedCapacity);
-        } 
-        else {
-            VECTOR_LOG("[vector_clear]: Error: Cannot reallocate the vector.");
-        }
-    }
-
-    VECTOR_LOG("[vector_clear]: Exiting.");
+    VECTOR_LOG("[vector_clear]: Vector size set to 0. Capacity preserved: %zu", vec->capacitySize);
 }
+
 
 /**
  * @brief This function provides access to the first element stored in the vector. It returns a pointer 
@@ -1314,6 +1297,7 @@ void *vector_front(Vector *vec) {
     return vec->items; 
 }
 
+
 /**
  * @brief This function provides access to the last element stored in the vector. It returns a pointer 
  * to the last element, allowing you to modify or read the value directly. This function is 
@@ -1346,6 +1330,7 @@ void *vector_back(Vector *vec) {
 
     return back_element; 
 }
+
 
 /**
  * @brief This function provides direct access to the internal data of the vector. It returns a pointer 
@@ -1405,6 +1390,7 @@ size_t vector_size(const Vector *vec) {
     return vec->size;
 }
 
+
 /**
  * @brief Retrieves the current capacity of the vector.
  * 
@@ -1434,6 +1420,7 @@ size_t vector_capacity(Vector *vec) {
     return vec->capacitySize;
 }
 
+
 /**
  * @brief Calculates the maximum number of elements that the vector can hold based on its item size.
  * 
@@ -1452,16 +1439,16 @@ size_t vector_capacity(Vector *vec) {
  * application requirements for error handling.
  */
 size_t vector_max_size(Vector *vec) {
-    VECTOR_LOG("[vector_max_size]: Entering vector_max_size with vector: %p", (void*)vec);
+    VECTOR_LOG("[vector_max_size]: Entering with vector: %p", (void*)vec);
 
-    if (!vec) {
-        VECTOR_LOG("[vector_max_size]: Error: Vector is NULL in vector_max_size.");
-        return 0; 
+    if (!vec || vec->itemSize == 0) {
+        VECTOR_LOG("[vector_max_size]: Error: Vector is NULL or itemSize is 0.");
+        return 0;
     }
 
-    VECTOR_LOG("[vector_max_size]: Vector itemSize is %zu", vec->itemSize);
-    VECTOR_LOG("[vector_max_size]: Exiting vector_max_size, returning itemSize: %zu", vec->itemSize);
-
-    return vec->itemSize;
+    // Maximum number of elements addressable in size_t bytes.
+    size_t result = ((size_t)-1) / vec->itemSize;
+    VECTOR_LOG("[vector_max_size]: Returning max element count: %zu", result);
+    return result;
 }
 

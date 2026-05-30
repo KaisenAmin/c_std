@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <stdint.h>
 
 /**
  * @brief Creates a new BigInt initialized to zero.
@@ -325,9 +326,13 @@ int bigint_compare(const BigInt *a, const BigInt *b) {
         BIGINT_LOG("[bigint_compare]: Both input BigInts are valid.");
     }
 
+    // GMP's mpz_cmp returns "negative / 0 / positive", which isn't strictly
+    // -1/0/1. Normalize to match this function's documented contract so callers
+    // can safely use `if (bigint_compare(a, b) == -1)`.
     int cmp = mpz_cmp(a->value, b->value);
-    BIGINT_LOG("[bigint_compare]: Compared BigInts, result: %d", cmp);
-    return cmp;
+    int normalized = (cmp < 0) ? -1 : (cmp > 0) ? 1 : 0;
+    BIGINT_LOG("[bigint_compare]: Compared BigInts, result: %d", normalized);
+    return normalized;
 }
 
 /**
@@ -403,6 +408,14 @@ BigInt *bigint_pow(const BigInt *base, const BigInt *exponent) {
         BIGINT_LOG("[bigint_pow]: Exponent is non-negative.");
     }
 
+    // Reject exponents that don't fit in unsigned long. Without this guard,
+    // mpz_get_ui silently truncates to the low limb and the result would be
+    // completely wrong rather than failing.
+    if (mpz_fits_ulong_p(exponent->value) == 0) {
+        BIGINT_LOG("[bigint_pow]: Exponent too large to fit in unsigned long.");
+        return NULL;
+    }
+
     BigInt *res = bigint_create();
     if (!res) {
         BIGINT_LOG("[bigint_pow]: Failed to allocate result BigInt.");
@@ -412,7 +425,7 @@ BigInt *bigint_pow(const BigInt *base, const BigInt *exponent) {
         BIGINT_LOG("[bigint_pow]: Allocated result BigInt successfully.");
     }
 
-    unsigned long exp = mpz_get_ui(exponent->value); // Assumes exponent fits in unsigned long
+    unsigned long exp = mpz_get_ui(exponent->value);
     mpz_pow_ui(res->value, base->value, exp);
     BIGINT_LOG("[bigint_pow]: Computed power (base^exponent) successfully.");
 
@@ -713,33 +726,31 @@ BigInt* bigint_sqrt(const BigInt* a, BigInt** rem) {
         BIGINT_LOG("[bigint_sqrt]: Allocated result BigInt for square root successfully.");
     }
     
-    BigInt* remainder = NULL;
     if (rem != NULL) {
-        remainder = bigint_create();
-
+        BigInt* remainder = bigint_create();
         if (!remainder) {
             BIGINT_LOG("[bigint_sqrt]: Failed to allocate BigInt for remainder.");
             bigint_deallocate(root);
             return NULL;
-        } 
+        }
         else {
             BIGINT_LOG("[bigint_sqrt]: Allocated BigInt for remainder successfully.");
         }
-    }
-    
-    mpz_sqrtrem(root->value, (rem != NULL ? remainder->value : NULL), a->value);
-    BIGINT_LOG("[bigint_sqrt]: Computed square root successfully.");
-    
-    if (rem != NULL) {
+
+        // mpz_sqrtrem requires both output pointers to be valid mpz_t handles;
+        // pass through to the variant only when the caller actually wants the
+        // remainder.
+        mpz_sqrtrem(root->value, remainder->value, a->value);
         *rem = remainder;
         BIGINT_LOG("[bigint_sqrt]: Stored remainder in provided pointer.");
-    } 
-    else {
-        if (remainder != NULL) {
-            bigint_deallocate(remainder);
-        }
     }
-    
+    else {
+        // Caller doesn't need the remainder — use the simpler mpz_sqrt to
+        // avoid passing NULL (which would crash GMP).
+        mpz_sqrt(root->value, a->value);
+        BIGINT_LOG("[bigint_sqrt]: Computed square root (no remainder requested).");
+    }
+
     return root;
 }
 
@@ -752,28 +763,51 @@ BigInt* bigint_sqrt(const BigInt* a, BigInt** rem) {
  * @param bits The number of bits for the random BigInt.
  * @return Pointer to a new BigInt containing a random value, or NULL on error.
  */
+/* Persistent random state across bigint_random() calls.
+ *
+ * The previous implementation reseeded with time(NULL) every call, which
+ * produced identical outputs for any two calls within the same second.
+ * Here we initialize the state lazily on the first call and reuse it,
+ * mixing time + pid + counter for the seed so back-to-back invocations
+ * still produce different streams across process restarts.
+ */
+#include <sys/types.h>
+#if defined(_WIN32) || defined(_WIN64)
+  #include <process.h>
+  #define BIGINT_GETPID()  ((unsigned long)_getpid())
+#else
+  #include <unistd.h>
+  #define BIGINT_GETPID()  ((unsigned long)getpid())
+#endif
+
+static int             bigint_rand_initialized = 0;
+static gmp_randstate_t bigint_rand_state;
+
 BigInt* bigint_random(unsigned long bits) {
     BigInt* res = bigint_create();
     if (!res) {
         BIGINT_LOG("[bigint_random]: Failed to allocate result BigInt.");
         return NULL;
-    } 
+    }
     else {
         BIGINT_LOG("[bigint_random]: Allocated result BigInt successfully.");
     }
-    
-    gmp_randstate_t state;
-    gmp_randinit_default(state);
-    
-    /* Seed the random state with current time */
-    unsigned long seed = (unsigned long) time(NULL);
-    gmp_randseed_ui(state, seed);
-    BIGINT_LOG("[bigint_random]: Random state seeded with %lu.", seed);
-    
-    mpz_urandomb(res->value, state, bits);
+
+    if (!bigint_rand_initialized) {
+        gmp_randinit_default(bigint_rand_state);
+        /* Mix several entropy sources into the seed so simultaneous calls
+           from different processes don't collide. */
+        unsigned long seed = (unsigned long) time(NULL);
+        seed ^= BIGINT_GETPID() << 16;
+        seed ^= (unsigned long)(uintptr_t)&seed;
+        gmp_randseed_ui(bigint_rand_state, seed);
+        bigint_rand_initialized = 1;
+        BIGINT_LOG("[bigint_random]: Initialized persistent random state with seed %lu.", seed);
+    }
+
+    mpz_urandomb(res->value, bigint_rand_state, bits);
     BIGINT_LOG("[bigint_random]: Generated random BigInt with %lu bits.", bits);
-    
-    gmp_randclear(state);
+
     return res;
 }
 
@@ -882,11 +916,14 @@ unsigned long bigint_bit_length(const BigInt* a) {
     if (!a) {
         BIGINT_LOG("[bigint_bit_length]: Input BigInt is NULL.");
         return 0;
-    } 
-    else {
-        BIGINT_LOG("[bigint_bit_length]: Input BigInt is valid.");
     }
-    
+    /* GMP's mpz_sizeinbase(x, 2) returns 1 even when x==0 (it never
+       returns 0). Mathematically, 0 has zero significant bits — fix the
+       quirk at this boundary so production callers can rely on
+       `bit_length(0) == 0`. */
+    if (mpz_sgn(a->value) == 0) {
+        return 0;
+    }
     unsigned long bits = mpz_sizeinbase(a->value, 2);
     BIGINT_LOG("[bigint_bit_length]: Computed bit-length: %lu", bits);
     return bits;
@@ -1061,13 +1098,23 @@ unsigned long bigint_num_digits(const BigInt* a) {
     if (!a) {
         BIGINT_LOG("[bigint_num_digits]: Input BigInt is NULL.");
         return 0;
-    } else {
-        BIGINT_LOG("[bigint_num_digits]: Input BigInt is valid.");
     }
-    
-    unsigned long digits = mpz_sizeinbase(a->value, 10);
-    BIGINT_LOG("[bigint_num_digits]: Computed number of decimal digits: %lu", digits);
-    return digits;
+
+    /* GMP's mpz_sizeinbase(_, 10) is documented as "exact or 1 too big"
+       — it's a buffer-sizing helper, not an exact digit count. Convert
+       to a string and measure to get the true count; strip a leading
+       minus sign so the count is of digits only. */
+    char* s = mpz_get_str(NULL, 10, a->value);
+    if (!s) {
+        return 0;
+    }
+    size_t len = strlen(s);
+    if (len > 0 && s[0] == '-') {
+        len--;
+    }
+    free(s);
+    BIGINT_LOG("[bigint_num_digits]: Computed number of decimal digits: %lu", (unsigned long)len);
+    return (unsigned long)len;
 }
 
 /**

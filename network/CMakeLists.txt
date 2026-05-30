@@ -1,5 +1,5 @@
 
-add_library(network SHARED tcp.c udp.c http.c)
+add_library(network SHARED tcp.c udp.c http.c ../concurrent/concurrent.c)
 
 # Specify the include directories for this library
 target_include_directories(network PUBLIC ${CMAKE_SOURCE_DIR}/network)

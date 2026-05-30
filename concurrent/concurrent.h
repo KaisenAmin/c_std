@@ -1,10 +1,35 @@
+/**
+ * @class Concurrent
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in concurrent.c (file-level convention).
+ *
+ * Cross-platform threading primitives (Win32 + POSIX) — threads,
+ * mutexes, condition variables, thread-local storage, one-time init.
+ * Based on the public-domain tinycthread design.
+ */
+
 #ifndef _CONCURRENT_H_
 #define _CONCURRENT_H_
 
+#include <stdio.h>
 #include <time.h>
 
 
-/* Platform specific includes */
+/* #define CONCURRENT_LOGGING_ENABLE */
+
+#ifdef CONCURRENT_LOGGING_ENABLE
+    #define CONCURRENT_LOG(fmt, ...) \
+        do { fprintf(stderr, "[CONCURRENT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+    #define CONCURRENT_LOG(...) do { } while (0)
+#endif
+
+
+/* ------------------------------------------------------------------ */
+/* Platform detection / includes                                      */
+/* ------------------------------------------------------------------ */
+
 #if defined(_WIN32) || defined(_WIN64)
   #ifndef _TTHREAD_WIN32_
     #define _TTHREAD_WIN32_
@@ -22,7 +47,6 @@
   #include <errno.h>
 #endif
 
-/* Standard, good-to-have defines */
 #ifndef NULL
   #define NULL (void*)0
 #endif
@@ -32,8 +56,7 @@
   #define _CONDITION_EVENT_ALL 1
 #endif
 
-
-/* Activate some POSIX functionality (e.g. clock_gettime and recursive mutexes) */
+/* Activate POSIX functionality (clock_gettime, recursive mutexes). */
 #if defined(_TTHREAD_POSIX_)
   #undef _FEATURES_H
   #if !defined(_GNU_SOURCE)
@@ -50,10 +73,9 @@
   #define _XPG6
 #endif
 
-
-// Platform specific includes 
 #if defined(_TTHREAD_POSIX_)
   #include <pthread.h>
+  #include <semaphore.h>
 #elif defined(_TTHREAD_WIN32_)
   #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
@@ -66,7 +88,11 @@
   #endif
 #endif
 
-// Compiler-specific information 
+
+/* ------------------------------------------------------------------ */
+/* Compiler / language feature shims                                  */
+/* ------------------------------------------------------------------ */
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
   #define TTHREAD_NORETURN _Noreturn
 #elif defined(__GNUC__)
@@ -75,8 +101,7 @@
   #define TTHREAD_NORETURN
 #endif
 
-/* If TIME_UTC is missing, provide it and provide a wrapper for
-   timespec_get. */
+/* timespec_get fallback for platforms that don't ship it. */
 #ifndef TIME_UTC
   #define TIME_UTC 1
   #define _TTHREAD_EMULATE_TIMESPEC_GET_
@@ -91,43 +116,7 @@
   #define timespec_get _tthread_timespec_get
 #endif
 
-// CThread version (major number).
-#define CTHREAD_VERSION_MAJOR 1
-// CThread version (minor number).
-#define CTHREAD_VERSION_MINOR 2
-// CThread version (full version). 
-#define CTHREAD_VERSION (CTHREAD_VERSION_MAJOR * 100 + CTHREAD_VERSION_MINOR)
-
-/**
- * Defines the _Thread_local storage class specifier for thread-local storage (TLS).
- *
- * The _Thread_local keyword allows variables to be declared in such a way that each thread
- * has its own separate instance of the variable. This is useful for situations where
- * variables need to be unique to each thread, such as for thread-specific error numbers
- * or other thread-local data.
- *
- * Usage example:
- * @code
- * _Thread_local int threadSpecificVariable;
- * @endcode
- *
- * This macro ensures compatibility across different compilers and standards:
- * - For C11 and newer (__STDC_VERSION__ >= 201102L), _Thread_local is directly supported.
- * - For compilers like GCC, Intel, Sun Pro, and IBM before C11 or when the C11 standard
- *   is not explicitly used, it falls back to __thread.
- * - For other cases, it uses __declspec(thread) for compatibility with compilers
- *   like MSVC that do not support __thread but use their own syntax for thread-local storage.
- *
- * @note Compatibility Notice:
- * The use of _Thread_local is not supported on Mac OS X when targeting older versions
- * that lack runtime support for thread-local storage using this keyword. Additionally,
- * some older compilers or versions (e.g., GCC before 4.9) might not fully support
- * this feature or may have limitations.
- *
- * @note The macro and its alternatives (__thread, __declspec(thread)) allow for
- * portable thread-local storage across various compilers and C standards, making
- * it easier to write cross-platform multithreaded applications.
- */
+/* _Thread_local fallback for compilers that don't expose it yet. */
 #if !(defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201102L)) && !defined(_Thread_local)
  #if defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__SUNPRO_CC) || defined(__IBMCPP__)
   #define _Thread_local __thread
@@ -138,113 +127,102 @@
  #define _Thread_local __thread
 #endif
 
-/* Macros */
-#if defined(_TTHREAD_WIN32_)
-  #define TSS_DTOR_ITERATIONS (4)
-#else
-  #define TSS_DTOR_ITERATIONS PTHREAD_DESTRUCTOR_ITERATIONS
-#endif
 
+/* ------------------------------------------------------------------ */
+/* Library version                                                    */
+/* ------------------------------------------------------------------ */
+
+#define CTHREAD_VERSION_MAJOR 1
+#define CTHREAD_VERSION_MINOR 2
+#define CTHREAD_VERSION       (CTHREAD_VERSION_MAJOR * 100 + CTHREAD_VERSION_MINOR)
+
+
+
+/* Function return codes. */
 typedef enum {
-    THREAD_ERROR = 0,   // The requested operation failed 
-    THREAD_SUCCESS,     // The requested operation succeeded 
-    THREAD_TIMEOUT,     // The time specified in the call was reached without acquiring the requested resource 
-    THREAD_BUSY,        // The requested operation failed because a resource requested by a test and return function is already in use 
-    THREAD_NOMEM        // The requested operation failed because it was unable to allocate memory 
+    THREAD_ERROR = 0,   /* operation failed                                 */
+    THREAD_SUCCESS,     /* operation succeeded                              */
+    THREAD_TIMEOUT,     /* time bound elapsed without acquiring resource    */
+    THREAD_BUSY,        /* resource was already in use                      */
+    THREAD_NOMEM        /* allocation failed                                */
 } ThreadResult;
 
+
+/* Mutex flavour for `mutex_init`. */
 typedef enum {
-    MUTEX_PLAIN = 0,     // A non-recursive mutex
-    MUTEX_TIMED,         // A mutex that supports timed lock 
-    MUTEX_RECURSIVE      // A recursive mutex 
+    MUTEX_PLAIN = 0,    /* non-recursive                                    */
+    MUTEX_TIMED,        /* supports timed lock                              */
+    MUTEX_RECURSIVE     /* recursive                                        */
 } MutexType;
 
-/* Mutex */
+
+/* Mutex handle. */
 #if defined(_TTHREAD_WIN32_)
   typedef struct {
     union {
-      CRITICAL_SECTION cs;      // Critical section handle (used for non-timed mutexes)
-      HANDLE mut;               // Mutex handle (used for timed mutex)
-    } mHandle;                  // Mutex handle 
-    int mAlreadyLocked;         // true if the mutex is already locked 
-    int mRecursive;             // true if the mutex is recursive 
-    int mTimed;                 // true if the mutex is timed 
+      CRITICAL_SECTION cs;    /* used for non-timed mutexes */
+      HANDLE           mut;   /* used for timed mutex       */
+    } mHandle;
+    int mAlreadyLocked;
+    int mRecursive;
+    int mTimed;
   } Mutex;
 #else
   typedef pthread_mutex_t Mutex;
 #endif
 
-int mutex_init(Mutex *mutex, int type);
-int mutex_lock(Mutex *mutex);
-int MUTEX_TIMEDlock(Mutex *mutex, const struct timespec *ts);
-int mutex_unlock(Mutex *mutex);
-int mutex_trylock(Mutex *mutex);
-void mutex_destroy(Mutex *mutex);
 
-
-/* Condition variable */
+/* Condition variable. */
 #if defined(_TTHREAD_WIN32_)
   typedef struct {
-    HANDLE mEvents[2];                  // Signal and broadcast event HANDLEs. 
-    unsigned int mWaitersCount;         // Count of the number of waiters. 
-    CRITICAL_SECTION mWaitersCountLock; // Serialize access to mWaitersCount. 
+    HANDLE           mEvents[2];           /* signal + broadcast events           */
+    unsigned int     mWaitersCount;        /* number of waiters                   */
+    CRITICAL_SECTION mWaitersCountLock;    /* protects mWaitersCount              */
   } ThreadCondition;
 #else
   typedef pthread_cond_t ThreadCondition;
 #endif
 
-int condition_init(ThreadCondition *cond);
-int condition_signal(ThreadCondition *cond);
-int condition_broadcast(ThreadCondition *cond);
-int condition_wait(ThreadCondition *cond, Mutex *mutex);
-int condition_timedwait(ThreadCondition *cond, Mutex *mutex, const struct timespec *ts);
-void condition_destroy(ThreadCondition *cond);
 
-/* Thread */
+/* Thread handle. */
 #if defined(_TTHREAD_WIN32_)
   typedef HANDLE Thread;
 #else
   typedef pthread_t Thread;
 #endif
 
-typedef int (*ThreadStart)(void *arg);
 
-int thread_create(Thread *thr, ThreadStart func, void *arg);
-int thread_detach(Thread thr);
-int thread_equal(Thread thr0, Thread thr1);
-int thread_join(Thread thr, int *res);
-int thread_sleep(const struct timespec *duration, struct timespec *remaining);
-unsigned long thread_current(void);
-unsigned long thread_hardware_concurrency(void);
+/* Counting semaphore. */
+#if defined(_TTHREAD_WIN32_)
+  typedef HANDLE Semaphore;
+#else
+  typedef sem_t Semaphore;
+#endif
 
-TTHREAD_NORETURN void thread_exit(int res);
-void thread_yield(void);
 
-/* Thread local storage */
+/* Entry point passed to `thread_create`. */
+typedef int (*ThreadStart)(void* arg);
+
+/* Thread-specific storage. */
 #if defined(_TTHREAD_WIN32_)
   typedef DWORD ThreadSpecific;
 #else
   typedef pthread_key_t ThreadSpecific;
 #endif
 
-// Destructor function for a thread-specific storage.
-typedef void (*ThreadSpecificDestructor)(void *val);
+/* TLS slot destructor. */
+typedef void (*ThreadSpecificDestructor)(void* val);
 
-int thread_specific_create(ThreadSpecific *key, ThreadSpecificDestructor dtor);
-int thread_specific_set(ThreadSpecific key, void *val);
-void thread_specific_delete(ThreadSpecific key);
-void *thread_specific_get(ThreadSpecific key);
+#if defined(_TTHREAD_WIN32_)
+  #define TSS_DTOR_ITERATIONS (4)
+#else
+  #define TSS_DTOR_ITERATIONS PTHREAD_DESTRUCTOR_ITERATIONS
+#endif
 
-/*
-* This code defines a cross-platform OnceFlag type and an initializer ONCE_FLAG_INIT used for one-time initialization. 
-* On Windows, OnceFlag is a struct containing a status variable and a critical section object for thread synchronization. 
-* On POSIX systems, it aliases pthread_once_t and uses PTHREAD_ONCE_INIT for initialization. 
-* This abstraction allows for consistent one-time initialization logic across different operating systems by providing a 
-* unified interface.
-*/
+/* One-time initialisation. */
 #if defined(_TTHREAD_WIN32_)
   typedef struct {
-    LONG volatile status;
+    LONG volatile    status;
     CRITICAL_SECTION lock;
   } OnceFlag;
   #define ONCE_FLAG_INIT {0,}
@@ -253,19 +231,77 @@ void *thread_specific_get(ThreadSpecific key);
   #define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
 #endif
 
-/*
-* This code provides a cross-platform call_once function or macro that ensures a function is called exactly once across all 
-* threads. On Windows, it declares a function prototype for call_once, requiring a custom implementation. 
-* For POSIX systems, it defines call_once as a macro that wraps pthread_once, 
-* leveraging the native one-time initialization provided by pthreads. This approach allows for consistent, 
-* thread-safe initialization logic in both Windows and POSIX environments.
-*/
+
+/* ------------------------------------------------------------------ */
+/* Mutex                                                              */
+/* ------------------------------------------------------------------ */
+
+int                mutex_init                     (Mutex* mutex, int type);
+int                mutex_lock                     (Mutex* mutex);
+int                mutex_timed_lock                (Mutex* mutex, const struct timespec* ts);
+int                mutex_trylock                  (Mutex* mutex);
+int                mutex_unlock                   (Mutex* mutex);
+void               mutex_destroy                  (Mutex* mutex);
+
+
+/* ------------------------------------------------------------------ */
+/* Semaphore (counting)                                               */
+/* ------------------------------------------------------------------ */
+
+int                semaphore_init                 (Semaphore* sem, unsigned int initial_count);
+int                semaphore_wait                 (Semaphore* sem);
+int                semaphore_trywait              (Semaphore* sem);
+int                semaphore_post                 (Semaphore* sem);
+void               semaphore_destroy              (Semaphore* sem);
+
+
+/* ------------------------------------------------------------------ */
+/* Condition variable                                                 */
+/* ------------------------------------------------------------------ */
+
+int                condition_init                 (ThreadCondition* cond);
+int                condition_signal               (ThreadCondition* cond);
+int                condition_broadcast            (ThreadCondition* cond);
+int                condition_wait                 (ThreadCondition* cond, Mutex* mutex);
+int                condition_timedwait            (ThreadCondition* cond, Mutex* mutex, const struct timespec* ts);
+void               condition_destroy              (ThreadCondition* cond);
+
+
+/* ------------------------------------------------------------------ */
+/* Thread                                                             */
+/* ------------------------------------------------------------------ */
+
+int                thread_create                  (Thread* thr, ThreadStart func, void* arg);
+int                thread_join                    (Thread thr, int* res);
+int                thread_detach                  (Thread thr);
+int                thread_equal                   (Thread thr0, Thread thr1);
+int                thread_sleep                   (const struct timespec* duration, struct timespec* remaining);
+TTHREAD_NORETURN
+void               thread_exit                    (int res);
+void               thread_yield                   (void);
+unsigned long      thread_current                 (void);
+unsigned long      thread_hardware_concurrency    (void);
+
+
+/* ------------------------------------------------------------------ */
+/* Thread-specific storage                                            */
+/* ------------------------------------------------------------------ */
+
+int                thread_specific_create         (ThreadSpecific* key, ThreadSpecificDestructor dtor);
+int                thread_specific_set            (ThreadSpecific key, void* val);
+void*              thread_specific_get            (ThreadSpecific key);
+void               thread_specific_delete         (ThreadSpecific key);
+
+
+/* ------------------------------------------------------------------ */
+/* One-time initialization                                            */
+/* ------------------------------------------------------------------ */
+
 #if defined(_TTHREAD_WIN32_)
-  void call_once(OnceFlag *flag, void (*func)(void));
+void               call_once                      (OnceFlag* flag, void (*func)(void));
 #else
-  #define call_once(flag,func) pthread_once(flag,func)
+  #define          call_once(flag,func)           pthread_once(flag,func)
 #endif
 
 
-
-#endif /* _CTHREAD_H_ */
+#endif 

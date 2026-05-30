@@ -26,13 +26,13 @@
 FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     if (!filename) {
         FILE_READER_LOG("[file_reader_open] Error: filename is null.");
-        exit(-1);
+        return NULL;
     }
 
     FileReader* reader = (FileReader*) malloc(sizeof(FileReader));
     if (!reader) {
         FILE_READER_LOG("[file_reader_open] Error: Cannot allocate memory for FileReader.");
-        exit(-1);
+        return NULL;
     }
     const char* modeStr = NULL;
 
@@ -70,25 +70,24 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     wchar_t* wFileName = encoding_utf8_to_wchar(filename);
     wchar_t* wMode = encoding_utf8_to_wchar(modeStr);
 
-    if (!wMode) {
-        FILE_READER_LOG("[file_reader_open] Error: Cannot convert mode to wchar.");
-        exit(-1);
-    }
-    if (!wFileName) {
-        FILE_READER_LOG("[file_reader_open] Error: Cannot convert filename to wchar.");
-        exit(-1);
+    if (!wMode || !wFileName) {
+        FILE_READER_LOG("[file_reader_open] Error: Cannot convert filename/mode to wchar.");
+        free(wMode);
+        free(wFileName);
+        free(reader);
+        return NULL;
     }
     reader->file_reader = _wfopen(wFileName, wMode);
     free(wMode);
     free(wFileName);
-    #else 
+    #else
     reader->file_reader = fopen(filename, modeStr);
-    #endif 
+    #endif
 
     if (reader->file_reader == NULL) {
         FILE_READER_LOG("[file_reader_open] Error: Cannot open file.");
         free(reader);
-        exit(-1);
+        return NULL;
     }
     reader->mode = mode;
     reader->is_open = true;
@@ -98,6 +97,7 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     FILE_READER_LOG("[file_reader_open] File '%s' opened successfully in mode '%s'.", filename, modeStr);
     return reader;
 }
+
 
 /**
  * @brief Closes the file associated with the given `FileReader`.
@@ -118,7 +118,6 @@ bool file_reader_close(FileReader *reader) {
         FILE_READER_LOG("[file_reader_close] Error: Failed to close file.");
         return false;
     }
-    
     if (reader->file_path) {
         free(reader->file_path);
         reader->file_path = NULL;
@@ -131,6 +130,7 @@ bool file_reader_close(FileReader *reader) {
     return true;
 }
 
+
 /**
  * @brief Gets the current position of the file pointer.
  *
@@ -141,7 +141,7 @@ bool file_reader_close(FileReader *reader) {
  * @return The current position of the file pointer as a `size_t`. Returns `(size_t)-1` on error.
  */
 size_t file_reader_get_position(FileReader *reader) {
-    if (reader->file_reader == NULL) {
+    if (!reader || reader->file_reader == NULL) {
         FILE_READER_LOG("[file_reader_get_position] Error: FileReader object is null or invalid.");
         return (size_t)-1;
     }
@@ -155,6 +155,7 @@ size_t file_reader_get_position(FileReader *reader) {
     FILE_READER_LOG("[file_reader_get_position] Current file position: %ld.", cursor_position);
     return (size_t)cursor_position;
 }
+
 
 /**
  * @brief Checks if the file is open.
@@ -174,9 +175,11 @@ bool file_reader_is_open(FileReader* reader) {
         FILE_READER_LOG("[file_reader_is_open] Error: FileReader object is NULL and the file is not open.");
         return false;
     }
+
     FILE_READER_LOG("[file_reader_is_open] File is currently %s.", reader->is_open ? "open" : "closed");
     return reader->is_open;
 }
+
 
 /**
  * @brief Sets the encoding for reading the file.
@@ -198,9 +201,11 @@ bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encodin
         return false;
     }
     reader->encoding = encoding;
+
     FILE_READER_LOG("[file_reader_set_encoding] Encoding set to %d.", encoding);
     return true;
 }
+
 
 /**
  * @brief Retrieves the absolute path of the file associated with the `FileReader`.
@@ -220,9 +225,11 @@ const char *file_reader_get_file_name(FileReader *reader) {
         FILE_READER_LOG("[file_reader_get_file_name] Error: File path for FileReader is null.");
         return NULL;
     }
+
     FILE_READER_LOG("[file_reader_get_file_name] Returning file path: %s.", reader->file_path);
     return (const char*)reader->file_path;
 }
+
 
 /**
  * @brief Moves the file pointer to a specific location.
@@ -267,6 +274,7 @@ bool file_reader_seek(FileReader *reader, long offset, const CursorPosition curs
     return true;
 }
 
+
 /**
  * @brief Checks if the end of the file has been reached.
  *
@@ -287,6 +295,7 @@ bool file_reader_eof(FileReader* reader) {
 
     return eof_reached;
 }
+
 
 /**
  * @brief Gets the size of the file associated with the `FileReader`.
@@ -317,6 +326,7 @@ size_t file_reader_get_size(FileReader* reader) {
     FILE_READER_LOG("[file_reader_get_size] File size is %zu bytes.", size);
     return size;
 }
+
 
 /**
  * @brief Reads data from the file into a buffer.
@@ -351,7 +361,7 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
 
     // For Unicode (UTF-16) reading, handle conversion to UTF-8
     if (reader->mode == READ_UNICODE) {
-        wchar_t* rawBuffer = (wchar_t*)malloc(sizeof(wchar_t) * (count + 1)); // Buffer for UTF-16 data
+        wchar_t* rawBuffer = (wchar_t*)malloc(sizeof(wchar_t) * (count + 1)); 
         if (!rawBuffer) {
             FILE_READER_LOG("[file_reader_read] Error: Memory allocation failed.");
             return 0;
@@ -360,7 +370,6 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
         size_t actualRead = fread(rawBuffer, sizeof(wchar_t), count, reader->file_reader);
         rawBuffer[actualRead] = L'\0'; // Null-terminate the UTF-16 buffer
 
-        // Convert UTF-16 to UTF-8
         char* utf8Buffer = (char*) encoding_utf16_to_utf8((uint16_t*)rawBuffer, actualRead);
         free(rawBuffer);
 
@@ -431,15 +440,13 @@ bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
             }
             return false;
         }
-
-        // Remove newline characters
         buffer[strcspn(buffer, "\r\n")] = '\0';
-
         FILE_READER_LOG("[file_reader_read_line] Line read successfully.");
     }
 
     return true;
 }
+
 
 /**
  * @brief Reads formatted data from the file.
@@ -481,6 +488,7 @@ size_t file_reader_read_fmt(FileReader* reader, const char* format, ...) {
     return read; 
 }
 
+
 /**
  * @brief Copies the contents of one file to another.
  *
@@ -495,6 +503,29 @@ bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
     if (!src_reader || !src_reader->file_reader || !dest_writer || !dest_writer->file_writer) {
         FILE_READER_LOG("[file_reader_copy] Error: Invalid argument (FileReader or FileWriter is NULL).");
         return false;
+    }
+
+    /* Binary fast-path: byte-for-byte copy with no encoding conversion.
+       The wchar/UTF-8 path below assumes UTF-16 source data and will
+       corrupt arbitrary binary content (it reads pairs of bytes as
+       wchar_t and converts to UTF-8). */
+    if (src_reader->mode == READ_BINARY ||
+        dest_writer->mode == WRITE_BINARY) {
+        unsigned char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), src_reader->file_reader)) > 0) {
+            size_t w = fwrite(buf, 1, n, dest_writer->file_writer);
+            if (w != n) {
+                FILE_READER_LOG("[file_reader_copy] Error: Short write in binary copy.");
+                return false;
+            }
+        }
+        if (!feof(src_reader->file_reader)) {
+            FILE_READER_LOG("[file_reader_copy] Error: Read error in binary copy.");
+            return false;
+        }
+        FILE_READER_LOG("[file_reader_copy] Binary copy completed.");
+        return true;
     }
 
     wchar_t wBuffer[1024]; // Wide character buffer for UTF-16 data
@@ -543,6 +574,7 @@ bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
 
     return true;
 }
+
 
 /**
  * @brief Reads multiple lines of text from the file.

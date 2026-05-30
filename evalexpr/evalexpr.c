@@ -7,6 +7,7 @@
 #include <string.h>
 
 
+
 /* Returns the precedence of the operator. Higher numbers mean higher precedence. */
 static int precedence(char op) {
     switch (op) {
@@ -23,15 +24,18 @@ static int precedence(char op) {
     }
 }
 
+
 /* Returns whether the operator is right-associative. (Only exponentiation is.) */
 static int is_right_associative(char op) {
     return (op == '^');
 }
 
+
 /* Returns whether the character is a valid operator. */
 static int is_operator(char ch) {
     return (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '^');
 }
+
 
 /**
  * Parses the input expression string into an array of tokens.
@@ -46,18 +50,96 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
 
     while (expr[pos] != '\0') {
         // Skip any whitespace.
-        if (isspace(expr[pos])) {
+        if (isspace((unsigned char)expr[pos])) {
             pos++;
             continue;
         }
 
-        // If the character is a digit or a decimal point, parse a number.
-        if (isdigit(expr[pos]) || expr[pos] == '.') {
+        // Decide if the current '+' or '-' is unary (start-of-expression,
+        // after an operator, or after a left parenthesis):
+        //   - followed by a digit / '.'  -> fold into the next numeric
+        //     literal so "-5", "3 + -2", "(-3)*4" parse correctly. Also
+        //     tolerate whitespace between sign and digit ("- 5").
+        //   - followed by '('             -> emit a synthetic 0, then let
+        //     the operator branch handle the sign as a binary op. Lets
+        //     us evaluate "-(5+1)", "-(-5)" correctly.
+        int is_unary_sign = 0;
+        int paren_unary   = 0;
+        
+        if ((expr[pos] == '-' || expr[pos] == '+')) {
+            if (tcount == 0 ||
+                tokens[tcount - 1].type == TOKEN_OPERATOR ||
+                tokens[tcount - 1].type == TOKEN_PAREN_LEFT) {
+                int look = pos + 1;
+
+                while (isspace((unsigned char)expr[look])) {
+                    look++;
+                }
+                if (isdigit((unsigned char)expr[look]) || expr[look] == '.') {
+                    is_unary_sign = 1;
+                } 
+                else if (expr[look] == '(') {
+                    paren_unary = 1;
+                }
+            }
+        }
+
+        // -(...) form: emit synthetic 0, fall through to operator branch.
+        if (paren_unary) {
+            if (tcount >= MAX_TOKENS) {
+                EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
+                return -1;
+            }
+            tokens[tcount].type  = TOKEN_NUMBER;
+            tokens[tcount].value = 0.0;
+            tcount++;
+            // Don't advance pos — the operator branch below consumes the sign.
+        }
+
+        // -5 / + 5 form: consume sign + any whitespace, then parse the
+        // number, then apply the sign.
+        if (is_unary_sign) {
+            char sign = expr[pos];
+            pos++;
+            while (isspace((unsigned char)expr[pos])) {
+                pos++;
+            }
+
+            char *endptr;
+            errno = 0;
+            double val = strtod(&expr[pos], &endptr);
+
+            if (errno != 0 || endptr == &expr[pos]) {
+                EVALEXPR_LOG("[tokenize] : Invalid unary numeric literal at position %d.", pos);
+                return -1;
+            }
+            if (sign == '-') {
+                val = -val;
+            }
+            if (tcount >= MAX_TOKENS) {
+                EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
+                return -1;
+            }
+            tokens[tcount].type = TOKEN_NUMBER;
+            tokens[tcount].value = val;
+            tcount++;
+            pos = endptr - expr;
+
+            continue;
+        }
+
+        if (isdigit((unsigned char)expr[pos]) || expr[pos] == '.') {
             char *endptr;
             errno = 0;
             double val = strtod(&expr[pos], &endptr);
             if (errno != 0) {
                 EVALEXPR_LOG("[tokenize] : Error converting number.");
+                return -1;
+            }
+            if (endptr == &expr[pos]) {
+                // No digits consumed without this
+                // guard the loop would never advance and spin forever.
+                EVALEXPR_LOG("[tokenize] : Invalid numeric literal at position %d.", pos);
                 return -1;
             }
             if (tcount >= MAX_TOKENS) {
@@ -184,6 +266,7 @@ static int shunting_yard(const Token tokens[MAX_TOKENS], int numTokens, Token ou
     return outCount;
 }
 
+
 /**
  * Evaluates an RPN (Reverse Polish Notation) expression.
  *
@@ -263,6 +346,10 @@ static int eval_rpn(const Token rpnTokens[MAX_TOKENS], int numTokens, double *re
  * @return The computed value as a double, or NAN on error.
  */
 double eval_expr(const char *expr) {
+    if (!expr) {
+        EVALEXPR_LOG("[eval_expr] : Error: NULL expression.");
+        return NAN;
+    }
     Token tokens[MAX_TOKENS];
     Token rpnTokens[MAX_TOKENS];
 
@@ -288,6 +375,7 @@ double eval_expr(const char *expr) {
     return result;
 }
 
+
 /**
  * Evaluates an arithmetic expression and returns an error code.
  *
@@ -300,6 +388,11 @@ double eval_expr(const char *expr) {
  * @return The computed value as a double, or NAN on error.
  */
 double eval_expr_strict(const char *expr, int *error) {
+    if (!expr) {
+        EVALEXPR_LOG("[eval_expr_strict] : Error: NULL expression.");
+        if (error) *error = EVAL_EXPR_ERROR_TOKENIZE;
+        return NAN;
+    }
     EVALEXPR_LOG("[eval_expr_strict] : Evaluating expression: %s", expr);
 
     Token tokens[MAX_TOKENS];
@@ -339,6 +432,7 @@ double eval_expr_strict(const char *expr, int *error) {
     return result;
 }
 
+
 /**
  * Converts an arithmetic expression from infix notation to a string in Reverse Polish Notation (RPN).
  *
@@ -348,6 +442,10 @@ double eval_expr_strict(const char *expr, int *error) {
  * @return A newly allocated string representing the RPN form, or NULL on error.
  */
 char *eval_expr_to_rpn_string(const char *expr) {
+    if (!expr) {
+        EVALEXPR_LOG("[eval_expr_to_rpn_string] : Error: NULL expression.");
+        return NULL;
+    }
     EVALEXPR_LOG("[eval_expr_to_rpn_string] : Converting expression to RPN: %s", expr);
 
     Token tokens[MAX_TOKENS];
@@ -399,6 +497,7 @@ char *eval_expr_to_rpn_string(const char *expr) {
     return strdup(buffer);
 }
 
+
 /**
  * Checks whether an arithmetic expression is syntactically valid.
  *
@@ -408,6 +507,10 @@ char *eval_expr_to_rpn_string(const char *expr) {
  * @return 1 if the expression is valid, 0 otherwise.
  */
 int eval_expr_is_valid(const char *expr) {
+    if (!expr) {
+        EVALEXPR_LOG("[eval_expr_is_valid] : Error: NULL expression.");
+        return 0;
+    }
     Token tokens[MAX_TOKENS];
     Token rpnTokens[MAX_TOKENS];
 
@@ -471,6 +574,11 @@ const char *eval_expr_error_message(int error) {
  *         or NULL on error.
  */
 char **eval_expr_tokenize(const char *expr, int *numTokens) {
+    if (!expr) {
+        EVALEXPR_LOG("[eval_expr_tokenize] : Error: NULL expression.");
+        if (numTokens) *numTokens = 0;
+        return NULL;
+    }
     EVALEXPR_LOG("[eval_expr_tokenize] : Tokenizing expression: %s", expr);
     Token tokens[MAX_TOKENS];
     int count = tokenize(expr, tokens);
@@ -486,6 +594,10 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
         *numTokens = count;
     }
     EVALEXPR_LOG("[eval_expr_tokenize] : Tokenized %d tokens from expression: %s", count, expr);
+
+    if (count == 0) {
+        return NULL;
+    }
 
     char **tokenStrs = (char **)malloc(count * sizeof(char *));
     if (!tokenStrs) {
@@ -529,6 +641,7 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
     return tokenStrs;
 }
 
+
 /**
  * Prints detailed debug information for an arithmetic expression.
  *
@@ -539,6 +652,10 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
  * @param expr A null-terminated C string containing the arithmetic expression.
  */
 void eval_expr_print_debug(const char *expr) {
+    if (!expr) {
+        printf("Debug: NULL expression.\n");
+        return;
+    }
     EVALEXPR_LOG("[eval_expr_print_debug] : Debugging expression: %s", expr);
 
     Token tokens[MAX_TOKENS];
@@ -578,19 +695,20 @@ void eval_expr_print_debug(const char *expr) {
     for (int i = 0; i < rpnCount; i++) {
         if (rpnTokens[i].type == TOKEN_NUMBER) {
             int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%g ", rpnTokens[i].value);
-            if (n < 0 || (size_t)n >= sizeof(buffer) - pos)
+            if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
                 break;
+            }
             pos += n;
         } 
         else if (rpnTokens[i].type == TOKEN_OPERATOR) {
             int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%c ", rpnTokens[i].op);
-            if (n < 0 || (size_t)n >= sizeof(buffer) - pos)
+            if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
                 break;
+            }
             pos += n;
         }
     }
     
-    // Remove trailing space.
     if (pos > 0 && buffer[pos - 1] == ' ') {
         buffer[pos - 1] = '\0';
     }

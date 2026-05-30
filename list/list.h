@@ -1,8 +1,14 @@
 /**
  * @author Amin Tahmasebi
- * @date 2023 
+ * @date 2023
  * @class List
-*/
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in list.c (file-level convention).
+ *
+ * Doubly-linked list with element-size-aware copy semantics. Modeled
+ * on C++ std::list<T>.
+ */
 
 #ifndef LIST_H_
 #define LIST_H_
@@ -11,87 +17,138 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
-#endif 
+#endif
 
-#define LIST_LOGGING_ENABLE
 
-#ifdef LIST_LOGGING_ENABLE 
+/* #define LIST_LOGGING_ENABLE */
+
+#ifdef LIST_LOGGING_ENABLE
     #define LIST_LOG(fmt, ...) \
         do { fprintf(stderr, "[LIST LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define LIST_LOG(fmt, ...) do { } while (0)
+    #define LIST_LOG(...) do { } while (0)
 #endif
+
+
 
 typedef struct Node Node;
 typedef struct List List;
+
+/* Per-element predicate used by `list_remove_if`. */
 typedef bool (*ConditionFunction)(void* value);
-typedef int (*CompareFunction)(const void *, const void *);
+
+/* Two-element comparator used by `list_sort` and the
+ * `list_is_less` / `list_is_greater` family. */
+typedef int  (*CompareFunction)(const void*, const void*);
 
 struct Node {
-    void *value;
-    Node *next;
-    Node *prev;  
+    void* value;
+    Node* next;
+    Node* prev;
 };
+
 
 struct List {
-    Node *head;
-    Node *tail;
-    size_t size;
-    size_t itemSize;
+    Node*             head;
+    Node*             tail;
+    size_t            size;
+    size_t            itemSize;
     ConditionFunction condition;
-    CompareFunction compare;
+    CompareFunction   compare;
 };
 
-// Function declarations
-List *list_create(size_t itemSize, CompareFunction compare);
-size_t list_length(const List *list);
 
-void *list_front(const List *list);
-void *list_back(const List *list);
-void *list_insert(List *list, size_t index, void *value);
-void *list_erase(List *list, size_t index);
+/* ------------------------------------------------------------------ */
+/* Construction / destruction                                         */
+/* ------------------------------------------------------------------ */
 
-void list_resize(List *list, size_t newSize, void *defaultValue);
-void list_swap(List *list1, List *list2);
-void list_reverse(List *list);
-void list_sort(List* list);
-void list_push_front(List *list, void *value);
-void list_push_back(List *list, void *value);
-void list_pop_front(List *list);
-void list_pop_back(List *list);
-void list_clear(List *list);
-void list_assign(List *list, void *values, size_t numValues);
-void list_emplace_front(List *list, void *value);
-void list_emplace_back(List *list, void *value);
-void list_splice(List *dest, List *src, Node *pos);
-void list_remove(List *list, void *value);
-void list_remove_if(List *list, ConditionFunction cond);
-void list_unique(List *list);
-void list_merge(List *list1, List *list2);
-void list_deallocate(List *list);
+List*       list_create                   (size_t itemSize, CompareFunction compare);
+void        list_deallocate               (List* list);
 
-Node *list_begin(const List *list);
-Node *list_end(const List *list);
-Node *list_rbegin(const List *list);  // Only for doubly linked lists
-Node *list_rend(const List *list); 
 
-const Node *list_cbegin(const List *list);
-const Node *list_cend(const List* list);
-const Node *list_crbegin(const List* list);
-const Node *list_crend(const List* list);
+/* ------------------------------------------------------------------ */
+/* Capacity                                                           */
+/* ------------------------------------------------------------------ */
 
-bool list_is_less(const List *list1, const List *list2);
-bool list_is_greater(const List *list1, const List *list2);
-bool list_is_equal(const List *list1, const List *list2);
-bool list_is_less_or_equal(const List *list1, const List *list2);
-bool list_is_greater_or_equal(const List *list1, const List *list2);
-bool list_is_not_equal(const List *list1, const List *list2);
-bool list_empty(const List *list);
+size_t      list_length                   (const List* list);
+bool        list_empty                    (const List* list);
 
-#ifdef __cplusplus 
+
+/* ------------------------------------------------------------------ */
+/* Element access                                                     */
+/* ------------------------------------------------------------------ */
+
+void*       list_front                    (const List* list);
+void*       list_back                     (const List* list);
+
+
+/* ------------------------------------------------------------------ */
+/* Modifiers — push / pop / insert / erase                            */
+/* ------------------------------------------------------------------ */
+
+void        list_push_front               (List* list, void* value);
+void        list_push_back                (List* list, void* value);
+void        list_pop_front                (List* list);
+void        list_pop_back                 (List* list);
+void        list_emplace_front            (List* list, void* value);
+void        list_emplace_back             (List* list, void* value);
+void*       list_insert                   (List* list, size_t index, void* value);
+void*       list_erase                    (List* list, size_t index);
+void        list_clear                    (List* list);
+void        list_assign                   (List* list, void* values, size_t numValues);
+void        list_resize                   (List* list, size_t newSize, void* defaultValue);
+
+
+/* ------------------------------------------------------------------ */
+/* Modifiers — algorithms                                             */
+/* ------------------------------------------------------------------ */
+
+void        list_swap                     (List* list1, List* list2);
+void        list_reverse                  (List* list);
+void        list_sort                     (List* list);
+void        list_splice                   (List* dest, List* src, Node* pos);
+void        list_remove                   (List* list, void* value);
+void        list_remove_if                (List* list, ConditionFunction cond);
+void        list_unique                   (List* list);
+void        list_merge                    (List* list1, List* list2);
+
+
+/* ------------------------------------------------------------------ */
+/* Iterators — mutable                                                */
+/* ------------------------------------------------------------------ */
+
+Node*       list_begin                    (const List* list);
+Node*       list_end                      (const List* list);
+Node*       list_rbegin                   (const List* list);
+Node*       list_rend                     (const List* list);
+
+
+/* ------------------------------------------------------------------ */
+/* Iterators — const                                                  */
+/* ------------------------------------------------------------------ */
+
+const Node* list_cbegin                   (const List* list);
+const Node* list_cend                     (const List* list);
+const Node* list_crbegin                  (const List* list);
+const Node* list_crend                    (const List* list);
+
+
+/* ------------------------------------------------------------------ */
+/* Comparison                                                         */
+/* ------------------------------------------------------------------ */
+
+bool        list_is_equal                 (const List* list1, const List* list2);
+bool        list_is_not_equal             (const List* list1, const List* list2);
+bool        list_is_less                  (const List* list1, const List* list2);
+bool        list_is_less_or_equal         (const List* list1, const List* list2);
+bool        list_is_greater               (const List* list1, const List* list2);
+bool        list_is_greater_or_equal      (const List* list1, const List* list2);
+
+
+#ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif 

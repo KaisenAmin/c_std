@@ -16,501 +16,344 @@ This library provides a comprehensive set of functions for reading from and writ
 
 ## Function Descriptions
 
-### FileWriter Functions
+**FileWriter Functions**
 
 ### `FileWriter* file_writer_open(const char* filename, const WriteMode mode)`
-
-- **Purpose**:  
-  The `file_writer_open` function is used to open a file for writing based on the specified `WriteMode`. This function supports writing in various modes, such as text, binary, Unicode, buffered, unbuffered, and appending, allowing flexibility in how the file is written.
-
-- **Parameters**:
-  - `filename`: The name of the file to open for writing.
-  - `mode`: The mode in which the file should be opened, specified by the `WriteMode` enum. The modes include:
-    - `WRITE_TEXT`: Open in text mode.
-    - `WRITE_BINARY`: Open in binary mode.
-    - `WRITE_UNICODE`: Open in Unicode mode (UTF-8).
-    - `WRITE_BUFFERED`: Open in buffered mode for optimized writing.
-    - `WRITE_UNBUFFERED`: Open in unbuffered mode for direct writing.
-    - `WRITE_APPEND`: Open in append mode to write data at the end of the file.
-
-- **Return Type**:  
-  Returns a pointer to the `FileWriter` structure on success, or `NULL` on failure (e.g., invalid `filename` or failure to open the file).
+**Purpose**: Opens a file for writing using the specified mode, creating it if it does not exist or truncating it if it does (except in append mode).
+**Parameters**:
+- `filename`: Path to the file to open for writing.
+- `mode`: Write mode (`WRITE_TEXT`, `WRITE_BINARY`, `WRITE_UNICODE`, `WRITE_BUFFERED`, `WRITE_UNBUFFERED`, or `WRITE_APPEND`).
+**Return Value**: A `FileWriter*` on success, or `NULL` on failure.
+**Usage Case**: Use this to create or overwrite a file and obtain a writer handle before calling any write functions.
 
 ---
 
 ### `FileWriter* file_writer_append(const char* filename, const WriteMode mode)`
-
-- **Purpose**:  
-  The `file_writer_append` function is used to open a file for appending data. This function allows appending new data to the end of an existing file, or creates a new file if it does not already exist. The function supports writing in different modes, such as text, binary, and Unicode.
-
-- **Parameters**:
-  - `filename`: The name of the file to open for appending.
-  - `mode`: The mode in which the file should be opened, specified by the `WriteMode` enum. The available modes include:
-    - `WRITE_TEXT`: Open in text mode for appending.
-    - `WRITE_BINARY`: Open in binary mode for appending.
-    - `WRITE_UNICODE`: Open in Unicode mode (UTF-8) for appending.
-    - `WRITE_BUFFERED`: Open in buffered mode for optimized writing.
-    - `WRITE_UNBUFFERED`: Open in unbuffered mode for direct writing.
-    - `WRITE_APPEND`: Open specifically for appending data.
-
-- **Return Type**:  
-  Returns a pointer to the `FileWriter` structure on success, or `NULL` on failure (e.g., invalid `filename` or failure to open the file).
+**Purpose**: Opens a file in append mode so new data is added at the end without erasing existing content, creating the file if it does not exist.
+**Parameters**:
+- `filename`: Path to the file to open for appending.
+- `mode`: Write mode (`WRITE_TEXT`, `WRITE_BINARY`, `WRITE_UNICODE`, `WRITE_BUFFERED`, `WRITE_UNBUFFERED`, or `WRITE_APPEND`).
+**Return Value**: A `FileWriter*` on success, or `NULL` on failure.
+**Usage Case**: Use this when you need to add data to the end of an existing file without losing its current contents.
 
 ---
 
 ### `bool file_writer_close(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_close` function closes the file associated with the given `FileWriter` structure. It ensures that all buffered data is properly flushed to the file before closing, preventing data loss.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns `true` if the file was successfully closed, or `false` if an error occurred (e.g., if the file was already closed or `fclose` failed).
-
----
-
-### `size_t file_writer_get_position(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_get_position` function retrieves the current position of the file pointer within the file associated with the `FileWriter`. This is useful for tracking the position in the file during writing operations.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns the current file pointer position as a `size_t`. If an error occurs, the function returns `(size_t)-1`.
-
----
-
-### `size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_write` function writes data from a buffer to the file associated with the `FileWriter`. It handles different writing modes, including binary and Unicode (UTF-16 and UTF-32), and can perform necessary encoding conversions before writing.
-
-- **Parameters**:
-  - `buffer`: The data buffer to write from.
-  - `size`: The size of each element in the buffer.
-  - `count`: The number of elements to write.
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns the number of elements successfully written. If an error occurs (e.g., invalid `FileWriter` structure or buffer), the function returns `0`.
-
----
-
-### `bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_write_line` function writes a line of text to the file associated with the `FileWriter`, automatically adding a newline character at the end. It handles Unicode text, ensuring proper encoding (e.g., UTF-16 on Windows).
-
-- **Parameters**:
-  - `buffer`: The buffer containing the line of text to write.
-  - `size`: The size of the text line in bytes.
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns `true` if the line was successfully written, or `false` if there was an error.
+**Purpose**: Flushes all buffered data, closes the underlying file, and frees the `FileWriter` struct.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure to close.
+**Return Value**: `true` on success, `false` if the file was already closed or `fclose` failed.
+**Usage Case**: Always call this when you are done writing to properly release file resources and ensure all data is persisted.
 
 ---
 
 ### `bool file_writer_is_open(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_is_open` function checks whether the file associated with the `FileWriter` structure is currently open. This is useful to verify the state of the file before performing any write operations.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns `true` if the file is open, or `false` if it is not open or if an error occurred.
+**Purpose**: Returns whether the file associated with the writer is currently open.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure to check.
+**Return Value**: `true` if the file is open, `false` otherwise.
+**Usage Case**: Use this as a guard before performing write operations to confirm the writer is in a valid open state.
 
 ---
 
 ### `bool file_writer_flush(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_flush` function ensures that all buffered data is physically written to the file. It is useful in scenarios where immediate persistence of data to the file is necessary.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns `true` if the flush operation was successful, or `false` if an error occurred (e.g., invalid `FileWriter` or failed `fflush`).
+**Purpose**: Forces all buffered data to be written to disk immediately.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure to flush.
+**Return Value**: `true` on success, `false` if `fflush` failed or `writer` is invalid.
+**Usage Case**: Use this when you need data durability at a specific point without closing the file.
 
 ---
 
-### `bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding)`
-
-- **Purpose**:  
-  The `file_writer_set_encoding` function configures the `FileWriter` to use the specified character encoding for writing data. It supports different encodings, such as UTF-16 and UTF-32.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-  - `encoding`: The desired `WriteEncodingType` (e.g., `WRITE_ENCODING_UTF16` or `WRITE_ENCODING_UTF32`).
-
-- **Return Type**:  
-  Returns `true` if the encoding was successfully set, or `false` if there was an error (e.g., invalid `FileWriter` or invalid encoding type).
+### `size_t file_writer_write(void* buffer, size_t size, size_t count, FileWriter* writer)`
+**Purpose**: Writes `count` elements of `size` bytes each from `buffer` to the file, handling encoding conversion for Unicode mode.
+**Parameters**:
+- `buffer`: Pointer to the data to write.
+- `size`: Size in bytes of each element.
+- `count`: Number of elements to write.
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: The number of elements written, or `0` on error.
+**Usage Case**: Use this as the primary raw write function for arbitrary binary or text data.
 
 ---
 
-### `bool file_writer_copy(FileWriter* src_writer, FileWriter* dest_writer)`
-
-- **Purpose**:  
-  The `file_writer_copy` function copies the entire content of the file managed by the `src_writer` to the file managed by the `dest_writer`. This function is useful for duplicating files or transferring content between different file streams.
-
-- **Parameters**:
-  - `src_writer`: A pointer to the source `FileWriter` structure.
-  - `dest_writer`: A pointer to the destination `FileWriter` structure.
-
-- **Return Type**:  
-  Returns `true` if the file content was successfully copied, or `false` if an error occurred (e.g., file reading/writing failure or invalid `FileWriter` structures).
-
----
-
-### `const char* file_writer_get_file_name(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_get_file_name` function retrieves the absolute path of the file associated with the `FileWriter` structure. This allows the user to check which file the `FileWriter` is currently operating on.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns a constant character pointer to the file path if the `FileWriter` is valid, or `NULL` if there is an error.
-
----
-
-### `const char* file_writer_get_encoding(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_get_encoding` function retrieves the encoding type currently set for the `FileWriter` (e.g., UTF-16 or UTF-32). This allows the user to confirm how data is being written to the file in terms of encoding.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns a constant character pointer representing the encoding type if valid, or `NULL` if there is an error.
+### `bool file_writer_write_line(char* buffer, size_t size, FileWriter* writer)`
+**Purpose**: Writes `size` bytes from `buffer` to the file and appends a newline character, handling UTF-16 encoding on Windows in Unicode mode.
+**Parameters**:
+- `buffer`: Pointer to the text to write.
+- `size`: Number of bytes from `buffer` to write.
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this when writing line-oriented text content and you want the newline appended automatically.
 
 ---
 
 ### `size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...)`
-
-- **Purpose**:  
-  The `file_writer_write_fmt` function writes formatted data to the file associated with the `FileWriter`, similar to the behavior of `fprintf`. It formats the data according to the provided format string and writes it to the file.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-  - `format`: A format string (similar to `printf`), followed by the values to format.
-
-- **Return Type**:  
-  Returns the number of characters successfully written, or `0` if an error occurs (e.g., invalid `FileWriter` or formatting failure).
-
----
-
-### `size_t file_writer_get_size(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_get_size` function retrieves the current size of the file associated with the `FileWriter`. It ensures that any pending writes are flushed to the file, then seeks to the end of the file to calculate the size.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure.
-
-- **Return Type**:  
-  Returns the size of the file in bytes, or `0` if an error occurs (e.g., failed `fseek` or invalid `FileWriter`).
-
----
-
-### `bool file_writer_lock(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_lock` function locks the file associated with the `FileWriter` structure to prevent other processes from modifying it while the lock is held. This ensures exclusive access to the file for writing.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure representing the file.
-
-- **Return Type**:  
-  Returns `true` if the file is successfully locked, or `false` if an error occurred.
-
----
-
-### `bool file_writer_unlock(FileWriter* writer)`
-
-- **Purpose**:  
-  The `file_writer_unlock` function releases the lock on the file associated with the `FileWriter`, allowing other processes to access it again. This function should be called after the file operations are completed.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure representing the file.
-
-- **Return Type**:  
-  Returns `true` if the file is successfully unlocked, or `false` if an error occurred.
-
----
-
-### `bool file_writer_seek(FileWriter* writer, long offset, const CursorPosition cursor_pos)`
-
-- **Purpose**:  
-  The `file_writer_seek` function moves the file pointer to a specific location, enabling random access writing. The position can be set relative to the beginning, end, or current position of the file.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure representing the file.
-  - `offset`: The offset in bytes to move the file pointer.
-  - `cursor_pos`: The reference position for the offset (`POS_BEGIN`, `POS_END`, or `POS_CURRENT`).
-
-- **Return Type**:  
-  Returns `true` if the file pointer was successfully moved, or `false` if there was an error.
-
----
-
-### `bool file_writer_truncate(FileWriter* writer, size_t size)`
-
-- **Purpose**:  
-  The `file_writer_truncate` function truncates the file associated with the `FileWriter` to the specified size. If the new size is smaller than the current file size, the file is shortened. If it is larger, the file is extended, and the added space is filled with zeros.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure representing the file.
-  - `size`: The size to which the file should be truncated (in bytes).
-
-- **Return Type**:  
-  Returns `true` if the file was successfully truncated, or `false` if an error occurred.
+**Purpose**: Writes a `printf`-style formatted string to the file.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+- `format`: A `printf`-style format string followed by corresponding arguments.
+**Return Value**: The number of characters written, or `0` on error.
+**Usage Case**: Use this to write structured or human-readable formatted text without manually constructing the string first.
 
 ---
 
 ### `bool file_writer_write_batch(FileWriter* writer, const void** buffers, const size_t* sizes, size_t count)`
-
-- **Purpose**:  
-  The `file_writer_write_batch` function writes multiple buffers to a file in a single operation, potentially optimizing I/O operations by reducing the number of system calls. It handles different encoding types (e.g., UTF-16, UTF-32) and converts the data as needed before writing.
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure representing the file.
-  - `buffers`: An array of pointers to the data buffers to be written.
-  - `sizes`: An array of sizes corresponding to each buffer.
-  - `count`: The number of buffers to be written.
-
-- **Return Type**:  
-  Returns `true` if all buffers were successfully written, or `false` if an error occurred.
+**Purpose**: Writes `count` separate buffers to the file in a single batch, reducing system-call overhead and handling encoding conversion as needed.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+- `buffers`: Array of pointers to the data buffers to write.
+- `sizes`: Array of byte sizes corresponding to each buffer.
+- `count`: Number of buffers to write.
+**Return Value**: `true` if all buffers were written, `false` on any error.
+**Usage Case**: Use this to efficiently write multiple discontiguous data chunks in one operation.
 
 ---
 
 ### `bool file_writer_append_fmt(FileWriter* writer, const char* format, ...)`
-
-- **Purpose**:  
-  The `file_writer_append_fmt` function formats a string according to the specified format string and appends the resulting text to the file associated with the `FileWriter`. The `FileWriter` must be in append mode (`WRITE_APPEND`).
-
-- **Parameters**:
-  - `writer`: A pointer to the `FileWriter` structure representing the file.
-  - `format`: A format string (similar to `printf`), followed by additional arguments corresponding to the format.
-
-- **Return Type**:  
-  Returns `true` if the formatted text was successfully appended, or `false` if an error occurred.
+**Purpose**: Formats a string with `printf`-style specifiers and appends it to the file; the `FileWriter` must be in `WRITE_APPEND` mode.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure in append mode.
+- `format`: A `printf`-style format string followed by corresponding arguments.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to append formatted text entries (such as log lines) to an existing file.
 
 ---
 
-### FileReader Functions
+### `bool file_writer_copy(FileWriter* src_writer, FileWriter* dest_writer)`
+**Purpose**: Copies the entire content of the file managed by `src_writer` into the file managed by `dest_writer`.
+**Parameters**:
+- `src_writer`: A pointer to the source `FileWriter` structure.
+- `dest_writer`: A pointer to the destination `FileWriter` structure.
+**Return Value**: `true` on success, `false` if any read or write step fails.
+**Usage Case**: Use this to duplicate a file's content into another file using writer handles you already have open.
 
-### `FileReader* file_reader_open(const char* filename, const ReadMode mode)` 
+---
 
-- **Purpose**:  
-  The `FileReader` function is designed to open and manage reading operations on files using various modes, such as text, binary, Unicode, buffered, unbuffered, and line-by-line reading. This flexibility allows for optimized file reading based on the specific needs of the user. The function is part of a broader framework aimed at providing robust file management capabilities in C.
+### `size_t file_writer_get_position(FileWriter* writer)`
+**Purpose**: Returns the current byte offset of the file pointer.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: The current file pointer position as `size_t`, or `(size_t)-1` on error.
+**Usage Case**: Use this to track how many bytes have been written or to record a position for later seeking.
 
-- **Parameters**:
-  - `filename`: The path of the file to open.
-  - `mode`: Specifies how the file should be opened, as defined by the `ReadMode` enum. Modes include:
-    - `READ_TEXT`: Opens the file in text mode.
-    - `READ_BINARY`: Opens the file in binary mode.
-    - `READ_UNICODE`: Opens the file for Unicode text reading (on Windows, it may involve encoding conversion to UTF-16).
-    - `READ_BUFFERED`: Opens the file with buffered reading for optimized performance.
-    - `READ_UNBUFFERED`: Opens the file without buffering, performing direct read operations.
-    - `READ_LINE`: Opens the file for line-by-line reading, useful for text files.
+---
 
-- **Return Type**:  
-  Returns a pointer to a `FileReader` structure on success, or `NULL` on failure.
+### `size_t file_writer_get_size(FileWriter* writer)`
+**Purpose**: Flushes pending writes and returns the total file size in bytes.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: The file size in bytes, or `0` on error.
+**Usage Case**: Use this to determine the full size of the file at any point during writing.
+
+---
+
+### `bool file_writer_seek(FileWriter* writer, long offset, const CursorPosition cursor_pos)`
+**Purpose**: Moves the file pointer by `offset` bytes relative to `cursor_pos` (`POS_BEGIN`, `POS_END`, or `POS_CURRENT`).
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+- `offset`: Number of bytes to move the file pointer.
+- `cursor_pos`: Reference position for the offset (`POS_BEGIN`, `POS_END`, or `POS_CURRENT`).
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to enable random-access writing by repositioning the file pointer before a write.
+
+---
+
+### `bool file_writer_truncate(FileWriter* writer, size_t size)`
+**Purpose**: Truncates or extends the file to exactly `size` bytes, with extended space zero-filled.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+- `size`: The target file size in bytes.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to shrink a file to discard trailing data or to pre-allocate space by extending it.
+
+---
+
+### `bool file_writer_lock(FileWriter* writer)`
+**Purpose**: Acquires an exclusive lock on the file, preventing other processes from modifying it.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: `true` if the lock was obtained, `false` on error.
+**Usage Case**: Use this before a critical write section to ensure no other process can modify the file concurrently.
+
+---
+
+### `bool file_writer_unlock(FileWriter* writer)`
+**Purpose**: Releases the exclusive lock held on the file.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this after a locked write section is complete to allow other processes to access the file again.
+
+---
+
+### `bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encoding)`
+**Purpose**: Sets the character encoding used for subsequent writes (`WRITE_ENCODING_UTF16` or `WRITE_ENCODING_UTF32`).
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+- `encoding`: The desired encoding type (`WRITE_ENCODING_UTF16` or `WRITE_ENCODING_UTF32`).
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to switch the encoding mid-stream when writing multi-encoding files.
+
+---
+
+### `const char* file_writer_get_encoding(FileWriter* writer)`
+**Purpose**: Returns a string describing the current encoding type (e.g. `"ENCODING_UTF16"`).
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: A string describing the current encoding, or `NULL` on error.
+**Usage Case**: Use this to confirm or log the active encoding before performing encoding-sensitive write operations.
+
+---
+
+### `const char* file_writer_get_file_name(FileWriter* writer)`
+**Purpose**: Returns the file path string stored in the `FileWriter` struct.
+**Parameters**:
+- `writer`: A pointer to the `FileWriter` structure.
+**Return Value**: The file path string, or `NULL` if `writer` is invalid.
+**Usage Case**: Use this to retrieve or log the path of the file currently managed by the writer.
+
+---
+
+**FileReader Functions**
+
+### `FileReader* file_reader_open(const char* filename, const ReadMode mode)`
+**Purpose**: Opens a file for reading using the specified mode, returning a reader handle.
+**Parameters**:
+- `filename`: Path to the file to open for reading.
+- `mode`: Read mode (`READ_TEXT`, `READ_BINARY`, `READ_UNICODE`, `READ_BUFFERED`, `READ_UNBUFFERED`, or `READ_LINE`).
+**Return Value**: A `FileReader*` on success, or `NULL` if the file cannot be opened.
+**Usage Case**: Use this to obtain a reader handle before calling any read functions.
 
 ---
 
 ### `bool file_reader_close(FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_close` function is responsible for properly closing the file associated with a `FileReader` structure. It ensures that any resources allocated for the file (such as memory and file handles) are released to prevent resource leaks.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure that holds information about the open file and its state.
-
-- **Return Type**:  
-  Returns `true` if the file was successfully closed, or `false` if an error occurred (e.g., invalid `FileReader` structure or failure to close the file).
-
----
-
-### `size_t file_reader_get_position(FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_get_position` function retrieves the current position of the file pointer within the file associated with the `FileReader` structure. This allows the user to track or resume reading from the current position.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure that holds information about the open file.
-
-- **Return Type**:  
-  Returns the current file pointer position as a `size_t`. If an error occurs (such as an invalid `FileReader` structure), the function returns `(size_t)-1`.
+**Purpose**: Closes the file and frees the `FileReader` struct.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure to close.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Always call this when you are done reading to release file handles and allocated memory.
 
 ---
 
 ### `bool file_reader_is_open(FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_is_open` function checks whether the file associated with the given `FileReader` structure is currently open. This helps the user ensure that the file is still available for reading operations.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure that holds information about the open file.
-
-- **Return Type**:  
-  Returns `true` if the file is open, or `false` if it is not, or if an error occurs (e.g., invalid `FileReader` structure).
-
----
-
-### `bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encoding)`
-
-- **Purpose**:  
-  The `file_reader_set_encoding` function sets the encoding type for reading the file associated with the `FileReader` structure. This allows the user to specify how the file should be interpreted when reading text in different encodings.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure that holds information about the file.
-  - `encoding`: Specifies the encoding type to set, defined by the `ReadEncodingType` enum (e.g., `READ_ENCODING_UTF16` or `READ_ENCODING_UTF32`).
-
-- **Return Type**:  
-  Returns `true` if the encoding was successfully set, or `false` if an error occurred (e.g., invalid `FileReader` structure or invalid encoding type).
-
----
-
-### `const char* file_reader_get_file_name(FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_get_file_name` function retrieves the absolute file path associated with the `FileReader` structure. This allows the user to access the full file path of the currently opened file for reference or logging purposes.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure that holds information about the file.
-
-- **Return Type**:  
-  Returns the absolute file path as a constant string if successful, or `NULL` if there is an error (e.g., invalid `FileReader` structure or `file_path` is `NULL`).
-
----
-
-### `bool file_reader_seek(FileReader* reader, long offset, const CursorPosition cursor_pos)`
-
-- **Purpose**:  
-  The `file_reader_seek` function moves the file pointer to a specific location within the file. This allows for random access reading, where the user can skip to a particular position in the file to begin reading from there.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure.
-  - `offset`: The number of bytes to move the file pointer relative to the `cursor_pos`.
-  - `cursor_pos`: The reference point from which to calculate the offset. It is defined by the `CursorPosition` enum with values like:
-    - `POS_BEGIN`: Move relative to the beginning of the file.
-    - `POS_END`: Move relative to the end of the file.
-    - `POS_CURRENT`: Move relative to the current position of the file pointer.
-
-- **Return Type**:  
-  Returns `true` if the file pointer was successfully moved, or `false` if there was an error (e.g., invalid `FileReader` structure or failed `fseek`).
+**Purpose**: Returns whether the file associated with the reader is currently open.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure to check.
+**Return Value**: `true` if the file is open, `false` otherwise.
+**Usage Case**: Use this as a guard before reading to confirm the reader is in a valid open state.
 
 ---
 
 ### `bool file_reader_eof(FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_eof` function checks if the file pointer has reached the end of the file. This is useful when reading through a file to determine when there is no more data to read.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure.
-
-- **Return Type**:  
-  Returns `true` if the file pointer has reached the end of the file, or `false` if not or if an error occurs (e.g., invalid `FileReader`).
-
----
-
-### `size_t file_reader_get_size(FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_get_size` function returns the total size of the file in bytes. This is useful for determining the size of the file for reading or processing operations.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure.
-
-- **Return Type**:  
-  Returns the size of the file in bytes, or `0` if an error occurred (e.g., invalid `FileReader` or failed `fseek`).
+**Purpose**: Returns whether the file pointer has reached the end of the file.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+**Return Value**: `true` if at end of file, `false` otherwise.
+**Usage Case**: Use this in read loops to detect when there is no more data to consume.
 
 ---
 
 ### `size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_read` function reads data from the file into a buffer. It supports reading in both binary and text modes, handling different types of data reading efficiently.
-
-- **Parameters**:
-  - `buffer`: A pointer to the buffer where the data will be stored.
-  - `size`: The size of each element to read (in bytes).
-  - `count`: The number of elements to read.
-  - `reader`: A pointer to the `FileReader` structure.
-
-- **Return Type**:  
-  Returns the number of elements successfully read, or `0` if an error occurs (e.g., invalid `FileReader` structure or buffer).
+**Purpose**: Reads `count` elements of `size` bytes each from the file into `buffer`.
+**Parameters**:
+- `buffer`: Pointer to the destination buffer.
+- `size`: Size in bytes of each element.
+- `count`: Number of elements to read.
+- `reader`: A pointer to the `FileReader` structure.
+**Return Value**: The number of elements read, or `0` on error.
+**Usage Case**: Use this as the primary raw read function for arbitrary binary or text data.
 
 ---
 
 ### `bool file_reader_read_line(char* buffer, size_t size, FileReader* reader)`
-
-- **Purpose**:  
-  The `file_reader_read_line` function reads a single line of text from the file associated with the `FileReader`. It supports different encoding modes, including UTF-16 and UTF-8, handling encoding conversions where necessary.
-
-- **Parameters**:
-  - `buffer`: A pointer to the buffer where the line will be stored.
-  - `size`: The maximum number of characters to read, including the null terminator.
-  - `reader`: A pointer to the `FileReader` structure.
-
-- **Return Type**:  
-  Returns `true` if a line was successfully read, or `false` if an error occurs (e.g., invalid `FileReader` structure or reading failure).
+**Purpose**: Reads one line of text (up to `size - 1` chars plus null terminator) into `buffer`, handling UTF-16/UTF-8 conversion where needed.
+**Parameters**:
+- `buffer`: Pointer to the destination buffer for the line.
+- `size`: Maximum number of characters to read, including the null terminator.
+- `reader`: A pointer to the `FileReader` structure.
+**Return Value**: `true` if a line was read, `false` at EOF or on error.
+**Usage Case**: Use this to process a text file one line at a time.
 
 ---
 
 ### `size_t file_reader_read_fmt(FileReader* reader, const char* format, ...)`
-
-- **Purpose**:  
-  The `file_reader_read_fmt` function reads formatted data from the file using a format string, similar to how `scanf` works. This is useful for reading structured data in a predefined format.
-
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure.
-  - `format`: A format string specifying how to interpret the data.
-  - (varargs): A variable number of arguments representing the variables that will receive the formatted data.
-
-- **Return Type**:  
-  Returns the number of items successfully read, or `0` if an error occurs (e.g., invalid `FileReader` structure or formatting failure).
-
----
-
-### `bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer)`
-
-- **Purpose**:  
-  The `file_reader_copy` function copies the contents of a source file (associated with the `FileReader`) to a destination file (associated with the `FileWriter`). It handles encoding conversion if necessary, ensuring that UTF-16 content is converted to UTF-8 before writing.
-
-- **Parameters**:
-  - `src_reader`: A pointer to the `FileReader` structure for the source file.
-  - `dest_writer`: A pointer to the `FileWriter` structure for the destination file.
-
-- **Return Type**:  
-  Returns `true` if the copy operation was successful, or `false` if an error occurred (e.g., failed reading, writing, or conversion).
+**Purpose**: Reads formatted data from the file using a `scanf`-style format string.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+- `format`: A `scanf`-style format string followed by pointers to the variables to fill.
+**Return Value**: The number of items successfully matched, or `0` on error.
+**Usage Case**: Use this to parse structured data from a file in a known format without manual string splitting.
 
 ---
 
 ### `bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines)`
+**Purpose**: Reads exactly `num_lines` lines from the file into a dynamically allocated array of strings stored at `*buffer`; the caller must `free` each string and the array.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+- `buffer`: Output parameter that receives a pointer to the allocated array of line strings.
+- `num_lines`: Number of lines to read.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to bulk-read a fixed number of lines into memory for batch processing.
 
-- **Purpose**:  
-  The `file_reader_read_lines` function reads multiple lines of text from a file, storing each line in a dynamically allocated array of strings. This function allows the user to extract a specified number of lines for further processing.
+---
 
-- **Parameters**:
-  - `reader`: A pointer to the `FileReader` structure associated with the file.
-  - `buffer`: A pointer to an array of strings where the lines will be stored. The memory for this buffer is allocated dynamically within the function.
-  - `num_lines`: The number of lines to read from the file.
+### `bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer)`
+**Purpose**: Copies the full content of the source file into the destination file, converting encoding if necessary.
+**Parameters**:
+- `src_reader`: A pointer to the source `FileReader` structure.
+- `dest_writer`: A pointer to the destination `FileWriter` structure.
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to duplicate or migrate file content using already-open reader and writer handles.
 
-- **Return Type**:  
-  Returns `true` if the specified number of lines was successfully read, or `false` if an error occurred (e.g., memory allocation failure, invalid `FileReader`, or file reading issues). The buffer will contain the lines that were successfully read.
+---
+
+### `size_t file_reader_get_position(FileReader* reader)`
+**Purpose**: Returns the current byte offset of the file pointer.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+**Return Value**: The current file pointer position as `size_t`, or `(size_t)-1` on error.
+**Usage Case**: Use this to record the current position so it can be restored later with `file_reader_seek`.
+
+---
+
+### `size_t file_reader_get_size(FileReader* reader)`
+**Purpose**: Returns the total file size in bytes.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+**Return Value**: The file size in bytes, or `0` on error.
+**Usage Case**: Use this to know how much data to allocate or how many bytes remain to read.
+
+---
+
+### `bool file_reader_seek(FileReader* reader, long offset, const CursorPosition cursor_pos)`
+**Purpose**: Moves the file pointer by `offset` bytes relative to `cursor_pos`.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+- `offset`: Number of bytes to move the file pointer.
+- `cursor_pos`: Reference position for the offset (`POS_BEGIN`, `POS_END`, or `POS_CURRENT`).
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this to implement random-access reading or to rewind to a previously saved position.
+
+---
+
+### `bool file_reader_set_encoding(FileReader* reader, const ReadEncodingType encoding)`
+**Purpose**: Sets the encoding type for reading (`READ_ENCODING_UTF16` or `READ_ENCODING_UTF32`).
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+- `encoding`: The desired encoding type (`READ_ENCODING_UTF16` or `READ_ENCODING_UTF32`).
+**Return Value**: `true` on success, `false` on error.
+**Usage Case**: Use this when the file uses a non-default encoding and you need correct character interpretation during reads.
+
+---
+
+### `const char* file_reader_get_file_name(FileReader* reader)`
+**Purpose**: Returns the absolute file path stored in the `FileReader` struct.
+**Parameters**:
+- `reader`: A pointer to the `FileReader` structure.
+**Return Value**: The absolute file path string, or `NULL` if `reader` is invalid.
+**Usage Case**: Use this to retrieve or log the path of the file currently managed by the reader.
+
 ---
 
 ## Compilation
@@ -530,7 +373,7 @@ int main() {
     const char* unicodeContent = "سلام به همه دوستان.\n"; // Example in Persian
 
     size_t unicodeWritten = file_writer_write((void*)unicodeContent, strlen(unicodeContent), sizeof(char), writer);
-    printf("Written %zu item(s) to Unicode file.\n", unicodeWritten);
+    fmt_printf("Written %zu item(s) to Unicode file.\n", unicodeWritten);
 
     file_writer_close(writer);
     return 0;
@@ -556,8 +399,8 @@ int main() {
     const char* unicodeContent = "سلام امین\n"; // Example in Persian
 
     size_t unicodeWritten = file_writer_write((void*)unicodeContent, strlen(unicodeContent), sizeof(char), writer);
-    printf("Written %zu item(s) to Unicode file.\n", unicodeWritten);
-    printf("Cursor position is %zu\n", file_writer_get_position(writer));
+    fmt_printf("Written %zu item(s) to Unicode file.\n", unicodeWritten);
+    fmt_printf("Cursor position is %zu\n", file_writer_get_position(writer));
     
 
     file_writer_close(writer);
@@ -585,7 +428,7 @@ int main() {
 
     // or you can use file_writer_is_open(writer)
     if (writer->is_open) { 
-        size_t written = file_writer_write_line((char*)string_c_str(buffer), string_length(buffer), writer);
+        bool written = file_writer_write_line((char*)string_c_str(buffer), string_length(buffer), writer);
 
         if (written) {
             fmt_print("write in file was successfully.\n");
@@ -598,6 +441,8 @@ int main() {
     else {
         fmt_print("file is opened\n");
     }
+
+    string_deallocate(buffer);
     return 0;
 }
 ```
@@ -615,12 +460,13 @@ write in file was successfully.
 #include "file_io/file_writer.h"
 #include "string/std_string.h"
 #include <string.h>
+#include <stdlib.h>
+
 
 int main() {
     const char* unicodeString = "سلام به همه دوستان\n"; // "Hello to all friends" in Persian
-
-    // Open a new file for writing in Unicode mode
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_UNICODE);
+
     if (!writer || !file_writer_is_open(writer)) {
         fmt_printf("Failed to open file for writing.\n");
         return 1;
@@ -631,6 +477,7 @@ int main() {
     if (written == 0) {
         fmt_printf("Failed to write to file.\n");
         file_writer_close(writer);
+
         return 1;
     }
 
@@ -642,7 +489,9 @@ int main() {
 
     // Get and print the current position in the file
     size_t position = file_writer_get_position(writer);
-    fmt_println("Current position in the file:", string_from_int_cstr((int)position));
+    char* positionStr = string_from_int_cstr((int)position);
+    fmt_println("Current position in the file:", positionStr);
+    free(positionStr);
 
     // Close the file
     if (!file_writer_close(writer)) {
@@ -661,6 +510,7 @@ int main() {
     if (!file_writer_write_line((char*)additionalString, strlen(additionalString), writer)) {
         fmt_printf("Failed to write line to file.\n");
         file_writer_close(writer);
+
         return 1;
     }
 
@@ -674,7 +524,6 @@ int main() {
 **Result**
 ```
 Current position in the file: 38
-Failed to open file for appending.
 ```
 
 ---
@@ -702,7 +551,7 @@ int main() {
 ```
 **Result**
 ```
-Its Correct 46
+Its Correct 50
 ```
 
 ---
@@ -725,8 +574,9 @@ int main() {
 ```
 **Result**
 ```
-Size of file is 88
+Size of file is 113
 ```
+> Note: The exact size reflects the accumulated bytes written by Examples 3–5 in sequence.
 
 ---
 
@@ -735,20 +585,24 @@ Size of file is 88
 ```c
 #include "fmt/fmt.h"
 #include "file_io/file_writer.h"
+#include <stdlib.h>
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_APPEND);
 
     fmt_printf("filePath is : %s\n", file_writer_get_file_name(writer)); // or writer->file_path
-    fmt_printf("Encoding Type is : %s\n", file_writer_get_encoding(writer));
+    char* encoding = file_writer_get_encoding(writer);
+    fmt_printf("Encoding Type is : %s\n", encoding);
 
+    free(encoding);
     file_writer_close(writer);
+
     return 0;
 }
 ```
 **Result**
 ```
-filePath is : ./text_uni.txt
+filePath is : ./sources/text_uni.txt
 Encoding Type is : ENCODING_UTF16
 ```
 
@@ -774,6 +628,7 @@ int main() {
 
     file_writer_close(src_writer);
     file_writer_close(dest_writer);
+
     return 0;
 }
 ```
@@ -798,6 +653,7 @@ int main() {
     if (!file_writer_lock(writer)) {
         fmt_printf("Error: failed to lock the file.\n");
         file_writer_close(writer);
+
         return -1;
     }
 
@@ -817,6 +673,10 @@ int main() {
 
     return 0;
 }
+```
+**Result**
+```
+(no console output — file is locked, written to, unlocked, and closed)
 ```
 
 ---
@@ -854,6 +714,7 @@ Successfully moved the file cursor.
 #include "fmt/fmt.h"
 #include "file_io/file_writer.h"
 #include <string.h>
+
 
 int main() {
     FileWriter* writer = file_writer_open("./sources/text_uni.txt", WRITE_TEXT);
@@ -902,8 +763,10 @@ int main() {
     if (!file_writer_write_batch(writer, buffers, sizes, 2)) {
         fmt_printf("Failed to write buffers to file.\n");
         file_writer_close(writer);
+
         return -1;
     }
+
     fmt_printf("Successfully wrote buffers to file.\n");
 
     file_writer_close(writer);
@@ -930,13 +793,16 @@ int main() {
     if (!file_writer_append_fmt(writer, "Name: %s, Age: %d, Occupation: %s\n", "John Doe", 30, "Software Developer")) {
         fmt_printf("Failed to append formatted text to the file.\n");
         file_writer_close(writer);
+
         return -1;
     }
     if (!file_writer_append_fmt(writer, "This is another line with number: %f\n", 123.456)) {
         fmt_printf("Failed to append second line to the file.\n");
         file_writer_close(writer);
+
         return -1;
     }
+
     fmt_printf("Successfully appended formatted text to the file.\n");
 
     file_writer_close(writer);
@@ -975,15 +841,12 @@ int main() {
 ```
 **Result**
 ```
-Read 382 bytes from Unicode file.
+Read 180 bytes from Unicode file.
 Content:
 Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
 This is another line with number: 123.456000
-Name: John Doe, Age: 30, Occupation: Software Developer
-This is another line with number: 123.456000
-Name: John Doe, Age: 30, Occupation: Software Developer
-This is another line with number: 123.456000
 ```
+> Note: Exact content depends on what Examples 12 and 13 wrote to the file.
 
 ---
 
@@ -1008,10 +871,7 @@ int main() {
 **Result**
 ```
 Line: Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
-Line: This is another line with number: 123.456000
-Line: Name: John Doe, Age: 30, Occupation: Software Developer
-Line: This is another line with number: 123.456000
-Line: Name: John Doe, Age: 30, Occupation: Software Developer
+
 Line: This is another line with number: 123.456000
 ```
 
@@ -1020,16 +880,22 @@ Line: This is another line with number: 123.456000
 ## Example 16 : how to read line as formated text in `FileReader` with `file_reader_read_fmt`
 
 ```c
+#include "file_io/file_writer.h"
 #include "file_io/file_reader.h"
 #include "fmt/fmt.h"
 
 int main() {
-    FileReader* reader = file_reader_open("./sources/text_uni.txt", READ_UNICODE);
+    /* Create a file with known formatted content first */
+    FileWriter* writer = file_writer_open("./sources/formatted_data.txt", WRITE_TEXT);
+    file_writer_write_fmt(writer, "int: %d, double: %lf, string: %s\n", 10, 20.2, "amin tahmasebi");
+    file_writer_close(writer);
+
+    /* Now read it back with a format string */
+    FileReader* reader = file_reader_open("./sources/formatted_data.txt", READ_TEXT);
     int intValue;
     double doubleValue;
     char strValue[100];
 
-    // Assuming the file contains a line formatted like "int: %d, double: %lf, string: %s" int: 10, double: 20.2, string: amin tahmasebi
     size_t itemsRead = file_reader_read_fmt(reader, "int: %d, double: %lf, string: %[^\n]s", &intValue, &doubleValue, strValue);
     if (itemsRead > 0) {
         fmt_printf("Read values: int = %d, double = %lf, string = %s\n", intValue, doubleValue, strValue);
@@ -1064,9 +930,9 @@ int main() {
     if (file_reader_read_lines(reader, &lines, num_lines)) {
         for (size_t i = 0; i < num_lines; ++i) {
             fmt_printf("Line %zu: %s\n", i + 1, lines[i]);
-            free(lines[i]); // Free each line
+            free(lines[i]); 
         }
-        free(lines); // Free the array of lines
+        free(lines); 
     } 
     else {
         fmt_printf("Failed to read lines.\n");
@@ -1081,12 +947,249 @@ int main() {
 Line 1: Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
 
 Line 2: This is another line with number: 123.456000
+```
 
-Line 3: Name: John Doe, Age: 30, Occupation: Software Developer
+---
 
-Line 4: This is another line with number: 123.456000
+## Example 18 : serialize a JSON object to a file then read and parse it back with `json` and `FileWriter`/`FileReader`
 
-Line 5: Name: John Doe, Age: 30, Occupation: Software Developer
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "json/json.h"
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    JsonElement* root = json_create(JSON_OBJECT);
+
+    JsonElement* name = json_create(JSON_STRING);
+    name->value.string_val = strdup("c_std");
+    json_add_to_object(root, "library", name);
+
+    JsonElement* version = json_create(JSON_NUMBER);
+    version->value.number_val = 2;
+    json_add_to_object(root, "version", version);
+
+    /* Serialize to text and persist it with the FileWriter. */
+    char* serialized = json_serialize(root);
+    FileWriter* writer = file_writer_open("config.json", WRITE_TEXT);
+
+    file_writer_write(serialized, sizeof(char), strlen(serialized), writer);
+    file_writer_close(writer);
+    free(serialized);
+    json_deallocate(root);
+
+    /* Read the raw bytes back with the FileReader. */
+    FileReader* reader = file_reader_open("config.json", READ_TEXT);
+    char buffer[256] = {0};
+    size_t read = file_reader_read(buffer, sizeof(char), sizeof(buffer) - 1, reader);
+    file_reader_close(reader);
+    fmt_printf("Read %zu bytes back from config.json\n", read);
+
+    /* Parse the text we just read and pull a field out of it. */
+    JsonElement* parsed = json_parse(buffer);
+    JsonElement* lib = json_get_element(parsed, "library");
+    fmt_printf("library = %s\n", lib->value.string_val);
+    json_deallocate(parsed);
+
+    remove("config.json");
+    return 0;
+}
+```
+**Result**
+```
+Read 34 bytes back from config.json
+library = c_std
+```
+
+---
+
+## Example 19 : base64-encode data to a file then read and decode it back with `encoding` and `FileWriter`/`FileReader`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "encoding/encoding.h"
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    const char* secret = "Attack at dawn";
+
+    /* Base64-encode the payload and store the encoded text in a file. */
+    char* encoded = encoding_base64_encode(secret, strlen(secret));
+    FileWriter* writer = file_writer_open("payload.b64", WRITE_TEXT);
+
+    file_writer_write_line(encoded, strlen(encoded), writer);
+    file_writer_close(writer);
+    fmt_printf("Stored base64: %s\n", encoded);
+    free(encoded);
+
+    /* Read the encoded line back and decode it to recover the original. */
+    FileReader* reader = file_reader_open("payload.b64", READ_TEXT);
+    char line[128] = {0};
+    file_reader_read_line(line, sizeof(line), reader);
+    file_reader_close(reader);
+
+    char* decoded = encoding_base64_decode(line, strlen(line));
+    fmt_printf("Decoded text: %s\n", decoded);
+    free(decoded);
+
+    remove("payload.b64");
+    return 0;
+}
+```
+**Result**
+```
+Stored base64: QXR0YWNrIGF0IGRhd24=
+Decoded text: Attack at dawn
+```
+
+---
+
+## Example 20 : write each `Vector` element as a line then read the lines back with `vector` and `FileWriter`/`FileReader`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "vector/vector.h"
+#include <stdlib.h>
+
+int main(void) {
+    Vector* vec = vector_create(sizeof(int));
+    int values[] = {10, 20, 30, 40};
+
+    for (size_t i = 0; i < 4; ++i) {
+        vector_push_back(vec, &values[i]);
+    }
+
+    /* Write each element as its own line in the file. */
+    FileWriter* writer = file_writer_open("numbers.txt", WRITE_TEXT);
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        int* item = (int*)vector_at(vec, i);
+        file_writer_write_fmt(writer, "%d\n", *item);
+    }
+    file_writer_close(writer);
+    vector_deallocate(vec);
+
+    /* Read the lines back and accumulate a running total. */
+    FileReader* reader = file_reader_open("numbers.txt", READ_TEXT);
+    char line[32];
+    int sum = 0;
+
+    while (file_reader_read_line(line, sizeof(line), reader)) {
+        sum += atoi(line);
+    }
+    file_reader_close(reader);
+
+    fmt_printf("Sum of values read from file: %d\n", sum);
+
+    remove("numbers.txt");
+    return 0;
+}
+```
+**Result**
+```
+Sum of values read from file: 100
+```
+
+---
+
+## Example 21 : transform a `String`, persist it, and load it back with `string` and `FileWriter`/`FileReader`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "string/std_string.h"
+#include <stdlib.h>
+
+int main(void) {
+    /* Build a String, uppercase it, and persist the result. */
+    String* msg = string_create("hello from the string module");
+    char* upper = string_to_upper(msg);
+
+    FileWriter* writer = file_writer_open("note.txt", WRITE_TEXT);
+    file_writer_write_line(upper, string_length_cstr(upper), writer);
+    file_writer_close(writer);
+    free(upper);
+    string_deallocate(msg);
+
+    /* Read the line back into a fresh String and inspect it. */
+    FileReader* reader = file_reader_open("note.txt", READ_TEXT);
+    char line[128] = {0};
+    file_reader_read_line(line, sizeof(line), reader);
+    file_reader_close(reader);
+
+    String* loaded = string_create(line);
+    fmt_printf("Loaded line: %s\n", string_c_str(loaded));
+    fmt_printf("Length: %zu, is_upper: %s\n",
+               string_length(loaded),
+               string_is_upper(loaded) ? "true" : "false");
+    string_deallocate(loaded);
+
+    remove("note.txt");
+    return 0;
+}
+```
+**Result**
+```
+Loaded line: HELLO FROM THE STRING MODULE
+Length: 28, is_upper: true
+```
+
+---
+
+## Example 22 : write a file, hash it on disk, and store the digest in a sidecar file with `crypto` and `FileWriter`/`FileReader`
+
+```c
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "crypto/crypto.h"
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    const char* content = "integrity check";
+
+    FileWriter* writer = file_writer_open("data.bin", WRITE_TEXT);
+    file_writer_write((void*)content, sizeof(char), strlen(content), writer);
+    file_writer_close(writer);
+
+    /* Hash the file on disk and store the hex digest in a sidecar file. */
+    size_t hash_len = 0;
+    uint8_t* hash = crypto_hash_file("data.bin", CRYPTO_SHA256, &hash_len);
+    char* hex = crypto_hash_to_hex(hash, hash_len);
+
+    FileWriter* sumWriter = file_writer_open("data.sha256", WRITE_TEXT);
+    file_writer_write_line(hex, strlen(hex), sumWriter);
+    file_writer_close(sumWriter);
+
+    free(hash);
+    free(hex);
+
+    FileReader* reader = file_reader_open("data.sha256", READ_TEXT);
+    char digest[128] = {0};
+    file_reader_read_line(digest, sizeof(digest), reader);
+    file_reader_close(reader);
+
+    fmt_printf("SHA-256 of data.bin:\n%s\n", digest);
+
+    remove("data.bin");
+    remove("data.sha256");
+    
+    return 0;
+}
+```
+**Result**
+```
+SHA-256 of data.bin:
+5e6cc2c43757fa2635c2a23fdb3c3d643648e04b6ddf8bc2e03a5300e4220876
 ```
 
 ---

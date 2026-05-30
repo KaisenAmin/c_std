@@ -14,8 +14,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
 #include "date.h"
-#include "std_time.h"
+#include "../time/std_time.h"
 
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -835,19 +836,29 @@ static long gregorian_to_jdn(int year, int month, int day) {
     return day + (153 * (month - 3) + 2) / 5 + 365 * year + year / 4 - year / 100 + year / 400 - 32045;
 }
 
-// Helper function to convert Persian date to Julian Day Number
+// Helper function to convert Persian date to Julian Day Number.
+//
+// The previous implementation used a closed-form 33-year-cycle formula
+// that disagrees with `is_persian_leap_year` (the Akrami astronomical
+// rule) AND lived on a different epoch than `gregorian_to_jdn`. Both
+// bugs surfaced through `date_day_of_week` and `date_days_to` for
+// Persian inputs: e.g. 1403/1/1 -> 1404/1/1 reported 365 days (1403 is
+// a leap year) and 1403/1/3 reported Thursday instead of Friday.
+//
+// Now we route Persian dates through the (already-correct) Persian ->
+// Gregorian conversion and reuse `gregorian_to_jdn`, so the Persian
+// day axis is aligned with the Gregorian one by construction. Both
+// day-of-week and inter-day arithmetic then agree across calendars.
 static long persian_to_jdn(int year, int month, int day) {
-    int epbase, epyear;
-
-    epbase = year - ((year >= 0) ? 474 : 473);
-    epyear = 474 + (epbase % 2820);
-
-    return day +
-           ((month <= 7) ? ((month - 1) * 31) : (((month - 1) * 30) + 6)) +
-           ((epyear * 682) - 110) / 2816 +
-           (epyear - 1) * 365 +
-           (epbase / 2820) * 1029983 +
-           (1948320 - 1);
+    Date persian = { year, month, day, Persian };
+    Date* gregorian = date_solar_to_gregorian(&persian);
+    if (!gregorian) {
+        DATE_LOG("Error: Persian->Gregorian conversion failed in persian_to_jdn.\n");
+        return -1;
+    }
+    long jdn = gregorian_to_jdn(gregorian->year, gregorian->month, gregorian->day);
+    free(gregorian);
+    return jdn;
 }
 
 /**
@@ -882,7 +893,7 @@ Date* date_create(CalendarType type) {
     Date* date = (Date*)malloc(sizeof(Date));
     if (!date) {
         DATE_LOG("Error: Memory allocation failed in date_create.\n");
-        exit(-1);
+        return NULL;
     }
 
     // Initialize with invalid values to signify a null (invalid) date
@@ -913,15 +924,12 @@ Date* date_create_ymd(int y, int m, int d, CalendarType type) {
     if (!date) {
         DATE_LOG("Error: Memory allocation failed in date_create_ymd.\n");
         return NULL;
-        // exit(-1);
     }
 
     if (!date_is_valid_ymd(y, m, d, type)) {
-        fprintf(stderr, "Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
         DATE_LOG("Error: Invalid date parameters in date_create_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
-        free(date); // Release the allocated memory
+        free(date);
         return NULL;
-        // exit(-1);
     }
 
     date->year = y;
@@ -985,7 +993,7 @@ Date* date_add_days(const Date* orig_date, int ndays) {
             if (new_date->day + ndays > days_this_month) {
                 ndays -= (days_this_month - new_date->day + 1);
                 new_date->day = 1;
-                if (++new_date->month > (new_date->calendarType == Persian && new_date->year % 33 == 1 ? 13 : 12)) {
+                if (++new_date->month > 12) {
                     new_date->month = 1;
                     new_date->year++;
                 }
@@ -1000,7 +1008,7 @@ Date* date_add_days(const Date* orig_date, int ndays) {
             if (new_date->day + ndays < 1) {
                 ndays += new_date->day;
                 if (--new_date->month < 1) {
-                    new_date->month = (new_date->calendarType == Persian && (new_date->year - 1) % 33 == 1 ? 13 : 12);
+                    new_date->month = 12;
                     new_date->year--;
                 }
                 new_date->day = days_in_month(new_date->year, new_date->month, new_date->calendarType);
@@ -1044,11 +1052,14 @@ Date* date_add_months(const Date* orig_date, int nmonths) {
     new_date->year += years_to_add;
     new_date->month += nmonths;
 
-    // Adjust the number of months based on calendar type
-    int totalMonthsInYear = (orig_date->calendarType == Persian && new_date->year % 33 == 1) ? 13 : 12;
-    if (new_date->month > totalMonthsInYear) {
+    // Both calendars have exactly 12 months per year.
+    if (new_date->month > 12) {
         new_date->year++;
-        new_date->month -= totalMonthsInYear;
+        new_date->month -= 12;
+    }
+    else if (new_date->month < 1) {
+        new_date->year--;
+        new_date->month += 12;
     }
 
     int days_this_month = days_in_month(new_date->year, new_date->month, orig_date->calendarType);
@@ -1072,13 +1083,13 @@ Date* date_add_months(const Date* orig_date, int nmonths) {
 Date* date_add_years(const Date* orig_date, int nyears) {
     if (orig_date == NULL || !date_is_valid_ymd(orig_date->year, orig_date->month, orig_date->day, orig_date->calendarType)) {
         DATE_LOG("Error: date is null or not valid in date_add_years.\n");
-        exit(-1);
+        return NULL;
     }
 
     Date* new_date = (Date*)malloc(sizeof(Date));
     if (new_date == NULL) {
         DATE_LOG("Error: Cannot allocate memory for new date in date_add_years.\n");
-        exit(-1);
+        return NULL;
     }
 
     *new_date = *orig_date;
@@ -1203,8 +1214,9 @@ int date_day_of_week(const Date* date) {
         DATE_LOG("Error: Unsupported calendar type in date_day_of_week.\n");
         return -1; // Indicate an error for unsupported calendar types
     }
-    // Calculate the day of the week (Monday = 1, ..., Sunday = 7)
-    return (jdn + 1) % 7 + 1;
+    // gregorian_to_jdn / persian_to_jdn produce values where jdn % 7 == 0
+    // corresponds to Monday. Map to Monday = 1, ..., Sunday = 7.
+    return (int)(jdn % 7) + 1;
 }
 
 /**
@@ -1232,15 +1244,12 @@ int date_day_of_year(const Date* date) {
         }
     } 
     else if (date->calendarType == Persian) {
-        static const int daysBeforeMonthPersian[] = {0, 31, 62, 93, 124, 155, 186, 216, 246, 276, 306, 336, 365};
+        // Months 1-6 are 31 days each (cumulative: 31, 62, 93, 124, 155, 186),
+        // months 7-11 are 30 days each (216, 246, 276, 306, 336),
+        // month 12 is 29 or 30 days (leap day captured by `day` itself).
+        static const int daysBeforeMonthPersian[] = {0, 31, 62, 93, 124, 155, 186, 216, 246, 276, 306, 336};
         dayOfYear = daysBeforeMonthPersian[date->month - 1] + date->day;
-        // Adjust for leap year
-        if (date->month > 11 || (date->month == 11 && date->day == 30)) {
-            if (is_persian_leap_year(date->year)) {
-                dayOfYear++;
-            }
-        }
-    } 
+    }
     else {
         DATE_LOG("Error: Unsupported calendar type in date_day_of_year.\n");
         return -1; // Indicate an error for unsupported calendar types
@@ -1778,8 +1787,10 @@ char* date_to_string(const Date* date, const char* format) {
         return NULL;
     }
 
-    // Allocate buffer for the formatted date string
-    char* date_str = (char*)malloc(80 * sizeof(char));  // Adjust size as necessary
+    // Allocate buffer for the formatted date string. 256 leaves headroom for
+    // %c-style strftime output (e.g. "Thursday, February 29, 2024" + locale).
+    const size_t buf_size = 256;
+    char* date_str = (char*)malloc(buf_size * sizeof(char));
     if (!date_str) {
         DATE_LOG("Error: Memory allocation failed for date string in date_to_string.\n");
         return NULL;
@@ -1797,21 +1808,20 @@ char* date_to_string(const Date* date, const char* format) {
             .tm_isdst = -1
         };
 
-        // Format the date using strftime
-        if (strftime(date_str, 80, format, &tm_date) == 0) {
+        if (strftime(date_str, buf_size, format, &tm_date) == 0) {
             DATE_LOG("Error: Failed to format date in date_to_string.\n");
             free(date_str);
             return NULL;
         }
-    } 
+    }
     else if (date->calendarType == Persian) {
-        int result = snprintf(date_str, 80, "%04d-%02d-%02d", date->year, date->month, date->day);
-        if (result < 0 || result >= 80) {
+        int result = snprintf(date_str, buf_size, "%04d-%02d-%02d", date->year, date->month, date->day);
+        if (result < 0 || (size_t)result >= buf_size) {
             DATE_LOG("Error: Failed to format Persian date in date_to_string.\n");
             free(date_str);
             return NULL;
         }
-    } 
+    }
     else {
         DATE_LOG("Error: Unsupported calendar type in date_to_string.\n");
         free(date_str);
@@ -1839,6 +1849,21 @@ long date_to_julian_day(const Date* date) {
     if (!date_is_valid(date)) {
         DATE_LOG("Error: Invalid date in date_to_julian_day.\n");
         return -1;
+    }
+
+    /* Route Persian dates through the (well-tested) Persian -> Gregorian
+       conversion, then apply the same true-JDN formula. That way both
+       calendars share a single day axis and `date_days_to`, sorting by
+       JDN, and any future cross-calendar code stays correct. */
+    if (date->calendarType == Persian) {
+        Date* gregorian = date_solar_to_gregorian(date);
+        if (!gregorian) {
+            DATE_LOG("Error: Persian->Gregorian conversion failed in date_to_julian_day.\n");
+            return -1;
+        }
+        long jd = date_to_julian_day(gregorian);
+        free(gregorian);
+        return jd;
     }
 
     int a = (14 - date->month) / 12;
@@ -1888,6 +1913,7 @@ Date* date_from_julian_day(long jd) {
     date->year = y - 4800 + (m + 2) / 12;
     date->month = (m + 2) % 12 + 1;
     date->day = d + 1;
+    date->calendarType = Gregorian;  // JDN -> Date result is always Gregorian.
 
     return date;
 }
@@ -1978,7 +2004,7 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
     
     if (solar_date->month == 12 && solar_date->day > 29 && !is_persian_leap_year(solar_date->year)) {
         DATE_LOG("Error: the date is not valid because year is not leap year");
-        exit(-1);
+        return NULL;
     }
     if (jm == 12 && jd == 30 && date_is_leap_year(solar_date)) {
         jd = 29; // Adjust the day for calculation
@@ -2056,4 +2082,306 @@ void date_deallocate(Date* date) {
         return;
     }
     free(date);
+}
+
+
+/**
+ * @brief Creates an independent deep copy of a Date object.
+ *
+ * The returned object owns its memory and must be freed by the caller via
+ * @ref date_deallocate. Modifying the clone does not affect the source.
+ *
+ * @code
+ * Date* a = date_create_ymd(2024, 5, 15, Gregorian);
+ * Date* b = date_clone(a);
+ * // b is an independent copy; date_set_date(b, ...) leaves a untouched.
+ * date_deallocate(a);
+ * date_deallocate(b);
+ * @endcode
+ *
+ * @param date Source date. May be NULL.
+ * @return Newly-allocated copy, or NULL if @p date is NULL or allocation fails.
+ */
+Date* date_clone(const Date* date) {
+    if (!date) {
+        DATE_LOG("Error: Date is NULL in date_clone.\n");
+        return NULL;
+    }
+    Date* copy = (Date*)malloc(sizeof(Date));
+    if (!copy) {
+        DATE_LOG("Error: Memory allocation failed in date_clone.\n");
+        return NULL;
+    }
+    *copy = *date;
+    return copy;
+}
+
+/**
+ * @brief Three-way comparison of two dates that share a calendar.
+ *
+ * Convenient for sort comparators and cmp-style code:
+ *
+ * @code
+ * int cmp = date_compare(lhs, rhs);
+ * if (cmp == INT_MIN) { ... error ... }
+ * else if (cmp < 0) { ... lhs earlier ... }
+ * else if (cmp > 0) { ... lhs later ... }
+ * else { ... same date ... }
+ * @endcode
+ *
+ * @param lhs Left operand. Must be non-NULL.
+ * @param rhs Right operand. Must be non-NULL with the same CalendarType.
+ * @return -1, 0, or 1; INT_MIN on NULL input or calendar mismatch.
+ */
+int date_compare(const Date* lhs, const Date* rhs) {
+    if (!lhs || !rhs) {
+        DATE_LOG("Error: NULL operand in date_compare.\n");
+        return INT_MIN;
+    }
+    if (lhs->calendarType != rhs->calendarType) {
+        DATE_LOG("Error: Calendar mismatch in date_compare.\n");
+        return INT_MIN;
+    }
+    if (!date_is_valid(lhs) || !date_is_valid(rhs)) {
+        DATE_LOG("Error: Invalid date in date_compare.\n");
+        return INT_MIN;
+    }
+    if (lhs->year != rhs->year) {
+        return lhs->year < rhs->year ? -1 : 1;
+    }
+    if (lhs->month != rhs->month) {
+        return lhs->month < rhs->month ? -1 : 1;
+    }
+    if (lhs->day != rhs->day) {
+        return lhs->day < rhs->day ? -1 : 1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Returns a newly-allocated clone of the earlier of two dates.
+ *
+ * If exactly one input is NULL, the other is cloned. If both are NULL,
+ * returns NULL. If both are non-NULL they must share the same
+ * CalendarType; otherwise NULL is returned. When the two operands are
+ * equal, a clone of @p lhs is returned.
+ *
+ * @code
+ * Date* a = date_create_ymd(2024, 5, 15, Gregorian);
+ * Date* b = date_create_ymd(2024, 6,  1, Gregorian);
+ * Date* earliest = date_min(a, b);   // → 2024-05-15
+ * @endcode
+ */
+Date* date_min(const Date* lhs, const Date* rhs) {
+    if (!lhs && !rhs) {
+        return NULL;
+    }
+    if (!lhs) {
+        return date_clone(rhs);
+    }
+    if (!rhs) {
+        return date_clone(lhs);
+    }
+    if (lhs->calendarType != rhs->calendarType) {
+        DATE_LOG("Error: Calendar mismatch in date_min.\n");
+        return NULL;
+    }
+    int cmp = date_compare(lhs, rhs);
+    if (cmp == INT_MIN) {
+        return NULL;
+    }
+    return cmp <= 0 ? date_clone(lhs) : date_clone(rhs);
+}
+
+/**
+ * @brief Returns a newly-allocated clone of the later of two dates.
+ *
+ * Mirror of @ref date_min for NULL/calendar-mismatch semantics. When the
+ * inputs are equal, a clone of @p lhs is returned.
+ *
+ * @code
+ * Date* latest = date_max(a, b);     // → 2024-06-01 in the example above
+ * @endcode
+ */
+Date* date_max(const Date* lhs, const Date* rhs) {
+    if (!lhs && !rhs) {
+        return NULL;
+    }
+    if (!lhs) {
+        return date_clone(rhs);
+    }
+    if (!rhs) {
+        return date_clone(lhs);
+    }
+    if (lhs->calendarType != rhs->calendarType) {
+        DATE_LOG("Error: Calendar mismatch in date_max.\n");
+        return NULL;
+    }
+    int cmp = date_compare(lhs, rhs);
+    if (cmp == INT_MIN) {
+        return NULL;
+    }
+    return cmp >= 0 ? date_clone(lhs) : date_clone(rhs);
+}
+
+/**
+ * @brief Returns the first day of the month containing the given date.
+ *
+ * The returned object is a newly-allocated Date with the same year, month,
+ * and calendar as @p date and day = 1.
+ *
+ * @code
+ * Date* mid = date_create_ymd(2024, 5, 15, Gregorian);
+ * Date* first = date_first_day_of_month(mid);  // 2024-05-01
+ * @endcode
+ */
+Date* date_first_day_of_month(const Date* date) {
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_first_day_of_month.\n");
+        return NULL;
+    }
+    return date_create_ymd(date->year, date->month, 1, date->calendarType);
+}
+
+/**
+ * @brief Returns the last day of the month containing the given date.
+ *
+ * Leap-year rules apply: Gregorian February returns 28 or 29; Persian
+ * Esfand returns 29 or 30.
+ *
+ * @code
+ * Date* leap = date_create_ymd(2024, 2, 1, Gregorian);
+ * Date* end  = date_last_day_of_month(leap);   // 2024-02-29
+ * @endcode
+ */
+Date* date_last_day_of_month(const Date* date) {
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_last_day_of_month.\n");
+        return NULL;
+    }
+    int last = days_in_month(date->year, date->month, date->calendarType);
+    if (last <= 0) {
+        return NULL;
+    }
+    return date_create_ymd(date->year, date->month, last, date->calendarType);
+}
+
+/**
+ * @brief Returns the calendar quarter (1..4) of the given date.
+ *
+ * Months 1..3 belong to Q1, 4..6 to Q2, 7..9 to Q3, 10..12 to Q4. The
+ * mapping applies identically to Gregorian and Persian dates. For Persian
+ * dates this aligns with the four traditional seasons (Bahar, Tabestan,
+ * Paeez, Zemestan).
+ *
+ * @code
+ * Date* d = date_create_ymd(2024, 7, 4, Gregorian);
+ * int q = date_quarter(d);  // 3
+ * @endcode
+ *
+ * @return 1..4 on success, or -1 if @p date is NULL/invalid.
+ */
+int date_quarter(const Date* date) {
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_quarter.\n");
+        return -1;
+    }
+    return ((date->month - 1) / 3) + 1;
+}
+
+/**
+ * @brief Returns true if the given date falls on a weekend.
+ *
+ * The convention differs by calendar:
+ *   - Gregorian: Saturday OR Sunday counts as weekend (typical Western week).
+ *   - Persian:   Friday only (Iran's official weekly holiday since 1979).
+ *
+ * @code
+ * Date* d = date_create_ymd(2024, 1, 6, Gregorian);  // a Saturday
+ * if (date_is_weekend(d)) { ... }
+ * @endcode
+ *
+ * @return true on weekend, false on weekday or invalid input.
+ */
+bool date_is_weekend(const Date* date) {
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_is_weekend.\n");
+        return false;
+    }
+    int dow = date_day_of_week(date);  /* Monday=1 .. Sunday=7 */
+    if (dow < 1 || dow > 7) {
+        return false;
+    }
+    if (date->calendarType == Gregorian) {
+        return dow == 6 || dow == 7;   /* Saturday or Sunday */
+    }
+    /* Persian: Friday only */
+    return dow == 5;
+}
+
+/**
+ * @brief Returns the English weekday name as a static, non-owning string.
+ *
+ * The pointer is into a private static table — do not free it and do not
+ * cache it past changes to the source date, since the same date may be
+ * referenced again with a different value.
+ *
+ * @code
+ * Date* d = date_create_ymd(2024, 1, 1, Gregorian);
+ * printf("%s\n", date_weekday_name(d));   // "Monday"
+ * @endcode
+ *
+ * @return "Monday"..."Sunday" on success, or NULL on NULL/invalid input.
+ */
+const char* date_weekday_name(const Date* date) {
+    static const char* const names[7] = {
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday"
+    };
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_weekday_name.\n");
+        return NULL;
+    }
+    int dow = date_day_of_week(date);  /* 1..7 */
+    if (dow < 1 || dow > 7) {
+        return NULL;
+    }
+    return names[dow - 1];
+}
+
+/**
+ * @brief Returns the month name as a static, non-owning string.
+ *
+ * Gregorian dates produce English month names ("January"..."December").
+ * Persian dates produce standard transliterations
+ * ("Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "Shahrivar",
+ *  "Mehr", "Aban", "Azar", "Dey", "Bahman", "Esfand").
+ *
+ * @code
+ * Date* p = date_create_ymd(1403, 1, 1, Persian);
+ * printf("%s\n", date_month_name(p));   // "Farvardin"
+ * @endcode
+ *
+ * @return Month name on success, or NULL on NULL/invalid input.
+ */
+const char* date_month_name(const Date* date) {
+    static const char* const gregorian_months[12] = {
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    };
+    static const char* const persian_months[12] = {
+        "Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "Shahrivar",
+        "Mehr", "Aban", "Azar", "Dey", "Bahman", "Esfand"
+    };
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_month_name.\n");
+        return NULL;
+    }
+    int idx = date->month - 1;
+    if (idx < 0 || idx > 11) {
+        return NULL;
+    }
+    return date->calendarType == Persian
+        ? persian_months[idx]
+        : gregorian_months[idx];
 }

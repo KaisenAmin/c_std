@@ -27,6 +27,8 @@
 #define change_directory _wchdir
 #define remove_directory _wrmdir
 
+
+
 char* get_last_dir_name_win(const wchar_t* wpath) {
     if (!wpath) {
         DIR_LOG("[get_last_dir_name_win] Error: Path is NULL.");
@@ -52,6 +54,7 @@ char* get_last_dir_name_win(const wchar_t* wpath) {
     DIR_LOG("[get_last_dir_name_win] Error: Last directory name not found in path.");
     return NULL;
 }
+
 
 // Helper function for Windows to get full path
 static char* get_full_path_win(const char* path) {
@@ -125,6 +128,7 @@ static int remove_directory_recursive_win(const wchar_t* dir) {
     return ret; // 0 on success, non-zero on failure
 }
 
+
 static long long dir_get_size_win(const wchar_t* dirPath) {
     if (!dirPath) {
         DIR_LOG("[dir_get_size_win] Error: Directory path is NULL.");
@@ -172,6 +176,7 @@ static long long dir_get_size_win(const wchar_t* dirPath) {
     return size;
 }
 
+
 static long long get_file_size_win(const wchar_t* filePath) {
     if (!filePath) {
         DIR_LOG("[get_file_size_win] Error: File path is NULL.");
@@ -196,6 +201,7 @@ static long long get_file_size_win(const wchar_t* filePath) {
 
     return size.QuadPart;
 }
+
 
 static void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, Vector* resultVector) {
     if (!dirPath || !resultVector) {
@@ -249,9 +255,11 @@ static void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, 
 #include <sys/types.h>
 #include <pwd.h>
 #include <fnmatch.h>
+#include <time.h>   /* localtime() — used by the POSIX directory-time helpers */
 
 #define change_directory chdir
 #define remove_directory rmdir
+
 
 static char* get_full_path_posix(const char* path) {
     if (!path) {
@@ -307,7 +315,7 @@ static int remove_directory_recursive_posix(const char* dirPath) {
 
             if (ret != 0) {
                 DIR_LOG("[remove_directory_recursive_posix] Error: Failed to remove %s.", fullPath);
-                break; // Error occurred
+                break; 
             }
         }
     }
@@ -368,6 +376,7 @@ static long long dir_get_size_posix(const char* dirPath) {
     return size;
 }
 
+
 static long long get_file_size_posix(const char* filePath) {
     if (!filePath) {
         DIR_LOG("[get_file_size_posix] Error: File path is NULL.");
@@ -383,6 +392,7 @@ static long long get_file_size_posix(const char* filePath) {
     DIR_LOG("[get_file_size_posix] File %s size: %lld bytes.", filePath, statbuf.st_size);
     return statbuf.st_size;
 }
+
 
 void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* resultVector) {
     if (!dirPath || !resultVector) {
@@ -408,27 +418,25 @@ void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* 
             continue;
         }
 
-        if (option == LIST_FILES && !S_ISDIR(statbuf.st_mode)) {
-            DIR_LOG("[dir_list_contents_posix] Listing file: %s", entry->d_name);
-        } 
-        else if (option == LIST_DIRECTORIES && S_ISDIR(statbuf.st_mode)) {
-            DIR_LOG("[dir_list_contents_posix] Listing directory: %s", entry->d_name);
-        } 
-        else if (option == LIST_ALL) {
-            DIR_LOG("[dir_list_contents_posix] Listing all: %s", entry->d_name);
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
         }
 
-        if ((option == LIST_FILES && !S_ISDIR(statbuf.st_mode)) ||
-            (option == LIST_DIRECTORIES && S_ISDIR(statbuf.st_mode)) ||
-            (option == LIST_ALL)) {
+        bool isDir = S_ISDIR(statbuf.st_mode);
+        if ((option == DIR_LIST_FILES && !isDir) || (option == DIR_LIST_DIRECTORIES && isDir) || (option == DIR_LIST_ALL)) {
             char* entryNameCopy = string_strdup(entry->d_name);
-            vector_push_back(resultVector, &entryNameCopy);
+
+            if (entryNameCopy) {
+                vector_push_back(resultVector, &entryNameCopy);
+                DIR_LOG("[dir_list_contents_posix] Added entry: %s.", entryNameCopy);
+            }
         }
     }
 
     closedir(dir);
 }
 #endif 
+
 
 static void derive_key_from_password(const char* password, uint8_t* key) {
     if (!password || !key) {
@@ -451,6 +459,7 @@ static void derive_key_from_password(const char* password, uint8_t* key) {
         DIR_LOG("[derive_key_from_password] Password padded with zeros to fit DES key size.");
     }
 }
+
 
 /**
  * @brief Creates a directory at the specified path.
@@ -493,6 +502,7 @@ bool dir_make_directory(const char* dirpath) {
     return true;
 #endif
 }
+
 
 /**
  * @brief Gets the name of the directory from a specified path.
@@ -541,6 +551,7 @@ char* dir_dir_name(const char* dirpath) {
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
             const char* lastSlash = strrchr(cwd, '/');
             char* name = lastSlash ? string_strdup(lastSlash + 1) : string_strdup(cwd);
+
             DIR_LOG("[dir_dir_name] Directory name for current directory: %s", name);
             return name;
         }
@@ -599,6 +610,7 @@ char* dir_current_path(void) {
     return path;
 }
 
+
 /**
  * @brief Counts the number of items in a directory.
  *
@@ -617,11 +629,25 @@ int dir_count(const char* dirpath) {
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
 
-    wchar_t wSearchPath[1024];
-    MultiByteToWideChar(CP_UTF8, 0, dirpath, -1, wSearchPath, 1024);
-    wcscat(wSearchPath, L"\\*");  // Append wildcard for search
+    wchar_t* wDirPath = encoding_utf8_to_wchar(dirpath);
+    if (!wDirPath) {
+        DIR_LOG("[dir_count] Error: utf8->wchar conversion failed for %s.", dirpath);
+        return -1;
+    }
+    size_t needed = wcslen(wDirPath) + 3; /* "\\*" + NUL */
+    wchar_t* wSearchPath = (wchar_t*)malloc(needed * sizeof(wchar_t));
+    if (!wSearchPath) {
+        DIR_LOG("[dir_count] Error: alloc failed.");
+        free(wDirPath);
+        return -1;
+    }
+    wcscpy(wSearchPath, wDirPath);
+    wcscat(wSearchPath, L"\\*");
+    free(wDirPath);
 
     hFind = FindFirstFileW(wSearchPath, &findFileData);
+    free(wSearchPath);
+
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
             if (wcscmp(findFileData.cFileName, L".") != 0 && wcscmp(findFileData.cFileName, L"..") != 0) {
@@ -737,6 +763,7 @@ bool dir_cd(const char* dirName) {
     return true;
 #endif
 }
+
 
 /**
  * @brief Changes the current working directory to the parent directory.
@@ -888,6 +915,7 @@ bool dir_remove_directory_recursive(const char* dirPath) {
 #endif
 }
 
+
 /**
  * @brief Renames a file or directory.
  *
@@ -909,6 +937,7 @@ bool dir_rename(const char* oldName, const char* newName) {
         DIR_LOG("[dir_rename] Error: Conversion to wide-char failed.");
         free(oldName_wchar);
         free(newName_wchar);
+
         return false;
     }
 
@@ -918,6 +947,7 @@ bool dir_rename(const char* oldName, const char* newName) {
         DIR_LOG("[dir_rename] Error: MoveFileW failed to rename from %s to %s.", oldName, newName);
         free(oldName_wchar);
         free(newName_wchar);
+
         return false;
     }
 
@@ -970,6 +1000,7 @@ bool dir_is_directory_exists(const char* dirPath) {
 
     bool result = (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
     DIR_LOG("[dir_is_directory_exists] Directory exists check for %s: %s", dirPath, result ? "true" : "false");
+
     return result;
 
 #else
@@ -981,9 +1012,11 @@ bool dir_is_directory_exists(const char* dirPath) {
 
     bool result = S_ISDIR(statbuf.st_mode);
     DIR_LOG("[dir_is_directory_exists] Directory exists check for %s: %s", dirPath, result ? "true" : "false");
+
     return result;
 #endif
 }
+
 
 /**
  * @brief Checks if a file exists at the specified path.
@@ -1009,15 +1042,18 @@ bool dir_is_file_exists(const char* filePath) {
 
     bool result = (attribs != INVALID_FILE_ATTRIBUTES);
     DIR_LOG("[dir_is_file_exists] File exists check for %s: %s", filePath, result ? "true" : "false");
+
     return result;
 
 #else
     struct stat statbuf;
     bool result = (stat(filePath, &statbuf) == 0);
     DIR_LOG("[dir_is_file_exists] File exists check for %s: %s", filePath, result ? "true" : "false");
+
     return result;
 #endif
 }
+
 
 /**
  * @brief Copies a file from a source path to a destination path.
@@ -1043,6 +1079,7 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
         DIR_LOG("[dir_copy_file] Error: Conversion to wide-char failed.");
         free(wSrcPath);
         free(wDestPath);
+
         return false;
     }
 
@@ -1071,6 +1108,7 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     if (!destFile) {
         file_reader_close(srcFile);
         DIR_LOG("[dir_copy_file] Error: Unable to open destination file %s for writing.", destPath);
+
         return false;
     }
 
@@ -1101,6 +1139,7 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
     return success;
 #endif
 }
+
 
 /**
  * @brief Copies a directory and its contents to a new location.
@@ -1169,6 +1208,7 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
             char* srcPathUtf8 = encoding_wchar_to_utf8(srcPath);
             char* destPathUtf8 = encoding_wchar_to_utf8(destPath);
             success = dir_copy_directory(srcPathUtf8, destPathUtf8);
+
             free(srcPathUtf8);
             free(destPathUtf8);
         } 
@@ -1177,6 +1217,7 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
             char* srcPathUtf8 = encoding_wchar_to_utf8(srcPath);
             char* destPathUtf8 = encoding_wchar_to_utf8(destPath);
             success = dir_copy_file(srcPathUtf8, destPathUtf8);
+
             free(srcPathUtf8);
             free(destPathUtf8);
         }
@@ -1188,7 +1229,8 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
 
     if (success) {
         DIR_LOG("[dir_copy_directory] Directory copied successfully from %s to %s", srcDir, destDir);
-    } else {
+    } 
+    else {
         DIR_LOG("[dir_copy_directory] Error: Failed to copy directory from %s to %s", srcDir, destDir);
     }
 
@@ -1205,7 +1247,9 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
         return false;
     }
 
-    if (mkdir(destDir, 0755) != 0) {
+    /* Suppress EEXIST so copying into a pre-existing destination succeeds,
+       matching the Windows branch (which ignores ERROR_ALREADY_EXISTS). */
+    if (mkdir(destDir, 0755) != 0 && errno != EEXIST) {
         DIR_LOG("[dir_copy_directory] Error: Failed to create destination directory %s.", destDir);
         closedir(dir);
         return false;
@@ -1247,6 +1291,7 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
 
     closedir(dir);
     DIR_LOG("[dir_copy_directory] Directory copied successfully from %s to %s", srcDir, destDir);
+
     return true;
 
 #endif 
@@ -1288,6 +1333,7 @@ long long dir_get_directory_size(const char* dirPath) {
     if (size == -1) {
         DIR_LOG("[dir_get_directory_size] Error: Failed to get directory size for %s.", dirPath);
     }
+
     return size;
 #endif
 }
@@ -1328,6 +1374,7 @@ long long dir_get_file_size(const char* filePath) {
     if (size == -1) {
         DIR_LOG("[dir_get_file_size] Error: Failed to get file size for %s.", filePath);
     }
+
     return size;
 #endif
 }
@@ -1367,6 +1414,7 @@ void dir_list_contents(const char* dirPath, DirListOption option, Vector* result
 #endif
 }
 
+
 /**
  * @brief Checks if the specified path is a file.
  *
@@ -1396,6 +1444,7 @@ bool dir_is_file(const char *filePath) {
 
     bool result = (attribs & FILE_ATTRIBUTE_DIRECTORY) == 0;
     DIR_LOG("[dir_is_file] File check result for path %s: %s", filePath, result ? "true" : "false");
+
     return result;
 
 #else 
@@ -1407,9 +1456,11 @@ bool dir_is_file(const char *filePath) {
 
     bool result = S_ISREG(path_stat.st_mode);
     DIR_LOG("[dir_is_file] File check result for path %s: %s", filePath, result ? "true" : "false");
+
     return result;
 #endif 
 }
+
 
 /**
  * @brief Checks if the specified path is a directory.
@@ -1453,6 +1504,7 @@ bool dir_is_directory(const char* dirPath) {
 
     bool result = S_ISDIR(path_stat.st_mode);
     DIR_LOG("[dir_is_directory] Directory check result for path %s: %s", dirPath, result ? "true" : "false");
+
     return result;
 #endif 
 }
@@ -1478,6 +1530,7 @@ bool dir_move_file(const char* srcPath, const char* destPath) {
 #if defined(_WIN32) || defined(_WIN64)
     wchar_t* source = encoding_utf8_to_wchar(srcPath);
     wchar_t* destination = encoding_utf8_to_wchar(destPath);
+
     if (!source || !destination) {
         DIR_LOG("[dir_move_file] Error: Conversion to wide-char failed.");
         free(source);
@@ -1511,6 +1564,7 @@ bool dir_move_file(const char* srcPath, const char* destPath) {
     return true;
 #endif
 }
+
 
 /**
  * @brief Moves a directory and its contents to a new location.
@@ -1579,6 +1633,7 @@ bool dir_move_directory(const char* srcPath, const char* destPath) {
 #endif
 }
 
+
 /**
  * @brief Gets the modified time of the specified directory.
  *
@@ -1602,6 +1657,7 @@ char* dir_get_modified_time(const char* dirPath) {
     if (!GetFileAttributesExW(wPath, GetFileExInfoStandard, &fileInfo)) {
         DIR_LOG("[dir_get_modified_time] Error: GetFileAttributesExW failed.");
         free(wPath);
+
         return NULL;
     }
 
@@ -1612,11 +1668,8 @@ char* dir_get_modified_time(const char* dirPath) {
 
     FileTimeToLocalFileTime(&lastModified, &localFileTime);
     FileTimeToSystemTime(&localFileTime, &sysTime); 
-    wsprintfW(timeString, L"%04d-%02d-%02d %02d:%02d:%02d",
-              sysTime.wYear, sysTime.wMonth, sysTime.wDay,
-              sysTime.wHour, sysTime.wMinute, sysTime.wSecond);
+    wsprintfW(timeString, L"%04d-%02d-%02d %02d:%02d:%02d", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute, sysTime.wSecond);
 
-    // Convert back to UTF-8
     char* lastTime = encoding_wchar_to_utf8(timeString);
     free(wPath); 
 
@@ -1637,8 +1690,12 @@ char* dir_get_modified_time(const char* dirPath) {
 
     time_t lastModifiedTime = fileInfo.st_mtime;
     struct tm* timeinfo = localtime(&lastModifiedTime);
-    char* timeString = malloc(sizeof(char) * 256);
+    if (!timeinfo) {
+        DIR_LOG("[dir_get_modified_time] Error: localtime() returned NULL.");
+        return NULL;
+    }
 
+    char* timeString = malloc(sizeof(char) * 256);
     if (timeString == NULL) {
         DIR_LOG("[dir_get_modified_time] Error: Memory allocation failed.");
         return NULL;
@@ -1646,6 +1703,7 @@ char* dir_get_modified_time(const char* dirPath) {
 
     strftime(timeString, 256, "%Y-%m-%d %H:%M:%S", timeinfo);
     DIR_LOG("[dir_get_modified_time] Directory modified time retrieved: %s", timeString);
+
     return timeString;
 #endif
 }
@@ -1699,11 +1757,37 @@ char* dir_get_creation_time(const char* dirPath) {
     DIR_LOG("[dir_get_creation_time] Directory creation time retrieved: %s", lastTime);
     return lastTime;
 
-#else 
-    DIR_LOG("[dir_get_creation_time] Error: POSIX systems typically don't have a creation time. Use dir_get_modified_time instead.");
-    return NULL;
-#endif 
+#else
+    /* POSIX exposes no portable file birth/creation time through stat()
+       (st_ctime is the inode "change time", and a true btime needs statx() on a
+       supporting filesystem). Fall back to st_ctime — for a freshly created
+       file this equals its creation moment — so the API stays usable and
+       cross-platform instead of always returning NULL. */
+    struct stat fileInfo;
+    if (stat(dirPath, &fileInfo) != 0) {
+        DIR_LOG("[dir_get_creation_time] Error: stat failed for %s.", dirPath);
+        return NULL;
+    }
+
+    time_t creationTime = fileInfo.st_ctime;
+    struct tm* timeinfo = localtime(&creationTime);
+    if (!timeinfo) {
+        DIR_LOG("[dir_get_creation_time] Error: localtime() returned NULL.");
+        return NULL;
+    }
+
+    char* timeString = malloc(sizeof(char) * 256);
+    if (timeString == NULL) {
+        DIR_LOG("[dir_get_creation_time] Error: Memory allocation failed.");
+        return NULL;
+    }
+
+    strftime(timeString, 256, "%Y-%m-%d %H:%M:%S", timeinfo);
+    DIR_LOG("[dir_get_creation_time] Creation time (st_ctime fallback) retrieved: %s", timeString);
+    return timeString;
+#endif
 }
+
 
 /**
  * @brief Gets the user's home directory path.
@@ -1751,6 +1835,7 @@ char* dir_get_home_directory() {
 
     return homeDir; 
 }
+
 
 /**
  * @brief Determines the type of file located at the specified path.
@@ -1815,6 +1900,7 @@ DirFileType dir_get_file_type(const char* filePath) {
     }
 #endif
 }
+
 
 /**
  * @brief Encrypts a file using the specified password and initialization vector.
@@ -1908,7 +1994,6 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
         DIR_LOG("[dir_decrypt_file] Error: Invalid arguments. filePath, password, or iv is NULL.");
         return false;
     }
-
     DIR_LOG("[dir_decrypt_file] Starting decryption for file: %s", filePath);
 
     FileReader* reader = file_reader_open(filePath, READ_BINARY);
@@ -1956,6 +2041,7 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     if (!writer) {
         DIR_LOG("[dir_decrypt_file] Error: Failed to open file for writing: %s", filePath);
         free(decryptedData);
+
         return false;
     }
 
@@ -1963,6 +2049,7 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
         DIR_LOG("[dir_decrypt_file] Error: Failed to write decrypted data.");
         free(decryptedData);
         file_writer_close(writer);
+
         return false;
     }
 
@@ -1973,6 +2060,7 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
 
     return true;
 }
+
 
 /**
  * @brief Retrieves the owner of the specified file.
@@ -2071,6 +2159,7 @@ bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSi
     return true;
 #endif
 }
+
 
 /**
  * @brief Retrieves the owner of the specified directory.
@@ -2196,8 +2285,12 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
         return false;
     }
 
-    // Allocate memory for the combined path and pattern
-    size_t combinedSize = wcslen(wDirPath) + wcslen(wPattern) + 1; // +1 for null terminator
+    /* Combine dirPath + "\\" + pattern so callers can pass "*.txt" and
+       have it resolve correctly inside the directory. +2 for the
+       separator and the null terminator. */
+    size_t dirLen = wcslen(wDirPath);
+    bool   needSep = (dirLen > 0 && wDirPath[dirLen - 1] != L'\\' && wDirPath[dirLen - 1] != L'/');
+    size_t combinedSize = dirLen + (needSep ? 1 : 0) + wcslen(wPattern) + 1;
     wchar_t* wSearchPath = (wchar_t*)malloc(combinedSize * sizeof(wchar_t));
     if (wSearchPath == NULL) {
         DIR_LOG("[dir_search] Error: Failed to allocate memory for search path in dir_search.");
@@ -2206,8 +2299,8 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
         return false;
     }
 
-    // Combine dirPath and pattern
     wcscpy_s(wSearchPath, combinedSize, wDirPath);
+    if (needSep) wcscat_s(wSearchPath, combinedSize, L"\\");
     wcscat_s(wSearchPath, combinedSize, wPattern);
 
     DIR_LOG("[dir_search] Searching in directory: %s with pattern: %s", dirPath, pattern);
@@ -2224,16 +2317,18 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
 
     do {
         if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            continue; // Skip directories if you only want files
+            continue; /* skip directories — we only report files */
         }
 
         char* utf8FileName = encoding_wchar_to_utf8(findFileData.cFileName);
-        if (!callback(utf8FileName, userData) || !utf8FileName) {
-            free(utf8FileName);
-            break;
+        if (!utf8FileName) {
+            DIR_LOG("[dir_search] Skipping entry: utf-8 conversion failed.");
+            continue;
         }
+        bool keep_going = callback(utf8FileName, userData);
         DIR_LOG("[dir_search] Found file: %s", utf8FileName);
         free(utf8FileName);
+        if (!keep_going) break;
     } while (FindNextFileW(hFind, &findFileData) != 0);
 
     FindClose(hFind);
@@ -2265,4 +2360,618 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
     closedir(dir);
     return true;
 #endif
+}
+
+
+/**
+ * @brief Returns the native path separator for the current platform.
+ *
+ * Behavior:
+ *   - Windows builds (`_WIN32` / `_WIN64`) return `'\\'`.
+ *   - All other platforms (Linux, macOS, BSD, ...) return `'/'`.
+ *
+ * @return The platform-native path separator character.
+ */
+char dir_path_separator(void) {
+    DIR_LOG("[dir_path_separator]: enter");
+#if defined(_WIN32) || defined(_WIN64)
+    DIR_LOG("[dir_path_separator]: exit -> '\\\\' (Windows)");
+    return '\\';
+#else
+    DIR_LOG("[dir_path_separator]: exit -> '/' (POSIX)");
+    return '/';
+#endif
+}
+
+
+/**
+ * @brief Reports whether @p path is an absolute filesystem path.
+ *
+ * Recognized as absolute:
+ *   - Windows: a leading backslash or forward slash (UNC-style), OR
+ *     a drive prefix matching `[A-Za-z]:[\\/]`.
+ *   - POSIX: starts with `/`.
+ *
+ * @param path Path to inspect. May be NULL or empty.
+ * @return true if the path is absolute, false otherwise (incl. NULL /
+ *         empty input).
+ */
+bool dir_is_absolute_path(const char* path) {
+    DIR_LOG("[dir_is_absolute_path]: enter path=%s", path ? path : "(null)");
+    if (!path || !*path) {
+        DIR_LOG("[dir_is_absolute_path]: NULL or empty -> false");
+        return false;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    if (path[0] == '\\' || path[0] == '/') {
+        DIR_LOG("[dir_is_absolute_path]: leading slash -> true (Windows)");
+        return true;
+    }
+    if (((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && path[1] == ':' &&
+        (path[2] == '\\' || path[2] == '/')) {
+        DIR_LOG("[dir_is_absolute_path]: drive-letter prefix -> true");
+        return true;
+    }
+    DIR_LOG("[dir_is_absolute_path]: not absolute -> false");
+    return false;
+#else
+    bool out = (path[0] == '/');
+    DIR_LOG("[dir_is_absolute_path]: exit -> %s", out ? "true" : "false");
+    return out;
+#endif
+}
+
+
+/**
+ * @brief Joins two path segments with the platform separator.
+ *
+ * Behavior:
+ *   - `a` is NULL or empty → returns a copy of `b` (or `""` if `b` is
+ *     also NULL/empty).
+ *   - `b` is NULL or empty → returns a copy of `a`.
+ *   - `b` is absolute (see @ref dir_is_absolute_path) → returns a copy
+ *     of `b` verbatim, matching std-library convention.
+ *   - Otherwise: trims trailing separator(s) off `a`, trims leading
+ *     separator(s) off the *trimmed*-then-relative `b`, and joins with
+ *     exactly one native separator.
+ *
+ * @param a Left segment. May be NULL or empty.
+ * @param b Right segment. May be NULL or empty.
+ *
+ * @return Newly-allocated joined path the caller must `free()`. NULL
+ *         on heap-allocation failure only.
+ */
+char* dir_join_path(const char* a, const char* b) {
+    DIR_LOG("[dir_join_path]: enter a=%s b=%s",
+            a ? a : "(null)", b ? b : "(null)");
+
+    char sep = dir_path_separator();
+
+    if (!a || !*a) {
+        if (b) {
+            DIR_LOG("[dir_join_path]: NULL/empty a -> copy of b");
+            return string_strdup(b);
+        }
+        DIR_LOG("[dir_join_path]: both NULL/empty -> \"\"");
+        return string_strdup("");
+    }
+    if (!b || !*b) {
+        DIR_LOG("[dir_join_path]: NULL/empty b -> copy of a");
+        return string_strdup(a);
+    }
+    if (dir_is_absolute_path(b)) {
+        DIR_LOG("[dir_join_path]: b is absolute -> copy of b");
+        return string_strdup(b);
+    }
+
+    size_t la = strlen(a);
+    size_t lb = strlen(b);
+
+    /* Trim trailing separators off `a`. */
+    while (la > 0 && (a[la - 1] == '\\' || a[la - 1] == '/')) {
+        --la;
+    }
+    /* Trim leading separators off `b`. */
+    size_t b_off = 0;
+    while (b[b_off] == '\\' || b[b_off] == '/') {
+        ++b_off;
+    }
+    lb -= b_off;
+
+    char* out = (char*)malloc(la + 1 + lb + 1);
+    if (!out) {
+        DIR_LOG("[dir_join_path]: malloc failed");
+        return NULL;
+    }
+    memcpy(out, a, la);
+    out[la] = sep;
+    memcpy(out + la + 1, b + b_off, lb);
+    out[la + 1 + lb] = '\0';
+
+    DIR_LOG("[dir_join_path]: exit -> %s", out);
+    return out;
+}
+
+
+/**
+ * @brief Returns the final component (basename) of a path.
+ *
+ * Behavior:
+ *   - `"C:/foo/bar.txt"` → `"bar.txt"`
+ *   - `"/usr/local/"`    → `"local"` (trailing separators trimmed)
+ *   - `"plain.txt"`      → `"plain.txt"` (no parent)
+ *   - `""`               → `""` (a single empty character is returned)
+ *
+ * @param path Input path. May be NULL.
+ *
+ * @return Newly-allocated component the caller must `free()`. NULL on
+ *         NULL input or heap-allocation failure.
+ */
+char* dir_base_name(const char* path) {
+    DIR_LOG("[dir_base_name]: enter path=%s", path ? path : "(null)");
+    if (!path) {
+        DIR_LOG("[dir_base_name]: NULL input -> NULL");
+        return NULL;
+    }
+
+    size_t len = strlen(path);
+    /* Strip trailing separators. */
+    while (len > 0 && (path[len - 1] == '\\' || path[len - 1] == '/')) {
+        --len;
+    }
+    if (len == 0) {
+        /* All-separators or empty input. Return a 1-char copy of the
+           first byte (typically '\0' or '/') so the result still has a
+           defined value. */
+        char* out = (char*)malloc(2);
+        if (!out) {
+            DIR_LOG("[dir_base_name]: malloc failed");
+            return NULL;
+        }
+        out[0] = path[0];
+        out[1] = '\0';
+        DIR_LOG("[dir_base_name]: exit -> \"%s\" (empty/all-sep)", out);
+        return out;
+    }
+
+    /* Walk back to the last separator (or beginning of string). */
+    size_t start = len;
+    while (start > 0 && path[start - 1] != '\\' && path[start - 1] != '/') {
+        --start;
+    }
+
+    size_t outLen = len - start;
+    char* out = (char*)malloc(outLen + 1);
+    if (!out) {
+        DIR_LOG("[dir_base_name]: malloc failed");
+        return NULL;
+    }
+
+    memcpy(out, path + start, outLen);
+    out[outLen] = '\0';
+
+    DIR_LOG("[dir_base_name]: exit -> %s", out);
+    return out;
+}
+
+
+/**
+ * @brief Returns the extension of a path INCLUDING the leading dot.
+ *
+ * Behavior:
+ *   - `"file.tar.gz"` → `".gz"` (only the last extension).
+ *   - `"Makefile"`    → `""`     (no dot in basename).
+ *   - `"/etc/.bashrc"` → `""`    (a leading dot in the basename is a
+ *                                  hidden-file marker, NOT an extension).
+ *
+ * @param path Input path. May be NULL.
+ *
+ * @return Newly-allocated extension (possibly empty); caller must
+ *         `free()`. NULL on NULL input or OOM.
+ */
+char* dir_extension(const char* path) {
+    DIR_LOG("[dir_extension]: enter path=%s", path ? path : "(null)");
+    if (!path) {
+        DIR_LOG("[dir_extension]: NULL input -> NULL");
+        return NULL;
+    }
+
+    char* base = dir_base_name(path);
+    if (!base) {
+        DIR_LOG("[dir_extension]: dir_base_name failed -> NULL");
+        return NULL;
+    }
+
+    char* dot = strrchr(base, '.');
+    char* out;
+    if (!dot || dot == base) {
+        DIR_LOG("[dir_extension]: no extension -> \"\"");
+        out = string_strdup("");
+    } 
+    else {
+        DIR_LOG("[dir_extension]: extension = %s", dot);
+        out = string_strdup(dot);
+    }
+    free(base);
+    return out;
+}
+
+
+/**
+ * @brief Returns a copy of @p path with its extension replaced.
+ *
+ * @p newExt may be passed with or without a leading dot; the function
+ * normalises both forms identically.
+ *
+ * Behavior:
+ *   - Empty `newExt` strips the extension (`"foo.txt"` → `"foo"`).
+ *   - If `path` has no extension, `newExt` is appended (with a single
+ *     leading dot if `newExt` didn't already have one).
+ *   - A leading dot inside the basename (e.g. `".bashrc"`) is preserved
+ *     and treated as a hidden-file marker, not an extension boundary.
+ *
+ * @param path   Input path. Must be non-NULL.
+ * @param newExt New extension, with or without a leading dot. Must be
+ *               non-NULL (use `""` to strip).
+ *
+ * @return Newly-allocated path the caller must `free()`. NULL on bad
+ *         input or heap-allocation failure.
+ */
+char* dir_change_extension(const char* path, const char* newExt) {
+    DIR_LOG("[dir_change_extension]: enter path=%s newExt=%s",
+            path ? path : "(null)", newExt ? newExt : "(null)");
+    if (!path || !newExt) {
+        DIR_LOG("[dir_change_extension]: NULL input -> NULL");
+        return NULL;
+    }
+
+    size_t len = strlen(path);
+    size_t baseStart = len;
+
+    while (baseStart > 0 && path[baseStart - 1] != '\\' && path[baseStart - 1] != '/') {
+        --baseStart;
+    }
+
+    size_t dotPos = len;
+    for (size_t i = len; i > baseStart; --i) {
+        if (path[i - 1] == '.') {
+            dotPos = i - 1;
+            break;
+        }
+    }
+
+    if (dotPos == baseStart && baseStart < len && path[baseStart] == '.') {
+        dotPos = len;
+    }
+
+    bool   extHasDot = (newExt[0] == '.');
+    size_t extLen    = strlen(newExt);
+    size_t newLen    = dotPos + (extHasDot ? 0 : (extLen > 0 ? 1 : 0)) + extLen;
+
+    char* out = (char*)malloc(newLen + 1);
+    if (!out) {
+        DIR_LOG("[dir_change_extension]: malloc failed");
+        return NULL;
+    }
+    memcpy(out, path, dotPos);
+
+    size_t p = dotPos;
+    if (extLen > 0 && !extHasDot) {
+        out[p++] = '.';
+    }
+
+    memcpy(out + p, newExt, extLen);
+    out[p + extLen] = '\0';
+
+    DIR_LOG("[dir_change_extension]: exit -> %s", out);
+    return out;
+}
+
+
+/**
+ * @brief Normalises path separators and collapses "." / ".." segments.
+ *
+ * Output uses the native separator. The function does NOT resolve
+ * symlinks; use dir_absolute_file_path for that. A leading absolute
+ * marker (drive letter on Windows, leading slash on POSIX) is
+ * preserved.
+ *
+ * @param path Input path. May be NULL.
+ * @return Newly-allocated normalised path; caller must free().
+ */
+char* dir_normalize_path(const char* path) {
+    if (!path) {
+        return NULL;
+    }
+
+    char sep = dir_path_separator();
+    size_t len = strlen(path);
+    char* working = (char*)malloc(len + 2);
+    if (!working) {
+        return NULL;
+    }
+    memcpy(working, path, len + 1);
+
+    char** stack = (char**)calloc(len + 1, sizeof(char*));
+    if (!stack) { 
+        free(working); 
+        return NULL; 
+    }
+
+    size_t top = 0;
+
+    bool isAbs = dir_is_absolute_path(path);
+    size_t prefixLen = 0;
+    char prefix[8] = {0};
+
+#if defined(_WIN32) || defined(_WIN64)
+    if (isAbs) {
+        if (len >= 2 && path[1] == ':') {
+            prefix[0] = path[0];
+            prefix[1] = ':';
+            prefix[2] = '\\';
+            prefix[3] = '\0';
+            prefixLen = 3;
+        } 
+        else {
+            prefix[0] = '\\';
+            prefix[1] = '\0';
+            prefixLen = 1;
+        }
+    }
+#else
+    if (isAbs) {
+        prefix[0] = '/';
+        prefix[1] = '\0';
+        prefixLen = 1;
+    }
+#endif
+
+    char* p = working + prefixLen;
+    while (*p) {
+        while (*p == '\\' || *p == '/') {
+            ++p;
+        }
+        if (!*p) {
+            break;
+        }
+
+        char* segStart = p;
+        while (*p && *p != '\\' && *p != '/') {
+            ++p;
+        }
+
+        if (*p) { 
+            *p = '\0'; 
+            ++p; 
+        }
+
+        if (strcmp(segStart, ".") == 0 || *segStart == '\0') {
+            continue;
+        }
+        if (strcmp(segStart, "..") == 0) {
+            if (top > 0 && strcmp(stack[top - 1], "..") != 0) {
+                --top;
+            } 
+            else if (!isAbs) {
+                stack[top++] = segStart;
+            }
+            continue;
+        }
+        stack[top++] = segStart;
+    }
+
+    size_t outLen = prefixLen;
+    for (size_t i = 0; i < top; ++i) {
+        outLen += strlen(stack[i]) + 1;
+    }
+    if (outLen == 0) {
+        outLen = 2;
+    }
+
+    char* out = (char*)malloc(outLen + 1);
+    if (!out) { 
+        free(working); 
+        free(stack); 
+        return NULL; 
+    }
+
+    size_t off = 0;
+    memcpy(out + off, prefix, prefixLen);
+    off += prefixLen;
+    for (size_t i = 0; i < top; ++i) {
+        size_t sl = strlen(stack[i]);
+        memcpy(out + off, stack[i], sl);
+        off += sl;
+
+        if (i + 1 < top) {
+            out[off++] = sep;
+        }
+    }
+    if (off == 0) {
+        out[off++] = '.';
+    }
+    out[off] = '\0';
+
+    free(working);
+    free(stack);
+    return out;
+}
+
+
+/**
+ * @brief Returns the path of the system temporary directory.
+ *
+ * Windows: GetTempPathW result (typically %TEMP%).
+ * POSIX: $TMPDIR, or "/tmp" as a fallback.
+ *
+ * @return Newly-allocated path with no trailing separator. Caller must
+ *         free(). NULL on failure.
+ */
+char* dir_temp_directory(void) {
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t wbuf[MAX_PATH + 1];
+    DWORD n = GetTempPathW(MAX_PATH + 1, wbuf);
+
+    if (n == 0 || n > MAX_PATH) {
+        DIR_LOG("[dir_temp_directory] Error: GetTempPathW failed.");
+        return NULL;
+    }
+    while (n > 0 && (wbuf[n - 1] == L'\\' || wbuf[n - 1] == L'/')) {
+        wbuf[--n] = L'\0';
+    }
+    char* utf8 = encoding_wchar_to_utf8(wbuf);
+    if (!utf8) {
+        DIR_LOG("[dir_temp_directory] Error: utf-8 conversion failed.");
+        return NULL;
+    }
+    return utf8;
+#else
+    const char* env = getenv("TMPDIR");
+    if (!env || !*env) {
+        env = "/tmp";
+    }
+    size_t len = strlen(env);
+
+    while (len > 1 && env[len - 1] == '/') {
+        --len;
+    }
+    char* out = (char*)malloc(len + 1);
+    if (!out) {
+        return NULL;
+    }
+    memcpy(out, env, len);
+    out[len] = '\0';
+
+    return out;
+#endif
+}
+
+
+/**
+ * @brief Recursive mkdir -p — creates every intermediate directory.
+ *
+ * Walks the path component by component and creates each directory
+ * that does not already exist. Succeeds if the leaf directory exists
+ * at the end (whether created by this call or pre-existing).
+ *
+ * @param dirpath Path to create. May contain '/' or '\\' separators.
+ * @return true on success, false on failure at any level.
+ */
+bool dir_make_directories(const char* dirpath) {
+    if (!dirpath || !*dirpath) {
+        DIR_LOG("[dir_make_directories] Error: path is NULL or empty.");
+        return false;
+    }
+
+    size_t len = strlen(dirpath);
+    char* tmp = (char*)malloc(len + 1);
+    if (!tmp) {
+        return false;
+    }
+    memcpy(tmp, dirpath, len + 1);
+
+    for (size_t i = 0; i < len; ++i) {
+        if (tmp[i] == '\\') tmp[i] = '/';
+    }
+    while (len > 0 && tmp[len - 1] == '/') {
+        tmp[--len] = '\0';
+    }
+    if (len == 0) { 
+        free(tmp); 
+        return true; 
+    }
+
+    size_t start = 0;
+#if defined(_WIN32) || defined(_WIN64)
+    if (len >= 2 && tmp[1] == ':') {
+        start = 2;
+    }
+    if (len > start && tmp[start] == '/') {
+        ++start;
+    }
+#else
+    if (tmp[0] == '/') {
+        start = 1;
+    }
+#endif
+
+    for (size_t i = start; i <= len; ++i) {
+        if (i == len || tmp[i] == '/') {
+            char saved = tmp[i];
+            tmp[i] = '\0';
+
+            if (!dir_is_directory_exists(tmp)) {
+                if (!dir_make_directory(tmp)) {
+                    DIR_LOG("[dir_make_directories] Error: failed to create %s", tmp);
+                    free(tmp);
+                    return false;
+                }
+            }
+            tmp[i] = saved;
+        }
+    }
+
+    free(tmp);
+    return true;
+}
+
+
+/* Walk into a directory and append every entry matching the option,
+ * with paths prefixed by the directory being walked. */
+static void dir_list_recursive_impl(const char* dirPath, DirListOption option, Vector* result) {
+    Vector* entries = vector_create(sizeof(char*));
+    if (!entries) {
+        return;
+    }
+    dir_list_contents(dirPath, DIR_LIST_ALL, entries);
+
+    size_t n = vector_size(entries);
+    for (size_t i = 0; i < n; ++i) {
+        char** namePtr = (char**)vector_at(entries, i);
+        if (!namePtr || !*namePtr) {
+            continue;
+        }
+
+        char* full = dir_join_path(dirPath, *namePtr);
+        if (!full) { 
+            free(*namePtr); 
+            continue; 
+        }
+
+        bool isDir = dir_is_directory(full);
+        if ((option == DIR_LIST_ALL) || (option == DIR_LIST_FILES && !isDir) || (option == DIR_LIST_DIRECTORIES && isDir)) {
+            char* push = string_strdup(full);
+            if (push) {
+                vector_push_back(result, &push);
+            }
+        }
+        if (isDir) {
+            dir_list_recursive_impl(full, option, result);
+        }
+        free(full);
+        free(*namePtr);
+    }
+    vector_deallocate(entries);
+}
+
+
+/**
+ * @brief Walks a directory tree and collects every file / directory.
+ *
+ * The collected paths are prefixed with `dirPath` so callers can use
+ * them directly with the other dir_* / file_* APIs. Each entry in the
+ * result Vector is a heap-allocated char* — the caller is responsible
+ * for freeing each one and the vector itself.
+ *
+ * @param dirPath Root directory to walk. Not added to the result.
+ * @param option Filter: files, directories, or both.
+ * @param result Output vector of `char*` (must already be created).
+ */
+void dir_list_recursive(const char* dirPath, DirListOption option, Vector* result) {
+    if (!dirPath || !result) {
+        DIR_LOG("[dir_list_recursive] Error: NULL argument.");
+        return;
+    }
+    dir_list_recursive_impl(dirPath, option, result);
 }

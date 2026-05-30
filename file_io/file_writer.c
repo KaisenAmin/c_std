@@ -37,13 +37,13 @@
 FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     if (!filename) {
         FILE_WRITER_LOG("[file_writer_open] Error: filename is null.");
-        exit(-1);
+        return NULL;
     }
 
     FileWriter* writer = (FileWriter*) malloc(sizeof(FileWriter));
     if (!writer) {
         FILE_WRITER_LOG("[file_writer_open] Error: Cannot allocate memory for FileWriter.");
-        exit(-1);
+        return NULL;
     }
 
     const char* modeStr = NULL;
@@ -88,25 +88,24 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     wchar_t* wFileName = encoding_utf8_to_wchar(filename);
     wchar_t* wMode = encoding_utf8_to_wchar(modeStr);
 
-    if (!wMode) {
-        FILE_WRITER_LOG("[file_writer_open] Error: Cannot convert mode to wchar.");
-        exit(-1);
-    }
-    if (!wFileName) {
-        FILE_WRITER_LOG("[file_writer_open] Error: Cannot convert filename to wchar.");
-        exit(-1);
+    if (!wMode || !wFileName) {
+        FILE_WRITER_LOG("[file_writer_open] Error: Cannot convert filename/mode to wchar.");
+        free(wMode);
+        free(wFileName);
+        free(writer);
+        return NULL;
     }
     writer->file_writer = _wfopen(wFileName, wMode);
     free(wMode);
     free(wFileName);
-    #else 
+    #else
     writer->file_writer = fopen(filename, modeStr);
-    #endif 
+    #endif
 
     if (writer->file_writer == NULL) {
         FILE_WRITER_LOG("[file_writer_open] Error: Cannot open file.");
         free(writer);
-        exit(-1);
+        return NULL;
     }
     writer->mode = mode;
     writer->is_open = true;
@@ -116,6 +115,7 @@ FileWriter* file_writer_open(const char* filename, const WriteMode mode) {
     FILE_WRITER_LOG("[file_writer_open] File '%s' opened successfully in mode '%s'.", filename, modeStr);
     return writer;
 }
+
 
 /**
  * @brief Opens an existing file for appending. If the file does not exist, it will be created.
@@ -209,9 +209,9 @@ FileWriter* file_writer_append(const char* filename, const WriteMode mode) {
     writer->file_path = string_strdup(filename);
 
     FILE_WRITER_LOG("[file_writer_append] File '%s' opened for appending in mode '%s'.", filename, modeStr);
-
     return writer;
 }
+
 
 /**
  * @brief Closes the file associated with the given `FileWriter`.
@@ -224,18 +224,27 @@ FileWriter* file_writer_append(const char* filename, const WriteMode mode) {
  * @return `true` if the file was successfully closed, `false` otherwise.
  */
 bool file_writer_close(FileWriter *writer) {
-    if (writer->file_writer == NULL) {
-        FILE_WRITER_LOG("[file_writer_close] Warning: The file is already NULL, no need to close.");
+    if (!writer) {
+        FILE_WRITER_LOG("[file_writer_close] Error: FileWriter object is null.");
         return false;
     }
-    if (fclose(writer->file_writer)) {
+    if (writer->file_writer && fclose(writer->file_writer)) {
         FILE_WRITER_LOG("[file_writer_close] Error: Failed to close the file.");
         return false;
     }
+    writer->file_writer = NULL;
     writer->is_open = false;
+
+    if (writer->file_path) {
+        free(writer->file_path);
+        writer->file_path = NULL;
+    }
+
     FILE_WRITER_LOG("[file_writer_close] File successfully closed.");
+    free(writer);
     return true;
 }
+
 
 /**
  * @brief Gets the current position of the file pointer.
@@ -261,6 +270,7 @@ size_t file_writer_get_position(FileWriter *writer) {
     FILE_WRITER_LOG("[file_writer_get_position] Current file position: %ld.", cursor_position);
     return (size_t)cursor_position;
 }
+
 
 /**
  * @brief Writes data from a buffer to a file using the specified `FileWriter`.
@@ -291,7 +301,6 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
     // Handle text and Unicode data with conversion if necessary
     switch (writer->encoding) {
         case WRITE_ENCODING_UTF32: {
-            // Convert UTF-8 to UTF-32 and then write
             uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size * count);
             if (!utf32Buffer) {
                 FILE_WRITER_LOG("[file_writer_write] Error: Conversion to UTF-32 failed.");
@@ -299,6 +308,7 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
             }
             written = fwrite(utf32Buffer, sizeof(uint32_t), wcslen((wchar_t*)utf32Buffer), writer->file_writer);
             free(utf32Buffer);
+
             FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu UTF-32 elements.", written);
             break;
         }
@@ -314,6 +324,7 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
                 }
                 written = fwrite(wBuffer, sizeof(wchar_t), wcslen(wBuffer), writer->file_writer);
                 free(wBuffer);
+
                 FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu UTF-16 elements in Windows mode.", written);
             } 
             else {
@@ -322,15 +333,27 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
                 FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu elements without conversion.", written);
             }
             #else
-            // For non-Windows systems, convert UTF-8 to UTF-16 if required and write
-            if (writer->encoding == WRITE_ENCODING_UTF16) {
+            // For non-Windows systems, convert UTF-8 to UTF-16 ONLY for the explicit
+            // Unicode mode. WRITE_TEXT and WRITE_APPEND must write bytes as-is so plain
+            // text round-trips (e.g. json write/read, and write-then-append of text).
+            // On Windows these modes use an "ccs=UTF-8" stream, i.e. UTF-8 on disk too,
+            // so this keeps the on-disk bytes consistent across platforms.
+            if (writer->mode == WRITE_UNICODE) {
                 uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size * count);
                 if (!utf16Buffer) {
                     FILE_WRITER_LOG("[file_writer_write] Error: Conversion to UTF-16 failed.");
                     return 0;
                 }
-                written = fwrite(utf16Buffer, sizeof(uint16_t), wcslen((wchar_t*)utf16Buffer), writer->file_writer);
+                /* utf16Buffer is a NUL-terminated uint16_t array. Count its units
+                   directly -- wcslen() must NOT be used here, because wchar_t is
+                   4 bytes on Linux (not uint16_t), so it reads past the buffer. */
+                size_t utf16Len = 0;
+                while (utf16Buffer[utf16Len] != 0) {
+                    utf16Len++;
+                }
+                written = fwrite(utf16Buffer, sizeof(uint16_t), utf16Len, writer->file_writer);
                 free(utf16Buffer);
+
                 FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu UTF-16 elements.", written);
             } 
             else {
@@ -342,9 +365,7 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
             break;
         }
 
-        // Other encoding types or default handling can be added here
         default:
-            // For safety, default to direct writing for undefined encoding types
             written = fwrite(buffer, size, count, writer->file_writer);
             FILE_WRITER_LOG("[file_writer_write] Writing %zu elements with default handling.", written);
             break;
@@ -352,6 +373,7 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
 
     return written;
 }
+
 
 /**
  * @brief Writes a line of text to the file using the specified `FileWriter`.
@@ -389,6 +411,7 @@ bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
         elementToWriteSize = wcslen(wBuffer);
         written = fwrite(wBuffer, sizeof(wchar_t), elementToWriteSize, writer->file_writer);
         free(wBuffer);
+
         FILE_WRITER_LOG("[file_writer_write_line] Successfully wrote %zu UTF-16 elements.", written);
     } 
     else {
@@ -409,10 +432,12 @@ bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
     if (writer->mode == WRITE_UNICODE) {
         wchar_t newLine[] = L"\n";
         written = fwrite(newLine, sizeof(wchar_t), 1, writer->file_writer);
+
         FILE_WRITER_LOG("[file_writer_write_line] Wrote newline (UTF-16).");
     } else {
         char newLine[] = "\n";
         written = fwrite(newLine, sizeof(char), 1, writer->file_writer);
+
         FILE_WRITER_LOG("[file_writer_write_line] Wrote newline.");
     }
 
@@ -424,6 +449,7 @@ bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
 
     return written == 1;
 }
+
 
 /**
  * @brief Checks if the file associated with the `FileWriter` is currently open.
@@ -446,6 +472,7 @@ bool file_writer_is_open(FileWriter* writer) {
     FILE_WRITER_LOG("[file_writer_is_open] File is currently open.");
     return writer->is_open;
 }
+
 
 /**
  * @brief Flushes the buffer of the `FileWriter`, ensuring all written data is stored in the file.
@@ -471,6 +498,7 @@ bool file_writer_flush(FileWriter* writer) {
     return true;
 }
 
+
 /**
  * @brief Sets the character encoding for writing to the file.
  *
@@ -490,11 +518,12 @@ bool file_writer_set_encoding(FileWriter* writer, const WriteEncodingType encodi
         FILE_WRITER_LOG("[file_writer_set_encoding] Error: Invalid encoding type.");
         return false;
     }
-
     writer->encoding = encoding;
+
     FILE_WRITER_LOG("[file_writer_set_encoding] Encoding set to %d.", encoding);
     return true;
 }
+
 
 /**
  * @brief Copies the content from one file to another.
@@ -548,6 +577,7 @@ bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer) {
     return true;
 }
 
+
 /**
  * @brief Retrieves the absolute path of the file associated with the `FileWriter` object.
  *
@@ -571,6 +601,7 @@ const char *file_writer_get_file_name(FileWriter *writer) {
     return (const char*)writer->file_path;
 }
 
+
 /**
  * @brief Retrieves the encoding type currently set in the `FileWriter`.
  *
@@ -585,7 +616,6 @@ const char* file_writer_get_encoding(FileWriter *writer) {
         FILE_WRITER_LOG("[file_writer_get_encoding] Error: FileWriter object is null or invalid.");
         return NULL;
     }
-
     if (!(writer->encoding >= WRITE_ENCODING_UTF16 && writer->encoding <= WRITE_ENCODING_UTF32)) {
         FILE_WRITER_LOG("[file_writer_get_encoding] Error: Invalid encoding type.");
         return NULL;
@@ -604,6 +634,7 @@ const char* file_writer_get_encoding(FileWriter *writer) {
     FILE_WRITER_LOG("[file_writer_get_encoding] Returning encoding type: %s", encoding);
     return encoding;
 }
+
 
 /**
  * @brief Writes formatted data to the file, similar to `fprintf`.
@@ -681,6 +712,7 @@ size_t file_writer_get_size(FileWriter* writer) {
     return size;
 }
 
+
 /**
  * @brief Locks the file associated with the `FileWriter` to prevent other processes from modifying it.
  *
@@ -720,6 +752,7 @@ bool file_writer_lock(FileWriter* writer) {
     return true;
 }
 
+
 /**
  * @brief Unlocks the file associated with the `FileWriter` after operations are completed.
  *
@@ -739,10 +772,12 @@ bool file_writer_unlock(FileWriter* writer) {
     #if defined(_WIN32) || defined(_WIN64)
     HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(writer->file_writer));
     OVERLAPPED overlapped = {0};
+
     if (UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
         FILE_WRITER_LOG("[file_writer_unlock] Error: Unable to unlock file in Windows.");
         return false;
     }
+
     #else
     struct flock fl = {0};
     fl.l_type = F_UNLCK;
@@ -758,6 +793,7 @@ bool file_writer_unlock(FileWriter* writer) {
     FILE_WRITER_LOG("[file_writer_unlock] File successfully unlocked.");
     return true;
 }
+
 
 /**
  * @brief Moves the file pointer to a specific location for random access writing.
@@ -804,6 +840,7 @@ bool file_writer_seek(FileWriter *writer, long offset, const CursorPosition curs
     return true;
 }
 
+
 /**
  * @brief Truncates the file associated with the `FileWriter` to the specified size.
  *
@@ -845,6 +882,7 @@ bool file_writer_truncate(FileWriter *writer, size_t size) {
     return true;
 }
 
+
 /**
  * @brief Writes multiple buffers to a file in a single operation, potentially optimizing I/O operations.
  *
@@ -869,6 +907,29 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
     size_t all_bytes = 0;
     size_t total_written = 0;
 
+    /* Binary fast-path: writes raw bytes verbatim, no encoding conversion.
+       This is the only sane behavior when the caller asks for WRITE_BINARY —
+       any UTF-16 expansion would corrupt arbitrary byte data. */
+    if (writer->mode == WRITE_BINARY) {
+        for (size_t i = 0; i < count; ++i) {
+            const void* buffer = buffers[i];
+            size_t size = sizes[i];
+            if (!buffer || size == 0) {
+                FILE_WRITER_LOG("[file_writer_write_batch] Error: Invalid buffer or size at index %zu.", i);
+                continue;
+            }
+            size_t w = fwrite(buffer, 1, size, writer->file_writer);
+            if (w != size) {
+                FILE_WRITER_LOG("[file_writer_write_batch] Error: Short write at index %zu.", i);
+                return false;
+            }
+            total_written += w;
+            all_bytes    += size;
+        }
+        FILE_WRITER_LOG("[file_writer_write_batch] Binary mode: wrote %zu bytes.", total_written);
+        return total_written == all_bytes;
+    }
+
     for (size_t i = 0; i < count; ++i) {
         const void* buffer = buffers[i];
         size_t size = sizes[i];
@@ -880,39 +941,61 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
         }
 
         size_t written = 0;
-        void* convertedBuffer = NULL; 
-        size_t convertedSize = 0;     
+        void* convertedBuffer = NULL;
+        size_t convertedSize = 0;
 
         // Convert buffer based on encoding
         switch (writer->encoding) {
             case WRITE_ENCODING_UTF32: {
                 uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size);
+
                 if (!utf32Buffer) {
                     FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to UTF-32 failed at index %zu.", i);
                     continue;
                 }
                 convertedBuffer = utf32Buffer;
                 convertedSize = wcslen((wchar_t*)utf32Buffer) * sizeof(uint32_t);
+
                 break;
             }
             default: // Default case is ENCODING_UTF16
             case WRITE_ENCODING_UTF16: {
                 #if defined(_WIN32) || defined(_WIN64)
                 wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
+
                 if (!wBuffer) {
                     FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to wchar_t failed at index %zu.", i);
                     continue;
                 }
                 convertedBuffer = wBuffer;
                 convertedSize = wcslen(wBuffer) * sizeof(wchar_t);
+
                 #else
-                uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size);
-                if (!utf16Buffer) {
-                    FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to UTF-16 failed at index %zu.", i);
-                    continue;
+                if (writer->mode == WRITE_UNICODE) {
+                    uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size);
+                    if (!utf16Buffer) {
+                        FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to UTF-16 failed at index %zu.", i);
+                        continue;
+                    }
+                    /* Count uint16_t units; wcslen would over-read (wchar_t is 4 bytes on Linux). */
+                    size_t u16len = 0;
+                    while (utf16Buffer[u16len] != 0) {
+                        u16len++;
+                    }
+                    convertedBuffer = utf16Buffer;
+                    convertedSize = u16len * sizeof(uint16_t);
                 }
-                convertedBuffer = utf16Buffer;
-                convertedSize = wcslen((wchar_t*)utf16Buffer) * sizeof(uint16_t);
+                else {
+                    /* Plain UTF-8 bytes (matches Windows' ccs=UTF-8 stream on disk). Copy
+                       so the shared fwrite+free path below can own and free the buffer. */
+                    convertedBuffer = malloc(size);
+                    if (!convertedBuffer) {
+                        FILE_WRITER_LOG("[file_writer_write_batch] Error: allocation failed at index %zu.", i);
+                        continue;
+                    }
+                    memcpy(convertedBuffer, buffer, size);
+                    convertedSize = size;
+                }
                 #endif
                 break;
             }
@@ -937,6 +1020,7 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
     FILE_WRITER_LOG("[file_writer_write_batch] Successfully wrote %zu bytes.", total_written);
     return total_written == all_bytes;
 }
+
 
 /**
  * @brief Appends formatted text to a file using the specified `FileWriter`.

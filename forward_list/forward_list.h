@@ -1,8 +1,14 @@
 /**
  * @author Amin Tahmasebi
- * @date 2023 
+ * @date 2023
  * @class ForwardList
-*/
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in forward_list.c (file-level convention).
+ *
+ * Singly-linked list with element-size-aware copy semantics, modeled
+ * on C++ std::forward_list<T>.
+ */
 
 #ifndef FORWARD_LIST_H_
 #define FORWARD_LIST_H_
@@ -11,73 +17,121 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#define FORWARD_LIST_LOGGING_ENABLE
 
-#ifdef FORWARD_LIST_LOGGING_ENABLE 
+/* #define FORWARD_LIST_LOGGING_ENABLE */
+
+#ifdef FORWARD_LIST_LOGGING_ENABLE
     #define FORWARD_LIST_LOG(fmt, ...) \
         do { fprintf(stderr, "[FORWARD_LIST LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define FORWARD_LIST_LOG(fmt, ...) do { } while (0)
+    #define FORWARD_LIST_LOG(...) do { } while (0)
 #endif
 
 
+
 typedef struct ForwardListNode ForwardListNode;
-typedef struct ForwardList ForwardList;
+typedef struct ForwardList     ForwardList;
 
 struct ForwardListNode {
-    void *value;
-    ForwardListNode *next;
+    void*            value;
+    ForwardListNode* next;
 };
+
 
 struct ForwardList {
-    ForwardListNode *head;
-    size_t itemSize;
-    size_t size;
+    ForwardListNode* head;
+    size_t           itemSize;
+    size_t           size;
+    /* Per-list `before_begin` sentinel. `value` is always NULL; `next` is
+     * refreshed to `head` on every call to forward_list_before_begin so
+     * the canonical `before_begin()->next == begin()` invariant holds.
+     * Lives in the struct (instead of a function-local static) so that
+     * holding sentinels for several lists at once doesn't clobber each
+     * other. */
+    ForwardListNode  sentinel;
 };
 
-ForwardList* forward_list_create(size_t itemSize);
-void* forward_list_front(const ForwardList *list);
 
-void forward_list_push_front(ForwardList *list, void *value);
-void forward_list_pop_front(ForwardList *list);
-void forward_list_clear(ForwardList *list);
-void forward_list_deallocate(ForwardList *list);
-void forward_list_assign(ForwardList *list, void *values, size_t numValues);
-void forward_list_emplace_front(ForwardList *list, void *value);
-void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *value);
-void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *value, size_t numValues);
-void forward_list_erase_after(ForwardList *list, ForwardListNode *pos);
-void forward_list_swap(ForwardList *list1, ForwardList *list2);
-void forward_list_resize(ForwardList *list, size_t newSize);
-void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardList *other);
-void forward_list_remove(ForwardList *list, void *value);
-void forward_list_remove_if(ForwardList *list, bool (*condition)(void*));
-void forward_list_unique(ForwardList *list);
-void forward_list_merge(ForwardList *list1, ForwardList *list2);
-void forward_list_sort(ForwardList *list);
-void forward_list_reverse(ForwardList *list);
+/* ------------------------------------------------------------------ */
+/* Construction / destruction                                         */
+/* ------------------------------------------------------------------ */
 
-size_t forward_list_length(const ForwardList *list);
-size_t forward_list_max_size(const ForwardList *list);
+ForwardList*      forward_list_create               (size_t itemSize);
+void              forward_list_deallocate           (ForwardList* list);
+void              forward_list_clear                (ForwardList* list);
 
-ForwardListNode* forward_list_before_begin(ForwardList *list);
-ForwardListNode* forward_list_begin(ForwardList *list);
-ForwardListNode* forward_list_end(ForwardList *list);
 
-bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2);
-bool forward_list_is_greater(const ForwardList *list1, const ForwardList *list2);
-bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2);
-bool forward_list_is_less_or_equal(const ForwardList *list1, const ForwardList *list2);
-bool forward_list_is_greater_or_equal(const ForwardList *list1, const ForwardList *list2);
-bool forward_list_is_not_equal(const ForwardList *list1, const ForwardList *list2);
-bool forward_list_empty(const ForwardList *list);
+/* ------------------------------------------------------------------ */
+/* Capacity                                                           */
+/* ------------------------------------------------------------------ */
 
-#ifdef __cplusplus 
+size_t            forward_list_length               (const ForwardList* list);
+size_t            forward_list_max_size             (const ForwardList* list);
+bool              forward_list_empty                (const ForwardList* list);
+
+
+/* ------------------------------------------------------------------ */
+/* Element access                                                     */
+/* ------------------------------------------------------------------ */
+
+void*             forward_list_front                (const ForwardList* list);
+
+
+/* ------------------------------------------------------------------ */
+/* Modifiers — push / pop / insert / erase                            */
+/* ------------------------------------------------------------------ */
+
+void              forward_list_push_front           (ForwardList* list, void* value);
+void              forward_list_pop_front            (ForwardList* list);
+void              forward_list_emplace_front        (ForwardList* list, void* value);
+void              forward_list_emplace_after        (ForwardList* list, ForwardListNode* pos, void* value);
+void              forward_list_insert_after         (ForwardList* list, ForwardListNode* pos, void* value, size_t numValues);
+void              forward_list_erase_after          (ForwardList* list, ForwardListNode* pos);
+void              forward_list_assign               (ForwardList* list, void* values, size_t numValues);
+void              forward_list_resize               (ForwardList* list, size_t newSize);
+
+
+/* ------------------------------------------------------------------ */
+/* Modifiers — algorithms                                             */
+/* ------------------------------------------------------------------ */
+
+void              forward_list_swap                 (ForwardList* list1, ForwardList* list2);
+void              forward_list_reverse              (ForwardList* list);
+void              forward_list_sort                 (ForwardList* list);
+void              forward_list_splice_after         (ForwardList* list, ForwardListNode* pos, ForwardList* other);
+void              forward_list_remove               (ForwardList* list, void* value);
+void              forward_list_remove_if            (ForwardList* list, bool (*condition)(void*));
+void              forward_list_unique               (ForwardList* list);
+void              forward_list_merge                (ForwardList* list1, ForwardList* list2);
+
+
+/* ------------------------------------------------------------------ */
+/* Iterators                                                          */
+/* ------------------------------------------------------------------ */
+
+ForwardListNode*  forward_list_before_begin         (ForwardList* list);
+ForwardListNode*  forward_list_begin                (ForwardList* list);
+ForwardListNode*  forward_list_end                  (ForwardList* list);
+
+
+/* ------------------------------------------------------------------ */
+/* Comparison                                                         */
+/* ------------------------------------------------------------------ */
+
+bool              forward_list_is_equal             (const ForwardList* list1, const ForwardList* list2);
+bool              forward_list_is_not_equal         (const ForwardList* list1, const ForwardList* list2);
+bool              forward_list_is_less              (const ForwardList* list1, const ForwardList* list2);
+bool              forward_list_is_less_or_equal     (const ForwardList* list1, const ForwardList* list2);
+bool              forward_list_is_greater           (const ForwardList* list1, const ForwardList* list2);
+bool              forward_list_is_greater_or_equal  (const ForwardList* list1, const ForwardList* list2);
+
+
+#ifdef __cplusplus
 }
-#endif 
+#endif
 
-#endif 
+#endif

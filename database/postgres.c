@@ -14,6 +14,8 @@
 
 #define CON_INFO_SIZE 256 
 
+
+
 static void print_line(int nFields, int *widths) {
     for (int i = 0; i < nFields; i++) {
         printf("+");
@@ -24,22 +26,25 @@ static void print_line(int nFields, int *widths) {
     printf("+\n");
 }
 
+
 /**
  * @brief Creates a new Postgres structure.
  * 
  * @return A pointer to the newly allocated Postgres structure, or NULL if the allocation fails.
  */
 Postgres* postgres_create() {
-    Postgres* pg = (Postgres*) malloc(sizeof(Postgres));
+    Postgres* pg = (Postgres*) calloc(1, sizeof(Postgres));
 
     if (pg) {
         POSTGRES_LOG("[postgres_create] Postgres structure created successfully.");
         return pg;
-    } else {
+    } 
+    else {
         POSTGRES_LOG("[postgres_create] Error: Failed to allocate memory for Postgres structure.");
         return NULL;
     }
 }
+
 
 /**
  * @brief Initializes the Postgres structure with database connection parameters.
@@ -52,15 +57,34 @@ Postgres* postgres_create() {
  * @param port Port number on which the database server is listening.
  */
 void postgres_init(Postgres* pg, const char* database, const char* user, const char* password, const char* host, const char* port) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_init] Error: NULL Postgres receiver.");
+        return;
+    }
+    if (!database || !user || !password || !host || !port) {
+        POSTGRES_LOG("[postgres_init] Error: One or more connection parameters are NULL.");
+        return;
+    }
+
+    /* Free any values from a previous postgres_init so re-initialising the same
+       Postgres struct doesn't leak the old strings. (On a freshly created struct
+       these are NULL — free(NULL) is a no-op.) */
+    free(pg->database);
+    free(pg->user);
+    free(pg->password);
+    free(pg->host);
+    free(pg->port);
+
     pg->database = string_strdup(database);
-    pg->user = string_strdup(user);
+    pg->user     = string_strdup(user);
     pg->password = string_strdup(password);
-    pg->host = string_strdup(host);
-    pg->port = string_strdup(port);
+    pg->host     = string_strdup(host);
+    pg->port     = string_strdup(port);
     pg->connection = NULL;
 
     POSTGRES_LOG("[postgres_init] Postgres initialized with database: %s, user: %s, host: %s, port: %s", database, user, host, port);
 }
+
 
 /**
  * @brief Connects to the PostgreSQL database using the initialized connection parameters.
@@ -69,21 +93,39 @@ void postgres_init(Postgres* pg, const char* database, const char* user, const c
  * @return true if the connection is successful, false otherwise.
  */
 bool postgres_connect(Postgres* pg) {
-    char conninfo[CON_INFO_SIZE];
+    if (!pg) {
+        POSTGRES_LOG("[postgres_connect] Error: NULL Postgres receiver.");
+        return false;
+    }
+    if (!pg->database || !pg->user || !pg->password || !pg->host || !pg->port) {
+        POSTGRES_LOG("[postgres_connect] Error: Connection parameters not initialised (call postgres_init first).");
+        return false;
+    }
 
-    snprintf(conninfo, sizeof(conninfo), "dbname=%s user=%s password=%s host=%s port=%s", 
-             pg->database, pg->user, pg->password, pg->host, pg->port);
+    size_t needed = 64 + strlen(pg->database) + strlen(pg->user) + strlen(pg->password) + strlen(pg->host) + strlen(pg->port);
+    char* conninfo = (char*)malloc(needed);
+
+    if (!conninfo) {
+        POSTGRES_LOG("[postgres_connect] Error: malloc for conninfo failed.");
+        return false;
+    }
+
+    snprintf(conninfo, needed, "dbname=%s user=%s password=%s host=%s port=%s", pg->database, pg->user, pg->password, pg->host, pg->port);
     pg->connection = PQconnectdb(conninfo);
+    free(conninfo);
 
     if (PQstatus(pg->connection) != CONNECTION_OK) {
         POSTGRES_LOG("[postgres_connect] Error: Connection to database failed: %s", PQerrorMessage(pg->connection));
         PQfinish(pg->connection);
+        pg->connection = NULL;   
+
         return false;
     }
 
     POSTGRES_LOG("[postgres_connect] Successfully connected to database: %s", pg->database);
     return true;
 }
+
 
 /**
  * @brief Executes a non-query command (e.g., INSERT, UPDATE, DELETE) on the PostgreSQL database.
@@ -94,17 +136,27 @@ bool postgres_connect(Postgres* pg) {
  * @return true if the command is executed successfully, false otherwise.
  */
 bool postgres_execute_non_query(Postgres* pg, const char* command) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_execute_non_query] Error: NULL Postgres receiver.");
+        return false;
+    }
+    if (!command) {
+        POSTGRES_LOG("[postgres_execute_non_query] Error: NULL command.");
+        return false;
+    }
     if (pg->connection != NULL) {
         PGresult *res = PQexec(pg->connection, command);
 
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             POSTGRES_LOG("[postgres_execute_non_query] Error: Command execution failed: %s", PQerrorMessage(pg->connection));
             PQclear(res);
+
             return false;
         }
 
         POSTGRES_LOG("[postgres_execute_non_query] Command executed successfully: %s", command);
         PQclear(res);
+
         return true;
     } 
     else {
@@ -113,21 +165,27 @@ bool postgres_execute_non_query(Postgres* pg, const char* command) {
     }
 }
 
+
 /**
  * @brief Disconnects from the PostgreSQL database.
  * 
  * @param pg Pointer to the Postgres structure representing the connection.
  */
 void postgres_disconnect(Postgres* pg) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_disconnect] Warning: NULL Postgres receiver.");
+        return;
+    }
     if (pg->connection != NULL) {
         PQfinish(pg->connection);
         pg->connection = NULL;
         POSTGRES_LOG("[postgres_disconnect] Disconnected from the database.");
-    } 
+    }
     else {
         POSTGRES_LOG("[postgres_disconnect] Warning: Connection is already NULL.");
     }
 }
+
 
 /**
  * @brief Executes a SQL query on the PostgreSQL database and returns the result.
@@ -138,6 +196,10 @@ void postgres_disconnect(Postgres* pg) {
  * @return A pointer to the PostgresResult structure containing the query result, or NULL if an error occurs.
  */
 PostgresResult* postgres_query(Postgres* pg, const char* query) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_query] Error: NULL Postgres receiver.");
+        return NULL;
+    }
     if (query == NULL) {
         POSTGRES_LOG("[postgres_query] Error: Query is NULL.");
         return NULL;
@@ -149,12 +211,14 @@ PostgresResult* postgres_query(Postgres* pg, const char* query) {
         if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
             POSTGRES_LOG("[postgres_query] Error: Query failed: %s", PQerrorMessage(pg->connection));
             PQclear(res);
+
             return NULL;
         }
 
         PostgresResult* pgRes = (PostgresResult*) malloc(sizeof(PostgresResult));
         pgRes->result = res;
         POSTGRES_LOG("[postgres_query] Query executed successfully: %s", query);
+
         return pgRes;
     } 
     else {
@@ -162,6 +226,7 @@ PostgresResult* postgres_query(Postgres* pg, const char* query) {
         return NULL;
     }
 }
+
 
 /**
  * @brief Clears the result set returned by a query and frees the associated memory.
@@ -178,6 +243,7 @@ void postgres_clear_result(PostgresResult* pgResult) {
         POSTGRES_LOG("[postgres_clear_result] Warning: PostgresResult is NULL.");
     }
 }
+
 
 /**
  * @brief Deallocates memory and resources associated with the Postgres structure.
@@ -212,11 +278,13 @@ void postgres_deallocate(Postgres* pg) {
         }
 
         POSTGRES_LOG("[postgres_deallocate] Postgres structure deallocated successfully.");
-    } 
+        free(pg);   /* free the struct itself (allocated by postgres_create) */
+    }
     else {
         POSTGRES_LOG("[postgres_deallocate] Warning: Postgres structure is NULL.");
     }
 }
+
 
 /**
  * @brief Begins a new transaction on the PostgreSQL connection.
@@ -225,6 +293,10 @@ void postgres_deallocate(Postgres* pg) {
  * @return true if the transaction begins successfully, false otherwise.
  */
 bool postgres_begin_transaction(Postgres* pg) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_begin_transaction] Error: NULL Postgres receiver.");
+        return false;
+    }
     const char *beginCommand = "BEGIN";
     if (pg->connection != NULL) {
         PGresult *res = PQexec(pg->connection, beginCommand);
@@ -245,6 +317,7 @@ bool postgres_begin_transaction(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Commits the current transaction on the PostgreSQL connection.
  * 
@@ -252,6 +325,10 @@ bool postgres_begin_transaction(Postgres* pg) {
  * @return true if the transaction was committed successfully, false otherwise.
  */
 bool postgres_commit_transaction(Postgres* pg) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_commit_transaction] Error: NULL Postgres receiver.");
+        return false;
+    }
     const char *commitCommand = "COMMIT";
 
     if (pg->connection != NULL) {
@@ -273,6 +350,7 @@ bool postgres_commit_transaction(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Rolls back the current transaction on the PostgreSQL connection.
  * 
@@ -280,6 +358,10 @@ bool postgres_commit_transaction(Postgres* pg) {
  * @return true if the transaction was rolled back successfully, false otherwise.
  */
 bool postgres_rollback_transaction(Postgres* pg) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_rollback_transaction] Error: NULL Postgres receiver.");
+        return false;
+    }
     const char *rollbackCommand = "ROLLBACK";
 
     if (pg->connection != NULL) {
@@ -301,6 +383,7 @@ bool postgres_rollback_transaction(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the last error message reported by the PostgreSQL connection.
  * 
@@ -308,6 +391,10 @@ bool postgres_rollback_transaction(Postgres* pg) {
  * @return A string containing the last error message, or a message indicating the connection is null.
  */
 const char* postgres_get_last_error(Postgres* pg) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_get_last_error] Error: NULL Postgres receiver.");
+        return "Postgres receiver is null.";
+    }
     if (pg->connection != NULL) {
         const char* errorMsg = PQerrorMessage(pg->connection);
         POSTGRES_LOG("[postgres_get_last_error] Last error: %s", errorMsg);
@@ -319,6 +406,7 @@ const char* postgres_get_last_error(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the number of rows affected by the last command executed.
  * 
@@ -328,6 +416,10 @@ const char* postgres_get_last_error(Postgres* pg) {
  * @return The number of affected rows, or -1 if an error occurred.
  */
 int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes) {
+    if (!pg || !pgRes) {
+        POSTGRES_LOG("[postgres_get_affected_rows] Error: NULL receiver.");
+        return -1;
+    }
     if (pg->connection != NULL && pgRes->result != NULL) {
         int affectedRows = atoi(PQcmdTuples(pgRes->result));
         POSTGRES_LOG("[postgres_get_affected_rows] Rows affected: %d", affectedRows);
@@ -339,6 +431,7 @@ int postgres_get_affected_rows(Postgres* pg, PostgresResult *pgRes) {
     }
 }
 
+
 /**
  * @brief Prints the result of a query in a tabular format.
  * 
@@ -348,7 +441,14 @@ void postgres_print_result(PostgresResult* pgRes) {
     if (pgRes && pgRes->result) {
         int nFields = PQnfields(pgRes->result);
         int nRows = PQntuples(pgRes->result);
-        int widths[nFields];
+        if (nFields <= 0) return;
+        /* Heap-allocate the widths array — VLAs aren't portable to
+           MSVC and may overflow the stack for very wide rowsets. */
+        int* widths = (int*)malloc((size_t)nFields * sizeof(int));
+        if (!widths) {
+            POSTGRES_LOG("[postgres_print_result] Error: malloc for widths failed.");
+            return;
+        }
 
         // Calculate column widths
         for (int i = 0; i < nFields; i++) {
@@ -378,13 +478,15 @@ void postgres_print_result(PostgresResult* pgRes) {
             printf("|\n");
         }
         print_line(nFields, widths);
+        free(widths);
 
         POSTGRES_LOG("[postgres_print_result] Query result printed successfully.");
-    } 
+    }
     else {
         POSTGRES_LOG("[postgres_print_result] Error: pgRes or pgRes->result is NULL.");
     }
 }
+
 
 /**
  * @brief Retrieves the number of rows in a specified table.
@@ -395,7 +497,7 @@ void postgres_print_result(PostgresResult* pgRes) {
  * @return The number of rows in the table, or -1 if an error occurred.
  */
 int postgres_get_table_row_count(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_row_count] Error: Postgres connection is NULL.");
         return -1;
     }
@@ -412,14 +514,17 @@ int postgres_get_table_row_count(Postgres* pg, const char* tableName) {
         int rowCount = atoi(PQgetvalue(pgRes->result, 0, 0));
         postgres_clear_result(pgRes);
         POSTGRES_LOG("[postgres_get_table_row_count] Row count for table '%s': %d", tableName, rowCount);
+
         return rowCount;
     } 
     else {
         POSTGRES_LOG("[postgres_get_table_row_count] Error: Query failed: %s", postgres_get_last_error(pg));
         postgres_clear_result(pgRes);
+
         return -1;
     }
 }
+
 
 /**
  * @brief Checks if a table exists in the PostgreSQL database.
@@ -430,7 +535,7 @@ int postgres_get_table_row_count(Postgres* pg, const char* tableName) {
  * @return true if the table exists, false otherwise.
  */
 bool postgres_table_exists(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_table_exists] Error: Postgres connection is NULL.");
         return false;
     }
@@ -453,14 +558,17 @@ bool postgres_table_exists(Postgres* pg, const char* tableName) {
         bool exists = strcmp(PQgetvalue(pgRes->result, 0, 0), "t") == 0;
         postgres_clear_result(pgRes);
         POSTGRES_LOG("[postgres_table_exists] Table '%s' exists: %s", tableName, exists ? "true" : "false");
+
         return exists;
     } 
     else {
         POSTGRES_LOG("[postgres_table_exists] Error: Query failed: %s", postgres_get_last_error(pg));
         postgres_clear_result(pgRes);
+
         return false;
     }
 }
+
 
 /**
  * @brief Lists all tables in the 'public' schema of the connected PostgreSQL database.
@@ -469,7 +577,7 @@ bool postgres_table_exists(Postgres* pg, const char* tableName) {
  * @return A PostgresResult structure containing the list of table names, or NULL if an error occurred.
  */
 PostgresResult* postgres_list_tables(Postgres* pg) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_list_tables] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -495,6 +603,7 @@ PostgresResult* postgres_list_tables(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the schema of a specified table, including column names and data types.
  * 
@@ -504,7 +613,7 @@ PostgresResult* postgres_list_tables(Postgres* pg) {
  * @return A PostgresResult structure containing the table schema, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_schema] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -535,6 +644,7 @@ PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName) {
     }
 }
 
+
 /**
  * @brief Executes a prepared SQL statement with the given parameters.
  * 
@@ -546,17 +656,19 @@ PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName) {
  * @return true if the statement was executed successfully, false otherwise.
  */
 bool postgres_execute_prepared(Postgres* pg, const char* stmtName, int nParams, const char* const* paramValues) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_execute_prepared] Error: Postgres connection is NULL.");
         return false;
     }
-    if (stmtName == NULL || paramValues == NULL) {
-        POSTGRES_LOG("[postgres_execute_prepared] Error: Statement name or parameters are NULL.");
+    if (stmtName == NULL || (nParams > 0 && paramValues == NULL)) {
+        POSTGRES_LOG("[postgres_execute_prepared] Error: Statement name is NULL or paramValues missing for nParams > 0.");
         return false;
     }
 
     PGresult* res = PQexecPrepared(pg->connection, stmtName, nParams, paramValues, NULL, NULL, 0);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+    ExecStatusType st = PQresultStatus(res);
+
+    if (st != PGRES_COMMAND_OK && st != PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_execute_prepared] Error: Statement execution failed: %s", PQerrorMessage(pg->connection));
         PQclear(res);
         return false;
@@ -567,6 +679,7 @@ bool postgres_execute_prepared(Postgres* pg, const char* stmtName, int nParams, 
     return true;
 }
 
+
 /**
  * @brief Retrieves the names of all columns in a specified table.
  * 
@@ -576,7 +689,7 @@ bool postgres_execute_prepared(Postgres* pg, const char* stmtName, int nParams, 
  * @return A PostgresResult structure containing the column names, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_columns] Error: Postgres connection object is NULL.");
         return NULL;
     }
@@ -607,6 +720,7 @@ PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName) 
     }
 }
 
+
 /**
  * @brief Retrieves the primary keys of a specified table.
  * 
@@ -616,7 +730,7 @@ PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName) 
  * @return A PostgresResult structure containing the primary keys, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_primary_keys] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -649,6 +763,7 @@ PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableN
     }
 }
 
+
 /**
  * @brief Retrieves the foreign keys of a specified table.
  * 
@@ -658,7 +773,7 @@ PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableN
  * @return A PostgresResult structure containing the foreign keys, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_foreign_keys] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -698,6 +813,7 @@ PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableN
     }
 }
 
+
 /**
  * @brief Retrieves the indexes of a specified table.
  * 
@@ -707,7 +823,7 @@ PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableN
  * @return A PostgresResult structure containing the indexes, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_indexes] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -737,6 +853,7 @@ PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName) 
     }
 }
 
+
 /**
  * @brief Retrieves the size of a specified table in a human-readable format.
  * 
@@ -746,7 +863,7 @@ PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName) 
  * @return A PostgresResult structure containing the table size, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_size] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -774,6 +891,7 @@ PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName) {
     }
 }
 
+
 /**
  * @brief Retrieves the number of indexes on a specified table.
  * 
@@ -782,7 +900,7 @@ PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName) {
  * @return The number of indexes on the table, or -1 if an error occurred.
  */
 int postgres_get_table_index_count(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_index_count] Error: Postgres connection is NULL.");
         return -1;
     }
@@ -814,6 +932,7 @@ int postgres_get_table_index_count(Postgres* pg, const char* tableName) {
     }
 }
 
+
 /**
  * @brief Retrieves detailed information about the columns in a specified table.
  * 
@@ -823,7 +942,7 @@ int postgres_get_table_index_count(Postgres* pg, const char* tableName) {
  * @return A PostgresResult structure containing the column details, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_column_details] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -854,6 +973,7 @@ PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName)
     }
 }
 
+
 /**
  * @brief Retrieves the value of a specific field in a result set.
  * 
@@ -881,6 +1001,7 @@ const char* postgres_get_value(PostgresResult* pgRes, int row, int col) {
     return PQgetvalue(pgRes->result, row, col);
 }
 
+
 /**
  * @brief Retrieves all constraints on a specified table.
  * 
@@ -890,7 +1011,7 @@ const char* postgres_get_value(PostgresResult* pgRes, int row, int col) {
  * @return A PostgresResult structure containing the table constraints, or NULL if an error occurred.
  */
 PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_get_table_constraints] Error: Postgres connection is NULL.");
         return NULL;
     }
@@ -932,6 +1053,7 @@ PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableNa
     }
 }
 
+
 /**
  * @brief Retrieves the number of tuples (rows) in a result set.
  * 
@@ -947,6 +1069,7 @@ int postgres_num_tuples(const PostgresResult* pgRes) {
     POSTGRES_LOG("[postgres_num_tuples] Successfully retrieved number of tuples.");
     return PQntuples(pgRes->result);
 }
+
 
 /**
  * @brief Retrieves the number of fields (columns) in a result set.
@@ -964,6 +1087,7 @@ int postgres_num_fields(const PostgresResult* pgRes) {
     return PQnfields(pgRes->result);
 }
 
+
 /**
  * @brief Retrieves the number of tuples (rows) affected by the last command.
  * 
@@ -979,6 +1103,7 @@ int postgres_command_tuples(PostgresResult* pgRes) {
     POSTGRES_LOG("[postgres_command_tuples] Successfully retrieved affected tuples.");
     return atoi(PQcmdTuples(pgRes->result));
 }
+
 
 /**
  * @brief Retrieves the backend process ID of the PostgreSQL connection.
@@ -996,6 +1121,7 @@ int postgres_backend_pid(Postgres* pg) {
     return PQbackendPID(pg->connection);
 }
 
+
 /**
  * @brief Checks if the result set contains binary data.
  * 
@@ -1011,6 +1137,7 @@ int postgres_binary_tuples(const PostgresResult* pgRes) {
     POSTGRES_LOG("[postgres_binary_tuples] Successfully determined if tuples are binary.");
     return PQbinaryTuples(pgRes->result);
 }
+
 
 /**
  * @brief Retrieves the size in bytes of the specified column in the result set.
@@ -1032,6 +1159,7 @@ int postgres_bytes_size(const PostgresResult* pgRes, int colsNumber) {
     POSTGRES_LOG("[postgres_bytes_size] Successfully retrieved size for column %d.", colsNumber);
     return PQfsize(pgRes->result, colsNumber);
 }
+
 
 /**
  * @brief Checks if a specific field in the result set is NULL.
@@ -1060,6 +1188,7 @@ bool postgres_is_null(const PostgresResult* pgRes, int row, int col) {
     return (bool)PQgetisnull(pgRes->result, row, col);
 }
 
+
 /**
  * @brief Resets the PostgreSQL connection by closing the existing connection and attempting to reestablish it.
  * 
@@ -1075,6 +1204,7 @@ void postgres_reset(Postgres* pg) {
         PQreset(pg->connection);
     }
 }
+
 
 /**
  * @brief Starts a reset of the PostgreSQL connection without blocking.
@@ -1093,6 +1223,7 @@ int postgres_reset_start(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the name of the connected database.
  * 
@@ -1109,6 +1240,7 @@ char* postgres_db_value(const Postgres* pg) {
         return PQdb(pg->connection);
     }
 }
+
 
 /**
  * @brief Retrieves the username used to connect to the database.
@@ -1127,6 +1259,7 @@ char* postgres_user_value(const Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the password used to connect to the database.
  * 
@@ -1143,6 +1276,7 @@ char* postgres_password_value(const Postgres* pg) {
         return PQpass(pg->connection);
     }
 }
+
 
 /**
  * @brief Retrieves the host name or IP address of the PostgreSQL server.
@@ -1161,6 +1295,7 @@ char* postgres_host_value(const Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the port number of the PostgreSQL server.
  * 
@@ -1178,6 +1313,7 @@ char* postgres_port_value(const Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Retrieves the object ID of the inserted row, if the last command was an INSERT.
  * 
@@ -1193,6 +1329,7 @@ char* postgres_object_id_status(const PostgresResult* pgRes) {
     POSTGRES_LOG("[postgres_object_id_status] Successfully retrieved object ID status.");
     return PQoidStatus(pgRes->result);
 }
+
 
 /**
  * @brief Retrieves the command status string from the SQL command that generated the PostgresResult.
@@ -1210,6 +1347,7 @@ char* postgres_command_status(PostgresResult* pgRes) {
     return PQcmdStatus(pgRes->result);
 }
 
+
 /**
  * @brief Retrieves the protocol version used by the PostgreSQL connection.
  * 
@@ -1225,6 +1363,7 @@ int postgres_protocol_version(const Postgres* pg) {
     POSTGRES_LOG("[postgres_protocol_version] Successfully retrieved protocol version.");
     return PQprotocolVersion(pg->connection);
 }
+
 
 /**
  * @brief Retrieves the server version of the connected PostgreSQL database.
@@ -1242,6 +1381,7 @@ int postgres_server_version(const Postgres* pg) {
     return PQserverVersion(pg->connection);
 }
 
+
 /**
  * @brief Retrieves the socket file descriptor used by the PostgreSQL connection.
  * 
@@ -1257,6 +1397,7 @@ int postgres_socket_descriptor(const Postgres* pg) {
     POSTGRES_LOG("[postgres_socket_descriptor] Successfully retrieved socket descriptor.");
     return PQsocket(pg->connection);
 }
+
 
 /**
  * @brief Checks if the PostgreSQL connection is currently busy processing a command.
@@ -1274,6 +1415,7 @@ bool postgres_is_busy(Postgres* pg) {
     return (bool)PQisBusy(pg->connection);
 }
 
+
 /**
  * @brief Checks if the PostgreSQL connection is in non-blocking mode.
  * 
@@ -1290,6 +1432,7 @@ bool postgres_is_non_blocking(const Postgres* pg) {
     return (bool)PQisnonblocking(pg->connection);
 }
 
+
 /**
  * @brief Flushes any queued output data to the PostgreSQL server.
  * 
@@ -1305,6 +1448,7 @@ int postgres_flush(Postgres* pg) {
     POSTGRES_LOG("[postgres_flush] Flushing output data to the PostgreSQL server.");
     return PQflush(pg->connection);
 }
+
 
 /**
  * @brief Sets the PostgreSQL connection to non-blocking or blocking mode.
@@ -1323,6 +1467,7 @@ int postgres_set_non_blocking(Postgres* pg, int state) {
     POSTGRES_LOG("[postgres_set_non_blocking] Setting connection to non-blocking mode: %d.", state);
     return PQsetnonblocking(pg->connection, state);
 }
+
 
 /**
  * @brief Reads a newline-terminated line from the PostgreSQL server.
@@ -1348,6 +1493,7 @@ int postgres_get_line(Postgres* pg, char* buffer, int length) {
     return PQgetline(pg->connection, buffer, length);
 }
 
+
 /**
  * @brief Reads a newline-terminated line asynchronously from the PostgreSQL server.
  * 
@@ -1371,6 +1517,7 @@ int postgres_get_line_async(Postgres* pg, char* buffer, int length) {
     return PQgetlineAsync(pg->connection, buffer, length);
 }
 
+
 /**
  * @brief Sends a null-terminated string to the PostgreSQL server.
  * 
@@ -1392,6 +1539,7 @@ int postgres_put_line(Postgres* pg, const char* buffer) {
     POSTGRES_LOG("[postgres_put_line] Sending a line to the PostgreSQL server.");
     return PQputline(pg->connection, buffer);
 }
+
 
 /**
  * @brief Sends a non-null-terminated string to the PostgreSQL server.
@@ -1416,6 +1564,7 @@ int postgres_put_bytes(Postgres* pg, const char* buffer, int bytes) {
     return PQputnbytes(pg->connection, buffer, bytes);
 }
 
+
 /**
  * @brief Enables tracing of the client/server communication to a debugging file stream.
  * 
@@ -1436,6 +1585,7 @@ void postgres_trace(Postgres* pg, FILE* stream) {
     PQtrace(pg->connection, stream);
 }
 
+
 /**
  * @brief Disables tracing of the client/server communication.
  * 
@@ -1450,6 +1600,7 @@ void postgres_un_trace(Postgres* pg) {
     POSTGRES_LOG("[postgres_un_trace] Disabling trace output.");
     PQuntrace(pg->connection);
 }
+
 
 /**
  * @brief Retrieves the result of the last executed command.
@@ -1482,6 +1633,7 @@ PostgresResult* postgres_get_result(Postgres* pg) {
     return pgRes;
 }
 
+
 /**
  * @brief Sends a request to cancel the currently executed command.
  * 
@@ -1497,6 +1649,7 @@ int postgres_request_cancle(Postgres* pg) {
     POSTGRES_LOG("[postgres_request_cancle] Sending cancel request to the PostgreSQL server.");
     return PQrequestCancel(pg->connection);
 }
+
 
 /**
  * @brief Disconnects from the PostgreSQL database and attempts to reconnect using the stored connection parameters.
@@ -1521,6 +1674,7 @@ bool postgres_reconnect(Postgres* pg) {
     POSTGRES_LOG("[postgres_reconnect] Reconnection successful.");
     return true;
 }
+
 
 /**
  * @brief Checks if the connection to the PostgreSQL database server is still alive.
@@ -1551,6 +1705,7 @@ bool postgres_ping(Postgres* pg) {
     }
 }
 
+
 /**
  * @brief Measures and returns the execution time of a query.
  * 
@@ -1562,38 +1717,15 @@ bool postgres_ping(Postgres* pg) {
  * @return A pointer to the PostgresResult structure containing the query result and execution time, or NULL if an error occurs.
  */
 PostgresResult* postgres_query_execution_time(Postgres* pg, const char* query) {
-    if (query == NULL) {
-        POSTGRES_LOG("[postgres_query_execution_time] Error: query is null.");
-        return NULL;
-    } 
-    else if (pg->connection == NULL) {
-        POSTGRES_LOG("[postgres_query_execution_time] Error: connection of postgres is null.");
-        return NULL;
+    double secs = 0.0;
+    PostgresResult* res = postgres_query_with_time(pg, query, &secs);
+    if (res) {
+        POSTGRES_LOG("[postgres_query_execution_time] Query executed in %.6f seconds.", secs);
     }
 
-    clock_t start_time = clock();
-    PGresult *res = PQexec(pg->connection, query);
-    clock_t end_time = clock();
-
-    if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
-        POSTGRES_LOG("[postgres_query_execution_time] Error: Query failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
-        return NULL;
-    }
-
-    double execution_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    POSTGRES_LOG("[postgres_query_execution_time] Query executed in %.6f seconds.", execution_time);
-
-    PostgresResult* pgRes = (PostgresResult*) malloc(sizeof(PostgresResult));
-    if (!pgRes) {
-        POSTGRES_LOG("[postgres_query_execution_time] Error: Memory allocation failed in PostgresResult.");
-        PQclear(res);
-        return NULL;
-    }
-
-    pgRes->result = res;
-    return pgRes;
+    return res;
 }
+
 
 /**
  * @brief Creates a user-defined function in the PostgreSQL database.
@@ -1611,7 +1743,7 @@ PostgresResult* postgres_query_execution_time(Postgres* pg, const char* query) {
  * @return true if the function is created successfully, false otherwise.
  */
 bool postgres_create_function(Postgres* pg, const char* functionName, const char* returnType, const char* language, const char* functionBody, const char* paramDefinitions) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_create_function] Error: connection of postgres is null.");
         return false;
     } 
@@ -1635,8 +1767,7 @@ bool postgres_create_function(Postgres* pg, const char* functionName, const char
 
     // Now, create the new function
     char createQuery[4096];
-    snprintf(createQuery, sizeof(createQuery),
-        "CREATE FUNCTION %s(%s) RETURNS %s AS $$ %s $$ LANGUAGE %s;",
+    snprintf(createQuery, sizeof(createQuery), "CREATE FUNCTION %s(%s) RETURNS %s AS $$ %s $$ LANGUAGE %s;",
         functionName, paramDefinitions, returnType, functionBody, language);
     
     POSTGRES_LOG("[postgres_create_function] Executing: %s", createQuery);
@@ -1645,13 +1776,16 @@ bool postgres_create_function(Postgres* pg, const char* functionName, const char
     if (PQresultStatus(createRes) != PGRES_COMMAND_OK) {
         POSTGRES_LOG("[postgres_create_function] Error: Function creation failed %s", PQerrorMessage(pg->connection));
         PQclear(createRes);
+
         return false;
     }
 
     POSTGRES_LOG("[postgres_create_function] Function created successfully.");
     PQclear(createRes);
+
     return true;
 }
+
 
 /**
  * @brief Drops a user-defined function from the PostgreSQL database.
@@ -1666,7 +1800,7 @@ bool postgres_create_function(Postgres* pg, const char* functionName, const char
  * @return true if the function is dropped successfully, false otherwise.
  */
 bool postgres_drop_function(Postgres* pg, const char* functionName, const char* paramDefinitions) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_drop_function] Error: connection of postgres is null.");
         return false;
     } 
@@ -1683,13 +1817,16 @@ bool postgres_drop_function(Postgres* pg, const char* functionName, const char* 
     if (PQresultStatus(dropRes) != PGRES_COMMAND_OK) {
         POSTGRES_LOG("[postgres_drop_function] Error: Failed to drop function %s", PQerrorMessage(pg->connection));
         PQclear(dropRes);
+
         return false;
     }
 
     PQclear(dropRes);
     POSTGRES_LOG("[postgres_drop_function] Function dropped successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Creates a view in the PostgreSQL database.
@@ -1704,7 +1841,7 @@ bool postgres_drop_function(Postgres* pg, const char* functionName, const char* 
  * @return true if the view is created successfully, false otherwise.
  */
 bool postgres_create_view(Postgres* pg, const char* viewName, const char* query) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_create_view] Error: connection of postgres is null.");
         return false;
     } 
@@ -1722,13 +1859,16 @@ bool postgres_create_view(Postgres* pg, const char* viewName, const char* query)
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         POSTGRES_LOG("[postgres_create_view] Error: View creation failed %s", PQerrorMessage(pg->connection));
         PQclear(res);
+
         return false;
     }
 
     PQclear(res);
     POSTGRES_LOG("[postgres_create_view] View created successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Drops an existing view from the PostgreSQL database.
@@ -1742,7 +1882,7 @@ bool postgres_create_view(Postgres* pg, const char* viewName, const char* query)
  * @return true if the view is dropped successfully, false otherwise.
  */
 bool postgres_drop_view(Postgres* pg, const char* viewName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_drop_view] Error: connection of postgres is null.");
         return false;
     } 
@@ -1764,8 +1904,10 @@ bool postgres_drop_view(Postgres* pg, const char* viewName) {
 
     PQclear(res);
     POSTGRES_LOG("[postgres_drop_view] View dropped successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Creates a trigger on a specified table in the PostgreSQL database.
@@ -1783,7 +1925,7 @@ bool postgres_drop_view(Postgres* pg, const char* viewName) {
  * @return true if the trigger is created successfully, false otherwise.
  */
 bool postgres_create_trigger(Postgres* pg, const char* triggerName, const char* tableName, const char* timing, const char* event, const char* function) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_create_trigger] Error: connection of postgres is null.");
         return false;
     } 
@@ -1808,8 +1950,10 @@ bool postgres_create_trigger(Postgres* pg, const char* triggerName, const char* 
 
     PQclear(res);
     POSTGRES_LOG("[postgres_create_trigger] Trigger created successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Drops an existing trigger from a specified table in the PostgreSQL database.
@@ -1824,7 +1968,7 @@ bool postgres_create_trigger(Postgres* pg, const char* triggerName, const char* 
  * @return true if the trigger is dropped successfully, false otherwise.
  */
 bool postgres_drop_trigger(Postgres* pg, const char* triggerName, const char* tableName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_drop_trigger] Error: connection of postgres is null.");
         return false;
     } 
@@ -1842,13 +1986,16 @@ bool postgres_drop_trigger(Postgres* pg, const char* triggerName, const char* ta
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         POSTGRES_LOG("[postgres_drop_trigger] Error: Trigger drop failed %s", PQerrorMessage(pg->connection));
         PQclear(res);
+
         return false;
     }
 
     PQclear(res);
     POSTGRES_LOG("[postgres_drop_trigger] Trigger dropped successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Creates a new schema in the PostgreSQL database.
@@ -1862,7 +2009,7 @@ bool postgres_drop_trigger(Postgres* pg, const char* triggerName, const char* ta
  * @return true if the schema is created successfully, false otherwise.
  */
 bool postgres_create_schema(Postgres* pg, const char* schemaName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_create_schema] Error: Connection of postgres is null.");
         return false;
     } 
@@ -1880,13 +2027,16 @@ bool postgres_create_schema(Postgres* pg, const char* schemaName) {
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         POSTGRES_LOG("[postgres_create_schema] Error: Schema creation failed %s", PQerrorMessage(pg->connection));
         PQclear(res);
+
         return false;
     }
 
     PQclear(res);
     POSTGRES_LOG("[postgres_create_schema] Schema created successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Drops an existing schema in the PostgreSQL database.
@@ -1901,7 +2051,7 @@ bool postgres_create_schema(Postgres* pg, const char* schemaName) {
  * @return true if the schema is dropped successfully, false otherwise.
  */
 bool postgres_drop_schema(Postgres* pg, const char* schemaName, bool cascade) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_drop_schema] Error: Connection of postgres is null.");
         return false;
     } 
@@ -1924,8 +2074,10 @@ bool postgres_drop_schema(Postgres* pg, const char* schemaName, bool cascade) {
 
     PQclear(res);
     POSTGRES_LOG("[postgres_drop_schema] Schema dropped successfully.");
+
     return true;
 }
+
 
 /**
  * @brief Executes a SQL query with parameters in the PostgreSQL database.
@@ -1941,7 +2093,7 @@ bool postgres_drop_schema(Postgres* pg, const char* schemaName, bool cascade) {
  * @return A PostgresResult structure containing the result of the query, or NULL if an error occurred.
  */
 PostgresResult* postgres_query_params(Postgres* pg, const char* query, int nParams, const char* const* paramValues) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_query_params] Error: Connection of postgres is null.");
         return NULL;
     } 
@@ -1975,6 +2127,7 @@ PostgresResult* postgres_query_params(Postgres* pg, const char* query, int nPara
     return pgRes;
 }
 
+
 /**
  * @brief Prepares a SQL statement with a given name for later execution.
  *
@@ -1987,7 +2140,7 @@ PostgresResult* postgres_query_params(Postgres* pg, const char* query, int nPara
  * @return true if the statement is prepared successfully, false otherwise.
  */
 bool postgres_prepare_statement(Postgres* pg, const char* stmtName, const char* query) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_prepare_statement] Error: connection of postgres is null.");
         return false;
     } 
@@ -2010,6 +2163,7 @@ bool postgres_prepare_statement(Postgres* pg, const char* stmtName, const char* 
     return true;
 }
 
+
 /**
  * @brief Deallocates a prepared statement to free up resources.
  *
@@ -2021,7 +2175,7 @@ bool postgres_prepare_statement(Postgres* pg, const char* stmtName, const char* 
  * @return true if the statement is cleared successfully, false otherwise.
  */
 bool postgres_clear_prepared_statement(Postgres* pg, const char* stmtName) {
-    if (pg->connection == NULL) {
+    if (!pg || pg->connection == NULL) {
         POSTGRES_LOG("[postgres_clear_prepared_statement] Error: connection of postgres is null.");
         return false;
     } 
@@ -2046,6 +2200,7 @@ bool postgres_clear_prepared_statement(Postgres* pg, const char* stmtName) {
     POSTGRES_LOG("[postgres_clear_prepared_statement] Statement %s deallocated successfully.", stmtName);
     return true;
 }
+
 
 /**
  * @brief Create a savepoint in the current transaction.
@@ -2085,6 +2240,7 @@ bool postgres_savepoint(Postgres* pg, const char* savepointName) {
     return true;
 }
 
+
 /**
  * @brief Rollback to a specific savepoint within a transaction.
  *
@@ -2122,6 +2278,7 @@ bool postgres_rollback_to_savepoint(Postgres* pg, const char* savepointName) {
     return true;
 }
 
+
 /**
  * @brief Send a query to the server without waiting for the result.
  *
@@ -2152,6 +2309,7 @@ bool postgres_send_async_query(Postgres* pg, const char* query) {
     return true;
 }
 
+
 /**
  * @brief Retrieve the result of an asynchronous query when it's ready.
  *
@@ -2169,7 +2327,7 @@ PostgresResult* postgres_get_async_result(Postgres* pg) {
 
     PGresult* res = PQgetResult(pg->connection);
     if (res == NULL) {
-        return NULL;  // No more results
+        return NULL;  
     }
     if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_async_result] Error: Query failed %s", PQerrorMessage(pg->connection));
@@ -2187,6 +2345,7 @@ PostgresResult* postgres_get_async_result(Postgres* pg) {
     pgRes->result = res;
     return pgRes;
 }
+
 
 /**
  * @brief Copies data from a CSV file into a specified table using PostgreSQL's COPY command.
@@ -2209,8 +2368,7 @@ bool postgres_copy_from_csv(Postgres* pg, const char* tableName, const char* csv
     }
 
     char query[1024];
-    snprintf(query, sizeof(query),
-        "COPY %s FROM STDIN WITH CSV HEADER DELIMITER '%c';", tableName, delimiter[0]);
+    snprintf(query, sizeof(query), "COPY %s FROM STDIN WITH CSV HEADER DELIMITER '%c';", tableName, delimiter[0]);
 
     POSTGRES_LOG("[postgres_copy_from_csv] Executing COPY command to load data into table: %s", tableName);
 
@@ -2248,4 +2406,164 @@ bool postgres_copy_from_csv(Postgres* pg, const char* tableName, const char* csv
     PQclear(res);
     POSTGRES_LOG("[postgres_copy_from_csv] Data successfully copied from CSV file %s to table %s", csvFilePath, tableName);
     return true;
+}
+
+
+/**
+ * @brief Quick "is the connection currently live?" check.
+ *
+ * Inspects the `PGconn` status without sending any traffic. Useful
+ * after a `postgres_connect` to confirm success in one call.
+ *
+ * @return true if the connection is established and OK.
+ */
+bool postgres_is_connected(const Postgres* pg) {
+    if (!pg || !pg->connection) {
+        return false;
+    }
+
+    return PQstatus(pg->connection) == CONNECTION_OK;
+}
+
+
+/**
+ * @brief Return the column name at index @p col.
+ *
+ * Borrowed pointer owned by the result; do NOT free. NULL on bad
+ * input.
+ */
+const char* postgres_get_field_name(const PostgresResult* pgRes, int col) {
+    if (!pgRes || !pgRes->result) {
+        return NULL;
+    }
+    if (col < 0 || col >= PQnfields(pgRes->result)) {
+        return NULL;
+    }
+
+    return PQfname(pgRes->result, col);
+}
+
+
+/**
+ * @brief Run @p query and return the value at row 0, column 0 as a
+ *        newly-allocated string (caller frees).
+ *
+ * The natural shape for scalar queries like
+ *   `SELECT count(*) FROM foo`
+ * Returns NULL on any failure, empty rows, or NULL field.
+ */
+char* postgres_get_single_value(Postgres* pg, const char* query) {
+    if (!pg || !pg->connection || !query) {
+        return NULL;
+    }
+
+    PostgresResult* pgRes = postgres_query(pg, query);
+    if (!pgRes) {
+        return NULL;
+    }
+
+    if (PQresultStatus(pgRes->result) != PGRES_TUPLES_OK || PQntuples(pgRes->result) == 0 || PQnfields(pgRes->result) == 0 || PQgetisnull(pgRes->result, 0, 0)) {
+        postgres_clear_result(pgRes);
+        return NULL;
+    }
+
+    const char* v = PQgetvalue(pgRes->result, 0, 0);
+    size_t n = strlen(v) + 1;
+    char* out = (char*)malloc(n);
+    if (out) {
+        memcpy(out, v, n);
+    }
+
+    postgres_clear_result(pgRes);
+    return out;
+}
+
+
+/**
+ * @brief SQL-escape an identifier (table / column name) using libpq's
+ *        connection-aware quoting.
+ *
+ * Returns a newly-allocated, double-quoted string suitable to splice
+ * directly into a query. The caller frees it with `free()`. The
+ * result is NULL on bad input.
+ *
+ * Use this whenever the identifier comes from outside your code:
+ *   char* tbl = postgres_escape_identifier(pg, user_input);
+ *   snprintf(q, n, "SELECT * FROM %s", tbl);
+ *   free(tbl);
+ */
+char* postgres_escape_identifier(Postgres* pg, const char* ident) {
+    if (!pg || !pg->connection || !ident) {
+        return NULL;
+    }
+    
+    char* q = PQescapeIdentifier(pg->connection, ident, strlen(ident));
+    if (!q) {
+        return NULL;
+    }
+  
+    size_t n = strlen(q) + 1;
+    char* dup = (char*)malloc(n);
+    if (dup) {
+        memcpy(dup, q, n);
+    }
+
+    PQfreemem(q);
+    return dup;
+}
+
+
+/**
+ * @brief SQL-escape a string literal (value) using libpq's
+ *        connection-aware quoting.
+ *
+ * Returns a newly-allocated, single-quoted string suitable to splice
+ * directly into a query. Caller frees with `free()`.
+ *
+ * For parameterised queries prefer `postgres_query_params` — this
+ * helper is for code that builds SQL textually.
+ */
+char* postgres_escape_string(Postgres* pg, const char* str) {
+    if (!pg || !pg->connection || !str) {
+        return NULL;
+    }
+    
+    char* q = PQescapeLiteral(pg->connection, str, strlen(str));
+    if (!q) {
+        return NULL;
+    }
+
+    size_t n = strlen(q) + 1;
+    char* dup = (char*)malloc(n);
+    if (dup) {
+        memcpy(dup, q, n);
+    }
+
+    PQfreemem(q);
+    return dup;
+}
+
+
+/**
+ * @brief Honest version of `postgres_query_execution_time`:
+ *        runs @p query, returns the result, AND writes the elapsed
+ *        wall-clock seconds to *@p out_seconds.
+ *
+ * @p out_seconds may be NULL if the caller doesn't want the timing.
+ */
+PostgresResult* postgres_query_with_time(Postgres* pg, const char* query, double* out_seconds) {
+    if (!pg || !pg->connection || !query) {
+        if (out_seconds) *out_seconds = 0.0;
+        return NULL;
+    }
+
+    clock_t start = clock();
+    PostgresResult* res = postgres_query(pg, query);
+    clock_t end   = clock();
+
+    if (out_seconds) {
+        *out_seconds = (double)(end - start) / (double)CLOCKS_PER_SEC;
+    }
+
+    return res;
 }

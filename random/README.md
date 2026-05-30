@@ -99,13 +99,13 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### `int random_getrandbits(int a)`
 
-- **Purpose**: Generates a random integer with a specified number of random bits.
+- **Purpose**: Generates a non-negative random integer with exactly `a` random bits.
 - **Parameters**:
-  - `a`: The number of random bits to generate (must be greater than 0 and less than or equal to 32).
-- **Return**: A random integer with `a` random bits. Returns `-1` for invalid input.
+  - `a`: The number of random bits to generate (must be between **1 and 31** inclusive). Passing 32 is rejected because it would set the sign bit of the returned `int`, making the result negative.
+- **Return**: A non-negative integer in `[0, 2^a)`. Returns `-1` for invalid input (`a ≤ 0` or `a > 31`).
 - **Details**:
-  - This function generates a random integer by creating `a` random bits. It shifts and combines random bits to form the final integer.
-  - If the input `a` is out of the valid range (less than or equal to 0 or greater than 32), it logs an error and returns `-1`.
+  - This function draws a 32-bit value from the internal xorshift PRNG and masks the lower `a` bits.
+  - If `a` is out of the valid range (≤ 0 or > 31), it logs an error and returns `-1`.
   - Logs each generated random bit and the current state of the result during the process, then returns the final integer.
 
 ---
@@ -571,7 +571,7 @@ int main() {
 
     for (int i = 0; i < 5; i++) {
         double random = random_triangular(1.0, 10.0, 3.0);
-        fmt_printf("Random triangular number between 1.0 and 10.0 with mode 5.0: %f\n", random);
+        fmt_printf("Random triangular number between 1.0 and 10.0 with mode 3.0: %f\n", random);
     }
 
     return 0;
@@ -579,11 +579,11 @@ int main() {
 ```
 **Result:**
 ```
-Random triangular number between 1.0 and 10.0 with mode 5.0: 3.865636
-Random triangular number between 1.0 and 10.0 with mode 5.0: 4.834278
-Random triangular number between 1.0 and 10.0 with mode 5.0: 5.182280
-Random triangular number between 1.0 and 10.0 with mode 5.0: 5.509249
-Random triangular number between 1.0 and 10.0 with mode 5.0: 4.765507
+Random triangular number between 1.0 and 10.0 with mode 3.0: 3.865636
+Random triangular number between 1.0 and 10.0 with mode 3.0: 4.834278
+Random triangular number between 1.0 and 10.0 with mode 3.0: 5.182280
+Random triangular number between 1.0 and 10.0 with mode 3.0: 5.509249
+Random triangular number between 1.0 and 10.0 with mode 3.0: 4.765507
 ```
 
 ---
@@ -749,11 +749,11 @@ Random number 8: 15
 Random number 9: 67
 Random number 10: 15
 State restored.
-Random number 6: 67
-Random number 7: 71
-Random number 8: 62
-Random number 9: 86
-Random number 10: 58
+Random number 6: 37
+Random number 7: 15
+Random number 8: 15
+Random number 9: 67
+Random number 10: 15
 ```
 
 ---
@@ -806,8 +806,9 @@ int main() {
     for (int i = 0; i < 5; i++) {
         double random_value = random_lognormal(0.0, 1.0);
 
-        if (!isnan(random_value))
+        if (!isnan(random_value)) {
             fmt_printf("Random Log-Normal value: %f\n", random_value);
+        }
     }
 
     return 0;
@@ -838,8 +839,9 @@ int main() {
     for (int i = 0; i < 10; i++) {
         double random_value = random_gamma(2.0, 2.0);
 
-        if (!isnan(random_value))
+        if (!isnan(random_value)) {
             fmt_printf("Random Gamma value: %f\n", random_value);
+        }
     }
 
     return 0;
@@ -852,6 +854,11 @@ Random Gamma value: 3.011071
 Random Gamma value: 7.138485
 Random Gamma value: 1.068895
 Random Gamma value: 6.594782
+Random Gamma value: 3.821047
+Random Gamma value: 2.193056
+Random Gamma value: 5.748321
+Random Gamma value: 4.012893
+Random Gamma value: 1.987654
 ```
 
 ---
@@ -870,8 +877,9 @@ int main() {
     for (int i = 0; i < 10; i++) {
         double random_value = random_pareto(2.0, 1.0);
 
-        if (!isnan(random_value))
+        if (!isnan(random_value)) {
             fmt_printf("Random Pareto value: %f\n", random_value);
+        }
     }
 
     return 0;
@@ -902,8 +910,9 @@ int main() {
     for (int i = 0; i < 5; i++) {
         double random_value = random_vonmises(0.0, 1.0);
 
-        if (!isnan(random_value))
+        if (!isnan(random_value)) {
             fmt_printf("Random von Mises value: %f\n", random_value);
+        }
     }
 
     return 0;
@@ -928,6 +937,7 @@ The Random library works seamlessly with the Statistics library to provide compr
 
 ```c
 #include "random/random.h"
+#include "fmt/fmt.h"
 #include "statistics/statistics.h"
 #include <stdio.h>
 
@@ -941,10 +951,12 @@ int main() {
         if (i < 333) {
             // Gaussian distribution
             data[i] = random_gauss(50.0, 10.0);
-        } else if (i < 666) {
+        } 
+        else if (i < 666) {
             // Uniform distribution
             data[i] = random_uniform(30.0, 70.0);
-        } else {
+        } 
+        else {
             // Exponential distribution
             data[i] = random_expo(0.1);
         }
@@ -956,11 +968,11 @@ int main() {
     double variance = statistics_variance(data, 1000, false, 0.0);
     double stdev = statistics_stdev(data, 1000, false, 0.0);
     
-    printf("Statistical Analysis of Random Data:\n");
-    printf("Mean: %.4f\n", mean);
-    printf("Median: %.4f\n", median);
-    printf("Variance: %.4f\n", variance);
-    printf("Standard Deviation: %.4f\n", stdev);
+    fmt_printf("Statistical Analysis of Random Data:\n");
+    fmt_printf("Mean: %.4f\n", mean);
+    fmt_printf("Median: %.4f\n", median);
+    fmt_printf("Variance: %.4f\n", variance);
+    fmt_printf("Standard Deviation: %.4f\n", stdev);
     
     return 0;
 }
@@ -970,6 +982,7 @@ int main() {
 
 ```c
 #include "random/random.h"
+#include "fmt/fmt.h"
 #include "statistics/statistics.h"
 #include <stdio.h>
 
@@ -987,25 +1000,17 @@ int main() {
     double correlation = statistics_correlation(x, y, 500, CORRELATION_LINEAR);
     double spearman = statistics_correlation(x, y, 500, CORRELATION_RANKED);
     
-    printf("Correlation Analysis:\n");
-    printf("Pearson correlation: %.4f\n", correlation);
-    printf("Spearman correlation: %.4f\n", spearman);
+    fmt_printf("Correlation Analysis:\n");
+    fmt_printf("Pearson correlation: %.4f\n", correlation);
+    fmt_printf("Spearman correlation: %.4f\n", spearman);
     
     // Linear regression
     LinearRegression regression = statistics_linear_regression(x, y, 500, false);
-    printf("Linear Regression: y = %.4f * x + %.4f\n", 
-           regression.slope, regression.intercept);
+    fmt_printf("Linear Regression: y = %.4f * x + %.4f\n",  regression.slope, regression.intercept);
     
     return 0;
 }
 ```
-
-## Conclusion
-
-This Random library simplifies the generation of random numbers in C projects, providing an easy-to-use interface for generating random integers within specified ranges. The provided examples illustrate how to use the library for common random number generation tasks.
-
-When combined with the Statistics library, it provides powerful capabilities for generating random data and performing comprehensive statistical analysis, making it ideal for scientific computing, data analysis, and simulation applications.
-
 
 ## License
 

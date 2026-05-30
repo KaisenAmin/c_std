@@ -351,30 +351,36 @@ static void next_token(JsonParserState* state) {
             JSON_LOG("[next_token] Token: ',' (Comma) detected in next_token at position %zu.", state->position);
             break;
         case '-':
-        case '+':
+            // JSON allows leading '-' for negatives but NOT leading '+'.
             state->current_token.type = JSON_TOKEN_NUMBER;
-            JSON_LOG("[next_token] Token: '%c' (Number) detected in next_token at position %zu.", currentChar, state->position);
+            JSON_LOG("[next_token] Token: '-' (Number) at position %zu.", state->position);
             break;
         default:
             if (isdigit((unsigned char)currentChar)) {
                 state->current_token.type = JSON_TOKEN_NUMBER;
-                JSON_LOG("[next_token] Token: Number starting with '%c' detected in next_token at position %zu.", currentChar, state->position);
-            } 
-            else if (strncmp(state->input + state->position, "true", 4) == 0) {
-                state->current_token.type = JSON_TOKEN_BOOLEAN;
-                JSON_LOG("[next_token] Token: 'true' (Boolean) detected in next_token at position %zu.", state->position);
-            } 
-            else if (strncmp(state->input + state->position, "false", 5) == 0) {
-                state->current_token.type = JSON_TOKEN_BOOLEAN;
-                JSON_LOG("Token: 'false' (Boolean) detected in next_token at position %zu.", state->position);
-            } 
-            else if (strncmp(state->input + state->position, "null", 4) == 0) {
-                state->current_token.type = JSON_TOKEN_NULL;
-                JSON_LOG("[next_token] Token: 'null' detected in next_token at position %zu.", state->position);
-            } 
+            }
             else {
-                state->current_token.type = JSON_TOKEN_ERROR;
-                JSON_LOG("[next_token] Error: Unexpected token '%c' detected in next_token at position %zu.", currentChar, state->position);
+                // Match exactly true/false/null with a non-identifier boundary
+                // after the keyword so "truex" / "nullify" / "falsehood" don't
+                // get misclassified as the literal keyword. Do NOT advance
+                // position past the keyword here — the corresponding
+                // parse_* function handles that (existing convention).
+                const char* p = state->input + state->position;
+                const char* rest = NULL;
+                if      (strncmp(p, "true",  4) == 0) { rest = p + 4; state->current_token.type = JSON_TOKEN_BOOLEAN; }
+                else if (strncmp(p, "false", 5) == 0) { rest = p + 5; state->current_token.type = JSON_TOKEN_BOOLEAN; }
+                else if (strncmp(p, "null",  4) == 0) { rest = p + 4; state->current_token.type = JSON_TOKEN_NULL; }
+                else {
+                    state->current_token.type = JSON_TOKEN_ERROR;
+                    JSON_LOG("[next_token] Error: Unexpected character '%c' at position %zu.", currentChar, state->position);
+                    break;
+                }
+                // Verify the next char after the keyword is a delimiter.
+                char follower = *rest;
+                if (follower != '\0' && (isalnum((unsigned char)follower) || follower == '_')) {
+                    state->current_token.type = JSON_TOKEN_ERROR;
+                    JSON_LOG("[next_token] Error: Bare keyword followed by '%c' at position %zu.", follower, state->position);
+                }
             }
             break;
     }
@@ -456,47 +462,128 @@ static JsonElement* parse_string(JsonParserState* state) {
     }
     size_t start = state->position;
 
-    while (state->input[state->position] != '\"' && state->input[state->position] != '\0') {
-        // Handle escape sequences if needed
-        if (state->input[state->position] == '\0') {
+    // Build the decoded string into a growable buffer so escape sequences
+    // expand to their actual character values (\" -> ", \n -> newline, etc.).
+    // Previous implementation stored the raw bytes verbatim and would also
+    // mis-detect the closing quote in inputs like "\"a\\\"b\"" (treating the
+    // backslash-escaped quote as a terminator).
+    size_t cap = 32;
+    size_t len = 0;
+    char* out = (char*)malloc(cap);
+    if (!out) {
+        last_error.code = JSON_ERROR_MEMORY;
+        snprintf(last_error.message, sizeof(last_error.message), "OOM in parse_string");
+        return NULL;
+    }
+
+    for (;;) {
+        char c = state->input[state->position];
+        if (c == '\0') {
+            snprintf(last_error.message, sizeof(last_error.message), "Unterminated string at position %zu", start);
             last_error.code = JSON_ERROR_SYNTAX;
-            snprintf(last_error.message, sizeof(last_error.message), "Unterminated string");
-            JSON_LOG("[parse_string] %s", last_error.message);
+            free(out);
             return NULL;
         }
-        state->position++;
+        if (c == '\"') {
+            break;  // closing quote
+        }
+
+        char decoded;
+        if (c == '\\') {
+            char esc = state->input[++state->position];
+            switch (esc) {
+                case '\"': decoded = '\"'; break;
+                case '\\': decoded = '\\'; break;
+                case '/':  decoded = '/';  break;
+                case 'b':  decoded = '\b'; break;
+                case 'f':  decoded = '\f'; break;
+                case 'n':  decoded = '\n'; break;
+                case 'r':  decoded = '\r'; break;
+                case 't':  decoded = '\t'; break;
+                case 'u': {
+                    // Minimal \uXXXX support: decode the BMP codepoint to UTF-8.
+                    unsigned int cp = 0;
+                    for (int k = 0; k < 4; ++k) {
+                        char hc = state->input[++state->position];
+                        if (hc == '\0') {
+                            snprintf(last_error.message, sizeof(last_error.message),
+                                     "Truncated \\u escape at position %zu", state->position);
+                            last_error.code = JSON_ERROR_SYNTAX;
+                            free(out);
+                            return NULL;
+                        }
+                        cp <<= 4;
+                        if (hc >= '0' && hc <= '9')      cp |= (unsigned)(hc - '0');
+                        else if (hc >= 'a' && hc <= 'f') cp |= (unsigned)(hc - 'a' + 10);
+                        else if (hc >= 'A' && hc <= 'F') cp |= (unsigned)(hc - 'A' + 10);
+                        else {
+                            snprintf(last_error.message, sizeof(last_error.message),
+                                     "Bad hex in \\u escape at position %zu", state->position);
+                            last_error.code = JSON_ERROR_SYNTAX;
+                            free(out);
+                            return NULL;
+                        }
+                    }
+                    // Encode as UTF-8 (handle BMP only; surrogate pairs not supported).
+                    char utf8[4];
+                    int nbytes;
+                    if (cp < 0x80) {
+                        utf8[0] = (char)cp; nbytes = 1;
+                    } else if (cp < 0x800) {
+                        utf8[0] = (char)(0xC0 | (cp >> 6));
+                        utf8[1] = (char)(0x80 | (cp & 0x3F));
+                        nbytes = 2;
+                    } else {
+                        utf8[0] = (char)(0xE0 | (cp >> 12));
+                        utf8[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+                        utf8[2] = (char)(0x80 | (cp & 0x3F));
+                        nbytes = 3;
+                    }
+                    // Append utf8 bytes
+                    while (len + (size_t)nbytes + 1 > cap) {
+                        cap *= 2;
+                        char* n = (char*)realloc(out, cap);
+                        if (!n) { free(out); last_error.code = JSON_ERROR_MEMORY; return NULL; }
+                        out = n;
+                    }
+                    for (int k = 0; k < nbytes; ++k) out[len++] = utf8[k];
+                    state->position++;
+                    continue;  // skip the normal append below
+                }
+                default:
+                    snprintf(last_error.message, sizeof(last_error.message),
+                             "Bad escape '\\%c' at position %zu", esc, state->position);
+                    last_error.code = JSON_ERROR_SYNTAX;
+                    free(out);
+                    return NULL;
+            }
+            state->position++;
+        }
+        else {
+            decoded = c;
+            state->position++;
+        }
+
+        if (len + 2 > cap) {
+            cap *= 2;
+            char* n = (char*)realloc(out, cap);
+            if (!n) { free(out); last_error.code = JSON_ERROR_MEMORY; return NULL; }
+            out = n;
+        }
+        out[len++] = decoded;
     }
 
-    if (state->input[state->position] == '\0') {
-        snprintf(last_error.message, sizeof(last_error.message), "Unterminated string at position %zu", start);
-        JSON_LOG("[parse_string] %s", last_error.message);
-        last_error.code = JSON_ERROR_SYNTAX;
-        return NULL;
-    }
-
-    size_t length = state->position - start;
-    char* str_content = (char*)malloc(length + 1);
-    if (!str_content) {
-        snprintf(last_error.message, sizeof(last_error.message), "Memory allocation failed for string at position %zu", start);
-        JSON_LOG("[parse_string] %s", last_error.message);
-        last_error.code = JSON_ERROR_MEMORY;
-        return NULL;
-    }
-
-    strncpy(str_content, state->input + start, length);
-    str_content[length] = '\0';
-    state->position++; // Skip the closing quote
+    out[len] = '\0';
+    state->position++;  // skip closing quote
 
     JsonElement* element = json_create(JSON_STRING);
     if (!element) {
         snprintf(last_error.message, sizeof(last_error.message), "Failed to create JSON string element at position %zu", start);
-        JSON_LOG("[parse_string] %s", last_error.message);
         last_error.code = JSON_CREATION_FAILED;
-        free(str_content);
+        free(out);
         return NULL;
     }
-
-    element->value.string_val = str_content;
+    element->value.string_val = out;
     return element;
 }
 
@@ -579,7 +666,10 @@ static JsonElement* parse_null(JsonParserState* state) {
         return NULL;
     }
 
-    state->position += 4; // // Skip past 'null'
+    // next_token has already advanced position past the 'n' of "null", so
+    // we only need to skip the remaining 3 characters ("ull"). The original
+    // `+= 4` overshot by one and corrupted subsequent token reads.
+    state->position += 3;
 
     JsonElement* element = json_create(JSON_NULL);
     if (!element) {
@@ -709,7 +799,19 @@ static JsonElement* parse_object(JsonParserState* state) {
             return NULL;
         }
 
-        char* key = parse_string(state)->value.string_val;
+        // parse_string allocates a JsonElement wrapper AND the decoded key
+        // buffer. We only need the buffer (the map takes ownership of it and
+        // frees it via string_deallocator_json). Free the wrapper struct
+        // itself here so it does not leak -- but NOT via json_deallocate(),
+        // which would also free value.string_val and cause a double-free once
+        // the map deallocator runs.
+        JsonElement* key_element = parse_string(state);
+        if (!key_element) {
+            json_deallocate(object_element);
+            return NULL;
+        }
+        char* key = key_element->value.string_val;
+        free(key_element);
         next_token(state);
          if (state->current_token.type != JSON_TOKEN_COLON) {
             snprintf(last_error.message, sizeof(last_error.message), "Expected colon after key in object at position %zu", state->position);
@@ -749,7 +851,32 @@ static JsonElement* parse_object(JsonParserState* state) {
  */
 static void serialize_string(const char* value, String* str) {
     string_append(str, "\"");
-    string_append(str, value);
+    if (value) {
+        // Escape JSON-significant characters so round-trip parse/serialize
+        // works for strings containing ", \, or control characters.
+        for (const unsigned char* p = (const unsigned char*)value; *p; ++p) {
+            unsigned char c = *p;
+            switch (c) {
+                case '"':  string_append(str, "\\\""); break;
+                case '\\': string_append(str, "\\\\"); break;
+                case '\b': string_append(str, "\\b");  break;
+                case '\f': string_append(str, "\\f");  break;
+                case '\n': string_append(str, "\\n");  break;
+                case '\r': string_append(str, "\\r");  break;
+                case '\t': string_append(str, "\\t");  break;
+                default:
+                    if (c < 0x20) {
+                        char buf[8];
+                        snprintf(buf, sizeof(buf), "\\u%04x", c);
+                        string_append(str, buf);
+                    } else {
+                        char one[2] = { (char)c, '\0' };
+                        string_append(str, one);
+                    }
+                    break;
+            }
+        }
+    }
     string_append(str, "\"");
 }
 
@@ -830,7 +957,18 @@ static void json_serialize_internal(const JsonElement* element, String* str) {
         case JSON_NUMBER:
             {
                 char buffer[64];
-                snprintf(buffer, sizeof(buffer), "%g", element->value.number_val);
+                double v = element->value.number_val;
+                /* If v is an integer within int64 range, emit it as a
+                   plain integer so large values (e.g. Unix timestamps)
+                   don't get rounded by `%g`'s 6-significant-digit
+                   default. Otherwise use %.17g, the C-standard
+                   round-trip-safe precision for doubles. */
+                if (v >= -9.2233720368547758e18 && v <= 9.2233720368547758e18 &&
+                    v == (double)(long long)v) {
+                    snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
+                } else {
+                    snprintf(buffer, sizeof(buffer), "%.17g", v);
+                }
                 string_append(str, buffer);
             }
             break;
@@ -962,7 +1100,13 @@ static void json_format_internal(const JsonElement* element, String* str, int in
         case JSON_NUMBER:
             {
                 char buffer[64];
-                snprintf(buffer, sizeof(buffer), "%g", element->value.number_val);
+                double v = element->value.number_val;
+                if (v >= -9.2233720368547758e18 && v <= 9.2233720368547758e18 &&
+                    v == (double)(long long)v) {
+                    snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
+                } else {
+                    snprintf(buffer, sizeof(buffer), "%.17g", v);
+                }
                 string_append(str, buffer);
             }
             break;
@@ -1094,9 +1238,7 @@ JsonElement* json_parse(const char* json_str) {
     state.error.code = JSON_ERROR_NONE;
     strcpy(state.error.message, "");
 
-    // Move to the first token
     next_token(&state);
-
     JsonElement* root = NULL;
 
     if (state.current_token.type == JSON_TOKEN_OBJECT_START) {
@@ -1110,18 +1252,22 @@ JsonElement* json_parse(const char* json_str) {
         root = parser_internal(&state);
         if (root == NULL) {
             JSON_LOG("[json_parse] Error: Invalid JSON value at position %zu in json_parse.", state.position);
+
             snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid JSON value at position %zu in json_parse.", state.position);
             last_error.code = JSON_ERROR_SYNTAX;
             free(state.input);
+
             return NULL;
         }
     }
 
     if (root == NULL) {
         JSON_LOG("[json_parse] Error while parsing JSON at position %zu: %s", state.position, state.error.message);
-        snprintf(last_error.message, sizeof(last_error.message), "Error while parsing JSON at position %zu: %s", state.position, state.error.message);
+
+        snprintf(last_error.message, sizeof(last_error.message), "Error while parsing JSON at position %zu: %.200s", state.position, state.error.message);
         last_error.code = JSON_ERROR_SYNTAX;
         free(state.input);
+
         return NULL;
     }
 
@@ -2450,59 +2596,80 @@ char* json_format(const JsonElement *element) {
  * For strings, a new string is allocated and copied. The caller is responsible for freeing the cloned element.
  * If the input element is NULL or memory allocation fails, the function returns NULL and sets an error code.
  */
-JsonElement* json_clone(const JsonElement *element) {
-    JSON_LOG("[json_clone] Cloning JSON element: %p", (void*)element);
+/* --- Stubs for header-declared functions that had no implementation.
+ *     Without these, the module fails to link the moment a user calls
+ *     one of these public APIs. The simple working implementations below
+ *     match the documented signatures; full schema/option support is
+ *     left as a future enhancement. ---------------------------------- */
 
+JsonElement* json_parse_with_options(const char *json_str, JsonParseOptions options) {
+    (void)options;  // options struct is currently a placeholder
+    return json_parse(json_str);
+}
+
+/* json_generate_schema: produces a minimal type-only JSON-Schema-ish object */
+char* json_generate_schema(const JsonElement* element) {
+    if (!element) return NULL;
+    const char* type_name = "null";
+    switch (element->type) {
+        case JSON_NULL:   type_name = "null";    break;
+        case JSON_BOOL:   type_name = "boolean"; break;
+        case JSON_NUMBER: type_name = "number";  break;
+        case JSON_STRING: type_name = "string";  break;
+        case JSON_ARRAY:  type_name = "array";   break;
+        case JSON_OBJECT: type_name = "object";  break;
+    }
+    // Return a small heap-allocated JSON snippet describing the top-level type.
+    size_t n = strlen(type_name) + 16;
+    char* out = (char*)malloc(n);
+    if (!out) return NULL;
+    snprintf(out, n, "{\"type\":\"%s\"}", type_name);
+    return out;
+}
+
+/* json_validate: checks that element's top-level type matches what
+ * schema_json describes (a minimal validator matching json_generate_schema). */
+bool json_validate(const JsonElement *element, const char *schema_json) {
+    if (!element || !schema_json) return false;
+    JsonElement* schema = json_parse(schema_json);
+    if (!schema || schema->type != JSON_OBJECT) {
+        if (schema) json_deallocate(schema);
+        return false;
+    }
+    JsonElement* type_el = json_get_element(schema, "type");
+    bool ok = false;
+    if (type_el && type_el->type == JSON_STRING) {
+        const char* t = type_el->value.string_val;
+        switch (element->type) {
+            case JSON_NULL:   ok = (strcmp(t, "null")    == 0); break;
+            case JSON_BOOL:   ok = (strcmp(t, "boolean") == 0); break;
+            case JSON_NUMBER: ok = (strcmp(t, "number")  == 0); break;
+            case JSON_STRING: ok = (strcmp(t, "string")  == 0); break;
+            case JSON_ARRAY:  ok = (strcmp(t, "array")   == 0); break;
+            case JSON_OBJECT: ok = (strcmp(t, "object")  == 0); break;
+        }
+    }
+    json_deallocate(schema);
+    return ok;
+}
+
+JsonElement* json_clone(const JsonElement *element) {
+    /* Clone is a deep copy. The previous implementation shallow-copied
+       arrays and objects (sharing the source's container pointer),
+       which made calling json_deallocate() on both the clone and the
+       source a double-free. Delegate to json_deep_copy so callers get
+       an independently-owned, safe-to-deallocate element. */
+    JSON_LOG("[json_clone] Cloning JSON element: %p", (void*)element);
     if (!element) {
-        JSON_LOG("[json_clone] Error: NULL input provided.");
         snprintf(last_error.message, sizeof(last_error.message), "Error: NULL input to json_clone.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return NULL;
     }
-
-    JsonElement *clonedElement = (JsonElement*)malloc(sizeof(JsonElement));
-    if (!clonedElement) {
-        JSON_LOG("[json_clone] Error: Memory allocation failed.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in json_clone.");
-        last_error.code = JSON_ERROR_MEMORY;
-        return NULL;
+    JsonElement* out = json_deep_copy(element);
+    if (out) {
+        last_error.code = JSON_ERROR_NONE;
     }
-
-    clonedElement->type = element->type;
-    JSON_LOG("[json_clone] Cloning element of type: %d", element->type);
-
-    switch (element->type) {
-        case JSON_NULL:
-        case JSON_BOOL:
-        case JSON_NUMBER:
-            clonedElement->value = element->value;
-            break;
-        case JSON_STRING:
-            clonedElement->value.string_val = string_strdup(element->value.string_val);
-            if (!clonedElement->value.string_val) {
-                JSON_LOG("[json_clone] Error: String duplication failed.");
-                free(clonedElement);
-                snprintf(last_error.message, sizeof(last_error.message), "Error: String duplication failed in json_clone.");
-                last_error.code = JSON_ERROR_MEMORY;
-                return NULL;
-            }
-            break;
-        case JSON_ARRAY:
-        case JSON_OBJECT:
-            // Shallow copy; just copy the reference
-            clonedElement->value = element->value;
-            break;
-        default:
-            JSON_LOG("[json_clone] Error: Unknown type encountered.");
-            free(clonedElement);
-            snprintf(last_error.message, sizeof(last_error.message), "Error: Unknown type in json_clone.");
-            last_error.code = JSON_ERROR_TYPE;
-            return NULL;
-    }
-
-    JSON_LOG("[json_clone] Successfully cloned the element.");
-    last_error.code = JSON_ERROR_NONE;
-    return clonedElement;
+    return out;
 }
 
 /**
@@ -2653,9 +2820,10 @@ bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value
     JSON_LOG("[json_add_to_object] Checking if key: %s already exists in the object.", key);
     JsonElement* existingValue = (JsonElement*)map_at(object->value.object_val, duplicatedKey);
     if (existingValue) {
-        // Deallocate the existing value associated with the key
-        JSON_LOG("[json_add_to_object] Key: %s already exists, replacing its value.", key);
-        json_deallocate(existingValue);
+        // Key already exists: do NOT free the old value here. map_insert() below
+        // replaces it and frees the previous value through the map's value-deallocator
+        // (json_element_deallocator). Freeing it here as well would double-free it.
+        JSON_LOG("[json_add_to_object] Key: %s already exists, its value will be replaced.", key);
         snprintf(last_error.message, sizeof(last_error.message), "Warning: Key already exists and its value will be replaced.");
         last_error.code = JSON_ERROR_NONE; // It's not technically an error, so no error code change.
     }
@@ -2674,6 +2842,10 @@ bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value
         last_error.code = JSON_ERROR_INSERTION_FAILED;
         return false;
     }
+
+    // Key ownership is handled by map_insert(): on a fresh insert the map takes
+    // ownership of duplicatedKey; on a replace it frees the redundant duplicate via
+    // the map's key deallocator. So duplicatedKey must NOT be freed here.
 
     JSON_LOG("[json_add_to_object] Successfully added key: %s to the object.", key);
     last_error.code = JSON_ERROR_NONE;

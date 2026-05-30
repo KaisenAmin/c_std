@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <math.h>
 
 
@@ -37,6 +38,7 @@ typedef NTSTATUS (WINAPI *NtQuerySystemInformationFunc)(
 typedef LONG NTSTATUS;
 typedef NTSTATUS (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
 
+
 static char* get_windows_version() {
     SYSINFO_LOG("[get_windows_version]: Entering function.");
     
@@ -62,11 +64,13 @@ static char* get_windows_version() {
     return version;
 }
 
+
 static char* get_windows_product_type() {
     SYSINFO_LOG("[get_windows_product_type]: Returning Windows product type.");
     static char product_type[] = "Windows";
     return product_type;
 }
+
 
 static char* get_windows_kernel_version() {
     SYSINFO_LOG("[get_windows_kernel_version]: Entering function.");
@@ -89,12 +93,14 @@ static char* get_windows_kernel_version() {
     return kernel_version;
 }
 
+
 static char* get_windows_kernel_type() {
     SYSINFO_LOG("[get_windows_kernel_type]: Returning Windows NT kernel type.");
     static char kernel_type[] = "Windows NT";
 
     return kernel_type;
 }
+
 
 static char* get_windows_boot_unique_id() {
     SYSINFO_LOG("[get_windows_boot_unique_id]: Entering function.");
@@ -108,6 +114,7 @@ static char* get_windows_boot_unique_id() {
 
     return boot_id;
 }
+
 
 static char* get_windows_cpu_architecture() {
     SYSINFO_LOG("[get_windows_cpu_architecture]: Entering function.");
@@ -140,6 +147,7 @@ static char* get_windows_cpu_architecture() {
     return architecture;
 }
 
+
 static char* get_windows_machine_host_name() {
     SYSINFO_LOG("[get_windows_machine_host_name]: Entering function.");
 
@@ -161,6 +169,7 @@ static char* get_windows_machine_host_name() {
     SYSINFO_LOG("[get_windows_machine_host_name]: Exiting function.");
     return hostname;
 }
+
 
 static char* get_windows_machine_unique_id() {
     SYSINFO_LOG("[get_windows_machine_unique_id]: Entering function.");
@@ -186,6 +195,7 @@ static char* get_windows_machine_unique_id() {
     SYSINFO_LOG("[get_windows_machine_unique_id]: Exiting function.");
     return unique_id;
 }
+
 
 static void get_windows_pretty_version(char* buffer, size_t buffer_size) {
     SYSINFO_LOG("[get_windows_pretty_version]: Entering function.");
@@ -238,29 +248,22 @@ static void get_windows_pretty_version(char* buffer, size_t buffer_size) {
     SYSINFO_LOG("[get_windows_pretty_version]: Exiting function.");
 }
 
+
 static char* get_windows_build_abi() {
     SYSINFO_LOG("[get_windows_build_abi]: Entering function.");
-    
+
     static char build_abi[128];
-    memset(build_abi, 0, sizeof(build_abi));
+    const char* architecture = sysinfo_cpu_architecture();
 
-    char* architecture = sysinfo_cpu_architecture();
-    if (architecture) {
-        strcpy(build_abi, architecture);
-        strcat(build_abi, "-");
-        SYSINFO_LOG("[get_windows_build_abi]: Architecture found: %s", architecture);
-    } 
-    else {
-        strcpy(build_abi, "unknown-");
-        SYSINFO_LOG("[get_windows_build_abi]: Architecture not found, using 'unknown'.");
+    if (!architecture) {
+        architecture = "unknown";
     }
-
-    strcat(build_abi, "little_endian-");
-    strcat(build_abi, "llp64");  // LLP64 for Windows
-
+  
+    snprintf(build_abi, sizeof(build_abi), "%s-little_endian-llp64", architecture);
     SYSINFO_LOG("[get_windows_build_abi]: Final build ABI: %s", build_abi);
     return build_abi;
 }
+
 
 static char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
     SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: Entering function.");
@@ -287,17 +290,32 @@ static char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
     if (hFind != NULL) {
         SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: Found Bluetooth devices.");
         do {
-            (*count)++;
-            devices = (char**)realloc(devices, sizeof(char*) * (*count));
+            char** tmp = (char**)realloc(devices, sizeof(char*) * ((size_t)(*count) + 1));
+            if (!tmp) {
+                SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: realloc failed; stopping enumeration.");
+                break;
+            }
+            devices = tmp;
             wchar_t* wname = deviceInfo.szName;
             int len = WideCharToMultiByte(CP_UTF8, 0, wname, -1, NULL, 0, NULL, NULL);
-            devices[(*count) - 1] = (char*)malloc(len);
-            WideCharToMultiByte(CP_UTF8, 0, wname, -1, devices[(*count) - 1], len, NULL, NULL);
-            SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: Device found: %s", devices[(*count) - 1]);
+            if (len <= 0) {
+                SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: invalid wchar size, skipping.");
+                continue;
+            }
+            char* name = (char*)malloc((size_t)len);
+            if (!name) {
+                SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: malloc for name failed; stopping.");
+                break;
+            }
+            WideCharToMultiByte(CP_UTF8, 0, wname, -1, name, len, NULL, NULL);
+            devices[*count] = name;
+            (*count)++;
+
+            SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: Device found: %s", name);
         } while (BluetoothFindNextDevice(hFind, &deviceInfo));
 
         BluetoothFindDeviceClose(hFind);
-    } 
+    }
     else {
         SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_windows]: No Bluetooth devices found.");
     }
@@ -321,6 +339,7 @@ static char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <locale.h>
+
 
 static char* get_linux_version() {
     SYSINFO_LOG("[get_linux_version]: Retrieving Linux version.");
@@ -346,6 +365,7 @@ static char* get_linux_version() {
     pclose(fp);
     return version;
 }
+
 
 static char* get_linux_product_type() {
     SYSINFO_LOG("[get_linux_product_type]: Retrieving Linux product type.");
@@ -379,6 +399,7 @@ static char* get_linux_product_type() {
     return product_type;
 }
 
+
 static char* get_linux_kernel_version() {
     SYSINFO_LOG("[get_linux_kernel_version]: Retrieving Linux kernel version.");
     
@@ -397,6 +418,7 @@ static char* get_linux_kernel_version() {
     return kernel_version;
 }
 
+
 static char* get_linux_kernel_type() {
     SYSINFO_LOG("[get_linux_kernel_type]: Retrieving Linux kernel type.");
     
@@ -414,6 +436,7 @@ static char* get_linux_kernel_type() {
 
     return kernel_type;
 }
+
 
 static char* get_linux_boot_unique_id() {
     SYSINFO_LOG("[get_linux_boot_unique_id]: Retrieving boot unique ID.");
@@ -440,6 +463,7 @@ static char* get_linux_boot_unique_id() {
     return boot_id;
 }
 
+
 static char* get_linux_cpu_architecture() {
     SYSINFO_LOG("[get_linux_cpu_architecture]: Retrieving CPU architecture.");
     
@@ -457,6 +481,7 @@ static char* get_linux_cpu_architecture() {
 
     return architecture;
 }
+
 
 static char* get_linux_machine_host_name() {
     SYSINFO_LOG("[get_linux_machine_host_name]: Retrieving machine host name.");
@@ -497,6 +522,7 @@ static char* get_linux_machine_host_name() {
     return hostname;
 }
 
+
 static char* get_linux_machine_unique_id() {
     SYSINFO_LOG("[get_linux_machine_unique_id]: Retrieving machine unique ID.");
     
@@ -526,35 +552,28 @@ static char* get_linux_build_abi() {
 
     static char build_abi[128];
     struct utsname buffer;
-
+    const char* machine = "unknown";
     if (uname(&buffer) == 0) {
-        SYSINFO_LOG("[get_linux_build_abi]: Machine type retrieved: %s", buffer.machine);
-        if (strcmp(buffer.machine, "x86_64") == 0) {
-            strcpy(build_abi, "x86_64-");
-        } 
-        else {
-            strcpy(build_abi, buffer.machine);
-            strcat(build_abi, "-");
-        }
+        machine = buffer.machine;
+        SYSINFO_LOG("[get_linux_build_abi]: Machine type retrieved: %s", machine);
     } 
     else {
         SYSINFO_LOG("[get_linux_build_abi]: Failed to retrieve machine type via uname.");
-        strcpy(build_abi, "unknown-");
     }
 
+    // Single bounded write — no risk of strcpy+strcat overflow if `machine`
+    // returned from the kernel is unusually long.
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-    SYSINFO_LOG("[get_linux_build_abi]: System is little endian.");
-    strcat(build_abi, "little_endian-");
+    const char* endian = "little_endian";
 #else
-    SYSINFO_LOG("[get_linux_build_abi]: System is big endian.");
-    strcat(build_abi, "big_endian-");
+    const char* endian = "big_endian";
 #endif
-
-    strcat(build_abi, "lp64");
+    snprintf(build_abi, sizeof(build_abi), "%s-%s-lp64", machine, endian);
     SYSINFO_LOG("[get_linux_build_abi]: Build ABI: %s", build_abi);
 
     return build_abi;
 }
+
 
 char** get_sysinfo_list_bluetooth_devices_linux(int* count) {
     SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: Retrieving Bluetooth devices.");
@@ -565,19 +584,27 @@ char** get_sysinfo_list_bluetooth_devices_linux(int* count) {
 
     if (pipe) {
         SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: Successfully opened pipe.");
-        
+
         char buffer[128];
         while (fgets(buffer, 128, pipe) != NULL) {
             buffer[strcspn(buffer, "\r\n")] = 0;  // Remove newline characters
-            (*count)++;
             SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: Found device: %s", buffer);
-            devices = (char**)realloc(devices, sizeof(char*) * (*count));
-            if (!devices) {
-                SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: Memory allocation failed.");
-                pclose(pipe);
-                return NULL;
+
+            // Grow into a temporary so we can recover from realloc failure
+            // without leaking the previously-allocated strings.
+            char** tmp = (char**)realloc(devices, sizeof(char*) * ((size_t)(*count) + 1));
+            if (!tmp) {
+                SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: realloc failed; stopping.");
+                break;
             }
-            devices[(*count) - 1] = strdup(buffer);
+            devices = tmp;
+            char* dup = strdup(buffer);
+            if (!dup) {
+                SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: strdup failed; stopping.");
+                break;
+            }
+            devices[*count] = dup;
+            (*count)++;
         }
 
         pclose(pipe);
@@ -599,12 +626,14 @@ static char* get_unknown_version() {
     return version;
 }
 
+
 static char* get_unknown_product_type() {
     SYSINFO_LOG("[get_unknown_product_type]: Returning unknown product type.");
     static char product_type[] = "unknown";
 
     return product_type;
 }
+
 
 static char* get_unknown_kernel_version() {
     SYSINFO_LOG("[get_unknown_kernel_version]: Returning unknown kernel version.");
@@ -613,12 +642,14 @@ static char* get_unknown_kernel_version() {
     return kernel_version;
 }
 
+
 static char* get_unknown_kernel_type() {
     SYSINFO_LOG("[get_unknown_kernel_type]: Returning unknown kernel type.");
     static char kernel_type[] = "unknown";
 
     return kernel_type;
 }
+
 
 static char* get_unknown_boot_unique_id() {
     SYSINFO_LOG("[get_unknown_boot_unique_id]: Returning empty boot unique ID.");
@@ -627,12 +658,14 @@ static char* get_unknown_boot_unique_id() {
     return boot_id;
 }
 
+
 static char* get_unknown_cpu_architecture() {
     SYSINFO_LOG("[get_unknown_cpu_architecture]: Returning unknown CPU architecture.");
     static char architecture[] = "unknown";
 
     return architecture;
 }
+
 
 static char* get_unknown_machine_host_name() {
     SYSINFO_LOG("[get_unknown_machine_host_name]: Returning unknown host name.");
@@ -641,6 +674,7 @@ static char* get_unknown_machine_host_name() {
     return hostname;
 }
 
+
 static char* get_unknown_machine_unique_id() {
     SYSINFO_LOG("[get_unknown_machine_unique_id]: Returning unknown machine unique ID.");
     static char unique_id[] = "unknown";
@@ -648,12 +682,14 @@ static char* get_unknown_machine_unique_id() {
     return unique_id;
 }
 
+
 static char* get_unknown_build_abi() {
     SYSINFO_LOG("[get_unknown_build_abi]: Returning unknown build ABI.");
     static char build_abi[] = "unknown";
 
     return build_abi;
 }
+
 
 char** sysinfo_list_bluetooth_devices(int* count) {
     SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: No Bluetooth devices found.");
@@ -664,36 +700,49 @@ char** sysinfo_list_bluetooth_devices(int* count) {
 
 #endif
 
+
 /**
- * @brief This function returns the version of the operating system in a string format. 
- * The version provides important information about the specific release of the operating system being used.
- * 
- * @return char* A static string containing the OS version. If the version cannot 
- *               be determined, the function returns "unknown".
+ * @brief Return the OS version (release) string.
+ *
+ * Cross-platform dispatcher:
+ *   - Windows: `get_windows_version()` (uses `GetVersion`).
+ *   - Linux:   `get_linux_version()` (parses `lsb_release -r`).
+ *   - Other:   `"unknown"`.
+ *
+ * @return Pointer to a static (do NOT free) string. Never NULL.
  */
-char* sysinfo_product_version() {
-    SYSINFO_LOG("[sysinfo_product_version]: Retrieving OS version.");
+char* sysinfo_product_version(void) {
+    SYSINFO_LOG("[sysinfo_product_version]: enter");
 #ifdef _WIN32
-    return get_windows_version();
+    char* version = get_windows_version();
+    SYSINFO_LOG("[sysinfo_product_version]: exit (Windows) -> %s", version);
+
+    return version;
 #elif __linux__
-    return get_linux_version();
+    char* version = get_linux_version();
+    SYSINFO_LOG("[sysinfo_product_version]: exit (Linux) -> %s", version);
+
+    return version;
 #else
-    SYSINFO_LOG("[sysinfo_product_version]: Returning unknown version.");
-    return get_unknown_version();
+    char* version = get_unknown_version();
+    SYSINFO_LOG("[sysinfo_product_version]: exit (unsupported platform) -> %s", version);
+
+    return version;
 #endif
 }
 
+
 /**
- * @brief This function returns the product type or name of the operating system. For instance, 
- * it might return "Windows" for a Windows operating system or "Ubuntu" for an Ubuntu 
- * Linux distribution. This information is useful for identifying the specific type of 
- * operating system the application is running on.
- * 
- * @return char* A static string containing the OS product type. If the product type 
- *               cannot be determined, the function returns "unknown".
+ * @brief Return the OS product type / distribution name.
+ *
+ * Cross-platform dispatcher: returns `"Windows"` on Windows, the
+ * distributor ID (e.g. `"Ubuntu"`) on Linux via `lsb_release -i`, or
+ * `"unknown"` on other platforms.
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_product_type() {
-    SYSINFO_LOG("[sysinfo_product_type]: Retrieving product type.");
+char* sysinfo_product_type(void) {
+    SYSINFO_LOG("[sysinfo_product_type]: enter");
 #ifdef _WIN32
     char* product_type = get_windows_product_type();
 #elif __linux__
@@ -701,20 +750,21 @@ char* sysinfo_product_type() {
 #else
     char* product_type = get_unknown_product_type();
 #endif
-    SYSINFO_LOG("[sysinfo_product_type]: Product type is %s.", product_type ? product_type : "unknown");
+    SYSINFO_LOG("[sysinfo_product_type]: exit -> %s", product_type ? product_type : "unknown");
     return product_type;
 }
 
+
 /**
- * @brief This function retrieves the kernel version of the operating system on which the application
- * is running. For example, it may return "10.0.19045" on Windows or "6.8.0-35-generic" on Linux.
- * The kernel version is essential for understanding the system's low-level OS details.
- * 
- * @return char* A static string containing the kernel version. If the version cannot be determined,
- *               the function returns "unknown".
+ * @brief Return the kernel version string (e.g. "10.0.26100" /
+ *        "6.8.0-35-generic").
+ *
+ * On Windows uses `GetVersionEx`; on Linux uses `uname.release`.
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_kernel_version() {
-    SYSINFO_LOG("[sysinfo_kernel_version]: Retrieving kernel version.");
+char* sysinfo_kernel_version(void) {
+    SYSINFO_LOG("[sysinfo_kernel_version]: enter");
 #ifdef _WIN32
     char* kernel_version = get_windows_kernel_version();
 #elif __linux__
@@ -722,20 +772,21 @@ char* sysinfo_kernel_version() {
 #else
     char* kernel_version = get_unknown_kernel_version();
 #endif
-    SYSINFO_LOG("[sysinfo_kernel_version]: Kernel version is %s.", kernel_version ? kernel_version : "unknown");
+    SYSINFO_LOG("[sysinfo_kernel_version]: exit -> %s", kernel_version ? kernel_version : "unknown");
     return kernel_version;
 }
 
+
 /**
- * @brief This function provides the type of the kernel that the application is running on. For example,
- * it may return "Windows NT" on Windows or "Linux" on Unix-like systems. This information is useful
- * for identifying the general type of the operating system kernel.
- * 
- * @return char* A static string containing the kernel type. If the type cannot be determined,
- *               the function returns "unknown".
+ * @brief Return the kernel type identifier (e.g. "Windows NT", "Linux").
+ *
+ * Useful for branching on a coarse OS family without parsing version
+ * strings.
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_kernel_type() {
-    SYSINFO_LOG("[sysinfo_kernel_type]: Retrieving kernel type.");
+char* sysinfo_kernel_type(void) {
+    SYSINFO_LOG("[sysinfo_kernel_type]: enter");
 #ifdef _WIN32
     char* kernel_type = get_windows_kernel_type();
 #elif __linux__
@@ -743,20 +794,22 @@ char* sysinfo_kernel_type() {
 #else
     char* kernel_type = get_unknown_kernel_type();
 #endif
-    SYSINFO_LOG("[sysinfo_kernel_type]: Kernel type is %s.", kernel_type ? kernel_type : "unknown");
+    SYSINFO_LOG("[sysinfo_kernel_type]: exit -> %s", kernel_type ? kernel_type : "unknown");
     return kernel_type;
 }
 
+
 /**
- * @brief This function generates a unique identifier that represents the current boot session of the machine.
- * On Linux, this is typically obtained from `/proc/sys/kernel/random/boot_id`, while on Windows, it may
- * be derived from the system uptime. This unique ID can be used to track the current boot session of the system.
- * 
- * @return char* A static string containing the unique boot ID. If the ID cannot be determined,
- *               the function returns "unknown".
+ * @brief Return a unique identifier for the current boot session.
+ *
+ *   - Linux:   `/proc/sys/kernel/random/boot_id`.
+ *   - Windows: an integer derived from `GetTickCount64()`.
+ *   - Other:   the empty string.
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_boot_unique_id() {
-    SYSINFO_LOG("[sysinfo_boot_unique_id]: Retrieving boot unique ID.");
+char* sysinfo_boot_unique_id(void) {
+    SYSINFO_LOG("[sysinfo_boot_unique_id]: enter");
 #ifdef _WIN32
     char* boot_id = get_windows_boot_unique_id();
 #elif __linux__
@@ -764,20 +817,18 @@ char* sysinfo_boot_unique_id() {
 #else
     char* boot_id = get_unknown_boot_unique_id();
 #endif
-    SYSINFO_LOG("[sysinfo_boot_unique_id]: Boot unique ID is %s.", boot_id ? boot_id : "unknown");
+    SYSINFO_LOG("[sysinfo_boot_unique_id]: exit -> %s", boot_id ? boot_id : "unknown");
     return boot_id;
 }
 
+
 /**
- * @brief This function detects and returns the architecture of the CPU that the application
- * is running on. For example, it may return "x86_64", "ARM", or "IA64", depending on
- * the system. The architecture string is useful for understanding the type of processor
- * the system is using.
- * 
- * @return char* A static string containing the CPU architecture.
+ * @brief Return the CPU architecture string ("x86_64", "ARM", ...).
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_cpu_architecture() {
-    SYSINFO_LOG("[sysinfo_cpu_architecture]: Retrieving CPU architecture.");
+char* sysinfo_cpu_architecture(void) {
+    SYSINFO_LOG("[sysinfo_cpu_architecture]: enter");
 #ifdef _WIN32
     char* cpu_arch = get_windows_cpu_architecture();
 #elif __linux__
@@ -785,19 +836,22 @@ char* sysinfo_cpu_architecture() {
 #else
     char* cpu_arch = get_unknown_cpu_architecture();
 #endif
-    SYSINFO_LOG("[sysinfo_cpu_architecture]: CPU architecture is %s.", cpu_arch ? cpu_arch : "unknown");
+    SYSINFO_LOG("[sysinfo_cpu_architecture]: exit -> %s", cpu_arch ? cpu_arch : "unknown");
     return cpu_arch;
 }
 
+
 /**
- * @brief This function retrieves the fully qualified domain name (FQDN) or the simple host name
- * of the machine on which the application is running. On Linux, it may attempt to resolve
- * the FQDN, while on Windows, it returns the computer name.
- * 
- * @return char* A static string containing the machine's host name.
+ * @brief Return the machine host name (or fully-qualified domain name
+ *        where the OS exposes one).
+ *
+ * On Linux walks `getaddrinfo(AI_CANONNAME)` to surface the FQDN; on
+ * Windows returns `GetComputerName()`.
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_machine_host_name() {
-    SYSINFO_LOG("[sysinfo_machine_host_name]: Retrieving machine host name.");
+char* sysinfo_machine_host_name(void) {
+    SYSINFO_LOG("[sysinfo_machine_host_name]: enter");
 #ifdef _WIN32
     char* host_name = get_windows_machine_host_name();
 #elif __linux__
@@ -805,20 +859,22 @@ char* sysinfo_machine_host_name() {
 #else
     char* host_name = get_unknown_machine_host_name();
 #endif
-    SYSINFO_LOG("[sysinfo_machine_host_name]: Machine host name is %s.", host_name ? host_name : "unknown");
+    SYSINFO_LOG("[sysinfo_machine_host_name]: exit -> %s", host_name ? host_name : "unknown");
     return host_name;
 }
 
+
 /**
- * @brief This function provides a unique identifier for the machine, which is useful for identifying
- * the machine in network operations or other scenarios where a persistent unique ID is needed.
- * The method of obtaining this ID varies by platform.
- * 
- * @return char* A static string containing the machine's unique ID. If the ID cannot be determined,
- *               the function returns "unknown".
+ * @brief Return a persistent unique identifier for the machine itself.
+ *
+ *   - Windows: registry GUID at HKLM\\SOFTWARE\\Microsoft\\Cryptography.
+ *   - Linux:   contents of /etc/machine-id.
+ *   - Other:   "unknown".
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_machine_unique_id() {
-    SYSINFO_LOG("[sysinfo_machine_unique_id]: Retrieving machine unique ID.");
+char* sysinfo_machine_unique_id(void) {
+    SYSINFO_LOG("[sysinfo_machine_unique_id]: enter");
 #ifdef _WIN32
     char* id = get_windows_machine_unique_id();
 #elif __linux__
@@ -826,46 +882,50 @@ char* sysinfo_machine_unique_id() {
 #else
     char* id = get_unknown_machine_unique_id();
 #endif
-    SYSINFO_LOG("[sysinfo_machine_unique_id]: Machine unique ID is %s.", id ? id : "unknown");
+    SYSINFO_LOG("[sysinfo_machine_unique_id]: exit -> %s", id ? id : "unknown");
     return id;
 }
 
+
 /**
- * @brief This function generates a human-readable string that describes the operating system
- * name and version in a friendly format. On Windows, it uses the system's product name
- * and version. On Linux, it combines the product type and version. For other systems,
- * it falls back to the kernel type and version.
- * 
- * @return char* A static string containing the pretty product name.
+ * @brief Return a human-readable "<product> Version <version> (Build N)"
+ *        string suitable for display.
+ *
+ * Windows uses RtlGetVersion + a tiny build-name map. Linux concatenates
+ * `<product_type> <product_version>`. Other platforms fall back to
+ * `<kernel_type> <kernel_version>`.
+ *
+ * @return Pointer to a static buffer. Never NULL.
  */
-char* sysinfo_pretty_product_name() {
+char* sysinfo_pretty_product_name(void) {
     static char pretty_name[256];
     memset(pretty_name, 0, sizeof(pretty_name));
-    SYSINFO_LOG("[sysinfo_pretty_product_name]: Retrieving pretty product name.");
+    SYSINFO_LOG("[sysinfo_pretty_product_name]: enter");
 
 #ifdef _WIN32
     get_windows_pretty_version(pretty_name, sizeof(pretty_name));
-    SYSINFO_LOG("[sysinfo_pretty_product_name]: Product name is %s.", pretty_name);
 #elif __linux__
-    snprintf(pretty_name, sizeof(pretty_name), "%s %s", sysinfo_product_type(), sysinfo_product_version());
-    SYSINFO_LOG("[sysinfo_pretty_product_name]: Product name is %s.", pretty_name);
+    snprintf(pretty_name, sizeof(pretty_name), "%s %s",
+             sysinfo_product_type(), sysinfo_product_version());
 #else
-    snprintf(pretty_name, sizeof(pretty_name), "%s %s", sysinfo_kernel_type(), sysinfo_kernel_version());
-    SYSINFO_LOG("[sysinfo_pretty_product_name]: Product name is %s.", pretty_name);
+    snprintf(pretty_name, sizeof(pretty_name), "%s %s",
+             sysinfo_kernel_type(), sysinfo_kernel_version());
 #endif
 
+    SYSINFO_LOG("[sysinfo_pretty_product_name]: exit -> %s", pretty_name);
     return pretty_name;
 }
 
+
 /**
- * @brief This function provides information about the system's ABI, which includes details
- * such as the architecture, endianness, and data model (e.g., LP64, LLP64). The ABI
- * is useful for understanding how the compiled binaries will interact with the system.
- * 
- * @return char* A static string containing the ABI information.
+ * @brief Return an ABI descriptor combining architecture + endianness +
+ *        data-model (e.g. "x86_64-little_endian-llp64" on 64-bit Win,
+ *        "x86_64-little_endian-lp64" on 64-bit Linux).
+ *
+ * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_build_abi() {
-    SYSINFO_LOG("[sysinfo_build_abi]: Retrieving system ABI information.");
+char* sysinfo_build_abi(void) {
+    SYSINFO_LOG("[sysinfo_build_abi]: enter");
 #ifdef _WIN32
     char* abi = get_windows_build_abi();
 #elif __linux__
@@ -873,7 +933,7 @@ char* sysinfo_build_abi() {
 #else
     char* abi = get_unknown_build_abi();
 #endif
-    SYSINFO_LOG("[sysinfo_build_abi]: System ABI is %s.", abi ? abi : "unknown");
+    SYSINFO_LOG("[sysinfo_build_abi]: exit -> %s", abi ? abi : "unknown");
     return abi;
 }
 
@@ -888,23 +948,44 @@ char* sysinfo_build_abi() {
  * @return char** An array of strings, each representing a Bluetooth device name.
  *               The caller is responsible for freeing each string and the array itself.
  */
+/**
+ * @brief Enumerate Bluetooth devices known to the system.
+ *
+ * Wraps `BluetoothFindFirstDevice` / `BluetoothFindNextDevice` on
+ * Windows and `popen("hcitool dev")` on Linux. The number of devices
+ * is written to @p count; the returned array contains exactly that
+ * many `char*` entries.
+ *
+ * Ownership: every device-name string AND the outer array are
+ * heap-allocated. The caller must `free()` each entry and then
+ * `free()` the outer pointer.
+ *
+ * @param count Out-arg receiving the number of devices found (0 if
+ *              the system has no Bluetooth hardware / driver). Must
+ *              be non-NULL.
+ * @return Heap-allocated `char**` (NOT NULL-terminated), or NULL on
+ *         platforms without a backend / when no devices were found.
+ */
 char** sysinfo_list_bluetooth_devices(int* count) {
-    SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: Retrieving list of Bluetooth devices.");
+    SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: enter count=%p", (void*)count);
 #ifdef _WIN32
     char** devices = get_sysinfo_list_bluetooth_devices_windows(count);
 #elif __linux__
     char** devices = get_sysinfo_list_bluetooth_devices_linux(count);
 #else
+    if (count) {
+        *count = 0;
+    }
     char** devices = NULL;
 #endif
 
     if (devices) {
-        SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: Found %d Bluetooth devices.", *count);
+        SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: exit -> %d device(s)",
+                    count ? *count : 0);
     } 
     else {
-        SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: No Bluetooth devices found.");
+        SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: exit -> no devices");
     }
-
     return devices;
 }
 
@@ -944,6 +1025,7 @@ static double get_sysinfo_cpu_usage_windows() {
     return cpuUsage;
 }
 
+
 // Windows specific memory usage function
 static double get_sysinfo_memory_usage_windows() {
     SYSINFO_LOG("[get_sysinfo_memory_usage_windows]: Retrieving memory usage.");
@@ -970,6 +1052,7 @@ static double get_sysinfo_memory_usage_windows() {
     return memoryUsage;
 }
 
+
 static char* get_sysinfo_disk_space_windows(const char* path) {
     SYSINFO_LOG("[get_sysinfo_disk_space_windows]: Retrieving disk space for path: %s", path);
 
@@ -994,6 +1077,7 @@ static char* get_sysinfo_disk_space_windows(const char* path) {
     SYSINFO_LOG("[get_sysinfo_disk_space_windows]: Successfully retrieved disk space info: %s", result);
     return result;
 }
+
 
 // Simpler Windows-specific function to get system uptime
 static char* get_sysinfo_system_uptime_windows() {
@@ -1020,6 +1104,7 @@ static char* get_sysinfo_system_uptime_windows() {
 
     return result;
 }
+
 
 static void get_running_services_windows(Vector *services) {
     SYSINFO_LOG("[get_running_services_windows]: Retrieving running services.");
@@ -1061,6 +1146,7 @@ static void get_running_services_windows(Vector *services) {
     SYSINFO_LOG("[get_running_services_windows]: Finished retrieving running services.");
 }
 
+
 static void get_open_ports_windows(Vector *ports) {
     SYSINFO_LOG("[get_open_ports_windows]: Retrieving open TCP ports.");
 
@@ -1096,6 +1182,7 @@ static void get_open_ports_windows(Vector *ports) {
     free(tcpTable);
     SYSINFO_LOG("[get_open_ports_windows]: Finished retrieving open TCP ports.");
 }
+
 
 static void get_disk_partitions_windows(Vector *partitions) {
     SYSINFO_LOG("[get_disk_partitions_windows]: Retrieving disk partitions.");
@@ -1177,6 +1264,7 @@ static double get_sysinfo_cpu_usage_linux() {
     return usage;
 }
 
+
 // Linux specific memory usage function
 static double get_sysinfo_memory_usage_linux() {
     SYSINFO_LOG("[get_sysinfo_memory_usage_linux]: Retrieving memory usage.");
@@ -1214,7 +1302,15 @@ static double get_sysinfo_memory_usage_linux() {
     return usage;
 }
 
+
 static char* get_sysinfo_disk_space_linux(const char* path) {
+    /* Guard NULL / empty path: statvfs(NULL, ...) dereferences the path and
+       reads unaddressable memory (valgrind: "statfs(path) points to
+       unaddressable byte(s)"). Treat a missing path as a normal failure. */
+    if (!path || !*path) {
+        SYSINFO_LOG("[get_sysinfo_disk_space_linux]: Error - NULL/empty path.");
+        return NULL;
+    }
     SYSINFO_LOG("[get_sysinfo_disk_space_linux]: Retrieving disk space for path: %s", path);
 
     struct statvfs vfs;
@@ -1239,6 +1335,7 @@ static char* get_sysinfo_disk_space_linux(const char* path) {
     SYSINFO_LOG("[get_sysinfo_disk_space_linux]: Disk space retrieved successfully for path: %s", path);
     return result;
 }
+
 
 static char* get_sysinfo_system_uptime_linux() {
     SYSINFO_LOG("[get_sysinfo_system_uptime_linux]: Retrieving system uptime.");
@@ -1276,6 +1373,7 @@ static char* get_sysinfo_system_uptime_linux() {
     return result;
 }
 
+
 static void get_running_services_linux(Vector *services) {
     SYSINFO_LOG("[get_running_services_linux]: Running systemctl to list running services.");
     
@@ -1300,6 +1398,7 @@ static void get_running_services_linux(Vector *services) {
     SYSINFO_LOG("[get_running_services_linux]: Completed listing running services.");
 }
 
+
 static void get_open_ports_linux(Vector *ports) {
     SYSINFO_LOG("[get_open_ports_linux]: Running ss command to list open ports.");
     
@@ -1317,7 +1416,13 @@ static void get_open_ports_linux(Vector *ports) {
             sscanf(ip_port + 1, "%d", &port);  // Extract the port number
             SYSINFO_LOG("[get_open_ports_linux]: Found open port: %d", port);
 
+            // Check malloc — the previous code dereferenced port_ptr
+            // unconditionally and would segfault on OOM.
             int *port_ptr = (int*)malloc(sizeof(int));
+            if (!port_ptr) {
+                SYSINFO_LOG("[get_open_ports_linux]: malloc failed for port; skipping.");
+                continue;
+            }
             *port_ptr = port;
             vector_push_back(ports, &port_ptr);
         }
@@ -1326,6 +1431,7 @@ static void get_open_ports_linux(Vector *ports) {
     pclose(fp);
     SYSINFO_LOG("[get_open_ports_linux]: Completed listing open ports.");
 }
+
 
 // Linux specific virtualization detection remains the same
 static bool check_virtualization_in_cpuinfo() {
@@ -1350,6 +1456,7 @@ static bool check_virtualization_in_cpuinfo() {
     SYSINFO_LOG("[check_virtualization_in_cpuinfo]: No virtualization detected in /proc/cpuinfo.");
     return false;
 }
+
 
 static bool check_virtualization_with_systemd() {
     SYSINFO_LOG("[check_virtualization_with_systemd]: Running systemd-detect-virt.");
@@ -1376,41 +1483,46 @@ static bool check_virtualization_with_systemd() {
     return is_virtualized;
 }
 
+
 /**
- * @brief Checks if the system is running in a virtualized environment.
- * 
- * This function attempts to detect if the system is virtualized by 
- * examining `/proc/cpuinfo` or using the `systemd-detect-virt` utility.
+ * @brief Return true if the process is running inside a virtual
+ *        machine / hypervisor.
  *
- * On Linux, it first checks the `/proc/cpuinfo` file for any indicators 
- * of virtualization. If that fails, it tries to detect virtualization 
- * using `systemd-detect-virt`.
+ * Backend:
+ *   - Windows: `IsProcessorFeaturePresent(PF_VIRT_FIRMWARE_ENABLED)`
+ *     then `PF_HYPERVISOR_PRESENT` (if the SDK exposes it).
+ *   - Linux:   greps `/proc/cpuinfo` for the `hypervisor` flag and
+ *     also falls back to `systemd-detect-virt`.
+ *   - Other:   returns false.
  *
- * @return bool Returns true if virtualization is detected, false otherwise.
+ * @code
+ *     if (sysinfo_is_virtualized()) {
+ *         puts("running inside a VM");
+ *     }
+ * @endcode
  *
- * @note This function is primarily designed for Linux environments.
- *       The `check_virtualization_in_cpuinfo()` function checks for 
- *       known virtualization flags in the CPU information, and 
- *       `check_virtualization_with_systemd()` invokes `systemd-detect-virt`
- *       to identify if the system is running in a virtual machine.
+ * @return true if any backend reports virtualization, false otherwise.
  */
-bool sysinfo_is_virtualized() {
-    SYSINFO_LOG("[sysinfo_is_virtualized]: Checking for virtualization.");
-    
+bool sysinfo_is_virtualized(void) {
+    SYSINFO_LOG("[sysinfo_is_virtualized/linux]: enter");
+
     bool cpu_virtualization = check_virtualization_in_cpuinfo();
     bool systemd_virtualization = check_virtualization_with_systemd();
 
     if (cpu_virtualization) {
-        SYSINFO_LOG("[sysinfo_is_virtualized]: Virtualization detected via CPU info.");
-    } 
+        SYSINFO_LOG("[sysinfo_is_virtualized/linux]: virtualization detected via CPU info");
+    }
     else if (systemd_virtualization) {
-        SYSINFO_LOG("[sysinfo_is_virtualized]: Virtualization detected via systemd.");
-    } 
+        SYSINFO_LOG("[sysinfo_is_virtualized/linux]: virtualization detected via systemd");
+    }
     else {
-        SYSINFO_LOG("[sysinfo_is_virtualized]: No virtualization detected.");
+        SYSINFO_LOG("[sysinfo_is_virtualized/linux]: no virtualization detected");
     }
 
-    return cpu_virtualization || systemd_virtualization;
+    bool out = cpu_virtualization || systemd_virtualization;
+    SYSINFO_LOG("[sysinfo_is_virtualized/linux]: exit -> %s",
+                out ? "true" : "false");
+    return out;
 }
 
 static void get_disk_partitions_linux(Vector *partitions) {
@@ -1435,14 +1547,29 @@ static void get_disk_partitions_linux(Vector *partitions) {
 
         struct statvfs vfs;
         if (statvfs(mount_point, &vfs) == 0) {
+            unsigned long total = (unsigned long)vfs.f_blocks * (unsigned long)vfs.f_frsize;
+            unsigned long avail = (unsigned long)vfs.f_bavail * (unsigned long)vfs.f_frsize;
+
+            /* Skip pseudo / zero-capacity filesystems (proc, sysfs, cgroup,
+               tmpfs, ...): they are not real disk partitions and report a
+               total size of 0 (and sometimes free > total). This keeps the
+               result to actual storage partitions, matching the Windows side. */
+            if (total == 0) {
+                SYSINFO_LOG("[get_disk_partitions_linux]: Skipping zero-size pseudo fs at %s", mount_point);
+                continue;
+            }
+            if (avail > total) {
+                avail = total;   /* defensive: never report free > total */
+            }
+
             SysinfoDiskPartition partition;
             partition.mount_point = strdup(mount_point);
-            partition.total_size = vfs.f_blocks * vfs.f_frsize;  // Total size in bytes
-            partition.free_space = vfs.f_bavail * vfs.f_frsize;  // Available space in bytes
+            partition.total_size = total;   // Total size in bytes
+            partition.free_space = avail;   // Available space in bytes
 
             SYSINFO_LOG("[get_disk_partitions_linux]: Found partition at mount point: %s", mount_point);
             vector_push_back(partitions, &partition);
-        } 
+        }
         else {
             SYSINFO_LOG("[get_disk_partitions_linux]: Error - Failed to get stats for mount point: %s", mount_point);
         }
@@ -1455,183 +1582,187 @@ static void get_disk_partitions_linux(Vector *partitions) {
 #endif
 
 /**
- * @brief Retrieves the current CPU usage percentage of the system.
- * 
- * This function provides the CPU usage as a percentage by calculating the proportion
- * of time the CPU has spent performing work (in user mode and kernel mode) as compared to
- * idle time. The calculation is done over time, so repeated calls will provide more accurate
- * usage information.
- * 
- * On Windows, it uses the `GetSystemTimes()` function to get the amount of time spent in idle,
- * kernel, and user mode. On Linux, it reads from the `/proc/stat` file to obtain similar statistics.
- * 
- * @return double Returns the percentage of CPU usage. If an error occurs, it returns -1.0.
- * 
- * @note The function is platform-dependent and works on both Windows and Linux. On Windows, the 
- *       CPU usage is calculated based on time intervals provided by `GetSystemTimes()`. On Linux,
- *       the function parses the `/proc/stat` file to extract CPU usage statistics.
+ * @brief Return the current CPU usage as a percentage in [0, 100].
+ *
+ * The first call seeds the previous-times baseline; subsequent calls
+ * compute usage relative to that baseline. So treat the very first
+ * call as a "prime" and read the second call for a meaningful value.
+ *
+ * Backend:
+ *   - Windows: GetSystemTimes (idle / kernel / user).
+ *   - Linux:   parses the `cpu` row of /proc/stat.
+ *   - Other:   returns -1.0.
+ *
+ * @return Percentage in [0, 100] on success, -1.0 on failure /
+ *         unsupported platform.
  */
-double sysinfo_cpu_usage() {
-    SYSINFO_LOG("[sysinfo_cpu_usage]: Entering function.");
+double sysinfo_cpu_usage(void) {
+    SYSINFO_LOG("[sysinfo_cpu_usage]: enter");
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_cpu_usage]: Calling get_sysinfo_cpu_usage_windows.");
     double cpu_usage = get_sysinfo_cpu_usage_windows();
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_cpu_usage]: Calling get_sysinfo_cpu_usage_linux.");
     double cpu_usage = get_sysinfo_cpu_usage_linux();
+#else
+    /* Unsupported platform*/
+    double cpu_usage = -1.0;
 #endif
     if (cpu_usage < 0) {
-        SYSINFO_LOG("[sysinfo_cpu_usage]: Error - Failed to retrieve CPU usage.");
+        SYSINFO_LOG("[sysinfo_cpu_usage]: exit (failure) -> -1.0");
     } 
     else {
-        SYSINFO_LOG("[sysinfo_cpu_usage]: CPU usage retrieved successfully: %.2f%%", cpu_usage);
+        SYSINFO_LOG("[sysinfo_cpu_usage]: exit -> %.2f%%", cpu_usage);
     }
-
     return cpu_usage;
 }
 
+
 /**
- * @brief Retrieves the current memory usage percentage of the system.
- * 
- * This function calculates the memory usage as a percentage of the total available memory on the system.
- * It retrieves memory statistics differently depending on the platform. On Windows, it uses the
- * `GlobalMemoryStatusEx()` function, while on Linux, it parses `/proc/meminfo`.
- * 
- * @return double Returns the percentage of memory being used. If an error occurs, it returns -1.0.
- * 
- * @note This function works on both Windows and Linux platforms. On Windows, it uses the 
- *       `GlobalMemoryStatusEx()` function to get the total and available physical memory. On Linux, 
- *       it reads from `/proc/meminfo` to retrieve memory statistics.
+ * @brief Return memory usage as a percentage of total physical RAM in
+ *        [0, 100].
+ *
+ * Backend:
+ *   - Windows: GlobalMemoryStatusEx.
+ *   - Linux:   `MemTotal` / `MemAvailable` from /proc/meminfo.
+ *   - Other:   -1.0.
+ *
+ * @return Percentage in [0, 100] on success, -1.0 on failure.
  */
-double sysinfo_memory_usage() {
-    SYSINFO_LOG("[sysinfo_memory_usage]: Entering function.");
+double sysinfo_memory_usage(void) {
+    SYSINFO_LOG("[sysinfo_memory_usage]: enter");
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_memory_usage]: Calling get_sysinfo_memory_usage_windows.");
     double memory_usage = get_sysinfo_memory_usage_windows();
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_memory_usage]: Calling get_sysinfo_memory_usage_linux.");
     double memory_usage = get_sysinfo_memory_usage_linux();
+#else
+    double memory_usage = -1.0;
 #endif
     if (memory_usage < 0) {
-        SYSINFO_LOG("[sysinfo_memory_usage]: Error - Failed to retrieve memory usage.");
+        SYSINFO_LOG("[sysinfo_memory_usage]: exit (failure) -> -1.0");
     } 
     else {
-        SYSINFO_LOG("[sysinfo_memory_usage]: Memory usage retrieved successfully: %.2f%%", memory_usage);
+        SYSINFO_LOG("[sysinfo_memory_usage]: exit -> %.2f%%", memory_usage);
     }
-
     return memory_usage;
 }
 
+
 /**
- * @brief Retrieves the disk space information for a given path.
- * 
- * This function provides the total, used, and available disk space for the specified path.
- * It retrieves disk space information using platform-specific methods.
- * 
- * On Windows, it uses the `GetDiskFreeSpaceEx()` function to get the total and free space.
- * On Linux, it uses the `statvfs()` system call to get the file system statistics.
- * 
- * @param path The file path to check the disk space for.
- * @return char* A string containing the total, used, and available disk space in MB.
- *               The caller is responsible for freeing the allocated memory.
- *               Returns NULL in case of an error.
+ * @brief Return a "Total: N MB, Used: U MB, Available: A MB" string for
+ *        the filesystem containing @p path.
+ *
+ * Backend:
+ *   - Windows: GetDiskFreeSpaceExA.
+ *   - Linux:   statvfs.
+ *   - Other:   NULL.
+ *
+ * @param path  Any path on the filesystem to query. NULL produces NULL
+ *              (no crash).
+ * @return Heap-allocated string the caller must `free()`, or NULL on
+ *         failure / unsupported platform.
  */
 char* sysinfo_disk_space(const char* path) {
-    SYSINFO_LOG("[sysinfo_disk_space]: Entering function with path: %s", path);
+    SYSINFO_LOG("[sysinfo_disk_space]: enter path=%s",
+                path ? path : "(null)");
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_disk_space]: Calling get_sysinfo_disk_space_windows.");
     char* disk_space = get_sysinfo_disk_space_windows(path);
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_disk_space]: Calling get_sysinfo_disk_space_linux.");
     char* disk_space = get_sysinfo_disk_space_linux(path);
+#else
+    (void)path;
+    char* disk_space = NULL;
 #endif
     if (!disk_space) {
-        SYSINFO_LOG("[sysinfo_disk_space]: Error - Failed to retrieve disk space for path: %s.", path);
+        SYSINFO_LOG("[sysinfo_disk_space]: exit (failure) -> NULL");
     } 
     else {
-        SYSINFO_LOG("[sysinfo_disk_space]: Retrieved disk space for path: %s.", path);
+        SYSINFO_LOG("[sysinfo_disk_space]: exit -> %s", disk_space);
     }
-
     return disk_space;
 }
 
+
 /**
- * @brief Retrieves the system's uptime since the last boot.
- * 
- * This function returns the system uptime in a human-readable format, including days, hours,
- * minutes, and seconds.
- * 
- * On Windows, it uses the `GetTickCount64()` function to get the uptime in milliseconds.
- * On Linux, it parses the `/proc/uptime` file to get the uptime in seconds.
- * 
- * @return char* A string containing the system uptime in days, hours, minutes, and seconds.
- *               The caller is responsible for freeing the allocated memory.
- *               Returns NULL in case of an error.
+ * @brief Return the system uptime since boot, formatted as
+ *        "N days, H hours, M minutes, S seconds".
+ *
+ * Backend:
+ *   - Windows: `GetTickCount64()`.
+ *   - Linux:   `/proc/uptime`.
+ *   - Other:   NULL.
+ *
+ * @return Heap-allocated string the caller must `free()`, or NULL on
+ *         failure / unsupported platform.
  */
-char* sysinfo_system_uptime() {
-    SYSINFO_LOG("[sysinfo_system_uptime]: Entering function.");
+char* sysinfo_system_uptime(void) {
+    SYSINFO_LOG("[sysinfo_system_uptime]: enter");
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_system_uptime]: Calling get_sysinfo_system_uptime_windows.");
     char* uptime = get_sysinfo_system_uptime_windows();
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_system_uptime]: Calling get_sysinfo_system_uptime_linux.");
     char* uptime = get_sysinfo_system_uptime_linux();
+#else
+    char* uptime = NULL;
 #endif
     if (!uptime) {
-        SYSINFO_LOG("[sysinfo_system_uptime]: Error - Failed to retrieve system uptime.");
+        SYSINFO_LOG("[sysinfo_system_uptime]: exit (failure) -> NULL");
     } 
     else {
-        SYSINFO_LOG("[sysinfo_system_uptime]: Retrieved system uptime.");
+        SYSINFO_LOG("[sysinfo_system_uptime]: exit -> %s", uptime);
     }
-
     return uptime;
 }
 
-/**
- * @brief Retrieves the list of currently running services on the system.
- * 
- * This function gathers the running services on both Windows and Linux systems.
- * The services are returned in a dynamically allocated vector of `String*`.
- * 
- * @return Vector* A vector containing the names of the running services.
- * 
- * @note The vector needs to be deallocated by the caller.
- */
-Vector* sysinfo_running_services() {
-    SYSINFO_LOG("[sysinfo_running_services]: Entering function.");
 
-    Vector *services = vector_create(sizeof(char*));
+/**
+ * @brief Enumerate currently-running services / daemons.
+ *
+ * Backend:
+ *   - Windows: SCM `EnumServicesStatus`.
+ *   - Linux:   `systemctl list-units --type=service --state=running`.
+ *
+ * Ownership: returned `Vector` holds `char*` entries that were strdup'd
+ * by the backend. The caller must free each entry AND `vector_deallocate`
+ * the Vector itself.
+ *
+ * @return Heap-allocated Vector (possibly empty), or NULL on
+ *         vector_create failure.
+ */
+Vector* sysinfo_running_services(void) {
+    SYSINFO_LOG("[sysinfo_running_services]: enter");
+
+    Vector* services = vector_create(sizeof(char*));
     if (!services) {
-        SYSINFO_LOG("[sysinfo_running_services]: Error - Failed to create services vector.");
+        SYSINFO_LOG("[sysinfo_running_services]: vector_create failed -> NULL");
         return NULL;
     }
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_running_services]: Calling get_running_services_windows.");
     get_running_services_windows(services);
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_running_services]: Calling get_running_services_linux.");
     get_running_services_linux(services);
 #endif
-    SYSINFO_LOG("[sysinfo_running_services]: Exiting function with %zu services.", vector_size(services));
+
+    SYSINFO_LOG("[sysinfo_running_services]: exit -> %zu service(s)",
+                vector_size(services));
     return services;
 }
 
+
 /**
- * @brief Retrieves the number of CPU cores available on the system.
- * 
- * This function returns the total number of CPU cores available for use on the system.
- * 
- * On Windows, it uses the `GetSystemInfo()` function to get the number of processors.
- * On Linux, it uses `sysconf(_SC_NPROCESSORS_ONLN)` to retrieve the number of available processors.
- * 
- * @return int Number of CPU cores. If an error occurs, it returns -1.
+ * @brief Return the number of logical CPU cores available to the process.
+ *
+ * Backend:
+ *   - Windows: `GetSystemInfo().dwNumberOfProcessors`.
+ *   - Linux:   `sysconf(_SC_NPROCESSORS_ONLN)`.
+ *   - Other:   -1.
+ *
+ * @return Positive core count on success, -1 on failure / unsupported
+ *         platform.
  */
-int sysinfo_cpu_cores() {
+int sysinfo_cpu_cores(void) {
     SYSINFO_LOG("[sysinfo_cpu_cores]: Entering function.");
 
 #ifdef _WIN32
@@ -1656,78 +1787,105 @@ int sysinfo_cpu_cores() {
     SYSINFO_LOG("[sysinfo_cpu_cores]: Number of CPU cores on Linux: %ld.", nprocs);
     return (int)nprocs;
 
+#else
+    SYSINFO_LOG("[sysinfo_cpu_cores]: Unsupported platform, returning -1.");
+    return -1;
 #endif
 }
 
+
 /**
- * @brief Retrieves a list of active processes on the system.
- * 
- * This function returns a list of currently running processes on the system. 
- * The processes are returned in a dynamically allocated vector of strings (char*).
- * 
- * @return Vector* A vector containing the names of the active processes.
- * 
- * @note The vector needs to be deallocated by the caller.
+ * @brief Return a Vector of currently-running process names.
+ *
+ * Each element is a `char*` allocated with `strdup`. The Vector itself
+ * is allocated with `vector_create`. The caller is responsible for
+ * freeing each string and then the Vector — typically:
+ *
+ * @code
+ *     Vector* procs = sysinfo_process_list();
+ *     for (size_t i = 0; i < vector_size(procs); ++i) {
+ *         char** s = vector_at(procs, i);
+ *         puts(*s);
+ *         free(*s);
+ *     }
+ *     vector_deallocate(procs);
+ * @endcode
+ *
+ * Backend:
+ *   - Windows: Toolhelp32 snapshot (Process32First / Process32Next).
+ *   - Linux:   walks the numeric subdirs of /proc and reads `comm`.
+ *   - Other:   returns an empty Vector.
+ *
+ * @return Newly-allocated Vector. May be empty but is never NULL on
+ *         success. Returns NULL only if the Vector itself could not
+ *         be allocated.
  */
-Vector* sysinfo_process_list() {
-    SYSINFO_LOG("[sysinfo_process_list]: Entering function.");
-    
+Vector* sysinfo_process_list(void) {
+    SYSINFO_LOG("[sysinfo_process_list]: enter");
+
     Vector* processes = vector_create(sizeof(char*));
     if (!processes) {
-        SYSINFO_LOG("[sysinfo_process_list]: Error - Failed to create processes vector.");
+        SYSINFO_LOG("[sysinfo_process_list]: failed to create vector -> NULL");
         return NULL;
     }
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_process_list]: Fetching process list on Windows.");
+    SYSINFO_LOG("[sysinfo_process_list]: backend=windows");
 
     HANDLE hProcessSnap;
     PROCESSENTRY32 pe32;
     hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
-        SYSINFO_LOG("[sysinfo_process_list]: Error - Unable to create process snapshot.");
+        SYSINFO_LOG("[sysinfo_process_list]: CreateToolhelp32Snapshot failed -> returning empty vector");
         return processes;
     }
 
     pe32.dwSize = sizeof(PROCESSENTRY32);
     if (!Process32First(hProcessSnap, &pe32)) {
-        SYSINFO_LOG("[sysinfo_process_list]: Error - Unable to get the first process in the snapshot.");
+        SYSINFO_LOG("[sysinfo_process_list]: Process32First failed -> returning empty vector");
         CloseHandle(hProcessSnap);
         return processes;
     }
 
     do {
         char* processName = strdup(pe32.szExeFile);
-        vector_push_back(processes, &processName);
-        SYSINFO_LOG("[sysinfo_process_list]: Added process %s.", processName);
+        if (processName) {
+            vector_push_back(processes, &processName);
+            SYSINFO_LOG("[sysinfo_process_list]: added '%s'", processName);
+        }
+        else {
+            SYSINFO_LOG("[sysinfo_process_list]: strdup failed for '%s'", pe32.szExeFile);
+        }
     } while (Process32Next(hProcessSnap, &pe32));
 
     CloseHandle(hProcessSnap);
 
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_process_list]: Fetching process list on Linux.");
+    SYSINFO_LOG("[sysinfo_process_list]: backend=linux");
 
     DIR* procDir = opendir("/proc");
     if (!procDir) {
-        SYSINFO_LOG("[sysinfo_process_list]: Error - Unable to open /proc directory.");
+        SYSINFO_LOG("[sysinfo_process_list]: opendir(/proc) failed -> returning empty vector");
         return processes;
     }
 
     struct dirent* entry;
     while ((entry = readdir(procDir)) != NULL) {
         if (entry->d_type == DT_DIR && strspn(entry->d_name, "0123456789") == strlen(entry->d_name)) {
-            char procPath[300];  // Ensure buffer size is sufficient
+            char procPath[300];
             snprintf(procPath, sizeof(procPath), "/proc/%s/comm", entry->d_name);
 
             FILE* commFile = fopen(procPath, "r");
             if (commFile) {
                 char processName[256];
                 if (fgets(processName, sizeof(processName), commFile)) {
-                    processName[strcspn(processName, "\n")] = 0;  // Strip newline character
+                    processName[strcspn(processName, "\n")] = 0;
                     char* process = strdup(processName);
-                    vector_push_back(processes, &process);
-                    SYSINFO_LOG("[sysinfo_process_list]: Added process %s.", processName);
+                    if (process) {
+                        vector_push_back(processes, &process);
+                        SYSINFO_LOG("[sysinfo_process_list]: added '%s'", processName);
+                    }
                 }
                 fclose(commFile);
             }
@@ -1735,49 +1893,72 @@ Vector* sysinfo_process_list() {
     }
 
     closedir(procDir);
+
+#else
+    SYSINFO_LOG("[sysinfo_process_list]: backend=unknown (returning empty vector)");
 #endif
 
-    SYSINFO_LOG("[sysinfo_process_list]: Exiting function with %zu processes.", vector_size(processes));
+    SYSINFO_LOG("[sysinfo_process_list]: exit -> %zu processes", vector_size(processes));
     return processes;
 }
 
+
 /**
- * @brief Retrieves the list of active network interfaces along with their IP addresses.
- * 
- * This function gathers the list of active network interfaces and their associated IP addresses
- * on both Windows and Linux systems. The results are returned in a dynamically allocated vector
- * of `SysinfoNetworkInterface` structures.
- * 
- * @return Vector* A vector containing the network interfaces and their IP addresses.
- * 
- * @note The vector and its contents need to be deallocated by the caller.
+ * @brief Return a Vector of active network interfaces and their IPv4
+ *        addresses.
+ *
+ * Each element is a `SysinfoNetworkInterface` struct with two
+ * `strdup`-allocated strings (`interface_name`, `ip_address`). Use
+ * `sysinfo_deallocate_network_interfaces` to release everything
+ * together.
+ *
+ * @code
+ *     Vector* ifaces = sysinfo_network_interfaces();
+ *     for (size_t i = 0; i < vector_size(ifaces); ++i) {
+ *         SysinfoNetworkInterface* it = vector_at(ifaces, i);
+ *         printf("%s -> %s\n", it->interface_name, it->ip_address);
+ *     }
+ *     sysinfo_deallocate_network_interfaces(ifaces);
+ * @endcode
+ *
+ * Backend:
+ *   - Windows: `GetAdaptersAddresses`, with auto-resize on
+ *     ERROR_BUFFER_OVERFLOW. Reports only adapters with
+ *     `OperStatus == IfOperStatusUp`.
+ *   - Linux:   `SIOCGIFCONF` + `SIOCGIFADDR` via UDP socket.
+ *   - Other:   returns an empty Vector.
+ *
+ * @return Newly-allocated Vector. NULL only on allocation failure.
  */
-Vector* sysinfo_network_interfaces() {
-    SYSINFO_LOG("[sysinfo_network_interfaces]: Entering function.");
-    
+Vector* sysinfo_network_interfaces(void) {
+    SYSINFO_LOG("[sysinfo_network_interfaces]: enter");
+
     Vector* interfaces = vector_create(sizeof(SysinfoNetworkInterface));
     if (!interfaces) {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Error - Failed to create interfaces vector.");
+        SYSINFO_LOG("[sysinfo_network_interfaces]: failed to create vector -> NULL");
         return NULL;
     }
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_network_interfaces]: Fetching network interfaces on Windows.");
+    SYSINFO_LOG("[sysinfo_network_interfaces]: backend=windows");
 
     ULONG bufferSize = 15000;
     PIP_ADAPTER_ADDRESSES adapterAddresses = (PIP_ADAPTER_ADDRESSES)malloc(bufferSize);
     if (!adapterAddresses) {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Error - Memory allocation failed for adapter addresses.");
+        SYSINFO_LOG("[sysinfo_network_interfaces]: initial malloc failed -> NULL");
         vector_deallocate(interfaces);
         return NULL;
     }
 
     if (GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, adapterAddresses, &bufferSize) == ERROR_BUFFER_OVERFLOW) {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Buffer size too small, reallocating...");
+        SYSINFO_LOG("[sysinfo_network_interfaces]: buffer too small, reallocating to %lu bytes",
+                    (unsigned long)bufferSize);
         free(adapterAddresses);
         adapterAddresses = (PIP_ADAPTER_ADDRESSES)malloc(bufferSize);
+
         if (!adapterAddresses) {
-            SYSINFO_LOG("[sysinfo_network_interfaces]: Error - Memory allocation failed for larger buffer.");
+            SYSINFO_LOG("[sysinfo_network_interfaces]: realloc failed -> NULL");
+
             vector_deallocate(interfaces);
             return NULL;
         }
@@ -1785,42 +1966,51 @@ Vector* sysinfo_network_interfaces() {
 
     DWORD result = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, adapterAddresses, &bufferSize);
     if (result == NO_ERROR) {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Successfully retrieved adapter addresses.");
+        SYSINFO_LOG("[sysinfo_network_interfaces]: GetAdaptersAddresses ok");
         PIP_ADAPTER_ADDRESSES adapter = adapterAddresses;
         while (adapter) {
             if (adapter->OperStatus == IfOperStatusUp) {
-                SYSINFO_LOG("[sysinfo_network_interfaces]: Processing active adapter %s.", adapter->AdapterName);
+                SYSINFO_LOG("[sysinfo_network_interfaces]: active adapter '%s'", adapter->AdapterName);
 
                 SysinfoNetworkInterface iface;
                 iface.interface_name = strdup(adapter->AdapterName);
+                iface.ip_address = NULL;
 
                 PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
                 while (unicast) {
                     SOCKADDR* addr = unicast->Address.lpSockaddr;
-                    if (addr->sa_family == AF_INET) {  // IPv4
+                    if (addr->sa_family == AF_INET) {
                         struct sockaddr_in* ipv4 = (struct sockaddr_in*)addr;
                         iface.ip_address = strdup(inet_ntoa(ipv4->sin_addr));
+
                         vector_push_back(interfaces, &iface);
-                        SYSINFO_LOG("[sysinfo_network_interfaces]: Added interface %s with IP %s.", iface.interface_name, iface.ip_address);
-                        break; 
+                        SYSINFO_LOG("[sysinfo_network_interfaces]: '%s' -> %s", iface.interface_name, iface.ip_address);
+                        break;
                     }
                     unicast = unicast->Next;
+                }
+
+                if (!iface.ip_address) {
+                    /* no IPv4 address attached: drop the dup */
+                    free(iface.interface_name);
                 }
             }
             adapter = adapter->Next;
         }
-    } else {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Error - Failed to retrieve adapter addresses. Error code: %lu.", result);
+    }
+    else {
+        SYSINFO_LOG("[sysinfo_network_interfaces]: GetAdaptersAddresses failed, code=%lu",
+                    (unsigned long)result);
     }
 
     free(adapterAddresses);
 
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_network_interfaces]: Fetching network interfaces on Linux.");
+    SYSINFO_LOG("[sysinfo_network_interfaces]: backend=linux");
 
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Error - Failed to open socket.");
+        SYSINFO_LOG("[sysinfo_network_interfaces]: socket() failed -> empty vector");
         return interfaces;
     }
 
@@ -1830,7 +2020,7 @@ Vector* sysinfo_network_interfaces() {
     ifc.ifc_buf = buffer;
 
     if (ioctl(fd, SIOCGIFCONF, &ifc) == -1) {
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Error - Failed to get network interface configuration.");
+        SYSINFO_LOG("[sysinfo_network_interfaces]: SIOCGIFCONF failed -> empty vector");
         close(fd);
         return interfaces;
     }
@@ -1842,33 +2032,48 @@ Vector* sysinfo_network_interfaces() {
         struct ifreq* item = &ifr[i];
         SysinfoNetworkInterface iface;
         iface.interface_name = strdup(item->ifr_name);
-        SYSINFO_LOG("[sysinfo_network_interfaces]: Found interface %s.", iface.interface_name);
+        iface.ip_address = NULL;
+        SYSINFO_LOG("[sysinfo_network_interfaces]: candidate '%s'",
+                    iface.interface_name);
 
         if (ioctl(fd, SIOCGIFADDR, item) == 0) {
             struct sockaddr_in* addr = (struct sockaddr_in*)&item->ifr_addr;
             iface.ip_address = strdup(inet_ntoa(addr->sin_addr));
             vector_push_back(interfaces, &iface);
-            SYSINFO_LOG("[sysinfo_network_interfaces]: Added interface %s with IP %s.", iface.interface_name, iface.ip_address);
+            SYSINFO_LOG("[sysinfo_network_interfaces]: '%s' -> %s",
+                        iface.interface_name, iface.ip_address);
+        }
+        else {
+            free(iface.interface_name);
         }
     }
 
     close(fd);
+
+#else
+    SYSINFO_LOG("[sysinfo_network_interfaces]: backend=unknown (empty vector)");
 #endif
 
-    SYSINFO_LOG("[sysinfo_network_interfaces]: Exiting function with %zu interfaces.", vector_size(interfaces));
+    SYSINFO_LOG("[sysinfo_network_interfaces]: exit -> %zu interfaces",
+                vector_size(interfaces));
     return interfaces;
 }
 
 /**
- * @brief Deallocates the memory used by a vector of SysinfoNetworkInterface structures.
- * 
- * @param interfaces The vector containing the network interfaces.
+ * @brief Release a Vector previously returned by
+ *        `sysinfo_network_interfaces`.
+ *
+ * Frees each element's `interface_name` and `ip_address`, then
+ * deallocates the Vector itself. NULL-safe.
+ *
+ * @param interfaces Vector of `SysinfoNetworkInterface`. May be NULL.
  */
 void sysinfo_deallocate_network_interfaces(Vector* interfaces) {
-    SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: Entering function.");
+    SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: enter (interfaces=%p)",
+                (void*)interfaces);
 
     if (!interfaces) {
-        SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: NULL interfaces pointer.");
+        SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: NULL, no-op");
         return;
     }
 
@@ -1876,154 +2081,168 @@ void sysinfo_deallocate_network_interfaces(Vector* interfaces) {
         SysinfoNetworkInterface* iface = (SysinfoNetworkInterface*)vector_at(interfaces, i);
         free(iface->interface_name);
         free(iface->ip_address);
-
-        SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: Deallocated interface %zu.", i);
+        SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: freed element %zu", i);
     }
-    
+
     vector_deallocate(interfaces);
-    SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: Exiting function.");
+    SYSINFO_LOG("[sysinfo_deallocate_network_interfaces]: exit");
 }
 
 
 /**
- * @brief Retrieves a list of open network ports on the system.
- * 
- * This function gathers open ports from both Windows and Linux systems.
- * It returns a dynamically allocated vector of integers representing the open ports.
- * 
- * @return Vector* A vector containing the open ports.
- * 
- * @note The vector needs to be deallocated by the caller.
+ * @brief Return a Vector of open TCP listening ports on the system.
+ *
+ * Each element is an `int` (boxed via the vector's element size of
+ * `sizeof(int*)` to remain ABI-compatible with the original API
+ * shape). The Vector itself must be deallocated with
+ * `vector_deallocate` by the caller.
+ *
+ * Backend:
+ *   - Windows: GetTcpTable / GetTcp6Table.
+ *   - Linux:   parses /proc/net/tcp.
+ *   - Other:   returns an empty Vector.
+ *
+ * @code
+ *     Vector* ports = sysinfo_open_ports();
+ *     for (size_t i = 0; i < vector_size(ports); ++i) {
+ *         int* p = (int*)vector_at(ports, i);
+ *         printf("open: %d\n", *p);
+ *     }
+ *     vector_deallocate(ports);
+ * @endcode
+ *
+ * @return Newly-allocated Vector. NULL only on allocation failure.
  */
-Vector* sysinfo_open_ports() {
-    SYSINFO_LOG("[sysinfo_open_ports]: Entering function.");
+Vector* sysinfo_open_ports(void) {
+    SYSINFO_LOG("[sysinfo_open_ports]: enter");
 
-    Vector *ports = vector_create(sizeof(int*));
+    Vector* ports = vector_create(sizeof(int*));
     if (!ports) {
-        SYSINFO_LOG("[sysinfo_open_ports]: Error - Failed to create ports vector.");
+        SYSINFO_LOG("[sysinfo_open_ports]: failed to create vector -> NULL");
         return NULL;
     }
 
 #ifdef _WIN32
-    SYSINFO_LOG("[sysinfo_open_ports]: Gathering open ports for Windows.");
+    SYSINFO_LOG("[sysinfo_open_ports]: backend=windows");
     get_open_ports_windows(ports);
 #elif __linux__
-    SYSINFO_LOG("[sysinfo_open_ports]: Gathering open ports for Linux.");
+    SYSINFO_LOG("[sysinfo_open_ports]: backend=linux");
     get_open_ports_linux(ports);
+#else
+    SYSINFO_LOG("[sysinfo_open_ports]: backend=unknown (empty vector)");
 #endif
 
-    SYSINFO_LOG("[sysinfo_open_ports]: Exiting function with %zu open ports.", vector_size(ports));
+    SYSINFO_LOG("[sysinfo_open_ports]: exit -> %zu open ports",
+                vector_size(ports));
     return ports;
 }
 
 #ifdef _WIN32
-/**
- * @brief Checks if the system is running in a virtualized environment.
- *
- * This function detects if the system is running in a virtualized environment 
- * by checking for specific processor features available on the platform.
- *
- * On Windows, it checks the presence of `PF_VIRT_FIRMWARE_ENABLED` and 
- * `PF_HYPERVISOR_PRESENT` features to determine virtualization status.
- *
- * On Linux, the detection is handled via `/proc/cpuinfo` or `systemd-detect-virt`, 
- * although these are not included in this Windows-specific implementation.
- *
- * @return bool Returns true if virtualization is detected, false otherwise.
- *
- * @note This function is platform-specific and currently supports Windows and Linux.
- *       The function checks for the availability of the `PF_VIRT_FIRMWARE_ENABLED` 
- *       feature on all Windows systems. The `PF_HYPERVISOR_PRESENT` feature is 
- *       conditionally checked if available on the platform.
- */
-bool sysinfo_is_virtualized() {
-    SYSINFO_LOG("[sysinfo_is_virtualized]: Entering function.");
+/* Windows implementation of sysinfo_is_virtualized. The Doxygen
+ * contract lives above the Linux implementation higher up in this
+ * file. */
+bool sysinfo_is_virtualized(void) {
+    SYSINFO_LOG("[sysinfo_is_virtualized/win32]: enter");
 
     if (IsProcessorFeaturePresent(PF_VIRT_FIRMWARE_ENABLED)) {
-        SYSINFO_LOG("[sysinfo_is_virtualized]: Virtualization detected via PF_VIRT_FIRMWARE_ENABLED.");
+        SYSINFO_LOG("[sysinfo_is_virtualized/win32]: detected via PF_VIRT_FIRMWARE_ENABLED -> true");
         return true;
     }
 
 #ifdef PF_HYPERVISOR_PRESENT
     if (IsProcessorFeaturePresent(PF_HYPERVISOR_PRESENT)) {
-        SYSINFO_LOG("[sysinfo_is_virtualized]: Virtualization detected via PF_HYPERVISOR_PRESENT.");
+        SYSINFO_LOG("[sysinfo_is_virtualized/win32]: detected via PF_HYPERVISOR_PRESENT -> true");
         return true;
     }
 #endif
-    SYSINFO_LOG("[sysinfo_is_virtualized]: No virtualization detected.");
+
+    SYSINFO_LOG("[sysinfo_is_virtualized/win32]: exit -> false");
+    return false;
+}
+#elif !defined(__linux__)
+/* Fallback definition for platforms that are neither Windows nor
+ * Linux. Without this, the symbol was simply missing on macOS/BSD
+ * and any caller that referenced it produced a linker error. */
+bool sysinfo_is_virtualized(void) {
+    SYSINFO_LOG("[sysinfo_is_virtualized/other]: unsupported platform -> false");
     return false;
 }
 #endif
 
 /**
- * @brief Retrieves the current system locale as a string.
- * 
- * This function returns the system locale on both Windows and Linux platforms.
- * 
- * @return char* A dynamically allocated string representing the system locale. 
- *               The caller is responsible for freeing the returned string.
+ * @brief Return the current system locale as a newly-allocated string
+ *        (e.g. "en-US", "fa_IR.UTF-8").
+ *
+ * Backend:
+ *   - Windows: `GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, ...)`,
+ *     then converted from wide-char to narrow.
+ *   - POSIX:   reads `LC_ALL`, then `LC_MESSAGES`, then `LANG`, then
+ *     finally `setlocale(LC_ALL, NULL)`.
+ *
+ * Always returns a heap-allocated copy — never a static pointer —
+ * so the caller can safely `free` it.
+ *
+ * @code
+ *     char* loc = sysinfo_system_locale();
+ *     printf("locale: %s\n", loc);
+ *     free(loc);
+ * @endcode
+ *
+ * @return strdup()'d locale string. Returns the string "unknown" (also
+ *         heap-allocated) if the OS could not report a locale, or
+ *         NULL only if the duplication itself failed.
  */
-/**
- * @brief Retrieves the current system locale as a string.
- * 
- * This function returns the system locale on both Windows and Linux platforms.
- * 
- * @return char* A dynamically allocated string representing the system locale. 
- *               The caller is responsible for freeing the returned string.
- */
-char* sysinfo_system_locale() {
-    SYSINFO_LOG("[sysinfo_system_locale]: Entering function.");
+char* sysinfo_system_locale(void) {
+    SYSINFO_LOG("[sysinfo_system_locale]: enter");
 
 #ifdef _WIN32
-    wchar_t w_locale_buffer[128]; 
+    wchar_t w_locale_buffer[128];
     char locale_buffer[128];
 
     if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, w_locale_buffer, sizeof(w_locale_buffer) / sizeof(wchar_t)) == 0) {
-        SYSINFO_LOG("[sysinfo_system_locale]: Failed to retrieve system locale, setting to 'unknown'.");
+        SYSINFO_LOG("[sysinfo_system_locale]: GetLocaleInfoEx failed, falling back to 'unknown'");
         strcpy(locale_buffer, "unknown");
-    } 
+    }
     else {
-        // Convert wide string (wchar_t) to narrow string (char*)
         wcstombs(locale_buffer, w_locale_buffer, sizeof(locale_buffer));
-        SYSINFO_LOG("[sysinfo_system_locale]: Locale retrieved successfully: %s.", locale_buffer);
+        SYSINFO_LOG("[sysinfo_system_locale]: win32 locale = '%s'", locale_buffer);
     }
 
 #else
-    // On Linux, check the environment variables to determine the locale.
     static char locale_buffer[128];
     const char* locale = getenv("LC_ALL");
-    
+
     if (!locale || strlen(locale) == 0) {
+        SYSINFO_LOG("[sysinfo_system_locale]: LC_ALL empty, trying LC_MESSAGES");
         locale = getenv("LC_MESSAGES");
     }
     if (!locale || strlen(locale) == 0) {
+        SYSINFO_LOG("[sysinfo_system_locale]: LC_MESSAGES empty, trying LANG");
         locale = getenv("LANG");
     }
     if (!locale || strlen(locale) == 0) {
+        SYSINFO_LOG("[sysinfo_system_locale]: env vars empty, falling back to setlocale()");
         locale = setlocale(LC_ALL, NULL);
     }
 
     if (locale) {
         strncpy(locale_buffer, locale, sizeof(locale_buffer) - 1);
-        locale_buffer[sizeof(locale_buffer) - 1] = '\0';  // Ensure null-termination
-        SYSINFO_LOG("[sysinfo_system_locale]: Locale retrieved successfully: %s.", locale_buffer);
-    } 
+        locale_buffer[sizeof(locale_buffer) - 1] = '\0';
+        SYSINFO_LOG("[sysinfo_system_locale]: posix locale = '%s'", locale_buffer);
+    }
     else {
-        SYSINFO_LOG("[sysinfo_system_locale]: Failed to retrieve system locale, setting to 'unknown'.");
+        SYSINFO_LOG("[sysinfo_system_locale]: no locale source, falling back to 'unknown'");
         strcpy(locale_buffer, "unknown");
     }
 #endif
 
-    // Return a dynamically allocated copy of the locale string
     char* result = strdup(locale_buffer);
     if (!result) {
-        SYSINFO_LOG("[sysinfo_system_locale]: Memory allocation failed for locale string.");
-    } 
-    else {
-        SYSINFO_LOG("[sysinfo_system_locale]: Locale string copied successfully.");
+        SYSINFO_LOG("[sysinfo_system_locale]: strdup failed -> NULL");
     }
-
-    SYSINFO_LOG("[sysinfo_system_locale]: Exiting function.");
+    else {
+        SYSINFO_LOG("[sysinfo_system_locale]: exit -> '%s'", result);
+    }
     return result;
 }
 
@@ -2073,6 +2292,10 @@ bool sysinfo_is_service_running(const char* service_name) {
         return isRunning;
 
     #elif __linux__
+        if (!service_name || !*service_name) {
+            SYSINFO_LOG("[sysinfo_is_service_running]: empty/NULL service name -> not running.");
+            return false;
+        }
         char command[256];
         snprintf(command, sizeof(command), "systemctl is-active --quiet %s", service_name);
         int result = system(command);
@@ -2093,10 +2316,22 @@ bool sysinfo_is_service_running(const char* service_name) {
         char buffer[256];
         bool found = false;
 
+        size_t snlen = strlen(service_name);
         while (fgets(buffer, sizeof(buffer), proc_fp)) {
-            if (strstr(buffer, service_name) != NULL) {
+            /* Match service_name as a whitespace/'/'-delimited token (a process
+               command), not a loose substring -- otherwise short names like "a"
+               match almost every process line, giving a false positive. */
+            for (char* hit = strstr(buffer, service_name); hit; hit = strstr(hit + 1, service_name)) {
+                char before = (hit == buffer) ? ' ' : hit[-1];
+                char after  = hit[snlen];
+                if ((before == ' ' || before == '\t' || before == '/' || before == '\n') &&
+                    (after == '\0' || after == '\n' || after == ' ' || after == '\t')) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
                 SYSINFO_LOG("[sysinfo_is_service_running]: Service '%s' found in process list.", service_name);
-                found = true;
                 break;
             }
         }
@@ -2106,6 +2341,12 @@ bool sysinfo_is_service_running(const char* service_name) {
             SYSINFO_LOG("[sysinfo_is_service_running]: Service '%s' is not running (ps check).", service_name);
         }
         return found;
+    #else
+        /* Platform without a service manager — answer false so callers
+           reading is_service_running() on macOS/BSD don't fall off the
+           end of the function (undefined behaviour). */
+        (void)service_name;
+        return false;
     #endif
 }
 
@@ -2185,4 +2426,822 @@ void sysinfo_deallocate_disk_partitions(Vector* partitions) {
     vector_deallocate(partitions);
 
     SYSINFO_LOG("[sysinfo_deallocate_disk_partitions]: Exiting function.");
+}
+
+
+#ifdef _WIN32
+#  include <direct.h>          /* _getcwd */
+#  include <process.h>         /* _getpid (not used; kept for clarity)   */
+/* GetUserNameA, GetTempPathA, GetModuleFileNameA, GetCurrentProcessId,
+   and GlobalMemoryStatusEx are already available via <windows.h>. */
+#else
+#  include <unistd.h>          /* getcwd, getpid, getlogin_r, readlink   */
+#  include <sys/types.h>
+#  include <pwd.h>             /* getpwuid                                */
+#  include <limits.h>          /* PATH_MAX                                */
+#  ifndef PATH_MAX
+#    define PATH_MAX 4096
+#  endif
+#endif
+
+/* Small helper: dup a string but never return NULL. Falls back to a
+   newly-allocated copy of `fallback` (which itself must not be NULL).
+   Used by the username / home / temp helpers so the public API can
+   make the strict "never returns NULL" guarantee documented in the
+   header. */
+static char* sysinfo_strdup_or(const char* src, const char* fallback) {
+    const char* s = (src && src[0] != '\0') ? src : fallback;
+    if (!s) {
+        s = "";
+    }
+    size_t n = strlen(s);
+    char* out = (char*)malloc(n + 1);
+    if (!out) {
+        SYSINFO_LOG("[sysinfo_strdup_or]: malloc failed.");
+        return NULL;
+    }
+    memcpy(out, s, n + 1);
+    return out;
+}
+
+/**
+ * @brief Returns the current user's login name as a freshly-allocated string.
+ *
+ * Implementation:
+ *  - Windows: `GetUserNameA` into a UNLEN+1 buffer.
+ *  - POSIX:   `getlogin_r`, then `getpwuid(geteuid())`, then `$USER` /
+ *             `$LOGNAME` as a final fallback.
+ *
+ * Always returns a non-NULL string. Falls back to `"unknown"` if every
+ * source fails (very rare — a controlled environment with no passwd
+ * database and no environment).
+ *
+ * @code
+ * char* user = sysinfo_username();
+ * printf("Hello, %s!\n", user);
+ * free(user);
+ * @endcode
+ */
+char* sysinfo_username(void) {
+    SYSINFO_LOG("[sysinfo_username]: Entering function.");
+#ifdef _WIN32
+    /* UNLEN is 256 in <lmcons.h>; allocate one byte more for the NUL. */
+    char name[257];
+    DWORD len = (DWORD)sizeof(name);
+    if (GetUserNameA(name, &len) && len > 0) {
+        return sysinfo_strdup_or(name, "unknown");
+    }
+    return sysinfo_strdup_or(NULL, "unknown");
+#else
+    char buf[256];
+    if (getlogin_r(buf, sizeof(buf)) == 0 && buf[0] != '\0') {
+        return sysinfo_strdup_or(buf, "unknown");
+    }
+    struct passwd* pw = getpwuid(geteuid());
+    if (pw && pw->pw_name && pw->pw_name[0] != '\0') {
+        return sysinfo_strdup_or(pw->pw_name, "unknown");
+    }
+    const char* env = getenv("USER");
+    if (!env || env[0] == '\0') env = getenv("LOGNAME");
+    return sysinfo_strdup_or(env, "unknown");
+#endif
+}
+
+
+/**
+ * @brief Returns the current user's home directory as a freshly-allocated string.
+ *
+ * Implementation:
+ *  - Windows: prefers `$USERPROFILE`; if absent falls back to combining
+ *             `$HOMEDRIVE` and `$HOMEPATH`.
+ *  - POSIX:   `$HOME`, then `getpwuid(geteuid())->pw_dir`.
+ *
+ * Never returns NULL. Returns an empty string when nothing is available.
+ *
+ * @code
+ * char* home = sysinfo_home_directory();
+ * printf("Config under: %s/.myapp\n", home);
+ * free(home);
+ * @endcode
+ */
+char* sysinfo_home_directory(void) {
+    SYSINFO_LOG("[sysinfo_home_directory]: Entering function.");
+#ifdef _WIN32
+    const char* up = getenv("USERPROFILE");
+    if (up && up[0] != '\0') {
+        return sysinfo_strdup_or(up, "");
+    }
+
+    const char* drv = getenv("HOMEDRIVE");
+    const char* pth = getenv("HOMEPATH");
+    if (drv && pth) {
+        size_t n1 = strlen(drv), n2 = strlen(pth);
+        char* out = (char*)malloc(n1 + n2 + 1);
+
+        if (out) {
+            memcpy(out, drv, n1);
+            memcpy(out + n1, pth, n2);
+            out[n1 + n2] = '\0';
+            return out;
+        }
+    }
+    return sysinfo_strdup_or("", "");
+#else
+    const char* env = getenv("HOME");
+    if (env && env[0] != '\0') {
+        return sysinfo_strdup_or(env, "");
+    }
+
+    struct passwd* pw = getpwuid(geteuid());
+    if (pw && pw->pw_dir) {
+        return sysinfo_strdup_or(pw->pw_dir, "");
+    }
+
+    return sysinfo_strdup_or("", "");
+#endif
+}
+
+
+/**
+ * @brief Returns the system's default temporary-files directory.
+ *
+ * Implementation:
+ *  - Windows: `GetTempPathA`, with any trailing `\\` trimmed.
+ *  - POSIX:   `$TMPDIR`, then `/tmp`.
+ *
+ * Never returns NULL. The returned string never has a trailing
+ * separator, so callers can do `<tmp> + "/" + name` without worrying
+ * about a double slash.
+ *
+ * @code
+ * char* tmp = sysinfo_temp_directory();
+ * char buf[512];
+ * snprintf(buf, sizeof(buf), "%s/myapp.tmp", tmp);
+ * free(tmp);
+ * @endcode
+ */
+char* sysinfo_temp_directory(void) {
+    SYSINFO_LOG("[sysinfo_temp_directory]: Entering function.");
+#ifdef _WIN32
+    char buf[MAX_PATH + 1];
+    DWORD n = GetTempPathA((DWORD)sizeof(buf), buf);
+    if (n == 0 || n >= sizeof(buf)) {
+        return sysinfo_strdup_or("C:\\Temp", "C:\\Temp");
+    }
+    /* Trim trailing slash/backslash to normalise the contract. */
+    while (n > 0 && (buf[n - 1] == '\\' || buf[n - 1] == '/')) {
+        buf[--n] = '\0';
+    }
+    return sysinfo_strdup_or(buf, "C:\\Temp");
+#else
+    const char* env = getenv("TMPDIR");
+    if (env && env[0] != '\0') {
+        /* Trim trailing slash for consistency with the Windows path. */
+        size_t n = strlen(env);
+        while (n > 1 && env[n - 1] == '/') n--;
+        char* out = (char*)malloc(n + 1);
+        if (out) {
+            memcpy(out, env, n);
+            out[n] = '\0';
+
+            return out;
+        }
+    }
+    return sysinfo_strdup_or("/tmp", "/tmp");
+#endif
+}
+
+
+/**
+ * @brief Returns the current working directory of the calling process.
+ *
+ * Uses a growing buffer so paths longer than `PATH_MAX` (rare but
+ * legal on some POSIX systems) are still captured. Caller owns the
+ * returned string. Returns NULL on unrecoverable error.
+ *
+ * @code
+ * char* cwd = sysinfo_current_working_directory();
+ * if (cwd) { puts(cwd); free(cwd); }
+ * @endcode
+ */
+char* sysinfo_current_working_directory(void) {
+    SYSINFO_LOG("[sysinfo_current_working_directory]: Entering function.");
+    size_t cap = 256;
+    while (cap <= (1u << 16)) {
+        char* buf = (char*)malloc(cap);
+        if (!buf) {
+            SYSINFO_LOG("[sysinfo_current_working_directory]: malloc failed.");
+            return NULL;
+        }
+#ifdef _WIN32
+        if (_getcwd(buf, (int)cap) != NULL) {
+            return buf;
+        }
+#else
+        if (getcwd(buf, cap) != NULL) {
+            return buf;
+        }
+#endif
+        free(buf);
+        cap *= 2;
+    }
+    return NULL;
+}
+
+
+/**
+ * @brief Returns the absolute path to the currently-running executable.
+ *
+ * Implementation:
+ *  - Windows: `GetModuleFileNameA(NULL, ...)` with an MAX_PATH buffer.
+ *  - Linux:   `readlink("/proc/self/exe")`.
+ *
+ * Caller owns the returned string. Returns NULL on the unsupported-
+ * platform path (macOS support would require `_NSGetExecutablePath`,
+ * intentionally not pulled in here to keep the dependency surface
+ * small).
+ *
+ * @code
+ * char* exe = sysinfo_executable_path();
+ * if (exe) { printf("running from %s\n", exe); free(exe); }
+ * @endcode
+ */
+char* sysinfo_executable_path(void) {
+    SYSINFO_LOG("[sysinfo_executable_path]: Entering function.");
+#ifdef _WIN32
+    char buf[MAX_PATH + 1];
+    DWORD n = GetModuleFileNameA(NULL, buf, (DWORD)sizeof(buf));
+    if (n == 0 || n >= sizeof(buf)) {
+        SYSINFO_LOG("[sysinfo_executable_path]: GetModuleFileNameA failed or truncated.");
+        return NULL;
+    }
+
+    return sysinfo_strdup_or(buf, NULL);
+#elif defined(__linux__)
+    char buf[PATH_MAX + 1];
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n <= 0) {
+        SYSINFO_LOG("[sysinfo_executable_path]: readlink /proc/self/exe failed.");
+        return NULL;
+    }
+    buf[n] = '\0';
+    return sysinfo_strdup_or(buf, NULL);
+#else
+    return NULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the process ID of the current process.
+ *
+ * Implementation:
+ *  - Windows: `GetCurrentProcessId()` (DWORD widened to long).
+ *  - POSIX:   `getpid()` (pid_t widened to long).
+ *
+ * Returns `-1` only on the unsupported-platform path. Never fails on
+ * Windows or POSIX.
+ *
+ * @code
+ * printf("Our pid is %ld\n", sysinfo_process_id());
+ * @endcode
+ */
+long sysinfo_process_id(void) {
+    SYSINFO_LOG("[sysinfo_process_id]: Entering function.");
+#ifdef _WIN32
+    return (long)GetCurrentProcessId();
+#elif defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+    return (long)getpid();
+#else
+    return -1;
+#endif
+}
+
+
+/**
+ * @brief Returns the total amount of physical memory in bytes.
+ *
+ * Implementation:
+ *  - Windows: `GlobalMemoryStatusEx(ullTotalPhys)`.
+ *  - Linux:   parses `MemTotal` from `/proc/meminfo`.
+ *
+ * Returns 0 if the OS cannot answer or the platform is unsupported.
+ *
+ * @code
+ * unsigned long long total = sysinfo_total_memory_bytes();
+ * printf("Total RAM: %.2f GiB\n", total / (1024.0 * 1024.0 * 1024.0));
+ * @endcode
+ */
+unsigned long long sysinfo_total_memory_bytes(void) {
+    SYSINFO_LOG("[sysinfo_total_memory_bytes]: Entering function.");
+#ifdef _WIN32
+    MEMORYSTATUSEX mem;
+    mem.dwLength = sizeof(mem);
+    if (GlobalMemoryStatusEx(&mem)) {
+        return (unsigned long long)mem.ullTotalPhys;
+    }
+    return 0ULL;
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/meminfo", "r");
+    if (!fp) return 0ULL;
+    char line[256];
+    unsigned long long kb = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "MemTotal: %llu kB", &kb) == 1) {
+            break;
+        }
+    }
+    fclose(fp);
+    return kb * 1024ULL;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the amount of physical memory currently available, in bytes.
+ *
+ * Implementation:
+ *  - Windows: `GlobalMemoryStatusEx(ullAvailPhys)`.
+ *  - Linux:   prefers `MemAvailable` from `/proc/meminfo`; falls back
+ *             to `MemFree` for old kernels (<3.14) that don't expose it.
+ *
+ * Returns 0 if the OS cannot answer or the platform is unsupported.
+ *
+ * @code
+ * unsigned long long avail = sysinfo_available_memory_bytes();
+ * if (avail < (256ULL << 20)) {
+ *     fprintf(stderr, "Less than 256 MiB free; refusing to start.\n");
+ * }
+ * @endcode
+ */
+unsigned long long sysinfo_available_memory_bytes(void) {
+    SYSINFO_LOG("[sysinfo_available_memory_bytes]: Entering function.");
+#ifdef _WIN32
+    MEMORYSTATUSEX mem;
+    mem.dwLength = sizeof(mem);
+    if (GlobalMemoryStatusEx(&mem)) {
+        return (unsigned long long)mem.ullAvailPhys;
+    }
+    return 0ULL;
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/meminfo", "r");
+    if (!fp) return 0ULL;
+    char line[256];
+    unsigned long long available = 0, mem_free = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "MemAvailable: %llu kB", &available) == 1) {
+            break;
+        }
+        if (sscanf(line, "MemFree: %llu kB", &mem_free) == 1) {
+            /* Keep scanning — MemAvailable, if present, is preferred. */
+        }
+    }
+    fclose(fp);
+    if (available > 0) return available * 1024ULL;
+    return mem_free * 1024ULL;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns true if the current process is a 64-bit binary.
+ *
+ * Determined from `sizeof(void*) == 8` — no syscalls, no platform
+ * dispatch. This reflects the bit-width of *this* process, not of the
+ * host OS (a 32-bit binary running on 64-bit Windows will return
+ * false here, which is what most callers actually want).
+ *
+ * @code
+ * if (!sysinfo_is_64bit_process()) {
+ *     fputs("This release requires a 64-bit build.\n", stderr);
+ * }
+ * @endcode
+ */
+bool sysinfo_is_64bit_process(void) {
+    return sizeof(void*) == 8;
+}
+
+
+/**
+ * @brief Returns the byte order of the host CPU as a static string.
+ *
+ * Either `"little"` or `"big"`. The check is a runtime probe over the
+ * representation of a `uint16_t`, so it does not depend on
+ * `__BYTE_ORDER__` being defined by the compiler. Mixed-endian and
+ * exotic platforms fall back to `"unknown"`.
+ *
+ * The returned pointer is to a static literal — do not free it.
+ *
+ * @code
+ * const char* endian = sysinfo_endianness();
+ * printf("CPU is %s-endian\n", endian);
+ * @endcode
+ */
+const char* sysinfo_endianness(void) {
+    union { uint16_t u16; unsigned char bytes[2]; } probe;
+    probe.u16 = 0x0102;
+    if (probe.bytes[0] == 0x01 && probe.bytes[1] == 0x02) {
+        return "big";
+    }
+    if (probe.bytes[0] == 0x02 && probe.bytes[1] == 0x01) {
+        return "little";
+    }
+    return "unknown";
+}
+
+
+/**
+ * @brief Returns the amount of physical memory currently in use, in bytes.
+ *
+ * Convenience wrapper computed as
+ * `sysinfo_total_memory_bytes() - sysinfo_available_memory_bytes()`.
+ * Returns 0 if either source returns 0, or if the values are inconsistent
+ * (available greater than total), so it is automatically cross-platform.
+ *
+ */
+unsigned long long sysinfo_used_memory_bytes(void) {
+    SYSINFO_LOG("[sysinfo_used_memory_bytes]: Entering function.");
+    unsigned long long total = sysinfo_total_memory_bytes();
+    unsigned long long avail = sysinfo_available_memory_bytes();
+    if (total == 0ULL || avail > total) {
+        return 0ULL;
+    }
+    return total - avail;
+}
+
+
+/**
+ * @brief Returns the total size of swap space, in bytes.
+ *
+ * Implementation:
+ *  - Linux:   parses `SwapTotal` from `/proc/meminfo`.
+ *  - Windows: there is no separate "swap"; the equivalent is the page file.
+ *             Reported as `ullTotalPageFile - ullTotalPhys` (the commit limit
+ *             minus physical RAM), i.e. the page-file portion of the commit
+ *             limit. Returns 0 when no page file is configured.
+ *
+ * Returns 0 if the OS cannot answer or the platform is unsupported. A value
+ * of 0 is legitimate (e.g. swapless containers / systems).
+ *
+ */
+unsigned long long sysinfo_total_swap_bytes(void) {
+    SYSINFO_LOG("[sysinfo_total_swap_bytes]: Entering function.");
+#ifdef _WIN32
+    MEMORYSTATUSEX mem;
+    mem.dwLength = sizeof(mem);
+    if (GlobalMemoryStatusEx(&mem)) {
+        if (mem.ullTotalPageFile > mem.ullTotalPhys) {
+            return (unsigned long long)(mem.ullTotalPageFile - mem.ullTotalPhys);
+        }
+        return 0ULL;
+    }
+    return 0ULL;
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/meminfo", "r");
+    if (!fp) {
+        return 0ULL;
+    }
+    char line[256];
+    unsigned long long kb = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "SwapTotal: %llu kB", &kb) == 1) {
+            break;
+        }
+    }
+    fclose(fp);
+    return kb * 1024ULL;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the amount of free swap space, in bytes.
+ *
+ * Implementation:
+ *  - Linux:   parses `SwapFree` from `/proc/meminfo`.
+ *  - Windows: `ullAvailPageFile` is the remaining commit the system will grant
+ *             (commit limit minus current commit charge), capped at the
+ *             page-file size. When little is committed the page file is
+ *             effectively all free; as commit nears the limit the value shrinks
+ *             toward 0. (Windows exposes no exact "free page file" counter via
+ *             `GlobalMemoryStatusEx`, so this is the closest faithful mapping.)
+ *
+ * The result is always `<= sysinfo_total_swap_bytes()`. Returns 0 on error /
+ * unsupported platforms.
+ *
+ */
+unsigned long long sysinfo_free_swap_bytes(void) {
+    SYSINFO_LOG("[sysinfo_free_swap_bytes]: Entering function.");
+#ifdef _WIN32
+    MEMORYSTATUSEX mem;
+    mem.dwLength = sizeof(mem);
+    if (GlobalMemoryStatusEx(&mem)) {
+        unsigned long long totalSwap = (mem.ullTotalPageFile > mem.ullTotalPhys)
+            ? (unsigned long long)(mem.ullTotalPageFile - mem.ullTotalPhys) : 0ULL;
+        unsigned long long availCommit = (unsigned long long)mem.ullAvailPageFile;
+
+        return (availCommit < totalSwap) ? availCommit : totalSwap;
+    }
+    return 0ULL;
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/meminfo", "r");
+    if (!fp) {
+        return 0ULL;
+    }
+
+    char line[256];
+    unsigned long long kb = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "SwapFree: %llu kB", &kb) == 1) {
+            break;
+        }
+    }
+    fclose(fp);
+
+    return kb * 1024ULL;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the system uptime in whole seconds.
+ *
+ * The numeric counterpart of `sysinfo_system_uptime()` (which formats a
+ * human-readable string). Useful for arithmetic, thresholds and logging.
+ *
+ * Implementation:
+ *  - Windows: `GetTickCount64() / 1000`.
+ *  - Linux:   the first field of `/proc/uptime`.
+ *
+ * Returns -1 if the value cannot be determined.
+ *
+ */
+long sysinfo_uptime_seconds(void) {
+    SYSINFO_LOG("[sysinfo_uptime_seconds]: Entering function.");
+#ifdef _WIN32
+    return (long)(GetTickCount64() / 1000ULL);
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/uptime", "r");
+    if (!fp) {
+        return -1;
+    }
+
+    double up = 0.0;
+    int n = fscanf(fp, "%lf", &up);
+    fclose(fp);
+    if (n != 1 || up < 0.0) {
+        return -1;
+    }
+
+    return (long)up;
+#else
+    return -1;
+#endif
+}
+
+
+/**
+ * @brief Returns the number of processes currently running on the system.
+ *
+ * Implementation:
+ *  - Windows: counts entries from a `CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS)`.
+ *  - Linux:   counts the numeric (PID) directories under `/proc`.
+ *
+ * Returns -1 if the count cannot be obtained.
+ *
+ */
+long sysinfo_process_count(void) {
+    SYSINFO_LOG("[sysinfo_process_count]: Entering function.");
+#ifdef _WIN32
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    PROCESSENTRY32 pe;
+    pe.dwSize = sizeof(PROCESSENTRY32);
+    long count = 0;
+    if (Process32First(snap, &pe)) {
+        do {
+            count++;
+        } while (Process32Next(snap, &pe));
+    }
+
+    CloseHandle(snap);
+    return count;
+#elif defined(__linux__)
+    DIR* d = opendir("/proc");
+    if (!d) {
+        return -1;
+    }
+
+    long count = 0;
+    struct dirent* e;
+    while ((e = readdir(d)) != NULL) {
+        const char* p = e->d_name;
+        bool all_digits = (p[0] != '\0');
+        for (const char* q = p; *q; ++q) {
+            if (*q < '0' || *q > '9') {
+                all_digits = false;
+                break;
+            }
+        }
+        if (all_digits) {
+            count++;
+        }
+    }
+
+    closedir(d);
+    return count;
+#else
+    return -1;
+#endif
+}
+
+
+/**
+ * @brief Returns true if the current process has administrative / root rights.
+ *
+ * Implementation:
+ *  - Windows: queries the process token's `TokenElevation` — true only when
+ *             the process is actually running elevated.
+ *  - POSIX:   `geteuid() == 0`.
+ *
+ * Returns false on unsupported platforms or if privileges cannot be queried.
+ *
+ */
+bool sysinfo_is_admin(void) {
+    SYSINFO_LOG("[sysinfo_is_admin]: Entering function.");
+#ifdef _WIN32
+    BOOL elevated = FALSE;
+    HANDLE token = NULL;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+        TOKEN_ELEVATION elevation;
+        DWORD sz = sizeof(elevation);
+        if (GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &sz)) {
+            elevated = elevation.TokenIsElevated;
+        }
+        CloseHandle(token);
+    }
+    return elevated ? true : false;
+#elif defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+    return geteuid() == 0;
+#else
+    return false;
+#endif
+}
+
+
+/**
+ * @brief Returns the total size, in bytes, of the filesystem containing @p path.
+ *
+ * The numeric counterpart of `sysinfo_disk_space()`. Pass any path on the
+ * volume of interest (e.g. `"/"` on Linux or `"C:\\"` on Windows).
+ *
+ * Implementation:
+ *  - Windows: `GetDiskFreeSpaceExA` (total number of bytes).
+ *  - Linux:   `statvfs` (`f_blocks * f_frsize`).
+ *
+ * Returns 0 on NULL/empty path, on error, or on unsupported platforms.
+ *
+ */
+unsigned long long sysinfo_disk_total_bytes(const char* path) {
+    SYSINFO_LOG("[sysinfo_disk_total_bytes]: Entering function.");
+    if (!path || !*path) {
+        return 0ULL;
+    }
+#ifdef _WIN32
+    ULARGE_INTEGER freeAvail, total, totalFree;
+    if (GetDiskFreeSpaceExA(path, &freeAvail, &total, &totalFree)) {
+        return (unsigned long long)total.QuadPart;
+    }
+
+    return 0ULL;
+#elif defined(__linux__)
+    struct statvfs vfs;
+    if (statvfs(path, &vfs) != 0) {
+        return 0ULL;
+    }
+
+    return (unsigned long long)vfs.f_blocks * (unsigned long long)vfs.f_frsize;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the free space, in bytes, available to the caller on the
+ *        filesystem containing @p path.
+ *
+ * Reports space available to an unprivileged caller (it honours filesystem
+ * reservations), i.e. `f_bavail` on Linux and `lpFreeBytesAvailableToCaller`
+ * on Windows.
+ *
+ * Implementation:
+ *  - Windows: `GetDiskFreeSpaceExA` (free bytes available to caller).
+ *  - Linux:   `statvfs` (`f_bavail * f_frsize`).
+ *
+ * Returns 0 on NULL/empty path, on error, or on unsupported platforms.
+ *
+ */
+unsigned long long sysinfo_disk_free_bytes(const char* path) {
+    SYSINFO_LOG("[sysinfo_disk_free_bytes]: Entering function.");
+    if (!path || !*path) {
+        return 0ULL;
+    }
+#ifdef _WIN32
+    ULARGE_INTEGER freeAvail, total, totalFree;
+    if (GetDiskFreeSpaceExA(path, &freeAvail, &total, &totalFree)) {
+        return (unsigned long long)freeAvail.QuadPart;
+    }
+
+    return 0ULL;
+#elif defined(__linux__)
+    struct statvfs vfs;
+    if (statvfs(path, &vfs) != 0) {
+        return 0ULL;
+    }
+
+    return (unsigned long long)vfs.f_bavail * (unsigned long long)vfs.f_frsize;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the battery charge level as a whole percentage (0..100).
+ *
+ * Implementation:
+ *  - Windows: `GetSystemPowerStatus` (`BatteryLifePercent`; 255 means unknown).
+ *  - Linux:   reads `/sys/class/power_supply/BAT0|BAT1/capacity`.
+ *
+ * Returns -1 when there is no battery (desktops, servers, most VMs/CI) or the
+ * level is unknown — callers should treat -1 as "not applicable".
+ *
+ */
+int sysinfo_battery_percentage(void) {
+    SYSINFO_LOG("[sysinfo_battery_percentage]: Entering function.");
+#ifdef _WIN32
+    SYSTEM_POWER_STATUS sps;
+    if (GetSystemPowerStatus(&sps)) {
+        if (sps.BatteryLifePercent <= 100) {
+            return (int)sps.BatteryLifePercent;
+        }
+    }
+    return -1;
+#elif defined(__linux__)
+    static const char* const paths[] = {
+        "/sys/class/power_supply/BAT0/capacity",
+        "/sys/class/power_supply/BAT1/capacity"
+    };
+    for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); ++i) {
+        FILE* fp = fopen(paths[i], "r");
+        if (fp) {
+            int pct = -1;
+            int n = fscanf(fp, "%d", &pct);
+            fclose(fp);
+            
+            if (n == 1 && pct >= 0 && pct <= 100) {
+                return pct;
+            }
+        }
+    }
+    return -1;
+#else
+    return -1;
+#endif
+}
+
+
+/**
+ * @brief Returns the path of the user's default shell / command interpreter.
+ *
+ * Implementation:
+ *  - Windows: the `COMSPEC` environment variable (falls back to
+ *             `C:\\Windows\\System32\\cmd.exe`).
+ *  - POSIX:   the `SHELL` environment variable (falls back to `/bin/sh`).
+ *
+ * The returned string is heap-allocated — the caller must `free()` it. Always
+ * returns a non-NULL string except on allocation failure.
+
+ */
+char* sysinfo_default_shell(void) {
+    SYSINFO_LOG("[sysinfo_default_shell]: Entering function.");
+#ifdef _WIN32
+    return sysinfo_strdup_or(getenv("COMSPEC"), "C:\\Windows\\System32\\cmd.exe");
+#elif defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+    return sysinfo_strdup_or(getenv("SHELL"), "/bin/sh");
+#else
+    return sysinfo_strdup_or(NULL, "unknown");
+#endif
 }

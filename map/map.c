@@ -13,6 +13,7 @@
 #define RED 1
 #define BLACK 0
 
+
 // Map structure definition
 struct Map {
     MapNode* root;
@@ -21,6 +22,7 @@ struct Map {
     ValueDeallocFunc deallocValue;
     size_t size;
 };
+
 
 /**
  * @brief Advances the iterator to the next element in the map.
@@ -60,6 +62,7 @@ void map_iterator_increment(MapIterator* it) {
             it->node = it->node->parent;
             MAP_LOG("[map_iterator_increment] : Moving up the tree, current node key: %p", (void*)(it->node->key));
         }
+
         it->node = it->node->parent;
         if (it->node != NULL) {
             MAP_LOG("[map_iterator_increment] : Moved to parent, new node key: %p", (void*)(it->node->key));
@@ -69,6 +72,7 @@ void map_iterator_increment(MapIterator* it) {
         }
     }
 }
+
 
 /**
  * @brief Moves the iterator to the previous element in the map.
@@ -108,6 +112,7 @@ void map_iterator_decrement(MapIterator* it) {
             it->node = it->node->parent;
             MAP_LOG("[map_iterator_decrement] : Moving up the tree, current node key: %p", (void*)(it->node->key));
         }
+
         it->node = it->node->parent;
         if (it->node != NULL) {
             MAP_LOG("[map_iterator_decrement] : Moved to parent, new node key: %p", (void*)(it->node->key));
@@ -117,6 +122,7 @@ void map_iterator_decrement(MapIterator* it) {
         }
     }
 }
+
 
 /**
  * @brief Creates a new MapNode with the given key and value.
@@ -145,6 +151,7 @@ static MapNode* create_node(KeyType key, ValueType value) {
     MAP_LOG("[create_node] : Node created successfully with key: %p, value: %p, color: RED.", (void*)key, (void*)value);
     return node;
 }
+
 
 /**
  * @brief Performs a left rotation on the given node in the map.
@@ -196,6 +203,7 @@ static void map_left_rotate(Map* map, MapNode* x) {
     MAP_LOG("[map_left_rotate] : Left rotation completed. Node %p is now left child of node %p.", (void*)x, (void*)y);
 }
 
+
 /**
  * @brief Performs a right rotation on the given node in the map.
  *
@@ -246,6 +254,7 @@ static void map_right_rotate(Map* map, MapNode* y) {
     MAP_LOG("[map_right_rotate] : Right rotation completed. Node %p is now right child of node %p.", (void*)y, (void*)x);
 }
 
+
 /**
  * @brief Replaces one subtree as a child of its parent with another subtree.
  *
@@ -283,6 +292,7 @@ static void map_transplant(Map* map, MapNode* u, MapNode* v) {
     }
 }
 
+
 /**
  * @brief Finds the node with the minimum key in the subtree.
  *
@@ -308,6 +318,7 @@ static MapNode* map_minimum(MapNode* node) {
     return node;
 }
 
+
 /**
  * @brief Restores Red-Black Tree properties after a node deletion.
  *
@@ -318,98 +329,105 @@ static MapNode* map_minimum(MapNode* node) {
  * @param map A pointer to the map structure.
  * @param x A pointer to the node that replaces the deleted node, which may cause a violation of Red-Black Tree properties.
  */
-static void map_erase_fixup(Map* map, MapNode* x) {
+static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
+    // x may be NULL (the deleted leaf had no replacement child). In that
+    // case x_parent identifies which slot of which parent x occupies, so we
+    // can still find the sibling without dereferencing a NULL x.
     if (map == NULL) {
-        MAP_LOG("[map_erase_fixup] : Error: Null pointer provided to map_erase_fixup.");
         return;
     }
 
-    MAP_LOG("[map_erase_fixup] : Fixing up tree after deletion starting with node %p.", (void*)x);
-
     while (x != map->root && (x == NULL || x->color == BLACK)) {
-        if (x == x->parent->left) {
-            MapNode* w = x->parent->right;
-            MAP_LOG("[map_erase_fixup] : Sibling node (right of parent) is %p.", (void*)w);
+        MapNode* parent = x ? x->parent : x_parent;
+        if (parent == NULL) {
+            break;
+        }
 
-            if (w->color == RED) {
-                MAP_LOG("[map_erase_fixup] : Case 1 - Sibling is red, performing left rotation on parent %p.", (void*)(x->parent));
-                w->color = BLACK;
-                x->parent->color = RED;
-                map_left_rotate(map, x->parent);
-                w = x->parent->right;
+        if (x == parent->left) {
+            MapNode* w = parent->right;
+            if (w == NULL) {
+                // No sibling — tree was malformed or already balanced; stop.
+                break;
             }
-
+            if (w->color == RED) {
+                w->color = BLACK;
+                parent->color = RED;
+                map_left_rotate(map, parent);
+                w = parent->right;
+                if (w == NULL) break;
+            }
             if ((w->left == NULL || w->left->color == BLACK) &&
                 (w->right == NULL || w->right->color == BLACK)) {
-                MAP_LOG("[map_erase_fixup] : Case 2 - Both children of sibling are black. Recoloring sibling %p.", (void*)w);
                 w->color = RED;
-                x = x->parent;
-            } 
+                x = parent;
+                x_parent = parent->parent;
+            }
             else {
                 if (w->right == NULL || w->right->color == BLACK) {
-                    if (w->left != NULL) {
-                        w->left->color = BLACK;
-                    }
-                    MAP_LOG("[map_erase_fixup] : Case 3 - Left child of sibling is red. Performing right rotation.");
+                    if (w->left) w->left->color = BLACK;
                     w->color = RED;
                     map_right_rotate(map, w);
-                    w = x->parent->right;
+                    w = parent->right;
+                    if (w == NULL) break;
                 }
-
-                MAP_LOG("[map_erase_fixup] : Case 4 - Right child of sibling is red. Performing left rotation on parent %p.", (void*)(x->parent));
-                w->color = x->parent->color;
-                x->parent->color = BLACK;
-                if (w->right != NULL) {
-                    w->right->color = BLACK;
-                }
-                
-                map_left_rotate(map, x->parent);
+                w->color = parent->color;
+                parent->color = BLACK;
+                if (w->right) w->right->color = BLACK;
+                map_left_rotate(map, parent);
                 x = map->root;
+                x_parent = NULL;
             }
-        } 
+        }
         else {
-            MapNode* w = x->parent->left;
-            MAP_LOG("[map_erase_fixup] : Sibling node (left of parent) is %p.", (void*)w);
-
-            if (w->color == RED) {
-                MAP_LOG("[map_erase_fixup] : Case 1 - Sibling is red, performing right rotation on parent %p.", (void*)(x->parent));
-                w->color = BLACK;
-                x->parent->color = RED;
-                map_right_rotate(map, x->parent);
-                w = x->parent->left;
+            MapNode* w = parent->left;
+            if (w == NULL) {
+                break;
             }
+            if (w->color == RED) {
+                w->color = BLACK;
+                parent->color = RED;
+                map_right_rotate(map, parent);
+                w = parent->left;
 
+                if (w == NULL) {
+                    break;
+                }
+            }
             if ((w->right == NULL || w->right->color == BLACK) &&
                 (w->left == NULL || w->left->color == BLACK)) {
-                MAP_LOG("[map_erase_fixup] : Case 2 - Both children of sibling are black. Recoloring sibling %p.", (void*)w);
                 w->color = RED;
-                x = x->parent;
-            } 
+                x = parent;
+                x_parent = parent->parent;
+            }
             else {
                 if (w->left == NULL || w->left->color == BLACK) {
-                    if (w->right != NULL) {
+                    if (w->right) {
                         w->right->color = BLACK;
                     }
-                    MAP_LOG("[map_erase_fixup] : Case 3 - Right child of sibling is red. Performing left rotation.");
+
                     w->color = RED;
                     map_left_rotate(map, w);
-                    w = x->parent->left;
-                }
+                    w = parent->left;
 
-                MAP_LOG("[map_erase_fixup] : Case 4 - Left child of sibling is red. Performing right rotation on parent %p.", (void*)(x->parent));
-                w->color = x->parent->color;
-                x->parent->color = BLACK;
-                if (w->left != NULL) {
+                    if (w == NULL) {
+                        break;
+                    }
+                }
+                w->color = parent->color;
+                parent->color = BLACK;
+
+                if (w->left) {
                     w->left->color = BLACK;
                 }
-                map_right_rotate(map, x->parent);
+
+                map_right_rotate(map, parent);
                 x = map->root;
+                x_parent = NULL;
             }
         }
     }
 
     if (x != NULL) {
-        MAP_LOG("[map_erase_fixup] : Recoloring node %p to black.", (void*)x);
         x->color = BLACK;
     }
 }
@@ -449,6 +467,7 @@ static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeal
     MAP_LOG("[map_free_nodes] : Node with keysuccessfully freed.");
 }
 
+
 /**
  * @brief Restores Red-Black Tree properties after a node insertion.
  *
@@ -470,6 +489,7 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
             MapNode* uncle = newNode->parent->parent->right;
             if (uncle && uncle->color == RED) {
                 MAP_LOG("[map_insert_fixup] : Case 1 (left) - Parent and uncle are red.");
+
                 newNode->parent->color = BLACK;
                 uncle->color = BLACK;
                 newNode->parent->parent->color = RED;
@@ -478,6 +498,7 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
             else {
                 if (newNode == newNode->parent->right) {
                     MAP_LOG("[map_insert_fixup] : Case 2 (left) - Performing left rotation.");
+
                     newNode = newNode->parent;
                     map_left_rotate(map, newNode);
                 }
@@ -493,6 +514,7 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
             MapNode* uncle = newNode->parent->parent->left;
             if (uncle && uncle->color == RED) {
                 MAP_LOG("[map_insert_fixup] : Case 1 (right) - Parent and uncle are red.");
+
                 newNode->parent->color = BLACK;
                 uncle->color = BLACK;
                 newNode->parent->parent->color = RED;
@@ -501,11 +523,13 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
             else {
                 if (newNode == newNode->parent->left) {
                     MAP_LOG("[map_insert_fixup] : Case 2 (right) - Performing right rotation.");
+
                     newNode = newNode->parent;
                     map_right_rotate(map, newNode);
                 }
 
                 MAP_LOG("[map_insert_fixup] : Case 3 (right) - Performing left rotation.");
+
                 newNode->parent->color = BLACK;
                 newNode->parent->parent->color = RED;
                 map_left_rotate(map, newNode->parent->parent);
@@ -517,6 +541,7 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
     map->root->color = BLACK;
     MAP_LOG("[map_insert_fixup] : Fix-up completed, root color set to BLACK.");
 }
+
 
 /**
  * @brief Creates a new map with the specified comparison and deallocation functions.
@@ -535,14 +560,14 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
 Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (!comp) {
         MAP_LOG("[map_create] : Error: Compare function is null, cannot create map.");
-        exit(-1);
+        return NULL;
     }
     MAP_LOG("[map_create]: Creating a new map.");
 
     Map* map = (Map*)malloc(sizeof(Map));
     if (!map) {
         MAP_LOG("[map_create] : Error: Cannot allocate memory for map.");
-        exit(-1);
+        return NULL;
     }
 
     map->root = NULL;
@@ -555,6 +580,7 @@ Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFu
 
     return map;
 }
+
 
 /**
  * @brief Deallocates the memory used by the map and its nodes.
@@ -577,6 +603,7 @@ void map_deallocate(Map* map) {
     MAP_LOG("[map_deallocate] : Map deallocated successfully.");
 }
 
+
 /**
  * @brief Checks if the map is empty.
  *
@@ -594,6 +621,7 @@ bool map_empty(const Map* map) {
 
     return map->size == 0;
 }
+
 
 /**
  * @brief Returns the number of elements in the map.
@@ -613,6 +641,7 @@ size_t map_size(const Map* map) {
     MAP_LOG("[map_size]: Returning the map size: %zu.", map->size);
     return map->size;
 }
+
 
 /**
  * @brief Returns the maximum possible number of elements in the map.
@@ -634,6 +663,7 @@ size_t map_max_size(const Map* map) {
 
     return max_size;
 }
+
 
 /**
  * @brief Inserts a key-value pair into the map.
@@ -670,6 +700,13 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
             }
 
             (*curr)->value = value;
+            /* The existing node keeps its own key; the caller-supplied key is a
+               redundant duplicate on this replace path. Free it via the key
+               deallocator so re-inserting an existing key does not leak it.
+               Guard against the caller re-passing the exact stored pointer. */
+            if (map->deallocKey && key != (*curr)->key) {
+                map->deallocKey(key);
+            }
             MAP_LOG("[map_insert] : Value replaced successfully.");
             return true;
         }
@@ -697,6 +734,7 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
 
     return true;
 }
+
 
 /**
  * @brief Retrieves the value associated with the specified key in the map.
@@ -736,6 +774,7 @@ ValueType map_at(const Map* map, KeyType key) {
     return NULL; 
 }
 
+
 /**
  * @brief Clears all elements from the map.
  *
@@ -759,6 +798,7 @@ void map_clear(Map* map) {
     MAP_LOG("[map_clear] : Map cleared successfully.");
 }
 
+
 /**
  * @brief Swaps the contents of two maps.
  *
@@ -774,8 +814,6 @@ void map_swap(Map* map1, Map* map2) {
         MAP_LOG("[map_swap]: Error: Null pointer provided for one or both maps in map_swap.");
         return;
     }
-
-    // Log swapping details
     MAP_LOG("[map_swap]: Swapping the root nodes and sizes of the two maps.");
 
     // Swap the roots of the two maps
@@ -788,7 +826,7 @@ void map_swap(Map* map1, Map* map2) {
     map1->size = map2->size;
     map2->size = tempSize;
 
-    // Optionally, swap comparison and deallocation functions
+    // swap comparison and deallocation functions
     CompareFuncMap tempCompFunc = map1->compFunc;
     map1->compFunc = map2->compFunc;
     map2->compFunc = tempCompFunc;
@@ -803,6 +841,7 @@ void map_swap(Map* map1, Map* map2) {
 
     MAP_LOG("[map_swap] : Swap operation completed successfully.");
 }
+
 
 /**
  * @brief Counts the number of elements matching a specific key in the map.
@@ -842,6 +881,7 @@ size_t map_count(const Map* map, KeyType key) {
     return 0; 
 }
 
+
 /**
  * @brief Inserts a new key-value pair into the map if the key does not already exist.
  *
@@ -873,7 +913,7 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
         
         if (cmp == 0) {
             MAP_LOG("[map_emplace] : Key already exists in the map. No insertion performed.");
-            return false; // Key already exists
+            return false; 
         }
         if (cmp < 0) { 
             curr = &(*curr)->left;
@@ -900,6 +940,7 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
     return true;
 }
 
+
 /**
  * @brief Returns the comparison function used by the map.
  *
@@ -917,6 +958,7 @@ CompareFuncMap map_key_comp(const Map* map) {
     MAP_LOG("[map_key_comp] : Returning comparison function for the map.");
     return map->compFunc; 
 }
+
 
 /**
  * @brief Inserts a new key-value pair into the map with a hint for the insertion position.
@@ -936,7 +978,7 @@ CompareFuncMap map_key_comp(const Map* map) {
 bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) {
     if (map == NULL || key == NULL) {
         MAP_LOG("[map_emplace_hint] : Error: map or key is null, cannot emplace in map_emplace_hint.");
-        exit(-1);  
+        return false;
     }
 
     MapNode* newNode = create_node(key, value);
@@ -955,40 +997,21 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
         return true;
     }
 
-    // If hint is provided and valid, attempt to use it.
-    if (hint.node != NULL) {
-        MapNode* curr = hint.node;
-        int cmp = map->compFunc(key, curr->key);
-
-        if (cmp < 0) {
-            if (curr->left == NULL) {
-                curr->left = newNode;
-                newNode->parent = curr;
-                map->size++;
-                map_insert_fixup(map, newNode);
-
-                MAP_LOG("[map_emplace_hint] : Inserted node to the left of hint node. Map size: %zu", map->size);
-                return true;
-            }
-        } 
-        else if (cmp > 0) {
-            if (curr->right == NULL) {
-                curr->right = newNode;
-                newNode->parent = curr;
-                map->size++;
-                map_insert_fixup(map, newNode);
-
-                MAP_LOG("[map_emplace_hint] : Inserted node to the right of hint node. Map size: %zu", map->size);
-                return true;
-            }
-        } 
-        else {
-            // Key already exists, deallocate newNode and return false.
-            free(newNode);
-            MAP_LOG("[map_emplace_hint] : Key already exists, no insertion. Map size remains: %zu", map->size);
-            return false;
-        }
-    }
+    /* The previous "trust the hint blindly" path inserted the new node
+     * as a child of the hint as soon as the hint had an empty slot on
+     * the comparator-chosen side — without checking that doing so
+     * preserves the BST order across the rest of the tree. That broke
+     * the tree whenever the hint was a bad guess (e.g. hint == begin()
+     * but key belongs on the far right side), making subsequent
+     * map_at / map_find return NULL for keys that were "inserted".
+     *
+     * Correct hint validation: a hint is usable only if the new key
+     * fits between predecessor(hint) and successor(hint) for the
+     * targeted side. That's the same work as walking from the root
+     * via standard insertion, so the conservative fix — always fall
+     * through to the validated insert path — preserves correctness
+     * with no perf regression in the common O(log n) case. */
+    (void)hint;
 
     MapNode** curr = &map->root;
     MapNode* parent = NULL;
@@ -1014,6 +1037,7 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
 
     return true;
 }
+
 
 /**
  * @brief Erases an element from the map by its key.
@@ -1050,28 +1074,31 @@ bool map_erase(Map* map, KeyType key) {
     MapNode* y = z;
     int y_original_color = y->color;
     MapNode* x;
+    MapNode* x_parent;  // tracked explicitly so fixup works when x is NULL
 
     if (z->left == NULL) {
         x = z->right;
+        x_parent = z->parent;
         map_transplant(map, z, z->right);
-        MAP_LOG("[map_erase] : Node has no left child, transplanting right child.");
-    } 
+    }
     else if (z->right == NULL) {
         x = z->left;
+        x_parent = z->parent;
         map_transplant(map, z, z->left);
-        MAP_LOG("[map_erase] : Node has no right child, transplanting left child.");
-    } 
+    }
     else {
         y = map_minimum(z->right);
         y_original_color = y->color;
         x = y->right;
-        
+
         if (y->parent == z) {
+            x_parent = y;
             if (x != NULL) {
                 x->parent = y;
             }
-        } 
+        }
         else {
+            x_parent = y->parent;
             map_transplant(map, y, y->right);
             y->right = z->right;
             y->right->parent = y;
@@ -1081,29 +1108,25 @@ bool map_erase(Map* map, KeyType key) {
         y->left = z->left;
         y->left->parent = y;
         y->color = z->color;
-        MAP_LOG("[map_erase] : Node has two children, finding successor and transplanting.");
     }
 
     if (map->deallocKey) {
         map->deallocKey(z->key);
-        MAP_LOG("[map_erase] : Deallocating key of the node.");
     }
     if (map->deallocValue) {
         map->deallocValue(z->value);
-        MAP_LOG("[map_erase] : Deallocating value of the node.");
     }
     free(z);
-    MAP_LOG("[map_erase] : Node deleted and memory freed.");
 
-    if (y_original_color == BLACK) { 
-        map_erase_fixup(map, x);
-        MAP_LOG("[map_erase] : Fixing up the red-black tree after deletion.");
+    if (y_original_color == BLACK) {
+        map_erase_fixup(map, x, x_parent);
     }
     map->size--;
     
     MAP_LOG("[map_erase] : Node deleted successfully. New map size: %zu", map->size);
     return true;
 }
+
 
 /**
  * @brief Finds an element in the map by its key.
@@ -1139,6 +1162,7 @@ MapIterator map_find(const Map* map, KeyType key) {
     return iterator; 
 }
 
+
 /**
  * @brief Returns an iterator to the first element in the map.
  *
@@ -1173,6 +1197,7 @@ MapIterator map_begin(const Map* map) {
     return iterator;
 }
 
+
 /**
  * @brief Returns an iterator to the position after the last element in the map.
  *
@@ -1191,6 +1216,7 @@ MapIterator map_end(const Map* map) {
     MAP_LOG("[map_end] : Returning default 'end' iterator.");
     return (MapIterator){0}; 
 }
+
 
 /**
  * @brief Returns a reverse iterator to the last element of the map.
@@ -1225,6 +1251,7 @@ MapIterator map_rbegin(const Map* map) {
     return iterator;
 }
 
+
 /**
  * @brief Returns a reverse iterator to the position before the first element of the map.
  *
@@ -1244,6 +1271,7 @@ MapIterator map_rend(const Map* map) {
     MAP_LOG("[map_rend] : Returning default 'rend' iterator.");
     return (MapIterator){0}; 
 }
+
 
 /**
  * @brief Returns a constant iterator to the first element of the map.
@@ -1278,6 +1306,7 @@ MapIterator map_cbegin(const Map* map) {
     return iterator;
 }
 
+
 /**
  * @brief Returns a constant iterator to the position after the last element of the map.
  *
@@ -1296,6 +1325,7 @@ MapIterator map_cend(const Map* map) {
     MAP_LOG("[map_cend]: Returning constant iterator to the end of the map.");
     return (MapIterator){0}; 
 }
+
 
 /**
  * @brief Returns a constant reverse iterator to the last element of the map.
@@ -1330,6 +1360,7 @@ MapIterator map_crbegin(const Map* map) {
     return iterator;
 }
 
+
 /**
  * @brief Returns a constant reverse iterator to the position before the first element of the map.
  *
@@ -1348,6 +1379,7 @@ MapIterator map_crend(const Map* map) {
     MAP_LOG("[map_crend] : Returning constant reverse iterator to the end of the reverse sequence.");
     return (MapIterator){0}; // Default end iterator
 }
+
 
 /**
  * @brief Finds the first element that is not less than the given key.
@@ -1392,6 +1424,7 @@ MapIterator map_lower_bound(const Map* map, KeyType key) {
 
     return iterator;
 }
+
 
 /**
  * @brief Finds the first element that is greater than the given key.
@@ -1438,6 +1471,7 @@ MapIterator map_upper_bound(const Map* map, KeyType key) {
     return iterator;
 }
 
+
 /**
  * @brief Returns the range of elements that match the specified key.
  *
@@ -1471,6 +1505,7 @@ MapIteratorPair map_equal_range(const Map* map, KeyType key) {
     return iteratorPair;
 }
 
+
 /**
  * @brief Retrieves the key from the given map node.
  *
@@ -1487,6 +1522,7 @@ KeyType map_node_get_key(MapNode* node) {
     return node->key;
 }
 
+
 /**
  * @brief Retrieves the value from the given map node.
  *
@@ -1502,6 +1538,7 @@ ValueType map_node_get_value(MapNode* node) {
     MAP_LOG("[map_node_get_value] : Successfully retrieved value from MapNode.");
     return node->value;
 }
+
 
 /**
  * @brief Prints all key-value pairs in the map.
@@ -1532,6 +1569,7 @@ void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValu
     MAP_LOG("[map_print] : Map printing completed.");
 }
 
+
 /**
  * @brief Creates a copy of the given map.
  *
@@ -1545,7 +1583,7 @@ Map* map_copy(const Map* src) {
     }
     MAP_LOG("[map_copy] : Starting map_copy operation...");
 
-    Map* newMap = map_create(src->compFunc, src->deallocKey, src->deallocValue);
+    Map* newMap = map_create(src->compFunc, NULL, NULL);
     if (!newMap) {
         MAP_LOG("[map_copy] : Error: Cannot allocate memory for newMap in map_copy.");
         return NULL;
@@ -1556,7 +1594,6 @@ Map* map_copy(const Map* src) {
         KeyType key = map_node_get_key(it.node);
         ValueType value = map_node_get_value(it.node);
         map_insert(newMap, key, value);
-        MAP_LOG("[map_copy] : Inserted key-value pair into new map during copy.");
     }
 
     MAP_LOG("[map_copy] : Map copy operation completed successfully.");

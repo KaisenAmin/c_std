@@ -1,26 +1,45 @@
+/**
+ * @author Amin Tahmasebi
+ * @class EvalExpr
+ *
+ * Declarations only. All Doxygen contracts for the functions below
+ * live above their DEFINITIONS in evalexpr.c (file-level convention).
+ *
+ * Shunting-yard arithmetic-expression evaluator: tokenize → RPN →
+ * evaluate. Supports `+ - * / ^ ( )` plus parenthesized
+ * sub-expressions.
+ */
+
 #ifndef EVALEXPR_H_
 #define EVALEXPR_H_
+
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdio.h>
 
-// #define EVALEXPR_LOGGING_ENABLE
+/* #define EVALEXPR_LOGGING_ENABLE */
 
-#ifdef EVALEXPR_LOGGING_ENABLE 
+#ifdef EVALEXPR_LOGGING_ENABLE
     #define EVALEXPR_LOG(fmt, ...) \
         do { fprintf(stderr, "[EVALEXPR LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define EVALEXPR_LOG(fmt, ...) do { } while (0)
+    #define EVALEXPR_LOG(...) do { } while (0)
 #endif
 
-#define EVAL_EXPR_SUCCESS      0
-#define EVAL_EXPR_ERROR_TOKENIZE  -1
-#define EVAL_EXPR_ERROR_SHUNTING  -2
-#define EVAL_EXPR_ERROR_EVAL_RPN   -3
-#define MAX_TOKENS 128
+
+/* ------------------------------------------------------------------ */
+/* Status codes / limits                                              */
+/* ------------------------------------------------------------------ */
+
+#define EVAL_EXPR_SUCCESS              0
+#define EVAL_EXPR_ERROR_TOKENIZE      -1
+#define EVAL_EXPR_ERROR_SHUNTING      -2
+#define EVAL_EXPR_ERROR_EVAL_RPN      -3
+#define MAX_TOKENS                   128
+
 
 typedef enum {
     TOKEN_NUMBER,
@@ -29,25 +48,41 @@ typedef enum {
     TOKEN_PAREN_RIGHT
 } TokenType;
 
+
 typedef struct {
     TokenType type;
-    double value;  
-    char op;       
+    double    value;     /* TOKEN_NUMBER payload   */
+    char      op;        /* TOKEN_OPERATOR payload */
 } Token;
 
 
-double eval_expr(const char *expr);
-double eval_expr_strict(const char *expr, int *error);
+/* ------------------------------------------------------------------ */
+/* Evaluation                                                         */
+/* ------------------------------------------------------------------ */
 
-char *eval_expr_to_rpn_string(const char *expr);
-const char *eval_expr_error_message(int error);
-char **eval_expr_tokenize(const char *expr, int *numTokens);
+double        eval_expr                       (const char* expr);
+double        eval_expr_strict                (const char* expr, int* error);
 
-int eval_expr_is_valid(const char *expr);
-void eval_expr_print_debug(const char *expr);
+
+/* ------------------------------------------------------------------ */
+/* Compilation / introspection                                        */
+/* ------------------------------------------------------------------ */
+
+char*         eval_expr_to_rpn_string         (const char* expr);
+char**        eval_expr_tokenize              (const char* expr, int* numTokens);
+int           eval_expr_is_valid              (const char* expr);
+void          eval_expr_print_debug           (const char* expr);
+
+
+/* ------------------------------------------------------------------ */
+/* Diagnostics                                                        */
+/* ------------------------------------------------------------------ */
+
+const char*   eval_expr_error_message         (int error);
+
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  
+#endif 

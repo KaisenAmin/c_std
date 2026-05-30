@@ -47,76 +47,68 @@ To use the EvalExpr library in your project:
 
 ## Library Functions
 
-### `double eval_expr(const char *expr)`
-
-- **Purpose:**  
-  Evaluates an arithmetic expression given as a null-terminated string.
-  
-- **Usage:**  
-  Returns the computed value as a double or `NAN` if an error occurs.
-
----
-
-### `double eval_expr_strict(const char *expr, int *error)`
-
-- **Purpose:**  
-  Similar to `eval_expr()`, but provides an error code indicating the status of tokenization, RPN conversion, or evaluation.
-  
-- **Usage:**  
-  On success, `*error` is set to `EVAL_EXPR_SUCCESS` (0). On error, it returns one of the defined error codes:
-  - `EVAL_EXPR_ERROR_TOKENIZE`
-  - `EVAL_EXPR_ERROR_SHUNTING`
-  - `EVAL_EXPR_ERROR_EVAL_RPN`
+### `double eval_expr(const char* expr)`
+**Purpose**: Evaluates an arithmetic infix expression using the shunting-yard algorithm, supporting `+`, `-`, `*`, `/`, `^` and parentheses.
+**Parameters**:
+- `expr`: The null-terminated expression string.
+**Return Value**: The computed result as a `double`, or `NAN` if the expression cannot be parsed or evaluated.
+**Usage Case**: Use when you want a quick evaluation and don't need detailed error information.
 
 ---
 
-### `char *eval_expr_to_rpn_string(const char *expr)`
-
-- **Purpose:**  
-  Converts an infix expression into a human-readable Reverse Polish Notation (RPN) string.
-  
-- **Usage:**  
-  Returns a dynamically allocated string representing the RPN form (free it after use).
-
----
-
-### `const char *eval_expr_error_message(int error)`
-
-- **Purpose:**  
-  Returns a descriptive error message corresponding to an evaluation error code.
-  
-- **Usage:**  
-  Use this function to print human-readable error messages when an error occurs.
+### `double eval_expr_strict(const char* expr, int* error)`
+**Purpose**: Evaluates an arithmetic expression and reports detailed error information.
+**Parameters**:
+- `expr`: The null-terminated expression string.
+- `error`: A pointer to an `int` that receives the status code: `EVAL_EXPR_SUCCESS` (0) on success, or one of `EVAL_EXPR_ERROR_TOKENIZE` (-1), `EVAL_EXPR_ERROR_SHUNTING` (-2), `EVAL_EXPR_ERROR_EVAL_RPN` (-3) on failure.
+**Return Value**: The computed result as a `double`.
+**Usage Case**: Use when you need to distinguish between different failure modes and provide the user with a meaningful error message.
 
 ---
 
-### `char **eval_expr_tokenize(const char *expr, int *numTokens)`
-
-- **Purpose:**  
-  Tokenizes an arithmetic expression and returns an array of strings, one for each token.
-  
-- **Usage:**  
-  The caller must free each string in the returned array as well as the array itself.
-
----
-
-### `int eval_expr_is_valid(const char *expr)`
-
-- **Purpose:**  
-  Checks whether an arithmetic expression is syntactically valid by attempting to tokenize and convert it to RPN.
-  
-- **Usage:**  
-  Returns `1` if the expression is valid, or `0` otherwise.
+### `char* eval_expr_to_rpn_string(const char* expr)`
+**Purpose**: Converts an infix arithmetic expression to its Reverse Polish Notation (RPN) form and returns it as a heap-allocated string.
+**Parameters**:
+- `expr`: The null-terminated expression string.
+**Return Value**: A dynamically allocated null-terminated string containing the space-separated RPN tokens, or `NULL` on failure. The caller must `free` the returned string.
+**Usage Case**: Use for debugging, logging, or when you need the RPN representation for further processing.
 
 ---
 
-### `void eval_expr_print_debug(const char *expr)`
+### `char** eval_expr_tokenize(const char* expr, int* numTokens)`
+**Purpose**: Tokenizes an arithmetic expression into its constituent parts (numbers, operators, parentheses) and returns them as a dynamically allocated array of strings.
+**Parameters**:
+- `expr`: The null-terminated expression string.
+- `numTokens`: A pointer to an `int` that receives the number of tokens found.
+**Return Value**: A heap-allocated array of heap-allocated strings, one per token, or `NULL` on failure. The caller must `free` each string and then the array itself.
+**Usage Case**: Use for debugging or when you need programmatic access to the individual tokens.
 
-- **Purpose:**  
-  function that prints detailed debugging information for an expression—showing its tokenized form, the corresponding Reverse Polish Notation (RPN), and the final evaluation result
+---
 
-- **Usage:**  
-  This function can be very helpful during development to understand how the expression is processed step by step.
+### `int eval_expr_is_valid(const char* expr)`
+**Purpose**: Checks whether an arithmetic expression is syntactically valid by attempting to tokenize it and convert it to RPN.
+**Parameters**:
+- `expr`: The null-terminated expression string to validate.
+**Return Value**: `1` if the expression is valid, or `0` if it is not.
+**Usage Case**: Use to validate user-supplied expressions before evaluating them, to provide early error feedback.
+
+---
+
+### `void eval_expr_print_debug(const char* expr)`
+**Purpose**: Prints detailed debugging information about an expression to stdout, including its tokenized form, the corresponding RPN, and the final evaluation result.
+**Parameters**:
+- `expr`: The null-terminated expression string.
+**Return Value**: None.
+**Usage Case**: Use during development to trace how an expression is parsed and evaluated step by step.
+
+---
+
+### `const char* eval_expr_error_message(int error)`
+**Purpose**: Returns a human-readable description of an evaluation error code.
+**Parameters**:
+- `error`: The error code returned by `eval_expr_strict` (one of the `EVAL_EXPR_ERROR_*` constants or `EVAL_EXPR_SUCCESS`).
+**Return Value**: A pointer to a static string describing the error.
+**Usage Case**: Use together with `eval_expr_strict` to display meaningful error messages when evaluation fails.
 
 ---
 
@@ -141,7 +133,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Expression: 3 + 4 * 2 / (1 - 5) ^ 2 ^ 3
 Result: 3.00012
@@ -171,7 +163,7 @@ int main(void) {
     return EXIT_SUCCESS;
 }
 ```
-**Sample Output:**
+**Result**
 ```
 Expression: 3 + 4 * 2 / (1 - 5) ^ 2 ^ 3
 Result: 3.00012
@@ -202,7 +194,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Expression: (2 + 3) * 4
 RPN: 2 3 + 4 *
@@ -237,7 +229,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Token 0: 3.5
 Token 1: +
@@ -267,7 +259,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 The expression '10 / 2 + 3' is valid.
 ```
@@ -335,7 +327,7 @@ int main(void) {
     return EXIT_SUCCESS;
 }
 ```
-**Sample Output:**
+**Result**
 ```
 Example 1: Evaluating expression:
 3 + 4 * 2 / (1 - 5) ^ 2 ^ 3

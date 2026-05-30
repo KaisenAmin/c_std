@@ -21,454 +21,390 @@ This library is dedicated to directory and file operations, offering comprehensi
 ## Function Explanations
 
 ### `bool dir_make_directory(const char* dirpath)`
-
-- **Purpose**: This function attempts to create a directory at the specified path. It handles directory creation differently based on the operating system (Windows or Unix-like systems).
-- **Parameters**:
-  - `dirpath`: A pointer to a string representing the path of the directory to be created.
-- **Return Value**: 
-  - `true`: If the directory is successfully created.
-  - `false`: If the directory creation fails for any reason, such as invalid permissions or a null directory path.
-
-- **Input Validation**:
-   - The function first checks if the provided `dirpath` is `NULL`. If it is, the function logs an error message and returns `false`.
+**Purpose**: Creates a single directory at the specified path. Handles directory creation differently based on the operating system (Windows or Unix-like systems).
+**Parameters**:
+- `dirpath`: A pointer to a string representing the path of the directory to be created.
+**Return Value**: `true` if the directory is successfully created; `false` if creation fails (e.g., invalid permissions, null path, or the directory already exists).
+**Usage Case**: Use when you need to create one new directory at a known path and the parent directory is guaranteed to already exist.
 
 ---
 
-### `char* dir_dir_name(const char* dirpath)`
-
-- **Purpose**: This function retrieves the name of the directory from a given directory path. If the input is the current directory (`"."`), it will return the name of the current working directory.
-- **Parameters**:
-  - `dirpath`: A pointer to a string representing the directory path.
-- **Return Value**: 
-  - A dynamically allocated string containing the directory name, or an empty string if an error occurs. The caller is responsible for freeing this memory.
-- **Input Validation**:
-   - The function first checks if the provided `dirpath` is `NULL`. If so, it logs an error and returns `NULL`.
-
----
-
-### `char* dir_current_path(void)`
-
-- **Purpose**: This function retrieves the current working directory's path.
-- **Parameters**: None.
-- **Return Value**: 
-  - A dynamically allocated string containing the current working directory, or `NULL` on error. The caller is responsible for freeing this memory.
-
----
-
-### `int dir_count(const char* dirpath)`
-
-- **Purpose**: This function counts the number of items (files and directories) in a specified directory.
-- **Parameters**:
-  - `dirpath`: A string representing the path to the directory.
-- **Return Value**:
-  - Returns the number of items in the directory, or `-1` if an error occurs (e.g., if the directory cannot be opened).
-
-- **Input Validation**:
-   - The function first checks if the `dirpath` is `NULL`. If so, it logs an error and returns `-1`.
-
----
-
-### `char* dir_absolute_file_path(const char* relative_path)`
-
-- **Purpose**: This function converts a relative file path to an absolute file path.
-- **Parameters**:
-  - `relative_path`: A string representing the relative file path.
-- **Return Value**:
-  - Returns a dynamically allocated string containing the absolute file path, or `NULL` if an error occurs.
-- **Input Validation**:
-   - The function checks if the `relative_path` is `NULL`. If so, it logs an error and returns `NULL`.
+### `bool dir_make_directories(const char* dirpath)`
+**Purpose**: Creates a full directory tree (equivalent to `mkdir -p`). Every intermediate directory in `dirpath` that does not already exist is created. Tolerates being called on a path whose tree already exists.
+**Parameters**:
+- `dirpath`: A pointer to a string representing the full path to create.
+**Return Value**: `true` if the leaf directory exists at the end of the call; `false` on error.
+**Usage Case**: Use when you need to atomically create a deep path such as `a/b/c/d` in one call, regardless of how many intermediate directories are missing.
 
 ---
 
 ### `bool dir_cd(const char* dirName)`
-
-- **Purpose**: This function changes the current working directory to the specified directory.
-- **Parameters**:
-  - `dirName`: A string representing the name of the directory to change to.
-- **Return Value**:
-  - Returns `true` if the directory was successfully changed, or `false` if an error occurs.
-
-- **Input Validation**:
-   - The function checks if the `dirName` is `NULL`. If so, it logs an error and returns `false`.
+**Purpose**: Changes the current working directory to the specified directory.
+**Parameters**:
+- `dirName`: A string representing the name or path of the directory to change to.
+**Return Value**: `true` if the directory was successfully changed; `false` on error (e.g., directory does not exist or is null).
+**Usage Case**: Use to navigate into a subdirectory at runtime, similar to the `cd` shell command.
 
 ---
 
-### `bool dir_cd_up()`
-
-- **Purpose**: This function changes the current working directory to the parent directory (i.e., the directory one level up from the current directory).
-- **Parameters**: None.
-- **Return Value**: 
-  - Returns `true` if the directory change was successful, or `false` otherwise.
-
-- **Logging**: The function logs that it is changing the directory to the parent (`..`).
-- **Calling `dir_cd`**: It calls the `dir_cd` function with `".."` as the argument, which changes the directory to the parent directory.
-- **Return**: It returns the result of the `dir_cd` function.
-
----
-
-### `bool dir_remove_directory(const char* dirName)`
-
-- **Purpose**: This function removes a directory if it is empty.
-- **Parameters**:
-  - `dirName`: A string representing the name or path of the directory to remove.
-- **Return Value**: 
-  - Returns `true` if the directory was successfully removed, or `false` if the directory is not empty or an error occurred.
-
-- **Input Validation**: It first checks if the directory name (`dirName`) is `NULL`. If so, it logs an error and returns `false`.
-- **Checking Directory Contents**: It calls the `dir_is_empty` function to check if the directory is empty. If the directory is not empty, it logs an error and returns `false`.
-
----
-
-### `bool dir_is_empty(const char* dirName)`
-
-- **Purpose**: This function checks if a directory is empty.
-- **Parameters**:
-  - `dirName`: A string representing the name or path of the directory to check.
-- **Return Value**: 
-  - Returns `true` if the directory is empty, `false` if it is not empty or if an error occurs.
-- **Input Validation**: It checks if the directory name is `NULL`. If so, it logs an error and returns `false`.
-
----
-
-### `bool dir_remove_directory_recursive(const char* dirPath)`
-
-- **Purpose**: This function recursively removes a directory and all its contents.
-- **Parameters**:
-  - `dirPath`: A string representing the path of the directory to be removed.
-- **Return Value**: 
-  - Returns `true` if the directory and its contents were successfully removed, or `false` if an error occurred.
-
-- **Input Validation**: It checks if the directory path is `NULL`. If so, it logs an error and returns `false`.
-
----
-
-### `bool dir_rename(const char* oldName, const char* newName)`
-
-- **Purpose**: This function renames a file or directory from `oldName` to `newName`.
-- **Parameters**:
-  - `oldName`: A string representing the current name of the file or directory.
-  - `newName`: A string representing the new name for the file or directory.
-- **Return Value**:
-  - Returns `true` if the renaming was successful, or `false` if it failed.
-
-- **Input Validation**: The function first checks if both `oldName` and `newName` are provided. If either is `NULL`, it logs an error and returns `false`.
+### `bool dir_cd_up(void)`
+**Purpose**: Changes the current working directory to the parent directory (equivalent to `dir_cd("..")`).
+**Parameters**: None.
+**Return Value**: `true` if the directory change was successful; `false` otherwise.
+**Usage Case**: Use to move up one level in the directory hierarchy without having to specify a full path.
 
 ---
 
 ### `bool dir_is_directory_exists(const char* dirPath)`
-
-- **Purpose**: This function checks if a directory exists at the specified path.
-- **Parameters**:
-  - `dirPath`: A string representing the path of the directory to check.
-- **Return Value**:
-  - Returns `true` if the directory exists, or `false` if it does not exist or if an error occurs.
-
-- **Input Validation**: It checks if `dirPath` is `NULL`. If so, it logs an error and returns `false`.
+**Purpose**: Checks whether a directory exists at the specified path.
+**Parameters**:
+- `dirPath`: A string representing the path of the directory to check.
+**Return Value**: `true` if the path exists and is a directory; `false` if it does not exist, is not a directory, or if an error occurs.
+**Usage Case**: Use before attempting to open or iterate a directory to avoid errors from non-existent paths.
 
 ---
 
 ### `bool dir_is_file_exists(const char* filePath)`
-
-- **Purpose**: This function checks if a file exists at the specified path.
-- **Parameters**:
-  - `filePath`: A string representing the path of the file to check.
-- **Return Value**:
-  - Returns `true` if the file exists, or `false` if it does not exist or if an error occurs.
-- **Input Validation**: It checks if `filePath` is `NULL`. If so, it logs an error and returns `false`.
+**Purpose**: Checks whether a file exists at the specified path.
+**Parameters**:
+- `filePath`: A string representing the path of the file to check.
+**Return Value**: `true` if the path exists and is a file; `false` if it does not exist or an error occurs.
+**Usage Case**: Use before reading or processing a file to guard against missing-file errors.
 
 ---
 
-### `bool dir_copy_file(const char* srcPath, const char* destPath)`
-
-- **Purpose**: This function copies a file from a source path (`srcPath`) to a destination path (`destPath`).
-- **Parameters**:
-  - `srcPath`: The path of the source file to be copied.
-  - `destPath`: The destination file path where the file should be copied to.
-- **Return Value**:
-  - Returns `true` if the file was successfully copied, or `false` if an error occurred.
-
-- **Input Validation**: The function first checks if both `srcPath` and `destPath` are provided. If either is `NULL`, it logs an error and returns `false`.
+### `bool dir_is_directory(const char* filePath)`
+**Purpose**: Checks whether the specified path is a directory.
+**Parameters**:
+- `filePath`: A pointer to a string representing the path to check.
+**Return Value**: `true` if the path is a directory; `false` if it is not a directory, does not exist, or an error occurs.
+**Usage Case**: Use to distinguish directories from regular files when iterating directory contents.
 
 ---
 
-### `bool dir_copy_directory(const char* srcDir, const char* destDir)`
-
-- **Purpose**: This function copies an entire directory, including its contents (files and subdirectories), from a source path (`srcDir`) to a destination path (`destDir`).
-- **Parameters**:
-  - `srcDir`: The path of the source directory to be copied.
-  - `destDir`: The path of the destination directory where the contents should be copied.
-- **Return Value**:
-  - Returns `true` if the directory and its contents were successfully copied, or `false` if an error occurred.
-
-- **Input Validation**: The function first checks if both `srcDir` and `destDir` are provided. If either is `NULL`, it logs an error and returns `false`.
+### `bool dir_is_file(const char* filePath)`
+**Purpose**: Checks whether the specified path points to a regular file.
+**Parameters**:
+- `filePath`: A pointer to a string specifying the path to check.
+**Return Value**: `true` if the path points to a regular file; `false` if the path does not exist, points to something other than a regular file, or an error occurs.
+**Usage Case**: Use to confirm that a path refers to a regular file (not a directory, symlink, etc.) before performing file I/O.
 
 ---
 
-### `long long dir_get_directory_size(const char* dirPath)`
-
-- **Purpose**:  
-  This function calculates the total size of a directory and all its contents, including subdirectories, in bytes. It provides different implementations based on the operating system (Windows or Unix-like systems). If any error occurs, such as a `NULL` directory path or failure to compute the size, the function returns `-1`.
-- **Parameters**:  
-  - `dirPath`: A pointer to a string representing the path of the directory to be analyzed for its size.
-- **Return Value**:  
-  - The size of the directory in bytes if successful.
-  - `-1`: If an error occurs (e.g., invalid directory path or failure in size calculation).
-
-- **Input Validation**:  
-  The function first checks if the provided `dirPath` is `NULL`. If it is, the function logs an error message and returns `-1`.
+### `bool dir_is_empty(const char* dirName)`
+**Purpose**: Checks whether a directory exists and contains no entries.
+**Parameters**:
+- `dirName`: A string representing the name or path of the directory to check.
+**Return Value**: `true` if the directory is empty; `false` if it is not empty or an error occurs.
+**Usage Case**: Use before calling `dir_remove_directory` to verify the directory is safe to delete.
 
 ---
 
-### `long long dir_get_file_size(const char* filePath)`
-
-- **Purpose**:  
-  This function calculates the size of a specific file in bytes. It handles file size calculation differently depending on the operating system (Windows or Unix-like systems). If any error occurs, such as a `NULL` file path or failure to calculate the size, the function returns `-1`.
-- **Parameters**:  
-  - `filePath`: A pointer to a string representing the path of the file whose size is to be determined.
-- **Return Value**:  
-  - The size of the file in bytes if successful.
-  - `-1`: If an error occurs (e.g., invalid file path or failure to calculate the file size).
-
-- **Input Validation**:  
-  The function first checks if the provided `filePath` is `NULL`. If it is, the function logs an error message and returns `-1`.
-
----
-
-### `void dir_list_contents(const char* dirPath, DirListOption option, Vector* resultVector)`  
-- **Purpose**:  This function lists the contents of a directory based on the specified option (e.g., files only, directories only, or both). The results are stored in a `Vector`.
-
-- **Parameters:**
-  - `dirPath`: The path of the directory to list.
-  - `option`: Specifies what to list (e.g., files, directories, or both).
-  - `resultVector`: A vector where the results will be stored.
-- **Return Value**:
-  - void: This function does not return any value. The results (directory contents) are instead stored in the resultVector. Errors are handled internally, typically through logging, rather than returning an error code.
-
----
-
-### `bool dir_is_file(const char *filePath)`
-
-- **Purpose**: This function checks if the specified path points to a regular file. It returns `true` if the path points to a file and `false` if it does not exist or points to something other than a regular file (e.g., a directory, symbolic link, etc.).
-- **Parameters:**
-  - `filePath`: A pointer to a string that specifies the path of the file to check. The path must be a valid file system path. If `filePath` is `NULL`, the function logs an error and returns `false`.
-- **Return Value**:
-  - `true`: If the path points to a regular file.
-  - `false`: If the path does not exist, points to something other than a regular file, or if there is an error (such as a `NULL` path or file access issues).
-- **Error Handling**: If the provided `filePath` is `NULL` or the file does not exist, the function logs the error and returns `false`.
-
----
-
-### `bool dir_is_directory(const char* dirPath)`
-
-- **Purpose**:  
-  This function checks whether the specified path is a directory.
-- **Parameters**:  
-  - `dirPath`: A pointer to a string representing the path of the directory to be checked.
-- **Return Value**:  
-  - `true`: If the path is a directory.
-  - `false`: If the path is not a directory, the directory does not exist, or an error occurs.
-
-- **Input Validation**:  
-  The function first checks if the provided `dirPath` is `NULL`. If it is, the function logs an error message and returns `false`.
-
----
-
-### `bool dir_move_file(const char* srcPath, const char* destPath)`
-
-- **Purpose**:  
-  This function moves a file from a source path to a destination path.
-- **Parameters**:  
-  - `srcPath`: A pointer to a string representing the source file path.
-  - `destPath`: A pointer to a string representing the destination file path.
-- **Return Value**:  
-  - `true`: If the file was successfully moved.
-  - `false`: If an error occurs (e.g., `NULL` paths, failure to move the file).
-
-- **Input Validation**:  
-  The function checks if both `srcPath` and `destPath` are `NULL`. If either is `NULL`, it logs an error message and returns `false`.
-
----
-
-### `bool dir_move_directory(const char* srcPath, const char* destPath)`
-
-- **Purpose**:  
-  This function moves a directory and its contents from a source path to a destination path.
-- **Parameters**:  
-  - `srcPath`: A pointer to a string representing the source directory path.
-  - `destPath`: A pointer to a string representing the destination directory path.
-- **Return Value**:  
-  - `true`: If the directory was successfully moved.
-  - `false`: If an error occurs (e.g., `NULL` paths, failure to move the directory).
-- **Input Validation**:  
-  The function checks if both `srcPath` and `destPath` are `NULL`. If either is `NULL`, it logs an error message and returns `false`.
-
----
-
-### `char* dir_get_modified_time(const char* dirPath)`
-
-- **Purpose**:  
-  This function retrieves the last modified time of a directory as a string. It supports both Windows and POSIX systems. The modified time is useful for tracking when changes were last made to the directory.
-- **Parameters**:  
-  - `dirPath`: A pointer to a string representing the path of the directory.
-- **Return Value**:  
-  - A dynamically allocated string representing the modified time of the directory in the format "YYYY-MM-DD HH:MM:SS".
-  - `NULL`: If an error occurs (e.g., `NULL` directory path or failure to retrieve the time).
-
-- **Input Validation**:  
-  If the `dirPath` is `NULL`, the function logs an error and returns `NULL`.
-- **Error Handling**:  
-  If the directory path is invalid, or memory allocation fails, the function logs appropriate error messages and returns `NULL`.
-
----
-
-### `char* dir_get_creation_time(const char* dirPath)`
-
-- **Purpose**:  
-  This function retrieves the creation time of a directory as a string. Creation time retrieval is only supported on Windows systems. POSIX systems do not typically track creation time.
-- **Parameters**:  
-  - `dirPath`: A pointer to a string representing the path of the directory.
-- **Return Value**:  
-  - A dynamically allocated string representing the creation time of the directory in the format "YYYY-MM-DD HH:MM:SS".
-  - `NULL`: If an error occurs (e.g., `NULL` directory path, failure to retrieve the time, or unsupported platform).
-
-- **Input Validation**:  
-  If the `dirPath` is `NULL`, the function logs an error and returns `NULL`.
-- **Error Handling**:  
-  If the directory path is invalid, or memory allocation fails, the function logs appropriate error messages and returns `NULL`.
-
----
-
-### `char* dir_get_home_directory()`
-
-- **Purpose**:  
-  This function retrieves the current user's home directory path as a string. It supports both Windows and POSIX systems. The home directory is typically where user-specific files and configurations are stored.
-- **Parameters**:  
-  - None.
-- **Return Value**:  
-  - A dynamically allocated string representing the home directory path.
-  - `NULL`: If an error occurs (e.g., failure to retrieve the home directory path or memory allocation failure).
-- **Error Handling**:  
-  The function logs appropriate error messages if it fails to retrieve or convert the home directory path and returns `NULL` in such cases.
+### `bool dir_is_absolute_path(const char* path)`
+**Purpose**: Determines whether a path is absolute. On Windows, recognises drive-letter prefixes (`C:\...`), UNC paths (`\\server\share`), and leading `/` or `\\`. On POSIX, recognises a leading `/`.
+**Parameters**:
+- `path`: A pointer to the path string to test.
+**Return Value**: `true` if the path is absolute; `false` if it is relative or null.
+**Usage Case**: Use to decide whether to prepend the current working directory when resolving a user-supplied path.
 
 ---
 
 ### `DirFileType dir_get_file_type(const char* filePath)`
-
-- **Purpose**:  
-  This function determines the type of a file or directory at the specified path and returns a value from the `DirFileType` enum, which can indicate whether the file is a regular file, directory, symbolic link, or an unknown type.
-- **Parameters**:  
-  - `filePath`: A pointer to a string representing the path to the file or directory.
-- **Return Value**:  
-  - Returns one of the following enum values:
-    - `DIR_FILE_TYPE_REGULAR`: If the file is a regular file.
-    - `DIR_FILE_TYPE_DIRECTORY`: If the file is a directory.
-    - `DIR_FILE_TYPE_SYMLINK`: If the file is a symbolic link.
-    - `DIR_FILE_TYPE_UNKNOWN`: If the file type could not be determined or the file does not exist.
-
-- **Input Validation**:  
-  If the `filePath` is `NULL`, the function logs an error and returns `DIR_FILE_TYPE_UNKNOWN`.
-- **Error Handling**:  
-  If the file path is invalid or the file type cannot be determined, the function logs an error and returns `DIR_FILE_TYPE_UNKNOWN`.
+**Purpose**: Determines the type of the file system entry at the specified path.
+**Parameters**:
+- `filePath`: A pointer to a string representing the path to the file or directory.
+**Return Value**: One of `DIR_FILE_TYPE_REGULAR`, `DIR_FILE_TYPE_DIRECTORY`, `DIR_FILE_TYPE_SYMLINK`, or `DIR_FILE_TYPE_UNKNOWN` if the type cannot be determined or the path is null.
+**Usage Case**: Use when you need a single call to distinguish files, directories, and symbolic links without calling multiple predicate functions.
 
 ---
 
-### `bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv)`
-
-- **Purpose**:  
-  This function encrypts the contents of a file using the DES encryption algorithm in CBC mode, with a specified password and initialization vector (IV). The encrypted data is written back to the original file.
-- **Parameters**:  
-  - `filePath`: A pointer to a string representing the path to the file to be encrypted.
-  - `password`: A pointer to a string representing the encryption password (must be 8 bytes or fewer).
-  - `iv`: A pointer to an 8-byte initialization vector (IV) used for encryption.
-- **Return Value**:  
-  - `true`: If the file was successfully encrypted.
-  - `false`: If an error occurs during the encryption process (e.g., file not found, memory allocation failure, or encryption failure).
-
-- **Input Validation**:  
-  - The function checks if `filePath`, `password`, or `iv` are `NULL`. If any of these are `NULL`, it logs an error and returns `false`.
-- **Error Handling**:  
-  - If the file cannot be opened for reading or writing, memory allocation fails, the password is too long, or encryption fails, the function logs appropriate error messages and returns `false`.
+### `bool dir_remove_directory(const char* dirName)`
+**Purpose**: Removes an empty directory. Fails if the directory is not empty.
+**Parameters**:
+- `dirName`: A string representing the name or path of the directory to remove.
+**Return Value**: `true` if the directory was successfully removed; `false` if the directory is not empty or an error occurred.
+**Usage Case**: Use for safe deletion of directories when you have already verified (or ensured) that the directory is empty.
 
 ---
 
-### `bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv)`
-
-- **Purpose**:  
-  This function decrypts the contents of a file using the DES encryption algorithm in CBC mode. It uses the provided password and initialization vector (IV) to decrypt the file, then writes the decrypted data back to the original file.
-- **Parameters**:  
-  - `filePath`: A pointer to a string representing the path of the file to be decrypted.
-  - `password`: A pointer to a string representing the decryption password (must be 8 bytes or fewer).
-  - `iv`: A pointer to an 8-byte initialization vector used for decryption.
-- **Return Value**:  
-  - `true`: If the file was successfully decrypted.
-  - `false`: If an error occurs during the decryption process (e.g., invalid input, file not found, or decryption failure).
-
-- **Input Validation**:  
-  The function checks if `filePath`, `password`, or `iv` are `NULL`. If any of these are `NULL`, it logs an error and returns `false`.
-
-- **Error Handling**:  
-  If the file cannot be opened, memory allocation fails, or decryption fails, the function logs appropriate error messages and returns `false`.
+### `bool dir_remove_directory_recursive(const char* dirPath)`
+**Purpose**: Recursively removes a directory and all of its contents (files and subdirectories).
+**Parameters**:
+- `dirPath`: A string representing the path of the directory to be removed.
+**Return Value**: `true` if the directory and its contents were successfully removed; `false` if an error occurred.
+**Usage Case**: Use when you need to completely delete a directory tree, similar to `rm -rf`.
 
 ---
 
-### `bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize)`
-
-- **Purpose**:  
-  This function retrieves the owner of the specified file. It fills the `ownerBuffer` with the owner's name and ensures that the string does not exceed the size of the buffer.
-- **Parameters**:  
-  - `filePath`: A pointer to a string representing the path of the file.
-  - `ownerBuffer`: A pointer to a buffer where the owner's name will be stored.
-  - `bufferSize`: The size of the `ownerBuffer`.
-- **Return Value**:  
-  - `true`: If the file owner was successfully retrieved.
-  - `false`: If an error occurs (e.g., the file path is invalid, or the retrieval fails).
-
-- **Input Validation**:  
-  The function checks if `filePath`, `ownerBuffer`, or `bufferSize` are `NULL` or if `bufferSize` is 0. If any of these conditions are true, it logs an error and returns `false`.
-- **Error Handling**:  
-  If the file path is invalid, memory allocation fails, or the file owner cannot be retrieved, the function logs appropriate error messages and returns `false`.
+### `bool dir_rename(const char* oldName, const char* newName)`
+**Purpose**: Renames a file or directory from `oldName` to `newName`.
+**Parameters**:
+- `oldName`: A string representing the current name of the file or directory.
+- `newName`: A string representing the new name for the file or directory.
+**Return Value**: `true` if the renaming was successful; `false` if it failed (e.g., either argument is null, or the underlying rename operation fails).
+**Usage Case**: Use to rename files or directories in-place without copying and deleting.
 
 ---
 
-### `bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize)`
+### `bool dir_copy_file(const char* srcPath, const char* destPath)`
+**Purpose**: Copies a file from `srcPath` to `destPath`.
+**Parameters**:
+- `srcPath`: The path of the source file to be copied.
+- `destPath`: The destination path where the file should be copied to.
+**Return Value**: `true` if the file was successfully copied; `false` if an error occurred.
+**Usage Case**: Use to duplicate a single file to another location, preserving the original.
 
-- **Purpose**:  
-  This function retrieves the owner of the specified directory and stores the owner's name in the provided buffer.
-- **Parameters**:  
-  - `dirPath`: A pointer to a string representing the path of the directory.
-  - `ownerBuffer`: A pointer to a buffer where the owner's name will be stored.
-  - `bufferSize`: The size of the `ownerBuffer`.
-- **Return Value**:  
-  - `true`: If the directory owner was successfully retrieved.
-  - `false`: If an error occurs (e.g., invalid input or failure to retrieve the owner).
+---
 
-- **Input Validation**:  
-  The function checks if `dirPath`, `ownerBuffer`, or `bufferSize` are `NULL` or if `bufferSize` is 0. If any of these conditions are true, it logs an error and returns `false`.
-- **Error Handling**:  
-  If an error occurs, such as failure to open the directory or retrieve the owner, the function logs appropriate error messages and returns `false`.
+### `bool dir_copy_directory(const char* srcDir, const char* destDir)`
+**Purpose**: Copies an entire directory tree, including all files and subdirectories, from `srcDir` to `destDir`.
+**Parameters**:
+- `srcDir`: The path of the source directory to be copied.
+- `destDir`: The path of the destination directory.
+**Return Value**: `true` if the directory and its contents were successfully copied; `false` if an error occurred.
+**Usage Case**: Use to back up or duplicate a directory tree without removing the original.
+
+---
+
+### `bool dir_move_file(const char* srcPath, const char* destPath)`
+**Purpose**: Moves a file from `srcPath` to `destPath`.
+**Parameters**:
+- `srcPath`: A pointer to a string representing the source file path.
+- `destPath`: A pointer to a string representing the destination file path.
+**Return Value**: `true` if the file was successfully moved; `false` if an error occurs.
+**Usage Case**: Use to relocate a file to a different path, removing it from the original location.
+
+---
+
+### `bool dir_move_directory(const char* srcPath, const char* destPath)`
+**Purpose**: Moves a directory and its contents from `srcPath` to `destPath`.
+**Parameters**:
+- `srcPath`: A pointer to a string representing the source directory path.
+- `destPath`: A pointer to a string representing the destination directory path.
+**Return Value**: `true` if the directory was successfully moved; `false` if an error occurs.
+**Usage Case**: Use to relocate an entire directory tree to a new location in one operation.
+
+---
+
+### `void dir_list_contents(const char* dirPath, DirListOption option, Vector* result)`
+**Purpose**: Lists the contents of a directory based on the specified filter option and stores the results in a `Vector` of heap-allocated `char*` strings.
+**Parameters**:
+- `dirPath`: The path of the directory to list.
+- `option`: Filter specifying what to list: `DIR_LIST_FILES`, `DIR_LIST_DIRECTORIES`, or `DIR_LIST_ALL`.
+- `result`: A `Vector*` where the results will be stored. Each element is a heap-allocated `char*` that the caller must `free`.
+**Return Value**: `void`. Errors are handled internally via logging.
+**Usage Case**: Use to enumerate the immediate children of a directory when you need only one level of contents.
+
+---
+
+### `void dir_list_recursive(const char* dirPath, DirListOption option, Vector* result)`
+**Purpose**: Walks an entire directory tree and pushes every matching entry into `result` as a heap-allocated `char*`. Paths are prefixed with `dirPath`.
+**Parameters**:
+- `dirPath`: The root path to walk.
+- `option`: Filter specifying what to collect: `DIR_LIST_FILES`, `DIR_LIST_DIRECTORIES`, or `DIR_LIST_ALL`.
+- `result`: A `Vector*` where results are stored. Each element is a heap-allocated `char*` that the caller must `free`.
+**Return Value**: `void`. Errors are handled internally via logging.
+**Usage Case**: Use to collect all files (or directories) under a subtree for bulk processing such as archiving or indexing.
 
 ---
 
 ### `bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callback, void* userData)`
+**Purpose**: Searches a directory for files matching a specified pattern, invoking a user-defined callback for each match.
+**Parameters**:
+- `dirPath`: The path of the directory to search.
+- `pattern`: The glob pattern to match file names against (e.g., `"*.txt"`).
+- `callback`: A function pointer `bool (*)(const char* filePath, void* userData)`. Return `true` to continue searching, `false` to stop.
+- `userData`: Arbitrary pointer passed through to each callback invocation.
+**Return Value**: `true` if the search completed without error; `false` if any argument is null or the directory cannot be opened.
+**Usage Case**: Use to find all files of a given type in a directory and process or collect them in a single pass.
 
-- **Purpose**:  
-  This function searches a directory for files matching a specified pattern. It invokes a user-defined callback function for each matched file.
-- **Parameters**:  
-  - `dirPath`: A pointer to a string representing the path of the directory to search.
-  - `pattern`: A pointer to a string representing the pattern to match files against (e.g., "*.txt").
-  - `callback`: A function pointer to a user-defined callback function that is invoked for each matched file.
-  - `userData`: A pointer to user-defined data that will be passed to the callback function.
+---
 
-- **Return Value**:  
-  - `true`: If the search was successful and the callback was invoked for matching files.
-  - `false`: If an error occurs (e.g., invalid input or failure to search the directory).
+### `int dir_count(const char* dirpath)`
+**Purpose**: Counts the number of entries (files and directories) in the specified directory.
+**Parameters**:
+- `dirpath`: A string representing the path to the directory.
+**Return Value**: The number of entries in the directory, or `-1` if the directory cannot be opened or `dirpath` is null.
+**Usage Case**: Use to quickly determine how many items a directory contains, e.g., to decide whether it is empty before deleting.
 
-- **Input Validation**:  
-  The function checks if `dirPath`, `pattern`, or `callback` are `NULL`. If any of these are `NULL`, it logs an error and returns `false`.
-- **Error Handling**:  
-  If an error occurs, such as failure to open the directory or search for files, the function logs appropriate error messages and returns `false`.
+---
 
---- 
+### `char dir_path_separator(void)`
+**Purpose**: Returns the native path separator character for the current platform.
+**Parameters**: None.
+**Return Value**: `'\\'` on Windows; `'/'` on POSIX.
+**Usage Case**: Use when building paths manually to avoid hard-coding a platform-specific separator character.
+
+---
+
+### `char* dir_join_path(const char* a, const char* b)`
+**Purpose**: Joins two path segments with the native separator, trimming a trailing separator on `a` and a leading separator on `b`. If `b` is an absolute path it is returned verbatim (POSIX convention). The result is heap-allocated.
+**Parameters**:
+- `a`: The left-hand path segment.
+- `b`: The right-hand path segment.
+**Return Value**: A newly allocated string containing the joined path. The caller must call `free()` on it.
+**Usage Case**: Use to construct file paths from components without manually inserting or deduplicating separators.
+
+---
+
+### `char* dir_base_name(const char* path)`
+**Purpose**: Returns the final component of a path. Strips a trailing separator first, so `"foo/bar/"` returns `"bar"`.
+**Parameters**:
+- `path`: The input path string.
+**Return Value**: A newly allocated string containing the final path component. The caller must call `free()` on it.
+**Usage Case**: Use to extract the file or directory name from a full path, e.g., to display it without its parent directories.
+
+---
+
+### `char* dir_dir_name(const char* dirpath)`
+**Purpose**: Returns the directory portion of a path (everything up to, but not including, the last component). If the input is `"."`, the current working directory name is returned.
+**Parameters**:
+- `dirpath`: A pointer to a string representing the directory path.
+**Return Value**: A dynamically allocated string containing the directory name. The caller must call `free()` on it.
+**Usage Case**: Use to strip the file name off a full path when you need only the parent directory.
+
+---
+
+### `char* dir_extension(const char* path)`
+**Purpose**: Returns the file extension of the final path component, including the leading dot. A leading dot in the basename (e.g., `.bashrc`) is not treated as an extension.
+**Parameters**:
+- `path`: The input path string.
+**Return Value**: A newly allocated string containing the extension (e.g., `".gz"`) or an empty string if there is none. The caller must call `free()` on it.
+**Usage Case**: Use to determine a file's type from its name suffix, e.g., to select a parser or filter files by extension.
+
+---
+
+### `char* dir_change_extension(const char* path, const char* newExt)`
+**Purpose**: Returns a copy of `path` with the extension replaced by `newExt`. `newExt` may include or omit the leading dot. Passing `""` strips the extension entirely.
+**Parameters**:
+- `path`: The original path string.
+- `newExt`: The new extension to apply (e.g., `".bak"` or `"bak"`).
+**Return Value**: A newly allocated string containing the modified path. The caller must call `free()` on it.
+**Usage Case**: Use to generate a backup or converted-file name from an original file path.
+
+---
+
+### `char* dir_normalize_path(const char* path)`
+**Purpose**: Cleans up a path by normalizing separators and collapsing `.` and `..` segments. Does not touch the filesystem (no symlink resolution). Output uses the native separator.
+**Parameters**:
+- `path`: The path string to normalize.
+**Return Value**: A newly allocated string containing the normalized path. The caller must call `free()` on it.
+**Usage Case**: Use to canonicalize user-supplied or concatenated paths before passing them to filesystem operations.
+
+---
+
+### `char* dir_absolute_file_path(const char* relative_path)`
+**Purpose**: Resolves a relative path to its absolute form using the current working directory.
+**Parameters**:
+- `relative_path`: A string representing the relative file path.
+**Return Value**: A dynamically allocated string containing the absolute file path, or `NULL` if an error occurs. The caller must call `free()` on it.
+**Usage Case**: Use to turn a relative path (e.g., `"./config.ini"`) into an absolute path for storage or display.
+
+---
+
+### `char* dir_current_path(void)`
+**Purpose**: Returns the current working directory's path.
+**Parameters**: None.
+**Return Value**: A dynamically allocated string containing the current working directory, or `NULL` on error. The caller must call `free()` on it.
+**Usage Case**: Use to record or display where the program is currently running from.
+
+---
+
+### `char* dir_get_home_directory(void)`
+**Purpose**: Returns the current user's home directory path. Supports both Windows and POSIX systems.
+**Parameters**: None.
+**Return Value**: A dynamically allocated string representing the home directory path, or `NULL` on error. The caller must call `free()` on it.
+**Usage Case**: Use to locate user-specific configuration or data files stored under the home directory.
+
+---
+
+### `char* dir_temp_directory(void)`
+**Purpose**: Returns the system temporary directory path with no trailing separator. On Windows uses `GetTempPathW`; on POSIX checks `$TMPDIR`, falling back to `/tmp`.
+**Parameters**: None.
+**Return Value**: A newly allocated string containing the temp directory path. The caller must call `free()` on it.
+**Usage Case**: Use to obtain a safe location for writing temporary files that will be cleaned up later.
+
+---
+
+### `char* dir_get_creation_time(const char* dirPath)`
+**Purpose**: Returns the creation time of a file or directory as a formatted string. Creation time retrieval is only supported on Windows; POSIX returns `NULL`.
+**Parameters**:
+- `dirPath`: A pointer to a string representing the path of the file or directory.
+**Return Value**: A dynamically allocated string in `"YYYY-MM-DD HH:MM:SS"` format, or `NULL` on error or unsupported platform. The caller must call `free()` on it.
+**Usage Case**: Use on Windows to record or display when a file or directory was first created.
+
+---
+
+### `char* dir_get_modified_time(const char* dirPath)`
+**Purpose**: Returns the last-modified time of a file or directory as a formatted string. Supports both Windows and POSIX.
+**Parameters**:
+- `dirPath`: A pointer to a string representing the path of the file or directory.
+**Return Value**: A dynamically allocated string in `"YYYY-MM-DD HH:MM:SS"` format, or `NULL` on error. The caller must call `free()` on it.
+**Usage Case**: Use to detect whether a file has changed since it was last processed, or to display modification timestamps to users.
+
+---
+
+### `long long dir_get_directory_size(const char* dirPath)`
+**Purpose**: Calculates the total size of a directory and all its contents (including subdirectories) in bytes.
+**Parameters**:
+- `dirPath`: A pointer to a string representing the path of the directory.
+**Return Value**: The total size in bytes, or `-1` if an error occurs (e.g., null path or inaccessible directory).
+**Usage Case**: Use to report disk usage for a directory tree, or to enforce a storage quota.
+
+---
+
+### `long long dir_get_file_size(const char* filePath)`
+**Purpose**: Returns the size of a specific file in bytes.
+**Parameters**:
+- `filePath`: A pointer to a string representing the path of the file.
+**Return Value**: The size of the file in bytes, or `-1` if an error occurs (e.g., null path or the file does not exist).
+**Usage Case**: Use to validate file sizes before reading, or to display file size information.
+
+---
+
+### `bool dir_get_file_owner(const char* filePath, char* ownerBuffer, size_t bufferSize)`
+**Purpose**: Retrieves the name of the owner of the specified file and writes it into `ownerBuffer`.
+**Parameters**:
+- `filePath`: A pointer to a string representing the path of the file.
+- `ownerBuffer`: A buffer where the owner's name will be stored.
+- `bufferSize`: The size of `ownerBuffer` in bytes.
+**Return Value**: `true` if the owner was successfully retrieved; `false` on error (e.g., null arguments, zero buffer size, or retrieval failure).
+**Usage Case**: Use for access-control checks or audit logging that requires knowing who owns a given file.
+
+---
+
+### `bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t bufferSize)`
+**Purpose**: Retrieves the name of the owner of the specified directory and writes it into `ownerBuffer`.
+**Parameters**:
+- `dirPath`: A pointer to a string representing the path of the directory.
+- `ownerBuffer`: A buffer where the owner's name will be stored.
+- `bufferSize`: The size of `ownerBuffer` in bytes.
+**Return Value**: `true` if the owner was successfully retrieved; `false` on error.
+**Usage Case**: Use for permission audits or to display ownership metadata for directories.
+
+---
+
+### `bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv)`
+**Purpose**: Encrypts the contents of a file in-place using DES-CBC mode. The encrypted data overwrites the original file.
+**Parameters**:
+- `filePath`: A pointer to a string representing the path to the file to be encrypted.
+- `password`: The encryption password (must be 8 bytes or fewer).
+- `iv`: A pointer to an 8-byte initialization vector for CBC mode.
+**Return Value**: `true` if the file was successfully encrypted; `false` if any argument is null, the file cannot be opened, or encryption fails.
+**Usage Case**: Use to protect sensitive files on disk with a password before storing or transmitting them.
+
+---
+
+### `bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv)`
+**Purpose**: Decrypts the contents of a file in-place using DES-CBC mode. The decrypted data overwrites the encrypted file.
+**Parameters**:
+- `filePath`: A pointer to a string representing the path to the file to be decrypted.
+- `password`: The decryption password (must be 8 bytes or fewer; must match the password used for encryption).
+- `iv`: A pointer to the same 8-byte initialization vector used during encryption.
+**Return Value**: `true` if the file was successfully decrypted; `false` if any argument is null, the file cannot be opened, or decryption fails.
+**Usage Case**: Use to restore a previously encrypted file to its original readable form.
+
+---
 
 ## Compilation
 To compile a program using the Dir library, include all necessary source files in your compilation command
@@ -557,8 +493,9 @@ int main() {
 ```
 **Result**
 ```
-Current directory path: 'C:\Users\asus\Hell\Desktop\stack'
+Current directory path: 'C:\Users\amint\Desktop\c_std'
 ```
+> Note: Output is machine-specific; the exact path reflects the project directory on the current machine.
 
 ---
 
@@ -584,8 +521,9 @@ int main() {
 ```
 **Result**
 ```
-Failed to count files and directories in 'C:\Users\Science\Desktop\projects\C\c_std'.
+Total number of directories and files in 'C:\Users\Science\Desktop\projects\C\c_std': <N>
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -612,8 +550,9 @@ int main() {
 ```
 **Result**
 ```
-Absolute file path: 'C:\Users\asus\OneDrive\Desktop\stack\کایزن\amin.txt'
+Absolute file path: 'C:\Users\amint\Desktop\c_std\کایزن\amin.txt'
 ```
+> Note: Output is machine-specific; the prefix path reflects the project directory on the current machine.
 
 ---
 
@@ -662,10 +601,12 @@ int main() {
 ```
 **Result**
 ```
-Failed to change directory.
+Changed directory to 'date'
+Current directory path: 'C:\Users\amint\Desktop\c_std\date'
 Moved up one directory.
-Current directory path: 'C:\Users\asus\OneDrive\Desktop'
+Current directory path: 'C:\Users\amint\Desktop\c_std'
 ```
+> Note: Output is machine-specific; the `date` subdirectory must exist for `dir_cd` to succeed, and all paths reflect the current machine.
 
 ---
 
@@ -698,6 +639,7 @@ int main() {
 ```
 Successfully removed directory 'C:\Users\asus\OneDrive\Desktop\stack\کایزن'.
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -723,6 +665,7 @@ int main() {
 ```
 Successfully removed directory 'C:\Users\asus\OneDrive\Desktop\stack\کایزن'.
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -749,6 +692,7 @@ int main() {
 ```
 File renamed successfully from './tester.txt' to './amin.txt'.
 ```
+> Note: Output is machine-specific; the source file `./tester.txt` must exist on the local filesystem.
 
 ---
 
@@ -775,6 +719,7 @@ int main() {
 ```
 Directory renamed successfully from './one' to './کایزن'.
 ```
+> Note: Output is machine-specific; the source directory `./one` must exist on the local filesystem.
 
 ---
 
@@ -798,7 +743,7 @@ int main() {
 ```
 **Result**
 ```
-File './کایزن/amin.txt'
+File './کایزن/amin.txt' does not exist.
 ```
 
 ---
@@ -823,7 +768,7 @@ int main() {
 ```
 **Result**
 ```
-Directory './کایزن'
+Directory './کایزن' does not exist.
 ```
 
 ---
@@ -856,6 +801,7 @@ int main() {
 ```
 Directory copied successfully from './کایزن' to 'C:\Users\asus\OneDrive\Desktop'.
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -882,6 +828,7 @@ int main() {
 ```
 File copied successfully from './کایزن/amin.txt' to 'C:\Users\asus\OneDrive\Desktop\amin.txt'.
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -907,8 +854,9 @@ int main() {
 ```
 **Result**
 ```
-Total size of directory './کایزن' is: 10 bytes. // data in amin.txt is Hello amin
+Total size of directory './کایزن' is: 10 bytes.
 ```
+> Note: Output is machine-specific; the size depends on the actual files inside the directory.
 
 ---
 
@@ -936,6 +884,7 @@ int main() {
 ```
 Total size of file './کایزن/amin.txt' is: 10 bytes.
 ```
+> Note: Output is machine-specific; the size depends on the actual content of the file.
 
 ---
 
@@ -974,6 +923,7 @@ MayaVPN.lnk
 Mirage.lnk
 project
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -1000,6 +950,7 @@ int main() {
 ```
 Yes "C:\\Users\\Science\\Desktop\\projects\\C\\c_std\\main.c" is path
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -1027,6 +978,7 @@ int main() {
 ```
 Move to new location
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -1048,6 +1000,7 @@ int main() {
 ```
 Last Modified Time is 2024-11-28 21:49:45
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -1069,6 +1022,7 @@ int main() {
 ```
 Creation Time is 2024-11-26 13:46:42
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
@@ -1094,12 +1048,12 @@ int main() {
 ```
 **Result**
 ```
-Home Directory: C:\Users\amin
+Home Directory: C:\Users\amint
 ```
 
 ---
 
-## Example 22 : get file type with `dir_get_file_type`
+## Example 23 : get file type with `dir_get_file_type`
 
 ```c
 #include "dir/dir.h"
@@ -1125,12 +1079,12 @@ int main() {
 ```
 **Result**
 ```
-Regular File 
+Regular File
 ```
 
 ---
 
-## Example 23 : encrypt and decrypt file with des mode cbc `dir_encrypt_file` and `dir_decrypt_file`
+## Example 24 : encrypt and decrypt file with des mode cbc `dir_encrypt_file` and `dir_decrypt_file`
 
 ```c
 #include "dir/dir.h"
@@ -1162,13 +1116,14 @@ int main() {
 ```
 **Result**
 ```
-File encrypted successfully
+File encrypted successfully.
 File decrypted successfully.
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
-## Example 24 : get file owner with `dir_get_file_owner`
+## Example 25 : get file owner with `dir_get_file_owner`
 
 ```c
 #include "dir/dir.h"
@@ -1191,10 +1146,11 @@ int main() {
 ```
 The owner of 'C:\\Users\\Science\\Desktop\\new_one.txt' is: asus
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
-## Example 25 : get dir owner with `dir_get_directory_owner`
+## Example 26 : get dir owner with `dir_get_directory_owner`
 
 ```c
 #include "dir/dir.h"
@@ -1217,10 +1173,11 @@ int main() {
 ```
 The owner of 'C:\\Users\\Science\\Desktop\\one' is: asus
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
-## Example 26 : search file in path `dir_search`
+## Example 27 : search file in path `dir_search`
 
 ```c
 #include "dir/dir.h"
@@ -1273,10 +1230,11 @@ Found file: output.txt
 Found file: test_uni.txt
 Found file: text_uni.txt
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
 
 ---
 
-## Example 27 : get list of contents `dir_list_contents`
+## Example 28 : get list of contents `dir_list_contents`
 
 ```c
 #include "dir/dir.h"
@@ -1315,6 +1273,241 @@ project
 Project1
 Silent Hill 2 Remake.lnk
 ```
+> Note: Output is machine-specific; exact path/content depends on the local filesystem.
+
+---
+
+## Example 29 — `dir_path_separator`, `dir_is_absolute_path`, `dir_join_path`
+
+```c
+#include "dir/dir.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    fmt_printf("native separator = '%c'\n", dir_path_separator());
+
+    fmt_printf("is_absolute(\"foo\")        = %d\n", dir_is_absolute_path("foo"));
+    fmt_printf("is_absolute(\"/etc\")       = %d\n", dir_is_absolute_path("/etc"));
+    fmt_printf("is_absolute(\"C:\\\\Users\") = %d\n", dir_is_absolute_path("C:\\Users"));
+
+    char* p1 = dir_join_path("logs",       "2026/05.txt");
+    char* p2 = dir_join_path("trailing/",  "no-leading");
+
+    /* Right-hand path is absolute: returned verbatim. */
+    char* p3 = dir_join_path("ignored", "C:\\absolute");
+
+    fmt_printf("join: %s\n", p1);
+    fmt_printf("join: %s\n", p2);
+    fmt_printf("join: %s\n", p3);
+
+    free(p1);
+    free(p2);
+    free(p3);
+    return 0;
+}
+```
+
+**Result**
+
+```
+native separator = '\'
+is_absolute("foo")        = 0
+is_absolute("/etc")       = 1
+is_absolute("C:\\Users") = 1
+join: logs\2026/05.txt
+join: trailing\no-leading
+join: C:\absolute
+```
+
+---
+
+## Example 30 — `dir_base_name`, `dir_extension`, `dir_change_extension`
+
+```c
+#include "dir/dir.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+static void show(const char* path) {
+    char* base = dir_base_name(path);
+    char* ext  = dir_extension(path);
+    char* swap = dir_change_extension(path, ".bak");
+    fmt_printf("%-30s base=%-15s ext=%-8s swap=%s\n", path, base, ext, swap);
+    free(base); free(ext); free(swap);
+}
+
+int main(void) {
+    show("/usr/local/bin/gcc");
+    show("C:\\Users\\amin\\notes.tar.gz");
+    show("Makefile");
+    show("/etc/.bashrc");
+    show("plain.txt");
+    return 0;
+}
+```
+
+**Result**
+
+```
+/usr/local/bin/gcc             base=gcc             ext=         swap=/usr/local/bin/gcc.bak
+C:\Users\amin\notes.tar.gz     base=notes.tar.gz    ext=.gz      swap=C:\Users\amin\notes.tar.bak
+Makefile                       base=Makefile        ext=         swap=Makefile.bak
+/etc/.bashrc                   base=.bashrc         ext=         swap=/etc/.bashrc.bak
+plain.txt                      base=plain.txt       ext=.txt     swap=plain.bak
+```
+
+---
+
+## Example 31 — `dir_normalize_path`
+
+```c
+#include "dir/dir.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    const char* samples[] = {
+        "a//b///c",
+        "a/b/../c",
+        "./logs/././today.txt",
+        "C:\\Users\\..\\Program Files",
+    };
+    for (size_t i = 0; i < sizeof(samples)/sizeof(samples[0]); ++i) {
+        char* n = dir_normalize_path(samples[i]);
+        fmt_printf("%-32s -> %s\n", samples[i], n);
+        free(n);
+    }
+    return 0;
+}
+```
+
+**Result**
+
+```
+a//b///c                         -> a\b\c
+a/b/../c                         -> a\c
+./logs/././today.txt             -> logs\today.txt
+C:\Users\..\Program Files        -> C:\Program Files
+```
+
+---
+
+## Example 32 — `dir_temp_directory` + `dir_make_directories`
+
+```c
+#include "dir/dir.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    char* tmp = dir_temp_directory();
+    fmt_printf("system temp dir: %s\n", tmp);
+
+    /* Build a deep tree atomically — every intermediate dir is created. */
+    char* deep = dir_join_path(tmp, "demo/2026/05/24/snapshots");
+    fmt_printf("creating: %s\n", deep);
+
+    if (dir_make_directories(deep)) {
+        fmt_printf("created OK, leaf exists = %d\n", dir_is_directory_exists(deep));
+    } else {
+        fmt_printf("creation failed\n");
+    }
+
+    /* Calling it again on an existing tree is a no-op success. */
+    fmt_printf("idempotent call: %d\n", dir_make_directories(deep));
+
+    /* Clean up the whole tree. */
+    char* root = dir_join_path(tmp, "demo");
+    dir_remove_directory_recursive(root);
+
+    free(deep); 
+    free(root); 
+    free(tmp);
+    return 0;
+}
+```
+
+**Result**
+
+```
+system temp dir: C:\Users\amint\AppData\Local\Temp
+creating: C:\Users\amint\AppData\Local\Temp\demo/2026/05/24/snapshots
+created OK, leaf exists = 1
+idempotent call: 1
+```
+> Note: The `creating:` line shows the raw joined path; forward slashes within the second argument to `dir_join_path` are preserved as-is (only the junction separator is normalized). The temp directory prefix is machine-specific.
+
+---
+
+## Example 33 — `dir_list_recursive` (walk a whole tree)
+
+```c
+#include "dir/dir.h"
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include "file_io/file_writer.h"
+#include <stdlib.h>
+#include <string.h>
+
+static void touch(const char* p, const char* s) {
+    FileWriter* w = file_writer_open(p, WRITE_BINARY);
+
+    if (w) { 
+      file_writer_write((char*)s, 1, strlen(s), w); file_writer_close(w); 
+    }
+}
+
+int main(void) {
+    /* Build a small tree under temp. */
+    char* tmp     = dir_temp_directory();
+    char* root    = dir_join_path(tmp, "walk_demo");
+    char* sub_a   = dir_join_path(root, "a");
+    char* sub_a_b = dir_join_path(root, "a/b");
+
+    dir_make_directories(sub_a_b);
+
+    char* f1 = dir_join_path(root,    "top.txt");
+    char* f2 = dir_join_path(sub_a,   "mid.txt");
+    char* f3 = dir_join_path(sub_a_b, "deep.txt");
+
+    touch(f1, "1"); 
+    touch(f2, "2"); 
+    touch(f3, "3");
+
+    Vector* files = vector_create(sizeof(char*));
+    dir_list_recursive(root, DIR_LIST_FILES, files);
+
+    fmt_printf("files (%zu):\n", vector_size(files));
+    for (size_t i = 0; i < vector_size(files); ++i) {
+        char** p = (char**)vector_at(files, i);
+        fmt_printf("  %s\n", *p);
+        free(*p);
+    }
+
+    vector_deallocate(files);
+    dir_remove_directory_recursive(root);
+    free(f1); 
+    free(f2); 
+    free(f3);
+    free(sub_a); 
+    free(sub_a_b);
+    free(root); 
+    free(tmp);
+
+    return 0;
+}
+```
+
+**Result**
+
+```
+files (3):
+  C:\Users\amint\AppData\Local\Temp\walk_demo\top.txt
+  C:\Users\amint\AppData\Local\Temp\walk_demo\a\mid.txt
+  C:\Users\amint\AppData\Local\Temp\walk_demo\a\b\deep.txt
+```
+> Note: Output is machine-specific; the temp directory prefix reflects the current machine.
 
 ---
 

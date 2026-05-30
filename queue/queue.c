@@ -1,474 +1,680 @@
 /**
  * @author Amin Tahmasebi
- * @date 2023 
+ * @date 2023
  * @class Queue
-*/
-
+ *
+ * std::queue-style FIFO adapter over Vector.
+ *
+ * Error model
+ * -----------
+ *   - No global error state. Failures are reported through the return
+ *     value: NULL for pointer-returning functions, false for bool-
+ *     returning ones, 0 for size_t observers, "no-op" for void mutators.
+ *   - Diagnostics are emitted through QUEUE_LOG (opt-in via the
+ *     QUEUE_LOGGING_ENABLE macro).
+ *   - No library function ever calls exit(), abort(), or assert().
+ *   - Every public function is NULL-safe in the documented sense (see
+ *     each function's contract).
+ *
+ * Container model
+ * ---------------
+ *   - Storage is a contiguous Vector owned by the Queue. Push goes to
+ *     the back; pop drops the front (and shifts the remainder one slot).
+ *   - All element pointers returned by `queue_front`, `queue_back`,
+ *     `queue_at`, and `queue_emplace` are BORROWED — they live as long
+ *     as the underlying vector buffer isn't reallocated. Any push /
+ *     emplace / reserve / sort / pop can invalidate them.
+ *
+ * Performance note
+ * ----------------
+ *   `queue_pop` is O(n) because the underlying vector is contiguous.
+ *   If you need O(1) pop semantics, prefer a deque- or linked-list-
+ *   backed FIFO.
+ */
 
 #include <stdlib.h>
+#include <string.h>
 #include "queue.h"
 #include "../algorithm/algorithm.h"
 
 
+
 /**
- * @brief Creates a new Queue object with the specified item size.
- * 
- * This function allocates memory for a new Queue object and initializes it with
- * a vector capable of holding items of the specified size. If the item size is 0 
- * or if memory allocation fails, the function will log an error (if logging is enabled)
- * and terminate the program.
- * 
- * @param itemSize The size of each item in the queue. Must be greater than zero.
- * @return Pointer to the newly created Queue object. The function will terminate 
- *         the program if allocation fails.
+ * @brief Create an empty queue whose elements are @p itemSize bytes each.
+ *
+ * Allocates a Queue header and an empty backing Vector. No elements
+ * are allocated until you push.
+ *
+ * @param itemSize Size in bytes of one element (must be > 0).
+ *
+ * @return Newly-allocated Queue the caller must free with
+ *         @ref queue_deallocate, or NULL on:
+ *           - `itemSize == 0`
+ *           - Queue-header malloc failure
+ *           - underlying vector_create failure
+ *
+ * @code
+ * Queue* q = queue_create(sizeof(int));
+ * if (!q) { return; }   // OOM or bad itemSize
+ * int x = 42;
+ * queue_push(q, &x);
+ * queue_deallocate(q);
+ * @endcode
  */
 Queue* queue_create(size_t itemSize) {
-    QUEUE_LOG("[queue_create]: Entering with itemSize: %zu", itemSize);
+    QUEUE_LOG("[queue_create]: enter itemSize=%zu", itemSize);
 
     if (itemSize == 0) {
-        QUEUE_LOG("[queue_create]: Error: Item size must be greater than zero");
-        exit(-1); 
+        QUEUE_LOG("[queue_create]: itemSize is zero -> NULL");
+        return NULL;
     }
 
-    Queue* queue = (Queue*)malloc(sizeof(Queue));
-    if (!queue) {
-        QUEUE_LOG("[queue_create]: Error: Cannot allocate memory for queue");
-        exit(-1); 
-    }
-
-    queue->vec = vector_create(itemSize);
-    if (!queue->vec) {
-        QUEUE_LOG("[queue_create]: Error: Cannot allocate memory for queue->vec");
-        free(queue);
-        exit(-1); 
-    }
-
-    QUEUE_LOG("[queue_create]: Queue created successfully at %p", (void*)queue);
-    return queue;
-}
-
-/**
- * @brief Checks if the queue is empty.
- * 
- * This function checks whether the queue is empty. If the queue or its underlying
- * vector is NULL, it returns true.
- * 
- * @param q Pointer to the Queue object.
- * @return true if the queue is empty or NULL, false otherwise.
- */
-bool queue_empty(const Queue* q) {
-    QUEUE_LOG("[queue_empty]: Entering with queue: %p", (void*)q);
-
+    Queue* q = (Queue*)malloc(sizeof(Queue));
     if (!q) {
-        QUEUE_LOG("[queue_empty]: Error: Queue pointer is NULL");
-        return true; 
+        QUEUE_LOG("[queue_create]: malloc(sizeof(Queue)) failed -> NULL");
+        return NULL;
     }
+
+    q->vec = vector_create(itemSize);
     if (!q->vec) {
-        QUEUE_LOG("[queue_empty]: Error: Queue's vector is NULL");
-        return true; 
+        QUEUE_LOG("[queue_create]: vector_create(%zu) failed -> NULL", itemSize);
+        free(q);
+        return NULL;
     }
-
-    bool result = vector_is_empty(q->vec);
-    QUEUE_LOG("[queue_empty]: Result: %s", result ? "true" : "false");
-
-    return result;
+    QUEUE_LOG("[queue_create]: exit ok q=%p vec=%p", (void*)q, (void*)q->vec);
+    return q;
 }
 
-/**
- * @brief Returns the number of elements in the queue.
- * 
- * This function returns the size of the queue, which is the number of elements it contains.
- * If the queue or its underlying vector is NULL, it returns 0.
- * 
- * @param q Pointer to the Queue object.
- * @return The number of elements in the queue, or 0 if the queue is NULL.
- */
-size_t queue_size(const Queue* q) {
-    QUEUE_LOG("[queue_size]: Entering with queue: %p", (void*)q);
-
-    if (!q) {
-        QUEUE_LOG("[queue_size]: Error: Queue pointer is NULL");
-        return 0; 
-    }
-    if (!q->vec) {
-        QUEUE_LOG("[queue_size]: Error: Queue's vector is NULL");
-        return 0; 
-    }
-
-    size_t size = vector_size(q->vec);
-    QUEUE_LOG("[queue_size]: Queue size is: %zu", size);
-
-    return size;
-}
 
 /**
- * @brief Adds an item to the back of the queue.
- * 
- * This function pushes an item onto the back of the queue. If the queue, its vector, or the item
- * is NULL, the function does nothing.
- * 
- * @param q Pointer to the Queue object.
- * @param item Pointer to the item to be added to the queue.
- */
-void queue_push(Queue* q, void* item) {
-    QUEUE_LOG("[queue_push]: Entering with queue: %p, item: %p", (void*)q, (void*)item);
-
-    if (!q) {
-        QUEUE_LOG("[queue_push]: Error: Queue is NULL");
-        return; 
-    }
-    if (!q->vec) {
-        QUEUE_LOG("[queue_push]: Error: Queue's vector is NULL");
-        return; 
-    }
-    if (!item) {
-        QUEUE_LOG("[queue_push]: Error: Item pointer is NULL");
-        return; 
-    }
-
-    vector_push_back(q->vec, item);
-    QUEUE_LOG("[queue_push]: Item pushed to queue");
-}
-
-/**
- * @brief Sorts the elements of the queue in place using the specified comparison function.
+ * @brief Deep-copy an existing queue.
  *
- * This function sorts the elements of a `Queue` object by directly operating
- * on the underlying vector data using a non-stable quicksort algorithm. The
- * sorting order is determined by the user-provided comparison function.
+ * The returned queue owns its own backing vector and an independent
+ * copy of every element. Element ordering is preserved.
  *
- * @param q Pointer to the `Queue` object to be sorted.
- * @param comp Comparison function used to order the elements. It should return:
- *             - A negative value if the first element is less than the second.
- *             - Zero if the two elements are equal.
- *             - A positive value if the first element is greater than the second.
+ * @param src Source queue to clone (must be non-NULL with a valid vector).
  *
- * @note The function does nothing if the `Queue` or its underlying vector is NULL.
+ * @return Newly-allocated Queue with the same item size and contents,
+ *         or NULL on any failure (NULL src / OOM / vector op failure).
  */
-void queue_sort(Queue* q, QueueCompareFunc comp) {
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_sort]: Error: Queue or vector is NULL.");
-        return;
+Queue* queue_copy(const Queue* src) {
+    QUEUE_LOG("[queue_copy]: enter src=%p", (const void*)src);
+
+    if (!src || !src->vec) {
+        QUEUE_LOG("[queue_copy]: NULL src or src->vec -> NULL");
+        return NULL;
     }
 
-    algorithm_sort(vector_data(q->vec), vector_size(q->vec), q->vec->itemSize, comp);
-    QUEUE_LOG("[queue_sort]: Queue sorted successfully.");
+    Queue* dst = queue_create(src->vec->itemSize);
+    if (!dst) {
+        QUEUE_LOG("[queue_copy]: queue_create(itemSize=%zu) failed -> NULL", src->vec->itemSize);
+        return NULL;
+    }
+
+    size_t n = vector_size(src->vec);
+    if (n > 0 && !vector_reserve(dst->vec, n)) {
+        QUEUE_LOG("[queue_copy]: vector_reserve(%zu) failed -> NULL", n);
+        queue_deallocate(dst);
+        return NULL;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        void* elem = vector_at(src->vec, i);
+        if (!elem || !vector_push_back(dst->vec, elem)) {
+            QUEUE_LOG("[queue_copy]: copy failed at index %zu -> NULL", i);
+            queue_deallocate(dst);
+            return NULL;
+        }
+    }
+    QUEUE_LOG("[queue_copy]: exit ok dst=%p (%zu elements copied)", (void*)dst, n);
+    return dst;
 }
 
+
 /**
- * @brief Returns a pointer to the front element in the queue.
- * 
- * This function returns a pointer to the front element in the queue. If the queue
- * is empty or if the queue or its vector is NULL, it returns NULL.
- * 
- * @param q Pointer to the Queue object.
- * @return Pointer to the front element, or NULL if the queue is empty or invalid.
+ * @brief Replace @p dest's contents with a deep copy of @p src.
+ *
+ * Behavior:
+ *   - `dest == src` is a no-op success.
+ *   - `dest->itemSize != src->itemSize` is rejected (false; dest is
+ *     left unmodified).
+ *   - Otherwise dest is cleared, capacity is reserved for src's size,
+ *     and every element is copied in order.
+ *
+ * @param dest Destination queue (must be non-NULL).
+ * @param src  Source queue (must be non-NULL).
+ *
+ * @return true on success, false on NULL input / item-size mismatch /
+ *         underlying vector op failure.
  */
-void* queue_front(const Queue* q) {
-    QUEUE_LOG("[queue_front]: Entering with queue: %p", (void*)q);
+bool queue_assign(Queue* dest, const Queue* src) {
+    QUEUE_LOG("[queue_assign]: enter dest=%p src=%p", (void*)dest, (const void*)src);
 
-    if (!q) {
-        QUEUE_LOG("[queue_front]: Error: Queue pointer is NULL");
-        return NULL; 
+    if (!dest || !dest->vec || !src || !src->vec) {
+        QUEUE_LOG("[queue_assign]: NULL receiver / src -> false");
+        return false;
     }
-    if (!q->vec) {
-        QUEUE_LOG("[queue_front]: Error: Queue's vector is NULL");
-        return NULL; 
+    if (dest == src) {
+        QUEUE_LOG("[queue_assign]: dest == src, no-op success");
+        return true;
     }
-    if (vector_is_empty(q->vec)) {
-        QUEUE_LOG("[queue_front]: Error: Queue is empty");
-        return NULL; 
+    if (dest->vec->itemSize != src->vec->itemSize) {
+        QUEUE_LOG("[queue_assign]: item-size mismatch (%zu vs %zu) -> false", dest->vec->itemSize, src->vec->itemSize);
+        return false;
     }
 
-    void* front = vector_front(q->vec);
-    QUEUE_LOG("[queue_front]: Returning front element: %p", (void*)front);
+    vector_clear(dest->vec);
 
-    return front;
+    size_t n = vector_size(src->vec);
+    if (n > 0 && !vector_reserve(dest->vec, n)) {
+        QUEUE_LOG("[queue_assign]: reserve(%zu) failed -> false", n);
+        return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        void* elem = vector_at(src->vec, i);
+        if (!elem || !vector_push_back(dest->vec, elem)) {
+            QUEUE_LOG("[queue_assign]: push_back failed at index %zu -> false", i);
+            return false;
+        }
+    }
+    QUEUE_LOG("[queue_assign]: exit ok (%zu elements assigned)", n);
+    return true;
 }
 
-/**
- * @brief Returns a pointer to the last element in the queue.
- * 
- * This function returns a pointer to the last element in the queue. If the queue 
- * is empty or if the queue pointer is NULL, it returns NULL.
- * 
- * @param q Pointer to the Queue object.
- * @return Pointer to the last element, or NULL if the queue is empty or invalid.
- */
-void* queue_back(const Queue* q) {
-    QUEUE_LOG("[queue_back]: Entering with queue: %p", (void*)q);
-
-    if (!q) {
-        QUEUE_LOG("[queue_back]: Error: Queue pointer is NULL");
-        return NULL; 
-    }
-    if (!q->vec) {
-        QUEUE_LOG("[queue_back]: Error: Queue's vector is NULL");
-        return NULL; 
-    }
-    if (vector_is_empty(q->vec)) {
-        QUEUE_LOG("[queue_back]: Error: Queue is empty");
-        return NULL; 
-    }
-
-    void* back = vector_back(q->vec);
-    QUEUE_LOG("[queue_back]: Returning back element: %p", (void*)back);
-    return back;
-}
 
 /**
- * @brief Removes the first element from the queue.
- * 
- * This function removes the first element from the queue. If the queue is empty or 
- * if the queue pointer is NULL, the function does nothing.
- * 
- * @param q Pointer to the Queue object.
- */
-void queue_pop(Queue* q) {
-    QUEUE_LOG("[queue_pop]: Entering with queue: %p", (void*)q);
-
-    if (!q) {
-        QUEUE_LOG("[queue_pop]: Error: Queue pointer is NULL");
-        return; 
-    }
-    if (!q->vec) {
-        QUEUE_LOG("[queue_pop]: Error: Queue's vector is NULL");
-        return; 
-    }
-    if (vector_is_empty(q->vec)) {
-        QUEUE_LOG("[queue_pop]: Error: Queue is empty");
-        return; 
-    }
-
-    vector_erase(q->vec, 0, 1);
-    QUEUE_LOG("[queue_pop]: First element removed from queue");
-}
-
-/**
- * @brief Emplaces an item at the back of the queue.
- * 
- * This function emplaces a new element at the back of the queue. The item is 
- * constructed directly in the memory of the queue using the provided size.
- * 
- * @param q Pointer to the Queue object.
- * @param item Pointer to the item to be added.
- * @param itemSize Size of the item to be added.
- */
-void queue_emplace(Queue* q, void* item, size_t itemSize) {
-    QUEUE_LOG("[queue_emplace]: Entering with queue: %p, item: %p, itemSize: %zu", (void*)q, (void*)item, itemSize);
-
-    if (!q) {
-        QUEUE_LOG("[queue_emplace]: Error: Queue pointer is NULL");
-        return; 
-    }
-    if (!q->vec) {
-        QUEUE_LOG("[queue_emplace]: Error: Queue's vector is NULL");
-        return; 
-    }
-    if (!item) {
-        QUEUE_LOG("[queue_emplace]: Error: Item pointer is NULL");
-        return; 
-    }
-
-    vector_emplace_back(q->vec, item, itemSize);
-    QUEUE_LOG("[queue_emplace]: Item emplaced in queue at back");
-}
-
-/**
- * @brief Swaps the contents of two queues.
- * 
- * This function swaps the internal data (vectors) of two Queue objects,
- * effectively exchanging their contents.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- */
-void queue_swap(Queue* q1, Queue* q2) {
-    QUEUE_LOG("[queue_swap]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
-
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_swap]: Error: One or both Queue pointers are NULL");
-        return; // Handle NULL queue pointers
-    }
-
-    Vector* tempVec = q1->vec;
-    q1->vec = q2->vec;
-    q2->vec = tempVec;
-
-    QUEUE_LOG("[queue_swap]: Successfully swapped q1 and q2");
-}
-
-/**
- * @brief Deallocates the queue and frees its resources.
- * 
- * This function deallocates the memory used by the Queue object and
- * its internal vector. After calling this function, the Queue pointer
- * should not be used unless it is reinitialized.
- * 
- * @param q Pointer to the Queue object to be deallocated.
+ * @brief Destroy the queue and release all memory it owns.
+ *
+ * Frees both the underlying vector AND the Queue header itself. NULL-safe.
+ *
+ * @param q Queue to destroy. Pass NULL for a no-op.
  */
 void queue_deallocate(Queue* q) {
-    QUEUE_LOG("[queue_deallocate]: Entering with q: %p", (void*)q);
-
+    QUEUE_LOG("[queue_deallocate]: enter q=%p", (void*)q);
     if (!q) {
-        QUEUE_LOG("[queue_deallocate]: Error: Queue pointer is NULL");
+        QUEUE_LOG("[queue_deallocate]: NULL receiver, no-op");
+        return;
+    }
+    if (q->vec) {
+        QUEUE_LOG("[queue_deallocate]: freeing vec=%p", (void*)q->vec);
+        vector_deallocate(q->vec);
+        q->vec = NULL;
+    }
+
+    free(q);
+    QUEUE_LOG("[queue_deallocate]: exit (queue header freed)");
+}
+
+
+/**
+ * @brief Number of elements currently in the queue.
+ *
+ * @param q Queue pointer. NULL returns 0.
+ * @return Element count, mirroring `std::queue::size`.
+ */
+size_t queue_size(const Queue* q) {
+    QUEUE_LOG("[queue_size]: enter q=%p", (const void*)q);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_size]: NULL receiver -> 0");
+        return 0;
+    }
+    size_t out = vector_size(q->vec);
+    QUEUE_LOG("[queue_size]: exit -> %zu", out);
+
+    return out;
+}
+
+
+/**
+ * @brief Allocated capacity of the underlying vector.
+ *
+ * Capacity ≥ size; the queue can absorb (capacity - size) more
+ * pushes without re-allocating.
+ *
+ * @param q Queue pointer. NULL returns 0.
+ * @return Capacity in elements.
+ */
+size_t queue_capacity(const Queue* q) {
+    QUEUE_LOG("[queue_capacity]: enter q=%p", (const void*)q);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_capacity]: NULL receiver -> 0");
+        return 0;
+    }
+    size_t out = vector_capacity((Vector*)q->vec);
+    QUEUE_LOG("[queue_capacity]: exit -> %zu", out);
+
+    return out;
+}
+
+
+/**
+ * @brief Bytes per element (as supplied to @ref queue_create).
+ *
+ * @param q Queue pointer. NULL returns 0.
+ * @return Per-element size in bytes.
+ */
+size_t queue_item_size(const Queue* q) {
+    QUEUE_LOG("[queue_item_size]: enter q=%p", (const void*)q);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_item_size]: NULL receiver -> 0");
+        return 0;
+    }
+    size_t out = q->vec->itemSize;
+    QUEUE_LOG("[queue_item_size]: exit -> %zu", out);
+
+    return out;
+}
+
+
+/**
+ * @brief Returns true if the queue has no elements (or is NULL).
+ *
+ * @param q Queue pointer. NULL is treated as empty (returns true).
+ * @return true if `q == NULL` or `queue_size(q) == 0`.
+ */
+bool queue_empty(const Queue* q) {
+    QUEUE_LOG("[queue_empty]: enter q=%p", (const void*)q);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_empty]: NULL receiver -> true");
+        return true;
+    }
+    bool out = vector_is_empty(q->vec);
+    QUEUE_LOG("[queue_empty]: exit -> %s", out ? "true" : "false");
+
+    return out;
+}
+
+
+/**
+ * @brief Borrowed pointer to the FRONT (oldest, FIFO peek) element.
+ *
+ * @param q Queue pointer.
+ * @return Pointer to the next element @ref queue_pop will remove,
+ *         or NULL if @p q is NULL or empty.
+ */
+void* queue_front(const Queue* q) {
+    QUEUE_LOG("[queue_front]: enter q=%p", (const void*)q);
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_front]: NULL receiver -> NULL");
+        return NULL;
+    }
+    if (vector_is_empty(q->vec)) {
+        QUEUE_LOG("[queue_front]: empty queue -> NULL");
+        return NULL;
+    }
+    void* out = vector_front(q->vec);
+    QUEUE_LOG("[queue_front]: exit -> %p", out);
+
+    return out;
+}
+
+
+/**
+ * @brief Borrowed pointer to the BACK (newest) element.
+ *
+ * @param q Queue pointer.
+ * @return Pointer to the most recently pushed element, or NULL if
+ *         @p q is NULL or empty.
+ */
+void* queue_back(const Queue* q) {
+    QUEUE_LOG("[queue_back]: enter q=%p", (const void*)q);
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_back]: NULL receiver -> NULL");
+        return NULL;
+    }
+    if (vector_is_empty(q->vec)) {
+        QUEUE_LOG("[queue_back]: empty queue -> NULL");
+        return NULL;
+    }
+    void* out = vector_back(q->vec);
+    QUEUE_LOG("[queue_back]: exit -> %p", out);
+
+    return out;
+}
+
+
+/**
+ * @brief Bounds-checked random-access borrowed pointer.
+ *
+ * Index 0 is the front (next to pop), index `size - 1` is the back.
+ *
+ * @param q     Queue pointer.
+ * @param index Zero-based element index.
+ *
+ * @return Element pointer, or NULL when @p q is NULL or
+ *         `index >= queue_size(q)`.
+ */
+void* queue_at(const Queue* q, size_t index) {
+    QUEUE_LOG("[queue_at]: enter q=%p index=%zu", (const void*)q, index);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_at]: NULL receiver -> NULL");
+        return NULL;
+    }
+    if (index >= vector_size(q->vec)) {
+        QUEUE_LOG("[queue_at]: out of bounds (size=%zu, index=%zu) -> NULL", vector_size(q->vec), index);
+        return NULL;
+    }
+
+    void* out = vector_at(q->vec, index);
+    QUEUE_LOG("[queue_at]: exit -> %p", out);
+
+    return out;
+}
+
+
+/**
+ * @brief Push a copy of @p item onto the back of the queue.
+ *
+ * Copies exactly `queue_item_size(q)` bytes from @p item into the
+ * queue. The caller's buffer can be reused or freed afterwards — the
+ * queue owns the copy.
+ *
+ * @param q    Destination queue.
+ * @param item Pointer to the value to copy. Must NOT be NULL.
+ *
+ * @return true on success, false on NULL inputs or underlying vector
+ *         push failure (e.g. OOM).
+ *
+ * @code
+ * Queue* q = queue_create(sizeof(int));
+ * for (int i = 1; i <= 5; ++i) queue_push(q, &i);
+ * // queue_front -> 1, queue_back -> 5
+ * @endcode
+ */
+bool queue_push(Queue* q, const void* item) {
+    QUEUE_LOG("[queue_push]: enter q=%p item=%p", (void*)q, item);
+
+    if (!q || !q->vec || !item) {
+        QUEUE_LOG("[queue_push]: NULL receiver / item -> false");
+        return false;
+    }
+    if (!vector_push_back(q->vec, item)) {
+        QUEUE_LOG("[queue_push]: vector_push_back failed -> false");
+        return false;
+    }
+    QUEUE_LOG("[queue_push]: exit ok (new size = %zu)", vector_size(q->vec));
+    return true;
+}
+
+
+/**
+ * @brief Construct-in-place at the back and return a borrowed pointer
+ *        to the new element.
+ *
+ * Equivalent in observable behaviour to `queue_push` except that the
+ * `itemSize` argument is validated against the queue's per-element
+ * size, AND the return value is a pointer to the newly-inserted slot
+ * (the borrowed pointer is valid until the next reallocation; see the
+ * Element access section).
+ *
+ * @param q        Destination queue.
+ * @param item     Pointer to the source bytes (must be non-NULL).
+ * @param itemSize Must equal `queue_item_size(q)`; otherwise rejected.
+ *
+ * @return Borrowed pointer to the new back element on success, or
+ *         NULL on NULL input / size mismatch / OOM.
+ */
+void* queue_emplace(Queue* q, const void* item, size_t itemSize) {
+    QUEUE_LOG("[queue_emplace]: enter q=%p item=%p itemSize=%zu", (void*)q, item, itemSize);
+
+    if (!q || !q->vec || !item) {
+        QUEUE_LOG("[queue_emplace]: NULL receiver / item -> NULL");
+        return NULL;
+    }
+    if (itemSize != q->vec->itemSize) {
+        QUEUE_LOG("[queue_emplace]: item-size mismatch (%zu vs %zu) -> NULL", itemSize, q->vec->itemSize);
+        return NULL;
+    }
+    if (!vector_emplace_back(q->vec, (void*)item, itemSize)) {
+        QUEUE_LOG("[queue_emplace]: vector_emplace_back failed -> NULL");
+        return NULL;
+    }
+    void* out = vector_back(q->vec);
+    QUEUE_LOG("[queue_emplace]: exit -> %p (new size = %zu)", out, vector_size(q->vec));
+
+    return out;
+}
+
+
+/**
+ * @brief Drop the FRONT element (the next one a peek would return).
+ *
+ * O(n) — shifts the remaining `size - 1` elements one slot left in the
+ * underlying vector. No-op on NULL or empty queue.
+ *
+ * Iterator / pointer invalidation: any borrowed pointer obtained from
+ * `queue_front` / `queue_back` / `queue_at` / `queue_emplace` BEFORE
+ * this call should be considered stale afterwards.
+ *
+ * @param q Queue to mutate.
+ */
+void queue_pop(Queue* q) {
+    QUEUE_LOG("[queue_pop]: enter q=%p", (void*)q);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_pop]: NULL receiver, no-op");
+        return;
+    }
+    if (vector_is_empty(q->vec)) {
+        QUEUE_LOG("[queue_pop]: empty queue, no-op");
         return;
     }
 
-    if (q->vec) {
-        vector_deallocate(q->vec); 
-        QUEUE_LOG("[queue_deallocate]: Vector deallocated");
-    }
-
-    free(q); 
-    QUEUE_LOG("[queue_deallocate]: Queue deallocated successfully");
+    QUEUE_LOG("[queue_pop]: erasing front (size before = %zu)", vector_size(q->vec));
+    vector_erase(q->vec, 0, 1);
+    QUEUE_LOG("[queue_pop]: exit (size after = %zu)", vector_size(q->vec));
 }
 
+
 /**
- * @brief Checks if two queues are equal.
- * 
- * This function compares two Queue objects and returns true if they are
- * equal in size and content.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- * 
- * @return true if the queues are equal, false otherwise.
+ * @brief Pre-allocate underlying storage for at least @p n elements.
+ *
+ * Useful before a tight bulk-push loop to avoid mid-loop reallocations.
+ *
+ * @param q Queue to grow.
+ * @param n Target minimum capacity.
+ *
+ * @return true on success, false on NULL queue or underlying
+ *         vector_reserve failure (e.g. OOM).
+ */
+bool queue_reserve(Queue* q, size_t n) {
+    QUEUE_LOG("[queue_reserve]: enter q=%p n=%zu", (void*)q, n);
+
+    if (!q || !q->vec) {
+        QUEUE_LOG("[queue_reserve]: NULL receiver -> false");
+        return false;
+    }
+    if (!vector_reserve(q->vec, n)) {
+        QUEUE_LOG("[queue_reserve]: vector_reserve(%zu) failed -> false", n);
+        return false;
+    }
+    QUEUE_LOG("[queue_reserve]: exit ok (capacity = %zu)", vector_capacity(q->vec));
+
+    return true;
+}
+
+
+/**
+ * @brief Constant-time swap of two queues' internals.
+ *
+ * Only the underlying vector pointers are swapped — no element-by-
+ * element copy. Rejects (no-op) when item sizes differ, since
+ * `std::queue::swap` is only well-defined between same-type queues.
+ *
+ * @param q1 First queue.
+ * @param q2 Second queue.
+ */
+void queue_swap(Queue* q1, Queue* q2) {
+    QUEUE_LOG("[queue_swap]: enter q1=%p q2=%p", (void*)q1, (void*)q2);
+
+    if (!q1 || !q2 || !q1->vec || !q2->vec) {
+        QUEUE_LOG("[queue_swap]: NULL receiver, no-op");
+        return;
+    }
+    if (q1->vec->itemSize != q2->vec->itemSize) {
+        QUEUE_LOG("[queue_swap]: refused: item sizes differ (%zu vs %zu)", q1->vec->itemSize, q2->vec->itemSize);
+        return;
+    }
+
+    Vector* tmp = q1->vec;
+    q1->vec = q2->vec;
+    q2->vec = tmp;
+
+    QUEUE_LOG("[queue_swap]: exit (q1.size=%zu, q2.size=%zu)", vector_size(q1->vec), vector_size(q2->vec));
+}
+
+
+/**
+ * @brief Sort the queue in-place using @p comp (qsort-style 3-way
+ *        comparator).
+ *
+ * After sorting, @ref queue_front returns the smallest element under
+ * the given ordering — i.e. the queue becomes a min-priority FIFO.
+ * No-op on NULL queue or NULL comparator.
+ *
+ * Iterator / pointer invalidation: any borrowed element pointer
+ * obtained before this call should be considered stale afterwards.
+ *
+ * @param q    Queue to sort.
+ * @param comp Comparator returning negative / 0 / positive in the
+ *             same convention as `qsort`.
+ */
+void queue_sort(Queue* q, QueueCompareFunc comp) {
+    QUEUE_LOG("[queue_sort]: enter q=%p comp=%p", (void*)q, (void*)comp);
+
+    if (!q || !q->vec || !comp) {
+        QUEUE_LOG("[queue_sort]: NULL receiver or comp, no-op");
+        return;
+    }
+    size_t n = vector_size(q->vec);
+    algorithm_sort(vector_data(q->vec), n, q->vec->itemSize, comp);
+
+    QUEUE_LOG("[queue_sort]: exit (sorted %zu elements)", n);
+}
+
+
+/**
+ * @brief Byte-exact equality between two queues (NULL == NULL).
+ *
+ * Two queues are equal iff they point to the same Queue OR they have
+ * matching size, item size, and every element compares equal byte-
+ * for-byte.
+ *
+ * @param q1 Left queue.
+ * @param q2 Right queue.
+ * @return true if the queues are byte-exact equal.
  */
 bool queue_is_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
+    QUEUE_LOG("[queue_is_equal]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
 
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_is_equal]: Error: One or both Queue pointers are NULL");
-        return q1 == q2; 
+    if (q1 == q2) {
+        QUEUE_LOG("[queue_is_equal]: identity (q1 == q2) -> true");
+        return true;
     }
-
-    bool result = vector_is_equal(q1->vec, q2->vec);
-    QUEUE_LOG("[queue_is_equal]: Comparison result: %s", result ? "true" : "false");
-
-    return result;
-}
-/**
- * @brief Checks if the first queue is less than the second queue.
- * 
- * This function compares two Queue objects and returns true if the first
- * queue is considered less than the second queue based on their elements.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- * 
- * @return true if the first queue is less, false otherwise.
- */
-bool queue_is_less(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_less]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
-
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_is_less]: Error: One or both Queue pointers are NULL");
-        return q1 != NULL && q2 == NULL; 
+    if (!q1 || !q2 || !q1->vec || !q2->vec) {
+        QUEUE_LOG("[queue_is_equal]: one receiver NULL -> false");
+        return false;
     }
+    bool out = vector_is_equal(q1->vec, q2->vec);
+    QUEUE_LOG("[queue_is_equal]: exit -> %s", out ? "true" : "false");
 
-    bool result = vector_is_less(q1->vec, q2->vec);
-    QUEUE_LOG("[queue_is_less]: Comparison result: %s", result ? "true" : "false");
-
-    return result;
-}
-
-/**
- * @brief Checks if the first queue is greater than the second queue.
- * 
- * This function compares two queues and returns true if the first queue
- * is considered greater than the second queue based on their elements.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- * 
- * @return true if the first queue is greater, false otherwise.
- */
-bool queue_is_greater(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_greater]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
-
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_is_greater]: Error: One or both Queue pointers are NULL");
-        return q1 == NULL && q2 != NULL;
-    }
-
-    bool result = vector_is_greater(q1->vec, q2->vec);
-    QUEUE_LOG("[queue_is_greater]: Comparison result: %s", result ? "true" : "false");
-
-    return result;
+    return out;
 }
 
 
 /**
- * @brief Checks if two queues are not equal.
- * 
- * This function compares two queues and returns true if they are not equal,
- * either in size or in content.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- * 
- * @return true if the queues are not equal, false otherwise.
+ * @brief Inverse of @ref queue_is_equal.
+ *
+ * @param q1 Left queue.
+ * @param q2 Right queue.
+ * @return `!queue_is_equal(q1, q2)`.
  */
 bool queue_is_not_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_not_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
+    QUEUE_LOG("[queue_is_not_equal]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
+    bool out = !queue_is_equal(q1, q2);
+    QUEUE_LOG("[queue_is_not_equal]: exit -> %s", out ? "true" : "false");
 
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_is_not_equal]: Error: One or both Queue pointers are NULL");
-        return q1 != q2; 
-    }
-
-    bool result = !queue_is_equal(q1, q2);
-    QUEUE_LOG("[queue_is_not_equal]: Comparison result: %s", result ? "true" : "false");
-    return result;
+    return out;
 }
 
+
 /**
- * @brief Checks if the first queue is less than or equal to the second queue.
- * 
- * This function compares two queues and returns true if the first queue
- * is less than or equal to the second queue based on their elements.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- * 
- * @return true if the first queue is less than or equal, false otherwise.
+ * @brief Lexicographic less-than over the underlying vector bytes.
+ *
+ * Returns false if either operand is NULL.
+ *
+ * @param q1 Left queue.
+ * @param q2 Right queue.
+ * @return true if @p q1 is lexicographically less than @p q2.
+ */
+bool queue_is_less(const Queue* q1, const Queue* q2) {
+    QUEUE_LOG("[queue_is_less]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
+
+    if (!q1 || !q2 || !q1->vec || !q2->vec) {
+        QUEUE_LOG("[queue_is_less]: one receiver NULL -> false");
+        return false;
+    }
+    bool out = vector_is_less(q1->vec, q2->vec);
+    QUEUE_LOG("[queue_is_less]: exit -> %s", out ? "true" : "false");
+
+    return out;
+}
+
+
+/**
+ * @brief Lexicographic greater-than over the underlying vector bytes.
+ *
+ * Returns false if either operand is NULL.
+ *
+ * @param q1 Left queue.
+ * @param q2 Right queue.
+ * @return true if @p q1 is lexicographically greater than @p q2.
+ */
+bool queue_is_greater(const Queue* q1, const Queue* q2) {
+    QUEUE_LOG("[queue_is_greater]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
+    if (!q1 || !q2 || !q1->vec || !q2->vec) {
+        QUEUE_LOG("[queue_is_greater]: one receiver NULL -> false");
+        return false;
+    }
+
+    bool out = vector_is_greater(q1->vec, q2->vec);
+    QUEUE_LOG("[queue_is_greater]: exit -> %s", out ? "true" : "false");
+
+    return out;
+}
+
+
+/**
+ * @brief Less-than-or-equal.
+ *
+ * @param q1 Left queue.
+ * @param q2 Right queue.
+ * @return `queue_is_less(q1, q2) || queue_is_equal(q1, q2)`.
  */
 bool queue_is_less_or_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_less_or_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
+    QUEUE_LOG("[queue_is_less_or_equal]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
+    bool out = queue_is_less(q1, q2) || queue_is_equal(q1, q2);
+    QUEUE_LOG("[queue_is_less_or_equal]: exit -> %s", out ? "true" : "false");
 
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_is_less_or_equal]: Error: One or both Queue pointers are NULL");
-        return q1 != NULL || q2 == NULL; 
-    }
-
-    bool result = queue_is_less(q1, q2) || queue_is_equal(q1, q2);
-    QUEUE_LOG("[queue_is_less_or_equal]: Comparison result: %s", result ? "true" : "false");
-
-    return result;
+    return out;
 }
 
+
 /**
- * @brief Checks if the first queue is greater than or equal to the second queue.
- * 
- * This function compares two queues and returns true if the first queue
- * is greater than or equal to the second queue based on their elements.
- * 
- * @param q1 Pointer to the first Queue object.
- * @param q2 Pointer to the second Queue object.
- * 
- * @return true if the first queue is greater than or equal, false otherwise.
+ * @brief Greater-than-or-equal.
+ *
+ * @param q1 Left queue.
+ * @param q2 Right queue.
+ * @return `queue_is_greater(q1, q2) || queue_is_equal(q1, q2)`.
  */
 bool queue_is_greater_or_equal(const Queue* q1, const Queue* q2) {
-    QUEUE_LOG("[queue_is_greater_or_equal]: Entering with q1: %p, q2: %p", (void*)q1, (void*)q2);
+    QUEUE_LOG("[queue_is_greater_or_equal]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
+    bool out = queue_is_greater(q1, q2) || queue_is_equal(q1, q2);
+    QUEUE_LOG("[queue_is_greater_or_equal]: exit -> %s", out ? "true" : "false");
 
-    if (!q1 || !q2) {
-        QUEUE_LOG("[queue_is_greater_or_equal]: Error: One or both Queue pointers are NULL");
-        return q1 == NULL || q2 != NULL; 
-    }
-
-    bool result = queue_is_greater(q1, q2) || queue_is_equal(q1, q2);
-    QUEUE_LOG("[queue_is_greater_or_equal]: Comparison result: %s", result ? "true" : "false");
-
-    return result;
+    return out;
 }

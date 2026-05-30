@@ -418,6 +418,280 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
+## Extended Cross-Platform Utility API
+
+These ten helpers were added in the production-hardening pass. Each one is implemented for both Windows and Linux, with a safe fallback on other platforms.
+
+### `char* sysinfo_username(void)`
+
+- **Purpose**:  
+  Returns the login name of the user who started the current process.
+- **Parameters**: None.
+- **Return Value**:  
+  - A heap-allocated, null-terminated string the caller must `free()`.
+  - Never returns `NULL`. Falls back to `"unknown"` if no source resolves a name.
+- **Behaviour**:  
+  - **Windows**: `GetUserNameA` into a `UNLEN+1` buffer.
+  - **POSIX**: `getlogin_r`, then `getpwuid(geteuid())->pw_name`, then `$USER` / `$LOGNAME`.
+
+---
+
+### `char* sysinfo_home_directory(void)`
+
+- **Purpose**:  
+  Returns the home directory of the current user.
+- **Parameters**: None.
+- **Return Value**:  
+  - A heap-allocated, null-terminated string the caller must `free()`.
+  - Never `NULL`. Returns an empty string if nothing is available.
+- **Behaviour**:  
+  - **Windows**: `$USERPROFILE`, then `$HOMEDRIVE + $HOMEPATH`.
+  - **POSIX**: `$HOME`, then `getpwuid(geteuid())->pw_dir`.
+
+---
+
+### `char* sysinfo_temp_directory(void)`
+
+- **Purpose**:  
+  Returns the system's default directory for temporary files.
+- **Parameters**: None.
+- **Return Value**:  
+  - A heap-allocated, null-terminated string the caller must `free()`.
+  - Never `NULL`. Trailing path separator is always trimmed, so the caller can safely join `<tmp> + "/" + name` without a double slash.
+- **Behaviour**:  
+  - **Windows**: `GetTempPathA` (trailing `\\` stripped).
+  - **POSIX**: `$TMPDIR`, falling back to `/tmp`.
+
+---
+
+### `char* sysinfo_current_working_directory(void)`
+
+- **Purpose**:  
+  Returns the current working directory of the calling process.
+- **Parameters**: None.
+- **Return Value**:  
+  - A heap-allocated, null-terminated string the caller must `free()`.
+  - `NULL` only on unrecoverable I/O error.
+- **Behaviour**:  
+  Uses a buffer that doubles in size on overflow, so paths longer than `PATH_MAX` (legal on some POSIX systems) are still captured.
+
+---
+
+### `char* sysinfo_executable_path(void)`
+
+- **Purpose**:  
+  Returns the absolute path of the running executable.
+- **Parameters**: None.
+- **Return Value**:  
+  - A heap-allocated, null-terminated string the caller must `free()`.
+  - `NULL` if the OS cannot answer (e.g. macOS, where the library does not pull in `_NSGetExecutablePath`).
+- **Behaviour**:  
+  - **Windows**: `GetModuleFileNameA(NULL, ...)`.
+  - **Linux**: `readlink("/proc/self/exe")`.
+
+---
+
+### `long sysinfo_process_id(void)`
+
+- **Purpose**:  
+  Returns the PID of the current process.
+- **Parameters**: None.
+- **Return Value**:  
+  - `long` so it accommodates both Windows DWORDs and POSIX `pid_t`.
+  - `-1` on the unsupported-platform path. Never fails on Windows or POSIX.
+- **Behaviour**:  
+  - **Windows**: `GetCurrentProcessId`.
+  - **POSIX**: `getpid`.
+
+---
+
+### `unsigned long long sysinfo_total_memory_bytes(void)`
+
+- **Purpose**:  
+  Returns the total physical memory of the host in bytes.
+- **Parameters**: None.
+- **Return Value**:  
+  - Unsigned byte count.
+  - `0` if the OS cannot answer or the platform is unsupported.
+- **Behaviour**:  
+  - **Windows**: `GlobalMemoryStatusEx(ullTotalPhys)`.
+  - **Linux**: parses `MemTotal` from `/proc/meminfo`.
+
+---
+
+### `unsigned long long sysinfo_available_memory_bytes(void)`
+
+- **Purpose**:  
+  Returns the amount of physical memory currently available, in bytes.
+- **Parameters**: None.
+- **Return Value**:  
+  - Unsigned byte count.
+  - `0` if the OS cannot answer.
+- **Behaviour**:  
+  - **Windows**: `GlobalMemoryStatusEx(ullAvailPhys)`.
+  - **Linux**: prefers `MemAvailable` from `/proc/meminfo`; falls back to `MemFree` for kernels older than 3.14 that do not expose `MemAvailable`.
+
+---
+
+### `bool sysinfo_is_64bit_process(void)`
+
+- **Purpose**:  
+  Returns `true` if the current process is a 64-bit binary, `false` if it is 32-bit.
+- **Parameters**: None.
+- **Return Value**:  
+  - `bool` — fully determined by `sizeof(void*) == 8`.
+- **Notes**:  
+  This describes the calling *process*, not the host OS. A 32-bit binary running on 64-bit Windows reports `false`, which is what most callers (release gating, structure layout decisions) actually want.
+
+---
+
+### `const char* sysinfo_endianness(void)`
+
+- **Purpose**:  
+  Returns the host CPU's byte order as a static string.
+- **Parameters**: None.
+- **Return Value**:  
+  - One of `"little"`, `"big"`, or `"unknown"`. The returned pointer is a static literal — **do not free it**.
+- **Behaviour**:  
+  Runtime probe over the byte layout of a `uint16_t`. Independent of compiler macros such as `__BYTE_ORDER__`, so it works the same under any toolchain.
+
+---
+
+## Additional Observers
+
+These ten functions extend the numeric/predicate API. All are cross-platform (Windows and Linux), allocation-free except where noted, and fast (a single syscall or `/proc` read).
+
+### `unsigned long long sysinfo_used_memory_bytes(void)`
+
+- **Purpose**:  
+  Returns the amount of physical memory currently in use, in bytes.
+- **Parameters**: None.
+- **Return Value**:  
+  - Unsigned byte count, equal to `sysinfo_total_memory_bytes() - sysinfo_available_memory_bytes()`.
+  - `0` if either source returns 0 or the values are inconsistent.
+- **Behaviour**:  
+  Convenience wrapper over the existing total/available observers, so it is automatically correct on every platform those two support.
+
+---
+
+### `unsigned long long sysinfo_total_swap_bytes(void)`
+
+- **Purpose**:  
+  Returns the total size of swap space, in bytes.
+- **Parameters**: None.
+- **Return Value**:  
+  - Unsigned byte count. `0` is legitimate (swapless systems / containers) and is also returned on error or unsupported platforms.
+- **Behaviour**:  
+  - **Windows**: there is no separate "swap"; the page file is the equivalent. Reported as `ullTotalPageFile - ullTotalPhys` (commit limit minus physical RAM).
+  - **Linux**: parses `SwapTotal` from `/proc/meminfo`.
+
+---
+
+### `unsigned long long sysinfo_free_swap_bytes(void)`
+
+- **Purpose**:  
+  Returns the amount of free swap space, in bytes.
+- **Parameters**: None.
+- **Return Value**:  
+  - Unsigned byte count, always `<= sysinfo_total_swap_bytes()`. `0` on error / unsupported platforms.
+- **Behaviour**:  
+  - **Windows**: `ullAvailPageFile` (remaining commit the system will grant) capped at the page-file size — large when little is committed, shrinking toward 0 as commit nears the limit.
+  - **Linux**: parses `SwapFree` from `/proc/meminfo`.
+
+---
+
+### `long sysinfo_uptime_seconds(void)`
+
+- **Purpose**:  
+  Returns the system uptime in whole seconds (the numeric counterpart of `sysinfo_system_uptime()`).
+- **Parameters**: None.
+- **Return Value**:  
+  - Seconds since boot, or `-1` if it cannot be determined.
+- **Behaviour**:  
+  - **Windows**: `GetTickCount64() / 1000`.
+  - **Linux**: the first field of `/proc/uptime`.
+
+---
+
+### `long sysinfo_process_count(void)`
+
+- **Purpose**:  
+  Returns the number of processes currently running on the system.
+- **Parameters**: None.
+- **Return Value**:  
+  - Process count (`>= 1`), or `-1` on failure.
+- **Behaviour**:  
+  - **Windows**: counts entries from a `CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS)`.
+  - **Linux**: counts the numeric (PID) directories under `/proc`.
+
+---
+
+### `bool sysinfo_is_admin(void)`
+
+- **Purpose**:  
+  Returns `true` if the current process is running with administrative / root privileges.
+- **Parameters**: None.
+- **Return Value**:  
+  - `true` when elevated/root, otherwise `false` (also `false` if privileges cannot be queried or the platform is unsupported).
+- **Behaviour**:  
+  - **Windows**: queries the process token's `TokenElevation` — true only when actually running elevated.
+  - **POSIX**: `geteuid() == 0`.
+
+---
+
+### `unsigned long long sysinfo_disk_total_bytes(const char* path)`
+
+- **Purpose**:  
+  Returns the total size, in bytes, of the filesystem that contains `path` (the numeric counterpart of `sysinfo_disk_space()`).
+- **Parameters**:  
+  - `path`: any path on the volume of interest (e.g. `"/"` on Linux, `"C:\\"` on Windows).
+- **Return Value**:  
+  - Total bytes, or `0` on a `NULL`/empty path, on error, or on unsupported platforms.
+- **Behaviour**:  
+  - **Windows**: `GetDiskFreeSpaceExA` (total number of bytes).
+  - **Linux**: `statvfs` (`f_blocks * f_frsize`).
+
+---
+
+### `unsigned long long sysinfo_disk_free_bytes(const char* path)`
+
+- **Purpose**:  
+  Returns the free space, in bytes, available to the caller on the filesystem that contains `path`.
+- **Parameters**:  
+  - `path`: any path on the volume of interest.
+- **Return Value**:  
+  - Free bytes available to an unprivileged caller (honours filesystem reservations), or `0` on a `NULL`/empty path, on error, or on unsupported platforms.
+- **Behaviour**:  
+  - **Windows**: `GetDiskFreeSpaceExA` (free bytes available to caller).
+  - **Linux**: `statvfs` (`f_bavail * f_frsize`).
+
+---
+
+### `int sysinfo_battery_percentage(void)`
+
+- **Purpose**:  
+  Returns the battery charge level as a whole percentage (`0..100`).
+- **Parameters**: None.
+- **Return Value**:  
+  - `0..100` when a battery is present, or `-1` when there is no battery (desktops, servers, most VMs/CI) or the level is unknown. Treat `-1` as "not applicable".
+- **Behaviour**:  
+  - **Windows**: `GetSystemPowerStatus` (`BatteryLifePercent`; 255 means unknown → `-1`).
+  - **Linux**: reads `/sys/class/power_supply/BAT0|BAT1/capacity`.
+
+---
+
+### `char* sysinfo_default_shell(void)`
+
+- **Purpose**:  
+  Returns the path of the user's default shell / command interpreter.
+- **Parameters**: None.
+- **Return Value**:  
+  - Heap-allocated string — **the caller must `free()` it**. Always non-NULL except on allocation failure.
+- **Behaviour**:  
+  - **Windows**: the `COMSPEC` environment variable (falls back to `C:\\Windows\\System32\\cmd.exe`).
+  - **POSIX**: the `SHELL` environment variable (falls back to `/bin/sh`).
+
+---
 
 ## Examples
 
@@ -996,6 +1270,354 @@ int main() {
     sysinfo_deallocate_disk_partitions(partitions);
     return 0;
 }
+```
+
+---
+
+## Example 24: get the current user name with `sysinfo_username()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    char* user = sysinfo_username();
+    fmt_printf("Hello, %s!\n", user);
+    free(user);
+    return 0;
+}
+```
+
+**Sample output**
+```
+Hello, amint!
+```
+
+---
+
+## Example 25: get the user's home directory with `sysinfo_home_directory()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    char* home = sysinfo_home_directory();
+    fmt_printf("Per-user config under: %s/.myapp\n", home);
+
+    free(home);
+    return 0;
+}
+```
+
+**Sample output (Windows)**
+```
+Per-user config under: C:\Users\amint/.myapp
+```
+
+---
+
+## Example 26: build a temp-file path with `sysinfo_temp_directory()`
+
+`sysinfo_temp_directory()` always strips the trailing separator, so you can join paths with a single `/` without worrying about a double slash.
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    char* tmp = sysinfo_temp_directory();
+    char path[512];
+
+    snprintf(path, sizeof(path), "%s/myapp-state.tmp", tmp);
+    fmt_printf("Will write scratch state to: %s\n", path);
+
+    free(tmp);
+    return 0;
+}
+```
+
+**Sample output**
+```
+Will write scratch state to: C:\Users\amint\AppData\Local\Temp/myapp-state.tmp
+```
+
+---
+
+## Example 27: print the current working directory with `sysinfo_current_working_directory()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    char* cwd = sysinfo_current_working_directory();
+    if (cwd) {
+        fmt_printf("cwd = %s\n", cwd);
+        free(cwd);
+    }
+    return 0;
+}
+```
+
+**Sample output**
+```
+cwd = C:\Users\amint\Desktop\c_std
+```
+
+---
+
+## Example 28: find where the current binary lives with `sysinfo_executable_path()`
+
+Useful for locating sibling files (configs, plugins) that ship next to the executable.
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+    char* exe = sysinfo_executable_path();
+
+    if (exe) {
+        fmt_printf("Running from: %s\n", exe);
+        free(exe);
+    } 
+    else {
+        fmt_printf("Executable path unavailable on this platform.\n");
+    }
+
+    return 0;
+}
+```
+
+**Sample output (Windows)**
+```
+Running from: C:\Users\amint\Desktop\c_std\main.exe
+```
+
+---
+
+## Example 29: print the current PID with `sysinfo_process_id()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+int main() {
+    fmt_printf("Our PID is %ld\n", sysinfo_process_id());
+    return 0;
+}
+```
+
+**Sample output**
+```
+Our PID is 11936
+```
+
+---
+
+## Example 30: report total RAM with `sysinfo_total_memory_bytes()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+int main() {
+    unsigned long long total = sysinfo_total_memory_bytes();
+    fmt_printf("Total RAM: %.2f GiB (%llu bytes)\n", total / (1024.0 * 1024.0 * 1024.0), total);
+
+    return 0;
+}
+```
+
+**Sample output**
+```
+Total RAM: 23.90 GiB (25662439424 bytes)
+```
+
+---
+
+## Example 31: refuse to start if not enough memory is free, using `sysinfo_available_memory_bytes()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdio.h>
+
+int main() {
+    unsigned long long avail = sysinfo_available_memory_bytes();
+    const unsigned long long needed = 256ULL * 1024ULL * 1024ULL;  // 256 MiB
+
+    if (avail < needed) {
+        fmt_printf("Only %llu MiB available; refusing to start.\n", avail / (1024 * 1024));
+        return 1;
+    }
+    fmt_printf("Available memory OK: %.2f GiB free\n", avail / (1024.0 * 1024.0 * 1024.0));
+
+    return 0;
+}
+```
+
+**Sample output**
+```
+Available memory OK: 14.73 GiB free
+```
+
+---
+
+## Example 32: gate a feature on a 64-bit build with `sysinfo_is_64bit_process()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdio.h>
+
+int main() {
+    if (!sysinfo_is_64bit_process()) {
+        fmt_printf("This release requires a 64-bit build. Aborting.\n");
+        return 1;
+    }
+    fmt_printf("64-bit build detected; continuing.\n");
+    
+    return 0;
+}
+```
+
+**Sample output**
+```
+64-bit build detected; continuing.
+```
+
+---
+
+## Example 33: detect CPU byte order at runtime with `sysinfo_endianness()`
+
+The returned pointer is a static literal — never `free()` it.
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <string.h>
+
+int main() {
+    const char* endian = sysinfo_endianness();
+    fmt_printf("CPU is %s-endian\n", endian);
+
+    // Branch on it cheaply if you care.
+    if (strcmp(endian, "little") == 0) {
+        fmt_printf("(Network code must swap multi-byte fields.)\n");
+    }
+    return 0;
+}
+```
+
+**Sample output**
+```
+CPU is little-endian
+(Network code must swap multi-byte fields.)
+```
+
+---
+
+## Example 34: memory + swap snapshot with `sysinfo_used_memory_bytes()` / `sysinfo_total_swap_bytes()` / `sysinfo_free_swap_bytes()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+int main() {
+    const double GiB = 1024.0 * 1024.0 * 1024.0;
+
+    fmt_printf("RAM used : %.2f GiB\n", sysinfo_used_memory_bytes() / GiB);
+    fmt_printf("Swap total: %.2f GiB\n", sysinfo_total_swap_bytes() / GiB);
+    fmt_printf("Swap free : %.2f GiB\n", sysinfo_free_swap_bytes()  / GiB);
+
+    return 0;
+}
+```
+
+**Sample output**
+```
+RAM used : 0.84 GiB
+Swap total: 3.00 GiB
+Swap free : 2.94 GiB
+```
+
+---
+
+## Example 35: uptime, process count and privilege with `sysinfo_uptime_seconds()` / `sysinfo_process_count()` / `sysinfo_is_admin()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+int main() {
+    long up = sysinfo_uptime_seconds();
+    if (up >= 0) {
+        fmt_printf("Up %ld days, %ld hours\n", up / 86400, (up % 86400) / 3600);
+    }
+    
+    fmt_printf("Processes running: %ld\n", sysinfo_process_count());
+    fmt_printf("Elevated/root    : %s\n", sysinfo_is_admin() ? "yes" : "no");
+
+    return 0;
+}
+```
+
+**Sample output**
+```
+Up 0 days, 10 hours
+Processes running: 47
+Elevated/root    : no
+```
+
+---
+
+## Example 36: disk space, battery and shell with `sysinfo_disk_total_bytes()` / `sysinfo_disk_free_bytes()` / `sysinfo_battery_percentage()` / `sysinfo_default_shell()`
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+#include <stdlib.h>
+
+int main() {
+#ifdef _WIN32
+    const char* root = "C:\\";
+#else
+    const char* root = "/";
+#endif
+
+    fmt_printf("Disk total: %.1f GB\n", sysinfo_disk_total_bytes(root) / 1e9);
+    fmt_printf("Disk free : %.1f GB\n", sysinfo_disk_free_bytes(root)  / 1e9);
+
+    int bat = sysinfo_battery_percentage();
+    if (bat < 0) {
+        fmt_printf("Battery   : on AC / no battery\n");
+    } 
+    else {
+        fmt_printf("Battery   : %d%%\n", bat);
+    }
+
+    char* shell = sysinfo_default_shell();
+    fmt_printf("Shell     : %s\n", shell);
+    free(shell);
+
+    return 0;
+}
+```
+
+**Sample output**
+```
+Disk total: 1081.1 GB
+Disk free : 1010.6 GB
+Battery   : on AC / no battery
+Shell     : /bin/bash
 ```
 
 ---

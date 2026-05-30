@@ -40,7 +40,7 @@ in these examples i rewrite cpp example in Bitset code
   - `num_bits`: The number of bits to be stored in the `Bitset`.
   
 - **Return Value**:  
-  Returns a pointer to the newly created `Bitset`. If memory allocation fails, the program exits.
+  Returns a pointer to the newly created `Bitset`, or `NULL` if memory allocation fails.
 
 ---
 
@@ -135,11 +135,12 @@ in these examples i rewrite cpp example in Bitset code
 
 ### `Bitset* bitset_flip(Bitset* bs, size_t pos);`
 - **Purpose**:  
-  Flips the bit at the specified position (toggles it).
+  Flips the bit at the specified position (toggles it). The position uses the same
+  convention as `bitset_set`/`bitset_test`: `pos = 0` is the least-significant bit.
   
 - **Parameters**:  
   - `bs`: A pointer to the `Bitset`.
-  - `pos`: The position of the bit to flip.
+  - `pos`: The position of the bit to flip (0 = LSB).
   
 - **Return Value**:  
   Returns a pointer to the modified `Bitset`.
@@ -362,14 +363,17 @@ in these examples i rewrite cpp example in Bitset code
 
 ### `unsigned char* bitset_at_ref(Bitset* bs, size_t pos);`
 - **Purpose**:  
-  Returns a reference (pointer) to the byte that contains the bit at the specified position, allowing direct modification of the bit.
+  Returns a pointer to the underlying byte that contains the bit at the specified
+  position. To read or modify the target bit the caller must apply the mask
+  `(1u << (pos % 8))` to the returned byte.
   
 - **Parameters**:  
   - `bs`: A pointer to the `Bitset`.
   - `pos`: The position of the bit.
   
 - **Return Value**:  
-  Returns a pointer to the byte that contains the bit at the specified position.
+  Returns a pointer to the byte that contains the bit at the specified position,
+  or `NULL` if `bs` is `NULL` or `pos` is out of range.
 
 
 --- 
@@ -473,8 +477,12 @@ int main(){
 0
 4
 8
-0011
+0101
 ```
+
+`bitset_flip(bi1, 2)` flips bit at index 2 (the third-from-the-right bit),
+matching the convention of `bitset_set` / `bitset_test`. The starting bitset
+`0001` already has bit 0 set, so flipping bit 2 yields `0101`.
 
 ---
 
@@ -910,6 +918,7 @@ Number of set bits: 2
 ```c
 #include "bitset/bitset.h"
 #include "fmt/fmt.h"
+#include <stdlib.h>
 
 int main() {
     Bitset *bit = bitset_create(8);
@@ -920,6 +929,7 @@ int main() {
     char *bitsetString = bitset_to_string(bit);
     fmt_printf("Bitset in string is %s\n", bitsetString);
 
+    free(bitsetString);
     bitset_deallocate(bit);
     return 0;
 }
@@ -1475,9 +1485,11 @@ int main() {
         fmt_printf("bs[%zu]: %d\n", i, bitset_at(bs, i));
     }
 
-    unsigned char* ref = bitset_at_ref(bs, 0);
+    size_t pos = 0;
+    unsigned char* ref = bitset_at_ref(bs, pos);
     if (ref) {
-        *ref |= 1 << 0; // Set the 0th bit to 1
+        // bitset_at_ref returns the underlying byte; mask in the correct bit.
+        *ref |= (unsigned char)(1u << (pos % 8));
     }
 
     fmt_printf("After setting bit 0, Bitset holds: ");

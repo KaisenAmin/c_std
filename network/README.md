@@ -1,5 +1,28 @@
 # Network Lib in C
 
+**Author:** amin tahmasebi
+**Release Date:** 2024
+**License:** ISC License
+
+
+## Thread Safety
+
+All functions that access SSL context or SSL mappings are thread-safe. The library uses a cross-platform mutex to protect global state. You can safely use the TCP library in a multithreaded server or client.
+
+## IPv6 Support
+
+The functions `tcp_connect` and `tcp_bind` now support both IPv4 and IPv6 addresses. You can use hostnames or IPv6 literals (e.g., `::1`) in all connection and binding operations.
+
+## Usage Patterns
+
+- Always call `tcp_init()` before using any TCP functions, and `tcp_cleanup()` at program end.
+- For SSL, call `tcp_ssl_init()` before using SSL functions, and `tcp_ssl_cleanup()` at program end.
+- For multithreaded servers, you can safely call all TCP/SSL functions from multiple threads.
+- For IPv6, simply use IPv6 addresses or hostnames that resolve to IPv6.
+
+## Error Handling and Resource Management
+
+All resource allocations and error paths are robust; SSL objects and mappings are always cleaned up. If an error occurs during SSL handshake or socket operations, all resources are released and mappings are cleared.
 
 ## TcpSocket 
 
@@ -672,6 +695,231 @@ This function is used for non-blocking operations where the application must rem
 
 ---
 
+### `const char* tcp_status_to_string(TcpStatus code)`
+
+**Purpose**:  
+Returns a static human-readable label for a `TcpStatus` error code.
+
+**Parameters**:  
+- `code`: Any `TcpStatus` enumeration value.
+
+**Return Value**:  
+Static string such as `"TCP_SUCCESS"`, `"TCP_ERR_BIND"`, or `"TCP_ERR_SSL_HANDSHAKE"`. Unknown codes return `"TCP_UNKNOWN_CODE"`. Never `NULL`.
+
+**Usage Case**:  
+Structured logging and diagnostics without pulling in the full `TcpStatusInfo` from `tcp_get_last_error`.
+
+---
+
+### `TcpStatus tcp_set_keep_alive(TcpSocket socket, bool enable)`
+
+**Purpose**:  
+Enables or disables `SO_KEEPALIVE` on the socket. When enabled, the kernel periodically probes idle connections and tears them down if the peer stops responding.
+
+**Parameters**:  
+- `socket`: The TCP socket to configure.  
+- `enable`: `true` to enable keep-alive, `false` to disable.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Option set successfully.  
+- `TCP_ERR_GENERIC`: `setsockopt` failed.
+
+**Usage Case**:  
+Recommended for long-lived service connections so half-open connections (peer crashed, cable yanked) are detected and cleaned up rather than blocking `recv()` forever.
+
+---
+
+### `TcpStatus tcp_set_nodelay(TcpSocket socket, bool enable)`
+
+**Purpose**:  
+Enables or disables `TCP_NODELAY`, controlling Nagle's algorithm.
+
+**Parameters**:  
+- `socket`: The TCP socket to configure.  
+- `enable`: `true` disables Nagle (small writes sent immediately); `false` re-enables coalescing.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Option set successfully.  
+- `TCP_ERR_GENERIC`: `setsockopt` failed.
+
+**Usage Case**:  
+Set `enable = true` for low-latency request/response workloads (RPC, gaming, live trading). Set `enable = false` for bulk transfers where extra packet overhead matters.
+
+---
+
+### `TcpStatus tcp_set_linger(TcpSocket socket, bool enable, int seconds)`
+
+**Purpose**:  
+Configures `SO_LINGER`, which controls what `close()` does with unsent data.
+
+**Parameters**:  
+- `socket`: The TCP socket to configure.  
+- `enable`: `false` — `close()` returns immediately and the kernel flushes in the background; `true` — see `seconds`.  
+- `seconds`: If `enable = true` and `seconds > 0`, `close()` blocks up to `seconds` waiting for queued data to be ACK'd. If `seconds = 0`, an abortive close is performed: queued bytes are discarded and RST is sent (no TIME_WAIT).
+
+**Return Value**:  
+- `TCP_SUCCESS`: Option set successfully.  
+- `TCP_ERR_GENERIC`: `setsockopt` failed.
+
+**Usage Case**:  
+Use `enable = true, seconds = 0` to slam a misbehaving connection shut immediately and avoid the TIME_WAIT state on rapid server restarts.
+
+---
+
+### `TcpStatus tcp_set_buffer_size(TcpSocket socket, size_t send_bytes, size_t recv_bytes)`
+
+**Purpose**:  
+Tunes `SO_SNDBUF` and `SO_RCVBUF`. Larger buffers improve bulk-transfer throughput on high bandwidth-delay paths; smaller buffers cap per-connection memory on busy servers.
+
+**Parameters**:  
+- `socket`: The TCP socket to configure.  
+- `send_bytes`: Desired send-buffer size in bytes. Pass `0` to leave unchanged.  
+- `recv_bytes`: Desired receive-buffer size in bytes. Pass `0` to leave unchanged.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Buffer sizes updated successfully.  
+- `TCP_ERR_GENERIC`: `setsockopt` failed.
+
+**Usage Case**:  
+Call once after socket creation to pre-tune buffers for bulk-transfer or high-throughput scenarios.
+
+---
+
+### `TcpStatus tcp_connect_timeout(TcpSocket socket, const char* host, unsigned short port, long timeout_ms)`
+
+**Purpose**:  
+A bounded-time alternative to `tcp_connect` that **never blocks longer than `timeout_ms`**. It resolves `host` (IPv4/IPv6), then connects in non-blocking mode (issue `connect` → wait with `tcp_wait_writable` → confirm via `tcp_get_socket_error`) and leaves the socket in blocking mode on return.
+
+**Parameters**:  
+- `socket`: A fresh socket from `tcp_socket_create`.  
+- `host`: Remote host (numeric or DNS name); `NULL`/empty → resolve error.  
+- `port`: Remote port.  
+- `timeout_ms`: Maximum time to wait for the handshake. `< 0` waits indefinitely.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Connected.  
+- `TCP_ERR_RESOLVE`: Host could not be resolved.  
+- `TCP_ERR_WOULD_BLOCK`: Timed out before the handshake completed.  
+- `TCP_ERR_CONNECT`: Every resolved address was refused/unreachable.  
+- `TCP_ERR_GENERIC`: Socket-mode or `select()` error.
+
+**Usage Case**:  
+**Essential in production.** A plain blocking `connect` to an unreachable host can stall for the OS default (often minutes) and wedge a request thread — this bounds it (e.g. a 2-second connect budget for an upstream HTTP call).
+
+---
+
+### `TcpStatus tcp_wait_readable(TcpSocket socket, long timeout_ms)`
+
+**Purpose**:  
+Blocks in `select()` until the socket is readable (data arrived, or the peer closed) or `timeout_ms` elapses — poll-with-timeout without putting the socket in non-blocking mode. `timeout_ms < 0` waits indefinitely; `0` polls.
+
+**Parameters**:  
+- `socket`: Connected TCP socket.  
+- `timeout_ms`: Timeout in milliseconds.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Readable.  
+- `TCP_ERR_WOULD_BLOCK`: Timed out.  
+- `TCP_ERR_GENERIC`: `select()` error.
+
+**Usage Case**:  
+Drive a responsive receive loop that can also do periodic work (timeouts, heartbeats, shutdown checks) instead of blocking forever in `tcp_recv`.
+
+---
+
+### `TcpStatus tcp_wait_writable(TcpSocket socket, long timeout_ms)`
+
+**Purpose**:  
+Blocks in `select()` until the socket can accept a write or `timeout_ms` elapses. Two main uses: bound a send against a slow/stalled peer, and detect completion of a non-blocking `connect` (the socket becomes writable when the handshake finishes — then check `tcp_get_socket_error`).
+
+**Parameters**:  
+- `socket`: TCP socket.  
+- `timeout_ms`: Timeout in milliseconds (`< 0` indefinite, `0` poll).
+
+**Return Value**:  
+- `TCP_SUCCESS`: Writable.  
+- `TCP_ERR_WOULD_BLOCK`: Timed out.  
+- `TCP_ERR_GENERIC`: `select()` error.
+
+**Usage Case**:  
+Implement your own connect-with-timeout or back-pressure-aware sender.
+
+---
+
+### `TcpStatus tcp_bytes_available(TcpSocket socket, size_t* available)`
+
+**Purpose**:  
+Reports how many bytes can be read without blocking (via `FIONREAD`), so you can size a receive buffer before `tcp_recv`. Writes `0` when the queue is empty.
+
+**Parameters**:  
+- `socket`: Connected TCP socket.  
+- `available`: Receives the byte count. Must not be `NULL`.
+
+**Return Value**:  
+- `TCP_SUCCESS` on success.  
+- `TCP_ERR_GENERIC` on a `NULL` output or query error.
+
+**Usage Case**:  
+Allocate an exactly-sized buffer for pending data, or check whether bytes are queued without blocking.
+
+---
+
+### `TcpStatus tcp_get_socket_error(TcpSocket socket, int* error_code)`
+
+**Purpose**:  
+Reads (and clears) the pending socket error via `SO_ERROR`. The canonical way to learn the outcome of a non-blocking `connect`: once the socket is writable, `0` means success while a non-zero value is the OS failure code (e.g. `ECONNREFUSED`).
+
+**Parameters**:  
+- `socket`: TCP socket.  
+- `error_code`: Receives the OS error code (`0` = none). Must not be `NULL`.
+
+**Return Value**:  
+- `TCP_SUCCESS`: Option read (regardless of its value).  
+- `TCP_ERR_GENERIC`: `NULL` output or `getsockopt` failure.
+
+**Usage Case**:  
+Confirm a non-blocking connect succeeded, or surface the exact reason an async operation failed.
+
+---
+
+### `TcpStatus tcp_send_all(TcpSocket socket, const void* buf, size_t len)`
+
+**Purpose**:  
+Sends **exactly** `len` bytes by looping over partial writes. Unlike `tcp_send`, which may write fewer bytes than requested, this wrapper keeps looping until all bytes are delivered or an error occurs.
+
+**Parameters**:  
+- `socket`: The TCP socket to send through.  
+- `buf`: Pointer to the data to send.  
+- `len`: Exact number of bytes to transmit. `len = 0` is a no-op success.
+
+**Return Value**:  
+- `TCP_SUCCESS`: All bytes were sent.  
+- Any error code returned by `tcp_send` if a partial write fails mid-loop.
+
+**Usage Case**:  
+Use for length-prefixed or fixed-size protocol frames where a short write silently drops tail bytes.
+
+---
+
+### `TcpStatus tcp_recv_all(TcpSocket socket, void* buf, size_t len)`
+
+**Purpose**:  
+Receives **exactly** `len` bytes by looping over partial reads. The mirror of `tcp_send_all` for fixed-size frames or length-prefixed protocols. A clean peer close mid-stream is reported as `TCP_ERR_RECV` because an incomplete frame is a protocol error.
+
+**Parameters**:  
+- `socket`: The TCP socket to receive from.  
+- `buf`: Pointer to the destination buffer (must be at least `len` bytes).  
+- `len`: Exact number of bytes to receive. `len = 0` is a no-op success.
+
+**Return Value**:  
+- `TCP_SUCCESS`: All `len` bytes were received.  
+- `TCP_ERR_RECV`: Peer closed the connection before all bytes arrived, or a receive error occurred.
+
+**Usage Case**:  
+Receiving a fixed-size header before reading a variable-length body avoids reassembling split TCP segments manually.
+
+---
+
 ## Example 1 : First server in `TcpSocket`
 
 `This server listens on a specified port and echoes back any received data to the client. It demonstrates basic server setup, including initialization, socket creation, binding, listening, accepting connections, receiving data, and sending data back.`
@@ -871,7 +1119,7 @@ if __name__ == "__main__":
 ```c
 #include "fmt/fmt.h"
 #include "network/tcp.h"
-#include "time/time.h"
+#include "time/std_time.h"
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
@@ -1192,6 +1440,822 @@ int main() {
 
 ---
 
+## UDP Socket
+
+The UDP library provides a cross-platform, thread-safe, robust abstraction for UDP sockets, supporting both IPv4 and IPv6, non-blocking mode, broadcast, timeouts, and hostname resolution. All error handling is robust and per-thread. The API is similar to the TCP API, but for datagram (connectionless) sockets.
+
+### Features
+- Thread-safe initialization and cleanup (WSAStartup/cleanup on Windows is reference-counted and mutex-protected)
+- Per-thread last error reporting
+- IPv4 and IPv6 support (dual-stack by default)
+- Non-blocking mode
+- Broadcast support
+- Timeout support (send/receive)
+- Hostname resolution and address validation
+- (Multicast support can be added in the future)
+
+### Usage Patterns
+- Always call `udp_init()` before using UDP sockets, and `udp_cleanup()` at program end.
+- All UDP functions are thread-safe and can be used from multiple threads.
+- Use `udp_get_last_error()` to retrieve the last error for the current thread.
+- Use IPv6 or IPv4 addresses/hostnames as needed.
+
+### UDP Function Descriptions
+
+---
+
+### `UdpStatus udp_init(void)`
+
+**Purpose**:  
+Initialises the UDP subsystem. On Windows performs a reference-counted `WSAStartup`; on POSIX a no-op aside from internal mutex setup.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_SETUP` if `WSAStartup` fails on Windows.
+
+**Usage Case**:  
+Must be called before any other UDP function. Pair with `udp_cleanup` at program end.
+
+---
+
+### `UdpStatus udp_cleanup(void)`
+
+**Purpose**:  
+Tears down one reference to the UDP subsystem. The final unmatched call invokes `WSACleanup` on Windows.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+`UDP_SUCCESS`.
+
+**Usage Case**:  
+Call once at program end to pair with `udp_init`.
+
+---
+
+### `UdpStatus udp_socket_create(UdpSocket* sock)`
+
+**Purpose**:  
+Creates a dual-stack UDP socket (`AF_INET6` with `IPV6_V6ONLY` disabled) so that both IPv6 and IPv4-mapped-IPv6 destinations work through the same handle.
+
+**Parameters**:  
+- `sock`: Output pointer where the new socket handle is stored. Must not be `NULL`.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_SOCKET` if the OS call fails or `sock` is `NULL`.
+
+**Usage Case**:  
+First step in any UDP workflow — call before `udp_bind` or `udp_sendto`.
+
+---
+
+### `UdpStatus udp_bind(UdpSocket socket, const char* host, unsigned short port)`
+
+**Purpose**:  
+Binds a UDP socket to a local address and port. Binding is required to receive datagrams.
+
+**Parameters**:  
+- `socket`: The UDP socket to bind.  
+- `host`: Host address to bind to. Pass `NULL` or `""` to bind to the wildcard address.  
+- `port`: Port to bind to. Pass `0` to let the OS assign an ephemeral port.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_RESOLVE` if `host` cannot be parsed.  
+- `UDP_ERR_BIND` if the OS `bind()` call fails.
+
+**Usage Case**:  
+Required for servers and for any socket that needs to receive datagrams from arbitrary senders.
+
+---
+
+### `UdpStatus udp_connect(UdpSocket socket, const char* host, unsigned short port)`
+
+**Purpose**:  
+Pins the socket to a fixed remote peer. Calling `connect()` on a UDP socket does not open a connection — it sets the default destination so `udp_send`/`udp_recv` need no per-call addresses, and filters incoming datagrams so only packets from the pinned peer are delivered.
+
+**Parameters**:  
+- `socket`: The UDP socket to pin.  
+- `host`: Hostname or IP address of the remote peer.  
+- `port`: Port of the remote peer.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_RESOLVE` if the host cannot be resolved.  
+- `UDP_ERR_SEND` for other errors.
+
+**Usage Case**:  
+Write a UDP client with the same ergonomics as a TCP client — no per-call destination arguments and automatic peer filtering.
+
+---
+
+### `UdpStatus udp_close(UdpSocket socket)`
+
+**Purpose**:  
+Closes a UDP socket and releases its OS handle.
+
+**Parameters**:  
+- `socket`: The UDP socket to close.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_CLOSE` if the close operation fails.
+
+**Usage Case**:  
+Always call when done with a socket to avoid resource leaks.
+
+---
+
+### `UdpStatus udp_sendto(UdpSocket socket, const void* buf, size_t len, size_t* sent, const char* dest_host, unsigned short dest_port)`
+
+**Purpose**:  
+Sends a single UDP datagram to `dest_host:dest_port`. `dest_host` may be a numeric IPv4/IPv6 address or a DNS name. IPv4 destinations are routed transparently through the IPv4-mapped IPv6 form.
+
+**Parameters**:  
+- `socket`: The UDP socket to send from.  
+- `buf`: Pointer to the data to send.  
+- `len`: Number of bytes to send.  
+- `sent`: If non-`NULL`, receives the actual byte count sent.  
+- `dest_host`: Destination hostname or IP address.  
+- `dest_port`: Destination port number.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_RESOLVE` if the host cannot be resolved.  
+- `UDP_ERR_SEND` on send failure or invalid arguments.
+
+**Usage Case**:  
+Standard one-shot datagram send for unconnected sockets. For connected sockets, prefer `udp_send`.
+
+---
+
+### `UdpStatus udp_recvfrom(UdpSocket socket, void* buf, size_t len, size_t* received, char* src_host, size_t src_host_len, unsigned short* src_port)`
+
+**Purpose**:  
+Receives a single UDP datagram. Optionally writes the sender's address and port. The sender's address may come back in IPv4-mapped form (e.g. `::ffff:127.0.0.1`) — that string is still valid input to `udp_sendto`, so echo servers work without extra translation.
+
+**Parameters**:  
+- `socket`: The UDP socket to receive on.  
+- `buf`: Buffer for the received data.  
+- `len`: Size of `buf` in bytes.  
+- `received`: If non-`NULL`, receives the actual byte count.  
+- `src_host`: If non-`NULL`, filled with the sender's address string.  
+- `src_host_len`: Size of the `src_host` buffer.  
+- `src_port`: If non-`NULL`, filled with the sender's port number.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_NO_DATA` if the socket is non-blocking and no datagram is queued.  
+- `UDP_ERR_RECV` for other errors.
+
+**Usage Case**:  
+Primary receive call for unconnected sockets. For connected sockets, prefer `udp_recv`.
+
+---
+
+### `UdpStatus udp_send(UdpSocket socket, const void* buf, size_t len, size_t* sent)`
+
+**Purpose**:  
+Sends on a UDP socket previously pinned with `udp_connect`. Equivalent to libc `send()` — no destination arguments because they are implicit.
+
+**Parameters**:  
+- `socket`: A connected UDP socket.  
+- `buf`: Pointer to the data to send.  
+- `len`: Number of bytes to send.  
+- `sent`: If non-`NULL`, receives the actual byte count.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_SEND` if the socket is not connected or send fails.
+
+**Usage Case**:  
+Use after `udp_connect` for clean TCP-style send semantics without per-call destinations.
+
+---
+
+### `UdpStatus udp_recv(UdpSocket socket, void* buf, size_t len, size_t* received)`
+
+**Purpose**:  
+Receives on a UDP socket previously pinned with `udp_connect`. Only datagrams from the connected peer are delivered; no source-address output is produced.
+
+**Parameters**:  
+- `socket`: A connected UDP socket.  
+- `buf`: Buffer for the received data.  
+- `len`: Size of `buf` in bytes.  
+- `received`: If non-`NULL`, receives the actual byte count.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_NO_DATA` on a non-blocking socket with no pending data.  
+- `UDP_ERR_RECV` for other errors.
+
+**Usage Case**:  
+Use after `udp_connect` for clean TCP-style receive semantics. Use `udp_recvfrom` if you need the sender's address.
+
+---
+
+### `UdpStatus udp_set_non_blocking(UdpSocket socket, bool enable)`
+
+**Purpose**:  
+Enables or disables non-blocking I/O on a UDP socket.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `enable`: `true` to enable non-blocking mode; `false` to revert to blocking.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+When enabled, `udp_recvfrom` returns `UDP_ERR_NO_DATA` immediately instead of blocking when there is nothing to read — suitable for polling loops.
+
+---
+
+### `UdpStatus udp_set_broadcast(UdpSocket socket, bool enable)`
+
+**Purpose**:  
+Enables or disables `SO_BROADCAST` on the socket, which is required before sending to a broadcast address.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `enable`: `true` to allow broadcast sends; `false` to prohibit them.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Required before sending to `255.255.255.255` or a subnet broadcast address.
+
+---
+
+### `UdpStatus udp_set_timeout(UdpSocket socket, long timeout_ms)`
+
+**Purpose**:  
+Applies the same send/receive timeout to both `SO_RCVTIMEO` and `SO_SNDTIMEO`. Pass `0` to clear any existing timeout.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `timeout_ms`: Timeout in milliseconds; `0` means no timeout.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Prevents `udp_recvfrom` from blocking indefinitely when waiting for a response in a request/reply protocol.
+
+---
+
+### `UdpStatus udp_set_reuse_addr(UdpSocket socket, bool enable)`
+
+**Purpose**:  
+Enables or disables `SO_REUSEADDR` (and `SO_REUSEPORT` on POSIX where available). Allows re-binding to the same port immediately after a previous bind is released, and enables sharing a multicast port across sockets.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `enable`: `true` to allow address reuse; `false` to disable.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Set before `udp_bind` to avoid "Address already in use" errors during rapid restarts, and when multiple processes need to share a multicast port.
+
+---
+
+### `UdpStatus udp_set_buffer_size(UdpSocket socket, size_t send_bytes, size_t recv_bytes)`
+
+**Purpose**:  
+Tunes the kernel send (`SO_SNDBUF`) and receive (`SO_RCVBUF`) buffer sizes. The kernel typically doubles the requested value internally and may clamp to a system maximum.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `send_bytes`: Desired send-buffer size. Pass `0` to leave unchanged.  
+- `recv_bytes`: Desired receive-buffer size. Pass `0` to leave unchanged.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Increase the receive buffer for bursty high-throughput workloads to reduce datagram drops at the OS level.
+
+---
+
+### `UdpStatus udp_join_multicast_group(UdpSocket socket, const char* group_addr, const char* iface_addr)`
+
+**Purpose**:  
+Joins a multicast group so the socket receives datagrams sent to that group address.
+
+**Parameters**:  
+- `socket`: The UDP socket to join the group on.  
+- `group_addr`: Multicast group address (IPv4 like `"224.0.0.1"` or IPv6 like `"ff02::1"`).  
+- `iface_addr`: Local interface address to join on. Pass `NULL` for the default interface.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` if the join fails.
+
+**Usage Case**:  
+Required on receivers before they can receive multicast datagrams.
+
+---
+
+### `UdpStatus udp_leave_multicast_group(UdpSocket socket, const char* group_addr, const char* iface_addr)`
+
+**Purpose**:  
+Leaves a multicast group previously joined with `udp_join_multicast_group`.
+
+**Parameters**:  
+- `socket`: The UDP socket to leave the group on.  
+- `group_addr`: The multicast group address to leave.  
+- `iface_addr`: Local interface address. Pass `NULL` for the default interface.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Call when the application no longer needs to receive from a multicast group, to free OS resources.
+
+---
+
+### `UdpStatus udp_set_multicast_ttl(UdpSocket socket, int ttl)`
+
+**Purpose**:  
+Sets the multicast time-to-live (TTL), controlling how many router hops a multicast datagram can traverse.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `ttl`: TTL value in range 0–255. `1` restricts traffic to the local subnet; higher values cross routers.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Set `ttl = 1` for local-network-only multicast (LAN discovery). Increase for cross-router multicast delivery.
+
+---
+
+### `UdpStatus udp_resolve_hostname(const char* hostname, char* ip_address, size_t ip_address_len)`
+
+**Purpose**:  
+Resolves a DNS name to its first IP address (IPv4 or IPv6) and writes the result in presentation form (e.g. `"127.0.0.1"` or `"::1"`). Does not filter by address family.
+
+**Parameters**:  
+- `hostname`: The DNS name or numeric address to resolve.  
+- `ip_address`: Buffer where the resolved address string is stored.  
+- `ip_address_len`: Size of the `ip_address` buffer. At least 46 bytes is recommended for IPv6.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_RESOLVE` if resolution fails.
+
+**Usage Case**:  
+Convert a hostname to an IP before logging the actual address, or before passing it to `udp_sendto`.
+
+---
+
+### `UdpStatus udp_get_local_address(UdpSocket socket, char* host, size_t host_len, unsigned short* port)`
+
+**Purpose**:  
+Returns the local address and port the socket is bound to (wraps `getsockname()` and `inet_ntop`).
+
+**Parameters**:  
+- `socket`: A bound UDP socket.  
+- `host`: Buffer for the address string. Should be at least 64 bytes for IPv6.  
+- `host_len`: Size of the `host` buffer.  
+- `port`: If non-`NULL`, receives the bound port number.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Particularly useful when bound to port `0` to discover the kernel-assigned ephemeral port.
+
+---
+
+### `UdpStatus udp_get_peer_address(UdpSocket socket, char* host, size_t host_len, unsigned short* port)`
+
+**Purpose**:  
+The counterpart of `udp_get_local_address`: reports the remote peer set by a prior `udp_connect` (wraps `getpeername()` and `inet_ntop`). The address is written in presentation form (e.g. `"::1"`).
+
+**Parameters**:  
+- `socket`: A socket previously connected with `udp_connect`.  
+- `host`: Buffer for the peer address string (use `INET6_ADDRSTRLEN`).  
+- `host_len`: Size of the `host` buffer.  
+- `port`: If non-`NULL`, receives the peer port in host byte order.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on invalid arguments, an **unconnected** socket (`getpeername` fails with `ENOTCONN`), or an unsupported address family.
+
+**Usage Case**:  
+Log or display which peer a connected UDP "client" socket is talking to.
+
+---
+
+### `UdpStatus udp_set_ttl(UdpSocket socket, int ttl)`
+
+**Purpose**:  
+Sets the unicast hop limit (TTL) for outgoing datagrams — the unicast counterpart of `udp_set_multicast_ttl`. Because the library's sockets are dual-stack IPv6, it sets both `IP_TTL` and `IPV6_UNICAST_HOPS` and succeeds if either applies.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `ttl`: Hop limit in range 0–255.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` if `ttl` is out of range or the option could not be set.
+
+**Usage Case**:  
+Limit how far datagrams propagate (e.g. `ttl = 1` to keep traffic on the local subnet), or raise it for long network paths.
+
+---
+
+### `UdpStatus udp_set_multicast_loopback(UdpSocket socket, bool enable)`
+
+**Purpose**:  
+Enables or disables local loopback of outgoing multicast (`IP_MULTICAST_LOOP` / `IPV6_MULTICAST_LOOP`). When enabled (the default), a sender that also joined the group receives its own datagrams.
+
+**Parameters**:  
+- `socket`: The UDP socket to configure.  
+- `enable`: `true` to receive your own multicast (default), `false` to suppress it.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on failure.
+
+**Usage Case**:  
+Disable loopback in a multicast app that both sends and listens, so it doesn't process the packets it just sent.
+
+---
+
+### `UdpStatus udp_bytes_available(UdpSocket socket, size_t* available)`
+
+**Purpose**:  
+Reports how many bytes are immediately readable (via `FIONREAD`). On a datagram socket this is at least the size of the next pending datagram, so it lets you size a receive buffer before `udp_recv` / `udp_recvfrom` and avoid truncation. Writes `0` when the queue is empty.
+
+**Parameters**:  
+- `socket`: A valid UDP socket.  
+- `available`: Receives the byte count. Must not be `NULL`.
+
+**Return Value**:  
+- `UDP_SUCCESS` on success.  
+- `UDP_ERR_GENERIC` on a `NULL` output pointer or a query error.
+
+**Usage Case**:  
+Allocate an exactly-sized buffer for the next datagram, or check whether data is queued without blocking.
+
+---
+
+### `UdpStatus udp_wait_readable(UdpSocket socket, long timeout_ms)`
+
+**Purpose**:  
+Blocks in `select()` until the socket has a datagram ready or the timeout elapses — the building block for poll-with-timeout loops without making the whole socket non-blocking. `timeout_ms < 0` waits indefinitely; `timeout_ms == 0` polls and returns immediately.
+
+**Parameters**:  
+- `socket`: A valid UDP socket.  
+- `timeout_ms`: Timeout in milliseconds (see above).
+
+**Return Value**:  
+- `UDP_SUCCESS` if the socket is readable.  
+- `UDP_ERR_NO_DATA` on timeout.  
+- `UDP_ERR_GENERIC` on a `select()` error.
+
+**Usage Case**:  
+Drive a responsive receive loop that can also do periodic work (heartbeats, shutdown checks) while waiting for packets.
+
+---
+
+### `bool udp_is_valid_address(const char* address)`
+
+**Purpose**:  
+Checks whether `address` parses as a numeric IPv4 or IPv6 address without performing DNS resolution.
+
+**Parameters**:  
+- `address`: The string to validate. May be `NULL`.
+
+**Return Value**:  
+`true` if `address` is a valid numeric IPv4 or IPv6 address; `false` otherwise (including `NULL`).
+
+**Usage Case**:  
+Validate user input or configuration values before passing to socket functions.
+
+---
+
+### `void udp_get_last_error(UdpStatusInfo* status_info)`
+
+**Purpose**:  
+Retrieves the most recent UDP error for the calling thread. The error is stored per-thread so concurrent threads do not interfere with each other.
+
+**Parameters**:  
+- `status_info`: Pointer to a `UdpStatusInfo` struct to populate with the system error code and human-readable message.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Call after a failed UDP operation to obtain the system-level error code and description for logging or user feedback.
+
+---
+
+### `const char* udp_status_to_string(UdpStatus code)`
+
+**Purpose**:  
+Returns a static human-readable label for a `UdpStatus` error code.
+
+**Parameters**:  
+- `code`: Any `UdpStatus` enumeration value.
+
+**Return Value**:  
+Static string such as `"UDP_SUCCESS"` or `"UDP_ERR_BIND"`. Unknown codes return `"UDP_UNKNOWN_CODE"`. Never `NULL`.
+
+**Usage Case**:  
+Structured logging without pulling in the full `UdpStatusInfo` from `udp_get_last_error`.
+
+---
+
+## Example 1: UDP Echo Server
+
+```c
+
+
+#include "network/udp.h"
+#include "fmt/fmt.h"
+
+#define PORT 9000
+#define BUFFER_SIZE 1024
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_bind(sock, NULL, PORT);
+    fmt_printf("UDP Echo Server listening on port %d\n", PORT);
+
+    char buf[BUFFER_SIZE];
+    char src_host[128];
+    unsigned short src_port;
+    size_t received;
+
+    while (1) {
+        UdpStatus status = udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+        if (status == UDP_SUCCESS && received > 0) {
+            buf[received] = '\0';
+            fmt_printf("Received from %s:%u: %s\n", src_host, src_port, buf);
+            udp_sendto(sock, buf, received, NULL, src_host, src_port);
+        } 
+        else if (status == UDP_ERR_NO_DATA) {
+            continue; // Non-blocking mode: just try again
+        } 
+        else {
+            UdpStatusInfo err;
+            udp_get_last_error(&err);
+            fmt_printf("UDP error: %s\n", err.message);
+            break; // or handle error appropriately
+        }
+    }
+    
+    udp_close(sock);
+    udp_cleanup();
+    return 0;
+}
+```
+
+---
+
+## Example 2: UDP Client
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 9000
+#define BUFFER_SIZE 1024
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    char msg[] = "Hello, UDP Server!";
+    udp_sendto(sock, msg, strlen(msg), NULL, SERVER_IP, SERVER_PORT);
+
+    char buf[BUFFER_SIZE];
+    char src_host[128];
+    unsigned short src_port;
+    size_t received;
+
+    udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+    buf[received] = '\0';
+
+    fmt_printf("Received from %s:%u: %s\n", src_host, src_port, buf);
+    udp_close(sock);
+    udp_cleanup();
+
+    return 0;
+}
+```
+
+---
+
+## Example 3: UDP Broadcast Sender/Receiver
+
+**Sender:**
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+#define BROADCAST_PORT 9001
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_set_broadcast(sock, true);
+
+    char msg[] = "Hello, broadcast!";
+    udp_sendto(sock, msg, strlen(msg), NULL, "255.255.255.255", BROADCAST_PORT);
+
+    udp_close(sock);
+    udp_cleanup();
+
+    return 0;
+}
+```
+
+**Receiver:**
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+
+#define BROADCAST_PORT 9001
+#define BUFFER_SIZE 1024
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_bind(sock, NULL, BROADCAST_PORT);
+
+    char buf[BUFFER_SIZE];
+    char src_host[128];
+    unsigned short src_port;
+    size_t received;
+
+    udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+    buf[received] = '\0';
+
+    fmt_printf("Received broadcast from %s:%u: %s\n", src_host, src_port, buf);
+
+    udp_close(sock);
+    udp_cleanup();
+    return 0;
+}
+```
+
+---
+
+## Example 4: UDP Multicast Sender/Receiver
+
+**Sender:**
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+#define MULTICAST_GROUP "239.255.0.1"
+#define MULTICAST_PORT 9002
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_set_multicast_ttl(sock, 1); // Restrict to local network
+
+    char msg[] = "Hello, multicast!";
+    udp_sendto(sock, msg, strlen(msg), NULL, MULTICAST_GROUP, MULTICAST_PORT);
+
+    udp_close(sock);
+    udp_cleanup();
+
+    return 0;
+}
+```
+
+**Receiver:**
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+
+#define MULTICAST_GROUP "239.255.0.1"
+#define MULTICAST_PORT 9002
+#define BUFFER_SIZE 1024
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_bind(sock, NULL, MULTICAST_PORT);
+    udp_join_multicast_group(sock, MULTICAST_GROUP, NULL); // NULL = default interface
+
+    char buf[BUFFER_SIZE];
+    char src_host[128];
+    unsigned short src_port;
+    size_t received;
+
+    udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+    buf[received] = '\0';
+
+    fmt_printf("Received multicast from %s:%u: %s\n", src_host, src_port, buf);
+    udp_leave_multicast_group(sock, MULTICAST_GROUP, NULL);
+
+    udp_close(sock);
+    udp_cleanup();
+
+    return 0;
+}
+```
+
+---
+
+## Example 5: Non-blocking UDP with Timeout
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <time.h>
+#include <string.h>
+
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 9000
+#define BUFFER_SIZE 1024
+
+int main() {
+    udp_init();
+    UdpSocket sock;
+
+    udp_socket_create(&sock);
+    udp_set_non_blocking(sock, true);
+
+    char msg[] = "Hello, non-blocking UDP!";
+    udp_sendto(sock, msg, strlen(msg), NULL, SERVER_IP, SERVER_PORT);
+
+    char buf[BUFFER_SIZE];
+    char src_host[128];
+    unsigned short src_port;
+    size_t received;
+    time_t start = time(NULL);
+
+    while (1) {
+        UdpStatus status = udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+        if (status == UDP_SUCCESS && received > 0) {
+            buf[received] = '\0';
+            fmt_printf("Received from %s:%u: %s\n", src_host, src_port, buf);
+            break;
+        } 
+        else if (status == UDP_ERR_NO_DATA) {
+            if (time(NULL) - start > 5) {
+                fmt_printf("Timeout waiting for response\n");
+                break;
+            }
+        }
+        else {
+            UdpStatusInfo err;
+            udp_get_last_error(&err);
+            fmt_printf("UDP error: %s\n", err.message);
+            break;
+        }
+    }
+
+    udp_close(sock);
+    udp_cleanup();
+
+    return 0;
+}
+```
+
+---
+
 ## Example 6 : concurrent server in `TcpSocket`
 
 `This example demonstrates how to set up a secure SSL/TCP server using a custom TCP library, which abstracts the complexity of socket programming and SSL communication. The example covers initializing the network environment, creating a non-blocking TCP socket, configuring SSL, and handling client connections in a multithreaded manner. This approach allows for scalable server applications that can handle multiple client connections concurrently without blocking the main execution thread.`
@@ -1243,7 +2307,7 @@ int main() {
             TcpSocket* client_socket = malloc(sizeof(TcpSocket)); // Ensure proper error checking in production code
             TcpStatus acceptStatus = tcp_accept(listen_socket, client_socket);
             if (acceptStatus == TCP_SUCCESS) {
-                Thread thread_id = NULL;
+                Thread thread_id = 0;   /* Thread is pthread_t (an integer) on POSIX, a HANDLE on Windows; 0 is valid for both */
                 thread_create(&thread_id, handle_client, client_socket);
                 thread_detach(thread_id);
             } 
@@ -1465,7 +2529,7 @@ int main(void) {
     while (1) {
         TcpSocket* client_socket = malloc(sizeof(TcpSocket));
         if (tcp_accept(listen_socket, client_socket) == TCP_SUCCESS) {
-            Thread client_thread = NULL;
+            Thread client_thread = 0;   /* Thread is pthread_t (an integer) on POSIX, a HANDLE on Windows; 0 is valid for both */
             thread_create(&client_thread, handle_client, client_socket);
             thread_detach(client_thread);
         } 
@@ -1523,354 +2587,1504 @@ if __name__ == "__main__":
 
 ---
 
-## Example 9 : HTTP Server Example
+## HTTP Server
 
-This example demonstrates how to create a simple HTTP server in C using a custom HTTP library. The server listens on port 8051 and provides two endpoints:
+The HTTP layer is a small, single-threaded HTTP/1.1 server built on top of `TcpSocket`. It supports method+path routing, query-string parsing, JSON request/response bodies (via the project's JSON module), and conventional helpers for setting status, headers, and body content.
 
-- `/`: Responds with a simple "Hello, World!" message.
-- `/echo`: Receives a JSON payload via a POST request and echoes it back in the response.
+### Features
+- Routes register with method + path; paths may contain a single `{id}` placeholder that is parsed as an integer into `HttpRequest::id`.
+- Request parsing extracts method, path, query parameters, headers, and the body. JSON-looking bodies are auto-parsed into `req->json_body`.
+- Response builders (`http_set_status`, `http_set_body`, `http_set_json_body`, `http_add_header`) are leak-safe — repeated calls free the previous value.
+- 404 fallback is automatic if no route matches.
+- All public helpers are NULL-safe; the server never crashes the host on malformed input.
 
-**Test the endpoints**:
-     - `curl http://localhost:8051/` should return "Hello, World!".
-     - `curl -X POST http://localhost:8051/echo -H "Content-Type: application/json" -d '{"message": "Hello, world!"}'` should return the JSON message `{"message": "Hello, world!"}`.
+### HTTP Types
+- `HttpMethod` — enum of supported verbs (`HTTP_GET`, `HTTP_POST`, `HTTP_PUT`, `HTTP_DELETE`, `HTTP_OPTIONS`, `HTTP_HEAD`, `HTTP_PATCH`, `HTTP_UNKNOWN`).
+- `HttpRequest` — parsed request. Holds `method`, `path`, `body` / `json_body`, `headers[]`, `query_params[]`, and `id` for `{id}` routes.
+- `HttpResponse` — outgoing response. Holds `status_code`, `status_message`, `headers[]`, `body`, `json_body`.
+- `HttpHandler` — function pointer `void (*)(HttpRequest*, HttpResponse*)` registered against routes.
 
-### Code
+### HTTP Function Descriptions
+
+---
+
+### `HttpMethod http_parse_method(const char* request)`
+
+**Purpose**:  
+Identifies the HTTP method at the start of a raw request line. Compares the leading verb (including the trailing space) to avoid prefix collisions such as `"GETSOMETHING"` matching `HTTP_GET`.
+
+**Parameters**:  
+- `request`: Raw HTTP request string. May be `NULL`.
+
+**Return Value**:  
+The corresponding `HttpMethod` enum value, or `HTTP_UNKNOWN` on no match or `NULL` input.
+
+**Usage Case**:  
+Quick method detection when you have the raw request bytes before parsing the full request.
+
+---
+
+### `HttpRequest* http_parse_request(const char* request)`
+
+**Purpose**:  
+Parses a raw HTTP/1.1 request into an `HttpRequest` struct. Validates the request-line shape before allocating. Bodies whose first byte is `{` or `[` are auto-parsed into `json_body`. The caller must release the result with `http_free_request`.
+
+**Parameters**:  
+- `request`: A NUL-terminated raw HTTP request string.
+
+**Return Value**:  
+Pointer to a newly allocated `HttpRequest`, or `NULL` if the request is malformed or allocation fails.
+
+**Usage Case**:  
+Primary entry point for turning raw TCP bytes into a structured request object inside a request handler loop.
+
+---
+
+### `void http_free_request(HttpRequest* request)`
+
+**Purpose**:  
+Releases every allocation owned by an `HttpRequest`: path, body, JSON tree, all header and query-param strings, and the struct itself. `NULL` is a safe no-op.
+
+**Parameters**:  
+- `request`: The `HttpRequest` to free. May be `NULL`.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Call once at the end of each request handler to avoid memory leaks.
+
+---
+
+### `const char* http_get_header(HttpRequest* req, const char* name)`
+
+**Purpose**:  
+Looks up a request header value by name (case-sensitive search over the parsed headers array).
+
+**Parameters**:  
+- `req`: The parsed request.  
+- `name`: Header name to find (e.g. `"Content-Type"`).
+
+**Return Value**:  
+Pointer to the header value string (owned by `req`), or `NULL` if not found.
+
+**Usage Case**:  
+Read `Content-Type`, `Authorization`, `Host`, or any other request header inside a handler.
+
+---
+
+### `const char* http_get_query_param(HttpRequest* req, const char* name)`
+
+**Purpose**:  
+Looks up a query-string parameter by name (e.g. the `q` in `/search?q=hello`).
+
+**Parameters**:  
+- `req`: The parsed request.  
+- `name`: Parameter name to find.
+
+**Return Value**:  
+Pointer to the parameter value string (owned by `req`), or `NULL` if absent.
+
+**Usage Case**:  
+Extract filter, pagination, or search parameters from the URL query string inside a GET handler.
+
+---
+
+### `char* http_get_cookie(HttpRequest* req, const char* name)`
+
+**Purpose**:  
+Looks up a single cookie value by name in the request's `Cookie` header. Returns a freshly-allocated copy — the caller must `free()` it.
+
+**Parameters**:  
+- `req`: The parsed request.  
+- `name`: Cookie name to find. Matches whole names only.
+
+**Return Value**:  
+Newly allocated copy of the cookie value, or `NULL` if the header is missing or the cookie is not present.
+
+**Usage Case**:  
+Read session tokens, user preferences, or other cookie-stored state inside a request handler.
+
+---
+
+### `void http_set_status(HttpResponse* response, int code, const char* message)`
+
+**Purpose**:  
+Sets the HTTP status code and reason phrase. Frees any previously set reason phrase before overwriting — repeated calls do not leak.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `code`: HTTP status code (e.g. `200`, `404`).  
+- `message`: Reason phrase (e.g. `"OK"`, `"Not Found"`). Copied internally.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+First call inside every handler to declare the response outcome before setting the body.
+
+---
+
+### `void http_set_body(HttpResponse* response, const char* body)`
+
+**Purpose**:  
+Copies `body` into the response and appends a `Content-Type: text/plain` header. Frees any previous body so repeated calls do not leak.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `body`: NUL-terminated body text. Copied internally.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Set a plain-text body for simple API endpoints or error messages.
+
+---
+
+### `void http_set_html_body(HttpResponse* response, const char* html)`
+
+**Purpose**:  
+Attaches an HTML body to the response and appends `Content-Type: text/html; charset=utf-8`. Frees any previous body so repeated calls do not leak.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `html`: NUL-terminated HTML string. Copied internally.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Return server-rendered HTML pages from handlers.
+
+---
+
+### `void http_set_json_body(HttpResponse* response, JsonElement* json)`
+
+**Purpose**:  
+Attaches a JSON document to the response, takes ownership of `json`, frees any previously attached body or JSON tree, serializes the new value, and appends `Content-Type: application/json`. Passing `NULL` turns the response into a 500.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `json`: JSON element tree to serialize and attach. Ownership is transferred.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Return structured JSON data from REST API endpoints.
+
+---
+
+### `void http_add_header(HttpResponse* response, const char* header, const char* value)`
+
+**Purpose**:  
+Appends a `Name: Value` response header. No deduplication is performed — calling twice with the same name yields two entries. Headers beyond `MAX_HEADERS` are silently dropped.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `header`: Header name string.  
+- `value`: Header value string. Both are copied internally.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Add `Cache-Control`, `Access-Control-Allow-Origin`, or any custom response header.
+
+---
+
+### `void http_set_cookie(HttpResponse* response, const char* name, const char* value, const char* path, int max_age, bool http_only)`
+
+**Purpose**:  
+Appends a `Set-Cookie` header in the form `name=value[; Path=...][; Max-Age=N][; HttpOnly]`. Multiple calls produce multiple `Set-Cookie` headers — the standard way to send several cookies.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `name`: Cookie name.  
+- `value`: Cookie value.  
+- `path`: Cookie path. Pass `NULL` to omit the `Path` attribute.  
+- `max_age`: Cookie lifetime in seconds. Pass a negative value to omit `Max-Age`.  
+- `http_only`: `true` to append the `HttpOnly` flag.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Issue session cookies or other persistent client-side state after successful authentication.
+
+---
+
+### `void http_redirect(HttpResponse* response, int code, const char* location)`
+
+**Purpose**:  
+Builds a redirect response: sets the 3xx status (coerces invalid codes to 302), appends a `Location:` header, and writes a small HTML fallback body with the link.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `code`: Redirect status code. Accepted values: 301, 302, 303, 307, 308.  
+- `location`: The URL to redirect to.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Permanently move a resource (`301`), redirect after a POST (`303`), or preserve the HTTP method on redirect (`307`/`308`).
+
+---
+
+### `void http_send_error(HttpResponse* res, int code, const char* message)`
+
+**Purpose**:  
+Sets both the status code and the plain-text body to `message` in one call. Shortcut for short 4xx/5xx error replies.
+
+**Parameters**:  
+- `res`: The response to modify.  
+- `code`: HTTP error status code (e.g. `400`, `404`, `500`).  
+- `message`: Error description used as both the reason phrase and the body.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Return a concise error from validation logic without writing separate `http_set_status` + `http_set_body` calls.
+
+---
+
+### `const char* http_response_get_header(HttpResponse* response, const char* name)`
+
+**Purpose**:  
+Looks up a response header value by name (case-sensitive). Mirrors `http_get_header` but for the outgoing response.
+
+**Parameters**:  
+- `response`: The response to inspect.  
+- `name`: Header name to find.
+
+**Return Value**:  
+Pointer to the header value string (owned by `response`), or `NULL` if not found.
+
+**Usage Case**:  
+Inspect what headers have already been set before deciding whether to append or override.
+
+---
+
+### `size_t http_response_remove_header(HttpResponse* response, const char* name)`
+
+**Purpose**:  
+Removes every response header whose name matches (case-sensitive), frees the matching strings, and shifts remaining headers down to keep storage contiguous.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `name`: Header name to remove.
+
+**Return Value**:  
+Number of headers removed.
+
+**Usage Case**:  
+Override the implicit `Content-Type` that `http_set_body`/`http_set_json_body` adds, or clear duplicate `Set-Cookie` headers before re-issuing them.
+
+---
+
+### `char* http_serialize_response(HttpResponse* response)`
+
+**Purpose**:  
+Serializes a response into an HTTP/1.1 wire-format byte buffer. Computes the exact buffer size upfront and writes with bounded operations, so the output cannot overflow. The caller must `free()` the result.
+
+**Parameters**:  
+- `response`: The fully-configured response to serialize.
+
+**Return Value**:  
+Newly allocated NUL-terminated HTTP/1.1 response string, or `NULL` on allocation failure.
+
+**Usage Case**:  
+Called internally by `http_handle_request`. Expose it directly for testing response serialization without a live socket.
+
+---
+
+### `void http_free_response(HttpResponse* response)`
+
+**Purpose**:  
+Releases every heap allocation owned by an `HttpResponse` (status message, headers, body, JSON tree) and zeroes the fields. Does NOT free the struct itself — typically a stack variable. `NULL`-safe.
+
+**Parameters**:  
+- `response`: The response to clean up. May be `NULL`.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Called at the end of `http_handle_request` and any path that exits after building a response.
+
+---
+
+### `void http_register_route(const char* path, HttpMethod method, HttpHandler handler)`
+
+**Purpose**:  
+Registers a handler function for a given path + method pair. Paths may contain a single `{name}` placeholder that is parsed as an integer into `req->id`. Up to `MAX_ROUTES` registrations are kept; extras are silently dropped.
+
+**Parameters**:  
+- `path`: URL path pattern, e.g. `"/users/{id}"` or `"/health"`.  
+- `method`: HTTP method this route matches (e.g. `HTTP_GET`).  
+- `handler`: `void (*)(HttpRequest*, HttpResponse*)` function to invoke on a match.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Called at startup to wire up all URL paths before `http_start_server`.
+
+---
+
+### `void http_start_server(int port)`
+
+**Purpose**:  
+Binds to `0.0.0.0:port` with `SO_REUSEADDR`, starts listening, and serves requests on the calling thread in a loop until `http_stop_server` is called from another thread. Every failure path cleans up sockets.
+
+**Parameters**:  
+- `port`: TCP port number to listen on.
+
+**Return Value**:  
+None (blocks until stopped).
+
+**Usage Case**:  
+Last call in `main()` after all routes are registered. Run in a dedicated thread if you need the main thread for other work.
+
+---
+
+### `void http_stop_server(void)`
+
+**Purpose**:  
+Flips the internal `server_running` flag. Does not interrupt a blocked `accept()` — send one more dummy request to wake the loop.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Call from a signal handler or a control thread to initiate graceful shutdown.
+
+---
+
+### `void http_handle_request(TcpSocket client_socket)`
+
+**Purpose**:  
+Processes a single already-accepted client connection: reads the request bytes, dispatches to the registered route (or sends a 404), serializes and sends the response. Every exit path frees both the request and the response.
+
+**Parameters**:  
+- `client_socket`: An accepted client socket. The caller is responsible for closing it after this function returns.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Used internally by `http_start_server`, but exposed for direct testing without a listening socket.
+
+---
+
+### `const char* http_method_to_string(HttpMethod m)`
+
+**Purpose**:  
+Returns the canonical wire-format name of an HTTP method enum value.
+
+**Parameters**:  
+- `m`: Any `HttpMethod` enum value.
+
+**Return Value**:  
+Static string: `"GET"`, `"POST"`, `"PUT"`, `"DELETE"`, `"OPTIONS"`, `"HEAD"`, `"PATCH"`, or `"UNKNOWN"`. Never `NULL`.
+
+**Usage Case**:  
+Logging and building outbound request lines.
+
+---
+
+### `const char* http_status_text(int code)`
+
+**Purpose**:  
+Returns the default reason phrase for an HTTP status code (e.g. `200` → `"OK"`, `404` → `"Not Found"`). Unknown codes fall back to a class label so the status line is always well-formed.
+
+**Parameters**:  
+- `code`: HTTP status code.
+
+**Return Value**:  
+Static reason-phrase string. Never `NULL`.
+
+**Usage Case**:  
+Pass directly to `http_set_status`: `http_set_status(res, 200, http_status_text(200))`.
+
+---
+
+### `char* http_url_decode(const char* in, size_t in_len)`
+
+**Purpose**:  
+Percent-decodes a URL-encoded byte string: `+` becomes space, `%XX` becomes the corresponding byte, everything else is copied verbatim. Malformed `%` escapes are passed through literally. The caller must `free()` the result.
+
+**Parameters**:  
+- `in`: Input URL-encoded string.  
+- `in_len`: Length of `in` in bytes.
+
+**Return Value**:  
+Newly allocated NUL-terminated decoded string, or `NULL` on allocation failure.
+
+**Usage Case**:  
+Decode query-string values and `application/x-www-form-urlencoded` bodies.
+
+---
+
+### `char* http_url_encode(const char* in)`
+
+**Purpose**:  
+Percent-encodes a NUL-terminated string using the RFC 3986 unreserved set. Alphanumerics and `-`, `_`, `.`, `~` pass through; every other byte becomes `%XX`. The caller must `free()` the result.
+
+**Parameters**:  
+- `in`: NUL-terminated input string to encode.
+
+**Return Value**:  
+Newly allocated NUL-terminated encoded string (worst case 3× the input), or `NULL` on allocation failure.
+
+**Usage Case**:  
+Safely embed user-supplied strings in URLs or form bodies.
+
+---
+
+### `const char* http_get_header_ci(const HttpRequest* req, const char* name)`
+
+**Purpose**:  
+Case-insensitive request header lookup. HTTP header field names are case-insensitive (RFC 7230 §3.2), so this is the correct choice in production — a client may send `content-type` while your code looks up `Content-Type`. (The older `http_get_header` is case-sensitive and would miss it.)
+
+**Parameters**:  
+- `req`: The parsed request. `NULL` → `NULL`.  
+- `name`: Header name to find, matched case-insensitively. `NULL` → `NULL`.
+
+**Return Value**:  
+Pointer to the header value (owned by `req`, valid until `http_free_request`), or `NULL` if absent. If the header appears more than once, the first occurrence is returned.
+
+**Usage Case**:  
+Robustly read `Authorization`, `Host`, `Content-Type`, etc. regardless of the casing the client used.
+
+---
+
+### `const char* http_content_type(const HttpRequest* req)`
+
+**Purpose**:  
+Convenience accessor for the request's `Content-Type` header (looked up case-insensitively). The value may include parameters, e.g. `"application/json; charset=utf-8"`.
+
+**Parameters**:  
+- `req`: The parsed request. `NULL` → `NULL`.
+
+**Return Value**:  
+The `Content-Type` value (owned by `req`), or `NULL` if the header is absent.
+
+**Usage Case**:  
+Branch on the request media type — e.g. parse the body as JSON only when the content type says so.
+
+---
+
+### `long http_content_length(const HttpRequest* req)`
+
+**Purpose**:  
+Returns the request's `Content-Length` as a non-negative byte count. The header is looked up case-insensitively and parsed strictly as RFC 7230 `1*DIGIT`: the value must be non-empty and contain digits only (no sign, whitespace, or trailing junk). Integer overflow is detected and rejected.
+
+**Parameters**:  
+- `req`: The parsed request. `NULL` → `-1`.
+
+**Return Value**:  
+The declared body length (`>= 0`), or `-1` if the header is absent, empty, malformed, or would overflow `long`.
+
+**Usage Case**:  
+Validate or size body handling in production — e.g. reject requests whose `Content-Length` exceeds a limit before reading the body.
+
+---
+
+### `bool http_method_from_string(const char* str, HttpMethod* out_method)`
+
+**Purpose**:  
+Parses a bare method token (`"GET"`, `"POST"`, `"PUT"`, `"DELETE"`, `"OPTIONS"`, `"HEAD"`, `"PATCH"`) into an `HttpMethod`. HTTP methods are case-sensitive (RFC 7230 §3.1.1), so lowercase input is rejected. This is the inverse of `http_method_to_string`, and differs from `http_parse_method` (which expects a full request line — a verb followed by a space).
+
+**Parameters**:  
+- `str`: The method token. `NULL` → `false`.  
+- `out_method`: Receives the parsed method on success. `NULL` → `false`.
+
+**Return Value**:  
+`true` (and writes `*out_method`) if the token is a recognised verb; otherwise `false`, leaving `*out_method` unchanged.
+
+**Usage Case**:  
+Map a method string from a client, proxy rule, or config into the enum your routing switches on.
+
+---
+
+### `int http_status_class(int code)`
+
+**Purpose**:  
+Returns the class (leading digit) of an HTTP status code: `1` (1xx informational), `2` (2xx success), `3` (3xx redirection), `4` (4xx client error), `5` (5xx server error). Codes outside the valid 100–599 range return `0`.
+
+**Parameters**:  
+- `code`: HTTP status code.
+
+**Return Value**:  
+`1`–`5` for a valid code, or `0` if out of range.
+
+**Usage Case**:  
+Concise success/error checks and metrics, e.g. `if (http_status_class(code) == 2) { /* success */ }` or bucketing responses by class.
+
+---
+
+## Example 9: Hello-World HTTP Server
+
+The minimum boilerplate to run a single-route HTTP server. Visit `http://localhost:8080/` in any browser.
 
 ```c
 #include "network/http.h"
 #include "fmt/fmt.h"
+
+
+static void index_handler(HttpRequest* req, HttpResponse* res) {
+    (void)req;
+    http_set_status(res, 200, "OK");
+    http_set_body(res, "Hello from a C HTTP server!\n");
+}
+
+
+int main(void) {
+    http_register_route("/", HTTP_GET, index_handler);
+    fmt_printf("Listening on http://localhost:8080\n");
+    http_start_server(8080);
+    
+    return 0;
+}
+```
+
+**Sample session** (from `curl`):
+```
+$ curl -i http://localhost:8080/
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+Hello from a C HTTP server!
+```
+
+---
+
+## Example 10: JSON REST endpoint with `{id}` placeholder
+
+Demonstrates path-parameter routing, JSON response bodies, and method-aware dispatch. The same path matches both `GET /users/{id}` and `DELETE /users/{id}`, but each verb gets its own handler.
+
+```c
+#include "network/http.h"
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+
+static void user_get(HttpRequest* req, HttpResponse* res) {
+    /* req->id is parsed automatically from the {id} placeholder. */
+    JsonElement* root = json_create(JSON_OBJECT);
+
+    JsonElement* id_val = json_create(JSON_NUMBER);
+    id_val->value.number_val = (double)req->id;
+    json_add_to_object(root, "id", id_val);
+
+    JsonElement* name = json_create(JSON_STRING);
+    name->value.string_val = strdup("Alice");
+    json_add_to_object(root, "name", name);
+
+    http_set_status(res, 200, "OK");
+    http_set_json_body(res, root);   /* takes ownership of `root` */
+}
+
+static void user_delete(HttpRequest* req, HttpResponse* res) {
+    char msg[64];
+    snprintf(msg, sizeof(msg), "deleted user %d", req->id);
+    http_set_status(res, 200, "OK");
+    http_set_body(res, msg);
+}
+
+int main(void) {
+    http_register_route("/users/{id}", HTTP_GET,    user_get);
+    http_register_route("/users/{id}", HTTP_DELETE, user_delete);
+    http_start_server(8080);
+
+    return 0;
+}
+```
+
+**Sample session**:
+```
+$ curl -i http://localhost:8080/users/42
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id": 42, "name": "Alice"}
+
+$ curl -i -X DELETE http://localhost:8080/users/42
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+deleted user 42
+```
+
+---
+
+## Example 11: HTTP server with query-string parameters + custom headers
+
+The handler reads two query params and echoes them back in a custom header plus the body. Demonstrates `http_get_query_param` and `http_add_header`.
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+static void search_handler(HttpRequest* req, HttpResponse* res) {
+    const char* q    = http_get_query_param(req, "q");
+    const char* page = http_get_query_param(req, "page");
+
+    http_set_status(res, 200, "OK");
+    http_add_header(res, "X-Echo-Query", q    ? q    : "");
+    http_add_header(res, "X-Echo-Page",  page ? page : "");
+
+    char body[256];
+    snprintf(body, sizeof(body),
+             "searching for '%s' on page %s\n",
+             q ? q : "(none)", page ? page : "1");
+    http_set_body(res, body);
+}
+
+int main(void) {
+    http_register_route("/search", HTTP_GET, search_handler);
+    http_start_server(8080);
+
+    return 0;
+}
+```
+
+**Sample session**:
+```
+$ curl -i "http://localhost:8080/search?q=hello&page=3"
+HTTP/1.1 200 OK
+X-Echo-Query: hello
+X-Echo-Page: 3
+Content-Type: text/plain
+
+searching for 'hello' on page 3
+```
+
+---
+
+## Example 12: HTTP server accepting a JSON POST body
+
+Demonstrates `req->json_body` for POST bodies that arrive as JSON. The handler echoes back a summary; `http_set_json_body` builds the response.
+
+```c
+#include "network/http.h"
+#include "json/json.h"
+#include "fmt/fmt.h"
+
+static void create_handler(HttpRequest* req, HttpResponse* res) {
+    if (!req->json_body) {
+        http_send_error(res, 400, "expected JSON body");
+        return;
+    }
+
+    JsonElement* name_el = json_get_element(req->json_body, "name");
+    const char* name = (name_el && name_el->type == JSON_STRING)
+                       ? name_el->value.string_val : "unknown";
+
+    JsonElement* reply = json_create(JSON_OBJECT);
+    JsonElement* status = json_create(JSON_STRING);
+    status->value.string_val = strdup("created");
+    json_add_to_object(reply, "status", status);
+
+    JsonElement* who = json_create(JSON_STRING);
+    who->value.string_val = strdup(name);
+    json_add_to_object(reply, "name", who);
+
+    http_set_status(res, 201, "Created");
+    http_set_json_body(res, reply);
+}
+
+int main(void) {
+    http_register_route("/items", HTTP_POST, create_handler);
+    http_start_server(8080);
+
+    return 0;
+}
+```
+
+**Sample session**:
+```
+$ curl -i -X POST http://localhost:8080/items \
+       -H 'Content-Type: application/json' \
+       -d '{"name":"widget"}'
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{"status": "created", "name": "widget"}
+```
+
+---
+
+## Example 13: UDP — print local address + bound port
+
+Useful diagnostic: bind to an ephemeral port and ask the kernel which port it picked. Uses `udp_resolve_hostname` to find the local IP and `getsockname` (via the standard sockets API) to read back the assigned port.
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <sys/types.h>
+
+#if !defined(_WIN32)
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+#endif
+
+
+int main(void) {
+    udp_init();
+
+    UdpSocket s;
+    udp_socket_create(&s);
+    udp_bind(s, NULL, 0);   /* wildcard + ephemeral port */
+
+    struct sockaddr_storage ss;
+    socklen_t slen = sizeof(ss);
+    getsockname((int)s, (struct sockaddr*)&ss, &slen);
+
+    unsigned short port = 0;
+
+    if (ss.ss_family == AF_INET6) {
+        port = ntohs(((struct sockaddr_in6*)&ss)->sin6_port);
+    }
+    else if (ss.ss_family == AF_INET) {
+        port = ntohs(((struct sockaddr_in*)&ss)->sin_port);
+    }
+
+    char ip[64] = {0};
+    udp_resolve_hostname("localhost", ip, sizeof(ip));
+
+    fmt_printf("Bound to %s:%u\n", ip, port);
+
+    udp_close(s);
+    udp_cleanup();
+    return 0;
+}
+```
+
+**Sample output**:
+```
+Bound to ::1:54213
+```
+
+---
+
+## Example 14: UDP — request/response client with timeout
+
+Sends a one-shot request, waits up to 1 second for a reply, prints whatever came back (or `"(timed out)"`). Useful template for ping / NTP-style clients.
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+#define SERVER_HOST "127.0.0.1"
+#define SERVER_PORT 9000
+
+int main(void) {
+    udp_init();
+
+    UdpSocket sock;
+    udp_socket_create(&sock);
+    udp_set_timeout(sock, 1000);   /* 1-second recv timeout */
+
+    const char* msg = "PING";
+    udp_sendto(sock, msg, strlen(msg), NULL, SERVER_HOST, SERVER_PORT);
+
+    char buf[512];
+    char src[128] = {0};
+    unsigned short src_port = 0;
+    size_t recvd = 0;
+
+    UdpStatus s = udp_recvfrom(sock, buf, sizeof(buf) - 1, &recvd,
+                               src, sizeof(src), &src_port);
+    if (s == UDP_SUCCESS) {
+        buf[recvd] = '\0';
+        fmt_printf("reply from %s:%u: %s\n", src, src_port, buf);
+    } 
+    else {
+        fmt_printf("(timed out)\n");
+    }
+
+    udp_close(sock);
+    udp_cleanup();
+    return 0;
+}
+```
+
+---
+
+## Example 15: UDP — many-client echo server using `udp_set_non_blocking`
+
+A non-blocking echo loop that polls in a tight loop with a 10 ms sleep when there's nothing to read. Equivalent to a `select`-style server but simpler.
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+  #include <windows.h>
+  static void sleep_ms(int ms) { Sleep(ms); }
+#else
+  #include <unistd.h>
+  static void sleep_ms(int ms) { usleep(ms * 1000); }
+#endif
+
+int main(void) {
+    udp_init();
+
+    UdpSocket sock;
+    udp_socket_create(&sock);
+    udp_bind(sock, NULL, 9100);
+    udp_set_non_blocking(sock, true);
+
+    fmt_printf("Non-blocking echo server on UDP/9100. Ctrl-C to stop.\n");
+
+    char buf[1024];
+    char src[128];
+    unsigned short src_port;
+    size_t recvd;
+
+    for (;;) {
+        UdpStatus s = udp_recvfrom(sock, buf, sizeof(buf) - 1, &recvd,
+                                   src, sizeof(src), &src_port);
+        if (s == UDP_SUCCESS && recvd > 0) {
+            buf[recvd] = '\0';
+            fmt_printf("from %s:%u -> %s\n", src, src_port, buf);
+            udp_sendto(sock, buf, recvd, NULL, src, src_port);
+        } 
+        else if (s == UDP_ERR_NO_DATA) {
+            sleep_ms(10);   /* idle */
+        } 
+        else {
+            UdpStatusInfo err;
+            udp_get_last_error(&err);
+            fmt_printf("recv error: %s\n", err.message);
+            break;
+        }
+    }
+
+    udp_close(sock);
+    udp_cleanup();
+    return 0;
+}
+```
+
+---
+
+## Example 16: HTTP server using `http_status_text`, `http_set_html_body`, and `http_redirect`
+
+Three new helpers all in one handler tree. `/health` returns an HTML page, `/old-home` redirects to `/`, and `/` shows a one-line greeting.
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+
+static void index_handler(HttpRequest* req, HttpResponse* res) {
+    (void)req;
+    http_set_status(res, 200, http_status_text(200));
+    http_set_html_body(res, "<h1>Welcome</h1><p>Try /health or /old-home</p>");
+}
+
+static void health_handler(HttpRequest* req, HttpResponse* res) {
+    (void)req;
+    http_set_status(res, 200, http_status_text(200));
+    http_set_html_body(res, "<p>OK</p>");
+}
+
+static void old_home_handler(HttpRequest* req, HttpResponse* res) {
+    (void)req;
+    /* Permanent redirect to the new path. */
+    http_redirect(res, 301, "/");
+}
+
+int main(void) {
+    http_register_route("/",         HTTP_GET, index_handler);
+    http_register_route("/health",   HTTP_GET, health_handler);
+    http_register_route("/old-home", HTTP_GET, old_home_handler);
+
+    fmt_printf("http://localhost:8080  (/, /health, /old-home)\n");
+    http_start_server(8080);
+
+    return 0;
+}
+```
+
+**Verify:**
+```
+$ curl -i http://localhost:8080/old-home
+HTTP/1.1 301 Moved Permanently
+Location: /
+Content-Type: text/html; charset=utf-8
+
+<html><body>Redirecting to <a href="/">/</a></body></html>
+```
+
+---
+
+## Example 17: Cookie-based login flow with `http_set_cookie` / `http_get_cookie`
+
+`POST /login` issues a session cookie; `GET /me` reads it back and reports who's logged in. Notice `http_set_cookie`'s `path=/`, `max_age=3600`, `http_only=true` arguments.
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
 #include <stdlib.h>
 
-void handle_root(HttpRequest* req, HttpResponse* res) {
+
+static void login_handler(HttpRequest* req, HttpResponse* res) {
+    /* For demo: any POST body sets the session to "demo-user". */
     (void)req;
-    http_set_status(res, 200, "OK");
-    http_set_body(res, "Hello, World!");
+    http_set_cookie(res, "session", "demo-user", "/", 3600, true);
+    http_set_status(res, 200, http_status_text(200));
+    http_set_html_body(res, "<p>Logged in. <a href=\"/me\">/me</a></p>");
 }
 
-void handle_echo(HttpRequest* req, HttpResponse* res) {
-    fmt_printf("Received body: %s\n", req->body);
-
-    if (req->json_body) {
-        fmt_printf("Debug: Valid JSON body detected\n");
-        http_set_status(res, 200, "OK");
-        http_set_json_body(res, json_deep_copy(req->json_body));
-    } 
-    else {
-        http_send_error(res, 400, "Bad Request: Expected JSON body");
+static void me_handler(HttpRequest* req, HttpResponse* res) {
+    char* session = http_get_cookie(req, "session");
+    if (!session) {
+        http_send_error(res, 401, http_status_text(401));
+        return;
     }
+    http_set_status(res, 200, http_status_text(200));
+
+    char body[256];
+    snprintf(body, sizeof(body), "<p>Hello, <b>%s</b></p>", session);
+    http_set_html_body(res, body);
+    free(session);
 }
 
-int main() {
-    http_register_route("/", HTTP_GET, handle_root);
-    http_register_route("/echo", HTTP_POST, handle_echo);
-
-    fmt_printf("Starting HTTP server on port 8051...\n");
-    http_start_server(8051);
-
-    return 0;
-}
-```
-
----
-
-## Example 10 : json api with http and json (add user and get list of users)
-
-- `/users`: this endpoint base on GET method return list of users
-- `/users`: this handler get user as json and add to User struct .
-
-**Test the endpoints**:
-     - `curl http://localhost:8051/users` should return "Hello, World!".
-     - `curl -X POST http://localhost:8051/users -H "Content-Type: application/json" -d '{"name": "amin", "age": 27}'` should return {"message": "User added successfully"}
-### Code
-
-```c
-#include "network/http.h"
-#include "fmt/fmt.h"
-#include "json/json.h"
-#include "string/std_string.h"
-
-
-typedef struct {
-    char* name;
-    int age;
-} User;
-
-
-static User users[10]; 
-static size_t user_count = 0;
-
-void handle_get_users(HttpRequest* req, HttpResponse* res) {
-    (void)req; 
-
-    JsonElement* users_array = json_create(JSON_ARRAY);
-    for (size_t i = 0; i < user_count; i++) {
-        JsonElement* user_obj = json_create(JSON_OBJECT);
-
-        JsonElement* name_element = json_create(JSON_STRING);
-        name_element->value.string_val = string_strdup(users[i].name);
-        json_set_element(user_obj, "name", name_element);
-
-        JsonElement* age_element = json_create(JSON_NUMBER);
-        age_element->value.number_val = users[i].age;
-        json_set_element(user_obj, "age", age_element);
-
-        json_add_to_array(users_array, user_obj);
-    }
-
-    JsonElement* response_json = json_create(JSON_OBJECT);
-    json_set_element(response_json, "users", users_array);
-
-    http_set_status(res, 200, "OK");
-    http_set_json_body(res, response_json);
-}
-
-void handle_add_user(HttpRequest* req, HttpResponse* res) {
-    if (req->json_body) {
-        JsonElement* name_element = json_get_element(req->json_body, "name");
-        JsonElement* age_element = json_get_element(req->json_body, "age");
-
-        if (name_element && name_element->type == JSON_STRING &&
-            age_element && age_element->type == JSON_NUMBER &&
-            user_count < 10) {
-
-            const char* name = name_element->value.string_val;
-            int age = (int)age_element->value.number_val;
-
-            users[user_count].name = string_strdup(name);
-            users[user_count].age = age;
-            user_count++;
-
-            http_set_status(res, 201, "User Created");
-
-            JsonElement* response_json = json_create(JSON_OBJECT);
-            JsonElement* message_element = json_create(JSON_STRING);
-            
-            message_element->value.string_val = string_strdup("User added successfully");
-            json_set_element(response_json, "message", message_element);
-            http_set_json_body(res, response_json);
-        } 
-        else {
-            http_send_error(res, 400, "Bad Request: Invalid user data or user limit reached");
-        }
-
-    } else {
-        http_send_error(res, 400, "Bad Request: Expected JSON body");
-    }
-}
-
-int main() {
-    http_register_route("/users", HTTP_GET, handle_get_users);
-    http_register_route("/users", HTTP_POST, handle_add_user);
-
-    fmt_printf("Starting HTTP server on port 8051...\n");
-    http_start_server(8051);
-
-    return 0;
-}
-```
-
----
-
-## Example 11 : Create Crud operation and api with http lib (POST, GET, PUT, DELETE)
-
-- `/users`: this endpoint base on GET method return list of users
-- `/users`: this handler get user as json and add to User struct .
-- `/users/{id}` : this api update user base on id 
-- `/users/{id}` : this api delete user base on id
-
-**Test the endpoints**:
-- `curl http://localhost:8051/users` should return "Hello, World!".
-- `curl -X POST http://localhost:8051/users -H "Content-Type: application/json" -d '{"id": 1, "name": "amin", "age": 27}'` should return {"message": "User added successfully"}
-- `curl -X PUT http://localhost:8051/users/1 -H "Content-Type: application/json" -d '{"name": "ali", "age": 25}'` should return {"message": "User updated successfully"}
-- `curl -X DELETE http://localhost:8051/users/1` should return {"message": "User deleted successfully"}
-
+int main(void) {
+    http_register_route("/login", HTTP_POST, login_handler);
+    http_register_route("/me",    HTTP_GET,  me_handler);
     
-### code 
-
-```c
-#include "network/http.h"
-#include "fmt/fmt.h"
-#include "json/json.h"
-#include "string/std_string.h"
-
-typedef struct {
-    int id;
-    char* name;
-    int age;
-} User;
-
-static User users[10];
-static size_t user_count = 0;
-
-User* find_user_by_id(int id) {
-    for (size_t i = 0; i < user_count; i++) {
-        if (users[i].id == id) {
-            return &users[i];
-        }
-    }
-    return NULL;
-}
-
-int extract_id_from_path(const char* path) {
-    const char* last_slash = strrchr(path, '/');
-    if (last_slash) {
-        return atoi(last_slash + 1);
-    }
-    return -1;
-}
-
-void handle_get_users(HttpRequest* req, HttpResponse* res) {
-    (void)req;
-    JsonElement* users_array = json_create(JSON_ARRAY);
-    for (size_t i = 0; i < user_count; i++) {
-        JsonElement* user_obj = json_create(JSON_OBJECT);
-
-        JsonElement* id_element = json_create(JSON_NUMBER);
-        id_element->value.number_val = users[i].id;
-        json_set_element(user_obj, "id", id_element);
-
-        JsonElement* name_element = json_create(JSON_STRING);
-        name_element->value.string_val = string_strdup(users[i].name);
-        json_set_element(user_obj, "name", name_element);
-
-        JsonElement* age_element = json_create(JSON_NUMBER);
-        age_element->value.number_val = users[i].age;
-        json_set_element(user_obj, "age", age_element);
-
-        json_add_to_array(users_array, user_obj);
-    }
-
-    JsonElement* response_json = json_create(JSON_OBJECT);
-    json_set_element(response_json, "users", users_array);
-
-    http_set_status(res, 200, "OK");
-    http_set_json_body(res, response_json);
-}
-
-void handle_add_user(HttpRequest* req, HttpResponse* res) {
-    if (req->json_body) {
-        JsonElement* id_element = json_get_element(req->json_body, "id");
-        JsonElement* name_element = json_get_element(req->json_body, "name");
-        JsonElement* age_element = json_get_element(req->json_body, "age");
-
-        if (id_element && id_element->type == JSON_NUMBER &&
-            name_element && name_element->type == JSON_STRING &&
-            age_element && age_element->type == JSON_NUMBER &&
-            user_count < 10) {
-
-            int id = (int)id_element->value.number_val;
-            if (find_user_by_id(id) == NULL) {
-                User new_user;
-                new_user.id = id;
-                new_user.name = string_strdup(name_element->value.string_val);
-                new_user.age = (int)age_element->value.number_val;
-
-                users[user_count++] = new_user;
-
-                http_set_status(res, 201, "User Created");
-
-                JsonElement* response_json = json_create(JSON_OBJECT);
-                JsonElement* message_element = json_create(JSON_STRING);
-
-                message_element->value.string_val = string_strdup("User added successfully");
-
-                json_set_element(response_json, "message", message_element);
-                http_set_json_body(res, response_json);
-            } 
-            else {
-                http_send_error(res, 400, "User already exists with this ID");
-            }
-        } 
-        else {
-            http_send_error(res, 400, "Bad Request: Invalid user data or user limit reached");
-        }
-    } 
-    else {
-        http_send_error(res, 400, "Bad Request: Expected JSON body");
-    }
-}
-
-void handle_update_user(HttpRequest* req, HttpResponse* res) {
-    int id = extract_id_from_path(req->path);
-
-    if (id != -1 && req->json_body) {
-        User* user = find_user_by_id(id);
-        
-        if (user) {
-            JsonElement* name_element = json_get_element(req->json_body, "name");
-            JsonElement* age_element = json_get_element(req->json_body, "age");
-
-            if (name_element && name_element->type == JSON_STRING &&
-                age_element && age_element->type == JSON_NUMBER) {
-
-                user->name = string_strdup(name_element->value.string_val);
-                if (user->name == NULL) {
-                    http_send_error(res, 500, "Internal Server Error: Memory allocation failed");
-                    return;
-                }
-                user->age = (int)age_element->value.number_val;
-                http_set_status(res, 200, "User Updated");
-
-                JsonElement* response_json = json_create(JSON_OBJECT);
-                JsonElement* message_element = json_create(JSON_STRING);
-
-                message_element->value.string_val = string_strdup("User updated successfully");
-
-                json_set_element(response_json, "message", message_element);
-                http_set_json_body(res, response_json);
-            } 
-            else {
-                http_send_error(res, 400, "Bad Request: Invalid user data");
-            }
-        } 
-        else {
-            http_send_error(res, 404, "User Not Found");
-        }
-    } 
-    else {
-        http_send_error(res, 400, "Bad Request: Missing user ID or JSON body");
-    }
-}
-
-void handle_delete_user(HttpRequest* req, HttpResponse* res) {
-    int id = extract_id_from_path(req->path);
-    if (id != -1) {
-        for (size_t i = 0; i < user_count; i++) {
-            if (users[i].id == id) {
-                free(users[i].name);
-                for (size_t j = i; j < user_count - 1; j++) {
-                    users[j] = users[j + 1];
-                }
-                user_count--;
-
-                http_set_status(res, 200, "User Deleted");
-
-                JsonElement* response_json = json_create(JSON_OBJECT);
-                JsonElement* message_element = json_create(JSON_STRING);
-
-                message_element->value.string_val = string_strdup("User deleted successfully");
-                json_set_element(response_json, "message", message_element);
-                http_set_json_body(res, response_json);
-
-                return;
-            }
-        }
-        http_send_error(res, 404, "User Not Found");
-    } 
-    else {
-        http_send_error(res, 400, "Bad Request: Missing user ID");
-    }
-}
-
-int main() {
-    http_register_route("/users", HTTP_GET, handle_get_users);
-    http_register_route("/users", HTTP_POST, handle_add_user);
-    http_register_route("/users/{id}", HTTP_PUT, handle_update_user);
-    http_register_route("/users/{id}", HTTP_DELETE, handle_delete_user);
-
-    fmt_printf("Starting HTTP server on port 8051...\n");
-    http_start_server(8051);
+    fmt_printf("Login: curl -i -X POST http://localhost:8080/login\n");
+    http_start_server(8080);
 
     return 0;
 }
 ```
+
+**Verify:**
+```
+$ curl -i -X POST http://localhost:8080/login
+HTTP/1.1 200 OK
+Set-Cookie: session=demo-user; Path=/; Max-Age=3600; HttpOnly
+Content-Type: text/html; charset=utf-8
+
+<p>Logged in. <a href="/me">/me</a></p>
+
+$ curl -i -H 'Cookie: session=demo-user' http://localhost:8080/me
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+<p>Hello, <b>demo-user</b></p>
+```
+
+---
+
+## Example 18: URL encode/decode round-trip + overriding `Content-Type`
+
+Demonstrates `http_url_encode` / `http_url_decode` for safely building URLs, and `http_response_remove_header` / `http_response_get_header` for replacing the `Content-Type` that `http_set_body` adds by default.
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+#include <stdlib.h>
+
+int main(void) {
+    /* Build a URL safely from raw user input. */
+    const char* q = "hello world & friends?";
+    char* enc = http_url_encode(q);
+    fmt_printf("encoded:  %s\n", enc);
+
+    char* dec = http_url_decode(enc, strlen(enc));
+    fmt_printf("decoded:  %s\n", dec);
+    free(enc); free(dec);
+
+    /* Build a response with a custom binary content type. */
+    HttpResponse res;
+    memset(&res, 0, sizeof(res));
+    http_set_status(&res, 200, http_status_text(200));
+    http_set_body(&res, "\x89PNG\r\n");                       /* sets Content-Type: text/plain */
+    fmt_printf("default Content-Type: %s\n", http_response_get_header(&res, "Content-Type"));
+
+    http_response_remove_header(&res, "Content-Type");        /* drop the wrong one */
+    http_add_header(&res, "Content-Type", "image/png");       /* set the right one */
+    fmt_printf("override Content-Type: %s\n", http_response_get_header(&res, "Content-Type"));
+
+    char* wire = http_serialize_response(&res);
+    fmt_printf("---\n%s\n", wire);
+    free(wire);
+    http_free_response(&res);
+    return 0;
+}
+```
+
+**Expected output:**
+```
+encoded:  hello%20world%20%26%20friends%3F
+decoded:  hello world & friends?
+default Content-Type: text/plain
+override Content-Type: image/png
+---
+HTTP/1.1 200 OK
+Content-Type: image/png
+
+<binary PNG bytes>
+```
+
+---
+
+## Example 19: "Connected" UDP client using `udp_connect` / `udp_send` / `udp_recv`
+
+`udp_connect` lets you write a UDP client that looks almost like a TCP client — no per-call destination arguments, and incoming packets from unexpected peers are filtered out. Pair with `udp_status_to_string` for clean error logs.
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    udp_init();
+
+    UdpSocket s;
+    if (udp_socket_create(&s) != UDP_SUCCESS) return 1;
+
+    /* Pin the socket to the server. After this, no more sendto/recvfrom — just send/recv. */
+    UdpStatus rc = udp_connect(s, "::1", 9999);
+    if (rc != UDP_SUCCESS) {
+        fmt_printf("connect: %s\n", udp_status_to_string(rc));
+        udp_close(s); udp_cleanup(); return 1;
+    }
+
+    const char* req = "ping";
+    size_t sent = 0;
+    rc = udp_send(s, req, strlen(req), &sent);
+    fmt_printf("send: %s (%zu bytes)\n", udp_status_to_string(rc), sent);
+
+    char buf[256];
+    size_t got = 0;
+    rc = udp_recv(s, buf, sizeof(buf) - 1, &got);
+    if (rc == UDP_SUCCESS) {
+        buf[got] = '\0';
+        fmt_printf("recv: %s\n", buf);
+    } else {
+        fmt_printf("recv: %s\n", udp_status_to_string(rc));
+    }
+
+    udp_close(s);
+    udp_cleanup();
+    return 0;
+}
+```
+
+**Why it matters:** without `udp_connect`, every `udp_sendto` call has to re-resolve the destination, and `udp_recvfrom` will deliver datagrams from any peer (including spoofed source addresses). A connected UDP socket sidesteps both.
+
+---
+
+## Example 20: Discovering the ephemeral port and tuning buffers
+
+`udp_get_local_address` is most useful when you bind to port 0 (kernel-assigned) — a common pattern when you don't want to hard-code a port for testing or for one-shot replies. `udp_set_buffer_size` boosts throughput on bursty workloads, and `udp_set_reuse_addr` makes restart cycles painless.
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    udp_init();
+
+    UdpSocket s;
+    udp_socket_create(&s);
+
+    /* Quick-restart hygiene + 1 MiB receive buffer. */
+    udp_set_reuse_addr(s, true);
+    udp_set_buffer_size(s, 0, 1 << 20);
+
+    /* Wildcard bind, ephemeral port. */
+    udp_bind(s, NULL, 0);
+
+    char host[64];
+    unsigned short port = 0;
+    udp_get_local_address(s, host, sizeof(host), &port);
+    fmt_printf("listening on %s:%u\n", host, port);
+
+    /* ... usual recvfrom loop here ... */
+
+    udp_close(s);
+    udp_cleanup();
+    return 0;
+}
+```
+
+**Sample output** (port is whatever the kernel picks; the wildcard prints as the IPv6 unspecified address `::`):
+```
+listening on :::51743
+```
+
+
+---
+
+## Example 21: Low-latency request/response client (`tcp_set_nodelay` + `tcp_set_keep_alive` + `tcp_send_all` / `tcp_recv_all`)
+
+A typical RPC client setup: turn off Nagle to send small requests immediately, enable keep-alive so a dead server gets detected on idle, and use the loop-until-done helpers so a partial write or split TCP segment doesn't silently drop data.
+
+```c
+#include "network/tcp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    tcp_init();
+
+    TcpSocket s;
+    if (tcp_socket_create(&s) != TCP_SUCCESS) { tcp_cleanup(); return 1; }
+
+    /* Low-latency posture before connecting. */
+    tcp_set_nodelay(s, true);
+    tcp_set_keep_alive(s, true);
+
+    TcpStatus rc = tcp_connect(s, "127.0.0.1", 9000);
+    if (rc != TCP_SUCCESS) {
+        fmt_printf("connect: %s\n", tcp_status_to_string(rc));
+        tcp_close(s); tcp_cleanup(); return 1;
+    }
+
+    /* Length-prefixed request: 4-byte big-endian length + payload. */
+    const char* payload = "PING";
+    unsigned char hdr[4] = { 0, 0, 0, (unsigned char)strlen(payload) };
+
+    rc = tcp_send_all(s, hdr, sizeof(hdr));
+    if (rc == TCP_SUCCESS) rc = tcp_send_all(s, payload, strlen(payload));
+    if (rc != TCP_SUCCESS) {
+        fmt_printf("send: %s\n", tcp_status_to_string(rc));
+        tcp_close(s); tcp_cleanup(); return 1;
+    }
+
+    /* Read length, then exactly that many bytes. */
+    unsigned char rh[4];
+    if (tcp_recv_all(s, rh, sizeof(rh)) != TCP_SUCCESS) {
+        fmt_printf("recv header: failed\n");
+        tcp_close(s); tcp_cleanup(); return 1;
+    }
+    size_t body_len = (size_t)rh[3];
+
+    char body[256] = {0};
+    if (tcp_recv_all(s, body, body_len) != TCP_SUCCESS) {
+        fmt_printf("recv body: failed\n");
+        tcp_close(s); tcp_cleanup(); return 1;
+    }
+    body[body_len] = '\0';
+    fmt_printf("response: %s\n", body);
+
+    tcp_close(s);
+    tcp_cleanup();
+    return 0;
+}
+```
+
+**Why it matters:** without `tcp_send_all`, a 4-byte header could be split across two `send()` calls under high load — your "small atomic write" assumption breaks. Without `tcp_set_nodelay`, every small request could be delayed up to 200ms by Nagle waiting for more bytes that never come.
+
+---
+
+## Example 22: Quick-restart server with `tcp_set_linger` (abortive close)
+
+When a request handler decides the client is malicious, you want the connection slammed shut without going through the polite TIME_WAIT state — both to free the port immediately for restarts and to deny the client any in-flight bytes.
+
+```c
+#include "network/tcp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    tcp_init();
+
+    TcpSocket srv;
+    tcp_socket_create(&srv);
+    tcp_set_reuse_addr(srv, true);
+    tcp_set_buffer_size(srv, 1 << 20, 1 << 20);   /* 1 MiB buffers */
+
+    tcp_bind(srv, NULL, 9001);
+    tcp_listen(srv, 32);
+
+    fmt_printf("listening on 9001\n");
+
+    while (1) {
+        TcpSocket c;
+        if (tcp_accept(srv, &c) != TCP_SUCCESS) continue;
+
+        char buf[512] = {0};
+        size_t got = 0;
+        TcpStatus rc = tcp_recv(c, buf, sizeof(buf) - 1, &got);
+
+        if (rc != TCP_SUCCESS || strncmp(buf, "BAD ", 4) == 0) {
+            /* Abortive close: send RST, no TIME_WAIT, no graceful flush. */
+            tcp_set_linger(c, true, 0);
+            tcp_close(c);
+            fmt_printf("rejected (%s)\n", tcp_status_to_string(rc));
+            continue;
+        }
+
+        /* Normal client: graceful close. */
+        const char* reply = "OK\n";
+        tcp_send_all(c, reply, strlen(reply));
+        tcp_close(c);
+    }
+
+    tcp_close(srv);
+    tcp_cleanup();
+    
+    return 0;
+}
+```
+
+**Verify a normal request:**
+```
+$ printf 'HELLO\n' | nc 127.0.0.1 9001
+OK
+```
+
+**Verify the abortive path:** any `BAD …` request gets an immediate RST — `nc` reports `connection reset by peer` rather than a clean EOF. The server can restart instantly without waiting for the kernel to release the port.
+
+---
+
+## Example 23: Read request metadata with `http_content_type`, `http_content_length`, `http_get_header_ci`
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* raw =
+        "POST /upload?debug=1 HTTP/1.1\r\n"
+        "Host: api.example.com\r\n"
+        "content-type: application/json\r\n"   /* lowercase on purpose */
+        "Content-Length: 25\r\n"
+        "\r\n"
+        "{\"name\":\"ada\",\"id\":12345}";
+
+    HttpRequest* req = http_parse_request(raw);
+    if (!req) {
+        fmt_printf("parse failed\n");
+        return 1;
+    }
+
+    /* Case-insensitive lookup finds the header despite the lowercase name. */
+    fmt_printf("Content-Type   : %s\n",  http_content_type(req));
+    fmt_printf("Content-Length : %ld\n", http_content_length(req));
+    fmt_printf("Host           : %s\n",  http_get_header_ci(req, "HOST"));
+
+    http_free_request(req);
+    return 0;
+}
+```
+**Result**
+```
+Content-Type   : application/json
+Content-Length : 25
+Host           : api.example.com
+```
+
+---
+
+## Example 24: Parse method tokens and classify status codes with `http_method_from_string` / `http_status_class`
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main() {
+    const char* tokens[] = { "GET", "PATCH", "get", "BREW" };
+    for (int i = 0; i < 4; ++i) {
+        HttpMethod m;
+
+        if (http_method_from_string(tokens[i], &m)) {
+            fmt_printf("%-6s -> %s\n", tokens[i], http_method_to_string(m));
+        } 
+        else {
+            fmt_printf("%-6s -> (rejected)\n", tokens[i]);
+        }
+    }
+
+    int codes[] = { 200, 301, 404, 503 };
+    for (int i = 0; i < 4; ++i) {
+        fmt_printf("%d is %dxx\n", codes[i], http_status_class(codes[i]));
+    }
+    return 0;
+}
+```
+**Result**
+```
+GET    -> GET
+PATCH  -> PATCH
+get    -> (rejected)
+BREW   -> (rejected)
+200 is 2xx
+301 is 3xx
+404 is 4xx
+503 is 5xx
+```
+
+---
+
+## Example 25: readiness + peer introspection with `udp_set_ttl`, `udp_set_multicast_loopback`, `udp_get_peer_address`, `udp_wait_readable`, `udp_bytes_available`
+
+A self-contained loopback demo: a receiver bound to an ephemeral port and a connected sender. The sender caps its hop count, pins its peer, and the receiver waits for the datagram, then sizes the read exactly.
+
+```c
+#include "network/udp.h"
+#include "fmt/fmt.h"
+
+int main() {
+    udp_init();
+
+    /* Receiver bound to an ephemeral port on loopback. */
+    UdpSocket recv_sock;
+    udp_socket_create(&recv_sock);
+    udp_bind(recv_sock, "::1", 0);
+
+    char host[INET6_ADDRSTRLEN] = {0};
+    unsigned short port = 0;
+    udp_get_local_address(recv_sock, host, sizeof(host), &port);
+
+    /* Sender: cap hop count, silence own multicast, pin the peer. */
+    UdpSocket send_sock;
+    udp_socket_create(&send_sock);
+    udp_set_ttl(send_sock, 64);
+    udp_set_multicast_loopback(send_sock, false);
+    udp_connect(send_sock, "::1", port);
+
+    char peer[INET6_ADDRSTRLEN] = {0};
+    unsigned short peer_port = 0;
+    udp_get_peer_address(send_sock, peer, sizeof(peer), &peer_port);
+    fmt_printf("Sender's peer host: %s\n", peer);
+    fmt_printf("Peer port matches receiver: %s\n", (peer_port == port) ? "yes" : "no");
+
+    size_t sent = 0;
+    udp_send(send_sock, "telemetry", 9, &sent);
+
+    /* Wait up to 1s for the datagram, then size the read from the queue. */
+    if (udp_wait_readable(recv_sock, 1000) == UDP_SUCCESS) {
+        size_t avail = 0;
+        udp_bytes_available(recv_sock, &avail);
+        fmt_printf("Bytes ready: %zu\n", avail);
+
+        char buf[64] = {0};
+        size_t got = 0;
+        udp_recvfrom(recv_sock, buf, sizeof(buf) - 1, &got, NULL, 0, NULL);
+        fmt_printf("Received: %s (%zu bytes)\n", buf, got);
+    }
+
+    udp_close(send_sock);
+    udp_close(recv_sock);
+    udp_cleanup();
+    return 0;
+}
+```
+**Result**
+```
+Sender's peer host: ::1
+Peer port matches receiver: yes
+Bytes ready: 9
+Received: telemetry (9 bytes)
+```
+
+---
+
+## Example 26: bounded connect + readiness with `tcp_connect_timeout`, `tcp_get_socket_error`, `tcp_wait_readable`, `tcp_bytes_available`
+
+A self-contained loopback demo: a one-shot echo server on a background thread, and a client that connects with a 2-second budget, confirms success via `SO_ERROR`, then waits for the echo and sizes the read exactly.
+
+```c
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+
+static volatile int g_port = 0;
+
+/* Tiny one-shot echo server on loopback. */
+static int echo_server(void* arg) {
+    (void)arg;
+    TcpSocket ls = 0;
+    tcp_socket_create(&ls);
+    tcp_set_reuse_addr(ls, true);
+    tcp_bind(ls, "127.0.0.1", 0);
+
+    char h[64]; unsigned short p = 0;
+    tcp_get_sock_name(ls, h, sizeof(h), &p);
+    g_port = p;                       /* publish the chosen port */
+    tcp_listen(ls, 1);
+
+    TcpSocket cl = 0;
+    if (tcp_accept(ls, &cl) == TCP_SUCCESS) {
+        char buf[64]; size_t got = 0;
+        if (tcp_recv(cl, buf, sizeof(buf), &got) == TCP_SUCCESS && got > 0) {
+            tcp_send_all(cl, buf, got);
+        }
+        tcp_close(cl);
+    }
+    tcp_close(ls);
+    return 0;
+}
+
+int main(void) {
+    tcp_init();
+
+    Thread srv;
+    thread_create(&srv, echo_server, NULL);
+    while (g_port == 0) { /* wait for the server to bind and publish its port */ }
+
+    TcpSocket c = 0;
+    tcp_socket_create(&c);
+
+    /* Bounded connect: never blocks more than 2 seconds. */
+    if (tcp_connect_timeout(c, "127.0.0.1", (unsigned short)g_port, 2000) == TCP_SUCCESS) {
+        int err = -1;
+        tcp_get_socket_error(c, &err);
+        fmt_printf("connected, socket error = %d\n", err);
+
+        tcp_send_all(c, "hello", 5);
+
+        /* Wait up to 1s for the echo, then size the read from the queue. */
+        if (tcp_wait_readable(c, 1000) == TCP_SUCCESS) {
+            size_t avail = 0;
+            tcp_bytes_available(c, &avail);
+            fmt_printf("bytes available: %zu\n", avail);
+
+            char buf[64] = {0};
+            size_t got = 0;
+            tcp_recv(c, buf, sizeof(buf) - 1, &got);
+            fmt_printf("echo: %s\n", buf);
+        }
+    }
+
+    tcp_close(c);
+    int r = 0;
+    thread_join(srv, &r);
+    tcp_cleanup();
+    return 0;
+}
+```
+**Result**
+```
+connected, socket error = 0
+bytes available: 5
+echo: hello
+```
+
+---
+
+## License
+
+This project is open-source and available under the ISC License.

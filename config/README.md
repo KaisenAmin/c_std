@@ -21,287 +21,329 @@ The ConfigFile library is a versatile and easy-to-use solution for handling conf
 ## Compilation
 
 To compile the Config library along with your main program, use the following GCC command:
-if you need other lib just you can add name of libs .c 
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./config/config.c 
-g++ -std=c++14 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.cpp
-
+gcc -std=c17 -O2 -Wall -Wextra -o main ./main.c ./config/config.c ./file_io/file_reader.c ./file_io/file_writer.c ./fmt/fmt.c ./string/std_string.c ./encoding/encoding.c -I. -lm
 ```
 
 ## Usage
 
 To use the config library in your project, include the `config.h` header file in your source code.
 
-## Note
-in these examples i rewrite cpp example in Bitset code 
-
-```c
-#include "config/config.h"
-```
-
 ## Function Descriptions
 
-### `ConfigFile *config_create(const char *filename);`
-- **Purpose**:Creates a new `ConfigFile` structure by loading configuration data from the specified file.
-
-- **Parameters**:
+### `ConfigFile *config_create(const char *filename)`
+**Purpose**: Creates a new `ConfigFile` structure by loading configuration data from the specified file.
+**Parameters**:
   - `filename`: Path to the INI file to be loaded.
-- **Returns**: 
-  - A pointer to the `ConfigFile` structure.
+**Return Value**: A pointer to the `ConfigFile` structure.
+**Usage Case**: Use at program startup to load an INI file into memory before any get/set operations.
 
 ---
 
-### `const char *config_get_value(const ConfigFile *config, const char *section, const char *key);`
-- **Purpose**:Retrieves the value associated with the specified key in the given section.
-
-- **Parameters**:
+### `const char *config_get_value(const ConfigFile *config, const char *section, const char *key)`
+**Purpose**: Retrieves the value associated with the specified key in the given section.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose value is to be retrieved.
-- **Returns**:
-  - The value associated with the key, or `NULL` if the key does not exist.
+**Return Value**: The value associated with the key, or `NULL` if the key does not exist.
+**Usage Case**: Use to read any string value from a loaded configuration by section and key name.
 
 ---
 
-### `void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value);`
-- **Purpose**:Sets or updates the value for a specific key in the given section.
-
-- **Parameters**:
+### `void config_set_value(ConfigFile *config, const char *section, const char *key, const char *value)`
+**Purpose**: Sets or updates the value for a specific key in the given section.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section where the key is located.
   - `key`: The key whose value is to be set or updated.
   - `value`: The new value to be assigned to the key.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to programmatically add or update a key-value pair before saving the configuration.
 
 ---
 
-### `void config_save(const ConfigFile *config, const char *filename);`
-- **Purpose**:Saves the current configuration to the specified file.
-
-- **Parameters**:
+### `void config_save(const ConfigFile *config, const char *filename)`
+**Purpose**: Saves the current configuration to the specified file.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `filename`: Path to the file where the configuration will be saved.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use after modifying configuration values to persist changes to disk.
 
 ---
 
-### `void config_remove_section(ConfigFile *config, const char *section);`
-- **Purpose**:Removes an entire section from the configuration.
-
-- **Parameters**:
+### `void config_remove_section(ConfigFile *config, const char *section)`
+**Purpose**: Removes an entire section from the configuration.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section to be removed.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to drop an obsolete or unwanted section from the in-memory configuration before saving.
 
 ---
 
-### `void config_remove_key(ConfigFile *config, const char *section, const char *key);`
-- **Purpose**:Removes a specific key-value pair from a section in the configuration.
-
-- **Parameters**:
+### `void config_remove_key(ConfigFile *config, const char *section, const char *key)`
+**Purpose**: Removes a specific key-value pair from a section in the configuration.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section where the key is located.
   - `key`: The key to be removed.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to delete a single setting from a section without affecting the rest of the section.
 
 ---
 
-### `void config_deallocate(ConfigFile *config);`
-- **Purpose**:Frees all memory associated with the configuration structure.
-
-- **Parameters**:
+### `void config_deallocate(ConfigFile *config)`
+**Purpose**: Frees all memory associated with the configuration structure.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure to be deallocated.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use when the configuration is no longer needed to release all heap memory it holds.
 
 ---
 
-### `bool config_has_section(const ConfigFile *config, const char *section);`
-- **Purpose**:Checks if a specific section exists in the configuration.
-
-- **Parameters**:
+### `bool config_has_section(const ConfigFile *config, const char *section)`
+**Purpose**: Checks if a specific section exists in the configuration.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name to check for existence.
-- **Returns**:
-  - `true` if the section exists, `false` otherwise.
+**Return Value**: `true` if the section exists, `false` otherwise.
+**Usage Case**: Use to guard against missing sections before attempting to read keys from them.
 
 ---
 
-### `bool config_has_key(const ConfigFile *config, const char *section, const char *key);`
-- **Purpose**:Checks if a specific key exists within a section.
-
-- **Parameters**:
+### `bool config_has_key(const ConfigFile *config, const char *section, const char *key)`
+**Purpose**: Checks if a specific key exists within a section.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key should be located.
   - `key`: The key to check for existence.
-- **Returns**:
-  - `true` if the key exists, `false` otherwise.
+**Return Value**: `true` if the key exists, `false` otherwise.
+**Usage Case**: Use before calling `config_get_value` when a key may be legitimately absent.
 
 ---
 
-### `int config_get_int(const ConfigFile *config, const char *section, const char *key, int default_value);`
-- **Purpose**:Retrieves an integer value for a specific key, or returns a default value if the key is not found.
-
-- **Parameters**:
+### `int config_get_int(const ConfigFile *config, const char *section, const char *key, int default_value)`
+**Purpose**: Retrieves an integer value for a specific key, or returns a default value if the key is not found.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose integer value is to be retrieved.
   - `default_value`: The default value to return if the key does not exist.
-- **Returns**:
-  - The integer value associated with the key, or the default value if not found.
+**Return Value**: The integer value associated with the key, or the default value if not found.
+**Usage Case**: Use to read numeric settings such as port numbers or retry counts without manual `atoi` calls.
 
 ---
 
-### `double config_get_double(const ConfigFile *config, const char *section, const char *key, double default_value);`
-- **Purpose**:Retrieves a double value for a specific key, or returns a default value if the key is not found.
-
-- **Parameters**:
+### `double config_get_double(const ConfigFile *config, const char *section, const char *key, double default_value)`
+**Purpose**: Retrieves a double value for a specific key, or returns a default value if the key is not found.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose double value is to be retrieved.
   - `default_value`: The default value to return if the key does not exist.
-- **Returns**:
-  - The double value associated with the key, or the default value if not found.
+**Return Value**: The double value associated with the key, or the default value if not found.
+**Usage Case**: Use to read floating-point settings such as ratios or font sizes without manual `strtod` calls.
 
 ---
 
-### `bool config_get_bool(const ConfigFile *config, const char *section, const char *key, bool default_value);`
-- **Purpose**:Retrieves a boolean value for a specific key, or returns a default value if the key is not found.
-
-- **Parameters**:
+### `bool config_get_bool(const ConfigFile *config, const char *section, const char *key, bool default_value)`
+**Purpose**: Retrieves a boolean value for a specific key, or returns a default value if the key is not found.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose boolean value is to be retrieved.
   - `default_value`: The default value to return if the key does not exist.
-- **Returns**:
-  - The boolean value associated with the key, or the default value if not found.
+**Return Value**: The boolean value associated with the key, or the default value if not found.
+**Usage Case**: Use to read on/off flags such as feature toggles or logging switches.
 
 ---
 
-### `char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size);`
-- **Purpose**:Retrieves an array of strings for a given key in a section.
-
-- **Parameters**:
+### `char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size)`
+**Purpose**: Retrieves an array of strings for a given key in a section.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose value is an array of strings.
   - `array_size`: Pointer to a size_t variable where the size of the array will be stored.
-- **Returns**:
-  - A dynamically allocated array of strings. The caller is responsible for freeing the memory.
+**Return Value**: A dynamically allocated array of strings. The caller is responsible for freeing the memory.
+**Usage Case**: Use to read comma-separated lists (e.g., allowed IPs or tags) as individual strings.
 
 ---
 
-### `void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size);`
-- **Purpose**:Sets an array of strings for a given key in a section.
-
-- **Parameters**:
+### `void config_set_array(ConfigFile *config, const char *section, const char *key, const char *const *array, size_t array_size)`
+**Purpose**: Sets an array of strings for a given key in a section.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section where the key is located.
   - `key`: The key whose value will be set as an array of strings.
   - `array`: The array of strings to be set.
   - `array_size`: The size of the array.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to store a list of values under a single key, serialized as a comma-separated string.
 
 ---
 
-### `char *config_get_encrypted_value(const ConfigFile *config, const char *section, const char *key, const char *encryption_key);`
-- **Purpose**:Retrieves an encrypted value for a specific key in a section, and decrypts it using the provided encryption key.
-
-- **Parameters**:
+### `char *config_get_encrypted_value(const ConfigFile *config, const char *section, const char *key, const char *encryption_key)`
+**Purpose**: Retrieves an encrypted value for a specific key in a section, and decrypts it using the provided encryption key.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose value is encrypted.
   - `encryption_key`: The key to decrypt the value.
-- **Returns**:
-  - The decrypted value as a string. The caller is responsible for freeing the memory.
+**Return Value**: The decrypted value as a string. The caller is responsible for freeing the memory.
+**Usage Case**: Use to securely retrieve sensitive settings such as passwords or API tokens stored encrypted in the INI file.
 
 ---
 
-### `void config_set_encrypted_value(ConfigFile *config, const char *section, const char *key, const char *value, const char *encryption_key);`
-- **Purpose**: Sets an encrypted value for a specific key in a section.
-
-- **Parameters**:
+### `void config_set_encrypted_value(ConfigFile *config, const char *section, const char *key, const char *value, const char *encryption_key)`
+**Purpose**: Sets an encrypted value for a specific key in a section.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section where the key is located.
   - `key`: The key whose value will be encrypted.
   - `value`: The value to be encrypted and set.
   - `encryption_key`: The key to encrypt the value.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to store sensitive data in the configuration file in an encrypted form.
 
 ---
 
-### `void config_set_comment(ConfigFile *config, const char *section, const char *comment);`
-- **Purpose**:Adds a comment to a specific section in the configuration.
-
-- **Parameters**:
+### `void config_set_comment(ConfigFile *config, const char *section, const char *comment)`
+**Purpose**: Adds a comment to a specific section in the configuration.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name to which the comment will be added.
   - `comment`: The comment text.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to annotate sections with human-readable notes that are preserved when the file is saved.
 
 ---
 
-### `ConfigIterator config_get_iterator(const ConfigFile *config);`
-- **Purpose**: Initializes an iterator for traversing the configuration entries.
-
-- **Parameters**:
+### `ConfigIterator config_get_iterator(const ConfigFile *config)`
+**Purpose**: Initializes an iterator for traversing the configuration entries.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
-- **Returns**:
-  - A `ConfigIterator` structure initialized to the beginning of the configuration.
+**Return Value**: A `ConfigIterator` structure initialized to the beginning of the configuration.
+**Usage Case**: Use to start a full traversal of all key-value pairs across every section.
 
 ---
 
-### `bool config_next_entry(ConfigIterator *iterator, const char **section, const char **key, const char **value);`
-- **Purpose**: Iterates to the next entry in the configuration, returning false if at the end.
-
-- **Parameters**:
+### `bool config_next_entry(ConfigIterator *iterator, const char **section, const char **key, const char **value)`
+**Purpose**: Iterates to the next entry in the configuration, returning false if at the end.
+**Parameters**:
   - `iterator`: Pointer to the `ConfigIterator` structure.
   - `section`: Pointer to a string that will be set to the current section name.
   - `key`: Pointer to a string that will be set to the current key.
   - `value`: Pointer to a string that will be set to the current value.
-- **Returns**:
-  - `true` if there are more entries to iterate over, `false` otherwise.
+**Return Value**: `true` if there are more entries to iterate over, `false` otherwise.
+**Usage Case**: Use in a `while` loop to visit every key-value pair without knowing the section names in advance.
 
 ---
 
-### `void config_reload(ConfigFile **config_ptr);`
-- **Purpose**: Reloads the configuration from the file, updating the in-memory representation.
-
-- **Parameters**:
+### `void config_reload(ConfigFile **config_ptr)`
+**Purpose**: Reloads the configuration from the file, updating the in-memory representation.
+**Parameters**:
   - `config_ptr`: Double pointer to the `ConfigFile` structure to be reloaded.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use after an external process may have changed the INI file on disk, to refresh the in-memory state.
 
 ---
 
-### `void config_register_modification_callback(ConfigFile *config, void (*callback)(const char *section, const char *key, const char *value));`
-- **Purpose**: Registers a callback function to be called upon modifications to the configuration.
-
-- **Parameters**:
+### `void config_register_modification_callback(ConfigFile *config, void (*callback)(const char *section, const char *key, const char *value))`
+**Purpose**: Registers a callback function to be called upon modifications to the configuration.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `callback`: The callback function to be registered.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use to trigger side effects (e.g., logging or live reloading) whenever a key is modified via `config_set_value`.
 
 ---
 
-### `void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size);`
-- **Purpose**: Validates the structure of the configuration against an expected template.
-
-- **Parameters**:
+### `void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size)`
+**Purpose**: Validates the structure of the configuration against an expected template.
+**Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `expected_structure`: Pointer to an array of `ConfigSection` structures that define the expected structure.
   - `structure_size`: The number of elements in the `expected_structure` array.
-- **Returns**:
-  - return `None` value.
+**Return Value**: None.
+**Usage Case**: Use at startup to assert that all required sections are present and emit diagnostics for any that are missing.
+
+---
+
+### Extensions
+
+The next seven functions fill common gaps the original API leaves out: counting sections / keys, listing them by name, merging two configs, wiping everything in one shot, and serializing to a heap string without going through disk.
+
+---
+
+### `size_t config_section_count(const ConfigFile *config)`
+**Purpose**: Number of sections currently in the config.
+**Parameters**:
+  - `config`: Source config. May be `NULL`.
+**Return Value**: Section count, or `0` if `config` is `NULL`.
+**Usage Case**: Use to quickly check whether any sections were loaded after `config_create`, or to size an iteration buffer.
+
+---
+
+### `size_t config_key_count(const ConfigFile *config, const char *section)`
+**Purpose**: Number of `key=value` entries in a section (comments excluded).
+**Parameters**:
+  - `config`: Source config. May be `NULL`.
+  - `section`: Section name. May be `NULL`.
+**Return Value**: The number of real key-value entries, or `0` if the section is missing or arguments are `NULL`.
+**Usage Case**: Use to validate that a required section is non-empty, or to size a buffer before calling `config_list_keys`.
+
+---
+
+### `char** config_list_sections(const ConfigFile *config, size_t *out_count)`
+**Purpose**: Snapshot every section name into a freshly-allocated, `NULL`-terminated array.
+**Parameters**:
+  - `config`: Source config. May be `NULL`.
+  - `out_count`: Receives the number of names (excluding the trailing `NULL`). May be `NULL`.
+**Return Value**: A `char**` array; the caller frees **every string** AND the array with `free()`. `NULL` on bad input / OOM.
+**Usage Case**: Use to enumerate all sections for display, diff, or to drive a generic validation loop.
+
+---
+
+### `char** config_list_keys(const ConfigFile *config, const char *section, size_t *out_count)`
+**Purpose**: Snapshot every key in a section. Comments are skipped.
+**Parameters**:
+  - `config`: Source config. May be `NULL`.
+  - `section`: Section name. May be `NULL`.
+  - `out_count`: Receives the key count.
+**Return Value**: A `NULL`-terminated `char**` array (caller frees each + the array), or `NULL` on bad input / unknown section.
+**Usage Case**: Use to iterate all key names in a section without hard-coding them, e.g. to dump a section or to check completeness.
+
+---
+
+### `void config_merge(ConfigFile *dest, const ConfigFile *src)`
+**Purpose**: Merge `src` into `dest`. Keys in `src` override matching keys in `dest`; new keys are added; comments and per-section comments from `src` are NOT copied (value merge only).
+**Parameters**:
+  - `dest`: Destination config (modified). Must NOT be `NULL`.
+  - `src`: Source config (untouched). May be `NULL` (no-op).
+**Return Value**: None.
+**Usage Case**: Use to layer an override config on top of a base config — keys present in `src` take precedence; keys only in `dest` are preserved.
+
+---
+
+### `void config_clear(ConfigFile *config)`
+**Purpose**: Drop every section and entry, keeping the `ConfigFile` shell alive. After this returns the file path, modification callback, and default section name are preserved (so `config_save` and `config_reload` still know where to write/read).
+**Parameters**:
+  - `config`: Config to wipe. May be `NULL` (no-op).
+**Return Value**: None.
+**Usage Case**: Use to reset a configuration to an empty state without destroying the `ConfigFile` shell, so the filename and callback are retained for subsequent `config_save` or `config_reload` calls.
+
+---
+
+### `char* config_to_string(const ConfigFile *config)`
+**Purpose**: Serialize the configuration to a heap-allocated INI-format string. Symmetric counterpart to `config_save` — useful for tests, embedding output in a network response, etc.
+**Parameters**:
+  - `config`: Source config. May be `NULL`.
+**Return Value**: Newly-allocated, NUL-terminated string (caller frees with `free()`), or `NULL` on bad input / OOM. For an empty configuration the result is the empty string `""`.
+**Usage Case**: Use to embed the configuration in a network response, write it to a log, or compare in a test without touching the filesystem.
 
 ---
 
@@ -342,10 +384,10 @@ int main() {
         fmt_printf("Failed to get theme.\n");
     }
     
-    // Save the modified configuration to a new file
+
     config_save(config, "sources/modified_config.ini");
-    // Deallocate the configuration to free memory
     config_deallocate(config);
+    
     return 0;
 }
 ```
@@ -413,8 +455,9 @@ int main() {
         fmt_printf("Failed to decrypt API key.\n");
     }
 
-    config_save(config, "sources/encrypted_config.ini"); // Save the modified configuration
-    config_deallocate(config);  // Deallocate the configuration
+    config_save(config, "sources/encrypted_config.ini"); 
+    config_deallocate(config);  
+
     return 0;
 }
 ```
@@ -443,36 +486,29 @@ int main() {
         fmt_printf("Section: %s, Key: %s, Value: %s\n", section, key, value);
     }
     
-    config_deallocate(config); // Deallocate the configuration
+    config_deallocate(config); 
     return 0;
 }
 ```
 **Result**
 ```
-Section: global, Key: (null), Value: ; This section contains global settings
-Section: global, Key: (null), Value: ; Amin salam
 Section: global, Key: enable_logging, Value: true
 Section: global, Key: log_level, Value: دیباگ
 Section: global, Key: max_connections, Value: 100
 Section: global, Key: type, Value: wifi
 Section: global, Key: connected, Value: true
-Section: user_preferences, Key: (null), Value: # User-specific settings
 Section: user_preferences, Key: theme, Value: تاریک
 Section: user_preferences, Key: font_size, Value: 14
 Section: user_preferences, Key: auto_save_interval, Value: 5
 Section: user_preferences, Key: timezone, Value: GMT+5
-Section: database, Key: (null), Value: # Database connection details
-Section: database, Key: (null), Value: ; salam
 Section: database, Key: host, Value: هاست داخلی
 Section: database, Key: port, Value: 3306
 Section: database, Key: username, Value: dbuser
 Section: database, Key: password, Value: dbpass
 Section: database, Key: database_name, Value: testdb
-Section: paths, Key: (null), Value: # Filesystem paths
 Section: paths, Key: log_directory, Value: /var/log/myapp
 Section: paths, Key: temp_directory, Value: /tmp/myapp
 Section: paths, Key: backup_directory, Value: /var/backup/myapp
-Section: service_endpoints, Key: (null), Value: # Endpoints for various services
 Section: service_endpoints, Key: auth_service, Value: https://auth.example.com
 Section: service_endpoints, Key: data_service, Value: https://data.example.com
 Section: service_endpoints, Key: metrics_service, Value: https://metrics.example.com
@@ -515,15 +551,16 @@ int main() {
 
     config_save(config, "sources/modified_config.ini");
     config_deallocate(config);
+
     return 0;
 }
 ```
 **Result**
 ```
 Server IPs:
-- server_ips=192.168.1.1
--  192.168.1.2
--  192.168.1.3
+- 192.168.1.1
+- 192.168.1.2
+- 192.168.1.3
 ```
 
 ---
@@ -653,16 +690,270 @@ int main() {
         }
     }
     config_save(config1, "sources/merged_config.ini");
-    fmt_println("Configs Merged Successfully");
+    fmt_printf("Configs Merged Successfully\n");
 
     config_deallocate(config1);
     config_deallocate(config2);
+
     return 0;
 }
 ```
 **Result**
 ```
 Configs Merged Successfully
+```
+
+---
+
+## Example 9: Typed Getters — `config_get_int`, `config_get_double`, `config_get_bool`
+
+This example demonstrates how to retrieve typed values from a configuration file.
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+
+int main() {
+    ConfigFile *config = config_create("sources/config.ini");
+
+    int port = config_get_int(config, "database", "port", 0);
+    double font_size = config_get_double(config, "user_preferences", "font_size", 0.0);
+    bool logging = config_get_bool(config, "global", "enable_logging", false);
+
+    fmt_printf("Database port: %d\n", port);
+    fmt_printf("Font size: %.1f\n", font_size);
+    fmt_printf("Logging enabled: %s\n", logging ? "true" : "false");
+
+    config_deallocate(config);
+    return 0;
+}
+```
+
+**Result**
+```
+Database port: 3306
+Font size: 14.0
+Logging enabled: true
+```
+
+---
+
+### Example 10 — `config_section_count`
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    ConfigFile* c = config_create("sources/settings.ini");
+    fmt_printf("loaded %zu section(s)\n", config_section_count(c));
+
+    config_deallocate(c);
+    return 0;
+}
+```
+
+**Result** (for an INI with three `[section]` blocks):
+```
+loaded 3 section(s)
+```
+
+---
+
+### Example 11 — `config_key_count`
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    ConfigFile* c = config_create("sources/settings.ini");
+
+    fmt_printf("server keys: %zu\n", config_key_count(c, "server"));
+    fmt_printf("features keys: %zu\n", config_key_count(c, "features"));
+    fmt_printf("missing keys: %zu\n", config_key_count(c, "no-such"));
+
+    config_deallocate(c);
+    return 0;
+}
+```
+
+**Result**
+```
+server keys: 4
+features keys: 2
+missing keys: 0
+```
+
+---
+
+### Example 12 — `config_list_sections`
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    ConfigFile* c = config_create("sources/settings.ini");
+    size_t n = 0;
+    char** secs = config_list_sections(c, &n);
+
+    for (size_t i = 0; i < n; ++i) {
+        fmt_printf("[%zu] %s\n", i, secs[i]);
+        free(secs[i]);          /* caller frees each string */
+    }
+
+    free(secs);                 /* and the array itself */
+    config_deallocate(c);
+
+    return 0;
+}
+```
+
+**Result**
+```
+[0] server
+[1] features
+[2] empty
+```
+
+---
+
+### Example 13 — `config_list_keys`
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    ConfigFile* c = config_create("sources/settings.ini");
+    size_t n = 0;
+    char** keys = config_list_keys(c, "server", &n);
+
+    fmt_printf("server has %zu keys:\n", n);
+    for (size_t i = 0; i < n; ++i) {
+        fmt_printf("  %s = %s\n", keys[i], config_get_value(c, "server", keys[i]));
+        free(keys[i]);
+    }
+
+    free(keys);
+    config_deallocate(c);
+
+    return 0;
+}
+```
+
+**Result**
+```
+server has 4 keys:
+  host = localhost
+  port = 8080
+  tls = true
+  ratio = 0.75
+```
+
+---
+
+### Example 14 — `config_merge`
+
+Layer overrides on top of defaults:
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    ConfigFile* base    = config_create("sources/defaults.ini");
+    ConfigFile* prefer  = config_create("sources/override.ini");
+
+    config_merge(base, prefer);  /* prefer's values win on conflict */
+
+    fmt_printf("host = %s\n", config_get_value(base, "server", "host"));
+    fmt_printf("port = %s\n", config_get_value(base, "server", "port"));
+
+    config_deallocate(base);
+    config_deallocate(prefer);
+
+    return 0;
+}
+```
+
+**Result** (if `sources/defaults.ini` has `host=local port=80` and `sources/override.ini` has `host=remote`):
+```
+host = remote
+port = 80
+```
+
+---
+
+### Example 15 — `config_clear`
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    ConfigFile* c = config_create("sources/settings.ini");
+    fmt_printf("before clear: %zu sections\n", config_section_count(c));
+    config_clear(c);
+    fmt_printf("after clear:  %zu sections\n", config_section_count(c));
+    /* Shell still usable for fresh writes. */
+    config_set_value(c, "new", "k", "v");
+    fmt_printf("after fresh write: %zu sections\n", config_section_count(c));
+
+    config_deallocate(c);
+    return 0;
+}
+```
+
+**Result**
+```
+before clear: 3 sections
+after clear:  0 sections
+after fresh write: 1 sections
+```
+
+---
+
+### Example 16 — `config_to_string`
+
+In-memory serialize without touching disk:
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    ConfigFile* c = config_create("sources/settings.ini");
+    char* s = config_to_string(c);
+    fmt_printf("--- serialized ---\n%s--- end ---\n", s);
+
+    free(s);
+    config_deallocate(c);
+    
+    return 0;
+}
+```
+
+**Result**
+```
+--- serialized ---
+[server]
+host=localhost
+port=8080
+tls=true
+ratio=0.75
+
+[features]
+tags=alpha, beta, gamma
+enabled=true
+
+[empty]
+
+--- end ---
 ```
 
 ---

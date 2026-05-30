@@ -14,9 +14,10 @@ The BigInt library in C provides a robust interface for performing arbitrary-pre
 - **Full Range Support:** Supports both positive and negative numbers.
 - **Basic Arithmetic Operations:** Includes addition, subtraction, multiplication, and division with remainder.
 - **Conversion Utilities:** Convert BigInts to and from decimal string representations.
-- **Comparison Functions:** Easily compare two BigInts.
+- **Comparison Functions:** Easily compare two BigInts. `bigint_compare` and `bigint_cmp_abs` return strictly `-1`, `0`, or `1` (not just any signed value), so callers can safely use `if (bigint_compare(a, b) == -1)`.
 - **GMP-Powered:** Built on top of GMP for high performance and reliability.
 - **Cross-Platform:** Works on Linux, Windows, and other platforms where GMP is available.
+- **Random Numbers:** `bigint_random` uses a persistent internal random state (initialized once per process), so back-to-back calls produce distinct values — they do *not* repeat when invoked within the same second.
 
 ## Installation and Compilation
 
@@ -41,734 +42,314 @@ To use the BigInt library in your project:
 3. **Compile Your Code:**
    Use a command similar to the following (adjust paths as needed):
    ```bash
-   gcc -std=c11 -O2 -o bigint_example bigint.c main.c -lgmp
+   gcc -std=c11 -O2 -o bigint_example bigint/bigint.c main.c -lgmp
+   ```
 
 ---
 
 ## BigInt Library Functions
 
 ### `BigInt* bigint_create(void)`
-
-- **Purpose**:  
-  Creates a new BigInt initialized to zero.
-
-- **Parameters**:  
-  _None._
-
-- **Return**:  
-  A pointer to a new BigInt, or `NULL` if memory allocation fails.
-
-- **Details**:  
-  - Allocates memory for a BigInt structure.
-  - Initializes the internal GMP value (`mpz_t`) to 0 using `mpz_init`.
-  - Logs the creation if logging is enabled.
+**Purpose**: Creates a new BigInt initialized to zero.
+**Parameters**: None.
+**Return Value**: A pointer to a new BigInt, or `NULL` if memory allocation fails.
+**Usage Case**: Allocates memory for a BigInt structure, initializes the internal GMP value (`mpz_t`) to 0 using `mpz_init`, and logs the creation if logging is enabled.
 
 ---
 
 ### `BigInt* bigint_from_string(const char* str)`
-
-- **Purpose**:  
-  Creates a BigInt from a decimal string representation.
-
-- **Parameters**:  
-  - `str`: A pointer to a null-terminated decimal string representing the integer.
-
-- **Return**:  
-  A pointer to the new BigInt, or `NULL` if the string is invalid or memory allocation fails.
-
-- **Details**:  
-  - Calls `bigint_create()` to allocate and initialize a new BigInt.
-  - Uses `mpz_set_str` to convert the string into the internal GMP format.
-  - If conversion fails (i.e. the string is not a valid decimal representation), the function logs the error, deallocates the BigInt, and returns `NULL`.
+**Purpose**: Creates a BigInt from a decimal string representation.
+**Parameters**: `str`: A pointer to a null-terminated decimal string representing the integer.
+**Return Value**: A pointer to the new BigInt, or `NULL` if the string is invalid or memory allocation fails.
+**Usage Case**: Calls `bigint_create()` to allocate and initialize a new BigInt, then uses `mpz_set_str` to convert the string into the internal GMP format. If conversion fails (i.e. the string is not a valid decimal representation), the function logs the error, deallocates the BigInt, and returns `NULL`.
 
 ---
 
 ### `BigInt* bigint_copy(const BigInt* src)`
-
-- **Purpose**:  
-  Creates an exact copy of an existing BigInt.
-
-- **Parameters**:  
-  - `src`: A pointer to the source BigInt to be copied.
-
-- **Return**:  
-  A pointer to the newly created BigInt with the same value as `src`, or `NULL` on failure.
-
-- **Details**:  
-  - Allocates a new BigInt using `bigint_create()`.
-  - Copies the GMP value from `src` using `mpz_set`.
-  - Logs the copy operation.
+**Purpose**: Creates an exact copy of an existing BigInt.
+**Parameters**: `src`: A pointer to the source BigInt to be copied.
+**Return Value**: A pointer to the newly created BigInt with the same value as `src`, or `NULL` on failure.
+**Usage Case**: Allocates a new BigInt using `bigint_create()`, copies the GMP value from `src` using `mpz_set`, and logs the copy operation.
 
 ---
 
 ### `void bigint_deallocate(BigInt* bi)`
-
-- **Purpose**:  
-  Frees the memory associated with a BigInt.
-
-- **Parameters**:  
-  - `bi`: A pointer to the BigInt to be deallocated.
-
-- **Return**:  
-  _None._
-
-- **Details**:  
-  - Clears the GMP value using `mpz_clear`.
-  - Frees the memory allocated for the BigInt structure.
-  - Logs the deallocation if logging is enabled.
+**Purpose**: Frees the memory associated with a BigInt.
+**Parameters**: `bi`: A pointer to the BigInt to be deallocated.
+**Return Value**: None.
+**Usage Case**: Clears the GMP value using `mpz_clear`, frees the memory allocated for the BigInt structure, and logs the deallocation if logging is enabled.
 
 ---
 
 ### `char* bigint_to_string(const BigInt* bi)`
-
-- **Purpose**:  
-  Converts a BigInt to its decimal string representation.
-
-- **Parameters**:  
-  - `bi`: A pointer to the BigInt to convert.
-
-- **Return**:  
-  A dynamically allocated string containing the decimal representation of the BigInt.  
-  The caller is responsible for freeing this string.
-
-- **Details**:  
-  - Uses GMP's `mpz_get_str` to convert the internal `mpz_t` value to a string (base 10).
-  - Logs the conversion operation.
-  - Returns `NULL` if `bi` is `NULL`.
+**Purpose**: Converts a BigInt to its decimal string representation.
+**Parameters**: `bi`: A pointer to the BigInt to convert.
+**Return Value**: A dynamically allocated string containing the decimal representation of the BigInt. The caller is responsible for freeing this string.
+**Usage Case**: Uses GMP's `mpz_get_str` to convert the internal `mpz_t` value to a string (base 10), logs the conversion operation, and returns `NULL` if `bi` is `NULL`.
 
 ---
 
 ### `BigInt* bigint_add(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Computes the sum of two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first BigInt.
-  - `b`: A pointer to the second BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing the sum, or `NULL` on error.
-
-- **Details**:  
-  - Allocates a new BigInt using `bigint_create()`.
-  - Uses `mpz_add` to add the two GMP values.
-  - Logs the addition operation.
+**Purpose**: Computes the sum of two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt. `b`: A pointer to the second BigInt.
+**Return Value**: A pointer to a new BigInt representing the sum, or `NULL` on error.
+**Usage Case**: Allocates a new BigInt using `bigint_create()`, uses `mpz_add` to add the two GMP values, and logs the addition operation.
 
 ---
 
 ### `BigInt* bigint_subtract(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Subtracts one BigInt from another.
-
-- **Parameters**:  
-  - `a`: A pointer to the minuend BigInt.
-  - `b`: A pointer to the subtrahend BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing the result of `a - b`, or `NULL` on error.
-
-- **Details**:  
-  - Creates a new BigInt via `bigint_create()`.
-  - Uses `mpz_sub` to perform the subtraction.
-  - Logs the subtraction operation.
+**Purpose**: Subtracts one BigInt from another.
+**Parameters**: `a`: A pointer to the minuend BigInt. `b`: A pointer to the subtrahend BigInt.
+**Return Value**: A pointer to a new BigInt representing the result of `a - b`, or `NULL` on error.
+**Usage Case**: Creates a new BigInt via `bigint_create()`, uses `mpz_sub` to perform the subtraction, and logs the subtraction operation.
 
 ---
 
 ### `BigInt* bigint_multiply(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Multiplies two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first BigInt.
-  - `b`: A pointer to the second BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing the product, or `NULL` on error.
-
-- **Details**:  
-  - Allocates a new BigInt using `bigint_create()`.
-  - Uses `mpz_mul` to compute the product.
-  - Logs the multiplication operation.
+**Purpose**: Multiplies two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt. `b`: A pointer to the second BigInt.
+**Return Value**: A pointer to a new BigInt representing the product, or `NULL` on error.
+**Usage Case**: Allocates a new BigInt using `bigint_create()`, uses `mpz_mul` to compute the product, and logs the multiplication operation.
 
 ---
 
 ### `BigInt* bigint_divide(const BigInt* a, const BigInt* b, BigInt** remainder)`
-
-- **Purpose**:  
-  Divides one BigInt by another and returns the quotient. Optionally, the remainder is also provided.
-
-- **Parameters**:  
-  - `a`: A pointer to the dividend BigInt.
-  - `b`: A pointer to the divisor BigInt.
-  - `remainder`: A pointer to a `BigInt*` that will receive the remainder.  
-    If `NULL`, the remainder is discarded.
-
-- **Return**:  
-  A pointer to a new BigInt representing the quotient, or `NULL` if division by zero is attempted or an error occurs.
-
-- **Details**:  
-  - Checks if `b` is zero using `mpz_cmp_ui`.
-  - Allocates new BigInts for the quotient (and remainder if needed).
-  - Uses `mpz_tdiv_qr` to simultaneously compute the quotient and remainder.
-  - Logs the division operation.
-  - If `remainder` is `NULL`, deallocates the temporary remainder BigInt.
+**Purpose**: Divides one BigInt by another and returns the quotient. Optionally, the remainder is also provided.
+**Parameters**: `a`: A pointer to the dividend BigInt. `b`: A pointer to the divisor BigInt. `remainder`: A pointer to a `BigInt*` that will receive the remainder. If `NULL`, the remainder is discarded.
+**Return Value**: A pointer to a new BigInt representing the quotient, or `NULL` if division by zero is attempted or an error occurs.
+**Usage Case**: Checks if `b` is zero using `mpz_cmp_ui`, allocates new BigInts for the quotient (and remainder if needed), uses `mpz_tdiv_qr` to simultaneously compute the quotient and remainder, logs the division operation, and if `remainder` is `NULL`, deallocates the temporary remainder BigInt.
 
 ---
 
 ### `int bigint_compare(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Compares two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first BigInt.
-  - `b`: A pointer to the second BigInt.
-
-- **Return**:  
-  - `-1` if `a < b`
-  - `0` if `a == b`
-  - `1` if `a > b`
-
-- **Details**:  
-  - Uses `mpz_cmp` to compare the underlying GMP values.
-  - Logs the result of the comparison.
+**Purpose**: Compares two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt. `b`: A pointer to the second BigInt.
+**Return Value**: `-1` if `a < b`, `0` if `a == b`, `1` if `a > b`.
+**Usage Case**: Uses `mpz_cmp` to compare the underlying GMP values and logs the result of the comparison.
 
 ---
 
 ### `void bigint_normalize(BigInt* bi)`
-
-- **Purpose**:  
-  Normalizes the BigInt by removing any leading zeros in its internal representation.
-
-- **Parameters**:  
-  - `bi`: A pointer to the BigInt to normalize.
-
-- **Return**:  
-  _None._
-
-- **Details**:  
-  - GMP automatically maintains a normalized representation, so no explicit action is needed.
-  - The function logs that normalization was (conceptually) performed.
-  - Uses `(void)bi;` to suppress unused parameter warnings.
+**Purpose**: Normalizes the BigInt by removing any leading zeros in its internal representation.
+**Parameters**: `bi`: A pointer to the BigInt to normalize.
+**Return Value**: None.
+**Usage Case**: GMP automatically maintains a normalized representation, so no explicit action is needed. The function logs that normalization was (conceptually) performed and uses `(void)bi;` to suppress unused parameter warnings.
 
 ---
 
 ### `bool bigint_is_zero(const BigInt* bi)`
-
-- **Purpose**:  
-  Checks whether a BigInt is equal to zero.
-
-- **Parameters**:  
-  - `bi`: A pointer to the BigInt to check.
-
-- **Return**:  
-  `true` if the BigInt is zero, `false` otherwise.
-
-- **Details**:  
-  - Uses `mpz_cmp_ui` to compare the BigInt with 0.
-  - Logs whether the BigInt was determined to be zero or not.
+**Purpose**: Checks whether a BigInt is equal to zero.
+**Parameters**: `bi`: A pointer to the BigInt to check.
+**Return Value**: `true` if the BigInt is zero, `false` otherwise.
+**Usage Case**: Uses `mpz_cmp_ui` to compare the BigInt with 0 and logs whether the BigInt was determined to be zero or not.
 
 ---
 
 ### `BigInt* bigint_pow(const BigInt* base, const BigInt* exponent)`
-
-- **Purpose**:  
-  Raises a BigInt (`base`) to the power of another BigInt (`exponent`).
-
-- **Parameters**:  
-  - `base`: A pointer to the base BigInt.
-  - `exponent`: A pointer to the exponent BigInt (assumed to be non-negative).
-
-- **Return**:  
-  A pointer to a new BigInt representing `base^exponent`, or `NULL` if `exponent` is negative.
-
-- **Details**:  
-  - Checks that the exponent is non-negative using `mpz_sgn`.
-  - Converts the exponent to an unsigned long with `mpz_get_ui` (assumes it fits).
-  - Uses `mpz_pow_ui` to compute the power.
-  - Logs the power operation.
+**Purpose**: Raises a BigInt (`base`) to the power of another BigInt (`exponent`).
+**Parameters**: `base`: A pointer to the base BigInt. `exponent`: A pointer to the exponent BigInt (assumed to be non-negative).
+**Return Value**: A pointer to a new BigInt representing `base^exponent`, or `NULL` if `exponent` is negative.
+**Usage Case**: Checks that the exponent is non-negative using `mpz_sgn`, converts the exponent to an unsigned long with `mpz_get_ui` (assumes it fits), uses `mpz_pow_ui` to compute the power, and logs the power operation.
 
 ---
 
 ### `BigInt* bigint_mod(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Computes the modulus (remainder) of one BigInt divided by another.
-
-- **Parameters**:  
-  - `a`: A pointer to the dividend BigInt.
-  - `b`: A pointer to the divisor BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing `a mod b`, or `NULL` if `b` is zero.
-
-- **Details**:  
-  - Checks for division by zero by comparing `b` to zero.
-  - Allocates a new BigInt using `bigint_create()`.
-  - Uses `mpz_mod` to compute the modulus.
-  - Logs the modulus operation.
+**Purpose**: Computes the modulus (remainder) of one BigInt divided by another.
+**Parameters**: `a`: A pointer to the dividend BigInt. `b`: A pointer to the divisor BigInt.
+**Return Value**: A pointer to a new BigInt representing `a mod b`, or `NULL` if `b` is zero.
+**Usage Case**: Checks for division by zero by comparing `b` to zero, allocates a new BigInt using `bigint_create()`, uses `mpz_mod` to compute the modulus, and logs the modulus operation.
 
 ---
 
 ### `BigInt* bigint_powmod(const BigInt* base, const BigInt* exponent, const BigInt* modulus)`
-
-- **Purpose**:  
-  Computes the modular exponentiation of a BigInt. In other words, it calculates  
-  \((\text{base}^{\text{exponent}}) \mod \text{modulus}\).
-
-- **Parameters**:  
-  - `base`: A pointer to the base BigInt.  
-  - `exponent`: A pointer to the exponent BigInt.  
-  - `modulus`: A pointer to the modulus BigInt (must be non-zero).
-
-- **Return**:  
-  A pointer to a new BigInt representing \((\text{base}^{\text{exponent}}) \mod \text{modulus}\), or `NULL` if any input is `NULL` or if the modulus is zero.
-
-- **Details**:  
-  - Validates that none of the input pointers are `NULL` and that the modulus is non-zero.
-  - Uses GMP's `mpz_powm` function to compute the result.
-  - Logs each step of the operation.
+**Purpose**: Computes the modular exponentiation of a BigInt. In other words, it calculates (base^exponent) mod modulus.
+**Parameters**: `base`: A pointer to the base BigInt. `exponent`: A pointer to the exponent BigInt. `modulus`: A pointer to the modulus BigInt (must be non-zero).
+**Return Value**: A pointer to a new BigInt representing (base^exponent) mod modulus, or `NULL` if any input is `NULL` or if the modulus is zero.
+**Usage Case**: Validates that none of the input pointers are `NULL` and that the modulus is non-zero, uses GMP's `mpz_powm` function to compute the result, and logs each step of the operation.
 
 ---
 
 ### `BigInt* bigint_negate(const BigInt* a)`
-
-- **Purpose**:  
-  Returns the negation of the given BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt to negate.
-
-- **Return**:  
-  A pointer to a new BigInt representing \(-a\), or `NULL` if the input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Validates that the input BigInt is not `NULL`.
-  - Creates a copy of the input BigInt and then applies GMP's `mpz_neg` to negate it.
-  - Logs the negation process.
+**Purpose**: Returns the negation of the given BigInt.
+**Parameters**: `a`: A pointer to the BigInt to negate.
+**Return Value**: A pointer to a new BigInt representing -a, or `NULL` if the input is `NULL` or if memory allocation fails.
+**Usage Case**: Validates that the input BigInt is not `NULL`, creates a copy of the input BigInt and then applies GMP's `mpz_neg` to negate it, and logs the negation process.
 
 ---
 
 ### `BigInt* bigint_abs(const BigInt* a)`
-
-- **Purpose**:  
-  Returns the absolute value of a BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt whose absolute value is to be computed.
-
-- **Return**:  
-  A pointer to a new BigInt representing \(|a|\), or `NULL` if the input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Checks that the input is valid.
-  - Creates a copy of the input BigInt and applies GMP's `mpz_abs` to obtain the absolute value.
-  - Logs the absolute value computation.
+**Purpose**: Returns the absolute value of a BigInt.
+**Parameters**: `a`: A pointer to the BigInt whose absolute value is to be computed.
+**Return Value**: A pointer to a new BigInt representing |a|, or `NULL` if the input is `NULL` or if memory allocation fails.
+**Usage Case**: Checks that the input is valid, creates a copy of the input BigInt and applies GMP's `mpz_abs` to obtain the absolute value, and logs the absolute value computation.
 
 ---
 
 ### `BigInt* bigint_gcd(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Computes the greatest common divisor (GCD) of two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first BigInt.
-  - `b`: A pointer to the second BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing \(\gcd(a, b)\), or `NULL` if any input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Validates that both input BigInts are not `NULL`.
-  - Uses GMP's `mpz_gcd` to compute the GCD.
-  - Logs the GCD computation process.
+**Purpose**: Computes the greatest common divisor (GCD) of two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt. `b`: A pointer to the second BigInt.
+**Return Value**: A pointer to a new BigInt representing gcd(a, b), or `NULL` if any input is `NULL` or if memory allocation fails.
+**Usage Case**: Validates that both input BigInts are not `NULL`, uses GMP's `mpz_gcd` to compute the GCD, and logs the GCD computation process.
 
 ---
 
 ### `BigInt* bigint_lcm(const BigInt* a, const BigInt* b)`
-
-- **Purpose**:  
-  Computes the least common multiple (LCM) of two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first BigInt.
-  - `b`: A pointer to the second BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing \(\text{lcm}(a, b)\), or `NULL` if any input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Checks that both input BigInts are valid.
-  - Uses GMP's `mpz_lcm` function to calculate the LCM.
-  - Logs the steps of the LCM computation.
+**Purpose**: Computes the least common multiple (LCM) of two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt. `b`: A pointer to the second BigInt.
+**Return Value**: A pointer to a new BigInt representing lcm(a, b), or `NULL` if any input is `NULL` or if memory allocation fails.
+**Usage Case**: Checks that both input BigInts are valid, uses GMP's `mpz_lcm` function to calculate the LCM, and logs the steps of the LCM computation.
 
 ---
 
 ### `BigInt* bigint_next_prime(const BigInt* a)`
-
-- **Purpose**:  
-  Computes the next prime number greater than the given BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt representing the next prime, or `NULL` if the input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Validates the input BigInt.
-  - Creates a copy of the input BigInt and then uses GMP's `mpz_nextprime` to find the next prime.
-  - Logs the process of computing the next prime.
+**Purpose**: Computes the next prime number greater than the given BigInt.
+**Parameters**: `a`: A pointer to the BigInt.
+**Return Value**: A pointer to a new BigInt representing the next prime, or `NULL` if the input is `NULL` or if memory allocation fails.
+**Usage Case**: Validates the input BigInt, creates a copy of the input BigInt and then uses GMP's `mpz_nextprime` to find the next prime, and logs the process of computing the next prime.
 
 ---
 
 ### `BigInt* bigint_sqrt(const BigInt* a, BigInt** rem)`
-
-- **Purpose**:  
-  Computes the integer square root (the floor of the true square root) of a BigInt, and optionally returns the remainder.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt whose square root is to be computed.
-  - `rem`: A pointer to a `BigInt*` where the remainder will be stored (if not `NULL`).
-
-- **Return**:  
-  A pointer to a new BigInt representing the integer square root, or `NULL` if the input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Validates the input BigInt.
-  - Uses GMP's `mpz_sqrtrem` function to compute both the square root and the remainder.
-  - Logs whether the remainder was stored or discarded.
+**Purpose**: Computes the integer square root (the floor of the true square root) of a BigInt, and optionally returns the remainder.
+**Parameters**: `a`: A pointer to the BigInt whose square root is to be computed. `rem`: A pointer to a `BigInt*` where the remainder will be stored (if not `NULL`).
+**Return Value**: A pointer to a new BigInt representing the integer square root, or `NULL` if the input is `NULL` or if memory allocation fails.
+**Usage Case**: Validates the input BigInt, uses GMP's `mpz_sqrtrem` function to compute both the square root and the remainder, and logs whether the remainder was stored or discarded.
 
 ---
 
 ### `BigInt* bigint_random(unsigned long bits)`
-
-- **Purpose**:  
-  Generates a random BigInt with the specified number of bits.
-
-- **Parameters**:  
-  - `bits`: The number of bits for the random BigInt.
-
-- **Return**:  
-  A pointer to a new BigInt containing a random value, or `NULL` if memory allocation fails.
-
-- **Details**:  
-  - Initializes a GMP random state and seeds it (using the current time).
-  - Uses GMP's `mpz_urandomb` function to generate a random BigInt with the specified bit length.
-  - Logs the seeding and random generation process.
-  - Clears the random state before returning the result.
+**Purpose**: Generates a random BigInt with the specified number of bits.
+**Parameters**: `bits`: The number of bits for the random BigInt.
+**Return Value**: A pointer to a new BigInt containing a random value, or `NULL` if memory allocation fails.
+**Usage Case**: Initializes a GMP random state and seeds it (using the current time), uses GMP's `mpz_urandomb` function to generate a random BigInt with the specified bit length, logs the seeding and random generation process, and clears the random state before returning the result.
 
 ---
 
 ### `BigInt* bigint_factorial(unsigned long n)`
-
-- **Purpose**:  
-  Computes the factorial of an unsigned long integer \(n\) (i.e., \(n!\)).
-
-- **Parameters**:  
-  - `n`: The number for which the factorial is to be computed.
-
-- **Return**:  
-  A pointer to a new BigInt representing \(n!\), or `NULL` if memory allocation fails.
-
-- **Details**:  
-  - Iteratively multiplies integers from 1 to \(n\) using GMP's multiplication functions.
-  - Logs each multiplication step for debugging purposes.
-  - Returns the computed factorial as a BigInt.
+**Purpose**: Computes the factorial of an unsigned long integer n (i.e., n!).
+**Parameters**: `n`: The number for which the factorial is to be computed.
+**Return Value**: A pointer to a new BigInt representing n!, or `NULL` if memory allocation fails.
+**Usage Case**: Iteratively multiplies integers from 1 to n using GMP's multiplication functions, logs each multiplication step for debugging purposes, and returns the computed factorial as a BigInt.
 
 ---
 
 ### `int bigint_is_prime(const BigInt* a, int reps)`
+**Purpose**: Checks whether a BigInt is prime using a probabilistic test.
+**Parameters**: `a`: A pointer to the BigInt to test. `reps`: The number of repetitions for the primality test (higher values yield greater accuracy).
+**Return Value**: An integer result: `0` if the BigInt is composite, `1` if the BigInt is probably prime, `2` if the BigInt is definitely prime.
+**Usage Case**: Uses GMP's `mpz_probab_prime_p` function to perform the test and logs the input parameters and the result of the primality test.
 
-- **Purpose**:  
-  Checks whether a BigInt is prime using a probabilistic test.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt to test.
-  - `reps`: The number of repetitions for the primality test (higher values yield greater accuracy).
-
-- **Return**:  
-  An integer result:
-  - `0` if the BigInt is composite.
-  - `1` if the BigInt is probably prime.
-  - `2` if the BigInt is definitely prime.
-
-- **Details**:  
-  - Uses GMP's `mpz_probab_prime_p` function to perform the test.
-  - Logs the input parameters and the result of the primality test.
-
---- 
+---
 
 ### `BigInt* bigint_inc(const BigInt* a)`
-
-- **Purpose**:  
-  Increments a BigInt by 1.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt to increment.
-
-- **Return**:  
-  A pointer to a new BigInt representing (a + 1), or `NULL` if the input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Checks that the input BigInt is not `NULL`.
-  - Creates a copy of the input BigInt.
-  - Uses GMP's `mpz_add_ui` to add 1 to the copied value.
-  - Logs each step of the operation.
+**Purpose**: Increments a BigInt by 1.
+**Parameters**: `a`: A pointer to the BigInt to increment.
+**Return Value**: A pointer to a new BigInt representing (a + 1), or `NULL` if the input is `NULL` or if memory allocation fails.
+**Usage Case**: Checks that the input BigInt is not `NULL`, creates a copy of the input BigInt, uses GMP's `mpz_add_ui` to add 1 to the copied value, and logs each step of the operation.
 
 ---
 
 ### `BigInt* bigint_dec(const BigInt* a)`
-
-- **Purpose**:  
-  Decrements a BigInt by 1.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt to decrement.
-
-- **Return**:  
-  A pointer to a new BigInt representing (a - 1), or `NULL` if the input is `NULL` or if memory allocation fails.
-
-- **Details**:  
-  - Validates that the input BigInt is not `NULL`.
-  - Creates a copy of the input BigInt.
-  - Uses GMP's `mpz_sub_ui` to subtract 1 from the copied value.
-  - Logs every decision and the result of the decrement operation.
+**Purpose**: Decrements a BigInt by 1.
+**Parameters**: `a`: A pointer to the BigInt to decrement.
+**Return Value**: A pointer to a new BigInt representing (a - 1), or `NULL` if the input is `NULL` or if memory allocation fails.
+**Usage Case**: Validates that the input BigInt is not `NULL`, creates a copy of the input BigInt, uses GMP's `mpz_sub_ui` to subtract 1 from the copied value, and logs every decision and the result of the decrement operation.
 
 ---
 
 ### `unsigned long bigint_bit_length(const BigInt* a)`
-
-- **Purpose**:  
-  Returns the bit-length of a BigInt; that is, the number of bits required to represent the BigInt in binary.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt whose bit-length is to be computed.
-
-- **Return**:  
-  The number of bits required to represent the BigInt, or `0` if the input is `NULL`.
-
-- **Details**:  
-  - Checks that the input is not `NULL`.
-  - Uses GMP's `mpz_sizeinbase` with base 2 to determine the number of bits.
-  - Logs the computed bit-length.
+**Purpose**: Returns the bit-length of a BigInt; that is, the number of bits required to represent the BigInt in binary.
+**Parameters**: `a`: A pointer to the BigInt whose bit-length is to be computed.
+**Return Value**: The number of bits required to represent the BigInt, or `0` if the input is `NULL`.
+**Usage Case**: Checks that the input is not `NULL`, uses GMP's `mpz_sizeinbase` with base 2 to determine the number of bits, and logs the computed bit-length.
 
 ---
 
 ### `bool bigint_is_even(const BigInt* a)`
-
-- **Purpose**:  
-  Checks whether a BigInt is even.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt to check.
-
-- **Return**:  
-  `true` if the BigInt is even, `false` otherwise. If the input is `NULL`, it returns `false`.
-
-- **Details**:  
-  - Validates that the input is not `NULL`.
-  - Uses GMP's `mpz_tstbit` function to test the least significant bit (bit 0).
-  - Logs whether the BigInt was determined to be even or odd.
+**Purpose**: Checks whether a BigInt is even.
+**Parameters**: `a`: A pointer to the BigInt to check.
+**Return Value**: `true` if the BigInt is even, `false` otherwise. If the input is `NULL`, it returns `false`.
+**Usage Case**: Validates that the input is not `NULL`, uses GMP's `mpz_tstbit` function to test the least significant bit (bit 0), and logs whether the BigInt was determined to be even or odd.
 
 ---
 
 ### `BigInt* bigint_modinv(const BigInt* a, const BigInt* modulus)`
-
-- **Purpose**:  
-  Computes the modular inverse of a BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt whose inverse is to be computed.
-  - `modulus`: A pointer to the modulus BigInt (must be non-zero).
-
-- **Return**:  
-  A pointer to a new BigInt representing the modular inverse of `a` modulo `modulus`, or `NULL` if the inverse does not exist or if an error occurs.
-
-- **Details**:  
-  - Validates that neither `a` nor `modulus` is `NULL`, and that `modulus` is non-zero.
-  - Uses GMP's `mpz_invert` to compute the inverse.
-  - Logs each step of the operation.
+**Purpose**: Computes the modular inverse of a BigInt.
+**Parameters**: `a`: A pointer to the BigInt whose inverse is to be computed. `modulus`: A pointer to the modulus BigInt (must be non-zero).
+**Return Value**: A pointer to a new BigInt representing the modular inverse of `a` modulo `modulus`, or `NULL` if the inverse does not exist or if an error occurs.
+**Usage Case**: Validates that neither `a` nor `modulus` is `NULL`, and that `modulus` is non-zero, uses GMP's `mpz_invert` to compute the inverse, and logs each step of the operation.
 
 ---
 
 ### `BigInt* bigint_sqrt_exact(const BigInt* a)`
-
-- **Purpose**:  
-  Computes the exact square root of a BigInt if it is a perfect square.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt whose exact square root is to be computed.
-
-- **Return**:  
-  A pointer to a new BigInt representing the exact square root if `a` is a perfect square, or `NULL` if `a` is not a perfect square or if an error occurs.
-
-- **Details**:  
-  - Checks whether the given BigInt is a perfect square using GMP's `mpz_perfect_square_p`.
-  - If it is a perfect square, computes the square root using GMP's `mpz_sqrt`.
-  - Logs all steps of the computation.
+**Purpose**: Computes the exact square root of a BigInt if it is a perfect square.
+**Parameters**: `a`: A pointer to the BigInt whose exact square root is to be computed.
+**Return Value**: A pointer to a new BigInt representing the exact square root if `a` is a perfect square, or `NULL` if `a` is not a perfect square or if an error occurs.
+**Usage Case**: Checks whether the given BigInt is a perfect square using GMP's `mpz_perfect_square_p`, and if it is a perfect square, computes the square root using GMP's `mpz_sqrt`, logging all steps of the computation.
 
 ---
 
 ### `char* bigint_to_hex(const BigInt* a)`
-
-- **Purpose**:  
-  Converts a BigInt to its hexadecimal string representation.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt to convert.
-
-- **Return**:  
-  A pointer to the hexadecimal string representation, or `NULL` if `a` is `NULL`.
-
-- **Details**:  
-  - Uses GMP's `mpz_get_str` with base 16 to convert the BigInt.
-  - Logs the conversion operation.
+**Purpose**: Converts a BigInt to its hexadecimal string representation.
+**Parameters**: `a`: A pointer to the BigInt to convert.
+**Return Value**: A pointer to the hexadecimal string representation, or `NULL` if `a` is `NULL`.
+**Usage Case**: Uses GMP's `mpz_get_str` with base 16 to convert the BigInt and logs the conversion operation.
 
 ---
 
-
 ### `unsigned long bigint_num_digits(const BigInt* a)`
-
-- **Purpose**:  
-  Returns the number of decimal digits required to represent a BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt.
-
-- **Return**:  
-  The number of decimal digits needed to represent the BigInt, or `0` if `a` is `NULL`.
-
-- **Details**:  
-  - Uses GMP's `mpz_sizeinbase` with base 10 to compute the number of digits.
-  - Logs the computed number of digits.
-
+**Purpose**: Returns the number of decimal digits required to represent a BigInt.
+**Parameters**: `a`: A pointer to the BigInt.
+**Return Value**: The number of decimal digits needed to represent the BigInt, or `0` if `a` is `NULL`.
+**Usage Case**: Uses GMP's `mpz_sizeinbase` with base 10 to compute the number of digits and logs the computed number of digits.
 
 ---
 
 ### `unsigned long bigint_log2(const BigInt* a)`
-
-- **Purpose**:  
-  Computes the floor of the base‑2 logarithm of a BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt.
-
-- **Return**:  
-  The floor of log₂(|a|) (i.e. the number of bits required minus one), or 0 if `a` is `NULL` or if `a` is zero.
-
-- **Details**:  
-  - This is computed as `bigint_bit_length(a) - 1` for non‑zero values.
-  - Logs each step of the computation for debugging purposes.
+**Purpose**: Computes the floor of the base-2 logarithm of a BigInt.
+**Parameters**: `a`: A pointer to the BigInt.
+**Return Value**: The floor of log2(|a|) (i.e. the number of bits required minus one), or 0 if `a` is `NULL` or if `a` is zero.
+**Usage Case**: This is computed as `bigint_bit_length(a) - 1` for non-zero values and logs each step of the computation for debugging purposes.
 
 ---
 
 ### `int bigint_cmp_abs(const BigInt* a, const BigInt* b)`
+**Purpose**: Compares the absolute values of two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt. `b`: A pointer to the second BigInt.
+**Return Value**: `-1` if |a| < |b|, `0` if |a| == |b|, `1` if |a| > |b|.
+**Usage Case**: Uses GMP's `mpz_cmpabs` function (if available) to compare the absolute values and logs the comparison result for debugging.
 
-- **Purpose**:  
-  Compares the absolute values of two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first BigInt.
-  - `b`: A pointer to the second BigInt.
-
-- **Return**:  
-  - `-1` if |a| < |b|
-  - `0` if |a| == |b|
-  - `1` if |a| > |b|
-
-- **Details**:  
-  - Uses GMP's `mpz_cmpabs` function (if available) to compare the absolute values.
-  - Logs the comparison result for debugging.
+---
 
 ### `unsigned long bigint_sum_digits(const BigInt* a)`
-
-- **Purpose**:  
-  Computes the sum of the decimal digits of a BigInt.
-
-- **Parameters**:  
-  - `a`: A pointer to the BigInt.
-
-- **Return**:  
-  The sum of the decimal digits of the BigInt, or `0` if `a` is `NULL`.
-
-- **Details**:  
-  - Converts the BigInt to its decimal string representation using `bigint_to_string`.
-  - Iterates over the string, accumulating the sum of numeric digits while ignoring non-digit characters (such as a minus sign).
-  - Logs the computed sum for debugging.
+**Purpose**: Computes the sum of the decimal digits of a BigInt.
+**Parameters**: `a`: A pointer to the BigInt.
+**Return Value**: The sum of the decimal digits of the BigInt, or `0` if `a` is `NULL`.
+**Usage Case**: Converts the BigInt to its decimal string representation using `bigint_to_string`, iterates over the string accumulating the sum of numeric digits while ignoring non-digit characters (such as a minus sign), and logs the computed sum for debugging.
 
 ---
 
-### **`BigInt* bigint_and(const BigInt* a, const BigInt* b)`**
-
-- **Purpose**:  
-  Computes the **bitwise AND** operation between two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first **BigInt** operand.
-  - `b`: A pointer to the second **BigInt** operand.
-
-- **Return**:  
-  - A **pointer** to a new **BigInt** representing the result of `a & b`.
-  - Returns `NULL` if **memory allocation fails** or if either input is `NULL`.
-
-- **Details**:  
-  - The function first **validates** that both input BigInts are not `NULL`.
-  - A **new BigInt** is allocated using `bigint_create()`.
-  - The **bitwise AND** operation is performed using **GMP's `mpz_and()`** function.
-  - The result is stored in the newly allocated BigInt.
-  - The function logs **errors** and **successful computation** if logging is enabled.
-  - The caller is responsible for **deallocating** the returned BigInt.
+### `BigInt* bigint_and(const BigInt* a, const BigInt* b)`
+**Purpose**: Computes the bitwise AND operation between two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt operand. `b`: A pointer to the second BigInt operand.
+**Return Value**: A pointer to a new BigInt representing the result of `a & b`, or `NULL` if memory allocation fails or if either input is `NULL`.
+**Usage Case**: Validates that both input BigInts are not `NULL`, allocates a new BigInt using `bigint_create()`, performs the bitwise AND operation using GMP's `mpz_and()` function, and logs errors and successful computation if logging is enabled. The caller is responsible for deallocating the returned BigInt.
 
 ---
 
-### **`BigInt* bigint_or(const BigInt* a, const BigInt* b)`**
-
-- **Purpose**:  
-  Computes the **bitwise OR** operation between two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first **BigInt** operand.
-  - `b`: A pointer to the second **BigInt** operand.
-
-- **Return**:  
-  - A **pointer** to a new **BigInt** representing the result of `a | b`.
-  - Returns `NULL` if **memory allocation fails** or if either input is `NULL`.
-
-- **Details**:  
-  - The function first **validates** that both input BigInts are not `NULL`.
-  - A **new BigInt** is allocated using `bigint_create()`.
-  - The **bitwise OR** operation is performed using **GMP's `mpz_ior()`** function.
-  - The result is stored in the newly allocated BigInt.
-  - The function logs **errors** and **successful computation** if logging is enabled.
-  - The caller is responsible for **deallocating** the returned BigInt.
+### `BigInt* bigint_or(const BigInt* a, const BigInt* b)`
+**Purpose**: Computes the bitwise OR operation between two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt operand. `b`: A pointer to the second BigInt operand.
+**Return Value**: A pointer to a new BigInt representing the result of `a | b`, or `NULL` if memory allocation fails or if either input is `NULL`.
+**Usage Case**: Validates that both input BigInts are not `NULL`, allocates a new BigInt using `bigint_create()`, performs the bitwise OR operation using GMP's `mpz_ior()` function, and logs errors and successful computation if logging is enabled. The caller is responsible for deallocating the returned BigInt.
 
 ---
 
-### **`BigInt* bigint_xor(const BigInt* a, const BigInt* b)`**
-
-- **Purpose**:  
-  Computes the **bitwise XOR** operation between two BigInts.
-
-- **Parameters**:  
-  - `a`: A pointer to the first **BigInt** operand.
-  - `b`: A pointer to the second **BigInt** operand.
-
-- **Return**:  
-  - A **pointer** to a new **BigInt** representing the result of `a ^ b`.
-  - Returns `NULL` if **memory allocation fails** or if either input is `NULL`.
-
-- **Details**:  
-  - The function first **validates** that both input BigInts are not `NULL`.
-  - A **new BigInt** is allocated using `bigint_create()`.
-  - The **bitwise XOR** operation is performed using **GMP's `mpz_xor()`** function.
-  - The result is stored in the newly allocated BigInt.
-  - The function logs **errors** and **successful computation** if logging is enabled.
-  - The caller is responsible for **deallocating** the returned BigInt.
+### `BigInt* bigint_xor(const BigInt* a, const BigInt* b)`
+**Purpose**: Computes the bitwise XOR operation between two BigInts.
+**Parameters**: `a`: A pointer to the first BigInt operand. `b`: A pointer to the second BigInt operand.
+**Return Value**: A pointer to a new BigInt representing the result of `a ^ b`, or `NULL` if memory allocation fails or if either input is `NULL`.
+**Usage Case**: Validates that both input BigInts are not `NULL`, allocates a new BigInt using `bigint_create()`, performs the bitwise XOR operation using GMP's `mpz_xor()` function, and logs errors and successful computation if logging is enabled. The caller is responsible for deallocating the returned BigInt.
 
 ---
 
@@ -797,7 +378,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 1 - Created BigInt: 0
 ```
@@ -829,7 +410,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 2 - BigInt from string: 12345678901234567890
 ```
@@ -874,7 +455,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 3 - Original: 98765432109876543210
 Example 3 - Copy:     98765432109876543210
@@ -887,9 +468,9 @@ Example 3 - Copy:     98765432109876543210
 This example demonstrates how to add two BigInts and print the result.
 
 ```c
-#include <stdio.h>
 #include <stdlib.h>
-#include "bigint.h"
+#include "bigint/bigint.h"
+#include "fmt/fmt.h"
 
 int main(void) {
     BigInt* a = bigint_from_string("123456789");
@@ -912,7 +493,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 4 - Sum: 1111111110
 ```
@@ -951,7 +532,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 5 - Difference: 876543211
 ```
@@ -990,7 +571,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 6 - Product: 838102050
 ```
@@ -1041,12 +622,12 @@ int main(void) {
 }
 ```
 
-**Sample Output:**  
-*(The actual numbers depend on the division; for example, you might see something like)*
+**Result**
 ```
-Example 7 - Quotient: 81000
-Example 7 - Remainder: 370
+Example 7 - Quotient: 81004
+Example 7 - Remainder: 5620
 ```
+*(Verification: 81004 × 12345 + 5620 = 1,000,000,000)*
 
 ---
 
@@ -1082,7 +663,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 8 - 2^100: 1267650600228229401496703205376
 ```
@@ -1103,7 +684,7 @@ int main(void) {
     BigInt* b = bigint_from_string("12345");
 
     if (!a || !b) {
-        fprintf(stderr, "Failed to create BigInts.\n");
+        fmt_fprintf(stderr, "Failed to create BigInts.\n");
         return EXIT_FAILURE;
     }
 
@@ -1121,10 +702,9 @@ int main(void) {
 }
 ```
 
-**Sample Output:**  
-*(The actual modulus depends on the division; for example, you might see)*
+**Result**
 ```
-Example 9 - Modulus: 370
+Example 9 - Modulus: 5620
 ```
 
 ---
@@ -1171,7 +751,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 10 - Comparison: a is less than b.
 Example 10 - BigInt a is zero.
@@ -1181,7 +761,7 @@ Example 10 - BigInt a is zero.
 
 ### Example 11: Modular Exponentiation (`bigint_powmod`)
 
-This example computes \((3^{20}) \mod 17\).
+This example computes (3^20) mod 17.
 
 ```c
 #include <stdlib.h>
@@ -1215,7 +795,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 11 - (3^20 mod 17): 13
 ```
@@ -1253,7 +833,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 12 - Negation of 123456789: -123456789
 ```
@@ -1291,7 +871,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 13 - Absolute value of -123456789: 123456789
 ```
@@ -1331,7 +911,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 14 - GCD of 48 and 180: 12
 ```
@@ -1371,7 +951,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 15 - LCM of 48 and 180: 720
 ```
@@ -1409,7 +989,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 16 - Next prime after 100: 101
 ```
@@ -1452,7 +1032,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 17 - Integer square root of 144: 12
 Example 17 - Remainder: 0
@@ -1484,8 +1064,8 @@ int main(void) {
 }
 ```
 
-**Sample Output:**  
-*(Output will vary with each run, for example:)*  
+**Result**
+*(Output will vary with each run, for example:)*
 ```
 Example 18 - Random 64-bit BigInt: 12345678901234567890
 ```
@@ -1516,7 +1096,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 19 - Factorial of 20: 2432902008176640000
 ```
@@ -1552,7 +1132,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**  
+**Result**
 *(Values depend on the GMP probabilistic test, but typically you may see)*
 ```
 Example 20 - Primality test for 97: 2 (2 means definitely prime, 1 means probably prime)
@@ -1590,7 +1170,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 21 - 100 incremented by 1: 101
 ```
@@ -1628,7 +1208,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 22 - 100 decremented by 1: 99
 ```
@@ -1657,11 +1237,11 @@ int main(void) {
 }
 ```
 
-**Sample Output:**  
-*(Output will vary; for example, you might see)*
+**Result**
 ```
-Example 23 - Bit-length of 12345678901234567890: 65
+Example 23 - Bit-length of 12345678901234567890: 64
 ```
+*(12345678901234567890 = 0xAB54A98CEB1F0AD2 — a 64-bit value.)*
 
 ---
 
@@ -1701,7 +1281,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
 Example 24 - 123456788 is even.
 Example 24 - 123456789 is not even.
@@ -1720,17 +1300,17 @@ int main(void) {
     BigInt* mod = bigint_from_string("11");
 
     if (!a || !mod) {
-        fmt_fprintf(stderr, "Example A - Failed to create BigInts.\n");
+        fmt_fprintf(stderr, "Example 25 - Failed to create BigInts.\n");
         return EXIT_FAILURE;
     }
     
     BigInt* inv = bigint_modinv(a, mod);
     if (!inv) {
-        fmt_printf("Example A - Modular inverse does not exist.\n");
+        fmt_printf("Example 25 - Modular inverse does not exist.\n");
     } 
     else {
         char* strInv = bigint_to_string(inv);
-        fmt_printf("Example A - Modular inverse of 3 mod 11: %s\n", strInv);
+        fmt_printf("Example 25 - Modular inverse of 3 mod 11: %s\n", strInv);
         free(strInv);
         bigint_deallocate(inv);
     }
@@ -1741,10 +1321,9 @@ int main(void) {
 }
 ```
 
-**Sample Output:**
+**Result**
 ```
-Example A - Modular inverse of 3 mod 11: 4
-
+Example 25 - Modular inverse of 3 mod 11: 4
 ```
 
 ---
@@ -1759,15 +1338,15 @@ Example A - Modular inverse of 3 mod 11: 4
 int main(void) {
     BigInt* a = bigint_from_string("123456789");
     if (!a) {
-        fmt_fprintf(stderr, "Example C - Failed to create BigInt.\n");
+        fmt_fprintf(stderr, "Example 26 - Failed to create BigInt.\n");
         return EXIT_FAILURE;
     }
     
     char* hexStr = bigint_to_hex(a);
     if (!hexStr) {
-        fmt_fprintf(stderr, "Example C - Hex conversion failed.\n");
+        fmt_fprintf(stderr, "Example 26 - Hex conversion failed.\n");
     } else {
-        fmt_printf("Example C - Hexadecimal representation of 123456789: %s\n", hexStr);
+        fmt_printf("Example 26 - Hexadecimal representation of 123456789: %s\n", hexStr);
         free(hexStr);
     }
     
@@ -1775,10 +1354,10 @@ int main(void) {
     return EXIT_SUCCESS;
 }
 ```
-**Sample Output:**
-```
-Example C - Hexadecimal representation of 123456789: 75bcd15
 
+**Result**
+```
+Example 26 - Hexadecimal representation of 123456789: 75bcd15
 ```
 
 ---
@@ -1793,16 +1372,16 @@ Example C - Hexadecimal representation of 123456789: 75bcd15
 int main(void) {
     BigInt* a = bigint_from_string("144");
     if (!a) {
-        fmt_fprintf(stderr, "Example B - Failed to create BigInt.\n");
+        fmt_fprintf(stderr, "Example 27 - Failed to create BigInt.\n");
         return EXIT_FAILURE;
     }
     
     BigInt* sqrtExact = bigint_sqrt_exact(a);
     if (!sqrtExact) {
-        fmt_printf("Example B - The number is not a perfect square.\n");
+        fmt_printf("Example 27 - The number is not a perfect square.\n");
     } else {
         char* strSqrt = bigint_to_string(sqrtExact);
-        fmt_printf("Example B - Exact square root of 144: %s\n", strSqrt);
+        fmt_printf("Example 27 - Exact square root of 144: %s\n", strSqrt);
         free(strSqrt);
         bigint_deallocate(sqrtExact);
     }
@@ -1811,6 +1390,11 @@ int main(void) {
     return EXIT_SUCCESS;
 }
 
+```
+
+**Result**
+```
+Example 27 - Exact square root of 144: 12
 ```
 
 ---
@@ -1852,7 +1436,7 @@ int main(void) {
 }
 ```
 
-**Sample Output:**  
+**Result**
 ```
 Sum of digits of a: 90
 Comparison of |a| and | -a |: 0 (0 means equal)
