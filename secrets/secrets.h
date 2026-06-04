@@ -15,6 +15,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +44,7 @@ unsigned int  secrets_randbits           (int k);
 /* Token / buffer generators                                          */
 /* ------------------------------------------------------------------ */
 
-void          secrets_token_bytes        (unsigned char* buffer, size_t nbytes);
+bool          secrets_token_bytes        (unsigned char* buffer, size_t nbytes);
 void          secrets_token_hex          (char* buffer, size_t nbytes);
 void          secrets_token_urlsafe      (char* buffer, size_t nbytes);
 

@@ -39,6 +39,8 @@ typedef struct MemoryPoolVector {
     void*  pool;       /* raw backing block                         */
     size_t poolSize;   /* total bytes available                     */
     size_t used;       /* bytes handed out so far                   */
+    void*  spill;      /* linked list of malloc fallbacks used when  */
+                       /* the bump block is exhausted (see vector.c) */
 } MemoryPoolVector;
 
 

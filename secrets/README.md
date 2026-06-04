@@ -31,17 +31,17 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### Function Descriptions
 
-### `void secrets_token_bytes(unsigned char *buffer, size_t nbytes)`
+### `bool secrets_token_bytes(unsigned char *buffer, size_t nbytes)`
 
 - **Purpose**: Generate cryptographically secure random bytes.
 - **Parameters**:
   - `buffer`: Pointer to the byte array where random bytes will be stored.
   - `nbytes`: Number of bytes to generate.
-- **Return**: No return value.
+- **Return**: `true` on success; `false` if `buffer` is `NULL` or the system CSPRNG is unavailable.
 - **Details**:
   - This function generates random bytes using platform-specific methods.
   - On **Windows**, it uses `BCryptGenRandom`, and on **Unix-based systems**, it reads from `/dev/urandom`.
-  - If any error occurs during random byte generation, the function logs the error and exits the program.
+  - On failure it logs the error, **zeroes** the buffer, and returns `false` — it never calls `exit()`, so a CSPRNG failure is recoverable by the caller. (Existing call sites that ignore the return value still compile unchanged.)
   - The generated random bytes are stored in the provided `buffer`.
 
 ---

@@ -94,7 +94,8 @@ typedef struct {
     SerialEventCallback callback;
     void*               user_data;
 #if defined(_WIN32) || defined(_WIN64)
-    volatile LONG       stop;     /* non-zero asks the event thread to exit */
+    volatile LONG       stop;     /* non-zero asks the event thread to exit   */
+    HANDLE              thread;   /* event-thread handle; joined in serial_close */
 #endif
 } SerialPortCallbackData;
 

@@ -90,6 +90,7 @@ Every module lives in its own directory with a `.c` source, a `.h` header, and a
 | `bitset` | `std::bitset` | Fixed-size sequence of bits with bitwise operations. |
 | `map` | `std::map` | Ordered associative container (Red-Black tree, O(log n)). |
 | `hashmap` | `std::unordered_map` | Hash table with O(1) average insert/lookup and automatic rehashing. |
+| `set` | `std::set` | Ordered, unique associative container (Red-Black tree, O(log n)); |
 | `tuple` | `std::tuple` | Fixed-size heterogeneous collection. |
 | `variant` | `std::variant` | Type-safe tagged union with a visitor interface. |
 | `uniqueptr` | `std::unique_ptr` | RAII smart pointer with automatic, scope-based cleanup. |
@@ -244,7 +245,7 @@ All commands are run from the project root (`c_std/`).
 # Configure (Ninja generator recommended). Omit -G for the platform default.
 cmake -S . -B build -G Ninja
 
-# Build the library, the main demo, and every example
+# Build the library, the main demo
 cmake --build build
 
 # Build and run the main demo (runs from the project root so ./sources is reachable)
@@ -265,16 +266,7 @@ cmake --build build --target vector
 # Compile every module library (no executables)
 cmake --build build --target modules
 
-# Build a single example, then run it from the project root
-cmake --build build --target json_example
-./build/bin/json_example
-
-# Build every example at once
-cmake --build build --target examples
 ```
-
-> Run the example binaries from the **project root** (e.g. `./build/bin/csv_example`)
-> so that examples which read data files under `./sources/` can find them.
 
 ### Choosing a compiler (GCC / Clang / MSVC)
 
@@ -306,11 +298,7 @@ On MSVC, install the third-party libraries with [vcpkg](https://vcpkg.io)
 | Option | Default | Effect |
 |--------|---------|--------|
 | `C_STD_BUILD_MAIN` | `ON` | Build the `main` demo executable. |
-| `C_STD_BUILD_EXAMPLES` | `ON` | Build the per-module example programs in `examples/`. |
 
-```bash
-cmake -S . -B build -DC_STD_BUILD_EXAMPLES=OFF
-```
 
 ---
 

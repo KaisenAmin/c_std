@@ -1175,7 +1175,6 @@ DequeIterator deque_cbegin(const Deque* deque) {
 
     DequeIterator it = deque_begin(deque);
     it.deque = deque;  
-    it.current = deque->blocks[it.blockIndex] + it.indexInBlock;  // Point to the first element
 
     DEQUE_LOG("[deque_cbegin] Constant begin iterator created at blockIndex: %zu, indexInBlock: %zu", it.blockIndex, it.indexInBlock);
     return it;
@@ -1277,7 +1276,7 @@ void iterator_increment(DequeIterator* it) {
             it->indexInBlock--;
         }
 
-        it->current = (void*)((char*)it->deque->blocks[it->blockIndex] + it->indexInBlock);
+        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
         DEQUE_LOG("[iterator_increment] Reverse step: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
         return;
     }
@@ -1294,7 +1293,7 @@ void iterator_increment(DequeIterator* it) {
         DEQUE_LOG("[iterator_increment] Reached end of deque, iterator is now NULL.");
     } 
     else {
-        it->current = (void*)((char*)it->deque->blocks[it->blockIndex] + it->indexInBlock);
+        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
         DEQUE_LOG("[iterator_increment] Updated iterator position: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
     }
 }
@@ -1315,6 +1314,13 @@ void iterator_decrement(DequeIterator* it) {
         return;
     }
 
+    size_t absIdx = it->blockIndex * it->deque->blockSize + it->indexInBlock;
+    if (absIdx <= it->deque->frontIndex) {
+        it->current = NULL;
+        DEQUE_LOG("[iterator_decrement] Reached reverse end of deque, iterator is now NULL.");
+        return;
+    }
+
     if (it->indexInBlock == 0) {  // Move to the previous block
         if (it->blockIndex == 0) {
             it->current = NULL;  // Reached the reverse end
@@ -1330,7 +1336,7 @@ void iterator_decrement(DequeIterator* it) {
 
     // Update current pointer
     if (it->blockIndex < it->deque->blockCount) {
-        it->current = it->deque->blocks[it->blockIndex] + it->indexInBlock;
+        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
         DEQUE_LOG("[iterator_decrement] Reverse iteration - Updated iterator position: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
     } 
     else {

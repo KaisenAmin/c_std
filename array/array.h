@@ -21,9 +21,6 @@ extern "C" {
 #endif
 
 
-/* ------------------------------------------------------------------ */
-/* Type construction                                                  */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Declares a new fixed-size array type.
@@ -47,9 +44,6 @@ extern "C" {
     } name
 
 
-/* ------------------------------------------------------------------ */
-/* Capacity                                                           */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Returns the number of elements in the array.
@@ -59,24 +53,23 @@ extern "C" {
 #define array_size(arr)   (sizeof((arr).data) / sizeof((arr).data[0]))
 
 
-/* ------------------------------------------------------------------ */
-/* Element access                                                     */
-/* ------------------------------------------------------------------ */
-
 /**
  * @brief Returns the element at the specified index. No bounds checking.
  */
 #define array_at(arr, index) ((arr).data[(index)])
+
 
 /**
  * @brief Returns the first element (by value) of the array.
  */
 #define array_front(arr)  ((arr).data[0])
 
+
 /**
  * @brief Returns the last element (by value) of the array.
  */
 #define array_back(arr)   ((arr).data[array_size(arr) - 1])
+
 
 /**
  * @brief Returns a pointer to the underlying data of the array.
@@ -85,24 +78,18 @@ extern "C" {
 #define array_data(arr)   ((arr).data)
 
 
-/* ------------------------------------------------------------------ */
-/* Iterators                                                          */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Returns a pointer to the first element of the array.
  */
 #define array_begin(arr)  ((arr).data)
 
+
 /**
  * @brief Returns a pointer to one past the last element of the array.
  */
 #define array_end(arr)    ((arr).data + array_size(arr))
 
-
-/* ------------------------------------------------------------------ */
-/* Modifiers — bulk                                                   */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Fills the array with the given value.
@@ -125,6 +112,7 @@ extern "C" {
  */
 #define array_clear(arr) memset((arr).data, 0, sizeof((arr).data))
 
+
 /**
  * @brief Internal implementation of array_reverse.
  *
@@ -134,6 +122,7 @@ static inline void __array_reverse_impl(void *data, size_t count, size_t elem_si
     unsigned char *ptr = (unsigned char*)data;
     for (size_t i = 0; i < count / 2; i++) {
         size_t j = count - 1 - i;
+
         for (size_t k = 0; k < elem_size; k++) {
             unsigned char tmp = ptr[i * elem_size + k];
             ptr[i * elem_size + k] = ptr[j * elem_size + k];
@@ -142,11 +131,13 @@ static inline void __array_reverse_impl(void *data, size_t count, size_t elem_si
     }
 }
 
+
 /**
  * @brief Reverses the array in place.
  */
 #define array_reverse(arr) \
     __array_reverse_impl((arr).data, array_size(arr), sizeof((arr).data[0]))
+
 
 /**
  * @brief Internal implementation of array_sort.
@@ -158,11 +149,13 @@ static inline void __array_sort_impl(void *data, size_t count, size_t elem_size,
     qsort(data, count, elem_size, compare);
 }
 
+
 /**
  * @brief Sorts the array using the provided comparison function.
  */
 #define array_sort(arr, compare) \
     __array_sort_impl((arr).data, array_size(arr), sizeof((arr).data[0]), compare)
+
 
 /**
  * @brief Internal implementation of array_copy.
@@ -173,12 +166,14 @@ static inline void __array_copy_impl(void *dest, const void *src, size_t count, 
     memcpy(dest, src, count * elem_size);
 }
 
+
 /**
  * @brief Copies the contents of one array to another.
  *        Both arrays must be of the same type and size.
  */
 #define array_copy(dest, src) \
     __array_copy_impl((dest).data, (src).data, array_size(dest), sizeof((dest).data[0]))
+
 
 /**
  * @brief Swaps the contents of two arrays.
@@ -192,10 +187,6 @@ static inline void __array_copy_impl(void *dest, const void *src, size_t count, 
         memcpy((arr2).data, _temp, sizeof((arr1).data));        \
     } while (0)
 
-
-/* ------------------------------------------------------------------ */
-/* Search                                                             */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Internal implementation of array_find.
@@ -214,11 +205,13 @@ static inline void *__array_find_impl(void *data, size_t count, size_t elem_size
     return NULL;
 }
 
+
 /**
  * @brief Finds an element in the array using the provided comparator.
  */
 #define array_find(arr, key, cmp) \
     __array_find_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (key), (cmp))
+
 
 /**
  * @brief Internal implementation of array_find_if.
@@ -233,16 +226,13 @@ static inline void *__array_find_if_impl(void *data, size_t count, size_t elem_s
     return NULL;
 }
 
+
 /**
  * @brief Finds an element in the array for which the predicate returns true.
  */
 #define array_find_if(arr, predicate) \
     __array_find_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
 
-
-/* ------------------------------------------------------------------ */
-/* Functional pipelines                                               */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Internal implementation of array_for_each.
@@ -257,12 +247,14 @@ static inline void __array_for_each_impl(void *data, size_t count, size_t elem_s
     }
 }
 
+
 /**
  * @brief Applies a function to each element of the array.
  *        The provided function must accept a pointer to an element.
  */
 #define array_for_each(arr, func) \
     __array_for_each_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (func))
+
 
 /**
  * @brief Internal implementation of array_transform.
@@ -288,6 +280,7 @@ static inline void __array_transform_impl(const void *src, void *dest, size_t co
 #define array_transform(src, dest, func) \
     __array_transform_impl((src).data, (dest).data, array_size(src), sizeof((src).data[0]), (func))
 
+
 /**
  * @brief Internal implementation of array_reduce.
  *
@@ -297,15 +290,25 @@ static inline void __array_transform_impl(const void *src, void *dest, size_t co
 static inline void __array_reduce_impl(const void *data, size_t count, size_t elem_size,
                                          void *result,
                                          void (*reduce_func)(const void *, const void *, void *)) {
-    if (count == 0) return;
+    if (count == 0) {
+        return;
+    }
     memcpy(result, data, elem_size);
     const unsigned char *ptr = (const unsigned char *)data;
+
+    unsigned char stackbuf[256];
+    unsigned char *temp = (elem_size <= sizeof(stackbuf)) ? stackbuf
+                                                          : (unsigned char *)malloc(elem_size);
+    if (!temp) return;
+
     for (size_t i = 1; i < count; i++) {
-        unsigned char temp[elem_size];
         memcpy(temp, result, elem_size);
         reduce_func(temp, ptr + i * elem_size, result);
     }
+
+    if (temp != stackbuf) free(temp);
 }
+
 
 /**
  * @brief Reduces the array to a single value using the provided
@@ -315,10 +318,6 @@ static inline void __array_reduce_impl(const void *data, size_t count, size_t el
 #define array_reduce(arr, result, reduce_func) \
     __array_reduce_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (result), (reduce_func))
 
-
-/* ------------------------------------------------------------------ */
-/* Predicates / counting                                              */
-/* ------------------------------------------------------------------ */
 
 /**
  * @brief Internal implementation of array_count_if.
@@ -334,12 +333,14 @@ static inline size_t __array_count_if_impl(const void *data, size_t count, size_
     return result;
 }
 
+
 /**
  * @brief Counts the number of elements in the array that satisfy the
  *        given predicate.
  */
 #define array_count_if(arr, predicate) \
     __array_count_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+
 
 /**
  * @brief Internal implementation of array_any_of.
@@ -354,12 +355,14 @@ static inline bool __array_any_of_impl(const void *data, size_t count, size_t el
     return false;
 }
 
+
 /**
  * @brief Returns true if any element in the array satisfies the given
  *        predicate.
  */
 #define array_any_of(arr, predicate) \
     __array_any_of_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+
 
 /**
  * @brief Internal implementation of array_all_of.
@@ -374,6 +377,7 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
     return true;
 }
 
+
 /**
  * @brief Returns true if every element in the array satisfies the given
  *        predicate.
@@ -382,15 +386,12 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
     __array_all_of_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
 
 
-/* ------------------------------------------------------------------ */
-/* Comparison                                                         */
-/* ------------------------------------------------------------------ */
-
 /**
  * @brief Returns true if the two arrays are equal (lexicographic).
  */
 #define array_is_equal(arr1, arr2) \
     (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) == 0)
+
 
 /**
  * @brief Returns true if the two arrays are not equal.
@@ -398,11 +399,13 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
 #define array_is_not_equal(arr1, arr2) \
     (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) != 0)
 
+
 /**
  * @brief Returns true if `arr1` is lexicographically less than `arr2`.
  */
 #define array_is_less(arr1, arr2) \
     (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) < 0)
+
 
 /**
  * @brief Returns true if `arr1` is lexicographically less than or equal
@@ -411,11 +414,13 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
 #define array_is_less_or_equal(arr1, arr2) \
     (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) <= 0)
 
+
 /**
  * @brief Returns true if `arr1` is lexicographically greater than `arr2`.
  */
 #define array_is_greater(arr1, arr2) \
     (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) > 0)
+
 
 /**
  * @brief Returns true if `arr1` is lexicographically greater than or

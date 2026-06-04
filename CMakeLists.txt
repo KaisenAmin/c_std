@@ -119,7 +119,7 @@ set(C_STD_MODULES
     stack span queue priority_queue algorithm array bitset cli concurrent config
     file_io crypto csv date deque dir forward_list list log matrix network numbers
     json secrets xml regex unittest serial_port plot bigint evalexpr bigfloat
-    hashmap sort variant uniqueptr jwt)
+    hashmap sort variant uniqueptr jwt set)
 
 # The database module only builds when libpq was found.
 if(PostgreSQL_FOUND)

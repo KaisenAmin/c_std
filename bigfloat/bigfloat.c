@@ -619,7 +619,10 @@ BigFloat* bigfloat_mod(const BigFloat* a, const BigFloat* b) {
     }
 
     mpfr_fmod(res->value, a->value, b->value, MPFR_RNDN);
-    BIGFLOAT_LOG("[bigfloat_mod]: Computed modulo.");
+    if (!mpfr_zero_p(res->value) && mpfr_sgn(res->value) != mpfr_sgn(b->value)) {
+        mpfr_add(res->value, res->value, b->value, MPFR_RNDN);
+    }
+    BIGFLOAT_LOG("[bigfloat_mod]: Computed modulo (sign follows divisor).");
 
     return res;
 }

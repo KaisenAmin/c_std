@@ -26,27 +26,39 @@
  * @param buffer Pointer to the byte array where random bytes will be stored.
  * @param size Number of bytes to generate.
  */
-void secrets_token_bytes(unsigned char *buffer, size_t size) {
+bool secrets_token_bytes(unsigned char *buffer, size_t size) {
     SECRETS_LOG("[secrets_token_bytes]: Entering secrets_token_bytes with size: %zu", size);
+    if (!buffer) {
+        return false;
+    }
 #ifdef _WIN32
     if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, buffer, (ULONG)size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
         SECRETS_LOG("[secrets_token_bytes]: Error: BCryptGenRandom failed");
-        exit(EXIT_FAILURE);
+        if (size) memset(buffer, 0, size);
+        return false;
     }
 #else
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) {
         SECRETS_LOG("[secrets_token_bytes]: Error: Unable to open /dev/urandom");
-        exit(EXIT_FAILURE);
+        if (size) memset(buffer, 0, size);
+        return false;
     }
-    if (read(fd, buffer, size) != (ssize_t)size) {
-        SECRETS_LOG("[secrets_token_bytes]: Error: Unable to read from /dev/urandom");
-        close(fd);
-        exit(EXIT_FAILURE);
+    size_t got = 0;
+    while (got < size) {                       
+        ssize_t r = read(fd, buffer + got, size - got);
+        if (r <= 0) {
+            SECRETS_LOG("[secrets_token_bytes]: Error: Unable to read from /dev/urandom");
+            close(fd);
+            memset(buffer, 0, size);
+            return false;
+        }
+        got += (size_t)r;
     }
     close(fd);
 #endif
     SECRETS_LOG("[secrets_token_bytes]: Exiting secrets_token_bytes");
+    return true;
 }
 
 
@@ -63,15 +75,15 @@ int secrets_randbelow(int n) {
         return 0;
     }
 
-    /* Rejection sampling for unbiased output, matching Python's
-     * `secrets.randbelow`. The previous `% n` was biased toward low
-     * residues whenever `n` did not divide 2^32 evenly. */
+
     unsigned int un    = (unsigned int)n;
     unsigned int limit = (UINT_MAX / un) * un;   /* largest exact multiple of n */
     unsigned int random_value;
     do {
         unsigned char buffer[sizeof(unsigned int)];
-        secrets_token_bytes(buffer, sizeof(buffer));
+        if (!secrets_token_bytes(buffer, sizeof(buffer))) {
+            return -1;   /* RNG failure: signal error instead of exit() */
+        }
         memcpy(&random_value, buffer, sizeof(random_value));
     } while (random_value >= limit);
 
@@ -98,7 +110,12 @@ void secrets_token_hex(char *buffer, size_t nbytes) {
         buffer[0] = '\0';
         return;
     }
-    secrets_token_bytes(bytes, nbytes);
+    if (!secrets_token_bytes(bytes, nbytes)) {
+        SECRETS_LOG("[secrets_token_hex]: Error: RNG failed");
+        free(bytes);
+        buffer[0] = '\0';
+        return;
+    }
 
     for (size_t i = 0; i < nbytes; i++) {
         sprintf(buffer + (i * 2), "%02x", bytes[i]);
@@ -135,7 +152,12 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
         buffer[0] = '\0';
         return;
     }
-    secrets_token_bytes(bytes, nbytes);
+    if (!secrets_token_bytes(bytes, nbytes)) {
+        SECRETS_LOG("[secrets_token_urlsafe]: Error: RNG failed");
+        free(bytes);
+        buffer[0] = '\0';
+        return;
+    }
 
     for (size_t i = 0; i < nbytes; i++) {
         buffer[i] = urlsafe_table[bytes[i] % 64];
@@ -184,14 +206,14 @@ void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
         return NULL;
     }
 
-    /* Rejection sampling so every index has the same probability. The
-     * previous `% size` biased toward low indices for any size that did
-     * not divide 2^(8*sizeof(size_t)) evenly. */
+  
     size_t limit = (SIZE_MAX / size) * size;
     size_t random_value;
     do {
         unsigned char buffer[sizeof(size_t)];
-        secrets_token_bytes(buffer, sizeof(buffer));
+        if (!secrets_token_bytes(buffer, sizeof(buffer))) {
+            return NULL;   /* RNG failure */
+        }
         memcpy(&random_value, buffer, sizeof(random_value));
     } while (random_value >= limit);
 
@@ -218,7 +240,9 @@ unsigned int secrets_randbits(int k) {
     }
 
     unsigned int random_value = 0;
-    secrets_token_bytes((unsigned char *)&random_value, sizeof(random_value));
+    if (!secrets_token_bytes((unsigned char *)&random_value, sizeof(random_value))) {
+        return 0;   /* RNG failure */
+    }
 
     // (1U << k) is UB when k == 32 (shift by full width). Mask only when
     // k < max_bits; otherwise keep all bits.

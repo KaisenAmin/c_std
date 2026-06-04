@@ -16,11 +16,22 @@
 
 static void swap(void *a, void *b, size_t size) {
     ALGORITHM_LOG("[swap] Swapping elements of size %zu bytes.", size);
-    
-    unsigned char temp[size];
-    memcpy(temp, a, size);
-    memcpy(a, b, size);
-    memcpy(b, temp, size);
+
+    /* Portable, allocation-free swap (no VLA, so it builds on MSVC): swap in
+     * fixed-size chunks through a small stack buffer, handling any size. */
+    unsigned char buf[256];
+    unsigned char *pa = (unsigned char *)a;
+    unsigned char *pb = (unsigned char *)b;
+    size_t remaining = size;
+    while (remaining > 0) {
+        size_t chunk = remaining < sizeof(buf) ? remaining : sizeof(buf);
+        memcpy(buf, pa, chunk);
+        memcpy(pa, pb, chunk);
+        memcpy(pb, buf, chunk);
+        pa += chunk;
+        pb += chunk;
+        remaining -= chunk;
+    }
 
     ALGORITHM_LOG("[swap] Swapped elements at memory locations %p and %p.", a, b);
 }
@@ -1659,7 +1670,13 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
 
     size_t i = 0, j = middle, k;
     char *arr = (char *)base;
-    char temp[size];
+
+    unsigned char stackbuf[256];
+    char *temp = (size <= sizeof(stackbuf)) ? (char *)stackbuf : (char *)malloc(size);
+    if (!temp) {
+        ALGORITHM_LOG("[algorithm_inplace_merge] Error: scratch allocation failed.");
+        return;
+    }
 
     while (i < middle && j < num) {
         if (comp(arr + i * size, arr + j * size) <= 0) {
@@ -1678,6 +1695,9 @@ void algorithm_inplace_merge(void *base, size_t middle, size_t num, size_t size,
         }
     }
 
+    if (temp != (char *)stackbuf) {
+        free(temp);
+    }
     ALGORITHM_LOG("[algorithm_inplace_merge] Success: In-place merge completed.");
 }
 
@@ -1742,9 +1762,6 @@ void *algorithm_adjacent_find(const void *base, size_t num, size_t size, Compare
 Pair algorithm_mismatch(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFuncBool comp) {
     ALGORITHM_LOG("[algorithm_mismatch] Info: Searching for mismatch between two arrays of size %zu and %zu.", num1, num2);
 
-    /* Guard NULL ranges: a previous mismatch can legitimately return {NULL, NULL}
-       (ranges equal), and callers may feed that straight back in. Treat a NULL
-       base (or NULL comparator) as "no mismatch" instead of dereferencing it. */
     if (!base1 || !base2 || !comp) {
         Pair empty = {NULL, NULL};
         return empty;
@@ -1794,9 +1811,21 @@ bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, cons
         return false;
     }
 
-    bool found1[num1], found2[num2];
-    memset(found1, 0, sizeof(found1));
-    memset(found2, 0, sizeof(found2));
+    if (num1 == 0) {
+        ALGORITHM_LOG("[algorithm_is_permutation] Info: Both arrays empty -> trivially permutations.");
+        return true;
+    }
+
+    /* Heap-allocated match flags. Portable (no VLA, so it builds on MSVC)*/
+    bool *found1 = (bool *)calloc(num1, sizeof(bool));
+    bool *found2 = (bool *)calloc(num2, sizeof(bool));
+
+    if (!found1 || !found2) {
+        free(found1);
+        free(found2);
+        ALGORITHM_LOG("[algorithm_is_permutation] Error: match-flag allocation failed.");
+        return false;
+    }
 
     for (size_t i = 0; i < num1; ++i) {
         bool matched = false;
@@ -1810,10 +1839,14 @@ bool algorithm_is_permutation(const void *base1, size_t num1, size_t size1, cons
         }
         if (!matched) {
             ALGORITHM_LOG("[algorithm_is_permutation] Info: Element at index %zu in the first array does not have a match in the second array.", i);
+            free(found1);
+            free(found2);
             return false;
         }
     }
 
+    free(found1);
+    free(found2);
     ALGORITHM_LOG("[algorithm_is_permutation] Success: The arrays are permutations of each other.");
     return true;
 }

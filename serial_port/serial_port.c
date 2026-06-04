@@ -354,11 +354,21 @@ int serial_close(SerialPort* port) {
      * unblocks when the handle is closed. */
     SerialPortCallbackData* cd = (SerialPortCallbackData*)port->callback_data;
     if (cd) {
+        /* Ask the worker to stop, force any pending WaitCommEvent to return
+         * immediately, then JOIN the thread before freeing cd. */
         InterlockedExchange(&cd->stop, 1);
+        SetCommMask((HANDLE)port->handle, 0);
+        if (cd->thread) {
+            WaitForSingleObject(cd->thread, INFINITE);
+            CloseHandle(cd->thread);
+            cd->thread = NULL;
+        }
     }
 
     if (!CloseHandle((HANDLE)port->handle)) {
         SERIAL_LOG("[serial_close]: CloseHandle failed (%lu)", GetLastError());
+        free(cd);
+        port->callback_data = NULL;
         return -1;
     }
     port->handle = NULL;
@@ -713,7 +723,7 @@ int serial_set_event_callback(SerialPort* port, SerialEventCallback callback, vo
         port->callback_data = NULL;
         return -1;
     }
-    CloseHandle(t);
+    cd->thread = t;   /* when serial_close can join the thread */
     return 0;
 #else
     (void)callback;

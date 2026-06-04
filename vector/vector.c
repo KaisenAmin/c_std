@@ -14,6 +14,17 @@ static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size);
 static void memory_pool_destroy(MemoryPoolVector *pool);
 
 
+/* When the fixed bump block is exhausted (or a single request is larger than
+ * the whole block), the pool falls back to a standalone malloc and records it
+ * here so every fallback is released together with the pool in
+ * memory_pool_destroy. This removes the previous hard ceiling where a vector
+ * silently failed to grow once the 100000-byte block filled up. */
+typedef struct PoolSpillNode {
+    void*                 block;
+    struct PoolSpillNode* next;
+} PoolSpillNode;
+
+
 static MemoryPoolVector *memory_pool_create(size_t size) {
     VECTOR_LOG("[memory_pool_create]: Entering with pool size: %zu", size);
     
@@ -37,6 +48,7 @@ static MemoryPoolVector *memory_pool_create(size_t size) {
 
     pool->poolSize = size;
     pool->used = 0;
+    pool->spill = NULL;
 
     VECTOR_LOG("[memory_pool_create]: Successfully created memory pool at %p with size %zu.", (void*)pool, pool->poolSize);
     return pool;
@@ -54,9 +66,24 @@ static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
         VECTOR_LOG("[memory_pool_allocate]: Error: Cannot allocate zero size.");
         return NULL;
     }
-    if (pool->used + size > pool->poolSize) {
-        VECTOR_LOG("[memory_pool_allocate]: Error: Memory pool out of space. Cannot allocate %zu bytes.", size);
-        return NULL; 
+    if (size > pool->poolSize - pool->used) {
+        void *block = malloc(size);
+        if (!block) {
+            VECTOR_LOG("[memory_pool_allocate]: Error: malloc fallback failed for %zu bytes.", size);
+            return NULL;
+        }
+        PoolSpillNode *node = (PoolSpillNode*)malloc(sizeof(PoolSpillNode));
+        if (!node) {
+            free(block);
+            VECTOR_LOG("[memory_pool_allocate]: Error: malloc fallback bookkeeping node failed.");
+            return NULL;
+        }
+        node->block = block;
+        node->next = (PoolSpillNode*)pool->spill;
+        pool->spill = node;
+        
+        VECTOR_LOG("[memory_pool_allocate]: Bump block full; spilled %zu bytes to malloc.", size);
+        return block;
     }
 
     void *mem = (char *)pool->pool + pool->used;
@@ -75,6 +102,13 @@ static void memory_pool_destroy(MemoryPoolVector *pool) {
         return;
     }
     
+    PoolSpillNode *s = (PoolSpillNode*)pool->spill;
+    while (s) {
+        PoolSpillNode *next = s->next;
+        free(s->block);
+        free(s);
+        s = next;
+    }
     free(pool->pool); 
     free(pool); 
     
