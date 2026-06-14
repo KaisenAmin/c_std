@@ -17,6 +17,7 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
 #include "crypto.h"
 
 #ifndef DES_BLOCK_SIZE
@@ -1181,9 +1182,7 @@ uint8_t* crypto_pbkdf2(const char* password, size_t password_len,
  * if (!ok) reject(401);
  * @endcode
  */
-bool crypto_verify_hmac(const uint8_t* data, size_t data_len,
-                        const uint8_t* key,  size_t key_len,
-                        const uint8_t* mac,  size_t mac_len,
+bool crypto_verify_hmac(const uint8_t* data, size_t data_len, const uint8_t* key,  size_t key_len, const uint8_t* mac,  size_t mac_len,
                         HashAlgorithm algorithm) {
     if (!data || !key || !mac) {
         return false;
@@ -1284,4 +1283,515 @@ uint8_t* crypto_hmac_file(const char* path, const uint8_t* key, size_t key_len, 
     *outLength = (size_t)mac_len;
 
     return mac;
+}
+
+
+/* ================================================================== */
+/* AES, AEAD (GCM / ChaCha20-Poly1305), password-based encryption,    */
+/* and secure-zero — production-grade additions. All OpenSSL EVP.      */
+/* Internal helpers use the `cryp_` prefix (distinct from public       */
+/* crypto_).                                                           */
+/* ================================================================== */
+
+/**
+ * @brief Securely wipe `length` bytes at `ptr` (not optimized away).
+ *
+ * Use on key material / decrypted plaintext before freeing it. Wraps
+ * OPENSSL_cleanse, which the compiler cannot elide. NULL-safe.
+ *
+ * @param ptr    Start of the buffer to wipe. NULL is a no-op.
+ * @param length Number of bytes to wipe.
+ */
+void crypto_secure_zero(void* ptr, size_t length) {
+    if (ptr && length) {
+        OPENSSL_cleanse(ptr, length);
+    }
+}
+
+/* Resolve an AES EVP_CIPHER from key length (16/24/32) and mode, or NULL. */
+static const EVP_CIPHER* cryp_aes_cipher(size_t key_len, CryptoMode mode) {
+    switch (key_len) {
+        case 16:
+            switch (mode) {
+                case CRYPTO_MODE_ECB: return EVP_aes_128_ecb();
+                case CRYPTO_MODE_CBC: return EVP_aes_128_cbc();
+                case CRYPTO_MODE_CFB: return EVP_aes_128_cfb128();
+                case CRYPTO_MODE_OFB: return EVP_aes_128_ofb();
+                case CRYPTO_MODE_CTR: return EVP_aes_128_ctr();
+                default:              return NULL;
+            }
+        case 24:
+            switch (mode) {
+                case CRYPTO_MODE_ECB: return EVP_aes_192_ecb();
+                case CRYPTO_MODE_CBC: return EVP_aes_192_cbc();
+                case CRYPTO_MODE_CFB: return EVP_aes_192_cfb128();
+                case CRYPTO_MODE_OFB: return EVP_aes_192_ofb();
+                case CRYPTO_MODE_CTR: return EVP_aes_192_ctr();
+                default:              return NULL;
+            }
+        case 32:
+            switch (mode) {
+                case CRYPTO_MODE_ECB: return EVP_aes_256_ecb();
+                case CRYPTO_MODE_CBC: return EVP_aes_256_cbc();
+                case CRYPTO_MODE_CFB: return EVP_aes_256_cfb128();
+                case CRYPTO_MODE_OFB: return EVP_aes_256_ofb();
+                case CRYPTO_MODE_CTR: return EVP_aes_256_ctr();
+                default:              return NULL;
+            }
+        default:
+            return NULL;
+    }
+}
+
+/**
+ * @brief Encrypt with AES-128/192/256 in ECB/CBC/CFB/OFB/CTR mode.
+ *
+ * Prefer this over crypto_des_encrypt (DES is obsolete). key_len picks the
+ * variant (16/24/32 bytes); CBC/ECB add PKCS#7 padding, the stream modes don't.
+ * `iv` is 16 bytes (ignored for ECB). Returns a malloc'd buffer (caller frees)
+ * and the length in *out_len, or NULL on error.
+ *
+ * @param plaintext Input bytes to encrypt (may be NULL only if `len == 0`).
+ * @param len       Length of `plaintext` in bytes.
+ * @param key       AES key. Must not be NULL.
+ * @param key_len   Key length: 16, 24, or 32 bytes (AES-128/192/256).
+ * @param iv        16-byte initialization vector (ignored for ECB mode).
+ * @param mode      Cipher mode (CRYPTO_MODE_ECB/CBC/CFB/OFB/CTR).
+ * @param out_len   Output: length of the returned ciphertext. Must not be NULL.
+ * @return Newly-allocated ciphertext (caller frees), or NULL on invalid
+ *         arguments / unsupported key length or mode / OpenSSL failure.
+ */
+uint8_t* crypto_aes_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len,
+                            const uint8_t* iv, CryptoMode mode, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    if (!key || (!plaintext && len > 0)) {
+        return NULL;
+    }
+    const EVP_CIPHER* cipher = cryp_aes_cipher(key_len, mode);
+    if (!cipher) {
+        CRYPTO_LOG("[crypto_aes_encrypt] unsupported key length / mode");
+        return NULL;
+    }
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return NULL;
+    }
+    uint8_t* out = (uint8_t*)malloc(len + CRYPTO_AES_BLOCK_SIZE);   /* +1 block for padding */
+    if (!out) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NULL;
+    }
+    int ok = 0, outl = 0, finl = 0;
+    if (EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv) == 1 &&
+        EVP_EncryptUpdate(ctx, out, &outl, plaintext, (int)len) == 1 &&
+        EVP_EncryptFinal_ex(ctx, out + outl, &finl) == 1) {
+        ok = 1;
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    if (!ok) {
+        free(out);
+        return NULL;
+    }
+    *out_len = (size_t)(outl + finl);
+    return out;
+}
+
+/**
+ * @brief Decrypt AES produced by crypto_aes_encrypt (same key/iv/mode).
+ *
+ * Returns the plaintext (caller frees) and *out_len, or NULL on error — which
+ * for CBC/ECB includes a PKCS#7 padding failure (wrong key/corrupt input).
+ *
+ * @param ciphertext Input bytes to decrypt (may be NULL only if `len == 0`).
+ * @param len        Length of `ciphertext` in bytes.
+ * @param key        AES key matching the one used to encrypt. Must not be NULL.
+ * @param key_len    Key length: 16, 24, or 32 bytes.
+ * @param iv         16-byte IV matching encryption (ignored for ECB mode).
+ * @param mode       Cipher mode matching encryption.
+ * @param out_len    Output: length of the returned plaintext. Must not be NULL.
+ * @return Newly-allocated plaintext (caller frees), or NULL on invalid
+ *         arguments / unsupported key length or mode / decryption (padding)
+ *         failure.
+ */
+uint8_t* crypto_aes_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len,
+                            const uint8_t* iv, CryptoMode mode, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    if (!key || (!ciphertext && len > 0)) {
+        return NULL;
+    }
+    const EVP_CIPHER* cipher = cryp_aes_cipher(key_len, mode);
+    if (!cipher) {
+        return NULL;
+    }
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return NULL;
+    }
+    uint8_t* out = (uint8_t*)malloc(len + CRYPTO_AES_BLOCK_SIZE);
+    if (!out) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NULL;
+    }
+    int ok = 0, outl = 0, finl = 0;
+    if (EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv) == 1 &&
+        EVP_DecryptUpdate(ctx, out, &outl, ciphertext, (int)len) == 1 &&
+        EVP_DecryptFinal_ex(ctx, out + outl, &finl) == 1) {
+        ok = 1;
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    if (!ok) {
+        free(out);
+        return NULL;
+    }
+    *out_len = (size_t)(outl + finl);
+    return out;
+}
+
+/* Shared AEAD encrypt (GCM / ChaCha20-Poly1305): writes the tag to `tag`. */
+static uint8_t* cryp_aead_seal(const EVP_CIPHER* cipher,
+                               const uint8_t* pt, size_t len, const uint8_t* key,
+                               const uint8_t* iv, size_t iv_len,
+                               const uint8_t* aad, size_t aad_len,
+                               uint8_t* tag, size_t tag_len, size_t* out_len) {
+    *out_len = 0;
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return NULL;
+    }
+    uint8_t* out = (uint8_t*)malloc(len ? len : 1);
+    if (!out) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NULL;
+    }
+    int ok = 0, outl = 0, finl = 0, tmp = 0;
+    if (EVP_EncryptInit_ex(ctx, cipher, NULL, NULL, NULL) == 1 &&
+        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, (int)iv_len, NULL) == 1 &&
+        EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv) == 1) {
+        ok = 1;
+        if (ok && aad && aad_len > 0 && EVP_EncryptUpdate(ctx, NULL, &tmp, aad, (int)aad_len) != 1) {
+            ok = 0;
+        }
+        if (ok && EVP_EncryptUpdate(ctx, out, &outl, pt, (int)len) != 1) {
+            ok = 0;
+        }
+        if (ok && EVP_EncryptFinal_ex(ctx, out + outl, &finl) != 1) {
+            ok = 0;
+        }
+        if (ok && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, (int)tag_len, tag) != 1) {
+            ok = 0;
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    if (!ok) {
+        free(out);
+        return NULL;
+    }
+    *out_len = (size_t)(outl + finl);
+    return out;
+}
+
+/* Shared AEAD decrypt: verifies `tag`; returns NULL (and wipes the partial
+ * plaintext) on authentication failure. */
+static uint8_t* cryp_aead_open(const EVP_CIPHER* cipher,
+                               const uint8_t* ct, size_t len, const uint8_t* key,
+                               const uint8_t* iv, size_t iv_len,
+                               const uint8_t* aad, size_t aad_len,
+                               const uint8_t* tag, size_t tag_len, size_t* out_len) {
+    *out_len = 0;
+    unsigned char tagbuf[64];
+    if (tag_len == 0 || tag_len > sizeof tagbuf) {
+        return NULL;
+    }
+    memcpy(tagbuf, tag, tag_len);                 /* avoid casting away const on ctrl */
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return NULL;
+    }
+    uint8_t* out = (uint8_t*)malloc(len ? len : 1);
+    if (!out) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NULL;
+    }
+    int ok = 0, outl = 0, finl = 0, tmp = 0;
+    if (EVP_DecryptInit_ex(ctx, cipher, NULL, NULL, NULL) == 1 &&
+        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, (int)iv_len, NULL) == 1 &&
+        EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv) == 1) {
+        ok = 1;
+        if (ok && aad && aad_len > 0 && EVP_DecryptUpdate(ctx, NULL, &tmp, aad, (int)aad_len) != 1) {
+            ok = 0;
+        }
+        if (ok && EVP_DecryptUpdate(ctx, out, &outl, ct, (int)len) != 1) {
+            ok = 0;
+        }
+        if (ok && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, (int)tag_len, tagbuf) != 1) {
+            ok = 0;
+        }
+        if (ok && EVP_DecryptFinal_ex(ctx, out + outl, &finl) != 1) {
+            ok = 0;                                /* tag mismatch -> not authentic */
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    if (!ok) {
+        if (len) {
+            OPENSSL_cleanse(out, len);             /* don't leak unauthenticated data */
+        }
+        free(out);
+        return NULL;
+    }
+    *out_len = (size_t)(outl + finl);
+    return out;
+}
+
+static const EVP_CIPHER* cryp_gcm_cipher(size_t key_len) {
+    switch (key_len) {
+        case 16: return EVP_aes_128_gcm();
+        case 24: return EVP_aes_192_gcm();
+        case 32: return EVP_aes_256_gcm();
+        default: return NULL;
+    }
+}
+
+/**
+ * @brief AES-GCM authenticated encryption. Writes a tag_len-byte tag to `tag`.
+ *        See the header contract.
+ *
+ * @param plaintext Bytes to encrypt (may be NULL only if `len == 0`).
+ * @param len       Length of `plaintext` in bytes.
+ * @param key       AES key. Must not be NULL.
+ * @param key_len   Key length: 16, 24, or 32 bytes (AES-128/192/256-GCM).
+ * @param iv        Nonce / initialization vector. Must not be NULL.
+ * @param iv_len    Length of `iv` in bytes (must be non-zero; 12 is standard).
+ * @param aad       Optional additional authenticated data (may be NULL).
+ * @param aad_len   Length of `aad` in bytes (0 if none).
+ * @param tag       Output: receives the `tag_len`-byte authentication tag.
+ * @param tag_len   Tag length in bytes (1..16; 16 recommended).
+ * @param out_len   Output: length of the returned ciphertext. Must not be NULL.
+ * @return Newly-allocated ciphertext (caller frees), or NULL on invalid
+ *         arguments / unsupported key length / OpenSSL failure.
+ */
+uint8_t* crypto_aes_gcm_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len,
+                                const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                uint8_t* tag, size_t tag_len, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    const EVP_CIPHER* c = cryp_gcm_cipher(key_len);
+    if (!c || !key || !iv || iv_len == 0 || !tag || tag_len == 0 || tag_len > 16 || (!plaintext && len > 0)) {
+        return NULL;
+    }
+    return cryp_aead_seal(c, plaintext, len, key, iv, iv_len, aad, aad_len, tag, tag_len, out_len);
+}
+
+/**
+ * @brief AES-GCM authenticated decryption. Returns NULL if the tag does not
+ *        verify (tampering / wrong key / wrong AAD). See the header contract.
+ *
+ * @param ciphertext Bytes to decrypt (may be NULL only if `len == 0`).
+ * @param len        Length of `ciphertext` in bytes.
+ * @param key        AES key matching encryption. Must not be NULL.
+ * @param key_len    Key length: 16, 24, or 32 bytes.
+ * @param iv         Nonce / IV matching encryption. Must not be NULL.
+ * @param iv_len     Length of `iv` in bytes (must be non-zero).
+ * @param aad        Additional authenticated data matching encryption (may be NULL).
+ * @param aad_len    Length of `aad` in bytes (0 if none).
+ * @param tag        Input: the `tag_len`-byte authentication tag to verify.
+ * @param tag_len    Tag length in bytes (must be non-zero).
+ * @param out_len    Output: length of the returned plaintext. Must not be NULL.
+ * @return Newly-allocated plaintext (caller frees), or NULL on invalid
+ *         arguments or if the tag fails to verify (tampering / wrong key / AAD).
+ */
+uint8_t* crypto_aes_gcm_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len,
+                                const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                const uint8_t* tag, size_t tag_len, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    const EVP_CIPHER* c = cryp_gcm_cipher(key_len);
+    if (!c || !key || !iv || iv_len == 0 || !tag || tag_len == 0 || (!ciphertext && len > 0)) {
+        return NULL;
+    }
+    return cryp_aead_open(c, ciphertext, len, key, iv, iv_len, aad, aad_len, tag, tag_len, out_len);
+}
+
+/**
+ * @brief ChaCha20-Poly1305 AEAD encryption (RFC 8439). key=32, iv=12, tag=16.
+ *
+ * @param plaintext Bytes to encrypt (may be NULL only if `len == 0`).
+ * @param len       Length of `plaintext` in bytes.
+ * @param key       32-byte key. Must not be NULL.
+ * @param key_len   Key length in bytes; must be exactly 32.
+ * @param iv        Nonce. Must not be NULL (12 bytes per RFC 8439).
+ * @param iv_len    Length of `iv` in bytes (must be non-zero).
+ * @param aad       Optional additional authenticated data (may be NULL).
+ * @param aad_len   Length of `aad` in bytes (0 if none).
+ * @param tag       Output: receives the `tag_len`-byte authentication tag.
+ * @param tag_len   Tag length in bytes (1..16; 16 recommended).
+ * @param out_len   Output: length of the returned ciphertext. Must not be NULL.
+ * @return Newly-allocated ciphertext (caller frees), or NULL on invalid
+ *         arguments (e.g. `key_len != 32`) / OpenSSL failure.
+ */
+uint8_t* crypto_chacha20_poly1305_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len,
+                                          const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                          uint8_t* tag, size_t tag_len, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    if (key_len != 32 || !key || !iv || iv_len == 0 || !tag || tag_len == 0 || tag_len > 16 || (!plaintext && len > 0)) {
+        return NULL;
+    }
+    return cryp_aead_seal(EVP_chacha20_poly1305(), plaintext, len, key, iv, iv_len, aad, aad_len, tag, tag_len, out_len);
+}
+
+/**
+ * @brief ChaCha20-Poly1305 AEAD decryption. Returns NULL on auth failure.
+ *
+ * @param ciphertext Bytes to decrypt (may be NULL only if `len == 0`).
+ * @param len        Length of `ciphertext` in bytes.
+ * @param key        32-byte key matching encryption. Must not be NULL.
+ * @param key_len    Key length in bytes; must be exactly 32.
+ * @param iv         Nonce matching encryption. Must not be NULL.
+ * @param iv_len     Length of `iv` in bytes (must be non-zero).
+ * @param aad        Additional authenticated data matching encryption (may be NULL).
+ * @param aad_len    Length of `aad` in bytes (0 if none).
+ * @param tag        Input: the `tag_len`-byte authentication tag to verify.
+ * @param tag_len    Tag length in bytes (must be non-zero).
+ * @param out_len    Output: length of the returned plaintext. Must not be NULL.
+ * @return Newly-allocated plaintext (caller frees), or NULL on invalid
+ *         arguments or if the tag fails to verify (tampering / wrong key / AAD).
+ */
+uint8_t* crypto_chacha20_poly1305_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len,
+                                          const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                          const uint8_t* tag, size_t tag_len, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    if (key_len != 32 || !key || !iv || iv_len == 0 || !tag || tag_len == 0 || (!ciphertext && len > 0)) {
+        return NULL;
+    }
+    return cryp_aead_open(EVP_chacha20_poly1305(), ciphertext, len, key, iv, iv_len, aad, aad_len, tag, tag_len, out_len);
+}
+
+/* Self-describing password-blob layout:
+ *   "C1PE"(4) | iterations(4, big-endian) | salt(16) | nonce(12) | tag(16) | ciphertext
+ */
+#define CRYP_PWE_HDR        (4 + 4 + 16 + 12 + 16)
+#define CRYP_PWE_DEF_ITERS  200000
+#define CRYP_PWE_MAX_ITERS  10000000   /* cap to bound work on a hostile blob */
+
+/**
+ * @brief Encrypt with a password: PBKDF2-HMAC-SHA256 -> AES-256-GCM, returning a
+ *        single self-describing blob. See the header contract.
+ *
+ * The returned blob embeds the magic, iteration count, random salt, nonce, and
+ * GCM tag, so `crypto_password_decrypt` needs only the blob and the password.
+ *
+ * @param plaintext  Bytes to encrypt (may be NULL only if `len == 0`).
+ * @param len        Length of `plaintext` in bytes.
+ * @param password   NUL-terminated password. Must not be NULL.
+ * @param iterations PBKDF2 iteration count; values <= 0 use a secure default.
+ * @param out_len    Output: length of the returned blob. Must not be NULL.
+ * @return Newly-allocated self-describing blob (caller frees), or NULL on
+ *         invalid arguments / key-derivation / OpenSSL failure.
+ */
+uint8_t* crypto_password_encrypt(const uint8_t* plaintext, size_t len, const char* password,
+                                 int iterations, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    if (!password || (!plaintext && len > 0)) {
+        return NULL;
+    }
+    if (iterations <= 0) {
+        iterations = CRYP_PWE_DEF_ITERS;
+    }
+
+    uint8_t salt[16], iv[12], tag[16];
+    crypto_random_bytes(salt, sizeof salt);
+    crypto_random_bytes(iv, sizeof iv);
+
+    uint8_t* dk = crypto_pbkdf2(password, strlen(password), salt, sizeof salt, iterations, 32, CRYPTO_SHA256);
+    if (!dk) {
+        return NULL;
+    }
+
+    size_t   ct_len = 0;
+    uint8_t* ct = crypto_aes_gcm_encrypt(plaintext, len, dk, 32, iv, sizeof iv, NULL, 0, tag, sizeof tag, &ct_len);
+    crypto_secure_zero(dk, 32);
+    free(dk);
+    if (!ct) {
+        return NULL;
+    }
+
+    uint8_t* blob = (uint8_t*)malloc(CRYP_PWE_HDR + ct_len);
+    if (!blob) {
+        free(ct);
+        return NULL;
+    }
+    size_t o = 0;
+    memcpy(blob + o, "C1PE", 4); o += 4;
+    blob[o++] = (uint8_t)((unsigned)iterations >> 24);
+    blob[o++] = (uint8_t)((unsigned)iterations >> 16);
+    blob[o++] = (uint8_t)((unsigned)iterations >> 8);
+    blob[o++] = (uint8_t)((unsigned)iterations);
+    memcpy(blob + o, salt, 16); o += 16;
+    memcpy(blob + o, iv, 12);   o += 12;
+    memcpy(blob + o, tag, 16);  o += 16;
+    memcpy(blob + o, ct, ct_len); o += ct_len;
+
+    free(ct);
+    *out_len = o;
+    return blob;
+}
+
+/**
+ * @brief Reverse crypto_password_encrypt. Returns NULL on a wrong password, a
+ *        bad magic/format, or any tampering. See the header contract.
+ *
+ * @param blob     The self-describing blob produced by crypto_password_encrypt.
+ * @param blob_len Length of `blob` in bytes.
+ * @param password NUL-terminated password. Must not be NULL.
+ * @param out_len  Output: length of the recovered plaintext. Must not be NULL.
+ * @return Newly-allocated plaintext (caller frees), or NULL on a wrong password,
+ *         malformed / truncated blob, unsupported iteration count, or a failed
+ *         GCM tag check (tampering).
+ */
+uint8_t* crypto_password_decrypt(const uint8_t* blob, size_t blob_len, const char* password, size_t* out_len) {
+    if (!out_len) {
+        return NULL;
+    }
+    *out_len = 0;
+    if (!blob || !password || blob_len < CRYP_PWE_HDR || memcmp(blob, "C1PE", 4) != 0) {
+        return NULL;
+    }
+    unsigned itu = ((unsigned)blob[4] << 24) | ((unsigned)blob[5] << 16) |
+                   ((unsigned)blob[6] << 8)  |  (unsigned)blob[7];
+    if (itu == 0 || itu > CRYP_PWE_MAX_ITERS) {
+        return NULL;
+    }
+    const uint8_t* salt = blob + 8;
+    const uint8_t* iv   = blob + 24;
+    const uint8_t* tag  = blob + 36;
+    const uint8_t* ct   = blob + CRYP_PWE_HDR;
+    size_t         ctl  = blob_len - CRYP_PWE_HDR;
+
+    uint8_t* dk = crypto_pbkdf2(password, strlen(password), salt, 16, (int)itu, 32, CRYPTO_SHA256);
+    if (!dk) {
+        return NULL;
+    }
+    uint8_t* pt = crypto_aes_gcm_decrypt(ct, ctl, dk, 32, iv, 12, NULL, 0, tag, 16, out_len);
+    crypto_secure_zero(dk, 32);
+    free(dk);
+    return pt;   /* NULL if the password is wrong (tag mismatch) */
 }

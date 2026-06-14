@@ -546,6 +546,43 @@ gcc -std=c17 -O2 -Wall -Wextra -pedantic -o main \
 
 ---
 
+### `int64_t time_monotonic_nsecs(void)`
+
+**Purpose**: Reads a **monotonic** (steady) clock in nanoseconds. Unlike the wall-clock readers (`time_now_unix_msecs`, `time_current_time_in_seconds`), this source never jumps backward when the system clock is stepped by NTP, DST, or a manual change — so it is the correct way to measure elapsed time. The epoch is unspecified; only the difference between two readings is meaningful. Uses `QueryPerformanceCounter` on Windows and `clock_gettime(CLOCK_MONOTONIC)` on POSIX.
+
+**Parameters**: None.
+
+**Return Value**: Nanoseconds since an unspecified, fixed epoch (steadily non-decreasing).
+
+**Usage Case**: Benchmarking, request latency measurement, timeouts and rate limiting — anywhere a backward clock jump would corrupt a duration.
+
+---
+
+### `int64_t time_monotonic_msecs(void)`
+
+**Purpose**: Convenience wrapper over `time_monotonic_nsecs` returning milliseconds (`nsecs / 1_000_000`). Same steady, jump-free semantics.
+
+**Parameters**: None.
+
+**Return Value**: Milliseconds since an unspecified, fixed epoch.
+
+**Usage Case**: Coarser elapsed-time and timeout budgets where millisecond resolution is enough.
+
+---
+
+### `void time_sleep_ms(unsigned int milliseconds)`
+
+**Purpose**: Suspends the calling thread for a number of **milliseconds** — the sub-second counterpart to `time_sleep`. Uses `Sleep` on Windows and `nanosleep` on POSIX, where it resumes across signal interruptions so the full interval elapses.
+
+**Parameters**:
+- `milliseconds`: How long to sleep, in milliseconds (`0` returns immediately).
+
+**Return Value**: None.
+
+**Usage Case**: Retry backoff, polling loops, and rate limiting, which almost always need finer-than-second granularity.
+
+---
+
 
 
 ### Examples 
@@ -1142,6 +1179,40 @@ int main(void) {
 2: (14:00:00:000)
 3: (22:15:00:000)
 ```
+
+---
+
+## Example 23: Monotonic timing + millisecond sleep with `time_monotonic_msecs` and `time_sleep_ms`
+
+```c
+#include "fmt/fmt.h"
+#include "time/std_time.h"
+
+int main(void) {
+    /* Time a 150 ms sleep with the monotonic clock — it never jumps backward
+       the way the wall clock can (NTP / DST / manual change). */
+    int64_t start   = time_monotonic_msecs();
+    time_sleep_ms(150);
+    int64_t elapsed = time_monotonic_msecs() - start;
+
+    fmt_printf("requested sleep : 150 ms\n");
+    fmt_printf("elapsed >= 150  : %s\n", elapsed >= 150 ? "true" : "false");
+
+    /* The monotonic source is steady: a later reading is never before an earlier one. */
+    int64_t a = time_monotonic_nsecs();
+    int64_t b = time_monotonic_nsecs();
+    fmt_printf("monotonic steady: %s\n", b >= a ? "true" : "false");
+
+    return 0;
+}
+```
+**Result**
+```
+requested sleep : 150 ms
+elapsed >= 150  : true
+monotonic steady: true
+```
+> **Why it matters:** measuring elapsed time with the wall clock (`time_now_unix_msecs`) can produce negative or wildly wrong durations when the system clock is stepped. `time_monotonic_*` is immune to that, and `time_sleep_ms` adds the sub-second sleeping that retry/backoff loops need.
 
 ---
 

@@ -140,15 +140,6 @@ void stack_deallocate(Stack* stk) {
 }
 
 
-/** @brief Number of elements currently on the stack. */
-size_t stack_size(const Stack* stk) {
-    if (!stk || !stk->vec) { 
-        return 0;
-    }
-    return vector_size(stk->vec);
-}
-
-
 /** @brief Storage capacity of the underlying vector. */
 size_t stack_capacity(const Stack* stk) {
     if (!stk || !stk->vec) {
@@ -164,49 +155,6 @@ size_t stack_item_size(const Stack* stk) {
         return 0;
     }
     return stk->vec->itemSize;
-}
-
-
-/** @brief true if the stack is NULL or empty. */
-bool stack_empty(const Stack* stk) {
-    if (!stk || !stk->vec) {
-        return true;
-    }
-    return vector_is_empty((Vector*)stk->vec);
-}
-
-
-/**
- * @brief Borrowed pointer to the top element.
- *
- * Pointer is valid until the next push/pop/clear/reserve/deallocate.
- * Returns NULL if the stack is NULL or empty.
- */
-void* stack_top(const Stack* stk) {
-    if (!stk || !stk->vec) { 
-        return NULL;
-    }
-    if (vector_is_empty((Vector*)stk->vec)) {
-        return NULL;
-    }
-
-    return vector_back((Vector*)stk->vec);
-}
-
-
-/** @brief Push a copy of @p item onto the stack. */
-bool stack_push(Stack* stk, const void* item) {
-    STACK_LOG("[stack_push]: stk=%p item=%p", (void*)stk, item);
-
-    if (!stk || !stk->vec || !item) {
-        STACK_LOG("[stack_push]: NULL receiver / item");
-        return false;
-    }
-    if (!vector_push_back(stk->vec, item)) {
-        STACK_LOG("[stack_push]: vector_push_back failed");
-        return false;
-    }
-    return true;
 }
 
 
@@ -226,70 +174,6 @@ void* stack_emplace(Stack* stk, const void* item) {
     }
 
     return vector_back(stk->vec);
-}
-
-
-/** @brief Drop the top element. False on NULL/empty. */
-bool stack_pop_void(Stack* stk) {
-    STACK_LOG("[stack_pop_void]: stk=%p", (void*)stk);
-
-    if (!stk || !stk->vec) {
-        return false;
-    }
-    if (vector_is_empty(stk->vec)) {
-        return false;
-    }
-
-    (void)vector_pop_back(stk->vec);
-    return true;
-}
-
-
-/**
- * @brief Copy the top into @p out_buf (itemSize bytes), then drop it.
- *
- * @p out_buf may be NULL to just drop.
- * @return false on NULL receiver / empty stack.
- */
-bool stack_pop_value(Stack* stk, void* out_buf) {
-    STACK_LOG("[stack_pop_value]: stk=%p out=%p", (void*)stk, out_buf);
-
-    if (!stk || !stk->vec) {
-        return false;
-    }
-    if (vector_is_empty(stk->vec)) {
-        return false;
-    }
-
-    void* top = vector_back(stk->vec);
-    if (!top) {
-        return false;
-    }
-    if (out_buf) {
-        memcpy(out_buf, top, stk->vec->itemSize);
-    }
-
-    (void)vector_pop_back(stk->vec);
-    return true;
-}
-
-
-/**
- * @brief Legacy pop. Returns a borrowed pointer to where the top WAS;
- *        the pointer becomes invalid on the next modifying operation.
- *        Prefer stack_pop_value() in new code.
- */
-void* stack_pop(Stack* stk) {
-    STACK_LOG("[stack_pop]: stk=%p", (void*)stk);
-
-    if (!stk || !stk->vec) {
-        return NULL;
-    }
-    if (vector_is_empty(stk->vec)) {
-        return NULL;
-    }
-
-    return vector_pop_back(stk->vec);
 }
 
 

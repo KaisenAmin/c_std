@@ -674,6 +674,92 @@ Use to compare how the same dataset looks as a line chart vs a bar chart vs a sc
 
 ---
 
+### `bool plot_set_xlim(Plot* plot, float min, float max)`
+
+**Purpose**:  
+Pins the x-axis to a fixed `[min, max]` range instead of auto-scaling to the data. The range is honored by every subsequent `plot_draw` / `plot_export_image`. Points outside the range are mapped outside the plot area (and clipped by the renderer). Call `plot_autoscale` to revert.
+
+**Parameters**:  
+- `plot`: Target plot. Must be non-`NULL`.
+- `min`: Lower bound of the x-axis.
+- `max`: Upper bound. Must be strictly greater than `min`.
+
+**Return Value**:  
+`true` if applied; `false` if `plot` is `NULL` or the range is degenerate (`min >= max`, or either bound is `NaN`).
+
+**Usage Case**:  
+Pin a consistent scale across dashboard snapshots, zoom into a region, or fix a bar chart's baseline.
+
+---
+
+### `bool plot_set_ylim(Plot* plot, float min, float max)`
+
+**Purpose**:  
+The y-axis counterpart to `plot_set_xlim`. The two axes are independent — pin one and leave the other auto-scaling if you like.
+
+**Parameters**:  
+- `plot`: Target plot. Must be non-`NULL`.
+- `min`: Lower bound of the y-axis.
+- `max`: Upper bound. Must be strictly greater than `min`.
+
+**Return Value**:  
+`true` if applied; `false` on `NULL` plot or a degenerate range.
+
+**Usage Case**:  
+Fix a percentage axis to `0..100`, or clip outliers to a readable band.
+
+---
+
+### `void plot_autoscale(Plot* plot)`
+
+**Purpose**:  
+Clears any range pinned with `plot_set_xlim` / `plot_set_ylim`, so both axes auto-scale to the data again on the next render.
+
+**Parameters**:  
+- `plot`: Target plot. Passing `NULL` is a safe no-op.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Return to exploratory auto-ranging after a temporary zoom or fixed-scale export.
+
+---
+
+### `bool plot_get_xlim(const Plot* plot, float* outMin, float* outMax)`
+
+**Purpose**:  
+Reads back the **effective** x-axis range the renderer will use — the pinned range if `plot_set_xlim` was called, otherwise the range auto-computed from the data (with the same flat-data widening the renderer applies). No graphics context required.
+
+**Parameters**:  
+- `plot`: Plot to query. Must be non-`NULL`.
+- `outMin`, `outMax`: Receive the bounds. Must be non-`NULL`.
+
+**Return Value**:  
+`true` on success; `false` if any argument is `NULL`, or if the axis has no pinned range and the plot holds no data to scale from.
+
+**Usage Case**:  
+Inspect, log, or persist the current scale; lay out a second chart to match.
+
+---
+
+### `bool plot_get_ylim(const Plot* plot, float* outMin, float* outMax)`
+
+**Purpose**:  
+The y-axis counterpart to `plot_get_xlim`.
+
+**Parameters**:  
+- `plot`: Plot to query. Must be non-`NULL`.
+- `outMin`, `outMax`: Receive the bounds. Must be non-`NULL`.
+
+**Return Value**:  
+`true` on success; `false` on `NULL` arguments or when there is no pinned range and no data.
+
+**Usage Case**:  
+Read the effective vertical scale for annotations or alignment.
+
+---
+
 ### `void plot_apply_theme_dark(Plot* plot)`
 
 **Purpose**:  
@@ -2170,6 +2256,56 @@ canvas 800x500, stddev=1.449
 ```
 
 ![Example 41](../sources/ex41_histogram.png)
+
+---
+
+## Example 42 — Pin an axis range for a fixed-scale dashboard (`plot_set_ylim`, `plot_get_ylim`, `plot_autoscale`)
+
+By default each axis auto-scales to whatever data is present, so two snapshots of the same metric can end up on different scales. Pinning the y-axis to a fixed `0..100%` makes every render directly comparable. `plot_get_ylim` reports the effective range without needing a graphics context, and `plot_autoscale` restores auto-ranging.
+
+```c
+#include "plot/plot.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Plot* p = plot_create("CPU load", "sample", "percent");
+    plot_set_size(p, 640, 400);
+
+    /* Readings that swing between 5% and 95%. */
+    float load[8] = {5, 40, 95, 60, 30, 80, 12, 70};
+    plot_add_line(p, load, 8, "cpu", plot_color_hex(0x2266DD));
+
+    /* By default the y-axis auto-scales to the data. */
+    float lo = 0, hi = 0;
+    plot_get_ylim(p, &lo, &hi);
+    fmt_printf("auto    y-range: [%.1f, %.1f]\n", lo, hi);
+
+    /* Pin it to a fixed 0..100% so every snapshot shares one scale. */
+    plot_set_ylim(p, 0.0f, 100.0f);
+    plot_get_ylim(p, &lo, &hi);
+    fmt_printf("pinned  y-range: [%.1f, %.1f]\n", lo, hi);
+
+    /* The pinned range is honored by the renderer. */
+    bool ok = plot_export_image(p, "cpu_load.png");
+    fmt_printf("exported cpu_load.png: %s\n", ok ? "ok" : "failed");
+
+    /* Revert to auto-scaling. */
+    plot_autoscale(p);
+    plot_get_ylim(p, &lo, &hi);
+    fmt_printf("after autoscale: [%.1f, %.1f]\n", lo, hi);
+
+    plot_destroy(p);
+    return 0;
+}
+```
+
+**Result**
+```
+auto    y-range: [5.0, 95.0]
+pinned  y-range: [0.0, 100.0]
+exported cpu_load.png: ok
+after autoscale: [5.0, 95.0]
+```
 
 ---
 

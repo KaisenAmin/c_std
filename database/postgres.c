@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 #include "postgres.h"
 #include "../string/std_string.h"
 
@@ -123,6 +124,59 @@ bool postgres_connect(Postgres* pg) {
     }
 
     POSTGRES_LOG("[postgres_connect] Successfully connected to database: %s", pg->database);
+    return true;
+}
+
+
+/**
+ * @brief Connects using a single libpq connection string or URI, the
+ *        12-factor / `DATABASE_URL` style of configuration.
+ *
+ * Unlike postgres_connect (which builds the connection from the individual
+ * fields set by postgres_init), this takes one ready-made connection string and
+ * hands it straight to libpq's PQconnectdb. Two equivalent forms are accepted:
+ *   - keyword/value: `"host=db.internal port=5432 dbname=app user=svc
+ *                      password=secret connect_timeout=10 sslmode=require"`
+ *   - URI:           `"postgresql://svc:secret@db.internal:5432/app?sslmode=require"`
+ *
+ * This is the natural way to connect from a single environment variable
+ * (`getenv("DATABASE_URL")`), and it exposes every libpq parameter
+ * (`sslmode`, `connect_timeout`, `application_name`, …) without this wrapper
+ * having to model each one. It works on a freshly postgres_create()'d struct —
+ * no postgres_init is required. Any pre-existing connection on @p pg is closed
+ * first, so the call is safe to use for reconnection.
+ *
+ * @param pg       Pointer to the Postgres structure.
+ * @param conninfo A libpq connection string or `postgresql://` URI.
+ * @return true on a successful connection, false on NULL arguments or if the
+ *         connection could not be established.
+ *
+ */
+bool postgres_connect_uri(Postgres* pg, const char* conninfo) {
+    if (!pg) {
+        POSTGRES_LOG("[postgres_connect_uri] Error: NULL Postgres receiver.");
+        return false;
+    }
+    if (!conninfo) {
+        POSTGRES_LOG("[postgres_connect_uri] Error: NULL connection string.");
+        return false;
+    }
+
+    /* Close any prior connection so reconnecting never leaks a PGconn. */
+    if (pg->connection) {
+        PQfinish(pg->connection);
+        pg->connection = NULL;
+    }
+
+    pg->connection = PQconnectdb(conninfo);
+    if (PQstatus(pg->connection) != CONNECTION_OK) {
+        POSTGRES_LOG("[postgres_connect_uri] Error: Connection failed: %s", PQerrorMessage(pg->connection));
+        PQfinish(pg->connection);
+        pg->connection = NULL;
+        return false;
+    }
+
+    POSTGRES_LOG("[postgres_connect_uri] Successfully connected via connection string.");
     return true;
 }
 
@@ -999,6 +1053,107 @@ const char* postgres_get_value(PostgresResult* pgRes, int row, int col) {
 
     POSTGRES_LOG("[postgres_get_value] Successfully retrieved value at row %d, column %d.", row, col);
     return PQgetvalue(pgRes->result, row, col);
+}
+
+
+/**
+ * @brief Reads a result cell as a 64-bit integer, safely.
+ *
+ * The typed, crash-proof companion to postgres_get_value: it returns the cell
+ * parsed as a `long long` instead of forcing every caller to write
+ * `atoll(postgres_get_value(...))` (which segfaults the moment a cell is out of
+ * range or SQL NULL). The supplied @p fallback is returned for every failure
+ * mode — NULL result, out-of-range row/column, SQL NULL, an empty cell, or text
+ * that is not a complete base-10 integer (e.g. `"3.14"` or `"abc"`).
+ *
+ * @param pgRes    The result set.
+ * @param row      Zero-based row index.
+ * @param col      Zero-based column index.
+ * @param fallback Value to return when the cell cannot be read as an integer.
+ * @return The cell value as a `long long`, or @p fallback.
+ *
+ */
+long long postgres_get_value_as_int(const PostgresResult* pgRes, int row, int col, long long fallback) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        return fallback;
+    }
+    if (row < 0 || row >= PQntuples(pgRes->result)) {
+        return fallback;
+    }
+    if (col < 0 || col >= PQnfields(pgRes->result)) {
+        return fallback;
+    }
+    if (PQgetisnull(pgRes->result, row, col)) {
+        return fallback;
+    }
+
+    const char* v = PQgetvalue(pgRes->result, row, col);
+    if (v == NULL || v[0] == '\0') {
+        return fallback;
+    }
+
+    errno = 0;
+    char* end = NULL;
+    long long parsed = strtoll(v, &end, 10);
+    if (errno != 0 || end == v) {     /* overflow, or no digits at all */
+        return fallback;
+    }
+    while (*end == ' ' || *end == '\t') {
+        end++;
+    }
+    if (*end != '\0') {               /* trailing non-integer text -> reject */
+        return fallback;
+    }
+    return parsed;
+}
+
+
+/**
+ * @brief Reads a result cell as a double, safely.
+ *
+ * The floating-point counterpart to postgres_get_value_as_int. Returns the cell
+ * parsed as a `double`, or @p fallback for any failure mode — NULL result,
+ * out-of-range row/column, SQL NULL, an empty cell, or text that is not a
+ * complete number. Accepts integer and decimal/scientific notation alike.
+ *
+ * @param pgRes    The result set.
+ * @param row      Zero-based row index.
+ * @param col      Zero-based column index.
+ * @param fallback Value to return when the cell cannot be read as a number.
+ * @return The cell value as a `double`, or @p fallback.
+ *
+ */
+double postgres_get_value_as_double(const PostgresResult* pgRes, int row, int col, double fallback) {
+    if (pgRes == NULL || pgRes->result == NULL) {
+        return fallback;
+    }
+    if (row < 0 || row >= PQntuples(pgRes->result)) {
+        return fallback;
+    }
+    if (col < 0 || col >= PQnfields(pgRes->result)) {
+        return fallback;
+    }
+    if (PQgetisnull(pgRes->result, row, col)) {
+        return fallback;
+    }
+
+    const char* v = PQgetvalue(pgRes->result, row, col);
+    if (v == NULL || v[0] == '\0') {
+        return fallback;
+    }
+
+    char* end = NULL;
+    double parsed = strtod(v, &end);
+    if (end == v) {                   /* no number at all */
+        return fallback;
+    }
+    while (*end == ' ' || *end == '\t') {
+        end++;
+    }
+    if (*end != '\0') {               /* trailing non-numeric text -> reject */
+        return fallback;
+    }
+    return parsed;
 }
 
 

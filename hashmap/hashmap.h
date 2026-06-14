@@ -35,6 +35,7 @@ extern "C" {
 typedef struct HashMap         HashMap;
 typedef struct HashMapNode     HashMapNode;
 typedef struct HashMapIterator HashMapIterator;
+typedef struct HashMapSlab     HashMapSlab;   
 
 typedef void* KeyType;
 typedef void* ValueType;
@@ -48,8 +49,8 @@ typedef void   (*ValueDeallocFunc)  (void*);
 struct HashMapNode {
     KeyType             key;
     ValueType           value;
-    struct HashMapNode* next;          /* chaining                            */
-    bool                is_occupied;   /* empty vs. deleted slot              */
+    struct HashMapNode* next;          
+    bool                is_occupied;   
 };
 
 
@@ -67,7 +68,7 @@ struct HashMapIterator {
 
 
 struct HashMap {
-    HashMapNode*       buckets;
+    HashMapNode**      buckets;        
     size_t             bucket_count;
     size_t             size;
     size_t             max_load_factor_numerator;
@@ -76,6 +77,9 @@ struct HashMap {
     CompareFuncHashMap compare_func;
     ValueDeallocFunc   dealloc_key;
     ValueDeallocFunc   dealloc_value;
+    HashMapSlab*       slabs;          
+    HashMapNode*       freeList;       
+    size_t             slabCap;        
 };
 
 

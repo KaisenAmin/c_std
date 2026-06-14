@@ -176,6 +176,16 @@ bool              cli_validate_option_argument       (const CliOption* option, c
 
 
 /* ------------------------------------------------------------------ */
+/* Typed argument conversion (stateless string -> value helpers)      */
+/* ------------------------------------------------------------------ */
+
+bool              cli_parse_int                      (const char* value, int* out);
+bool              cli_parse_long                     (const char* value, long* out);
+bool              cli_parse_double                   (const char* value, double* out);
+bool              cli_parse_bool                     (const char* value, bool* out);
+
+
+/* ------------------------------------------------------------------ */
 /* Lookup                                                             */
 /* ------------------------------------------------------------------ */
 

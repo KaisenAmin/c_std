@@ -1659,9 +1659,20 @@ bool date_set_date(Date* date, int year, int month, int day, CalendarType type) 
  * @return A pointer to the newly allocated Date object representing the current date. The caller is responsible for freeing the memory. Returns NULL if memory allocation fails or if an unsupported calendar type is provided.
  */
 Date* date_current_date(CalendarType type) {
-    // Get the current time
+    // Get the current time. localtime() shares a static struct tm (a data race
+    // under concurrent use) and can return NULL; use the reentrant variant and
+    // guard the result.
     time_t now = time(NULL);
-    struct tm *current = localtime(&now);
+    struct tm tmbuf;
+#if defined(_WIN32) || defined(_WIN64)
+    struct tm* current = (localtime_s(&tmbuf, &now) == 0) ? &tmbuf : NULL;
+#else
+    struct tm* current = localtime_r(&now, &tmbuf);
+#endif
+    if (!current) {
+        DATE_LOG("Error: localtime_r/localtime_s failed in date_current_date.\n");
+        return NULL;
+    }
 
     // Allocate memory for a new Date
     Date* currentDate = (Date*)malloc(sizeof(Date));
@@ -1916,6 +1927,77 @@ Date* date_from_julian_day(long jd) {
     date->calendarType = Gregorian;  // JDN -> Date result is always Gregorian.
 
     return date;
+}
+
+/**
+ * @brief Convert a Date to Unix time (seconds since 1970-01-01T00:00:00 UTC).
+ *
+ * A Date carries no time-of-day, so the result is the epoch second at UTC
+ * midnight of that calendar day. Works for both Gregorian and Persian dates
+ * (Persian is routed through the shared Julian-Day axis), and yields negative
+ * values for days before 1970. The returned value is always a multiple of 86400.
+ *
+ * @param date The date to convert.
+ * @return Seconds since the Unix epoch at UTC midnight, or `INT64_MIN` if `date`
+ *         is NULL or invalid.
+ */
+int64_t date_to_unix(const Date* date) {
+    if (!date || !date_is_valid(date)) {
+        DATE_LOG("Error: NULL/invalid date in date_to_unix.\n");
+        return INT64_MIN;
+    }
+    long jdn = date_to_julian_day(date);
+    if (jdn < 0) {
+        return INT64_MIN;
+    }
+    /* JDN of 1970-01-01 is 2440588. */
+    int64_t days = (int64_t)jdn - 2440588LL;
+    return days * 86400LL;
+}
+
+/**
+ * @brief Build a Date from Unix time, taking the calendar day at UTC.
+ *
+ * Inverse of `date_to_unix`: the time-of-day part of `unix_seconds` is dropped
+ * (floored to the start of the UTC day) and the resulting calendar day is
+ * returned in the requested calendar. Negative inputs (pre-1970) use floor
+ * division so the day boundary is correct.
+ *
+ * @param unix_seconds Seconds since the Unix epoch.
+ * @param type         Desired calendar of the result (Gregorian or Persian).
+ * @return Newly-allocated Date (caller frees with `date_deallocate`), or NULL on
+ *         an out-of-range/unsupported input or allocation/conversion failure.
+ */
+Date* date_from_unix(int64_t unix_seconds, CalendarType type) {
+    /* Floor-divide to the UTC day; C integer division truncates toward zero, so
+       adjust for a negative remainder. */
+    int64_t days = unix_seconds / 86400LL;
+    if (unix_seconds % 86400LL != 0 && unix_seconds < 0) {
+        days -= 1;
+    }
+    int64_t jdn64 = days + 2440588LL;
+    /* Keep within `long` (32-bit on LLP64 Windows) and the JDN domain. */
+    if (jdn64 < 0 || jdn64 > 2147483647LL) {
+        DATE_LOG("Error: unix_seconds out of representable range in date_from_unix.\n");
+        return NULL;
+    }
+
+    Date* g = date_from_julian_day((long)jdn64);
+    if (!g) {
+        DATE_LOG("Error: date_from_julian_day failed in date_from_unix.\n");
+        return NULL;
+    }
+    if (type == Gregorian) {
+        return g;
+    }
+    if (type == Persian) {
+        Date* p = date_gregorian_to_solar(g);
+        free(g);
+        return p;   /* NULL on conversion failure is propagated */
+    }
+    free(g);
+    DATE_LOG("Error: unsupported calendar type in date_from_unix.\n");
+    return NULL;
 }
 
 /**

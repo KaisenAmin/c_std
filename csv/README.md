@@ -357,6 +357,43 @@ The seven functions below turn the library into a usable mini-DataFrame — in-m
 
 ---
 
+## RFC 4180 (quote-aware) I/O
+
+The plain `csv_file_write` / `csv_file_export_to_string` / `csv_file_load_from_string` family is deliberately simple and does **not** quote or unquote fields. That corrupts any cell containing the delimiter, a double quote, or a newline (the cell would split across columns or rows on the next read). The functions below implement the [RFC 4180](https://www.rfc-editor.org/rfc/rfc4180) rules so such data round-trips and the output opens correctly in Excel, pandas, and other CSV tools. They are additive — the legacy functions keep their exact behavior.
+
+### `char* csv_file_export_to_string_rfc4180(const CsvFile *file)`
+**Purpose**: Serialize the whole file to a malloc'd string with RFC 4180 quoting. Any cell that contains the delimiter, a double quote, CR, or LF is wrapped in double quotes and its internal quotes are doubled (`"` → `""`); cells that need no quoting are emitted verbatim.
+**Parameters**:
+  - `file`: Source file. May be NULL (returns NULL).
+**Return Value**: Newly-allocated NUL-terminated CSV string (caller frees with `free()`), or NULL on bad input / OOM. An empty file yields `""`.
+**Usage Case**: Produce valid CSV from arbitrary user data. For data with no special characters the output is byte-identical to `csv_file_export_to_string`.
+
+### `bool csv_file_write_rfc4180(const CsvFile *file, const char *filename)`
+**Purpose**: Write the file to disk with RFC 4180 quoting. Serializes via `csv_file_export_to_string_rfc4180`, then writes the bytes in binary mode so the on-disk output is byte-identical across platforms and matches the in-memory string exactly.
+**Parameters**:
+  - `file`: Source file. Must not be NULL.
+  - `filename`: Destination path. Must not be NULL.
+**Return Value**: `true` if the file was written in full; `false` on NULL input, OOM, or any I/O failure.
+**Usage Case**: The quote-aware, error-reporting counterpart to the legacy `csv_file_write` (which returns `void`).
+
+### `void csv_file_load_from_string_rfc4180(CsvFile *file, const char *data)`
+**Purpose**: Parse an in-memory CSV document with full RFC 4180 semantics. A proper state-machine parser (not line-by-line): it strips surrounding quotes, collapses escaped `""` to `"`, treats the delimiter and newlines inside a quoted field as literal (so one record may span multiple physical lines), and has no line-length limit.
+**Parameters**:
+  - `file`: Target CsvFile (already created via `csv_file_create`); its `delimiter` selects the separator.
+  - `data`: NUL-terminated CSV text.
+**Return Value**: None. Rows are **appended** to `file`, so repeated calls concatenate. Wholly-blank lines are skipped; a quoted empty field `""` is a real empty cell. NULL inputs are safe no-ops.
+**Usage Case**: Parse CSV produced by spreadsheets or any RFC 4180 source where fields may contain commas, quotes, or embedded newlines.
+
+### `bool csv_file_read_rfc4180(CsvFile *file, const char *filename)`
+**Purpose**: Read a CSV file from disk with full RFC 4180 semantics. Slurps the whole file in binary mode (preserving CRLF and embedded newlines exactly) and parses it with `csv_file_load_from_string_rfc4180`. Fixes both the legacy `csv_file_read` 1024-byte line truncation and its inability to handle multi-line quoted records.
+**Parameters**:
+  - `file`: Target CsvFile (already created via `csv_file_create`).
+  - `filename`: Path of the CSV file to read.
+**Return Value**: `true` on success; `false` on NULL input, if the file cannot be opened, or if reading fails. Rows are **appended** to `file`.
+**Usage Case**: The robust counterpart to the legacy `csv_file_read` for real-world CSV files.
+
+---
+
 ## Example 1
 ```c
 #include "csv/csv.h"
@@ -1227,6 +1264,80 @@ id,name
 2,Bob
 ---end---
 round-trip rows: 3 (expected 3)
+```
+
+---
+
+## Example 23: RFC 4180 quoting round-trip with `csv_file_export_to_string_rfc4180`, `csv_file_write_rfc4180`, and `csv_file_read_rfc4180`
+
+The legacy writers do not escape fields, so a cell containing a comma, a double quote, or a newline corrupts the output. The `*_rfc4180` functions quote such fields (doubling internal quotes) so the data round-trips and the file opens correctly in Excel/pandas. Here one cell holds a quoted phrase *and* a comma, and another holds an embedded newline — both survive a disk round-trip intact.
+
+```c
+#include "csv/csv.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    CsvFile* f = csv_file_create(',');
+
+    CsvRow* header = csv_row_create();
+    csv_row_append_cell(header, "id");
+    csv_row_append_cell(header, "quote");
+    csv_row_append_cell(header, "note");
+    csv_file_append_row(f, header);
+
+    CsvRow* row = csv_row_create();
+    csv_row_append_cell(row, "1");
+    csv_row_append_cell(row, "He said \"hello, world\"");  /* quote + comma */
+    csv_row_append_cell(row, "line one\nline two");         /* embedded newline */
+    csv_file_append_row(f, row);
+
+    /* RFC 4180 serialization quotes only the cells that need it. */
+    char* rfc = csv_file_export_to_string_rfc4180(f);
+    fmt_printf("RFC 4180 output:\n%s\n", rfc);
+    free(rfc);
+
+    /* Persist to disk and read it back — the nasty cells survive intact. */
+    const char* path = "./sources/contacts.csv";
+    if (!csv_file_write_rfc4180(f, path)) {
+        fmt_printf("write failed\n");
+        csv_file_destroy(f);
+        return 1;
+    }
+
+    CsvFile* g = csv_file_create(',');
+    if (!csv_file_read_rfc4180(g, path)) {
+        fmt_printf("read failed\n");
+        csv_file_destroy(f);
+        csv_file_destroy(g);
+        return 1;
+    }
+
+    CsvRow* back = csv_file_get_row(g, 1);
+    fmt_printf("Recovered cells:\n");
+    fmt_printf("  id    = %s\n", csv_row_get_cell(back, 0));
+    fmt_printf("  quote = %s\n", csv_row_get_cell(back, 1));
+    fmt_printf("  note  = %s\n", csv_row_get_cell(back, 2));
+
+    remove(path);
+    csv_file_destroy(f);
+    csv_file_destroy(g);
+    return 0;
+}
+```
+
+**Result**
+```
+RFC 4180 output:
+id,quote,note
+1,"He said ""hello, world""","line one
+line two"
+
+Recovered cells:
+  id    = 1
+  quote = He said "hello, world"
+  note  = line one
+line two
 ```
 
 ---

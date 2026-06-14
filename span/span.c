@@ -5,34 +5,30 @@
  *
  * std::span-style non-owning view in pure C.
  *
- * Error model
- * -----------
- *   - No global error state. Failures return NULL / 0 / false / empty
- *     span. Diagnostics are emitted via SPAN_LOG (opt-in via the
- *     SPAN_LOGGING_ENABLE macro).
- *   - The library never calls exit(), abort(), or assert(). Every public
- *     function is NULL-safe in the documented sense (see each function).
- *   - The library does not allocate, copy, or free user data. Span is
- *     strictly a view.
- *
- * Iterator model
- * --------------
- *   - Forward iteration uses raw `void*` pointers:
- *
- *         for (void* p = span_begin(&s); p != span_end(&s);
- *              p = span_increment(&s, p)) { ... }
- *
- *   - Reverse iteration uses `span_rbegin` (a pointer to the LAST
- *     element) and `span_decrement` (which returns NULL when stepping
- *     below begin). `span_rend` exists purely as a NULL sentinel for
- *     parity with `span_end`; see span_rend()'s comment for why it has
- *     to be NULL rather than `data - elemSize`.
  */
 
 #include <limits.h> /* CHAR_BIT */
 #include <stdlib.h>
 #include <string.h>
 #include "span.h"
+
+
+
+static int spanp_lex_compare(const Span* a, const Span* b) {
+    size_t aBytes   = a->size * a->elemSize;
+    size_t bBytes   = b->size * b->elemSize;
+    size_t minBytes = aBytes < bBytes ? aBytes : bBytes;
+
+    int c = (minBytes == 0) ? 0 : memcmp(a->data, b->data, minBytes);
+    if (c != 0) {
+        return c < 0 ? -1 : 1;
+    }
+    if (aBytes != bBytes) {
+        return aBytes < bBytes ? -1 : 1;   /* equal prefix: shorter is less */
+    }
+
+    return 0;
+}
 
 
 /**
@@ -503,13 +499,8 @@ bool span_is_less(const Span* a, const Span* b) {
         return false;
     }
 
-    size_t aBytes = a->size * a->elemSize;
-    size_t bBytes = b->size * b->elemSize;
-    size_t minBytes = aBytes < bBytes ? aBytes : bBytes;
-    int c = (minBytes == 0) ? 0 : memcmp(a->data, b->data, minBytes);
-    bool out = c < 0 || (c == 0 && aBytes < bBytes);
-
-    SPAN_LOG("[span_is_less]: aBytes=%zu bBytes=%zu memcmp=%d -> %s", aBytes, bBytes, c, out ? "true" : "false");
+    bool out = spanp_lex_compare(a, b) < 0;   /* one memcmp pass */
+    SPAN_LOG("[span_is_less]: exit -> %s", out ? "true" : "false");
     return out;
 }
 
@@ -528,7 +519,7 @@ bool span_is_greater(const Span* a, const Span* b) {
         SPAN_LOG("[span_is_greater]: one operand is NULL -> false");
         return false;
     }
-    bool out = span_is_less(b, a);
+    bool out = spanp_lex_compare(a, b) > 0;   
     SPAN_LOG("[span_is_greater]: exit -> %s", out ? "true" : "false");
 
     return out;
@@ -544,7 +535,18 @@ bool span_is_greater(const Span* a, const Span* b) {
  */
 bool span_is_less_or_equal(const Span* a, const Span* b) {
     SPAN_LOG("[span_is_less_or_equal]: enter a=%p b=%p", (const void*)a, (const void*)b);
-    bool out = span_is_less(a, b) || span_is_equal(a, b);
+
+    bool out;
+    if (a == b) {
+        out = true;                         
+    }
+    else if (!a || !b) {
+        out = false;
+    }
+    else {
+        int c = spanp_lex_compare(a, b);
+        out = (c < 0) || (c == 0 && a->size == b->size && a->elemSize == b->elemSize);
+    }
     SPAN_LOG("[span_is_less_or_equal]: exit -> %s", out ? "true" : "false");
 
     return out;
@@ -560,7 +562,18 @@ bool span_is_less_or_equal(const Span* a, const Span* b) {
  */
 bool span_is_greater_or_equal(const Span* a, const Span* b) {
     SPAN_LOG("[span_is_greater_or_equal]: enter a=%p b=%p", (const void*)a, (const void*)b);
-    bool out = span_is_greater(a, b) || span_is_equal(a, b);
+
+    bool out;
+    if (a == b) {
+        out = true;                        
+    }
+    else if (!a || !b) {
+        out = false;
+    }
+    else {
+        int c = spanp_lex_compare(a, b);
+        out = (c > 0) || (c == 0 && a->size == b->size && a->elemSize == b->elemSize);
+    }
     SPAN_LOG("[span_is_greater_or_equal]: exit -> %s", out ? "true" : "false");
 
     return out;
@@ -656,12 +669,6 @@ const void* span_cend(const Span* s) {
  * @brief Pointer to the LAST element (the "first" of the reverse walk).
  *
  * The natural reverse-iteration loop:
- *
- * @code
- * for (void* p = span_rbegin(&s); p != NULL; p = span_decrement(&s, p)) {
- *     // ... use *p ...
- * }
- * @endcode
  *
  * @param s Span pointer.
  * @return Pointer to `data + (size - 1) * elemSize`, or NULL if @p s
@@ -787,11 +794,6 @@ void* span_increment(const Span* s, void* ptr) {
  * below begin).
  *
  * This is what makes the reverse-walk loop terminate cleanly:
- *
- * @code
- * for (void* p = span_rbegin(&s); p != NULL; p = span_decrement(&s, p))
- *     // ...
- * @endcode
  *
  * @param s   Span over which iteration is happening.
  * @param ptr Current iterator pointer.

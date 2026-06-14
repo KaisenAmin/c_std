@@ -5,21 +5,12 @@
  *
  * std::queue-style FIFO adapter over Vector.
  *
- * Error model
- * -----------
- *   - No global error state. Failures are reported through the return
- *     value: NULL for pointer-returning functions, false for bool-
- *     returning ones, 0 for size_t observers, "no-op" for void mutators.
- *   - Diagnostics are emitted through QUEUE_LOG (opt-in via the
- *     QUEUE_LOGGING_ENABLE macro).
- *   - No library function ever calls exit(), abort(), or assert().
- *   - Every public function is NULL-safe in the documented sense (see
- *     each function's contract).
- *
  * Container model
  * ---------------
- *   - Storage is a contiguous Vector owned by the Queue. Push goes to
- *     the back; pop drops the front (and shifts the remainder one slot).
+ *   - Storage is a contiguous Vector owned by the Queue, used as a ring:
+ *     push appends at the back, pop advances a `frontIndex` (no shift), so
+ *     the live elements are vec[frontIndex .. size-1]. The dead front prefix
+ *     left by pops is reclaimed in bulk on push when the buffer fills.
  *   - All element pointers returned by `queue_front`, `queue_back`,
  *     `queue_at`, and `queue_emplace` are BORROWED — they live as long
  *     as the underlying vector buffer isn't reallocated. Any push /
@@ -27,15 +18,51 @@
  *
  * Performance note
  * ----------------
- *   `queue_pop` is O(n) because the underlying vector is contiguous.
- *   If you need O(1) pop semantics, prefer a deque- or linked-list-
- *   backed FIFO.
+ *   push and pop are both O(1) amortized (pop is a plain index bump; the
+ *   compaction that reclaims the dead prefix runs at most once per O(n)
+ *   pushes). The hot accessors are inlined in queue.h.
  */
 
 #include <stdlib.h>
 #include <string.h>
 #include "queue.h"
 #include "../algorithm/algorithm.h"
+
+
+
+static void qbuf_compact(Queue* q) {
+    Vector* v = q->vec;
+    if (q->frontIndex > 0) {
+        size_t live = v->size - q->frontIndex;
+        if (live > 0) {
+            memmove(v->items,
+                    (char*)v->items + q->frontIndex * v->itemSize,
+                    live * v->itemSize);
+        }
+        v->size = live;
+        q->frontIndex = 0;
+    }
+}
+
+static int qbuf_lex_compare(const Queue* q1, const Queue* q2) {
+    size_t isz  = q1->vec->itemSize;
+    size_t n1   = q1->vec->size - q1->frontIndex;
+    size_t n2   = q2->vec->size - q2->frontIndex;
+    size_t minN = (n1 < n2) ? n1 : n2;
+    const char* a = (const char*)q1->vec->items + q1->frontIndex * isz;
+    const char* b = (const char*)q2->vec->items + q2->frontIndex * isz;
+
+    for (size_t i = 0; i < minN; ++i) {
+        int c = memcmp(a + i * isz, b + i * isz, isz);
+        if (c != 0) {
+            return (c < 0) ? -1 : 1;
+        }
+    }
+    if (n1 != n2) {
+        return (n1 < n2) ? -1 : 1;
+    }
+    return 0;
+}
 
 
 
@@ -53,13 +80,6 @@
  *           - Queue-header malloc failure
  *           - underlying vector_create failure
  *
- * @code
- * Queue* q = queue_create(sizeof(int));
- * if (!q) { return; }   // OOM or bad itemSize
- * int x = 42;
- * queue_push(q, &x);
- * queue_deallocate(q);
- * @endcode
  */
 Queue* queue_create(size_t itemSize) {
     QUEUE_LOG("[queue_create]: enter itemSize=%zu", itemSize);
@@ -81,6 +101,7 @@ Queue* queue_create(size_t itemSize) {
         free(q);
         return NULL;
     }
+    q->frontIndex = 0;
     QUEUE_LOG("[queue_create]: exit ok q=%p vec=%p", (void*)q, (void*)q->vec);
     return q;
 }
@@ -111,14 +132,14 @@ Queue* queue_copy(const Queue* src) {
         return NULL;
     }
 
-    size_t n = vector_size(src->vec);
+    size_t n = src->vec->size - src->frontIndex;
     if (n > 0 && !vector_reserve(dst->vec, n)) {
         QUEUE_LOG("[queue_copy]: vector_reserve(%zu) failed -> NULL", n);
         queue_deallocate(dst);
         return NULL;
     }
     for (size_t i = 0; i < n; ++i) {
-        void* elem = vector_at(src->vec, i);
+        void* elem = vector_at(src->vec, src->frontIndex + i);
         if (!elem || !vector_push_back(dst->vec, elem)) {
             QUEUE_LOG("[queue_copy]: copy failed at index %zu -> NULL", i);
             queue_deallocate(dst);
@@ -163,14 +184,15 @@ bool queue_assign(Queue* dest, const Queue* src) {
     }
 
     vector_clear(dest->vec);
+    dest->frontIndex = 0;
 
-    size_t n = vector_size(src->vec);
+    size_t n = src->vec->size - src->frontIndex;
     if (n > 0 && !vector_reserve(dest->vec, n)) {
         QUEUE_LOG("[queue_assign]: reserve(%zu) failed -> false", n);
         return false;
     }
     for (size_t i = 0; i < n; ++i) {
-        void* elem = vector_at(src->vec, i);
+        void* elem = vector_at(src->vec, src->frontIndex + i);
         if (!elem || !vector_push_back(dest->vec, elem)) {
             QUEUE_LOG("[queue_assign]: push_back failed at index %zu -> false", i);
             return false;
@@ -202,26 +224,6 @@ void queue_deallocate(Queue* q) {
 
     free(q);
     QUEUE_LOG("[queue_deallocate]: exit (queue header freed)");
-}
-
-
-/**
- * @brief Number of elements currently in the queue.
- *
- * @param q Queue pointer. NULL returns 0.
- * @return Element count, mirroring `std::queue::size`.
- */
-size_t queue_size(const Queue* q) {
-    QUEUE_LOG("[queue_size]: enter q=%p", (const void*)q);
-
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_size]: NULL receiver -> 0");
-        return 0;
-    }
-    size_t out = vector_size(q->vec);
-    QUEUE_LOG("[queue_size]: exit -> %zu", out);
-
-    return out;
 }
 
 
@@ -269,104 +271,6 @@ size_t queue_item_size(const Queue* q) {
 
 
 /**
- * @brief Returns true if the queue has no elements (or is NULL).
- *
- * @param q Queue pointer. NULL is treated as empty (returns true).
- * @return true if `q == NULL` or `queue_size(q) == 0`.
- */
-bool queue_empty(const Queue* q) {
-    QUEUE_LOG("[queue_empty]: enter q=%p", (const void*)q);
-
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_empty]: NULL receiver -> true");
-        return true;
-    }
-    bool out = vector_is_empty(q->vec);
-    QUEUE_LOG("[queue_empty]: exit -> %s", out ? "true" : "false");
-
-    return out;
-}
-
-
-/**
- * @brief Borrowed pointer to the FRONT (oldest, FIFO peek) element.
- *
- * @param q Queue pointer.
- * @return Pointer to the next element @ref queue_pop will remove,
- *         or NULL if @p q is NULL or empty.
- */
-void* queue_front(const Queue* q) {
-    QUEUE_LOG("[queue_front]: enter q=%p", (const void*)q);
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_front]: NULL receiver -> NULL");
-        return NULL;
-    }
-    if (vector_is_empty(q->vec)) {
-        QUEUE_LOG("[queue_front]: empty queue -> NULL");
-        return NULL;
-    }
-    void* out = vector_front(q->vec);
-    QUEUE_LOG("[queue_front]: exit -> %p", out);
-
-    return out;
-}
-
-
-/**
- * @brief Borrowed pointer to the BACK (newest) element.
- *
- * @param q Queue pointer.
- * @return Pointer to the most recently pushed element, or NULL if
- *         @p q is NULL or empty.
- */
-void* queue_back(const Queue* q) {
-    QUEUE_LOG("[queue_back]: enter q=%p", (const void*)q);
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_back]: NULL receiver -> NULL");
-        return NULL;
-    }
-    if (vector_is_empty(q->vec)) {
-        QUEUE_LOG("[queue_back]: empty queue -> NULL");
-        return NULL;
-    }
-    void* out = vector_back(q->vec);
-    QUEUE_LOG("[queue_back]: exit -> %p", out);
-
-    return out;
-}
-
-
-/**
- * @brief Bounds-checked random-access borrowed pointer.
- *
- * Index 0 is the front (next to pop), index `size - 1` is the back.
- *
- * @param q     Queue pointer.
- * @param index Zero-based element index.
- *
- * @return Element pointer, or NULL when @p q is NULL or
- *         `index >= queue_size(q)`.
- */
-void* queue_at(const Queue* q, size_t index) {
-    QUEUE_LOG("[queue_at]: enter q=%p index=%zu", (const void*)q, index);
-
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_at]: NULL receiver -> NULL");
-        return NULL;
-    }
-    if (index >= vector_size(q->vec)) {
-        QUEUE_LOG("[queue_at]: out of bounds (size=%zu, index=%zu) -> NULL", vector_size(q->vec), index);
-        return NULL;
-    }
-
-    void* out = vector_at(q->vec, index);
-    QUEUE_LOG("[queue_at]: exit -> %p", out);
-
-    return out;
-}
-
-
-/**
  * @brief Push a copy of @p item onto the back of the queue.
  *
  * Copies exactly `queue_item_size(q)` bytes from @p item into the
@@ -379,11 +283,6 @@ void* queue_at(const Queue* q, size_t index) {
  * @return true on success, false on NULL inputs or underlying vector
  *         push failure (e.g. OOM).
  *
- * @code
- * Queue* q = queue_create(sizeof(int));
- * for (int i = 1; i <= 5; ++i) queue_push(q, &i);
- * // queue_front -> 1, queue_back -> 5
- * @endcode
  */
 bool queue_push(Queue* q, const void* item) {
     QUEUE_LOG("[queue_push]: enter q=%p item=%p", (void*)q, item);
@@ -391,6 +290,10 @@ bool queue_push(Queue* q, const void* item) {
     if (!q || !q->vec || !item) {
         QUEUE_LOG("[queue_push]: NULL receiver / item -> false");
         return false;
+    }
+
+    if (q->vec->size == q->vec->capacitySize && q->frontIndex > 0) {
+        qbuf_compact(q);
     }
     if (!vector_push_back(q->vec, item)) {
         QUEUE_LOG("[queue_push]: vector_push_back failed -> false");
@@ -429,6 +332,9 @@ void* queue_emplace(Queue* q, const void* item, size_t itemSize) {
         QUEUE_LOG("[queue_emplace]: item-size mismatch (%zu vs %zu) -> NULL", itemSize, q->vec->itemSize);
         return NULL;
     }
+    if (q->vec->size == q->vec->capacitySize && q->frontIndex > 0) {
+        qbuf_compact(q);
+    }
     if (!vector_emplace_back(q->vec, (void*)item, itemSize)) {
         QUEUE_LOG("[queue_emplace]: vector_emplace_back failed -> NULL");
         return NULL;
@@ -437,36 +343,6 @@ void* queue_emplace(Queue* q, const void* item, size_t itemSize) {
     QUEUE_LOG("[queue_emplace]: exit -> %p (new size = %zu)", out, vector_size(q->vec));
 
     return out;
-}
-
-
-/**
- * @brief Drop the FRONT element (the next one a peek would return).
- *
- * O(n) — shifts the remaining `size - 1` elements one slot left in the
- * underlying vector. No-op on NULL or empty queue.
- *
- * Iterator / pointer invalidation: any borrowed pointer obtained from
- * `queue_front` / `queue_back` / `queue_at` / `queue_emplace` BEFORE
- * this call should be considered stale afterwards.
- *
- * @param q Queue to mutate.
- */
-void queue_pop(Queue* q) {
-    QUEUE_LOG("[queue_pop]: enter q=%p", (void*)q);
-
-    if (!q || !q->vec) {
-        QUEUE_LOG("[queue_pop]: NULL receiver, no-op");
-        return;
-    }
-    if (vector_is_empty(q->vec)) {
-        QUEUE_LOG("[queue_pop]: empty queue, no-op");
-        return;
-    }
-
-    QUEUE_LOG("[queue_pop]: erasing front (size before = %zu)", vector_size(q->vec));
-    vector_erase(q->vec, 0, 1);
-    QUEUE_LOG("[queue_pop]: exit (size after = %zu)", vector_size(q->vec));
 }
 
 
@@ -524,7 +400,11 @@ void queue_swap(Queue* q1, Queue* q2) {
     q1->vec = q2->vec;
     q2->vec = tmp;
 
-    QUEUE_LOG("[queue_swap]: exit (q1.size=%zu, q2.size=%zu)", vector_size(q1->vec), vector_size(q2->vec));
+    size_t tf = q1->frontIndex;
+    q1->frontIndex = q2->frontIndex;
+    q2->frontIndex = tf;
+
+    QUEUE_LOG("[queue_swap]: exit (q1.size=%zu, q2.size=%zu)", q1->vec->size - q1->frontIndex, q2->vec->size - q2->frontIndex);
 }
 
 
@@ -550,7 +430,9 @@ void queue_sort(Queue* q, QueueCompareFunc comp) {
         QUEUE_LOG("[queue_sort]: NULL receiver or comp, no-op");
         return;
     }
-    size_t n = vector_size(q->vec);
+    /* Slide the live run to index 0 so vector_data() is the contiguous sort base. */
+    qbuf_compact(q);
+    size_t n = q->vec->size;
     algorithm_sort(vector_data(q->vec), n, q->vec->itemSize, comp);
 
     QUEUE_LOG("[queue_sort]: exit (sorted %zu elements)", n);
@@ -579,7 +461,12 @@ bool queue_is_equal(const Queue* q1, const Queue* q2) {
         QUEUE_LOG("[queue_is_equal]: one receiver NULL -> false");
         return false;
     }
-    bool out = vector_is_equal(q1->vec, q2->vec);
+    if ((q1->vec->size - q1->frontIndex) != (q2->vec->size - q2->frontIndex) ||
+        q1->vec->itemSize != q2->vec->itemSize) {
+        QUEUE_LOG("[queue_is_equal]: size / itemSize mismatch -> false");
+        return false;
+    }
+    bool out = (qbuf_lex_compare(q1, q2) == 0);
     QUEUE_LOG("[queue_is_equal]: exit -> %s", out ? "true" : "false");
 
     return out;
@@ -618,7 +505,7 @@ bool queue_is_less(const Queue* q1, const Queue* q2) {
         QUEUE_LOG("[queue_is_less]: one receiver NULL -> false");
         return false;
     }
-    bool out = vector_is_less(q1->vec, q2->vec);
+    bool out = (qbuf_lex_compare(q1, q2) < 0);
     QUEUE_LOG("[queue_is_less]: exit -> %s", out ? "true" : "false");
 
     return out;
@@ -641,7 +528,7 @@ bool queue_is_greater(const Queue* q1, const Queue* q2) {
         return false;
     }
 
-    bool out = vector_is_greater(q1->vec, q2->vec);
+    bool out = (qbuf_lex_compare(q1, q2) > 0);
     QUEUE_LOG("[queue_is_greater]: exit -> %s", out ? "true" : "false");
 
     return out;

@@ -44,7 +44,7 @@ static int is_operator(char ch) {
  * @param tokens The output array of tokens.
  * @return The number of tokens parsed, or -1 on error.
  */
-static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
+static int tokenize(const char *expr, Token tokens[MAX_TOKENS], const char **var_names, const double *var_values, size_t var_count) {
     int pos = 0;       // current position in expr
     int tcount = 0;    // number of tokens produced
 
@@ -55,21 +55,12 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
             continue;
         }
 
-        // Decide if the current '+' or '-' is unary (start-of-expression,
-        // after an operator, or after a left parenthesis):
-        //   - followed by a digit / '.'  -> fold into the next numeric
-        //     literal so "-5", "3 + -2", "(-3)*4" parse correctly. Also
-        //     tolerate whitespace between sign and digit ("- 5").
-        //   - followed by '('             -> emit a synthetic 0, then let
-        //     the operator branch handle the sign as a binary op. Lets
-        //     us evaluate "-(5+1)", "-(-5)" correctly.
         int is_unary_sign = 0;
         int paren_unary   = 0;
         
         if ((expr[pos] == '-' || expr[pos] == '+')) {
             if (tcount == 0 ||
-                tokens[tcount - 1].type == TOKEN_OPERATOR ||
-                tokens[tcount - 1].type == TOKEN_PAREN_LEFT) {
+                tokens[tcount - 1].type == TOKEN_OPERATOR || tokens[tcount - 1].type == TOKEN_PAREN_LEFT) {
                 int look = pos + 1;
 
                 while (isspace((unsigned char)expr[look])) {
@@ -77,8 +68,13 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
                 }
                 if (isdigit((unsigned char)expr[look]) || expr[look] == '.') {
                     is_unary_sign = 1;
-                } 
+                }
                 else if (expr[look] == '(') {
+                    paren_unary = 1;
+                }
+                else if (var_count > 0 && (isalpha((unsigned char)expr[look]) || expr[look] == '_')) {
+                    /* "-x" / "+x": emit a synthetic 0 and let the operator
+                       branch treat the sign as binary -> "0 - x". */
                     paren_unary = 1;
                 }
             }
@@ -90,10 +86,10 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
                 EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
                 return -1;
             }
+
             tokens[tcount].type  = TOKEN_NUMBER;
             tokens[tcount].value = 0.0;
             tcount++;
-            // Don't advance pos — the operator branch below consumes the sign.
         }
 
         // -5 / + 5 form: consume sign + any whitespace, then parse the
@@ -120,6 +116,7 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
                 EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
                 return -1;
             }
+
             tokens[tcount].type = TOKEN_NUMBER;
             tokens[tcount].value = val;
             tcount++;
@@ -132,6 +129,7 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
             char *endptr;
             errno = 0;
             double val = strtod(&expr[pos], &endptr);
+
             if (errno != 0) {
                 EVALEXPR_LOG("[tokenize] : Error converting number.");
                 return -1;
@@ -151,6 +149,42 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
             tokens[tcount].value = val;
             tcount++;
             pos = endptr - expr;
+
+            continue;
+        }
+
+        if (var_count > 0 && (isalpha((unsigned char)expr[pos]) || expr[pos] == '_')) {
+            int start = pos;
+
+            while (isalnum((unsigned char)expr[pos]) || expr[pos] == '_') {
+                pos++;
+            }
+            int len = pos - start;
+
+            double val = 0.0;
+            int found = 0;
+            for (size_t v = 0; v < var_count; v++) {
+                if (var_names[v] && (int)strlen(var_names[v]) == len && strncmp(var_names[v], &expr[start], (size_t)len) == 0) {
+                    val = var_values[v];
+                    found = 1;
+
+                    break;
+                }
+            }
+
+            if (!found) {
+                EVALEXPR_LOG("[tokenize] : Undefined variable in expression.");
+                return -1;
+            }
+            if (tcount >= MAX_TOKENS) {
+                EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
+                return -1;
+            }
+
+            tokens[tcount].type = TOKEN_NUMBER;
+            tokens[tcount].value = val;
+            tcount++;
+
             continue;
         }
 
@@ -165,6 +199,7 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
             tokens[tcount].op = expr[pos];
             tcount++;
             pos++;
+
             continue;
         }
 
@@ -174,9 +209,11 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
                 EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
                 return -1;
             }
+
             tokens[tcount].type = TOKEN_PAREN_LEFT;
             tcount++;
             pos++;
+
             continue;
         }
         if (expr[pos] == ')') {
@@ -184,9 +221,11 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS]) {
                 EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
                 return -1;
             }
+
             tokens[tcount].type = TOKEN_PAREN_RIGHT;
             tcount++;
             pos++;
+
             continue;
         }
 
@@ -353,7 +392,7 @@ double eval_expr(const char *expr) {
     Token tokens[MAX_TOKENS];
     Token rpnTokens[MAX_TOKENS];
 
-    int numTokens = tokenize(expr, tokens);
+    int numTokens = tokenize(expr, tokens, NULL, NULL, 0);
     if (numTokens < 0) {
         EVALEXPR_LOG("[eval_expr] : Tokenization failed for expression: %s", expr);
         return NAN;
@@ -398,7 +437,7 @@ double eval_expr_strict(const char *expr, int *error) {
     Token tokens[MAX_TOKENS];
     Token rpnTokens[MAX_TOKENS];
 
-    int numTokens = tokenize(expr, tokens);
+    int numTokens = tokenize(expr, tokens, NULL, NULL, 0);
     if (numTokens < 0) {
         EVALEXPR_LOG("[eval_expr_strict] : Tokenization failed for expression: %s", expr);
         if (error) {
@@ -434,6 +473,88 @@ double eval_expr_strict(const char *expr, int *error) {
 
 
 /**
+ * Evaluates an arithmetic expression that may reference named variables.
+ *
+ * Works exactly like eval_expr_strict(), but the expression may also contain
+ * identifiers (e.g. "x*x + 2*y - rate"). Each identifier
+ * (`[A-Za-z_][A-Za-z0-9_]*`) is looked up in the caller-supplied table and
+ * replaced by its bound value before evaluation. A unary sign in front of a
+ * variable works too: "-x" evaluates to the negation of x. Any identifier not
+ * present in the table is a tokenize error. This turns the evaluator into a
+ * small formula engine for config-driven or user-defined arithmetic.
+ *
+ * The table is two parallel arrays: names[i] is bound to values[i], for i in
+ * [0, count). Names are matched case-sensitively and in full. If the same name
+ * appears more than once, the first match wins.
+ *
+ * @param expr   A null-terminated C string containing the expression.
+ * @param names  Array of `count` variable names (ignored when count == 0).
+ * @param values Array of `count` variable values (ignored when count == 0).
+ * @param count  Number of entries in the variable table.
+ * @param error  Optional out-param: set to EVAL_EXPR_SUCCESS (0) on success or
+ *               one of the EVAL_EXPR_ERROR_* codes on failure. May be NULL.
+ * @return The computed value as a double, or NAN on error.
+ *
+ * @code
+ * const char* names[]  = { "x", "y" };
+ * double      values[] = { 3.0, 4.0 };
+ * int err;
+ * double r = eval_expr_with_vars("x*x + y*y", names, values, 2, &err);
+ * // err == EVAL_EXPR_SUCCESS, r == 25.0
+ * @endcode
+ */
+double eval_expr_with_vars(const char *expr, const char **names, const double *values, size_t count, int *error) {
+    if (!expr || (count > 0 && (!names || !values))) {
+        EVALEXPR_LOG("[eval_expr_with_vars] : Error: NULL expression or var table.");
+        if (error) {
+            *error = EVAL_EXPR_ERROR_TOKENIZE;
+        }
+        return NAN;
+    }
+    EVALEXPR_LOG("[eval_expr_with_vars] : Evaluating expression: %s", expr);
+
+    Token tokens[MAX_TOKENS];
+    Token rpnTokens[MAX_TOKENS];
+
+    int numTokens = tokenize(expr, tokens, names, values, count);
+    if (numTokens < 0) {
+        EVALEXPR_LOG("[eval_expr_with_vars] : Tokenization failed for expression: %s", expr);
+        if (error) {
+            *error = EVAL_EXPR_ERROR_TOKENIZE;
+        }
+        return NAN;
+    }
+
+    int rpnCount = shunting_yard(tokens, numTokens, rpnTokens);
+    if (rpnCount < 0) {
+        EVALEXPR_LOG("[eval_expr_with_vars] : Shunting-yard conversion failed for expression: %s", expr);
+        if (error) {
+            *error = EVAL_EXPR_ERROR_SHUNTING;
+        }
+
+        return NAN;
+    }
+
+    double result = 0.0;
+    if (eval_rpn(rpnTokens, rpnCount, &result) != 0) {
+        EVALEXPR_LOG("[eval_expr_with_vars] : RPN evaluation failed for expression: %s", expr);
+        if (error) {
+            *error = EVAL_EXPR_ERROR_EVAL_RPN;
+        }
+
+        return NAN;
+    }
+
+    EVALEXPR_LOG("[eval_expr_with_vars] : Expression evaluated successfully, result = %g", result);
+    if (error) {
+        *error = EVAL_EXPR_SUCCESS;
+    }
+
+    return result;
+}
+
+
+/**
  * Converts an arithmetic expression from infix notation to a string in Reverse Polish Notation (RPN).
  *
  * The returned string is dynamically allocated. The caller must free it.
@@ -453,7 +574,7 @@ char *eval_expr_to_rpn_string(const char *expr) {
     char buffer[1024] = {0};
     size_t pos = 0;
 
-    int numTokens = tokenize(expr, tokens);
+    int numTokens = tokenize(expr, tokens, NULL, NULL, 0);
     if (numTokens < 0) {
         EVALEXPR_LOG("[eval_expr_to_rpn_string] : Tokenization failed for expression: %s", expr);
         return NULL;
@@ -469,6 +590,7 @@ char *eval_expr_to_rpn_string(const char *expr) {
     for (int i = 0; i < rpnCount; i++) {
         if (rpnTokens[i].type == TOKEN_NUMBER) {
             int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%g ", rpnTokens[i].value);
+
             if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
                 EVALEXPR_LOG("[eval_expr_to_rpn_string] : Buffer overflow while building RPN string for expression: %s", expr);
                 break;
@@ -477,6 +599,7 @@ char *eval_expr_to_rpn_string(const char *expr) {
         } 
         else if (rpnTokens[i].type == TOKEN_OPERATOR) {
             int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%c ", rpnTokens[i].op);
+
             if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
                 EVALEXPR_LOG("[eval_expr_to_rpn_string] : Buffer overflow while building RPN string for expression: %s", expr);
                 break;
@@ -514,16 +637,18 @@ int eval_expr_is_valid(const char *expr) {
     Token tokens[MAX_TOKENS];
     Token rpnTokens[MAX_TOKENS];
 
-    int numTokens = tokenize(expr, tokens);
+    int numTokens = tokenize(expr, tokens, NULL, NULL, 0);
     if (numTokens < 0) {
         EVALEXPR_LOG("[eval_expr_is_valid] : Tokenization failed for expression: %s", expr);
         return 0;
     }
+
     int rpnCount = shunting_yard(tokens, numTokens, rpnTokens);
     if (rpnCount < 0) {
         EVALEXPR_LOG("[eval_expr_is_valid] : Shunting-yard conversion failed for expression: %s", expr);
         return 0;
     }
+
     EVALEXPR_LOG("[eval_expr_is_valid] : Expression is valid: %s", expr);
     return 1;
 }
@@ -580,8 +705,9 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
         return NULL;
     }
     EVALEXPR_LOG("[eval_expr_tokenize] : Tokenizing expression: %s", expr);
+
     Token tokens[MAX_TOKENS];
-    int count = tokenize(expr, tokens);
+    int count = tokenize(expr, tokens, NULL, NULL, 0);
 
     if (count < 0) {
         EVALEXPR_LOG("[eval_expr_tokenize] : Tokenization failed for expression: %s", expr);
@@ -624,12 +750,14 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
                 strncpy(buffer, "?", sizeof(buffer) - 1);
                 break;
         }
+
         tokenStrs[i] = strdup(buffer);
         if (!tokenStrs[i]) {
             EVALEXPR_LOG("[eval_expr_tokenize] : Memory allocation failed for token %d", i);
             for (int j = 0; j < i; j++) {
                 free(tokenStrs[j]);
             }
+
             free(tokenStrs);
             if (numTokens) {
                 *numTokens = 0;
@@ -637,8 +765,40 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
             return NULL;
         }
     }
+
     EVALEXPR_LOG("[eval_expr_tokenize] : Successfully allocated token strings array for %d tokens", count);
     return tokenStrs;
+}
+
+
+/**
+ * Frees the token-string array returned by eval_expr_tokenize().
+ *
+ * The matching deallocator for eval_expr_tokenize(): it frees each individual
+ * token string and then the array itself, so callers never have to unwind the
+ * allocation by hand. Safe to call with a NULL array (no-op). Pass the same
+ * `count` that eval_expr_tokenize() reported through its `numTokens` out-param.
+ *
+ * @param tokens The array returned by eval_expr_tokenize(). NULL is allowed.
+ * @param count  The number of token strings in the array.
+ *
+ * @code
+ * int n = 0;
+ * char** toks = eval_expr_tokenize("3 + 4 * 2", &n);
+ * // ... use toks[0..n) ...
+ * eval_expr_free_tokens(toks, n);
+ * @endcode
+ */
+void eval_expr_free_tokens(char **tokens, int count) {
+    EVALEXPR_LOG("[eval_expr_free_tokens] : Freeing %d token strings (tokens=%p)", count, (void*)tokens);
+    if (!tokens) {
+        return;
+    }
+    for (int i = 0; i < count; i++) {
+        free(tokens[i]);
+    }
+    
+    free(tokens);
 }
 
 
@@ -659,7 +819,7 @@ void eval_expr_print_debug(const char *expr) {
     EVALEXPR_LOG("[eval_expr_print_debug] : Debugging expression: %s", expr);
 
     Token tokens[MAX_TOKENS];
-    int numTokens = tokenize(expr, tokens);
+    int numTokens = tokenize(expr, tokens, NULL, NULL, 0);
     if (numTokens < 0) {
         printf("Debug: Failed to tokenize the expression.\n");
         return;

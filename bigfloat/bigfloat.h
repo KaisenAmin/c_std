@@ -47,6 +47,7 @@ typedef struct {
 BigFloat*  bigfloat_create                    (void);
 BigFloat*  bigfloat_from_string               (const char* str);
 BigFloat*  bigfloat_from_double               (double value);
+BigFloat*  bigfloat_copy                      (const BigFloat* src);
 
 
 /* ------------------------------------------------------------------ */
@@ -126,13 +127,17 @@ BigFloat*  bigfloat_trunc                     (const BigFloat* a);
 int        bigfloat_compare                   (const BigFloat* a, const BigFloat* b);
 bool       bigfloat_is_zero                   (const BigFloat* a);
 bool       bigfloat_is_negative               (const BigFloat* a);
+bool       bigfloat_is_nan                    (const BigFloat* a);
+bool       bigfloat_is_inf                    (const BigFloat* a);
+bool       bigfloat_is_finite                 (const BigFloat* a);
 
 
 /* ------------------------------------------------------------------ */
-/* Formatting                                                         */
+/* Formatting / conversion                                            */
 /* ------------------------------------------------------------------ */
 
 char*      bigfloat_to_string                 (const BigFloat* a);
+double     bigfloat_to_double                 (const BigFloat* a);
 
 
 #ifdef __cplusplus

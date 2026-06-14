@@ -50,6 +50,10 @@ struct ezxml {
     ezxml_t  sibling;
     ezxml_t  ordered;
     ezxml_t  child;
+    ezxml_t  last;      /* cached tail of the ordered child list, so appending a
+                         * child is O(1) instead of scanning to the end. Parsing
+                         * appends children in document order, which made
+                         * ezxml_insert O(n^2) for many children of one parent. */
     ezxml_t  parent;
     short    flags;
 };
@@ -90,63 +94,66 @@ struct XmlAttribute {
 /* Document construction / parsing                                    */
 /* ------------------------------------------------------------------ */
 
-XmlDocument* xml_parse_file                   (const char* filename);
-XmlDocument* xml_parse_string                 (const char* xml_content);
-XmlDocument* xml_parse_file_stream            (FILE* fp);
-XmlDocument* xml_create_document              (const char* root_element_name);
+XmlDocument*  xml_parse_file                   (const char* filename);
+XmlDocument*  xml_parse_string                 (const char* xml_content);
+XmlDocument*  xml_parse_file_stream            (FILE* fp);
+XmlDocument*  xml_create_document              (const char* root_element_name);
 
 
 /* ------------------------------------------------------------------ */
 /* Document I/O and destruction                                       */
 /* ------------------------------------------------------------------ */
 
-int          xml_save_to_file                 (XmlDocument* doc, const char* filename);
-char*        xml_to_string                    (XmlDocument* doc);
-void         xml_deallocate_document          (XmlDocument* doc);
+int           xml_save_to_file                 (XmlDocument* doc, const char* filename);
+char*         xml_to_string                    (XmlDocument* doc);
+void          xml_deallocate_document          (XmlDocument* doc);
 
 
 /* ------------------------------------------------------------------ */
 /* Element construction / tree mutation                               */
 /* ------------------------------------------------------------------ */
 
-XmlNode*     xml_create_element               (XmlDocument* doc, const char* tag_name);
-void         xml_append_child                 (XmlNode* parent, XmlNode* child);
-void         xml_cut                          (XmlNode* node);
-void         xml_deallocate_node              (XmlNode* node);
+XmlNode*      xml_create_element               (XmlDocument* doc, const char* tag_name);
+void          xml_append_child                 (XmlNode* parent, XmlNode* child);
+void          xml_cut                          (XmlNode* node);
+void          xml_deallocate_node              (XmlNode* node);
 
 
 /* ------------------------------------------------------------------ */
 /* Element accessors / queries                                        */
 /* ------------------------------------------------------------------ */
 
-XmlNode*     xml_get_root                     (XmlDocument* doc);
-XmlNode*     xml_get_element                  (XmlNode* root, ...);
-XmlNode*     xml_find_element_by_tag          (XmlNode* root, const char* tag_name);
-XmlNode*     xml_find_element_by_attribute    (XmlNode* root, const char* attr_name, const char* attr_value);
-XmlNode**    xml_get_children                 (XmlNode* node, size_t* out_count);
-const char*  xml_get_tag_name                 (XmlNode* node);
-const char*  xml_get_element_text             (XmlNode* element);
-const char*  xml_get_element_attribute        (XmlNode* element, const char* name);
-size_t       xml_count_children               (const XmlNode* node);
-size_t       xml_count_elements_by_tag        (XmlNode* root, const char* tag_name);
+XmlNode*      xml_get_root                     (XmlDocument* doc);
+XmlNode*      xml_get_element                  (XmlNode* root, ...);
+XmlNode*      xml_find_element_by_tag          (XmlNode* root, const char* tag_name);
+XmlNode*      xml_find_element_by_attribute    (XmlNode* root, const char* attr_name, const char* attr_value);
+XmlNode**     xml_get_children                 (XmlNode* node, size_t* out_count);
+XmlNode**     xml_find_elements_by_tag         (XmlNode* root, const char* tag_name, size_t* out_count);
+const char*   xml_get_tag_name                 (XmlNode* node);
+const char*   xml_get_element_text             (XmlNode* element);
+const char*   xml_get_element_attribute        (XmlNode* element, const char* name);
+XmlAttribute* xml_get_attributes              (XmlNode* element, size_t* out_count);
+void          xml_free_attributes              (XmlAttribute* attributes);
+size_t        xml_count_children               (const XmlNode* node);
+size_t        xml_count_elements_by_tag        (XmlNode* root, const char* tag_name);
 
 
 /* ------------------------------------------------------------------ */
 /* Element mutators                                                   */
 /* ------------------------------------------------------------------ */
 
-void         xml_set_element_text             (XmlNode* element, const char* text);
-void         xml_set_element_attribute        (XmlNode* element, const char* name, const char* value);
-int          xml_remove_element_attribute     (XmlNode* element, const char* name);
+void          xml_set_element_text             (XmlNode* element, const char* text);
+void          xml_set_element_attribute        (XmlNode* element, const char* name, const char* value);
+int           xml_remove_element_attribute     (XmlNode* element, const char* name);
 
 
 /* ------------------------------------------------------------------ */
 /* Debug / printing / diagnostics                                     */
 /* ------------------------------------------------------------------ */
 
-void         xml_print                        (XmlNode* node);
-const char*  xml_get_error                    (XmlDocument* doc);
-const char** xml_get_processing_instructions  (XmlDocument* doc, const char* target);
+void          xml_print                        (XmlNode* node);
+const char*   xml_get_error                    (XmlDocument* doc);
+const char**  xml_get_processing_instructions  (XmlDocument* doc, const char* target);
 
 
 #ifdef __cplusplus

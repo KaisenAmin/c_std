@@ -94,9 +94,11 @@ char*        regex_match_group         (const RegexMatch* match, int group_index
 /* ------------------------------------------------------------------ */
 
 int          regex_test                (const char* pattern, const char* string, RegexFlags flags);
+int          regex_full_match          (const char* pattern, const char* string, RegexFlags flags);
 int          regex_count_matches       (const char* pattern, const char* string, RegexFlags flags);
 char*        regex_replace             (const char* pattern, const char* string, const char* replacement, RegexFlags flags);
 char*        regex_replace_first       (const char* pattern, const char* string, const char* replacement, RegexFlags flags);
+char*        regex_replace_groups      (const char* pattern, const char* string, const char* replacement, RegexFlags flags);
 char**       regex_split               (const char* pattern, const char* string, RegexFlags flags, int* out_count);
 void         regex_split_free          (char** tokens, int count);
 

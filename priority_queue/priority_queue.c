@@ -5,32 +5,6 @@
  *
  * std::priority_queue-style binary heap layered over Vector.
  *
- * Error model
- * -----------
- *   - No global error state. Failures are reported through the return
- *     value: NULL for pointer-returning functions, false for bool-
- *     returning ones, 0 for size_t observers, "no-op" for void mutators.
- *   - Diagnostics are emitted through PQUEUE_LOG (opt-in via the
- *     PQUEUE_LOGGING_ENABLE macro).
- *   - No library function ever calls exit(), abort(), or assert().
- *   - Every public function is NULL-safe in the documented sense (see
- *     each function's contract).
- *
- * Container model
- * ---------------
- *   - Storage is a contiguous Vector laid out as a 0-indexed binary
- *     heap: parent(i) = (i-1)/2, children(i) = 2i+1, 2i+2.
- *   - The comparator follows the qsort convention: `compare(a, b) > 0`
- *     means `a` has higher priority than `b` (a will bubble toward the
- *     top). For a min-heap, use a comparator that returns the negated
- *     value of an ascending one.
- *   - All element pointers returned by `priority_queue_top` /
- *     `priority_queue_front` / `priority_queue_back` /
- *     `priority_queue_emplace` are BORROWED and become invalid the
- *     moment the underlying vector buffer is reallocated. Any push,
- *     emplace, pop, reserve, clear, swap, copy-into, or assign can
- *     invalidate them.
- *
  * Performance
  * -----------
  *   - push: O(log n) amortised.
@@ -38,9 +12,14 @@
  *   - top / front / back / observers: O(1).
  *   - copy / assign: O(n); assign rebuilds the heap under dest's
  *     comparator via Floyd's bottom-up heapify (O(n)).
- *   - The internal heap_swap uses a 256-byte stack buffer so no malloc
- *     is performed for element-size moves up to that limit; larger
- *     elements are swapped in 256-byte chunks.
+ *   - sift-up / sift-down are hole-based (each level is a single element
+ *     move, not a 3-copy swap) and the moves go through pq_move, a
+ *     size-specialized copy that becomes one load/store for the common
+ *     element sizes instead of a memcpy call with a runtime length.
+ *   - pop overwrites the root with the last element (one move) rather than
+ *     swapping, since the old root is discarded immediately.
+ *   - The OOM fallback path (huge element + malloc failure) swaps in place
+ *     via pq_swap, a 256-byte stack buffer with chunking for the remainder.
  */
 
 #include <stdlib.h>
@@ -49,13 +28,26 @@
 
 
 
-static void heap_swap(char* a, char* b, size_t n) {
+static inline void pq_move(void* dst, const void* src, size_t n) {
+    switch (n) {
+        case 1:  memcpy(dst, src, 1);  break;
+        case 2:  memcpy(dst, src, 2);  break;
+        case 4:  memcpy(dst, src, 4);  break;
+        case 8:  memcpy(dst, src, 8);  break;
+        case 16: memcpy(dst, src, 16); break;
+        default: memcpy(dst, src, n);  break;
+    }
+}
+
+
+static void pq_swap(char* a, char* b, size_t n) {
     if (a == b || n == 0) {
         return;
     }
     char tmp[256];
     while (n > 0) {
         size_t chunk = (n > sizeof tmp) ? sizeof tmp : n;
+
         memcpy(tmp, a, chunk);
         memcpy(a,   b, chunk);
         memcpy(b,   tmp, chunk);
@@ -66,26 +58,51 @@ static void heap_swap(char* a, char* b, size_t n) {
 }
 
 
-static size_t heapify_up_idx(Vector* vec, size_t index, PQCompareFunc compare) {
-    if (!vec || !compare) {
+static size_t pq_sift_up(Vector* vec, size_t index, PQCompareFunc compare) {
+    if (!vec || !compare || index == 0) {
         return index;
     }
-
     char*  base = (char*)vec->items;
     size_t isz  = vec->itemSize;
-
     if (!base) {
         return index;
     }
 
+    size_t parent = (index - 1) / 2;
+    char*  cur = base + index * isz;
+    if (compare(cur, base + parent * isz) <= 0) {
+        return index;                       /* no bubble: zero data movement */
+    }
+
+    char  stackbuf[256];
+    char* tmp = (isz <= sizeof stackbuf) ? stackbuf : (char*)malloc(isz);
+    if (tmp) {
+        pq_move(tmp, cur, isz);
+        size_t hole = index;
+        while (hole > 0) {
+            size_t p = (hole - 1) / 2;
+            if (compare(tmp, base + p * isz) > 0) {
+                pq_move(base + hole * isz, base + p * isz, isz);
+                hole = p;
+            }
+            else {
+                break;
+            }
+        }
+        pq_move(base + hole * isz, tmp, isz);
+        if (tmp != stackbuf) {
+            free(tmp);
+        }
+        return hole;
+    }
+
+    /* OOM fallback (huge element + allocation failure): swap-based bubble. */
     while (index > 0) {
-        size_t parent = (index - 1) / 2;
-        char*  pp = base + parent * isz;
-        char*  cp = base + index  * isz;
-        if (compare(cp, pp) > 0) {
-            heap_swap(cp, pp, isz);
-            index = parent;
-        } 
+        size_t p = (index - 1) / 2;
+        if (compare(base + index * isz, base + p * isz) > 0) {
+            pq_swap(base + index * isz, base + p * isz, isz);
+            index = p;
+        }
         else {
             break;
         }
@@ -94,42 +111,69 @@ static size_t heapify_up_idx(Vector* vec, size_t index, PQCompareFunc compare) {
 }
 
 
-static void heapify_down(Vector* vec, size_t index, PQCompareFunc compare) {
+static void pq_sift_down(Vector* vec, size_t top, PQCompareFunc compare) {
     if (!vec || !compare) {
         return;
     }
     char*  base = (char*)vec->items;
     size_t isz  = vec->itemSize;
     size_t n    = vec->size;
-
-    if (!base || n == 0) {
+    if (!base || n == 0 || top >= n) {
         return;
     }
 
+    char  stackbuf[256];
+    char* tmp = (isz <= sizeof stackbuf) ? stackbuf : (char*)malloc(isz);
+    if (tmp) {
+        pq_move(tmp, base + top * isz, isz);
+        size_t hole = top;
+
+        for (;;) {
+            size_t child = 2 * hole + 1;
+            if (child >= n) {
+                break;
+            }
+            if (child + 1 < n && compare(base + (child + 1) * isz, base + child * isz) > 0) {
+                child++;
+            }
+            pq_move(base + hole * isz, base + child * isz, isz);
+            hole = child;
+        }
+
+        while (hole > top) {
+            size_t parent = (hole - 1) / 2;
+            if (compare(tmp, base + parent * isz) > 0) {
+                pq_move(base + hole * isz, base + parent * isz, isz);
+                hole = parent;
+            }
+            else {
+                break;
+            }
+        }
+        pq_move(base + hole * isz, tmp, isz);
+        if (tmp != stackbuf) {
+            free(tmp);
+        }
+        return;
+    }
+
+    size_t index = top;
     for (;;) {
         size_t left  = 2 * index + 1;
         size_t right = 2 * index + 2;
         size_t best  = index;
-        char*  bestp = base + best * isz;
 
-        if (left < n) {
-            char* lp = base + left * isz;
-            if (compare(lp, bestp) > 0) {
-                best = left;
-                bestp = lp;
-            }
+        if (left  < n && compare(base + left  * isz, base + best * isz) > 0) {
+            best = left;
         }
-        if (right < n) {
-            char* rp = base + right * isz;
-            if (compare(rp, bestp) > 0) {
-                best = right;
-                bestp = rp;
-            }
+        if (right < n && compare(base + right * isz, base + best * isz) > 0) {
+            best = right;
         }
         if (best == index) {
             break;
         }
-        heap_swap(base + index * isz, bestp, isz);
+
+        pq_swap(base + index * isz, base + best * isz, isz);
         index = best;
     }
 }
@@ -154,18 +198,6 @@ static void heapify_down(Vector* vec, size_t index, PQCompareFunc compare) {
  *           - `compare == NULL`
  *           - PriorityQueue-header malloc failure
  *           - underlying vector_create failure
- *
- * @code
- * static int max_int(const void* a, const void* b) {
- *     int x = *(const int*)a, y = *(const int*)b;
- *     return (x > y) - (x < y);     // ascending -> max-heap
- * }
- *
- * PriorityQueue* pq = priority_queue_create(sizeof(int), max_int);
- * int x = 42;
- * priority_queue_push(pq, &x);
- * priority_queue_deallocate(pq);
- * @endcode
  */
 PriorityQueue* priority_queue_create(size_t itemSize, PQCompareFunc compare) {
     PQUEUE_LOG("[priority_queue_create]: enter itemSize=%zu", itemSize);
@@ -301,7 +333,7 @@ bool priority_queue_assign(PriorityQueue* dest, const PriorityQueue* src) {
     }
     if (n > 1) {
         for (size_t i = (n / 2); i-- > 0; ) {
-            heapify_down(dest->vec, i, dest->compare);
+            pq_sift_down(dest->vec, i, dest->compare);
         }
     }
 
@@ -519,7 +551,7 @@ bool priority_queue_push(PriorityQueue* pq, const void* item) {
         PQUEUE_LOG("[priority_queue_push]: vector_push_back failed -> false");
         return false;
     }
-    size_t final_idx = heapify_up_idx(pq->vec, vector_size(pq->vec) - 1, pq->compare);
+    size_t final_idx = pq_sift_up(pq->vec, vector_size(pq->vec) - 1, pq->compare);
     (void)final_idx;
     PQUEUE_LOG("[priority_queue_push]: exit ok (new size = %zu, final idx = %zu)", vector_size(pq->vec), final_idx);
 
@@ -560,7 +592,7 @@ void* priority_queue_emplace(PriorityQueue* pq, const void* item, size_t itemSiz
         PQUEUE_LOG("[priority_queue_emplace]: vector_emplace_back failed -> NULL");
         return NULL;
     }
-    size_t final_idx = heapify_up_idx(pq->vec, vector_size(pq->vec) - 1, pq->compare);
+    size_t final_idx = pq_sift_up(pq->vec, vector_size(pq->vec) - 1, pq->compare);
     void* out = (char*)pq->vec->items + final_idx * pq->vec->itemSize;
     PQUEUE_LOG("[priority_queue_emplace]: exit -> %p (final idx = %zu, new size = %zu)", out, final_idx, vector_size(pq->vec));
 
@@ -595,10 +627,11 @@ void priority_queue_pop(PriorityQueue* pq) {
     if (n > 1) {
         char*  base = (char*)pq->vec->items;
         size_t isz  = pq->vec->itemSize;
-        heap_swap(base, base + (n - 1) * isz, isz);
+
+        pq_move(base, base + (n - 1) * isz, isz);
     }
-    vector_pop_back(pq->vec);
-    heapify_down(pq->vec, 0, pq->compare);
+    pq->vec->size--;   /* inlined vector_pop_back: size > 0 already checked above */
+    pq_sift_down(pq->vec, 0, pq->compare);
 
     PQUEUE_LOG("[priority_queue_pop]: exit (size %zu -> %zu)", n, vector_size(pq->vec));
 }

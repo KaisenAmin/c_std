@@ -93,6 +93,7 @@ char*              sysinfo_kernel_version          (void);
 char*              sysinfo_kernel_type             (void);
 char*              sysinfo_boot_unique_id          (void);
 char*              sysinfo_cpu_architecture        (void);
+char*              sysinfo_cpu_model               (void);
 char*              sysinfo_machine_host_name       (void);
 char*              sysinfo_machine_unique_id       (void);
 char*              sysinfo_pretty_product_name     (void);
@@ -132,6 +133,7 @@ char**             sysinfo_list_bluetooth_devices  (int* count);
 /* ------------------------------------------------------------------ */
 
 unsigned long long sysinfo_used_memory_bytes       (void);
+unsigned long long sysinfo_process_memory_bytes    (void);
 unsigned long long sysinfo_total_swap_bytes        (void);
 unsigned long long sysinfo_free_swap_bytes         (void);
 long               sysinfo_uptime_seconds          (void);

@@ -57,6 +57,7 @@ struct ConfigSection {
     ConfigEntry*  entries;
     size_t        entry_count;
     char*         comment;       /* trailing/leading section comment */
+    size_t        entry_capacity;/* allocated slots in `entries` (>= entry_count).*/
 };
 
 
@@ -67,6 +68,7 @@ struct ConfigFile {
     char*           default_section;
     char*           filename;
     void (*modification_callback)(const char* section, const char* key, const char* value);
+    size_t          section_capacity; /* allocated slots in `sections` (>= section_count) */
 };
 
 
@@ -83,6 +85,7 @@ struct ConfigIterator {
 /* ------------------------------------------------------------------ */
 
 ConfigFile*       config_create                       (const char* filename);
+ConfigFile*       config_create_empty                 (void);
 void              config_deallocate                   (ConfigFile* config);
 void              config_clear                        (ConfigFile* config);
 
@@ -94,6 +97,7 @@ void              config_clear                        (ConfigFile* config);
 void              config_save                         (const ConfigFile* config, const char* filename);
 void              config_reload                       (ConfigFile** config);
 char*             config_to_string                    (const ConfigFile* config);
+bool              config_load_string                  (ConfigFile* config, const char* data);
 
 
 /* ------------------------------------------------------------------ */
@@ -113,6 +117,9 @@ char*             config_get_encrypted_value          (const ConfigFile* config,
 /* ------------------------------------------------------------------ */
 
 void              config_set_value                    (ConfigFile* config, const char* section, const char* key, const char* value);
+void              config_set_int                      (ConfigFile* config, const char* section, const char* key, int value);
+void              config_set_double                   (ConfigFile* config, const char* section, const char* key, double value);
+void              config_set_bool                     (ConfigFile* config, const char* section, const char* key, bool value);
 void              config_set_array                    (ConfigFile* config, const char* section, const char* key, const char* const* array, size_t array_size);
 void              config_set_encrypted_value          (ConfigFile* config, const char* section, const char* key, const char* value, const char* encryption_key);
 void              config_set_comment                  (ConfigFile* config, const char* section, const char* comment);

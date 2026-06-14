@@ -57,6 +57,15 @@ structurally impossible:
    parser will even look at. `opts->reject_weak_hmac_key` refuses HMAC
    secrets shorter than the digest output length (RFC 7518 §3.2).
 9. **HMAC secrets are zeroized on free** via `OPENSSL_cleanse`.
+10. **Numeric time claims are range-checked.** `exp` / `nbf` are JSON
+    numbers (doubles); a hostile token can legally carry `"exp": 1e308`.
+    Converting such a value with a bare `(int64_t)` cast is undefined
+    behavior — and a huge `nbf` could collapse to `INT64_MIN` and wrongly
+    pass the not-before gate. The verifier rejects any non-finite or
+    out-of-`int64`-range `exp`/`nbf` as `JWT_ERR_INVALID_FORMAT`, and the
+    time getters report such a value as `present = false`. The comparisons
+    are also arranged so no arithmetic is performed on the token-controlled
+    value, avoiding signed-overflow UB.
 
 ---
 
@@ -342,6 +351,25 @@ structurally impossible:
 
 ---
 
+### `void jwt_set_expires_in(JwtToken* t, int64_t seconds_from_now)`
+**Purpose**: Convenience over `jwt_set_expiration` that sets `exp` to `seconds_from_now` seconds after the current time (`time(NULL)`), so you express a time-to-live instead of computing an absolute epoch by hand. A non-positive argument yields an already-expired token.
+**Parameters**:
+- `t`: The token to modify (`NULL` is a no-op).
+- `seconds_from_now`: Lifetime in seconds added to the current time.
+**Return Value**: None.
+**Usage Case**: The common minting pattern — `jwt_set_expires_in(t, 3600)` for a one-hour token — without the error-prone `time(NULL) + ttl` arithmetic at every call site.
+
+---
+
+### `void jwt_set_issued_now(JwtToken* t)`
+**Purpose**: Convenience over `jwt_set_issued_at` that sets `iat` to the current time (`time(NULL)`).
+**Parameters**:
+- `t`: The token to modify (`NULL` is a no-op).
+**Return Value**: None.
+**Usage Case**: Stamp the issue time when minting a token; pair with `jwt_set_expires_in` for the typical "issued now, expires in N seconds" token.
+
+---
+
 ### `bool jwt_set_claim_string(JwtToken* t, const char* name, const char* value)`
 **Purpose**: Sets a custom string payload claim, replacing any prior value with the same name.
 **Parameters**:
@@ -544,6 +572,27 @@ structurally impossible:
 - `present`: Set to `true` if the claim exists, `false` if absent.
 **Return Value**: The `iat` Unix timestamp, or 0 if absent.
 **Usage Case**: Use to read the issuance time for age-based policies or audit logging.
+
+> **Note on time claims:** `jwt_get_expiration` / `jwt_get_not_before` / `jwt_get_issued_at` report `present = false` for a claim whose JSON number is non-finite or outside the `int64` range (e.g. a hostile `"exp": 1e308`), rather than returning an undefined value — see the security model below.
+
+---
+
+### `size_t jwt_get_audience_count(const JwtToken* t)`
+**Purpose**: Returns the number of audiences in the `aud` claim. RFC 7519 §4.1.3 lets `aud` be either a single string or an array of strings; this presents both uniformly: `1` for a single string, the array length for an array, and `0` if `aud` is absent or not a string/array.
+**Parameters**:
+- `t`: The decoded token.
+**Return Value**: The audience count (`0` for a `NULL` token or absent `aud`).
+**Usage Case**: Iterate a multi-valued `aud` without dropping down to the raw JSON tree — `for (size_t i = 0; i < jwt_get_audience_count(t); ++i) ...`.
+
+---
+
+### `const char* jwt_get_audience_at(const JwtToken* t, size_t index)`
+**Purpose**: Returns the `index`-th audience string. Works whether `aud` is a single string (only `index == 0` is valid) or an array. The returned pointer is borrowed (owned by the token).
+**Parameters**:
+- `t`: The decoded token.
+- `index`: Zero-based audience index.
+**Return Value**: The audience string, or `NULL` if absent / out of range.
+**Usage Case**: Read individual audiences for display, logging, or custom multi-tenant routing after verification.
 
 ---
 
@@ -1358,6 +1407,78 @@ The first key in the list is tried first. Key-independent failures (expiry, wron
 ```
 verify: JWT_SUCCESS
 sub: alice
+```
+
+---
+
+## Example 12 — Duration-based claims, audience accessors, and numeric hardening
+
+The everyday minting pattern (`issued now`, `expires in N`) with a multi-valued audience read back via the audience accessors — plus a demonstration that a hostile out-of-range `exp` is rejected rather than mishandled.
+
+```c
+#include "jwt/jwt.h"
+#include "fmt/fmt.h"
+#include <string.h>
+#include <stdlib.h>
+
+int main(void) {
+    const unsigned char secret[] = "shhhhhh-keep-this-server-side-only-32b!!";
+    JwtKey* key = jwt_key_hmac(secret, sizeof(secret) - 1);
+
+    /* Mint: "issued now, expires in one hour", with multiple audiences. */
+    const char* auds[] = { "api.example.com", "admin.example.com" };
+    JwtToken* t = jwt_create(JWT_ALG_HS256);
+    jwt_set_issuer(t, "auth.example.com");
+    jwt_set_subject(t, "user-42");
+    jwt_set_issued_now(t);          /* iat = now            */
+    jwt_set_expires_in(t, 3600);    /* exp = now + 1 hour   */
+    jwt_set_audiences(t, auds, 2);
+    char* token = jwt_encode(t, key);
+    jwt_deallocate(t);
+
+    /* Verify. */
+    JwtAlgorithm allowed[] = { JWT_ALG_HS256 };
+    JwtValidationOptions opts = {0};
+    opts.allowed_algs       = allowed;
+    opts.allowed_algs_count = 1;
+    opts.require_exp        = true;
+
+    JwtToken* parsed = NULL;
+    JwtStatus rc = jwt_decode_and_verify(token, key, &opts, &parsed);
+    fmt_printf("verify: %s\n", jwt_status_to_string(rc));
+    if (rc == JWT_SUCCESS) {
+        size_t n = jwt_get_audience_count(parsed);
+        fmt_printf("audiences (%zu):\n", n);
+        for (size_t i = 0; i < n; ++i) {
+            fmt_printf("  - %s\n", jwt_get_audience_at(parsed, i));
+        }
+        jwt_deallocate(parsed);
+    }
+    free(token);
+
+    /* A hostile token with an out-of-range exp is rejected, not mis-handled. */
+    JwtToken* bad = jwt_create(JWT_ALG_HS256);
+    jwt_set_claim_double(bad, "exp", 1e308);
+    char* bad_tok = jwt_encode(bad, key);
+
+    jwt_deallocate(bad);
+    
+    JwtStatus brc = jwt_decode_and_verify(bad_tok, key, &opts, NULL);
+    fmt_printf("hostile exp=1e308 -> %s\n", jwt_status_to_string(brc));
+    free(bad_tok);
+
+    jwt_key_deallocate(key);
+    return 0;
+}
+```
+
+**Output:**
+```
+verify: JWT_SUCCESS
+audiences (2):
+  - api.example.com
+  - admin.example.com
+hostile exp=1e308 -> JWT_ERR_INVALID_FORMAT
 ```
 
 ## License

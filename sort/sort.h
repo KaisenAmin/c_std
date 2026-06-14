@@ -142,6 +142,8 @@ void sort_generic                      (ElementType* array, size_t size, Compare
 /* ------------------------------------------------------------------ */
 
 bool        sort_is_sorted             (ElementType* array, size_t size, CompareFunc compare);
+size_t      sort_is_sorted_until       (ElementType* array, size_t size, CompareFunc compare);
+size_t      sort_unique                (ElementType* array, size_t size, CompareFunc compare);
 void        sort_reverse               (ElementType* array, size_t size, SwapFunc swap);
 void        sort_shuffle               (ElementType* array, size_t size, SwapFunc swap);
 ElementType*sort_partial_sort          (ElementType* array, size_t size, size_t k, CompareFunc compare, SwapFunc swap);

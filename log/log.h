@@ -85,6 +85,9 @@ typedef struct {
     unsigned long      total_log_counts[LOG_LEVEL_FATAL + 1];/* cumulative emitted, per level   */
     time_t             last_reset_time;                /* last interval reset                  */
     char               current_file_path[LOG_MAX_PATH];/* currently open log file              */
+    bool               errors_to_stderr;              /* route ERROR/FATAL console out to stderr */
+    bool               auto_flush;                    /* flush after every emitted record     */
+    void*              _lock;                         /* internal recursive Mutex (opaque); NULL = unlocked */
 } Log;
 
 
@@ -115,6 +118,8 @@ bool    log_set_file_path                 (Log* config, const char* newFilePath)
 bool    log_redirect_output               (Log* config, const char* newFilePath);
 bool    log_rotate                        (Log* config, const char* newLogPath, size_t maxSize);
 bool    log_set_max_file_size             (Log* config, size_t maxSize, const char* archivePathFormat);
+bool    log_set_error_stream              (Log* config, bool errors_to_stderr);
+bool    log_set_auto_flush                (Log* config, bool enable);
 
 
 /* ------------------------------------------------------------------ */
@@ -146,6 +151,18 @@ bool          log_set_level_from_string   (Log* config, const char* level_str);
 bool          log_is_level_enabled        (const Log* config, LogLevel level);
 bool          log_set_rate_limit          (Log* config, unsigned int max_logs_per_interval, unsigned int interval_seconds);
 unsigned long log_get_message_count       (const Log* config, LogLevel level);
+
+
+/* ------------------------------------------------------------------ */
+/* Convenience macros — per-level shorthands for log_message.         */
+/* Usage: log_info(logger, "x=%d", x);  (a format string is required) */
+/* ------------------------------------------------------------------ */
+
+#define log_debug(cfg, ...) log_message((cfg), LOG_LEVEL_DEBUG, __VA_ARGS__)
+#define log_info(cfg, ...)  log_message((cfg), LOG_LEVEL_INFO,  __VA_ARGS__)
+#define log_warn(cfg, ...)  log_message((cfg), LOG_LEVEL_WARN,  __VA_ARGS__)
+#define log_error(cfg, ...) log_message((cfg), LOG_LEVEL_ERROR, __VA_ARGS__)
+#define log_fatal(cfg, ...) log_message((cfg), LOG_LEVEL_FATAL, __VA_ARGS__)
 
 
 #ifdef __cplusplus

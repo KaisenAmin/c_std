@@ -72,6 +72,18 @@ typedef struct {
 } UdpStatusInfo;
 
 
+/* A pre-resolved peer address. Resolve a host:port ONCE with
+ * udp_resolve_endpoint, then send to it repeatedly with udp_sendto_endpoint
+ * (no per-packet getaddrinfo), or capture the sender of a datagram via
+ * udp_recvfrom_endpoint and reply to it directly. Treat the fields as opaque
+ * and use the helpers (udp_endpoint_to_string / udp_endpoint_equal). `len == 0`
+ * means "unset". */
+typedef struct {
+    struct sockaddr_storage addr;
+    socklen_t               len;
+} UdpEndpoint;
+
+
 /* ------------------------------------------------------------------ */
 /* Lifecycle                                                          */
 /* ------------------------------------------------------------------ */
@@ -98,6 +110,19 @@ UdpStatus    udp_sendto                     (UdpSocket socket, const void* buf, 
 UdpStatus    udp_recvfrom                   (UdpSocket socket, void* buf, size_t len, size_t* received, char* src_host, size_t src_host_len, unsigned short* src_port);
 UdpStatus    udp_send                       (UdpSocket socket, const void* buf, size_t len, size_t* sent);
 UdpStatus    udp_recv                       (UdpSocket socket, void* buf, size_t len, size_t* received);
+
+
+/* ------------------------------------------------------------------ */
+/* Pre-resolved endpoints (avoid per-packet DNS; reply to senders)    */
+/* ------------------------------------------------------------------ */
+
+UdpStatus    udp_resolve_endpoint           (const char* host, unsigned short port, UdpEndpoint* out);
+UdpStatus    udp_sendto_endpoint            (UdpSocket socket, const void* buf, size_t len, size_t* sent, const UdpEndpoint* dest);
+UdpStatus    udp_recvfrom_endpoint          (UdpSocket socket, void* buf, size_t len, size_t* received, UdpEndpoint* src);
+UdpStatus    udp_endpoint_to_string         (const UdpEndpoint* ep, char* host, size_t host_len, unsigned short* port);
+bool         udp_endpoint_equal             (const UdpEndpoint* a, const UdpEndpoint* b);
+UdpStatus    udp_request_reply              (UdpSocket socket, const UdpEndpoint* dest, const void* req, size_t req_len, void* reply, size_t reply_cap, size_t* reply_len,
+                                             long timeout_ms, int retries, bool match_source);
 
 
 /* ------------------------------------------------------------------ */
@@ -138,6 +163,7 @@ UdpStatus    udp_set_ttl                    (UdpSocket socket, int ttl);
 UdpStatus    udp_set_multicast_loopback     (UdpSocket socket, bool enable);
 UdpStatus    udp_bytes_available            (UdpSocket socket, size_t* available);
 UdpStatus    udp_wait_readable              (UdpSocket socket, long timeout_ms);
+UdpStatus    udp_wait_writable              (UdpSocket socket, long timeout_ms);
 
 
 /* ------------------------------------------------------------------ */

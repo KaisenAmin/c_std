@@ -8,12 +8,12 @@
 
 This Vector library, written in C, is an implementation that mimics the functionality of the C++ `std::vector`. It aims to provide dynamic array capabilities to C programs. This library is part of a project to reimplement features of the C++ standard library in C, making it useful for developers familiar with C++ but working in C environments.
 
-The Vector library allows for creating dynamic arrays that can resize automatically when elements are added or removed. It supports various operations such as inserting, deleting, and accessing elements, as well as more advanced functionalities like memory pooling for efficient allocation and deallocation of elements.
+The Vector library allows for creating dynamic arrays that can resize automatically when elements are added or removed. It supports various operations such as inserting, deleting, and accessing elements, as well as capacity management (reserve / shrink-to-fit) for efficient memory use.
 
 ## Key Features
 
 - **Dynamic Resizing:** Automatically adjust size when elements are added or removed.
-- **Memory Efficiency:** Incorporates a memory pool mechanism to manage memory allocation efficiently.
+- **Memory Efficiency:** Elements live in a single contiguous buffer grown with `realloc` (doubling), so peak memory tracks the live element count — the same storage model as C++ `std::vector`. Scales cleanly to 10–100 million elements.
 - **Generic Container:** Can store elements of any data type, including structures.
 - **Various Utility Functions:** Functions for comparison, swapping, and checking the state of the vector.
 
@@ -27,7 +27,7 @@ gcc -std=c17 -O2 -Wall -Wextra -o test.exe test.c vector/vector.c string/std_str
 
 ## Documentation
 
-The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like creating a vector, adding and removing elements, as well as more complex functionalities such as memory pooling and vector comparison.
+The documentation includes detailed descriptions of all the functions provided by the library, along with their usage examples. It covers basic operations like creating a vector, adding and removing elements, as well as more complex functionalities such as capacity management and vector comparison.
 
 ### Function Descriptions:
 

@@ -61,6 +61,18 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
+### `bool postgres_connect_uri(Postgres* pg, const char* conninfo)`  
+**Purpose**: Connects using a single libpq connection string or URI — the 12-factor / `DATABASE_URL` style of configuration — instead of the individual fields set by `postgres_init`.  
+**Parameters**:  
+  - `pg`: A pointer to the `Postgres` structure (a freshly `postgres_create()`'d one is fine; `postgres_init` is not required).  
+  - `conninfo`: A libpq connection string in either form:  
+    - keyword/value: `"host=db port=5432 dbname=app user=svc password=secret sslmode=require connect_timeout=10"`  
+    - URI: `"postgresql://svc:secret@db:5432/app?sslmode=require"`  
+**Return Value**: `true` on a successful connection, `false` on NULL arguments or if the connection could not be established.  
+**Usage Case**: Connect straight from one environment variable (`getenv("DATABASE_URL")`), and gain access to every libpq parameter (`sslmode`, `connect_timeout`, `application_name`, …) without modelling each one. Any pre-existing connection is closed first, so it is also safe for reconnection.
+
+---
+
 ### `bool postgres_execute_non_query(Postgres* pg, const char* command)`  
 **Purpose**: Executes a non-query SQL command (e.g., `INSERT`, `UPDATE`, `DELETE`) on the PostgreSQL database.  
 **Parameters**:  
@@ -292,6 +304,28 @@ The documentation includes detailed descriptions of all the functions provided b
   - `col`: Column index of the field to retrieve.  
 **Return Value**: The value of the field as a string, or `NULL` if an error occurred.  
 **Usage Case**: Used to access individual cell values in the result set from a query.
+
+---
+
+### `long long postgres_get_value_as_int(const PostgresResult* pgRes, int row, int col, long long fallback)`  
+**Purpose**: Reads a result cell as a 64-bit integer, safely — the typed, crash-proof companion to `postgres_get_value` that replaces the ubiquitous (and dangerous) `atoll(postgres_get_value(...))` idiom.  
+**Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure.  
+  - `row`, `col`: Zero-based cell coordinates.  
+  - `fallback`: Value returned for any failure mode.  
+**Return Value**: The cell parsed as a `long long`, or `fallback` for a NULL result, an out-of-range row/column, a SQL `NULL`, an empty cell, or text that is not a complete base-10 integer (e.g. `"3.14"` or `"abc"`).  
+**Usage Case**: Reading `COUNT(*)`, `SUM(...)`, IDs, and other integer scalars without manual parsing or NULL checks.
+
+---
+
+### `double postgres_get_value_as_double(const PostgresResult* pgRes, int row, int col, double fallback)`  
+**Purpose**: Reads a result cell as a `double`, safely — the floating-point counterpart to `postgres_get_value_as_int`.  
+**Parameters**:  
+  - `pgRes`: Pointer to the `PostgresResult` structure.  
+  - `row`, `col`: Zero-based cell coordinates.  
+  - `fallback`: Value returned for any failure mode.  
+**Return Value**: The cell parsed as a `double` (integer, decimal, or scientific notation), or `fallback` for a NULL result, an out-of-range row/column, a SQL `NULL`, an empty cell, or non-numeric text.  
+**Usage Case**: Reading `AVG(...)`, prices, ratios, and other numeric scalars where a SQL `NULL` (e.g. an aggregate over zero rows) must degrade to a sentinel instead of crashing.
 
 ---
 
@@ -3321,6 +3355,89 @@ postgres_clear_result(res);
   `PostgresResult` has no time field. The old call now delegates to
   the new honest `postgres_query_with_time(pg, q, &secs)` which
   writes the timing to an out-param.
+
+---
+
+### Example 37 : connect from `DATABASE_URL` and read typed scalars with `postgres_connect_uri`, `postgres_get_value_as_int`, `postgres_get_value_as_double`
+
+This is the production shape: configure the connection from a single
+`DATABASE_URL` environment variable (`postgres_connect_uri`), then read scalar
+results as native C types without the fragile `atoi(postgres_get_value(...))`
+idiom. A SQL `NULL` (an aggregate over zero rows) or a non-numeric cell degrades
+to the supplied fallback instead of crashing.
+
+Run it against any reachable database, e.g.:
+```bash
+export DATABASE_URL="host=127.0.0.1 port=5432 dbname=app user=svc password=secret"
+gcc -I. -I$(pg_config --includedir) example.c database/postgres.c \
+    string/std_string.c fmt/fmt.c encoding/encoding.c -lpq -o example
+./example
+```
+
+```c
+#include "database/postgres.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    /* Configure from one environment variable — the 12-factor pattern. */
+    const char* url = getenv("DATABASE_URL");
+    if (!url) {
+        fmt_printf("set DATABASE_URL to run this example\n");
+        return 0;
+    }
+
+    Postgres* pg = postgres_create();
+    if (!postgres_connect_uri(pg, url)) {
+        fmt_printf("connect failed: %s\n", postgres_get_last_error(pg));
+        postgres_deallocate(pg);
+        return 1;
+    }
+    fmt_printf("connected: yes\n");
+
+    /* A small, deterministic data set. */
+    postgres_execute_non_query(pg, "SET client_min_messages TO WARNING;");
+    postgres_execute_non_query(pg, "DROP TABLE IF EXISTS demo_items;");
+    postgres_execute_non_query(pg,
+        "CREATE TABLE demo_items (id INT, name TEXT, price NUMERIC(10,2), in_stock INT);");
+    postgres_execute_non_query(pg,
+        "INSERT INTO demo_items VALUES "
+        "(1,'widget',9.50,40),(2,'gadget',19.99,10),(3,'gizmo',4.25,0);");
+
+    /* Typed scalar reads — no atoi(postgres_get_value(...)) boilerplate. */
+    PostgresResult* r = postgres_query(pg,
+        "SELECT COUNT(*), SUM(in_stock), ROUND(AVG(price), 4) FROM demo_items;");
+    fmt_printf("items=%lld total_stock=%lld avg_price=%.4f\n",
+               postgres_get_value_as_int(r, 0, 0, -1),
+               postgres_get_value_as_int(r, 0, 1, -1),
+               postgres_get_value_as_double(r, 0, 2, -1.0));
+    postgres_clear_result(r);
+
+    /* A SQL NULL aggregate falls back cleanly instead of crashing. */
+    PostgresResult* r2 = postgres_query(pg,
+        "SELECT MAX(price) FROM demo_items WHERE id = 999;");
+    fmt_printf("missing aggregate -> %.1f (fallback)\n",
+               postgres_get_value_as_double(r2, 0, 0, -1.0));
+    postgres_clear_result(r2);
+
+    /* A non-numeric text cell read as an int also falls back. */
+    PostgresResult* r3 = postgres_query(pg, "SELECT name FROM demo_items WHERE id = 1;");
+    fmt_printf("text cell as int  -> %lld (fallback)\n",
+               postgres_get_value_as_int(r3, 0, 0, -1));
+    postgres_clear_result(r3);
+
+    postgres_execute_non_query(pg, "DROP TABLE IF EXISTS demo_items;");
+    postgres_deallocate(pg);
+    return 0;
+}
+```
+**Result** (against the sample data above)
+```
+connected: yes
+items=3 total_stock=50 avg_price=11.2467
+missing aggregate -> -1.0 (fallback)
+text cell as int  -> -1 (fallback)
+```
 
 ---
 

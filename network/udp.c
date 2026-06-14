@@ -20,7 +20,9 @@ static _Thread_local UdpStatusInfo udp_last_error;
 
 // Mutex for any global state (mainly for WSAStartup/cleanup refcount)
 static Mutex udp_mutex;
-static int udp_wsa_refcount = 0;
+#if defined(_WIN32) || defined(_WIN64)
+static int udp_wsa_refcount = 0;   /* Windows-only: WSAStartup/WSACleanup balance */
+#endif
 
 // Internal: set last error
 static void udp_set_last_error(UdpStatus code, int sys_errno, const char* msg) {
@@ -1307,5 +1309,306 @@ UdpStatus udp_wait_readable(UdpSocket socket, long timeout_ms) {
     }
     udp_set_last_error(UDP_SUCCESS, 0, NULL);
 
+    return UDP_SUCCESS;
+}
+
+
+/* ================================================================== */
+/* Pre-resolved endpoints, request/reply, and writable-readiness      */
+/* (production additions). They reuse the existing udp_resolve_sockaddr */
+/* and udp_set_last_error helpers and follow the same error model.     */
+/* ================================================================== */
+
+/**
+ * @brief Resolve host:port into a reusable UdpEndpoint (one getaddrinfo).
+ *
+ * Unlike udp_sendto (which resolves on every call), resolve once here and then
+ * send to the endpoint repeatedly with udp_sendto_endpoint. Prefers an
+ * IPv6/IPv4-mapped result and falls back to a family-agnostic lookup. On any
+ * failure `out->len` is reset to 0 ("unset").
+ *
+ * @param host Hostname or numeric IP to resolve. Must not be NULL.
+ * @param port Destination port in host byte order.
+ * @param out  Receives the resolved endpoint. Must not be NULL.
+ * @return `UDP_SUCCESS` on success; `UDP_ERR_GENERIC` if `host` or `out` is NULL;
+ *         `UDP_ERR_RESOLVE` if the name cannot be resolved.
+ */
+UdpStatus udp_resolve_endpoint(const char* host, unsigned short port, UdpEndpoint* out) {
+    if (!host || !out) {
+        udp_set_last_error(UDP_ERR_GENERIC, 0, "Invalid udp_resolve_endpoint arguments");
+        return UDP_ERR_GENERIC;
+    }
+    out->len = 0;
+
+    struct sockaddr_storage addr;
+    socklen_t               addrlen = 0;
+    int rs = udp_resolve_sockaddr(host, port, &addr, &addrlen, AF_INET6, SOCK_DGRAM, AI_V4MAPPED | AI_ALL);
+    if (rs != 0) {
+        rs = udp_resolve_sockaddr(host, port, &addr, &addrlen, AF_UNSPEC, SOCK_DGRAM, 0);
+    }
+    if (rs != 0) {
+        udp_set_last_error(UDP_ERR_RESOLVE, 0, "Failed to resolve endpoint");
+        return UDP_ERR_RESOLVE;
+    }
+    memcpy(&out->addr, &addr, sizeof(out->addr));
+    out->len = addrlen;
+    return UDP_SUCCESS;
+}
+
+/**
+ * @brief Send a buffer to a pre-resolved endpoint (no name resolution).
+ *
+ * Fast-path counterpart to udp_sendto; also used to reply to a sender captured
+ * by udp_recvfrom_endpoint.
+ *
+ * @param socket A valid UDP socket.
+ * @param buf    Data to send. Must not be NULL.
+ * @param len    Number of bytes to send; must be non-zero.
+ * @param sent   Output: number of bytes actually sent. May be NULL.
+ * @param dest   Pre-resolved destination with `dest->len != 0`. Must not be NULL.
+ * @return `UDP_SUCCESS` on success (`*sent` set when provided);
+ *         `UDP_ERR_SEND` on invalid arguments or a send failure (`*sent` set to 0).
+ */
+UdpStatus udp_sendto_endpoint(UdpSocket socket, const void* buf, size_t len, size_t* sent, const UdpEndpoint* dest) {
+    if (!buf || len == 0 || !dest || dest->len == 0) {
+        udp_set_last_error(UDP_ERR_SEND, 0, "Invalid udp_sendto_endpoint arguments");
+        return UDP_ERR_SEND;
+    }
+    ssize_t n = sendto(socket, buf, len, 0, (const struct sockaddr*)&dest->addr, dest->len);
+    if (n < 0) {
+        udp_set_last_error_sys(UDP_ERR_SEND);
+        if (sent) { *sent = 0; }
+        return UDP_ERR_SEND;
+    }
+    if (sent) { *sent = (size_t)n; }
+    return UDP_SUCCESS;
+}
+
+/**
+ * @brief Receive a datagram and capture the sender into src (may be NULL).
+ *        Mirrors udp_recvfrom but yields a reusable endpoint, not a string.
+ *
+ * @param socket   A valid UDP socket.
+ * @param buf      Receive buffer. Must not be NULL.
+ * @param len      Buffer size in bytes; must be non-zero.
+ * @param received Output: number of bytes received. May be NULL.
+ * @param src      Output: sender's endpoint, reusable with udp_sendto_endpoint
+ *                 and udp_endpoint_equal. May be NULL.
+ * @return `UDP_SUCCESS` on success; `UDP_ERR_NO_DATA` if the socket is
+ *         non-blocking (or has a timeout set) and no datagram is ready;
+ *         `UDP_ERR_RECV` on invalid arguments or a receive error.
+ */
+UdpStatus udp_recvfrom_endpoint(UdpSocket socket, void* buf, size_t len, size_t* received, UdpEndpoint* src) {
+    if (!buf || len == 0) {
+        udp_set_last_error(UDP_ERR_RECV, 0, "Invalid udp_recvfrom_endpoint arguments");
+        return UDP_ERR_RECV;
+    }
+    struct sockaddr_storage addr;
+    socklen_t               addrlen = sizeof(addr);
+    ssize_t n = recvfrom(socket, buf, len, 0, (struct sockaddr*)&addr, &addrlen);
+    if (n < 0) {
+#if defined(_WIN32) || defined(_WIN64)
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK) {
+            udp_set_last_error(UDP_ERR_NO_DATA, err, "No data available (would block)");
+            if (received) { *received = 0; }
+            return UDP_ERR_NO_DATA;
+        }
+#else
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            udp_set_last_error(UDP_ERR_NO_DATA, errno, "No data available (would block)");
+            if (received) { *received = 0; }
+            return UDP_ERR_NO_DATA;
+        }
+#endif
+        udp_set_last_error_sys(UDP_ERR_RECV);
+        if (received) { *received = 0; }
+        return UDP_ERR_RECV;
+    }
+    if (received) { *received = (size_t)n; }
+    if (src) {
+        memcpy(&src->addr, &addr, sizeof(src->addr));
+        src->len = addrlen;
+    }
+    return UDP_SUCCESS;
+}
+
+/**
+ * @brief Printable host (and port) for an endpoint. host/port may be NULL.
+ *
+ * Renders the numeric address via inet_ntop. Both outputs are optional, so the
+ * call can fetch only the port, only the address, or both.
+ *
+ * @param ep       A set endpoint (`ep->len != 0`). Must not be NULL.
+ * @param host     Output buffer for the address text; ignored when NULL or
+ *                 `host_len == 0`.
+ * @param host_len Size of `host` in bytes.
+ * @param port     Output: port in host byte order. May be NULL.
+ * @return `UDP_SUCCESS` on success; `UDP_ERR_GENERIC` if `ep` is NULL/unset, the
+ *         address family is neither IPv4 nor IPv6, or inet_ntop fails.
+ */
+UdpStatus udp_endpoint_to_string(const UdpEndpoint* ep, char* host, size_t host_len, unsigned short* port) {
+    if (!ep || ep->len == 0) {
+        return UDP_ERR_GENERIC;
+    }
+    const void*    addrptr = NULL;
+    unsigned short p       = 0;
+    if (ep->addr.ss_family == AF_INET) {
+        const struct sockaddr_in* s4 = (const struct sockaddr_in*)&ep->addr;
+        addrptr = &s4->sin_addr;
+        p       = ntohs(s4->sin_port);
+    }
+    else if (ep->addr.ss_family == AF_INET6) {
+        const struct sockaddr_in6* s6 = (const struct sockaddr_in6*)&ep->addr;
+        addrptr = &s6->sin6_addr;
+        p       = ntohs(s6->sin6_port);
+    }
+    else {
+        return UDP_ERR_GENERIC;
+    }
+    if (port) { *port = p; }
+    if (host && host_len > 0) {
+        if (!inet_ntop(ep->addr.ss_family, addrptr, host, (socklen_t)host_len)) {
+            host[0] = '\0';
+            return UDP_ERR_GENERIC;
+        }
+    }
+    return UDP_SUCCESS;
+}
+
+/**
+ * @brief True if two endpoints share family, address and port.
+ *
+ * @param a First endpoint. May be NULL.
+ * @param b Second endpoint. May be NULL.
+ * @return `true` only if both are set, share the same address family, and have
+ *         identical address and port; `false` otherwise (including any NULL or
+ *         unset operand).
+ */
+bool udp_endpoint_equal(const UdpEndpoint* a, const UdpEndpoint* b) {
+    if (!a || !b || a->len == 0 || b->len == 0 || a->addr.ss_family != b->addr.ss_family) {
+        return false;
+    }
+    if (a->addr.ss_family == AF_INET) {
+        const struct sockaddr_in* x = (const struct sockaddr_in*)&a->addr;
+        const struct sockaddr_in* y = (const struct sockaddr_in*)&b->addr;
+        return x->sin_port == y->sin_port &&
+               memcmp(&x->sin_addr, &y->sin_addr, sizeof(x->sin_addr)) == 0;
+    }
+    if (a->addr.ss_family == AF_INET6) {
+        const struct sockaddr_in6* x = (const struct sockaddr_in6*)&a->addr;
+        const struct sockaddr_in6* y = (const struct sockaddr_in6*)&b->addr;
+        return x->sin6_port == y->sin6_port &&
+               memcmp(&x->sin6_addr, &y->sin6_addr, sizeof(x->sin6_addr)) == 0;
+    }
+    return false;
+}
+
+/**
+ * @brief Request/response with timeout and retries (the UDP reliability pattern).
+ *
+ * Sends the request, waits up to `timeout_ms` for a reply, and resends up to
+ * `retries` times on timeout. Total attempts are `retries + 1`; a negative
+ * `retries` is clamped to 0. With `match_source`, replies from any peer other
+ * than `dest` are ignored (treated as "keep waiting").
+ *
+ * @param socket       A valid UDP socket (bind first if you need a fixed local port).
+ * @param dest         Pre-resolved destination (`dest->len != 0`). Must not be NULL.
+ * @param req          Request payload (may be NULL only when `req_len == 0`).
+ * @param req_len      Request length in bytes.
+ * @param reply        Buffer for the response. Must not be NULL.
+ * @param reply_cap    Capacity of `reply` in bytes; must be non-zero.
+ * @param reply_len    Output: reply length on success, 0 otherwise. Must not be NULL.
+ * @param timeout_ms   Per-attempt timeout in milliseconds.
+ * @param retries      Number of additional attempts after the first.
+ * @param match_source When true, accept only a reply whose source equals `dest`.
+ * @return `UDP_SUCCESS` if a reply arrived within the retry budget (`*reply_len`
+ *         set); `UDP_ERR_NO_DATA` if every attempt timed out; `UDP_ERR_GENERIC`
+ *         on invalid arguments; or a propagated send/wait error code.
+ */
+UdpStatus udp_request_reply(UdpSocket socket, const UdpEndpoint* dest,
+                            const void* req, size_t req_len,
+                            void* reply, size_t reply_cap, size_t* reply_len,
+                            long timeout_ms, int retries, bool match_source) {
+    if (!dest || dest->len == 0 || (!req && req_len > 0) || !reply || reply_cap == 0 || !reply_len) {
+        udp_set_last_error(UDP_ERR_GENERIC, 0, "Invalid udp_request_reply arguments");
+        return UDP_ERR_GENERIC;
+    }
+    if (retries < 0) {
+        retries = 0;
+    }
+    *reply_len = 0;
+
+    for (int attempt = 0; attempt <= retries; ++attempt) {
+        size_t    sent = 0;
+        UdpStatus s = udp_sendto_endpoint(socket, req, req_len, &sent, dest);
+        if (s != UDP_SUCCESS) {
+            return s;
+        }
+
+        UdpStatus w = udp_wait_readable(socket, timeout_ms);
+        if (w == UDP_ERR_NO_DATA) {
+            continue;                          /* timed out, resend */
+        }
+        if (w != UDP_SUCCESS) {
+            return w;
+        }
+
+        UdpEndpoint src;
+        size_t      got = 0;
+        UdpStatus   r = udp_recvfrom_endpoint(socket, reply, reply_cap, &got, &src);
+        if (r != UDP_SUCCESS) {
+            continue;                          /* transient recv issue, resend */
+        }
+        if (match_source && !udp_endpoint_equal(&src, dest)) {
+            continue;                          /* reply from a different peer, resend */
+        }
+        *reply_len = got;
+        return UDP_SUCCESS;
+    }
+
+    udp_set_last_error(UDP_ERR_NO_DATA, 0, "No reply within the retry budget");
+    return UDP_ERR_NO_DATA;
+}
+
+/**
+ * @brief Wait until the socket is writable (or timeout). Mirrors
+ *        udp_wait_readable on the write fd-set.
+ *
+ * @param socket     A valid UDP socket.
+ * @param timeout_ms Timeout in milliseconds; `< 0` waits indefinitely, `0` polls
+ *                   and returns immediately.
+ * @return `UDP_SUCCESS` if the socket is writable; `UDP_ERR_NO_DATA` on timeout;
+ *         `UDP_ERR_GENERIC` on a select() error.
+ */
+UdpStatus udp_wait_writable(UdpSocket socket, long timeout_ms) {
+    fd_set writefds;
+    FD_ZERO(&writefds);
+    FD_SET(socket, &writefds);
+
+    struct timeval  tv;
+    struct timeval* tvp = NULL;
+    if (timeout_ms >= 0) {
+        tv.tv_sec  = (long)(timeout_ms / 1000);
+        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+        tvp = &tv;
+    }
+
+#if defined(_WIN32) || defined(_WIN64)
+    int nfds = 0;
+#else
+    int nfds = (int)socket + 1;
+#endif
+
+    int rc = select(nfds, NULL, &writefds, NULL, tvp);
+    if (rc < 0) {
+        udp_set_last_error_sys(UDP_ERR_GENERIC);
+        return UDP_ERR_GENERIC;
+    }
+    if (rc == 0) {
+        udp_set_last_error(UDP_ERR_NO_DATA, 0, "Timeout waiting for writability");
+        return UDP_ERR_NO_DATA;
+    }
+    udp_set_last_error(UDP_SUCCESS, 0, NULL);
     return UDP_SUCCESS;
 }

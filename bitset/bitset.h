@@ -47,6 +47,7 @@ struct Bitset {
 /* ------------------------------------------------------------------ */
 
 Bitset*             bitset_create                 (size_t num_bits);
+Bitset*             bitset_copy                   (const Bitset* bs);
 void                bitset_deallocate             (Bitset* bs);
 
 
@@ -85,6 +86,14 @@ bool                bitset_none                   (const Bitset* bs);
 
 size_t              bitset_size                   (const Bitset* bs);
 size_t              bitset_count                  (const Bitset* bs);
+
+
+/* ------------------------------------------------------------------ */
+/* Search / iteration                                                 */
+/* ------------------------------------------------------------------ */
+
+size_t              bitset_find_first             (const Bitset* bs);
+size_t              bitset_find_next              (const Bitset* bs, size_t pos);
 
 
 /* ------------------------------------------------------------------ */

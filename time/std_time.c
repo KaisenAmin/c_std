@@ -9,6 +9,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include "std_time.h"
 
 
@@ -81,8 +82,15 @@ Time* time_current_time(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
 
-    struct tm* timeinfo = localtime(&tv.tv_sec);
-    Time* timeObject = time_create(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, tv.tv_usec / 1000);
+    /* localtime() returns a shared static struct tm and is a data race under
+       concurrent use; localtime_r writes into a caller-owned buffer. */
+    struct tm tmbuf;
+    struct tm* timeinfo = localtime_r(&tv.tv_sec, &tmbuf);
+    if (!timeinfo) {
+        TIME_LOG("[time_current_time]: Error: localtime_r failed.");
+        return NULL;
+    }
+    Time* timeObject = time_create(timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, (int)(tv.tv_usec / 1000));
 
     TIME_LOG("[time_current_time]: Current system time (Unix-like): %02d:%02d:%02d:%03d.", (int)timeinfo->tm_hour, (int)timeinfo->tm_min, (int)timeinfo->tm_sec, (int)tv.tv_usec / 1000);
 
@@ -452,7 +460,7 @@ char* time_to_string(const Time* t) {
         return NULL;
     }
 
-    sprintf(time_str, "(%02d:%02d:%02d:%03d)", t->hour, t->minute, t->second, t->msec);
+    snprintf(time_str, 16, "(%02d:%02d:%02d:%03d)", t->hour, t->minute, t->second, t->msec);
     TIME_LOG("[time_to_string]: Successfully converted Time to string: %s", time_str);
 
     return time_str;
@@ -788,6 +796,39 @@ void time_sleep(unsigned int second) {
 
 
 /**
+ * @brief Suspend the calling thread for a number of milliseconds.
+ *
+ * Millisecond-precision counterpart to `time_sleep`, for retry backoff, polling
+ * loops, and rate limiting. Uses `Sleep` on Windows and `nanosleep` on POSIX;
+ * on POSIX the sleep is resumed if interrupted by a signal so the full duration
+ * elapses.
+ *
+ * @param milliseconds Number of milliseconds to sleep (0 returns immediately).
+ *
+ * @code
+ * time_sleep_ms(250);   // quarter-second pause
+ * @endcode
+ */
+void time_sleep_ms(unsigned int milliseconds) {
+    TIME_LOG("[time_sleep_ms]: Entering function with delay: %u ms.", milliseconds);
+
+#if defined(_WIN32) || defined(_WIN64)
+    Sleep(milliseconds);                 /* Sleep already takes milliseconds */
+#else
+    struct timespec req;
+    req.tv_sec  = (time_t)(milliseconds / 1000U);
+    req.tv_nsec = (long)(milliseconds % 1000U) * 1000000L;
+    /* Resume across signal interruptions so the full interval elapses. */
+    while (nanosleep(&req, &req) == -1 && errno == EINTR) {
+        /* req now holds the remaining time; loop. */
+    }
+#endif
+
+    TIME_LOG("[time_sleep_ms]: Finished sleeping for %u ms.", milliseconds);
+}
+
+
+/**
  * @brief This function computes the difference in time between two Time objects, returning the result in seconds.
  * If the time difference spans across a day, the result will be adjusted to fall within the range of -86400 to 86400 seconds.
  * 
@@ -1115,6 +1156,79 @@ int64_t time_now_unix_msecs(void) {
     gettimeofday(&tv, NULL);
     return (int64_t)tv.tv_sec * 1000LL + (int64_t)(tv.tv_usec / 1000);
 #endif
+}
+
+
+/**
+ * @brief Monotonic clock reading in nanoseconds.
+ *
+ * Returns a steadily-increasing count from an unspecified epoch — only the
+ * DIFFERENCE between two readings is meaningful. Unlike the wall-clock readers
+ * (`time_now_unix_msecs`, `time_current_time_in_seconds`) this source never
+ * jumps backward when the system clock is stepped (NTP, DST, manual change),
+ * so it is the correct way to measure elapsed time, timeouts and rate limits.
+ *
+ * Uses `QueryPerformanceCounter` on Windows and `clock_gettime(CLOCK_MONOTONIC)`
+ * on POSIX. On the rare platform where neither is available it falls back to the
+ * wall clock so callers still get a usable (if non-steady) value.
+ *
+ * @return Nanoseconds since an unspecified, fixed epoch.
+ *
+ * @code
+ * int64_t t0 = time_monotonic_nsecs();
+ * // ... do work ...
+ * int64_t elapsed_ns = time_monotonic_nsecs() - t0;
+ * @endcode
+ */
+int64_t time_monotonic_nsecs(void) {
+    TIME_LOG("[time_monotonic_nsecs]: Entering function.");
+
+#if defined(_WIN32) || defined(_WIN64)
+    static LARGE_INTEGER freq;          /* QPC frequency is fixed at boot */
+    static int have_freq = 0;
+    if (!have_freq) {
+        QueryPerformanceFrequency(&freq);
+        have_freq = 1;
+    }
+    LARGE_INTEGER count;
+    QueryPerformanceCounter(&count);
+    /* nsecs = count * 1e9 / freq, computed so count*1e9 cannot overflow. */
+    int64_t whole = count.QuadPart / freq.QuadPart;
+    int64_t frac  = count.QuadPart % freq.QuadPart;
+    return whole * 1000000000LL + (frac * 1000000000LL) / freq.QuadPart;
+#elif defined(CLOCK_MONOTONIC)
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+    }
+    /* Fallback: wall clock in ns (not steady, but never aborts). */
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t)tv.tv_sec * 1000000000LL + (int64_t)tv.tv_usec * 1000LL;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t)tv.tv_sec * 1000000000LL + (int64_t)tv.tv_usec * 1000LL;
+#endif
+}
+
+
+/**
+ * @brief Monotonic clock reading in milliseconds.
+ *
+ * Convenience wrapper over `time_monotonic_nsecs` (divided by 1,000,000). Same
+ * semantics: steady, jump-free, only differences are meaningful.
+ *
+ * @return Milliseconds since an unspecified, fixed epoch.
+ *
+ * @code
+ * int64_t start = time_monotonic_msecs();
+ * while (time_monotonic_msecs() - start < 5000) { ...poll... }  // 5s budget
+ * @endcode
+ */
+int64_t time_monotonic_msecs(void) {
+    TIME_LOG("[time_monotonic_msecs]: Entering function.");
+    return time_monotonic_nsecs() / 1000000LL;
 }
 
 

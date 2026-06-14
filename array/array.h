@@ -92,6 +92,45 @@ extern "C" {
 
 
 /**
+ * @brief Internal implementation of array_at_checked.
+ *
+ * Returns a pointer to the element at `index`, or NULL when `index`
+ * is out of range. Unlike the raw `array_at` accessor, this performs a
+ * bounds check before computing the address.
+ */
+static inline void *__array_at_checked_impl(void *data, size_t count,
+                                            size_t elem_size, size_t index) {
+    if (index >= count) {
+        return NULL;
+    }
+    return (unsigned char *)data + index * elem_size;
+}
+
+
+/**
+ * @brief Bounds-checked element access.
+ *
+ * Returns a pointer to the element at `index`, or NULL if `index` is out
+ * of range. The returned pointer is writable, so it can be used to read
+ * or modify the element in place. Unlike `array_at` (which performs no
+ * bounds checking and is undefined behavior when the index is out of
+ * range), this is safe to call with an untrusted or computed index — the
+ * canonical production accessor.
+ *
+ * @param arr   An instance of a fixed-size array.
+ * @param index The element index to access.
+ * @return A pointer to the element (which the caller casts to the element
+ *         type), or NULL if `index >= array_size(arr)`.
+ *
+ * @note `index` is evaluated once. The result is a `void*`; cast it to the
+ *       element type before dereferencing, e.g.
+ *       `int* p = array_at_checked(a, i); if (p) *p = 42;`
+ */
+#define array_at_checked(arr, index) \
+    __array_at_checked_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (index))
+
+
+/**
  * @brief Fills the array with the given value.
  *
  * This macro assigns the provided value to every element of the array.
@@ -232,6 +271,78 @@ static inline void *__array_find_if_impl(void *data, size_t count, size_t elem_s
  */
 #define array_find_if(arr, predicate) \
     __array_find_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+
+
+/**
+ * @brief Internal implementation of array_min_element.
+ *
+ * Returns a pointer to the smallest element according to `cmp`
+ * (the first one encountered on ties), or NULL if the array is empty.
+ */
+static inline void *__array_min_element_impl(void *data, size_t count, size_t elem_size,
+                                             int (*cmp)(const void *, const void *)) {
+    if (count == 0) {
+        return NULL;
+    }
+    unsigned char *ptr  = (unsigned char *)data;
+    unsigned char *best = ptr;
+    for (size_t i = 1; i < count; i++) {
+        unsigned char *cur = ptr + i * elem_size;
+        if (cmp(cur, best) < 0) {
+            best = cur;
+        }
+    }
+    return best;
+}
+
+
+/**
+ * @brief Returns a pointer to the smallest element of the array.
+ *
+ * Mirrors C++'s std::min_element: scans the whole array and returns a
+ * pointer to the smallest element as ordered by `cmp`. On ties the first
+ * such element is returned. The result is writable; it is NULL only for a
+ * zero-length array. `cmp` is a standard qsort-style comparator returning
+ * <0, 0, or >0.
+ */
+#define array_min_element(arr, cmp) \
+    __array_min_element_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (cmp))
+
+
+/**
+ * @brief Internal implementation of array_max_element.
+ *
+ * Returns a pointer to the largest element according to `cmp`
+ * (the first one encountered on ties), or NULL if the array is empty.
+ */
+static inline void *__array_max_element_impl(void *data, size_t count, size_t elem_size,
+                                             int (*cmp)(const void *, const void *)) {
+    if (count == 0) {
+        return NULL;
+    }
+    unsigned char *ptr  = (unsigned char *)data;
+    unsigned char *best = ptr;
+    for (size_t i = 1; i < count; i++) {
+        unsigned char *cur = ptr + i * elem_size;
+        if (cmp(cur, best) > 0) {
+            best = cur;
+        }
+    }
+    return best;
+}
+
+
+/**
+ * @brief Returns a pointer to the largest element of the array.
+ *
+ * Mirrors C++'s std::max_element: scans the whole array and returns a
+ * pointer to the largest element as ordered by `cmp`. On ties the first
+ * such element is returned. The result is writable; it is NULL only for a
+ * zero-length array. `cmp` is a standard qsort-style comparator returning
+ * <0, 0, or >0.
+ */
+#define array_max_element(arr, cmp) \
+    __array_max_element_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (cmp))
 
 
 /**

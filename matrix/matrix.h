@@ -117,6 +117,7 @@ Matrix*  matrix_add                          (const Matrix* matrix1, const Matri
 Matrix*  matrix_subtract                     (const Matrix* matrix1, const Matrix* matrix2);
 Matrix*  matrix_multiply                     (const Matrix* matrix1, const Matrix* matrix2);
 Matrix*  matrix_kronecker_product            (const Matrix* A, const Matrix* B);
+Matrix*  matrix_hadamard_product             (const Matrix* A, const Matrix* B);
 Matrix*  matrix_power                        (const Matrix* matrix, int power);
 Matrix*  matrix_map                          (const Matrix* matrix, MatrixFunc func);
 bool     matrix_scalar_multiply              (Matrix* matrix, double scalar);
@@ -152,6 +153,7 @@ Matrix*  matrix_get_minor_diagonal_as_column (const Matrix* matrix);
 bool     matrix_lu_decomposition             (const Matrix* matrix, Matrix** L, Matrix** U);
 bool     matrix_qr_decomposition             (const Matrix* A, Matrix** Q, Matrix** R);
 Matrix*  matrix_cholesky_decomposition       (const Matrix* matrix);
+Matrix*  matrix_solve                        (const Matrix* A, const Matrix* b);
 
 
 /* ------------------------------------------------------------------ */

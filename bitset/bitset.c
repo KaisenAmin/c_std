@@ -859,3 +859,126 @@ unsigned char* bitset_at_ref(Bitset* bs, size_t pos) {
     
     return &bs->bits[byte_index];
 }
+
+
+/**
+ * @brief Creates a deep copy of a Bitset.
+ *
+ * Allocates a new Bitset of the same size and copies every bit. The result is
+ * fully independent — mutating it does not affect the source and vice versa.
+ * Fills the gap that the library could produce new bitsets via the bitwise
+ * operators but had no way to simply duplicate one.
+ *
+ * @param bs The Bitset to copy. May be NULL.
+ * @return A newly-allocated copy (release with `bitset_deallocate`), or NULL if
+ *         @p bs is NULL or allocation fails.
+ */
+Bitset* bitset_copy(const Bitset* bs) {
+    BITSET_LOG("[bitset_copy]: Function start.");
+    if (!bs) {
+        BITSET_LOG("[bitset_copy]: Error - Null pointer provided.");
+        return NULL;
+    }
+
+    Bitset* out = bitset_create(bs->size);
+    if (!out) {
+        BITSET_LOG("[bitset_copy]: Error - Allocation failed.");
+        return NULL;
+    }
+
+    size_t num_bytes = bitset_num_bytes(bs->size);
+    if (num_bytes > 0 && bs->bits && out->bits) {
+        memcpy(out->bits, bs->bits, num_bytes);
+    }
+
+    BITSET_LOG("[bitset_copy]: Copied %zu-bit bitset.", bs->size);
+    return out;
+}
+
+
+/**
+ * @brief Returns the index of the first (lowest-indexed) set bit.
+ *
+ * Scans byte by byte (skipping all-zero bytes) so it is efficient even on
+ * large, sparse bitsets. The companion `bitset_find_next` enables the standard
+ * set-bit iteration idiom:
+ * @code
+ *   for (size_t i = bitset_find_first(bs); i < bitset_size(bs); i = bitset_find_next(bs, i)) {
+ *       // bit i is set
+ *   }
+ * @endcode
+ *
+ * @param bs The Bitset to scan. May be NULL.
+ * @return The index of the lowest set bit, or `bitset_size(bs)` if no bit is
+ *         set (so the loop condition `i < bitset_size(bs)` terminates cleanly).
+ *         Returns 0 for a NULL bitset.
+ */
+size_t bitset_find_first(const Bitset* bs) {
+    BITSET_LOG("[bitset_find_first]: Function start.");
+    if (!bs || !bs->bits) {
+        return bs ? bs->size : 0;
+    }
+
+    size_t num_bytes = bitset_num_bytes(bs->size);
+    for (size_t b = 0; b < num_bytes; ++b) {
+        unsigned char byte = bs->bits[b];
+        if (byte != 0) {
+            for (size_t bit = 0; bit < 8; ++bit) {
+                if (byte & (unsigned char)(1u << bit)) {
+                    size_t pos = b * 8 + bit;
+                    return (pos < bs->size) ? pos : bs->size;
+                }
+            }
+        }
+    }
+    return bs->size;
+}
+
+
+/**
+ * @brief Returns the index of the first set bit strictly after @p pos.
+ *
+ * Like `bitset_find_first`, but starts the search at @p pos + 1. Skips all-zero
+ * bytes for efficiency. Designed to be called in a loop seeded by
+ * `bitset_find_first` (see that function for the iteration idiom).
+ *
+ * @param bs  The Bitset to scan. May be NULL.
+ * @param pos The position to search after (the bit at @p pos itself is skipped).
+ * @return The index of the next set bit after @p pos, or `bitset_size(bs)` if
+ *         there is none. Returns 0 for a NULL bitset.
+ */
+size_t bitset_find_next(const Bitset* bs, size_t pos) {
+    BITSET_LOG("[bitset_find_next]: Function start (pos=%zu).", pos);
+    if (!bs || !bs->bits) {
+        return bs ? bs->size : 0;
+    }
+    if (pos >= bs->size) {
+        return bs->size;          /* nothing past the end (also guards pos+1 overflow) */
+    }
+
+    size_t start = pos + 1;
+    if (start >= bs->size) {
+        return bs->size;
+    }
+
+    size_t num_bytes = bitset_num_bytes(bs->size);
+    size_t first_byte = start / 8;
+    size_t first_bit = start % 8;
+
+    /* First (partial) byte: mask off the bits below `first_bit`. */
+    unsigned char byte = (unsigned char)(bs->bits[first_byte] & (0xFFu << first_bit));
+    for (size_t b = first_byte; b < num_bytes; ++b) {
+        if (b != first_byte) {
+            byte = bs->bits[b];
+        }
+        if (byte != 0) {
+            for (size_t bit = 0; bit < 8; ++bit) {
+                if (byte & (unsigned char)(1u << bit)) {
+                    size_t p = b * 8 + bit;
+                    return (p < bs->size) ? p : bs->size;
+                }
+            }
+        }
+    }
+    return bs->size;
+}

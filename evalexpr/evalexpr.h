@@ -14,6 +14,7 @@
 #define EVALEXPR_H_
 
 #include <stdio.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +63,7 @@ typedef struct {
 
 double        eval_expr                       (const char* expr);
 double        eval_expr_strict                (const char* expr, int* error);
+double        eval_expr_with_vars             (const char* expr, const char** names, const double* values, size_t count, int* error);
 
 
 /* ------------------------------------------------------------------ */
@@ -70,6 +72,7 @@ double        eval_expr_strict                (const char* expr, int* error);
 
 char*         eval_expr_to_rpn_string         (const char* expr);
 char**        eval_expr_tokenize              (const char* expr, int* numTokens);
+void          eval_expr_free_tokens           (char** tokens, int count);
 int           eval_expr_is_valid              (const char* expr);
 void          eval_expr_print_debug           (const char* expr);
 

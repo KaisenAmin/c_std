@@ -130,6 +130,17 @@ This library provides a comprehensive set of functions for reading from and writ
 
 ---
 
+### `bool file_writer_write_all_atomic(const char* path, const void* data, size_t size)`
+**Purpose**: Atomically writes `size` bytes to `path`. The data is first written to a temporary file in the *same* directory, flushed to stable storage (`fsync` / `FlushFileBuffers`), then atomically renamed over `path`. A concurrent reader (or a reader after a crash) always sees either the complete old content or the complete new content — never a half-written file. This is the standard crash-safe pattern for config and state files. Unlike the rest of the API this is a one-shot, path-based call (atomicity requires owning the whole open → write → rename sequence), so there is no `FileWriter` handle to manage.
+**Parameters**:
+- `path`: Destination path to (over)write. Must not be `NULL`.
+- `data`: Bytes to write. May be `NULL` only when `size == 0`.
+- `size`: Number of bytes to write.
+**Return Value**: `true` on success; `false` on any error (the temporary file is removed, leaving `path` untouched).
+**Usage Case**: Use this when overwriting a file must be all-or-nothing — persisting settings, a state snapshot, or any document where a torn write would corrupt the consumer.
+
+---
+
 ### `size_t file_writer_get_position(FileWriter* writer)`
 **Purpose**: Returns the current byte offset of the file pointer.
 **Parameters**:
@@ -295,6 +306,17 @@ This library provides a comprehensive set of functions for reading from and writ
 - `num_lines`: Number of lines to read.
 **Return Value**: `true` on success, `false` on error.
 **Usage Case**: Use this to bulk-read a fixed number of lines into memory for batch processing.
+
+---
+
+### `bool file_reader_read_all(FileReader* reader, char** out_buf, size_t* out_size)`
+**Purpose**: Reads everything from the current position to end-of-file into a single heap-allocated buffer in one pass and NUL-terminates it (so the result is safe to use as a C string when the data is text). `*out_size` receives the actual number of bytes read, which can be smaller than the on-disk byte count in text mode because the C runtime translates CRLF to LF — open the file with `READ_BINARY` for an exact byte count. Binary-safe: embedded NUL bytes are preserved and counted in `*out_size`.
+**Parameters**:
+- `reader`: A pointer to an open `FileReader` structure.
+- `out_buf`: Output parameter; receives the `malloc`'d, NUL-terminated buffer. The caller frees it with `free`. Must not be `NULL`.
+- `out_size`: Optional output parameter; receives the number of bytes read. May be `NULL`.
+**Return Value**: `true` on success; `false` on invalid arguments, a seek/read error, or out-of-memory.
+**Usage Case**: Use this for the common "slurp the whole file" need — loading a config, template, or small document into memory without writing a manual `seek`/`ftell`/`malloc`/`fread` loop every time.
 
 ---
 
@@ -1190,6 +1212,66 @@ int main(void) {
 ```
 SHA-256 of data.bin:
 5e6cc2c43757fa2635c2a23fdb3c3d643648e04b6ddf8bc2e03a5300e4220876
+```
+
+---
+
+## Example 23 : crash-safe overwrite then slurp the whole file with `file_writer_write_all_atomic` and `file_reader_read_all`
+
+`file_writer_write_all_atomic` writes to a temporary file in the same directory, flushes it to disk, then atomically renames it over the target — so a reader (or a reader after a crash) never sees a half-written file. `file_reader_read_all` loads the entire file back in a single call.
+
+```c
+#include "file_io/file_writer.h"
+#include "file_io/file_reader.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    const char* path = "./sources/app_state.cfg";
+
+    /* Build the new file content. */
+    const char* state =
+        "theme=dark\n"
+        "volume=70\n"
+        "last_file=report.txt\n";
+
+    /* Crash-safe write: temp-in-same-dir + fsync + atomic rename. A reader can
+       never observe a half-written file, even if the process dies mid-write. */
+    if (!file_writer_write_all_atomic(path, state, strlen(state))) {
+        fmt_printf("atomic write failed\n");
+        return 1;
+    }
+    fmt_printf("wrote %zu bytes atomically to %s\n", strlen(state), path);
+
+    /* Overwrite atomically a second time: the old content is fully replaced. */
+    const char* updated =
+        "theme=light\n"
+        "volume=55\n"
+        "last_file=summary.txt\n";
+    file_writer_write_all_atomic(path, updated, strlen(updated));
+
+    /* Slurp the whole file back in one call (binary mode -> exact byte count). */
+    FileReader* r = file_reader_open(path, READ_BINARY);
+    char*  buf  = NULL;
+    size_t size = 0;
+    if (r && file_reader_read_all(r, &buf, &size)) {
+        fmt_printf("read %zu bytes back:\n%s", size, buf);
+        free(buf);
+    }
+    file_reader_close(r);
+
+    remove(path);
+    return 0;
+}
+```
+**Result**
+```
+wrote 42 bytes atomically to ./sources/app_state.cfg
+read 44 bytes back:
+theme=light
+volume=55
+last_file=summary.txt
 ```
 
 ---

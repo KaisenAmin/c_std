@@ -98,6 +98,16 @@ void       csv_print                       (const CsvFile* file);
 
 
 /* ------------------------------------------------------------------ */
+/* CsvFile — RFC 4180 (quote-aware) I/O                               */
+/* ------------------------------------------------------------------ */
+
+void       csv_file_load_from_string_rfc4180 (CsvFile* file, const char* data);
+bool       csv_file_read_rfc4180             (CsvFile* file, const char* filename);
+char*      csv_file_export_to_string_rfc4180 (const CsvFile* file);
+bool       csv_file_write_rfc4180            (const CsvFile* file, const char* filename);
+
+
+/* ------------------------------------------------------------------ */
 /* CsvFile — row access / mutation                                    */
 /* ------------------------------------------------------------------ */
 

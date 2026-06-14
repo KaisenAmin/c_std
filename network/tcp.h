@@ -194,6 +194,9 @@ TcpStatus    tcp_connect_timeout            (TcpSocket socket, const char* host,
 /* ------------------------------------------------------------------ */
 
 TcpStatus    tcp_ssl_init                   (const char* cert, const char* key);
+TcpStatus    tcp_ssl_init_client            (void);
+TcpStatus    tcp_ssl_set_verify             (bool verify_peer);
+TcpStatus    tcp_ssl_load_verify_locations  (const char* ca_file, const char* ca_path);
 TcpStatus    tcp_ssl_cleanup                (void);
 
 
@@ -210,6 +213,8 @@ TcpStatus    tcp_ssl_recv                   (TcpSocket socket, void* buf, size_t
 TcpStatus    tcp_ssl_close                  (TcpSocket socket);
 void         tcp_set_ssl                    (TcpSocket socket, SSL* ssl);
 SSL*         tcp_get_ssl                    (TcpSocket socket);
+long         tcp_ssl_get_verify_result      (TcpSocket socket);
+TcpStatus    tcp_connect_tls                (const char* host, unsigned short port, long timeout_ms, bool verify, TcpSocket* out_socket);
 
 
 /* ------------------------------------------------------------------ */

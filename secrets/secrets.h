@@ -37,6 +37,7 @@ extern "C" {
 /* ------------------------------------------------------------------ */
 
 int           secrets_randbelow          (int n);
+size_t        secrets_randbelow_size     (size_t n);
 unsigned int  secrets_randbits           (int k);
 
 
@@ -47,6 +48,7 @@ unsigned int  secrets_randbits           (int k);
 bool          secrets_token_bytes        (unsigned char* buffer, size_t nbytes);
 void          secrets_token_hex          (char* buffer, size_t nbytes);
 void          secrets_token_urlsafe      (char* buffer, size_t nbytes);
+bool          secrets_token_from_alphabet(char* buffer, size_t length, const char* alphabet);
 
 
 /* ------------------------------------------------------------------ */

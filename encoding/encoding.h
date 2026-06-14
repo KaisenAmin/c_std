@@ -81,6 +81,7 @@ void        encoding_initialize              (void);
 
 char*       encoding_base16_encode           (const char* input, size_t length);
 char*       encoding_base16_decode           (const char* input, size_t length);
+char*       encoding_base16_decode_ex        (const char* input, size_t length, size_t* out_len);
 
 
 /* ------------------------------------------------------------------ */
@@ -89,6 +90,7 @@ char*       encoding_base16_decode           (const char* input, size_t length);
 
 char*       encoding_base32_encode           (const char* input, size_t length);
 char*       encoding_base32_decode           (const char* input, size_t length);
+char*       encoding_base32_decode_ex        (const char* input, size_t length, size_t* out_len);
 
 
 /* ------------------------------------------------------------------ */
@@ -105,6 +107,7 @@ char*       encoding_base58_decode           (const char* b58, size_t* binszp);
 
 char*       encoding_base64_encode           (const char* input, size_t length);
 char*       encoding_base64_decode           (const char* input, size_t length);
+char*       encoding_base64_decode_ex        (const char* input, size_t length, size_t* out_len);
 
 
 /* ------------------------------------------------------------------ */

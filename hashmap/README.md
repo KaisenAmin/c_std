@@ -88,7 +88,7 @@ The `HashMapIterator` structure provides a way to traverse the `HashMap`. The it
 The `HashMap` structure is the main container that manages the hash table.
 
 - **Fields:**
-  - `HashMapNode* buckets`: Array of bucket heads.
+  - `HashMapNode** buckets`: Array of bucket head pointers (`NULL` = empty bucket). Like `std::unordered_map`, each slot is an 8-byte pointer rather than an inline node.
   - `size_t bucket_count`: Number of buckets in the hash table.
   - `size_t size`: Number of elements in the hashmap.
   - `size_t max_load_factor_numerator`: Numerator for max load factor calculation.
@@ -97,6 +97,7 @@ The `HashMap` structure is the main container that manages the hash table.
   - `CompareFuncHashMap compare_func`: Function pointer to the comparison function.
   - `ValueDeallocFunc dealloc_key`: Function pointer to key deallocation function.
   - `ValueDeallocFunc dealloc_value`: Function pointer to value deallocation function.
+  - `HashMapSlab* slabs`, `HashMapNode* freeList`, `size_t slabCap`: Internal node pool — entries are carved from slabs instead of one `malloc` per node, so teardown is `O(slabs)` and memory tracks the data. Not for external use.
 
 ## Function Explanations
 

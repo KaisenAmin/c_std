@@ -12,15 +12,26 @@
 // Define the Red-Black Tree color constants
 #define RED 1
 #define BLACK 0
+#define RBMAP_FIRST_SLAB_CAP 8
+#define RBMAP_MAX_SLAB_CAP   (65536u / sizeof(MapNode))
 
+
+typedef struct MapSlab {
+    struct MapSlab* next;
+    size_t          used;   
+    size_t          cap;    
+} MapSlab;
 
 // Map structure definition
 struct Map {
-    MapNode* root;
-    CompareFuncMap compFunc;
+    MapNode*         root;
+    CompareFuncMap   compFunc;
     ValueDeallocFunc deallocKey;
     ValueDeallocFunc deallocValue;
-    size_t size;
+    size_t           size;
+    MapSlab*         slabs;     
+    MapNode*         freeList;  
+    size_t           slabCap;   
 };
 
 
@@ -124,31 +135,78 @@ void map_iterator_decrement(MapIterator* it) {
 }
 
 
-/**
- * @brief Creates a new MapNode with the given key and value.
- *
- * This function allocates memory for a new MapNode, initializes its key and value,
- * and sets its color to RED, as required by Red-Black Tree properties.
- *
- * @param key The key to be stored in the new node.
- * @param value The value to be associated with the key in the new node.
- * @return A pointer to the newly created MapNode, or NULL if memory allocation fails.
- */
-static MapNode* create_node(KeyType key, ValueType value) {
-    MAP_LOG("[create_node] : Creating a new node with key: %p and value: %p.", (void*)key, (void*)value);
-    
-    MapNode* node = (MapNode*)malloc(sizeof(MapNode));
+/* Carve one node slot from the pool: reuse a freed slot, else the current
+ * slab, else a fresh slab. Returns NULL only if a slab allocation fails. */
+static MapNode* rbmap_pool_alloc(Map* map) {
+    MapNode* node;
+
+    if (map->freeList) {
+        node = map->freeList;
+        map->freeList = node->left;
+    }
+    else {
+        MapSlab* slab = map->slabs;
+
+        if (!slab || slab->used == slab->cap) {
+            size_t cap = map->slabCap;
+            slab = (MapSlab*)malloc(sizeof(MapSlab) + cap * sizeof(MapNode));
+            if (!slab) {
+                MAP_LOG("[rbmap_pool_alloc] : Error: slab malloc failed.");
+                return NULL;
+            }
+            slab->used = 0;
+            slab->cap  = cap;
+            slab->next = map->slabs;
+            map->slabs = slab;
+            /* Grow the next slab geometrically, capped at ~64 KB. */
+            if (map->slabCap < RBMAP_MAX_SLAB_CAP) {
+                map->slabCap *= 2;
+                if (map->slabCap > RBMAP_MAX_SLAB_CAP) {
+                    map->slabCap = RBMAP_MAX_SLAB_CAP;
+                }
+            }
+        }
+        node = (MapNode*)((unsigned char*)slab + sizeof(MapSlab) + slab->used * sizeof(MapNode));
+        slab->used++;
+    }
+    return node;
+}
+
+/* Return a node's slot to the free-list for reuse (used on erase / dup). */
+static void rbmap_pool_free(Map* map, MapNode* node) {
+    node->left = map->freeList;
+    map->freeList = node;
+}
+
+/* Release every slab (used on clear / deallocate). O(number of slabs). */
+static void rbmap_pool_destroy(Map* map) {
+    MapSlab* s = map->slabs;
+
+    while (s) {
+        MapSlab* next = s->next;
+        free(s);
+        s = next;
+    }
+    map->slabs = NULL;
+    map->freeList = NULL;
+}
+
+/* Allocate a node from the pool and initialise it (RED, no children). */
+static MapNode* rbmap_create_node(Map* map, KeyType key, ValueType value) {
+    MAP_LOG("[rbmap_create_node] : Creating a new node with key: %p and value: %p.", (void*)key, (void*)value);
+
+    MapNode* node = rbmap_pool_alloc(map);
     if (!node) {
-        MAP_LOG("[create_node] : Error: Cannot allocate memory for node in create_node.");
+        MAP_LOG("[rbmap_create_node] : Error: Cannot allocate memory for node.");
         return NULL;
     }
 
     node->key = key;
     node->value = value;
     node->left = node->right = node->parent = NULL;
-    node->color = RED; 
+    node->color = RED;
 
-    MAP_LOG("[create_node] : Node created successfully with key: %p, value: %p, color: RED.", (void*)key, (void*)value);
+    MAP_LOG("[rbmap_create_node] : Node created successfully with key: %p, value: %p, color: RED.", (void*)key, (void*)value);
     return node;
 }
 
@@ -164,43 +222,43 @@ static MapNode* create_node(KeyType key, ValueType value) {
  * @param map A pointer to the map structure.
  * @param x A pointer to the node on which to perform the left rotation.
  */
-static void map_left_rotate(Map* map, MapNode* x) {
+static void rbmap_left_rotate(Map* map, MapNode* x) {
     if (map == NULL || x == NULL) {
-        MAP_LOG("[map_left_rotate] : Error: Null pointer provided to map_left_rotate.");
+        MAP_LOG("[rbmap_left_rotate] : Error: Null pointer provided to rbmap_left_rotate.");
         return;
     }
 
     MapNode* y = x->right;
     if (y == NULL) {
-        MAP_LOG("[map_left_rotate] : Error: Right child is null in map_left_rotate for node: %p.", (void*)x);
+        MAP_LOG("[rbmap_left_rotate] : Error: Right child is null in rbmap_left_rotate for node: %p.", (void*)x);
         return;
     }
 
-    MAP_LOG("[map_left_rotate] : Performing left rotation on node: %p with right child: %p.", (void*)x, (void*)y);
+    MAP_LOG("[rbmap_left_rotate] : Performing left rotation on node: %p with right child: %p.", (void*)x, (void*)y);
 
     x->right = y->left;
     if (y->left != NULL) {
         y->left->parent = x;
-        MAP_LOG("[map_left_rotate] : Set the parent of left child %p to %p.", (void*)(y->left), (void*)x);
+        MAP_LOG("[rbmap_left_rotate] : Set the parent of left child %p to %p.", (void*)(y->left), (void*)x);
     }
 
     y->parent = x->parent;
     if (x->parent == NULL) {
         map->root = y;
-        MAP_LOG("[map_left_rotate] : Node %p is now the root after left rotation.", (void*)y);
+        MAP_LOG("[rbmap_left_rotate] : Node %p is now the root after left rotation.", (void*)y);
     } 
     else if (x == x->parent->left) {
         x->parent->left = y;
-        MAP_LOG("[map_left_rotate] : Node %p is now the left child of its parent %p.", (void*)y, (void*)(x->parent));
+        MAP_LOG("[rbmap_left_rotate] : Node %p is now the left child of its parent %p.", (void*)y, (void*)(x->parent));
     } 
     else {
         x->parent->right = y;
-        MAP_LOG("[map_left_rotate] : Node %p is now the right child of its parent %p.", (void*)y, (void*)(x->parent));
+        MAP_LOG("[rbmap_left_rotate] : Node %p is now the right child of its parent %p.", (void*)y, (void*)(x->parent));
     }
 
     y->left = x;
     x->parent = y;
-    MAP_LOG("[map_left_rotate] : Left rotation completed. Node %p is now left child of node %p.", (void*)x, (void*)y);
+    MAP_LOG("[rbmap_left_rotate] : Left rotation completed. Node %p is now left child of node %p.", (void*)x, (void*)y);
 }
 
 
@@ -215,43 +273,43 @@ static void map_left_rotate(Map* map, MapNode* x) {
  * @param map A pointer to the map structure.
  * @param y A pointer to the node on which to perform the right rotation.
  */
-static void map_right_rotate(Map* map, MapNode* y) {
+static void rbmap_right_rotate(Map* map, MapNode* y) {
     if (map == NULL || y == NULL) {
-        MAP_LOG("[map_right_rotate] : Error: Null pointer provided to map_right_rotate.");
+        MAP_LOG("[rbmap_right_rotate] : Error: Null pointer provided to rbmap_right_rotate.");
         return;
     }
 
     MapNode* x = y->left;
     if (x == NULL) {
-        MAP_LOG("[map_right_rotate] : Error: Left child is null in map_right_rotate for node: %p.", (void*)y);
+        MAP_LOG("[rbmap_right_rotate] : Error: Left child is null in rbmap_right_rotate for node: %p.", (void*)y);
         return;
     }
 
-    MAP_LOG("[map_right_rotate] : Performing right rotation on node: %p with left child: %p.", (void*)y, (void*)x);
+    MAP_LOG("[rbmap_right_rotate] : Performing right rotation on node: %p with left child: %p.", (void*)y, (void*)x);
 
     y->left = x->right;
     if (x->right != NULL) {
         x->right->parent = y;
-        MAP_LOG("[map_right_rotate] : Set the parent of right child %p to %p.", (void*)(x->right), (void*)y);
+        MAP_LOG("[rbmap_right_rotate] : Set the parent of right child %p to %p.", (void*)(x->right), (void*)y);
     }
 
     x->parent = y->parent;
     if (y->parent == NULL) {
         map->root = x;
-        MAP_LOG("[map_right_rotate] : Node %p is now the root after right rotation.",(void*)x);
+        MAP_LOG("[rbmap_right_rotate] : Node %p is now the root after right rotation.",(void*)x);
     } 
     else if (y == y->parent->right) {
         y->parent->right = x;
-        MAP_LOG("[map_right_rotate] : Node %p is now the right child of its parent %p.", (void*)x, (void*)(y->parent));
+        MAP_LOG("[rbmap_right_rotate] : Node %p is now the right child of its parent %p.", (void*)x, (void*)(y->parent));
     } 
     else {
         y->parent->left = x;
-        MAP_LOG("[map_right_rotate] : Node %p is now the left child of its parent %p.", (void*)x, (void*)(y->parent));
+        MAP_LOG("[rbmap_right_rotate] : Node %p is now the left child of its parent %p.", (void*)x, (void*)(y->parent));
     }
 
     x->right = y;
     y->parent = x;
-    MAP_LOG("[map_right_rotate] : Right rotation completed. Node %p is now right child of node %p.", (void*)y, (void*)x);
+    MAP_LOG("[rbmap_right_rotate] : Right rotation completed. Node %p is now right child of node %p.", (void*)y, (void*)x);
 }
 
 
@@ -266,29 +324,29 @@ static void map_right_rotate(Map* map, MapNode* y) {
  * @param u A pointer to the node to be replaced.
  * @param v A pointer to the node to replace `u`.
  */
-static void map_transplant(Map* map, MapNode* u, MapNode* v) {
+static void rbmap_transplant(Map* map, MapNode* u, MapNode* v) {
     if (map == NULL || u == NULL) {
-        MAP_LOG("[map_transplant] : Error: Null pointer provided to map_transplant.");
+        MAP_LOG("[rbmap_transplant] : Error: Null pointer provided to rbmap_transplant.");
         return;
     }
-    MAP_LOG("[map_transplant]: Replacing node %p with node %p.", (void*)u, (void*)v);
+    MAP_LOG("[rbmap_transplant]: Replacing node %p with node %p.", (void*)u, (void*)v);
 
     if (u->parent == NULL) {
         map->root = v;
-        MAP_LOG("[map_transplant]: Node %p is the root. Setting new root to %p.", (void*)u, (void*)v);
+        MAP_LOG("[rbmap_transplant]: Node %p is the root. Setting new root to %p.", (void*)u, (void*)v);
     } 
     else if (u == u->parent->left) {
         u->parent->left = v;
-        MAP_LOG("[map_transplant] : Node %p was the left child of its parent. Replacing with node %p.", (void*)u, (void*)v);
+        MAP_LOG("[rbmap_transplant] : Node %p was the left child of its parent. Replacing with node %p.", (void*)u, (void*)v);
     } 
     else {
         u->parent->right = v;
-        MAP_LOG("[map_transplant] : Node %p was the right child of its parent. Replacing with node %p.", (void*)u, (void*)v);
+        MAP_LOG("[rbmap_transplant] : Node %p was the right child of its parent. Replacing with node %p.", (void*)u, (void*)v);
     }
 
     if (v != NULL) {
         v->parent = u->parent;
-        MAP_LOG("[map_transplant] : Setting node %p's parent to %p.", (void*)v, (void*)(u->parent));
+        MAP_LOG("[rbmap_transplant] : Setting node %p's parent to %p.", (void*)v, (void*)(u->parent));
     }
 }
 
@@ -302,19 +360,19 @@ static void map_transplant(Map* map, MapNode* u, MapNode* v) {
  * @param node A pointer to the root of the subtree.
  * @return A pointer to the node with the minimum key in the subtree.
  */
-static MapNode* map_minimum(MapNode* node) {
+static MapNode* rbmap_minimum(MapNode* node) {
     if (node == NULL) {
-        MAP_LOG("[map_minimum] : Error: Null pointer provided to map_minimum.");
+        MAP_LOG("[rbmap_minimum] : Error: Null pointer provided to rbmap_minimum.");
         return NULL;
     }
-    MAP_LOG("[map_minimum] : Finding minimum node starting from %p.", (void*)node);
+    MAP_LOG("[rbmap_minimum] : Finding minimum node starting from %p.", (void*)node);
 
     while (node->left != NULL) {
         node = node->left;
-        MAP_LOG("[map_minimum] : Moving left to node %p.", (void*)node);
+        MAP_LOG("[rbmap_minimum] : Moving left to node %p.", (void*)node);
     }
 
-    MAP_LOG("[map_minimum] : Minimum node found: %p.", (void*)node);
+    MAP_LOG("[rbmap_minimum] : Minimum node found: %p.", (void*)node);
     return node;
 }
 
@@ -329,10 +387,7 @@ static MapNode* map_minimum(MapNode* node) {
  * @param map A pointer to the map structure.
  * @param x A pointer to the node that replaces the deleted node, which may cause a violation of Red-Black Tree properties.
  */
-static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
-    // x may be NULL (the deleted leaf had no replacement child). In that
-    // case x_parent identifies which slot of which parent x occupies, so we
-    // can still find the sibling without dereferencing a NULL x.
+static void rbmap_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
     if (map == NULL) {
         return;
     }
@@ -352,7 +407,7 @@ static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
             if (w->color == RED) {
                 w->color = BLACK;
                 parent->color = RED;
-                map_left_rotate(map, parent);
+                rbmap_left_rotate(map, parent);
                 w = parent->right;
                 if (w == NULL) break;
             }
@@ -366,14 +421,14 @@ static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
                 if (w->right == NULL || w->right->color == BLACK) {
                     if (w->left) w->left->color = BLACK;
                     w->color = RED;
-                    map_right_rotate(map, w);
+                    rbmap_right_rotate(map, w);
                     w = parent->right;
                     if (w == NULL) break;
                 }
                 w->color = parent->color;
                 parent->color = BLACK;
                 if (w->right) w->right->color = BLACK;
-                map_left_rotate(map, parent);
+                rbmap_left_rotate(map, parent);
                 x = map->root;
                 x_parent = NULL;
             }
@@ -386,7 +441,7 @@ static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
             if (w->color == RED) {
                 w->color = BLACK;
                 parent->color = RED;
-                map_right_rotate(map, parent);
+                rbmap_right_rotate(map, parent);
                 w = parent->left;
 
                 if (w == NULL) {
@@ -406,7 +461,7 @@ static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
                     }
 
                     w->color = RED;
-                    map_left_rotate(map, w);
+                    rbmap_left_rotate(map, w);
                     w = parent->left;
 
                     if (w == NULL) {
@@ -420,7 +475,7 @@ static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
                     w->left->color = BLACK;
                 }
 
-                map_right_rotate(map, parent);
+                rbmap_right_rotate(map, parent);
                 x = map->root;
                 x_parent = NULL;
             }
@@ -432,39 +487,26 @@ static void map_erase_fixup(Map* map, MapNode* x, MapNode* x_parent) {
     }
 }
 
-/**
- * @brief Recursively frees all nodes in the subtree rooted at the given node.
- *
- * This function performs a post-order traversal of the tree,
- * freeing each node and its associated key and value, using the provided deallocation functions.
- *
- * @param node A pointer to the root of the subtree to be freed.
- * @param deallocKey A function pointer for deallocating the key associated with each node.
- * @param deallocValue A function pointer for deallocating the value associated with each node.
- */
-static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
+
+/* Walk the LIVE nodes (recursion depth = tree height = O(log n)) and run the
+ * optional key/value deallocators. Node memory itself is NOT freed here — the
+ * slabs are released wholesale by rbmap_pool_destroy. Only called when at
+ * least one deallocator is set; with neither, teardown skips this walk
+ * entirely and is pure O(slabs). */
+static void rbmap_dealloc_live(MapNode* node, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue) {
     if (node == NULL) {
-        MAP_LOG("[map_free_nodes] : Error: node param is null and invalid in map_free_nodes.");
         return;
     }
-    MAP_LOG("[map_free_nodes] : Freeing node with key: %p.", (void*)(node->key));
 
-    map_free_nodes(node->left, deallocKey, deallocValue);
-    map_free_nodes(node->right, deallocKey, deallocValue);
+    rbmap_dealloc_live(node->left, deallocKey, deallocValue);
+    rbmap_dealloc_live(node->right, deallocKey, deallocValue);
 
-    // Deallocate the key and value if deallocation functions are provided
     if (deallocKey) {
-        MAP_LOG("[map_free_nodes] : Deallocating key: %p.", (void*)(node->key));
         deallocKey(node->key);
     }
     if (deallocValue) {
-        MAP_LOG("[map_free_nodes] : Deallocating value: %p.", (void*)(node->value));
         deallocValue(node->value);
     }
-
-    
-    free(node); 
-    MAP_LOG("[map_free_nodes] : Node with keysuccessfully freed.");
 }
 
 
@@ -477,18 +519,18 @@ static void map_free_nodes(MapNode* node, ValueDeallocFunc deallocKey, ValueDeal
  * @param map A pointer to the map structure.
  * @param newNode A pointer to the newly inserted node that may cause a violation of the Red-Black Tree properties.
  */
-static void map_insert_fixup(Map* map, MapNode* newNode) {
+static void rbmap_insert_fixup(Map* map, MapNode* newNode) {
     if (map == NULL || newNode == NULL) {
-        MAP_LOG("[map_insert_fixup] : Error: Null pointer provided to map_insert_fixup.");
+        MAP_LOG("[rbmap_insert_fixup] : Error: Null pointer provided to rbmap_insert_fixup.");
         return;
     }
-    MAP_LOG("[map_insert_fixup] : Fixing up after insertion of node with key %p.", (void*)(newNode->key));
+    MAP_LOG("[rbmap_insert_fixup] : Fixing up after insertion of node with key %p.", (void*)(newNode->key));
 
     while (newNode != map->root && newNode->parent->color == RED) {
         if (newNode->parent == newNode->parent->parent->left) {
             MapNode* uncle = newNode->parent->parent->right;
             if (uncle && uncle->color == RED) {
-                MAP_LOG("[map_insert_fixup] : Case 1 (left) - Parent and uncle are red.");
+                MAP_LOG("[rbmap_insert_fixup] : Case 1 (left) - Parent and uncle are red.");
 
                 newNode->parent->color = BLACK;
                 uncle->color = BLACK;
@@ -497,23 +539,23 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
             } 
             else {
                 if (newNode == newNode->parent->right) {
-                    MAP_LOG("[map_insert_fixup] : Case 2 (left) - Performing left rotation.");
+                    MAP_LOG("[rbmap_insert_fixup] : Case 2 (left) - Performing left rotation.");
 
                     newNode = newNode->parent;
-                    map_left_rotate(map, newNode);
+                    rbmap_left_rotate(map, newNode);
                 }
-                MAP_LOG("[map_insert_fixup] : Case 3 (left) - Performing right rotation.");
+                MAP_LOG("[rbmap_insert_fixup] : Case 3 (left) - Performing right rotation.");
 
                 newNode->parent->color = BLACK;
                 newNode->parent->parent->color = RED;
-                map_right_rotate(map, newNode->parent->parent);
+                rbmap_right_rotate(map, newNode->parent->parent);
                 break; // Exit loop
             }
         } 
         else {
             MapNode* uncle = newNode->parent->parent->left;
             if (uncle && uncle->color == RED) {
-                MAP_LOG("[map_insert_fixup] : Case 1 (right) - Parent and uncle are red.");
+                MAP_LOG("[rbmap_insert_fixup] : Case 1 (right) - Parent and uncle are red.");
 
                 newNode->parent->color = BLACK;
                 uncle->color = BLACK;
@@ -522,24 +564,24 @@ static void map_insert_fixup(Map* map, MapNode* newNode) {
             } 
             else {
                 if (newNode == newNode->parent->left) {
-                    MAP_LOG("[map_insert_fixup] : Case 2 (right) - Performing right rotation.");
+                    MAP_LOG("[rbmap_insert_fixup] : Case 2 (right) - Performing right rotation.");
 
                     newNode = newNode->parent;
-                    map_right_rotate(map, newNode);
+                    rbmap_right_rotate(map, newNode);
                 }
 
-                MAP_LOG("[map_insert_fixup] : Case 3 (right) - Performing left rotation.");
+                MAP_LOG("[rbmap_insert_fixup] : Case 3 (right) - Performing left rotation.");
 
                 newNode->parent->color = BLACK;
                 newNode->parent->parent->color = RED;
-                map_left_rotate(map, newNode->parent->parent);
+                rbmap_left_rotate(map, newNode->parent->parent);
                 break; 
             }
         }
     }
 
     map->root->color = BLACK;
-    MAP_LOG("[map_insert_fixup] : Fix-up completed, root color set to BLACK.");
+    MAP_LOG("[rbmap_insert_fixup] : Fix-up completed, root color set to BLACK.");
 }
 
 
@@ -576,6 +618,12 @@ Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFu
     map->deallocValue = deallocValue;
     map->size = 0;
 
+    /* Node pool: the first slab is small (cheap for the many-small-maps case,
+     * e.g. JSON objects), then slab capacity doubles up to a ~64 KB cap. */
+    map->slabs = NULL;
+    map->freeList = NULL;
+    map->slabCap = RBMAP_FIRST_SLAB_CAP;
+
     MAP_LOG("[map_create] : Map created successfully.");
 
     return map;
@@ -597,7 +645,12 @@ void map_deallocate(Map* map) {
     }
     MAP_LOG("[map_deallocate] : Deallocating map and freeing all nodes.");
 
-    map_free_nodes(map->root, map->deallocKey, map->deallocValue);
+    /* Run per-element deallocators only if the caller asked for them, then
+     * release all node memory in one O(slabs) sweep. */
+    if (map->deallocKey || map->deallocValue) {
+        rbmap_dealloc_live(map->root, map->deallocKey, map->deallocValue);
+    }
+    rbmap_pool_destroy(map);
     free(map);
 
     MAP_LOG("[map_deallocate] : Map deallocated successfully.");
@@ -718,7 +771,7 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
         }
     }
 
-    MapNode* newNode = create_node(key, value);
+    MapNode* newNode = rbmap_create_node(map, key, value);
     if (!newNode) {
         MAP_LOG("[map_insert] : Error: Node creation failed in map_insert.");
         return false;
@@ -729,7 +782,7 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
     map->size++;
 
     MAP_LOG("[map_insert] : Node inserted successfully. Performing tree balancing.");
-    map_insert_fixup(map, newNode);
+    rbmap_insert_fixup(map, newNode);
     MAP_LOG("[map_insert] : Insertion completed. Map size is now %zu.", map->size);
 
     return true;
@@ -790,7 +843,10 @@ void map_clear(Map* map) {
     }
 
     MAP_LOG("[map_clear] : Clearing all nodes in the map.");
-    map_free_nodes(map->root, map->deallocKey, map->deallocValue);
+    if (map->deallocKey || map->deallocValue) {
+        rbmap_dealloc_live(map->root, map->deallocKey, map->deallocValue);
+    }
+    rbmap_pool_destroy(map);
 
     map->root = NULL;
     map->size = 0;
@@ -838,6 +894,21 @@ void map_swap(Map* map1, Map* map2) {
     ValueDeallocFunc tempDeallocValue = map1->deallocValue;
     map1->deallocValue = map2->deallocValue;
     map2->deallocValue = tempDeallocValue;
+
+    /* The node pool is part of each map's storage, so it must travel with the
+     * rest of the state — otherwise a map would own slabs holding the other's
+     * nodes and free the wrong memory on teardown. */
+    MapSlab* tempSlabs = map1->slabs;
+    map1->slabs = map2->slabs;
+    map2->slabs = tempSlabs;
+
+    MapNode* tempFreeList = map1->freeList;
+    map1->freeList = map2->freeList;
+    map2->freeList = tempFreeList;
+
+    size_t tempSlabCap = map1->slabCap;
+    map1->slabCap = map2->slabCap;
+    map2->slabCap = tempSlabCap;
 
     MAP_LOG("[map_swap] : Swap operation completed successfully.");
 }
@@ -923,7 +994,7 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
         }
     }
 
-    MapNode* newNode = create_node(key, value);
+    MapNode* newNode = rbmap_create_node(map, key, value);
     if (!newNode) {
         MAP_LOG("[map_emplace] : Failed to create a new node for the key-value pair.");
         return false;
@@ -934,7 +1005,7 @@ bool map_emplace(Map* map, KeyType key, ValueType value) {
     map->size++;
 
     MAP_LOG("[map_emplace] : Key-value pair inserted successfully. Rebalancing the tree.");
-    map_insert_fixup(map, newNode); 
+    rbmap_insert_fixup(map, newNode); 
     MAP_LOG("[map_emplace] : Insertion completed. Map size is now %zu.", map->size);
 
     return true;
@@ -981,7 +1052,7 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
         return false;
     }
 
-    MapNode* newNode = create_node(key, value);
+    MapNode* newNode = rbmap_create_node(map, key, value);
     if (newNode == NULL) {
         MAP_LOG("[map_emplace_hint] : Error: Unable to create new node in map_emplace_hint.");
         return false;
@@ -1021,7 +1092,7 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
         int cmp = map->compFunc(key, (*curr)->key);
 
         if (cmp == 0) {
-            free(newNode);
+            rbmap_pool_free(map, newNode);
             MAP_LOG("[map_emplace_hint] : Key already exists during fallback insertion. Map size remains: %zu", map->size);
             return false;
         }
@@ -1032,7 +1103,7 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
     *curr = newNode;
     newNode->parent = parent;
     map->size++;
-    map_insert_fixup(map, newNode);
+    rbmap_insert_fixup(map, newNode);
     MAP_LOG("[map_emplace_hint] : Inserted node without hint. Map size: %zu", map->size);
 
     return true;
@@ -1074,20 +1145,20 @@ bool map_erase(Map* map, KeyType key) {
     MapNode* y = z;
     int y_original_color = y->color;
     MapNode* x;
-    MapNode* x_parent;  // tracked explicitly so fixup works when x is NULL
+    MapNode* x_parent;  
 
     if (z->left == NULL) {
         x = z->right;
         x_parent = z->parent;
-        map_transplant(map, z, z->right);
+        rbmap_transplant(map, z, z->right);
     }
     else if (z->right == NULL) {
         x = z->left;
         x_parent = z->parent;
-        map_transplant(map, z, z->left);
+        rbmap_transplant(map, z, z->left);
     }
     else {
-        y = map_minimum(z->right);
+        y = rbmap_minimum(z->right);
         y_original_color = y->color;
         x = y->right;
 
@@ -1099,12 +1170,12 @@ bool map_erase(Map* map, KeyType key) {
         }
         else {
             x_parent = y->parent;
-            map_transplant(map, y, y->right);
+            rbmap_transplant(map, y, y->right);
             y->right = z->right;
             y->right->parent = y;
         }
 
-        map_transplant(map, z, y);
+        rbmap_transplant(map, z, y);
         y->left = z->left;
         y->left->parent = y;
         y->color = z->color;
@@ -1116,10 +1187,10 @@ bool map_erase(Map* map, KeyType key) {
     if (map->deallocValue) {
         map->deallocValue(z->value);
     }
-    free(z);
+    rbmap_pool_free(map, z);   /* z is off-tree; fixup below uses x/x_parent only */
 
     if (y_original_color == BLACK) {
-        map_erase_fixup(map, x, x_parent);
+        rbmap_erase_fixup(map, x, x_parent);
     }
     map->size--;
     

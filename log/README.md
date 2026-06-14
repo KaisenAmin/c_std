@@ -12,7 +12,10 @@ The logging system is designed to provide a flexible and configurable way to han
 
 ### Key Features:
 - **Multiple Log Levels:** Control the verbosity of the logs (e.g., DEBUG, INFO, WARN, ERROR, FATAL).
-- **Output Options:** Logs can be written to the console, files, or both.
+- **Thread-Safe:** Every logger owns an internal recursive mutex, so concurrent `log_message` calls from many threads never interleave (no torn lines) and the per-level counters stay exact. Timestamps use the reentrant `localtime_r`/`localtime_s`. Safe for production multi-threaded services out of the box.
+- **Convenience Macros:** `log_debug`, `log_info`, `log_warn`, `log_error`, `log_fatal` — one-call shorthands for `log_message` at each level.
+- **Output Options:** Logs can be written to the console, files, or both. ERROR/FATAL console output can be routed to **stderr** with `log_set_error_stream`.
+- **Crash Durability:** `log_set_auto_flush` forces a flush after every emitted record so the most recent lines survive a crash.
 - **Timestamping:** Add timestamps to log entries.
 - **Keyword Filtering:** Display only logs containing specific keywords.
 - **Custom Formatting:** Define how log messages are structured.
@@ -127,6 +130,39 @@ The logging system is designed to provide a flexible and configurable way to han
 - `archivePathFormat`: A `strftime`-style format string for the archive filename (e.g., `"log_%Y%m%d_%H%M%S.txt"`).
 **Return Value**: `true` on success, `false` if `config` or `config->file_writer` is `NULL`, `maxSize` is zero, or a file operation fails.
 **Usage Case**: Enable automatic time-stamped log archiving so that log files never grow beyond a fixed size.
+
+---
+
+### `bool log_set_error_stream(Log* config, bool errors_to_stderr)`
+**Purpose**: Routes high-severity console output (`LOG_LEVEL_ERROR` and `LOG_LEVEL_FATAL`) to **stderr** instead of stdout. Affects console output only (`LOG_OUTPUT_CONSOLE` / `LOG_OUTPUT_BOTH`); the file sink is unchanged. Thread-safe. Off by default (all console output goes to stdout).
+**Parameters**:
+- `config`: Pointer to the `Log` configuration object.
+- `errors_to_stderr`: `true` to send ERROR/FATAL to stderr, `false` to send all console output to stdout (the default).
+**Return Value**: `true` on success, `false` if `config` is `NULL`.
+**Usage Case**: In a production service, keep error/fatal lines visible and separately collectable when stdout is piped or captured (e.g. `./app >app.log 2>errors.log`).
+
+---
+
+### `bool log_set_auto_flush(Log* config, bool enable)`
+**Purpose**: When enabled, flushes the destination stream (console and/or file) immediately after every record that is actually written, so the most recent lines survive a crash or `kill`. Trades throughput for durability. Thread-safe. Off by default.
+**Parameters**:
+- `config`: Pointer to the `Log` configuration object.
+- `enable`: `true` to flush after every emitted record, `false` to rely on normal stdio buffering (the default).
+**Return Value**: `true` on success, `false` if `config` is `NULL`.
+**Usage Case**: Enable on a low-volume audit/error log where losing the last few lines on a crash is unacceptable; leave off for high-volume logging and call `log_flush` at checkpoints instead.
+
+---
+
+### Convenience macros: `log_debug` / `log_info` / `log_warn` / `log_error` / `log_fatal`
+**Purpose**: Per-level shorthands for `log_message`, defined in `log.h`. `log_info(logger, "x=%d", x)` is exactly `log_message(logger, LOG_LEVEL_INFO, "x=%d", x)`.
+**Parameters**: `(Log* config, const char* format, ...)` — a format string is required (at least one argument after `config`).
+**Return Value**: None (same as `log_message`).
+**Usage Case**: Cut boilerplate at call sites: `log_error(logger, "connect failed: %s", err)` instead of spelling out the level enum every time.
+
+---
+
+### Thread safety
+Every `Log` created by `log_init` is **thread-safe**: an internal recursive mutex serializes `log_message` and all file-handle operations (`log_rotate`, `log_redirect_output`, `log_set_file_path`, `log_set_max_file_size`, `log_set_output`, `log_flush`) and protects the per-level counters. Concurrent logging from many threads produces interleave-free lines and exact counts. You can share one `Log*` across all threads; no external locking is required. (Timestamps use the reentrant `localtime_r` / `localtime_s`.)
 
 ---
 
@@ -957,6 +993,128 @@ WARN logged : 2
 ERROR logged: 1
 DEBUG logged: 0
 ```
+
+---
+
+## Example 23 : per-level convenience macros `log_debug` / `log_info` / `log_warn` / `log_error` / `log_fatal`
+
+```c
+#include "log/log.h"
+
+int main() {
+    Log* logger = log_init();
+    log_set_output(logger, LOG_OUTPUT_CONSOLE);
+
+    int port = 8080;
+    log_debug(logger, "starting up on port %d", port);
+    log_info (logger, "service ready");
+    log_warn (logger, "cache hit-rate low: %d%%", 42);
+    log_error(logger, "db connection failed: %s", "timeout");
+    log_fatal(logger, "unrecoverable - shutting down");
+
+    log_deallocate(logger);
+    return 0;
+}
+```
+**Result**
+```
+ [DEBUG] - starting up on port 8080
+ [INFO] - service ready
+ [WARN] - cache hit-rate low: 42%
+ [ERROR] - db connection failed: timeout
+ [FATAL] - unrecoverable - shutting down
+```
+
+---
+
+## Example 24 : route errors to stderr + crash-durable flushing with `log_set_error_stream` and `log_set_auto_flush`
+
+```c
+#include "log/log.h"
+
+int main() {
+    Log* logger = log_init();
+    log_set_output(logger, LOG_OUTPUT_CONSOLE);
+
+    /* Route ERROR/FATAL to stderr; flush every record so nothing is lost on a crash. */
+    log_set_error_stream(logger, true);
+    log_set_auto_flush(logger, true);
+
+    log_info (logger, "startup complete");                     /* -> stdout */
+    log_warn (logger, "config file missing, using defaults");  /* -> stdout */
+    log_error(logger, "payment gateway unreachable");          /* -> stderr */
+    log_fatal(logger, "out of memory");                        /* -> stderr */
+
+    log_deallocate(logger);
+    return 0;
+}
+```
+**Result** — run as `./app >out.txt 2>err.txt`, the two streams separate cleanly:
+```
+# out.txt (stdout)
+ [INFO] - startup complete
+ [WARN] - config file missing, using defaults
+
+# err.txt (stderr)
+ [ERROR] - payment gateway unreachable
+ [FATAL] - out of memory
+```
+> **Why it matters:** in production you usually want operational chatter on stdout and real problems on stderr, so an alerting pipe (`2>`) only sees the errors. `auto_flush` guarantees the last line is on disk even if the process is killed immediately after.
+
+---
+
+## Example 25 : thread-safe concurrent logging (one `Log*` shared across threads)
+
+```c
+#include "log/log.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+
+#define THREADS 4
+#define PER     3
+
+typedef struct { Log* logger; int id; } WorkerArg;
+
+static int worker(void* arg) {
+    WorkerArg* w = (WorkerArg*)arg;
+    for (int i = 0; i < PER; ++i) {
+        log_info(w->logger, "thread %d message %d", w->id, i);
+    }
+    return 0;
+}
+
+int main() {
+    Log* logger = log_init();
+    log_set_output(logger, LOG_OUTPUT_CONSOLE);
+
+    /* One logger shared by every thread — no external locking required. */
+    Thread    t[THREADS];
+    WorkerArg args[THREADS];
+    for (int i = 0; i < THREADS; ++i) {
+        args[i].logger = logger;
+        args[i].id     = i;
+        thread_create(&t[i], worker, &args[i]);
+    }
+    for (int i = 0; i < THREADS; ++i) {
+        thread_join(t[i], NULL);
+    }
+
+    /* Exact even under concurrency: 4 threads x 3 = 12. */
+    fmt_printf("total INFO logged: %lu\n", log_get_message_count(logger, LOG_LEVEL_INFO));
+
+    log_deallocate(logger);
+    return 0;
+}
+```
+**Result** (the 12 log lines interleave in a non-deterministic order, but every line is intact — never torn or merged — and the final count is always exact)
+```
+ [INFO] - thread 0 message 0
+ [INFO] - thread 0 message 1
+ ...
+ [INFO] - thread 2 message 2
+total INFO logged: 12
+```
+> **Why it matters:** the internal mutex makes `log_message` and the file-handle operations atomic, so you can hand the same `Log*` to every worker thread without wrapping calls in your own lock. Verified race-free under Helgrind.
 
 ---
 

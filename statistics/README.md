@@ -140,6 +140,30 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 ---
 
+### `double statistics_percentile(const double* data, size_t n, double p)`:
+- **Purpose**: Returns the `p`-th percentile (`p` in `[0, 100]`) using linear interpolation between the two closest ranks — the "inclusive" / R-7 / NumPy-default method. `p = 0` is the minimum, `p = 100` the maximum, and `p = 50` equals `statistics_median`.
+- **Parameters**:
+  - `data`: A pointer to the dataset of type `double`. Must not be `NULL`.
+  - `n`: The number of elements in the dataset (`>= 1`).
+  - `p`: The percentile to compute, in the inclusive range `[0, 100]`.
+- **Returns**: The interpolated percentile, or `NAN` on `NULL` data, `n == 0`, `p` out of range (or `NaN`), or allocation failure.
+- **Use case**: The staple of production telemetry — p50/p90/p95/p99 latency SLOs, outlier thresholds, distribution summaries.
+
+---
+
+### `double* statistics_quantiles(const double* data, size_t n, size_t n_quantiles, bool exclusive, size_t* out_count)`:
+- **Purpose**: Divides the data into `n_quantiles` equal-probability intervals (a direct port of Python's `statistics.quantiles`) and returns the `n_quantiles - 1` cut points in ascending order. `n_quantiles = 4` yields the quartiles; `100` the percentile cut points.
+- **Parameters**:
+  - `data`: A pointer to the dataset of type `double`. Must not be `NULL`.
+  - `n`: The number of elements (`>= 2`).
+  - `n_quantiles`: The number of equal intervals (`>= 1`).
+  - `exclusive`: `true` selects Python's default *exclusive* method (treat the data as a sample from a larger population); `false` selects the *inclusive* method (treat the data as the whole population / already spanning 0–100%).
+  - `out_count`: Optional out-pointer that receives the number of cut points (`n_quantiles - 1`); set to `0` on error.
+- **Returns**: A newly-allocated array of `n_quantiles - 1` cut points the caller must `free()`, or `NULL` on invalid arguments / allocation failure.
+- **Use case**: Quartiles/deciles for reports, histogram bucket boundaries, and batch computation of many quantiles from a single sort.
+
+---
+
 ### `double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu)`:
 - **Purpose**: Calculates the population variance for an entire population.
 - **Parameters**:
@@ -935,6 +959,50 @@ int main() {
 Linear regression (slope, intercept): (3.000000, 0.000000)
 Proportional linear regression (slope, intercept): (3.000000, 0.000000)
 ```
+
+---
+
+### Example 18 : latency percentiles + quartiles with `statistics_percentile` and `statistics_quantiles`
+
+```c
+#include "statistics/statistics.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    /* Pretend these are request latencies in milliseconds. */
+    double latency[] = { 12, 15, 14, 22, 19, 13, 80, 17, 16, 21,
+                         18, 14, 13, 25, 15, 16, 90, 14, 17, 20 };
+    size_t n = sizeof(latency) / sizeof(latency[0]);
+
+    fmt_printf("p50 (median): %.2f ms\n", statistics_percentile(latency, n, 50.0));
+    fmt_printf("p90:          %.2f ms\n", statistics_percentile(latency, n, 90.0));
+    fmt_printf("p95:          %.2f ms\n", statistics_percentile(latency, n, 95.0));
+    fmt_printf("p99:          %.2f ms\n", statistics_percentile(latency, n, 99.0));
+
+    /* Quartiles (Q1, Q2, Q3) computed from a single sort, inclusive method. */
+    size_t cnt = 0;
+    double* q = statistics_quantiles(latency, n, 4, false, &cnt);
+    if (q) {
+        fmt_printf("quartiles:");
+        for (size_t i = 0; i < cnt; ++i) {
+            fmt_printf(" %.2f", q[i]);
+        }
+        fmt_printf("\n");
+        free(q);
+    }
+    return 0;
+}
+```
+**Result:**
+```
+p50 (median): 16.50 ms
+p90:          30.50 ms
+p95:          80.50 ms
+p99:          88.10 ms
+quartiles: 14.00 16.50 20.25
+```
+> Note `Q2` (the second quartile, `16.50`) equals `p50` — the two functions are consistent. `statistics_quantiles` sorts once and returns every cut point, which is cheaper than calling `statistics_percentile` repeatedly when you need several quantiles.
 
 ---
 

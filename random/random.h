@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +49,7 @@ void     random_setstate             (const unsigned int* state);
 int      random_randint              (int a, int b);
 int      random_randrange            (int a, int b, int step);
 int      random_getrandbits          (int a);
+void     random_randbytes            (unsigned char* buffer, size_t n);
 
 
 /* ------------------------------------------------------------------ */
@@ -57,6 +59,7 @@ int      random_getrandbits          (int a);
 double   random_random               (void);
 double   random_uniform              (double a, double b);
 double   random_triangular           (double low, double high, double mode);
+bool     random_boolean              (double p);
 
 
 /* ------------------------------------------------------------------ */

@@ -1774,3 +1774,215 @@ void semaphore_destroy(Semaphore* sem) {
 }
 
 
+
+
+/* =================================================================== */
+/* Read-write lock (writer-preference)                                 */
+/*                                                                     */
+/* Implemented on top of the library's own Mutex + ThreadCondition so  */
+/* the behaviour is identical on Win32 and POSIX (Win32 SRWLOCK can't  */
+/* tell rwlock_unlock whether a read or write hold is being released). */
+/* Writer-preference: once a writer is waiting, new readers queue      */
+/* behind it, so a steady stream of readers cannot starve writers.     */
+/* =================================================================== */
+
+/**
+ * @brief Initialise a read-write lock.
+ *
+ * A read-write lock lets any number of threads hold it for *reading*
+ * simultaneously, but gives a *writer* exclusive access (no other readers or
+ * writers). Ideal for data that is read far more often than written. This
+ * implementation is writer-preference, so writers do not starve under a
+ * continuous read load.
+ *
+ * @param rw Lock to initialise. Must not be NULL.
+ * @return `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument or if an
+ *         underlying mutex/condition could not be created.
+ */
+int rwlock_init(RWLock* rw) {
+  CONCURRENT_LOG("[rwlock_init]: enter (rw=%p)", (void*)rw);
+  if (!rw) {
+    return THREAD_ERROR;
+  }
+  rw->active_readers  = 0;
+  rw->active_writers  = 0;
+  rw->waiting_writers = 0;
+
+  if (mutex_init(&rw->lock, MUTEX_PLAIN) != THREAD_SUCCESS) {
+    CONCURRENT_LOG("[rwlock_init]: mutex_init failed");
+    return THREAD_ERROR;
+  }
+  if (condition_init(&rw->readers_ok) != THREAD_SUCCESS) {
+    mutex_destroy(&rw->lock);
+    return THREAD_ERROR;
+  }
+  if (condition_init(&rw->writers_ok) != THREAD_SUCCESS) {
+    condition_destroy(&rw->readers_ok);
+    mutex_destroy(&rw->lock);
+    return THREAD_ERROR;
+  }
+  return THREAD_SUCCESS;
+}
+
+
+/**
+ * @brief Acquire the lock for reading (shared), blocking until granted.
+ *
+ * Many readers may hold the lock at once. Blocks while a writer holds the lock
+ * or is waiting to (writer-preference). Balance every successful call with one
+ * `rwlock_unlock`.
+ *
+ * @param rw Initialised lock. Must not be NULL.
+ * @return `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument / internal error.
+ */
+int rwlock_rdlock(RWLock* rw) {
+  if (!rw) {
+    return THREAD_ERROR;
+  }
+  if (mutex_lock(&rw->lock) != THREAD_SUCCESS) {
+    return THREAD_ERROR;
+  }
+  while (rw->active_writers > 0 || rw->waiting_writers > 0) {
+    condition_wait(&rw->readers_ok, &rw->lock);
+  }
+  rw->active_readers++;
+  mutex_unlock(&rw->lock);
+  return THREAD_SUCCESS;
+}
+
+
+/**
+ * @brief Try to acquire the lock for reading without blocking.
+ *
+ * @param rw Initialised lock. Must not be NULL.
+ * @return `THREAD_SUCCESS` if the read lock was taken, `THREAD_BUSY` if a writer
+ *         holds it or is waiting (writer-preference), or `THREAD_ERROR` on a
+ *         NULL argument / internal error.
+ */
+int rwlock_tryrdlock(RWLock* rw) {
+  if (!rw) {
+    return THREAD_ERROR;
+  }
+  if (mutex_lock(&rw->lock) != THREAD_SUCCESS) {
+    return THREAD_ERROR;
+  }
+  if (rw->active_writers > 0 || rw->waiting_writers > 0) {
+    mutex_unlock(&rw->lock);
+    return THREAD_BUSY;
+  }
+  rw->active_readers++;
+  mutex_unlock(&rw->lock);
+  return THREAD_SUCCESS;
+}
+
+
+/**
+ * @brief Acquire the lock for writing (exclusive), blocking until granted.
+ *
+ * Grants exclusive ownership: no other reader or writer holds the lock while
+ * this call holds it. Blocks until every current reader and writer has
+ * released. Balance with one `rwlock_unlock`.
+ *
+ * @param rw Initialised lock. Must not be NULL.
+ * @return `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument / internal error.
+ */
+int rwlock_wrlock(RWLock* rw) {
+  if (!rw) {
+    return THREAD_ERROR;
+  }
+  if (mutex_lock(&rw->lock) != THREAD_SUCCESS) {
+    return THREAD_ERROR;
+  }
+  rw->waiting_writers++;
+  while (rw->active_readers > 0 || rw->active_writers > 0) {
+    condition_wait(&rw->writers_ok, &rw->lock);
+  }
+  rw->waiting_writers--;
+  rw->active_writers = 1;
+  mutex_unlock(&rw->lock);
+  return THREAD_SUCCESS;
+}
+
+
+/**
+ * @brief Try to acquire the lock for writing without blocking.
+ *
+ * @param rw Initialised lock. Must not be NULL.
+ * @return `THREAD_SUCCESS` if exclusive access was granted, `THREAD_BUSY` if any
+ *         reader or writer currently holds the lock, or `THREAD_ERROR` on a
+ *         NULL argument / internal error.
+ */
+int rwlock_trywrlock(RWLock* rw) {
+  if (!rw) {
+    return THREAD_ERROR;
+  }
+  if (mutex_lock(&rw->lock) != THREAD_SUCCESS) {
+    return THREAD_ERROR;
+  }
+  if (rw->active_readers > 0 || rw->active_writers > 0) {
+    mutex_unlock(&rw->lock);
+    return THREAD_BUSY;
+  }
+  rw->active_writers = 1;
+  mutex_unlock(&rw->lock);
+  return THREAD_SUCCESS;
+}
+
+
+/**
+ * @brief Release the lock (whether held for reading or writing).
+ *
+ * A single `rwlock_unlock` releases whichever mode the calling thread holds —
+ * the lock state itself records whether a writer or readers are active, so no
+ * per-thread bookkeeping is needed. On releasing the last reader (or the
+ * writer), it wakes a waiting writer if one exists, otherwise all waiting
+ * readers. Calling it while nothing is held is a harmless no-op.
+ *
+ * @param rw Initialised lock. Must not be NULL.
+ * @return `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument / internal error.
+ */
+int rwlock_unlock(RWLock* rw) {
+  if (!rw) {
+    return THREAD_ERROR;
+  }
+  if (mutex_lock(&rw->lock) != THREAD_SUCCESS) {
+    return THREAD_ERROR;
+  }
+  if (rw->active_writers > 0) {
+    /* Releasing a write lock. */
+    rw->active_writers = 0;
+    if (rw->waiting_writers > 0) {
+      condition_signal(&rw->writers_ok);     /* hand the lock to a waiting writer */
+    } else {
+      condition_broadcast(&rw->readers_ok);  /* otherwise admit all waiting readers */
+    }
+  } else if (rw->active_readers > 0) {
+    /* Releasing a read lock. */
+    rw->active_readers--;
+    if (rw->active_readers == 0 && rw->waiting_writers > 0) {
+      condition_signal(&rw->writers_ok);     /* last reader out → let a writer in */
+    }
+  }
+  /* else: unbalanced unlock with nothing held — treat as a no-op. */
+  mutex_unlock(&rw->lock);
+  return THREAD_SUCCESS;
+}
+
+
+/**
+ * @brief Destroy a read-write lock and release its resources.
+ *
+ * The lock must be idle (no thread holding or waiting on it). Safe to call with
+ * NULL.
+ *
+ * @param rw Lock to destroy (may be NULL).
+ */
+void rwlock_destroy(RWLock* rw) {
+  CONCURRENT_LOG("[rwlock_destroy]: enter (rw=%p)", (void*)rw);
+  if (!rw) {
+    return;
+  }
+  condition_destroy(&rw->writers_ok);
+  condition_destroy(&rw->readers_ok);
+  mutex_destroy(&rw->lock);
+}

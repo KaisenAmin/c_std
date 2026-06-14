@@ -15,6 +15,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -134,6 +135,14 @@ const char*  date_month_name                   (const Date* date);
 Date*        date_gregorian_to_solar           (const Date* gregorian_date);
 Date*        date_solar_to_gregorian           (const Date* solar_date);
 long         date_to_julian_day                (const Date* date);
+
+
+/* ------------------------------------------------------------------ */
+/* Unix-epoch conversion (date at UTC midnight)                       */
+/* ------------------------------------------------------------------ */
+
+int64_t      date_to_unix                      (const Date* date);
+Date*        date_from_unix                    (int64_t unix_seconds, CalendarType type);
 
 
 /* ------------------------------------------------------------------ */

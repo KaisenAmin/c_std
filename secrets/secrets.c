@@ -92,6 +92,58 @@ int secrets_randbelow(int n) {
 
 
 /**
+ * @brief Internal: draw an unbiased, uniformly-distributed size_t in [0, n).
+ *
+ * Uses rejection sampling against the largest exact multiple of @p n that
+ * fits in size_t, so the result carries no modulo bias. @p n must be > 0.
+ *
+ * @return true and writes the value to *out on success; false on RNG failure.
+ */
+static bool secrets_uniform_size(size_t n, size_t* out) {
+    size_t limit = (SIZE_MAX / n) * n;   /* largest exact multiple of n */
+    size_t value;
+    do {
+        unsigned char buffer[sizeof(size_t)];
+        if (!secrets_token_bytes(buffer, sizeof(buffer))) {
+            return false;
+        }
+        memcpy(&value, buffer, sizeof(value));
+    } while (value >= limit);
+
+    *out = value % n;
+    return true;
+}
+
+
+/**
+ * @brief Generate a cryptographically secure, unbiased random size_t in [0, n).
+ *
+ * The size_t-ranged sibling of @ref secrets_randbelow: where that function is
+ * limited to the int range, this one can produce an unbiased index into any
+ * collection up to SIZE_MAX elements — the right primitive for picking a
+ * random slot in a large buffer or array.
+ *
+ * @param n Upper bound (exclusive). Must be > 0.
+ * @return A uniform value in [0, n), or SIZE_MAX on error (n == 0 or RNG
+ *         failure). SIZE_MAX is never a valid in-range result, so it is an
+ *         unambiguous error sentinel.
+ */
+size_t secrets_randbelow_size(size_t n) {
+    SECRETS_LOG("[secrets_randbelow_size]: Entering with n: %zu", n);
+    if (n == 0) {
+        SECRETS_LOG("[secrets_randbelow_size]: Error: n must be > 0");
+        return SIZE_MAX;
+    }
+    size_t out;
+    if (!secrets_uniform_size(n, &out)) {
+        SECRETS_LOG("[secrets_randbelow_size]: Error: RNG failure");
+        return SIZE_MAX;
+    }
+    return out;
+}
+
+
+/**
  * @brief Generate a cryptographically secure random token in hexadecimal format.
  * 
  * @param buffer Pointer to the array where the token will be stored.
@@ -167,6 +219,103 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
     free(bytes);
 
     SECRETS_LOG("[secrets_token_urlsafe]: Exiting secrets_token_urlsafe");
+}
+
+
+/**
+ * @brief Generate a random string of @p length characters drawn uniformly
+ *        (and without modulo bias) from a caller-supplied @p alphabet.
+ *
+ * This is the primitive for producing human-facing secrets — passwords, API
+ * keys, numeric OTPs, recovery codes — from exactly the character set you
+ * want, e.g. "0123456789" for a PIN or
+ * "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" for an unambiguous voucher code. Each
+ * character is selected with cryptographically-secure randomness using
+ * rejection sampling, so every symbol in the alphabet is equally likely
+ * regardless of the alphabet's size (unlike a plain `byte % len`, which is
+ * biased unless `len` divides 256).
+ *
+ * @param buffer   Destination. Must hold at least @p length + 1 bytes; the
+ *                 result is always NUL-terminated.
+ * @param length   Number of characters to generate.
+ * @param alphabet NUL-terminated set of characters to choose from.
+ *
+ * @return true on success. On failure (NULL @p buffer; NULL/empty @p alphabet
+ *         with length > 0; RNG failure) the function returns false and, when
+ *         @p buffer is non-NULL, leaves it as a safe empty string (and zeroes
+ *         any partially-written secret).
+ *
+ * @note `length == 0` yields an empty string and returns true.
+ *
+ * @code
+ * char pin[7];
+ * if (secrets_token_from_alphabet(pin, 6, "0123456789")) {
+ *     // pin is a 6-digit one-time code, e.g. "048217"
+ * }
+ * @endcode
+ */
+bool secrets_token_from_alphabet(char* buffer, size_t length, const char* alphabet) {
+    SECRETS_LOG("[secrets_token_from_alphabet]: Entering with length: %zu", length);
+    if (!buffer) {
+        return false;
+    }
+    if (length == 0) {
+        buffer[0] = '\0';
+        return true;
+    }
+    if (!alphabet) {
+        buffer[0] = '\0';
+        return false;
+    }
+    size_t alen = strlen(alphabet);
+    if (alen == 0) {
+        buffer[0] = '\0';
+        return false;
+    }
+
+    if (alen <= 256) {
+        /* Fast path: a single byte spans the alphabet. Reject bytes at or
+           above the largest exact multiple of alen so the mapping is
+           unbiased, and refill a pool to keep RNG calls to a minimum. */
+        unsigned int limit = (256u / (unsigned int)alen) * (unsigned int)alen;
+        unsigned char pool[256];
+        size_t pool_len = 0;
+        size_t pool_pos = 0;
+
+        for (size_t i = 0; i < length; ) {
+            if (pool_pos >= pool_len) {
+                if (!secrets_token_bytes(pool, sizeof(pool))) {
+                    memset(buffer, 0, length);   /* never leak a partial secret */
+                    buffer[0] = '\0';
+                    return false;
+                }
+                pool_len = sizeof(pool);
+                pool_pos = 0;
+            }
+            unsigned int b = pool[pool_pos++];
+            if (b < limit) {
+                buffer[i++] = alphabet[b % alen];
+            }
+            /* else: reject and consume the next byte */
+        }
+    }
+    else {
+        /* General path: alphabet larger than a byte (unusual). Draw an
+           unbiased size_t index per character. */
+        for (size_t i = 0; i < length; i++) {
+            size_t idx;
+            if (!secrets_uniform_size(alen, &idx)) {
+                memset(buffer, 0, length);
+                buffer[0] = '\0';
+                return false;
+            }
+            buffer[i] = alphabet[idx];
+        }
+    }
+
+    buffer[length] = '\0';
+    SECRETS_LOG("[secrets_token_from_alphabet]: Exiting secrets_token_from_alphabet");
+    return true;
 }
 
 

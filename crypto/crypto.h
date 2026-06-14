@@ -68,8 +68,17 @@ typedef enum {
     CRYPTO_MODE_ECB,
     CRYPTO_MODE_CBC,
     CRYPTO_MODE_CFB,
-    CRYPTO_MODE_OFB
+    CRYPTO_MODE_OFB,
+    CRYPTO_MODE_CTR        /* counter mode (AES only; a stream mode, no padding) */
 } CryptoMode;
+
+/* Recommended sizes for the AEAD helpers below. */
+#define CRYPTO_AES_BLOCK_SIZE   16
+#define CRYPTO_GCM_IV_SIZE      12   /* 96-bit nonce: the GCM-preferred IV length */
+#define CRYPTO_GCM_TAG_SIZE     16   /* full 128-bit authentication tag           */
+#define CRYPTO_CHACHA_KEY_SIZE  32
+#define CRYPTO_CHACHA_IV_SIZE   12
+#define CRYPTO_CHACHA_TAG_SIZE  16
 
 
 /* ------------------------------------------------------------------ */
@@ -118,6 +127,40 @@ void*        crypto_des_decrypt                (const uint8_t* ciphertext, size_
 
 
 /* ------------------------------------------------------------------ */
+/* AES — modern symmetric cipher (prefer this over DES)               */
+/* ------------------------------------------------------------------ */
+uint8_t*     crypto_aes_encrypt                (const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, CryptoMode mode, size_t* out_len);
+uint8_t*     crypto_aes_decrypt                (const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, CryptoMode mode, size_t* out_len);
+
+
+/* ------------------------------------------------------------------ */
+/* Authenticated encryption (AEAD): confidentiality + integrity       */
+/* ------------------------------------------------------------------ */
+
+uint8_t*     crypto_aes_gcm_encrypt            (const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len,
+                                                const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                                uint8_t* tag, size_t tag_len, size_t* out_len);
+uint8_t*     crypto_aes_gcm_decrypt            (const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len,
+                                                const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                                const uint8_t* tag, size_t tag_len, size_t* out_len);
+
+uint8_t*     crypto_chacha20_poly1305_encrypt  (const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len,
+                                                const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                                uint8_t* tag, size_t tag_len, size_t* out_len);
+uint8_t*     crypto_chacha20_poly1305_decrypt  (const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len,
+                                                const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len,
+                                                const uint8_t* tag, size_t tag_len, size_t* out_len);
+
+
+/* ------------------------------------------------------------------ */
+/* Password-based encryption (PBKDF2-HMAC-SHA256 + AES-256-GCM)       */
+/* ------------------------------------------------------------------ */
+
+uint8_t*     crypto_password_encrypt           (const uint8_t* plaintext, size_t len, const char* password, int iterations, size_t* out_len);
+uint8_t*     crypto_password_decrypt           (const uint8_t* blob, size_t blob_len, const char* password, size_t* out_len);
+
+
+/* ------------------------------------------------------------------ */
 /* Random                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -131,6 +174,7 @@ void         crypto_generate_random_iv         (uint8_t* iv, size_t length);
 
 bool         crypto_constant_time_equal        (const void* a, const void* b, size_t length);
 const char*  crypto_hash_algorithm_name        (HashAlgorithm algorithm);
+void         crypto_secure_zero                (void* ptr, size_t length);
 
 
 /* ------------------------------------------------------------------ */

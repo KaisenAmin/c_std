@@ -1,12 +1,15 @@
 /**
  * @author Amin Tahmasebi
- * @date 2023
+ * @date 2025
  * @class HashMap
  *
- * Separate-chaining hash map. Each bucket has a head SENTINEL whose
- * `is_occupied == false`; real entries live in the `next` chain. A
- * bucket is "occupied" iff `buckets[i].next != NULL`. This wrinkle
- * matters when iterating: skip the sentinel, walk `next`.
+ * Separate-chaining hash map, modeled on std::unordered_map. `buckets`
+ * is an array of bucket_count head POINTERS (NULL == empty bucket); each
+ * entry is a node carved from a per-map slab POOL and pushed to the front
+ * of its bucket's `next` chain. There is no per-bucket sentinel and no
+ * malloc per node: 8 bytes per bucket (not a 32-byte node) and slab-pooled
+ * entries, so memory tracks the data like std::unordered_map and teardown
+ * is O(slabs) instead of one free() per element.
  *
  * Insert is amortised O(1); a `size / bucket_count >= max_load_factor`
  * triggers `hashmap_rehash` to the next prime ≥ 2 × bucket_count.
@@ -16,7 +19,7 @@
  */
 
 #include <stdlib.h>
-#include <stdint.h>   /* SIZE_MAX, uintptr_t — needed on glibc/Linux where they are not transitively included */
+#include <stdint.h>   
 #include <string.h>
 #include <math.h>
 #include "hashmap.h"
@@ -28,13 +31,81 @@
 #define DEFAULT_MAX_LOAD_FACTOR 0.75f
 
 
+#define HMAP_FIRST_SLAB_CAP 8
+#define HMAP_MAX_SLAB_CAP   (65536u / sizeof(HashMapNode))
+
+
+struct HashMapSlab {
+    struct HashMapSlab* next;
+    size_t              used;
+    size_t              cap;   
+};
+
+
+static HashMapNode* hmap_pool_alloc(HashMap* map) {
+    HashMapNode* node;
+
+    if (map->freeList) {
+        node = map->freeList;
+        map->freeList = node->next;
+    }
+    else {
+        HashMapSlab* slab = map->slabs;
+
+        if (!slab || slab->used == slab->cap) {
+            size_t cap = map->slabCap;
+            slab = (HashMapSlab*)malloc(sizeof(HashMapSlab) + cap * sizeof(HashMapNode));
+            if (!slab) {
+                HASHMAP_LOG("[hmap_pool_alloc] : Error: slab malloc failed");
+                return NULL;
+            }
+            slab->used = 0;
+            slab->cap  = cap;
+            slab->next = map->slabs;
+            map->slabs = slab;
+
+            /* Grow the next slab geometrically, capped at ~64 KB. */
+            if (map->slabCap < HMAP_MAX_SLAB_CAP) {
+                map->slabCap *= 2;
+                if (map->slabCap > HMAP_MAX_SLAB_CAP) {
+                    map->slabCap = HMAP_MAX_SLAB_CAP;
+                }
+            }
+        }
+        node = (HashMapNode*)((unsigned char*)slab + sizeof(HashMapSlab) + slab->used * sizeof(HashMapNode));
+        slab->used++;
+    }
+    return node;
+}
+
+
+/* Return a node's slot to the free-list for reuse (used on erase). */
+static void hmap_pool_free(HashMap* map, HashMapNode* node) {
+    node->next = map->freeList;
+    map->freeList = node;
+}
+
+
+/* Release every slab (used on clear / deallocate). O(number of slabs). */
+static void hmap_pool_destroy(HashMap* map) {
+    HashMapSlab* s = map->slabs;
+
+    while (s) {
+        HashMapSlab* next = s->next;
+        free(s);
+        s = next;
+    }
+    map->slabs = NULL;
+    map->freeList = NULL;
+}
+
 
 // Helper function to find the next prime number
-static size_t next_prime(size_t n) {
-    HASHMAP_LOG("[next_prime] : Searching next prime >= %zu", n);
+static size_t hmap_next_prime(size_t n) {
+    HASHMAP_LOG("[hmap_next_prime] : Searching next prime >= %zu", n);
 
     if (n <= 2) {
-        HASHMAP_LOG("[next_prime] : Returning 2 (n <= 2)");
+        HASHMAP_LOG("[hmap_next_prime] : Returning 2 (n <= 2)");
         return 2;
     }
     if (n % 2 == 0) {
@@ -50,7 +121,7 @@ static size_t next_prime(size_t n) {
             }
         }
         if (is_prime) {
-            HASHMAP_LOG("[next_prime] : Returning prime %zu", n);
+            HASHMAP_LOG("[hmap_next_prime] : Returning prime %zu", n);
             return n;
         }
         n += 2;
@@ -58,11 +129,11 @@ static size_t next_prime(size_t n) {
 }
 
 
-// Helper function to create a new node
-static HashMapNode* create_node(KeyType key, ValueType value) {
-    HashMapNode* node = (HashMapNode*)malloc(sizeof(HashMapNode));
+// Helper function to create a new node (carved from the per-map pool)
+static HashMapNode* hmap_create_node(HashMap* map, KeyType key, ValueType value) {
+    HashMapNode* node = hmap_pool_alloc(map);
     if (!node) {
-        HASHMAP_LOG("[create_node] : Error: Cannot allocate memory for node");
+        HASHMAP_LOG("[hmap_create_node] : Error: Cannot allocate memory for node");
         return NULL;
     }
 
@@ -71,66 +142,79 @@ static HashMapNode* create_node(KeyType key, ValueType value) {
     node->next = NULL;
     node->is_occupied = true;
 
-    HASHMAP_LOG("[create_node] : Created node with key: %p, value: %p", (void*)key, (void*)value);
+    HASHMAP_LOG("[hmap_create_node] : Created node with key: %p, value: %p", (void*)key, (void*)value);
     return node;
 }
 
 
-// Helper function to free a node
-static void free_node(HashMapNode* node, ValueDeallocFunc dealloc_key, ValueDeallocFunc dealloc_value) {
+static void hmap_free_node(HashMap* map, HashMapNode* node) {
     if (!node) {
-        HASHMAP_LOG("[free_node] : NULL node, nothing to free");
+        HASHMAP_LOG("[hmap_free_node] : NULL node, nothing to free");
         return;
     }
 
-    HASHMAP_LOG("[free_node] : Freeing node key=%p value=%p", (void*)node->key, (void*)node->value);
-    if (dealloc_key && node->key) {
-        HASHMAP_LOG("[free_node] : Calling dealloc_key on %p", (void*)node->key);
-        dealloc_key(node->key);
+    if (map->dealloc_key && node->key) {
+        map->dealloc_key(node->key);
     }
-    if (dealloc_value && node->value) {
-        HASHMAP_LOG("[free_node] : Calling dealloc_value on %p", (void*)node->value);
-        dealloc_value(node->value);
+    if (map->dealloc_value && node->value) {
+        map->dealloc_value(node->value);
     }
 
-    free(node);
-    HASHMAP_LOG("[free_node] : Node memory released");
+    hmap_pool_free(map, node);
+    HASHMAP_LOG("[hmap_free_node] : Node returned to pool");
 }
 
 
-// Helper function to find a node in a bucket
-static HashMapNode* find_node_in_bucket(HashMapNode* bucket, KeyType key, CompareFuncHashMap compare_func) {
-    HASHMAP_LOG("[find_node_in_bucket] : Searching for key %p starting at bucket head %p", (void*)key, (void*)bucket);
+// Walk every live entry to run the optional key/value deallocators, then
+// release all node memory in one O(slabs) sweep. Only walks when a
+// deallocator is set
+static void hmap_teardown_nodes(HashMap* map) {
+    if (map->dealloc_key || map->dealloc_value) {
+        for (size_t i = 0; i < map->bucket_count; i++) {
+            HashMapNode* current = map->buckets[i];
+            while (current) {
+                if (map->dealloc_key && current->key) {
+                    map->dealloc_key(current->key);
+                }
+                if (map->dealloc_value && current->value) {
+                    map->dealloc_value(current->value);
+                }
+                current = current->next;
+            }
+        }
+    }
+    hmap_pool_destroy(map);
+}
 
-    HashMapNode* current = bucket;
+
+// Find a node matching `key` in the chain whose head is `head` (NULL = empty).
+static HashMapNode* hmap_find_node_in_bucket(HashMapNode* head, KeyType key, CompareFuncHashMap compare_func) {
+    HashMapNode* current = head;
     size_t steps = 0;
     while (current) {
         if (current->is_occupied && compare_func(current->key, key) == 0) {
-            HASHMAP_LOG("[find_node_in_bucket] : Found node %p after %zu step(s)", (void*)current, steps);
+            HASHMAP_LOG("[hmap_find_node_in_bucket] : Found node %p after %zu step(s)", (void*)current, steps);
             return current;
         }
         current = current->next;
         steps++;
     }
 
-    HASHMAP_LOG("[find_node_in_bucket] : Key %p not found (walked %zu node(s))", (void*)key, steps);
+    HASHMAP_LOG("[hmap_find_node_in_bucket] : Key %p not found (walked %zu node(s))", (void*)key, steps);
     return NULL;
 }
 
 
-// Helper function to find the next occupied bucket
-// NOTE: each entry in map->buckets is a head sentinel (is_occupied=false);
-static size_t find_next_occupied_bucket(const HashMap* map, size_t start_index) {
-    HASHMAP_LOG("[find_next_occupied_bucket] : Probing from index %zu (of %zu)", start_index, map->bucket_count);
-
+// Find the next non-empty bucket at or after start_index (bucket_count = end).
+static size_t hmap_find_next_occupied_bucket(const HashMap* map, size_t start_index) {
     for (size_t i = start_index; i < map->bucket_count; i++) {
-        if (map->buckets[i].next != NULL) {
-            HASHMAP_LOG("[find_next_occupied_bucket] : Found occupied bucket at %zu", i);
+        if (map->buckets[i] != NULL) {
+            HASHMAP_LOG("[hmap_find_next_occupied_bucket] : Found occupied bucket at %zu", i);
             return i;
         }
     }
 
-    HASHMAP_LOG("[find_next_occupied_bucket] : No occupied bucket found, returning end (%zu)", map->bucket_count);
+    HASHMAP_LOG("[hmap_find_next_occupied_bucket] : No occupied bucket found, returning end (%zu)", map->bucket_count);
     return map->bucket_count; // End iterator
 }
 
@@ -316,7 +400,7 @@ HashMap* hashmap_create(HashFunc hash_func, CompareFuncHashMap compare_func, Val
 /**
  * @brief Create a HashMap with a caller-specified initial bucket count.
  *
- * The actual bucket count is `next_prime(max(initial_bucket_count, 1))` —
+ * The actual bucket count is `hmap_next_prime(max(initial_bucket_count, 1))` —
  * primes give the modulo-based hashing much better collision behaviour
  * than power-of-two sizes.
  *
@@ -342,18 +426,13 @@ HashMap* hashmap_create_with_buckets(HashFunc hash_func, CompareFuncHashMap comp
     }
 
     // Ensure bucket count is at least 1 and is prime
-    size_t bucket_count = next_prime(initial_bucket_count > 0 ? initial_bucket_count : 1);
+    size_t bucket_count = hmap_next_prime(initial_bucket_count > 0 ? initial_bucket_count : 1);
 
-    map->buckets = (HashMapNode*)calloc(bucket_count, sizeof(HashMapNode));
+    map->buckets = (HashMapNode**)calloc(bucket_count, sizeof(HashMapNode*));
     if (!map->buckets) {
         HASHMAP_LOG("[hashmap_create_with_buckets] : Error: Cannot allocate memory for buckets");
         free(map);
         return NULL;
-    }
-
-    for (size_t i = 0; i < bucket_count; i++) {
-        map->buckets[i].is_occupied = false;
-        map->buckets[i].next = NULL;
     }
 
     map->bucket_count = bucket_count;
@@ -364,6 +443,12 @@ HashMap* hashmap_create_with_buckets(HashFunc hash_func, CompareFuncHashMap comp
     map->compare_func = compare_func;
     map->dealloc_key = dealloc_key;
     map->dealloc_value = dealloc_value;
+
+    /* Node pool: small first slab (cheap for many-small-maps), doubling up to
+     * a ~64 KB cap so a huge map still amortises to very few mallocs. */
+    map->slabs = NULL;
+    map->freeList = NULL;
+    map->slabCap = HMAP_FIRST_SLAB_CAP;
 
     HASHMAP_LOG("[hashmap_create_with_buckets] : Created HashMap with %zu buckets", bucket_count);
     return map;
@@ -381,7 +466,7 @@ void hashmap_deallocate(HashMap* map) {
         return;
     }
 
-    hashmap_clear(map);
+    hmap_teardown_nodes(map);   /* dealloc live entries (if callbacks) + free all slabs */
     free(map->buckets);
     free(map);
 
@@ -457,7 +542,7 @@ size_t hashmap_bucket_size(const HashMap* map, size_t bucket_index) {
     }
 
     size_t count = 0;
-    HashMapNode* current = &map->buckets[bucket_index];
+    HashMapNode* current = map->buckets[bucket_index];
 
     while (current) {
         if (current->is_occupied) {
@@ -487,7 +572,7 @@ ValueType hashmap_at(const HashMap* map, KeyType key) {
     }
 
     size_t bucket_index = map->hash_func(key) % map->bucket_count;
-    HashMapNode* node = find_node_in_bucket(&map->buckets[bucket_index], key, map->compare_func);
+    HashMapNode* node = hmap_find_node_in_bucket(map->buckets[bucket_index], key, map->compare_func);
 
     if (node) {
         HASHMAP_LOG("[hashmap_at] : Found value for key %p: %p", (void*)key, (void*)node->value);
@@ -542,11 +627,10 @@ HashMapIterator hashmap_begin(const HashMap* map) {
     }
 
     it.map = (HashMap*)map;
-    it.bucket_index = find_next_occupied_bucket(map, 0);
+    it.bucket_index = hmap_find_next_occupied_bucket(map, 0);
 
     if (it.bucket_index < map->bucket_count) {
-        // Skip the sentinel head: real nodes live in the .next chain
-        it.current_node = map->buckets[it.bucket_index].next;
+        it.current_node = map->buckets[it.bucket_index];
     }
 
     return it;
@@ -616,13 +700,12 @@ void hashmap_iterator_increment(HashMapIterator* it) {
     }
 
     // Move to next occupied bucket
-    it->bucket_index = find_next_occupied_bucket(it->map, it->bucket_index + 1);
+    it->bucket_index = hmap_find_next_occupied_bucket(it->map, it->bucket_index + 1);
 
     if (it->bucket_index < it->map->bucket_count) {
-        // Skip the sentinel head: real nodes live in the .next chain
-        it->current_node = it->map->buckets[it->bucket_index].next;
+        it->current_node = it->map->buckets[it->bucket_index];
         HASHMAP_LOG("[hashmap_iterator_increment] : Moved to bucket %zu", it->bucket_index);
-    } 
+    }
     else {
         it->current_node = NULL; // End iterator
         HASHMAP_LOG("[hashmap_iterator_increment] : Reached end");
@@ -657,7 +740,7 @@ void hashmap_iterator_decrement(HashMapIterator* it) {
 
     if (it->current_node == NULL) {
         if (it->bucket_index < map->bucket_count) {
-            HashMapNode* node = map->buckets[it->bucket_index].next;
+            HashMapNode* node = map->buckets[it->bucket_index];
             if (node) {
                 while (node->next) {
                     node = node->next;
@@ -671,7 +754,7 @@ void hashmap_iterator_decrement(HashMapIterator* it) {
         size_t b = it->bucket_index;
         while (b > 0) {
             b--;
-            HashMapNode* node = map->buckets[b].next;
+            HashMapNode* node = map->buckets[b];
             if (node) {
                 while (node->next) {
                     node = node->next;
@@ -687,13 +770,13 @@ void hashmap_iterator_decrement(HashMapIterator* it) {
         return;
     }
 
-    HashMapNode* head = map->buckets[it->bucket_index].next;
+    HashMapNode* head = map->buckets[it->bucket_index];
     if (head == it->current_node) {
 
         size_t b = it->bucket_index;
         while (b > 0) {
             b--;
-            HashMapNode* node = map->buckets[b].next;
+            HashMapNode* node = map->buckets[b];
             if (node) {
                 while (node->next) {
                     node = node->next;
@@ -778,7 +861,7 @@ HashMapIterator hashmap_find(const HashMap* map, KeyType key) {
     }
 
     size_t bucket_index = map->hash_func(key) % map->bucket_count;
-    HashMapNode* node = find_node_in_bucket(&map->buckets[bucket_index], key, map->compare_func);
+    HashMapNode* node = hmap_find_node_in_bucket(map->buckets[bucket_index], key, map->compare_func);
 
     if (node) {
         it.map = (HashMap*)map;
@@ -804,7 +887,7 @@ size_t hashmap_count(const HashMap* map, KeyType key) {
     }
 
     size_t bucket_index = map->hash_func(key) % map->bucket_count;
-    HashMapNode* node = find_node_in_bucket(&map->buckets[bucket_index], key, map->compare_func);
+    HashMapNode* node = hmap_find_node_in_bucket(map->buckets[bucket_index], key, map->compare_func);
 
     HASHMAP_LOG("[hashmap_count] : Key %p in bucket %zu -> %zu", (void*)key, bucket_index, node ? (size_t)1 : (size_t)0);
     return node ? 1 : 0;
@@ -844,7 +927,7 @@ bool hashmap_insert(HashMap* map, KeyType key, ValueType value) {
 
     // Check if key already exists
     size_t bucket_index = map->hash_func(key) % map->bucket_count;
-    HashMapNode* existing_node = find_node_in_bucket(&map->buckets[bucket_index], key, map->compare_func);
+    HashMapNode* existing_node = hmap_find_node_in_bucket(map->buckets[bucket_index], key, map->compare_func);
 
     if (existing_node) {
         // Update existing value
@@ -861,19 +944,19 @@ bool hashmap_insert(HashMap* map, KeyType key, ValueType value) {
     float max_load_factor = (float)map->max_load_factor_numerator / map->max_load_factor_denominator;
 
     if (current_load_factor >= max_load_factor) {
-        size_t new_bucket_count = next_prime(map->bucket_count * 2);
+        size_t new_bucket_count = hmap_next_prime(map->bucket_count * 2);
         hashmap_rehash(map, new_bucket_count);
         bucket_index = map->hash_func(key) % map->bucket_count;
     }
 
-    HashMapNode* new_node = create_node(key, value);
+    HashMapNode* new_node = hmap_create_node(map, key, value);
     if (!new_node) {
         HASHMAP_LOG("[hashmap_insert] : Error: Failed to create new node");
         return false;
     }
 
-    new_node->next = map->buckets[bucket_index].next;
-    map->buckets[bucket_index].next = new_node;
+    new_node->next = map->buckets[bucket_index];
+    map->buckets[bucket_index] = new_node;
     map->size++;
 
     HASHMAP_LOG("[hashmap_insert] : Inserted key %p in bucket %zu", (void*)key, bucket_index);
@@ -908,20 +991,20 @@ bool hashmap_erase(HashMap* map, KeyType key) {
     }
 
     size_t bucket_index = map->hash_func(key) % map->bucket_count;
-    HashMapNode* current = &map->buckets[bucket_index];
+    HashMapNode* current = map->buckets[bucket_index];
     HashMapNode* prev = NULL;
 
     while (current) {
         if (current->is_occupied && map->compare_func(current->key, key) == 0) {
-            // Remove node from chain
+            // Unlink node from chain (update the bucket head if it was first)
             if (prev) {
                 prev->next = current->next;
-            } 
+            }
             else {
-                map->buckets[bucket_index].next = current->next;
+                map->buckets[bucket_index] = current->next;
             }
 
-            free_node(current, map->dealloc_key, map->dealloc_value);
+            hmap_free_node(map, current);
             map->size--;
 
             HASHMAP_LOG("[hashmap_erase] : Erased key %p from bucket %zu", (void*)key, bucket_index);
@@ -947,15 +1030,8 @@ void hashmap_clear(HashMap* map) {
         return;
     }
 
-    for (size_t i = 0; i < map->bucket_count; i++) {
-        HashMapNode* current = map->buckets[i].next;
-        while (current) {
-            HashMapNode* next = current->next;
-            free_node(current, map->dealloc_key, map->dealloc_value);
-            current = next;
-        }
-        map->buckets[i].next = NULL;
-    }
+    hmap_teardown_nodes(map);   /* dealloc live entries (if callbacks) + free all slabs */
+    memset(map->buckets, 0, map->bucket_count * sizeof(*map->buckets));  /* all heads -> NULL */
 
     map->size = 0;
     HASHMAP_LOG("[hashmap_clear] : Cleared all elements from HashMap");
@@ -996,7 +1072,7 @@ HashMapIterator hashmap_begin_bucket(const HashMap* map, size_t bucket_index) {
 
     it.map = (HashMap*)map;
     it.bucket_index = bucket_index;
-    it.current_node = map->buckets[bucket_index].next;
+    it.current_node = map->buckets[bucket_index];
 
     HASHMAP_LOG("[hashmap_begin_bucket] : Iterator to bucket %zu head (node=%p)", bucket_index, (void*)it.current_node);
     return it;
@@ -1098,24 +1174,24 @@ void hashmap_rehash(HashMap* map, size_t bucket_count) {
 
     HASHMAP_LOG("[hashmap_rehash] : Rehashing from %zu to %zu buckets", map->bucket_count, bucket_count);
 
-    HashMapNode* new_buckets = (HashMapNode*)calloc(bucket_count, sizeof(HashMapNode));
+    HashMapNode** new_buckets = (HashMapNode**)calloc(bucket_count, sizeof(HashMapNode*));
     if (!new_buckets) {
         HASHMAP_LOG("[hashmap_rehash] : Error: Failed to allocate new buckets");
         return;
     }
 
-    // Splice existing nodes into the new bucket array without re-allocating
-    HashMapNode* old_buckets = map->buckets;
+    // Splice existing nodes into the new bucket array (no node alloc/free)
+    HashMapNode** old_buckets = map->buckets;
     size_t old_bucket_count = map->bucket_count;
 
     for (size_t i = 0; i < old_bucket_count; i++) {
-        HashMapNode* current = old_buckets[i].next;
+        HashMapNode* current = old_buckets[i];
         while (current) {
             HashMapNode* next = current->next;
             size_t new_index = map->hash_func(current->key) % bucket_count;
             // Push to front of new chain
-            current->next = new_buckets[new_index].next;
-            new_buckets[new_index].next = current;
+            current->next = new_buckets[new_index];
+            new_buckets[new_index] = current;
             current = next;
         }
     }
@@ -1146,7 +1222,7 @@ void hashmap_reserve(HashMap* map, size_t count) {
     size_t required_buckets = (size_t)(count / hashmap_max_load_factor(map));
     if (required_buckets > map->bucket_count) {
         HASHMAP_LOG("[hashmap_reserve] : Need to rehash to at least %zu buckets", required_buckets);
-        hashmap_rehash(map, next_prime(required_buckets));
+        hashmap_rehash(map, hmap_next_prime(required_buckets));
     }
     else {
         HASHMAP_LOG("[hashmap_reserve] : Existing bucket array is sufficient, no-op");

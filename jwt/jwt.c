@@ -1332,6 +1332,33 @@ void jwt_set_jwt_id(JwtToken* t, const char* jti) {
 }
 
 /**
+ * @brief Set `exp` to `seconds_from_now` seconds after the current time.
+ *
+ * Convenience wrapper over `jwt_set_expiration` that computes the absolute
+ * timestamp from `time(NULL)`, so callers express a time-to-live instead of
+ * an absolute epoch. A non-positive argument yields an already-expired token.
+ *
+ * @param t                Token to modify. NULL is a no-op.
+ * @param seconds_from_now Lifetime in seconds added to the current time.
+ */
+void jwt_set_expires_in(JwtToken* t, int64_t seconds_from_now) {
+    if (!t) return;
+    jwt_obj_set_number(t->payload, "exp", (double)((int64_t)time(NULL) + seconds_from_now));
+}
+
+/**
+ * @brief Set the `iat` (issued-at) claim to the current time.
+ *
+ * Convenience wrapper over `jwt_set_issued_at` using `time(NULL)`.
+ *
+ * @param t Token to modify. NULL is a no-op.
+ */
+void jwt_set_issued_now(JwtToken* t) {
+    if (!t) return;
+    jwt_obj_set_number(t->payload, "iat", (double)(int64_t)time(NULL));
+}
+
+/**
  * @brief Set a custom string-valued claim in the payload.
  * @return true on success, false on NULL inputs / OOM.
  */
@@ -1906,6 +1933,21 @@ JwtToken* jwt_decode(const char* compact_jwt) {
 /* Verification                                                         */
 /* =================================================================== */
 
+/* Safely convert a JSON number (double) to int64. Rejects NaN, +/-Inf, and any
+   value outside the representable int64 range — a direct (int64_t) cast of such
+   a value is undefined behavior in C. A token can legally carry "exp": 1e308
+   (valid JSON), so the time-claim path MUST guard before casting; otherwise a
+   huge `nbf` can collapse to INT64_MIN and wrongly pass the not-before gate.
+   NaN fails every comparison, so the range test rejects it without <math.h>.
+   2^63 (9223372036854775808.0) and -2^63 are exactly representable as double. */
+static bool jwtp_json_num_to_int64(double v, int64_t* out) {
+    if (!(v >= -9223372036854775808.0 && v < 9223372036854775808.0)) {
+        return false;
+    }
+    *out = (int64_t)v;
+    return true;
+}
+
 /* Is `alg` in opts->allowed_algs? */
 static bool jwt_alg_allowed(JwtAlgorithm alg, const JwtAlgorithm* allowed, size_t n) {
     for (size_t i = 0; i < n; ++i) {
@@ -2057,13 +2099,16 @@ JwtStatus jwt_verify(const JwtToken* t,
 
     JsonElement* exp = json_get_element(t->payload, "exp");
     if (exp) {
-        if (exp->type != JSON_NUMBER) {
-            JWT_LOG("[jwt_verify]: exp claim is not a number");
+        int64_t exp_v;
+        if (exp->type != JSON_NUMBER || !jwtp_json_num_to_int64(exp->value.number_val, &exp_v)) {
+            JWT_LOG("[jwt_verify]: exp claim is not a representable number");
             return JWT_ERR_INVALID_FORMAT;
         }
-        if ((int64_t)exp->value.number_val + leeway < now) {
+        /* Compare without arithmetic on the token-controlled value (exp_v + leeway
+           could overflow for a hostile exp): expired iff exp_v < now - leeway. */
+        if (exp_v < now - leeway) {
             JWT_LOG("[jwt_verify]: token expired (exp=%lld now=%lld leeway=%lld)",
-                    (long long)exp->value.number_val, (long long)now, (long long)leeway);
+                    (long long)exp_v, (long long)now, (long long)leeway);
             return JWT_ERR_EXPIRED;
         }
     } else if (opts->require_exp) {
@@ -2073,13 +2118,15 @@ JwtStatus jwt_verify(const JwtToken* t,
 
     JsonElement* nbf = json_get_element(t->payload, "nbf");
     if (nbf) {
-        if (nbf->type != JSON_NUMBER) {
-            JWT_LOG("[jwt_verify]: nbf claim is not a number");
+        int64_t nbf_v;
+        if (nbf->type != JSON_NUMBER || !jwtp_json_num_to_int64(nbf->value.number_val, &nbf_v)) {
+            JWT_LOG("[jwt_verify]: nbf claim is not a representable number");
             return JWT_ERR_INVALID_FORMAT;
         }
-        if ((int64_t)nbf->value.number_val - leeway > now) {
+        /* not-yet-valid iff nbf_v > now + leeway (no arithmetic on nbf_v). */
+        if (nbf_v > now + leeway) {
             JWT_LOG("[jwt_verify]: token not yet valid (nbf=%lld now=%lld leeway=%lld)",
-                    (long long)nbf->value.number_val, (long long)now, (long long)leeway);
+                    (long long)nbf_v, (long long)now, (long long)leeway);
             return JWT_ERR_NOT_YET_VALID;
         }
     } else if (opts->require_nbf) {
@@ -2380,8 +2427,12 @@ static int64_t jwt_obj_get_unix(JsonElement* obj, const char* name, bool* presen
     if (!obj) return 0;
     JsonElement* e = json_get_element(obj, name);
     if (!e || e->type != JSON_NUMBER) return 0;
+    int64_t v;
+    /* An out-of-range / non-finite value isn't a usable Unix timestamp — report
+       it as absent rather than performing an undefined (int64_t) cast. */
+    if (!jwtp_json_num_to_int64(e->value.number_val, &v)) return 0;
     if (present) *present = true;
-    return (int64_t)e->value.number_val;
+    return v;
 }
 
 /** @brief Return the `exp` claim (Unix seconds). *present is set true/false. */
@@ -2398,6 +2449,51 @@ int64_t jwt_get_not_before(const JwtToken* t, bool* present) {
 int64_t jwt_get_issued_at(const JwtToken* t, bool* present) {
     return t ? jwt_obj_get_unix(t->payload, "iat", present)
              : (present ? (*present = false, 0) : 0);
+}
+
+/**
+ * @brief Number of audiences in the `aud` claim.
+ *
+ * RFC 7519 §4.1.3 permits `aud` to be either a single string or an array of
+ * strings; this presents both uniformly: 1 for a single string, the array
+ * length for an array, and 0 if `aud` is absent or not a string/array.
+ *
+ * @param t Decoded token.
+ * @return Audience count.
+ */
+size_t jwt_get_audience_count(const JwtToken* t) {
+    if (!t) return 0;
+    JsonElement* aud = json_get_element(t->payload, "aud");
+    if (!aud) return 0;
+    if (aud->type == JSON_STRING) return aud->value.string_val ? 1 : 0;
+    if (aud->type == JSON_ARRAY)  return json_array_size(aud);
+    return 0;
+}
+
+/**
+ * @brief The `index`-th audience string, or NULL if out of range.
+ *
+ * Works whether `aud` is a single string (only `index == 0` is valid) or an
+ * array. The returned pointer is borrowed (owned by the token).
+ *
+ * @param t     Decoded token.
+ * @param index Zero-based audience index.
+ * @return Borrowed audience string, or NULL if absent / out of range.
+ */
+const char* jwt_get_audience_at(const JwtToken* t, size_t index) {
+    if (!t) return NULL;
+    JsonElement* aud = json_get_element(t->payload, "aud");
+    if (!aud) return NULL;
+    if (aud->type == JSON_STRING) {
+        return index == 0 ? aud->value.string_val : NULL;
+    }
+    if (aud->type == JSON_ARRAY) {
+        char key[24];
+        snprintf(key, sizeof(key), "%zu", index);
+        JsonElement* item = json_get_element(aud, key);
+        if (item && item->type == JSON_STRING) return item->value.string_val;
+    }
+    return NULL;
 }
 
 /** @brief Fetch a custom string claim by name. Returns NULL if absent. */

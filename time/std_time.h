@@ -121,6 +121,8 @@ double   time_current_time_in_seconds         (void);
 double   time_current_time_in_microseconds    (void);
 int      time_msecs_since_start_of_day        (void);
 int64_t  time_now_unix_msecs                  (void);
+int64_t  time_monotonic_nsecs                 (void);
+int64_t  time_monotonic_msecs                 (void);
 
 
 /* ------------------------------------------------------------------ */
@@ -137,6 +139,7 @@ char*    time_format                          (const Time* t, const char* fmt);
 /* ------------------------------------------------------------------ */
 
 void     time_sleep                           (unsigned int second);
+void     time_sleep_ms                        (unsigned int milliseconds);
 
 
 #ifdef __cplusplus

@@ -10,10 +10,7 @@
  *
  * Per the project-wide convention the public Doxygen contracts live above
  * the DEFINITIONS in this file (the header only declares the prototypes).
- *
- * Naming: the public API is prefixed `set_*`; every internal (static) helper
- * uses the `rbset_*` prefix ("red-black set" internals), so a private function
- * never looks like a public one.
+
  */
 
 #include <stdlib.h>
@@ -26,14 +23,12 @@
 #define BLACK 0
 
 
-/* Nodes are carved out of a per-set POOL: each malloc'd slab holds many node
- * slots, so inserting avoids a malloc per element and destroying frees whole
- * slabs (O(slabs)) instead of one node at a time. Erased nodes go on a
- * free-list for reuse. The element is stored INLINE in each slot (like
- * std::set's node-with-value), at an offset matching the element's alignment. */
+#define SET_FIRST_SLAB_CAP 8
+
 typedef struct SetSlab {
     struct SetSlab* next;
     size_t          used;       /* node slots handed out from this slab */
+    size_t          cap;        /* node slots this slab can hold        */
 } SetSlab;
 
 struct Set {
@@ -41,10 +36,10 @@ struct Set {
     SetCompareFunc  compare;
     size_t          elemSize;
     size_t          size;
-    size_t          dataOffset; /* byte offset of the inline element in a slot */
-    size_t          slotSize;   /* bytes per node slot (header + element)      */
-    size_t          slabCap;    /* node slots per slab                         */
-    SetSlab*        slabs;      /* slab list (newest first)                    */
+    size_t          dataOffset; 
+    size_t          slotSize;   
+    size_t          slabCap;    
+    SetSlab*        slabs;      
     SetNode*        freeList;   
 };
 
@@ -64,9 +59,7 @@ static size_t rbset_elem_align(size_t elemSize) {
     return a;
 }
 
-/* Carve one node slot from the pool: reuse a freed slot, else the current
- * slab, else a fresh slab. Returns NULL only if a slab allocation fails.
- * node->key is pointed at the slot's inline element area. */
+
 static SetNode* rbset_pool_alloc(Set* set) {
     SetNode* node;
     if (set->freeList) {
@@ -76,8 +69,9 @@ static SetNode* rbset_pool_alloc(Set* set) {
     else {
         SetSlab* slab = set->slabs;
 
-        if (!slab || slab->used == set->slabCap) {
-            slab = (SetSlab*)malloc(sizeof(SetSlab) + set->slabCap * set->slotSize);
+        if (!slab || slab->used == slab->cap) {
+            size_t cap = set->slabCap;
+            slab = (SetSlab*)malloc(sizeof(SetSlab) + cap * set->slotSize);
 
             if (!slab) {
                 SET_LOG("[rbset_pool_alloc] Error: slab malloc failed.");
@@ -85,8 +79,20 @@ static SetNode* rbset_pool_alloc(Set* set) {
             }
 
             slab->used = 0;
+            slab->cap  = cap;
             slab->next = set->slabs;
             set->slabs = slab;
+
+            size_t maxcap = 65536 / set->slotSize;
+            if (maxcap < SET_FIRST_SLAB_CAP) {
+                maxcap = SET_FIRST_SLAB_CAP;
+            }
+            if (set->slabCap < maxcap) {
+                set->slabCap *= 2;
+                if (set->slabCap > maxcap) {
+                    set->slabCap = maxcap;
+                }
+            }
         }
         node = (SetNode*)((unsigned char*)slab + sizeof(SetSlab) + slab->used * set->slotSize);
         slab->used++;
@@ -140,10 +146,6 @@ static SetNode* rbset_create_node(Set* set, const void* element) {
     node->color = RED;
     return node;
 }
-
-
-/* (set_free_nodes was removed: the pool frees whole slabs in rbset_pool_destroy,
- *  which is O(slabs) rather than one free() per node.) */
 
 
 /**
@@ -504,17 +506,14 @@ Set* set_create(size_t elemSize, SetCompareFunc compare) {
     set->size     = 0;
 
     /* Configure the node pool. The element alignment is inferred from elemSize
-     * (always safe), the slot holds the node header + the inline element, and a
-     * slab targets ~64 KB (at least 16 slots). */
+     * (always safe), the slot holds the node header + the inline element, and the
+     * first slab is small (grows geometrically to a ~64 KB cap). */
     {
         size_t ea = rbset_elem_align(elemSize);
         size_t slotAlign = ea < 8 ? 8 : ea;   /* node has pointers -> needs >= 8 */
         set->dataOffset = (sizeof(SetNode) + ea - 1) / ea * ea;
         set->slotSize   = (set->dataOffset + elemSize + slotAlign - 1) / slotAlign * slotAlign;
-        set->slabCap    = 65536 / set->slotSize;
-        if (set->slabCap < 16) {
-            set->slabCap = 16;
-        }
+        set->slabCap    = SET_FIRST_SLAB_CAP;   /* first slab small; grows to ~64 KB */
         set->slabs    = NULL;
         set->freeList = NULL;
     }

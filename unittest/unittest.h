@@ -6,8 +6,6 @@
  *
  * @brief   A self-contained, cross-platform unit-testing framework in C.
  *
- * This header exposes the entire public surface of the framework:
- *
  *   - **Test runner**: the `UNITTEST_RUN_SUITE` / `UNITTEST_RUN_TEST` /
  *     `UNITTEST_REPORT` macros and the global counters they update.
  *   - **Assertions**: a family of `unittest_check` / `unittest_assert*`

@@ -10,6 +10,40 @@
 #include "deque.h"
 
 
+/* ------------------------------------------------------------------ */
+/* Inline-storage helpers                                             */
+/* ------------------------------------------------------------------ */
+/*
+ * Elements live INLINE inside the block buffers (like std::deque): each block
+ * is one contiguous malloc of blockSize*itemSize bytes, NOT an array of pointers
+ * to individually-heap-allocated elements. That turns a push into a single copy
+ * into the block (no per-element malloc) and a pop into an index update (no
+ * per-element free), and makes random access one indirection instead of two.
+ *
+ * dq_slot() maps a flat position (frontIndex + logical index) to the address of
+ * that element's bytes inside its block. dq_store() copies one element with a
+ * size-specialized branch so the common element sizes compile to a single
+ * load/store move instead of a memcpy call with a runtime length. Source and
+ * destination are interior buffer pointers (no compile-time object-size info),
+ * so no -Warray-bounds pragma is needed. The `dq_` prefix keeps these distinct
+ * from the public `deque_` API.
+ */
+static inline void* dq_slot(const Deque* d, size_t flatPos) {
+    return (char*)d->blocks[flatPos >> d->blockShift] + (flatPos & (d->blockSize - 1)) * d->itemSize;
+}
+
+static inline void dq_store(void* dst, const void* src, size_t n) {
+    switch (n) {
+        case 1:  memcpy(dst, src, 1);  break;
+        case 2:  memcpy(dst, src, 2);  break;
+        case 4:  memcpy(dst, src, 4);  break;
+        case 8:  memcpy(dst, src, 8);  break;
+        case 16: memcpy(dst, src, 16); break;
+        default: memcpy(dst, src, n);  break;
+    }
+}
+
+
 /**
  * @brief Creates a new deque with a specified item size.
  *
@@ -34,24 +68,35 @@ Deque* deque_create(size_t itemSize) {
         return NULL; 
     }
 
-    // Initial values for the Deque structure
-    deque->blockSize = DEFAULT_BLOCK_SIZE;
+    deque->itemSize = itemSize;
+    /* Elements per block: the largest power of two whose block stays within a
+       ~2KB byte budget. Small elements therefore share big blocks (far fewer
+       allocations, like std::deque's byte-budgeted nodes), while large elements
+       drop to one element per block instead of over-allocating. Always >= 1.
+       A power-of-two count makes block index/offset a shift/mask, not a divide. */
+    {
+        size_t fit = (size_t)2048 / itemSize;   /* whole elements within the budget */
+        size_t bs = 1, shift = 0;
+        while ((bs << 1) <= fit) {
+            bs <<= 1;
+            shift++;
+        }
+        deque->blockSize  = bs;
+        deque->blockShift = shift;
+    }
     deque->size = 0;
     deque->blockCount = 1; // Start with one block
-    deque->frontIndex = DEFAULT_BLOCK_SIZE / 2; // Middle of the block
+    deque->frontIndex = deque->blockSize / 2; // Middle of the block
     deque->backIndex = deque->frontIndex - 1;
-    deque->itemSize = itemSize;
 
-    // Allocate memory for the blocks array
-    deque->blocks = (void***)malloc(sizeof(void**) * deque->blockCount);
+    deque->blocks = (void**)malloc(sizeof(void*) * deque->blockCount);
     if (!deque->blocks) {
         DEQUE_LOG("[deque_create] Error: Memory allocation failed for blocks array.");
         free(deque);
-        return NULL; 
+        return NULL;
     }
 
-    // Allocate memory for the first block
-    deque->blocks[0] = (void**)malloc(sizeof(void*) * DEFAULT_BLOCK_SIZE);
+    deque->blocks[0] = malloc(deque->blockSize * deque->itemSize);
     if (!deque->blocks[0]) {
         DEQUE_LOG("[deque_create] Error: Memory allocation failed for the first block.");
         free(deque->blocks);
@@ -64,45 +109,7 @@ Deque* deque_create(size_t itemSize) {
 }
 
 
-/**
- * @brief Checks if the deque is empty.
- *
- * This function returns true if the deque is empty (i.e., contains no elements) or if the deque is NULL.
- *
- * @param deque Pointer to the deque.
- * @return True if the deque is empty or NULL, otherwise false.
- */
-bool deque_empty(const Deque* deque) {
-    if (!deque) {
-        DEQUE_LOG("[deque_empty] Error: Deque is NULL.");
-        return true; 
-    }
-    
-    bool isEmpty = deque->size == 0;
-    DEQUE_LOG("[deque_empty] Deque is %s.", isEmpty ? "empty" : "not empty");
-    
-    return isEmpty;
-}
-
-
-/**
- * @brief Returns the number of elements in the deque.
- *
- * This function returns the current number of elements stored in the deque. If the deque is NULL,
- * the function returns 0.
- *
- * @param deque Pointer to the deque.
- * @return The number of elements in the deque, or 0 if the deque is NULL.
- */
-size_t deque_length(const Deque* deque) {
-    if (!deque) {
-        DEQUE_LOG("[deque_length] Error: Deque is NULL.");
-        return 0; 
-    }
-
-    DEQUE_LOG("[deque_length] Deque size: %zu.", deque->size);
-    return deque->size;
-}
+/* deque_empty() and deque_length() are defined static inline in deque.h. */
 
 
 /**
@@ -121,32 +128,21 @@ void deque_push_front(Deque* deque, void* item) {
         return;
     }
 
-    // Allocate heap copy of the item so the deque owns it consistently
-    // with push_back (uniform ownership simplifies pop_*/clear/deallocate).
-    void* newItem = malloc(deque->itemSize);
-    if (!newItem) {
-        DEQUE_LOG("[deque_push_front] Error: Memory allocation failed for new item.");
-        return;
-    }
-    memcpy(newItem, item, deque->itemSize);
-
     // If there is no room at the front of block 0, prepend a new block.
     if (deque->frontIndex == 0) {
-        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void** newBlocks = (void**)realloc(deque->blocks, sizeof(void*) * (deque->blockCount + 1));
         if (!newBlocks) {
-            free(newItem);
             DEQUE_LOG("[deque_push_front] Error: Memory allocation failed for blocks array.");
             return;
         }
         deque->blocks = newBlocks;  // commit before any further allocation
 
-        void** newBlock = (void**)malloc(sizeof(void*) * deque->blockSize);
+        void* newBlock = malloc(deque->blockSize * deque->itemSize);
         if (!newBlock) {
-            free(newItem);
             DEQUE_LOG("[deque_push_front] Error: Memory allocation failed for new block.");
             return;
         }
-        memmove(deque->blocks + 1, deque->blocks, sizeof(void**) * deque->blockCount);
+        memmove(deque->blocks + 1, deque->blocks, sizeof(void*) * deque->blockCount);
         deque->blocks[0] = newBlock;
         deque->blockCount++;
         deque->frontIndex = deque->blockSize;
@@ -154,8 +150,9 @@ void deque_push_front(Deque* deque, void* item) {
     }
 
     deque->frontIndex--;
-    deque->blocks[0][deque->frontIndex] = newItem;
+    dq_store(dq_slot(deque, deque->frontIndex), item, deque->itemSize);
     deque->size++;
+
     DEQUE_LOG("[deque_push_front] Item copied at the front. frontIndex: %zu, size: %zu.", deque->frontIndex, deque->size);
 }
 
@@ -183,14 +180,14 @@ void deque_push_back(Deque* deque, const void* item) {
     // Check if a new block is needed at the back
     if (deque->backIndex == deque->blockSize - 1) {
         DEQUE_LOG("[deque_push_back] Allocating new block at the back.");
-        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void** newBlocks = (void**)realloc(deque->blocks, sizeof(void*) * (deque->blockCount + 1));
         if (!newBlocks) {
             DEQUE_LOG("[deque_push_back] Error: Memory allocation failed for blocks array.");
             return;
         }
         deque->blocks = newBlocks;  // commit so deque->blocks doesn't dangle if next malloc fails
 
-        void** newBlock = (void**)malloc(sizeof(void*) * deque->blockSize);
+        void* newBlock = malloc(deque->blockSize * deque->itemSize);
         if (!newBlock) {
             DEQUE_LOG("[deque_push_back] Error: Memory allocation failed for the new block.");
             return;
@@ -201,77 +198,16 @@ void deque_push_back(Deque* deque, const void* item) {
         DEQUE_LOG("[deque_push_back] New block allocated. blockCount: %zu.", deque->blockCount);
     }
 
-    // Allocate memory for the new item and copy the item contents
-    void* newItem = malloc(deque->itemSize);
-    if (!newItem) {
-        DEQUE_LOG("[deque_push_back] Error: Memory allocation failed for new item.");
-        return;
-    }
-    memcpy(newItem, item, deque->itemSize);
-
-    // Insert the new item at the back
+    // Insert the new item at the back (copied inline into the block; no per-element malloc)
     deque->backIndex++;
-    deque->blocks[deque->blockCount - 1][deque->backIndex] = newItem;
+    dq_store((char*)deque->blocks[deque->blockCount - 1] + deque->backIndex * deque->itemSize,
+             item, deque->itemSize);
     deque->size++;
     DEQUE_LOG("[deque_push_back] Item inserted at the back. New backIndex: %zu, size: %zu.", deque->backIndex, deque->size);
 }
 
 
-/**
- * @brief Returns a pointer to the front element of the deque.
- *
- * This function retrieves the front element of the deque without removing it.
- * If the deque is empty or NULL, an error message is printed and NULL is returned.
- *
- * @param deque Pointer to the deque.
- * @return Pointer to the front element, or NULL if the deque is empty or NULL.
- */
-void* deque_front(const Deque* deque) {
-    if (!deque) {
-        DEQUE_LOG("[deque_front] Error: Deque is NULL.");
-        return NULL; 
-    }
-    if (deque_empty(deque)) {
-        DEQUE_LOG("[deque_front] Error: Deque is empty.");
-        return NULL; 
-    }
-
-    // Calculate the block and index for the front element
-    size_t blockIndex = deque->frontIndex / deque->blockSize;
-    size_t indexInBlock = deque->frontIndex % deque->blockSize;
-
-    DEQUE_LOG("[deque_front] Returning front element from blockIndex: %zu, indexInBlock: %zu.", blockIndex, indexInBlock);
-    return deque->blocks[blockIndex][indexInBlock];
-}
-
-
-/**
- * @brief Returns a pointer to the back element of the deque.
- *
- * This function retrieves the back element of the deque without removing it.
- * If the deque is empty or NULL, an error message is printed and NULL is returned.
- *
- * @param deque Pointer to the deque.
- * @return Pointer to the back element, or NULL if the deque is empty or NULL.
- */
-void* deque_back(const Deque* deque) {
-    if (!deque) {
-        DEQUE_LOG("[deque_back] Error: Deque is NULL.");
-        return NULL; 
-    }
-    if (deque_empty(deque)) { 
-        DEQUE_LOG("[deque_back] Error: Deque is empty.");
-        return NULL; 
-    }
-
-    // backIndex is stored as an offset within the last (back-side) block,
-    // so the back element lives at blocks[blockCount - 1][backIndex].
-    size_t blockIndex = deque->blockCount - 1;
-    size_t indexInBlock = deque->backIndex;
-
-    DEQUE_LOG("[deque_back] Returning back element from blockIndex: %zu, indexInBlock: %zu.", blockIndex, indexInBlock);
-    return deque->blocks[blockIndex][indexInBlock];
-}
+/* deque_front() and deque_back() are defined static inline in deque.h. */
 
 
 /**
@@ -295,30 +231,46 @@ void deque_pop_front(Deque* deque) {
 
     DEQUE_LOG("[deque_pop_front] Popping front element. Current frontIndex: %zu.", deque->frontIndex);
 
-    // Free the heap copy that push_front/push_back stored.
-    size_t fBlock = deque->frontIndex / deque->blockSize;
-    size_t fIndex = deque->frontIndex % deque->blockSize;
-    free(deque->blocks[fBlock][fIndex]);
-    deque->blocks[fBlock][fIndex] = NULL;
-
+    // Elements live inline in the block buffers, so popping is just an index
+    // bump — there is no per-element heap copy to free (dead front BLOCKS are
+    // reclaimed in bulk by the amortized compaction below).
     deque->frontIndex++;
     deque->size--;
 
     if (deque->size == 0) {
-        // Reset to canonical empty position.
+        for (size_t i = 1; i < deque->blockCount; ++i) {
+            free(deque->blocks[i]);
+            deque->blocks[i] = NULL;
+        }
+        if (deque->blockCount > 1) {
+            void** shrunk = (void**)realloc(deque->blocks, sizeof(void*));
+            if (shrunk) {
+                deque->blocks = shrunk;
+            }
+        }
+        deque->blockCount = 1;
         deque->frontIndex = deque->blockSize / 2;
         deque->backIndex = deque->frontIndex - 1;
         DEQUE_LOG("[deque_pop_front] Deque is now empty.");
     }
-    else if (deque->frontIndex >= deque->blockSize && deque->blockCount > 1) {
-        // Front index crossed past the end of block 0; drop block 0 entirely.
-        free(deque->blocks[0]);
-        memmove(deque->blocks, deque->blocks + 1, sizeof(void**) * (deque->blockCount - 1));
-
-        deque->blockCount--;
-        deque->frontIndex -= deque->blockSize;
-        
-        DEQUE_LOG("[deque_pop_front] Removed first block. New blockCount: %zu.", deque->blockCount);
+    else {
+        // Amortized front reclamation. The previous version shifted the WHOLE
+        // blocks array (memmove) every time a front block emptied, making
+        // pop_front O(n^2) for queue workloads. Instead, leave consumed front
+        // blocks in place (frontIndex is a global offset) and compact only once
+        // the dead front blocks are at least half of all blocks: the O(live)
+        // memmove then runs once per O(live) pops -> amortized O(1).
+        size_t deadBlocks = deque->frontIndex >> deque->blockShift;
+        if (deadBlocks > 0 && deadBlocks * 2 >= deque->blockCount) {
+            for (size_t i = 0; i < deadBlocks; ++i) {
+                free(deque->blocks[i]);
+            }
+            memmove(deque->blocks, deque->blocks + deadBlocks,
+                    sizeof(void*) * (deque->blockCount - deadBlocks));
+            deque->blockCount -= deadBlocks;
+            deque->frontIndex -= deadBlocks * deque->blockSize;
+            DEQUE_LOG("[deque_pop_front] Compacted %zu dead front blocks. New blockCount: %zu.", deadBlocks, deque->blockCount);
+        }
     }
     DEQUE_LOG("[deque_pop_front] Front element popped. New size: %zu.", deque->size);
 }
@@ -344,11 +296,22 @@ void deque_pop_back(Deque* deque) {
     }
 
     DEQUE_LOG("[deque_pop_back] Popping back element. Current backIndex: %zu.", deque->backIndex);
-    free(deque->blocks[deque->blockCount - 1][deque->backIndex]);
-    deque->blocks[deque->blockCount - 1][deque->backIndex] = NULL;
+    // Inline storage: nothing to free per element; just drop the back index.
     deque->size--;
 
     if (deque->size == 0) {
+
+        for (size_t i = 1; i < deque->blockCount; ++i) {
+            free(deque->blocks[i]);
+            deque->blocks[i] = NULL;
+        }
+        if (deque->blockCount > 1) {
+            void** shrunk = (void**)realloc(deque->blocks, sizeof(void*));
+            if (shrunk) {
+                deque->blocks = shrunk;
+            }
+        }
+        deque->blockCount = 1;
         deque->frontIndex = deque->blockSize / 2;
         deque->backIndex = deque->frontIndex - 1;
         DEQUE_LOG("[deque_pop_back] Deque is now empty.");
@@ -369,43 +332,7 @@ void deque_pop_back(Deque* deque) {
 }
 
 
-/**
- * @brief Returns a pointer to the element at the specified index in the deque.
- *
- * This function retrieves the element at the specified index in the deque.
- * If the index is out of bounds or the deque is NULL, an error message is printed and NULL is returned.
- *
- * @param deque Pointer to the deque.
- * @param index The index of the element to retrieve.
- * @return Pointer to the element at the specified index, or NULL if the index is out of bounds or the deque is NULL.
- */
-void* deque_at(const Deque* deque, size_t index) {
-    if (!deque) {
-        DEQUE_LOG("[deque_at] Error: Deque is NULL.");
-        return NULL; 
-    }
-    if (index >= deque->size) {
-        DEQUE_LOG("[deque_at] Error: Index out of bounds. index: %zu, deque size: %zu", index, deque->size);
-        return NULL; 
-    }
-
-    size_t blockIndex;
-    size_t indexInBlock;
-    size_t firstBlockCount = deque->blockSize - deque->frontIndex;
-
-    if (index < firstBlockCount) {
-        blockIndex = 0;
-        indexInBlock = deque->frontIndex + index;
-    } 
-    else {
-        size_t remaining = index - firstBlockCount;
-        blockIndex = 1 + (remaining / deque->blockSize);
-        indexInBlock = remaining % deque->blockSize;
-    }
-
-    DEQUE_LOG("[deque_at] Returning element at blockIndex: %zu, indexInBlock: %zu.", blockIndex, indexInBlock);
-    return deque->blocks[blockIndex][indexInBlock];
-}
+/* deque_at() is defined static inline in deque.h. */
 
 
 /**
@@ -423,19 +350,8 @@ void deque_clear(Deque* deque) {
     }
     DEQUE_LOG("[deque_clear] Clearing the deque. Current size: %zu, blockCount: %zu.", deque->size, deque->blockCount);
 
-    if (deque->size > 0) {
-        for (size_t i = 0; i < deque->size; ++i) {
-            size_t pos = deque->frontIndex + i;
-            size_t blockIndex = pos / deque->blockSize;
-            size_t indexInBlock = pos % deque->blockSize;
-
-            if (blockIndex < deque->blockCount && deque->blocks[blockIndex][indexInBlock] != NULL) {
-                free(deque->blocks[blockIndex][indexInBlock]);
-                deque->blocks[blockIndex][indexInBlock] = NULL;
-            }
-        }
-    }
-
+    // Elements are stored inline, so there are no per-element allocations to
+    // free — just release the block buffers (keeping block 0 for reuse).
     if (deque->blocks != NULL) {
         for (size_t i = 1; i < deque->blockCount; ++i) {
             free(deque->blocks[i]);
@@ -443,7 +359,7 @@ void deque_clear(Deque* deque) {
         }
         // Resize blocks array down to 1 (best-effort; keep original on realloc fail).
         if (deque->blockCount > 1) {
-            void*** shrunk = (void***)realloc(deque->blocks, sizeof(void**) * 1);
+            void** shrunk = (void**)realloc(deque->blocks, sizeof(void*) * 1);
             if (shrunk) {
                 deque->blocks = shrunk;
             }
@@ -507,31 +423,41 @@ void deque_shrink_to_fit(Deque* deque) {
         return; 
     }
 
-    // Calculate the optimal number of blocks needed
-    size_t optimalBlockCount = (deque->size / deque->blockSize) + ((deque->size % deque->blockSize) ? 1 : 0);
-    DEQUE_LOG("[deque_shrink_to_fit] Shrinking deque. Current blockCount: %zu, optimalBlockCount: %zu.", deque->blockCount, optimalBlockCount);
+    size_t firstBlock = deque->frontIndex / deque->blockSize;
+    size_t lastBlock  = (deque->frontIndex + deque->size - 1) / deque->blockSize;
+    size_t liveBlocks = lastBlock - firstBlock + 1;
+    DEQUE_LOG("[deque_shrink_to_fit] blockCount: %zu, live blocks: %zu (first: %zu, last: %zu).", deque->blockCount, liveBlocks, firstBlock, lastBlock);
 
-    if (deque->blockCount > optimalBlockCount) {
-        // Free the excess blocks
-        for (size_t i = optimalBlockCount; i < deque->blockCount; ++i) { 
-            free(deque->blocks[i]);
-            DEQUE_LOG("[deque_shrink_to_fit] Freed block at index: %zu.", i);
-        }
-
-        // Attempt to reallocate the blocks array to the new size
-        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * optimalBlockCount);
-        if (!newBlocks) {
-            DEQUE_LOG("[deque_shrink_to_fit] Error: Memory allocation failed during block shrink.");
-            return; 
-        }
-
-        deque->blocks = newBlocks;
-        deque->blockCount = optimalBlockCount;
-        DEQUE_LOG("[deque_shrink_to_fit] Successfully shrunk deque. New blockCount: %zu.", deque->blockCount);
-    } 
-    else {
+    if (firstBlock == 0 && liveBlocks == deque->blockCount) {
         DEQUE_LOG("[deque_shrink_to_fit] No shrinking needed. Deque is already optimal.");
+        return;
     }
+
+    // Release dead front blocks, then dead back blocks.
+    for (size_t i = 0; i < firstBlock; ++i) {
+        free(deque->blocks[i]);
+    }
+    for (size_t i = lastBlock + 1; i < deque->blockCount; ++i) {
+        free(deque->blocks[i]);
+    }
+
+    // Slide the live blocks down to index 0.
+    if (firstBlock > 0) {
+        memmove(deque->blocks, deque->blocks + firstBlock, sizeof(void*) * liveBlocks);
+    }
+
+    // Shrink the blocks array to exactly the live blocks (keep the old, still-valid
+    // array if realloc fails).
+    void** newBlocks = (void**)realloc(deque->blocks, sizeof(void*) * liveBlocks);
+    if (newBlocks) {
+        deque->blocks = newBlocks;
+    }
+    deque->blockCount = liveBlocks;
+
+    // The front element now lives in block 0; rebase the global front/back offsets.
+    deque->frontIndex = deque->frontIndex % deque->blockSize;
+    deque->backIndex  = (deque->frontIndex + deque->size - 1) % deque->blockSize;
+    DEQUE_LOG("[deque_shrink_to_fit] Shrunk to %zu blocks. frontIndex: %zu, backIndex: %zu.", deque->blockCount, deque->frontIndex, deque->backIndex);
 }
 
 
@@ -573,13 +499,13 @@ void deque_insert(Deque* deque, size_t index, void* item) {
     // (one past the array) and corrupts the heap.
     if (deque->frontIndex + deque->size >= deque->blockSize * deque->blockCount) {
         DEQUE_LOG("[deque_insert] Allocating new block.");
-        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void** newBlocks = (void**)realloc(deque->blocks, sizeof(void*) * (deque->blockCount + 1));
         if (!newBlocks) {
             DEQUE_LOG("[deque_insert] Error: Memory allocation failed.");
             return;
         }
         deque->blocks = newBlocks;
-        deque->blocks[deque->blockCount] = (void**)malloc(sizeof(void*) * deque->blockSize);
+        deque->blocks[deque->blockCount] = malloc(deque->blockSize * deque->itemSize);
         if (!deque->blocks[deque->blockCount]) {
             DEQUE_LOG("[deque_insert] Error: Block memory allocation failed.");
             return;
@@ -587,27 +513,15 @@ void deque_insert(Deque* deque, size_t index, void* item) {
         deque->blockCount++;
     }
 
-    // Shift elements to make space for the new item
+    // Shift elements right by one (copying their bytes) to open a hole at index.
     for (size_t i = deque->size; i > index; --i) {
-        size_t srcBlockIndex = (deque->frontIndex + i - 1) / deque->blockSize;
-        size_t srcIndexInBlock = (deque->frontIndex + i - 1) % deque->blockSize;
-        size_t destBlockIndex = (deque->frontIndex + i) / deque->blockSize;
-        size_t destIndexInBlock = (deque->frontIndex + i) % deque->blockSize;
-
-        deque->blocks[destBlockIndex][destIndexInBlock] = deque->blocks[srcBlockIndex][srcIndexInBlock];
+        dq_store(dq_slot(deque, deque->frontIndex + i),
+                 dq_slot(deque, deque->frontIndex + i - 1),
+                 deque->itemSize);
     }
 
-    void* newItem = malloc(deque->itemSize);
-    if (!newItem) {
-        DEQUE_LOG("[deque_insert] Error: malloc(itemSize) failed.");
-        return;
-    }
-    memcpy(newItem, item, deque->itemSize);
-
-    // Insert the item
-    size_t blockIndex = (deque->frontIndex + index) / deque->blockSize;
-    size_t indexInBlock = (deque->frontIndex + index) % deque->blockSize;
-    deque->blocks[blockIndex][indexInBlock] = newItem;
+    // Insert the item inline (no per-element malloc).
+    dq_store(dq_slot(deque, deque->frontIndex + index), item, deque->itemSize);
     deque->size++;
     deque->backIndex = (deque->frontIndex + deque->size - 1) % deque->blockSize;
 }
@@ -639,12 +553,8 @@ void deque_erase(Deque* deque, size_t index) {
         }
     }
 
-    size_t lastAbs   = deque->frontIndex + deque->size - 1;
-    size_t lastBlock = lastAbs / deque->blockSize;
-    size_t lastIdx   = lastAbs % deque->blockSize;
-    free(deque->blocks[lastBlock][lastIdx]);
-    deque->blocks[lastBlock][lastIdx] = NULL;
-
+    // Elements are stored inline; the shifted-over tail slot holds a leftover
+    // duplicate that is simply dropped by the size decrement — nothing to free.
     deque->size--;
 
     if (deque->size == 0) {
@@ -654,7 +564,7 @@ void deque_erase(Deque* deque, size_t index) {
             free(deque->blocks[i]);
         }
         if (deque->blockCount > 1) {
-            void*** shrunk = (void***)realloc(deque->blocks, sizeof(void**));
+            void** shrunk = (void**)realloc(deque->blocks, sizeof(void*));
             if (shrunk) {
                 deque->blocks = shrunk;
             }
@@ -784,27 +694,17 @@ void deque_emplace_back(Deque* deque, void* item) {
         return;
     }
 
-    void* newItem = malloc(deque->itemSize);
-    if (!newItem) {
-        DEQUE_LOG("[deque_emplace_back] Error: Memory allocation failed for new item.");
-        return;
-    }
-
-    memcpy(newItem, item, deque->itemSize);
-
     if (deque->backIndex == deque->blockSize - 1) {
-        void*** newBlocks = (void***)realloc(deque->blocks, sizeof(void**) * (deque->blockCount + 1));
+        void** newBlocks = (void**)realloc(deque->blocks, sizeof(void*) * (deque->blockCount + 1));
         if (!newBlocks) {
-            free(newItem);
             DEQUE_LOG("[deque_emplace_back] Error: Memory allocation for new block failed.");
             return;
         }
 
         deque->blocks = newBlocks;
-        deque->blocks[deque->blockCount] = (void**)malloc(sizeof(void*) * deque->blockSize);
+        deque->blocks[deque->blockCount] = malloc(deque->blockSize * deque->itemSize);
 
         if (!deque->blocks[deque->blockCount]) {
-            free(newItem);
             DEQUE_LOG("[deque_emplace_back] Error: Memory allocation for new block element failed.");
             return;
         }
@@ -813,7 +713,8 @@ void deque_emplace_back(Deque* deque, void* item) {
     }
 
     deque->backIndex++;
-    deque->blocks[deque->blockCount - 1][deque->backIndex] = newItem;
+    dq_store((char*)deque->blocks[deque->blockCount - 1] + deque->backIndex * deque->itemSize,
+             item, deque->itemSize);
     deque->size++;
 
     DEQUE_LOG("[deque_emplace_back] Item inserted at blockIndex: %zu, indexInBlock: %zu.", deque->blockCount - 1, deque->backIndex);
@@ -885,6 +786,42 @@ size_t deque_max_size(const Deque* deque) {
 
 
 /**
+ * @brief Single-pass lexicographic comparison of two deques' element sequences.
+ *
+ * Returns a negative value if deque1 < deque2, zero if they are equal, and a
+ * positive value if deque1 > deque2. Callers guarantee both pointers are
+ * non-NULL and share the same itemSize. The ordering predicates use this so a
+ * query like is_less_or_equal walks the elements ONCE instead of calling
+ * deque_is_less and deque_is_equal back to back (which scanned twice).
+ *
+ * @param deque1 Pointer to the first deque.
+ * @param deque2 Pointer to the second deque.
+ * @return <0, 0, or >0 per lexicographic order (length breaks ties).
+ */
+static int dq_lex_compare(const Deque* deque1, const Deque* deque2) {
+    size_t n1 = deque1->size;
+    size_t n2 = deque2->size;
+    size_t minN = (n1 < n2) ? n1 : n2;
+
+    for (size_t i = 0; i < minN; ++i) {
+        const void* a = deque_at(deque1, i);
+        const void* b = deque_at(deque2, i);
+        if (!a || !b) {
+            return 0;
+        }
+        int cmp = memcmp(a, b, deque1->itemSize);
+        if (cmp != 0) {
+            return (cmp < 0) ? -1 : 1;
+        }
+    }
+    if (n1 != n2) {
+        return (n1 < n2) ? -1 : 1;
+    }
+    return 0;
+}
+
+
+/**
  * @brief Compares two deques for equality.
  *
  * This function checks whether two deques are equal, which means they have the
@@ -946,21 +883,8 @@ bool deque_is_less(const Deque* deque1, const Deque* deque2) {
     if (deque1->itemSize != deque2->itemSize) {
         return false;
     }
-    // Lex compare on stored values 
-    for (size_t i = 0; i < deque1->size && i < deque2->size; ++i) {
-        void* a = deque_at(deque1, i);
-        void* b = deque_at(deque2, i);
 
-        if (!a || !b) {
-            return false;
-        }
-
-        int cmp = memcmp(a, b, deque1->itemSize);
-        if (cmp != 0) {
-            return cmp < 0;
-        }
-    }
-    bool result = deque1->size < deque2->size;
+    bool result = dq_lex_compare(deque1, deque2) < 0;
     DEQUE_LOG("[deque_is_less] Comparison result: %d. Deque1 size: %zu, Deque2 size: %zu", result, deque1->size, deque2->size);
 
     return result;
@@ -980,7 +904,13 @@ bool deque_is_less(const Deque* deque1, const Deque* deque2) {
  */
 bool deque_is_greater(const Deque* deque1, const Deque* deque2) {
     DEQUE_LOG("[deque_is_greater] Comparing if deque1 is greater than deque2.");
-    return deque_is_less(deque2, deque1);
+    if (!deque1 || !deque2) {
+        return false;
+    }
+    if (deque1->itemSize != deque2->itemSize) {
+        return false;
+    }
+    return dq_lex_compare(deque1, deque2) > 0;
 }
 
 
@@ -1014,7 +944,16 @@ bool deque_is_not_equal(const Deque* deque1, const Deque* deque2) {
  */
 bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2) {
     DEQUE_LOG("[deque_is_less_or_equal] Comparing if deque1 is less than or equal to deque2.");
-    return deque_is_less(deque1, deque2) || deque_is_equal(deque1, deque2);
+    if (deque1 == deque2) {
+        return true;
+    }
+    if (!deque1 || !deque2) {
+        return false;
+    }
+    if (deque1->itemSize != deque2->itemSize) {
+        return false;
+    }
+    return dq_lex_compare(deque1, deque2) <= 0;
 }
 
 
@@ -1031,7 +970,16 @@ bool deque_is_less_or_equal(const Deque* deque1, const Deque* deque2) {
  */
 bool deque_is_greater_or_equal(const Deque* deque1, const Deque* deque2) {
     DEQUE_LOG("[deque_is_greater_or_equal] Comparing if deque1 is greater than or equal to deque2.");
-    return deque_is_greater(deque1, deque2) || deque_is_equal(deque1, deque2);
+    if (deque1 == deque2) {
+        return true;
+    }
+    if (!deque1 || !deque2) {
+        return false;
+    }
+    if (deque1->itemSize != deque2->itemSize) {
+        return false;
+    }
+    return dq_lex_compare(deque1, deque2) >= 0;
 }
 
 
@@ -1052,9 +1000,9 @@ DequeIterator deque_begin(const Deque* deque) {
     }
     if (deque->size > 0) {
         it.deque = (Deque*)deque;
-        it.current = deque->blocks[0][deque->frontIndex];
         it.blockIndex = deque->frontIndex / deque->blockSize;
         it.indexInBlock = deque->frontIndex % deque->blockSize;
+        it.current = (char*)deque->blocks[it.blockIndex] + it.indexInBlock * deque->itemSize;
 
         DEQUE_LOG("[deque_begin] Iterator to first element created. blockIndex: %zu, indexInBlock: %zu", it.blockIndex, it.indexInBlock);
     } 
@@ -1116,7 +1064,7 @@ DequeIterator deque_rbegin(const Deque* deque) {
         size_t lastBlock = (deque->frontIndex + deque->size - 1) / deque->blockSize;
         size_t indexInLastBlock = (deque->frontIndex + deque->size - 1) % deque->blockSize;
 
-        it.current = deque->blocks[lastBlock][indexInLastBlock];
+        it.current = (char*)deque->blocks[lastBlock] + indexInLastBlock * deque->itemSize;
         it.blockIndex = lastBlock;
         it.indexInBlock = indexInLastBlock;
         it.isReverse = true; 
@@ -1276,7 +1224,7 @@ void iterator_increment(DequeIterator* it) {
             it->indexInBlock--;
         }
 
-        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
+        it->current = (char*)it->deque->blocks[it->blockIndex] + it->indexInBlock * it->deque->itemSize;
         DEQUE_LOG("[iterator_increment] Reverse step: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
         return;
     }
@@ -1293,7 +1241,7 @@ void iterator_increment(DequeIterator* it) {
         DEQUE_LOG("[iterator_increment] Reached end of deque, iterator is now NULL.");
     } 
     else {
-        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
+        it->current = (char*)it->deque->blocks[it->blockIndex] + it->indexInBlock * it->deque->itemSize;
         DEQUE_LOG("[iterator_increment] Updated iterator position: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
     }
 }
@@ -1336,7 +1284,7 @@ void iterator_decrement(DequeIterator* it) {
 
     // Update current pointer
     if (it->blockIndex < it->deque->blockCount) {
-        it->current = it->deque->blocks[it->blockIndex][it->indexInBlock];
+        it->current = (char*)it->deque->blocks[it->blockIndex] + it->indexInBlock * it->deque->itemSize;
         DEQUE_LOG("[iterator_decrement] Reverse iteration - Updated iterator position: blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
     } 
     else {
@@ -1401,6 +1349,12 @@ void* iterator_get(const DequeIterator* it) {
         return NULL;
     }
 
+    if (!it->isReverse && it->blockIndex == it->deque->blockCount - 1 &&
+        it->indexInBlock > it->deque->backIndex) {
+        DEQUE_LOG("[iterator_get] Reached past-the-end position.");
+        return NULL;
+    }
+
     DEQUE_LOG("[iterator_get] Returning element at blockIndex: %zu, indexInBlock: %zu", it->blockIndex, it->indexInBlock);
-    return it->deque->blocks[it->blockIndex][it->indexInBlock];
+    return (char*)it->deque->blocks[it->blockIndex] + it->indexInBlock * it->deque->itemSize;
 }

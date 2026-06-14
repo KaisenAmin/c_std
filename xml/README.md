@@ -370,6 +370,48 @@ The documentation includes detailed descriptions of all the functions provided b
 
 **Usage Case**: Use to count how many elements with a given tag exist anywhere beneath a node.
 
+---
+
+### `XmlNode** xml_find_elements_by_tag(XmlNode* root, const char* tag_name, size_t* out_count)`
+
+**Purpose**: Find **every** descendant element with the given tag name — the array counterpart to `xml_find_element_by_tag` (first match only) and `xml_count_elements_by_tag` (count only). Walks the whole subtree in document order. The result length equals `xml_count_elements_by_tag(root, tag_name)`, and element `[0]` is the same node `xml_find_element_by_tag` returns. The root itself is never included.
+
+**Parameters**:
+- `root`: Root of the subtree to search. May be `NULL`.
+- `tag_name`: Tag name (case-sensitive). May be `NULL`.
+- `out_count`: Receives the number of matches (excluding the trailing `NULL`). May be `NULL`.
+
+**Return Value**: A newly-allocated, `NULL`-terminated array of wrappers (a non-`NULL` empty array when there are zero matches), or `NULL` on bad input / allocation failure. Ownership mirrors `xml_get_children`: each wrapper is owned by the document and freed by `xml_deallocate_document`; the caller frees only the returned **array** with `free()`.
+
+**Usage Case**: Use to process all elements of a given tag at once — e.g. every `<book>` in a catalog, every `<entry>` in a feed.
+
+---
+
+### `XmlAttribute* xml_get_attributes(XmlNode* element, size_t* out_count)`
+
+**Purpose**: Enumerate **all** of an element's attributes as a singly-linked list, in document order. This is the only way to iterate an element's attributes generically; `xml_get_element_attribute` only fetches one by name. Each list node carries an independent **copy** of the attribute name and value, so the list stays valid even if the element's attributes are later changed or removed.
+
+**Parameters**:
+- `element`: Element to inspect. May be `NULL`.
+- `out_count`: Receives the number of attributes. May be `NULL`.
+
+**Return Value**: The head of a newly-allocated `XmlAttribute` list, or `NULL` if the element has no attributes (count `0`), on bad input, or on allocation failure. The caller owns the list and MUST release it with `xml_free_attributes`.
+
+**Usage Case**: Use to serialize, copy, or generically process every attribute of an element without knowing the names in advance.
+
+---
+
+### `void xml_free_attributes(XmlAttribute* attributes)`
+
+**Purpose**: Release a list returned by `xml_get_attributes`, freeing every node and the name/value strings it owns.
+
+**Parameters**:
+- `attributes`: Head of the list. May be `NULL` (no-op).
+
+**Return Value**: None.
+
+**Usage Case**: Call once you are done iterating the attribute list to avoid leaks.
+
 
 ## Examples
 
@@ -1360,6 +1402,60 @@ int main(void) {
 ```
 <server host="localhost" ssl="yes"></server>
 remove non-existent returned: 1
+```
+
+---
+
+## Example 20: Find all elements by tag and enumerate their attributes — `xml_find_elements_by_tag` + `xml_get_attributes`
+
+`xml_find_element_by_tag` returns only the first match. `xml_find_elements_by_tag` returns **every** match as an array, and `xml_get_attributes` lists an element's attributes generically (the `XmlAttribute` linked list), so you can process documents without hard-coding attribute names.
+
+```c
+#include <stdlib.h>
+#include "xml/xml.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    XmlDocument* doc = xml_parse_string(
+        "<catalog>"
+          "<book id=\"bk101\" lang=\"en\"><title>C Programming</title></book>"
+          "<book id=\"bk102\" lang=\"fr\"><title>Le C</title></book>"
+          "<book id=\"bk103\" lang=\"de\"><title>C lernen</title></book>"
+        "</catalog>");
+    if (!doc) {
+        return 1;
+    }
+    XmlNode* root = xml_get_root(doc);
+
+    /* Collect EVERY <book> element (not just the first). */
+    size_t count = 0;
+    XmlNode** books = xml_find_elements_by_tag(root, "book", &count);
+    fmt_printf("found %zu <book> element(s):\n", count);
+
+    for (size_t i = 0; i < count; ++i) {
+        /* Enumerate each element's attributes generically. */
+        size_t na = 0;
+        XmlAttribute* attrs = xml_get_attributes(books[i], &na);
+        fmt_printf("  book #%zu:", i + 1);
+        for (XmlAttribute* a = attrs; a; a = a->next) {
+            fmt_printf(" %s=\"%s\"", a->name, a->value);
+        }
+        fmt_printf("\n");
+        xml_free_attributes(attrs);
+    }
+
+    free(books);              /* wrappers are owned by the document */
+    xml_deallocate_document(doc);
+    return 0;
+}
+```
+
+**Result**
+```
+found 3 <book> element(s):
+  book #1: id="bk101" lang="en"
+  book #2: id="bk102" lang="fr"
+  book #3: id="bk103" lang="de"
 ```
 
 ---

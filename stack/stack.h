@@ -8,18 +8,6 @@
  *
  * A C analog of C++ std::stack<T>, layered on top of the project's Vector.
  *
- * Const-correctness mirrors std::stack:
- *   - Functions that DO NOT modify the stack take `const Stack*`
- *     (size, empty, top, comparisons, capacity, item_size).
- *   - Functions that DO modify the stack take `Stack*`
- *     (push, pop*, emplace, clear, reserve, swap, assign, deallocate).
- *
- * Error model:
- *   - No global error state. No errno-style last-error. Every function
- *     reports failure through its return value (NULL / false / 0).
- *   - Opt-in diagnostic logging via STACK_LOGGING_ENABLE → STACK_LOG.
- *   - No library function ever calls exit().
- *
  * Pointer-lifetime warning for stack_pop():
  *   The pointer returned by stack_pop() aliases storage that is still
  *   owned by the underlying vector. It is valid only until the NEXT
@@ -46,19 +34,84 @@ extern "C" {
     #define STACK_LOG(fmt, ...) \
         do { fprintf(stderr, "[STACK LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
 #else
-    #define STACK_LOG(fmt, ...) do { } while (0)
+    #define STACK_LOG(...) do { } while (0)
 #endif
 
-
-/* ------------------------------------------------------------------ */
-/* Public types                                                       */
-/* ------------------------------------------------------------------ */
 
 typedef struct Stack Stack;
 
 struct Stack {
     Vector* vec;
 };
+
+
+/* ------------------------------------------------------------------ */
+/* Inlined hot ops                                                    */
+/* ------------------------------------------------------------------ */
+/*
+ * A stack is LIFO at the back of the vector, so push / top / pop / empty / size
+ * are tiny O(1) operations that dominate any real workload. They are defined
+ * `static inline` here (the Vector struct and its inline push_back/at are
+ * visible, and <string.h> comes in via vector.h) so the call folds into the
+ * caller exactly like std::stack — no out-of-line wrapper around an already
+ * inline vector op. Pops adjust the vector's size directly.
+ */
+static inline size_t stack_size(const Stack* stk) {
+    return (stk && stk->vec) ? stk->vec->size : 0;
+}
+
+
+static inline bool stack_empty(const Stack* stk) {
+    return !stk || !stk->vec || stk->vec->size == 0;
+}
+
+
+static inline void* stack_top(const Stack* stk) {
+    if (!stk || !stk->vec || stk->vec->size == 0) {
+        return NULL;
+    }
+    return (char*)stk->vec->items + (stk->vec->size - 1) * stk->vec->itemSize;
+}
+
+
+static inline bool stack_push(Stack* stk, const void* item) {
+    if (!stk || !stk->vec || !item) {
+        return false;
+    }
+    return vector_push_back(stk->vec, item);
+}
+
+
+static inline bool stack_pop_void(Stack* stk) {
+    if (!stk || !stk->vec || stk->vec->size == 0) {
+        return false;
+    }
+    stk->vec->size--;
+    return true;
+}
+
+
+static inline bool stack_pop_value(Stack* stk, void* out_buf) {
+    if (!stk || !stk->vec || stk->vec->size == 0) {
+        return false;
+    }
+    stk->vec->size--;
+    if (out_buf) {
+        memcpy(out_buf,
+               (char*)stk->vec->items + stk->vec->size * stk->vec->itemSize,
+               stk->vec->itemSize);
+    }
+    return true;
+}
+
+
+static inline void* stack_pop(Stack* stk) {
+    if (!stk || !stk->vec || stk->vec->size == 0) {
+        return NULL;
+    }
+    stk->vec->size--;
+    return (char*)stk->vec->items + stk->vec->size * stk->vec->itemSize;
+}
 
 
 /* ------------------------------------------------------------------ */
@@ -81,31 +134,21 @@ void    stack_deallocate              (Stack* stk);
 /* Capacity / size                                                    */
 /* ------------------------------------------------------------------ */
 
-size_t  stack_size                    (const Stack* stk);
 size_t  stack_capacity                (const Stack* stk);
 size_t  stack_item_size               (const Stack* stk);
-bool    stack_empty                   (const Stack* stk);
 bool    stack_reserve                 (Stack* stk, size_t new_capacity);
+/* stack_size / stack_empty are defined static inline above. */
 
 
 /* ------------------------------------------------------------------ */
 /* Modifiers                                                          */
 /* ------------------------------------------------------------------ */
 
-bool    stack_push                    (Stack* stk, const void* item);
 void*   stack_emplace                 (Stack* stk, const void* item);
-void*   stack_pop                     (Stack* stk);                       /* alias, see lifetime warning */
-bool    stack_pop_void                (Stack* stk);                       /* drop top without reading    */
-bool    stack_pop_value               (Stack* stk, void* out_buf);        /* copy then drop              */
 bool    stack_assign                  (Stack* dest, const Stack* src);
 void    stack_swap                    (Stack* stk1, Stack* stk2);
-
-
-/* ------------------------------------------------------------------ */
-/* Element access                                                     */
-/* ------------------------------------------------------------------ */
-
-void*   stack_top                     (const Stack* stk);
+/* stack_push / stack_pop / stack_pop_void / stack_pop_value are defined
+ * static inline above. stack_top likewise (element access). */
 
 
 /* ------------------------------------------------------------------ */

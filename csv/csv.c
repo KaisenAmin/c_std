@@ -66,6 +66,32 @@ void csv_row_destroy(CsvRow *row) {
 }
 
 
+static void csvp_row_append_cell_n(CsvRow *row, const char *s, size_t len) {
+    if (!row || !s) {
+        return;
+    }
+    if (row->size >= row->capacity) {
+        size_t newCapacity = row->capacity == 0 ? 1 : row->capacity * 2;
+        char **newCells = (char **)realloc(row->cells, newCapacity * sizeof(char *));
+        if (!newCells) {
+            CSV_LOG("[csvp_row_append_cell_n]: Error - Memory allocation failed for new cells.");
+            return;
+        }
+        row->cells = newCells;
+        row->capacity = newCapacity;
+    }
+
+    char *cell = (char *)malloc(len + 1);
+    if (!cell) {
+        CSV_LOG("[csvp_row_append_cell_n]: Error - Memory allocation failed for cell value.");
+        return;
+    }
+    memcpy(cell, s, len);
+    cell[len] = '\0';
+    row->cells[row->size++] = cell;
+}
+
+
 /**
  * @brief Appends a cell to a CsvRow.
  *
@@ -82,28 +108,7 @@ void csv_row_append_cell(CsvRow *row, const char *value) {
         return;
     }
 
-    // Resize the cells array if necessary
-    if (row->size >= row->capacity) {
-        size_t newCapacity = row->capacity == 0 ? 1 : row->capacity * 2;
-        CSV_LOG("[csv_row_append_cell]: Resizing cells array to new capacity %zu.", newCapacity);
-
-        char **newCells = (char **)realloc(row->cells, newCapacity * sizeof(char *));
-        if (!newCells) {
-            CSV_LOG("[csv_row_append_cell]: Error - Memory allocation failed for new cells.");
-            return;
-        }
-        row->cells = newCells;
-        row->capacity = newCapacity;
-    }
-
-    row->cells[row->size] = string_strdup(value); 
-    if (!row->cells[row->size]) {
-        CSV_LOG("[csv_row_append_cell]: Error - Memory allocation failed for cell value.");
-        return;
-    }
-
-    CSV_LOG("[csv_row_append_cell]: Appended cell with value: %s", value);
-    row->size++;
+    csvp_row_append_cell_n(row, value, strlen(value));
     CSV_LOG("[csv_row_append_cell]: Function end.");
 }
 
@@ -205,33 +210,15 @@ static void parse_csv_line(const char *line, char delimiter, CsvRow *row) {
             inQuotes = !inQuotes;
         } 
         else if (line[i] == delimiter && !inQuotes) {
-            size_t len = i - start;
-            char *cell = (char *)malloc(len + 1);
-
-            if (!cell) {
-                CSV_LOG("[parse_csv_line]: Error - Memory allocation failed for cell.");
-                return; 
-            }
-
-            strncpy(cell, line + start, len);
-            cell[len] = '\0';
-            CSV_LOG("[parse_csv_line]: Adding cell: %s", cell);
-
-            csv_row_append_cell(row, cell);
-            free(cell);
+            /* Append the field [start, i) straight from the line buffer with a
+             * single allocation (no temp buffer + second strdup). */
+            csvp_row_append_cell_n(row, line + start, i - start);
             start = i + 1;
         }
     }
 
     CSV_LOG("[parse_csv_line]: Adding last cell.");
-    char *cell = string_strdup(line + start);
-    if (!cell) {
-        CSV_LOG("[parse_csv_line]: Error - Memory allocation failed for last cell.");
-        return; 
-    }
-
-    csv_row_append_cell(row, cell);
-    free(cell);
+    csvp_row_append_cell_n(row, line + start, strlen(line + start));
 
     CSV_LOG("[parse_csv_line]: Function end.");
 }
@@ -1201,11 +1188,12 @@ void csv_file_remove_column(CsvFile *file, size_t columnIndex) {
 static size_t g_sort_col   = 0;
 static int    g_sort_sign  = 1;   /* +1 ascending, -1 descending */
 
-static int csv_sort_cmp(const void *a, const void *b) {
+static int csvp_sort_cmp(const void *a, const void *b) {
     CsvRow * const *pa = (CsvRow * const *)a;
     CsvRow * const *pb = (CsvRow * const *)b;
     const CsvRow *ra = *pa;
     const CsvRow *rb = *pb;
+    
     /* Treat missing cells as empty string for ordering purposes. */
     const char *va = (ra && g_sort_col < ra->size) ? ra->cells[g_sort_col] : "";
     const char *vb = (rb && g_sort_col < rb->size) ? rb->cells[g_sort_col] : "";
@@ -1242,7 +1230,7 @@ void csv_file_sort(CsvFile *file, size_t columnIndex, bool ascending, bool skipH
 
     g_sort_col  = columnIndex;
     g_sort_sign = ascending ? 1 : -1;
-    qsort(file->rows + start, n, sizeof(CsvRow*), csv_sort_cmp);
+    qsort(file->rows + start, n, sizeof(CsvRow*), csvp_sort_cmp);
 
     CSV_LOG("[csv_file_sort]: sorted %zu row(s) on column %zu (asc=%d).", n, columnIndex, (int)ascending);
 }
@@ -1504,4 +1492,368 @@ char* csv_file_export_to_string(const CsvFile *file) {
     out[len] = '\0';
     CSV_LOG("[csv_file_export_to_string]: emitted %zu bytes from %zu row(s).", len, file->size);
     return out;
+}
+
+
+/* ==================================================================== */
+/* RFC 4180 (quote-aware) I/O                                           */
+/*                                                                      */
+/* The plain csv_file_write / csv_file_export_to_string / parse_csv_line*/
+/* family is deliberately simple and does NOT quote or unquote fields.  */
+/* That corrupts any cell containing the delimiter, a double quote, or  */
+/* a newline. The functions below implement the RFC 4180 rules so that  */
+/* such data round-trips and the output opens correctly in Excel /      */
+/* pandas / other CSV tools.                                            */
+/* ==================================================================== */
+
+/* Append `n` bytes of `s` to the growable, always-NUL-terminated buffer
+ * (*buf, *cap, *len). Grows geometrically. Returns false on OOM. */
+static bool csvp_buf_append_n(char **buf, size_t *cap, size_t *len, const char *s, size_t n) {
+    if (*len + n + 1 > *cap) {
+        size_t new_cap = (*cap == 0) ? 64 : *cap;
+        while (*len + n + 1 > new_cap) {
+            new_cap *= 2;
+        }
+        char *nb = (char *)realloc(*buf, new_cap);
+        if (!nb) {
+            return false;
+        }
+        *buf = nb;
+        *cap = new_cap;
+    }
+    memcpy(*buf + *len, s, n);
+    *len += n;
+    (*buf)[*len] = '\0';
+    return true;
+}
+
+/* Push a single character onto the growable field buffer. */
+static bool csvp_field_push(char **buf, size_t *cap, size_t *len, char c) {
+    if (*len + 2 > *cap) {
+        size_t new_cap = (*cap == 0) ? 64 : *cap * 2;
+        char *nb = (char *)realloc(*buf, new_cap);
+        if (!nb) {
+            return false;
+        }
+        *buf = nb;
+        *cap = new_cap;
+    }
+    (*buf)[(*len)++] = c;
+    (*buf)[*len] = '\0';
+    return true;
+}
+
+/* True if `s` must be quoted under RFC 4180 for the given delimiter: it
+ * contains the delimiter, a double quote, CR, or LF. */
+static bool csvp_field_needs_quote(const char *s, char delim) {
+    for (const char *p = s; *p; ++p) {
+        if (*p == delim || *p == '"' || *p == '\n' || *p == '\r') {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Append `field` to the output buffer, RFC 4180-encoded: wrapped in
+ * double quotes (with every internal quote doubled) only when needed. */
+static bool csvp_append_quoted_field(char **buf, size_t *cap, size_t *len, const char *field, char delim) {
+    if (!csvp_field_needs_quote(field, delim)) {
+        return csvp_buf_append_n(buf, cap, len, field, strlen(field));
+    }
+    if (!csvp_buf_append_n(buf, cap, len, "\"", 1)) {
+        return false;
+    }
+    const char *start = field;
+    for (const char *p = field; *p; ++p) {
+        if (*p == '"') {
+            if (!csvp_buf_append_n(buf, cap, len, start, (size_t)(p - start))) {
+                return false;
+            }
+            if (!csvp_buf_append_n(buf, cap, len, "\"\"", 2)) {
+                return false;
+            }
+            start = p + 1;
+        }
+    }
+    if (!csvp_buf_append_n(buf, cap, len, start, strlen(start))) {
+        return false;
+    }
+    return csvp_buf_append_n(buf, cap, len, "\"", 1);
+}
+
+
+/**
+ * @brief Serialize the whole file to a malloc'd string with RFC 4180 quoting.
+ *
+ * Like `csv_file_export_to_string`, but any cell that contains the
+ * delimiter, a double quote, CR, or LF is wrapped in double quotes and
+ * its internal quotes are doubled (`"` -> `""`). Cells that need no
+ * quoting are emitted verbatim, so for data without special characters
+ * the output is byte-identical to `csv_file_export_to_string`. Rows end
+ * in a single `\n`. The result is NUL-terminated and owned by the caller
+ * (free with `free()`).
+ *
+ * @param file Source file. May be NULL (returns NULL).
+ * @return Newly-allocated NUL-terminated CSV string, or NULL on bad
+ *         input / OOM. An empty file yields `""` (length 0).
+ */
+char *csv_file_export_to_string_rfc4180(const CsvFile *file) {
+    CSV_LOG("[csv_file_export_to_string_rfc4180]: Function start.");
+    if (!file) {
+        CSV_LOG("[csv_file_export_to_string_rfc4180]: NULL file.");
+        return NULL;
+    }
+
+    size_t cap = 256;
+    size_t len = 0;
+    char *out = (char *)malloc(cap);
+    if (!out) {
+        return NULL;
+    }
+    out[0] = '\0';
+
+    for (size_t i = 0; i < file->size; ++i) {
+        CsvRow *row = file->rows[i];
+        for (size_t j = 0; j < row->size; ++j) {
+            const char *cell = row->cells[j] ? row->cells[j] : "";
+            if (!csvp_append_quoted_field(&out, &cap, &len, cell, file->delimiter)) {
+                free(out);
+                return NULL;
+            }
+            if (j + 1 < row->size) {
+                char d = file->delimiter;
+                if (!csvp_buf_append_n(&out, &cap, &len, &d, 1)) {
+                    free(out);
+                    return NULL;
+                }
+            }
+        }
+        if (!csvp_buf_append_n(&out, &cap, &len, "\n", 1)) {
+            free(out);
+            return NULL;
+        }
+    }
+
+    CSV_LOG("[csv_file_export_to_string_rfc4180]: emitted %zu bytes from %zu row(s).", len, file->size);
+    return out;
+}
+
+
+/**
+ * @brief Write the file to disk with RFC 4180 quoting (crash-safe bytes).
+ *
+ * Serializes via `csv_file_export_to_string_rfc4180`, then writes the
+ * bytes in BINARY mode so the on-disk output is byte-identical across
+ * platforms (no Windows CRLF translation) and matches the in-memory
+ * string exactly. Unlike the legacy `csv_file_write` (which returns
+ * void), this reports success so callers can react to I/O errors.
+ *
+ * @param file     Source file. Must not be NULL.
+ * @param filename Destination path. Must not be NULL.
+ * @return true if the file was written in full; false on NULL input,
+ *         OOM, or any I/O failure.
+ */
+bool csv_file_write_rfc4180(const CsvFile *file, const char *filename) {
+    CSV_LOG("[csv_file_write_rfc4180]: Function start.");
+    if (!file || !filename) {
+        CSV_LOG("[csv_file_write_rfc4180]: NULL parameter.");
+        return false;
+    }
+
+    char *s = csv_file_export_to_string_rfc4180(file);
+    if (!s) {
+        CSV_LOG("[csv_file_write_rfc4180]: serialization failed.");
+        return false;
+    }
+
+    FileWriter *fw = file_writer_open(filename, WRITE_BINARY);
+    if (!fw) {
+        CSV_LOG("[csv_file_write_rfc4180]: cannot open '%s' for writing.", filename);
+        free(s);
+        return false;
+    }
+
+    size_t n = strlen(s);
+    bool ok = (n == 0) || (file_writer_write((void *)s, 1, n, fw) == n);
+    file_writer_close(fw);
+    free(s);
+
+    CSV_LOG("[csv_file_write_rfc4180]: wrote %zu byte(s) to '%s' (ok=%d).", n, filename, (int)ok);
+    return ok;
+}
+
+
+/**
+ * @brief Parse an in-memory CSV document with full RFC 4180 semantics.
+ *
+ * A proper state-machine parser (not line-by-line), so it correctly
+ * handles everything the simple `csv_file_load_from_string` cannot:
+ *   - Quoted fields: surrounding quotes are stripped from the stored value.
+ *   - Escaped quotes inside a quoted field: `""` becomes a single `"`.
+ *   - The delimiter inside a quoted field is literal (does not split).
+ *   - Newlines (LF or CRLF) inside a quoted field are literal, so a
+ *     single record may span multiple physical lines.
+ *   - No line-length limit (the legacy reader truncates at 1024 bytes).
+ *
+ * Records are separated by an unquoted LF or CRLF. Wholly-blank lines
+ * are skipped (matching `csv_file_load_from_string`); a quoted empty
+ * field `""` is a real empty cell, not a blank line. Rows are APPENDED
+ * to `file`, so repeated calls concatenate. NULL inputs are safe no-ops.
+ *
+ * @param file Target CsvFile (already created via `csv_file_create`).
+ *             Its `delimiter` selects the field separator.
+ * @param data NUL-terminated CSV text.
+ */
+void csv_file_load_from_string_rfc4180(CsvFile *file, const char *data) {
+    CSV_LOG("[csv_file_load_from_string_rfc4180]: Function start.");
+    if (!file || !data) {
+        CSV_LOG("[csv_file_load_from_string_rfc4180]: NULL input; no-op.");
+        return;
+    }
+
+    char delim = file->delimiter;
+
+    size_t fcap = 64;
+    size_t flen = 0;
+    char *field = (char *)malloc(fcap);
+    if (!field) {
+        return;
+    }
+    field[0] = '\0';
+
+    CsvRow *row = csv_row_create();
+    if (!row) {
+        free(field);
+        return;
+    }
+
+    bool in_quotes = false;
+    size_t chars_in_record = 0;   /* input chars consumed for the current record */
+    const char *p = data;
+
+    while (*p) {
+        char c = *p;
+
+        if (in_quotes) {
+            if (c == '"') {
+                if (p[1] == '"') {            /* escaped quote -> literal '"' */
+                    if (!csvp_field_push(&field, &fcap, &flen, '"')) {
+                        goto done;
+                    }
+                    p += 2;
+                    chars_in_record += 2;
+                    continue;
+                }
+                in_quotes = false;           /* closing quote */
+                p += 1;
+                chars_in_record += 1;
+                continue;
+            }
+            if (!csvp_field_push(&field, &fcap, &flen, c)) {
+                goto done;
+            }
+            p += 1;
+            chars_in_record += 1;
+            continue;
+        }
+
+        if (c == '"') {                      /* opening quote */
+            in_quotes = true;
+            p += 1;
+            chars_in_record += 1;
+            continue;
+        }
+        if (c == delim) {                    /* field separator */
+            csvp_row_append_cell_n(row, field, flen);
+            flen = 0;
+            field[0] = '\0';
+            p += 1;
+            chars_in_record += 1;
+            continue;
+        }
+        if (c == '\n' || c == '\r') {        /* record terminator (CRLF as one) */
+            size_t adv = (c == '\r' && p[1] == '\n') ? 2 : 1;
+            if (chars_in_record == 0) {
+                /* wholly-blank line: skip, emit no row */
+            } else {
+                csvp_row_append_cell_n(row, field, flen);
+                csv_file_append_row(file, row);
+                row = csv_row_create();
+                if (!row) {
+                    free(field);
+                    return;
+                }
+            }
+            flen = 0;
+            field[0] = '\0';
+            chars_in_record = 0;
+            p += adv;
+            continue;
+        }
+
+        if (!csvp_field_push(&field, &fcap, &flen, c)) {   /* ordinary char */
+            goto done;
+        }
+        p += 1;
+        chars_in_record += 1;
+    }
+
+    /* Flush a trailing record that had no terminating newline. */
+    if (chars_in_record > 0) {
+        csvp_row_append_cell_n(row, field, flen);
+        csv_file_append_row(file, row);
+        row = NULL;
+    }
+
+done:
+    if (row) {
+        csv_row_destroy(row);
+    }
+    free(field);
+    CSV_LOG("[csv_file_load_from_string_rfc4180]: parsed; file now has %zu row(s).", file->size);
+}
+
+
+/**
+ * @brief Read a CSV file from disk with full RFC 4180 semantics.
+ *
+ * Slurps the whole file in BINARY mode (so CRLF and embedded newlines
+ * are preserved exactly) and parses it with
+ * `csv_file_load_from_string_rfc4180`. This both fixes the legacy
+ * `csv_file_read` 1024-byte line truncation and supports records that
+ * span multiple lines via quoted fields. Rows are APPENDED to `file`.
+ *
+ * @param file     Target CsvFile (already created via `csv_file_create`).
+ * @param filename Path of the CSV file to read.
+ * @return true on success; false on NULL input, if the file cannot be
+ *         opened, or if reading fails.
+ */
+bool csv_file_read_rfc4180(CsvFile *file, const char *filename) {
+    CSV_LOG("[csv_file_read_rfc4180]: Function start.");
+    if (!file || !filename) {
+        CSV_LOG("[csv_file_read_rfc4180]: NULL parameter.");
+        return false;
+    }
+
+    FileReader *fr = file_reader_open(filename, READ_BINARY);
+    if (!fr) {
+        CSV_LOG("[csv_file_read_rfc4180]: cannot open '%s'.", filename);
+        return false;
+    }
+
+    char *buf = NULL;
+    size_t n = 0;
+    bool ok = file_reader_read_all(fr, &buf, &n);
+    file_reader_close(fr);
+
+    if (!ok) {
+        CSV_LOG("[csv_file_read_rfc4180]: read_all failed for '%s'.", filename);
+        return false;
+    }
+
+    csv_file_load_from_string_rfc4180(file, buf);
+    free(buf);
+
+    CSV_LOG("[csv_file_read_rfc4180]: read '%s' (%zu bytes).", filename, n);
+    return true;
 }

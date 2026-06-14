@@ -223,6 +223,7 @@ float   turtle_distance_turtle           (Turtle* state, Tu* other_turtle);
 float   turtle_get_pen_size              (Turtle* state);
 float   turtle_get_speed                 (const Turtle* state);
 int     turtle_get_line_count            (const Turtle* state);
+bool    turtle_get_line                  (const Turtle* state, int index, Line* out);
 int     turtle_get_stamp_count           (const Turtle* state);
 bool    turtle_filling                   (Turtle* state);
 bool    turtle_is_down                   (Turtle* state);
@@ -242,6 +243,7 @@ bool    turtle_undo                      (Turtle* state);
 void    turtle_write                     (Turtle* state, const char* text, int fontSize, Color color);
 void    turtle_write_at                  (Turtle* state, float x, float y, const char* text, int fontSize, Color color);
 bool    turtle_save_image                (const char* filename);
+bool    turtle_export_svg                (const Turtle* state, const char* filename);
 void    turtle_clear_stamps              (Turtle* state);
 void    turtle_screen_size               (int* width, int* height);
 

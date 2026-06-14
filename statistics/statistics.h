@@ -79,6 +79,14 @@ double            statistics_median_grouped   (const double* data, size_t n, dou
 
 
 /* ------------------------------------------------------------------ */
+/* Quantiles / percentiles                                            */
+/* ------------------------------------------------------------------ */
+
+double            statistics_percentile       (const double* data, size_t n, double p);
+double*           statistics_quantiles        (const double* data, size_t n, size_t n_quantiles, bool exclusive, size_t* out_count);
+
+
+/* ------------------------------------------------------------------ */
 /* Spread (variance / standard deviation)                             */
 /* ------------------------------------------------------------------ */
 

@@ -49,6 +49,39 @@ static void xor_encrypt_decrypt(const char *input, char *output, char key, size_
 }
 
 
+/* Append `sec` to the file's section array, growing it GEOMETRICALLY.*/
+static bool cfg_file_add_section(ConfigFile* config, ConfigSection* sec) {
+    if (config->section_count == config->section_capacity) {
+        size_t newCap = config->section_capacity ? config->section_capacity * 2 : 8;
+        ConfigSection** grown = (ConfigSection**)realloc(config->sections, newCap * sizeof(ConfigSection*));
+        if (!grown) {
+            return false;
+        }
+        config->sections = grown;
+        config->section_capacity = newCap;
+    }
+    config->sections[config->section_count++] = sec;
+    return true;
+}
+
+/* Append `entry` to a section's entry array, growing it GEOMETRICALLY (the old
+ * realloc-to-(entry_count + 1) made loading a section with many keys O(n^2)).
+ * Returns false on allocation failure (the section is left unchanged). */
+static bool cfg_section_add_entry(ConfigSection* sec, ConfigEntry entry) {
+    if (sec->entry_count == sec->entry_capacity) {
+        size_t newCap = sec->entry_capacity ? sec->entry_capacity * 2 : 8;
+        ConfigEntry* grown = (ConfigEntry*)realloc(sec->entries, newCap * sizeof(ConfigEntry));
+        if (!grown) {
+            return false;
+        }
+        sec->entries = grown;
+        sec->entry_capacity = newCap;
+    }
+    sec->entries[sec->entry_count++] = entry;
+    return true;
+}
+
+
 /**
  * @brief Creates a ConfigFile structure by reading the specified configuration file.
  *
@@ -77,6 +110,7 @@ ConfigFile *config_create(const char *filename) {
 
     config->sections = NULL;
     config->section_count = 0;
+    config->section_capacity = 0;
     config->default_section = NULL;
     config->filename = string_strdup(filename);
     config->modification_callback = NULL;  // init: previously read uninitialized
@@ -133,11 +167,17 @@ ConfigFile *config_create(const char *filename) {
             current_section->section_name[section_name_length] = '\0';
             current_section->entries = NULL;
             current_section->entry_count = 0;
+            current_section->entry_capacity = 0;
             current_section->comment = NULL;  // init: previously read uninitialized by config_set_comment
 
-            config->sections = (ConfigSection**) realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
-            config->sections[config->section_count++] = current_section;
-            CONFIG_LOG("[config_create] New section added: [%s]", current_section->section_name);
+            if (!cfg_file_add_section(config, current_section)) {
+                free(current_section->section_name);
+                free(current_section);
+                current_section = NULL;
+            }
+            else {
+                CONFIG_LOG("[config_create] New section added: [%s]", current_section->section_name);
+            }
         }
         else if (current_section && strchr(writable_trimmed, '=')) {
             char *key = strtok(writable_trimmed, "=");
@@ -148,8 +188,11 @@ ConfigFile *config_create(const char *filename) {
         }
 
         if (current_section && (entry.isComment || entry.key)) {
-            current_section->entries = (ConfigEntry*) realloc(current_section->entries, (current_section->entry_count + 1) * sizeof(ConfigEntry));
-            current_section->entries[current_section->entry_count++] = entry;
+            if (!cfg_section_add_entry(current_section, entry)) {
+                /* OOM: couldn't store the entry; release its strings. */
+                free(entry.key);
+                free(entry.value);
+            }
         }
         else {
             /* The entry could not be attached to a section — e.g. a comment line
@@ -316,16 +359,15 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         sec->section_name = string_strdup(section);
         sec->entries = NULL;
         sec->entry_count = 0;
-        sec->comment = NULL;   /* MUST init: deallocate calls free() on it */
+        sec->entry_capacity = 0;
+        sec->comment = NULL;   
 
-        config->sections = (ConfigSection **)realloc(config->sections, (config->section_count + 1) * sizeof(ConfigSection *));
-        if (!config->sections) {
+        if (!cfg_file_add_section(config, sec)) {
             free(sec->section_name);
             free(sec);
             CONFIG_LOG("[config_set_value] Error: Memory allocation failed for sections array.");
             return;
         }
-        config->sections[config->section_count++] = sec;
         CONFIG_LOG("[config_set_value] New section '%s' created.", section);
     }
 
@@ -345,17 +387,18 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         }
     }
 
-    // Add a new entry
-    sec->entries = (ConfigEntry *)realloc(sec->entries, (sec->entry_count + 1) * sizeof(ConfigEntry));
-    if (!sec->entries) {
+    // Add a new entry, growing the entry array geometrically (was realloc-by-1).
+    ConfigEntry newEntry = {0};
+    newEntry.isComment = 0;                    // Mark it as a key-value pair
+    newEntry.key = string_strdup(key);         // Allocate and set key
+    newEntry.value = string_strdup(value);     // Allocate and set value
+    
+    if (!cfg_section_add_entry(sec, newEntry)) {
+        free(newEntry.key);
+        free(newEntry.value);
         CONFIG_LOG("[config_set_value] Error: Memory allocation failed for new entry.");
         return;
     }
-
-    sec->entries[sec->entry_count].key = string_strdup(key);   // Allocate and set key
-    sec->entries[sec->entry_count].value = string_strdup(value); // Allocate and set value
-    sec->entries[sec->entry_count].isComment = 0; // Mark it as a key-value pair
-    sec->entry_count++;
 
     CONFIG_LOG("[config_set_value] New key '%s' with value '%s' added to section '%s'.", key, value, section);
 
@@ -405,13 +448,17 @@ void config_remove_section(ConfigFile *config, const char *section) {
 
             config->section_count--;
             if (config->section_count == 0) {
-                /* realloc(ptr, 0) is undefined behavior (and flagged by valgrind);
-                   free and reset to NULL instead. */
                 free(config->sections);
                 config->sections = NULL;
+                config->section_capacity = 0;
             }
             else {
-                config->sections = (ConfigSection**) realloc(config->sections, config->section_count * sizeof(ConfigSection *));
+                /* shrink to fit; keep section_capacity in sync with the array. */
+                ConfigSection** shrunk = (ConfigSection**) realloc(config->sections, config->section_count * sizeof(ConfigSection *));
+                if (shrunk) {
+                    config->sections = shrunk;
+                    config->section_capacity = config->section_count;
+                }
             }
             CONFIG_LOG("[config_remove_section] Section '%s' successfully removed.", section);
 
@@ -466,13 +513,17 @@ void config_remove_key(ConfigFile *config, const char *section, const char *key)
                     }
                     sec->entry_count--;
                     if (sec->entry_count == 0) {
-                        /* realloc(ptr, 0) is undefined behavior (and flagged by valgrind);
-                           free and reset to NULL instead. */
                         free(sec->entries);
                         sec->entries = NULL;
+                        sec->entry_capacity = 0;
                     }
                     else {
-                        sec->entries = (ConfigEntry*) realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
+                        /* shrink to fit; keep entry_capacity in sync with the array. */
+                        ConfigEntry* shrunk = (ConfigEntry*) realloc(sec->entries, sec->entry_count * sizeof(ConfigEntry));
+                        if (shrunk) {
+                            sec->entries = shrunk;
+                            sec->entry_capacity = sec->entry_count;
+                        }
                     }
 
                     CONFIG_LOG("[config_remove_key] Key '%s' successfully removed from section '%s'.", key, section);
@@ -1391,6 +1442,7 @@ void config_clear(ConfigFile *config) {
     free(config->sections);
     config->sections = NULL;
     config->section_count = 0;
+    config->section_capacity = 0;   /* array freed above; capacity must follow */
 }
 
 
@@ -1481,4 +1533,227 @@ char* config_to_string(const ConfigFile *config) {
         }
     }
     return out;
+}
+
+
+/* =================================================================== */
+/* In-memory construction + string parsing + typed setters             */
+/* =================================================================== */
+
+/**
+ * @brief Create an empty ConfigFile with no backing file.
+ *
+ * The counterpart to `config_create`, which requires an existing file on
+ * disk. This builds a blank configuration in memory that can be populated
+ * with `config_set_value` / the typed setters / `config_load_string`, and
+ * later written with `config_save`. The `filename` field is NULL, so
+ * `config_reload` does not apply until the config has been `config_save`d
+ * to a path and re-opened with `config_create`.
+ *
+ * @return A newly-allocated empty ConfigFile (free with
+ *         `config_deallocate`), or NULL on allocation failure.
+ */
+ConfigFile *config_create_empty(void) {
+    CONFIG_LOG("[config_create_empty] Creating empty in-memory configuration.");
+
+    ConfigFile *config = (ConfigFile*)malloc(sizeof(ConfigFile));
+    if (!config) {
+        CONFIG_LOG("[config_create_empty] Error: allocation failed.");
+        return NULL;
+    }
+
+    config->sections = NULL;
+    config->section_count = 0;
+    config->section_capacity = 0;
+    config->default_section = NULL;
+    config->filename = NULL;
+    config->modification_callback = NULL;
+
+    return config;
+}
+
+
+/**
+ * @brief Parse INI text from an in-memory string into an existing config.
+ *
+ * The inverse of `config_to_string`: reads `data` as INI-format text and
+ * appends its sections, keys and comments to `config`. Lines are split on
+ * `\n` with a trailing `\r` (from CRLF) tolerated, and there is NO
+ * line-length limit (unlike the file path, which reads in 1024-byte
+ * chunks). Parsing rules match `config_create`:
+ *   - `#` or `;` lines become comment entries (only inside a section).
+ *   - `[name]` opens a section; a malformed `[name` (no `]`) is skipped.
+ *   - `key = value` splits on the FIRST `=`; both sides are trimmed; the
+ *     value may itself contain `=`. Key/value lines before the first
+ *     section header are ignored.
+ *
+ * Rows are APPENDED, so this composes with `config_create_empty` and can
+ * be called repeatedly to layer fragments. An empty key (`= value`) and a
+ * wholly-blank line are skipped.
+ *
+ * @param config Target config (e.g. from `config_create_empty`). Must not be NULL.
+ * @param data   NUL-terminated INI text. Must not be NULL.
+ * @return true on success (including parsing zero entries); false on NULL
+ *         input or an allocation failure mid-parse (entries parsed before
+ *         the failure remain in `config`).
+ */
+bool config_load_string(ConfigFile *config, const char *data) {
+    CONFIG_LOG("[config_load_string] Parsing configuration from string.");
+    if (!config || !data) {
+        CONFIG_LOG("[config_load_string] Error: NULL config or data.");
+        return false;
+    }
+
+    ConfigSection *current_section = NULL;
+    const char *p = data;
+
+    while (*p) {
+        const char *nl = strchr(p, '\n');
+        size_t line_len = nl ? (size_t)(nl - p) : strlen(p);
+
+        /* Copy this line into a mutable, NUL-terminated buffer (sized to
+           the line, so there is no fixed-length truncation). */
+        char *line = (char*)malloc(line_len + 1);
+        if (!line) {
+            CONFIG_LOG("[config_load_string] Error: allocation failed for line.");
+            return false;
+        }
+        memcpy(line, p, line_len);
+        line[line_len] = '\0';
+
+        /* Strip a trailing CR left over from CRLF. */
+        if (line_len > 0 && line[line_len - 1] == '\r') {
+            line[line_len - 1] = '\0';
+        }
+
+        char *trimmed = trim_whitespace(line);
+
+        if (trimmed[0] == '\0') {
+            /* blank line: nothing to do */
+        }
+        else if (trimmed[0] == '#' || trimmed[0] == ';') {
+            if (current_section) {
+                ConfigEntry entry = {0};
+                entry.isComment = true;
+                entry.value = string_strdup(trimmed);
+                if (!entry.value || !cfg_section_add_entry(current_section, entry)) {
+                    free(entry.value);
+                }
+            }
+        }
+        else if (trimmed[0] == '[') {
+            size_t tl = strlen(trimmed);
+            if (tl >= 2 && trimmed[tl - 1] == ']') {
+                ConfigSection *sec = (ConfigSection*)malloc(sizeof(ConfigSection));
+                if (sec) {
+                    size_t name_len = tl - 2;
+                    sec->section_name = (char*)malloc(name_len + 1);
+                    if (!sec->section_name) {
+                        free(sec);
+                    }
+                    else {
+                        memcpy(sec->section_name, trimmed + 1, name_len);
+                        sec->section_name[name_len] = '\0';
+                        sec->entries = NULL;
+                        sec->entry_count = 0;
+                        sec->entry_capacity = 0;
+                        sec->comment = NULL;
+                        if (!cfg_file_add_section(config, sec)) {
+                            free(sec->section_name);
+                            free(sec);
+                            current_section = NULL;
+                        }
+                        else {
+                            current_section = sec;
+                        }
+                    }
+                }
+            }
+            /* malformed "[name" without a closing ']' is skipped */
+        }
+        else if (current_section) {
+            char *eq = strchr(trimmed, '=');
+            if (eq) {
+                *eq = '\0';
+                char *key = trim_whitespace(trimmed);
+                char *value = trim_whitespace(eq + 1);
+                if (key[0] != '\0') {
+                    ConfigEntry entry = {0};
+                    entry.isComment = false;
+                    entry.key = string_strdup(key);
+                    entry.value = string_strdup(value);
+                    if (!entry.key || !entry.value || !cfg_section_add_entry(current_section, entry)) {
+                        free(entry.key);
+                        free(entry.value);
+                    }
+                }
+            }
+        }
+
+        free(line);
+        if (!nl) {
+            break;
+        }
+        p = nl + 1;
+    }
+
+    CONFIG_LOG("[config_load_string] Parsed; config now has %zu section(s).", config->section_count);
+    return true;
+}
+
+
+/**
+ * @brief Set an integer value for a key (typed counterpart to config_get_int).
+ *
+ * Formats `value` with `%d` and stores it via `config_set_value`, creating
+ * the section/key if needed. NULL config/section/key are rejected by
+ * `config_set_value`.
+ *
+ * @param config  Target config.
+ * @param section Section name.
+ * @param key     Key name.
+ * @param value   Integer value to store.
+ */
+void config_set_int(ConfigFile *config, const char *section, const char *key, int value) {
+    CONFIG_LOG("[config_set_int] section='%s', key='%s', value=%d.", section ? section : "(null)", key ? key : "(null)", value);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", value);
+    config_set_value(config, section, key, buf);
+}
+
+
+/**
+ * @brief Set a double value for a key (typed counterpart to config_get_double).
+ *
+ * Formats `value` with `%.15g` — enough precision that ordinary decimal
+ * values round-trip cleanly through `config_get_double` without exposing
+ * binary-representation noise — and stores it via `config_set_value`.
+ *
+ * @param config  Target config.
+ * @param section Section name.
+ * @param key     Key name.
+ * @param value   Double value to store.
+ */
+void config_set_double(ConfigFile *config, const char *section, const char *key, double value) {
+    CONFIG_LOG("[config_set_double] section='%s', key='%s', value=%g.", section ? section : "(null)", key ? key : "(null)", value);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%.15g", value);
+    config_set_value(config, section, key, buf);
+}
+
+
+/**
+ * @brief Set a boolean value for a key (typed counterpart to config_get_bool).
+ *
+ * Stores the canonical literal `"true"` or `"false"` via `config_set_value`
+ * — both are recognized by `config_get_bool`.
+ *
+ * @param config  Target config.
+ * @param section Section name.
+ * @param key     Key name.
+ * @param value   Boolean value to store.
+ */
+void config_set_bool(ConfigFile *config, const char *section, const char *key, bool value) {
+    CONFIG_LOG("[config_set_bool] section='%s', key='%s', value=%d.", section ? section : "(null)", key ? key : "(null)", (int)value);
+    config_set_value(config, section, key, value ? "true" : "false");
 }

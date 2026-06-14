@@ -55,6 +55,17 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 
 ---
 
+### `char* encoding_base16_decode_ex(const char* input, size_t length, size_t* out_len)`
+**Purpose**: Like `encoding_base16_decode`, but also writes the number of decoded bytes (`length / 2`) to `*out_len`. Provided for symmetry with the Base32/Base64 `_ex` decoders so binary handling never relies on `strlen` of a buffer that may contain embedded `0x00` bytes.
+**Parameters**:
+- `input`: Pointer to the hex-encoded string.
+- `length`: Length of the encoded string (must be even).
+- `out_len`: Optional out-pointer; receives the decoded byte count (`0` on error). May be `NULL`.
+**Return Value**: A `malloc`'d buffer with the decoded bytes (NUL-terminated for convenience), or `NULL` on error. The caller must `free()` it.
+**Usage Case**: Decoding binary blobs where the exact length matters.
+
+---
+
 ### `char* encoding_base32_encode(const char* input, size_t length)`
 **Purpose**: Encodes binary data into Base32 format using the standard RFC 4648 alphabet, which is case-insensitive and suitable for use in filenames and DNS labels.
 **Parameters**:
@@ -72,6 +83,17 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 - `length`: Length of the encoded string.
 **Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
 **Usage Case**: Reverse of `encoding_base32_encode`; use to recover binary data from a Base32 string.
+
+---
+
+### `char* encoding_base32_decode_ex(const char* input, size_t length, size_t* out_len)`
+**Purpose**: Like `encoding_base32_decode`, but also writes the exact number of decoded bytes to `*out_len`. Because Base32 padding makes the decoded length unrecoverable from the input length alone, this is the correct variant when decoding binary data.
+**Parameters**:
+- `input`: Pointer to the Base32 encoded string.
+- `length`: Length of the encoded string (must be a multiple of 8).
+- `out_len`: Optional out-pointer; receives the decoded byte count (`0` on error). May be `NULL`.
+**Return Value**: A `malloc`'d buffer with the decoded bytes (NUL-terminated for convenience), or `NULL` on error. The caller must `free()` it.
+**Usage Case**: Recovering binary payloads (keys, tokens) from Base32 without losing the trailing/embedded NUL bytes.
 
 ---
 
@@ -112,6 +134,17 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 - `length`: Length of the encoded string.
 **Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
 **Usage Case**: Reverse of `encoding_base64_encode`; use to recover binary data from a Base64 string.
+
+---
+
+### `char* encoding_base64_decode_ex(const char* input, size_t length, size_t* out_len)`
+**Purpose**: Like `encoding_base64_decode`, but also writes the exact number of decoded bytes to `*out_len`. The plain `encoding_base64_decode` returns a NUL-terminated `char*`, which silently loses the length when the decoded data is binary and contains embedded `0x00` bytes (keys, images, JWT signatures, …). **This is the variant to use for arbitrary binary payloads.**
+**Parameters**:
+- `input`: Pointer to the Base64 encoded string.
+- `length`: Length of the encoded string (must be a multiple of 4).
+- `out_len`: Optional out-pointer; receives the decoded byte count (`0` on error or empty input). May be `NULL`.
+**Return Value**: A `malloc`'d buffer with the decoded bytes (NUL-terminated for convenience), or `NULL` on invalid length / allocation failure. The caller must `free()` it.
+**Usage Case**: Decoding a base64 blob whose plaintext is binary — the only correct way to learn how many bytes you actually got.
 
 ---
 
@@ -962,6 +995,51 @@ Encoded: >OwJh>}AdcN[>081Q
 Decoded: Hello, Base91!
 ```
 
+
+---
+
+## Example 20 : decoding binary safely with `encoding_base64_decode_ex`
+
+```c
+#include "encoding/encoding.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    /* Binary payload with embedded NUL bytes (e.g. part of a key or signature). */
+    const unsigned char blob[] = { 0x00, 0x42, 0x00, 0xFF, 0x00 };
+    size_t blen = sizeof(blob);
+
+    char* b64 = encoding_base64_encode((const char*)blob, blen);
+    fmt_printf("encoded: %s\n", b64);
+
+    /* Length-aware decode recovers all the bytes, even the embedded NULs. */
+    size_t out_len = 0;
+    char* bytes = encoding_base64_decode_ex(b64, strlen(b64), &out_len);
+    fmt_printf("decoded length (decode_ex): %lu\n", (unsigned long)out_len);
+    fmt_printf("round-trip exact: %s\n",
+               (out_len == blen && memcmp(bytes, blob, blen) == 0) ? "yes" : "no");
+
+    /* The plain API cannot convey the length: strlen stops at the first NUL. */
+    char* legacy = encoding_base64_decode(b64, strlen(b64));
+    fmt_printf("strlen of plain decode: %lu (wrong - stops at first NUL)\n",
+               (unsigned long)strlen(legacy));
+
+    free(bytes);
+    free(legacy);
+    free(b64);
+    return 0;
+}
+```
+**Result**
+```
+encoded: AEIA/wA=
+decoded length (decode_ex): 5
+round-trip exact: yes
+strlen of plain decode: 0 (wrong - stops at first NUL)
+```
+> **Why it matters:** the original payload's first byte is `0x00`, so `strlen` of the plainly-decoded buffer reports `0`. Only `encoding_base64_decode_ex` (and the matching `_base32`/`_base16` variants) tells you the true length — essential when the decoded data is binary. The plain `encoding_base64_decode` is unchanged and remains a thin wrapper for text payloads.
 
 ---
 

@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>   /* memcpy, used by the inline fast paths below */
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,25 +33,78 @@ extern "C" {
 
 typedef struct Vector Vector;
 
-/* Per-Vector arena. Allocated once at `vector_create` time and
- * grown lazily by `vector_reserve` / `vector_resize`. The block at
- * `pool` is owned by the Vector and freed in `vector_deallocate`. */
-typedef struct MemoryPoolVector {
-    void*  pool;       /* raw backing block                         */
-    size_t poolSize;   /* total bytes available                     */
-    size_t used;       /* bytes handed out so far                   */
-    void*  spill;      /* linked list of malloc fallbacks used when  */
-                       /* the bump block is exhausted (see vector.c) */
-} MemoryPoolVector;
-
-
 struct Vector {
-    void*             items;
-    size_t            size;
-    size_t            capacitySize;
-    size_t            itemSize;
-    MemoryPoolVector* pool;
+    void*  items;
+    size_t size;
+    size_t capacitySize;  /* number of elements the buffer can hold            */
+    size_t itemSize;      /* size in bytes of a single element                 */
 };
+
+
+/* ------------------------------------------------------------------ */
+/* Hot-path helpers (inlined at the call site, like std::vector)      */
+/* ------------------------------------------------------------------ */
+/*
+ * push_back and at are the two operations that dominate large workloads, so they
+ * are defined `static inline` here: the common case (room available / in-bounds)
+ * compiles straight into the caller with no cross-translation-unit function call
+ * — the same thing that makes std::vector fast. Only the rare "needs to grow"
+ * branch dips into the out-of-line vecbuf_push_back_grow() in vector.c.
+ *
+ * vecbuf_store() copies one element using a size-specialized branch: for the
+ * common element sizes the size is a compile-time constant, so the compiler turns
+ * memcpy into a single load/store move instead of an indirect call to memcpy with
+ * a runtime length. The `vecbuf_` prefix keeps these distinct from the public
+ * `vector_` API.
+ */
+/*
+ * The size-specialized branches deliberately memcpy a compile-time-constant
+ * number of bytes. When this is inlined into a call site whose element happens
+ * to be smaller (e.g. push_back(&an_int) hitting the case 8/16 arms), GCC's
+ * -Warray-bounds flags those *dead* arms as over-reads because it cannot
+ * correlate `n` (== itemSize, the switch selector) with the source object's
+ * size. The arm only runs when n really is 8/16, so the read is in fact bounded.
+ * Suppress that single false positive locally — nothing else here is silenced.
+ */
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Warray-bounds"
+#  pragma GCC diagnostic ignored "-Wstringop-overread"
+#  pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+static inline void vecbuf_store(void* dst, const void* src, size_t n) {
+    switch (n) {
+        case 1:  memcpy(dst, src, 1);  break;
+        case 2:  memcpy(dst, src, 2);  break;
+        case 4:  memcpy(dst, src, 4);  break;
+        case 8:  memcpy(dst, src, 8);  break;
+        case 16: memcpy(dst, src, 16); break;
+        default: memcpy(dst, src, n);  break;
+    }
+}
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif
+
+/* Out-of-line slow path: handles NULL, growth, and the copy. */
+bool        vecbuf_push_back_grow            (Vector* vec, const void* item);
+
+/* Append `item` to the end. Inlined fast path when the buffer has room. */
+static inline bool vector_push_back(Vector* vec, const void* item) {
+    if (vec && vec->size < vec->capacitySize) {
+        vecbuf_store((char*)vec->items + vec->size * vec->itemSize, item, vec->itemSize);
+        vec->size++;
+        return true;
+    }
+    return vecbuf_push_back_grow(vec, item);
+}
+
+/* Borrowed pointer to the element at `pos`, or NULL if out of bounds / NULL vec. */
+static inline void* vector_at(const Vector* vec, size_t pos) {
+    return (vec && pos < vec->size)
+        ? (void*)((char*)vec->items + pos * vec->itemSize)
+        : NULL;
+}
 
 
 /* ------------------------------------------------------------------ */
@@ -78,7 +132,7 @@ void        vector_shrink_to_fit         (Vector* vec);
 /* Modifiers                                                          */
 /* ------------------------------------------------------------------ */
 
-bool        vector_push_back             (Vector* vec, const void* item);
+/* vector_push_back is defined inline above. */
 bool        vector_emplace_back          (Vector* vec, void* item, size_t itemSize);
 void        vector_insert                (Vector* vec, size_t pos, void* item);
 void        vector_emplace               (Vector* vec, size_t pos, void* item, size_t itemSize);
@@ -92,7 +146,7 @@ void        vector_swap                  (Vector* vec1, Vector* vec2);
 /* Element access                                                     */
 /* ------------------------------------------------------------------ */
 
-void*       vector_at                    (const Vector* vec, size_t pos);
+/* vector_at is defined inline above. */
 void*       vector_front                 (Vector* vec);
 void*       vector_back                  (Vector* vec);
 void*       vector_data                  (Vector* vec);

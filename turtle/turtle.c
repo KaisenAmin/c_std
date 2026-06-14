@@ -1587,3 +1587,126 @@ void turtle_screen_size(int *width, int *height) {
     }
     TURTLE_LOG("[turtle_screen_size]: %d x %d", width ? *width : -1, height ? *height : -1);
 }
+
+
+/**
+ * @brief Read back one recorded line segment by index.
+ *
+ * The turtle accumulates every line it draws (via forward/backward/circle/
+ * set_position with the pen down) in an internal array. `turtle_get_line_count`
+ * reports how many there are; this function exposes the actual geometry so a
+ * caller can serialize the drawing, export it, or unit-test the path — without
+ * a graphics context.
+ *
+ * @param state The turtle to query. Must not be NULL.
+ * @param index Zero-based line index in `[0, turtle_get_line_count(state))`.
+ * @param out   Receives a copy of the line (start, end, color, thickness).
+ *              Must not be NULL.
+ * @return true if the index was in range (and @p out was written); false on a
+ *         NULL argument or an out-of-range index.
+ */
+bool turtle_get_line(const Turtle *state, int index, Line *out) {
+    if (!state || !out || index < 0 || index >= state->lineCount) {
+        TURTLE_LOG("[turtle_get_line]: invalid argument or out-of-range index %d.", index);
+        return false;
+    }
+    *out = state->lines[index];
+    return true;
+}
+
+
+/**
+ * @brief Export the drawing to a standalone SVG file (headless, no window).
+ *
+ * Serializes every recorded line segment to an SVG `<line>`, on top of a
+ * background `<rect>` in the turtle's background color. Unlike
+ * `turtle_save_image` (which needs a live raylib/OpenGL window to grab a
+ * screenshot), this works with no graphics context at all — ideal for CI,
+ * servers, or producing scalable vector output. The `viewBox` is sized to the
+ * drawing's bounding box plus a small margin, so the whole picture is framed
+ * regardless of where the turtle wandered (including negative coordinates).
+ *
+ * Coordinates are written in the same top-left, y-down space the turtle draws
+ * in, so the SVG matches the on-screen rendering.
+ *
+ * @param state    The turtle whose lines to export. Must not be NULL.
+ * @param filename Destination path. Must not be NULL.
+ * @return true if the file was written; false on a NULL argument or if the
+ *         file could not be opened/written.
+ */
+bool turtle_export_svg(const Turtle *state, const char *filename) {
+    if (!state || !filename) {
+        TURTLE_LOG("[turtle_export_svg]: NULL argument.");
+        return false;
+    }
+
+    /* Bounding box over every endpoint, so the viewBox frames the drawing. */
+    float minX = 0.0f, minY = 0.0f, maxX = 0.0f, maxY = 0.0f;
+    bool first = true;
+    for (int i = 0; i < state->lineCount; ++i) {
+        Vector2 pts[2] = { state->lines[i].start, state->lines[i].end };
+        for (int k = 0; k < 2; ++k) {
+            if (first) {
+                minX = maxX = pts[k].x;
+                minY = maxY = pts[k].y;
+                first = false;
+            } else {
+                if (pts[k].x < minX) minX = pts[k].x;
+                if (pts[k].x > maxX) maxX = pts[k].x;
+                if (pts[k].y < minY) minY = pts[k].y;
+                if (pts[k].y > maxY) maxY = pts[k].y;
+            }
+        }
+    }
+    if (first) {                 /* no lines: emit a small empty canvas */
+        minX = minY = 0.0f;
+        maxX = maxY = 100.0f;
+    }
+
+    const float margin = 10.0f;
+    float vbX = minX - margin;
+    float vbY = minY - margin;
+    float vbW = (maxX - minX) + 2.0f * margin;
+    float vbH = (maxY - minY) + 2.0f * margin;
+    if (vbW <= 0.0f) vbW = 1.0f;
+    if (vbH <= 0.0f) vbH = 1.0f;
+
+    FILE *f = fopen(filename, "w");
+    if (!f) {
+        TURTLE_LOG("[turtle_export_svg]: cannot open '%s' for writing.", filename);
+        return false;
+    }
+
+    fprintf(f, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    fprintf(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"%g %g %g %g\">\n",
+            (double)vbX, (double)vbY, (double)vbW, (double)vbH);
+
+    Color bg = state->backgroundColor;
+    fprintf(f, "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" fill=\"#%02x%02x%02x\"",
+            (double)vbX, (double)vbY, (double)vbW, (double)vbH,
+            (unsigned)bg.r, (unsigned)bg.g, (unsigned)bg.b);
+    if (bg.a < 255) {
+        fprintf(f, " fill-opacity=\"%.3f\"", (double)bg.a / 255.0);
+    }
+    fprintf(f, "/>\n");
+
+    for (int i = 0; i < state->lineCount; ++i) {
+        Line ln = state->lines[i];
+        fprintf(f, "  <line x1=\"%g\" y1=\"%g\" x2=\"%g\" y2=\"%g\" stroke=\"#%02x%02x%02x\" stroke-width=\"%g\"",
+                (double)ln.start.x, (double)ln.start.y, (double)ln.end.x, (double)ln.end.y,
+                (unsigned)ln.color.r, (unsigned)ln.color.g, (unsigned)ln.color.b, (double)ln.thickness);
+        if (ln.color.a < 255) {
+            fprintf(f, " stroke-opacity=\"%.3f\"", (double)ln.color.a / 255.0);
+        }
+        fprintf(f, " stroke-linecap=\"round\"/>\n");
+    }
+
+    fprintf(f, "</svg>\n");
+
+    if (fclose(f) != 0) {
+        TURTLE_LOG("[turtle_export_svg]: error closing '%s'.", filename);
+        return false;
+    }
+    TURTLE_LOG("[turtle_export_svg]: wrote %d line(s) to '%s'.", state->lineCount, filename);
+    return true;
+}

@@ -16,6 +16,15 @@ To use this library, include `sysinfo.h` in your project and compile the source 
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./sysinfo/sysinfo.c
 ```
 
+On **Windows (MinGW)** the implementation calls into several system libraries, so link against them:
+
+```bash
+gcc -std=c17 -O2 -Wall -Wextra -o main.exe main.c ./sysinfo/sysinfo.c ./vector/vector.c \
+    -lws2_32 -liphlpapi -lbthprops -lole32 -ladvapi32 -lpsapi
+```
+
+(The `psapi` library provides `GetProcessMemoryInfo`, used by `sysinfo_process_memory_bytes`.) On Linux/macOS, link `-lm` and no extra system libraries are required.
+
 ## Documentation
 
 The SysInfo library offers a variety of functions to gather information about the system it is running on. Below is a detailed description of each function provided by the library.
@@ -306,6 +315,20 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
+### `char* sysinfo_cpu_model()`
+
+- **Purpose**:  
+  Returns the human-readable CPU brand/model string (e.g. `"Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz"`, `"AMD Ryzen 7 5800X"`). It complements `sysinfo_cpu_architecture` (`"x86_64"`) and `sysinfo_cpu_cores` with the marketing name that telemetry, inventory, and support diagnostics universally record. On Windows it reads the registry value `HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0\ProcessorNameString`; on Linux it parses the first `model name` line of `/proc/cpuinfo` (falling back to `Hardware` on boards that omit it). Leading/trailing whitespace is trimmed.
+
+- **Parameters**:  
+  None.
+
+- **Return Value**:  
+  - A **static** string containing the CPU model — do **not** free it; copy it if you need to keep it across calls.
+  - `"unknown"`: If the model cannot be determined.
+
+---
+
 ### `char* sysinfo_machine_host_name()`
 
 - **Purpose**:  
@@ -571,6 +594,19 @@ These ten functions extend the numeric/predicate API. All are cross-platform (Wi
   - `0` if either source returns 0 or the values are inconsistent.
 - **Behaviour**:  
   Convenience wrapper over the existing total/available observers, so it is automatically correct on every platform those two support.
+
+---
+
+### `unsigned long long sysinfo_process_memory_bytes(void)`
+
+- **Purpose**:  
+  Returns the resident memory (RSS / working set) of the **calling process**, in bytes. This is the per-process complement to the system-wide memory observers: it reports how much physical RAM *this* process is occupying — the single most useful self-monitoring metric for a long-running service (footprint reporting, leak detection, deciding when to shed load or restart).
+- **Parameters**: None.
+- **Return Value**:  
+  - Unsigned byte count of the process's resident set.
+  - `0` if the OS cannot answer or the platform is unsupported.
+- **Behaviour**:  
+  On Windows it uses `GetProcessMemoryInfo(...).WorkingSetSize`; on Linux it multiplies the resident-pages field of `/proc/self/statm` by `sysconf(_SC_PAGESIZE)`. (The Windows build links `psapi` — see *Installation and Compilation*.)
 
 ---
 
@@ -1619,6 +1655,48 @@ Disk free : 1010.6 GB
 Battery   : on AC / no battery
 Shell     : /bin/bash
 ```
+
+---
+
+## Example 37: self-monitoring with `sysinfo_process_memory_bytes()` and inventory with `sysinfo_cpu_model()`
+
+`sysinfo_process_memory_bytes()` reports *this* process's resident memory — the
+key metric a long-running service logs to watch its own footprint — and
+`sysinfo_cpu_model()` returns the human-readable CPU name for telemetry and
+support diagnostics. Both values are machine-specific, so this example prints
+**verifiable properties** (non-empty, in-range) that are stable on every machine
+rather than the per-host values themselves.
+
+```c
+#include "fmt/fmt.h"
+#include "sysinfo/sysinfo.h"
+
+int main(void) {
+    /* The CPU model is machine-specific, so verify it is a usable, non-empty
+       string rather than printing the (per-machine) value itself. */
+    char* cpu = sysinfo_cpu_model();
+    fmt_printf("cpu model non-empty: %s\n", (cpu && cpu[0] != '\0') ? "yes" : "no");
+
+    /* This process's resident memory is machine-specific; check the invariants. */
+    unsigned long long rss   = sysinfo_process_memory_bytes();
+    unsigned long long total = sysinfo_total_memory_bytes();
+    fmt_printf("process RSS > 0: %s\n", rss > 0 ? "yes" : "no");
+    fmt_printf("process RSS <= total RAM: %s\n",
+               (total == 0 || rss <= total) ? "yes" : "no");
+
+    return 0;
+}
+```
+
+**Result**
+```
+cpu model non-empty: yes
+process RSS > 0: yes
+process RSS <= total RAM: yes
+```
+
+In real code you would log the actual values, e.g.
+`fmt_printf("CPU: %s, RSS: %.1f MiB\n", sysinfo_cpu_model(), sysinfo_process_memory_bytes() / (1024.0 * 1024.0));`.
 
 ---
 

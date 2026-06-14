@@ -516,6 +516,94 @@ int regex_count_matches(const char* pattern, const char* string, RegexFlags flag
 }
 
 /**
+ * @brief Returns 1 if @p pattern matches the ENTIRE @p string, 0 if it does
+ *        not, and -1 on compile / NULL-arg / OOM error.
+ *
+ * This is the `std::regex_match` / Python `re.fullmatch` counterpart to
+ * @ref regex_test (which only asks whether the string *contains* a match):
+ * the whole input — from the first byte to the last — must be consumed by
+ * the pattern. It is the right primitive for input validation, e.g. "is
+ * this string a well-formed IPv4 address / UUID / integer?".
+ *
+ * The pattern is anchored at both ends internally, so you do NOT write the
+ * `^`...`$` yourself (and any `^`/`$` you do add still works). Unlike a bare
+ * `$`, the end anchor is absolute: a trailing newline does NOT count as a
+ * full match. Capture groups inside @p pattern are not reported (the
+ * function returns only a yes/no answer).
+ *
+ * @code
+ * regex_full_match("\\d{4}-\\d{2}-\\d{2}", "2026-06-14", REGEX_DEFAULT); // 1
+ * regex_full_match("\\d{4}-\\d{2}-\\d{2}", "x 2026-06-14", REGEX_DEFAULT); // 0
+ * regex_full_match("[a-z]+", "abc\n", REGEX_DEFAULT);                      // 0
+ * @endcode
+ *
+ * @return 1 on a whole-string match, 0 on no match, -1 on error.
+ */
+int regex_full_match(const char* pattern, const char* string, RegexFlags flags) {
+    REGEX_LOG("[regex_full_match]: enter (pattern='%s', flags=0x%X)",
+              pattern ? pattern : "(null)", (unsigned)flags);
+    if (!pattern || !string) {
+        REGEX_LOG("[regex_full_match]: NULL input -> -1");
+        return -1;
+    }
+
+    /* Wrap the pattern so the engine must consume the entire string.
+       PCRE  : \A(?:...)\z  — absolute start/end (immune to MULTILINE and to
+               the trailing-newline that a bare '$' tolerates); the (?: )
+               group is non-capturing so it never shifts the user's groups.
+       POSIX : ^(...)$      — ERE has no \A/\z or (?: ); '^'/'$' bracket the
+               whole pattern and, with REG_NEWLINE off, anchor the absolute
+               string ends. */
+#if CSTD_REGEX_USE_PCRE
+    const char* pre = "\\A(?:";
+    const char* suf = ")\\z";
+#else
+    const char* pre = "^(";
+    const char* suf = ")$";
+#endif
+    size_t prelen = strlen(pre);
+    size_t suflen = strlen(suf);
+    size_t plen   = strlen(pattern);
+
+    char* wrapped = (char*)malloc(prelen + plen + suflen + 1);
+    if (!wrapped) {
+        REGEX_LOG("[regex_full_match]: OOM building wrapped pattern -> -1");
+        return -1;
+    }
+    memcpy(wrapped, pre, prelen);
+    memcpy(wrapped + prelen, pattern, plen);
+    memcpy(wrapped + prelen + plen, suf, suflen + 1);  /* copy the NUL too */
+
+    Regex* r = regex_compile(wrapped, flags);
+    free(wrapped);
+    if (!r) {
+        REGEX_LOG("[regex_full_match]: compile failed -> -1");
+        return -1;
+    }
+
+    RegexMatch m;
+    RegexResult rr = regex_search(r, string, &m);
+    int out;
+    if (rr == REGEX_SUCCESS) {
+        /* Belt-and-suspenders: require the match to span the whole input.
+           Anchoring already guarantees this on both backends, but the check
+           also defends against any end-of-line leniency. */
+        out = (m.start == string && m.length == strlen(string)) ? 1 : 0;
+        regex_match_free(&m);
+    }
+    else if (rr == REGEX_NO_MATCH) {
+        out = 0;
+    }
+    else {
+        out = -1;
+    }
+    regex_deallocate(r);
+
+    REGEX_LOG("[regex_full_match]: exit -> %d", out);
+    return out;
+}
+
+/**
  * @brief Internal: append @p n bytes of @p src to a growing buffer.
  *
  * Maintains a doubling capacity scheme so the amortized cost per byte
@@ -665,6 +753,171 @@ char* regex_replace_first(const char* pattern, const char* string, const char* r
               pattern ? pattern : "(null)", (unsigned)flags);
     char* out = regex_replace_impl(pattern, string, replacement, flags, 1);
     REGEX_LOG("[regex_replace_first]: exit -> %p", (void*)out);
+    return out;
+}
+
+
+/**
+ * @brief Internal: append @p replacement to the output buffer, expanding
+ *        backreferences against the current match @p m.
+ *
+ * Substitution grammar:
+ *   - `$0`        -> the whole match.
+ *   - `$1`..`$N`  -> capture group N (the maximal run of digits is the group
+ *                    number); a group that does not exist or did not
+ *                    participate expands to the empty string.
+ *   - `$$`        -> a literal `$`.
+ *   - `$` + other -> a literal `$` followed by that character.
+ *
+ * Returns 1 on success, 0 on OOM.
+ */
+static int regex_append_with_refs(char** buf, size_t* len, size_t* cap,
+                                  const char* replacement, const RegexMatch* m) {
+    for (size_t i = 0; replacement[i]; ) {
+        if (replacement[i] == '$') {
+            char n = replacement[i + 1];      /* safe: at worst the NUL terminator */
+            if (n == '$') {
+                if (!regex_buf_append(buf, len, cap, "$", 1)) {
+                    return 0;
+                }
+                i += 2;
+                continue;
+            }
+            if (n >= '0' && n <= '9') {
+                int    g = 0;
+                size_t j = i + 1;
+                while (replacement[j] >= '0' && replacement[j] <= '9') {
+                    g = g * 10 + (replacement[j] - '0');
+                    j++;
+                }
+                const char* gs = NULL;
+                size_t      gl = 0;
+                if (g == 0) {
+                    gs = m->start;
+                    gl = m->length;
+                }
+                else if (g >= 1 && g <= m->group_count &&
+                         m->group_starts && m->group_lengths) {
+                    gs = m->group_starts[g - 1];
+                    gl = m->group_lengths[g - 1];
+                }
+                /* gl == 0 (missing / non-participating group) -> append nothing. */
+                if (gl && !regex_buf_append(buf, len, cap, gs, gl)) {
+                    return 0;
+                }
+                i = j;
+                continue;
+            }
+            /* A '$' not followed by a digit or '$' is emitted literally. */
+            if (!regex_buf_append(buf, len, cap, "$", 1)) {
+                return 0;
+            }
+            i += 1;
+            continue;
+        }
+        if (!regex_buf_append(buf, len, cap, &replacement[i], 1)) {
+            return 0;
+        }
+        i += 1;
+    }
+    return 1;
+}
+
+
+/**
+ * @brief Like @ref regex_replace (replaces every match), but the replacement
+ *        text may contain backreferences to captured groups.
+ *
+ * Whereas @ref regex_replace treats the replacement as literal text, this
+ * function expands `$0`..`$N` to the corresponding capture group of each
+ * match (`$0` = the whole match), `$$` to a literal `$`, and a lone `$`
+ * (not followed by a digit or `$`) to a literal `$`. A referenced group
+ * that does not exist or did not participate expands to nothing. This is
+ * the standard way to *reformat* text — e.g. swapping fields or restyling
+ * a date — without manually splicing strings.
+ *
+ * @code
+ * // Swap "First Last" -> "Last, First"
+ * char* a = regex_replace_groups("(\\w+)\\s+(\\w+)", "Ada Lovelace", "$2, $1", REGEX_DEFAULT);
+ * // a -> "Lovelace, Ada"
+ * free(a);
+ *
+ * // Reformat an ISO date to DD/MM/YYYY for every date in the string.
+ * char* b = regex_replace_groups("(\\d{4})-(\\d{2})-(\\d{2})", "2026-06-14", "$3/$2/$1", REGEX_DEFAULT);
+ * // b -> "14/06/2026"
+ * free(b);
+ * @endcode
+ *
+ * @return Newly-allocated result string (caller must `free`), or NULL on
+ *         compile failure / OOM / NULL inputs.
+ */
+char* regex_replace_groups(const char* pattern, const char* string,
+                           const char* replacement, RegexFlags flags) {
+    REGEX_LOG("[regex_replace_groups]: enter (pattern='%s', flags=0x%X)",
+              pattern ? pattern : "(null)", (unsigned)flags);
+    if (!pattern || !string || !replacement) {
+        return NULL;
+    }
+
+    Regex* r = regex_compile(pattern, flags);
+    if (!r) {
+        return NULL;
+    }
+
+    char*  out  = NULL;
+    size_t outl = 0;
+    size_t outc = 0;
+
+    const char* cursor = string;
+    RegexMatch  m;
+
+    while (regex_match(r, cursor, &m) == REGEX_SUCCESS) {
+        /* Bytes from cursor up to the match start, verbatim. */
+        size_t prefix = (size_t)(m.start - cursor);
+        if (!regex_buf_append(&out, &outl, &outc, cursor, prefix)) {
+            regex_match_free(&m);
+            regex_deallocate(r);
+            free(out);
+            return NULL;
+        }
+        /* The replacement, with $-backreferences expanded against this match. */
+        if (!regex_append_with_refs(&out, &outl, &outc, replacement, &m)) {
+            regex_match_free(&m);
+            regex_deallocate(r);
+            free(out);
+            return NULL;
+        }
+        cursor = m.end;
+        size_t consumed = m.length;
+        regex_match_free(&m);
+
+        /* Zero-length match: copy one byte and advance to guarantee progress. */
+        if (consumed == 0) {
+            if (*cursor == '\0') {
+                break;
+            }
+            if (!regex_buf_append(&out, &outl, &outc, cursor, 1)) {
+                regex_deallocate(r);
+                free(out);
+                return NULL;
+            }
+            cursor++;
+        }
+    }
+    /* Append the remainder of the string after the last match. */
+    if (!regex_buf_append(&out, &outl, &outc, cursor, strlen(cursor))) {
+        regex_deallocate(r);
+        free(out);
+        return NULL;
+    }
+    if (!out) {
+        out = (char*)malloc(1);
+        if (out) {
+            out[0] = '\0';
+        }
+    }
+    regex_deallocate(r);
+    REGEX_LOG("[regex_replace_groups]: exit -> %p", (void*)out);
     return out;
 }
 

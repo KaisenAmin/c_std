@@ -82,6 +82,18 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
+### `bool random_boolean(double p)`
+
+- **Purpose**: Performs a Bernoulli trial — returns `true` with probability `p` and `false` with probability `1 - p`. This is the reproducible "weighted coin flip" behind probabilistic decisions: a percentage feature rollout, a Monte-Carlo acceptance step, or randomized sampling.
+- **Parameters**:
+  - `p`: Probability of returning `true`, expected in `[0, 1]`.
+- **Return**: `true` with probability `p`, otherwise `false`.
+- **Details**:
+  - Boundary values are handled exactly: `p ≤ 0.0` always returns `false` and `p ≥ 1.0` always returns `true` (no draw is consumed on a certain outcome). Values outside `[0, 1]` are clamped to the nearest certain outcome.
+  - Driven by the seeded engine (one `random_random` draw per non-certain call), so a fixed seed reproduces the exact sequence of outcomes. The probability resolution is that of `random_random` (~2⁻³²).
+
+---
+
 ### `double random_uniform(double a, double b)`
 
 - **Purpose**: Generates a random double in the range `[a, b)`. If `a > b`, their values are swapped to ensure the correct range.
@@ -107,6 +119,19 @@ The documentation includes detailed descriptions of all the functions provided b
   - This function draws a 32-bit value from the internal xorshift PRNG and masks the lower `a` bits.
   - If `a` is out of the valid range (≤ 0 or > 31), it logs an error and returns `-1`.
   - Logs each generated random bit and the current state of the result during the process, then returns the final integer.
+
+---
+
+### `void random_randbytes(unsigned char* buffer, size_t n)`
+
+- **Purpose**: Fills `buffer` with `n` pseudo-random bytes drawn from the seeded engine — the fast, **reproducible** counterpart to `secrets_token_bytes`. Use it for deterministic random payloads in tests, fuzzing corpora, synthetic data, or any non-security buffer fill.
+- **Parameters**:
+  - `buffer`: Destination buffer to fill. If `NULL`, the call is a safe no-op.
+  - `n`: Number of bytes to write. If `0`, the call is a safe no-op.
+- **Return**: None.
+- **Details**:
+  - Bytes come from the same xorshift32 stream as every other generator (four bytes per 32-bit draw, extracted little-endian for byte-identical output across platforms), so a fixed `random_seed` reproduces the exact byte sequence.
+  - **Not** cryptographically secure — never use it for keys, tokens, or nonces; reach for the `secrets` module instead.
 
 ---
 
@@ -1010,6 +1035,51 @@ int main() {
     
     return 0;
 }
+```
+
+## Example 16 : reproducible payloads with `random_randbytes` and rollout decisions with `random_boolean`
+
+`random_randbytes` produces a deterministic random byte buffer (great for test
+fixtures or fuzzing) and `random_boolean` is the seeded "weighted coin" behind
+probabilistic decisions such as a percentage feature rollout. Because both are
+driven by the seeded engine — and bytes are extracted endian-independently — a
+fixed `random_seed` yields **byte-identical output on every platform**.
+
+```c
+#include "random/random.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    random_seed(2026);   /* fixed seed -> fully reproducible output */
+
+    /* Reproducible random bytes, e.g. a deterministic test/fuzz payload. */
+    unsigned char payload[8];
+    random_randbytes(payload, sizeof(payload));
+    fmt_printf("payload:");
+    for (size_t i = 0; i < sizeof(payload); i++) {
+        fmt_printf(" %02x", payload[i]);
+    }
+    fmt_printf("\n");
+
+    /* A 30%-probability rollout decision, repeated 10 times. */
+    fmt_printf("rollout (30%%):");
+    int enabled = 0;
+    for (int i = 0; i < 10; i++) {
+        bool on = random_boolean(0.30);
+        enabled += on ? 1 : 0;
+        fmt_printf(" %d", on ? 1 : 0);
+    }
+    fmt_printf("\n%d of 10 enabled\n", enabled);
+
+    return 0;
+}
+```
+
+**Result**
+```
+payload: 14 b5 55 1f 0f 5c 1b 97
+rollout (30%): 0 0 0 0 0 0 1 0 0 0
+1 of 10 enabled
 ```
 
 ## License

@@ -10,6 +10,40 @@
 #include <ctype.h>
 #include "log.h"
 #include "../string/std_string.h"
+#include "../concurrent/concurrent.h"
+
+
+/* ------------------------------------------------------------------ */
+/* Internal helpers — distinct `logp_` prefix from the public `log_`. */
+/* ------------------------------------------------------------------ */
+
+/* Lock / unlock the logger's internal recursive mutex. Both are no-ops when
+ * the logger has no lock (mutex allocation failed at init), so the logger
+ * degrades to the historical single-threaded behaviour instead of crashing. */
+static void logp_lock(Log* config) {
+    if (config && config->_lock) {
+        mutex_lock((Mutex*)config->_lock);
+    }
+}
+static void logp_unlock(Log* config) {
+    if (config && config->_lock) {
+        mutex_unlock((Mutex*)config->_lock);
+    }
+}
+
+/* Thread-safe local timestamp ("YYYY-MM-DD HH:MM:SS"). Uses the reentrant
+ * localtime_r / localtime_s rather than localtime(), whose shared static
+ * `struct tm` is a data race under concurrent logging. */
+static void logp_format_timestamp(char* out, size_t cap) {
+    time_t now = time(NULL);
+    struct tm tm_buf;
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(&tm_buf, &now);
+#else
+    localtime_r(&now, &tm_buf);
+#endif
+    strftime(out, cap, "%Y-%m-%d %H:%M:%S", &tm_buf);
+}
 
 
 
@@ -102,6 +136,21 @@ Log* log_init() {
     memset(config->total_log_counts, 0, sizeof(config->total_log_counts));
     config->last_reset_time = time(NULL);
 
+    // Production-default behaviour, opt-in:
+    config->errors_to_stderr = false;  // all console output to stdout (legacy default)
+    config->auto_flush       = false;  // rely on stdio buffering by default
+
+    // Internal recursive mutex for thread safety. If allocation/init fails the
+    // logger still works (single-threaded); locking helpers become no-ops.
+    config->_lock = malloc(sizeof(Mutex));
+    if (config->_lock) {
+        if (mutex_init((Mutex*)config->_lock, MUTEX_RECURSIVE) != THREAD_SUCCESS) {
+            free(config->_lock);
+            config->_lock = NULL;
+            LOG_LOG("[log_init] Warning: mutex init failed; logger is not thread-safe.");
+        }
+    }
+
     LOG_LOG("[log_init] Info: Logging system initialized.");
     return config;
 }
@@ -126,21 +175,24 @@ bool log_set_output(Log* config, LogOutput output) {
         return false;
     }
     
+    logp_lock(config);
     config->output = output;
     if (output == LOG_OUTPUT_FILE && !config->file_writer) {
         // Attempt to open log file if not already open
         config->file_writer = file_writer_open("log.txt", WRITE_TEXT);
         if (!config->file_writer) {
             config->output = LOG_OUTPUT_CONSOLE;
+            logp_unlock(config);
             LOG_LOG("[log_set_output] Error: Failed to open log file, reverting to console output.");
             return false;
         }
         LOG_LOG("[log_set_output] Success: Log output set to file.");
-    } 
+    }
     else {
         LOG_LOG("[log_set_output] Success: Log output set successfully.");
     }
-    
+    logp_unlock(config);
+
     return true;
 }
 
@@ -200,6 +252,16 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         return; // Skip logging if this level is currently not visible
     }
     
+    // Compose the caller's message up-front (local buffer; the va_args must be
+    // consumed on this thread). All shared-state work below is mutex-guarded.
+    char formatted_message[1024];
+    va_list args;
+    va_start(args, message);
+    vsnprintf(formatted_message, sizeof(formatted_message), message, args);
+    va_end(args);
+
+    logp_lock(config);
+
     // Rate limiting: only active when both interval and count are non-zero.
     // Without this guard, an interval of 0 would reset the counters on every
     // call (since currentTime - last_reset_time >= 0 is always true).
@@ -212,55 +274,58 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         }
         if (config->log_counts[level] >= config->rate_limit_count) {
             LOG_LOG("[log_message] Info: Rate limit exceeded for this level, message skipped.");
+            logp_unlock(config);
             return;
         }
         config->log_counts[level]++;
     }
 
-    char formatted_message[1024];
-    char timestamp[64] = "";
-    char log_buffer[2048];
-    const char* level_str = log_level_to_string(level);
-
-    // Generate timestamp if enabled
-    if (config->enable_timestamp) {
-        time_t now = time(NULL);
-        struct tm* tm_info = localtime(&now);
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
-    }
-
-    va_list args;
-    va_start(args, message);
-    vsnprintf(formatted_message, sizeof(formatted_message), message, args);
-    va_end(args);
-
     // Keyword filtering
     if (config->is_keyword_filter_enabled && strstr(formatted_message, config->keyword_filter) == NULL) {
         LOG_LOG("[log_message] Info: Message does not contain the keyword filter; not logged.");
+        logp_unlock(config);
         return;
     }
+
+    char timestamp[64] = "";
+    if (config->enable_timestamp) {
+        logp_format_timestamp(timestamp, sizeof(timestamp));   // reentrant localtime
+    }
+
+    const char* level_str = log_level_to_string(level);
+    char log_buffer[2048];
 
     // Apply custom format
     int written = snprintf(log_buffer, sizeof(log_buffer), config->format, timestamp, level_str, formatted_message);
     if (written < 0 || written >= (int)sizeof(log_buffer)) {
         LOG_LOG("[log_message] Error: Failed to format log message correctly.");
+        logp_unlock(config);
         return;
     }
-    else if(config->custom_filter && !config->custom_filter(level, formatted_message, config->custom_filter_user_data)) {
+    if (config->custom_filter && !config->custom_filter(level, formatted_message, config->custom_filter_user_data)) {
         LOG_LOG("[log_message] Info: Logging skipped due to custom filter.");
+        logp_unlock(config);
         return;
     }
 
     // The message passed every gate/filter and is about to be emitted: count it.
     config->total_log_counts[level]++;
 
-    // Log to the specified output
     if (config->output == LOG_OUTPUT_CONSOLE || config->output == LOG_OUTPUT_BOTH) {
-        fprintf(stdout, "%s\n", log_buffer);
+        FILE* console = (config->errors_to_stderr && level >= LOG_LEVEL_ERROR) ? stderr : stdout;
+        fprintf(console, "%s\n", log_buffer);
+        if (config->auto_flush) {
+            fflush(console);
+        }
     }
     if ((config->output == LOG_OUTPUT_FILE || config->output == LOG_OUTPUT_BOTH) && config->file_writer) {
         fprintf(config->file_writer->file_writer, "%s\n", log_buffer);
+        if (config->auto_flush) {
+            fflush(config->file_writer->file_writer);
+        }
     }
+
+    logp_unlock(config);
 }
 
 /**
@@ -286,6 +351,12 @@ void log_deallocate(Log* config) {
         file_reader_close(config->file_reader);
         config->file_reader = NULL;
         LOG_LOG("[log_deallocate] Success: file_reader of Log is now free.");
+    }
+    if (config->_lock) {
+        mutex_destroy((Mutex*)config->_lock);
+        free(config->_lock);
+        config->_lock = NULL;
+        LOG_LOG("[log_deallocate] Success: logger mutex destroyed.");
     }
 
     free(config);
@@ -415,25 +486,29 @@ bool log_set_file_path(Log* config, const char* newFilePath) {
         LOG_LOG("[log_set_file_path] Error: Log configuration object is null.");
         return false;
     }
+    logp_lock(config);
     if (config->file_writer) {
         file_writer_close(config->file_writer);
         config->file_writer = NULL;
     }
 
     if (!newFilePath || strlen(newFilePath) == 0) {
+        logp_unlock(config);
         LOG_LOG("[log_set_file_path] Error: Invalid new file path.");
         return false;
     }
 
     config->file_writer = file_writer_open(newFilePath, WRITE_TEXT);
     if (!config->file_writer) {
-        LOG_LOG("[log_set_file_path] Error: Failed to open new log file.");
         config->output = LOG_OUTPUT_CONSOLE; // Optionally, revert to console logging if file opening fails
+        logp_unlock(config);
+        LOG_LOG("[log_set_file_path] Error: Failed to open new log file.");
         return false;
     }
 
     strncpy(config->current_file_path, newFilePath, sizeof(config->current_file_path) - 1);
     config->current_file_path[sizeof(config->current_file_path) - 1] = '\0';
+    logp_unlock(config);
 
     LOG_LOG("[log_set_file_path] Info: Log file path updated to '%s'.", newFilePath);
     return true;
@@ -453,12 +528,14 @@ void log_flush(Log* config) {
         LOG_LOG("[log_flush] Error: Log configuration object is null.");
         return;
     }
+    logp_lock(config);
     if ((config->output == LOG_OUTPUT_FILE || config->output == LOG_OUTPUT_BOTH) && config->file_writer) {
         fflush(config->file_writer->file_writer);
     }
     if (config->output == LOG_OUTPUT_CONSOLE || config->output == LOG_OUTPUT_BOTH) {
         fflush(stdout);
     }
+    logp_unlock(config);
 
     LOG_LOG("[log_flush] Info: Log buffer flushed.");
 }
@@ -484,8 +561,10 @@ bool log_rotate(Log* config, const char* newLogPath, size_t maxSize) {
         return false;
     }
 
+    logp_lock(config);
     long fileSize = file_writer_get_size(config->file_writer);
     if (fileSize < 0) {
+        logp_unlock(config);
         LOG_LOG("[log_rotate] Error: Failed to get log file size.");
         return false;
     }
@@ -507,17 +586,20 @@ bool log_rotate(Log* config, const char* newLogPath, size_t maxSize) {
         if (rename(source_path, newLogPath) != 0) {
             LOG_LOG("[log_rotate] Error: Failed to rename log file.");
             config->file_writer = file_writer_open(source_path, WRITE_TEXT);
+            logp_unlock(config);
             return false;
         }
 
         config->file_writer = file_writer_open(source_path, WRITE_TEXT);
         if (!config->file_writer) {
+            logp_unlock(config);
             LOG_LOG("[log_rotate] Error: Failed to open new log file.");
             return false;
         }
         LOG_LOG("[log_rotate] Info: Log rotated successfully.");
     }
 
+    logp_unlock(config);
     return true;
 }
 
@@ -638,13 +720,15 @@ bool log_redirect_output(Log* config, const char* newFilePath) {
         LOG_LOG("[log_redirect_output] Error: Invalid new file path.");
         return false;
     }
-    if (config->file_writer) { 
+    logp_lock(config);
+    if (config->file_writer) {
         file_writer_close(config->file_writer);
         config->file_writer = NULL;
     }
 
     config->file_writer = file_writer_open(newFilePath, WRITE_TEXT);
     if (!config->file_writer) {
+        logp_unlock(config);
         LOG_LOG("[log_redirect_output] Error: Failed to open new log file.");
         return false;
     }
@@ -652,6 +736,7 @@ bool log_redirect_output(Log* config, const char* newFilePath) {
     // Track the active log file path so rotation/archive uses the right source.
     strncpy(config->current_file_path, newFilePath, sizeof(config->current_file_path) - 1);
     config->current_file_path[sizeof(config->current_file_path) - 1] = '\0';
+    logp_unlock(config);
 
     LOG_LOG("[log_redirect_output] Info: Log output redirected to '%s'.", newFilePath);
     return true;
@@ -734,8 +819,10 @@ bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathF
     }
 
     // Check current log file size
+    logp_lock(config);
     long fileSize = file_writer_get_size(config->file_writer);
     if (fileSize < 0) {
+        logp_unlock(config);
         LOG_LOG("[log_set_max_file_size] Error: Could not retrieve file size.");
         return false;
     }
@@ -752,9 +839,13 @@ bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathF
 
         char archivePath[1024];
         time_t now = time(NULL);
-        struct tm* tm_info = localtime(&now);
-
-        strftime(archivePath, sizeof(archivePath), archivePathFormat, tm_info);
+        struct tm tm_buf;                          /* reentrant localtime */
+#if defined(_WIN32) || defined(_WIN64)
+        localtime_s(&tm_buf, &now);
+#else
+        localtime_r(&now, &tm_buf);
+#endif
+        strftime(archivePath, sizeof(archivePath), archivePathFormat, &tm_buf);
         file_writer_close(config->file_writer);
 
         config->file_writer = NULL;
@@ -763,17 +854,74 @@ bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathF
         if (rename(source_path, archivePath) != 0) {
             LOG_LOG("[log_set_max_file_size] Error: Could not archive log file.");
             config->file_writer = file_writer_open(source_path, WRITE_TEXT);
+            logp_unlock(config);
             return false;
         }
 
         config->file_writer = file_writer_open(source_path, WRITE_TEXT);
         if (!config->file_writer) {
+            logp_unlock(config);
             LOG_LOG("[log_set_max_file_size] Error: Could not open new log file.");
             return false;
         }
         LOG_LOG("[log_set_max_file_size] Info: Log file archived and new log file started.");
     }
 
+    logp_unlock(config);
+    return true;
+}
+
+
+/**
+ * @brief Routes ERROR/FATAL console output to stderr instead of stdout.
+ *
+ * By default every console line goes to stdout. In production it is usually
+ * preferable to send high-severity records (`LOG_LEVEL_ERROR` and above) to
+ * stderr, so they stay visible when stdout is piped or captured and can be
+ * collected separately. This affects console output only (`LOG_OUTPUT_CONSOLE`
+ * / `LOG_OUTPUT_BOTH`); the file sink is unchanged. Thread-safe.
+ *
+ * @param config           The logger. Must not be NULL.
+ * @param errors_to_stderr `true` to send ERROR/FATAL to stderr, `false` to send
+ *                         all console output to stdout (the default).
+ * @return `true` on success, `false` if `config` is NULL.
+ */
+bool log_set_error_stream(Log* config, bool errors_to_stderr) {
+    if (!config) {
+        LOG_LOG("[log_set_error_stream] Error: Log configuration object is null.");
+        return false;
+    }
+    logp_lock(config);
+    config->errors_to_stderr = errors_to_stderr;
+    logp_unlock(config);
+    LOG_LOG("[log_set_error_stream] Info: ERROR/FATAL now go to %s.", errors_to_stderr ? "stderr" : "stdout");
+    return true;
+}
+
+
+/**
+ * @brief Enables or disables flushing after every emitted record.
+ *
+ * When enabled, the destination stream (console and/or file) is flushed
+ * immediately after each message that is actually written, so the most recent
+ * lines survive a crash or `kill`. This trades throughput for durability; leave
+ * it off for high-volume logging and call `log_flush` at checkpoints instead.
+ * Thread-safe.
+ *
+ * @param config The logger. Must not be NULL.
+ * @param enable `true` to flush after every emitted record, `false` to rely on
+ *               normal stdio buffering (the default).
+ * @return `true` on success, `false` if `config` is NULL.
+ */
+bool log_set_auto_flush(Log* config, bool enable) {
+    if (!config) {
+        LOG_LOG("[log_set_auto_flush] Error: Log configuration object is null.");
+        return false;
+    }
+    logp_lock(config);
+    config->auto_flush = enable;
+    logp_unlock(config);
+    LOG_LOG("[log_set_auto_flush] Info: Auto-flush is now %s.", enable ? "enabled" : "disabled");
     return true;
 }
 
@@ -916,6 +1064,11 @@ unsigned long log_get_message_count(const Log* config, LogLevel level) {
     if ((int)level < 0 || (int)level > LOG_LEVEL_FATAL) {
         return 0UL;
     }
-    return config->total_log_counts[level];
+    /* Lock so the read can't tear against a concurrent increment in
+     * log_message. The mutex is an internal detail, hence the const-cast. */
+    logp_lock((Log*)config);
+    unsigned long count = config->total_log_counts[level];
+    logp_unlock((Log*)config);
+    return count;
 }
 

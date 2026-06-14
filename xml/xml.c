@@ -531,7 +531,7 @@ static char *ezxml_str2utf8(char **s, size_t *len) {
             c = (((c & 0x3FF) << 10) | (d & 0x3FF)) + 0x10000;
         }
 
-        while (l + 6 > max) u = (char*)realloc(u, max += EZXML_BUFSIZE);
+        while (l + 6 > max) u = (char*)realloc(u, max *= 2);
         if (c < 0x80) u[l++] = c; // US-ASCII subset
         else { // multi-byte UTF-8 sequence
             for (b = 0, d = c; d; d /= 2) b++; // bits in c
@@ -711,13 +711,17 @@ static ezxml_t ezxml_parse_str(char *s, size_t len)
 static ezxml_t ezxml_parse_fp(FILE *fp)
 {
     ezxml_root_t root;
-    size_t l, len = 0;
+    size_t l, len = 0, cap = EZXML_BUFSIZE;
     char *s;
 
-    if (! (s = (char*)malloc(EZXML_BUFSIZE))) return NULL;
+    if (! (s = (char*)malloc(cap))) return NULL;
     do {
         len += (l = fread((s + len), 1, EZXML_BUFSIZE, fp));
-        if (l == EZXML_BUFSIZE) s = (char*)realloc(s, len + EZXML_BUFSIZE);
+
+        if (l == EZXML_BUFSIZE && len + EZXML_BUFSIZE > cap) {
+            cap = (len + EZXML_BUFSIZE) * 2;
+            s = (char*)realloc(s, cap);
+        }
     } while (s && l == EZXML_BUFSIZE);
 
     if (! s) return NULL;
@@ -785,7 +789,7 @@ static char *ezxml_ampencode(const char *s, size_t len, char **dst, size_t *dlen
     const char *e;
     
     for (e = s + len; s != e; s++) {
-        while (*dlen + 10 > *max) *dst = (char*)realloc(*dst, *max += EZXML_BUFSIZE);
+        while (*dlen + 10 > *max) *dst = (char*)realloc(*dst, *max *= 2 /* geometric (was +EZXML_BUFSIZE: O(n^2)) */);
 
         switch (*s) {
         case '\0': return *dst;
@@ -808,6 +812,8 @@ static char *ezxml_ampencode(const char *s, size_t len, char **dst, size_t *dlen
 static char *ezxml_toxml_r(ezxml_t xml, char **s, size_t *len, size_t *max,
                     size_t start, char ***attr)
 {
+
+    for (;;) {
     int i, j;
     char *txt = (xml->parent) ? xml->parent->txt : (char*)"";
     size_t off = 0;
@@ -816,13 +822,13 @@ static char *ezxml_toxml_r(ezxml_t xml, char **s, size_t *len, size_t *max,
     *s = ezxml_ampencode(txt + start, xml->off - start, s, len, max, 0);
 
     while (*len + strlen(xml->name) + 4 > *max) // reallocate s
-        *s = (char*)realloc(*s, *max += EZXML_BUFSIZE);
+        *s = (char*)realloc(*s, *max *= 2 /* geometric (was +EZXML_BUFSIZE: O(n^2)) */);
 
     *len += sprintf(*s + *len, "<%s", xml->name); // open tag
     for (i = 0; xml->attr[i]; i += 2) { // tag attributes
         if (ezxml_attr(xml, xml->attr[i]) != xml->attr[i + 1]) continue;
         while (*len + strlen(xml->attr[i]) + 7 > *max) // reallocate s
-            *s = (char*)realloc(*s, *max += EZXML_BUFSIZE);
+            *s = (char*)realloc(*s, *max *= 2 /* geometric (was +EZXML_BUFSIZE: O(n^2)) */);
 
         *len += sprintf(*s + *len, " %s=\"", xml->attr[i]);
         ezxml_ampencode(xml->attr[i + 1], -1, s, len, max, 1);
@@ -834,7 +840,7 @@ static char *ezxml_toxml_r(ezxml_t xml, char **s, size_t *len, size_t *max,
         if (! attr[i][j + 1] || ezxml_attr(xml, attr[i][j]) != attr[i][j + 1])
             continue; // skip duplicates and non-values
         while (*len + strlen(attr[i][j]) + 7 > *max) // reallocate s
-            *s = (char*)realloc(*s, *max += EZXML_BUFSIZE);
+            *s = (char*)realloc(*s, *max *= 2 /* geometric (was +EZXML_BUFSIZE: O(n^2)) */);
 
         *len += sprintf(*s + *len, " %s=\"", attr[i][j]);
         ezxml_ampencode(attr[i][j + 1], -1, s, len, max, 1);
@@ -846,13 +852,17 @@ static char *ezxml_toxml_r(ezxml_t xml, char **s, size_t *len, size_t *max,
                       : ezxml_ampencode(xml->txt, -1, s, len, max, 0);  //data
     
     while (*len + strlen(xml->name) + 4 > *max) // reallocate s
-        *s = (char*)realloc(*s, *max += EZXML_BUFSIZE);
+        *s = (char*)realloc(*s, *max *= 2 /* geometric (was +EZXML_BUFSIZE: O(n^2)) */);
 
     *len += sprintf(*s + *len, "</%s>", xml->name); // close tag
 
     while (txt[off] && off < xml->off) off++; // make sure off is within bounds
-    return (xml->ordered) ? ezxml_toxml_r(xml->ordered, s, len, max, off, attr)
-                          : ezxml_ampencode(txt + off, -1, s, len, max, 0);
+    if (! xml->ordered) {
+        return ezxml_ampencode(txt + off, -1, s, len, max, 0); // trailing text
+    }
+    start = off;          // next sibling's start within the parent's text
+    xml = xml->ordered;   // loop instead of recursing on the sibling chain
+    } /* for (;;) */
 }
 
 // Converts an ezxml structure back to xml. Returns a string of xml data that
@@ -873,7 +883,7 @@ static char *ezxml_toxml(ezxml_t xml)
         for (j = 1; (n = root->pi[i][j]); j++) {
             if (root->pi[i][k][j - 1] == '>') continue; // not pre-root
             while (len + strlen(t = root->pi[i][0]) + strlen(n) + 7 > max)
-                s = (char*)realloc(s, max += EZXML_BUFSIZE);
+                s = (char*)realloc(s, max *= 2);
             len += sprintf(s + len, "<?%s%s%s?>\n", t, *n ? " " : "", n);
         }
     }
@@ -888,7 +898,7 @@ static char *ezxml_toxml(ezxml_t xml)
         for (j = 1; (n = root->pi[i][j]); j++) {
             if (root->pi[i][k][j - 1] == '<') continue; // not post-root
             while (len + strlen(t = root->pi[i][0]) + strlen(n) + 7 > max)
-                s = (char*)realloc(s, max += EZXML_BUFSIZE);
+                s = (char*)realloc(s, max *= 2);
             len += sprintf(s + len, "\n<?%s%s%s?>", t, *n ? " " : "", n);
         }
     }
@@ -898,13 +908,13 @@ static char *ezxml_toxml(ezxml_t xml)
 // free the memory allocated for the ezxml structure
 static void ezxml_free(ezxml_t xml)
 {
+    while (xml) {
     ezxml_root_t root = (ezxml_root_t)xml;
     int i, j;
     char **a, *s;
+    ezxml_t nextOrdered = xml->ordered;
 
-    if (!xml) return;
     ezxml_free(xml->child);
-    ezxml_free(xml->ordered);
 
     if (! xml->parent) { // free root tag allocations
         for (i = 10; root->ent[i]; i += 2) // 0 - 9 are default entites (<>&"')
@@ -936,6 +946,9 @@ static void ezxml_free(ezxml_t xml)
     if ((xml->flags & EZXML_TXTM)) free(xml->txt); // character content
     if ((xml->flags & EZXML_NAMEM)) free(xml->name); // tag name
     free(xml);
+
+    xml = nextOrdered; // iterate to the next sibling instead of recursing
+    } /* while (xml) */
 }
 
 // return parser error message or empty string if none
@@ -973,7 +986,13 @@ static ezxml_t ezxml_insert(ezxml_t xml, ezxml_t dest, size_t off)
     xml->off = off;
     xml->parent = dest;
 
-    if ((head = dest->child)) { // already have sub tags
+    if ((head = dest->child)) { 
+        if (dest->last && off >= dest->last->off && !strcmp(xml->name, dest->last->name)) {
+            dest->last->ordered = xml; // append in document order
+            dest->last->next = xml;    // append in the same-name chain
+            dest->last = xml;          // new ordered tail
+            return xml;
+        }
         if (head->off <= off) { // not first subtag
             for (cur = head; cur->ordered && cur->ordered->off <= off;
                  cur = cur->ordered);
@@ -1003,6 +1022,11 @@ static ezxml_t ezxml_insert(ezxml_t xml, ezxml_t dest, size_t off)
     }
     else dest->child = xml; // only sub tag
 
+    /* Keep the ordered-tail cache current: xml is the new tail exactly when it has
+     * nothing after it in document order. */
+    if (! xml->ordered) {
+        dest->last = xml;
+    }
     return xml;
 }
 
@@ -1158,6 +1182,11 @@ static ezxml_t ezxml_cut(ezxml_t xml) {
             }
         }        
     }
+
+    if (xml->parent && xml->parent->last == xml) {
+        xml->parent->last = NULL;
+    }
+
     xml->ordered = xml->sibling = xml->next = NULL;
     return xml;
 }
@@ -2503,4 +2532,228 @@ size_t xml_count_elements_by_tag(XmlNode* root, const char* tag_name) {
     XML_LOG("[xml_count_elements_by_tag]: exit -> %zu", n);
 
     return n;
+}
+
+
+/* =================================================================== */
+/* Attribute enumeration + find-all-by-tag                             */
+/* =================================================================== */
+
+/**
+ * @brief Free a list of attributes returned by xml_get_attributes.
+ *
+ * Releases every node in the singly-linked list along with the copied
+ * name/value strings each one owns. Safe to call with NULL.
+ *
+ * @param attributes Head of the list (may be NULL).
+ */
+void xml_free_attributes(XmlAttribute* attributes) {
+    while (attributes) {
+        XmlAttribute* next = attributes->next;
+        free(attributes->name);
+        free(attributes->value);
+        free(attributes);
+        attributes = next;
+    }
+}
+
+
+/**
+ * @brief Enumerate every attribute of an element as a linked list.
+ *
+ * Returns a freshly-allocated singly-linked list of `XmlAttribute` nodes —
+ * one per attribute, in document order. Each node carries an independent
+ * COPY of the attribute name and value, so the list stays valid even if the
+ * element's attributes are later changed or removed. This is the only way to
+ * iterate an element's attributes generically; `xml_get_element_attribute`
+ * only fetches one by name.
+ *
+ * @param element   Element to inspect. May be NULL.
+ * @param out_count Optional; receives the number of attributes. May be NULL.
+ *
+ * @return Head of a newly-allocated `XmlAttribute` list, or NULL if the
+ *         element has no attributes (count 0), on bad input, or on OOM.
+ *
+ * @note The caller owns the returned list and MUST release it with
+ *       `xml_free_attributes`. Do not free individual nodes or strings.
+ *
+ * @code
+ *   size_t n = 0;
+ *   XmlAttribute* a = xml_get_attributes(node, &n);
+ *   for (XmlAttribute* it = a; it; it = it->next) {
+ *       printf("%s=\"%s\"\n", it->name, it->value);
+ *   }
+ *   xml_free_attributes(a);
+ * @endcode
+ */
+XmlAttribute* xml_get_attributes(XmlNode* element, size_t* out_count) {
+    XML_LOG("[xml_get_attributes]: enter element=%p", (void*)element);
+    if (out_count) {
+        *out_count = 0;
+    }
+    if (!element || !element->internal_node) {
+        XML_LOG("[xml_get_attributes]: NULL receiver -> NULL");
+        return NULL;
+    }
+
+    ezxml_t e = (ezxml_t)element->internal_node;
+    if (!e->attr || e->attr == EZXML_NIL) {
+        XML_LOG("[xml_get_attributes]: element has no attributes -> NULL");
+        return NULL;
+    }
+
+    XmlAttribute* head = NULL;
+    XmlAttribute* tail = NULL;
+    size_t n = 0;
+
+    /* ezxml stores attributes as name/value pairs: attr[0]=name0,
+     * attr[1]=value0, attr[2]=name1, ..., terminated by a NULL name slot. */
+    for (size_t i = 0; e->attr[i]; i += 2) {
+        const char* name  = e->attr[i];
+        const char* value = e->attr[i + 1] ? e->attr[i + 1] : "";
+
+        XmlAttribute* a = (XmlAttribute*)calloc(1, sizeof(XmlAttribute));
+        if (!a) {
+            XML_LOG("[xml_get_attributes]: calloc node failed -> unwind");
+            xml_free_attributes(head);
+            if (out_count) { *out_count = 0; }
+            return NULL;
+        }
+        a->name  = xml_copy_text(name);
+        a->value = xml_copy_text(value);
+        a->next  = NULL;
+        if (!a->name || !a->value) {
+            XML_LOG("[xml_get_attributes]: copy failed -> unwind");
+            free(a->name);
+            free(a->value);
+            free(a);
+            xml_free_attributes(head);
+            if (out_count) { *out_count = 0; }
+            return NULL;
+        }
+
+        if (tail) {
+            tail->next = a;
+        } else {
+            head = a;
+        }
+        tail = a;
+        ++n;
+    }
+
+    if (out_count) {
+        *out_count = n;
+    }
+    XML_LOG("[xml_get_attributes]: exit -> %zu attribute(s)", n);
+    return head;
+}
+
+
+/* Recursive collector: append every descendant of `node` whose tag matches
+ * `tag_name` into `out[*idx]` (raw ezxml pointers, document/pre-order). The
+ * caller sized `out` to xml_count_descendants_by_tag_ez(node, tag_name). */
+static void xml_collect_descendants_by_tag_ez(ezxml_t node, const char* tag_name, ezxml_t* out, size_t* idx) {
+    if (!node) {
+        return;
+    }
+    for (ezxml_t c = node->child; c; c = c->ordered) {
+        if (c->name && strcmp(c->name, tag_name) == 0) {
+            out[(*idx)++] = c;
+        }
+        xml_collect_descendants_by_tag_ez(c, tag_name, out, idx);
+    }
+}
+
+
+/**
+ * @brief Find EVERY descendant element with a given tag name.
+ *
+ * The array counterpart to `xml_find_element_by_tag` (which returns only the
+ * first match) and `xml_count_elements_by_tag` (which only counts). Walks the
+ * whole subtree rooted at @p root in document order and returns a
+ * NULL-terminated array of wrappers around every strict descendant whose tag
+ * equals @p tag_name. The result length equals
+ * `xml_count_elements_by_tag(root, tag_name)`, and element `[0]` is the same
+ * node `xml_find_element_by_tag` would return. @p root itself is never
+ * included. Case-sensitive (matches ezxml convention).
+ *
+ * @param root      Subtree root. May be NULL.
+ * @param tag_name  Tag to match. May be NULL.
+ * @param out_count Optional; receives the number of matches. May be NULL.
+ *
+ * @return Newly-allocated NULL-terminated `XmlNode**` array (empty but
+ *         non-NULL when there are zero matches), or NULL on bad input / OOM.
+ *
+ * @note Ownership mirrors `xml_get_children`: each wrapper is owned by the
+ *       document and freed by `xml_deallocate_document`. The caller frees
+ *       only the returned ARRAY with `free()` — never the individual
+ *       wrappers, and never their borrowed `tag_name`/`text`.
+ *
+ * @code
+ *   size_t n = 0;
+ *   XmlNode** books = xml_find_elements_by_tag(root, "book", &n);
+ *   for (size_t i = 0; i < n; ++i) {
+ *       printf("%s\n", xml_get_element_text(books[i]));
+ *   }
+ *   free(books);   // wrappers freed later by xml_deallocate_document
+ * @endcode
+ */
+XmlNode** xml_find_elements_by_tag(XmlNode* root, const char* tag_name, size_t* out_count) {
+    XML_LOG("[xml_find_elements_by_tag]: enter root=%p tag=%s", (void*)root, tag_name ? tag_name : "(null)");
+    if (out_count) {
+        *out_count = 0;
+    }
+    if (!root || !root->internal_node || !tag_name) {
+        XML_LOG("[xml_find_elements_by_tag]: NULL receiver / tag -> NULL");
+        return NULL;
+    }
+
+    ezxml_t e = (ezxml_t)root->internal_node;
+    size_t n = xml_count_descendants_by_tag_ez(e, tag_name);
+
+    XmlNode** arr = (XmlNode**)calloc(n + 1, sizeof(XmlNode*));
+    if (!arr) {
+        XML_LOG("[xml_find_elements_by_tag]: calloc array failed -> NULL");
+        return NULL;
+    }
+
+    if (n > 0) {
+        ezxml_t* hits = (ezxml_t*)malloc(n * sizeof(ezxml_t));
+        if (!hits) {
+            free(arr);
+            return NULL;
+        }
+        size_t idx = 0;
+        xml_collect_descendants_by_tag_ez(e, tag_name, hits, &idx);   /* idx == n */
+
+        for (size_t i = 0; i < n; ++i) {
+            XmlNode* w = (XmlNode*)calloc(1, sizeof(XmlNode));
+            if (!w) {
+                XML_LOG("[xml_find_elements_by_tag]: wrapper %zu calloc failed -> unwind", i);
+                /* Unregister + free the wrappers already handed to the doc so
+                   xml_deallocate_document does not double-free them. */
+                for (size_t j = 0; j < i; ++j) {
+                    xml__doc_unregister(arr[j]);
+                    free(arr[j]);
+                }
+                free(hits);
+                free(arr);
+                if (out_count) { *out_count = 0; }
+                return NULL;
+            }
+            w->internal_node = (void*)hits[i];
+            w->tag_name      = hits[i]->name;   /* borrowed from the ezxml tree */
+            w->text          = hits[i]->txt;    /* borrowed from the ezxml tree */
+            xml__doc_register(root->owner, w);  /* document owns each wrapper */
+            arr[i] = w;
+        }
+        free(hits);
+    }
+
+    arr[n] = NULL;
+    if (out_count) {
+        *out_count = n;
+    }
+    XML_LOG("[xml_find_elements_by_tag]: exit -> %zu match(es)", n);
+    return arr;
 }

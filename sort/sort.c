@@ -1064,6 +1064,90 @@ bool sort_is_sorted(ElementType* array, size_t size, CompareFunc compare) {
 
 
 /**
+ * @brief Return the index of the first element that is out of order — the end
+ *        of the longest sorted prefix (analog of `std::is_sorted_until`).
+ *
+ * Scans left to right and returns the index of the first element that is
+ * strictly smaller than its predecessor. If the whole array is sorted (or has
+ * fewer than two elements), `size` is returned. The relationship
+ * `sort_is_sorted(a, n, cmp) == (sort_is_sorted_until(a, n, cmp) == n)` always
+ * holds, so this is the diagnostic companion to `sort_is_sorted`: it tells you
+ * not just whether the data is sorted, but exactly where the order breaks.
+ *
+ * @param array   Array of element pointers.
+ * @param size    Number of elements.
+ * @param compare User comparator (returns < 0 / 0 / > 0).
+ * @return Index in `[0, size]` of the first out-of-order element, or `size`
+ *         if the array is fully sorted / degenerate / NULL.
+ */
+size_t sort_is_sorted_until(ElementType* array, size_t size, CompareFunc compare) {
+    SORT_LOG("[sort_is_sorted_until]: enter (array=%p, size=%zu)", (void*)array, size);
+    if (!array || size <= 1 || !compare) {
+        SORT_LOG("[sort_is_sorted_until]: guard tripped (array=%p, size=%zu) -> size", (void*)array, size);
+        return size;
+    }
+
+    for (size_t i = 1; i < size; i++) {
+        if (compare(array[i - 1], array[i]) > 0) {
+            return i;
+        }
+    }
+    return size;
+}
+
+
+/**
+ * @brief Remove consecutive duplicate elements in-place, keeping the first of
+ *        each run (analog of `std::unique`).
+ *
+ * This is the second half of the ubiquitous "sort, then unique" idiom: run a
+ * sort first, then call this to collapse each group of equal elements down to
+ * one. Only the element *pointers* are moved (the function never frees or
+ * copies the pointed-to data), so it is safe regardless of who owns the
+ * elements. Because it compares each element to the previous *kept* one, on a
+ * sorted array it removes every duplicate; on an unsorted array it removes
+ * only adjacent duplicates (exactly like `std::unique`).
+ *
+ * The first `return value` slots hold the distinct elements in their original
+ * relative order. Slots beyond the returned count keep their previous
+ * (now-duplicated) pointer values — like `std::unique`, they are left in an
+ * unspecified-but-valid state, not cleared.
+ *
+ * @param array   Array of element pointers (typically already sorted).
+ * @param size    Number of elements.
+ * @param compare User comparator (returns < 0 / 0 / > 0).
+ * @return The number of distinct elements now packed at the front of `array`
+ *         (the new logical length). Returns 0 for a NULL array / NULL
+ *         comparator / empty input.
+ *
+ * @code
+ * sort_quicksort(arr, n, sort_compare_int, sort_swap_generic);
+ * size_t m = sort_unique(arr, n, sort_compare_int);   // arr[0..m) is sorted + distinct
+ * @endcode
+ */
+size_t sort_unique(ElementType* array, size_t size, CompareFunc compare) {
+    SORT_LOG("[sort_unique]: enter (array=%p, size=%zu)", (void*)array, size);
+    if (!array || !compare || size == 0) {
+        SORT_LOG("[sort_unique]: guard tripped (array=%p, size=%zu) -> 0", (void*)array, size);
+        return 0;
+    }
+
+    size_t write = 1;   /* the first element is always kept */
+    for (size_t read = 1; read < size; read++) {
+        if (compare(array[write - 1], array[read]) != 0) {
+            if (write != read) {
+                array[write] = array[read];
+            }
+            write++;
+        }
+    }
+
+    SORT_LOG("[sort_unique]: exit -> %zu distinct", write);
+    return write;
+}
+
+
+/**
  * @brief Reverse the order of elements in-place.
  *
  * Swaps element `i` with element `size - 1 - i` for the first half of the

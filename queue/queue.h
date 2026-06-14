@@ -48,16 +48,69 @@ extern "C" {
 #endif
 
 
-/* ------------------------------------------------------------------ */
-/* Public types                                                       */
-/* ------------------------------------------------------------------ */
-
 typedef struct Queue Queue;
 typedef int (*QueueCompareFunc)(const void*, const void*);
 
 struct Queue {
     Vector* vec;
+    size_t  frontIndex;
 };
+
+
+/* ------------------------------------------------------------------ */
+/* Inlined hot accessors                                              */
+/* ------------------------------------------------------------------ */
+/*
+ * size / empty / front / back / at / pop are tiny and dominate tight FIFO
+ * loops, so they are defined `static inline` here (the struct and Vector's own
+ * inline accessors are visible) — the call folds into the caller, the way
+ * std::queue does. Live elements are vec[frontIndex .. size-1]; pop is an O(1)
+ * index bump that resets to the buffer head once the queue empties.
+ */
+static inline size_t queue_size(const Queue* q) {
+    return (q && q->vec) ? q->vec->size - q->frontIndex : 0;
+}
+
+
+static inline bool queue_empty(const Queue* q) {
+    return !q || !q->vec || q->vec->size == q->frontIndex;
+}
+
+
+static inline void* queue_front(const Queue* q) {
+    if (!q || !q->vec || q->vec->size == q->frontIndex) {
+        return NULL;
+    }
+    return vector_at(q->vec, q->frontIndex);
+}
+
+
+static inline void* queue_back(const Queue* q) {
+    if (!q || !q->vec || q->vec->size == q->frontIndex) {
+        return NULL;
+    }
+    return vector_at(q->vec, q->vec->size - 1);
+}
+
+
+static inline void* queue_at(const Queue* q, size_t index) {
+    if (!q || !q->vec || index >= q->vec->size - q->frontIndex) {
+        return NULL;
+    }
+    return vector_at(q->vec, q->frontIndex + index);
+}
+
+
+static inline void queue_pop(Queue* q) {
+    if (!q || !q->vec || q->vec->size == q->frontIndex) {
+        return;
+    }
+    q->frontIndex++;
+    if (q->frontIndex >= q->vec->size) {   
+        q->vec->size = 0;
+        q->frontIndex = 0;
+    }
+}
 
 
 /* ------------------------------------------------------------------ */
@@ -79,12 +132,9 @@ void    queue_deallocate              (Queue* q);
 /* Capacity / size                                                    */
 /* ------------------------------------------------------------------ */
 
-size_t  queue_size                    (const Queue* q);
 size_t  queue_capacity                (const Queue* q);
 size_t  queue_item_size               (const Queue* q);
-bool    queue_empty                   (const Queue* q);
 bool    queue_reserve                 (Queue* q, size_t n);
-
 
 /* ------------------------------------------------------------------ */
 /* Modifiers                                                          */
@@ -92,19 +142,9 @@ bool    queue_reserve                 (Queue* q, size_t n);
 
 bool    queue_push                    (Queue* q, const void* item);
 void*   queue_emplace                 (Queue* q, const void* item, size_t itemSize);
-void    queue_pop                     (Queue* q);
 bool    queue_assign                  (Queue* dest, const Queue* src);
 void    queue_swap                    (Queue* q1, Queue* q2);
 void    queue_sort                    (Queue* q, QueueCompareFunc comp);
-
-
-/* ------------------------------------------------------------------ */
-/* Element access                                                     */
-/* ------------------------------------------------------------------ */
-
-void*   queue_front                   (const Queue* q);
-void*   queue_back                    (const Queue* q);
-void*   queue_at                      (const Queue* q, size_t index);
 
 
 /* ------------------------------------------------------------------ */

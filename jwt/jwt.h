@@ -181,6 +181,10 @@ void                jwt_set_not_before                 (JwtToken* t, int64_t nbf
 void                jwt_set_issued_at                  (JwtToken* t, int64_t iat_unix);
 void                jwt_set_jwt_id                     (JwtToken* t, const char* jti);
 
+/* Duration-based convenience: compute the timestamp from "now". */
+void                jwt_set_expires_in                 (JwtToken* t, int64_t seconds_from_now);
+void                jwt_set_issued_now                 (JwtToken* t);
+
 /* Custom payload claims. */
 bool                jwt_set_claim_string               (JwtToken* t, const char* name, const char* value);
 bool                jwt_set_claim_int                  (JwtToken* t, const char* name, int64_t value);
@@ -222,6 +226,11 @@ const char*         jwt_get_jwt_id                     (const JwtToken* t);
 int64_t             jwt_get_expiration                 (const JwtToken* t, bool* present);
 int64_t             jwt_get_not_before                 (const JwtToken* t, bool* present);
 int64_t             jwt_get_issued_at                  (const JwtToken* t, bool* present);
+
+/* Audience accessors — `aud` may be a single string or an array (RFC 7519
+ * §4.1.3). These present both uniformly. */
+size_t              jwt_get_audience_count             (const JwtToken* t);
+const char*         jwt_get_audience_at                (const JwtToken* t, size_t index);
 
 const char*         jwt_get_claim_string               (const JwtToken* t, const char* name);
 bool                jwt_get_claim_int                  (const JwtToken* t, const char* name, int64_t* out);

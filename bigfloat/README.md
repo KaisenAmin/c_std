@@ -345,6 +345,46 @@ target_link_libraries(bigfloat MPFR)
 
 ---
 
+### `BigFloat* bigfloat_copy(const BigFloat* src)`
+**Purpose**: Creates an exact copy of a `BigFloat` — the counterpart to `bigint_copy`. The new value carries the **same precision** as `src`, so the duplicate is bit-for-bit exact (no rounding).
+**Parameters**: `src`: A pointer to the source `BigFloat`.
+**Return Value**: A pointer to the new `BigFloat`, or `NULL` if `src` is `NULL` or allocation fails. The caller deallocates it with `bigfloat_deallocate`.
+**Usage Case**: Use to snapshot a value before mutating-style pipelines, or to duplicate without a `to_string`/`from_string` round-trip (which would round to the formatted precision).
+
+---
+
+### `double bigfloat_to_double(const BigFloat* a)`
+**Purpose**: Converts a `BigFloat` to a native `double` — the inverse of `bigfloat_from_double`. Rounds the high-precision value to the nearest representable `double`; NaN and ±Inf map to the matching IEEE `double`.
+**Parameters**: `a`: A pointer to the `BigFloat`.
+**Return Value**: The value as a `double` (`0.0` if `a` is `NULL`). Backed by MPFR's `mpfr_get_d`.
+**Usage Case**: Use to compute in high precision, then hand the result to code (graphics, hardware FPUs, existing APIs) that works in `double`.
+
+---
+
+### `bool bigfloat_is_nan(const BigFloat* a)`
+**Purpose**: Checks whether a `BigFloat` is NaN (not a number).
+**Parameters**: `a`: A pointer to the `BigFloat`.
+**Return Value**: `true` if `a` is NaN; `false` otherwise (including a `NULL` input). Backed by MPFR's `mpfr_nan_p`.
+**Usage Case**: Validate the result of an operation that can produce NaN (e.g. `0/0`, `inf - inf`).
+
+---
+
+### `bool bigfloat_is_inf(const BigFloat* a)`
+**Purpose**: Checks whether a `BigFloat` is ±infinity.
+**Parameters**: `a`: A pointer to the `BigFloat`.
+**Return Value**: `true` if `a` is infinite; `false` otherwise (including a `NULL` input). Backed by MPFR's `mpfr_inf_p`.
+**Usage Case**: Detect overflow results (e.g. `exp` of a large value) before using them downstream.
+
+---
+
+### `bool bigfloat_is_finite(const BigFloat* a)`
+**Purpose**: Checks whether a `BigFloat` is finite — an ordinary number, neither NaN nor infinite.
+**Parameters**: `a`: A pointer to the `BigFloat`.
+**Return Value**: `true` if `a` is a finite number; `false` if it is NaN, infinite, or `NULL`. Backed by MPFR's `mpfr_number_p`.
+**Usage Case**: A single robustness check after a division, logarithm, or other operation that can legitimately produce a non-finite result.
+
+---
+
 ### `BigFloat* bigfloat_lgamma(const BigFloat* a)`
 **Purpose**: Computes the natural logarithm of the absolute value of the gamma function of a BigFloat.
 **Parameters**: `a`: A pointer to the input BigFloat.
@@ -633,6 +673,53 @@ int main(void) {
 lgamma(num): 3.36566584020391479370459819620009511709213256835938
 erf(num): 0.99999999999956967755565528932493180036544799804688
 expm1(num): 166.91481361693655571798444725573062896728515625000000
+```
+---
+
+### **Example: Exact copy, double interop, and non-finite checks — `bigfloat_copy`, `bigfloat_to_double`, `bigfloat_is_finite`/`is_inf`**
+
+Duplicate a high-precision value exactly, hand it to code that wants a plain `double`, and detect a non-finite result (here, `exp(1e9)` overflows to `+inf`) before trusting it.
+
+```c
+#include <mpfr.h>
+#include "bigfloat/bigfloat.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    mpfr_set_default_prec(128);
+
+    BigFloat* e = bigfloat_from_string("2.718281828459045235360287471352662497757");
+
+    /* Exact duplicate (same value AND precision). */
+    BigFloat* copy = bigfloat_copy(e);
+    fmt_printf("copy equals original: %s\n",
+               bigfloat_compare(e, copy) == 0 ? "yes" : "no");
+
+    /* Hand the high-precision value to code that wants a plain double. */
+    double d = bigfloat_to_double(e);
+    fmt_printf("e as double: %.15f\n", d);
+
+    /* Robustness: detect a non-finite result instead of trusting it. */
+    BigFloat* huge = bigfloat_from_double(1e9);
+    BigFloat* over = bigfloat_exp(huge);          /* exp(1e9) overflows -> +inf */
+    fmt_printf("exp(1e9) is finite: %s\n", bigfloat_is_finite(over) ? "yes" : "no");
+    fmt_printf("exp(1e9) is inf:    %s\n", bigfloat_is_inf(over) ? "yes" : "no");
+
+    bigfloat_deallocate(e);
+    bigfloat_deallocate(copy);
+    bigfloat_deallocate(huge);
+    bigfloat_deallocate(over);
+    return 0;
+}
+```
+
+**Result**
+```
+copy equals original: yes
+e as double: 2.718281828459045
+exp(1e9) is finite: no
+exp(1e9) is inf:    yes
 ```
 ---
 

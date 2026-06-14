@@ -139,6 +139,10 @@ JsonElement*  json_read_from_file              (const char* filename);
 /* ------------------------------------------------------------------ */
 
 JsonElement*  json_create                      (JsonType type);
+JsonElement*  json_create_null                 (void);
+JsonElement*  json_create_bool                 (bool value);
+JsonElement*  json_create_number               (double value);
+JsonElement*  json_create_string               (const char* value);
 JsonElement*  json_clone                       (const JsonElement* element);
 JsonElement*  json_deep_copy                   (const JsonElement* element);
 
@@ -165,6 +169,10 @@ bool          json_write_to_file               (const JsonElement* element, cons
 /* ------------------------------------------------------------------ */
 
 JsonElement*  json_get_element                 (const JsonElement* element, const char* key_or_index);
+int           json_get_int                     (const JsonElement* element, const char* key_or_index, int default_value);
+double        json_get_double                  (const JsonElement* element, const char* key_or_index, double default_value);
+bool          json_get_bool                    (const JsonElement* element, const char* key_or_index, bool default_value);
+const char*   json_get_string                  (const JsonElement* element, const char* key_or_index, const char* default_value);
 JsonElement*  json_query                       (const JsonElement* element, const char* query);
 char**        json_get_keys                    (const JsonElement* object, size_t* num_keys);
 char**        json_to_string_array             (const JsonElement* array, size_t* length);

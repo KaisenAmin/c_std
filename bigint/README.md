@@ -353,6 +353,46 @@ To use the BigInt library in your project:
 
 ---
 
+### `BigInt* bigint_from_int(long value)`
+**Purpose**: Creates a BigInt from a native signed `long` — the native-integer counterpart to `bigint_from_string`, with no decimal-string round-trip.
+**Parameters**: `value`: The signed value to store.
+**Return Value**: A pointer to the new BigInt, or `NULL` on allocation failure. The caller deallocates it with `bigint_deallocate`.
+**Usage Case**: Use when you already hold a machine integer (a loop counter, a parsed `int`, a size) and need a BigInt to combine with arbitrary-precision values.
+
+---
+
+### `bool bigint_to_long(const BigInt* a, long* out)`
+**Purpose**: Extracts a BigInt into a native `long`, but only if it fits — the inverse of `bigint_from_int`. Detects overflow instead of silently truncating.
+**Parameters**: `a`: The BigInt to extract. `out`: Receives the value on success; must not be `NULL`.
+**Return Value**: `true` if the value fit in a `long` (and was written to `*out`); `false` if `a`/`out` is `NULL` or the value is out of `long` range (in which case `*out` is left untouched). Note `long` is 32-bit on Windows and 64-bit on most Unix systems; the check uses the actual platform range via GMP's `mpz_fits_slong_p`.
+**Usage Case**: Use to hand a BigInt result back to APIs that take a machine integer, with a guaranteed overflow check.
+
+---
+
+### `int bigint_sign(const BigInt* a)`
+**Purpose**: Returns the sign of a BigInt.
+**Parameters**: `a`: The BigInt to inspect.
+**Return Value**: `-1` if `a` is negative, `0` if it is zero (or `a` is `NULL`), `+1` if it is positive. Backed by GMP's `mpz_sgn`.
+**Usage Case**: Use for branch-free sign tests without a separate zero comparison.
+
+---
+
+### `BigInt* bigint_shift_left(const BigInt* a, unsigned long bits)`
+**Purpose**: Shifts a BigInt left by `bits` positions, i.e. multiplies it by `2^bits`.
+**Parameters**: `a`: The BigInt to shift. `bits`: Number of bit positions.
+**Return Value**: A pointer to a new BigInt representing `a << bits`, or `NULL` on `NULL` input / allocation failure. Backed by GMP's `mpz_mul_2exp`. The caller deallocates it.
+**Usage Case**: Use to scale by powers of two, build masks (`1 << n`), or pack bit fields — the missing companion to `bigint_and`/`bigint_or`/`bigint_xor`.
+
+---
+
+### `BigInt* bigint_shift_right(const BigInt* a, unsigned long bits)`
+**Purpose**: Shifts a BigInt right by `bits` positions (arithmetic shift). Equivalent to dividing by `2^bits` and flooring toward negative infinity, so it matches the usual two's-complement `>>` for negative values (e.g. `-1 >> 1 == -1`).
+**Parameters**: `a`: The BigInt to shift. `bits`: Number of bit positions.
+**Return Value**: A pointer to a new BigInt representing `a >> bits`, or `NULL` on `NULL` input / allocation failure. Backed by GMP's `mpz_fdiv_q_2exp`. The caller deallocates it.
+**Usage Case**: Use to extract high bits or divide by powers of two with well-defined sign behavior.
+
+---
+
 ### Example 1: Creating a BigInt Using `bigint_create`
 
 This example shows how to create a new BigInt (which is initialized to 0) and print its value.
@@ -1441,6 +1481,52 @@ int main(void) {
 Sum of digits of a: 90
 Comparison of |a| and | -a |: 0 (0 means equal)
 Floor(log2(|a|)): 66
+```
+
+---
+
+### Example 29 : Native-integer interop, shifts, and sign — `bigint_from_int`, `bigint_shift_left`, `bigint_to_long`, `bigint_sign`
+
+Build a BigInt from a machine integer, shift it past the range of a native `long`, then extract it back — with a checked conversion that reports overflow rather than truncating.
+
+```c
+#include <stdlib.h>
+#include "bigint/bigint.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    /* Build from a native integer, shift it, and extract it back. */
+    BigInt* one = bigint_from_int(1);
+    BigInt* big = bigint_shift_left(one, 64);    /* 1 << 64 == 2^64 */
+    char* s = bigint_to_string(big);
+    fmt_printf("1 << 64 = %s\n", s);
+    free(s);
+
+    BigInt* small = bigint_from_int(-1000);
+    fmt_printf("sign(-1000) = %d\n", bigint_sign(small));
+
+    long out = 0;
+    if (bigint_to_long(small, &out)) {
+        fmt_printf("back to long: %ld\n", out);
+    }
+
+    /* A value too large for a native long is reported, not silently truncated. */
+    fmt_printf("does 1<<64 fit in a long? %s\n",
+               bigint_to_long(big, &out) ? "yes" : "no");
+
+    bigint_deallocate(one);
+    bigint_deallocate(big);
+    bigint_deallocate(small);
+    return 0;
+}
+```
+
+**Result**
+```
+1 << 64 = 18446744073709551616
+sign(-1000) = -1
+back to long: -1000
+does 1<<64 fit in a long? no
 ```
 
 ---

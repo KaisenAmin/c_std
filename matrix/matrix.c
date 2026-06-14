@@ -421,14 +421,23 @@ Matrix* matrix_multiply(const Matrix* matrix1, const Matrix* matrix2) {
         return NULL;
     }
 
-    for (size_t i = 0; i < matrix1->rows; i++) {
-        for (size_t j = 0; j < matrix2->cols; j++) {
-            double sum = 0.0;
-            for (size_t k = 0; k < matrix1->cols; k++) {
-                sum += matrix1->data[i * matrix1->cols + k] * matrix2->data[k * matrix2->cols + j];
+
+    const size_t m = matrix1->rows;
+    const size_t n = matrix2->cols;
+    const size_t p = matrix1->cols;            /* == matrix2->rows */
+    const double* a = matrix1->data;
+    const double* b = matrix2->data;
+    double* c = product->data;
+
+    for (size_t i = 0; i < m; i++) {
+        const double* arow = a + i * p;
+        double* crow = c + i * n;
+        for (size_t k = 0; k < p; k++) {
+            const double aik = arow[k];
+            const double* brow = b + k * n;
+            for (size_t j = 0; j < n; j++) {
+                crow[j] += aik * brow[j];
             }
-            product->data[i * product->cols + j] = sum;
-            MATRIX_LOG("[matrix_multiply] Set value at (%zu, %zu) = %lf", i, j, sum);
         }
     }
 
@@ -559,21 +568,21 @@ double matrix_get(const Matrix* matrix, size_t row, size_t col) {
     return value;
 }
 
-static bool matrix_check_diagonal(const Matrix* mat, size_t i, size_t j) {
-    MATRIX_LOG("[matrix_check_diagonal] Entering function");
+static bool mat_check_diagonal(const Matrix* mat, size_t i, size_t j) {
+    MATRIX_LOG("[mat_check_diagonal] Entering function");
 
     double res = matrix_get(mat, i, j);
-    MATRIX_LOG("[matrix_check_diagonal] Starting value on diagonal at (%zu, %zu) = %lf", i, j, res);
+    MATRIX_LOG("[mat_check_diagonal] Starting value on diagonal at (%zu, %zu) = %lf", i, j, res);
 
     while (++i < mat->rows && ++j < mat->cols) {
         double next_value = matrix_get(mat, i, j);
         if (next_value != res) {
-            MATRIX_LOG("[matrix_check_diagonal] Mismatch found at (%zu, %zu), value = %lf", i, j, next_value);
+            MATRIX_LOG("[mat_check_diagonal] Mismatch found at (%zu, %zu), value = %lf", i, j, next_value);
             return false;
         }
     }
 
-    MATRIX_LOG("[matrix_check_diagonal] Diagonal check successful.");
+    MATRIX_LOG("[mat_check_diagonal] Diagonal check successful.");
     return true;
 }
 
@@ -1916,7 +1925,7 @@ bool matrix_is_toeplitz(const Matrix* matrix) {
 
     // Check all elements in the first row
     for (size_t i = 0; i < matrix->cols; i++) {
-        if (!matrix_check_diagonal(matrix, 0, i)) {
+        if (!mat_check_diagonal(matrix, 0, i)) {
             MATRIX_LOG("[matrix_is_toeplitz] Error: Diagonal check failed starting from (0, %zu)", i);
             return false;
         }
@@ -1924,7 +1933,7 @@ bool matrix_is_toeplitz(const Matrix* matrix) {
 
     // Check all elements in the first column
     for (size_t i = 1; i < matrix->rows; i++) {
-        if (!matrix_check_diagonal(matrix, i, 0)) {
+        if (!mat_check_diagonal(matrix, i, 0)) {
             MATRIX_LOG("[matrix_is_toeplitz] Error: Diagonal check failed starting from (%zu, 0)", i);
             return false;
         }
@@ -3417,4 +3426,163 @@ Matrix* matrix_walsh(size_t n) {
     MATRIX_LOG("[matrix_walsh] Successfully generated Walsh matrix");
     
     return walshMatrix;
+}
+
+
+/**
+ * @brief Computes the element-wise (Hadamard) product of two matrices.
+ *
+ * Multiplies @p A and @p B entry by entry: `C[i][j] = A[i][j] * B[i][j]`.
+ * Both matrices must have identical dimensions. This is distinct from
+ * `matrix_multiply` (the dot-product matrix product) and
+ * `matrix_kronecker_product`.
+ *
+ * @param A The first matrix.
+ * @param B The second matrix (same dimensions as @p A).
+ *
+ * @return A new matrix holding the element-wise product, or NULL if either
+ *         input is NULL, the dimensions differ, or allocation fails. The
+ *         caller owns the result and must release it with `matrix_deallocate`.
+ */
+Matrix* matrix_hadamard_product(const Matrix* A, const Matrix* B) {
+    MATRIX_LOG("[matrix_hadamard_product] Entering function.");
+    if (!A || !B || !A->data || !B->data) {
+        MATRIX_LOG("[matrix_hadamard_product] Error: NULL input matrix.");
+        return NULL;
+    }
+    if (A->rows != B->rows || A->cols != B->cols) {
+        MATRIX_LOG("[matrix_hadamard_product] Error: dimension mismatch (%zux%zu vs %zux%zu).",
+                   A->rows, A->cols, B->rows, B->cols);
+        return NULL;
+    }
+
+    Matrix* result = matrix_create(A->rows, A->cols);
+    if (!result) {
+        MATRIX_LOG("[matrix_hadamard_product] Error: allocation failed.");
+        return NULL;
+    }
+
+    size_t total = A->rows * A->cols;
+    for (size_t i = 0; i < total; ++i) {
+        result->data[i] = A->data[i] * B->data[i];
+    }
+
+    MATRIX_LOG("[matrix_hadamard_product] Success.");
+    return result;
+}
+
+
+/**
+ * @brief Solves the linear system A x = b for x.
+ *
+ * Solves a square system using Gaussian elimination with partial pivoting,
+ * followed by back substitution — the numerically sound, general-purpose
+ * approach (no explicit inverse is formed). @p b may have more than one
+ * column, in which case every column is solved at once (i.e. it solves
+ * `A X = B` for an n x k right-hand side, like numpy's `linalg.solve`).
+ *
+ * @param A The coefficient matrix. Must be square (n x n) and non-singular.
+ * @param b The right-hand side. Must have n rows and one or more columns.
+ *
+ * @return A new n x k matrix holding the solution x (X), or NULL if either
+ *         input is NULL, @p A is not square, the dimensions are incompatible,
+ *         @p A is singular (no unique solution), or allocation fails. The
+ *         caller owns the result and must release it with `matrix_deallocate`.
+ */
+Matrix* matrix_solve(const Matrix* A, const Matrix* b) {
+    MATRIX_LOG("[matrix_solve] Entering function.");
+    if (!A || !b || !A->data || !b->data) {
+        MATRIX_LOG("[matrix_solve] Error: NULL input matrix.");
+        return NULL;
+    }
+    if (A->rows != A->cols || A->rows == 0) {
+        MATRIX_LOG("[matrix_solve] Error: A must be a non-empty square matrix.");
+        return NULL;
+    }
+    size_t n = A->rows;
+    if (b->rows != n || b->cols == 0) {
+        MATRIX_LOG("[matrix_solve] Error: b must have %zu rows and >= 1 column.", n);
+        return NULL;
+    }
+    size_t k = b->cols;
+
+    /* Working copies: M (n x n) is reduced in place; X (n x k) tracks the
+       same row operations applied to the right-hand side. */
+    double* M = (double*)malloc(n * n * sizeof(double));
+    double* X = (double*)malloc(n * k * sizeof(double));
+    if (!M || !X) {
+        MATRIX_LOG("[matrix_solve] Error: allocation failed.");
+        free(M);
+        free(X);
+        return NULL;
+    }
+    memcpy(M, A->data, n * n * sizeof(double));
+    memcpy(X, b->data, n * k * sizeof(double));
+
+    /* Forward elimination with partial pivoting. */
+    for (size_t col = 0; col < n; ++col) {
+        size_t pivot = col;
+        double maxVal = fabs(M[col * n + col]);
+        for (size_t r = col + 1; r < n; ++r) {
+            double v = fabs(M[r * n + col]);
+            if (v > maxVal) {
+                maxVal = v;
+                pivot = r;
+            }
+        }
+        if (is_effectively_zero(maxVal)) {
+            MATRIX_LOG("[matrix_solve] Error: A is singular (no unique solution).");
+            free(M);
+            free(X);
+            return NULL;
+        }
+        if (pivot != col) {
+            for (size_t c = 0; c < n; ++c) {
+                double t = M[pivot * n + c];
+                M[pivot * n + c] = M[col * n + c];
+                M[col * n + c] = t;
+            }
+            for (size_t c = 0; c < k; ++c) {
+                double t = X[pivot * k + c];
+                X[pivot * k + c] = X[col * k + c];
+                X[col * k + c] = t;
+            }
+        }
+
+        double pivotVal = M[col * n + col];
+        for (size_t r = col + 1; r < n; ++r) {
+            double factor = M[r * n + col] / pivotVal;
+            if (factor != 0.0) {
+                for (size_t c = col; c < n; ++c) {
+                    M[r * n + c] -= factor * M[col * n + c];
+                }
+                for (size_t c = 0; c < k; ++c) {
+                    X[r * k + c] -= factor * X[col * k + c];
+                }
+            }
+        }
+    }
+
+    /* Back substitution into the result matrix. */
+    Matrix* result = matrix_create(n, k);
+    if (!result) {
+        MATRIX_LOG("[matrix_solve] Error: allocation failed for result.");
+        free(M);
+        free(X);
+        return NULL;
+    }
+    for (size_t rhs = 0; rhs < k; ++rhs) {
+        for (size_t i = n; i-- > 0; ) {
+            double sum = X[i * k + rhs];
+            for (size_t c = i + 1; c < n; ++c) {
+                sum -= M[i * n + c] * result->data[c * k + rhs];
+            }
+            result->data[i * k + rhs] = sum / M[i * n + i];
+        }
+    }
+
+    free(M);
+    free(X);
+    MATRIX_LOG("[matrix_solve] Success: solved %zu x %zu system with %zu RHS column(s).", n, n, k);
+    return result;
 }

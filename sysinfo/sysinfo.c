@@ -17,6 +17,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <windows.h>
+#include <psapi.h>
 #include <rpc.h>
 #include <objbase.h>
 #include <bluetoothapis.h>
@@ -3244,4 +3245,156 @@ char* sysinfo_default_shell(void) {
 #else
     return sysinfo_strdup_or(NULL, "unknown");
 #endif
+}
+
+
+/**
+ * @brief Returns the resident memory (RSS / working set) of the CALLING
+ *        process, in bytes.
+ *
+ * This is the per-process complement to the system-wide memory observers
+ * (`sysinfo_total_memory_bytes` / `sysinfo_used_memory_bytes`): it reports how
+ * much physical RAM *this* process is currently occupying — the single most
+ * useful self-monitoring metric for a long-running service (footprint
+ * reporting, leak detection, deciding when to shed load or restart).
+ *
+ * Implementation:
+ *  - Windows: `GetProcessMemoryInfo(...).WorkingSetSize`.
+ *  - Linux:   the resident-pages field (2nd) of `/proc/self/statm`, multiplied
+ *             by the page size from `sysconf(_SC_PAGESIZE)`.
+ *
+ * Returns 0 if the OS cannot answer or the platform is unsupported.
+ *
+ * @code
+ * unsigned long long rss = sysinfo_process_memory_bytes();
+ * printf("This process is using %.1f MiB\n", rss / (1024.0 * 1024.0));
+ * @endcode
+ */
+unsigned long long sysinfo_process_memory_bytes(void) {
+    SYSINFO_LOG("[sysinfo_process_memory_bytes]: Entering function.");
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc;
+    ZeroMemory(&pmc, sizeof(pmc));
+    pmc.cb = sizeof(pmc);
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+        return (unsigned long long)pmc.WorkingSetSize;
+    }
+    return 0ULL;
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/self/statm", "r");
+    if (!fp) {
+        return 0ULL;
+    }
+    unsigned long long total_pages = 0, resident_pages = 0;
+    /* statm: size resident shared text lib data dt (all in pages). */
+    if (fscanf(fp, "%llu %llu", &total_pages, &resident_pages) != 2) {
+        fclose(fp);
+        return 0ULL;
+    }
+    fclose(fp);
+    long page_size = sysconf(_SC_PAGESIZE);
+    if (page_size <= 0) {
+        return 0ULL;
+    }
+    return resident_pages * (unsigned long long)page_size;
+#else
+    return 0ULL;
+#endif
+}
+
+
+/**
+ * @brief Returns the human-readable CPU brand/model string (static storage).
+ *
+ * Complements `sysinfo_cpu_architecture` ("x86_64") and `sysinfo_cpu_cores`
+ * with the marketing name of the processor, e.g.
+ * "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz" or "AMD Ryzen 7 5800X" — the
+ * value telemetry, inventory, and support diagnostics universally record.
+ *
+ * Implementation:
+ *  - Windows: the `ProcessorNameString` value under
+ *             `HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0`.
+ *  - Linux:   the first `model name` line of `/proc/cpuinfo` (falls back to
+ *             `Hardware` on boards — e.g. ARM — that omit `model name`).
+ *
+ * Leading/trailing whitespace is trimmed. Returns the literal `"unknown"`
+ * when the CPU name cannot be determined. The returned pointer is to static
+ * storage — do NOT free it, and copy it if you need to keep it across calls.
+ *
+ * @code
+ * printf("CPU: %s\n", sysinfo_cpu_model());
+ * @endcode
+ */
+char* sysinfo_cpu_model(void) {
+    SYSINFO_LOG("[sysinfo_cpu_model]: Entering function.");
+    static char model[256];
+    strcpy(model, "unknown");
+
+#ifdef _WIN32
+    HKEY hKey;
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE,
+                      "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                      0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        char buf[256];
+        DWORD len = sizeof(buf);
+        DWORD type = 0;
+        if (RegQueryValueExA(hKey, "ProcessorNameString", NULL, &type,
+                             (LPBYTE)buf, &len) == ERROR_SUCCESS &&
+            type == REG_SZ && len > 0) {
+            buf[(len < sizeof(buf)) ? len : sizeof(buf) - 1] = '\0';
+            buf[sizeof(buf) - 1] = '\0';
+            snprintf(model, sizeof(model), "%s", buf);
+        }
+        RegCloseKey(hKey);
+    }
+#elif defined(__linux__)
+    FILE* fp = fopen("/proc/cpuinfo", "r");
+    if (fp) {
+        char line[512];
+        char fallback[256] = "";
+        bool found = false;
+        while (fgets(line, sizeof(line), fp)) {
+            const char* key = NULL;
+            if (strncmp(line, "model name", 10) == 0) {
+                key = line + 10;
+            }
+            else if (fallback[0] == '\0' && strncmp(line, "Hardware", 8) == 0) {
+                key = line + 8;
+            }
+            if (!key) {
+                continue;
+            }
+            const char* colon = strchr(key, ':');
+            if (!colon) {
+                continue;
+            }
+            const char* val = colon + 1;
+            while (*val == ' ' || *val == '\t') {
+                val++;
+            }
+            char tmp[256];
+            snprintf(tmp, sizeof(tmp), "%s", val);
+            size_t tl = strlen(tmp);
+            while (tl > 0 && (tmp[tl - 1] == '\n' || tmp[tl - 1] == '\r' ||
+                              tmp[tl - 1] == ' '  || tmp[tl - 1] == '\t')) {
+                tmp[--tl] = '\0';
+            }
+            if (line[0] == 'm') {              /* "model name" -> definitive */
+                snprintf(model, sizeof(model), "%s", tmp);
+                found = true;
+                break;
+            }
+            else if (fallback[0] == '\0') {    /* "Hardware" -> remember as fallback */
+                snprintf(fallback, sizeof(fallback), "%s", tmp);
+            }
+        }
+        fclose(fp);
+        if (!found && fallback[0] != '\0') {
+            snprintf(model, sizeof(model), "%s", fallback);
+        }
+    }
+#endif
+
+    SYSINFO_LOG("[sysinfo_cpu_model]: Exiting with model: %s", model);
+    return model;
 }

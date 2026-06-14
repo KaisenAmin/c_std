@@ -44,6 +44,18 @@ in these examples i rewrite cpp example in Bitset code
 
 ---
 
+### `Bitset* bitset_copy(const Bitset* bs);`
+- **Purpose**:  
+  Creates an independent deep copy of an existing `Bitset`. The new bitset has the same size and the same bit values as the source; mutating one afterwards never affects the other.
+
+- **Parameters**:  
+  - `bs`: A pointer to the source `Bitset` to copy.
+
+- **Return Value**:  
+  Returns a pointer to a newly allocated `Bitset` that is a copy of `bs`, or `NULL` if `bs` is `NULL` or memory allocation fails. The returned bitset must be released with `bitset_deallocate`.
+
+---
+
 ### `void bitset_deallocate(Bitset *bs);`
 - **Purpose**:  
   Frees the memory allocated for the `Bitset` and its internal bit array.
@@ -192,6 +204,39 @@ in these examples i rewrite cpp example in Bitset code
   
 - **Return Value**:  
   Returns the count of bits set to 1.
+
+---
+
+### `size_t bitset_find_first(const Bitset* bs);`
+- **Purpose**:  
+  Finds the position of the first (lowest-index) bit that is set to 1. Together with `bitset_find_next` it provides efficient iteration over only the set bits, skipping runs of zero bytes — far cheaper than testing every position when the bitset is sparse.
+
+- **Parameters**:  
+  - `bs`: A pointer to the `Bitset`.
+
+- **Return Value**:  
+  Returns the index of the first set bit. If no bit is set, returns `bitset_size(bs)` (a past-the-end sentinel) so a `for` loop terminates cleanly. Returns `0` if `bs` is `NULL`.
+
+---
+
+### `size_t bitset_find_next(const Bitset* bs, size_t pos);`
+- **Purpose**:  
+  Finds the position of the next bit set to 1 strictly after `pos`. Designed to be called in a loop seeded by `bitset_find_first` to walk every set bit in ascending order.
+
+- **Parameters**:  
+  - `bs`: A pointer to the `Bitset`.
+  - `pos`: The position to search after (the search starts at `pos + 1`).
+
+- **Return Value**:  
+  Returns the index of the next set bit after `pos`. If there is no further set bit (or `pos` is already at/after the last bit), returns `bitset_size(bs)`. Returns `0` if `bs` is `NULL`.
+
+The canonical idiom for visiting every set bit:
+
+```c
+for (size_t i = bitset_find_first(bs); i < bitset_size(bs); i = bitset_find_next(bs, i)) {
+    /* bit i is set */
+}
+```
 
 ---
 
@@ -1543,6 +1588,60 @@ b1[5]: 1
 b1[6]: 0
 b1[7]: 0
 After setting bit 0, b1 holds 00101011
+```
+
+---
+
+## Example 21 : iterate set bits with `bitset_find_first` / `bitset_find_next` and snapshot with `bitset_copy`
+
+A `Bitset` makes a compact "set of indices". `bitset_find_first` / `bitset_find_next`
+walk only the bits that are set (skipping zero runs), and `bitset_copy` takes an
+independent snapshot you can keep while the original keeps changing.
+
+```c
+#include "bitset/bitset.h"
+#include "fmt/fmt.h"
+
+/* Print the indices of every set bit using the find_first/find_next idiom. */
+static void print_set_bits(const char* label, const Bitset* bs) {
+    fmt_printf("%s", label);
+    for (size_t i = bitset_find_first(bs); i < bitset_size(bs); i = bitset_find_next(bs, i)) {
+        fmt_printf(" %zu", i);
+    }
+    fmt_printf("\n");
+}
+
+int main(void) {
+    /* Use a bitset as a set of "active" indices. */
+    Bitset* active = bitset_create(32);
+    bitset_set(active, 2,  true);
+    bitset_set(active, 5,  true);
+    bitset_set(active, 11, true);
+    bitset_set(active, 30, true);
+
+    print_set_bits("active indices:", active);
+    fmt_printf("count = %zu\n", bitset_count(active));
+
+    /* Snapshot the current state, then mutate the original independently. */
+    Bitset* snapshot = bitset_copy(active);
+    bitset_reset(active, 5);
+    bitset_set(active, 20, true);
+
+    print_set_bits("after edit:    ", active);
+    print_set_bits("snapshot kept: ", snapshot);
+
+    bitset_deallocate(active);
+    bitset_deallocate(snapshot);
+    return 0;
+}
+```
+**Result c_std:**
+
+```
+active indices: 2 5 11 30
+count = 4
+after edit:     2 11 20 30
+snapshot kept:  2 5 11 30
 ```
 
 ---

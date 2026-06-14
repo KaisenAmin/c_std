@@ -93,6 +93,7 @@ bool          file_writer_write_line           (char* buffer, size_t size, FileW
 bool          file_writer_write_batch          (FileWriter* writer, const void** buffers, const size_t* sizes, size_t count);
 bool          file_writer_append_fmt           (FileWriter* writer, const char* format, ...);
 bool          file_writer_copy                 (FileWriter* src_writer, FileWriter* dest_writer);
+bool          file_writer_write_all_atomic     (const char* path, const void* data, size_t size);
 
 
 /* ------------------------------------------------------------------ */

@@ -59,6 +59,16 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
+### `size_t secrets_randbelow_size(size_t n)`
+
+- **Purpose**: The `size_t`-ranged sibling of `secrets_randbelow` — an unbiased, cryptographically secure random value in `[0, n)`. Where `secrets_randbelow` is capped at the `int` range, this one can produce an unbiased index into any collection up to `SIZE_MAX` elements, making it the right primitive for picking a random slot in a large buffer or array.
+- **Parameters**:
+  - `n`: Upper bound (exclusive). Must be `> 0`.
+- **Return**: A uniform value in `[0, n)`, or `SIZE_MAX` on error (`n == 0` or RNG failure). Because the largest possible in-range result is `n - 1 ≤ SIZE_MAX - 1`, the value `SIZE_MAX` is never a valid result and therefore an unambiguous error sentinel.
+- **Details**: Uses the same rejection-sampling strategy as `secrets_randbelow` (over the full `size_t` range) to eliminate modulo bias.
+
+---
+
 ### `void secrets_token_hex(char *buffer, size_t nbytes)`
 
 - **Purpose**: Generate a cryptographically secure random token in hexadecimal format.
@@ -86,6 +96,20 @@ The documentation includes detailed descriptions of all the functions provided b
   - It converts each byte to a Base64 URL-safe character using a predefined table (`A-Z`, `a-z`, `0-9`, `-`, and `_`).
   - The resulting token is stored in the provided `buffer`.
   - Allocates memory dynamically for the random bytes and frees it after use.
+
+---
+
+### `bool secrets_token_from_alphabet(char *buffer, size_t length, const char *alphabet)`
+
+- **Purpose**: Generate a random string of `length` characters drawn uniformly — and **without modulo bias** — from a caller-supplied `alphabet`. This is the primitive for producing human-facing secrets: passwords, API keys, numeric OTPs/PINs, voucher and recovery codes, from exactly the character set you want.
+- **Parameters**:
+  - `buffer`: Destination. Must hold at least `length + 1` bytes; the result is always NUL-terminated.
+  - `length`: Number of characters to generate.
+  - `alphabet`: NUL-terminated set of characters to choose from (e.g. `"0123456789"` for a PIN, or `"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"` for an unambiguous voucher code).
+- **Return**: `true` on success. On failure — NULL `buffer`; NULL or empty `alphabet` with `length > 0`; RNG failure — returns `false` and, when `buffer` is non-NULL, leaves it as a safe empty string (zeroing any partially-written secret). `length == 0` yields an empty string and returns `true`.
+- **Details**:
+  - Each character is selected with **rejection sampling**, so every symbol is equally likely regardless of the alphabet's size — unlike a plain `byte % len`, which is biased unless `len` divides 256.
+  - Random bytes are drawn in pooled batches to keep RNG calls (and, on POSIX, `/dev/urandom` reads) to a minimum.
 
 ---
 
@@ -569,6 +593,63 @@ int main() {
 3: jape59f9Vt
 4: i52cU6v7aU
 5: mAH6q3cri9
+```
+
+---
+
+## Example 11 : Custom-alphabet tokens with `secrets_token_from_alphabet` and unbiased indexing with `secrets_randbelow_size`
+
+`secrets_token_from_alphabet` is the one-call way to produce a password, API key,
+or numeric OTP from exactly the character set you choose — every character is
+selected with unbiased, cryptographically-secure randomness. `secrets_randbelow_size`
+gives an unbiased index into a collection of any size. Because the output is
+random by design, this example prints **verifiable properties** of each value
+(its length, that every character is in range) rather than the secret itself, so
+the output is stable to check against.
+
+```c
+#include "fmt/fmt.h"
+#include "secrets/secrets.h"
+#include <string.h>
+
+int main(void) {
+    /* A 6-digit one-time code from a digits-only alphabet. */
+    char pin[7];
+    bool ok = secrets_token_from_alphabet(pin, 6, "0123456789");
+    int all_digits = 1;
+    for (int i = 0; i < 6; i++) {
+        if (pin[i] < '0' || pin[i] > '9') {
+            all_digits = 0;
+        }
+    }
+    fmt_printf("OTP:     ok=%d length=%zu all_digits=%d\n", ok, strlen(pin), all_digits);
+
+    /* A 24-char API key from an unambiguous alphabet (no 0/O/1/I/l). */
+    const char* alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    char key[25];
+    secrets_token_from_alphabet(key, 24, alphabet);
+    int in_alphabet = 1;
+    for (size_t i = 0; i < strlen(key); i++) {
+        if (!strchr(alphabet, key[i])) {
+            in_alphabet = 0;
+        }
+    }
+    fmt_printf("API key: length=%zu in_alphabet=%d\n", strlen(key), in_alphabet);
+
+    /* An unbiased index into a large collection (1,000,000 elements). */
+    size_t idx = secrets_randbelow_size(1000000);
+    fmt_printf("index:   in_range=%d\n", idx < 1000000);
+    fmt_printf("randbelow_size(1) = %zu (always 0)\n", secrets_randbelow_size(1));
+
+    return 0;
+}
+```
+**Result**
+```
+OTP:     ok=1 length=6 all_digits=1
+API key: length=24 in_alphabet=1
+index:   in_range=1
+randbelow_size(1) = 0 (always 0)
 ```
 
 ---

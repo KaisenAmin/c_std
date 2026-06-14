@@ -78,6 +78,7 @@ size_t        file_reader_read                 (void* buffer, size_t size, size_
 size_t        file_reader_read_fmt             (FileReader* reader, const char* format, ...);
 bool          file_reader_read_line            (char* buffer, size_t size, FileReader* reader);
 bool          file_reader_read_lines           (FileReader* reader, char*** buffer, size_t num_lines);
+bool          file_reader_read_all             (FileReader* reader, char** out_buf, size_t* out_size);
 bool          file_reader_copy                 (FileReader* src_reader, FileWriter* dest_writer);
 
 

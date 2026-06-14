@@ -698,6 +698,23 @@ Quantum computing simulation, composite system state representation, block matri
 
 ---
 
+### `Matrix* matrix_hadamard_product(const Matrix* A, const Matrix* B)`
+
+**Purpose**:  
+Computes the element-wise (Hadamard) product: `C[i][j] = A[i][j] * B[i][j]`. Both matrices must have identical dimensions. This is distinct from `matrix_multiply` (the dot-product matrix product) and `matrix_kronecker_product`.
+
+**Parameters**:  
+- `A`: First matrix.  
+- `B`: Second matrix (same dimensions as `A`).
+
+**Return Value**:  
+Newly allocated matrix holding the element-wise product, or `NULL` if either input is `NULL`, the dimensions differ, or allocation fails. The caller owns the result and must release it with `matrix_deallocate`.
+
+**Usage Case**:  
+Neural-network gating/masking, signal processing, applying a per-element weight map.
+
+---
+
 ### `Matrix* matrix_power(const Matrix* matrix, int power)`
 
 **Purpose**:  
@@ -976,6 +993,23 @@ Newly allocated upper triangular Cholesky factor, or `NULL` if the matrix is not
 
 **Usage Case**:  
 Solving positive-definite systems (e.g., normal equations), sampling from multivariate Gaussian distributions.
+
+---
+
+### `Matrix* matrix_solve(const Matrix* A, const Matrix* b)`
+
+**Purpose**:  
+Solves the linear system `A x = b` for `x` using Gaussian elimination with partial pivoting followed by back substitution — the numerically sound, general-purpose approach (no explicit inverse is formed). `b` may have more than one column, in which case every column is solved at once (i.e. it solves `A X = B` for an `n × k` right-hand side, like NumPy's `linalg.solve`).
+
+**Parameters**:  
+- `A`: The coefficient matrix. Must be square (`n × n`) and non-singular.  
+- `b`: The right-hand side. Must have `n` rows and one or more columns.
+
+**Return Value**:  
+A newly allocated `n × k` matrix holding the solution `x` (`X`), or `NULL` if either input is `NULL`, `A` is not square, the dimensions are incompatible, `A` is singular (no unique solution), or allocation fails. The caller owns the result and must release it with `matrix_deallocate`.
+
+**Usage Case**:  
+The everyday workhorse — solving systems of equations: circuit analysis, least-squares normal equations, interpolation coefficients, physics simulation steps. Prefer this over `matrix_inverse` + `matrix_multiply`, which is slower and less accurate.
 
 ---
 
@@ -3777,6 +3811,71 @@ Matrix walsh is :
 |  1.00000 -1.00000  1.00000 -1.00000 -1.00000  1.00000 -1.00000  1.00000 |
 |  1.00000  1.00000 -1.00000 -1.00000 -1.00000 -1.00000  1.00000  1.00000 |
 |  1.00000 -1.00000 -1.00000  1.00000 -1.00000  1.00000  1.00000 -1.00000 |
+```
+
+---
+
+## Example 54 : Solving a linear system with `matrix_solve` (and `matrix_hadamard_product`)
+
+`matrix_solve` solves `A x = b` directly via Gaussian elimination with partial pivoting — the everyday use of a matrix library. Here we solve a 3×3 system with the known solution `(2, 3, -1)`, verify it by reconstructing `A·x`, and show the element-wise (Hadamard) product.
+
+```c
+#include "matrix/matrix.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    /*   linear system  A x = b:
+         2x +  y -  z =   8
+        -3x -  y + 2z = -11
+        -2x +  y + 2z =  -3
+       (known solution: x = 2, y = 3, z = -1)                         */
+    double a[] = {
+         2,  1, -1,
+        -3, -1,  2,
+        -2,  1,  2
+    };
+    double bv[] = { 8, -11, -3 };
+
+    Matrix* A = matrix_from_array(a, 3, 3);
+    Matrix* b = matrix_from_array(bv, 3, 1);
+
+    Matrix* x = matrix_solve(A, b);
+    if (x) {
+        fmt_printf("solution: x=%.0f, y=%.0f, z=%.0f\n", matrix_get(x, 0, 0), matrix_get(x, 1, 0), matrix_get(x, 2, 0));
+
+        /* Verify by reconstructing A*x, which should equal b. */
+        Matrix* check = matrix_multiply(A, x);
+        fmt_printf("A*x     = [%.0f, %.0f, %.0f]  (== b)\n", matrix_get(check, 0, 0), matrix_get(check, 1, 0), matrix_get(check, 2, 0));
+
+        matrix_deallocate(check);
+        matrix_deallocate(x);
+    }
+
+    /* Element-wise (Hadamard) product, distinct from matrix_multiply. */
+    double p[] = { 1, 2, 3, 4 };
+    double q[] = { 5, 6, 7, 8 };
+    Matrix* P = matrix_from_array(p, 2, 2);
+    Matrix* Q = matrix_from_array(q, 2, 2);
+    Matrix* H = matrix_hadamard_product(P, Q);
+
+    fmt_printf("hadamard: [%.0f, %.0f, %.0f, %.0f]\n", matrix_get(H, 0, 0), matrix_get(H, 0, 1), matrix_get(H, 1, 0), matrix_get(H, 1, 1));
+
+    matrix_deallocate(H);
+    matrix_deallocate(P);
+    matrix_deallocate(Q);
+    matrix_deallocate(A);
+    matrix_deallocate(b);
+    
+    return 0;
+}
+```
+
+**Result**
+
+```
+solution: x=2, y=3, z=-1
+A*x     = [8, -11, -3]  (== b)
+hadamard: [5, 12, 21, 32]
 ```
 
 ---

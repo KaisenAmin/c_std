@@ -155,6 +155,47 @@ double random_random() {
 
 
 /**
+ * @brief Performs a Bernoulli trial: returns `true` with probability @p p and
+ *        `false` with probability `1 - p`.
+ *
+ * This is the reproducible "weighted coin flip" — the building block for
+ * probabilistic decisions such as a percentage feature rollout, Monte-Carlo
+ * acceptance steps, or randomized sampling. Like every other `random_*`
+ * function it is driven by the seeded engine (one draw per call), so a fixed
+ * seed reproduces the exact sequence of outcomes.
+ *
+ * Boundary values are handled exactly: `p <= 0.0` always returns `false` and
+ * `p >= 1.0` always returns `true` (no draw is wasted on a certain outcome).
+ * The probability resolution is that of `random_random` (~2^-32).
+ *
+ * @param p Probability of returning `true`, expected in [0, 1]. Values
+ *          outside that range are clamped to the nearest certain outcome.
+ * @return `true` with probability `p`, otherwise `false`.
+ *
+ * @code
+ * random_seed(2026);
+ * if (random_boolean(0.10)) {       // ~10% of users
+ *     enable_new_feature();
+ * }
+ * @endcode
+ */
+bool random_boolean(double p) {
+    RANDOM_LOG("[random_boolean]: Entering with p: %f", p);
+
+    if (p <= 0.0) {
+        return false;
+    }
+    if (p >= 1.0) {
+        return true;
+    }
+
+    bool result = random_random() < p;
+    RANDOM_LOG("[random_boolean]: Exiting with result: %d", (int)result);
+    return result;
+}
+
+
+/**
  * @brief This function generates a random double precision floating-point number
  *      in the range [a, b). If `a` is greater than `b`, their values are swapped.
  *
@@ -204,6 +245,58 @@ int random_getrandbits(int a) {
 
     RANDOM_LOG("[random_getrandbits]: Exiting random_getrandbits with result: %d", result);
     return result;
+}
+
+
+/**
+ * @brief Fills @p buffer with @p n pseudo-random bytes from the seeded engine.
+ *
+ * The fast, reproducible counterpart to `secrets_token_bytes` (which is
+ * cryptographically secure but not reproducible): use this to generate
+ * deterministic random payloads for tests, fuzzing corpora, synthetic data,
+ * or any non-security buffer fill. Bytes are produced from the same xorshift32
+ * stream as every other generator, four per draw, so a fixed `random_seed`
+ * reproduces the exact byte sequence.
+ *
+ * NOT suitable for keys, tokens, nonces, or anything security-sensitive — use
+ * the `secrets` module for those.
+ *
+ * @param buffer Destination buffer to fill. If NULL, the call is a safe no-op.
+ * @param n      Number of bytes to write. If 0, the call is a safe no-op.
+ *
+ * @code
+ * random_seed(7);
+ * unsigned char payload[16];
+ * random_randbytes(payload, sizeof(payload));   // 16 reproducible bytes
+ * @endcode
+ */
+void random_randbytes(unsigned char* buffer, size_t n) {
+    RANDOM_LOG("[random_randbytes]: Entering with buffer: %p, n: %zu", (void*)buffer, n);
+
+    if (buffer == NULL || n == 0) {
+        RANDOM_LOG("[random_randbytes]: NULL buffer or n == 0 -> no-op.");
+        return;
+    }
+
+    size_t i = 0;
+    /* Whole 32-bit words: 4 bytes per draw (little-endian extraction). */
+    while (i + 4 <= n) {
+        unsigned int v = prng_next32();
+        buffer[i++] = (unsigned char)(v & 0xFFu);
+        buffer[i++] = (unsigned char)((v >> 8) & 0xFFu);
+        buffer[i++] = (unsigned char)((v >> 16) & 0xFFu);
+        buffer[i++] = (unsigned char)((v >> 24) & 0xFFu);
+    }
+    /* Tail (1..3 leftover bytes) from one more draw. */
+    if (i < n) {
+        unsigned int v = prng_next32();
+        while (i < n) {
+            buffer[i++] = (unsigned char)(v & 0xFFu);
+            v >>= 8;
+        }
+    }
+
+    RANDOM_LOG("[random_randbytes]: Exiting after writing %zu bytes.", n);
 }
 
 

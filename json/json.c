@@ -11,6 +11,63 @@
 #include "json.h"
 #include "../string/std_string.h"
 
+
+/* ----------------------------------------------------------------------
+ * JsonSB: a fast internal byte builder for serialization.
+ */
+typedef struct {
+    char*  data;
+    size_t len;
+    size_t cap;
+    bool   oom;     
+} JsonSB;
+
+/* Ensure room for `extra` more bytes plus a NUL terminator. */
+static bool jsonsb_ensure(JsonSB* sb, size_t extra) {
+    if (sb->oom) {
+        return false;
+    }
+    size_t need = sb->len + extra + 1;
+    if (need <= sb->cap) {
+        return true;
+    }
+    size_t cap = sb->cap ? sb->cap : 256;
+    while (cap < need) {
+        cap *= 2;
+    }
+    char* p = (char*)realloc(sb->data, cap);
+    if (!p) {
+        sb->oom = true;
+        return false;
+    }
+    sb->data = p;
+    sb->cap = cap;
+    return true;
+}
+
+/* Append `n` raw bytes. */
+static void jsonsb_append(JsonSB* sb, const char* s, size_t n) {
+    if (n == 0 || !jsonsb_ensure(sb, n)) {
+        return;
+    }
+    memcpy(sb->data + sb->len, s, n);
+    sb->len += n;
+}
+
+/* Append a NUL-terminated string. */
+static void jsonsb_puts(JsonSB* sb, const char* s) {
+    jsonsb_append(sb, s, strlen(s));
+}
+
+/* Append a single byte. */
+static void jsonsb_putc(JsonSB* sb, char c) {
+    if (!jsonsb_ensure(sb, 1)) {
+        return;
+    }
+    sb->data[sb->len++] = c;
+}
+
+
 static JsonElement* parse_array(JsonParserState* state);
 static JsonElement* parse_string(JsonParserState* state);
 static JsonElement* parse_number(JsonParserState* state);
@@ -18,10 +75,10 @@ static JsonElement* parse_null(JsonParserState* state);
 static JsonElement* parse_boolean(JsonParserState* state);
 static JsonElement* parser_internal(JsonParserState* state);
 static JsonElement* parse_object(JsonParserState* state);
-static void json_serialize_internal(const JsonElement* element, String* str);
-static bool json_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element);
-static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element);
-static void json_format_internal(const JsonElement* element, String* str, int indent);
+static void jsonp_serialize_internal(const JsonElement* element, JsonSB* sb);
+static bool jsonp_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element);
+static bool jsonp_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element);
+static void jsonp_format_internal(const JsonElement* element, JsonSB* sb, int indent);
 
 static JsonError last_error = {0, ""};
 
@@ -31,7 +88,7 @@ static void print_indent(int indent) {
     }
 }
 
-static void json_print_internal(const JsonElement* element, int indent) {
+static void jsonp_print_internal(const JsonElement* element, int indent) {
     if (!element) {
         printf("null");
         return;
@@ -49,7 +106,7 @@ static void json_print_internal(const JsonElement* element, int indent) {
                 }
                 print_indent(indent + 2);
                 printf("\"%s\": ", (char*)it.node->key);
-                json_print_internal((JsonElement*)it.node->value, indent + 2);
+                jsonp_print_internal((JsonElement*)it.node->value, indent + 2);
                 first = false;
                 map_iterator_increment(&it);
             }
@@ -63,7 +120,7 @@ static void json_print_internal(const JsonElement* element, int indent) {
             printf("[\n");
             for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
                 print_indent(indent + 2);
-                json_print_internal(*(JsonElement**)vector_at(element->value.array_val, i), indent + 2);
+                jsonp_print_internal(*(JsonElement**)vector_at(element->value.array_val, i), indent + 2);
                 if (i < vector_size(element->value.array_val) - 1) {
                     printf(",");
                 }
@@ -197,16 +254,16 @@ void json_deallocate(JsonElement *element) {
  * @brief Iterates through a JSON object to find an element that matches a given predicate.
  * @return True if a matching element is found, otherwise false.
  */
-static bool json_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
+static bool jsonp_find_in_object(const JsonElement* object, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
     if (!object || object->type != JSON_OBJECT) {
-        JSON_LOG("[json_find_in_object] Error: The provided element is NULL or not a JSON_OBJECT in json_find_in_object.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid element or type in json_find_in_object.");
+        JSON_LOG("[jsonp_find_in_object] Error: The provided element is NULL or not a JSON_OBJECT in jsonp_find_in_object.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid element or type in jsonp_find_in_object.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return false;
     }
     if (!predicate) {
-        JSON_LOG("[json_find_in_object] Error: Predicate function is NULL in json_find_in_object.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Predicate function is NULL in json_find_in_object.");
+        JSON_LOG("[jsonp_find_in_object] Error: Predicate function is NULL in jsonp_find_in_object.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Predicate function is NULL in jsonp_find_in_object.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return false;
     }
@@ -218,13 +275,13 @@ static bool json_find_in_object(const JsonElement* object, JsonPredicate predica
         JsonElement* current_element = (JsonElement*)it.node->value;
         if (predicate(current_element, user_data)) {
             *found_element = current_element;
-            JSON_LOG("[json_find_in_object] Info: Matching element found in json_find_in_object.");
+            JSON_LOG("[jsonp_find_in_object] Info: Matching element found in jsonp_find_in_object.");
             return true;
         }
         map_iterator_increment(&it);
     }
 
-    JSON_LOG("[json_find_in_object] Info: No matching element found in json_find_in_object.");
+    JSON_LOG("[jsonp_find_in_object] Info: No matching element found in jsonp_find_in_object.");
     return false;
 }
 
@@ -232,16 +289,16 @@ static bool json_find_in_object(const JsonElement* object, JsonPredicate predica
  * @brief Iterates through a JSON array to find an element that matches a given predicate.
  * @return True if a matching element is found, otherwise false.
  */
-static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
+static bool jsonp_find_in_array(const JsonElement* array, JsonPredicate predicate, void* user_data, JsonElement** found_element) {
     if (!array || array->type != JSON_ARRAY) {
-        JSON_LOG("[json_find_in_array] Error: The provided element is NULL or not a JSON_ARRAY in json_find_in_array.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid element or type in json_find_in_array.");
+        JSON_LOG("[jsonp_find_in_array] Error: The provided element is NULL or not a JSON_ARRAY in jsonp_find_in_array.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Invalid element or type in jsonp_find_in_array.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return false;
     }
     if (!predicate) {
-        JSON_LOG("[json_find_in_array] Error: Predicate function is NULL in json_find_in_array.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Predicate function is NULL in json_find_in_array.");
+        JSON_LOG("[jsonp_find_in_array] Error: Predicate function is NULL in jsonp_find_in_array.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Predicate function is NULL in jsonp_find_in_array.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return false;
     }
@@ -250,12 +307,12 @@ static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate
         JsonElement* current_element = *(JsonElement**)vector_at(array->value.array_val, i);
         if (predicate(current_element, user_data)) {
             *found_element = current_element;
-            JSON_LOG("[json_find_in_array] Info: Matching element found in json_find_in_array at index %zu.", i);
+            JSON_LOG("[jsonp_find_in_array] Info: Matching element found in jsonp_find_in_array at index %zu.", i);
             return true;
         }
     }
 
-    JSON_LOG("[json_find_in_array] Info: No matching element found in json_find_in_array.");
+    JSON_LOG("[jsonp_find_in_array] Info: No matching element found in jsonp_find_in_array.");
     return false;
 }
 
@@ -263,13 +320,13 @@ static bool json_find_in_array(const JsonElement* array, JsonPredicate predicate
  * @brief Deallocates a JSON element, including its nested elements if applicable.
  * @param data A pointer to the JSON element to be deallocated.
  */
-static void json_element_deallocator(void* data) {
+static void jsonp_element_deallocator(void* data) {
     if (!data) {
-        JSON_LOG("[json_element_deallocator] Info: Tried to deallocate a NULL pointer in json_element_deallocator.");
+        JSON_LOG("[jsonp_element_deallocator] Info: Tried to deallocate a NULL pointer in jsonp_element_deallocator.");
         return;
     }
     JsonElement* element = (JsonElement*)data;
-    JSON_LOG("[json_element_deallocator] Info: Deallocating JSON element of type %d in json_element_deallocator.", element->type);
+    JSON_LOG("[jsonp_element_deallocator] Info: Deallocating JSON element of type %d in jsonp_element_deallocator.", element->type);
     json_deallocate(element);
 }
 
@@ -849,35 +906,44 @@ static JsonElement* parse_object(JsonParserState* state) {
  * @param value The string to be serialized.
  * @param str Pointer to the String structure where the serialized output is appended.
  */
-static void serialize_string(const char* value, String* str) {
-    string_append(str, "\"");
+static void serialize_string(const char* value, JsonSB* sb) {
+    jsonsb_putc(sb, '"');
     if (value) {
-        // Escape JSON-significant characters so round-trip parse/serialize
-        // works for strings containing ", \, or control characters.
-        for (const unsigned char* p = (const unsigned char*)value; *p; ++p) {
-            unsigned char c = *p;
+        // the whole value becomes a single append.
+        const char* run = value;
+        const char* p   = value;
+        for (; *p; ++p) {
+            unsigned char c = (unsigned char)*p;
+            const char* esc = NULL;
+            char ubuf[8];
             switch (c) {
-                case '"':  string_append(str, "\\\""); break;
-                case '\\': string_append(str, "\\\\"); break;
-                case '\b': string_append(str, "\\b");  break;
-                case '\f': string_append(str, "\\f");  break;
-                case '\n': string_append(str, "\\n");  break;
-                case '\r': string_append(str, "\\r");  break;
-                case '\t': string_append(str, "\\t");  break;
+                case '"':  esc = "\\\""; break;
+                case '\\': esc = "\\\\"; break;
+                case '\b': esc = "\\b";  break;
+                case '\f': esc = "\\f";  break;
+                case '\n': esc = "\\n";  break;
+                case '\r': esc = "\\r";  break;
+                case '\t': esc = "\\t";  break;
                 default:
                     if (c < 0x20) {
-                        char buf[8];
-                        snprintf(buf, sizeof(buf), "\\u%04x", c);
-                        string_append(str, buf);
-                    } else {
-                        char one[2] = { (char)c, '\0' };
-                        string_append(str, one);
+                        snprintf(ubuf, sizeof(ubuf), "\\u%04x", c);
+                        esc = ubuf;
                     }
                     break;
             }
+            if (esc) {
+                if (p > run) {
+                    jsonsb_append(sb, run, (size_t)(p - run));
+                }
+                jsonsb_puts(sb, esc);
+                run = p + 1;
+            }
+        }
+        if (p > run) {
+            jsonsb_append(sb, run, (size_t)(p - run));
         }
     }
-    string_append(str, "\"");
+    jsonsb_putc(sb, '"');
 }
 
 /**
@@ -889,15 +955,16 @@ static void serialize_string(const char* value, String* str) {
  * @param element Pointer to the JsonElement representing the array to be serialized.
  * @param str Pointer to the String structure where the serialized output is appended.
  */
-static void serialize_array(const JsonElement* element, String* str) {
-    string_append(str, "[");
-    for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
-        json_serialize_internal(*(JsonElement**)vector_at(element->value.array_val, i), str);
-        if (i < vector_size(element->value.array_val) - 1) {
-            string_append(str, ", ");
+static void serialize_array(const JsonElement* element, JsonSB* sb) {
+    jsonsb_putc(sb, '[');
+    size_t n = vector_size(element->value.array_val);
+    for (size_t i = 0; i < n; ++i) {
+        jsonp_serialize_internal(*(JsonElement**)vector_at(element->value.array_val, i), sb);
+        if (i + 1 < n) {
+            jsonsb_append(sb, ", ", 2);
         }
     }
-    string_append(str, "]");
+    jsonsb_putc(sb, ']');
 }
 
 /**
@@ -909,24 +976,24 @@ static void serialize_array(const JsonElement* element, String* str) {
  * @param element Pointer to the JsonElement representing the object to be serialized.
  * @param str Pointer to the String structure where the serialized output is appended.
  */
-static void serialize_object(const JsonElement* element, String* str) {
-    string_append(str, "{");
+static void serialize_object(const JsonElement* element, JsonSB* sb) {
+    jsonsb_putc(sb, '{');
     MapIterator it = map_begin(element->value.object_val);
     MapIterator end = map_end(element->value.object_val);
     bool first = true;
 
     while (it.node != end.node) {
         if (!first) {
-            string_append(str, ", ");
+            jsonsb_append(sb, ", ", 2);
         }
-        serialize_string((char*)it.node->key, str);
-        string_append(str, ": ");
-        json_serialize_internal((JsonElement*)it.node->value, str);
+        serialize_string((char*)it.node->key, sb);
+        jsonsb_append(sb, ": ", 2);
+        jsonp_serialize_internal((JsonElement*)it.node->value, sb);
         first = false;
         map_iterator_increment(&it);
     }
 
-    string_append(str, "}");
+    jsonsb_putc(sb, '}');
 }
 
 /**
@@ -938,48 +1005,46 @@ static void serialize_object(const JsonElement* element, String* str) {
  * @param element Pointer to the JsonElement to be serialized.
  * @param str Pointer to the String structure where the serialized JSON will be appended.
  */
-static void json_serialize_internal(const JsonElement* element, String* str) {
+static void jsonp_serialize_internal(const JsonElement* element, JsonSB* sb) {
     if (!element) {
-        string_append(str, "null");
+        jsonsb_puts(sb, "null");
         return;
     }
 
     switch (element->type) {
         case JSON_OBJECT:
-            serialize_object(element, str);
+            serialize_object(element, sb);
             break;
         case JSON_ARRAY:
-            serialize_array(element, str);
+            serialize_array(element, sb);
             break;
         case JSON_STRING:
-            serialize_string(element->value.string_val, str);
+            serialize_string(element->value.string_val, sb);
             break;
         case JSON_NUMBER:
             {
                 char buffer[64];
                 double v = element->value.number_val;
-                /* If v is an integer within int64 range, emit it as a
-                   plain integer so large values (e.g. Unix timestamps)
-                   don't get rounded by `%g`'s 6-significant-digit
-                   default. Otherwise use %.17g, the C-standard
-                   round-trip-safe precision for doubles. */
+                int len;
                 if (v >= -9.2233720368547758e18 && v <= 9.2233720368547758e18 &&
                     v == (double)(long long)v) {
-                    snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
+                    len = snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
                 } else {
-                    snprintf(buffer, sizeof(buffer), "%.17g", v);
+                    len = snprintf(buffer, sizeof(buffer), "%.17g", v);
                 }
-                string_append(str, buffer);
+                if (len > 0) {
+                    jsonsb_append(sb, buffer, (size_t)len);
+                }
             }
             break;
         case JSON_BOOL:
-            string_append(str, element->value.bool_val ? "true" : "false");
+            jsonsb_puts(sb, element->value.bool_val ? "true" : "false");
             break;
         case JSON_NULL:
-            string_append(str, "null");
+            jsonsb_puts(sb, "null");
             break;
         default:
-            string_append(str, "unknown");
+            jsonsb_puts(sb, "unknown");
     }
 }
 
@@ -991,10 +1056,12 @@ static void json_serialize_internal(const JsonElement* element, String* str) {
  * @param str Pointer to the String structure where the indentation will be appended.
  * @param indent Number of spaces to append for indentation.
  */
-static void append_indent(String* str, int indent) {
-    for (int i = 0; i < indent; ++i) {
-        string_append(str, " ");
+static void append_indent(JsonSB* sb, int indent) {
+    if (indent <= 0 || !jsonsb_ensure(sb, (size_t)indent)) {
+        return;
     }
+    memset(sb->data + sb->len, ' ', (size_t)indent);
+    sb->len += (size_t)indent;
 }
 
 /**
@@ -1005,10 +1072,12 @@ static void append_indent(String* str, int indent) {
  * @param value The string to be formatted.
  * @param str Pointer to the String structure where the formatted string will be appended.
  */
-static void format_string(const char* value, String* str) {
-    string_append(str, "\"");
-    string_append(str, value);
-    string_append(str, "\"");
+static void format_string(const char* value, JsonSB* sb) {
+    jsonsb_putc(sb, '"');
+    if (value) {
+        jsonsb_puts(sb, value);
+    }
+    jsonsb_putc(sb, '"');
 }
 
 /**
@@ -1021,18 +1090,21 @@ static void format_string(const char* value, String* str) {
  * @param str Pointer to the String structure where the formatted JSON will be appended.
  * @param indent Current indentation level for pretty-printing.
  */
-static void format_array(const JsonElement* element, String* str, int indent) {
-    string_append(str, "[\n");
-    for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
-        append_indent(str, indent + 2);
-        json_format_internal(*(JsonElement**)vector_at(element->value.array_val, i), str, indent + 2);
-        if (i < vector_size(element->value.array_val) - 1) {
-            string_append(str, ",");
+static void format_array(const JsonElement* element, JsonSB* sb, int indent) {
+    jsonsb_append(sb, "[\n", 2);
+    size_t n = vector_size(element->value.array_val);
+
+    for (size_t i = 0; i < n; ++i) {
+        append_indent(sb, indent + 2);
+        jsonp_format_internal(*(JsonElement**)vector_at(element->value.array_val, i), sb, indent + 2);
+        if (i + 1 < n) {
+            jsonsb_putc(sb, ',');
         }
-        string_append(str, "\n");
+        jsonsb_putc(sb, '\n');
     }
-    append_indent(str, indent);
-    string_append(str, "]");
+
+    append_indent(sb, indent);
+    jsonsb_putc(sb, ']');
 }
 
 /**
@@ -1045,29 +1117,30 @@ static void format_array(const JsonElement* element, String* str, int indent) {
  * @param str Pointer to the String structure where the formatted JSON will be appended.
  * @param indent Current indentation level for pretty-printing.
  */
-static void format_object(const JsonElement* element, String* str, int indent) {
-    string_append(str, "{\n");
+static void format_object(const JsonElement* element, JsonSB* sb, int indent) {
+    jsonsb_append(sb, "{\n", 2);
     MapIterator it = map_begin(element->value.object_val);
     MapIterator end = map_end(element->value.object_val);
     bool first = true;
 
     while (it.node != end.node) {
         if (!first) {
-            string_append(str, ",\n");
+            jsonsb_append(sb, ",\n", 2);
         }
-        append_indent(str, indent + 2);
-        format_string((char*)it.node->key, str);
-        string_append(str, ": ");
-        json_format_internal((JsonElement*)it.node->value, str, indent + 2);
+
+        append_indent(sb, indent + 2);
+        format_string((char*)it.node->key, sb);
+        jsonsb_append(sb, ": ", 2);
+        jsonp_format_internal((JsonElement*)it.node->value, sb, indent + 2);
         first = false;
         map_iterator_increment(&it);
     }
     if (!first) {
-        string_append(str, "\n");
+        jsonsb_putc(sb, '\n');
     }
 
-    append_indent(str, indent);
-    string_append(str, "}");
+    append_indent(sb, indent);
+    jsonsb_putc(sb, '}');
 }
 
 /**
@@ -1081,46 +1154,49 @@ static void format_object(const JsonElement* element, String* str, int indent) {
  * @param str Pointer to the String structure where the formatted JSON will be appended.
  * @param indent Current indentation level for pretty-printing.
  */
-static void json_format_internal(const JsonElement* element, String* str, int indent) {
+static void jsonp_format_internal(const JsonElement* element, JsonSB* sb, int indent) {
     if (!element) {
-        string_append(str, "null");
+        jsonsb_puts(sb, "null");
         return;
     }
 
     switch (element->type) {
         case JSON_OBJECT:
-            format_object(element, str, indent);
+            format_object(element, sb, indent);
             break;
         case JSON_ARRAY:
-            format_array(element, str, indent);
+            format_array(element, sb, indent);
             break;
         case JSON_STRING:
-            format_string(element->value.string_val, str);
+            format_string(element->value.string_val, sb);
             break;
         case JSON_NUMBER:
             {
                 char buffer[64];
                 double v = element->value.number_val;
+                int len;
                 if (v >= -9.2233720368547758e18 && v <= 9.2233720368547758e18 &&
                     v == (double)(long long)v) {
-                    snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
+                    len = snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
                 } else {
-                    snprintf(buffer, sizeof(buffer), "%.17g", v);
+                    len = snprintf(buffer, sizeof(buffer), "%.17g", v);
                 }
-                string_append(str, buffer);
+                if (len > 0) {
+                    jsonsb_append(sb, buffer, (size_t)len);
+                }
             }
             break;
         case JSON_BOOL:
-            string_append(str, element->value.bool_val ? "true" : "false");
+            jsonsb_puts(sb, element->value.bool_val ? "true" : "false");
             break;
         case JSON_NULL:
-            string_append(str, "null");
+            jsonsb_puts(sb, "null");
             break;
         default:
             snprintf(last_error.message, sizeof(last_error.message), "Unknown JSON type");
             last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
-            JSON_LOG("[json_format_internal] %s", last_error.message);
-            string_append(str, "unknown");
+            JSON_LOG("[jsonp_format_internal] %s", last_error.message);
+            jsonsb_puts(sb, "unknown");
     }
 }
 
@@ -1184,7 +1260,7 @@ JsonElement* json_create(JsonType type) {
             }
             break;
         case JSON_OBJECT:
-            element->value.object_val = map_create(compare_strings_json, string_deallocator_json, json_element_deallocator);
+            element->value.object_val = map_create(compare_strings_json, string_deallocator_json, jsonp_element_deallocator);
             if (!element->value.object_val) {
                 JSON_LOG("[json_create] Error: Memory allocation failed for JSON object in json_create.");
                 snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for JSON object in json_create.");
@@ -1366,7 +1442,7 @@ void json_print(const JsonElement* element) {
     }
 
     JSON_LOG("[json_print] Info: Printing JSON element in json_print.");
-    json_print_internal(element, 2);
+    jsonp_print_internal(element, 2);
     printf("\n");
 }
 
@@ -1661,29 +1737,21 @@ char* json_serialize(const JsonElement* element) {
         return NULL;
     }
 
-    String* str = string_create("");
-    if (!str) {
-        JSON_LOG("[json_serialize] Error: Memory allocation failed for string creation in json_serialize.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string creation in json_serialize.");
+    /* Build straight into a single realloc-grown buffer and return it as-is
+     * (no String pool, no extra strdup copy): O(n) time, ~1x memory. */
+    JsonSB sb = {NULL, 0, 0, false};
+    jsonp_serialize_internal(element, &sb);
+
+    if (sb.oom || !jsonsb_ensure(&sb, 0)) {
+        JSON_LOG("[json_serialize] Error: Memory allocation failed while serializing.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed while serializing in json_serialize.");
         last_error.code = JSON_ERROR_MEMORY;
+        free(sb.data);
         return NULL;
     }
 
-    json_serialize_internal(element, str);
-
-    const char* temp = string_c_str(str);
-    char* serialized = string_strdup(temp); // Create a modifiable copy
-
-    if (!serialized) {
-        JSON_LOG("[json_serialize] Error: Memory allocation failed for string duplication in json_serialize.");
-        snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string duplication in json_serialize.");
-        last_error.code = JSON_ERROR_MEMORY;
-        string_deallocate(str);
-        return NULL;
-    }
-
-    string_deallocate(str); 
-    return serialized; 
+    sb.data[sb.len] = '\0';   /* jsonsb_ensure guaranteed room for the terminator */
+    return sb.data;           
 }
 
 /**
@@ -1929,13 +1997,13 @@ JsonElement* json_find(const JsonElement *element, JsonPredicate predicate, void
 
     switch (element->type) {
         case JSON_OBJECT:
-            if (json_find_in_object(element, predicate, user_data, &found_element)) {
+            if (jsonp_find_in_object(element, predicate, user_data, &found_element)) {
                 JSON_LOG("[json_find] Found matching element in JSON object.");
                 return found_element;
             }
             break;
         case JSON_ARRAY:
-            if (json_find_in_array(element, predicate, user_data, &found_element)) {
+            if (jsonp_find_in_array(element, predicate, user_data, &found_element)) {
                 JSON_LOG("[json_find] Found matching element in JSON array.");
                 return found_element;
             }
@@ -2562,27 +2630,22 @@ char* json_format(const JsonElement *element) {
         return NULL;
     }
 
-    // Create a string to store the formatted output
-    String* str = string_create("");
-    json_format_internal(element, str, 0);
+    // Build straight into a single realloc-grown buffer; return it directly.
+    JsonSB sb = {NULL, 0, 0, false};
+    jsonp_format_internal(element, &sb, 0);
 
-    const char* temp = string_c_str(str);
-    char* formatted = string_strdup(temp); // Create a modifiable copy of the formatted string
-
-    if (!formatted) {
+    if (sb.oom || !jsonsb_ensure(&sb, 0)) {
         JSON_LOG("[json_format] Error: Memory allocation failed for formatted string.");
         snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for formatted string in json_format.");
         last_error.code = JSON_ERROR_MEMORY;
-        string_deallocate(str);
+        free(sb.data);
         return NULL;
     }
 
+    sb.data[sb.len] = '\0';
     JSON_LOG("[json_format] Successfully formatted JSON element.");
     last_error.code = JSON_ERROR_NONE;
-    
-    // Clean up and return the formatted string
-    string_deallocate(str); // Deallocate the String object
-    return formatted;
+    return sb.data;
 }
 
 /**
@@ -2820,9 +2883,6 @@ bool json_add_to_object(JsonElement* object, const char* key, JsonElement* value
     JSON_LOG("[json_add_to_object] Checking if key: %s already exists in the object.", key);
     JsonElement* existingValue = (JsonElement*)map_at(object->value.object_val, duplicatedKey);
     if (existingValue) {
-        // Key already exists: do NOT free the old value here. map_insert() below
-        // replaces it and frees the previous value through the map's value-deallocator
-        // (json_element_deallocator). Freeing it here as well would double-free it.
         JSON_LOG("[json_add_to_object] Key: %s already exists, its value will be replaced.", key);
         snprintf(last_error.message, sizeof(last_error.message), "Warning: Key already exists and its value will be replaced.");
         last_error.code = JSON_ERROR_NONE; // It's not technically an error, so no error code change.
@@ -2932,4 +2992,163 @@ JsonElement* json_query(const JsonElement *element, const char *query) {
 
     JSON_LOG("[json_query] Query completed. Returning element: %p", (void*)currentElement);
     return currentElement;
+}
+
+
+/* =================================================================== */
+/* Typed convenience layer: leaf constructors + typed getters          */
+/*                                                                     */
+/* Without these, building a leaf value takes three steps (json_create */
+/* + manual union assignment + string_strdup) and reading one takes a  */
+/* json_get_element + NULL check + type check + union access. These    */
+/* wrappers collapse both into a single call, the way mainstream JSON  */
+/* libraries do.                                                       */
+/* =================================================================== */
+
+/**
+ * @brief Create a JSON null value.
+ *
+ * @return A new `JSON_NULL` element (free with `json_deallocate`), or NULL on
+ *         allocation failure.
+ */
+JsonElement* json_create_null(void) {
+    return json_create(JSON_NULL);
+}
+
+/**
+ * @brief Create a JSON boolean value in one call.
+ *
+ * @param value The boolean to store.
+ * @return A new `JSON_BOOL` element (free with `json_deallocate`), or NULL on
+ *         allocation failure.
+ */
+JsonElement* json_create_bool(bool value) {
+    JsonElement* e = json_create(JSON_BOOL);
+    if (e) {
+        e->value.bool_val = value;
+    }
+    return e;
+}
+
+/**
+ * @brief Create a JSON number value in one call.
+ *
+ * JSON numbers are stored as `double`; pass an integer and it is widened.
+ *
+ * @param value The numeric value to store.
+ * @return A new `JSON_NUMBER` element (free with `json_deallocate`), or NULL on
+ *         allocation failure.
+ */
+JsonElement* json_create_number(double value) {
+    JsonElement* e = json_create(JSON_NUMBER);
+    if (e) {
+        e->value.number_val = value;
+    }
+    return e;
+}
+
+/**
+ * @brief Create a JSON string value in one call.
+ *
+ * The string is deep-copied, so the caller may free or reuse @p value
+ * immediately. A NULL @p value is stored as the empty string `""`.
+ *
+ * @param value The text to store (deep-copied). May be NULL.
+ * @return A new `JSON_STRING` element (free with `json_deallocate`), or NULL on
+ *         allocation failure.
+ */
+JsonElement* json_create_string(const char* value) {
+    JsonElement* e = json_create(JSON_STRING);
+    if (!e) {
+        return NULL;
+    }
+    e->value.string_val = string_strdup(value ? value : "");
+    if (!e->value.string_val) {
+        JSON_LOG("[json_create_string] Error: string copy failed.");
+        json_deallocate(e);
+        return NULL;
+    }
+    return e;
+}
+
+
+/* Resolve the value to read: the element itself when @p key_or_index is NULL,
+ * otherwise the child at that object key / array index. Returns NULL if the
+ * element is NULL or the key/index does not resolve. */
+static const JsonElement* jsonp_resolve(const JsonElement* element, const char* key_or_index) {
+    if (!element) {
+        return NULL;
+    }
+    if (!key_or_index) {
+        return element;
+    }
+    return json_get_element(element, key_or_index);
+}
+
+
+/**
+ * @brief Read an integer from a JSON element with a fallback default.
+ *
+ * Resolves @p key_or_index (a key in an object, a numeric index in an array,
+ * or — when NULL — @p element itself) and, if it is a JSON number, returns it
+ * truncated to `int`. Returns @p default_value if the element is missing, is
+ * not a number, or any argument is NULL. The conversion is strict: a JSON
+ * string or boolean does NOT coerce (use `json_convert` for that).
+ *
+ * @param element       Container (or value) to read from. May be NULL.
+ * @param key_or_index  Object key / array index, or NULL for @p element itself.
+ * @param default_value Value returned when the lookup fails or the type differs.
+ * @return The integer value, or @p default_value.
+ */
+int json_get_int(const JsonElement* element, const char* key_or_index, int default_value) {
+    const JsonElement* e = jsonp_resolve(element, key_or_index);
+    return (e && e->type == JSON_NUMBER) ? (int)e->value.number_val : default_value;
+}
+
+/**
+ * @brief Read a double from a JSON element with a fallback default.
+ *
+ * Same lookup rules as `json_get_int`, but returns the full-precision `double`.
+ *
+ * @param element       Container (or value) to read from. May be NULL.
+ * @param key_or_index  Object key / array index, or NULL for @p element itself.
+ * @param default_value Value returned when the lookup fails or the type differs.
+ * @return The numeric value, or @p default_value.
+ */
+double json_get_double(const JsonElement* element, const char* key_or_index, double default_value) {
+    const JsonElement* e = jsonp_resolve(element, key_or_index);
+    return (e && e->type == JSON_NUMBER) ? e->value.number_val : default_value;
+}
+
+/**
+ * @brief Read a boolean from a JSON element with a fallback default.
+ *
+ * Same lookup rules as `json_get_int`. Returns @p default_value unless the
+ * resolved element is a JSON boolean.
+ *
+ * @param element       Container (or value) to read from. May be NULL.
+ * @param key_or_index  Object key / array index, or NULL for @p element itself.
+ * @param default_value Value returned when the lookup fails or the type differs.
+ * @return The boolean value, or @p default_value.
+ */
+bool json_get_bool(const JsonElement* element, const char* key_or_index, bool default_value) {
+    const JsonElement* e = jsonp_resolve(element, key_or_index);
+    return (e && e->type == JSON_BOOL) ? e->value.bool_val : default_value;
+}
+
+/**
+ * @brief Read a string from a JSON element with a fallback default.
+ *
+ * Same lookup rules as `json_get_int`. Returns a BORROWED pointer to the
+ * element's stored string (owned by the JSON tree — do not free it), or
+ * @p default_value if the element is missing or is not a JSON string.
+ *
+ * @param element       Container (or value) to read from. May be NULL.
+ * @param key_or_index  Object key / array index, or NULL for @p element itself.
+ * @param default_value Pointer returned when the lookup fails or the type differs.
+ * @return Borrowed string pointer, or @p default_value.
+ */
+const char* json_get_string(const JsonElement* element, const char* key_or_index, const char* default_value) {
+    const JsonElement* e = jsonp_resolve(element, key_or_index);
+    return (e && e->type == JSON_STRING && e->value.string_val) ? e->value.string_val : default_value;
 }

@@ -579,6 +579,117 @@ bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer) {
 
 
 /**
+ * @brief Atomically write `size` bytes to `path` (crash-safe replace).
+ *
+ * Writes the data to a temporary file in the SAME directory, flushes it to
+ * stable storage, then atomically renames it over `path`. If the process or
+ * machine crashes mid-write, `path` is left untouched — a reader always sees
+ * either the complete old content or the complete new content, never a
+ * half-written file. This is the standard production pattern for config / state
+ * files. Cross-platform: POSIX `rename()` / Windows `MoveFileExW` with
+ * `MOVEFILE_REPLACE_EXISTING`. Unlike the rest of the API this is a one-shot,
+ * path-based call (atomicity requires owning the whole open→write→rename
+ * sequence), so there is no `FileWriter` handle to manage.
+ *
+ * @param path Destination path to (over)write. Must not be NULL.
+ * @param data Bytes to write (may be NULL only if `size == 0`).
+ * @param size Number of bytes to write.
+ * @return true on success; false on any error (the temporary file is removed).
+ */
+bool file_writer_write_all_atomic(const char* path, const void* data, size_t size) {
+    if (!path || (!data && size > 0)) {
+        FILE_WRITER_LOG("[file_writer_write_all_atomic] Error: invalid argument.");
+        return false;
+    }
+
+    /* Temp file in the SAME directory so the rename stays on one filesystem
+       (cross-device renames are not atomic). Tag with the PID to avoid
+       collisions between concurrent writers. */
+#if defined(_WIN32) || defined(_WIN64)
+    long pid = (long)GetCurrentProcessId();
+#else
+    long pid = (long)getpid();
+#endif
+    size_t tmp_len = strlen(path) + 32;
+    char* tmp = (char*)malloc(tmp_len);
+    if (!tmp) {
+        return false;
+    }
+    snprintf(tmp, tmp_len, "%s.tmp.%ld", path, pid);
+
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wtmp = encoding_utf8_to_wchar(tmp);
+    if (!wtmp) { free(tmp); return false; }
+    FILE* f = _wfopen(wtmp, L"wb");
+#else
+    FILE* f = fopen(tmp, "wb");
+#endif
+    if (!f) {
+        FILE_WRITER_LOG("[file_writer_write_all_atomic] Error: cannot open temp file '%s'.", tmp);
+#if defined(_WIN32) || defined(_WIN64)
+        free(wtmp);
+#endif
+        free(tmp);
+        return false;
+    }
+
+    bool ok = (size == 0) || (fwrite(data, 1, size, f) == size);
+    if (ok) {
+        fflush(f);
+#if defined(_WIN32) || defined(_WIN64)
+        HANDLE h = (HANDLE)_get_osfhandle(_fileno(f));
+        if (h != INVALID_HANDLE_VALUE) {
+            FlushFileBuffers(h);
+        }
+#else
+        int fd = fileno(f);
+        if (fd >= 0) {
+            fsync(fd);
+        }
+#endif
+    }
+    fclose(f);
+
+    if (!ok) {
+        FILE_WRITER_LOG("[file_writer_write_all_atomic] Error: write to temp file failed.");
+#if defined(_WIN32) || defined(_WIN64)
+        _wremove(wtmp);
+        free(wtmp);
+#else
+        remove(tmp);
+#endif
+        free(tmp);
+        return false;
+    }
+
+    /* Atomic replace of the destination. */
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wpath = encoding_utf8_to_wchar(path);
+    bool renamed = (wpath != NULL) &&
+                   MoveFileExW(wtmp, wpath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+    free(wpath);
+    if (!renamed) {
+        _wremove(wtmp);
+    }
+    free(wtmp);
+#else
+    bool renamed = (rename(tmp, path) == 0);
+    if (!renamed) {
+        remove(tmp);
+    }
+#endif
+    free(tmp);
+
+    if (!renamed) {
+        FILE_WRITER_LOG("[file_writer_write_all_atomic] Error: atomic rename failed.");
+        return false;
+    }
+    FILE_WRITER_LOG("[file_writer_write_all_atomic] Wrote %zu byte(s) atomically to '%s'.", size, path);
+    return true;
+}
+
+
+/**
  * @brief Retrieves the absolute path of the file associated with the `FileWriter` object.
  *
  * This function returns the absolute file path that the `FileWriter` is currently operating on.

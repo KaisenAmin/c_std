@@ -49,6 +49,7 @@ typedef struct {
 
 BigInt*       bigint_create                    (void);
 BigInt*       bigint_from_string               (const char* str);
+BigInt*       bigint_from_int                  (long value);
 BigInt*       bigint_copy                      (const BigInt* src);
 BigInt*       bigint_random                    (unsigned long bits);
 
@@ -98,6 +99,8 @@ BigInt*       bigint_sqrt_exact                (const BigInt* a);
 BigInt*       bigint_and                       (const BigInt* a, const BigInt* b);
 BigInt*       bigint_or                        (const BigInt* a, const BigInt* b);
 BigInt*       bigint_xor                       (const BigInt* a, const BigInt* b);
+BigInt*       bigint_shift_left                (const BigInt* a, unsigned long bits);
+BigInt*       bigint_shift_right               (const BigInt* a, unsigned long bits);
 
 
 /* ------------------------------------------------------------------ */
@@ -106,9 +109,11 @@ BigInt*       bigint_xor                       (const BigInt* a, const BigInt* b
 
 int           bigint_compare                   (const BigInt* a, const BigInt* b);
 int           bigint_cmp_abs                   (const BigInt* a, const BigInt* b);
+int           bigint_sign                      (const BigInt* a);
 int           bigint_is_prime                  (const BigInt* a, int reps);
 bool          bigint_is_zero                   (const BigInt* bi);
 bool          bigint_is_even                   (const BigInt* a);
+bool          bigint_to_long                   (const BigInt* a, long* out);
 
 
 /* ------------------------------------------------------------------ */

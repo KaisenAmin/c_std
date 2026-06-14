@@ -9,118 +9,62 @@
 #include "vector.h"
 
 
-static MemoryPoolVector *memory_pool_create(size_t size);
-static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size);
-static void memory_pool_destroy(MemoryPoolVector *pool);
-
-
-/* When the fixed bump block is exhausted (or a single request is larger than
- * the whole block), the pool falls back to a standalone malloc and records it
- * here so every fallback is released together with the pool in
- * memory_pool_destroy. This removes the previous hard ceiling where a vector
- * silently failed to grow once the 100000-byte block filled up. */
-typedef struct PoolSpillNode {
-    void*                 block;
-    struct PoolSpillNode* next;
-} PoolSpillNode;
-
-
-static MemoryPoolVector *memory_pool_create(size_t size) {
-    VECTOR_LOG("[memory_pool_create]: Entering with pool size: %zu", size);
-    
-    if (size == 0) {
-        VECTOR_LOG("[memory_pool_create]: Error: Memory pool size cannot be zero.");
-        return NULL;
+static bool vecbuf_realloc_to(Vector *vec, size_t newCapacity) {
+    if (newCapacity == 0) {
+        VECTOR_LOG("[vecbuf_realloc_to]: Releasing backing buffer (capacity 0).");
+        free(vec->items);
+        vec->items = NULL;
+        vec->capacitySize = 0;
+        return true;
+    }
+    if (newCapacity > ((size_t)-1) / vec->itemSize) {
+        VECTOR_LOG("[vecbuf_realloc_to]: Error: capacity %zu * itemSize %zu overflows size_t.", newCapacity, vec->itemSize);
+        return false;
     }
 
-    MemoryPoolVector *pool = (MemoryPoolVector*) malloc(sizeof(MemoryPoolVector));
-    if (!pool) {
-        VECTOR_LOG("[memory_pool_create]: Error: Failed to allocate memory for MemoryPoolVector structure.");
-        return NULL;
+    void *newItems = realloc(vec->items, newCapacity * vec->itemSize);
+    if (!newItems) {
+        VECTOR_LOG("[vecbuf_realloc_to]: Error: realloc to %zu elements failed.", newCapacity);
+        return false;
     }
 
-    pool->pool = malloc(size);
-    if (!pool->pool) {
-        VECTOR_LOG("[memory_pool_create]: Error: Failed to allocate memory for memory pool of size %zu.", size);
-        free(pool);
-        return NULL;
-    }
-
-    pool->poolSize = size;
-    pool->used = 0;
-    pool->spill = NULL;
-
-    VECTOR_LOG("[memory_pool_create]: Successfully created memory pool at %p with size %zu.", (void*)pool, pool->poolSize);
-    return pool;
+    vec->items = newItems;
+    vec->capacitySize = newCapacity;
+    VECTOR_LOG("[vecbuf_realloc_to]: Buffer now holds %zu elements (%zu bytes).", newCapacity, newCapacity * vec->itemSize);
+    return true;
 }
 
 
-static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
-    VECTOR_LOG("[memory_pool_allocate]: Entering with pool: %p, size: %zu", (void*)pool, size);
-    
-    if (!pool) {
-        VECTOR_LOG("[memory_pool_allocate]: Error: Memory pool is not initialized.");
-        return NULL;
-    }
-    if (size == 0) {
-        VECTOR_LOG("[memory_pool_allocate]: Error: Cannot allocate zero size.");
-        return NULL;
-    }
-    if (size > pool->poolSize - pool->used) {
-        void *block = malloc(size);
-        if (!block) {
-            VECTOR_LOG("[memory_pool_allocate]: Error: malloc fallback failed for %zu bytes.", size);
-            return NULL;
-        }
-        PoolSpillNode *node = (PoolSpillNode*)malloc(sizeof(PoolSpillNode));
-        if (!node) {
-            free(block);
-            VECTOR_LOG("[memory_pool_allocate]: Error: malloc fallback bookkeeping node failed.");
-            return NULL;
-        }
-        node->block = block;
-        node->next = (PoolSpillNode*)pool->spill;
-        pool->spill = node;
-        
-        VECTOR_LOG("[memory_pool_allocate]: Bump block full; spilled %zu bytes to malloc.", size);
-        return block;
-    }
+/* Doubling growth policy, overflow-safe. Returns the next capacity that is at
+ * least `minNeeded`; falls back to 8 from empty and clamps to the largest
+ * addressable element count if doubling would wrap size_t. */
+static size_t vecbuf_next_capacity(const Vector *vec, size_t minNeeded) {
+    size_t cap  = vec->capacitySize;
+    size_t next = cap ? cap * 2 : 8;
 
-    void *mem = (char *)pool->pool + pool->used;
-    pool->used += size;
-
-    VECTOR_LOG("[memory_pool_allocate]: Successfully allocated %zu bytes. New pool used size: %zu.", size, pool->used);
-    return mem;
+    if (cap && next / 2 != cap) {            /* size_t wrap on cap * 2 */
+        next = ((size_t)-1) / vec->itemSize;
+    }
+    if (next < minNeeded) {
+        next = minNeeded;
+    }
+    return next;
 }
 
 
-static void memory_pool_destroy(MemoryPoolVector *pool) {
-    VECTOR_LOG("[memory_pool_destroy]: Entering with pool: %p", (void*)pool);
-    
-    if (!pool) {
-        VECTOR_LOG("[memory_pool_destroy]: Error: Attempted to destroy a non-initialized memory pool.");
-        return;
+static bool vecbuf_ensure_one_more(Vector *vec) {
+    if (vec->size < vec->capacitySize) {
+        return true;
     }
-    
-    PoolSpillNode *s = (PoolSpillNode*)pool->spill;
-    while (s) {
-        PoolSpillNode *next = s->next;
-        free(s->block);
-        free(s);
-        s = next;
-    }
-    free(pool->pool); 
-    free(pool); 
-    
-    VECTOR_LOG("[memory_pool_destroy]: Successfully destroyed the memory pool.");
+    return vecbuf_realloc_to(vec, vecbuf_next_capacity(vec, vec->size + 1));
 }
 
 
 /**
- * @brief This function allocates memory for a new vector, initializes its internal structure, and 
- * sets its initial capacity. The vector is created with a specified item size, which 
- * determines the size of the elements it can store. A memory pool is also created for 
- * efficient allocation of vector items.
+ * @brief This function allocates memory for a new vector, initializes its internal structure, and
+ * sets its initial capacity. The vector is created with a specified item size, which
+ * determines the size of the elements it can store. Elements live in a single contiguous
+ * block that is grown on demand with realloc (the std::vector storage model).
  * 
  * @param itemSize The size of the elements that the vector will store. This size must be 
  * provided when creating the vector.
@@ -132,8 +76,9 @@ static void memory_pool_destroy(MemoryPoolVector *pool) {
  * @warning Ensure that the item size is correctly specified. Incorrect item size may lead 
  * to undefined behavior when storing and accessing elements.
  * 
- * @note The initial capacity of the vector is set to 32 elements, and the memory pool is 
- * created with a size of 100,000 bytes.
+ * @note The initial capacity of the vector is set to 32 elements. Storage is a single
+ * contiguous block grown by realloc (doubling), just like std::vector; there is no
+ * separate arena, so an empty vector now costs one small allocation instead of 100 KB.
  */
 Vector* vector_create(size_t itemSize) {
     VECTOR_LOG("[vector_create]: Entering with itemSize: %zu", itemSize);
@@ -149,22 +94,14 @@ Vector* vector_create(size_t itemSize) {
         return NULL;
     }
 
-    vec->size = 0;
-    vec->capacitySize = 32; // Initial capacity
-    vec->itemSize = itemSize;
+    vec->items        = NULL;
+    vec->size         = 0;
+    vec->capacitySize = 0;
+    vec->itemSize     = itemSize;
 
-    size_t initialPoolSize = 100000;
-    vec->pool = memory_pool_create(initialPoolSize);
-    if (!vec->pool) {
-        VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector pool.");
-        free(vec);
-        return NULL;
-    }
-
-    vec->items = memory_pool_allocate(vec->pool, vec->capacitySize * itemSize);
-    if (!vec->items) {
+    /* Preserve the documented initial capacity of 32 elements. */
+    if (!vecbuf_realloc_to(vec, 32)) {
         VECTOR_LOG("[vector_create]: Error: Cannot allocate memory for Vector items.");
-        memory_pool_destroy(vec->pool);
         free(vec);
         return NULL;
     }
@@ -491,30 +428,19 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
         return;
     }
 
-    if (vec->size == vec->capacitySize) {
+    if (vec->size >= vec->capacitySize) {
         VECTOR_LOG("[vector_insert]: Resizing vector to accommodate new element.");
-
-        size_t newCapacity = vec->capacitySize ? vec->capacitySize * 2 : 8;
-        void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
-
-        if (!newItems) {
+        if (!vecbuf_ensure_one_more(vec)) {
             VECTOR_LOG("[vector_insert]: Error: Failed to allocate memory for resizing.");
             return;
         }
-
-        memcpy(newItems, vec->items, pos * vec->itemSize); // Copy elements before insertion position
-        memcpy((char *)newItems + (pos + 1) * vec->itemSize, (char *)vec->items + pos * vec->itemSize, (vec->size - pos) * vec->itemSize); // Copy elements after insertion position
-
-        vec->items = newItems;
-        vec->capacitySize = newCapacity;
-        VECTOR_LOG("[vector_insert]: Resized vector to new capacity: %zu", newCapacity);
-    } 
-    else {
-        char *base = (char *)vec->items;
-        memmove(base + (pos + 1) * vec->itemSize, base + pos * vec->itemSize, (vec->size - pos) * vec->itemSize);
     }
 
-    memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
+    /* realloc preserved elements [0, size) in place; open a one-slot gap at
+     * `pos` by shifting the tail right, then drop the new element in. */
+    char *base = (char *)vec->items;
+    memmove(base + (pos + 1) * vec->itemSize, base + pos * vec->itemSize, (vec->size - pos) * vec->itemSize);
+    vecbuf_store(base + pos * vec->itemSize, item, vec->itemSize);
     vec->size++;
     VECTOR_LOG("[vector_insert]: Inserted new element at position %zu. New size: %zu", pos, vec->size);
 }
@@ -554,21 +480,14 @@ bool vector_reserve(Vector *vec, size_t size) {
     }
 
     VECTOR_LOG("[vector_reserve]: Resizing to new capacity: %zu", size);
-    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
-    if (!newItems) {
+    /* Grow to EXACTLY the requested capacity (reserve never over-allocates and
+     * never shrinks) */
+    if (!vecbuf_realloc_to(vec, size)) {
         VECTOR_LOG("[vector_reserve]: Error: Failed to allocate memory.");
         return false;
     }
 
-    if (vec->size > 0) {
-        memcpy(newItems, vec->items, vec->size * vec->itemSize);
-        VECTOR_LOG("[vector_reserve]: Copied existing items to new memory.");
-    }
-
-    vec->items = newItems;
-    vec->capacitySize = size;
     VECTOR_LOG("[vector_reserve]: New capacity set to %zu", size);
-
     return true;
 }
 
@@ -647,22 +566,13 @@ void vector_shrink_to_fit(Vector *vec) {
         return;
     }
 
-    if (vec->size == 0) {
-        VECTOR_LOG("[vector_shrink_to_fit]: Vector is empty. Capacity set to 0.");
-        vec->capacitySize = 0;
-        return;
-    }
-
+    /* size == 0 releases the buffer entirely (items -> NULL, capacity -> 0);
+     * otherwise realloc down to exactly `size` elements. */
     VECTOR_LOG("[vector_shrink_to_fit]: Shrinking vector to fit size: %zu", vec->size);
-    void *newItems = memory_pool_allocate(vec->pool, vec->size * vec->itemSize);
-    if (!newItems) {
+    if (!vecbuf_realloc_to(vec, vec->size)) {
         VECTOR_LOG("[vector_shrink_to_fit]: Error: Failed to allocate memory for shrink.");
         return;
     }
-
-    memcpy(newItems, vec->items, vec->size * vec->itemSize);
-    vec->items = newItems;
-    vec->capacitySize = vec->size;
 
     VECTOR_LOG("[vector_shrink_to_fit]: Shrink successful. New capacity: %zu", vec->capacitySize);
 }
@@ -732,7 +642,7 @@ void vector_assign(Vector *vec, size_t pos, void *item) {
         return;
     }
 
-    memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
+    vecbuf_store((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
     VECTOR_LOG("[vector_assign]: Assigned new item at position %zu.", pos);
 }
 
@@ -774,9 +684,12 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
         VECTOR_LOG("[vector_emplace]: Error: Invalid position or item size.");
         return;
     }
-    if (vec->size == vec->capacitySize) {
+    if (vec->size >= vec->capacitySize) {
         VECTOR_LOG("[vector_emplace]: Resizing vector to new capacity.");
-        vector_reserve(vec, vec->capacitySize ? vec->capacitySize * 2 : 8);
+        if (!vecbuf_ensure_one_more(vec)) {
+            VECTOR_LOG("[vector_emplace]: Error: Failed to allocate memory for resizing.");
+            return;
+        }
     }
 
     char *base = (char *)vec->items;
@@ -784,7 +697,7 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
             base + pos * vec->itemSize, 
             (vec->size - pos) * vec->itemSize);
 
-    memcpy(base + pos * vec->itemSize, item, vec->itemSize);
+    vecbuf_store(base + pos * vec->itemSize, item, vec->itemSize);
     vec->size++;
 
     VECTOR_LOG("[vector_emplace]: Inserted new item at position %zu. New size: %zu", pos, vec->size);
@@ -820,35 +733,30 @@ bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
 
     if (!vec) {
         VECTOR_LOG("[vector_emplace_back]: Error: Vector is NULL.");
-        return false; // Indicate failure
+        return false; 
     }
     if (itemSize != vec->itemSize) {
         VECTOR_LOG("[vector_emplace_back]: Error: Invalid item size. Expected: %zu, got: %zu", vec->itemSize, itemSize);
-        return false; // Indicate failure
+        return false;
     }
-    if (vec->size >= vec->capacitySize) {
-        VECTOR_LOG("[vector_emplace_back]: Vector capacity exceeded. Resizing...");
-        /* Same 0*2=0 guard as the other growth paths. */
-        size_t nextCap = vec->capacitySize ? vec->capacitySize * 2 : 8;
-        if (!vector_reserve(vec, nextCap)) {
-            VECTOR_LOG("[vector_emplace_back]: Error: Resizing vector failed.");
-            return false; // vector_reserve failed, indicate failure
-        }
+    if (!vecbuf_ensure_one_more(vec)) {
+        VECTOR_LOG("[vector_emplace_back]: Error: Resizing vector failed.");
+        return false; 
     }
 
-    memcpy((char *)vec->items + vec->size * vec->itemSize, item, vec->itemSize);
+    vecbuf_store((char *)vec->items + vec->size * vec->itemSize, item, vec->itemSize);
     vec->size++;
 
     VECTOR_LOG("[vector_emplace_back]: Item emplaced successfully. New size: %zu", vec->size);
-    return true; // Indicate success
+    return true; 
 }
 
 
 /**
  * @brief This function adds a new element to the end of the vector by copying the given item 
  * into the vector's storage. It ensures that there is enough capacity in the vector 
- * before adding the new element. If the vector's capacity is exceeded, it attempts 
- * to allocate more space from the memory pool.
+ * before adding the new element. If the vector's capacity is exceeded, it grows the
+ * backing buffer with realloc (doubling), just like std::vector.
  * 
  * @param vec A pointer to the Vector instance to which the element should be added. 
  * The vector must have been initialized before calling this function.
@@ -864,44 +772,35 @@ bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
  * pointers from previous calls to functions like `vector_data()` or `vector_at()` may 
  * become invalid.
  */
-bool vector_push_back(Vector *vec, const void *item) {
-    VECTOR_LOG("[vector_push_back]: Entering with vector: %p, item: %p", (void*)vec, (void*)item);
+/* Out-of-line slow path for the inline vector_push_back() in vector.h. Reached
+ * only when the vector is NULL or the buffer is full (the common in-place append
+ * is handled inline at the call site). Performs the NULL check, the geometric
+ * grow, and the element copy. */
+bool vecbuf_push_back_grow(Vector *vec, const void *item) {
+    VECTOR_LOG("[vecbuf_push_back_grow]: Entering with vector: %p, item: %p", (void*)vec, (void*)item);
 
     if (!vec) {
-        VECTOR_LOG("[vector_push_back]: Error: Vector is NULL.");
-        return false; // Indicate failure
+        VECTOR_LOG("[vecbuf_push_back_grow]: Error: Vector is NULL.");
+        return false;
     }
 
-    if (vec->size >= vec->capacitySize) {
-        VECTOR_LOG("[vector_push_back]: Vector capacity exceeded. Resizing...");
-
-        size_t newCapacity = vec->capacitySize ? vec->capacitySize * 2 : 8;
-        void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
-
-        if (!newItems) {
-            VECTOR_LOG("[vector_push_back]: Error: Memory allocation failed for new capacity: %zu", newCapacity);
-            return false; // Indicate failure
-        }
-
-        memcpy(newItems, vec->items, vec->size * vec->itemSize); // Copy existing items
-        vec->items = newItems;
-        vec->capacitySize = newCapacity;
-
-        VECTOR_LOG("[vector_push_back]: Resized vector successfully. New capacity: %zu", newCapacity);
+    if (!vecbuf_ensure_one_more(vec)) {
+        VECTOR_LOG("[vecbuf_push_back_grow]: Error: Memory allocation failed while growing.");
+        return false;
     }
 
-    memcpy((char *)vec->items + (vec->size * vec->itemSize), item, vec->itemSize);
+    vecbuf_store((char *)vec->items + (vec->size * vec->itemSize), item, vec->itemSize);
     vec->size++;
 
-    VECTOR_LOG("[vector_push_back]: Item pushed successfully. New size: %zu", vec->size);
-    return true; // Indicate success
+    VECTOR_LOG("[vecbuf_push_back_grow]: Item pushed successfully. New size: %zu", vec->size);
+    return true;
 }
 
 
 /**
- * @brief This function releases all the memory allocated for the vector, including the memory pool 
- * and the vector structure itself. After calling this function, the vector pointer should 
- * not be used as it is no longer valid.
+ * @brief This function releases all the memory allocated for the vector, including the
+ * contiguous element buffer and the vector structure itself. After calling this function,
+ * the vector pointer should not be used as it is no longer valid.
  * 
  * @param vec A pointer to the Vector instance to be deallocated. The vector must have been 
  * initialized before calling this function.
@@ -917,19 +816,12 @@ void vector_deallocate(Vector *vec) {
 
     if (!vec) {
         VECTOR_LOG("[vector_deallocate]: Error: Vector is NULL.");
-        return; // Handle the error as per your application's needs
+        return; 
     }
 
-    if (vec->pool != NULL) {
-        VECTOR_LOG("[vector_deallocate]: Destroying memory pool at: %p", (void*)vec->pool);
-        memory_pool_destroy(vec->pool);
-        vec->pool = NULL;
-    }
-
-    if (vec->items != NULL) {
-        VECTOR_LOG("[vector_deallocate]: Nullifying items pointer: %p", (void*)vec->items);
-        vec->items = NULL;  
-    }
+    VECTOR_LOG("[vector_deallocate]: Freeing items buffer: %p", (void*)vec->items);
+    free(vec->items);  
+    vec->items = NULL;
 
     VECTOR_LOG("[vector_deallocate]: Freeing vector: %p", (void*)vec);
     free(vec);
@@ -956,23 +848,8 @@ void vector_deallocate(Vector *vec) {
  *       accessing out-of-bounds memory.
  */
 
-void *vector_at(const Vector *vec, size_t pos) {
-    VECTOR_LOG("[vector_at]: Entering with vector: %p, position: %zu", (void*)vec, pos);
-
-    if (!vec) {
-        VECTOR_LOG("[vector_at]: Error: Vector is NULL.");
-        return NULL;
-    }
-    if (pos < vec->size) {
-        void *item = (char *)vec->items + (pos * vec->itemSize);
-        VECTOR_LOG("[vector_at]: Returning item at position %zu: %p", pos, item);
-        return item;
-    } 
-    else {
-        VECTOR_LOG("[vector_at]: Error: Position %zu is out of bounds.", pos);
-        return NULL;
-    }
-}
+/* vector_at() is defined `static inline` in vector.h so the bounds-checked
+ * element access inlines into the caller (no cross-TU call per access). */
 
 /**
  * @brief This function provides access to the last element stored in the vector by returning 
@@ -1095,6 +972,7 @@ const void *vector_cend(Vector *vec) {
         VECTOR_LOG("[vector_cend]: Error: Vector is NULL.");
         return NULL;
     }
+    
     // For empty vector, this returns the same pointer as cbegin (items + 0).
     const void *end_ptr = (const void *)((char *)vec->items + (vec->size * vec->itemSize));
     VECTOR_LOG("[vector_cend]: Returning constant end pointer: %p", end_ptr);
@@ -1292,8 +1170,7 @@ void vector_clear(Vector *vec) {
     }
 
     // Reset size only; preserve capacity. Matches C++ std::vector::clear semantics
-    // and avoids the cost of reallocating (which on a bump pool can't reclaim).
-    // Use vector_shrink_to_fit to release capacity.
+    // and avoids the cost of reallocating. Use vector_shrink_to_fit to release capacity.
     vec->size = 0;
     VECTOR_LOG("[vector_clear]: Vector size set to 0. Capacity preserved: %zu", vec->capacitySize);
 }

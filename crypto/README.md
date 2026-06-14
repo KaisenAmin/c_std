@@ -341,6 +341,84 @@ the day after it's deployed.
 
 ---
 
+### `uint8_t* crypto_aes_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
+
+**Purpose**: AES encryption with a modern, hardware-accelerated cipher. `key_len` selects the variant — 16 → AES-128, 24 → AES-192, 32 → AES-256.
+
+**Parameters**: `plaintext`/`len` input; `key`/`key_len` the key; `iv` a 16-byte IV (ignored for `CRYPTO_MODE_ECB`); `mode` one of ECB/CBC/CFB/OFB/CTR; `out_len` receives the ciphertext length.
+
+**Return Value**: Heap-allocated ciphertext (caller `free`s), or `NULL` on error (e.g. an invalid key length). CBC/ECB apply PKCS#7 padding so the output is rounded up to the 16-byte block; CFB/OFB/CTR are stream modes whose output length equals the input length.
+
+**Usage Case**: General-purpose symmetric encryption when you manage integrity separately (or don't need it). When in doubt, use `crypto_aes_gcm_encrypt` instead.
+
+---
+
+### `uint8_t* crypto_aes_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
+
+**Purpose**: Inverse of `crypto_aes_encrypt` (same key, IV and mode).
+
+**Return Value**: Heap-allocated plaintext (caller `free`s) and `*out_len`, or `NULL` on error — which for CBC/ECB includes a PKCS#7 **padding failure** (a wrong key or corrupted ciphertext). Note that CBC is *not* authenticated: a successful decrypt does not prove the ciphertext wasn't tampered with — use an AEAD mode for that.
+
+---
+
+### `uint8_t* crypto_aes_gcm_encrypt(const uint8_t* plaintext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len, uint8_t* tag, size_t tag_len, size_t* out_len)`
+
+**Purpose**: **Authenticated encryption (AEAD)** with AES-GCM — the industry standard (used by TLS). Provides confidentiality *and* integrity/authenticity in one pass.
+
+**Parameters**: `key_len` ∈ {16,24,32}; `iv` is the nonce (**12 bytes recommended, and it MUST be unique for every message encrypted under the same key**); `aad`/`aad_len` is *Additional Authenticated Data* (may be `NULL`) — authenticated but not encrypted (e.g. a header/version); on return the `tag_len`-byte (use 16) authentication tag is written to `tag`; `out_len` receives the ciphertext length (== plaintext length).
+
+**Return Value**: Heap-allocated ciphertext (caller `free`s), or `NULL` on error.
+
+**Usage Case**: Encrypting messages, tokens, session data, files — anywhere you need to detect tampering. Store/transmit the `iv` and `tag` alongside the ciphertext.
+
+---
+
+### `uint8_t* crypto_aes_gcm_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len, const uint8_t* tag, size_t tag_len, size_t* out_len)`
+
+**Purpose**: Authenticated decryption. The tag is verified **before** the plaintext is accepted.
+
+**Return Value**: Heap-allocated plaintext, or **`NULL` if the tag does not verify** — i.e. the ciphertext, IV, AAD or key is wrong or was tampered with. Always check for `NULL`; never use the output of a failed decrypt.
+
+---
+
+### `uint8_t* crypto_chacha20_poly1305_encrypt(...)` / `crypto_chacha20_poly1305_decrypt(...)`
+
+**Purpose**: ChaCha20-Poly1305 AEAD (RFC 8439) — a modern alternative to AES-GCM that is fast in software on CPUs without AES-NI. Same parameter shape and contract as the AES-GCM pair above, but the **key must be 32 bytes**, the nonce 12 bytes and the tag 16 bytes.
+
+**Return Value**: As for AES-GCM; decrypt returns `NULL` on authentication failure.
+
+**Usage Case**: Mobile/embedded targets, or anywhere a constant-time software cipher is preferred. Functionally interchangeable with AES-GCM.
+
+---
+
+### `uint8_t* crypto_password_encrypt(const uint8_t* plaintext, size_t len, const char* password, int iterations, size_t* out_len)`
+
+**Purpose**: High-level, hard-to-misuse password-based encryption. Derives a key from `password` with **PBKDF2-HMAC-SHA256** (a fresh random 16-byte salt per call) and encrypts with **AES-256-GCM** (a fresh random nonce per call), returning **one self-describing blob**: `magic | iterations | salt | nonce | tag | ciphertext`.
+
+**Parameters**: `plaintext`/`len`; `password` (NUL-terminated); `iterations` (PBKDF2 cost; `<= 0` uses a sane default of 200,000); `out_len` receives the blob length.
+
+**Return Value**: Heap-allocated blob (caller `free`s), or `NULL` on error.
+
+**Usage Case**: Encrypting a file, config secret, or backup with a passphrase — without having to manage salts, IVs and tags yourself.
+
+---
+
+### `uint8_t* crypto_password_decrypt(const uint8_t* blob, size_t blob_len, const char* password, size_t* out_len)`
+
+**Purpose**: Reverse of `crypto_password_encrypt`.
+
+**Return Value**: The original plaintext, or **`NULL` on a wrong password, a bad/foreign blob format, or any tampering** (the GCM tag makes all three indistinguishable to an attacker).
+
+---
+
+### `void crypto_secure_zero(void* ptr, size_t length)`
+
+**Purpose**: Wipe sensitive bytes (keys, derived keys, decrypted plaintext) so the compiler cannot optimize the clear away (wraps `OPENSSL_cleanse`). `NULL`-safe.
+
+**Usage Case**: Call on key material and secret buffers immediately before `free`ing them, to limit how long secrets linger in memory.
+
+---
+
 ## Example Programs
 
 The library includes several example programs demonstrating how to use the various cryptographic functions:
@@ -1298,6 +1376,167 @@ int main(int argc, char** argv) {
 ```
 (requires a file path and key as command-line arguments)
 <hmac-sha256-hex>  <path>
+```
+
+---
+
+## Example 28 : `crypto_aes_gcm_encrypt` / `crypto_aes_gcm_decrypt` — authenticated encryption
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* msg = "Authenticated secret payload";
+    const char* aad = "context:v1";              /* authenticated, not encrypted */
+
+    uint8_t key[32], iv[CRYPTO_GCM_IV_SIZE], tag[CRYPTO_GCM_TAG_SIZE];
+    crypto_random_bytes(key, sizeof key);         /* in practice: derive or load a key */
+    crypto_random_bytes(iv,  sizeof iv);          /* nonce: MUST be unique per message  */
+
+    size_t ct_len = 0;
+    uint8_t* ct = crypto_aes_gcm_encrypt((const uint8_t*)msg, strlen(msg), key, sizeof key,
+                                         iv, sizeof iv, (const uint8_t*)aad, strlen(aad),
+                                         tag, sizeof tag, &ct_len);
+    printf("ciphertext: %zu bytes, tag: %zu bytes\n", ct_len, sizeof tag);
+
+    size_t pt_len = 0;
+    uint8_t* pt = crypto_aes_gcm_decrypt(ct, ct_len, key, sizeof key, iv, sizeof iv,
+                                         (const uint8_t*)aad, strlen(aad), tag, sizeof tag, &pt_len);
+    printf("decrypted: %.*s\n", (int)pt_len, (const char*)pt);
+
+    /* Tampering is detected: flip one byte -> decrypt returns NULL. */
+    ct[0] ^= 1;
+    uint8_t* bad = crypto_aes_gcm_decrypt(ct, ct_len, key, sizeof key, iv, sizeof iv,
+                                          (const uint8_t*)aad, strlen(aad), tag, sizeof tag, &pt_len);
+    printf("tampered decrypt: %s\n", bad ? "ACCEPTED (bug!)" : "rejected (NULL)");
+
+    crypto_secure_zero(key, sizeof key);
+    free(ct); free(pt); free(bad);
+    return 0;
+}
+```
+**Result**
+```
+ciphertext: 28 bytes, tag: 16 bytes
+decrypted: Authenticated secret payload
+tampered decrypt: rejected (NULL)
+```
+
+---
+
+## Example 29 : `crypto_chacha20_poly1305_encrypt` / `_decrypt` — modern AEAD
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* msg = "ChaCha20-Poly1305 is great without AES-NI";
+
+    uint8_t key[CRYPTO_CHACHA_KEY_SIZE];          /* must be 32 bytes */
+    uint8_t iv[CRYPTO_CHACHA_IV_SIZE];            /* 12-byte nonce    */
+    uint8_t tag[CRYPTO_CHACHA_TAG_SIZE];
+    crypto_random_bytes(key, sizeof key);
+    crypto_random_bytes(iv,  sizeof iv);
+
+    size_t ct_len = 0;
+    uint8_t* ct = crypto_chacha20_poly1305_encrypt((const uint8_t*)msg, strlen(msg),
+                                                   key, sizeof key, iv, sizeof iv,
+                                                   NULL, 0, tag, sizeof tag, &ct_len);
+
+    size_t pt_len = 0;
+    uint8_t* pt = crypto_chacha20_poly1305_decrypt(ct, ct_len, key, sizeof key, iv, sizeof iv,
+                                                   NULL, 0, tag, sizeof tag, &pt_len);
+    printf("decrypted (%zu bytes): %.*s\n", pt_len, (int)pt_len, (const char*)pt);
+
+    crypto_secure_zero(key, sizeof key);
+    free(ct); free(pt);
+    return 0;
+}
+```
+**Result**
+```
+decrypted (41 bytes): ChaCha20-Poly1305 is great without AES-NI
+```
+
+---
+
+## Example 30 : `crypto_password_encrypt` / `crypto_password_decrypt` — encrypt with a passphrase
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* secret   = "API_KEY=sk-live-abc123";
+    const char* password = "correct horse battery staple";
+
+    /* One call: PBKDF2-HMAC-SHA256 derives a key, AES-256-GCM encrypts, and a
+       self-describing blob (salt + nonce + tag + ciphertext) comes back. */
+    size_t blob_len = 0;
+    uint8_t* blob = crypto_password_encrypt((const uint8_t*)secret, strlen(secret),
+                                            password, 200000, &blob_len);
+    printf("blob: %zu bytes\n", blob_len);
+
+    size_t out_len = 0;
+    uint8_t* pt = crypto_password_decrypt(blob, blob_len, password, &out_len);
+    printf("decrypted: %.*s\n", (int)out_len, (const char*)pt);
+
+    /* A wrong password (or any tampering) is rejected with NULL. */
+    uint8_t* wrong = crypto_password_decrypt(blob, blob_len, "guess", &out_len);
+    printf("wrong password: %s\n", wrong ? "ACCEPTED (bug!)" : "rejected (NULL)");
+
+    free(blob); free(pt); free(wrong);
+    return 0;
+}
+```
+**Result**
+```
+blob: 74 bytes
+decrypted: API_KEY=sk-live-abc123
+wrong password: rejected (NULL)
+```
+
+---
+
+## Example 31 : `crypto_aes_encrypt` / `crypto_aes_decrypt` — AES-256-CBC round-trip
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* msg = "Block-cipher round trip";
+
+    uint8_t key[32], iv[CRYPTO_AES_BLOCK_SIZE];
+    crypto_random_bytes(key, sizeof key);
+    crypto_generate_random_iv(iv, sizeof iv);
+
+    size_t ct_len = 0, pt_len = 0;
+    uint8_t* ct = crypto_aes_encrypt((const uint8_t*)msg, strlen(msg), key, sizeof key,
+                                     iv, CRYPTO_MODE_CBC, &ct_len);
+    uint8_t* pt = crypto_aes_decrypt(ct, ct_len, key, sizeof key, iv, CRYPTO_MODE_CBC, &pt_len);
+
+    printf("AES-256-CBC: %zu -> %zu bytes, plaintext=\"%.*s\"\n",
+           ct_len, pt_len, (int)pt_len, (const char*)pt);   /* ct is PKCS#7-padded to 32 */
+
+    crypto_secure_zero(key, sizeof key);
+    free(ct); free(pt);
+    return 0;
+}
+```
+**Result**
+```
+AES-256-CBC: 32 -> 23 bytes, plaintext="Block-cipher round trip"
 ```
 
 ---

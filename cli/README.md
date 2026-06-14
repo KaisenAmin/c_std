@@ -319,6 +319,42 @@ To use the Cli library in your project, include the `cli.h` header file in your 
   bool confirmed = cli_prompt_confirmation("Are you sure you want to continue? (Y/N)");
   ```
 
+### Typed Argument Conversion
+
+Option handlers and validators receive the raw `const char* value` from the command line. These stateless helpers convert that string to a typed value **once, correctly** — rejecting empty strings, trailing garbage, and out-of-range values instead of silently truncating the way bare `atoi()` does. On failure the output is left untouched, so the caller can report a clear error.
+
+### `bool cli_parse_int(const char *value, int *out)`
+**Purpose**: Parse a string into an `int` with full validation. Accepts an optional sign and decimal digits (leading whitespace tolerated); rejects an empty string, trailing non-numeric characters (e.g. `"42abc"`, `"1.5"`), and values outside the `int` range.
+**Parameters**:
+  - `value`: The string to parse. May be `NULL` (returns `false`).
+  - `out`: Receives the value on success. Must not be `NULL`.
+**Return Value**: `true` if `value` is a valid `int` (written to `*out`); `false` otherwise (`*out` untouched).
+**Usage Case**: `int port; if (!cli_parse_int(value, &port)) { /* report bad --port */ }`
+
+### `bool cli_parse_long(const char *value, long *out)`
+**Purpose**: Parse a string into a `long`, with the same rules as `cli_parse_int` but the wider `long` range — useful for sizes, counts, or ids that may exceed `int`.
+**Parameters**:
+  - `value`: The string to parse. May be `NULL` (returns `false`).
+  - `out`: Receives the value on success. Must not be `NULL`.
+**Return Value**: `true` if `value` is a valid `long` (written to `*out`); `false` otherwise.
+**Usage Case**: `long max_bytes; cli_parse_long(value, &max_bytes);`
+
+### `bool cli_parse_double(const char *value, double *out)`
+**Purpose**: Parse a string into a `double` with full validation. Accepts decimal and scientific notation (`"3.14"`, `"-2.5"`, `"1e9"`); rejects an empty string, trailing garbage (`"1.2.3"`), and out-of-range values.
+**Parameters**:
+  - `value`: The string to parse. May be `NULL` (returns `false`).
+  - `out`: Receives the value on success. Must not be `NULL`.
+**Return Value**: `true` if `value` is a valid `double` (written to `*out`); `false` otherwise.
+**Usage Case**: `double rate; cli_parse_double(value, &rate);`
+
+### `bool cli_parse_bool(const char *value, bool *out)`
+**Purpose**: Parse a string into a `bool`, recognising (case-insensitively) `true`/`false`, `yes`/`no`, `on`/`off`, and `1`/`0`. Any other string is rejected so a typo doesn't silently become `false`.
+**Parameters**:
+  - `value`: The string to parse. May be `NULL` (returns `false`).
+  - `out`: Receives the value on success. Must not be `NULL`.
+**Return Value**: `true` if `value` is a recognised boolean (written to `*out`); `false` otherwise.
+**Usage Case**: `bool verbose; cli_parse_bool(value, &verbose);`
+
 ### Hooks for Execution
 
 ### `void cli_set_pre_execution_hook(CliParser *parser, CliPreExecutionHook hook)`
@@ -2479,6 +2515,86 @@ int main(void) {
 ```
 count = 4
 sum   = 43
+```
+
+---
+
+## Example 27 : Typed option values with `cli_parse_int`, `cli_parse_double`, and `cli_parse_bool`
+
+Option handlers get the raw `const char* value`. These helpers convert it to a typed value in one call, with a clean success/failure result — so a malformed `--port` is reported instead of silently becoming `0` (as `atoi` would).
+
+```c
+#include "cli/cli.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+
+typedef struct {
+    int    port;
+    double rate;
+    bool   verbose;
+    bool   port_ok, rate_ok, verbose_ok;
+} ServerConfig;
+
+
+static void port_handler(const CliOption* o, const char* value, void* ud) {
+    (void)o;
+    ServerConfig* c = (ServerConfig*)ud;
+    c->port_ok = cli_parse_int(value, &c->port);
+}
+
+static void rate_handler(const CliOption* o, const char* value, void* ud) {
+    (void)o;
+    ServerConfig* c = (ServerConfig*)ud;
+    c->rate_ok = cli_parse_double(value, &c->rate);
+}
+
+static void verbose_handler(const CliOption* o, const char* value, void* ud) {
+    (void)o;
+    ServerConfig* c = (ServerConfig*)ud;
+    c->verbose_ok = cli_parse_bool(value, &c->verbose);
+}
+
+
+int main(void) {
+    ServerConfig cfg = {0};
+    CliParser* p = cli_parser_create("server");
+
+    CliOption port = { "--port", 'p', CLI_REQUIRED_ARG, port_handler, NULL, "listen port", &cfg, NULL, NULL, NULL };
+    CliOption rate = { "--rate", 'r', CLI_REQUIRED_ARG, rate_handler, NULL, "sample rate", &cfg, NULL, NULL, NULL };
+    CliOption verbose = { "--verbose", 'V', CLI_REQUIRED_ARG, verbose_handler, NULL, "verbose flag", &cfg, NULL, NULL, NULL };
+    
+    cli_register_option(p, &port);
+    cli_register_option(p, &rate);
+    cli_register_option(p, &verbose);
+
+    /* Simulate:  server --port 8080 --rate 0.25 --verbose yes  */
+    char* argv[] = { "server", "--port", "8080", "--rate", "0.25", "--verbose", "yes" };
+    cli_parse_args(p, 7, argv);
+
+    fmt_printf("port    = %d (ok=%s)\n",   cfg.port,    cfg.port_ok ? "yes" : "no");
+    fmt_printf("rate    = %.2f (ok=%s)\n", cfg.rate,    cfg.rate_ok ? "yes" : "no");
+    fmt_printf("verbose = %s (ok=%s)\n",   cfg.verbose ? "on" : "off", cfg.verbose_ok ? "yes" : "no");
+
+    /* A malformed port is reported, not silently truncated to 0. */
+    cfg.port = -1; cfg.port_ok = true;
+    char* bad[] = {"server", "--port", "eighty-eighty"};
+
+    cli_parse_args(p, 3, bad);
+    fmt_printf("bad port accepted? %s\n", cfg.port_ok ? "yes" : "no");
+
+    cli_parser_deallocate(p);
+    return 0;
+}
+```
+
+**Result**
+
+```
+port    = 8080 (ok=yes)
+rate    = 0.25 (ok=yes)
+verbose = on (ok=yes)
+bad port accepted? no
 ```
 
 ---

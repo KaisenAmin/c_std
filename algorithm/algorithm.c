@@ -15,10 +15,15 @@
 
 
 static void swap(void *a, void *b, size_t size) {
-    ALGORITHM_LOG("[swap] Swapping elements of size %zu bytes.", size);
+    switch (size) {
+        case 1:  { unsigned char t = *(unsigned char*)a; *(unsigned char*)a = *(unsigned char*)b; *(unsigned char*)b = t; return; }
+        case 2:  { unsigned char t[2];  memcpy(t, a, 2);  memcpy(a, b, 2);  memcpy(b, t, 2);  return; }
+        case 4:  { unsigned char t[4];  memcpy(t, a, 4);  memcpy(a, b, 4);  memcpy(b, t, 4);  return; }
+        case 8:  { unsigned char t[8];  memcpy(t, a, 8);  memcpy(a, b, 8);  memcpy(b, t, 8);  return; }
+        case 16: { unsigned char t[16]; memcpy(t, a, 16); memcpy(a, b, 16); memcpy(b, t, 16); return; }
+        default: break;
+    }
 
-    /* Portable, allocation-free swap (no VLA, so it builds on MSVC): swap in
-     * fixed-size chunks through a small stack buffer, handling any size. */
     unsigned char buf[256];
     unsigned char *pa = (unsigned char *)a;
     unsigned char *pb = (unsigned char *)b;
@@ -32,8 +37,6 @@ static void swap(void *a, void *b, size_t size) {
         pb += chunk;
         remaining -= chunk;
     }
-
-    ALGORITHM_LOG("[swap] Swapped elements at memory locations %p and %p.", a, b);
 }
 
 
@@ -54,36 +57,103 @@ static void reverse(void *first, void *last, size_t size) {
 }
 
 
-static void quickSortInternal(void *base, size_t low, size_t high, size_t size, CompareFunc comp, void *temp) {
-    if (low < high) {
-        ALGORITHM_LOG("[quickSortInternal] Sorting range [%zu, %zu], pivot element at index %zu.", low, high, high);
+#define SRT_ISORT_MAX 16   /* ranges this small are insertion-sorted */
 
-        char* pivot = (char*)base + high * size;
-        size_t i = low;
-
-        for (size_t j = low; j < high; j++) {
-            if (comp((char*)base + j * size, pivot) < 0) {
-                ALGORITHM_LOG("[quickSortInternal] Swapping elements at indices %zu and %zu.", i, j);
-                memcpy(temp, (char*)base + j * size, size);
-                memcpy((char*)base + j * size, (char*)base + i * size, size);
-                memcpy((char*)base + i * size, temp, size);
-                i++;
-            }
+static void srt_isort(char *base, size_t n, size_t size, CompareFunc comp, void *tmp) {
+    for (size_t i = 1; i < n; ++i) {
+        char *cur = base + i * size;
+        if (comp(cur, cur - size) >= 0) {
+            continue;                                  /* already in order */
         }
-
-        ALGORITHM_LOG("[quickSortInternal] Placing pivot element at index %zu.", i);
-        memcpy(temp, (char*)base + i * size, size);
-        memcpy((char*)base + i * size, pivot, size);
-        memcpy(pivot, temp, size);
-
-        if (i > 0) {
-            ALGORITHM_LOG("[quickSortInternal] Recursively sorting left part: [%zu, %zu].", low, i - 1);
-            quickSortInternal(base, low, i - 1, size, comp, temp);
-        }
-
-        ALGORITHM_LOG("[quickSortInternal] Recursively sorting right part: [%zu, %zu].", i + 1, high);
-        quickSortInternal(base, i + 1, high, size, comp, temp);
+        memcpy(tmp, cur, size);
+        size_t j = i;
+        do {
+            memcpy(base + j * size, base + (j - 1) * size, size);
+            --j;
+        } while (j > 0 && comp(base + (j - 1) * size, tmp) > 0);
+        memcpy(base + j * size, tmp, size);
     }
+}
+
+/* Sift the element at index i down a max-heap of n elements. */
+static void srt_siftdown(char *base, size_t i, size_t n, size_t size, CompareFunc comp, void *tmp) {
+    memcpy(tmp, base + i * size, size);
+    for (;;) {
+        size_t child = 2 * i + 1;
+        if (child >= n) {
+            break;
+        }
+        if (child + 1 < n && comp(base + child * size, base + (child + 1) * size) < 0) {
+            ++child;
+        }
+        if (comp(tmp, base + child * size) >= 0) {
+            break;
+        }
+        memcpy(base + i * size, base + child * size, size);
+        i = child;
+    }
+    memcpy(base + i * size, tmp, size);
+}
+
+/* Heapsort — introsort's O(n log n) worst-case fallback. */
+static void srt_heapsort(char *base, size_t n, size_t size, CompareFunc comp, void *tmp) {
+    for (size_t i = n / 2; i > 0; ) {
+        --i;
+        srt_siftdown(base, i, n, size, comp, tmp);
+    }
+    for (size_t end = n; end > 1; ) {
+        --end;
+        swap(base, base + end * size, size);
+        srt_siftdown(base, 0, end, size, comp, tmp);
+    }
+}
+
+/* Median-of-3 Hoare quicksort, switching to insertion sort for small ranges and
+ * to heapsort once recursion gets too deep. Recurses on the smaller partition
+ * and loops on the larger, so stack depth stays O(log n). */
+static void srt_introsort(char *base, size_t n, size_t size, CompareFunc comp,
+                          void *tmp, void *pivot, int depth) {
+    while (n > SRT_ISORT_MAX) {
+        if (depth <= 0) {
+            srt_heapsort(base, n, size, comp, tmp);
+            return;
+        }
+        --depth;
+
+        /* Order lo/mid/hi so base[lo] <= base[mid] <= base[hi]; base[mid] is the
+         * pivot and base[lo]/base[hi] act as sentinels (the scan loops need no
+         * bounds checks). */
+        char *lo  = base;
+        char *mid = base + (n / 2) * size;
+        char *hi  = base + (n - 1) * size;
+        if (comp(mid, lo) < 0) { swap(mid, lo, size); }
+        if (comp(hi,  lo) < 0) { swap(hi,  lo, size); }
+        if (comp(hi, mid) < 0) { swap(hi, mid, size); }
+        memcpy(pivot, mid, size);
+
+        size_t i = 0, j = n - 1;
+        for (;;) {
+            do { ++i; } while (comp(base + i * size, pivot) < 0);
+            do { --j; } while (comp(base + j * size, pivot) > 0);
+            if (i >= j) {
+                break;
+            }
+            swap(base + i * size, base + j * size, size);
+        }
+
+        /* Partitions: [0, j] and [j+1, n). Recurse the smaller, loop the larger. */
+        size_t left_n  = j + 1;
+        size_t right_n = n - left_n;
+        if (left_n < right_n) {
+            srt_introsort(base, left_n, size, comp, tmp, pivot, depth);
+            base += left_n * size;
+            n = right_n;
+        } else {
+            srt_introsort(base + left_n * size, right_n, size, comp, tmp, pivot, depth);
+            n = left_n;
+        }
+    }
+    srt_isort(base, n, size, comp, tmp);
 }
 
 
@@ -172,24 +242,35 @@ void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp
  * @param comp Comparison function used to order the elements.
  */
 void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp) {
-    if (num > 1) {
-        ALGORITHM_LOG("[algorithm_sort] Starting quicksort for %zu elements.", num);
-        void* temp = malloc(size);
-
-        if (temp) {
-            ALGORITHM_LOG("[algorithm_sort] Memory allocation successful. Proceeding with quicksort.");
-            quickSortInternal(base, 0, num - 1, size, comp, temp);
-            free(temp);
-            ALGORITHM_LOG("[algorithm_sort] Quicksort completed.");
-        }
-        else {
-            ALGORITHM_LOG("[algorithm_sort] Error: temp buffer allocation failed; array left unmodified.");
-            return;
-        }
-    } 
-    else {
-        ALGORITHM_LOG("[algorithm_sort] No sorting needed for %zu elements.", num);
+    if (num <= 1 || size == 0 || base == NULL || comp == NULL) {
+        ALGORITHM_LOG("[algorithm_sort] No sorting needed / invalid arguments.");
+        return;
     }
+
+    ALGORITHM_LOG("[algorithm_sort] Starting introsort for %zu elements.", num);
+
+    /* Two 1-element scratch slots in one allocation: `tmp` for insertion/heap
+     * moves and `pivot` for the partition pivot value. */
+    void *scratch = malloc(size * 2);
+    if (!scratch) {
+        ALGORITHM_LOG("[algorithm_sort] Error: scratch allocation failed; array left unmodified.");
+        return;
+    }
+    void *tmp   = scratch;
+    void *pivot = (char *)scratch + size;
+
+    /* Introspection depth limit: 2*floor(log2(num)). Beyond it, heapsort takes
+     * over to guarantee O(n log n) even on adversarial input. */
+    int depth = 0;
+    for (size_t t = num; t > 1; t >>= 1) {
+        ++depth;
+    }
+    depth *= 2;
+
+    srt_introsort((char *)base, num, size, comp, tmp, pivot, depth);
+
+    free(scratch);
+    ALGORITHM_LOG("[algorithm_sort] Introsort completed.");
 }
 
 

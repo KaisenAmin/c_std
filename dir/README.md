@@ -109,6 +109,24 @@ This library is dedicated to directory and file operations, offering comprehensi
 
 ---
 
+### `bool dir_is_readable(const char* path)`
+**Purpose**: Reports whether the current process can read `path`. Uses `access(R_OK)` on POSIX and `_waccess` on Windows; a missing path returns `false`. (On Windows the result reflects the file's attributes rather than full ACLs — the platform's documented best-effort behavior.)
+**Parameters**:
+- `path`: A pointer to the path string to test.
+**Return Value**: `true` if `path` exists and is readable; `false` otherwise (including a `NULL` path).
+**Usage Case**: Pre-flight check before opening a config/data file, so you can fail early with a clear message instead of a cryptic open error.
+
+---
+
+### `bool dir_is_writable(const char* path)`
+**Purpose**: Reports whether the current process can write to `path`. Uses `access(W_OK)` on POSIX and `_waccess` on Windows; a missing path returns `false`. (On Windows the result reflects the read-only attribute rather than full ACLs.)
+**Parameters**:
+- `path`: A pointer to the path string to test.
+**Return Value**: `true` if `path` exists and is writable; `false` otherwise (including a `NULL` path).
+**Usage Case**: Verify a target directory is writable before attempting to create files in it (e.g. choosing an output/cache location at startup).
+
+---
+
 ### `DirFileType dir_get_file_type(const char* filePath)`
 **Purpose**: Determines the type of the file system entry at the specified path.
 **Parameters**:
@@ -341,6 +359,15 @@ This library is dedicated to directory and file operations, offering comprehensi
 - `dirPath`: A pointer to a string representing the path of the file or directory.
 **Return Value**: A dynamically allocated string in `"YYYY-MM-DD HH:MM:SS"` format, or `NULL` on error. The caller must call `free()` on it.
 **Usage Case**: Use to detect whether a file has changed since it was last processed, or to display modification timestamps to users.
+
+---
+
+### `int64_t dir_get_modified_time_unix(const char* path)`
+**Purpose**: Returns the modification time of a file or directory as **Unix epoch seconds** (seconds since 1970-01-01T00:00:00 UTC) — the machine-comparable counterpart to `dir_get_modified_time`, which returns a localized string. No allocation; works on both files and directories, on Windows and POSIX.
+**Parameters**:
+- `path`: A pointer to a string representing the path of the file or directory.
+**Return Value**: The modification time in Unix seconds, or `-1` on a `NULL` path or if `path` cannot be `stat`'d (e.g. it does not exist).
+**Usage Case**: Sort files by age, detect changes for cache invalidation/incremental builds, or compare two paths' ages with simple integer arithmetic.
 
 ---
 
@@ -1508,6 +1535,61 @@ files (3):
   C:\Users\amint\AppData\Local\Temp\walk_demo\a\b\deep.txt
 ```
 > Note: Output is machine-specific; the temp directory prefix reflects the current machine.
+
+---
+
+## Example 34 — Production pre-flight: `dir_is_writable`, `dir_is_readable`, `dir_get_modified_time_unix`
+
+```c
+#include "dir/dir.h"
+#include "fmt/fmt.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    char* tmp = dir_temp_directory();
+
+    /* Pre-flight: only proceed if the target directory is writable. */
+    if (!dir_is_writable(tmp)) {
+        fmt_printf("temp dir not writable, aborting\n");
+        free(tmp);
+        return 1;
+    }
+    fmt_printf("temp dir writable: yes\n");
+
+    /* Create a file, then inspect its access flags and modification time. */
+    char* path = dir_join_path(tmp, "dir_prod_demo.txt");
+    FILE* f = fopen(path, "wb");
+    if (f) { fputs("data", f); fclose(f); }
+
+    fmt_printf("file readable: %s\n", dir_is_readable(path) ? "yes" : "no");
+    fmt_printf("file writable: %s\n", dir_is_writable(path) ? "yes" : "no");
+
+    int64_t mt = dir_get_modified_time_unix(path);
+    fmt_printf("mtime is a positive unix timestamp: %s\n", mt > 0 ? "yes" : "no");
+
+    /* A missing file reports -1 / not readable. */
+    char* gone = dir_join_path(tmp, "no_such_file.txt");
+    fmt_printf("missing file mtime: %lld\n", (long long)dir_get_modified_time_unix(gone));
+    fmt_printf("missing file readable: %s\n", dir_is_readable(gone) ? "yes" : "no");
+
+    remove(path);
+    free(path);
+    free(gone);
+    free(tmp);
+    return 0;
+}
+```
+**Result**
+```
+temp dir writable: yes
+file readable: yes
+file writable: yes
+mtime is a positive unix timestamp: yes
+missing file mtime: -1
+missing file readable: no
+```
+> **Why it matters:** `dir_is_writable` lets a service fail early with a clear message instead of a cryptic open error, and `dir_get_modified_time_unix` returns a machine-comparable integer (unlike the localized string from `dir_get_modified_time`) for change-detection, cache invalidation, and sort-by-age.
 
 ---
 

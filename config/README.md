@@ -41,6 +41,14 @@ To use the config library in your project, include the `config.h` header file in
 
 ---
 
+### `ConfigFile *config_create_empty(void)`
+**Purpose**: Creates a new, empty `ConfigFile` in memory with no backing file. The counterpart to `config_create`, which requires an existing file on disk.
+**Parameters**: None.
+**Return Value**: A pointer to a blank `ConfigFile` (free with `config_deallocate`), or `NULL` on allocation failure.
+**Usage Case**: Build a configuration from scratch with the setters / `config_load_string`, then write it with `config_save`. The `filename` field is `NULL`, so `config_reload` does not apply until the config has been saved to a path and re-opened with `config_create`.
+
+---
+
 ### `const char *config_get_value(const ConfigFile *config, const char *section, const char *key)`
 **Purpose**: Retrieves the value associated with the specified key in the given section.
 **Parameters**:
@@ -61,6 +69,42 @@ To use the config library in your project, include the `config.h` header file in
   - `value`: The new value to be assigned to the key.
 **Return Value**: None.
 **Usage Case**: Use to programmatically add or update a key-value pair before saving the configuration.
+
+---
+
+### `void config_set_int(ConfigFile *config, const char *section, const char *key, int value)`
+**Purpose**: Sets an integer value for a key (typed counterpart to `config_get_int`). Formats `value` with `%d` and stores it via `config_set_value`, creating the section/key if needed.
+**Parameters**:
+  - `config`: Pointer to the `ConfigFile` structure.
+  - `section`: The section where the key is located.
+  - `key`: The key whose value is to be set.
+  - `value`: The integer value to store.
+**Return Value**: None.
+**Usage Case**: Store a numeric setting without formatting the string yourself. `NULL` config/section/key are rejected by `config_set_value`.
+
+---
+
+### `void config_set_double(ConfigFile *config, const char *section, const char *key, double value)`
+**Purpose**: Sets a double value for a key (typed counterpart to `config_get_double`). Formats `value` with `%.15g` — enough precision that ordinary decimal values round-trip cleanly through `config_get_double` without exposing binary-representation noise.
+**Parameters**:
+  - `config`: Pointer to the `ConfigFile` structure.
+  - `section`: The section where the key is located.
+  - `key`: The key whose value is to be set.
+  - `value`: The double value to store.
+**Return Value**: None.
+**Usage Case**: Store a floating-point setting (ratio, threshold, timeout) that reads back faithfully with `config_get_double`.
+
+---
+
+### `void config_set_bool(ConfigFile *config, const char *section, const char *key, bool value)`
+**Purpose**: Sets a boolean value for a key (typed counterpart to `config_get_bool`). Stores the canonical literal `"true"` or `"false"`.
+**Parameters**:
+  - `config`: Pointer to the `ConfigFile` structure.
+  - `section`: The section where the key is located.
+  - `key`: The key whose value is to be set.
+  - `value`: The boolean value to store.
+**Return Value**: None.
+**Usage Case**: Store a flag that `config_get_bool` recognizes on read-back.
 
 ---
 
@@ -344,6 +388,16 @@ The next seven functions fill common gaps the original API leaves out: counting 
   - `config`: Source config. May be `NULL`.
 **Return Value**: Newly-allocated, NUL-terminated string (caller frees with `free()`), or `NULL` on bad input / OOM. For an empty configuration the result is the empty string `""`.
 **Usage Case**: Use to embed the configuration in a network response, write it to a log, or compare in a test without touching the filesystem.
+
+---
+
+### `bool config_load_string(ConfigFile *config, const char *data)`
+**Purpose**: Parse INI text from an in-memory string into an existing config — the inverse of `config_to_string`. Reads `data` as INI-format text and appends its sections, keys and comments. Lines split on `\n` (a trailing `\r` from CRLF is tolerated) with **no line-length limit**, unlike the file path which reads in 1024-byte chunks. Parsing rules match `config_create`: `#`/`;` lines become comments (inside a section), `[name]` opens a section (a malformed `[name` is skipped), `key = value` splits on the first `=` with both sides trimmed (the value may itself contain `=`).
+**Parameters**:
+  - `config`: Target config (e.g. from `config_create_empty`). Must not be `NULL`.
+  - `data`: NUL-terminated INI text. Must not be `NULL`.
+**Return Value**: `true` on success (including parsing zero entries); `false` on `NULL` input or an allocation failure mid-parse (entries parsed before the failure remain).
+**Usage Case**: Load configuration that arrives as a string — from a network response, a database column, an embedded resource, or a secrets manager — without staging it through a temp file. Rows are appended, so repeated calls layer fragments.
 
 ---
 
@@ -954,6 +1008,66 @@ enabled=true
 [empty]
 
 --- end ---
+```
+
+---
+
+## Example 17 — In-memory config: `config_create_empty`, typed setters, and `config_load_string`
+
+Build a configuration without any file on disk, serialize it, then parse it straight back from the string. `config_create_empty` gives a blank config; the typed setters (`config_set_int`/`config_set_double`/`config_set_bool`) store values without manual formatting; `config_load_string` is the inverse of `config_to_string`.
+
+```c
+#include "config/config.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    /* Build a configuration entirely in memory — no file on disk needed. */
+    ConfigFile* cfg = config_create_empty();
+
+    config_set_value(cfg, "server", "host", "localhost");
+    config_set_int(cfg, "server", "port", 8080);
+    config_set_bool(cfg, "server", "tls",  true);
+    config_set_double(cfg, "limits", "cpu_ratio", 0.75);
+
+    /* Serialize it to an INI string. */
+    char* text = config_to_string(cfg);
+    fmt_printf("Serialized config:\n%s", text);
+
+    /* Parse that string back into a fresh config (the inverse of to_string). */
+    ConfigFile* loaded = config_create_empty();
+    config_load_string(loaded, text);
+    free(text);
+
+    /* Read the values back with the typed getters. */
+    fmt_printf("Parsed back:\n");
+    fmt_printf("  host = %s\n", config_get_value(loaded, "server", "host"));
+    fmt_printf("  port = %d\n", config_get_int(loaded, "server", "port", 0));
+    fmt_printf("  tls  = %s\n", config_get_bool(loaded, "server", "tls", false) ? "on" : "off");
+    fmt_printf("  cpu  = %.2f\n", config_get_double(loaded, "limits", "cpu_ratio", 0.0));
+
+    config_deallocate(cfg);
+    config_deallocate(loaded);
+    return 0;
+}
+```
+
+**Result**
+```
+Serialized config:
+[server]
+host=localhost
+port=8080
+tls=true
+
+[limits]
+cpu_ratio=0.75
+
+Parsed back:
+  host = localhost
+  port = 8080
+  tls  = on
+  cpu  = 0.75
 ```
 
 ---

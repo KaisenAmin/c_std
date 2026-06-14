@@ -61,6 +61,7 @@ void             postgres_deallocate                   (Postgres* pg);
 /* ------------------------------------------------------------------ */
 
 bool             postgres_connect                      (Postgres* pg);
+bool             postgres_connect_uri                  (Postgres* pg, const char* conninfo);
 void             postgres_disconnect                   (Postgres* pg);
 bool             postgres_reconnect                    (Postgres* pg);
 bool             postgres_ping                         (Postgres* pg);
@@ -163,6 +164,8 @@ bool             postgres_copy_from_csv                (Postgres* pg, const char
 void             postgres_clear_result                 (PostgresResult* pgResult);
 void             postgres_print_result                 (PostgresResult* pgRes);
 const char*      postgres_get_value                    (PostgresResult* pgRes, int row, int col);
+long long        postgres_get_value_as_int             (const PostgresResult* pgRes, int row, int col, long long fallback);
+double           postgres_get_value_as_double          (const PostgresResult* pgRes, int row, int col, double fallback);
 bool             postgres_is_null                      (const PostgresResult* pgRes, int row, int col);
 const char*      postgres_get_field_name               (const PostgresResult* pgRes, int col);
 int              postgres_num_tuples                   (const PostgresResult* pgRes);

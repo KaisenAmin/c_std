@@ -14,12 +14,6 @@
  * set owns that copy, and it is freed on erase / clear / deallocate.
  * Elements are kept ordered by the user comparator; lookups, insertions
  * and deletions are O(log n).
- *
- * As in std::set, the stored elements are logically const — never modify
- * an element in place through an iterator, as that would break the
- * ordering invariant. (If the element type itself owns heap memory, the
- * set copies the bytes only; you remain responsible for that memory,
- * exactly like vector / list.)
  */
 
  

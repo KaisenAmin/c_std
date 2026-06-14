@@ -36,6 +36,10 @@ extern "C" {
 /* Limits                                                             */
 /* ------------------------------------------------------------------ */
 
+/* Legacy constant. The actual elements-per-block is now chosen per item size
+   from a byte budget in deque_create() (see deque->blockSize), so small
+   elements share large blocks and large elements use small ones. Kept for
+   source compatibility. */
 #define DEFAULT_BLOCK_SIZE 64
 
 
@@ -53,13 +57,60 @@ struct DequeIterator {
 
 struct Deque {
     size_t  itemSize;
-    size_t  blockSize;            /* size of each block                 */
+    size_t  blockSize;            /* elements per block (power of two)  */
+    size_t  blockShift;           /* log2(blockSize): flat/blockSize is */
+                                  /* a shift and flat%blockSize a mask  */
     size_t  size;                 /* total number of elements           */
     size_t  blockCount;           /* number of blocks                   */
-    size_t  frontIndex;           /* index of the front element         */
-    size_t  backIndex;            /* index of the back element          */
-    void*** blocks;               /* pointer to blocks of elements      */
+    size_t  frontIndex;           /* flat index of the front element    */
+    size_t  backIndex;            /* index of the back element in last block */
+    void**  blocks;               /* array of blocks; each block is a   */
+                                  /* contiguous blockSize*itemSize byte */
+                                  /* buffer holding elements inline     */
 };
+
+
+/* ------------------------------------------------------------------ */
+/* Inlined hot read accessors                                         */
+/* ------------------------------------------------------------------ */
+/*
+ * empty / length / front / back / at are tiny and get hammered in tight loops,
+ * so they are defined `static inline` here — the struct and the power-of-two
+ * blockShift are visible, so the call and the block-index shift fold straight
+ * into the caller (the same reason std::deque keeps these in its header). The
+ * returned pointer addresses the element's bytes inline in its block buffer.
+ */
+static inline bool deque_empty(const Deque* deque) {
+    return !deque || deque->size == 0;
+}
+
+static inline size_t deque_length(const Deque* deque) {
+    return deque ? deque->size : 0;
+}
+
+static inline void* deque_at(const Deque* deque, size_t index) {
+    if (!deque || index >= deque->size) {
+        return NULL;
+    }
+    size_t pos = deque->frontIndex + index;
+    return (char*)deque->blocks[pos >> deque->blockShift]
+         + (pos & (deque->blockSize - 1)) * deque->itemSize;
+}
+
+static inline void* deque_front(const Deque* deque) {
+    if (!deque || deque->size == 0) {
+        return NULL;
+    }
+    return (char*)deque->blocks[deque->frontIndex >> deque->blockShift]
+         + (deque->frontIndex & (deque->blockSize - 1)) * deque->itemSize;
+}
+
+static inline void* deque_back(const Deque* deque) {
+    if (!deque || deque->size == 0) {
+        return NULL;
+    }
+    return (char*)deque->blocks[deque->blockCount - 1] + deque->backIndex * deque->itemSize;
+}
 
 
 /* ------------------------------------------------------------------ */
@@ -75,20 +126,12 @@ void           deque_deallocate               (Deque* deque);
 /* Capacity                                                           */
 /* ------------------------------------------------------------------ */
 
-size_t         deque_length                   (const Deque* deque);
 size_t         deque_max_size                 (const Deque* deque);
-bool           deque_empty                    (const Deque* deque);
 void           deque_resize                   (Deque* deque, size_t newSize);
 void           deque_shrink_to_fit            (Deque* deque);
 
-
-/* ------------------------------------------------------------------ */
-/* Element access                                                     */
-/* ------------------------------------------------------------------ */
-
-void*          deque_front                    (const Deque* deque);
-void*          deque_back                     (const Deque* deque);
-void*          deque_at                       (const Deque* deque, size_t index);
+/* deque_length / deque_empty / deque_front / deque_back / deque_at are defined
+ * static inline above (hot read accessors). */
 
 
 /* ------------------------------------------------------------------ */

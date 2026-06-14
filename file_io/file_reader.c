@@ -396,6 +396,71 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
 
 
 /**
+ * @brief Read everything from the current position to EOF into one buffer.
+ *
+ * Allocates a buffer sized to the remaining bytes, reads them in a single pass,
+ * and NUL-terminates the result (so it is safe to use as a C string when the
+ * data is text). `*out_size` receives the actual number of bytes read, which can
+ * be smaller than the on-disk byte count in text mode (the C runtime translates
+ * CRLF to LF) — open the file with READ_BINARY for an exact byte count. The
+ * buffer is heap-allocated; the caller frees it with free().
+ *
+ * @param reader   An open FileReader.
+ * @param out_buf  Receives the malloc'd, NUL-terminated buffer. Must not be NULL.
+ * @param out_size Optional; receives the number of bytes read. May be NULL.
+ * @return true on success; false on invalid arguments, a seek/read error, or OOM.
+ */
+bool file_reader_read_all(FileReader* reader, char** out_buf, size_t* out_size) {
+    if (out_size) {
+        *out_size = 0;
+    }
+    if (!reader || !reader->file_reader || !out_buf) {
+        FILE_READER_LOG("[file_reader_read_all] Error: invalid argument.");
+        return false;
+    }
+    *out_buf = NULL;
+
+    FILE* f = reader->file_reader;
+    long start = ftell(f);
+    if (start < 0) {
+        FILE_READER_LOG("[file_reader_read_all] Error: ftell failed.");
+        return false;
+    }
+    if (fseek(f, 0, SEEK_END) != 0) {
+        FILE_READER_LOG("[file_reader_read_all] Error: fseek to end failed.");
+        return false;
+    }
+    long end = ftell(f);
+    if (end < 0 || fseek(f, start, SEEK_SET) != 0) {
+        FILE_READER_LOG("[file_reader_read_all] Error: ftell/fseek-restore failed.");
+        return false;
+    }
+
+    size_t remaining = (size_t)(end - start);
+    char* buf = (char*)malloc(remaining + 1);
+    if (!buf) {
+        FILE_READER_LOG("[file_reader_read_all] Error: allocation failed.");
+        return false;
+    }
+
+    size_t got = (remaining > 0) ? fread(buf, 1, remaining, f) : 0;
+    if (got < remaining && ferror(f)) {
+        FILE_READER_LOG("[file_reader_read_all] Error: fread failed.");
+        free(buf);
+        return false;
+    }
+
+    buf[got] = '\0';
+    *out_buf = buf;
+    if (out_size) {
+        *out_size = got;
+    }
+    FILE_READER_LOG("[file_reader_read_all] Read %zu byte(s).", got);
+    return true;
+}
+
+
+/**
  * @brief Reads a line of text from the file.
  *
  * This function reads a single line of text from the file associated with the `FileReader`.

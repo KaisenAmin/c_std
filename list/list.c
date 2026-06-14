@@ -9,6 +9,108 @@
 #include "list.h"
 
 
+
+/* Single-allocation nodes: the element is stored INLINE right after the Node
+ * header (one malloc per element, like std::list) instead of in a second heap
+ * block reached through node->value.*/
+#define DLL_VALUE_OFFSET \
+    ((sizeof(Node) + _Alignof(max_align_t) - 1) & ~(_Alignof(max_align_t) - 1))
+
+/* Allocate a detached node holding a COPY of `value` (itemSize bytes) stored
+ * inline. next/prev are NULL; the caller links it in. Returns NULL on OOM. */
+static Node* dll_make_node(const List* list, const void* value) {
+    Node* node = (Node*)malloc(DLL_VALUE_OFFSET + list->itemSize);
+    if (!node) {
+        LIST_LOG("[dll_make_node] : Error: node malloc failed.");
+        return NULL;
+    }
+
+    node->value = (char*)node + DLL_VALUE_OFFSET;
+    memcpy(node->value, value, list->itemSize);
+    node->next = node->prev = NULL;
+    return node;
+}
+
+
+static Node* dll_make_owning_node(void* value) {
+    Node* node = (Node*)malloc(sizeof(Node));
+    if (!node) {
+        LIST_LOG("[dll_make_owning_node] : Error: node malloc failed.");
+        return NULL;
+    }
+
+    node->value = value;
+    node->next = node->prev = NULL;
+    return node;
+}
+
+/* Free a node. Inline values live inside the node allocation and are released
+ * with it; only an externally-owned (emplace) value is a separate block that
+ * must be freed on its own first. */
+static void dll_free_node(Node* node) {
+    if (!node) {
+        return;
+    }
+    if (node->value != (char*)node + DLL_VALUE_OFFSET) {
+        free(node->value);
+    }
+    free(node);
+}
+
+
+static Node* dll_merge(Node* a, Node* b, CompareFunction compare) {
+    Node dummy;
+    Node* tail = &dummy;
+    dummy.next = NULL;
+
+    while (a && b) {
+        if (compare(a->value, b->value) <= 0) {
+            tail->next = a;
+            a = a->next;
+        }
+        else {
+            tail->next = b;
+            b = b->next;
+        }
+        tail = tail->next;
+    }
+    tail->next = a ? a : b;
+    return dummy.next;
+}
+
+
+/* Split a `next`-linked chain into two halves via slow/fast pointers,
+ * returning the head of the second half (first half is NUL-terminated). */
+static Node* dll_split(Node* head) {
+    Node* slow = head;
+    Node* fast = head->next;
+
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+    Node* second = slow->next;
+    slow->next = NULL;
+    return second;
+}
+
+
+/* Top-down merge sort over a `next`-linked chain. O(n log n), stable,
+ * recursion depth O(log n) (~30 for a billion nodes). Returns the new head;
+ * the caller rebuilds prev links and the tail pointer. */
+static Node* dll_merge_sort(Node* head, CompareFunction compare) {
+    if (!head || !head->next) {
+        return head;
+    }
+
+    Node* second = dll_split(head);
+    head   = dll_merge_sort(head, compare);
+    second = dll_merge_sort(second, compare);
+
+    return dll_merge(head, second, compare);
+}
+
+
 /**
  * @brief Creates a new list with the specified item size and comparison function.
  *
@@ -127,23 +229,14 @@ void *list_insert(List *list, size_t index, void *value) {
         return list->tail->value;
     }
 
-    Node *newNode = (Node*) malloc(sizeof(Node));
+    Node *newNode = dll_make_node(list, value);
     if (!newNode) {
         LIST_LOG("[list_insert] : Error: Memory allocation failed for newNode in list_insert.");
         return NULL;
     }
-
-    newNode->value = malloc(list->itemSize);
-    if (!newNode->value) {
-        LIST_LOG("[list_insert] : Error: Memory allocation failed for newNode value in list_insert.");
-        free(newNode);
-        return NULL;
-    }
-
-    memcpy(newNode->value, value, list->itemSize);
     LIST_LOG("[list_insert] : Allocated new node with copied value at index %zu.", index);
 
-    // Traverse to the node just before the insertion point
+    
     Node *current = list->head;
     for (size_t i = 0; i < index - 1; ++i) {
         current = current->next;
@@ -173,7 +266,8 @@ void *list_insert(List *list, size_t index, void *value) {
  * @param list Pointer to the list from which the element will be erased.
  * @param index The index of the element to remove. Must be within the bounds of the list
  * 
- * @return Pointer to the value of the removed element, or NULL if the operation fails.
+ * @return Heap copy of the removed element's value that the caller owns and must
+ *         free(), or NULL if the operation fails / allocation of the copy fails.
  */
 void *list_erase(List *list, size_t index) {
     if (list == NULL) {
@@ -211,8 +305,15 @@ void *list_erase(List *list, size_t index) {
         list->tail = nodeToRemove->prev;
     }
 
-    void *removedValue = nodeToRemove->value;
-    free(nodeToRemove);
+    /* The value lives inline in the node, so it cannot outlive the node's
+     * allocation. Hand the caller an independent heap copy (which they own and
+     * free), matching the previous "returns a freeable value pointer" contract.
+     * dll_free_node also releases an emplace node's externally-owned buffer. */
+    void *removedValue = malloc(list->itemSize);
+    if (removedValue) {
+        memcpy(removedValue, nodeToRemove->value, list->itemSize);
+    }
+    dll_free_node(nodeToRemove);
     list->size--;
 
     if (list->size == 0) {
@@ -329,8 +430,8 @@ void list_reverse(List *list) {
  * @brief Sorts the elements of the list in ascending order.
  *
  * This function sorts the elements of the list in ascending order based on the comparison function provided during
- * the list's creation. It uses a simple bubble sort algorithm, which repeatedly swaps adjacent elements if they are in the wrong order.
- * The sorting is done in-place, modifying the original list.
+ * the list's creation. It uses a stable, O(n log n) merge sort (the same algorithm as `std::list::sort`), re-linking
+ * nodes rather than copying values. The sorting is done in-place, modifying the original list.
  *
  * @param list Pointer to the list to be sorted.
  */
@@ -344,22 +445,16 @@ void list_sort(List* list) {
         return;
     }
 
-    bool swapped;
-    do {
-        swapped = false;
-        Node *current = list->head;
+    list->head = dll_merge_sort(list->head, list->compare);
 
-        while (current != NULL && current->next != NULL) {
-            if (list->compare(current->value, current->next->value) > 0) {
-                void *temp = current->value;
-                current->value = current->next->value;
-                current->next->value = temp;
-                swapped = true;
-            }
-            current = current->next;
-        }
-
-    } while (swapped);
+    Node *prev = NULL;
+    Node *current = list->head;
+    while (current != NULL) {
+        current->prev = prev;
+        prev = current;
+        current = current->next;
+    }
+    list->tail = prev;
 
     LIST_LOG("[list_sort] : List sorted successfully.");
 }
@@ -380,20 +475,12 @@ void list_push_front(List *list, void *value) {
         return;
     }
 
-    Node *newNode = (Node*) malloc(sizeof(Node));
+    Node *newNode = dll_make_node(list, value);
     if (!newNode) {
         LIST_LOG("[list_push_front] : Error: Memory allocation failed for newNode in list_push_front.");
         return;
     }
-    newNode->value = malloc(list->itemSize);
 
-    if (!newNode->value) {
-        free(newNode);
-        LIST_LOG("[list_push_front] : Error: Memory allocation failed for newNode->value in list_push_front.");
-        return;
-    }
-
-    memcpy(newNode->value, value, list->itemSize);
     newNode->next = list->head;
     newNode->prev = NULL;  // As this will be the new first node
 
@@ -427,22 +514,14 @@ void list_push_back(List *list, void *value) {
         return;
     }
 
-    Node *newNode = (Node*) malloc(sizeof(Node));
+    Node *newNode = dll_make_node(list, value);
     if (!newNode) {
         LIST_LOG("[list_push_back] : Error: Memory allocation failed for newNode in list_push_back.");
         return;
     }
 
-    newNode->value = malloc(list->itemSize);
-    if (!newNode->value) {
-        free(newNode);
-        LIST_LOG("[list_push_back] : Error: Memory allocation failed for newNode->value in list_push_back.");
-        return;  
-    }
-
-    memcpy(newNode->value, value, list->itemSize);
-    newNode->next = NULL; 
-    newNode->prev = list->tail;  
+    newNode->next = NULL;
+    newNode->prev = list->tail;
 
     if (list->tail != NULL) {
         list->tail->next = newNode;  
@@ -486,8 +565,7 @@ void list_pop_front(List *list) {
         list->tail = NULL;  
     }
 
-    free(temp->value);  
-    free(temp);
+    dll_free_node(temp);
     list->size--;
 
     LIST_LOG("[list_pop_front] : First element removed from the list. New size: %zu", list->size);
@@ -515,8 +593,7 @@ void list_pop_back(List *list) {
     
     // If there is only one node in the list
     if (list->head == list->tail) {
-        free(list->head->value);
-        free(list->head);
+        dll_free_node(list->head);
         list->head = list->tail = NULL;
     } 
     else {
@@ -524,8 +601,7 @@ void list_pop_back(List *list) {
         list->tail = lastNode->prev;
         list->tail->next = NULL;
 
-        free(lastNode->value);
-        free(lastNode);
+        dll_free_node(lastNode);
     }
 
     list->size--;
@@ -550,8 +626,7 @@ void list_clear(List *list) {
 
     while (current != NULL) {
         Node *next = current->next;
-        free(current->value);
-        free(current);
+        dll_free_node(current);
         current = next;
     }
     list->head = list->tail = NULL;
@@ -808,12 +883,11 @@ void list_emplace_front(List *list, void *value) {
         return;
     }
 
-    Node *newNode = (Node*) malloc(sizeof(Node));
+    Node *newNode = dll_make_owning_node(value);  // take ownership, no copy
     if (!newNode) {
         LIST_LOG("[list_emplace_front] : Error: Memory allocation failed for newNode in list_emplace_front.");
         return;
     }
-    newNode->value = value;  // Directly use the provided value
     newNode->next = list->head;
     newNode->prev = NULL;
 
@@ -847,13 +921,12 @@ void list_emplace_back(List *list, void *value) {
         return;
     }
 
-    Node *newNode = (Node*) malloc(sizeof(Node));
+    Node *newNode = dll_make_owning_node(value);  // take ownership, no copy
     if (!newNode) {
         LIST_LOG("[list_emplace_back] : Error: Memory allocation failed for newNode in list_emplace_back.");
         return;
     }
 
-    newNode->value = value;  // Directly use the provided value
     newNode->next = NULL;
     newNode->prev = list->tail;
 
@@ -975,8 +1048,7 @@ void list_remove(List *list, void *value) {
             else { 
                 list->tail = current->prev;
             }
-            free(current->value);
-            free(current);
+            dll_free_node(current);
 
             list->size--;
             LIST_LOG("[list_remove] : Node removed, new list size: %zu", list->size);
@@ -1028,8 +1100,7 @@ void list_remove_if(List *list, ConditionFunction cond) {
             else {
                 list->tail = current->prev;
             }
-            free(current->value);
-            free(current);
+            dll_free_node(current);
             list->size--;
 
             LIST_LOG("[list_remove_if] : Node removed, new list size: %zu", list->size);
@@ -1079,8 +1150,7 @@ void list_unique(List *list) {
                 list->tail = current;
             }
 
-            free(duplicate->value);
-            free(duplicate);
+            dll_free_node(duplicate);
             list->size--;
 
             LIST_LOG("[list_unique] : Removed a duplicate node, new list size: %zu", list->size);

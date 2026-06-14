@@ -171,6 +171,19 @@ The following seven helpers were added in the production-hardening pass. Each on
 
 ---
 
+### `int regex_full_match(const char* pattern, const char* string, RegexFlags flags)`
+
+- **Purpose**: Whole-string validation — the `std::regex_match` / Python `re.fullmatch` counterpart to `regex_test`. Where `regex_test` asks "does the string *contain* a match?", `regex_full_match` asks "does the pattern match the **entire** string, from the first byte to the last?". This is the primitive to use for input validation (is this a well-formed IPv4 address, UUID, integer, …).
+- **Parameters**:
+  - `pattern`, `string`, `flags`: Same as `regex_test`.
+- **Return**:
+  - `1` if the pattern matches the whole string.
+  - `0` if it does not.
+  - `-1` on NULL inputs, compile error, or OOM.
+- **Notes**: The pattern is anchored at both ends internally, so you do **not** write `^`…`$` yourself (any `^`/`$` you do add still works). The end anchor is *absolute*: unlike a bare `$`, a trailing newline does **not** count as a full match. Capture groups inside the pattern are not reported — the function returns only a yes/no answer.
+
+---
+
 ### `int regex_count_matches(const char* pattern, const char* string, RegexFlags flags)`
 
 - **Purpose**: Counts every non-overlapping occurrence of `pattern` in `string`.
@@ -195,6 +208,21 @@ The following seven helpers were added in the production-hardening pass. Each on
 
 - **Purpose**: Same as `regex_replace` but only the **first** match is substituted.
 - **Return**: New string (caller must `free()`), or `NULL` on error.
+
+---
+
+### `char* regex_replace_groups(const char* pattern, const char* string, const char* replacement, RegexFlags flags)`
+
+- **Purpose**: Like `regex_replace` (replaces **every** match), but the replacement text may contain **backreferences** to captured groups. This is the standard way to *reformat* text — swap fields, restyle a date, wrap matches — without manually splicing strings.
+- **Parameters**:
+  - `pattern`, `string`, `flags`: As above.
+  - `replacement`: Substitution template. Expansion grammar:
+    - `$0` → the whole match.
+    - `$1`…`$N` → capture group `N` (the maximal run of digits is the group number); a group that does not exist or did not participate expands to the empty string.
+    - `$$` → a literal `$`.
+    - `$` followed by anything else → a literal `$` then that character.
+- **Return**: New string (caller must `free()`), or `NULL` on compile failure / OOM / NULL inputs.
+- **Example**: `regex_replace_groups("(\\d{4})-(\\d{2})-(\\d{2})", "2026-06-14", "$3/$2/$1", REGEX_DEFAULT)` → `"14/06/2026"`.
 
 ---
 
@@ -1276,6 +1304,60 @@ cat  : 3
 dog  : 3
 bird : 2
 total: 8
+```
+
+---
+
+### Example 28: Validating input with `regex_full_match` and reformatting with `regex_replace_groups`
+
+`regex_full_match` is the validation primitive — it returns true only when the
+**entire** string matches (contrast with `regex_test`, which only checks for a
+*contained* match). `regex_replace_groups` expands `$1`, `$2`, … backreferences
+in the replacement, so you can reformat text — swap fields, restyle a date —
+in a single call.
+
+```c
+#include "regex/std_regex.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    /* --- Validation with regex_full_match (the whole string must match) --- */
+    const char* ipv4 = "(\\d{1,3}\\.){3}\\d{1,3}";
+    const char* inputs[] = { "192.168.0.1", "192.168.0.1x", "10.0.0" };
+
+    fmt_printf("IPv4 validation (full match vs. contains):\n");
+    for (size_t i = 0; i < sizeof(inputs) / sizeof(inputs[0]); i++) {
+        int full = regex_full_match(ipv4, inputs[i], REGEX_DEFAULT);
+        int has  = regex_test(ipv4, inputs[i], REGEX_DEFAULT);
+        fmt_printf("  %-14s full=%d contains=%d\n", inputs[i], full, has);
+    }
+
+    /* --- Reformatting with regex_replace_groups (backreferences) --- */
+    char* date = regex_replace_groups("(\\d{4})-(\\d{2})-(\\d{2})",
+                                      "release on 2026-06-14, patch 2026-07-01",
+                                      "$3/$2/$1", REGEX_DEFAULT);
+    fmt_printf("\nReformatted dates: %s\n", date ? date : "(error)");
+    free(date);
+
+    char* name = regex_replace_groups("(\\w+)\\s+(\\w+)", "Ada Lovelace",
+                                      "$2, $1", REGEX_DEFAULT);
+    fmt_printf("Swapped name:      %s\n", name ? name : "(error)");
+    free(name);
+
+    return 0;
+}
+```
+
+**Result:**
+```
+IPv4 validation (full match vs. contains):
+  192.168.0.1    full=1 contains=1
+  192.168.0.1x   full=0 contains=1
+  10.0.0         full=0 contains=0
+
+Reformatted dates: release on 14/06/2026, patch 01/07/2026
+Swapped name:      Lovelace, Ada
 ```
 
 ---

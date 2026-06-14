@@ -84,6 +84,12 @@ typedef struct {
     PlotColor   legendTextColor;
     int         titleFontSize;   /* pixel size for the title   (default 28) */
     int         labelFontSize;   /* pixel size for axis labels (default 20) */
+    /* Manual axis ranges (opaque — use plot_set_xlim/plot_set_ylim).
+       When the *_Manual flag is false the axis auto-scales to the data. */
+    float       xMinManual, xMaxManual;
+    float       yMinManual, yMaxManual;
+    bool        xRangeManual;
+    bool        yRangeManual;
 } Plot;
 
 
@@ -148,6 +154,17 @@ void        plot_set_background_color         (Plot* plot, PlotColor c);
 void        plot_set_grid_color               (Plot* plot, PlotColor c);
 void        plot_set_axis_color               (Plot* plot, PlotColor c);
 void        plot_set_legend_colors            (Plot* plot, PlotColor bg, PlotColor text);
+
+
+/* ------------------------------------------------------------------ */
+/* Axis range control                                                 */
+/* ------------------------------------------------------------------ */
+
+bool        plot_set_xlim                     (Plot* plot, float min, float max);
+bool        plot_set_ylim                     (Plot* plot, float min, float max);
+void        plot_autoscale                    (Plot* plot);
+bool        plot_get_xlim                     (const Plot* plot, float* outMin, float* outMax);
+bool        plot_get_ylim                     (const Plot* plot, float* outMin, float* outMax);
 
 
 /* ------------------------------------------------------------------ */

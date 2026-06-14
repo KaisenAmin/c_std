@@ -21,8 +21,15 @@ static TcpStatus get_sock_address(int (*fn)(TcpSocket, struct sockaddr*, socklen
 
 #define TCP_INVALID_SOCKET (~(TcpSocket)0)
 
-// Thread safety: mutex for SSL context and mapping
-static Mutex tcp_mutex;
+// Thread safety: mutex for SSL context and mapping. Initialized exactly once
+// (process lifetime) so nested/concurrent tcp_init/tcp_cleanup calls — e.g. a
+// server thread plus client requests in the same process — never re-init or
+// destroy a mutex another caller is relying on.
+static Mutex    tcp_mutex;
+static OnceFlag tcp_mutex_once = ONCE_FLAG_INIT;
+static void tcp_mutex_init_once(void) {
+    mutex_init(&tcp_mutex, MUTEX_RECURSIVE);
+}
 
 
 // Private SSL mapping struct (now only in tcp.c)
@@ -389,8 +396,9 @@ TcpStatus tcp_init(void) {
     #endif
     // Recursive mutex: tcp_enable_ssl / tcp_disable_ssl / tcp_ssl_close hold
     // the lock and then call tcp_get_ssl / tcp_set_ssl which lock again.
-
-    mutex_init(&tcp_mutex, MUTEX_RECURSIVE);
+    // Initialized once (never re-initialized) so repeated/concurrent tcp_init
+    // calls are safe.
+    call_once(&tcp_mutex_once, tcp_mutex_init_once);
     TCP_LOG("[tcp_init] Network API initialized successfully.\n");
     return TCP_SUCCESS;
 }
@@ -408,7 +416,9 @@ TcpStatus tcp_cleanup(void) {
     #if defined(_WIN32) || defined(_WIN64)
         WSACleanup();
     #endif
-    mutex_destroy(&tcp_mutex);
+    /* tcp_mutex is process-global and intentionally NOT destroyed here: other
+     * threads (or a later tcp_init) may still rely on it. It is reclaimed by
+     * the OS at process exit. */
     TCP_LOG("[tcp_cleanup] Network API cleaned up successfully.\n");
 
     return TCP_SUCCESS;
@@ -1201,6 +1211,171 @@ TcpStatus tcp_ssl_init(const char* cert, const char* key) {
 
 
 /**
+ * @brief Initialize a client-side SSL context (TLS_client_method).
+ *
+ * Unlike tcp_ssl_init (which builds a server context and requires a cert/key),
+ * this creates a context suitable for outbound TLS — no cert/key needed — and
+ * loads the system CA store so tcp_ssl_get_verify_result can confirm the peer
+ * chain. No-op if a context already exists.
+ *
+ * @return `TCP_SUCCESS` on success (or if a context already exists);
+ *         `TCP_ERR_SETUP` if the client SSL context cannot be created.
+ */
+TcpStatus tcp_ssl_init_client(void) {
+    mutex_lock(&tcp_mutex);
+    if (ssl_ctx != NULL) {
+        mutex_unlock(&tcp_mutex);
+        TCP_LOG("[tcp_ssl_init_client] SSL context already initialized.\n");
+        return TCP_SUCCESS;
+    }
+
+    SSL_load_error_strings();
+    OpenSSL_add_ssl_algorithms();
+    ssl_ctx = SSL_CTX_new(TLS_client_method());
+    if (!ssl_ctx) {
+        mutex_unlock(&tcp_mutex);
+        TCP_LOG("[tcp_ssl_init_client] Error creating client SSL context: %s\n", ERR_error_string(ERR_get_error(), NULL));
+        return TCP_ERR_SETUP;
+    }
+
+    /* Best-effort: load the OS trust store. Present on most Linux installs;
+       may be empty on a bare MinGW box (callers can then use insecure mode). */
+    SSL_CTX_set_default_verify_paths(ssl_ctx);
+
+    initialize_ssl_mappings();
+    mutex_unlock(&tcp_mutex);
+
+    TCP_LOG("[tcp_ssl_init_client] client SSL context initialized.\n");
+    return TCP_SUCCESS;
+}
+
+
+/**
+ * @brief Verification result of the peer certificate chain after a handshake.
+ * @param socket A TCP socket with an active TLS session.
+ * @return X509_V_OK (0) on success, a non-zero X509_V_* code on failure, or -1
+ *         if the socket has no SSL object.
+ */
+long tcp_ssl_get_verify_result(TcpSocket socket) {
+    SSL* ssl = tcp_get_ssl(socket);
+    if (!ssl) {
+        return -1;
+    }
+    return (long)SSL_get_verify_result(ssl);
+}
+
+
+/**
+ * @brief Enable/disable fail-closed certificate verification on the SSL context.
+ *
+ * With verify_peer = true the TLS handshake aborts on an untrusted or
+ * hostname-mismatched certificate (SSL_VERIFY_PEER); with false it succeeds and
+ * the result is available via tcp_ssl_get_verify_result. Process-global.
+ *
+ * @param verify_peer `true` to fail the handshake on an untrusted or
+ *                    hostname-mismatched certificate; `false` for SSL_VERIFY_NONE.
+ * @return TCP_SUCCESS, or TCP_ERR_SETUP if no SSL context exists yet.
+ */
+TcpStatus tcp_ssl_set_verify(bool verify_peer) {
+    mutex_lock(&tcp_mutex);
+    if (ssl_ctx == NULL) {
+        mutex_unlock(&tcp_mutex);
+        TCP_LOG("[tcp_ssl_set_verify] SSL context not initialized.\n");
+        return TCP_ERR_SETUP;
+    }
+    SSL_CTX_set_verify(ssl_ctx, verify_peer ? SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
+    mutex_unlock(&tcp_mutex);
+    return TCP_SUCCESS;
+}
+
+
+/**
+ * @brief Load trusted CA certificates (a bundle file and/or a directory) into
+ *        the SSL context, for environments without a usable OS trust store.
+ *
+ * @param ca_file PEM bundle path, or NULL.
+ * @param ca_path Hashed-cert directory path, or NULL. At least one must be set.
+ * @return TCP_SUCCESS, TCP_ERR_SETUP (no context) or TCP_ERR_SSL (load failed).
+ */
+TcpStatus tcp_ssl_load_verify_locations(const char* ca_file, const char* ca_path) {
+    if (!ca_file && !ca_path) {
+        return TCP_ERR_GENERIC;
+    }
+    mutex_lock(&tcp_mutex);
+    if (ssl_ctx == NULL) {
+        mutex_unlock(&tcp_mutex);
+        TCP_LOG("[tcp_ssl_load_verify_locations] SSL context not initialized.\n");
+        return TCP_ERR_SETUP;
+    }
+    int rc = SSL_CTX_load_verify_locations(ssl_ctx, ca_file, ca_path);
+    mutex_unlock(&tcp_mutex);
+    if (rc != 1) {
+        TCP_LOG("[tcp_ssl_load_verify_locations] failed: %s\n", ERR_error_string(ERR_get_error(), NULL));
+        return TCP_ERR_SSL;
+    }
+    return TCP_SUCCESS;
+}
+
+
+/**
+ * @brief One-shot secure client connect (socket + connect + TLS + verification).
+ *
+ * Initializes a client SSL context, sets the verify mode, creates a socket,
+ * connects with a timeout, performs the TLS handshake (with SNI and hostname
+ * verification), and — when `verify` is set — confirms the peer chain. On any
+ * failure the socket is closed before returning.
+ *
+ * @param host       Server hostname or IP. Must not be NULL or empty.
+ * @param port       Server port in host byte order.
+ * @param timeout_ms Connect timeout in milliseconds.
+ * @param verify     When true, abort on an untrusted or hostname-mismatched cert.
+ * @param out_socket Output: the connected TLS socket on success. Must not be NULL.
+ * @return `TCP_SUCCESS` with `*out_socket` set; `TCP_ERR_GENERIC` on invalid
+ *         arguments; `TCP_ERR_SSL` if certificate verification fails; or a
+ *         propagated setup/connect/handshake error code.
+ */
+TcpStatus tcp_connect_tls(const char* host, unsigned short port, long timeout_ms, bool verify, TcpSocket* out_socket) {
+    if (!host || host[0] == '\0' || !out_socket) {
+        return TCP_ERR_GENERIC;
+    }
+
+    TcpStatus st = tcp_ssl_init_client();
+    if (st != TCP_SUCCESS) {
+        return st;
+    }
+    /* Fail-closed when verifying: a bad chain/hostname then aborts the handshake. */
+    st = tcp_ssl_set_verify(verify);
+    if (st != TCP_SUCCESS) {
+        return st;
+    }
+
+    TcpSocket sock;
+    st = tcp_socket_create(&sock);
+    if (st != TCP_SUCCESS) {
+        return st;
+    }
+    st = tcp_connect_timeout(sock, host, port, timeout_ms);
+    if (st != TCP_SUCCESS) {
+        tcp_close(sock);
+        return st;
+    }
+    st = tcp_ssl_connect(sock, host);   /* SNI + hostname verification */
+    if (st != TCP_SUCCESS) {
+        tcp_close(sock);
+        return st;
+    }
+    if (verify && tcp_ssl_get_verify_result(sock) != X509_V_OK) {
+        TCP_LOG("[tcp_connect_tls] certificate verification failed for %s\n", host);
+        tcp_ssl_close(sock);            /* tears down TLS and closes the fd */
+        return TCP_ERR_SSL;
+    }
+
+    *out_socket = sock;
+    return TCP_SUCCESS;
+}
+
+
+/**
  * @brief Cleans up the SSL context and deallocates OpenSSL resources.
  *
  * This function frees the SSL context and performs OpenSSL cleanup operations, such as
@@ -1274,10 +1449,26 @@ TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host) {
     if (SSL_set_tlsext_host_name(ssl, host) == 0) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_connect] Failed to set SNI Hostname: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        SSL_free(ssl); 
+        SSL_free(ssl);
 
-        return TCP_ERR_SSL; 
+        return TCP_ERR_SSL;
     }
+
+    /* Bind the expected identity so the certificate is checked AGAINST `host`,
+     * not merely for a valid chain. For an IP literal use the IP SAN; otherwise
+     * the DNS name (SAN/CN). With SSL_VERIFY_PEER (tcp_ssl_set_verify) a mismatch
+     * aborts the handshake; otherwise it shows up in tcp_ssl_get_verify_result.
+     * This closes the "any valid cert for any domain is accepted" MITM hole. */
+    {
+        unsigned char ip_bytes[16];
+        if (inet_pton(AF_INET, host, ip_bytes) == 1 || inet_pton(AF_INET6, host, ip_bytes) == 1) {
+            X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(ssl), host);
+        }
+        else {
+            SSL_set1_host(ssl, host);
+        }
+    }
+
     if (SSL_connect(ssl) != 1) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_connect] SSL handshake failed: %s\n", ERR_error_string(ERR_get_error(), NULL));

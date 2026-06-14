@@ -40,36 +40,54 @@ static char* p_strdup(const char* s) {
 }
 
 
-/* Compute global x/y min/max across every series. */
+/* Compute the effective x/y min/max used for rendering. Each axis is
+ * auto-scaled to the data unless a manual range was pinned with
+ * plot_set_xlim / plot_set_ylim, in which case the pinned range wins. */
 static void compute_extents(const Plot* plot, float* xMin, float* xMax, float* yMin, float* yMax) {
-    *xMin =  FLT_MAX; *xMax = -FLT_MAX;
-    *yMin =  FLT_MAX; *yMax = -FLT_MAX;
+    float axMin =  FLT_MAX, axMax = -FLT_MAX;
+    float ayMin =  FLT_MAX, ayMax = -FLT_MAX;
     for (size_t s = 0; s < plot->seriesCount; ++s) {
         const PlotSeries* ser = &plot->series[s];
 
         for (size_t i = 0; i < ser->dataSize; ++i) {
             float xv = ser->xData ? ser->xData[i] : (float)i;
-            if (xv < *xMin) {
-                *xMin = xv;
+            if (xv < axMin) {
+                axMin = xv;
             }
-            if (xv > *xMax) {
-                *xMax = xv;
+            if (xv > axMax) {
+                axMax = xv;
             }
-            if (ser->yData[i] < *yMin) {
-                *yMin = ser->yData[i];
+            if (ser->yData[i] < ayMin) {
+                ayMin = ser->yData[i];
             }
-            if (ser->yData[i] > *yMax) {
-                *yMax = ser->yData[i];
+            if (ser->yData[i] > ayMax) {
+                ayMax = ser->yData[i];
             }
         }
     }
-    if (*xMax == *xMin) { 
-        *xMin -= 1.0f; 
-        *xMax += 1.0f; 
+    if (axMax == axMin) {
+        axMin -= 1.0f;
+        axMax += 1.0f;
     }
-    if (*yMax == *yMin) { 
-        *yMin -= 1.0f; 
-        *yMax += 1.0f; 
+    if (ayMax == ayMin) {
+        ayMin -= 1.0f;
+        ayMax += 1.0f;
+    }
+
+    /* Manual ranges override the auto-computed ones, independently per axis. */
+    if (plot->xRangeManual) {
+        *xMin = plot->xMinManual;
+        *xMax = plot->xMaxManual;
+    } else {
+        *xMin = axMin;
+        *xMax = axMax;
+    }
+    if (plot->yRangeManual) {
+        *yMin = plot->yMinManual;
+        *yMax = plot->yMaxManual;
+    } else {
+        *yMin = ayMin;
+        *yMax = ayMax;
     }
 }
 
@@ -301,6 +319,8 @@ Plot* plot_create(const char* title, const char* xLabel, const char* yLabel) {
     plot->titleFontSize = 28;
     plot->labelFontSize = 20;
     plot->seriesCount = 0;
+    plot->xRangeManual = false;   /* axes auto-scale to the data until pinned */
+    plot->yRangeManual = false;
 
     PLOT_LOG("[plot_create]: exit -> %p", (void*)plot);
     return plot;
@@ -2052,5 +2072,140 @@ bool plot_series_stddev(const Plot* plot, size_t index, float* out) {
 
     *out = (float)sqrt(var);
     PLOT_LOG("[plot_series_stddev]: exit -> true (stddev=%g)", sqrt(var));
+    return true;
+}
+
+
+/* =================================================================== */
+/* Axis range control                                                  */
+/* =================================================================== */
+
+/**
+ * @brief Pin the x-axis to a fixed [min, max] range.
+ *
+ * By default each axis auto-scales to the data on every render. Pinning a
+ * range keeps the scale constant — essential for dashboards that compare
+ * snapshots over time, for pinning a bar chart's baseline to 0, or for
+ * zooming/clipping. The range affects every subsequent `plot_draw` and
+ * `plot_export_image`. Data points outside the range are mapped outside the
+ * plot area (and clipped by the renderer). Call `plot_autoscale` to revert.
+ *
+ * @param plot Plot to configure. Must be non-NULL.
+ * @param min  Lower bound of the x-axis.
+ * @param max  Upper bound of the x-axis. Must be strictly greater than @p min.
+ * @return true if the range was applied; false if @p plot is NULL or the
+ *         range is degenerate (`min >= max`, or either bound is NaN).
+ */
+bool plot_set_xlim(Plot* plot, float min, float max) {
+    PLOT_LOG("[plot_set_xlim]: enter (min=%g, max=%g)", (double)min, (double)max);
+    if (!plot || !(min < max)) {   /* `!(min < max)` also rejects NaN bounds */
+        PLOT_LOG("[plot_set_xlim]: bad arg or degenerate range -> false");
+        return false;
+    }
+    plot->xMinManual   = min;
+    plot->xMaxManual   = max;
+    plot->xRangeManual = true;
+    return true;
+}
+
+
+/**
+ * @brief Pin the y-axis to a fixed [min, max] range.
+ *
+ * The y-axis counterpart to `plot_set_xlim`; see that function for the full
+ * contract. The two axes are independent — you may pin one and leave the
+ * other auto-scaling.
+ *
+ * @param plot Plot to configure. Must be non-NULL.
+ * @param min  Lower bound of the y-axis.
+ * @param max  Upper bound of the y-axis. Must be strictly greater than @p min.
+ * @return true if the range was applied; false if @p plot is NULL or the
+ *         range is degenerate (`min >= max`, or either bound is NaN).
+ */
+bool plot_set_ylim(Plot* plot, float min, float max) {
+    PLOT_LOG("[plot_set_ylim]: enter (min=%g, max=%g)", (double)min, (double)max);
+    if (!plot || !(min < max)) {
+        PLOT_LOG("[plot_set_ylim]: bad arg or degenerate range -> false");
+        return false;
+    }
+    plot->yMinManual   = min;
+    plot->yMaxManual   = max;
+    plot->yRangeManual = true;
+    return true;
+}
+
+
+/**
+ * @brief Revert both axes to automatic scaling.
+ *
+ * Clears any range previously pinned with `plot_set_xlim` / `plot_set_ylim`,
+ * so the next render auto-scales to the data again. NULL is a no-op.
+ *
+ * @param plot Plot to reset. May be NULL.
+ */
+void plot_autoscale(Plot* plot) {
+    PLOT_LOG("[plot_autoscale]: enter (plot=%p)", (void*)plot);
+    if (!plot) {
+        return;
+    }
+    plot->xRangeManual = false;
+    plot->yRangeManual = false;
+}
+
+
+/**
+ * @brief Read back the effective x-axis range that rendering will use.
+ *
+ * Reports the pinned range if `plot_set_xlim` was called, otherwise the range
+ * auto-computed from the series data (with the same flat-data widening the
+ * renderer applies). Lets you inspect or persist the scale without a graphics
+ * context.
+ *
+ * @param plot   Plot to query. Must be non-NULL.
+ * @param outMin Receives the lower bound. Must be non-NULL.
+ * @param outMax Receives the upper bound. Must be non-NULL.
+ * @return true on success; false if any argument is NULL, or if the axis has
+ *         no pinned range and the plot holds no data to scale from.
+ */
+bool plot_get_xlim(const Plot* plot, float* outMin, float* outMax) {
+    PLOT_LOG("[plot_get_xlim]: enter (plot=%p)", (const void*)plot);
+    if (!plot || !outMin || !outMax) {
+        return false;
+    }
+    float xmn, xmx, ymn, ymx;
+    compute_extents(plot, &xmn, &xmx, &ymn, &ymx);
+    if (xmn > xmx) {   /* no manual range and no data to auto-scale from */
+        return false;
+    }
+    *outMin = xmn;
+    *outMax = xmx;
+    return true;
+}
+
+
+/**
+ * @brief Read back the effective y-axis range that rendering will use.
+ *
+ * The y-axis counterpart to `plot_get_xlim`; see that function for the full
+ * contract.
+ *
+ * @param plot   Plot to query. Must be non-NULL.
+ * @param outMin Receives the lower bound. Must be non-NULL.
+ * @param outMax Receives the upper bound. Must be non-NULL.
+ * @return true on success; false if any argument is NULL, or if the axis has
+ *         no pinned range and the plot holds no data to scale from.
+ */
+bool plot_get_ylim(const Plot* plot, float* outMin, float* outMax) {
+    PLOT_LOG("[plot_get_ylim]: enter (plot=%p)", (const void*)plot);
+    if (!plot || !outMin || !outMax) {
+        return false;
+    }
+    float xmn, xmx, ymn, ymx;
+    compute_extents(plot, &xmn, &xmx, &ymn, &ymx);
+    if (ymn > ymx) {
+        return false;
+    }
+    *outMin = ymn;
+    *outMax = ymx;
     return true;
 }

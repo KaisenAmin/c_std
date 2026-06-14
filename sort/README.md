@@ -520,6 +520,42 @@ Pre-sort validation, post-sort assertion, or guard before calling `sort_binary_s
 
 ---
 
+### `size_t sort_is_sorted_until(ElementType* array, size_t size, CompareFunc compare)`
+
+**Purpose**:  
+Returns the index of the first element that is out of order — the end of the longest sorted prefix (analog of `std::is_sorted_until`). It is the diagnostic companion to `sort_is_sorted`: it tells you not just *whether* the data is sorted, but exactly *where* the order breaks. The relationship `sort_is_sorted(a, n, cmp) == (sort_is_sorted_until(a, n, cmp) == n)` always holds.
+
+**Parameters**:  
+- `array`: Array of element pointers.
+- `size`: Number of elements.
+- `compare`: Comparator.
+
+**Return Value**:  
+The index in `[0, size]` of the first element strictly smaller than its predecessor, or `size` if the array is fully sorted (or has fewer than two elements, or is `NULL`).
+
+**Usage Case**:  
+Validating partially-sorted input, or locating the boundary of a sorted run before merging.
+
+---
+
+### `size_t sort_unique(ElementType* array, size_t size, CompareFunc compare)`
+
+**Purpose**:  
+Removes consecutive duplicate elements in-place, keeping the first of each run (analog of `std::unique`). This is the second half of the ubiquitous "**sort, then unique**" idiom: sort first, then call this to collapse each group of equal elements to one. Only the element *pointers* are moved — the function never frees or copies the pointed-to data — so it is safe regardless of who owns the elements.
+
+**Parameters**:  
+- `array`: Array of element pointers (typically already sorted).
+- `size`: Number of elements.
+- `compare`: Comparator.
+
+**Return Value**:  
+The number of distinct elements now packed at the front of `array` (the new logical length); `0` for a `NULL` array / `NULL` comparator / empty input. Slots beyond the returned count keep their previous (now-duplicated) pointer values — like `std::unique`, they are left unspecified-but-valid, not cleared.
+
+**Usage Case**:  
+De-duplicating a dataset after sorting — building a set, removing repeated log lines, collapsing identical records.
+
+---
+
 ### `void sort_reverse(ElementType* array, size_t size, SwapFunc swap)`
 
 **Purpose**:  
@@ -1645,6 +1681,59 @@ int main() {
 **Result:**
 ```
 Merged (10 elements): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+```
+
+---
+
+### Example 16 : `sort_is_sorted_until` + `sort_unique` — diagnose order, then de-duplicate
+
+`sort_is_sorted_until` reports exactly where ordering breaks (not just *whether* it
+holds), and `sort_unique` completes the classic "sort, then unique" pipeline by
+collapsing each run of equal elements to one — turning raw data into a sorted,
+distinct set.
+
+```c
+#include "sort/sort.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    /* Raw data with duplicates and an element out of order right away. */
+    int nums[] = {5, 3, 8, 3, 1, 8, 5, 1, 9, 3};
+    size_t n = sizeof(nums) / sizeof(nums[0]);
+
+    ElementType arr[10];
+    for (size_t i = 0; i < n; i++) {
+        arr[i] = &nums[i];
+    }
+
+    /* Before sorting, report where the order first breaks. */
+    fmt_printf("sorted prefix ends at index %zu of %zu\n",
+               sort_is_sorted_until(arr, n, sort_compare_int), n);
+
+    /* sort, then unique -> a sorted, de-duplicated set. */
+    sort_quicksort(arr, n, sort_compare_int, sort_swap_generic);
+    size_t m = sort_unique(arr, n, sort_compare_int);
+
+    fmt_printf("distinct count: %zu\n", m);
+    fmt_printf("distinct values:");
+    for (size_t i = 0; i < m; i++) {
+        fmt_printf(" %d", *(int*)arr[i]);
+    }
+    fmt_printf("\n");
+
+    /* The de-duplicated front is now fully sorted. */
+    fmt_printf("fully sorted now? %s\n",
+               sort_is_sorted_until(arr, m, sort_compare_int) == m ? "yes" : "no");
+
+    return 0;
+}
+```
+**Result:**
+```
+sorted prefix ends at index 1 of 10
+distinct count: 5
+distinct values: 1 3 5 8 9
+fully sorted now? yes
 ```
 
 ---

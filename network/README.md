@@ -518,6 +518,93 @@ Called during application startup to initialize SSL/TLS support and set up the n
 
 ---
 
+### `TcpStatus tcp_ssl_init_client(void)`
+
+**Purpose**:  
+Initializes a **client-side** SSL context (`TLS_client_method`) — no certificate or key required, unlike `tcp_ssl_init` (which builds a *server* context and mandates a cert/key). It also loads the system CA store so `tcp_ssl_get_verify_result` can confirm the peer's certificate chain. No-op if a context already exists. This is what makes outbound `https://` (and the HTTP client) possible.
+
+**Parameters**:  
+None.
+
+**Return Value**:  
+- `TCP_SUCCESS`: client context ready (or already initialized).  
+- `TCP_ERR_SETUP`: failed to create the context.
+
+**Usage Case**:  
+Call once before `tcp_ssl_connect` on the client side (the HTTP client calls it for you).
+
+---
+
+### `long tcp_ssl_get_verify_result(TcpSocket socket)`
+
+**Purpose**:  
+Returns the verification result of the peer certificate chain after a handshake, so a client can enforce certificate validity.
+
+**Parameters**:  
+- `socket`: A socket on which `tcp_ssl_connect` has completed.
+
+**Return Value**:  
+- `0` (`X509_V_OK`): the chain verified.  
+- non-zero: an `X509_V_*` failure code (untrusted, expired, self-signed, …).  
+- `-1`: the socket has no SSL object.
+
+**Usage Case**:  
+After `tcp_ssl_connect`, reject the connection unless the result is `0` (what the HTTP client does in secure mode). Note: the system CA store is present on typical Linux installs but may be **empty on a bare MinGW/Windows** OpenSSL build, where verification fails closed. As of the hostname-verification update, `tcp_ssl_connect` binds the expected identity (the `host` argument — DNS SAN/CN, or the IP SAN for an IP literal), so `X509_V_OK` now also means the certificate is valid **for that host**, not merely a valid certificate for some domain. This closes the "any valid cert is accepted" MITM hole.
+
+---
+
+### `TcpStatus tcp_ssl_set_verify(bool verify_peer)`
+
+**Purpose**:  
+Make the TLS handshake itself **fail closed** on an untrusted or hostname-mismatched certificate (`SSL_VERIFY_PEER`). By default verification is off — the handshake succeeds and you inspect `tcp_ssl_get_verify_result` yourself.
+
+**Parameters**:  
+- `verify_peer`: `true` to require a valid, trusted, correctly-named certificate; `false` to restore the lenient default.
+
+**Return Value**:  
+`TCP_SUCCESS`, or `TCP_ERR_SETUP` if no SSL context has been created yet (call `tcp_ssl_init_client` first).
+
+**Usage Case**:  
+Production clients that should refuse to talk to a server presenting a bad certificate. Process-global (affects the shared context). `tcp_connect_tls` calls this for you.
+
+---
+
+### `TcpStatus tcp_ssl_load_verify_locations(const char* ca_file, const char* ca_path)`
+
+**Purpose**:  
+Load trusted CA certificates — a PEM bundle file and/or a hashed-cert directory — into the SSL context, for environments where the OS trust store is unavailable (notably a bare MinGW build).
+
+**Parameters**:  
+- `ca_file`: path to a PEM CA bundle (e.g. a shipped `cacert.pem`), or `NULL`.  
+- `ca_path`: path to an OpenSSL hashed-cert directory, or `NULL`. **At least one must be non-NULL.**
+
+**Return Value**:  
+`TCP_SUCCESS`; `TCP_ERR_SETUP` (no context); `TCP_ERR_GENERIC` (both arguments `NULL`); `TCP_ERR_SSL` (the file/dir could not be loaded).
+
+**Usage Case**:  
+Ship a CA bundle with your Windows binary so `verify=true` HTTPS works without the OS store; or pin a private CA.
+
+---
+
+### `TcpStatus tcp_connect_tls(const char* host, unsigned short port, long timeout_ms, bool verify, TcpSocket* out_socket)`
+
+**Purpose**:  
+One-shot **secure client connect**: create a socket, connect to `host:port` within `timeout_ms`, then negotiate TLS with **SNI + certificate hostname verification** — all in a single call. Initializes the client SSL context for you.
+
+**Parameters**:  
+- `host` / `port`: the server to dial.  
+- `timeout_ms`: connect timeout (`< 0` blocks).  
+- `verify`: `true` requires the certificate chain **and** hostname to validate (fail-closed); `false` establishes TLS without trust checks (self-signed / testing).  
+- `out_socket`: receives the ready TLS socket on success.
+
+**Return Value**:  
+`TCP_SUCCESS` with `*out_socket` set; otherwise an error (`TCP_ERR_CONNECT`, `TCP_ERR_SSL_HANDSHAKE`, `TCP_ERR_SSL`, …) and the socket is closed for you.
+
+**Usage Case**:  
+The production way to open a verified TLS connection. Read/write with `tcp_ssl_send` / `tcp_ssl_recv`; close with `tcp_ssl_close`.
+
+---
+
 ### `TcpStatus tcp_ssl_cleanup(void)`
 
 **Purpose**:  
@@ -2640,6 +2727,42 @@ Primary entry point for turning raw TCP bytes into a structured request object i
 
 ---
 
+### `HttpRequest* http_parse_request_ex(const char* data, size_t length)`
+
+**Purpose**:  
+Length-delimited, **binary-safe** variant of `http_parse_request`. Parses exactly `length` bytes, so the body may contain embedded NULs; the exact size is reported in `req->body_length` (the body is still NUL-terminated for convenience). `http_parse_request` is now a thin wrapper that calls this with `strlen(request)`.
+
+**Parameters**:  
+- `data`: Raw request bytes (need not be NUL-terminated within `length`).  
+- `length`: Exact number of bytes to parse.
+
+**Return Value**:  
+A newly allocated `HttpRequest` (free with `http_free_request`), or `NULL` on a malformed request / allocation failure.
+
+**Usage Case**:  
+Parsing a request whose body is binary (file upload, protobuf, image) where `strlen` would truncate at the first NUL.
+
+---
+
+### `bool http_read_full_request(TcpSocket socket, char** out_data, size_t* out_len, int* out_status)`
+
+**Purpose**:  
+Reads one **complete** request off a connected socket: loops `recv` until the full header block (`\r\n\r\n`) arrives, then reads the body framed by `Content-Length` or decodes a `Transfer-Encoding: chunked` body into a contiguous buffer. Enforces `HTTP_MAX_HEADER_BYTES` / `HTTP_MAX_BODY_BYTES`, and rejects request-smuggling vectors (both `Content-Length` *and* `Transfer-Encoding`) and unsupported transfer-codings. This is what fixes the old "single 4 KB `recv`" truncation.
+
+**Parameters**:  
+- `socket`: A connected client socket.  
+- `out_data`: Receives a malloc'd, NUL-terminated buffer (headers + de-framed body); the caller frees it.  
+- `out_len`: Receives the exact byte length (body included).  
+- `out_status`: On failure, the HTTP status to reply with — `431` (headers too large), `413` (body too large), `400` (truncated/smuggling), `408` (idle timeout), `501` (unsupported coding) — or `0` when the peer simply closed without sending a request (drop silently).
+
+**Return Value**:  
+`true` on success (with `*out_data` / `*out_len` set), `false` otherwise (with `*out_status` set).
+
+**Usage Case**:  
+The read step inside a custom accept loop when you drive `http_handle_request`-style dispatch yourself.
+
+---
+
 ### `void http_free_request(HttpRequest* request)`
 
 **Purpose**:  
@@ -2901,6 +3024,24 @@ Called internally by `http_handle_request`. Expose it directly for testing respo
 
 ---
 
+### `char* http_serialize_response_ex(HttpResponse* response, bool head_only, size_t* out_len)`
+
+**Purpose**:  
+Binary-safe, HEAD-aware serializer. Auto-adds a `Content-Length` header (unless the response already has one or a `Transfer-Encoding: chunked` header — in which case the body is chunk-encoded `<hex>\r\n…\r\n0\r\n\r\n`), writes the **exact** byte count to `*out_len` (may be `NULL`), and omits the body entirely when `head_only` is `true` (a `HEAD` reply: headers + `Content-Length`, no body). `http_serialize_response` is a wrapper for `http_serialize_response_ex(r, false, NULL)`.
+
+**Parameters**:  
+- `response`: The response to serialize.  
+- `head_only`: `true` to emit headers only (HEAD).  
+- `out_len`: Receives the exact serialized length (body may contain NULs); pass `NULL` if not needed.
+
+**Return Value**:  
+Newly allocated buffer of `*out_len` bytes (NUL-terminated for convenience), or `NULL` on failure.
+
+**Usage Case**:  
+Emitting a correct `Content-Length`, chunk-encoding a streamed body, or building a HEAD reply — what the concurrent server uses internally.
+
+---
+
 ### `void http_free_response(HttpResponse* response)`
 
 **Purpose**:  
@@ -2938,32 +3079,77 @@ Called at startup to wire up all URL paths before `http_start_server`.
 ### `void http_start_server(int port)`
 
 **Purpose**:  
-Binds to `0.0.0.0:port` with `SO_REUSEADDR`, starts listening, and serves requests on the calling thread in a loop until `http_stop_server` is called from another thread. Every failure path cleans up sockets.
+Binds to `0.0.0.0:port` with `SO_REUSEADDR`, listens, and serves requests **concurrently**: every accepted connection is handled on a worker-thread pool, so one slow client never blocks the others. Each connection is bounded by a per-read idle timeout (slow-loris defense), `SIGPIPE` is ignored on POSIX so a hung-up client can't kill the process, and `http_stop_server` performs a **graceful** shutdown (stop accepting, drain in-flight connections, join the workers). Blocks the calling thread until stopped.
 
 **Parameters**:  
-- `port`: TCP port number to listen on.
+- `port`: TCP port number to listen on (`0` lets the OS pick a free port — read it back with `http_server_get_port`).
 
 **Return Value**:  
-None (blocks until stopped).
+None. Use `http_start_server_ex` if you need to know whether the bind succeeded.
 
 **Usage Case**:  
 Last call in `main()` after all routes are registered. Run in a dedicated thread if you need the main thread for other work.
 
 ---
 
+### `TcpStatus http_start_server_ex(int port)`
+
+**Purpose**:  
+Same as `http_start_server`, but **returns the bind status** instead of swallowing it — `TCP_SUCCESS` after a clean shutdown, or the failing `TcpStatus` (e.g. `TCP_ERR_BIND` for a busy port) if init/socket/bind/listen failed. This is the production entry point: it tells you immediately whether the server actually came up.
+
+**Parameters**:  
+- `port`: TCP port to listen on (`0` = ephemeral).
+
+**Return Value**:  
+- `TCP_SUCCESS`: the server ran and was stopped cleanly.
+- otherwise: the error that prevented binding (the server never started).
+
+**Usage Case**:  
+```c
+TcpStatus st = http_start_server_ex(8080);   // blocks until http_stop_server()
+if (st != TCP_SUCCESS) {
+    fmt_fprintf(stderr, "server failed to start: %d\n", (int)st);
+}
+```
+
+---
+
+### `void http_server_set_worker_count(int n)`
+
+**Purpose**:  
+Sets the worker-pool size used by the next `http_start_server*`. `n <= 0` selects automatic sizing (hardware concurrency). Call **before** starting the server.
+
+---
+
+### `void http_server_set_client_timeout(long timeout_ms)`
+
+**Purpose**:  
+Sets the per-connection idle read/write timeout in milliseconds (slow-loris defense; also bounds how long a graceful shutdown waits to drain). A stalled peer is dropped with `408 Request Timeout`. `timeout_ms <= 0` disables the timeout. Defaults to 30000 ms. Call **before** starting the server.
+
+> Implemented with `select()` (`tcp_wait_readable`/`tcp_wait_writable`) rather than `SO_RCVTIMEO`, because `recv()` silently ignores `SO_RCVTIMEO` on the non-overlapped Winsock sockets this library creates. `select()` is honored on every platform.
+
+---
+
+### `unsigned short http_server_get_port(void)`
+
+**Purpose**:  
+Returns the actual port the server is currently listening on (useful after binding to port `0`), or `0` if no server is listening. Thread-safe; typically polled by another thread after spawning the server.
+
+---
+
 ### `void http_stop_server(void)`
 
 **Purpose**:  
-Flips the internal `server_running` flag. Does not interrupt a blocked `accept()` — send one more dummy request to wake the loop.
+Initiates a graceful shutdown: flips the internal run flag and then opens a throwaway loopback connection so the server's blocked `accept()` returns immediately, observes the flag, drains in-flight connections, and joins the workers. Safe to call from any thread. A no-op if no server is listening.
 
 **Parameters**:  
 None.
 
 **Return Value**:  
-None.
+None. (`http_start_server_ex` returns `TCP_SUCCESS` once the drain completes.)
 
 **Usage Case**:  
-Call from a signal handler or a control thread to initiate graceful shutdown.
+Call from a signal handler or a control thread to stop the server promptly and cleanly — no more "send a dummy request to wake the loop" workaround.
 
 ---
 
@@ -3127,6 +3313,88 @@ Returns the class (leading digit) of an HTTP status code: `1` (1xx informational
 
 **Usage Case**:  
 Concise success/error checks and metrics, e.g. `if (http_status_class(code) == 2) { /* success */ }` or bucketing responses by class.
+
+---
+
+## HTTP Client
+
+A blocking client that talks to real servers over `http://` and `https://`. It
+parses the URL, connects (with a bounded connect timeout), optionally negotiates
+TLS, sends the request, reads the response framed by `Content-Length` / chunked
+`Transfer-Encoding` / connection-close, follows redirects, and hands back a
+parsed `HttpResponse`. Per-read idle timeouts are enforced with `select()`
+(`tcp_wait_readable`), so a stalled server can't wedge the call.
+
+### `bool http_url_parse(const char* url, HttpUrl* out)` / `void http_url_free(HttpUrl*)`
+
+Parse `scheme://[user@]host[:port][/path][?query][#fragment]` (http/https only).
+Absent components are `NULL`; `path` defaults to `"/"`; the port defaults to
+80/443. IPv6 literals are accepted (`http://[::1]:9000/x` → host `::1`). Returns
+`false` on a malformed/unsupported URL. Free the owned fields with `http_url_free`.
+
+### `HttpResponse* http_parse_response(const char* data, size_t length)` / `void http_response_free(HttpResponse*)`
+
+Parse a full response message (status line + headers + already-de-framed body)
+into a heap `HttpResponse`. Binary-safe: the exact body size is in
+`res->body_length` (the body may contain NULs; it is also NUL-terminated for
+convenience). Free with `http_response_free` (releases the contents **and** the
+struct — distinct from `http_free_response`, which only releases the contents of
+a stack response built on the server side).
+
+### `HttpResponse* http_request(method, url, headers, header_count, body, body_len, opts)`
+
+Perform one request and return the final `HttpResponse` (after redirects), or
+`NULL` on a DNS/connect/TLS/transport error. `headers` are extra request headers
+(`Host` and `Content-Length` are generated for you); `body` is sent verbatim.
+`opts` may be `NULL` for defaults. Free the result with `http_response_free`.
+
+`HttpClientOptions` (zero-initialize for defaults):
+- `timeout_ms` — per-read idle timeout; `<= 0` keeps the 30 s default.
+- `max_redirects` — follow up to N `3xx` with `Location`; `< 0` ⇒ default 5. To
+  disable following entirely, set `follow_redirects_set = true` and
+  `max_redirects = 0` (you then get the `3xx` response back).
+- `tls_insecure` — skip certificate/hostname verification (self-signed / testing).
+
+Redirects: `301/302/303` downgrade a non-GET/HEAD request to `GET` and drop the
+body; `307/308` preserve method and body.
+
+### `http_get` / `http_post` / `http_put` / `http_delete`
+
+Convenience wrappers over `http_request` with default options:
+
+```c
+HttpResponse* http_get   (const char* url);
+HttpResponse* http_post  (const char* url, const char* content_type, const void* body, size_t body_len);
+HttpResponse* http_put   (const char* url, const char* content_type, const void* body, size_t body_len);
+HttpResponse* http_delete(const char* url);
+```
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    HttpResponse* r = http_get("http://example.com/");
+    if (r) {
+        fmt_printf("status=%d, %zu body bytes\n", r->status_code, r->body_length);
+        http_response_free(r);
+    }
+
+    /* POST JSON */
+    const char* json = "{\"name\":\"alice\"}";
+    r = http_post("http://localhost:8080/users", "application/json", json, strlen(json));
+    if (r) { fmt_printf("created: %d\n", r->status_code); http_response_free(r); }
+    return 0;
+}
+```
+
+> **HTTPS / certificate verification.** `https://` is wired through the TCP
+> layer's TLS (`tcp_ssl_init_client` + `tcp_ssl_connect`). By default the client
+> verifies the server certificate chain against the **system CA store**, which is
+> present on typical Linux installs but is **empty on a bare MinGW/Windows**
+> OpenSSL build — there `https://` with verification fails closed (secure by
+> default). Set `tls_insecure = true` to connect anyway, or install a CA bundle.
+> Hostname matching is not yet enforced.
 
 ---
 
@@ -4082,6 +4350,696 @@ connected, socket error = 0
 bytes available: 5
 echo: hello
 ```
+
+---
+
+## Example 27: HTTP client — `http_get` and inspecting the response
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    HttpResponse* r = http_get("http://example.com/");
+    
+    if (!r) {
+        fmt_printf("request failed\n");
+        return 1;
+    }
+    const char* ct = http_response_get_header(r, "Content-Type");
+
+    fmt_printf("status : %d %s\n", r->status_code, r->status_message);
+    fmt_printf("type   : %s\n", ct ? ct : "(none)");
+    fmt_printf("body   : %zu bytes\n", r->body_length);
+    http_response_free(r);          
+
+    return 0;
+}
+```
+**Result**
+```
+status : 200 OK
+type   : text/html
+body   : 528 bytes
+```
+
+---
+
+## Example 28: HTTP client — POST a JSON body with `http_post`
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    const char* json = "{\"name\":\"alice\",\"role\":\"admin\"}";
+    HttpResponse* r = http_post("http://localhost:8080/users",
+                                "application/json", json, strlen(json));
+    if (r) {
+        fmt_printf("created -> %d %s\n", r->status_code, r->status_message);
+        http_response_free(r);
+    }
+    return 0;
+}
+```
+
+---
+
+## Example 29: HTTP client — custom headers and `HttpClientOptions`
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    HttpHeader hdrs[2] = {
+        { (char*)"Authorization", (char*)"Bearer t0ken" },
+        { (char*)"Accept",        (char*)"application/json" },
+    };
+
+    HttpClientOptions opt;
+    memset(&opt, 0, sizeof opt);
+    opt.timeout_ms    = 5000;   /* per-read idle timeout (ms) */
+    opt.max_redirects = 3;      /* follow up to 3 redirects   */
+
+    HttpResponse* r = http_request(HTTP_GET, "http://localhost:8080/api/me", hdrs, 2, NULL, 0, &opt);
+    if (r) {
+        fmt_printf("status %d, %zu body bytes\n", r->status_code, r->body_length);
+        http_response_free(r);
+    }
+    return 0;
+}
+```
+
+---
+
+## Example 30: HTTP client — following (and not following) redirects
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    /* Default: follow up to 5 redirects, return the final response. */
+    HttpResponse* a = http_get("http://localhost:8080/old-path");
+    if (a) {
+        fmt_printf("followed -> final status %d\n", a->status_code);
+        http_response_free(a);
+    }
+
+    /* Opt out to inspect the 3xx + Location yourself. */
+    HttpClientOptions o;
+    memset(&o, 0, sizeof o);
+    o.follow_redirects_set = true;
+    o.max_redirects        = 0;
+    HttpResponse* b = http_request(HTTP_GET, "http://localhost:8080/old-path", NULL, 0, NULL, 0, &o);
+
+    if (b) {
+        const char* loc = http_response_get_header(b, "Location");
+        fmt_printf("status %d, Location: %s\n", b->status_code, loc ? loc : "(none)");
+        http_response_free(b);
+    }
+    return 0;
+}
+```
+
+---
+
+## Example 31: HTTP client — `HEAD` and downloading a large/chunked body
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    /* HEAD: metadata only — the client reads no body for a HEAD reply. */
+    HttpResponse* h = http_request(HTTP_HEAD, "http://localhost:8080/big.bin", NULL, 0, NULL, 0, NULL);
+    if (h) {
+        const char* cl = http_response_get_header(h, "Content-Length");
+        fmt_printf("HEAD: Content-Length=%s, body read=%zu\n", cl ? cl : "?", h->body_length);
+        http_response_free(h);
+    }
+
+    /* GET: the whole payload, framed by Content-Length OR chunked
+       Transfer-Encoding (decoded transparently), read across many recv(). */
+    HttpResponse* g = http_get("http://localhost:8080/big.bin");
+    if (g) {
+        fmt_printf("GET: downloaded %zu bytes\n", g->body_length);
+        http_response_free(g);
+    }
+    return 0;
+}
+```
+
+---
+
+## Example 32: HTTPS client — verified and insecure
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    /* Secure by default: verifies the server certificate chain against the
+       system CA store (present on typical Linux; may be empty on bare MinGW). */
+    HttpResponse* r = http_get("https://example.com/");
+    if (r) { 
+        fmt_printf("verified GET -> %d\n", r->status_code); 
+        http_response_free(r); 
+    }
+    else   { 
+        fmt_printf("verification failed or offline\n"); 
+    }
+
+    /* Skip verification — self-signed servers, or hosts with no local CA store. */
+    HttpClientOptions o;
+    memset(&o, 0, sizeof o);
+    o.tls_insecure = true;
+    r = http_request(HTTP_GET, "https://self-signed.local/", NULL, 0, NULL, 0, &o);
+
+    if (r) { 
+        fmt_printf("insecure GET -> %d\n", r->status_code); 
+        http_response_free(r); 
+    }
+
+    return 0;
+}
+```
+
+---
+
+## Example 33: Parsing a URL with `http_url_parse`
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    HttpUrl u;
+
+    if (http_url_parse("https://user@api.example.com:8443/v1/items?page=2#top", &u)) {
+        fmt_printf("scheme=%s  https=%d\n", u.scheme, (int)u.is_https);
+        fmt_printf("user=%s  host=%s  port=%u\n", u.userinfo ? u.userinfo : "-", u.host, (unsigned)u.port);
+        fmt_printf("path=%s  query=%s  frag=%s\n", u.path, u.query ? u.query : "-", u.fragment ? u.fragment : "-");
+        http_url_free(&u);
+    }
+
+    return 0;
+}
+```
+**Result**
+```
+scheme=https  https=1
+user=user  host=api.example.com  port=8443
+path=/v1/items  query=page=2  frag=top
+```
+
+---
+
+## Example 34: Parsing a raw response with `http_parse_response`
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    const char* raw =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 11\r\n"
+        "\r\n"
+        "{\"ok\":true}";
+
+    HttpResponse* r = http_parse_response(raw, strlen(raw));
+    if (r) {
+        fmt_printf("status      : %d %s\n", r->status_code, r->status_message);
+        fmt_printf("content-type: %s\n", http_response_get_header(r, "Content-Type"));
+        fmt_printf("body (%zu)  : %s\n", r->body_length, r->body);
+        http_response_free(r);
+    }
+
+    return 0;
+}
+```
+**Result**
+```
+status      : 200 OK
+content-type: application/json
+body (11)  : {"ok":true}
+```
+
+---
+
+## Example 35: Concurrent server with `http_start_server_ex` + graceful stop
+
+A complete, runnable program: a worker-pool server on an OS-assigned port, a
+client round-trip, then a clean shutdown — all in one process.
+
+```c
+#include "network/http.h"
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+typedef struct { 
+    TcpStatus st; 
+} Srv;
+
+static void hello(HttpRequest* q, HttpResponse* r) {
+    (void)q;
+
+    http_set_status(r, 200, "OK");
+    http_set_body(r, "hi from the pool");
+}
+
+static int run(void* a) { 
+    ((Srv*)a)->st = http_start_server_ex(0); 
+    return 0; 
+}  /* 0 = ephemeral */
+
+
+int main(void) {
+    http_register_route("/hello", HTTP_GET, hello);
+    http_server_set_worker_count(4);        /* 4 worker threads      */
+    http_server_set_client_timeout(5000);   /* 5s per-read timeout    */
+
+    Srv s = {0};
+    Thread t;
+    thread_create(&t, run, &s);
+
+    /* Wait for the listener, then read back the OS-assigned port. */
+    unsigned short port = 0;
+    for (int i = 0; i < 200 && port == 0; ++i) {
+        port = http_server_get_port();
+        struct timespec ms = { 0, 5 * 1000 * 1000 };
+        thread_sleep(&ms, NULL);
+    }
+    fmt_printf("listening on 127.0.0.1:%u\n", (unsigned)port);
+
+    char url[64];
+    snprintf(url, sizeof url, "http://127.0.0.1:%u/hello", (unsigned)port);
+    HttpResponse* r = http_get(url);
+    if (r) {
+        fmt_printf("client got: %d \"%s\"\n", r->status_code, r->body);
+        http_response_free(r);
+    }
+
+    http_stop_server();          /* wakes accept(), drains in-flight, joins workers */
+    thread_join(t, NULL);
+    fmt_printf("server stopped, status=%d (0 = TCP_SUCCESS)\n", (int)s.st);
+
+    return 0;
+}
+```
+**Result**
+```
+listening on 127.0.0.1:50321
+client got: 200 "hi from the pool"
+server stopped, status=0 (0 = TCP_SUCCESS)
+```
+
+---
+
+## Example 36: Reporting a bind failure with `http_start_server_ex`
+
+Unlike `http_start_server` (which returns `void`), `http_start_server_ex`
+returns the bind status, so you can tell whether the port was actually claimed.
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    /* Blocks serving until http_stop_server() is called from another thread;
+       returns immediately with an error if the port can't be bound. */
+    TcpStatus st = http_start_server_ex(8080);
+    if (st != TCP_SUCCESS) {
+        fmt_printf("could not bind :8080 (status=%d) — already in use?\n", (int)st);
+        return 1;
+    }
+    return 0;   /* reached only after a clean http_stop_server() */
+}
+```
+
+---
+
+## Example 37: `405 Method Not Allowed` + `Allow` (server + client)
+
+```c
+#include "network/http.h"
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+typedef struct { 
+    TcpStatus st; 
+} Srv;
+
+
+static void submit(HttpRequest* q, HttpResponse* r) {
+    (void)q; 
+    http_set_status(r, 201, "Created"); 
+    http_set_body(r, "ok");
+}
+
+static int run(void* a) { 
+    ((Srv*)a)->st = http_start_server_ex(0); 
+    return 0; 
+}
+
+
+int main(void) {
+    http_register_route("/submit", HTTP_POST, submit);   /* POST only */
+
+    Srv s = {0};
+    Thread t;
+    thread_create(&t, run, &s);
+    unsigned short port = 0;
+
+    for (int i = 0; i < 200 && port == 0; ++i) {
+        port = http_server_get_port();
+        struct timespec ms = { 0, 5 * 1000 * 1000 }; thread_sleep(&ms, NULL);
+    }
+
+    char url[64];
+    snprintf(url, sizeof url, "http://127.0.0.1:%u/submit", (unsigned)port);
+    HttpResponse* r = http_get(url); 
+                        /* wrong method */
+    if (r) {
+        const char* allow = http_response_get_header(r, "Allow");
+        fmt_printf("GET /submit -> %d, Allow: %s\n", r->status_code, allow ? allow : "(none)");
+        http_response_free(r);
+    }
+
+    http_stop_server();
+    thread_join(t, NULL);
+
+    return 0;
+}
+```
+**Result**
+```
+GET /submit -> 405, Allow: POST
+```
+
+---
+
+## Example 38: Cookies and `{id}` path parameters
+
+```c
+#include "network/http.h"
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+
+typedef struct { 
+    TcpStatus st; 
+} Srv;
+
+
+static void login(HttpRequest* q, HttpResponse* r) {
+    (void)q;
+    http_set_status(r, 200, "OK");
+    http_set_cookie(r, "sid", "abc123", "/", 3600, true);   /* HttpOnly, 1h */
+    http_set_body(r, "logged in");
+}
+
+static void item(HttpRequest* q, HttpResponse* r) {
+    char b[48];
+    snprintf(b, sizeof b, "item #%d", q->id);               /* {id} -> req->id */
+    http_set_status(r, 200, "OK");
+    http_set_body(r, b);
+}
+
+static int run(void* a) { 
+    ((Srv*)a)->st = http_start_server_ex(0); 
+    return 0; 
+}
+
+int main(void) {
+    http_register_route("/login",      HTTP_GET, login);
+    http_register_route("/items/{id}", HTTP_GET, item);
+
+    Srv s = {0};
+    Thread t;
+    thread_create(&t, run, &s);
+
+    unsigned short port = 0;
+    for (int i = 0; i < 200 && port == 0; ++i) {
+        port = http_server_get_port();
+        struct timespec ms = { 0, 5 * 1000 * 1000 }; thread_sleep(&ms, NULL);
+    }
+
+    char base[48];
+    snprintf(base, sizeof base, "http://127.0.0.1:%u", (unsigned)port);
+    char url[80];
+    snprintf(url, sizeof url, "%s/login", base);
+    HttpResponse* a = http_get(url);
+
+    if (a) {
+        const char* sc = http_response_get_header(a, "Set-Cookie");
+        fmt_printf("login Set-Cookie: %s\n", sc ? sc : "(none)");
+        http_response_free(a);
+    }
+
+    snprintf(url, sizeof url, "%s/items/42", base);
+    HttpResponse* b = http_get(url);
+    if (b) { 
+        fmt_printf("GET /items/42 -> \"%s\"\n", b->body); 
+        http_response_free(b); 
+    }
+
+    http_stop_server();
+    thread_join(t, NULL);
+
+    return 0;
+}
+```
+**Result**
+```
+login Set-Cookie: sid=abc123; Path=/; Max-Age=3600; HttpOnly
+GET /items/42 -> "item #42"
+```
+
+---
+
+## Example 39: Binary-safe parse/serialize (`http_parse_request_ex` / `http_serialize_response_ex`)
+
+```c
+#include "network/http.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    /* A request whose body has an embedded NUL — strlen would truncate it,
+       so use the length-delimited parser. */
+    char raw[64];
+    const char* head = "POST /upload HTTP/1.1\r\nContent-Length: 5\r\n\r\n";
+    size_t off = strlen(head);
+    memcpy(raw, head, off);
+    raw[off+0] = 'a'; raw[off+1] = 'b'; raw[off+2] = '\0'; raw[off+3] = 'c'; raw[off+4] = 'd';
+
+    HttpRequest* req = http_parse_request_ex(raw, off + 5);
+    if (req) {
+        fmt_printf("body_length=%zu, byte[2]=%d (NUL preserved)\n", req->body_length, (int)req->body[2]);
+        http_free_request(req);
+    }
+
+    /* Serialize a response: serialize_ex reports the EXACT wire length via the
+       out-param and auto-adds Content-Length. */
+    HttpResponse res;
+    memset(&res, 0, sizeof res);
+    http_set_status(&res, 200, "OK");
+    http_set_body(&res, "pong");
+    size_t n = 0;
+    char* wire = http_serialize_response_ex(&res, false, &n);
+
+    if (wire) {
+        fmt_printf("out_len matches strlen : %s\n", (n == strlen(wire)) ? "yes" : "no");
+        fmt_printf("auto Content-Length: 4 : %s\n", strstr(wire, "Content-Length: 4") ? "yes" : "no");
+        free(wire);
+    }
+    http_free_response(&res);
+
+    return 0;
+}
+```
+**Result**
+```
+body_length=5, byte[2]=0 (NUL preserved)
+out_len matches strlen : yes
+auto Content-Length: 4 : yes
+```
+
+---
+
+## Example 40: Query parameters and multiple response headers
+
+```c
+#include "network/http.h"
+#include "network/tcp.h"
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+typedef struct { 
+    TcpStatus st; 
+} Srv;
+
+static void search(HttpRequest* q, HttpResponse* r) {
+    const char* term = http_get_query_param(q, "q");   /* ?q=... */
+
+    http_set_status(r, 200, "OK");
+    http_add_header(r, "X-Result-Count", "1");
+    http_set_body(r, term ? term : "(empty)");
+}
+
+static int run(void* a) { 
+    ((Srv*)a)->st = http_start_server_ex(0); 
+    return 0; 
+}
+
+int main(void) {
+    http_register_route("/search", HTTP_GET, search);
+
+    Srv s = {0};
+    Thread t;
+    thread_create(&t, run, &s);
+    unsigned short port = 0;
+
+    for (int i = 0; i < 200 && port == 0; ++i) {
+        port = http_server_get_port();
+        struct timespec ms = { 0, 5 * 1000 * 1000 }; thread_sleep(&ms, NULL);
+    }
+
+    char url[80];
+    snprintf(url, sizeof url, "http://127.0.0.1:%u/search?q=widgets", (unsigned)port);
+    HttpResponse* r = http_get(url);
+
+    if (r) {
+        const char* cnt = http_response_get_header(r, "X-Result-Count");
+        fmt_printf("query -> \"%s\", X-Result-Count: %s\n", r->body, cnt ? cnt : "(none)");
+        http_response_free(r);
+    }
+
+    http_stop_server();
+    thread_join(t, NULL);
+
+    return 0;
+}
+```
+**Result**
+```
+query -> "widgets", X-Result-Count: 1
+```
+
+---
+
+## Example 41: `tcp_connect_tls` — a verified HTTPS request in one call
+
+A production-grade secure fetch: one call connects, negotiates TLS, and verifies
+the server certificate's **chain and hostname** before any data is sent.
+
+```c
+#include "network/tcp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    tcp_init();
+
+    TcpSocket s;
+    /* verify = true: the cert must chain to a trusted CA AND be valid for the host. */
+    TcpStatus st = tcp_connect_tls("example.com", 443, 5000, true, &s);
+    if (st != TCP_SUCCESS) {
+        fmt_fprintf(stderr, "secure connect failed: %s\n", tcp_status_to_string(st));
+        tcp_cleanup();
+        return 1;
+    }
+
+    const char* req =
+        "GET / HTTP/1.0\r\nHost: example.com\r\nConnection: close\r\n\r\n";
+    size_t sent = 0;
+    tcp_ssl_send(s, req, strlen(req), &sent);
+
+    char   buf[128];
+    size_t got = 0;
+
+    if (tcp_ssl_recv(s, buf, sizeof(buf) - 1, &got) == TCP_SUCCESS) {
+        buf[got] = '\0';
+        char* eol = strstr(buf, "\r\n");
+        
+        if (eol) { 
+            *eol = '\0'; 
+        }
+        fmt_printf("server said: %s\n", buf);   /* e.g. HTTP/1.0 200 OK */
+    }
+
+    tcp_ssl_close(s);   /* tears down TLS and closes the socket */
+    tcp_cleanup();
+    return 0;
+}
+```
+**Result**
+```
+server said: HTTP/1.1 200 OK
+```
+> On a bare MinGW/Windows build with no system CA store, `verify = true` will
+> fail closed — load a CA bundle first (next example) or pass `verify = false`
+> for self-signed/testing endpoints.
+
+---
+
+## Example 42: `tcp_ssl_load_verify_locations` + `tcp_ssl_set_verify` — pin a CA bundle
+
+Where the OS trust store is unavailable (or you want to pin a private CA), load a
+PEM bundle and require verification explicitly.
+
+```c
+#include "network/tcp.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+int main(void) {
+    tcp_init();
+    tcp_ssl_init_client();                                  /* create the client context */
+
+    /* Ship cacert.pem alongside the binary and trust exactly it. */
+    if (tcp_ssl_load_verify_locations("cacert.pem", NULL) != TCP_SUCCESS) {
+        fmt_fprintf(stderr, "could not load CA bundle\n");
+    }
+    tcp_ssl_set_verify(true);                               /* fail closed on a bad cert */
+
+    TcpSocket s;
+    /* tcp_connect_tls re-uses the context (and its loaded CAs) we just set up. */
+    TcpStatus st = tcp_connect_tls("example.com", 443, 5000, true, &s);
+    fmt_printf("verified connect: %s\n", tcp_status_to_string(st));
+    if (st == TCP_SUCCESS) {
+        const char* req = "GET / HTTP/1.0\r\nHost: example.com\r\nConnection: close\r\n\r\n";
+        size_t sent = 0;
+        tcp_ssl_send(s, req, strlen(req), &sent);
+        tcp_ssl_close(s);
+    }
+
+    tcp_cleanup();
+    return 0;
+}
+```
+**Result** (run without a `cacert.pem` present, on a host that has the system CA store)
+```
+could not load CA bundle
+verified connect: TCP_SUCCESS
+```
+> With a real `cacert.pem` shipped next to the binary, the first line is absent and the connection is validated against exactly the CAs you pinned — which is what makes `verify = true` work on a bare MinGW build that has no system trust store.
 
 ---
 

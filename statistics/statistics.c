@@ -554,6 +554,153 @@ double statistics_median_grouped(const double* data, size_t n, double interval) 
 }
 
 
+/* Allocate an ascending-sorted copy of `data` (n doubles); caller frees.
+   Distinct `statp_` prefix from the public `statistics_` API. NULL on OOM. */
+static double* statp_sorted_copy(const double* data, size_t n) {
+    double* s = (double*)malloc(n * sizeof(double));
+    if (!s) {
+        STATISTICS_LOG("[statp_sorted_copy]: allocation failed.");
+        return NULL;
+    }
+    memcpy(s, data, n * sizeof(double));
+    qsort(s, n, sizeof(double), statistics_compare_doubles);
+    return s;
+}
+
+
+/**
+ * @brief Compute the p-th percentile of a data set by linear interpolation.
+ *
+ * Sorts a copy of `data`, then interpolates between the two closest ranks using
+ * the "inclusive" / R-7 / NumPy-default method: the rank position for percentile
+ * `p` is `p/100 * (n - 1)` (0-indexed). `p = 0` returns the minimum, `p = 100`
+ * the maximum, and `p = 50` the linear-interpolation median (identical to
+ * statistics_median).
+ *
+ * @param data Pointer to the data set. Must not be NULL.
+ * @param n    Number of elements; must be >= 1.
+ * @param p    Percentile in the inclusive range [0, 100].
+ * @return The interpolated percentile, or `NAN` on NULL data, `n == 0`, `p` out
+ *         of range (or NaN), or allocation failure.
+ */
+double statistics_percentile(const double* data, size_t n, double p) {
+    STATISTICS_LOG("[statistics_percentile]: n = %zu, p = %f", n, p);
+
+    if (!data || n == 0) {
+        STATISTICS_LOG("[statistics_percentile]: Error: NULL data or n == 0.");
+        return NAN;
+    }
+    if (!(p >= 0.0 && p <= 100.0)) {   /* the negated form also rejects NaN p */
+        STATISTICS_LOG("[statistics_percentile]: Error: p out of [0,100].");
+        return NAN;
+    }
+    if (n == 1) {
+        return data[0];
+    }
+
+    double* s = statp_sorted_copy(data, n);
+    if (!s) {
+        return NAN;
+    }
+
+    double pos  = (p / 100.0) * (double)(n - 1);   /* 0-indexed rank position */
+    size_t lo   = (size_t)pos;                      /* floor (pos >= 0)        */
+    double frac = pos - (double)lo;
+    double result;
+    if (lo + 1 < n) {
+        result = s[lo] + frac * (s[lo + 1] - s[lo]);
+    }
+    else {
+        result = s[lo];                             /* pos == n-1 exactly (p == 100) */
+    }
+
+    free(s);
+    STATISTICS_LOG("[statistics_percentile]: result = %f", result);
+    return result;
+}
+
+
+/**
+ * @brief Divide data into `n_quantiles` equal-probability intervals (Python's
+ *        statistics.quantiles), returning the `n_quantiles - 1` cut points.
+ *
+ * With `n_quantiles = 4` you get the quartiles (Q1, Q2, Q3); with `100` the
+ * percentile cut points, and so on. Two interpolation methods are offered:
+ *   - exclusive = true  (Python's default): treats `data` as a sample drawn
+ *     from a larger population; cut `i` is interpolated at position `i*(n+1)/q`.
+ *   - exclusive = false ("inclusive"): treats `data` as the whole population (or
+ *     as already spanning the full 0..100% range); cut `i` at `i*(n-1)/q`.
+ *
+ * @param data        Pointer to the data set. Must not be NULL.
+ * @param n           Number of elements; must be >= 2.
+ * @param n_quantiles Number of equal intervals; must be >= 1.
+ * @param exclusive   Selects the interpolation method (see above).
+ * @param out_count   Optional: receives the number of cut points returned
+ *                    (`n_quantiles - 1`). Set to 0 on error.
+ * @return Newly-allocated array of `n_quantiles - 1` cut points in ascending
+ *         order (caller frees with `free()`), or NULL on invalid arguments or
+ *         allocation failure.
+ */
+double* statistics_quantiles(const double* data, size_t n, size_t n_quantiles, bool exclusive, size_t* out_count) {
+    STATISTICS_LOG("[statistics_quantiles]: n = %zu, n_quantiles = %zu, exclusive = %d", n, n_quantiles, (int)exclusive);
+
+    if (out_count) {
+        *out_count = 0;
+    }
+    if (!data || n < 2 || n_quantiles < 1) {
+        STATISTICS_LOG("[statistics_quantiles]: Error: invalid arguments.");
+        return NULL;
+    }
+
+    double* s = statp_sorted_copy(data, n);
+    if (!s) {
+        return NULL;
+    }
+
+    size_t  q     = n_quantiles;
+    size_t  out_n = q - 1;
+    double* out   = (double*)malloc((out_n ? out_n : 1) * sizeof(double));
+    if (!out) {
+        free(s);
+        return NULL;
+    }
+
+    if (!exclusive) {
+        /* inclusive: cut i at position i*(n-1)/q, interpolated. */
+        size_t m = n - 1;
+        for (size_t i = 1; i < q; ++i) {
+            size_t j     = (i * m) / q;
+            size_t delta = (i * m) - j * q;       /* 0 <= delta < q */
+            out[i - 1] = (s[j] * (double)(q - delta) + s[j + 1] * (double)delta) / (double)q;
+        }
+    }
+    else {
+        /* exclusive: cut i at position i*(n+1)/q, with j clamped to [1, n-1]. */
+        size_t m = n + 1;
+        for (size_t i = 1; i < q; ++i) {
+            long j = (long)((i * m) / q);
+
+            if (j < 1) {           
+                j = 1;
+            }
+            if (j > (long)(n - 1)) {
+                j = (long)(n - 1);
+            }
+
+            long delta = (long)(i * m) - j * (long)q;
+            out[i - 1] = (s[(size_t)j - 1] * (double)((long)q - delta) + s[(size_t)j]     * (double)delta) / (double)q;
+        }
+    }
+
+    free(s);
+    if (out_count) {
+        *out_count = out_n;
+    }
+    STATISTICS_LOG("[statistics_quantiles]: produced %zu cut point(s).", out_n);
+    return out;
+}
+
+
 /**
  * @brief This function calculates the sample variance of the given data points.
  * Optionally, it can use a provided mean (xbar) instead of computing it from the da ta.

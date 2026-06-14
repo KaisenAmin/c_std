@@ -815,3 +815,96 @@ BigFloat* bigfloat_expm1(const BigFloat* a) {
 
     return res;
 }
+
+
+/**
+ * @brief Creates an exact copy of a BigFloat.
+ *
+ * The BigFloat counterpart to bigint_copy. The new value carries the SAME
+ * precision as @p src, so the copy is bit-for-bit exact (no rounding).
+ *
+ * @param src Pointer to the source BigFloat.
+ * @return Pointer to the new BigFloat, or NULL if @p src is NULL or
+ *         allocation fails.
+ */
+BigFloat* bigfloat_copy(const BigFloat* src) {
+    if (!src) {
+        BIGFLOAT_LOG("[bigfloat_copy]: Source BigFloat is NULL.");
+        return NULL;
+    }
+    BigFloat* bf = bigfloat_create();
+    if (!bf) {
+        return NULL;
+    }
+    /* Match src's precision first so mpfr_set is exact, not rounded. */
+    mpfr_set_prec(bf->value, mpfr_get_prec(src->value));
+    mpfr_set(bf->value, src->value, MPFR_RNDN);
+    BIGFLOAT_LOG("[bigfloat_copy]: Copied BigFloat (exact).");
+    return bf;
+}
+
+/**
+ * @brief Converts a BigFloat to a native double.
+ *
+ * The inverse of bigfloat_from_double: rounds the high-precision value to the
+ * nearest representable `double`. NaN and +/-Inf BigFloats map to the matching
+ * IEEE double; a NULL input yields 0.0.
+ *
+ * @param a Pointer to the BigFloat.
+ * @return The value as a `double` (0.0 if @p a is NULL).
+ */
+double bigfloat_to_double(const BigFloat* a) {
+    if (!a) {
+        BIGFLOAT_LOG("[bigfloat_to_double]: Input BigFloat is NULL.");
+        return 0.0;
+    }
+    double d = mpfr_get_d(a->value, MPFR_RNDN);
+    BIGFLOAT_LOG("[bigfloat_to_double]: Converted to double %g.", d);
+    return d;
+}
+
+/**
+ * @brief Checks whether a BigFloat is NaN (not a number).
+ *
+ * @param a Pointer to the BigFloat.
+ * @return true if @p a is NaN; false otherwise (including a NULL input).
+ */
+bool bigfloat_is_nan(const BigFloat* a) {
+    if (!a) {
+        BIGFLOAT_LOG("[bigfloat_is_nan]: Input BigFloat is NULL.");
+        return false;
+    }
+    return mpfr_nan_p(a->value) != 0;
+}
+
+/**
+ * @brief Checks whether a BigFloat is +/- infinity.
+ *
+ * @param a Pointer to the BigFloat.
+ * @return true if @p a is infinite; false otherwise (including a NULL input).
+ */
+bool bigfloat_is_inf(const BigFloat* a) {
+    if (!a) {
+        BIGFLOAT_LOG("[bigfloat_is_inf]: Input BigFloat is NULL.");
+        return false;
+    }
+    return mpfr_inf_p(a->value) != 0;
+}
+
+/**
+ * @brief Checks whether a BigFloat is finite (an ordinary number).
+ *
+ * Returns true only for ordinary values — neither NaN nor infinite. Use it to
+ * validate the result of a division, logarithm, or other operation that can
+ * legitimately overflow to infinity or produce NaN.
+ *
+ * @param a Pointer to the BigFloat.
+ * @return true if @p a is a finite number; false if it is NaN, infinite, or NULL.
+ */
+bool bigfloat_is_finite(const BigFloat* a) {
+    if (!a) {
+        BIGFLOAT_LOG("[bigfloat_is_finite]: Input BigFloat is NULL.");
+        return false;
+    }
+    return mpfr_number_p(a->value) != 0;
+}

@@ -58,6 +58,41 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 
 ---
 
+### `JsonElement* json_create_null(void)`
+**Purpose**: One-call constructor for a JSON `null` leaf.
+**Parameters**: None.
+**Return Value**: A new `JSON_NULL` element (free with `json_deallocate`), or `NULL` on OOM.
+**Usage Case**: Pass directly to `json_add_to_object` / `json_add_to_array` without the `json_create` + union dance.
+
+---
+
+### `JsonElement* json_create_bool(bool value)`
+**Purpose**: One-call constructor for a JSON boolean leaf.
+**Parameters**:
+- `value`: The boolean to store.
+**Return Value**: A new `JSON_BOOL` element (free with `json_deallocate`), or `NULL` on OOM.
+**Usage Case**: `json_add_to_object(obj, "active", json_create_bool(true));`
+
+---
+
+### `JsonElement* json_create_number(double value)`
+**Purpose**: One-call constructor for a JSON number leaf. JSON numbers are stored as `double`; pass an integer and it is widened.
+**Parameters**:
+- `value`: The numeric value to store.
+**Return Value**: A new `JSON_NUMBER` element (free with `json_deallocate`), or `NULL` on OOM.
+**Usage Case**: `json_add_to_object(obj, "age", json_create_number(30));`
+
+---
+
+### `JsonElement* json_create_string(const char* value)`
+**Purpose**: One-call constructor for a JSON string leaf. The text is **deep-copied**, so the caller may free or reuse `value` immediately. A `NULL` value is stored as the empty string `""`.
+**Parameters**:
+- `value`: The text to store (deep-copied). May be `NULL`.
+**Return Value**: A new `JSON_STRING` element (free with `json_deallocate`), or `NULL` on OOM.
+**Usage Case**: `json_add_to_object(obj, "name", json_create_string("Alice"));` — replaces the three-step `json_create` + `string_strdup` + union assignment.
+
+---
+
 ### `JsonElement* json_clone(const JsonElement* element)`
 **Purpose**: Creates a shallow copy of `element`.
 **Parameters**:
@@ -135,6 +170,50 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 - `key_or_index`: String key (for objects) or stringified integer index (for arrays).
 **Return Value**: Borrowed pointer to the matching child element (part of the original tree), or `NULL` if not found.
 **Usage Case**: Use for single-level access to a known key or index without writing a full query path.
+
+---
+
+### `int json_get_int(const JsonElement* element, const char* key_or_index, int default_value)`
+**Purpose**: Read an integer in one call. Resolves `key_or_index` (an object key, an array index, or — when `NULL` — `element` itself) and, if it is a JSON number, returns it truncated to `int`. The lookup is **strict**: a JSON string or boolean does not coerce (use `json_convert` for that).
+**Parameters**:
+- `element`: Container (or value) to read from. May be `NULL`.
+- `key_or_index`: Object key / array index, or `NULL` for `element` itself.
+- `default_value`: Returned when the lookup fails or the type differs.
+**Return Value**: The integer value, or `default_value`.
+**Usage Case**: `int age = json_get_int(user, "age", 0);` — replaces `json_get_element` + `NULL` check + type check + union access.
+
+---
+
+### `double json_get_double(const JsonElement* element, const char* key_or_index, double default_value)`
+**Purpose**: Read a full-precision `double` in one call. Same lookup rules as `json_get_int`.
+**Parameters**:
+- `element`: Container (or value) to read from. May be `NULL`.
+- `key_or_index`: Object key / array index, or `NULL` for `element` itself.
+- `default_value`: Returned when the lookup fails or the type differs.
+**Return Value**: The numeric value, or `default_value`.
+**Usage Case**: `double ratio = json_get_double(cfg, "ratio", 1.0);`
+
+---
+
+### `bool json_get_bool(const JsonElement* element, const char* key_or_index, bool default_value)`
+**Purpose**: Read a boolean in one call. Same lookup rules as `json_get_int`; returns `default_value` unless the resolved element is a JSON boolean.
+**Parameters**:
+- `element`: Container (or value) to read from. May be `NULL`.
+- `key_or_index`: Object key / array index, or `NULL` for `element` itself.
+- `default_value`: Returned when the lookup fails or the type differs.
+**Return Value**: The boolean value, or `default_value`.
+**Usage Case**: `bool on = json_get_bool(cfg, "enabled", false);`
+
+---
+
+### `const char* json_get_string(const JsonElement* element, const char* key_or_index, const char* default_value)`
+**Purpose**: Read a string in one call. Same lookup rules as `json_get_int`. Returns a **borrowed** pointer to the element's stored string (owned by the JSON tree — do not free it), or `default_value` if missing or not a JSON string.
+**Parameters**:
+- `element`: Container (or value) to read from. May be `NULL`.
+- `key_or_index`: Object key / array index, or `NULL` for `element` itself.
+- `default_value`: Pointer returned when the lookup fails or the type differs.
+**Return Value**: Borrowed string pointer, or `default_value`.
+**Usage Case**: `const char* name = json_get_string(user, "name", "(unknown)");`
 
 ---
 
@@ -3147,6 +3226,54 @@ int main(void) {
 ```
 JSON object built from a Map: {"apple": 0.5, "banana": 0.25, "cherry": 2}
 Number of keys: 3
+```
+
+---
+
+## Example 50 : typed read/write without boilerplate — `json_get_*` + `json_create_*`
+
+The typed getters read a value in one call (with a default for missing keys / wrong types), and the typed constructors build a leaf in one call. Together they replace the `json_get_element` + NULL-check + type-check + union-access pattern for reading, and the `json_create` + `string_strdup` + union-assignment pattern for writing.
+
+```c
+#include "json/json.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    JsonElement* user = json_parse("{\"name\": \"Alice\", \"age\": 25, \"active\": true}");
+    if (!user) {
+        return 1;
+    }
+
+    /* Reading: one call each, with a default for the missing key. */
+    fmt_printf("name   = %s\n",  json_get_string(user, "name", "(unknown)"));
+    fmt_printf("age    = %d\n",  json_get_int(user, "age", -1));
+    fmt_printf("active = %s\n",  json_get_bool(user, "active", false) ? "yes" : "no");
+    fmt_printf("score  = %d (missing -> default)\n", json_get_int(user, "score", 0));
+
+    /* Writing: one call per leaf — no create + strdup + union assignment. */
+    JsonElement* profile = json_create(JSON_OBJECT);
+    json_add_to_object(profile, "city",     json_create_string("Berlin"));
+    json_add_to_object(profile, "year",     json_create_number(2024));
+    json_add_to_object(profile, "verified", json_create_bool(true));
+
+    char* s = json_serialize(profile);
+    fmt_printf("built: %s\n", s);
+    free(s);
+
+    json_deallocate(profile);
+    json_deallocate(user);
+    return 0;
+}
+```
+
+**Result**
+```
+name   = Alice
+age    = 25
+active = yes
+score  = 0 (missing -> default)
+built: {"city": "Berlin", "verified": true, "year": 2024}
 ```
 
 ---

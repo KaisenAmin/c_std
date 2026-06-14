@@ -215,21 +215,17 @@ static void destroy_global_memory_pool(void) {
 
 static MemoryPoolString *memory_pool_create(size_t size) {
     STRING_LOG("[memory_pool_create]: Creating memory pool with size %zu.", size);
-    MemoryPoolString *pool = (MemoryPoolString*) malloc(sizeof(MemoryPoolString));
+
+
+    MemoryPoolString *pool = (MemoryPoolString*) malloc(sizeof(MemoryPoolString) + size);
 
     if (pool) {
-        pool->pool = malloc(size);
-        if (!pool->pool) {
-            free(pool);
-            STRING_LOG("[memory_pool_create]: Failed to allocate memory for the pool.");
-            return NULL;
-        }
-
+        pool->pool     = (char*)pool + sizeof(MemoryPoolString);
         pool->poolSize = size;
-        pool->used = 0;
-        pool->spill = NULL;
+        pool->used     = 0;
+        pool->spill    = NULL;
         STRING_LOG("[memory_pool_create]: Memory pool created successfully with size %zu.", size);
-    } 
+    }
     else {
         STRING_LOG("[memory_pool_create]: Failed to allocate MemoryPoolString structure.");
     }
@@ -254,10 +250,6 @@ static void *memory_pool_allocate(MemoryPoolString *pool, size_t size) {
         return mem;
     }
 
-    /* Slow path: the bump block can't satisfy this request (it is exhausted,
-     * or the request is larger than the whole block). Fall back to a tracked
-     * heap allocation so we never return NULL for a reasonable request and the
-     * returned pointer stays valid until the pool is destroyed. */
     STRING_LOG("[memory_pool_allocate]: Bump pool exhausted; using heap fallback for %zu bytes.", size);
     {
         MemoryPoolSpill *node = (MemoryPoolSpill *)malloc(sizeof(MemoryPoolSpill) + size);
@@ -288,10 +280,80 @@ static void memory_pool_destroy(MemoryPoolString *pool) {
     }
     pool->spill = NULL;
 
-    free(pool->pool);
+    /* The bump block is part of this same allocation (see memory_pool_create),
+     * so a single free reclaims both the header and the block. */
     free(pool);
 
     STRING_LOG("[memory_pool_destroy]: Memory pool destroyed successfully.");
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Growth helper                                                      */
+/* ------------------------------------------------------------------ */
+/*
+ * Replace str's backing buffer with a fresh one of `newCapacity` bytes, copying
+ * the current `str->size` content across. The PREVIOUS per-string pool is NOT
+ * released here; it is returned so the caller frees it only AFTER it has finished
+ * reading any input that might alias the old buffer (e.g.
+ * string_concatenate(s, s) -> string_append(s, s->dataStr)). Freeing after the
+ * write keeps such self-aliasing safe.
+ *
+ * Why this exists: the growth paths previously bump-allocated each larger buffer
+ * from the same per-string pool and ABANDONED the smaller ones (they were only
+ * reclaimed when the whole string was deallocated). A string grown to N bytes
+ * therefore piled up ~2N bytes of dead intermediate buffers. Reclaiming the old
+ * pool on each growth makes a grown string hold a single buffer (~N bytes),
+ * matching std::string's single-buffer growth.
+ *
+ * Strings created via string_create_with_pool() share the global pool; for those
+ * the original "allocate from the shared pool, leave the old block in place"
+ * behavior is preserved (the global pool owns and frees everything at exit), so
+ * this returns NULL for them. This mirrors string_reserve's own pool-swap.
+ *
+ * On success *ok is set true and str->dataStr / pool / capacitySize are updated;
+ * the return value is the pool to free later (or NULL if nothing to free). On
+ * allocation failure *ok is false, str is left unchanged, and NULL is returned.
+ */
+static MemoryPoolString* sstr_grow_keep_old(String* str, size_t newCapacity, bool* ok) {
+    if (str->pool == global_pool) {
+        /* Shared global pool: keep the original abandon-in-place semantics. */
+        char* newData = (char*)memory_pool_allocate(str->pool, newCapacity);
+        if (!newData) {
+            *ok = false;
+            return NULL;
+        }
+        if (str->dataStr && str->size) {
+            memcpy(newData, str->dataStr, str->size);
+        }
+        str->dataStr = newData;
+        str->capacitySize = newCapacity;
+        *ok = true;
+        return NULL;
+    }
+
+    /* Per-string pool: allocate a fresh pool sized to the new buffer and hand the
+     * old one back to the caller to release once aliasing input is consumed. */
+    MemoryPoolString* newPool = memory_pool_create(newCapacity);
+    if (!newPool) {
+        *ok = false;
+        return NULL;
+    }
+    char* newData = (char*)memory_pool_allocate(newPool, newCapacity);
+    if (!newData) {
+        memory_pool_destroy(newPool);
+        *ok = false;
+        return NULL;
+    }
+    if (str->dataStr && str->size) {
+        memcpy(newData, str->dataStr, str->size);
+    }
+    MemoryPoolString* oldPool = str->pool;
+    str->dataStr = newData;
+    str->pool = newPool;
+    str->capacitySize = newCapacity;
+    *ok = true;
+    return oldPool;
 }
 
 
@@ -802,23 +864,22 @@ void string_resize(String *str, size_t newSize) {
         }
     }
     else if (newSize > str->size) {
+        MemoryPoolString* oldToFree = NULL;
         if (str->dataStr == NULL || newSize >= str->capacitySize) {
             size_t newCapacity = newSize + 1;
-            char *newData = (char*)memory_pool_allocate(str->pool, newCapacity);
-
-            if (!newData) {
+            bool ok;
+            oldToFree = sstr_grow_keep_old(str, newCapacity, &ok);  // reclaims the old buffer
+            if (!ok) {
                 STRING_LOG("[string_resize]: Error - Memory allocation failed.\n");
                 return;
             }
-            if (str->dataStr) {
-                memcpy(newData, str->dataStr, str->size);
-            }
-            str->dataStr = newData;
-            str->capacitySize = newCapacity;
         }
 
         memset(str->dataStr + str->size, '\0', newSize - str->size);
         str->size = newSize;
+        if (oldToFree) {
+            memory_pool_destroy(oldToFree);
+        }
     }
 }
 
@@ -894,6 +955,7 @@ void string_append(String *str, const char *strItem) {
         return;
     }
 
+    MemoryPoolString* oldToFree = NULL;
     if (str->size + strItemLength >= str->capacitySize) {
         size_t needed = str->size + strItemLength + 1;
         size_t newCapacity = str->capacitySize ? str->capacitySize : 32;
@@ -902,22 +964,21 @@ void string_append(String *str, const char *strItem) {
             newCapacity *= 2;
         }
 
-        char *newData = (char*)memory_pool_allocate(str->pool, newCapacity);
-        if (!newData) {
+        bool ok;
+        oldToFree = sstr_grow_keep_old(str, newCapacity, &ok);
+        if (!ok) {
             STRING_LOG("[string_append]: Error - Memory allocation failed.\n");
             return;
         }
-
-        if (str->dataStr) {
-            memcpy(newData, str->dataStr, str->size);
-        }
-        str->dataStr = newData;
-        str->capacitySize = newCapacity;
         STRING_LOG("[string_append]: Resized the string to new capacity: %zu.\n", newCapacity);
     }
 
-    strcpy(str->dataStr + str->size, strItem);
+    memcpy(str->dataStr + str->size, strItem, strItemLength);
+    str->dataStr[str->size + strItemLength] = '\0';
     str->size += strItemLength;
+    if (oldToFree) {
+        memory_pool_destroy(oldToFree);
+    }
 
     STRING_LOG("[string_append]: Appended successfully, new size: %zu.\n", str->size);
 }
@@ -943,31 +1004,29 @@ void string_push_back(String* str, char chItem) {
         STRING_LOG("[string_push_back]: Error - The String has no memory pool.\n");
         return;
     }
-    /* Grow when the buffer is missing or too small. Guard against a zero
-     * capacity (which would make the doubling stay at 0) and against a NULL
-     * dataStr (e.g. after string_set_pool_size on an empty string). */
+
+
+    MemoryPoolString* oldToFree = NULL;
     if (str->dataStr == NULL || str->size + 1 >= str->capacitySize) {
         size_t newCapacity = str->capacitySize ? str->capacitySize * 2 : 32;
         while (newCapacity < str->size + 2) {
             newCapacity *= 2;
         }
-        char* newData = (char*)memory_pool_allocate(str->pool, newCapacity);  // Allocate new space from the memory pool
-
-        if (!newData) {
+        
+        bool ok;
+        oldToFree = sstr_grow_keep_old(str, newCapacity, &ok);  // grow, reclaiming the old buffer
+        if (!ok) {
             STRING_LOG("[string_push_back]: Error - Memory allocation failed.\n");
             return;
         }
-
-        if (str->dataStr) {
-            memcpy(newData, str->dataStr, str->size);
-        }
-        str->dataStr = newData;
-        str->capacitySize = newCapacity;
         STRING_LOG("[string_push_back]: Resized the string to new capacity: %zu.\n", newCapacity);
     }
     str->dataStr[str->size] = chItem;
     str->size++;
-    str->dataStr[str->size] = '\0'; 
+    str->dataStr[str->size] = '\0';
+    if (oldToFree) {
+        memory_pool_destroy(oldToFree);
+    }
 
     STRING_LOG("[string_push_back]: Character added successfully, new size: %zu.\n", str->size);
 }
@@ -999,20 +1058,22 @@ void string_assign(String *str, const char *newStr) {
     }
 
     size_t newStrLength = strlen(newStr);
+    MemoryPoolString* oldToFree = NULL;
     if (str->dataStr == NULL || newStrLength + 1 > str->capacitySize) {
-        char *newData = (char*)memory_pool_allocate(str->pool, newStrLength + 1);
-        if (!newData) {
+        bool ok;
+        oldToFree = sstr_grow_keep_old(str, newStrLength + 1, &ok);
+        if (!ok) {
             STRING_LOG("[string_assign]: Error - Memory allocation failed.\n");
             return;
         }
-
-        str->dataStr = newData;
-        str->capacitySize = newStrLength + 1;
         STRING_LOG("[string_assign]: Resized the string to new capacity: %zu.\n", str->capacitySize);
     }
 
     strcpy(str->dataStr, newStr);
     str->size = newStrLength;
+    if (oldToFree) {
+        memory_pool_destroy(oldToFree);
+    }
 
     STRING_LOG("[string_assign]: String assigned successfully, new size: %zu.\n", str->size);
 }
@@ -1051,27 +1112,27 @@ void string_insert(String *str, size_t pos, const char *strItem) {
     size_t strItemLength = strlen(strItem);
     size_t newTotalLength = str->size + strItemLength;
 
+    MemoryPoolString* oldToFree = NULL;
     if (newTotalLength + 1 > str->capacitySize) {
-        size_t newCapacity = newTotalLength + 1;
-        char *newData =(char*)memory_pool_allocate(str->pool, newCapacity);
-        if (!newData) {
+        bool ok;
+        oldToFree = sstr_grow_keep_old(str, newTotalLength + 1, &ok);
+
+        if (!ok) {
             STRING_LOG("[string_insert]: Error - Memory allocation failed.\n");
             return;
         }
-
-        memcpy(newData, str->dataStr, pos);
-        memcpy(newData + pos + strItemLength, str->dataStr + pos, str->size - pos);
-        str->dataStr = newData;
-        str->capacitySize = newCapacity;
-        STRING_LOG("[string_insert]: Resized the string to new capacity: %zu.\n", newCapacity);
-    } 
-    else { 
-        memmove(str->dataStr + pos + strItemLength, str->dataStr + pos, str->size - pos);
+        STRING_LOG("[string_insert]: Resized the string to new capacity: %zu.\n", str->capacitySize);
     }
 
+    memmove(str->dataStr + pos + strItemLength, str->dataStr + pos, str->size - pos);
     memcpy(str->dataStr + pos, strItem, strItemLength);
+
     str->size = newTotalLength;
-    str->dataStr[str->size] = '\0';  /* keep the buffer NUL-terminated */
+    str->dataStr[str->size] = '\0'; 
+
+    if (oldToFree) {
+        memory_pool_destroy(oldToFree);
+    }
     STRING_LOG("[string_insert]: String inserted successfully, new size: %zu.\n", str->size);
 }
 

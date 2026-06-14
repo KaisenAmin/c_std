@@ -66,6 +66,19 @@ To use the EvalExpr library in your project:
 
 ---
 
+### `double eval_expr_with_vars(const char* expr, const char** names, const double* values, size_t count, int* error)`
+**Purpose**: Evaluates an expression that may reference **named variables**, turning the calculator into a small formula engine (e.g. `"x*x + 2*y - rate"`). Each identifier (`[A-Za-z_][A-Za-z0-9_]*`) is replaced by its bound value before evaluation; a unary sign in front of a variable works too (`"-x"` → negation of `x`).
+**Parameters**:
+- `expr`: The null-terminated expression string.
+- `names`: Array of `count` variable names (ignored when `count == 0`).
+- `values`: Array of `count` variable values; `names[i]` is bound to `values[i]`.
+- `count`: Number of entries in the variable table.
+- `error`: Optional out-param set to `EVAL_EXPR_SUCCESS` (0) or an `EVAL_EXPR_ERROR_*` code. May be `NULL`.
+**Return Value**: The computed result as a `double`, or `NAN` on error (including any identifier not present in the table, which is an `EVAL_EXPR_ERROR_TOKENIZE`). Names are matched case-sensitively and in full; on a duplicate name the first binding wins. With `count == 0` it behaves exactly like `eval_expr_strict`.
+**Usage Case**: Config-driven or user-defined formulas — pricing rules, unit conversions, spreadsheet-like cells — where the same expression is evaluated against different variable bindings.
+
+---
+
 ### `char* eval_expr_to_rpn_string(const char* expr)`
 **Purpose**: Converts an infix arithmetic expression to its Reverse Polish Notation (RPN) form and returns it as a heap-allocated string.
 **Parameters**:
@@ -80,8 +93,18 @@ To use the EvalExpr library in your project:
 **Parameters**:
 - `expr`: The null-terminated expression string.
 - `numTokens`: A pointer to an `int` that receives the number of tokens found.
-**Return Value**: A heap-allocated array of heap-allocated strings, one per token, or `NULL` on failure. The caller must `free` each string and then the array itself.
+**Return Value**: A heap-allocated array of heap-allocated strings, one per token, or `NULL` on failure. Release it with `eval_expr_free_tokens` (or, manually, `free` each string and then the array itself).
 **Usage Case**: Use for debugging or when you need programmatic access to the individual tokens.
+
+---
+
+### `void eval_expr_free_tokens(char** tokens, int count)`
+**Purpose**: The matching deallocator for `eval_expr_tokenize` — frees every token string and then the array itself, so callers never have to unwind the two-level allocation by hand.
+**Parameters**:
+- `tokens`: The array returned by `eval_expr_tokenize`. Passing `NULL` is a safe no-op.
+- `count`: The token count `eval_expr_tokenize` reported through its `numTokens` out-param.
+**Return Value**: None.
+**Usage Case**: Always pair it with `eval_expr_tokenize` to release the result in one call and avoid leaks.
 
 ---
 
@@ -356,11 +379,71 @@ Debug: RPN: 10 2 / 3 +
 Debug: Result: 8
 
 ```
+
 ---
 
-## Contribution
+### Example 7: Variables with `eval_expr_with_vars` and safe cleanup with `eval_expr_free_tokens`
 
-Contributions to the EvalExpr library are welcome. Whether you’d like to extend its capabilities (e.g., to support functions or additional operators), improve error handling, or optimize performance, please fork the repository and submit a pull request.
+`eval_expr_with_vars` evaluates a formula against a table of named variables, so the same expression can be reused with different bindings — the core of a config-driven formula engine. `eval_expr_free_tokens` is the matching one-call cleanup for `eval_expr_tokenize`.
+
+```c
+#include "fmt/fmt.h"
+#include "evalexpr/evalexpr.h"
+
+int main(void) {
+    /* A formula evaluated against named variables. */
+    const char* names[]  = { "price", "qty", "tax" };
+    double      values[] = { 19.99, 3.0, 0.08 };
+    int err = 0;
+    const char* formula = "price * qty * (1 + tax)";
+    double total = eval_expr_with_vars(formula, names, values, 3, &err);
+    
+    fmt_printf("formula : %s\n", formula);
+    fmt_printf("total   : %.4f (status: %s)\n", total, eval_expr_error_message(err));
+
+    /* The same formula re-bound at three points: 2x^2 - 3x + 1. */
+    const char* quad = "a*x*x + b*x + c";
+    const char* qn[] = { "a", "b", "c", "x" };
+
+    for (int x = 0; x <= 2; x++) {
+        double qv[] = { 2.0, -3.0, 1.0, (double)x };
+        double y = eval_expr_with_vars(quad, qn, qv, 4, NULL);
+        fmt_printf("2x^2 - 3x + 1 at x=%d -> %g\n", x, y);
+    }
+
+    /* An undefined variable is reported, not guessed. */
+    double badv[] = { 1.0, 2.0, 3.0, 4.0 };
+    double bad = eval_expr_with_vars("x + missing", qn, badv, 4, &err);
+    fmt_printf("undefined var -> isnan=%d, status: %s\n", bad != bad, eval_expr_error_message(err));
+
+    /* Tokenize, then release with the paired free function. */
+    int n = 0;
+    char** toks = eval_expr_tokenize("3 + 4 * (2 - 1)", &n);
+
+    fmt_printf("tokens (%d):", n);
+    for (int i = 0; i < n; i++) {
+        fmt_printf(" [%s]", toks[i]);
+    }
+    fmt_printf("\n");
+
+    eval_expr_free_tokens(toks, n);
+
+    return 0;
+}
+```
+**Result**
+```
+formula : price * qty * (1 + tax)
+total   : 64.7676 (status: Success)
+2x^2 - 3x + 1 at x=0 -> 1
+2x^2 - 3x + 1 at x=1 -> 0
+2x^2 - 3x + 1 at x=2 -> 3
+undefined var -> isnan=1, status: Error tokenizing expression
+tokens (9): [3] [+] [4] [*] [(] [2] [-] [1] [)]
+```
+
+---
+
 
 ## License
 

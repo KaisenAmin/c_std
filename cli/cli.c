@@ -6,6 +6,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include "cli.h"
 #include "../string/std_string.h"
 
@@ -1886,4 +1889,144 @@ bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char sh
     CLI_LOG("[cli_set_option_dependencies] %s", cli_last_error.message);
 
     return true;
+}
+
+
+/* =================================================================== */
+/* Typed argument conversion                                           */
+/*                                                                     */
+/* Option handlers and validators receive the raw `const char* value`  */
+/* from the command line and must convert it themselves. These         */
+/* stateless helpers do that conversion once, correctly — rejecting    */
+/* empty strings, trailing garbage, and out-of-range values instead of */
+/* silently truncating the way bare atoi() does.                       */
+/* =================================================================== */
+
+/* Case-insensitive whole-string equality. */
+static bool clip_ieq(const char* a, const char* b) {
+    while (*a && *b) {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
+            return false;
+        }
+        ++a;
+        ++b;
+    }
+    return *a == *b;
+}
+
+/**
+ * @brief Parse a string into an int, with full validation.
+ *
+ * Accepts an optional leading sign and decimal digits (leading whitespace is
+ * tolerated). Rejects an empty string, any trailing non-numeric characters
+ * (e.g. "42abc", "1.5"), and values outside the `int` range. On success the
+ * value is written to @p out; on failure @p out is left untouched.
+ *
+ * @param value Null-terminated string to parse. May be NULL (returns false).
+ * @param out   Receives the parsed value on success. Must not be NULL.
+ * @return true if @p value is a valid int (written to @p out); false otherwise.
+ */
+bool cli_parse_int(const char* value, int* out) {
+    if (!value || !out || value[0] == '\0') {
+        return false;
+    }
+    errno = 0;
+    char* end = NULL;
+    long v = strtol(value, &end, 10);
+    if (end == value || *end != '\0') {
+        CLI_LOG("[cli_parse_int] '%s' is not a valid integer.", value);
+        return false;
+    }
+    if (errno == ERANGE || v < INT_MIN || v > INT_MAX) {
+        CLI_LOG("[cli_parse_int] '%s' is out of int range.", value);
+        return false;
+    }
+    *out = (int)v;
+    return true;
+}
+
+/**
+ * @brief Parse a string into a long, with full validation.
+ *
+ * Same rules as `cli_parse_int`, but for the wider `long` range — useful for
+ * sizes, counts, or ids that may exceed `int`.
+ *
+ * @param value Null-terminated string to parse. May be NULL (returns false).
+ * @param out   Receives the parsed value on success. Must not be NULL.
+ * @return true if @p value is a valid long (written to @p out); false otherwise.
+ */
+bool cli_parse_long(const char* value, long* out) {
+    if (!value || !out || value[0] == '\0') {
+        return false;
+    }
+    errno = 0;
+    char* end = NULL;
+    long v = strtol(value, &end, 10);
+    if (end == value || *end != '\0') {
+        CLI_LOG("[cli_parse_long] '%s' is not a valid integer.", value);
+        return false;
+    }
+    if (errno == ERANGE) {
+        CLI_LOG("[cli_parse_long] '%s' is out of long range.", value);
+        return false;
+    }
+    *out = v;
+    return true;
+}
+
+/**
+ * @brief Parse a string into a double, with full validation.
+ *
+ * Accepts decimal and scientific notation (e.g. "3.14", "-2.5", "1e9").
+ * Rejects an empty string, trailing garbage (e.g. "1.2.3"), and values outside
+ * the representable `double` range. On success the value is written to @p out.
+ *
+ * @param value Null-terminated string to parse. May be NULL (returns false).
+ * @param out   Receives the parsed value on success. Must not be NULL.
+ * @return true if @p value is a valid double (written to @p out); false otherwise.
+ */
+bool cli_parse_double(const char* value, double* out) {
+    if (!value || !out || value[0] == '\0') {
+        return false;
+    }
+    errno = 0;
+    char* end = NULL;
+    double v = strtod(value, &end);
+    if (end == value || *end != '\0') {
+        CLI_LOG("[cli_parse_double] '%s' is not a valid number.", value);
+        return false;
+    }
+    if (errno == ERANGE) {
+        CLI_LOG("[cli_parse_double] '%s' is out of double range.", value);
+        return false;
+    }
+    *out = v;
+    return true;
+}
+
+/**
+ * @brief Parse a string into a bool, accepting the common spellings.
+ *
+ * Recognises (case-insensitively) `true`/`false`, `yes`/`no`, `on`/`off`, and
+ * `1`/`0`. Any other string is rejected (returns false) so a typo doesn't
+ * silently become `false`.
+ *
+ * @param value Null-terminated string to parse. May be NULL (returns false).
+ * @param out   Receives the parsed value on success. Must not be NULL.
+ * @return true if @p value is a recognised boolean (written to @p out); false otherwise.
+ */
+bool cli_parse_bool(const char* value, bool* out) {
+    if (!value || !out) {
+        return false;
+    }
+    if (clip_ieq(value, "true") || clip_ieq(value, "yes") || clip_ieq(value, "on") || clip_ieq(value, "1")) {
+        *out = true;
+        return true;
+    }
+    if (clip_ieq(value, "false") || clip_ieq(value, "no") || clip_ieq(value, "off") || clip_ieq(value, "0")) {
+        *out = false;
+        return true;
+    }
+    CLI_LOG("[cli_parse_bool] '%s' is not a recognised boolean.", value);
+    return false;
 }

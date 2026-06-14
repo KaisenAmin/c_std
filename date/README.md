@@ -442,6 +442,25 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 
 ---
 
+### `int64_t date_to_unix(const Date* date)`
+**Purpose**: Converts a Date to **Unix time** — seconds since 1970-01-01T00:00:00 UTC. A Date has no time-of-day, so the result is the epoch second at UTC midnight of that calendar day. Works for both Gregorian and Persian dates (Persian routes through the shared Julian-Day axis) and is negative for days before 1970. The returned value is always a multiple of 86400.
+**Parameters**:
+- `date`: Pointer to the Date object (Gregorian or Persian).
+**Return Value**: Seconds since the Unix epoch at UTC midnight, or `INT64_MIN` if `date` is `NULL` or invalid.
+**Usage Case**: Store/transmit dates as epoch integers (databases, logs, JSON APIs), or compare a Date against a Unix timestamp without string parsing.
+
+---
+
+### `Date* date_from_unix(int64_t unix_seconds, CalendarType type)`
+**Purpose**: Builds a Date from **Unix time**, keeping the calendar day at UTC. The inverse of `date_to_unix`: the time-of-day part of `unix_seconds` is floored to the start of the UTC day, and the resulting day is returned in the requested calendar. Negative inputs (pre-1970) use floor division so the day boundary is correct.
+**Parameters**:
+- `unix_seconds`: Seconds since the Unix epoch.
+- `type`: Desired calendar of the result (`Gregorian` or `Persian`).
+**Return Value**: A heap-allocated `Date` the caller must free with `date_deallocate`, or `NULL` on an out-of-range/unsupported input or allocation failure.
+**Usage Case**: Turn a stored epoch timestamp back into a calendar date for display, day-based grouping, or per-day bucketing.
+
+---
+
 ### `char* date_to_string(const Date* date, const char* format)`
 **Purpose**: Returns a heap-allocated string with the date formatted according to `format`. For Gregorian dates, `format` follows `strftime` conventions; for Persian dates, the output is always `"YYYY-MM-DD"`.
 **Parameters**:
@@ -1010,6 +1029,43 @@ int main() {
 ```
 Gregorian Date: 2021-12-31
 ```
+
+---
+
+## Example 21: Unix-time conversion with `date_to_unix` and `date_from_unix`
+```c
+#include "date/date.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    /* Calendar date -> Unix timestamp (UTC midnight). */
+    Date* d = date_create_ymd(2024, 6, 15, Gregorian);
+    int64_t unix_seconds = date_to_unix(d);
+    fmt_printf("2024-06-15 -> unix %lld\n", (long long)unix_seconds);
+
+    /* Round-trip: Unix timestamp -> calendar date. */
+    Date* back = date_from_unix(unix_seconds, Gregorian);
+    fmt_printf("round-trip: %d-%02d-%02d\n", back->year, back->month, back->day);
+
+    /* Time-of-day is floored to the start of the UTC day. */
+    Date* day = date_from_unix(unix_seconds + 86399, Gregorian);   /* 23:59:59 same day */
+    fmt_printf("end-of-day floors to: %d-%02d-%02d\n", day->year, day->month, day->day);
+
+    date_deallocate(d);
+    date_deallocate(back);
+    date_deallocate(day);
+    return 0;
+}
+```
+
+**Result**
+```
+2024-06-15 -> unix 1718409600
+round-trip: 2024-06-15
+end-of-day floors to: 2024-06-15
+```
+> **Why it matters:** databases, logs, and JSON APIs speak Unix time, not calendar structs. `date_to_unix` / `date_from_unix` bridge the two exactly (built on the library's Julian-Day axis, so Persian dates work too), and the result is always pinned to UTC midnight so day-based comparisons stay stable across time zones.
 
 ---
 

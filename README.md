@@ -33,11 +33,102 @@ ecosystem.
 - **Heavily tested with true results.** Deep per-module test suites, plus runnable
   examples in every README whose shown output is captured from a real run.
 
-- **Fast & predictable.** Efficient data structures (pooled `vector` growth, O(1)
-  average `hashmap`, O(log n) `map`), clear ownership rules and deallocators.
+- **Fast & predictable.** Efficient data structures (geometric `vector` growth
+  with inlined `push_back`/`at`, O(1) average `hashmap`, O(log n) `map`), clear
+  ownership rules and deallocators.
 
 - **CMake build.** Build the whole library, a single module, or one example at a time,
   with GCC, Clang, or MSVC.
+
+## Benchmarks vs the C++ STL
+
+The library aims to be *fast where it counts*. The table below pits each C
+container against its C++ `<stl>` counterpart on the **same workload, the same
+data, and the same compiler family** at `-O2`. Both programs walk an identical
+deterministic key stream and compute identical checksums, so they do exactly the
+same work — only the container implementation differs.
+
+Environment: Windows 10, MinGW-w64 **GCC / G++ 14.2.0**, `-O2`, single thread,
+best of three runs (lower is better). Absolute numbers vary by machine; the
+**ratio** is what carries over.
+
+| C container ↔ C++ STL | Workload (N) | C&nbsp;STL | C++&nbsp;STL | C ÷ C++ |
+| --- | --- | --: | --: | :--: |
+| `vector` ↔ `std::vector<int>` | `push_back` + sum, 10,000,000 | 0.041 s | 0.031 s | 1.3× |
+| `map` ↔ `std::map<int,int>` (ordered / RB-tree) | insert + lookup, 1,000,000 | **1.00 s** | 1.20 s | **0.83×** |
+| `hashmap` ↔ `std::unordered_map<int,int>` | insert + lookup, 1,000,000 | **0.231 s** | 0.364 s | **0.63×** |
+| `set` ↔ `std::set<int>` (ordered / RB-tree) | insert + lookup, 1,000,000 | 1.17 s | 1.05 s | 1.1× |
+| `priority_queue` ↔ `std::priority_queue<int>` | push + pop (heap-sort), 1,000,000 | 0.156 s | 0.108 s | 1.4× |
+| `deque` ↔ `std::deque<int>` | `push_back` + iterate + `pop_front`, 1,000,000 | 0.009 s | 0.004 s | 2.2× |
+| `list` ↔ `std::list<int>` | `push_back` + iterate + teardown, 1,000,000 | 0.093 s | 0.075 s | 1.2× |
+| `forward_list` ↔ `std::forward_list<int>` | `push_front` + iterate + teardown, 1,000,000 | 0.080 s | 0.076 s | 1.05× |
+| `queue` ↔ `std::queue<int>` | enqueue + dequeue (FIFO), 1,000,000 | 0.006 s | 0.003 s | 2.0× |
+| `stack` ↔ `std::stack<int>` | push + pop (LIFO), 1,000,000 | 0.005 s | 0.003 s | 1.7× |
+
+`C ÷ C++` is the C time divided by the C++ time — **below 1.0 means the C
+library is faster.**
+
+- **Where C wins — `map` and `hashmap`.** Both allocate their tree nodes /
+  buckets from a pooled slab allocator, so a million inserts cost a handful of
+  big `malloc`s instead of a million tiny ones, beating the STL's per-node `new`.
+- **About `set` — near parity.** Same pooled-slab, inline-element RB-tree as
+  `map`. Lookups are actually a hair *faster* than `std::set`; inserts are a
+  little slower, so it nets ~1.1×. Unlike `map` (which stores caller-owned
+  pointers and skips the copy), `set` has value semantics and deep-copies each
+  element exactly like `std::set`, so it can't win the copy back — and its node
+  carries the publicly-inspectable `key`/`left`/`right`/`parent`/`color` fields
+  (the test suite walks them to check the red-black invariants), which a templated
+  `std::set` node doesn't expose. A large RB-tree is cache-miss-bound, so that
+  slightly larger node is the whole gap.
+- **Where C++ wins — `vector` and `priority_queue`.** Both are tight loops over
+  raw `int`s. The C `vector` now inlines `push_back`/`at` at the call site just
+  like `std::vector` and closes most of the gap (~1.3×); the small residual is the
+  type-erased ABI — a runtime `itemSize` stride and a size-dispatched element copy
+  where C++ has a compile-time `sizeof(int)`, plus the bounds check in `vector_at`
+  that `operator[]` skips. The C `priority_queue` size-dispatches its heap moves
+  the same way (~1.4×); its residual is the **comparator** — one indirect call
+  through a function pointer per comparison, which `std::priority_queue` inlines
+  from its template argument. Either way it's a small fixed per-element cost — the
+  price of a uniform C API — not a worse complexity.
+- **About `deque`.** The C `deque` stores elements *inline* in byte-budgeted
+  block buffers (one allocation per block, not one `malloc` per element) and
+  inlines `front` / `back` / `at` with shift-indexed block math like
+  `std::deque`, so it lands at ~2.2×; the residual is the out-of-line
+  `push_back` / `pop_front` calls that `std::deque` inlines from templates.
+- **About `list`.** Each node stores its element *inline* in the same allocation
+  (one `malloc` per node, like `std::list`) instead of a second heap block per
+  element, which roughly halves the allocation/teardown cost and lands it at
+  ~1.2×. The residual is a slightly larger node — the type-erased API keeps a
+  `value` pointer and aligns the inline element for any type — plus the
+  out-of-line per-node call `std::list` inlines.
+- **About `forward_list` — at parity.** It already uses the same single-node-
+  allocation, inline-element design as `std::forward_list`, so `push_front` /
+  iterate / teardown match it within measurement noise (≈1.05×). No type-erasure
+  penalty survives here because the per-node `malloc` dominates and both pay it
+  once per element.
+- **About `queue`.** The C `queue` is a contiguous `vector` used as a ring:
+  `enqueue` appends and `dequeue` advances a front index (an O(1) bump, not a
+  buffer shift), with the dead front prefix reclaimed in bulk when the buffer
+  fills — so both ends are amortized O(1), like `std::queue`. The hot ops are
+  inlined; the ~2× residual is the per-element copy into the contiguous buffer
+  vs `std::queue`'s `deque` node writes. (Previously `dequeue` shifted the whole
+  buffer — **O(n)**, an O(n²) drain; that's fixed.)
+- **About `stack`.** LIFO at the back of a contiguous `vector`, so push and pop
+  are already O(1). `push` / `top` / `pop` / `empty` are now inlined in the header
+  (the way `std::stack` inlines through its container), which cut it from ~3.3× to
+  ~1.7×; the residual is the `vector`'s amortized realloc-copy on growth vs
+  `std::stack`'s default `deque` adding blocks — in exchange the C stack keeps its
+  elements fully contiguous.
+
+Reproduce it yourself — a C and a C++ program over the identical key stream:
+
+```bash
+# C  (link the containers used + algorithm, which queue depends on):
+gcc -O2 bench.c vector/vector.c queue/queue.c priority_queue/priority_queue.c \
+    hashmap/hashmap.c map/map.c algorithm/algorithm.c -I. -o bench_c && ./bench_c
+# C++:
+g++ -O2 -std=c++17 bench.cpp -o bench_cpp && ./bench_cpp
+```
 
 ## A personal note
 
@@ -51,6 +142,7 @@ the conveniences found in higher-level standard libraries.
 ## Table of contents
 
 - [Highlights](#highlights)
+- [Benchmarks vs the C++ STL](#benchmarks-vs-the-c-stl)
 - [Modules](#modules)
 - [Dependencies](#dependencies)
 - [Installing the dependencies](#installing-the-dependencies)

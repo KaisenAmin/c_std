@@ -200,6 +200,20 @@ typedef enum {
 #endif
 
 
+/* Read-write lock (writer-preference): many concurrent readers OR a single
+ * exclusive writer. Built on the library's own Mutex + ThreadCondition so it
+ * behaves identically on Win32 and POSIX. Treat the fields as opaque — use
+ * the rwlock_* functions, never touch them directly. */
+typedef struct {
+  Mutex           lock;            /* protects the counters below              */
+  ThreadCondition readers_ok;      /* signaled when readers may proceed        */
+  ThreadCondition writers_ok;      /* signaled when a writer may proceed       */
+  int             active_readers;  /* readers currently holding the lock       */
+  int             active_writers;  /* 0 or 1 — a writer currently holding it   */
+  int             waiting_writers; /* writers blocked in rwlock_wrlock         */
+} RWLock;
+
+
 /* Entry point passed to `thread_create`. */
 typedef int (*ThreadStart)(void* arg);
 
@@ -253,6 +267,19 @@ int                semaphore_wait                 (Semaphore* sem);
 int                semaphore_trywait              (Semaphore* sem);
 int                semaphore_post                 (Semaphore* sem);
 void               semaphore_destroy              (Semaphore* sem);
+
+
+/* ------------------------------------------------------------------ */
+/* Read-write lock (shared readers / exclusive writer)                */
+/* ------------------------------------------------------------------ */
+
+int                rwlock_init                    (RWLock* rw);
+int                rwlock_rdlock                  (RWLock* rw);
+int                rwlock_tryrdlock               (RWLock* rw);
+int                rwlock_wrlock                  (RWLock* rw);
+int                rwlock_trywrlock               (RWLock* rw);
+int                rwlock_unlock                  (RWLock* rw);
+void               rwlock_destroy                 (RWLock* rw);
 
 
 /* ------------------------------------------------------------------ */

@@ -233,6 +233,73 @@ A counting semaphore tracks a number of interchangeable tokens (resources). `sem
 
 ---
 
+### Read-Write Locks
+
+A read-write lock (`RWLock`) lets **many threads read shared data at once**, but gives a writer **exclusive** access. It is the right primitive for data read far more often than it is written (caches, routing tables, configuration). This implementation is **writer-preference** — once a writer is waiting, new readers queue behind it, so a steady stream of readers cannot starve a writer. It is built on the library's own `Mutex` + `ThreadCondition`, so it behaves identically on Windows and POSIX. A single `rwlock_unlock` releases whichever mode the caller holds. Treat the `RWLock` fields as opaque.
+
+### `int rwlock_init(RWLock* rw)`
+**Purpose**: Initialise a read-write lock.
+**Parameters**:
+  - `rw`: Pointer to an uninitialised `RWLock`.
+**Return Value**: `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument or if an underlying mutex/condition could not be created.
+**Usage Case**: Create the lock before sharing the data it guards. Pair with `rwlock_destroy`.
+
+---
+
+### `int rwlock_rdlock(RWLock* rw)`
+**Purpose**: Acquire the lock for reading (shared), blocking until granted. Many readers may hold it simultaneously; blocks while a writer holds or is waiting.
+**Parameters**:
+  - `rw`: Pointer to an initialised `RWLock`.
+**Return Value**: `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument / internal error.
+**Usage Case**: Wrap a read-only critical section. Balance every call with one `rwlock_unlock`.
+
+---
+
+### `int rwlock_tryrdlock(RWLock* rw)`
+**Purpose**: Try to acquire the read lock without blocking.
+**Parameters**:
+  - `rw`: Pointer to an initialised `RWLock`.
+**Return Value**: `THREAD_SUCCESS` if the read lock was taken, `THREAD_BUSY` if a writer holds it or is waiting (writer-preference), otherwise `THREAD_ERROR`.
+**Usage Case**: Read opportunistically and fall back to other work when a writer is active, instead of blocking.
+
+---
+
+### `int rwlock_wrlock(RWLock* rw)`
+**Purpose**: Acquire the lock for writing (exclusive), blocking until every current reader and writer has released.
+**Parameters**:
+  - `rw`: Pointer to an initialised `RWLock`.
+**Return Value**: `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument / internal error.
+**Usage Case**: Wrap a critical section that mutates the shared data. Balance with one `rwlock_unlock`.
+
+---
+
+### `int rwlock_trywrlock(RWLock* rw)`
+**Purpose**: Try to acquire the write lock without blocking.
+**Parameters**:
+  - `rw`: Pointer to an initialised `RWLock`.
+**Return Value**: `THREAD_SUCCESS` if exclusive access was granted, `THREAD_BUSY` if any reader or writer currently holds the lock, otherwise `THREAD_ERROR`.
+**Usage Case**: Attempt an update only if it can be done immediately (e.g. a best-effort cache refresh).
+
+---
+
+### `int rwlock_unlock(RWLock* rw)`
+**Purpose**: Release the lock, whether it is held for reading or writing. The lock state itself records the mode, so no per-thread bookkeeping is needed.
+**Parameters**:
+  - `rw`: Pointer to an initialised `RWLock` the calling thread holds.
+**Return Value**: `THREAD_SUCCESS`, or `THREAD_ERROR` on a NULL argument / internal error.
+**Usage Case**: End a read or write critical section. Calling it while nothing is held is a harmless no-op.
+
+---
+
+### `void rwlock_destroy(RWLock* rw)`
+**Purpose**: Destroy a read-write lock and release its resources. The lock must be idle. Safe to call with NULL.
+**Parameters**:
+  - `rw`: Pointer to an `RWLock` no thread is holding or waiting on.
+**Return Value**: None.
+**Usage Case**: Call when the lock is permanently no longer needed.
+
+---
+
 ### Condition Variables
 
 ### `int condition_init(ThreadCondition* cond)`
@@ -1597,6 +1664,662 @@ workers: 4
 work outstanding: yes
 not drained in 1ms (expected)
 drained: 20 tasks done, pending now 0
+```
+
+---
+
+## Example 18 — Read-write lock: concurrent readers, exclusive writers
+
+`RWLock` lets many readers observe shared state at once while a writer gets exclusive access. Here four writers each perform 1000 `+1` updates under `rwlock_wrlock`, while four readers repeatedly read the value under `rwlock_rdlock`. Two outcomes prove the lock works: the final value has **no lost updates** (writers were exclusive), and readers **never observe a torn value** — two reads taken under one read-lock always agree, because no writer can change the data while a reader holds it.
+
+```c
+#include "concurrent/concurrent.h"
+#include "fmt/fmt.h"
+
+#define WRITERS   4
+#define READERS   4
+#define ITERS     1000
+
+static RWLock rw;
+static long   balance = 0;     /* shared state guarded by rw */
+
+/* Writers take the lock EXCLUSIVELY and mutate the shared state. */
+static int writer(void* arg) {
+    (void)arg;
+
+    for (int i = 0; i < ITERS; ++i) {
+        rwlock_wrlock(&rw);
+        balance += 1;
+        rwlock_unlock(&rw);
+    }
+
+    return 0;
+}
+
+/* Readers SHARE the lock and observe a consistent snapshot: while a reader
+   holds it, no writer can change `balance`, so two reads must agree. */
+static int torn_total = 0;
+static Mutex torn_mtx;
+
+static int reader(void* arg) {
+    (void)arg;
+    int torn = 0;
+
+    for (int i = 0; i < ITERS; ++i) {
+        rwlock_rdlock(&rw);
+        long a = balance;
+        for (volatile int k = 0; k < 50; ++k) { /* widen the read window */ }
+
+        long b = balance;
+        if (a != b) {
+            torn++;
+        }
+
+        rwlock_unlock(&rw);
+    }
+    mutex_lock(&torn_mtx);
+    torn_total += torn;
+    mutex_unlock(&torn_mtx);
+
+    return 0;
+}
+
+int main(void) {
+    rwlock_init(&rw);
+    mutex_init(&torn_mtx, MUTEX_PLAIN);
+
+    Thread tw[WRITERS], tr[READERS];
+    for (int i = 0; i < WRITERS; ++i) {
+        thread_create(&tw[i], writer, NULL);
+    }
+
+    for (int i = 0; i < READERS; ++i) {
+        thread_create(&tr[i], reader, NULL);
+    }
+
+    for (int i = 0; i < WRITERS; ++i) {
+        thread_join(tw[i], NULL);
+    }
+
+    for (int i = 0; i < READERS; ++i) {
+        thread_join(tr[i], NULL);
+    }
+
+    fmt_printf("final balance = %ld (expected %d)\n", balance, WRITERS * ITERS);
+    fmt_printf("torn reads observed = %d\n", torn_total);
+
+    mutex_destroy(&torn_mtx);
+    rwlock_destroy(&rw);
+
+    return 0;
+}
+```
+
+**Result**
+```
+final balance = 4000 (expected 4000)
+torn reads observed = 0
+```
+
+---
+
+## Example 19 — Mutex-guarded `Vector`: concurrent append
+
+`Eight threads each push 1000 ints into one shared Vector. A Mutex serialises every push_back, so no element is lost or corrupted. The final size and sum are fixed no matter how the threads interleave.`
+
+```c
+#include "concurrent/concurrent.h"
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+
+#define N_THREADS  8
+#define PER_THREAD 1000
+
+
+typedef struct {
+    int     id;
+    Vector* vec;     /* shared, NOT thread-safe on its own */
+    Mutex*  lock;    /* serialises every mutation of vec    */
+} AppendJob;
+
+
+int appender(void* arg) {
+    AppendJob* j = (AppendJob*)arg;
+
+    for (int i = 0; i < PER_THREAD; ++i) {
+        mutex_lock(j->lock);
+        vector_push_back(j->vec, &j->id);   /* guarded shared mutation */
+        mutex_unlock(j->lock);
+    }
+
+    return 0;
+}
+
+
+int main(void) {
+    Vector* vec = vector_create(sizeof(int));
+    Mutex lock;
+    mutex_init(&lock, MUTEX_PLAIN);
+
+    Thread th[N_THREADS];
+    AppendJob jobs[N_THREADS];
+    for (int i = 0; i < N_THREADS; ++i) {
+        jobs[i].id = i;
+        jobs[i].vec = vec;
+        jobs[i].lock = &lock;
+
+        thread_create(&th[i], appender, &jobs[i]);
+    }
+
+    for (int i = 0; i < N_THREADS; ++i) {
+        thread_join(th[i], NULL);
+    }
+
+    long long sum = 0;
+    for (size_t i = 0; i < vector_size(vec); ++i) {
+        sum += *(int*)vector_at(vec, i);
+    }
+
+    fmt_printf("items pushed: %zu (expected %d)\n", vector_size(vec), N_THREADS * PER_THREAD);
+    fmt_printf("sum of items: %lld (expected %d)\n", sum, PER_THREAD * (0 + 1 + 2 + 3 + 4 + 5 + 6 + 7));
+
+    mutex_destroy(&lock);
+    vector_deallocate(vec);
+
+    return 0;
+}
+```
+
+**Result**
+```
+items pushed: 8000 (expected 8000)
+sum of items: 28000 (expected 28000)
+```
+
+---
+
+## Example 20 — Mutex-guarded `Map`: concurrent counter (read-modify-write)
+
+`A shared Map<int,int*> of per-key counters. Eight threads each increment all four keys 1000 times. The increment is a read-modify-write — load the value, ++, store — so it MUST happen under the lock; otherwise updates are lost to races. Every key ends at exactly N_THREADS * ROUNDS.`
+
+```c
+#include "concurrent/concurrent.h"
+#include "map/map.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+#define N_THREADS 8
+#define ROUNDS    1000
+#define K_KEYS    4
+
+static int compare_ints(const KeyType a, const KeyType b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+
+typedef struct {
+    Map*   map;      /* shared key -> int* count */
+    Mutex* lock;
+    int*   keys;     /* K_KEYS stable key addresses */
+} CountJob;
+
+
+int counter(void* arg) {
+    CountJob* j = (CountJob*)arg;
+
+    for (int r = 0; r < ROUNDS; ++r) {
+        for (int k = 0; k < K_KEYS; ++k) {
+            mutex_lock(j->lock);
+            int* v = (int*)map_at(j->map, &j->keys[k]);   /* read-modify-write */
+            (*v)++;
+            mutex_unlock(j->lock);
+        }
+    }
+    return 0;
+}
+
+int main(void) {
+    int keys[K_KEYS];
+    Map* map = map_create(compare_ints, NULL, free);   /* values are heap int*, freed by map */
+
+    for (int k = 0; k < K_KEYS; ++k) {
+        keys[k] = k;
+        int* zero = (int*)malloc(sizeof(int));
+        *zero = 0;
+        map_insert(map, &keys[k], zero);               /* pre-seed every key */
+    }
+
+    Mutex lock;
+    mutex_init(&lock, MUTEX_PLAIN);
+    Thread th[N_THREADS];
+    CountJob jobs[N_THREADS];
+
+    for (int i = 0; i < N_THREADS; ++i) {
+        jobs[i].map = map;
+        jobs[i].lock = &lock;
+        jobs[i].keys = keys;
+        thread_create(&th[i], counter, &jobs[i]);
+    }
+
+    for (int i = 0; i < N_THREADS; ++i) {
+        thread_join(th[i], NULL);
+    }
+
+    long long total = 0;
+    for (int k = 0; k < K_KEYS; ++k) {
+        int c = *(int*)map_at(map, &keys[k]);
+        total += c;
+        fmt_printf("key %d -> %d\n", k, c);
+    }
+
+    fmt_printf("total increments: %lld (expected %d)\n", total, N_THREADS * ROUNDS * K_KEYS);
+
+    mutex_destroy(&lock);
+    map_deallocate(map);
+
+    return 0;
+}
+```
+
+**Result**
+```
+key 0 -> 8000
+key 1 -> 8000
+key 2 -> 8000
+key 3 -> 8000
+total increments: 32000 (expected 32000)
+```
+
+---
+
+## Example 21 — `RWLock` + `Map`: many readers, one writer
+
+`A read-write lock lets several reader threads inspect a shared Map concurrently (read-lock) while a single writer mutates it under an exclusive write-lock. Readers never see a torn value, and the writer's deterministic updates leave each key at exactly WRITES.`
+
+```c
+#include "concurrent/concurrent.h"
+#include "map/map.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+#define N_READERS 3
+#define WRITES    500
+#define K_KEYS    3
+#define READ_ITERS 2000
+
+
+static int compare_ints(const KeyType a, const KeyType b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+typedef struct {
+    Map*    map;
+    RWLock* rw;
+    int*    keys;
+} ConfigJob;
+
+
+/* Many readers run concurrently under a shared read-lock. */
+int reader(void* arg) {
+    ConfigJob* j = (ConfigJob*)arg;
+    long long checksum = 0;
+
+    for (int it = 0; it < READ_ITERS; ++it) {
+        rwlock_rdlock(j->rw);                 /* shared: readers don't block readers */
+        for (int k = 0; k < K_KEYS; ++k) {
+            checksum += *(int*)map_at(j->map, &j->keys[k]);
+        }
+        rwlock_unlock(j->rw);
+    }
+    (void)checksum;                           /* value is timing-dependent: not printed */
+
+    return 0;
+}
+
+
+/* A single writer mutates under an exclusive write-lock. */
+int writer(void* arg) {
+    ConfigJob* j = (ConfigJob*)arg;
+
+    for (int w = 0; w < WRITES; ++w) {
+        for (int k = 0; k < K_KEYS; ++k) {
+            rwlock_wrlock(j->rw);             /* exclusive: blocks all readers + writers */
+            (*(int*)map_at(j->map, &j->keys[k]))++;
+            rwlock_unlock(j->rw);
+        }
+    }
+
+    return 0;
+}
+
+
+int main(void) {
+    int keys[K_KEYS];
+    Map* map = map_create(compare_ints, NULL, free);
+
+    for (int k = 0; k < K_KEYS; ++k) {
+        keys[k] = k;
+        int* zero = (int*)malloc(sizeof(int));
+        *zero = 0;
+        map_insert(map, &keys[k], zero);
+    }
+
+    RWLock rw;
+    rwlock_init(&rw);
+
+    ConfigJob job = { map, &rw, keys };
+    Thread readers[N_READERS], wr;
+
+    for (int i = 0; i < N_READERS; ++i) {
+        thread_create(&readers[i], reader, &job);
+    }
+    thread_create(&wr, writer, &job);
+
+    for (int i = 0; i < N_READERS; ++i) {
+        thread_join(readers[i], NULL);
+    }
+    thread_join(wr, NULL);
+
+    fmt_printf("final config after writer:\n");
+    for (int k = 0; k < K_KEYS; ++k) {
+        fmt_printf("  key %d -> %d\n", k, *(int*)map_at(map, &keys[k]));
+    }
+    fmt_printf("%d reader(s) + 1 writer finished with no torn reads\n", N_READERS);
+
+    rwlock_destroy(&rw);
+    map_deallocate(map);
+
+    return 0;
+}
+```
+
+**Result**
+```
+final config after writer:
+  key 0 -> 500
+  key 1 -> 500
+  key 2 -> 500
+3 reader(s) + 1 writer finished with no torn reads
+```
+
+---
+
+## Example 22 — Counting `Semaphore` + `Queue`: producer / consumer
+
+`Four producers push items into one shared Queue (guarded by a Mutex). A counting Semaphore tracks how many items are available, so consumers block instead of busy-waiting. A poison-pill per consumer drains the system cleanly. Items produced == items consumed, and the value sums match.`
+
+```c
+#include "concurrent/concurrent.h"
+#include "queue/queue.h"
+#include "fmt/fmt.h"
+
+#define N_PRODUCERS 4
+#define N_CONSUMERS 3
+#define PER_PRODUCER 500
+#define SENTINEL    (-1)
+
+static Queue*    g_queue;
+static Mutex     g_lock;     /* guards g_queue                         */
+static Semaphore g_items;    /* counts items available in g_queue      */
+static long long g_count;    /* consumed item count (under g_lock)     */
+static long long g_sum;      /* consumed value sum  (under g_lock)     */
+
+
+int producer(void* arg) {
+    int id = *(int*)arg;          /* pushes its own (id+1) PER_PRODUCER times */
+    int value = id + 1;
+
+    for (int i = 0; i < PER_PRODUCER; ++i) {
+        mutex_lock(&g_lock);
+        queue_push(g_queue, &value);
+        mutex_unlock(&g_lock);
+        semaphore_post(&g_items);  /* announce one more item */
+    }
+
+    return 0;
+}
+
+
+int consumer(void* arg) {
+    (void)arg;
+    for (;;) {
+        semaphore_wait(&g_items);  /* block until an item is available */
+        mutex_lock(&g_lock);
+        int v = *(int*)queue_front(g_queue);
+
+        queue_pop(g_queue);
+        if (v != SENTINEL) {
+            g_count++;
+            g_sum += v;
+        }
+
+        mutex_unlock(&g_lock);
+        if (v == SENTINEL) {
+            break;                 /* poison pill: shut this consumer down */
+        }
+    }
+    return 0;
+}
+
+
+int main(void) {
+    g_queue = queue_create(sizeof(int));
+    mutex_init(&g_lock, MUTEX_PLAIN);
+    semaphore_init(&g_items, 0);
+
+    Thread cons[N_CONSUMERS], prod[N_PRODUCERS];
+    int ids[N_PRODUCERS];
+
+    for (int i = 0; i < N_CONSUMERS; ++i) {
+        thread_create(&cons[i], consumer, NULL);
+    }
+
+    for (int i = 0; i < N_PRODUCERS; ++i) {
+        ids[i] = i;
+        thread_create(&prod[i], producer, &ids[i]);
+    }
+
+    for (int i = 0; i < N_PRODUCERS; ++i) {
+        thread_join(prod[i], NULL);
+    }
+
+    /* All real items are queued; send one poison pill per consumer. */
+    for (int i = 0; i < N_CONSUMERS; ++i) {
+        int sentinel = SENTINEL;
+        mutex_lock(&g_lock);
+        queue_push(g_queue, &sentinel);
+        mutex_unlock(&g_lock);
+        semaphore_post(&g_items);
+    }
+
+    for (int i = 0; i < N_CONSUMERS; ++i) {
+        thread_join(cons[i], NULL);
+    }
+
+    long long expect_sum = (long long)PER_PRODUCER * (1 + 2 + 3 + 4);
+    fmt_printf("produced: %d items, sum %lld\n", N_PRODUCERS * PER_PRODUCER, expect_sum);
+    fmt_printf("consumed: %lld items, sum %lld\n", g_count, g_sum);
+    fmt_printf("queue drained: %s\n", queue_empty(g_queue) ? "yes" : "no");
+
+    semaphore_destroy(&g_items);
+    mutex_destroy(&g_lock);
+    queue_deallocate(g_queue);
+
+    return 0;
+}
+```
+
+**Result**
+```
+produced: 2000 items, sum 5000
+consumed: 2000 items, sum 5000
+queue drained: yes
+```
+
+---
+
+## Example 23 — `ThreadCondition` + `Deque`: a blocking work queue
+
+`Worker threads sleep on a condition variable until tasks land in a shared Deque, instead of spinning. main pushes 2000 tasks (signalling one worker each) and then sets a done flag and broadcasts to wake everyone for shutdown. Every task is processed exactly once; the value sum is fixed.`
+
+```c
+#include "concurrent/concurrent.h"
+#include "deque/deque.h"
+#include "fmt/fmt.h"
+
+#define N_WORKERS 4
+#define N_TASKS   2000
+
+static Deque*          g_tasks;     /* shared task queue            */
+static Mutex           g_lock;
+static ThreadCondition g_cv;        /* "a task is available"        */
+static int             g_done;      /* set once no more tasks coming */
+static long long       g_processed;
+static long long       g_sum;
+
+int worker(void* arg) {
+    (void)arg;
+    for (;;) {
+        mutex_lock(&g_lock);
+
+        while (deque_empty(g_tasks) && !g_done) {
+            condition_wait(&g_cv, &g_lock);   /* sleeps, releasing the lock */
+        }
+
+        if (deque_empty(g_tasks) && g_done) {
+            mutex_unlock(&g_lock);
+            break;                            /* drained + shutdown -> exit */
+        }
+
+        int v = *(int*)deque_front(g_tasks);
+        deque_pop_front(g_tasks);
+
+        g_processed++;
+        g_sum += v;
+
+        mutex_unlock(&g_lock);
+    }
+
+    return 0;
+}
+
+int main(void) {
+    g_tasks = deque_create(sizeof(int));
+    mutex_init(&g_lock, MUTEX_PLAIN);
+    condition_init(&g_cv);
+
+    Thread th[N_WORKERS];
+    for (int i = 0; i < N_WORKERS; ++i) {
+        thread_create(&th[i], worker, NULL);
+    }
+
+    for (int i = 0; i < N_TASKS; ++i) {
+        mutex_lock(&g_lock);
+        deque_push_back(g_tasks, &i);
+        condition_signal(&g_cv);              /* wake one waiting worker */
+        mutex_unlock(&g_lock);
+    }
+
+    mutex_lock(&g_lock);
+    g_done = 1;
+    condition_broadcast(&g_cv);               /* wake everyone for shutdown */
+    mutex_unlock(&g_lock);
+
+    for (int i = 0; i < N_WORKERS; ++i) {
+        thread_join(th[i], NULL);
+    }
+
+    long long expect = (long long)N_TASKS * (N_TASKS - 1) / 2;
+    fmt_printf("tasks submitted: %d\n", N_TASKS);
+    fmt_printf("tasks processed: %lld\n", g_processed);
+    fmt_printf("sum of task values: %lld (expected %lld)\n", g_sum, expect);
+
+    condition_destroy(&g_cv);
+    mutex_destroy(&g_lock);
+    deque_deallocate(g_tasks);
+
+    return 0;
+}
+```
+
+**Result**
+```
+tasks submitted: 2000
+tasks processed: 2000
+sum of task values: 1999000 (expected 1999000)
+```
+
+---
+
+## Example 24 — `call_once` + `Set`: thread-safe lazy init + concurrent de-dup
+
+`A shared Set is created lazily on first use. call_once guarantees the initializer runs exactly once even when every thread races to touch it first. Each of eight threads then inserts the same 100 values under a Mutex; the Set collapses duplicates, so its final size is exactly the number of distinct values.`
+
+```c
+#include "concurrent/concurrent.h"
+#include "set/set.h"
+#include "fmt/fmt.h"
+
+#define N_THREADS 8
+#define DISTINCT  100
+
+static int set_cmp_int(const void* a, const void* b) {
+    int x = *(const int*)a, y = *(const int*)b;
+    return (x > y) - (x < y);
+}
+
+static Set*     g_registry;                 /* lazily created, shared       */
+static Mutex    g_lock;                      /* guards g_registry inserts    */
+static OnceFlag g_once = ONCE_FLAG_INIT;     /* makes init run exactly once  */
+static int      g_init_count;                /* how many times init ran      */
+
+/* Runs at most once across all threads, guaranteed by call_once. */
+static void init_registry(void) {
+    g_registry = set_create(sizeof(int), set_cmp_int);
+    mutex_init(&g_lock, MUTEX_PLAIN);
+    g_init_count++;
+}
+
+
+int worker(void* arg) {
+    (void)arg;
+    call_once(&g_once, init_registry);       /* first caller initialises; rest skip */
+
+    for (int v = 0; v < DISTINCT; ++v) {
+        mutex_lock(&g_lock);
+        set_insert(g_registry, &v);          /* duplicates collapse (set semantics) */
+        mutex_unlock(&g_lock);
+    }
+
+    return 0;
+}
+
+int main(void) {
+    Thread th[N_THREADS];
+
+    for (int i = 0; i < N_THREADS; ++i) {
+        thread_create(&th[i], worker, NULL);
+    }
+    for (int i = 0; i < N_THREADS; ++i) {
+        thread_join(th[i], NULL);
+    }
+
+    fmt_printf("registry initialized exactly once: %s\n", g_init_count == 1 ? "yes" : "no");
+    fmt_printf("distinct values in set: %zu (expected %d)\n", set_size(g_registry), DISTINCT);
+    fmt_printf("total insert attempts: %d\n", N_THREADS * DISTINCT);
+
+    set_deallocate(g_registry);
+    mutex_destroy(&g_lock);
+
+    return 0;
+}
+```
+
+**Result**
+```
+registry initialized exactly once: yes
+distinct values in set: 100 (expected 100)
+total insert attempts: 800
 ```
 
 ---

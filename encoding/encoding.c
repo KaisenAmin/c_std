@@ -754,20 +754,25 @@ char* encoding_base64_encode(const char* input, size_t length) {
 
 
 /**
- * @brief Decodes a Base64 encoded string back to binary data.
+ * @brief Decode Base64, also reporting the exact decoded byte count.
  *
- * This function decodes a Base64 encoded string into its original binary form. 
- * The input string length must be a multiple of 4.
+ * Identical to `encoding_base64_decode` but writes the number of decoded bytes
+ * to `*out_len`. The plain `encoding_base64_decode` NUL-terminates and returns a
+ * `char*`, which silently loses the length when the decoded data is binary and
+ * contains embedded `0x00` bytes (keys, images, signatures, …). This variant is
+ * the correct one for arbitrary binary payloads.
  *
- * @param input Pointer to the Base64 encoded input string.
- * @param length Length of the Base64 encoded string. Must be a multiple of 4.
- * 
- * @return A dynamically allocated buffer containing the decoded binary data. 
- * Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
- *
- * @note The caller is responsible for freeing the returned decoded data.
+ * @param input   Pointer to the Base64 encoded input string.
+ * @param length  Length of the input; must be a multiple of 4.
+ * @param out_len Optional out-pointer; receives the decoded byte count (0 on
+ *                error or empty input). May be NULL.
+ * @return A malloc'd buffer (NUL-terminated for convenience) with the decoded
+ *         bytes, or NULL on invalid length / allocation failure. Caller frees.
  */
-char* encoding_base64_decode(const char* input, size_t length) {
+char* encoding_base64_decode_ex(const char* input, size_t length, size_t* out_len) {
+    if (out_len) {
+        *out_len = 0;
+    }
     if (length % 4 != 0) {
         ENCODING_LOG("[encoding_base64_decode] Error: Invalid input length. Length must be a multiple of 4.");
         return NULL;
@@ -823,9 +828,32 @@ char* encoding_base64_decode(const char* input, size_t length) {
     }
 
     decoded[output_length] = '\0';
+    if (out_len) {
+        *out_len = output_length;
+    }
 
     ENCODING_LOG("[encoding_base64_decode] Decoding completed successfully.");
     return decoded;
+}
+
+
+/**
+ * @brief Decodes a Base64 encoded string back to binary data.
+ *
+ * Back-compat wrapper over `encoding_base64_decode_ex` that discards the decoded
+ * length. Use `encoding_base64_decode_ex` when the payload may be binary (the
+ * NUL-terminated `char*` return cannot convey the length of data containing
+ * embedded `0x00` bytes). The input length must be a multiple of 4.
+ *
+ * @param input Pointer to the Base64 encoded input string.
+ * @param length Length of the Base64 encoded string. Must be a multiple of 4.
+ * @return A dynamically allocated buffer containing the decoded binary data.
+ * Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
+ *
+ * @note The caller is responsible for freeing the returned decoded data.
+ */
+char* encoding_base64_decode(const char* input, size_t length) {
+    return encoding_base64_decode_ex(input, length, NULL);
 }
 
 /**
@@ -1013,21 +1041,25 @@ char* encoding_base32_encode(const char* input, size_t length) {
 
 
 /**
- * @brief Decodes a Base32 encoded string back to binary data.
+ * @brief Decode Base32, also reporting the exact decoded byte count.
  *
- * This function decodes a Base32 encoded string into its original binary form. The 
- * input string must be properly padded with `=` characters to ensure it is a multiple 
- * of 8 characters long.
+ * Identical to `encoding_base32_decode` but writes the number of decoded bytes
+ * to `*out_len`. Because Base32 padding makes the decoded length unrecoverable
+ * from the input length alone, this is the correct variant for binary payloads
+ * (the NUL-terminated `char*` return cannot convey a length when the data has
+ * embedded `0x00` bytes).
  *
- * @param input Pointer to the Base32 encoded input string.
- * @param length Length of the Base32 encoded string. Must be a multiple of 8.
- * 
- * @return A dynamically allocated buffer containing the decoded binary data. 
- *         Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
- *
- * @note The caller is responsible for freeing the returned decoded data.
+ * @param input   Pointer to the Base32 encoded input string.
+ * @param length  Length of the input; must be a multiple of 8.
+ * @param out_len Optional out-pointer; receives the decoded byte count (0 on
+ *                error). May be NULL.
+ * @return A malloc'd buffer (NUL-terminated for convenience) with the decoded
+ *         bytes, or NULL on invalid length / allocation failure. Caller frees.
  */
-char* encoding_base32_decode(const char* input, size_t length) {
+char* encoding_base32_decode_ex(const char* input, size_t length, size_t* out_len) {
+    if (out_len) {
+        *out_len = 0;
+    }
     if (length % 8 != 0) {
         ENCODING_LOG("[encoding_base32_decode] Error: Invalid input length. Length must be a multiple of 8.");
         return NULL;
@@ -1057,8 +1089,30 @@ char* encoding_base32_decode(const char* input, size_t length) {
     }
 
     result[j] = '\0';
+    if (out_len) {
+        *out_len = j;
+    }
     ENCODING_LOG("[encoding_base32_decode] Decoding completed successfully.");
     return (char*)result;
+}
+
+
+/**
+ * @brief Decodes a Base32 encoded string back to binary data.
+ *
+ * Back-compat wrapper over `encoding_base32_decode_ex` that discards the decoded
+ * length. Use `encoding_base32_decode_ex` for binary payloads. The input length
+ * must be a multiple of 8.
+ *
+ * @param input Pointer to the Base32 encoded input string.
+ * @param length Length of the Base32 encoded string. Must be a multiple of 8.
+ * @return A dynamically allocated buffer containing the decoded binary data.
+ *         Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
+ *
+ * @note The caller is responsible for freeing the returned decoded data.
+ */
+char* encoding_base32_decode(const char* input, size_t length) {
+    return encoding_base32_decode_ex(input, length, NULL);
 }
 
 
@@ -1099,21 +1153,25 @@ char* encoding_base16_encode(const char* input, size_t length) {
 
 
 /**
- * @brief Decodes a Base16 (hexadecimal) encoded string into its binary form.
+ * @brief Decode Base16 (hex), also reporting the exact decoded byte count.
  *
- * This function takes a string encoded in Base16 (hexadecimal) and decodes it 
- * into its original binary form. Each pair of hexadecimal characters is converted 
- * into a single byte.
+ * Identical to `encoding_base16_decode` but writes the number of decoded bytes
+ * (`length / 2`) to `*out_len`. Provided for API symmetry with the Base32/Base64
+ * `_ex` decoders, and so callers handling binary data never have to rely on
+ * `strlen` of a buffer that may contain embedded `0x00` bytes.
  *
- * @param input Pointer to the Base16 encoded input string.
- * @param length Length of the Base16 encoded string. Must be an even number.
- * 
- * @return A dynamically allocated array containing the decoded binary data.
- * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure, invalid character).
- *
- * @note The caller is responsible for freeing the returned binary data.
+ * @param input   Pointer to the Base16 encoded input string.
+ * @param length  Length of the input; must be even.
+ * @param out_len Optional out-pointer; receives the decoded byte count (0 on
+ *                error). May be NULL.
+ * @return A malloc'd buffer (NUL-terminated for convenience) with the decoded
+ *         bytes, or NULL on NULL/odd-length input, an invalid hex character, or
+ *         allocation failure. Caller frees.
  */
-char* encoding_base16_decode(const char* input, size_t length) {
+char* encoding_base16_decode_ex(const char* input, size_t length, size_t* out_len) {
+    if (out_len) {
+        *out_len = 0;
+    }
     if (input == NULL) {
         ENCODING_LOG("[encoding_base16_decode] Error: Invalid input parameter");
         return NULL;
@@ -1182,8 +1240,30 @@ char* encoding_base16_decode(const char* input, size_t length) {
     }
 
     decoded[olength] = '\0';
+    if (out_len) {
+        *out_len = olength;
+    }
     ENCODING_LOG("[encoding_base16_decode] Decoding completed successfully");
     return decoded;
+}
+
+
+/**
+ * @brief Decodes a Base16 (hexadecimal) encoded string into its binary form.
+ *
+ * Back-compat wrapper over `encoding_base16_decode_ex` that discards the decoded
+ * length. Each pair of hexadecimal characters becomes one byte. The input length
+ * must be even.
+ *
+ * @param input Pointer to the Base16 encoded input string.
+ * @param length Length of the Base16 encoded string. Must be an even number.
+ * @return A dynamically allocated array containing the decoded binary data.
+ * Returns NULL if an error occurs (e.g., invalid input, memory allocation failure, invalid character).
+ *
+ * @note The caller is responsible for freeing the returned binary data.
+ */
+char* encoding_base16_decode(const char* input, size_t length) {
+    return encoding_base16_decode_ex(input, length, NULL);
 }
 
 

@@ -1296,3 +1296,112 @@ BigInt* bigint_xor(const BigInt* a, const BigInt* b) {
     BIGINT_LOG("[bigint_xor]: Computed bitwise XOR successfully.");
     return res;
 }
+
+
+/**
+ * @brief Creates a BigInt from a native signed long.
+ *
+ * The native-integer counterpart to bigint_from_string — no decimal
+ * formatting round-trip needed when you already hold a machine integer.
+ *
+ * @param value The signed value to store.
+ * @return Pointer to the new BigInt, or NULL on allocation failure.
+ */
+BigInt* bigint_from_int(long value) {
+    BigInt* bi = bigint_create();
+    if (!bi) {
+        BIGINT_LOG("[bigint_from_int]: Memory allocation failed.");
+        return NULL;
+    }
+    mpz_set_si(bi->value, value);
+    BIGINT_LOG("[bigint_from_int]: Created BigInt from long %ld.", value);
+    return bi;
+}
+
+/**
+ * @brief Extracts a BigInt into a native signed long, if it fits.
+ *
+ * The inverse of bigint_from_int. Writes the value to @p out only when it
+ * fits in a `long`; otherwise leaves @p out untouched and returns false, so
+ * the caller can detect overflow instead of silently truncating.
+ *
+ * @param a   Pointer to the BigInt to extract.
+ * @param out Receives the value on success. Must not be NULL.
+ * @return true if the value fit in a `long` (and was written); false if
+ *         @p a / @p out is NULL or the value is out of `long` range.
+ */
+bool bigint_to_long(const BigInt* a, long* out) {
+    if (!a || !out) {
+        BIGINT_LOG("[bigint_to_long]: NULL argument.");
+        return false;
+    }
+    if (!mpz_fits_slong_p(a->value)) {
+        BIGINT_LOG("[bigint_to_long]: value does not fit in a long.");
+        return false;
+    }
+    *out = mpz_get_si(a->value);
+    BIGINT_LOG("[bigint_to_long]: extracted %ld.", *out);
+    return true;
+}
+
+/**
+ * @brief Returns the sign of a BigInt.
+ *
+ * @param a Pointer to the BigInt.
+ * @return -1 if @p a is negative, 0 if zero (or @p a is NULL), +1 if positive.
+ */
+int bigint_sign(const BigInt* a) {
+    if (!a) {
+        BIGINT_LOG("[bigint_sign]: Input BigInt is NULL.");
+        return 0;
+    }
+    return mpz_sgn(a->value);
+}
+
+/**
+ * @brief Shifts a BigInt left by @p bits (multiply by 2^bits).
+ *
+ * @param a    Pointer to the BigInt.
+ * @param bits Number of bit positions to shift.
+ * @return Pointer to a new BigInt representing a << bits, or NULL on error.
+ */
+BigInt* bigint_shift_left(const BigInt* a, unsigned long bits) {
+    if (!a) {
+        BIGINT_LOG("[bigint_shift_left]: Input BigInt is NULL.");
+        return NULL;
+    }
+    BigInt* res = bigint_create();
+    if (!res) {
+        BIGINT_LOG("[bigint_shift_left]: Memory allocation failed.");
+        return NULL;
+    }
+    mpz_mul_2exp(res->value, a->value, bits);
+    BIGINT_LOG("[bigint_shift_left]: Shifted left by %lu bit(s).", bits);
+    return res;
+}
+
+/**
+ * @brief Shifts a BigInt right by @p bits (arithmetic, floor toward -inf).
+ *
+ * Equivalent to dividing by 2^bits and flooring, so it matches the usual
+ * two's-complement arithmetic right shift for negative values
+ * (e.g. -1 >> 1 == -1).
+ *
+ * @param a    Pointer to the BigInt.
+ * @param bits Number of bit positions to shift.
+ * @return Pointer to a new BigInt representing a >> bits, or NULL on error.
+ */
+BigInt* bigint_shift_right(const BigInt* a, unsigned long bits) {
+    if (!a) {
+        BIGINT_LOG("[bigint_shift_right]: Input BigInt is NULL.");
+        return NULL;
+    }
+    BigInt* res = bigint_create();
+    if (!res) {
+        BIGINT_LOG("[bigint_shift_right]: Memory allocation failed.");
+        return NULL;
+    }
+    mpz_fdiv_q_2exp(res->value, a->value, bits);
+    BIGINT_LOG("[bigint_shift_right]: Shifted right by %lu bit(s).", bits);
+    return res;
+}

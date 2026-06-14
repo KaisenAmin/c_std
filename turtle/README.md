@@ -1028,6 +1028,24 @@ Use this function for diagnostic output, progress reporting, or to check whether
 
 ---
 
+### `bool turtle_get_line(const Turtle *state, int index, Line *out)`
+
+**Purpose**:  
+Read back one recorded line segment by index. The turtle accumulates every line it draws (forward/backward/circle/`set_position` with the pen down); `turtle_get_line_count` reports how many there are, and this exposes the actual geometry — so you can serialize, export, or unit-test the drawing **without a graphics context**.
+
+**Parameters**:  
+- `state`: The turtle to query. Must not be `NULL`.
+- `index`: Zero-based line index in `[0, turtle_get_line_count(state))`.
+- `out`: Receives a copy of the line (`start`, `end`, `color`, `thickness`). Must not be `NULL`.
+
+**Return Value**:  
+`true` if the index was in range (and `*out` was written); `false` on a `NULL` argument or an out-of-range index.
+
+**Usage Case**:  
+Export the path to another format, replay it on a different renderer, or assert on the exact coordinates in a test.
+
+---
+
 ### `int turtle_get_stamp_count(const Turtle *state)`
 
 **Purpose**:  
@@ -1116,6 +1134,23 @@ Saves the current window contents to an image file, wrapping raylib's `TakeScree
 
 **Usage Case**:  
 Produce a PNG of a drawing for documentation or headless rendering, without touching raylib directly.
+
+---
+
+### `bool turtle_export_svg(const Turtle *state, const char *filename)`
+
+**Purpose**:  
+Export the drawing to a standalone SVG file. Unlike `turtle_save_image` (which needs a live raylib/OpenGL window to grab a screenshot), this works with **no graphics context at all** — ideal for CI, servers, or scalable vector output. It serializes every recorded line to an SVG `<line>` on top of a background `<rect>`, and sizes the `viewBox` to the drawing's bounding box (plus a small margin), so the whole picture is framed wherever the turtle wandered (including negative coordinates). Coordinates are written in the same top-left, y-down space the turtle draws in, so the SVG matches the on-screen rendering.
+
+**Parameters**:  
+- `state`: The turtle whose lines to export. Must not be `NULL`.
+- `filename`: Destination path. Must not be `NULL`.
+
+**Return Value**:  
+`true` if the file was written; `false` on a `NULL` argument or if the file could not be opened/written.
+
+**Usage Case**:  
+Generate a crisp, version-controllable vector drawing in a headless build, or convert a turtle path into SVG for the web.
 
 ---
 
@@ -2883,6 +2918,69 @@ int main(void) {
 
 **Result:**
 ![Image](../sources/turtle_labels.png)
+
+---
+
+## Example 28 : Headless geometry read-back and SVG export with `turtle_get_line` and `turtle_export_svg`
+
+These two functions need **no graphics window**. `turtle_get_line` reads back the exact segments the turtle drew, and `turtle_export_svg` writes a scalable SVG straight from that geometry — so you can produce drawings in CI or on a server without an OpenGL context.
+
+```c
+#include "turtle/turtle.h"
+#include <stdio.h>
+
+int main(void) {
+    Turtle* t = turtle_create();
+
+    /* Draw a triangle — entirely headless, no graphics window needed. */
+    turtle_pen_up(t);
+    turtle_set_position(t, 100.0f, 100.0f);
+    turtle_pen_down(t);
+    turtle_set_color(t, 220, 40, 40, 255);
+    turtle_pen_size(t, 2.0f);
+    turtle_set_position(t, 200.0f, 100.0f);
+    turtle_set_position(t, 150.0f, 180.0f);
+    turtle_set_position(t, 100.0f, 100.0f);
+
+    int n = turtle_get_line_count(t);
+    printf("drew %d line segments\n", n);
+
+    /* Read the recorded geometry back. */
+    Line first;
+    if (turtle_get_line(t, 0, &first)) {
+        printf("line 0: (%.0f,%.0f) -> (%.0f,%.0f)\n",
+               first.start.x, first.start.y, first.end.x, first.end.y);
+    }
+
+    /* Export to a scalable SVG file — works with no window/OpenGL context. */
+    if (turtle_export_svg(t, "triangle.svg")) {
+        printf("exported triangle.svg\n");
+    }
+
+    turtle_deallocate(t);
+    return 0;
+}
+```
+
+**Result**
+
+```
+drew 3 line segments
+line 0: (100,100) -> (200,100)
+exported triangle.svg
+```
+
+The generated `triangle.svg`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="90 90 120 100">
+  <rect x="90" y="90" width="120" height="100" fill="#ffffff"/>
+  <line x1="100" y1="100" x2="200" y2="100" stroke="#dc2828" stroke-width="2" stroke-linecap="round"/>
+  <line x1="200" y1="100" x2="150" y2="180" stroke="#dc2828" stroke-width="2" stroke-linecap="round"/>
+  <line x1="150" y1="180" x2="100" y2="100" stroke="#dc2828" stroke-width="2" stroke-linecap="round"/>
+</svg>
+```
 
 ---
 

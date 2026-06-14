@@ -24,6 +24,7 @@ static char* dup_cstr(const char* s) {
     return out;
 }
 
+
 /* Allocate and initialise the storage for a CUSTOM variant. Returns
  * NULL on bad info or OOM. */
 static void* custom_alloc(const void* src, const VariantTypeInfo* info) {
@@ -53,6 +54,17 @@ static void custom_destroy(void* data, const VariantTypeInfo* info) {
         info->destroy(data);
     }
     free(data);
+}
+
+
+/* True when a variant tag's payload lives entirely inside the inline union (no
+ * owned heap storage), so a clone is simply a struct copy and a destroy is a
+ * no-op. Only STRING and CUSTOM own heap; everything else (none/int/long/float/
+ * double/char/bool/pointer) is trivial. The VariantArray hot paths use this to
+ * skip variant_clone's 10-way dispatch for the overwhelmingly common primitive
+ * case — the dominant cost when filling an array with millions of numbers. */
+static inline bool vrt_is_trivial(VariantType t) {
+    return t != VARIANT_TYPE_STRING && t != VARIANT_TYPE_CUSTOM;
 }
 
 
@@ -734,9 +746,7 @@ bool variant_is_none(const Variant* v) {
     return !v || v->type == VARIANT_TYPE_NONE;
 }
 
-/* --------------------------------------------------------------------
- *  Accessors
- * -------------------------------------------------------------------- */
+
 
 #define GET_PRIM(v, t, field, out)                                                   \
     do { if (!(v) || !(out) || (v)->type != (t)) {                                   \
@@ -1250,7 +1260,9 @@ bool variant_array_push(VariantArray* a, const Variant* v) {
         return false;
     }
 
-    a->data[a->size] = variant_clone(v);
+    /* Trivial (non-owning) variants clone by plain struct copy; only STRING /
+     * CUSTOM need variant_clone's deep copy. */
+    a->data[a->size] = vrt_is_trivial(v->type) ? *v : variant_clone(v);
     a->size++;
 
     VARIANT_LOG("[variant_array_push]: pushed %s, size now %zu", variant_type_name(v), a->size);
@@ -1288,7 +1300,8 @@ bool variant_array_set(VariantArray* a, size_t index, const Variant* v) {
                     (void*)a, (const void*)v, index);
         return false;
     }
-    Variant copy = variant_clone(v);
+
+    Variant copy = vrt_is_trivial(v->type) ? *v : variant_clone(v);
     variant_destroy(&a->data[index]);
     a->data[index] = copy;
     VARIANT_LOG("[variant_array_set]: replaced index %zu with %s",

@@ -10,6 +10,30 @@
 
 
 
+static int tuplep_lex_compare(const Tuple* t1, const Tuple* t2) {
+    size_t n1   = t1->size;
+    size_t n2   = t2->size;
+    size_t minN = n1 < n2 ? n1 : n2;
+
+    for (size_t i = 0; i < minN; ++i) {
+        size_t s1 = t1->elements[i].size;
+        size_t s2 = t2->elements[i].size;
+
+        if (s1 != s2) {
+            return s1 < s2 ? -1 : 1;
+        }
+        int c = (s1 == 0) ? 0 : memcmp(t1->elements[i].data, t2->elements[i].data, s1);
+        if (c != 0) {
+            return c < 0 ? -1 : 1;
+        }
+    }
+    if (n1 != n2) {
+        return n1 < n2 ? -1 : 1;   /* equal common prefix: shorter tuple is less */
+    }
+    return 0;
+}
+
+
 /**
  * @brief This function allocates memory for a tuple and its elements based on the given size.
  * Each element is initialized to `NULL`.
@@ -388,30 +412,7 @@ bool tuple_is_less(const Tuple* t1, const Tuple* t2) {
         return false;
     }
 
-    size_t minSize = (tuple_size(t1) < tuple_size(t2)) ? tuple_size(t1) : tuple_size(t2);
-
-    for (size_t i = 0; i < minSize; ++i) {
-        if (t1->elements[i].size < t2->elements[i].size) {
-            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is smaller than t2.", i);
-            return true;
-        }
-        if (t1->elements[i].size > t2->elements[i].size) {
-            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is larger than t2.", i);
-            return false;
-        }
-
-        int cmp = memcmp(t1->elements[i].data, t2->elements[i].data, t1->elements[i].size);
-        if (cmp < 0) {
-            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is lexicographically less than t2.", i);
-            return true;
-        }
-        if (cmp > 0) {
-            TUPLE_LOG("[tuple_is_less]: Element %zu of t1 is lexicographically greater than t2.", i);
-            return false;
-        }
-    }
-
-    bool result = tuple_size(t1) < tuple_size(t2);
+    bool result = tuplep_lex_compare(t1, t2) < 0;   /* one element-wise pass */
     TUPLE_LOG("[tuple_is_less]: Returning result: %d", result);
 
     return result;
@@ -441,30 +442,7 @@ bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
         return false;
     }
 
-    size_t minSize = (tuple_size(t1) < tuple_size(t2)) ? tuple_size(t1) : tuple_size(t2);
-
-    for (size_t i = 0; i < minSize; ++i) {
-        if (t1->elements[i].size > t2->elements[i].size) {
-            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is larger than t2.", i);
-            return true;
-        }
-        if (t1->elements[i].size < t2->elements[i].size) {
-            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is smaller than t2.", i);
-            return false;
-        }
-
-        int cmp = memcmp(t1->elements[i].data, t2->elements[i].data, t1->elements[i].size);
-        if (cmp > 0) {
-            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is lexicographically greater than t2.", i);
-            return true;
-        }
-        if (cmp < 0) {
-            TUPLE_LOG("[tuple_is_greater]: Element %zu of t1 is lexicographically less than t2.", i);
-            return false;
-        }
-    }
-
-    bool result = tuple_size(t1) > tuple_size(t2);
+    bool result = tuplep_lex_compare(t1, t2) > 0;  
     TUPLE_LOG("[tuple_is_greater]: Returning result: %d", result);
 
     return result;
@@ -522,7 +500,7 @@ bool tuple_is_greater_or_equal(const Tuple* t1, const Tuple* t2) {
         return false;
     }
 
-    bool result = tuple_is_greater(t1, t2) || tuple_is_equal(t1, t2);
+    bool result = tuplep_lex_compare(t1, t2) >= 0;
     TUPLE_LOG("[tuple_is_greater_or_equal]: Returning result: %d", result);
 
     return result;
@@ -550,7 +528,8 @@ bool tuple_is_less_or_equal(const Tuple* t1, const Tuple* t2) {
         TUPLE_LOG("[tuple_is_less_or_equal]: Error: Param 't2' is null.");
         return false;
     }
-    bool result = tuple_is_less(t1, t2) || tuple_is_equal(t1, t2);
+
+    bool result = tuplep_lex_compare(t1, t2) <= 0;
     TUPLE_LOG("[tuple_is_less_or_equal]: Returning result: %d", result);
 
     return result;

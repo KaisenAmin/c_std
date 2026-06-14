@@ -171,9 +171,7 @@ int   serial_flush_output             (SerialPort* port);
 /* Events                                                             */
 /* ------------------------------------------------------------------ */
 
-int   serial_set_event_callback       (SerialPort* port,
-                                       SerialEventCallback callback,
-                                       void* user_data);
+int   serial_set_event_callback       (SerialPort* port, SerialEventCallback callback, void* user_data);
 
 
 #ifdef __cplusplus

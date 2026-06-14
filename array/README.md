@@ -85,6 +85,25 @@ To use the Array library in your project, include the `array.h` header file in y
 
 ---
 
+### `array_at_checked(arr, index)`
+**Purpose**: Bounds-checked element access — the safe counterpart of `array_at`. Where `array_at` performs no bounds checking (an out-of-range index is undefined behavior), `array_at_checked` validates the index first, so it is the accessor to reach for with any untrusted or computed index.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+  - `index`: The 0-based index to access (evaluated once).
+
+**Return Value**: A writable `void*` pointing at the element, or `NULL` if `index >= array_size(arr)`. Cast the result to the element type before dereferencing; the pointer can be used to both read and modify the element.
+
+**Usage Case**:
+  ```c
+  int* p = array_at_checked(arr, i);   /* i may be out of range */
+  if (p) {
+      *p = 42;                         /* safe: writes only when in range */
+  }
+  ```
+
+---
+
 ### `array_begin(arr)`
 **Purpose**: Returns a pointer to the first element of the array.
 
@@ -288,6 +307,40 @@ To use the Array library in your project, include the `array.h` header file in y
 **Usage Case**:
   ```c
   int *found = array_find_if(arr, is_42);
+  ```
+
+---
+
+### `array_min_element(arr, cmp)`
+**Purpose**: Returns a pointer to the smallest element of the array, mirroring C++'s `std::min_element`. The array is scanned once; ordering is decided by `cmp`.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+  - `cmp`: A standard `qsort`-style comparator `int cmp(const void* a, const void* b)` returning a value `< 0`, `0`, or `> 0`.
+
+**Return Value**: A writable pointer to the smallest element (the first one on ties). It is `NULL` only for a zero-length array. The same comparators you pass to `array_sort` work here unchanged.
+
+**Usage Case**:
+  ```c
+  int* lo = array_min_element(arr, cmp_int_asc);
+  if (lo) fmt_printf("min = %d\n", *lo);
+  ```
+
+---
+
+### `array_max_element(arr, cmp)`
+**Purpose**: Returns a pointer to the largest element of the array, mirroring C++'s `std::max_element`. The array is scanned once; ordering is decided by `cmp`.
+
+**Parameters**:
+  - `arr`: A fixed-size array instance.
+  - `cmp`: A standard `qsort`-style comparator `int cmp(const void* a, const void* b)` returning a value `< 0`, `0`, or `> 0`.
+
+**Return Value**: A writable pointer to the largest element (the first one on ties). It is `NULL` only for a zero-length array.
+
+**Usage Case**:
+  ```c
+  int* hi = array_max_element(arr, cmp_int_asc);
+  if (hi) fmt_printf("max = %d\n", *hi);
   ```
 
 ---
@@ -1381,6 +1434,72 @@ After swap, arr2:
 After copying arr1 into arr2, arr2:
 40 50 60 
 ```
+
+---
+
+### Example 21: Safe Access and Extremes with `array_at_checked`, `array_min_element`, `array_max_element`
+
+These are the production-oriented additions: `array_at_checked` never reads out of
+bounds (it returns `NULL` for an out-of-range index instead of invoking undefined
+behavior like `array_at`), and `array_min_element` / `array_max_element` locate the
+smallest / largest element in a single pass — returning a *writable* pointer, so you
+can clamp or update the extreme element in place.
+
+```c
+#include "fmt/fmt.h"
+#include "array/array.h"
+
+array_create(int, 6, Readings);
+
+static int cmp_int_asc(const void* a, const void* b) {
+    int x = *(const int*)a, y = *(const int*)b;
+    return (x > y) - (x < y);
+}
+
+int main(void) {
+    Readings r = {{ 23, 41, 12, 41, 8, 30 }};
+
+    /* Safe access with a computed index: in-range writes, out-of-range is a no-op. */
+    size_t want[] = { 2, 6, 5 };   /* index 6 is out of range for a 6-element array */
+    for (size_t i = 0; i < 3; i++) {
+        int* p = array_at_checked(r, want[i]);
+        if (p) {
+            fmt_printf("index %zu -> %d\n", want[i], *p);
+        } else {
+            fmt_printf("index %zu -> out of range\n", want[i]);
+        }
+    }
+
+    /* min / max without sorting (and without disturbing the array order). */
+    int* lo = array_min_element(r, cmp_int_asc);
+    int* hi = array_max_element(r, cmp_int_asc);
+    fmt_printf("min = %d at offset %td\n", *lo, lo - array_begin(r));
+    fmt_printf("max = %d at offset %td\n", *hi, hi - array_begin(r));
+
+    /* Clamp the largest reading in place through the returned pointer. */
+    *hi = 40;
+    fmt_printf("after clamp:");
+    for (size_t i = 0; i < array_size(r); i++) {
+        fmt_printf(" %d", array_at(r, i));
+    }
+    fmt_printf("\n");
+
+    return 0;
+}
+```
+
+**Result**
+```
+index 2 -> 12
+index 6 -> out of range
+index 5 -> 30
+min = 8 at offset 4
+max = 41 at offset 1
+after clamp: 23 40 12 41 8 30
+```
+
+(Note how `array_max_element` returns the *first* `41`, at offset 1 — clamping it
+leaves the second `41` at offset 3 untouched, matching `std::max_element` semantics.)
 
 ---
 

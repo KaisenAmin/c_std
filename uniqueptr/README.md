@@ -837,6 +837,163 @@ first      = 10
 
 ---
 
+## Example 18 — RAII over a `Map` with `UPTR_AUTO`
+
+A `Map` is a heap of heap: nodes, plus owned keys and values. Wrap it in a
+UniquePtr and a single `UPTR_AUTO` line frees the entire tree at scope exit — no
+explicit `map_deallocate`, no cleanup path to forget.
+
+```c
+#include "uniqueptr/uniqueptr.h"
+#include "map/map.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+/* Wrapper deleter: matches UniquePtrDeleter (void(*)(void*)) exactly, so there
+   is no incompatible-function-pointer cast. */
+static void map_deleter(void* p) { 
+    map_deallocate((Map*)p); 
+}
+
+static int cmp_ints(const KeyType a, const KeyType b) {
+    return *(const int*)a - *(const int*)b;
+}
+
+static int* heap_int(int v) {
+    int* p = (int*)malloc(sizeof(int));
+    *p = v;
+
+    return p;
+}
+
+int main(void) {
+    /* The Map owns its keys (free) and values (free); the UniquePtr owns the
+       Map. One UPTR_AUTO line releases the whole tree at scope exit. */
+    UPTR_AUTO UniquePtr m = uptr_new(map_create(cmp_ints, free, free), map_deleter);
+    Map* map = (Map*)uptr_get(&m);
+
+    for (int i = 1; i <= 3; i++) {
+        map_insert(map, heap_int(i), heap_int(i * 100));
+    }
+
+    fmt_printf("map size: %zu\n", map_size(map));
+    for (int i = 1; i <= 3; i++) {
+        int* v = (int*)map_at(map, &i);
+        fmt_printf("key %d -> %d\n", i, v ? *v : -1);
+    }
+    /* No cleanup code: UPTR_AUTO -> map_deleter -> map_deallocate frees the
+       keys, values, nodes, and the Map struct itself. */
+    return 0;
+}
+```
+
+**Result**
+
+```
+map size: 3
+key 1 -> 100
+key 2 -> 200
+key 3 -> 300
+```
+
+---
+
+## Example 19 — A factory returns a UniquePtr owning a `Set`; the caller `uptr_take`s it
+
+Ownership can leave a function as a return value and be moved into the caller
+with `uptr_take` — the C analog of `auto s = make_set();`. The source is emptied
+by the move, and a single owner cleans up.
+
+```c
+#include "uniqueptr/uniqueptr.h"
+#include "set/set.h"
+#include "fmt/fmt.h"
+
+static void set_deleter(void* p) { 
+    set_deallocate((Set*)p); 
+}
+
+static int cmp_int(const void* a, const void* b) {
+    int x = *(const int*)a, y = *(const int*)b;
+    return (x > y) - (x < y);
+}
+
+/* Factory: builds a Set and returns a UniquePtr that OWNS it. Ownership
+   leaves the function with the return value — no leak, no manual free. */
+static UniquePtr build_id_set(void) {
+    Set* s = set_create(sizeof(int), cmp_int);
+    int ids[] = { 7, 3, 7, 9, 3, 1, 9 };   /* duplicates collapse in a Set */
+
+    for (size_t i = 0; i < sizeof(ids) / sizeof(ids[0]); i++) {
+        set_insert(s, &ids[i]);
+    }
+
+    return uptr_new(s, set_deleter);
+}
+
+int main(void) {
+    UniquePtr factory = build_id_set();
+    UPTR_AUTO UniquePtr owned = uptr_take(&factory);   /* move-construct the owner */
+
+    fmt_printf("factory empty after take? %d\n", uptr_is_null(&factory));
+    fmt_printf("distinct ids: %zu\n", set_size((Set*)uptr_get(&owned)));
+    /* UPTR_AUTO on `owned` frees the Set at scope end. */
+    return 0;
+}
+```
+
+**Result**
+
+```
+factory empty after take? 1
+distinct ids: 4
+```
+
+---
+
+## Example 20 — `uptr_reset` swaps a `Deque` payload (old one auto-freed)
+
+`uptr_reset` runs the current deleter on the existing payload before taking the
+new one — so replacing the owned `Deque` with a fresh one never leaks the old.
+
+```c
+#include "uniqueptr/uniqueptr.h"
+#include "deque/deque.h"
+#include "fmt/fmt.h"
+
+static void deque_deleter(void* p) { deque_deallocate((Deque*)p); }
+
+int main(void) {
+    UPTR_AUTO UniquePtr q = uptr_new(deque_create(sizeof(int)), deque_deleter);
+
+    Deque* d = (Deque*)uptr_get(&q);
+    for (int i = 1; i <= 5; i++) {
+        deque_push_back(d, &i);
+    }
+    fmt_printf("first deque size: %zu\n", deque_length(d));
+
+    /* uptr_reset runs the deleter on the CURRENT Deque (freeing it), then takes
+       ownership of a brand-new one — same deleter, no leak of the old payload. */
+    uptr_reset(&q, deque_create(sizeof(int)));
+    d = (Deque*)uptr_get(&q);
+    int x = 42;
+    
+    deque_push_back(d, &x);
+    fmt_printf("after reset, size: %zu, front: %d\n", deque_length(d), *(int*)deque_front(d));
+    /* UPTR_AUTO frees the second Deque. */
+    return 0;
+}
+```
+
+**Result**
+
+```
+first deque size: 5
+after reset, size: 1, front: 42
+```
+
+---
+
 ## License
 
 This project is open-source and available under [ISC License].

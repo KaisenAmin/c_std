@@ -74,6 +74,8 @@ bool         dir_is_directory                 (const char* filePath);
 bool         dir_is_file                      (const char* filePath);
 bool         dir_is_empty                     (const char* dirName);
 bool         dir_is_absolute_path             (const char* path);
+bool         dir_is_readable                  (const char* path);
+bool         dir_is_writable                  (const char* path);
 DirFileType  dir_get_file_type                (const char* filePath);
 
 
@@ -129,6 +131,7 @@ char*        dir_temp_directory               (void);
 
 char*        dir_get_creation_time            (const char* dirPath);
 char*        dir_get_modified_time            (const char* dirPath);
+int64_t      dir_get_modified_time_unix       (const char* path);
 long long    dir_get_directory_size           (const char* dirPath);
 long long    dir_get_file_size                (const char* filePath);
 bool         dir_get_file_owner               (const char* filePath, char* ownerBuffer, size_t bufferSize);

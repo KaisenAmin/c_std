@@ -19,7 +19,8 @@
 #include <windows.h>
 #include <direct.h>
 #include <shlwapi.h>
-#include <shlobj.h> 
+#include <shlobj.h>
+#include <io.h>        /* _waccess — dir_is_readable / dir_is_writable */
 #include "accctrl.h"
 #include "aclapi.h"
 
@@ -1689,9 +1690,12 @@ char* dir_get_modified_time(const char* dirPath) {
     }
 
     time_t lastModifiedTime = fileInfo.st_mtime;
-    struct tm* timeinfo = localtime(&lastModifiedTime);
+    /* localtime() shares a static struct tm and is a data race under concurrent
+       use; localtime_r writes into a caller-owned buffer. */
+    struct tm tmbuf;
+    struct tm* timeinfo = localtime_r(&lastModifiedTime, &tmbuf);
     if (!timeinfo) {
-        DIR_LOG("[dir_get_modified_time] Error: localtime() returned NULL.");
+        DIR_LOG("[dir_get_modified_time] Error: localtime_r() returned NULL.");
         return NULL;
     }
 
@@ -1770,9 +1774,11 @@ char* dir_get_creation_time(const char* dirPath) {
     }
 
     time_t creationTime = fileInfo.st_ctime;
-    struct tm* timeinfo = localtime(&creationTime);
+    /* Reentrant localtime — see the note in dir_get_modified_time. */
+    struct tm tmbuf;
+    struct tm* timeinfo = localtime_r(&creationTime, &tmbuf);
     if (!timeinfo) {
-        DIR_LOG("[dir_get_creation_time] Error: localtime() returned NULL.");
+        DIR_LOG("[dir_get_creation_time] Error: localtime_r() returned NULL.");
         return NULL;
     }
 
@@ -1785,6 +1791,110 @@ char* dir_get_creation_time(const char* dirPath) {
     strftime(timeString, 256, "%Y-%m-%d %H:%M:%S", timeinfo);
     DIR_LOG("[dir_get_creation_time] Creation time (st_ctime fallback) retrieved: %s", timeString);
     return timeString;
+#endif
+}
+
+
+/**
+ * @brief Modification time of a file or directory as Unix epoch seconds.
+ *
+ * Unlike `dir_get_modified_time`, which returns a localized
+ * "YYYY-MM-DD HH:MM:SS" string, this returns a machine-comparable integer
+ * (seconds since 1970-01-01T00:00:00 UTC). Use it to sort by age, detect
+ * changes, or invalidate caches. Works on both files and directories.
+ *
+ * @param path Filesystem path. Must not be NULL.
+ * @return Unix time in seconds, or -1 on a NULL path or if `path` can't be
+ *         stat'd (e.g. it does not exist).
+ */
+int64_t dir_get_modified_time_unix(const char* path) {
+    if (!path) {
+        DIR_LOG("[dir_get_modified_time_unix] Error: path is NULL.");
+        return -1;
+    }
+
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(path);
+    if (!wPath) {
+        DIR_LOG("[dir_get_modified_time_unix] Error: UTF-8 to wide-char conversion failed.");
+        return -1;
+    }
+    WIN32_FILE_ATTRIBUTE_DATA fileInfo;
+    BOOL ok = GetFileAttributesExW(wPath, GetFileExInfoStandard, &fileInfo);
+    free(wPath);
+    if (!ok) {
+        DIR_LOG("[dir_get_modified_time_unix] Error: GetFileAttributesExW failed.");
+        return -1;
+    }
+    /* FILETIME counts 100-ns ticks since 1601-01-01 UTC; shift to the Unix epoch. */
+    uint64_t ticks = ((uint64_t)fileInfo.ftLastWriteTime.dwHighDateTime << 32)
+                   | (uint64_t)fileInfo.ftLastWriteTime.dwLowDateTime;
+    return (int64_t)(ticks / 10000000ULL) - 11644473600LL;
+#else
+    struct stat fileInfo;
+    if (stat(path, &fileInfo) != 0) {
+        DIR_LOG("[dir_get_modified_time_unix] Error: stat failed for %s.", path);
+        return -1;
+    }
+    return (int64_t)fileInfo.st_mtime;
+#endif
+}
+
+
+/**
+ * @brief Whether the current process can read `path`.
+ *
+ * Probes read access with `access(R_OK)` on POSIX and `_waccess` on Windows; a
+ * missing path returns false. On Windows the check reflects the file's
+ * attributes rather than full ACLs (the platform's documented best effort).
+ *
+ * @param path Filesystem path. Must not be NULL.
+ * @return true if `path` exists and is readable, false otherwise.
+ */
+bool dir_is_readable(const char* path) {
+    if (!path) {
+        DIR_LOG("[dir_is_readable] Error: path is NULL.");
+        return false;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(path);
+    if (!wPath) {
+        return false;
+    }
+    int rc = _waccess(wPath, 4);   /* 4 = read */
+    free(wPath);
+    return rc == 0;
+#else
+    return access(path, R_OK) == 0;
+#endif
+}
+
+
+/**
+ * @brief Whether the current process can write to `path`.
+ *
+ * Probes write access with `access(W_OK)` on POSIX and `_waccess` on Windows; a
+ * missing path returns false. On Windows the check reflects the read-only
+ * attribute rather than full ACLs.
+ *
+ * @param path Filesystem path. Must not be NULL.
+ * @return true if `path` exists and is writable, false otherwise.
+ */
+bool dir_is_writable(const char* path) {
+    if (!path) {
+        DIR_LOG("[dir_is_writable] Error: path is NULL.");
+        return false;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(path);
+    if (!wPath) {
+        return false;
+    }
+    int rc = _waccess(wPath, 2);   /* 2 = write */
+    free(wPath);
+    return rc == 0;
+#else
+    return access(path, W_OK) == 0;
 #endif
 }
 
