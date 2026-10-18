@@ -25,8 +25,8 @@ extern "C" {
 /* #define LIST_LOGGING_ENABLE */
 
 #ifdef LIST_LOGGING_ENABLE
-    #define LIST_LOG(fmt, ...) \
-        do { fprintf(stderr, "[LIST LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define LIST_LOG(...) \
+        do { fprintf(stderr, "[LIST LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define LIST_LOG(...) do { } while (0)
 #endif

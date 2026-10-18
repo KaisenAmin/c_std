@@ -23,7 +23,7 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 **Purpose**: Parses a JSON-formatted string into a `JsonElement` tree.
 **Parameters**:
 - `json_str`: The JSON-formatted string to parse.
-**Return Value**: Pointer to the root `JsonElement` of the parsed tree, or `NULL` on any parse error (retrievable via `json_last_error`).
+**Return Value**: Pointer to the root `JsonElement` of the parsed tree, or `NULL` on any parse error (retrievable via `json_last_error`). Parsing is strict about separators: `[1 2]`, `[,1]`, `[1,]`, `{"a":1 "b":2}` and `{"a":1,}` are syntax errors.
 **Usage Case**: Use whenever you have a JSON string in memory and need to work with its data programmatically.
 
 ---
@@ -174,7 +174,7 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 ---
 
 ### `int json_get_int(const JsonElement* element, const char* key_or_index, int default_value)`
-**Purpose**: Read an integer in one call. Resolves `key_or_index` (an object key, an array index, or — when `NULL` — `element` itself) and, if it is a JSON number, returns it truncated to `int`. The lookup is **strict**: a JSON string or boolean does not coerce (use `json_convert` for that).
+**Purpose**: Read an integer in one call. Resolves `key_or_index` (an object key, an array index, or — when `NULL` — `element` itself) and, if it is a JSON number that fits in an `int`, returns it truncated to `int` (a number outside the `int` range, such as a 64-bit id, returns `default_value`; read it with `json_get_double`).The lookup is **strict**: a JSON string or boolean does not coerce (use `json_convert` for that).
 **Parameters**:
 - `element`: Container (or value) to read from. May be `NULL`.
 - `key_or_index`: Object key / array index, or `NULL` for `element` itself.
@@ -218,10 +218,10 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 ---
 
 ### `JsonElement* json_query(const JsonElement* element, const char* query)`
-**Purpose**: Navigates a dot-separated path through `element`, with `[N]` notation for array indexing.
+**Purpose**: Navigates a dot-separated path through `element`, with `[N]` notation for array indexing; a segment may index several times (`"matrix[1][0]"`).
 **Parameters**:
 - `element`: The root `JsonElement` to query.
-- `query`: Dot-separated path string, e.g. `"categories[0].items[1].title"`.
+- `query`: Dot-separated path string, e.g. `"categories[0].items[1].title"`. A malformed segment (missing `]`, text after `]`, indexing a non-array) gives `NULL`.
 **Return Value**: The element at the specified path, or `NULL` if any step along the path fails.
 **Usage Case**: Use for concise, deep access to nested data without chaining multiple `json_get_element` calls.
 
@@ -388,11 +388,11 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 ---
 
 ### `bool json_validate(const JsonElement* element, const char* schema_json)`
-**Purpose**: Validates `element` against the JSON Schema supplied as a JSON string in `schema_json`.
+**Purpose**: Validates `element` against the JSON Schema supplied as a JSON string in `schema_json`. A subset of JSON Schema is supported: `type` (a name or a list of names; `"integer"` means an integral number), `enum`, `const`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `minLength` / `maxLength` (in characters), `items` (one schema applied to every element), `minItems`, `maxItems`, `required`, `properties` (nested schemas), `additionalProperties` (`false` or a schema), `minProperties`, `maxProperties`, and the boolean schemas `true` / `false`. Other keywords (`$ref`, `pattern`, `format`, `oneOf`, ...) are ignored.
 **Parameters**:
 - `element`: The `JsonElement` to validate.
 - `schema_json`: A JSON Schema document encoded as a JSON string.
-**Return Value**: `true` if `element` conforms to the schema, `false` if validation fails or the schema cannot be parsed.
+**Return Value**: `true` if `element` conforms to the schema, `false` if validation fails or the schema cannot be parsed (or is not a schema).
 **Usage Case**: Use to enforce structure and type constraints on parsed JSON before processing it.
 
 ---
@@ -418,7 +418,7 @@ The JSON library in C offers comprehensive tools for handling JSON data within C
 ---
 
 ### `void json_print(const JsonElement* element)`
-**Purpose**: Pretty-prints `element` to stdout with indentation.
+**Purpose**: Pretty-prints `element` to stdout: the same text as `json_format` (two-space indentation, escaped strings, exact numbers), followed by a newline.
 **Parameters**:
 - `element`: The `JsonElement` to print; if `NULL`, prints `"null"`.
 **Return Value**: `None`.
@@ -454,72 +454,72 @@ int main() {
 ```
 Successfully parsed JSON file.
 {
-    "additional_info": {
-      "active": true,
-      "budget": 500000,
-      "contributors": [
-        "Alice",
-        "Bob",
-        "Charlie"
+  "additional_info": {
+    "active": true,
+    "budget": 500000,
+    "contributors": [
+      "Alice",
+      "Bob",
+      "Charlie"
     ],
-      "numbers": [
-        10,
-        20,
-        30,
-        40
+    "numbers": [
+      10,
+      20,
+      30,
+      40
     ]
   },
-    "categories": [
-      {
-        "items": [
-          {
-            "author": "K&R",
-            "available": true,
-            "title": "C Programming",
-            "year": 1988
+  "categories": [
+    {
+      "items": [
+        {
+          "author": "K&R",
+          "available": true,
+          "title": "C Programming",
+          "year": 1988
         },
-          {
-            "author": "Martin",
-            "available": false,
-            "title": "Clean Code",
-            "year": 2008
+        {
+          "author": "Martin",
+          "available": false,
+          "title": "Clean Code",
+          "year": 2008
         },
-          {
-            "author": "Abelson",
-            "available": true,
-            "title": "SICP",
-            "year": 1996
+        {
+          "author": "Abelson",
+          "available": true,
+          "title": "SICP",
+          "year": 1996
         }
       ],
-        "name": "Books"
+      "name": "Books"
     },
-      {
-        "items": [
-          {
-            "director": "A. Coder",
-            "ratings": {
-              "IMDB": 8.70,
-              "Rotten Tomatoes": "94%"
+    {
+      "items": [
+        {
+          "director": "A. Coder",
+          "ratings": {
+            "IMDB": 8.7,
+            "Rotten Tomatoes": "94%"
           },
-            "released_year": 2023,
-            "title": "The JSON Saga"
+          "released_year": 2023,
+          "title": "The JSON Saga"
         },
-          {
-            "director": "B. Script",
-            "ratings": {
-              "IMDB": 7.50,
-              "Rotten Tomatoes": "88%"
+        {
+          "director": "B. Script",
+          "ratings": {
+            "IMDB": 7.5,
+            "Rotten Tomatoes": "88%"
           },
-            "released_year": 2022,
-            "title": "Parse Hard"
+          "released_year": 2022,
+          "title": "Parse Hard"
         }
       ],
-        "name": "Movies"
+      "name": "Movies"
     }
   ],
-    "supports_unicode": true,
-    "unicode_sample": "Hello",
-    "version": 1.20
+  "supports_unicode": true,
+  "unicode_sample": "Hello",
+  "version": 1.2
 }
 ```
 
@@ -1283,10 +1283,10 @@ int main() {
 ```
 Element at index 1 removed successfully.
 [
-    1,
-    3,
-    4,
-    5
+  1,
+  3,
+  4,
+  5
 ]
 ```
 
@@ -1559,74 +1559,74 @@ int main() {
 ```
 Merged JSON:
 {
-    "additional_info": {
-      "active": true,
-      "budget": 500000,
-      "contributors": [
-        "Alice",
-        "Bob",
-        "Charlie"
+  "additional_info": {
+    "active": true,
+    "budget": 500000,
+    "contributors": [
+      "Alice",
+      "Bob",
+      "Charlie"
     ],
-      "numbers": [
-        10,
-        20,
-        30,
-        40
+    "numbers": [
+      10,
+      20,
+      30,
+      40
     ]
   },
-    "categories": [
-      {
-        "items": [
-          {
-            "author": "K&R",
-            "available": false,
-            "title": "C Programming",
-            "year": 1988
+  "categories": [
+    {
+      "items": [
+        {
+          "author": "K&R",
+          "available": false,
+          "title": "C Programming",
+          "year": 1988
         },
-          {
-            "author": "Martin",
-            "available": false,
-            "title": "Clean Code",
-            "year": 2008
+        {
+          "author": "Martin",
+          "available": false,
+          "title": "Clean Code",
+          "year": 2008
         },
-          {
-            "author": "Abelson",
-            "available": true,
-            "title": "SICP",
-            "year": 1996
+        {
+          "author": "Abelson",
+          "available": true,
+          "title": "SICP",
+          "year": 1996
         }
       ],
-        "name": "Books"
+      "name": "Books"
     },
-      {
-        "items": [
-          {
-            "director": "A. Coder",
-            "ratings": {
-              "IMDB": 8.70,
-              "Rotten Tomatoes": "94%"
+    {
+      "items": [
+        {
+          "director": "A. Coder",
+          "ratings": {
+            "IMDB": 8.7,
+            "Rotten Tomatoes": "94%"
           },
-            "released_year": 2023,
-            "title": "The JSON Saga"
+          "released_year": 2023,
+          "title": "The JSON Saga"
         },
-          {
-            "director": "B. Script",
-            "ratings": {
-              "IMDB": 7.50,
-              "Rotten Tomatoes": "88%"
+        {
+          "director": "B. Script",
+          "ratings": {
+            "IMDB": 7.5,
+            "Rotten Tomatoes": "88%"
           },
-            "released_year": 2022,
-            "title": "Parse Hard"
+          "released_year": 2022,
+          "title": "Parse Hard"
         }
       ],
-        "name": "Movies"
+      "name": "Movies"
     }
   ],
-    "count": 42,
-    "extra_key": "extra_value",
-    "supports_unicode": true,
-    "unicode_sample": "Hello",
-    "version": 1.20
+  "count": 42,
+  "extra_key": "extra_value",
+  "supports_unicode": true,
+  "unicode_sample": "Hello",
+  "version": 1.2
 }
 Successfully write merged json into file
 ```
@@ -1754,7 +1754,7 @@ int main() {
 **Result**
 ```
 Version as string: 1.2
-Failed to convert 'supports_unicode' to string.
+Supports Unicode as string: true
 Budget as string: 500000
 ```
 
@@ -1910,11 +1910,11 @@ int main() {
 ```
 Doubled numbers array:
 [
-    2,
-    4,
-    6,
-    8,
-    10
+  2,
+  4,
+  6,
+  8,
+  10
 ]
 ```
 
@@ -1968,11 +1968,11 @@ int main() {
 ```
 Numbers converted to strings:
 [
-    "1",
-    "2",
-    "3.5",
-    "4",
-    "5"
+  "1",
+  "2",
+  "3.5",
+  "4",
+  "5"
 ]
 ```
 
@@ -2022,10 +2022,10 @@ int main() {
 ```
 Inverted boolean array:
 [
-    false,
-    true,
-    false,
-    true
+  false,
+  true,
+  false,
+  true
 ]
 ```
 
@@ -2101,17 +2101,17 @@ int main() {
 ```
 Available books:
 [
-    {
-      "author": "K&R",
-      "available": true,
-      "title": "C Programming",
-      "year": 1988
+  {
+    "author": "K&R",
+    "available": true,
+    "title": "C Programming",
+    "year": 1988
   },
-    {
-      "author": "Abelson",
-      "available": true,
-      "title": "SICP",
-      "year": 1996
+  {
+    "author": "Abelson",
+    "available": true,
+    "title": "SICP",
+    "year": 1996
   }
 ]
 Filtered JSON successfully written to './sources/filtered_books.json'.
@@ -2522,25 +2522,25 @@ int main() {
 ```
 Original JSON:
 {
-    "age": 30,
-    "hobbies": [
-      "Reading",
-      "Hiking",
-      "Gaming"
+  "age": 30,
+  "hobbies": [
+    "Reading",
+    "Hiking",
+    "Gaming"
   ],
-    "isStudent": true,
-    "name": "John Doe"
+  "isStudent": true,
+  "name": "John Doe"
 }
 
 Cloned and modified JSON:
 {
-    "age": 35,
-    "hobbies": [
-      "Reading",
-      "Hiking"
+  "age": 35,
+  "hobbies": [
+    "Reading",
+    "Hiking"
   ],
-    "isStudent": true,
-    "name": "John Doe"
+  "isStudent": true,
+  "name": "John Doe"
 }
 ```
 
@@ -2769,79 +2769,79 @@ int main() {
 **Result**
 ```
 {
-    "additional_info": {
-      "active": true,
-      "budget": 500000,
-      "contributors": [
-        "Alice",
-        "Bob",
-        "Charlie"
+  "additional_info": {
+    "active": true,
+    "budget": 500000,
+    "contributors": [
+      "Alice",
+      "Bob",
+      "Charlie"
     ],
-      "numbers": [
-        10,
-        20,
-        30,
-        40
+    "numbers": [
+      10,
+      20,
+      30,
+      40
     ]
   },
-    "book_info": {
-      "author": {
-        "name": "John Doe"
+  "book_info": {
+    "author": {
+      "name": "John Doe"
     },
-      "title": "Introduction to JSON",
-      "year": 2024
+    "title": "Introduction to JSON",
+    "year": 2024
   },
-    "categories": [
-      {
-        "items": [
-          {
-            "author": "K&R",
-            "available": true,
-            "title": "C Programming",
-            "year": 1988
+  "categories": [
+    {
+      "items": [
+        {
+          "author": "K&R",
+          "available": true,
+          "title": "C Programming",
+          "year": 1988
         },
-          {
-            "author": "Martin",
-            "available": false,
-            "title": "Clean Code",
-            "year": 2008
+        {
+          "author": "Martin",
+          "available": false,
+          "title": "Clean Code",
+          "year": 2008
         },
-          {
-            "author": "Abelson",
-            "available": true,
-            "title": "SICP",
-            "year": 1996
+        {
+          "author": "Abelson",
+          "available": true,
+          "title": "SICP",
+          "year": 1996
         }
       ],
-        "name": "Books"
+      "name": "Books"
     },
-      {
-        "items": [
-          {
-            "director": "A. Coder",
-            "ratings": {
-              "IMDB": 8.70,
-              "Rotten Tomatoes": "94%"
+    {
+      "items": [
+        {
+          "director": "A. Coder",
+          "ratings": {
+            "IMDB": 8.7,
+            "Rotten Tomatoes": "94%"
           },
-            "released_year": 2023,
-            "title": "The JSON Saga"
+          "released_year": 2023,
+          "title": "The JSON Saga"
         },
-          {
-            "director": "B. Script",
-            "ratings": {
-              "IMDB": 7.50,
-              "Rotten Tomatoes": "88%"
+        {
+          "director": "B. Script",
+          "ratings": {
+            "IMDB": 7.5,
+            "Rotten Tomatoes": "88%"
           },
-            "released_year": 2022,
-            "title": "Parse Hard"
+          "released_year": 2022,
+          "title": "Parse Hard"
         }
       ],
-        "name": "Movies"
+      "name": "Movies"
     }
   ],
-    "supports_unicode": true,
-    "unicode_sample": "Hello",
-    "version": 1.20
+  "supports_unicode": true,
+  "unicode_sample": "Hello",
+  "version": 1.2
 }
 ```
 
@@ -3185,7 +3185,7 @@ Average temperature: 20.40
 #include <stdlib.h>
 #include <string.h>
 
-static int compare_strings(const KeyType a, const KeyType b) {
+static int compare_strings(const void* a, const void* b) {
     return strcmp((const char*)a, (const char*)b);
 }
 

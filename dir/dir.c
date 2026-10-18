@@ -4,6 +4,12 @@
  * @class Dir
 */
 
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,33 +34,6 @@
 #define change_directory _wchdir
 #define remove_directory _wrmdir
 
-
-
-char* get_last_dir_name_win(const wchar_t* wpath) {
-    if (!wpath) {
-        DIR_LOG("[get_last_dir_name_win] Error: Path is NULL.");
-        return NULL;
-    }
-
-    wchar_t* lastSlash = wcsrchr(wpath, L'\\');
-    if (lastSlash == NULL) {
-        lastSlash = wcsrchr(wpath, L'/');
-    }
-
-    if (lastSlash != NULL && lastSlash != wpath) {
-        char* dirName = encoding_wchar_to_utf8(lastSlash + 1);
-        if (!dirName) {
-            DIR_LOG("[get_last_dir_name_win] Error: Failed to convert directory name to UTF-8.");
-        } 
-        else {
-            DIR_LOG("[get_last_dir_name_win] Successfully retrieved directory name: %s.", dirName);
-        }
-        return dirName;
-    }
-
-    DIR_LOG("[get_last_dir_name_win] Error: Last directory name not found in path.");
-    return NULL;
-}
 
 
 // Helper function for Windows to get full path
@@ -89,21 +68,65 @@ static char* get_full_path_win(const char* path) {
     return NULL;
 }
 
+/* Allocates "<dir>\<name>", or the search pattern "<dir>\*" when name is NULL.
+   The fixed wchar_t[MAX_PATH] buffers filled by wsprintfW overflowed the stack
+   for paths longer than about 260 characters. Caller frees. */
+static wchar_t* dir_wjoin(const wchar_t* dir, const wchar_t* name) {
+    size_t a = wcslen(dir);
+    size_t b = name ? wcslen(name) : 1;
+    wchar_t* out = (wchar_t*)malloc((a + 1 + b + 1) * sizeof(wchar_t));
+    if (!out) {
+        DIR_LOG("[dir_wjoin] Error: Memory allocation failed.");
+        return NULL;
+    }
+    memcpy(out, dir, a * sizeof(wchar_t));
+    out[a] = L'\\';
+    if (name) {
+        memcpy(out + a + 1, name, b * sizeof(wchar_t));
+    }
+    else {
+        out[a + 1] = L'*';
+    }
+    out[a + 1 + b] = L'\0';
+    return out;
+}
+
 static int remove_directory_recursive_win(const wchar_t* dir) {
-    if (!dir) {
-        DIR_LOG("[remove_directory_recursive_win] Error: Directory is NULL.");
+    if (!dir || !*dir) {
+        DIR_LOG("[remove_directory_recursive_win] Error: Directory is NULL or empty.");
         return -1;
     }
 
-    int len = wcslen(dir) + 2;  // Extra space for double null termination
-    wchar_t* tempDir = (wchar_t*) malloc(len * sizeof(wchar_t));
+    /* SHFileOperation treats the path as a pattern: "C:\x\targ*" deleted every
+       matching entry (and plain files too), permanently. Only accept a real,
+       existing directory with no wildcard characters. */
+    if (wcspbrk(dir, L"*?") != NULL) {
+        DIR_LOG("[remove_directory_recursive_win] Error: Wildcards are not allowed in %ls.", dir);
+        return -1;
+    }
+    DWORD attrs = GetFileAttributesW(dir);
+    if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+        DIR_LOG("[remove_directory_recursive_win] Error: %ls is not an existing directory.", dir);
+        return -1;
+    }
+
+    /* SHFileOperation requires a fully qualified path (relative paths resolve
+       against an unspecified directory) and a double-NUL terminated list. */
+    DWORD fullLen = GetFullPathNameW(dir, 0, NULL, NULL);
+    if (fullLen == 0) {
+        DIR_LOG("[remove_directory_recursive_win] Error: Cannot resolve full path for %ls.", dir);
+        return -1;
+    }
+    wchar_t* tempDir = (wchar_t*) calloc((size_t)fullLen + 2, sizeof(wchar_t));
     if (!tempDir) {
         DIR_LOG("[remove_directory_recursive_win] Error: Memory allocation failed.");
         return -1;
     }
-
-    memset(tempDir, 0, len * sizeof(wchar_t));
-    wcscpy(tempDir, dir);
+    if (GetFullPathNameW(dir, fullLen + 1, tempDir, NULL) == 0) {
+        DIR_LOG("[remove_directory_recursive_win] Error: Cannot resolve full path for %ls.", dir);
+        free(tempDir);
+        return -1;
+    }
 
     SHFILEOPSTRUCTW fileOp = {
         NULL,
@@ -139,11 +162,14 @@ static long long dir_get_size_win(const wchar_t* dirPath) {
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
     long long size = 0;
-    wchar_t searchPath[MAX_PATH];
 
     // Prepare the search path
-    wsprintfW(searchPath, L"%s\\*", dirPath);
+    wchar_t* searchPath = dir_wjoin(dirPath, NULL);
+    if (!searchPath) {
+        return -1;
+    }
     hFind = FindFirstFileW(searchPath, &findFileData);
+    free(searchPath);
 
     if (hFind == INVALID_HANDLE_VALUE) {
         DIR_LOG("[dir_get_size_win] Error: Failed to open directory %ls.", dirPath);
@@ -153,13 +179,24 @@ static long long dir_get_size_win(const wchar_t* dirPath) {
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
             if (wcscmp(findFileData.cFileName, L".") != 0 && wcscmp(findFileData.cFileName, L"..") != 0) {
-                wchar_t fullPath[MAX_PATH];
-                wsprintfW(fullPath, L"%s\\%s", dirPath, findFileData.cFileName);
-
                 if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                    // Recursively calculate the size of directories
-                    size += dir_get_size_win(fullPath);
-                } 
+                    /* Do not descend into junctions/symlinked directories: they can
+                       loop back into the tree and count data twice. */
+                    if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+                        continue;
+                    }
+                    wchar_t* fullPath = dir_wjoin(dirPath, findFileData.cFileName);
+                    if (!fullPath) {
+                        continue;
+                    }
+                    // Recursively calculate the size of directories; an
+                    // unreadable subdirectory (-1) must not be added to the total.
+                    long long sub = dir_get_size_win(fullPath);
+                    free(fullPath);
+                    if (sub > 0) {
+                        size += sub;
+                    }
+                }
                 else {
                     // Accumulate the size of each file
                     LARGE_INTEGER fileSize;
@@ -212,11 +249,14 @@ static void dir_list_contents_win(const wchar_t* dirPath, DirListOption option, 
 
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
-    wchar_t searchPath[MAX_PATH];
 
     // Create a search pattern
-    wsprintfW(searchPath, L"%ls\\*", dirPath);
+    wchar_t* searchPath = dir_wjoin(dirPath, NULL);
+    if (!searchPath) {
+        return;
+    }
     hFind = FindFirstFileW(searchPath, &findFileData);
+    free(searchPath);
 
     if (hFind == INVALID_HANDLE_VALUE) {
         DIR_LOG("[dir_list_contents_win] Error: Failed to open directory %ls.", dirPath);
@@ -285,6 +325,21 @@ static char* get_full_path_posix(const char* path) {
     return resolvedPath;
 }
 
+/* Allocates "<dir>/<name>". Fixed 1024/PATH_MAX buffers silently truncated
+   long paths, so the walkers operated on the wrong (truncated) path. */
+static char* dir_join_alloc(const char* dir, const char* name) {
+    size_t a = strlen(dir), b = strlen(name);
+    char* out = (char*)malloc(a + 1 + b + 1);
+    if (!out) {
+        DIR_LOG("[dir_join_alloc] Error: Memory allocation failed.");
+        return NULL;
+    }
+    memcpy(out, dir, a);
+    out[a] = '/';
+    memcpy(out + a + 1, name, b + 1);
+    return out;
+}
+
 static int remove_directory_recursive_posix(const char* dirPath) {
     if (!dirPath) {
         DIR_LOG("[remove_directory_recursive_posix] Error: Directory path is NULL.");
@@ -302,21 +357,31 @@ static int remove_directory_recursive_posix(const char* dirPath) {
 
     while ((entry = readdir(d)) != NULL) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            char fullPath[PATH_MAX];
-            snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, entry->d_name);
+            char* fullPath = dir_join_alloc(dirPath, entry->d_name);
+            if (!fullPath) {
+                ret = -1;
+                break;
+            }
 
-            if (entry->d_type == DT_DIR) {
+            /* d_type may be DT_UNKNOWN on some filesystems, so ask lstat. lstat
+               (not stat) keeps a symlink to a directory from being followed:
+               the link itself is removed, never the tree it points to. */
+            struct stat st;
+            bool isRealDir = (lstat(fullPath, &st) == 0) && S_ISDIR(st.st_mode);
+
+            if (isRealDir) {
                 DIR_LOG("[remove_directory_recursive_posix] Recursively removing directory: %s", fullPath);
                 ret = remove_directory_recursive_posix(fullPath);
-            } 
+            }
             else {
                 DIR_LOG("[remove_directory_recursive_posix] Removing file: %s", fullPath);
                 ret = remove(fullPath);
             }
+            free(fullPath);
 
             if (ret != 0) {
-                DIR_LOG("[remove_directory_recursive_posix] Error: Failed to remove %s.", fullPath);
-                break; 
+                DIR_LOG("[remove_directory_recursive_posix] Error: Failed to remove an entry of %s.", dirPath);
+                break;
             }
         }
     }
@@ -350,24 +415,34 @@ static long long dir_get_size_posix(const char* dirPath) {
 
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            char fullPath[1024];
-            snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, entry->d_name);
+            char* fullPath = dir_join_alloc(dirPath, entry->d_name);
+            if (!fullPath) {
+                continue;
+            }
 
-            if (stat(fullPath, &statbuf) == -1) {
+            /* lstat: a symlink is not followed (a link back to an ancestor made
+               the walk loop and count the same data many times). */
+            if (lstat(fullPath, &statbuf) == -1) {
                 DIR_LOG("[dir_get_size_posix] Error: Failed to get stats for file %s.", fullPath);
+                free(fullPath);
                 continue;
             }
 
             if (S_ISDIR(statbuf.st_mode)) {
-                // Recursively calculate the size of directories
-                size += dir_get_size_posix(fullPath);
+                // Recursively calculate the size of directories; an unreadable
+                // subdirectory (-1) must not be added to the total.
+                long long sub = dir_get_size_posix(fullPath);
+                if (sub > 0) {
+                    size += sub;
+                }
                 DIR_LOG("[dir_get_size_posix] Accumulated size for directory %s: %lld bytes.", fullPath, size);
-            } 
+            }
             else {
                 // Accumulate the size of each file
                 size += statbuf.st_size;
-                DIR_LOG("[dir_get_size_posix] File %s size: %lld bytes.", fullPath, statbuf.st_size);
+                DIR_LOG("[dir_get_size_posix] File %s size: %lld bytes.", fullPath, (long long)statbuf.st_size);
             }
+            free(fullPath);
         }
     }
 
@@ -409,17 +484,22 @@ void dir_list_contents_posix(const char* dirPath, DirListOption option, Vector* 
 
     struct dirent* entry;
     struct stat statbuf;
-    char fullPath[1024];
 
     while ((entry = readdir(dir)) != NULL) {
-        snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, entry->d_name);
-
-        if (stat(fullPath, &statbuf) == -1) {
-            DIR_LOG("[dir_list_contents_posix] Error: Failed to get stats for file %s.", fullPath);
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        char* fullPath = dir_join_alloc(dirPath, entry->d_name);
+        if (!fullPath) {
+            continue;
+        }
+        int statRc = stat(fullPath, &statbuf);
+        if (statRc == -1) {
+            DIR_LOG("[dir_list_contents_posix] Error: Failed to get stats for file %s.", fullPath);
+        }
+        free(fullPath);
+        if (statRc == -1) {
             continue;
         }
 
@@ -517,56 +597,45 @@ char* dir_dir_name(const char* dirpath) {
         return NULL;
     }
 
-#if defined(_WIN32) || defined(_WIN64)
-    wchar_t* wpath = encoding_utf8_to_wchar(dirpath);
-    if (!wpath) {
-        DIR_LOG("[dir_dir_name] Error: Conversion to wide-char failed for directory %s.", dirpath);
-        return NULL;
-    }
-
-    char* name = NULL;
-    if (wcscmp(wpath, L".") == 0) {
-        wchar_t cwd[1024];
-        if (_wgetcwd(cwd, sizeof(cwd) / sizeof(wchar_t)) != NULL) {
-            name = get_last_dir_name_win(cwd);
-        }
-    } 
-    else {
-        name = get_last_dir_name_win(wpath);
-    }
-
-    free(wpath);
-    if (name) {
-        DIR_LOG("[dir_dir_name] Directory name for %s: %s", dirpath, name);
-    } 
-    else {
-        DIR_LOG("[dir_dir_name] Error: Failed to retrieve directory name for %s.", dirpath);
-        return string_strdup("");
-    }
-
-    return name;
-
-#else
+    /* The name of the directory a path refers to: its last component, with
+       trailing separators ignored ("a/b/" -> "b"); "." is the current
+       directory's own name. Scanning bytes is safe for UTF-8 because the
+       separators are ASCII. On Windows both '\\' and '/' separate (the old
+       code searched '\\' first, so "a\\b/c" gave "b/c", and "/foo" gave ""). */
+    char* cwd = NULL;
+    const char* path = dirpath;
     if (strcmp(dirpath, ".") == 0) {
-        char cwd[1024];
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            const char* lastSlash = strrchr(cwd, '/');
-            char* name = lastSlash ? string_strdup(lastSlash + 1) : string_strdup(cwd);
-
-            DIR_LOG("[dir_dir_name] Directory name for current directory: %s", name);
-            return name;
+        cwd = dir_current_path();
+        if (!cwd) {
+            DIR_LOG("[dir_dir_name] Error: Failed to retrieve current directory name.");
+            return string_strdup("");
         }
-        DIR_LOG("[dir_dir_name] Error: Failed to retrieve current directory name.");
-        return string_strdup("");
-    } 
-    else {
-        const char* lastSlash = strrchr(dirpath, '/');
-        char* name = lastSlash ? string_strdup(lastSlash + 1) : string_strdup(dirpath);
-        DIR_LOG("[dir_dir_name] Directory name for %s: %s", dirpath, name);
-
-        return name;
+        path = cwd;
     }
+
+#if defined(_WIN32) || defined(_WIN64)
+    #define DIR_IS_SEP(c) ((c) == '/' || (c) == '\\')
+#else
+    #define DIR_IS_SEP(c) ((c) == '/')
 #endif
+    size_t end = strlen(path);
+    while (end > 0 && DIR_IS_SEP(path[end - 1])) {
+        end--;
+    }
+    size_t start = end;
+    while (start > 0 && !DIR_IS_SEP(path[start - 1])) {
+        start--;
+    }
+#undef DIR_IS_SEP
+
+    char* name = (char*)malloc(end - start + 1);
+    if (name) {
+        memcpy(name, path + start, end - start);
+        name[end - start] = '\0';
+        DIR_LOG("[dir_dir_name] Directory name for %s: %s", dirpath, name);
+    }
+    free(cwd);
+    return name;
 }
 
 /**
@@ -840,7 +909,16 @@ bool dir_is_empty(const char* dirName) {
 #if defined(_WIN32) || defined(_WIN64)
     DIR_LOG("[dir_is_empty] Checking if directory %s is empty.", dirName);
 
-    if (PathIsDirectoryEmptyA(dirName) != TRUE) {
+    /* Wide API: the narrow ...A call read the UTF-8 bytes in the ANSI code
+       page, so non-ASCII names failed unless that code page was UTF-8. */
+    wchar_t* wDirName = encoding_utf8_to_wchar(dirName);
+    if (!wDirName) {
+        DIR_LOG("[dir_is_empty] Error: Conversion to wide-char failed.");
+        return false;
+    }
+    BOOL empty = PathIsDirectoryEmptyW(wDirName);
+    free(wDirName);
+    if (empty != TRUE) {
         DIR_LOG("[dir_is_empty] Error: Directory %s is not empty.", dirName);
         return false;
     }
@@ -920,6 +998,11 @@ bool dir_remove_directory_recursive(const char* dirPath) {
 /**
  * @brief Renames a file or directory.
  *
+ * An existing file at @p newName is replaced on every platform (POSIX
+ * rename() always did this; Windows used to fail instead). An existing
+ * directory is not replaced on Windows; POSIX rename() replaces it only
+ * when it is empty. Renaming across volumes fails on every platform.
+ *
  * @param oldName The current name of the file or directory.
  * @param newName The new name for the file or directory.
  * @return `true` if the renaming was successful, `false` otherwise.
@@ -944,8 +1027,8 @@ bool dir_rename(const char* oldName, const char* newName) {
 
     DIR_LOG("[dir_rename] Renaming %s to %s", oldName, newName);
 
-    if (!MoveFileW(oldName_wchar, newName_wchar)) {
-        DIR_LOG("[dir_rename] Error: MoveFileW failed to rename from %s to %s.", oldName, newName);
+    if (!MoveFileExW(oldName_wchar, newName_wchar, MOVEFILE_REPLACE_EXISTING)) {
+        DIR_LOG("[dir_rename] Error: MoveFileExW failed to rename from %s to %s.", oldName, newName);
         free(oldName_wchar);
         free(newName_wchar);
 
@@ -1022,8 +1105,11 @@ bool dir_is_directory_exists(const char* dirPath) {
 /**
  * @brief Checks if a file exists at the specified path.
  *
+ * A directory is not a file: the result is `false` for it (it used to be
+ * `true` for any existing path). Symbolic links are followed.
+ *
  * @param filePath The path of the file to check.
- * @return `true` if the file exists, `false` otherwise.
+ * @return `true` if the path exists and is not a directory, `false` otherwise.
  */
 bool dir_is_file_exists(const char* filePath) {
     if (!filePath) {
@@ -1041,14 +1127,14 @@ bool dir_is_file_exists(const char* filePath) {
     DWORD attribs = GetFileAttributesW(wPath);
     free(wPath);
 
-    bool result = (attribs != INVALID_FILE_ATTRIBUTES);
+    bool result = (attribs != INVALID_FILE_ATTRIBUTES) && !(attribs & FILE_ATTRIBUTE_DIRECTORY);
     DIR_LOG("[dir_is_file_exists] File exists check for %s: %s", filePath, result ? "true" : "false");
 
     return result;
 
 #else
     struct stat statbuf;
-    bool result = (stat(filePath, &statbuf) == 0);
+    bool result = (stat(filePath, &statbuf) == 0) && !S_ISDIR(statbuf.st_mode);
     DIR_LOG("[dir_is_file_exists] File exists check for %s: %s", filePath, result ? "true" : "false");
 
     return result;
@@ -1099,6 +1185,16 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
 
 #else
     // POSIX implementation
+    /* Opening the destination for writing truncates it; when it is the source
+       itself (same path, a hard link or another spelling) the data was lost
+       and true was returned. Refuse, like `cp` ("are the same file"). */
+    struct stat srcSt, destSt;
+    if (stat(srcPath, &srcSt) == 0 && stat(destPath, &destSt) == 0 &&
+        srcSt.st_dev == destSt.st_dev && srcSt.st_ino == destSt.st_ino) {
+        DIR_LOG("[dir_copy_file] Error: %s and %s are the same file.", srcPath, destPath);
+        return false;
+    }
+
     FileReader* srcFile = file_reader_open(srcPath, READ_BINARY);
     if (!srcFile) {
         DIR_LOG("[dir_copy_file] Error: Unable to open source file %s for reading.", srcPath);
@@ -1149,45 +1245,52 @@ bool dir_copy_file(const char* srcPath, const char* destPath) {
  * @param destDir The destination directory path.
  * @return `true` if the directory was successfully copied, `false` otherwise.
  */
-bool dir_copy_directory(const char* srcDir, const char* destDir) {
-    if (!srcDir || !destDir) {
-        DIR_LOG("[dir_copy_directory] Error: Source or destination directory is NULL.");
-        return false;
-    }
-
 #if defined(_WIN32) || defined(_WIN64)
-    wchar_t* wSrcDir = encoding_utf8_to_wchar(srcDir);
-    wchar_t* wDestDir = encoding_utf8_to_wchar(destDir);
-
-    if (wSrcDir == NULL || wDestDir == NULL) {
-        DIR_LOG("[dir_copy_directory] Error: Conversion to wide-char failed.");
-        free(wSrcDir);
-        free(wDestDir);
+/* True when `inner` is `outer` itself or lies inside it (both absolute). */
+static bool dir_wpath_within(const wchar_t* inner, const wchar_t* outer) {
+    size_t n = wcslen(outer);
+    while (n > 0 && (outer[n - 1] == L'\\' || outer[n - 1] == L'/')) {
+        n--;
+    }
+    if (_wcsnicmp(inner, outer, n) != 0) {
         return false;
     }
+    return inner[n] == L'\0' || inner[n] == L'\\' || inner[n] == L'/';
+}
 
-    DIR_LOG("[dir_copy_directory] Copying directory from %s to %s", srcDir, destDir);
+/* Absolute form of a wide path (caller frees), or NULL. */
+static wchar_t* dir_wfull_path(const wchar_t* path) {
+    DWORD len = GetFullPathNameW(path, 0, NULL, NULL);
+    if (len == 0) {
+        return NULL;
+    }
+    wchar_t* out = (wchar_t*)malloc(((size_t)len + 1) * sizeof(wchar_t));
+    if (out && GetFullPathNameW(path, len + 1, out, NULL) == 0) {
+        free(out);
+        out = NULL;
+    }
+    return out;
+}
 
-    // Append wildcard to source directory path
-    wchar_t wSrcDirWildcard[MAX_PATH];
-    wsprintfW(wSrcDirWildcard, L"%s\\*", wSrcDir);
+static bool dir_copy_directory_win(const wchar_t* wSrcDir, const wchar_t* wDestDir) {
+    wchar_t* wSrcDirWildcard = dir_wjoin(wSrcDir, NULL);
+    if (!wSrcDirWildcard) {
+        return false;
+    }
 
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = FindFirstFileW(wSrcDirWildcard, &findFileData);
+    free(wSrcDirWildcard);
 
     if (hFind == INVALID_HANDLE_VALUE) {
-        DIR_LOG("[dir_copy_directory] Error: Failed to find files in %s.", srcDir);
-        free(wSrcDir);
-        free(wDestDir);
+        DIR_LOG("[dir_copy_directory] Error: Failed to find files in %ls.", wSrcDir);
         return false;
     }
 
     // Create destination directory
     if (!CreateDirectoryW(wDestDir, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-        DIR_LOG("[dir_copy_directory] Error: Failed to create destination directory %s.", destDir);
+        DIR_LOG("[dir_copy_directory] Error: Failed to create destination directory %ls.", wDestDir);
         FindClose(hFind);
-        free(wSrcDir);
-        free(wDestDir);
         return false;
     }
 
@@ -1198,48 +1301,58 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
             continue;
         }
 
-        wchar_t srcPath[MAX_PATH];
-        wchar_t destPath[MAX_PATH];
-
-        wsprintfW(srcPath, L"%s\\%s", wSrcDir, findFileData.cFileName);
-        wsprintfW(destPath, L"%s\\%s", wDestDir, findFileData.cFileName);
+        wchar_t* srcPath = dir_wjoin(wSrcDir, findFileData.cFileName);
+        wchar_t* destPath = dir_wjoin(wDestDir, findFileData.cFileName);
+        if (!srcPath || !destPath) {
+            free(srcPath);
+            free(destPath);
+            success = false;
+            break;
+        }
 
         if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            // Recursive call to copy subdirectory
-            char* srcPathUtf8 = encoding_wchar_to_utf8(srcPath);
-            char* destPathUtf8 = encoding_wchar_to_utf8(destPath);
-            success = dir_copy_directory(srcPathUtf8, destPathUtf8);
-
-            free(srcPathUtf8);
-            free(destPathUtf8);
-        } 
+            if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+                /* A junction/symlinked directory can point back into the tree;
+                   following it recursed without bound. It is not copied. */
+                DIR_LOG("[dir_copy_directory] Skipping reparse-point directory %ls.", srcPath);
+            }
+            else {
+                // Recursive call to copy subdirectory
+                success = dir_copy_directory_win(srcPath, destPath);
+            }
+        }
         else {
             // Copy file
             char* srcPathUtf8 = encoding_wchar_to_utf8(srcPath);
             char* destPathUtf8 = encoding_wchar_to_utf8(destPath);
-            success = dir_copy_file(srcPathUtf8, destPathUtf8);
+            success = srcPathUtf8 && destPathUtf8 && dir_copy_file(srcPathUtf8, destPathUtf8);
 
             free(srcPathUtf8);
             free(destPathUtf8);
         }
-    } while (FindNextFileW(hFind, &findFileData) && success);
+        free(srcPath);
+        free(destPath);
+    } while (success && FindNextFileW(hFind, &findFileData));
 
     FindClose(hFind);
-    free(wSrcDir);
-    free(wDestDir);
-
-    if (success) {
-        DIR_LOG("[dir_copy_directory] Directory copied successfully from %s to %s", srcDir, destDir);
-    } 
-    else {
-        DIR_LOG("[dir_copy_directory] Error: Failed to copy directory from %s to %s", srcDir, destDir);
-    }
-
     return success;
+}
 
-#else 
-    DIR_LOG("[dir_copy_directory] Copying directory from %s to %s", srcDir, destDir);
+#else
 
+/* True when `inner` is `outer` itself or lies inside it (both canonical). */
+static bool dir_path_within(const char* inner, const char* outer) {
+    size_t n = strlen(outer);
+    while (n > 1 && outer[n - 1] == '/') {
+        n--;
+    }
+    if (strncmp(inner, outer, n) != 0) {
+        return false;
+    }
+    return inner[n] == '\0' || inner[n] == '/' || (n == 1 && outer[0] == '/');
+}
+
+static bool dir_copy_directory_posix(const char* srcDir, const char* destDir) {
     DIR *dir;
     struct dirent *entry;
 
@@ -1256,46 +1369,146 @@ bool dir_copy_directory(const char* srcDir, const char* destDir) {
         return false;
     }
 
-    while ((entry = readdir(dir)) != NULL) {
+    bool success = true;
+    while (success && (entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        char srcPath[1024];
-        snprintf(srcPath, sizeof(srcPath), "%s/%s", srcDir, entry->d_name);
-
-        char destPath[1024];
-        snprintf(destPath, sizeof(destPath), "%s/%s", destDir, entry->d_name);
-
-        struct stat statbuf;
-        if (stat(srcPath, &statbuf) == -1) {
-            DIR_LOG("[dir_copy_directory] Error: Failed to get status of source path %s.", srcPath);
-            closedir(dir);
-            return false;
+        char* srcPath = dir_join_alloc(srcDir, entry->d_name);
+        char* destPath = dir_join_alloc(destDir, entry->d_name);
+        if (!srcPath || !destPath) {
+            free(srcPath);
+            free(destPath);
+            success = false;
+            break;
         }
 
-        if (S_ISDIR(statbuf.st_mode)) {
-            if (!dir_copy_directory(srcPath, destPath)) {
+        struct stat statbuf;
+        if (lstat(srcPath, &statbuf) == -1) {
+            DIR_LOG("[dir_copy_directory] Error: Failed to get status of source path %s.", srcPath);
+            success = false;
+        }
+        else if (S_ISLNK(statbuf.st_mode)) {
+            char target[4096];
+            ssize_t tl = readlink(srcPath, target, sizeof(target) - 1);
+            if (tl < 0 || (size_t)tl >= sizeof(target) - 1) {
+                DIR_LOG("[dir_copy_directory] Error: Failed to read symlink %s.", srcPath);
+                success = false;
+            }
+            else {
+                target[tl] = '\0';
+                if (symlink(target, destPath) != 0 && errno != EEXIST) {
+                    DIR_LOG("[dir_copy_directory] Error: Failed to recreate symlink %s.", destPath);
+                    success = false;
+                }
+            }
+        }
+        else if (S_ISDIR(statbuf.st_mode)) {
+            if (!dir_copy_directory_posix(srcPath, destPath)) {
                 DIR_LOG("[dir_copy_directory] Error: Failed to copy subdirectory %s.", srcPath);
-                closedir(dir);
-                return false;
+                success = false;
             }
         }
         else {
             if (!dir_copy_file(srcPath, destPath)) {
                 DIR_LOG("[dir_copy_directory] Error: Failed to copy file %s.", srcPath);
-                closedir(dir);
-                return false;
+                success = false;
             }
         }
+        free(srcPath);
+        free(destPath);
     }
 
     closedir(dir);
-    DIR_LOG("[dir_copy_directory] Directory copied successfully from %s to %s", srcDir, destDir);
+    return success;
+}
+#endif
 
-    return true;
+bool dir_copy_directory(const char* srcDir, const char* destDir) {
+    if (!srcDir || !destDir) {
+        DIR_LOG("[dir_copy_directory] Error: Source or destination directory is NULL.");
+        return false;
+    }
 
-#endif 
+    DIR_LOG("[dir_copy_directory] Copying directory from %s to %s", srcDir, destDir);
+
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wSrcDir = encoding_utf8_to_wchar(srcDir);
+    wchar_t* wDestDir = encoding_utf8_to_wchar(destDir);
+    wchar_t* fullSrc = wSrcDir ? dir_wfull_path(wSrcDir) : NULL;
+    wchar_t* fullDest = wDestDir ? dir_wfull_path(wDestDir) : NULL;
+    bool success = false;
+
+    if (!wSrcDir || !wDestDir || !fullSrc || !fullDest) {
+        DIR_LOG("[dir_copy_directory] Error: Path conversion failed.");
+    }
+    else if (dir_wpath_within(fullDest, fullSrc)) {
+        /* Copying a tree into itself would copy the copy, forever. */
+        DIR_LOG("[dir_copy_directory] Error: Destination %s is inside the source %s.", destDir, srcDir);
+    }
+    else {
+        success = dir_copy_directory_win(fullSrc, fullDest);
+    }
+    free(wSrcDir);
+    free(wDestDir);
+    free(fullSrc);
+    free(fullDest);
+#else
+    char* fullSrc = realpath(srcDir, NULL);
+    bool success = false;
+    if (!fullSrc) {
+        DIR_LOG("[dir_copy_directory] Error: Failed to resolve source directory %s.", srcDir);
+        return false;
+    }
+
+    char* destCopy = string_strdup(destDir);
+    if (destCopy) {
+        size_t dl = strlen(destCopy);
+        while (dl > 1 && destCopy[dl - 1] == '/') {
+            destCopy[--dl] = '\0';
+        }
+    }
+    char* destName = destCopy ? strrchr(destCopy, '/') : NULL;
+    char* destParent = NULL;
+    if (destCopy) {
+        if (destName) {
+            *destName = '\0';
+            destParent = realpath(*destCopy ? destCopy : "/", NULL);
+        }
+        else {
+            destParent = realpath(".", NULL);
+        }
+    }
+    if (!destParent) {
+        DIR_LOG("[dir_copy_directory] Error: Failed to resolve destination parent of %s.", destDir);
+    }
+    else if (dir_path_within(destParent, fullSrc)) {
+        /* Copying a tree into itself would copy the copy, forever. */
+        DIR_LOG("[dir_copy_directory] Error: Destination %s is inside the source %s.", destDir, srcDir);
+    }
+    else {
+        char* fullDest = realpath(destDir, NULL);
+        if (fullDest && strcmp(fullDest, fullSrc) == 0) {
+            DIR_LOG("[dir_copy_directory] Error: Source and destination are the same directory.");
+        }
+        else {
+            success = dir_copy_directory_posix(srcDir, destDir);
+        }
+        free(fullDest);
+    }
+    free(destParent);
+    free(destCopy);
+    free(fullSrc);
+#endif
+
+    if (success) {
+        DIR_LOG("[dir_copy_directory] Directory copied successfully from %s to %s", srcDir, destDir);
+    }
+    else {
+        DIR_LOG("[dir_copy_directory] Error: Failed to copy directory from %s to %s", srcDir, destDir);
+    }
+    return success;
 }
 
 /**
@@ -1514,6 +1727,10 @@ bool dir_is_directory(const char* dirPath) {
 /**
  * @brief Moves a file from a source path to a destination path.
  *
+ * An existing file at @p destPath is replaced on every platform (POSIX
+ * rename() always did this; Windows used to fail instead). A move across
+ * volumes / file systems fails on every platform; copy and delete instead.
+ *
  * @param srcPath The source file path.
  * @param destPath The destination file path.
  * @return `true` if the file was successfully moved, `false` otherwise.
@@ -1541,9 +1758,9 @@ bool dir_move_file(const char* srcPath, const char* destPath) {
 
     DIR_LOG("[dir_move_file] Moving file from %s to %s", srcPath, destPath);
 
-    bool result = MoveFileW(source, destination) != 0;
+    bool result = MoveFileExW(source, destination, MOVEFILE_REPLACE_EXISTING) != 0;
     if (!result) {
-        DIR_LOG("[dir_move_file] Error: MoveFileW failed.");
+        DIR_LOG("[dir_move_file] Error: MoveFileExW failed.");
     } 
     else {
         DIR_LOG("[dir_move_file] File moved successfully.");
@@ -2020,74 +2237,130 @@ DirFileType dir_get_file_type(const char* filePath) {
  * @param iv The initialization vector used for encryption.
  * @return `true` if the file was successfully encrypted, `false` otherwise.
  */
-bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
-    if (!filePath || !password || !iv) {
-        DIR_LOG("[dir_encrypt_file] Error: Invalid arguments. filePath, password, or iv is NULL.");
-        return false;
+/*
+ * Encrypted file layout written by dir_encrypt_file:
+ *
+ *   "CSTDAEG1"                                   8 bytes, plaintext marker
+ *   crypto_password_encrypt blob                 PBKDF2-HMAC-SHA256 + AES-256-GCM
+ *                                                (iterations, salt, nonce, tag, data)
+ *
+ * Earlier versions wrote single DES ("CSTDDES2" below, or no marker at all)
+ * with the password as the raw 8-byte key; dir_decrypt_file still reads them:
+ *
+ *   "CSTDDES2"                                   8 bytes, plaintext marker
+ *   DES-CBC( "CSTDCHK1" | length (8 bytes, LE) | data | zero padding )
+ *
+ * The encrypted check block lets dir_decrypt_file detect a wrong password or
+ * IV instead of overwriting the file with garbage, and the stored length
+ * restores the exact original size (zero padding alone cannot tell real
+ * trailing NUL bytes from padding). Both functions replace the file atomically
+ * (temporary file + rename), so a failure never destroys the original.
+ */
+#define DIR_ENC_MAGIC     "CSTDDES2"       /* legacy DES files (decrypt only) */
+#define DIR_ENC_MAGIC_AEAD "CSTDAEG1"      /* current: marker + crypto_password_encrypt blob */
+#define DIR_ENC_CHECK     "CSTDCHK1"
+#define DIR_ENC_BLOCK     8
+#define DIR_ENC_HEADER    (2 * DIR_ENC_BLOCK)   /* check block + length block */
+
+/* Legacy DES files were zero-padded, but crypto_des_decrypt now removes (and
+   checks) PKCS#7 padding. Append one ciphertext block that CBC-decrypts to a
+   full padding block, C' = E_K(0x08.. XOR C_last), so the stored bytes come
+   back unchanged (padding included, as before). */
+static uint8_t* dir_des_cbc_decrypt_legacy(const uint8_t* cipher, size_t len, const uint8_t key[8], const uint8_t* iv, size_t* outLen) {
+    uint8_t x[8];
+    for (int i = 0; i < 8; ++i) {
+        x[i] = (uint8_t)(cipher[len - 8 + i] ^ 0x08);
     }
 
-    DIR_LOG("[dir_encrypt_file] Starting encryption for file: %s", filePath);
+    size_t encLen = 0;
+    uint8_t* e = (uint8_t*)crypto_des_encrypt(x, sizeof x, key, NULL, CRYPTO_MODE_ECB, &encLen);
+    if (!e || encLen < 8) {
+        free(e);
+        return NULL;
+    }
 
+    uint8_t* ext = (uint8_t*)malloc(len + 8);
+    if (!ext) {
+        free(e);
+        return NULL;
+    }
+
+    memcpy(ext, cipher, len);
+    memcpy(ext + len, e, 8);
+    memset(e, 0, encLen);
+    free(e);
+    uint8_t* pt = (uint8_t*)crypto_des_decrypt(ext, len + 8, key, iv, CRYPTO_MODE_CBC, outLen);
+    free(ext);
+    return pt;
+}
+
+/* Reads the whole file into a malloc'd buffer (binary-safe). */
+static bool dir_read_file_bytes(const char* filePath, uint8_t** data, size_t* len) {
     FileReader* reader = file_reader_open(filePath, READ_BINARY);
     if (!reader) {
-        DIR_LOG("[dir_encrypt_file] Error: Failed to open file for reading: %s", filePath);
+        DIR_LOG("[dir_read_file_bytes] Error: Failed to open file for reading: %s", filePath);
         return false;
     }
-
-    size_t fileLen = file_reader_get_size(reader);
-    uint8_t* fileData = (uint8_t*)malloc(fileLen);
-    if (!fileData) {
-        DIR_LOG("[dir_encrypt_file] Error: Memory allocation failed.");
-        file_reader_close(reader);
-        return false;
-    }
-
-    if (file_reader_read(fileData, sizeof(uint8_t), fileLen, reader) != fileLen) {
-        DIR_LOG("[dir_encrypt_file] Error: Failed to read file data.");
-        free(fileData);
-        file_reader_close(reader);
-        return false;
-    }
+    char* buf = NULL;
+    size_t size = 0;
+    bool ok = file_reader_read_all(reader, &buf, &size);
     file_reader_close(reader);
+    if (!ok) {
+        DIR_LOG("[dir_read_file_bytes] Error: Failed to read file data: %s", filePath);
+        free(buf);
+        return false;
+    }
+    *data = (uint8_t*)buf;
+    *len = size;
+    return true;
+}
 
-    if (strlen(password) > 8) {
-        DIR_LOG("[dir_encrypt_file] Error: Password length exceeds 8 bytes.");
-        free(fileData);
+bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
+
+    (void)iv;
+    if (!filePath || !password || !*password) {
+        DIR_LOG("[dir_encrypt_file] Error: Invalid arguments.");
         return false;
     }
 
-    uint8_t key[8]; // DES key size
-    derive_key_from_password(password, key);
-    DIR_LOG("[dir_encrypt_file] Key derived from password.");
+    uint8_t* fileData = NULL;
+    size_t fileLen = 0;
+    if (!dir_read_file_bytes(filePath, &fileData, &fileLen)) {
+        DIR_LOG("[dir_encrypt_file] Error: Could not read %s.", filePath);
+        return false;
+    }
 
-    size_t outLen;
-    uint8_t* encryptedData = (uint8_t*)crypto_des_encrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
+    /* PBKDF2-HMAC-SHA256 (random salt) -> AES-256-GCM. The blob carries the
+       iteration count, salt, nonce and authentication tag, so any password
+       length works and tampering or a wrong password is detected. (It used
+       to be single DES with the password bytes as the raw 8-byte key.) */
+    size_t blobLen = 0;
+    uint8_t* blob = crypto_password_encrypt(fileData, fileLen, password, 0, &blobLen);
+    crypto_secure_zero(fileData, fileLen);
     free(fileData);
-
-    if (!encryptedData) {
+    if (!blob || blobLen > SIZE_MAX - DIR_ENC_BLOCK) {
+        free(blob);
         DIR_LOG("[dir_encrypt_file] Error: Encryption failed.");
         return false;
     }
 
-    FileWriter* writer = file_writer_open(filePath, WRITE_BINARY);
-    if (!writer) {
-        DIR_LOG("[dir_encrypt_file] Error: Failed to open file for writing: %s", filePath);
-        free(encryptedData);
+    uint8_t* out = (uint8_t*)malloc(DIR_ENC_BLOCK + blobLen);
+    if (!out) {
+        free(blob);
+        return false;
+    }
+    memcpy(out, DIR_ENC_MAGIC_AEAD, DIR_ENC_BLOCK);
+    memcpy(out + DIR_ENC_BLOCK, blob, blobLen);
+    free(blob);
+
+    bool ok = file_writer_write_all_atomic(filePath, out, DIR_ENC_BLOCK + blobLen);
+    free(out);
+    if (!ok) {
+        DIR_LOG("[dir_encrypt_file] Error: Could not replace %s.", filePath);
         return false;
     }
 
-    if (file_writer_write(encryptedData, sizeof(uint8_t), outLen, writer) != outLen) {
-        DIR_LOG("[dir_encrypt_file] Error: Failed to write encrypted data.");
-        free(encryptedData);
-        file_writer_close(writer);
-        return false;
-    }
-
-    free(encryptedData);
-    file_writer_close(writer);
-
-    DIR_LOG("[dir_encrypt_file] File encryption completed successfully: %s", filePath);
-
+    DIR_LOG("[dir_encrypt_file] File encrypted successfully: %s", filePath);
     return true;
 }
 
@@ -2097,39 +2370,49 @@ bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv) {
  * @param filePath The path of the file to decrypt.
  * @param password The password used for decryption.
  * @param iv The initialization vector used for decryption.
- * @return `true` if the file was successfully decrypted, `false` otherwise.
+ * @return `true` if the file was successfully decrypted, `false` otherwise
+ *         (wrong password/IV, not an encrypted file, or I/O error - the file is
+ *         left unchanged in every failure case).
  */
 bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
-    if (!filePath || !password || !iv) {
-        DIR_LOG("[dir_decrypt_file] Error: Invalid arguments. filePath, password, or iv is NULL.");
-        return false;
-    }
-    DIR_LOG("[dir_decrypt_file] Starting decryption for file: %s", filePath);
-
-    FileReader* reader = file_reader_open(filePath, READ_BINARY);
-    if (!reader) {
-        DIR_LOG("[dir_decrypt_file] Error: Failed to open file for reading: %s", filePath);
+    if (!filePath || !password) {
         return false;
     }
 
-    size_t fileLen = file_reader_get_size(reader);
-    uint8_t* fileData = (uint8_t*)malloc(fileLen);
-    if (!fileData) {
-        DIR_LOG("[dir_decrypt_file] Error: Memory allocation failed.");
-        file_reader_close(reader);
+    uint8_t* fileData = NULL;
+    size_t fileLen = 0;
+    if (!dir_read_file_bytes(filePath, &fileData, &fileLen)) {
         return false;
     }
 
-    if (file_reader_read(fileData, sizeof(uint8_t), fileLen, reader) != fileLen) {
-        DIR_LOG("[dir_decrypt_file] Error: Failed to read file data.");
+    /* Current format: marker + crypto_password_encrypt blob. */
+    if (fileLen >= DIR_ENC_BLOCK && memcmp(fileData, DIR_ENC_MAGIC_AEAD, DIR_ENC_BLOCK) == 0) {
+        size_t plainLen = 0;
+        uint8_t* plain = crypto_password_decrypt(fileData + DIR_ENC_BLOCK, fileLen - DIR_ENC_BLOCK, password, &plainLen);
         free(fileData);
-        file_reader_close(reader);
+        if (!plain) {
+            DIR_LOG("[dir_decrypt_file] Error: Wrong password or damaged file: %s", filePath);
+            return false;   /* the file is left unchanged */
+        }
+        bool ok = file_writer_write_all_atomic(filePath, plain, plainLen);
+        crypto_secure_zero(plain, plainLen);
+        free(plain);
+        return ok;
+    }
+
+    /* Older DES files ("CSTDDES2" or untagged) can still be decrypted; they
+       need the 8-byte IV and a password of at most 8 bytes. */
+    if (!iv || strlen(password) > 8) {
+        free(fileData);
         return false;
     }
-    file_reader_close(reader);
 
-    if (strlen(password) > 8) {
-        DIR_LOG("[dir_decrypt_file] Error: Password length exceeds 8 bytes.");
+    bool tagged = fileLen >= DIR_ENC_BLOCK && memcmp(fileData, DIR_ENC_MAGIC, DIR_ENC_BLOCK) == 0;
+    const uint8_t* cipher = tagged ? fileData + DIR_ENC_BLOCK : fileData;
+    size_t cipherLen = tagged ? fileLen - DIR_ENC_BLOCK : fileLen;
+
+    if (cipherLen == 0 || cipherLen % DIR_ENC_BLOCK != 0 || (tagged && cipherLen < DIR_ENC_HEADER)) {
+        DIR_LOG("[dir_decrypt_file] Error: %s is not a DES-CBC encrypted file.", filePath);
         free(fileData);
         return false;
     }
@@ -2138,36 +2421,43 @@ bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv) {
     derive_key_from_password(password, key);
     DIR_LOG("[dir_decrypt_file] Key derived from password.");
 
-    size_t outLen;
-    uint8_t* decryptedData = (uint8_t*)crypto_des_decrypt(fileData, fileLen, key, iv, CRYPTO_MODE_CBC, &outLen);
+    size_t outLen = 0;
+    uint8_t* decryptedData = dir_des_cbc_decrypt_legacy(cipher, cipherLen, key, iv, &outLen);
     free(fileData);
+    memset(key, 0, sizeof(key));
 
     if (!decryptedData) {
         DIR_LOG("[dir_decrypt_file] Error: Decryption failed.");
         return false;
     }
 
-    FileWriter* writer = file_writer_open(filePath, WRITE_BINARY);
-    if (!writer) {
-        DIR_LOG("[dir_decrypt_file] Error: Failed to open file for writing: %s", filePath);
-        free(decryptedData);
-
-        return false;
+    const uint8_t* result = decryptedData;
+    size_t resultLen = outLen;
+    if (tagged) {
+        uint64_t len64 = 0;
+        for (int i = 0; i < 8; ++i) {
+            len64 |= (uint64_t)decryptedData[DIR_ENC_BLOCK + i] << (8 * i);
+        }
+        if (memcmp(decryptedData, DIR_ENC_CHECK, DIR_ENC_BLOCK) != 0 ||
+            len64 > (uint64_t)(outLen - DIR_ENC_HEADER)) {
+            DIR_LOG("[dir_decrypt_file] Error: Wrong password or IV for %s (file left unchanged).", filePath);
+            free(decryptedData);
+            return false;
+        }
+        result = decryptedData + DIR_ENC_HEADER;
+        resultLen = (size_t)len64;
     }
+    /* Untagged input is a file written by older versions: the original length
+       was not stored, so the zero padding cannot be removed reliably. */
 
-    if (file_writer_write(decryptedData, sizeof(uint8_t), outLen, writer) != outLen) {
-        DIR_LOG("[dir_decrypt_file] Error: Failed to write decrypted data.");
-        free(decryptedData);
-        file_writer_close(writer);
-
-        return false;
-    }
-
+    bool ok = file_writer_write_all_atomic(filePath, result, resultLen);
     free(decryptedData);
-    file_writer_close(writer);
+    if (!ok) {
+        DIR_LOG("[dir_decrypt_file] Error: Failed to write decrypted data (encrypted file left intact).");
+        return false;
+    }
 
     DIR_LOG("[dir_decrypt_file] File decryption completed successfully: %s", filePath);
-
     return true;
 }
 
@@ -2373,6 +2663,10 @@ bool dir_get_directory_owner(const char* dirPath, char* ownerBuffer, size_t buff
 /**
  * @brief Searches a directory for files matching a specified pattern.
  *
+ * Only entries that are not directories are reported, on every platform
+ * (POSIX used to report ".", ".." and subdirectories as well). The callback
+ * receives the bare entry name. A search with no match succeeds.
+ *
  * @param dirPath The path of the directory to search.
  * @param pattern The pattern to match files against.
  * @param callback The callback function to invoke for each matched file.
@@ -2418,11 +2712,16 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
     WIN32_FIND_DATAW findFileData;
     HANDLE hFind = FindFirstFileW(wSearchPath, &findFileData);
     if (hFind == INVALID_HANDLE_VALUE) {
-        DIR_LOG("[dir_search] Error: FindFirstFileW failed in dir_search.");
+        /* ERROR_FILE_NOT_FOUND: the directory exists but nothing matches,
+           which POSIX reports as a successful empty search. */
+        bool noMatch = (GetLastError() == ERROR_FILE_NOT_FOUND);
+        if (!noMatch) {
+            DIR_LOG("[dir_search] Error: FindFirstFileW failed in dir_search.");
+        }
         free(wDirPath);
         free(wPattern);
         free(wSearchPath);
-        return false;
+        return noMatch;
     }
 
     do {
@@ -2457,13 +2756,30 @@ bool dir_search(const char* dirPath, const char* pattern, DirCompareFunc callbac
 
     DIR_LOG("[dir_search] Searching in directory: %s with pattern: %s", dirPath, pattern);
 
+    size_t dirLen = strlen(dirPath);
     struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {
-        if (fnmatch(pattern, entry->d_name, 0) == 0) {
-            if (!callback(entry->d_name, userData)) {
-                break;
-            }
-            DIR_LOG("[dir_search] Found file: %s", entry->d_name);
+        if (fnmatch(pattern, entry->d_name, 0) != 0) {
+            continue;
+        }
+        /* skip directories (".", ".." included), as the Windows branch does */
+        size_t full = dirLen + 1 + strlen(entry->d_name) + 1;
+        char* entryPath = (char*)malloc(full);
+        if (!entryPath) {
+            DIR_LOG("[dir_search] Error: out of memory.");
+            closedir(dir);
+            return false;
+        }
+        snprintf(entryPath, full, "%s/%s", dirPath, entry->d_name);
+        struct stat st;
+        bool isDir = (stat(entryPath, &st) == 0) && S_ISDIR(st.st_mode);
+        free(entryPath);
+        if (isDir) {
+            continue;
+        }
+        DIR_LOG("[dir_search] Found file: %s", entry->d_name);
+        if (!callback(entry->d_name, userData)) {
+            break;
         }
     }
 
@@ -3029,6 +3345,23 @@ bool dir_make_directories(const char* dirpath) {
 
 /* Walk into a directory and append every entry matching the option,
  * with paths prefixed by the directory being walked. */
+/* True when `path` itself is a symbolic link (or, on Windows, any reparse
+   point such as a junction), without following it. */
+static bool dir_is_link(const char* path) {
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(path);
+    if (!wPath) {
+        return false;
+    }
+    DWORD attrs = GetFileAttributesW(wPath);
+    free(wPath);
+    return attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+#else
+    struct stat st;
+    return lstat(path, &st) == 0 && S_ISLNK(st.st_mode);
+#endif
+}
+
 static void dir_list_recursive_impl(const char* dirPath, DirListOption option, Vector* result) {
     Vector* entries = vector_create(sizeof(char*));
     if (!entries) {
@@ -3056,7 +3389,11 @@ static void dir_list_recursive_impl(const char* dirPath, DirListOption option, V
                 vector_push_back(result, &push);
             }
         }
-        if (isDir) {
+        /* Descend only into real directories. A symlink (or Windows junction)
+           to a directory is listed but not followed: a link back to an
+           ancestor made the walk loop until ELOOP (42 phantom entries for 2
+           files), and a link to "/" walked the whole disk. */
+        if (isDir && !dir_is_link(full)) {
             dir_list_recursive_impl(full, option, result);
         }
         free(full);

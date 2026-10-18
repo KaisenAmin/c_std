@@ -38,6 +38,16 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 
 ---
 
+### `void forward_list_set_compare(ForwardList* list, ForwardListCompare compare)`
+**Purpose**: Sets the element comparator (`int (*)(const void* a, const void* b)`, negative / zero / positive like `strcmp`) used by `forward_list_sort`, `forward_list_merge`, `forward_list_unique`, `forward_list_remove` and all `forward_list_is_*` comparisons.
+**Parameters**:
+- `list`: Pointer to the list.
+- `compare`: The comparator, or `NULL` to fall back to `memcmp`.
+**Return Value**: None.
+**Usage Case**: Set it for any element type that is not a plain byte sequence. Without a comparator the list compares raw bytes with `memcmp`; on little-endian machines that does not sort multi-byte integers, negative numbers or floating-point values numerically (256 sorts before 1), and it also compares struct padding.
+
+---
+
 ### `void forward_list_deallocate(ForwardList* list)`
 **Purpose**: Frees all nodes and the list struct itself.
 **Parameters**:
@@ -136,7 +146,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 **Purpose**: Inserts `numValues` elements from the array pointed to by `value` after `pos`.
 **Parameters**:
 - `list`: Pointer to the list.
-- `pos`: Pointer to the node after which elements are inserted; pass the sentinel from `forward_list_before_begin` to insert at the head.
+- `pos`: Pointer to the node after which elements are inserted; pass the sentinel from `forward_list_before_begin` (or `NULL`) to insert at the head. The values keep their array order in both cases.
 - `value`: Pointer to the array of values to insert.
 - `numValues`: Number of elements to insert from the array.
 **Return Value**: None.
@@ -166,7 +176,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `void forward_list_resize(ForwardList* list, size_t newSize)`
-**Purpose**: Grows or shrinks the list to `newSize`; new slots when growing are zero-initialized.
+**Purpose**: Grows or shrinks the list to `newSize` at its back: shrinking drops the last elements, growing appends zero-initialized ones. Linear time (it used to be quadratic). `forward_list_create` refuses an `itemSize` so large that a node (header + item) would not fit in `size_t`.
 **Parameters**:
 - `list`: Pointer to the list.
 - `newSize`: The desired number of elements after the operation.
@@ -176,7 +186,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `void forward_list_swap(ForwardList* list1, ForwardList* list2)`
-**Purpose**: Swaps the head pointer, size, and itemSize of two lists in O(1).
+**Purpose**: Swaps the head pointer, size, itemSize and comparator of two lists in O(1).
 **Parameters**:
 - `list1`: Pointer to the first list.
 - `list2`: Pointer to the second list.
@@ -195,7 +205,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `void forward_list_sort(ForwardList* list)`
-**Purpose**: Sorts the elements in ascending order using merge sort.
+**Purpose**: Sorts the elements in ascending order using a stable merge sort, ordered by the comparator set with `forward_list_set_compare` (byte order via `memcmp` if none is set).
 **Parameters**:
 - `list`: Pointer to the list.
 **Return Value**: None.
@@ -210,12 +220,12 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 - `pos`: Pointer to the node in `list` after which `other`'s nodes are inserted; pass the sentinel from `forward_list_before_begin` to prepend.
 - `other`: Pointer to the source list whose nodes are transferred.
 **Return Value**: None.
-**Usage Case**: Use to merge two lists by node transfer (no copies) at a specific insertion point.
+**Usage Case**: Use to merge two lists by node transfer (no copies) at a specific insertion point. Splicing a list into itself is refused (it would create a cycle).
 
 ---
 
 ### `void forward_list_remove(ForwardList* list, void* value)`
-**Purpose**: Removes all nodes whose stored value byte-compares equal to `value`.
+**Purpose**: Removes all nodes whose stored value compares equal to `value` (comparator result 0, or byte-equal if no comparator is set).
 **Parameters**:
 - `list`: Pointer to the list.
 - `value`: Pointer to the value to match against each element.
@@ -235,7 +245,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `void forward_list_unique(ForwardList* list)`
-**Purpose**: Removes consecutive duplicate elements whose values are byte-equal to the immediately preceding node.
+**Purpose**: Removes consecutive duplicate elements that compare equal to the immediately preceding node (comparator result 0, or byte-equal if no comparator is set).
 **Parameters**:
 - `list`: Pointer to the list.
 **Return Value**: None.
@@ -244,7 +254,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `void forward_list_merge(ForwardList* list1, ForwardList* list2)`
-**Purpose**: Merges `list2` into `list1`, preserving sorted order; both lists must be sorted beforehand and `list2` is empty after the call.
+**Purpose**: Merges `list2` into `list1`, preserving sorted order (by `list1`'s comparator); both lists must be sorted beforehand and `list2` is empty after the call. Lists with different item sizes are left unchanged.
 **Parameters**:
 - `list1`: Pointer to the destination sorted list.
 - `list2`: Pointer to the source sorted list whose nodes are moved into `list1`.
@@ -254,7 +264,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `ForwardListNode* forward_list_before_begin(ForwardList* list)`
-**Purpose**: Returns a pointer to the per-list sentinel node whose `next` is always refreshed to the current head.
+**Purpose**: Returns a pointer to the per-list sentinel node. The sentinel stays valid while the list changes: every `*_after` function that receives it treats it as "before the current head", even if it was obtained before a `push_front`, `pop_front`, `sort`, etc. Its `next` field is refreshed by this call, so read `next` only right after calling it.
 **Parameters**:
 - `list`: Pointer to the list.
 **Return Value**: Pointer to the sentinel node, or NULL if `list` is NULL.
@@ -281,7 +291,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `bool forward_list_is_equal(const ForwardList* list1, const ForwardList* list2)`
-**Purpose**: Returns `true` if both lists have the same length and every corresponding element is byte-equal.
+**Purpose**: Returns `true` if both lists have the same item size and length and every corresponding element compares equal (by `list1`'s comparator, or byte-equal if none is set).
 **Parameters**:
 - `list1`: Pointer to the first list.
 - `list2`: Pointer to the second list.
@@ -301,7 +311,7 @@ To use the ForwardList library in your project, include the `forward_list.h` hea
 ---
 
 ### `bool forward_list_is_less(const ForwardList* list1, const ForwardList* list2)`
-**Purpose**: Returns `true` if `list1` is lexicographically less than `list2`.
+**Purpose**: Returns `true` if `list1` is lexicographically less than `list2`, comparing elements with `list1`'s comparator (byte order if none is set). Lists with different item sizes are not ordered (returns `false`).
 **Parameters**:
 - `list1`: Pointer to the first list.
 - `list2`: Pointer to the second list.

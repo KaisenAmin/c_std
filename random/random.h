@@ -26,8 +26,8 @@ extern "C" {
 /* #define RANDOM_LOGGING_ENABLE */
 
 #ifdef RANDOM_LOGGING_ENABLE
-    #define RANDOM_LOG(fmt, ...) \
-        do { fprintf(stderr, "[RANDOM LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define RANDOM_LOG(...) \
+        do { fprintf(stderr, "[RANDOM LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define RANDOM_LOG(...) do { } while (0)
 #endif
@@ -48,6 +48,7 @@ void     random_setstate             (const unsigned int* state);
 
 int      random_randint              (int a, int b);
 int      random_randrange            (int a, int b, int step);
+bool     random_randrange_checked    (int a, int b, int step, int* out);
 int      random_getrandbits          (int a);
 void     random_randbytes            (unsigned char* buffer, size_t n);
 
@@ -82,7 +83,7 @@ double   random_vonmises             (double mu, double kappa);
 
 void     random_shuffle              (void* array, size_t n, size_t size);
 void*    random_choice               (void* array, size_t n, size_t size);
-void     random_choices              (void* array, size_t n, size_t size, size_t num_choices, void* choices, double* weights);
+bool     random_choices              (void* array, size_t n, size_t size, size_t num_choices, void* choices, double* weights);
 void     random_sample               (void* array, size_t n, size_t size, size_t num_samples, void* samples);
 
 

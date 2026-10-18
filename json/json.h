@@ -23,8 +23,8 @@ extern "C" {
 /* #define JSON_LOGGING_ENABLE */
 
 #ifdef JSON_LOGGING_ENABLE
-    #define JSON_LOG(fmt, ...) \
-        do { fprintf(stderr, "[JSON LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define JSON_LOG(...) \
+        do { fprintf(stderr, "[JSON LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define JSON_LOG(...) do { } while (0)
 #endif
@@ -116,12 +116,18 @@ typedef struct {
 } JsonToken;
 
 
+/* Maximum nesting of arrays/objects accepted by json_parse*/
+#ifndef JSON_MAX_DEPTH
+#define JSON_MAX_DEPTH 1000
+#endif
+
 typedef struct {
     char*     input;
     size_t    input_len;
     size_t    position;
     JsonToken current_token;
     JsonError error;
+    size_t    depth;   /* current array/object nesting while parsing */
 } JsonParserState;
 
 

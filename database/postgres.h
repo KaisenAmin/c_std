@@ -24,8 +24,8 @@ extern "C" {
 /* #define POSTGRES_LOGGING_ENABLE */
 
 #ifdef POSTGRES_LOGGING_ENABLE
-    #define POSTGRES_LOG(fmt, ...) \
-        do { fprintf(stderr, "[POSTGRES LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define POSTGRES_LOG(...) \
+        do { fprintf(stderr, "[POSTGRES LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define POSTGRES_LOG(...) do { } while (0)
 #endif
@@ -39,6 +39,7 @@ typedef struct {
     char*    host;
     char*    port;
     PGconn*  connection;
+    char*    conninfo;     /* string given to postgres_connect_uri, kept for postgres_reconnect; NULL otherwise */
 } Postgres;
 
 
@@ -102,7 +103,8 @@ bool             postgres_clear_prepared_statement     (Postgres* pg, const char
 bool             postgres_send_async_query             (Postgres* pg, const char* query);
 PostgresResult*  postgres_get_async_result             (Postgres* pg);
 int              postgres_flush                        (Postgres* pg);
-int              postgres_request_cancle               (Postgres* pg);
+int              postgres_request_cancel               (Postgres* pg);
+int              postgres_request_cancle               (Postgres* pg);   /* old misspelled name, same function */
 
 
 /* ------------------------------------------------------------------ */

@@ -74,7 +74,7 @@ Comprehensive documentation is provided, detailing the functionality and usage o
 **Purpose**: Concatenates one or more string arguments into a heap-allocated result string without a trailing newline.
 **Parameters**:
 - `first_arg`: The first string argument to include.
-- `...`: Additional string arguments to concatenate (with a space between non-adjacent strings).
+- `...`: Additional string arguments to concatenate; a single space is put between every two consecutive arguments.
 **Return Value**: A pointer to the newly allocated string, or `NULL` on allocation failure; the caller must `free` the result.
 **Usage Case**: Use to assemble multi-part strings in memory without immediately printing them.
 
@@ -91,19 +91,19 @@ Comprehensive documentation is provided, detailing the functionality and usage o
 ---
 
 ### `int fmt_scan(char** output)`
-**Purpose**: Reads one whitespace-delimited token from stdin into a heap-allocated string.
+**Purpose**: Reads one whitespace-delimited token from stdin into a heap-allocated string. Leading spaces, tabs and newlines are skipped; the token has no length limit.
 **Parameters**:
 - `output`: A pointer to a `char*` that will be set to the allocated buffer containing the token; the caller must `free` it.
-**Return Value**: `0` on success, or a negative value on error.
+**Return Value**: `0` on success; `-1` (with `*output` set to `NULL`) if stdin ends before a token, or on error. End of input used to return `0` without setting `*output`.
 **Usage Case**: Use for simple single-word input reading from standard input.
 
 ---
 
 ### `int fmt_scanln(char** output)`
-**Purpose**: Reads up to the next newline or whitespace from stdin into a heap-allocated string.
+**Purpose**: Reads the first word of the next line from stdin into a heap-allocated string (leading spaces/tabs skipped, the rest of the line is discarded).
 **Parameters**:
 - `output`: A pointer to a `char*` that will be set to the allocated buffer containing the input; the caller must `free` it.
-**Return Value**: `0` on success, or a negative value on error.
+**Return Value**: `0` on success; `-1` (with `*output` set to `NULL`) for an empty line, end of input, or an error.
 **Usage Case**: Use when reading a line or word from interactive input.
 
 ---
@@ -163,7 +163,7 @@ Comprehensive documentation is provided, detailing the functionality and usage o
 ---
 
 ### `int fmt_fscanln(FILE* stream, const char* format, ...)`
-**Purpose**: Reads a single line from `stream` and parses it according to the format string.
+**Purpose**: Reads a single line from `stream` (however long it is; it used to be split after 1023 bytes) and parses it according to the format string.
 **Parameters**:
 - `stream`: The `FILE*` to read one line from.
 - `format`: The format string specifying how to parse the line.
@@ -218,19 +218,21 @@ int main() {
 ```
 **Result:**
 ```
-0 : سلام دنیا 
-1 : سلام دنیا 
-2 : سلام دنیا 
-3 : سلام دنیا 
-4 : سلام دنیا 
-5 : سلام دنیا 
-6 : سلام دنیا 
-7 : سلام دنیا 
-8 : سلام دنیا 
-9 : سلام دنیا 
------------------ 
-0 : ああ、 -- 1 : ああ、 -- 2 : ああ、 -- 3 : ああ、 -- 4 : ああ、 -- 5 : ああ、 -- 6 : ああ、 -- 7 : ああ、 -- 8 : ああ、 -- 9 : ああ、 --
+0 : سلام دنیا
+1 : سلام دنیا
+2 : سلام دنیا
+3 : سلام دنیا
+4 : سلام دنیا
+5 : سلام دنیا
+6 : سلام دنیا
+7 : سلام دنیا
+8 : سلام دنیا
+9 : سلام دنیا
+-----------------
+0:ああ、 --1:ああ、 --2:ああ、 --3:ああ、 --4:ああ、 --5:ああ、 --6:ああ、 --7:ああ、 --8:ああ、 --9:ああ、 --
 ```
+
+`fmt_println` puts a space between its arguments; `fmt_print` (like Go's `Print`) does not add spaces between string operands.
 
 ---
 
@@ -314,16 +316,17 @@ int main() {
 **Result:**
 ```
 This is a message with Unicode characters: سلام دنیا ああ、こんにちは
- This is a message with Unicode characters: سلام دنیا ああ、こんにちは
- 
+This is a message with Unicode characters: سلام دنیا ああ、こんにちは
+
 Another message: Hello, world! 42
+and 15 امین
 ```
 
 ---
 
 ## Example 4 : how to use `fmt_sprint`
 
-Sprint formats using the default formats for its operands and returns the resulting string. Spaces are added between operands when neither is a string.
+Sprint joins its string operands and returns the resulting string. A single space is put between every two operands (unlike Go's `Sprint`, which adds spaces only when neither operand is a string).
 
 ```c
 #include "fmt/fmt.h"
@@ -621,12 +624,17 @@ You entered: largest
 #include <stdlib.h>
 
 int main() {
-    int age;
-    float salary;
-    char name[50];
+    int age = 0;
+    float salary = 0.0f;
+    char name[50] = "";
 
     fmt_print("Enter your name, age, and salary: ");
-    fmt_scanf("%[^\n]s %d %f", name, &age, &salary);
+    /* "%[^\n]s" read the whole line into name and then failed on the literal
+       's', leaving age and salary uninitialised */
+    if (fmt_scanf("%49s %d %f", name, &age, &salary) != 3) {
+        fmt_println("Invalid input.");
+        return 1;
+    }
 
     char* message = fmt_sprintf("Name: %s, Age: %d, Salary: %.2f", name, age, salary);
     if (message) {
@@ -639,8 +647,8 @@ int main() {
 ```
 **Result:**
 ```
-Enter your name, age, and salary: "amin tahmasebi" 50 20.32
-Scanned data: Name: "amin tahmasebi" 50 20.32, Age: 551, Salary: 227470.88
+Enter your name, age, and salary: amin 50 20.32
+Scanned data: Name: amin, Age: 50, Salary: 20.32
 ```
 
 ---

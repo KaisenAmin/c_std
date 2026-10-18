@@ -4,15 +4,55 @@
  * @class Sysinfo
 */
 
+/* Must precede every #include (sysinfo.h pulls in <stdio.h>): defined after
+   it, popen/gethostname/getaddrinfo were undeclared under -std=c17. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "sysinfo.h"
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include <locale.h>   /* every platform: the POSIX locale fallback uses setlocale */
 
+
+#include "../vector/vector.h"
+
+/* Identity strings live in per-thread static buffers: concurrent callers no
+   longer overwrite each other's result. */
+#define SYSINFO_TLS _Thread_local
+
+/* Data model from the compiler's own type sizes (it was hard-coded as
+   llp64 on Windows and lp64 on Linux, wrong for 32-bit builds). */
+static const char* sysinfo_data_model(void) {
+    if (sizeof(void*) == 8) {
+        return (sizeof(long) == 8) ? "lp64" : "llp64";
+    }
+    return (sizeof(int) == 4) ? "ilp32" : "unknown";
+}
+
+/* Adds `port` to a Vector of int* unless it is already there (listening
+   sockets on IPv4 and IPv6, or TCP and UDP, share a port number). */
+static void sysinfo_push_unique_port(Vector* ports, int port) {
+    if (port <= 0 || port > 65535) {
+        return;
+    }
+    for (size_t i = 0; i < vector_size(ports); ++i) {
+        int** have = (int**)vector_at(ports, i);
+        if (have && *have && **have == port) {
+            return;
+        }
+    }
+    int* port_ptr = (int*)malloc(sizeof(int));
+    if (!port_ptr) {
+        return;
+    }
+    *port_ptr = port;
+    vector_push_back(ports, &port_ptr);
+}
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -24,9 +64,20 @@
 #include <winternl.h>
 #include <tchar.h>
 #include <tlhelp32.h>
-#include <iphlpapi.h>
+/* <ws2tcpip.h> (via <ws2ipdef.h>) before <iphlpapi.h>: the IPv6 TCP / UDP
+   tables (MIB_TCP6TABLE_OWNER_PID, ...) are declared only then (MSVC SDK). */
 #include <ws2tcpip.h>
+#include <iphlpapi.h>
 #include <wbemidl.h>
+#if defined(_MSC_VER)
+#include <intrin.h>   /* __cpuid */
+#endif
+#ifndef RRF_SUBKEY_WOW6464KEY
+#define RRF_SUBKEY_WOW6464KEY 0x00010000   /* read the 64-bit registry view (missing from MinGW headers) */
+#endif
+#if defined(_MSC_VER)
+#define strdup _strdup   /* MSVC deprecates the POSIX name; same function */
+#endif
 
 
 // Define the function pointer type for NtQuerySystemInformation
@@ -39,21 +90,63 @@ typedef NTSTATUS (WINAPI *NtQuerySystemInformationFunc)(
 typedef LONG NTSTATUS;
 typedef NTSTATUS (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
 
+/* The real OS version. GetVersion/GetVersionEx report 6.2 on Windows 8.1
+   and later unless the executable carries a compatibility manifest (MinGW
+   links a default one, MSVC does not), so the three version functions
+   could disagree between toolchains. */
+static bool sysinfo_win_rtl_version(RTL_OSVERSIONINFOEXW* osvi) {
+    memset(osvi, 0, sizeof(*osvi));
+    osvi->dwOSVersionInfoSize = sizeof(*osvi);
+    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+    if (!hNtdll) {
+        return false;
+    }
+    union {
+        FARPROC proc;
+        RtlGetVersionPtr func;
+    } u;
+    u.proc = GetProcAddress(hNtdll, "RtlGetVersion");
+    if (!u.proc) {
+        return false;
+    }
+    return u.func((PRTL_OSVERSIONINFOW)osvi) == 0;
+}
+
+/* UTF-16 -> UTF-8 into a fixed buffer (always NUL-terminated). */
+static void sysinfo_w_to_utf8(const wchar_t* w, char* out, size_t out_size) {
+    if (!out_size) {
+        return;
+    }
+    out[0] = '\0';
+    if (w && WideCharToMultiByte(CP_UTF8, 0, w, -1, out, (int)out_size, NULL, NULL) == 0) {
+        out[0] = '\0';
+    }
+    out[out_size - 1] = '\0';
+}
+
+/* UTF-16 -> newly allocated UTF-8 (NULL on failure). */
+static char* sysinfo_w_to_utf8_dup(const wchar_t* w) {
+    int len = WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
+    if (len <= 0) {
+        return NULL;
+    }
+    char* s = (char*)malloc((size_t)len);
+    if (s && WideCharToMultiByte(CP_UTF8, 0, w, -1, s, len, NULL, NULL) == 0) {
+        free(s);
+        return NULL;
+    }
+    return s;
+}
+
 
 static char* get_windows_version() {
     SYSINFO_LOG("[get_windows_version]: Entering function.");
     
-    static char version[128];
-    DWORD dwVersion = 0;
-    DWORD dwMajorVersion = 0;
-    DWORD dwMinorVersion = 0;
+    static SYSINFO_TLS char version[128];
+    RTL_OSVERSIONINFOEXW osvi;
 
-    dwVersion = GetVersion();
-    dwMajorVersion = (DWORD)(LOBYTE(LOWORD(dwVersion)));
-    dwMinorVersion = (DWORD)(HIBYTE(LOWORD(dwVersion)));
-
-    if (dwVersion < 0x80000000) {
-        sprintf(version, "%ld.%ld", dwMajorVersion, dwMinorVersion);
+    if (sysinfo_win_rtl_version(&osvi)) {
+        snprintf(version, sizeof(version), "%lu.%lu", (unsigned long)osvi.dwMajorVersion, (unsigned long)osvi.dwMinorVersion);
         SYSINFO_LOG("[get_windows_version]: Detected version: %s", version);
     } 
     else {
@@ -76,13 +169,12 @@ static char* get_windows_product_type() {
 static char* get_windows_kernel_version() {
     SYSINFO_LOG("[get_windows_kernel_version]: Entering function.");
 
-    static char kernel_version[128];
-    OSVERSIONINFOEX osvi;
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+    static SYSINFO_TLS char kernel_version[128];
+    RTL_OSVERSIONINFOEXW osvi;
 
-    if (GetVersionEx((OSVERSIONINFO*)&osvi)) {
-        sprintf(kernel_version, "%ld.%ld.%ld", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
+    if (sysinfo_win_rtl_version(&osvi)) {
+        snprintf(kernel_version, sizeof(kernel_version), "%lu.%lu.%lu", (unsigned long)osvi.dwMajorVersion,
+                 (unsigned long)osvi.dwMinorVersion, (unsigned long)osvi.dwBuildNumber);
         SYSINFO_LOG("[get_windows_kernel_version]: Kernel version: %s", kernel_version);
     } 
     else {
@@ -106,9 +198,34 @@ static char* get_windows_kernel_type() {
 static char* get_windows_boot_unique_id() {
     SYSINFO_LOG("[get_windows_boot_unique_id]: Entering function.");
 
-    static char boot_id[128] = {0};
-    ULONGLONG uptime = GetTickCount64();
-    sprintf(boot_id, "%llu", uptime);
+    /* A boot-session id must stay the same for the whole boot. The tick
+       count used before changed on every call. Windows counts boots in
+       Session Manager\Memory Management\PrefetchParameters\BootId; with
+       the MachineGuid it is unique per boot of this machine. Where the
+       counter is missing, the boot time (computed once per process, in
+       seconds) is used instead. */
+    static SYSINFO_TLS char boot_id[128] = {0};
+    if (boot_id[0]) {
+        return boot_id;
+    }
+    DWORD bootCount = 0, size = sizeof(bootCount);
+    char machineGuid[64] = {0};
+    DWORD guidSize = sizeof(machineGuid);
+    LONG r1 = RegGetValueA(HKEY_LOCAL_MACHINE,
+                           "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+                           "BootId", RRF_RT_REG_DWORD, NULL, &bootCount, &size);
+    LONG r2 = RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", "MachineGuid",
+                           RRF_RT_REG_SZ | RRF_SUBKEY_WOW6464KEY, NULL, machineGuid, &guidSize);
+    if (r1 == ERROR_SUCCESS) {
+        snprintf(boot_id, sizeof(boot_id), "%s-%lu", (r2 == ERROR_SUCCESS) ? machineGuid : "boot", (unsigned long)bootCount);
+    }
+    else {
+        FILETIME ft;
+        GetSystemTimeAsFileTime(&ft);
+        ULONGLONG now100ns = ((ULONGLONG)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
+        ULONGLONG bootSeconds = (now100ns / 10000ULL - GetTickCount64()) / 1000ULL;
+        snprintf(boot_id, sizeof(boot_id), "boot-%llu", bootSeconds);
+    }
     
     SYSINFO_LOG("[get_windows_boot_unique_id]: Boot ID: %s", boot_id);
     SYSINFO_LOG("[get_windows_boot_unique_id]: Exiting function.");
@@ -122,7 +239,7 @@ static char* get_windows_cpu_architecture() {
     
     SYSTEM_INFO sysInfo;
     GetSystemInfo(&sysInfo);
-    static char architecture[128];
+    static SYSINFO_TLS char architecture[128];
 
     switch (sysInfo.wProcessorArchitecture) {
         case PROCESSOR_ARCHITECTURE_AMD64:
@@ -152,14 +269,12 @@ static char* get_windows_cpu_architecture() {
 static char* get_windows_machine_host_name() {
     SYSINFO_LOG("[get_windows_machine_host_name]: Entering function.");
 
-    static char hostname[150] = {0};
-    TCHAR infoBuf[150];
-    DWORD bufCharCount = 150;
+    static SYSINFO_TLS char hostname[150] = {0};
+    wchar_t infoBuf[MAX_COMPUTERNAME_LENGTH + 1];
+    DWORD bufCharCount = MAX_COMPUTERNAME_LENGTH + 1;
 
-    if (GetComputerName(infoBuf, &bufCharCount)) {
-        for (int i = 0; i < (int)bufCharCount; i++) {
-            hostname[i] = infoBuf[i];
-        }
+    if (GetComputerNameW(infoBuf, &bufCharCount)) {
+        sysinfo_w_to_utf8(infoBuf, hostname, sizeof(hostname));
         SYSINFO_LOG("[get_windows_machine_host_name]: Host name: %s", hostname);
     } 
     else {
@@ -175,14 +290,17 @@ static char* get_windows_machine_host_name() {
 static char* get_windows_machine_unique_id() {
     SYSINFO_LOG("[get_windows_machine_unique_id]: Entering function.");
 
-    static char unique_id[128] = {0};
+    static SYSINFO_TLS char unique_id[128] = {0};
     HKEY hKey;
-    DWORD bufferSize = sizeof(unique_id);
-    wchar_t buffer[128];
+    wchar_t buffer[128] = {0};
+    DWORD bufferSize = sizeof(buffer) - sizeof(wchar_t);
+    unique_id[0] = '\0';
 
-    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+    /* KEY_WOW64_64KEY: a 32-bit process is otherwise redirected to
+       WOW6432Node, which has no MachineGuid */
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS) {
         if (RegQueryValueExW(hKey, L"MachineGuid", NULL, NULL, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS) {
-            wcstombs(unique_id, buffer, sizeof(unique_id));  // convert wchar_t to char
+            sysinfo_w_to_utf8(buffer, unique_id, sizeof(unique_id));
             SYSINFO_LOG("[get_windows_machine_unique_id]: Retrieved Machine GUID: %s", unique_id);
         }
         RegCloseKey(hKey);
@@ -202,43 +320,35 @@ static void get_windows_pretty_version(char* buffer, size_t buffer_size) {
     SYSINFO_LOG("[get_windows_pretty_version]: Entering function.");
     
     RTL_OSVERSIONINFOEXW osvi;
-    memset(&osvi, 0, sizeof(RTL_OSVERSIONINFOEXW));
-    osvi.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
-    
-    HMODULE hNtdll = GetModuleHandle(TEXT("ntdll.dll"));
-    if (hNtdll == NULL) {
-        SYSINFO_LOG("[get_windows_pretty_version]: Failed to get handle to ntdll.dll.");
+    if (!sysinfo_win_rtl_version(&osvi)) {
+        SYSINFO_LOG("[get_windows_pretty_version]: RtlGetVersion unavailable.");
         snprintf(buffer, buffer_size, "Unknown Windows Version");
         return;
     }
 
-    union {
-        FARPROC proc;
-        RtlGetVersionPtr func;
-    } rtlGetVersionUnion;
-    
-    rtlGetVersionUnion.proc = GetProcAddress(hNtdll, "RtlGetVersion");
-    if (rtlGetVersionUnion.proc == NULL) {
-        SYSINFO_LOG("[get_windows_pretty_version]: Failed to get RtlGetVersion function address.");
-        snprintf(buffer, buffer_size, "Unknown Windows Version");
-        return;
-    }
-
-    rtlGetVersionUnion.func((PRTL_OSVERSIONINFOW)&osvi);
-
+    /* Windows 11 still reports 10.0: only the build number (>= 22000) tells
+       it apart. Server editions have their own names. */
+    bool server = osvi.wProductType != VER_NT_WORKSTATION;
+    DWORD build = osvi.dwBuildNumber;
     const char* productName;
     if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0) {
-        productName = "Windows 10";
-    } 
+        if (server) {
+            productName = build >= 26100 ? "Windows Server 2025" : build >= 20348 ? "Windows Server 2022"
+                        : build >= 17763 ? "Windows Server 2019" : build >= 14393 ? "Windows Server 2016" : "Windows Server";
+        }
+        else {
+            productName = (build >= 22000) ? "Windows 11" : "Windows 10";
+        }
+    }
     else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3) {
-        productName = "Windows 8.1";
-    } 
+        productName = server ? "Windows Server 2012 R2" : "Windows 8.1";
+    }
     else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2) {
-        productName = "Windows 8";
-    } 
+        productName = server ? "Windows Server 2012" : "Windows 8";
+    }
     else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1) {
-        productName = "Windows 7";
-    } 
+        productName = server ? "Windows Server 2008 R2" : "Windows 7";
+    }
     else {
         productName = "Unknown Windows Version";
     }
@@ -253,14 +363,15 @@ static void get_windows_pretty_version(char* buffer, size_t buffer_size) {
 static char* get_windows_build_abi() {
     SYSINFO_LOG("[get_windows_build_abi]: Entering function.");
 
-    static char build_abi[128];
+    static SYSINFO_TLS char build_abi[128];
     const char* architecture = sysinfo_cpu_architecture();
 
     if (!architecture) {
         architecture = "unknown";
     }
   
-    snprintf(build_abi, sizeof(build_abi), "%s-little_endian-llp64", architecture);
+    const char* endian = (strcmp(sysinfo_endianness(), "big") == 0) ? "big_endian" : "little_endian";
+    snprintf(build_abi, sizeof(build_abi), "%s-%s-%s", architecture, endian, sysinfo_data_model());
     SYSINFO_LOG("[get_windows_build_abi]: Final build ABI: %s", build_abi);
     return build_abi;
 }
@@ -281,9 +392,11 @@ static char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
     searchParams.fReturnAuthenticated = TRUE;
     searchParams.fReturnRemembered = TRUE;
     searchParams.fReturnConnected = TRUE;
-    searchParams.fReturnUnknown = TRUE;
-    searchParams.fIssueInquiry = TRUE;
-    searchParams.cTimeoutMultiplier = 4;
+    searchParams.fReturnUnknown = FALSE;
+    /* Known (paired / remembered / connected) devices only, like the Linux
+       backend; an inquiry scan blocked every call for ~5 s. */
+    searchParams.fIssueInquiry = FALSE;
+    searchParams.cTimeoutMultiplier = 0;
 
     deviceInfo.dwSize = sizeof(deviceInfo);
 
@@ -340,12 +453,50 @@ static char** get_sysinfo_list_bluetooth_devices_windows(int* count) {
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <locale.h>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <errno.h>
+
+extern char** environ;
+
+/*
+ * Runs `systemctl is-active --quiet -- <unit>` directly (posix_spawnp, no
+ * shell), so the unit name is passed as one argv element and can never be
+ * interpreted as shell syntax or as a systemctl option. Returns true only when
+ * systemctl exits with status 0 (unit active).
+ */
+static bool linux_systemctl_is_active(const char* unit) {
+    posix_spawn_file_actions_t actions;
+    if (posix_spawn_file_actions_init(&actions) != 0) {
+        return false;
+    }
+    /* Silence systemctl: its stdout/stderr go to /dev/null. */
+    posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+    posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+
+    char* argv[] = { "systemctl", "is-active", "--quiet", "--", (char*)unit, NULL };
+    pid_t pid;
+    int rc = posix_spawnp(&pid, "systemctl", &actions, NULL, argv, environ);
+    posix_spawn_file_actions_destroy(&actions);
+    if (rc != 0) {
+        SYSINFO_LOG("[linux_systemctl_is_active]: posix_spawnp failed (%d).", rc);
+        return false;
+    }
+
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            return false;
+        }
+    }
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
 
 
 static char* get_linux_version() {
     SYSINFO_LOG("[get_linux_version]: Retrieving Linux version.");
     
-    static char version[128];
+    static SYSINFO_TLS char version[128];
     FILE* fp = popen("lsb_release -r | awk '{print $2}'", "r");
 
     if (fp == NULL) {
@@ -371,7 +522,7 @@ static char* get_linux_version() {
 static char* get_linux_product_type() {
     SYSINFO_LOG("[get_linux_product_type]: Retrieving Linux product type.");
 
-    static char product_type[128];
+    static SYSINFO_TLS char product_type[128];
     FILE* fp = popen("lsb_release -i | awk -F: '{print $2}'", "r");
 
     if (fp == NULL) {
@@ -404,7 +555,7 @@ static char* get_linux_product_type() {
 static char* get_linux_kernel_version() {
     SYSINFO_LOG("[get_linux_kernel_version]: Retrieving Linux kernel version.");
     
-    static char kernel_version[128];
+    static SYSINFO_TLS char kernel_version[128];
     struct utsname buffer;
 
     if (uname(&buffer) == 0) {
@@ -423,7 +574,7 @@ static char* get_linux_kernel_version() {
 static char* get_linux_kernel_type() {
     SYSINFO_LOG("[get_linux_kernel_type]: Retrieving Linux kernel type.");
     
-    static char kernel_type[128];
+    static SYSINFO_TLS char kernel_type[128];
     struct utsname buffer;
 
     if (uname(&buffer) == 0) {
@@ -442,7 +593,7 @@ static char* get_linux_kernel_type() {
 static char* get_linux_boot_unique_id() {
     SYSINFO_LOG("[get_linux_boot_unique_id]: Retrieving boot unique ID.");
     
-    static char boot_id[128];
+    static SYSINFO_TLS char boot_id[128];
     FILE* fp = fopen("/proc/sys/kernel/random/boot_id", "r");
 
     if (fp == NULL) {
@@ -468,7 +619,7 @@ static char* get_linux_boot_unique_id() {
 static char* get_linux_cpu_architecture() {
     SYSINFO_LOG("[get_linux_cpu_architecture]: Retrieving CPU architecture.");
     
-    static char architecture[128];
+    static SYSINFO_TLS char architecture[128];
     struct utsname buffer;
 
     if (uname(&buffer) == 0) {
@@ -487,7 +638,7 @@ static char* get_linux_cpu_architecture() {
 static char* get_linux_machine_host_name() {
     SYSINFO_LOG("[get_linux_machine_host_name]: Retrieving machine host name.");
     
-    static char hostname[1024];
+    static SYSINFO_TLS char hostname[1024];
     hostname[1023] = '\0';
 
     if (gethostname(hostname, sizeof(hostname) - 1) != 0) {
@@ -495,31 +646,9 @@ static char* get_linux_machine_host_name() {
         strcpy(hostname, "Unknown_Host_Name");
         return hostname;
     }
-
-    struct addrinfo hints, *info, *p;
-    int gai_result;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;  // IPV4 or IPV6
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_CANONNAME;
-
-    if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0) {
-        SYSINFO_LOG("[get_linux_machine_host_name]: getaddrinfo failed: %s", gai_strerror(gai_result));
-        strcpy(hostname, "Unknown_Host_Name");
-        return hostname;
-    }
-
-    for (p = info; p != NULL; p = p->ai_next) {
-        if (p->ai_canonname) {
-            strncpy(hostname, p->ai_canonname, sizeof(hostname) - 1);
-            hostname[sizeof(hostname) - 1] = '\0';
-            SYSINFO_LOG("[get_linux_machine_host_name]: Canonical name retrieved: %s", hostname);
-            break;
-        }
-    }
-
-    freeaddrinfo(info);
+    /* The kernel's host name, like the Windows computer name. A DNS lookup
+       for the canonical name used to follow: it could block for seconds and,
+       when it failed (offline, container), threw this valid name away. */
     return hostname;
 }
 
@@ -527,7 +656,7 @@ static char* get_linux_machine_host_name() {
 static char* get_linux_machine_unique_id() {
     SYSINFO_LOG("[get_linux_machine_unique_id]: Retrieving machine unique ID.");
     
-    static char unique_id[128];
+    static SYSINFO_TLS char unique_id[128];
     FILE* fp = fopen("/etc/machine-id", "r");
 
     if (fp == NULL) {
@@ -551,7 +680,7 @@ static char* get_linux_machine_unique_id() {
 static char* get_linux_build_abi() {
     SYSINFO_LOG("[get_linux_build_abi]: Retrieving build ABI information.");
 
-    static char build_abi[128];
+    static SYSINFO_TLS char build_abi[128];
     struct utsname buffer;
     const char* machine = "unknown";
     if (uname(&buffer) == 0) {
@@ -569,7 +698,7 @@ static char* get_linux_build_abi() {
 #else
     const char* endian = "big_endian";
 #endif
-    snprintf(build_abi, sizeof(build_abi), "%s-%s-lp64", machine, endian);
+    snprintf(build_abi, sizeof(build_abi), "%s-%s-%s", machine, endian, sysinfo_data_model());
     SYSINFO_LOG("[get_linux_build_abi]: Build ABI: %s", build_abi);
 
     return build_abi;
@@ -581,14 +710,23 @@ char** get_sysinfo_list_bluetooth_devices_linux(int* count) {
     
     *count = 0;
     char** devices = NULL;
-    FILE* pipe = popen("hcitool dev", "r");
+    /* `bluetoothctl devices` lists the known devices as
+       "Device <MAC> <name>". `hcitool dev` (used before) listed the local
+       adapters, header line included, and is gone from current distros. */
+    FILE* pipe = popen("bluetoothctl devices 2>/dev/null", "r");
 
     if (pipe) {
         SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: Successfully opened pipe.");
 
-        char buffer[128];
-        while (fgets(buffer, 128, pipe) != NULL) {
-            buffer[strcspn(buffer, "\r\n")] = 0;  // Remove newline characters
+        char line[512];
+        while (fgets(line, sizeof(line), pipe) != NULL) {
+            line[strcspn(line, "\r\n")] = 0;  // Remove newline characters
+            if (strncmp(line, "Device ", 7) != 0) {
+                continue;
+            }
+            const char* mac = line + 7;
+            const char* name = strchr(mac, ' ');
+            const char* buffer = (name && name[1]) ? name + 1 : mac;   /* name, else the address */
             SYSINFO_LOG("[get_sysinfo_list_bluetooth_devices_linux]: Found device: %s", buffer);
 
             // Grow into a temporary so we can recover from realloc failure
@@ -692,12 +830,8 @@ static char* get_unknown_build_abi() {
 }
 
 
-char** sysinfo_list_bluetooth_devices(int* count) {
-    SYSINFO_LOG("[sysinfo_list_bluetooth_devices]: No Bluetooth devices found.");
-    *count = 0;
-
-    return NULL;
-}
+/* (sysinfo_list_bluetooth_devices for these platforms is handled by the
+   dispatcher below; defining it here too broke the macOS/BSD build.) */
 
 #endif
 
@@ -712,7 +846,7 @@ char** sysinfo_list_bluetooth_devices(int* count) {
  *
  * @return Pointer to a static (do NOT free) string. Never NULL.
  */
-char* sysinfo_product_version(void) {
+const char* sysinfo_product_version(void) {
     SYSINFO_LOG("[sysinfo_product_version]: enter");
 #ifdef _WIN32
     char* version = get_windows_version();
@@ -742,7 +876,7 @@ char* sysinfo_product_version(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_product_type(void) {
+const char* sysinfo_product_type(void) {
     SYSINFO_LOG("[sysinfo_product_type]: enter");
 #ifdef _WIN32
     char* product_type = get_windows_product_type();
@@ -764,7 +898,7 @@ char* sysinfo_product_type(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_kernel_version(void) {
+const char* sysinfo_kernel_version(void) {
     SYSINFO_LOG("[sysinfo_kernel_version]: enter");
 #ifdef _WIN32
     char* kernel_version = get_windows_kernel_version();
@@ -786,7 +920,7 @@ char* sysinfo_kernel_version(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_kernel_type(void) {
+const char* sysinfo_kernel_type(void) {
     SYSINFO_LOG("[sysinfo_kernel_type]: enter");
 #ifdef _WIN32
     char* kernel_type = get_windows_kernel_type();
@@ -804,12 +938,15 @@ char* sysinfo_kernel_type(void) {
  * @brief Return a unique identifier for the current boot session.
  *
  *   - Linux:   `/proc/sys/kernel/random/boot_id`.
- *   - Windows: an integer derived from `GetTickCount64()`.
+ *   - Windows: "<MachineGuid>-<BootId>" from the registry (the boot counter
+ *     kept by the Session Manager); if that is missing, the boot time in
+ *     seconds. Stable for the whole boot (the tick count used before changed
+ *     on every call).
  *   - Other:   the empty string.
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_boot_unique_id(void) {
+const char* sysinfo_boot_unique_id(void) {
     SYSINFO_LOG("[sysinfo_boot_unique_id]: enter");
 #ifdef _WIN32
     char* boot_id = get_windows_boot_unique_id();
@@ -828,7 +965,7 @@ char* sysinfo_boot_unique_id(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_cpu_architecture(void) {
+const char* sysinfo_cpu_architecture(void) {
     SYSINFO_LOG("[sysinfo_cpu_architecture]: enter");
 #ifdef _WIN32
     char* cpu_arch = get_windows_cpu_architecture();
@@ -851,7 +988,7 @@ char* sysinfo_cpu_architecture(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_machine_host_name(void) {
+const char* sysinfo_machine_host_name(void) {
     SYSINFO_LOG("[sysinfo_machine_host_name]: enter");
 #ifdef _WIN32
     char* host_name = get_windows_machine_host_name();
@@ -874,7 +1011,7 @@ char* sysinfo_machine_host_name(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_machine_unique_id(void) {
+const char* sysinfo_machine_unique_id(void) {
     SYSINFO_LOG("[sysinfo_machine_unique_id]: enter");
 #ifdef _WIN32
     char* id = get_windows_machine_unique_id();
@@ -898,8 +1035,8 @@ char* sysinfo_machine_unique_id(void) {
  *
  * @return Pointer to a static buffer. Never NULL.
  */
-char* sysinfo_pretty_product_name(void) {
-    static char pretty_name[256];
+const char* sysinfo_pretty_product_name(void) {
+    static SYSINFO_TLS char pretty_name[256];
     memset(pretty_name, 0, sizeof(pretty_name));
     SYSINFO_LOG("[sysinfo_pretty_product_name]: enter");
 
@@ -925,7 +1062,7 @@ char* sysinfo_pretty_product_name(void) {
  *
  * @return Pointer to a static string. Never NULL.
  */
-char* sysinfo_build_abi(void) {
+const char* sysinfo_build_abi(void) {
     SYSINFO_LOG("[sysinfo_build_abi]: enter");
 #ifdef _WIN32
     char* abi = get_windows_build_abi();
@@ -1055,6 +1192,10 @@ static double get_sysinfo_memory_usage_windows() {
 
 
 static char* get_sysinfo_disk_space_windows(const char* path) {
+    if (!path || !*path) {
+        /* as on Linux: GetDiskFreeSpaceExA(NULL) would report the current drive */
+        return NULL;
+    }
     SYSINFO_LOG("[get_sysinfo_disk_space_windows]: Retrieving disk space for path: %s", path);
 
     ULARGE_INTEGER freeBytesAvailable, totalBytes, totalFreeBytes;
@@ -1087,12 +1228,12 @@ static char* get_sysinfo_system_uptime_windows() {
     ULONGLONG uptimeMillis = GetTickCount64();  
     ULONGLONG uptimeSeconds = uptimeMillis / 1000; 
 
-    unsigned long days = uptimeSeconds / (24 * 3600);
+    unsigned long long days = uptimeSeconds / (24 * 3600);
     uptimeSeconds %= (24 * 3600);
-    unsigned long hours = uptimeSeconds / 3600;
+    unsigned long long hours = uptimeSeconds / 3600;
     uptimeSeconds %= 3600;
-    unsigned long minutes = uptimeSeconds / 60;
-    unsigned long seconds = uptimeSeconds % 60;
+    unsigned long long minutes = uptimeSeconds / 60;
+    unsigned long long seconds = uptimeSeconds % 60;
 
     char* result = (char*)malloc(128);
     if (result == NULL) {
@@ -1100,7 +1241,7 @@ static char* get_sysinfo_system_uptime_windows() {
         return NULL;
     }
 
-    snprintf(result, 128, "%lu days, %lu hours, %lu minutes, %lu seconds", days, hours, minutes, seconds);
+    snprintf(result, 128, "%llu days, %llu hours, %llu minutes, %llu seconds", days, hours, minutes, seconds);
     SYSINFO_LOG("[get_sysinfo_system_uptime_windows]: Successfully retrieved uptime: %s", result);
 
     return result;
@@ -1110,36 +1251,51 @@ static char* get_sysinfo_system_uptime_windows() {
 static void get_running_services_windows(Vector *services) {
     SYSINFO_LOG("[get_running_services_windows]: Retrieving running services.");
 
-    SC_HANDLE scm = OpenSCManager(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
+    SC_HANDLE scm = OpenSCManagerW(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
     if (!scm) {
         SYSINFO_LOG("[get_running_services_windows]: Error - Unable to open Service Control Manager.");
         return;
     }
 
-    DWORD bytesNeeded = 0, servicesReturned = 0, resumeHandle = 0;
-    EnumServicesStatus(scm, SERVICE_WIN32, SERVICE_STATE_ALL, NULL, 0, &bytesNeeded, &servicesReturned, &resumeHandle);
-
-    LPENUM_SERVICE_STATUS serviceStatus = (LPENUM_SERVICE_STATUS)malloc(bytesNeeded);
+    /* SERVICE_ACTIVE: the running services, as documented and as the Linux
+       backend returns (SERVICE_STATE_ALL listed stopped ones too). The list
+       is read in pages: ERROR_MORE_DATA used to discard everything. */
+    DWORD resumeHandle = 0;
+    DWORD bufSize = 64 * 1024;
+    LPENUM_SERVICE_STATUSW serviceStatus = (LPENUM_SERVICE_STATUSW)malloc(bufSize);
     if (!serviceStatus) {
         SYSINFO_LOG("[get_running_services_windows]: Error - Memory allocation failed for service status.");
         CloseServiceHandle(scm);
         return;
     }
-
-    if (EnumServicesStatus(scm, SERVICE_WIN32, SERVICE_STATE_ALL, serviceStatus, bytesNeeded, &bytesNeeded, &servicesReturned, &resumeHandle)) {
+    for (;;) {
+        DWORD bytesNeeded = 0, servicesReturned = 0;
+        BOOL ok = EnumServicesStatusW(scm, SERVICE_WIN32, SERVICE_ACTIVE, serviceStatus, bufSize,
+                                     &bytesNeeded, &servicesReturned, &resumeHandle);
+        DWORD err = ok ? ERROR_SUCCESS : GetLastError();
+        if (!ok && err != ERROR_MORE_DATA) {
+            SYSINFO_LOG("[get_running_services_windows]: Error - Failed to enumerate services.");
+            break;
+        }
         for (DWORD i = 0; i < servicesReturned; i++) {
-            char *serviceName = strdup(serviceStatus[i].lpServiceName);  // Allocate memory for service name
+            char *serviceName = sysinfo_w_to_utf8_dup(serviceStatus[i].lpServiceName);
             if (serviceName) {
                 vector_push_back(services, &serviceName);
                 SYSINFO_LOG("[get_running_services_windows]: Added service: %s", serviceName);
-            } 
-            else {
-                SYSINFO_LOG("[get_running_services_windows]: Error - Memory allocation failed for service name.");
             }
         }
-    } 
-    else {
-        SYSINFO_LOG("[get_running_services_windows]: Error - Failed to enumerate services.");
+        if (ok) {
+            break;   /* that was the last page */
+        }
+        if (servicesReturned == 0 && bytesNeeded > bufSize) {
+            /* not even one entry fit: grow the buffer and retry */
+            LPENUM_SERVICE_STATUSW grown = (LPENUM_SERVICE_STATUSW)realloc(serviceStatus, bytesNeeded);
+            if (!grown) {
+                break;
+            }
+            serviceStatus = grown;
+            bufSize = bytesNeeded;
+        }
     }
 
     free(serviceStatus);
@@ -1149,39 +1305,55 @@ static void get_running_services_windows(Vector *services) {
 
 
 static void get_open_ports_windows(Vector *ports) {
-    SYSINFO_LOG("[get_open_ports_windows]: Retrieving open TCP ports.");
+    SYSINFO_LOG("[get_open_ports_windows]: Retrieving listening TCP and bound UDP ports.");
 
-    PMIB_TCPTABLE tcpTable = NULL;
-    DWORD size = 0;
-
-    if (GetTcpTable(NULL, &size, TRUE) == ERROR_INSUFFICIENT_BUFFER) {
-        tcpTable = (MIB_TCPTABLE*)malloc(size);
-        if (!tcpTable) {
-            SYSINFO_LOG("[get_open_ports_windows]: Error - Memory allocation failed for TCP table.");
-            return;
-        }
-    }
-
-    if (GetTcpTable(tcpTable, &size, TRUE) == NO_ERROR) {
-        for (DWORD i = 0; i < tcpTable->dwNumEntries; i++) {
-            DWORD port = ntohs((u_short)tcpTable->table[i].dwLocalPort);
-            int *port_ptr = (int*)malloc(sizeof(int));
-            if (port_ptr) {
-                *port_ptr = (int)port;
-                vector_push_back(ports, &port_ptr);
-                SYSINFO_LOG("[get_open_ports_windows]: Added port %d to the list.", *port_ptr);
-            } 
-            else {
-                SYSINFO_LOG("[get_open_ports_windows]: Error - Memory allocation failed for port.");
+    /* Listening TCP sockets and bound UDP sockets, IPv4 and IPv6, each port
+       once: the same set the Linux backend gets from "ss -lntu". GetTcpTable
+       returned every IPv4 connection (ESTABLISHED, TIME_WAIT, ...), so client
+       ports were reported as open and listeners appeared repeatedly. */
+    const ULONG families[2] = { AF_INET, AF_INET6 };
+    for (int f = 0; f < 2; ++f) {
+        DWORD size = 0;
+        if (GetExtendedTcpTable(NULL, &size, FALSE, families[f], TCP_TABLE_OWNER_PID_LISTENER, 0) == ERROR_INSUFFICIENT_BUFFER) {
+            void* table = malloc(size);
+            if (table && GetExtendedTcpTable(table, &size, FALSE, families[f], TCP_TABLE_OWNER_PID_LISTENER, 0) == NO_ERROR) {
+                if (families[f] == AF_INET) {
+                    MIB_TCPTABLE_OWNER_PID* t = (MIB_TCPTABLE_OWNER_PID*)table;
+                    for (DWORD i = 0; i < t->dwNumEntries; i++) {
+                        sysinfo_push_unique_port(ports, ntohs((u_short)t->table[i].dwLocalPort));
+                    }
+                }
+                else {
+                    MIB_TCP6TABLE_OWNER_PID* t = (MIB_TCP6TABLE_OWNER_PID*)table;
+                    for (DWORD i = 0; i < t->dwNumEntries; i++) {
+                        sysinfo_push_unique_port(ports, ntohs((u_short)t->table[i].dwLocalPort));
+                    }
+                }
             }
+            free(table);
         }
-    } 
-    else {
-        SYSINFO_LOG("[get_open_ports_windows]: Error - Unable to retrieve TCP table.");
-    }
 
-    free(tcpTable);
-    SYSINFO_LOG("[get_open_ports_windows]: Finished retrieving open TCP ports.");
+        size = 0;
+        if (GetExtendedUdpTable(NULL, &size, FALSE, families[f], UDP_TABLE_OWNER_PID, 0) == ERROR_INSUFFICIENT_BUFFER) {
+            void* table = malloc(size);
+            if (table && GetExtendedUdpTable(table, &size, FALSE, families[f], UDP_TABLE_OWNER_PID, 0) == NO_ERROR) {
+                if (families[f] == AF_INET) {
+                    MIB_UDPTABLE_OWNER_PID* t = (MIB_UDPTABLE_OWNER_PID*)table;
+                    for (DWORD i = 0; i < t->dwNumEntries; i++) {
+                        sysinfo_push_unique_port(ports, ntohs((u_short)t->table[i].dwLocalPort));
+                    }
+                }
+                else {
+                    MIB_UDP6TABLE_OWNER_PID* t = (MIB_UDP6TABLE_OWNER_PID*)table;
+                    for (DWORD i = 0; i < t->dwNumEntries; i++) {
+                        sysinfo_push_unique_port(ports, ntohs((u_short)t->table[i].dwLocalPort));
+                    }
+                }
+            }
+            free(table);
+        }
+    }
+    SYSINFO_LOG("[get_open_ports_windows]: Finished: %zu port(s).", vector_size(ports));
 }
 
 
@@ -1203,7 +1375,10 @@ static void get_disk_partitions_windows(Vector *partitions) {
             if (GetDiskFreeSpaceExA(drive_letter, &free_bytes_available, &total_bytes, &total_free_bytes)) {
                 SysinfoDiskPartition partition;
                 partition.mount_point = strdup(drive_letter);
-                partition.total_size = total_bytes.QuadPart;  
+                if (!partition.mount_point) {
+                    continue;   /* out of memory: no entry with a NULL mount point */
+                }
+                partition.total_size = total_bytes.QuadPart;
                 partition.free_space = total_free_bytes.QuadPart;
 
                 vector_push_back(partitions, &partition);
@@ -1320,9 +1495,9 @@ static char* get_sysinfo_disk_space_linux(const char* path) {
         return NULL;
     }
 
-    unsigned long totalBytes = vfs.f_blocks * vfs.f_frsize;
-    unsigned long availableBytes = vfs.f_bavail * vfs.f_frsize;
-    unsigned long usedBytes = totalBytes - availableBytes;
+    unsigned long long totalBytes = (unsigned long long)vfs.f_blocks * vfs.f_frsize;
+    unsigned long long availableBytes = (unsigned long long)vfs.f_bavail * vfs.f_frsize;
+    unsigned long long usedBytes = totalBytes - availableBytes;
 
     char* result = (char*)malloc(256);
     if (result == NULL) {
@@ -1330,7 +1505,7 @@ static char* get_sysinfo_disk_space_linux(const char* path) {
         return NULL;
     }
 
-    snprintf(result, 256, "Total: %lu MB, Used: %lu MB, Available: %lu MB",
+    snprintf(result, 256, "Total: %llu MB, Used: %llu MB, Available: %llu MB",
              totalBytes / (1024 * 1024), usedBytes / (1024 * 1024), availableBytes / (1024 * 1024));
 
     SYSINFO_LOG("[get_sysinfo_disk_space_linux]: Disk space retrieved successfully for path: %s", path);
@@ -1387,12 +1562,16 @@ static void get_running_services_linux(Vector *services) {
     char buffer[1024];
     while (fgets(buffer, sizeof(buffer), fp)) {
         char serviceName[256];
-        sscanf(buffer, "%255s", serviceName);
+        if (sscanf(buffer, "%255s", serviceName) != 1) {
+            continue;   /* blank line: serviceName would be uninitialized */
+        }
 
         SYSINFO_LOG("[get_running_services_linux]: Found service: %s", serviceName);
 
-        char *service = strdup(serviceName); 
-        vector_push_back(services, &service);
+        char *service = strdup(serviceName);
+        if (service) {
+            vector_push_back(services, &service);
+        }
     }
 
     pclose(fp);
@@ -1409,23 +1588,17 @@ static void get_open_ports_linux(Vector *ports) {
         return;
     }
 
-    char buffer[128];
+    char buffer[256];
     while (fgets(buffer, sizeof(buffer), fp)) {
-        char *ip_port = strchr(buffer, ':');
-        if (ip_port) {
-            int port;
-            sscanf(ip_port + 1, "%d", &port);  // Extract the port number
+        /* The port follows the LAST ':' ("[::1]:47123", "0.0.0.0:22",
+           "*:68"). The first ':' cut IPv6 addresses wrong, the unchecked
+           sscanf then left `port` uninitialized, and the previous line's
+           port was pushed again. */
+        char *ip_port = strrchr(buffer, ':');
+        int port = 0;
+        if (ip_port && sscanf(ip_port + 1, "%d", &port) == 1) {
             SYSINFO_LOG("[get_open_ports_linux]: Found open port: %d", port);
-
-            // Check malloc — the previous code dereferenced port_ptr
-            // unconditionally and would segfault on OOM.
-            int *port_ptr = (int*)malloc(sizeof(int));
-            if (!port_ptr) {
-                SYSINFO_LOG("[get_open_ports_linux]: malloc failed for port; skipping.");
-                continue;
-            }
-            *port_ptr = port;
-            vector_push_back(ports, &port_ptr);
+            sysinfo_push_unique_port(ports, port);
         }
     }
 
@@ -1490,8 +1663,9 @@ static bool check_virtualization_with_systemd() {
  *        machine / hypervisor.
  *
  * Backend:
- *   - Windows: `IsProcessorFeaturePresent(PF_VIRT_FIRMWARE_ENABLED)`
- *     then `PF_HYPERVISOR_PRESENT` (if the SDK exposes it).
+ *   - Windows: the CPUID "hypervisor present" bit (leaf 1, ECX bit 31).
+ *     A host with Hyper-V / VBS enabled (e.g. for WSL2) also runs under the
+ *     hypervisor and reports true.
  *   - Linux:   greps `/proc/cpuinfo` for the `hypervisor` flag and
  *     also falls back to `systemd-detect-virt`.
  *   - Other:   returns false.
@@ -1538,7 +1712,9 @@ static void get_disk_partitions_linux(Vector *partitions) {
     char line[512];
     while (fgets(line, sizeof(line), fp)) {
         char device[256], mount_point[256], fs_type[256];
-        sscanf(line, "%255s %255s %255s", device, mount_point, fs_type);
+        if (sscanf(line, "%255s %255s %255s", device, mount_point, fs_type) != 3) {
+            continue;
+        }
 
         // Skip non-physical partitions (e.g., tmpfs, devtmpfs)
         if (strcmp(fs_type, "tmpfs") == 0 || strcmp(fs_type, "devtmpfs") == 0) {
@@ -1548,8 +1724,8 @@ static void get_disk_partitions_linux(Vector *partitions) {
 
         struct statvfs vfs;
         if (statvfs(mount_point, &vfs) == 0) {
-            unsigned long total = (unsigned long)vfs.f_blocks * (unsigned long)vfs.f_frsize;
-            unsigned long avail = (unsigned long)vfs.f_bavail * (unsigned long)vfs.f_frsize;
+            unsigned long long total = (unsigned long long)vfs.f_blocks * vfs.f_frsize;
+            unsigned long long avail = (unsigned long long)vfs.f_bavail * vfs.f_frsize;
 
             /* Skip pseudo / zero-capacity filesystems (proc, sysfs, cgroup,
                tmpfs, ...): they are not real disk partitions and report a
@@ -1565,6 +1741,9 @@ static void get_disk_partitions_linux(Vector *partitions) {
 
             SysinfoDiskPartition partition;
             partition.mount_point = strdup(mount_point);
+            if (!partition.mount_point) {
+                continue;
+            }
             partition.total_size = total;   // Total size in bytes
             partition.free_space = avail;   // Available space in bytes
 
@@ -1834,7 +2013,7 @@ Vector* sysinfo_process_list(void) {
     SYSINFO_LOG("[sysinfo_process_list]: backend=windows");
 
     HANDLE hProcessSnap;
-    PROCESSENTRY32 pe32;
+    PROCESSENTRY32W pe32;
     hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
@@ -1842,23 +2021,23 @@ Vector* sysinfo_process_list(void) {
         return processes;
     }
 
-    pe32.dwSize = sizeof(PROCESSENTRY32);
-    if (!Process32First(hProcessSnap, &pe32)) {
+    pe32.dwSize = sizeof(pe32);
+    if (!Process32FirstW(hProcessSnap, &pe32)) {
         SYSINFO_LOG("[sysinfo_process_list]: Process32First failed -> returning empty vector");
         CloseHandle(hProcessSnap);
         return processes;
     }
 
     do {
-        char* processName = strdup(pe32.szExeFile);
+        char* processName = sysinfo_w_to_utf8_dup(pe32.szExeFile);   /* UTF-8, also for non-ASCII names */
         if (processName) {
             vector_push_back(processes, &processName);
             SYSINFO_LOG("[sysinfo_process_list]: added '%s'", processName);
         }
         else {
-            SYSINFO_LOG("[sysinfo_process_list]: strdup failed for '%s'", pe32.szExeFile);
+            SYSINFO_LOG("[sysinfo_process_list]: name conversion failed");
         }
-    } while (Process32Next(hProcessSnap, &pe32));
+    } while (Process32NextW(hProcessSnap, &pe32));
 
     CloseHandle(hProcessSnap);
 
@@ -1977,23 +2156,27 @@ Vector* sysinfo_network_interfaces(void) {
                 iface.interface_name = strdup(adapter->AdapterName);
                 iface.ip_address = NULL;
 
-                PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress;
+                PIP_ADAPTER_UNICAST_ADDRESS unicast = iface.interface_name ? adapter->FirstUnicastAddress : NULL;
                 while (unicast) {
                     SOCKADDR* addr = unicast->Address.lpSockaddr;
                     if (addr->sa_family == AF_INET) {
                         struct sockaddr_in* ipv4 = (struct sockaddr_in*)addr;
                         iface.ip_address = strdup(inet_ntoa(ipv4->sin_addr));
-
-                        vector_push_back(interfaces, &iface);
-                        SYSINFO_LOG("[sysinfo_network_interfaces]: '%s' -> %s", iface.interface_name, iface.ip_address);
                         break;
                     }
                     unicast = unicast->Next;
                 }
 
-                if (!iface.ip_address) {
-                    /* no IPv4 address attached: drop the dup */
+                /* push only a complete entry: the element used to be pushed
+                   before the strdup check, then its name freed on failure -
+                   a dangling pointer the deallocator freed again */
+                if (iface.interface_name && iface.ip_address) {
+                    vector_push_back(interfaces, &iface);
+                    SYSINFO_LOG("[sysinfo_network_interfaces]: '%s' -> %s", iface.interface_name, iface.ip_address);
+                }
+                else {
                     free(iface.interface_name);
+                    free(iface.ip_address);
                 }
             }
             adapter = adapter->Next;
@@ -2035,17 +2218,20 @@ Vector* sysinfo_network_interfaces(void) {
         iface.interface_name = strdup(item->ifr_name);
         iface.ip_address = NULL;
         SYSINFO_LOG("[sysinfo_network_interfaces]: candidate '%s'",
-                    iface.interface_name);
+                    iface.interface_name ? iface.interface_name : "(oom)");
 
-        if (ioctl(fd, SIOCGIFADDR, item) == 0) {
+        if (iface.interface_name && ioctl(fd, SIOCGIFADDR, item) == 0) {
             struct sockaddr_in* addr = (struct sockaddr_in*)&item->ifr_addr;
             iface.ip_address = strdup(inet_ntoa(addr->sin_addr));
+        }
+        if (iface.interface_name && iface.ip_address) {
             vector_push_back(interfaces, &iface);
             SYSINFO_LOG("[sysinfo_network_interfaces]: '%s' -> %s",
                         iface.interface_name, iface.ip_address);
         }
         else {
             free(iface.interface_name);
+            free(iface.ip_address);
         }
     }
 
@@ -2099,15 +2285,18 @@ void sysinfo_deallocate_network_interfaces(Vector* interfaces) {
  * `vector_deallocate` by the caller.
  *
  * Backend:
- *   - Windows: GetTcpTable / GetTcp6Table.
- *   - Linux:   parses /proc/net/tcp.
+ *   - Windows: GetExtendedTcpTable (listeners) / GetExtendedUdpTable, IPv4 and IPv6.
+ *   - Linux:   runs `ss -lntu`.
  *   - Other:   returns an empty Vector.
+ *
+ * Each element is an `int*` (malloc'd): read it through `int**` and free it.
  *
  * @code
  *     Vector* ports = sysinfo_open_ports();
  *     for (size_t i = 0; i < vector_size(ports); ++i) {
- *         int* p = (int*)vector_at(ports, i);
+ *         int* p = *(int**)vector_at(ports, i);
  *         printf("open: %d\n", *p);
+ *         free(p);
  *     }
  *     vector_deallocate(ports);
  * @endcode
@@ -2145,14 +2334,24 @@ Vector* sysinfo_open_ports(void) {
 bool sysinfo_is_virtualized(void) {
     SYSINFO_LOG("[sysinfo_is_virtualized/win32]: enter");
 
-    if (IsProcessorFeaturePresent(PF_VIRT_FIRMWARE_ENABLED)) {
-        SYSINFO_LOG("[sysinfo_is_virtualized/win32]: detected via PF_VIRT_FIRMWARE_ENABLED -> true");
-        return true;
-    }
-
-#ifdef PF_HYPERVISOR_PRESENT
-    if (IsProcessorFeaturePresent(PF_HYPERVISOR_PRESENT)) {
-        SYSINFO_LOG("[sysinfo_is_virtualized/win32]: detected via PF_HYPERVISOR_PRESENT -> true");
+    /* CPUID leaf 1, ECX bit 31 is set when the code runs under a hypervisor.
+       PF_VIRT_FIRMWARE_ENABLED (used before) only says that VT-x/AMD-V is
+       enabled in the firmware, which is typical of bare-metal hosts and not
+       of guests. Note that a host with Hyper-V / VBS enabled also runs under
+       the hypervisor and is reported as virtualized. */
+#if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
+    unsigned int ecx = 0;
+#if defined(_MSC_VER)
+    int regs[4];
+    __cpuid(regs, 1);
+    ecx = (unsigned int)regs[2];
+#else
+    unsigned int eax, ebx, edx;
+    __asm__ __volatile__("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(1), "c"(0));
+    (void)eax; (void)ebx; (void)edx;
+#endif
+    if (ecx & (1u << 31)) {
+        SYSINFO_LOG("[sysinfo_is_virtualized/win32]: CPUID hypervisor bit set -> true");
         return true;
     }
 #endif
@@ -2257,16 +2456,25 @@ char* sysinfo_system_locale(void) {
  * @return bool Returns true if the service/process is running, false otherwise.
  */
 bool sysinfo_is_service_running(const char* service_name) {
-    SYSINFO_LOG("[sysinfo_is_service_running]: Checking if service '%s' is running.", service_name);
+    SYSINFO_LOG("[sysinfo_is_service_running]: Checking if service '%s' is running.", service_name ? service_name : "(null)");
 
     #ifdef _WIN32
-        SC_HANDLE scm = OpenSCManager(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
+        if (!service_name || !*service_name) {
+            SYSINFO_LOG("[sysinfo_is_service_running]: empty/NULL service name -> not running.");
+            return false;
+        }
+        SC_HANDLE scm = OpenSCManagerW(NULL, NULL, SC_MANAGER_ENUMERATE_SERVICE);
         if (!scm) {
             SYSINFO_LOG("Error: Unable to open Service Control Manager.");
             return false;
         }
 
-        SC_HANDLE service = OpenService(scm, service_name, SERVICE_QUERY_STATUS);
+        wchar_t wname[257];
+        if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, service_name, -1, wname, 257) == 0) {
+            CloseServiceHandle(scm);
+            return false;   /* not UTF-8 or longer than a service name can be */
+        }
+        SC_HANDLE service = OpenServiceW(scm, wname, SERVICE_QUERY_STATUS);
         if (!service) {
             SYSINFO_LOG("Error: Unable to open service '%s'.", service_name);
             CloseServiceHandle(scm);
@@ -2297,11 +2505,9 @@ bool sysinfo_is_service_running(const char* service_name) {
             SYSINFO_LOG("[sysinfo_is_service_running]: empty/NULL service name -> not running.");
             return false;
         }
-        char command[256];
-        snprintf(command, sizeof(command), "systemctl is-active --quiet %s", service_name);
-        int result = system(command);
-
-        if (result == 0) {
+        /* No shell: the name reaches systemctl as a single argument, so names
+           such as "x; rm -rf ~" or "--help" cannot inject commands or options. */
+        if (linux_systemctl_is_active(service_name)) {
             SYSINFO_LOG("[sysinfo_is_service_running]: Service '%s' is running (systemctl check).", service_name);
             return true;
         }
@@ -3027,13 +3233,13 @@ long sysinfo_process_count(void) {
         return -1;
     }
 
-    PROCESSENTRY32 pe;
-    pe.dwSize = sizeof(PROCESSENTRY32);
+    PROCESSENTRY32W pe;
+    pe.dwSize = sizeof(pe);
     long count = 0;
-    if (Process32First(snap, &pe)) {
+    if (Process32FirstW(snap, &pe)) {
         do {
             count++;
-        } while (Process32Next(snap, &pe));
+        } while (Process32NextW(snap, &pe));
     }
 
     CloseHandle(snap);
@@ -3325,9 +3531,9 @@ unsigned long long sysinfo_process_memory_bytes(void) {
  * printf("CPU: %s\n", sysinfo_cpu_model());
  * @endcode
  */
-char* sysinfo_cpu_model(void) {
+const char* sysinfo_cpu_model(void) {
     SYSINFO_LOG("[sysinfo_cpu_model]: Entering function.");
-    static char model[256];
+    static SYSINFO_TLS char model[256];
     strcpy(model, "unknown");
 
 #ifdef _WIN32

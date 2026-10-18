@@ -180,7 +180,7 @@ To use the Array library in your project, include the `array.h` header file in y
 ---
 
 ### `array_fill(arr, value)`
-**Purpose**: Fills every element of the array with the given value.
+**Purpose**: Fills every element of the array with the given value. `value` is evaluated exactly once, like `std::array::fill` (it used to be evaluated per element, so `array_fill(a, k++)` stored `k, k+1, ...`).
 
 **Parameters**:
   - `arr`: A fixed-size array instance.
@@ -452,7 +452,7 @@ To use the Array library in your project, include the `array.h` header file in y
 ---
 
 ### `array_is_equal(arr1, arr2)`
-**Purpose**: Compares two fixed-size arrays lexicographically to determine if they are equal.
+**Purpose**: Compares two fixed-size arrays element by element to determine if they are equal. Integer and floating-point elements are compared by value (so `0.0` equals `-0.0`, and `NaN` equals nothing); other element types (structs, pointers) byte by byte.
 
 **Parameters**:
   - `arr1`: The first array.
@@ -469,7 +469,7 @@ To use the Array library in your project, include the `array.h` header file in y
 ---
 
 ### `array_is_less(arr1, arr2)`
-**Purpose**: Checks if the first array is lexicographically less than the second.
+**Purpose**: Checks if the first array is lexicographically less than the second. Integer and floating-point elements are ordered by value, like `std::array` (the old byte comparison put `{256}` before `{1}` and `{-1}` after `{0}`); other element types are ordered by their bytes.
 
 **Parameters**:
   - `arr1`: The first array.

@@ -22,8 +22,8 @@
 
 #ifdef HTTP_LOGGING_ENABLE
     #include <stdio.h>
-    #define HTTP_LOG(fmt, ...) \
-        do { fprintf(stderr, "[HTTP] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define HTTP_LOG(...) \
+        do { fprintf(stderr, "[HTTP] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define HTTP_LOG(...) do { } while (0)
 #endif
@@ -126,6 +126,7 @@ char*        http_get_cookie                 (HttpRequest* req, const char* name
 
 void         http_set_status                 (HttpResponse* response, int code, const char* message);
 void         http_set_body                   (HttpResponse* response, const char* body);
+void         http_set_body_bytes             (HttpResponse* response, const void* data, size_t length, const char* content_type);
 void         http_set_html_body              (HttpResponse* response, const char* html);
 void         http_set_json_body              (HttpResponse* response, JsonElement* json);
 void         http_add_header                 (HttpResponse* response, const char* header, const char* value);
@@ -162,7 +163,8 @@ void         http_stop_server                (void);
 void         http_handle_request             (TcpSocket client_socket);
 void           http_server_set_worker_count  (int n);          
 void           http_server_set_client_timeout(long timeout_ms); 
-unsigned short http_server_get_port          (void);           
+unsigned short http_server_get_port          (void);
+bool         http_server_wait_listening      (long timeout_ms);
 
 
 /* ------------------------------------------------------------------ */

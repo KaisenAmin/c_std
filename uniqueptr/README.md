@@ -855,7 +855,7 @@ static void map_deleter(void* p) {
     map_deallocate((Map*)p); 
 }
 
-static int cmp_ints(const KeyType a, const KeyType b) {
+static int cmp_ints(const void* a, const void* b) {
     return *(const int*)a - *(const int*)b;
 }
 

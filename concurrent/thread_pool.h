@@ -9,8 +9,8 @@
  * everything drains with `thread_pool_wait`.
  */
 
-#ifndef _THREADPOOL_H_
-#define _THREADPOOL_H_
+#ifndef THREAD_POOL_H_
+#define THREAD_POOL_H_
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -21,8 +21,8 @@
 
 #ifdef THREAD_POOL_LOGGING_ENABLE
     #include <stdio.h>
-    #define THREAD_POOL_LOG(fmt, ...) \
-        do { fprintf(stderr, "[THREAD_POOL] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define THREAD_POOL_LOG(...) \
+        do { fprintf(stderr, "[THREAD_POOL] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define THREAD_POOL_LOG(...) do { } while (0)
 #endif
@@ -88,4 +88,4 @@ int          thread_pool_thread_count         (ThreadPool* pool);
 bool         thread_pool_wait_timeout         (ThreadPool* pool, long timeout_ms);
 
 
-#endif /* _THREADPOOL_H_ */
+#endif /* THREAD_POOL_H_ */

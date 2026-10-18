@@ -20,14 +20,14 @@ The logging system is designed to provide a flexible and configurable way to han
 - **Keyword Filtering:** Display only logs containing specific keywords.
 - **Custom Formatting:** Define how log messages are structured.
 - **Rate Limiting:** Limit the number of log messages within a specified time frame. Only active when **both** `rate_limit_interval > 0` **and** `rate_limit_count > 0`.
-- **Log Rotation:** Automatically archive and rotate log files when they reach a certain size. Operates on the currently-active log file (not a hardcoded path), so it works correctly after `log_set_file_path` / `log_redirect_output`.
+- **Log Rotation:** Automatically archive and rotate log files when they reach a certain size (`log_set_max_file_size`, checked after every record written to the file), or rotate on demand with `log_rotate`. Operates on the currently-active log file (not a hardcoded path), so it works correctly after `log_set_file_path` / `log_redirect_output`.
 - **Custom Filters:** Apply custom logic to filter which messages should be logged.
 - **Suspend/Resume Logging:** Temporarily pause and resume logging.
 
 ## Function Explanations
 
 ### `Log* log_init(void)`
-**Purpose**: Creates and initializes a `Log` configuration object with default settings (level=DEBUG, output=BOTH, timestamp=disabled, all levels visible, rate-limiting disabled).
+**Purpose**: Creates and initializes a `Log` configuration object with default settings (level=DEBUG, output=BOTH, timestamp=disabled, all levels visible, rate-limiting disabled). The file output goes to `log.txt` in the current directory, opened for appending: an existing `log.txt` is kept and new lines are added at its end (it used to be emptied by every `log_init`). Call `log_set_output(config, LOG_OUTPUT_CONSOLE)` if you do not want the file.
 **Parameters**: None.
 **Return Value**: A pointer to the new `Log`, or `NULL` if allocation fails.
 **Usage Case**: Call once at program startup before any logging to obtain a configuration handle; check the return value for `NULL` before proceeding.
@@ -44,7 +44,7 @@ The logging system is designed to provide a flexible and configurable way to han
 ---
 
 ### `void log_message(Log* config, LogLevel level, const char* message, ...)`
-**Purpose**: Emits a formatted log message at the given level, respecting all active filters (suspend state, minimum level, visibility, keyword filter, custom filter, and rate limit).
+**Purpose**: Emits a formatted log message at the given level, respecting all active filters (suspend state, minimum level, visibility, keyword filter, custom filter, and rate limit, in that order). The rate limit counts only messages that passed the keyword and custom filters, so filtered-out noise no longer uses up the quota of the messages that match.
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
 - `level`: Severity level of the message (e.g., `LOG_LEVEL_DEBUG`, `LOG_LEVEL_INFO`).
@@ -82,7 +82,7 @@ The logging system is designed to provide a flexible and configurable way to han
 ---
 
 ### `bool log_set_output(Log* config, LogOutput output)`
-**Purpose**: Sets the destination for log messages to console, file, or both, opening `log.txt` automatically if file output is requested and no file is currently open.
+**Purpose**: Sets the destination for log messages to console, file, or both, opening the current log file (`log.txt` unless `log_set_file_path` chose another) for appending if file output is requested and no file is currently open.
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
 - `output`: Desired destination: `LOG_OUTPUT_CONSOLE`, `LOG_OUTPUT_FILE`, or `LOG_OUTPUT_BOTH`.
@@ -92,17 +92,17 @@ The logging system is designed to provide a flexible and configurable way to han
 ---
 
 ### `bool log_set_file_path(Log* config, const char* newFilePath)`
-**Purpose**: Closes the currently open log file (if any) and opens a new one at `newFilePath`, falling back to console output if the new file cannot be opened.
+**Purpose**: Opens a new log file at `newFilePath` and, once that worked, closes the current one. On any failure the current file, its path and the output setting stay as they were (the old file used to be closed first, so a bad path silently stopped file logging).
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
-- `newFilePath`: Path to the new log file; must not be `NULL` or empty.
-**Return Value**: `true` on success, `false` if `config` is `NULL`, `newFilePath` is `NULL`/empty, or the new file cannot be opened.
+- `newFilePath`: Path to the new log file; must not be `NULL` or empty, and shorter than `LOG_MAX_PATH` (1024) bytes.
+**Return Value**: `true` on success, `false` if `config` is `NULL`, `newFilePath` is `NULL`/empty/too long, or the new file cannot be opened.
 **Usage Case**: Redirect log output to a different file at runtime, such as rolling to a date-stamped filename at midnight.
 
 ---
 
 ### `bool log_redirect_output(Log* config, const char* newFilePath)`
-**Purpose**: Closes the current log file and redirects all future output to the file at `newFilePath` without restarting the application.
+**Purpose**: Redirects all future output to the file at `newFilePath` without restarting the application. The new file is opened first; the current one is closed only when that worked, so a failure leaves logging as it was.
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
 - `newFilePath`: Path to the new log file destination.
@@ -118,17 +118,17 @@ The logging system is designed to provide a flexible and configurable way to han
 - `newLogPath`: Destination path for the archived (rotated) log file.
 - `maxSize`: Maximum allowed file size in bytes before rotation is triggered.
 **Return Value**: `true` if rotation was performed or the file is still under the limit, `false` on any I/O error.
-**Usage Case**: Call periodically (e.g., on each log write or via a timer) to cap log file size and archive older entries automatically.
+**Usage Case**: A one-shot check: call it when you want (e.g. from a timer) to cap the file size and archive older entries; it remembers nothing. For rotation that happens by itself, use `log_set_max_file_size`.
 
 ---
 
 ### `bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat)`
-**Purpose**: Sets a maximum file size and a `strftime`-style archive name pattern; if the current file exceeds `maxSize` on each call it is renamed using the pattern and a new file is opened.
+**Purpose**: Sets a maximum file size and a `strftime`-style archive name pattern. The setting is kept: after every record written to the file the size is checked, and once it reaches `maxSize` the file is renamed using the pattern and a new, empty file is started at the same path (it used to be a one-shot check at the time of the call). An archive name that already exists gets a `.1`, `.2`, ... suffix, so several rotations within one second keep every archive. The current file is checked right away too.
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
-- `maxSize`: Maximum size in bytes before the file is archived; must be greater than zero.
-- `archivePathFormat`: A `strftime`-style format string for the archive filename (e.g., `"log_%Y%m%d_%H%M%S.txt"`).
-**Return Value**: `true` on success, `false` if `config` or `config->file_writer` is `NULL`, `maxSize` is zero, or a file operation fails.
+- `maxSize`: Maximum size in bytes before the file is archived; `0` turns automatic rotation off.
+- `archivePathFormat`: A `strftime`-style format string for the archive filename (e.g., `"log_%Y%m%d_%H%M%S.txt"`); may be `NULL` only when `maxSize` is `0`.
+**Return Value**: `true` when the setting was stored (and the immediate check, if a file is open, succeeded); `false` if `config` is `NULL`, the pattern is `NULL`/empty/too long while `maxSize` is not `0`, or the immediate rotation failed.
 **Usage Case**: Enable automatic time-stamped log archiving so that log files never grow beyond a fixed size.
 
 ---
@@ -162,7 +162,7 @@ The logging system is designed to provide a flexible and configurable way to han
 ---
 
 ### Thread safety
-Every `Log` created by `log_init` is **thread-safe**: an internal recursive mutex serializes `log_message` and all file-handle operations (`log_rotate`, `log_redirect_output`, `log_set_file_path`, `log_set_max_file_size`, `log_set_output`, `log_flush`) and protects the per-level counters. Concurrent logging from many threads produces interleave-free lines and exact counts. You can share one `Log*` across all threads; no external locking is required. (Timestamps use the reentrant `localtime_r` / `localtime_s`.)
+Every `Log` created by `log_init` is **thread-safe**: an internal recursive mutex serializes `log_message`, all file-handle operations (`log_rotate`, `log_redirect_output`, `log_set_file_path`, `log_set_max_file_size`, `log_set_output`, `log_flush`) and every setter (level, format, filters, visibility, rate limit, suspend/resume, ...), and protects the per-level counters. A custom filter and its `user_data` are replaced together, so a filter is never called with another filter's data. Concurrent logging from many threads produces interleave-free lines and exact counts. You can share one `Log*` across all threads; no external locking is required. (Timestamps use the reentrant `localtime_r` / `localtime_s`.)
 
 ---
 
@@ -181,7 +181,7 @@ Every `Log` created by `log_init` is **thread-safe**: an internal recursive mute
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
 - `format`: Format string with three `%s` placeholders (e.g., `"%s [%s] - %s"`).
-**Return Value**: `true` on success, `false` if `config` or `format` is `NULL`.
+**Return Value**: `true` on success, `false` if `config` or `format` is `NULL`, or the format holds anything but `%s` (at most three) and `%%` (a `%d`, `%n` or a fourth `%s` would read arguments that are never passed).
 **Usage Case**: Tailor log record layout to match the expected input format of a log aggregation or parsing tool.
 
 ---
@@ -208,10 +208,10 @@ Every `Log` created by `log_init` is **thread-safe**: an internal recursive mute
 ---
 
 ### `bool log_set_verbose(Log* config, bool verbose)`
-**Purpose**: Sets verbose mode: `true` lowers the minimum level to `LOG_LEVEL_DEBUG` (all messages visible); `false` raises it to `LOG_LEVEL_WARN` (only WARN, ERROR, FATAL visible).
+**Purpose**: Sets verbose mode: `true` makes `DEBUG` and `INFO` visible, `false` hides them (the same as two `log_toggle_level_visibility` calls). The minimum level from `log_set_log_level` is not changed and still applies, so after `log_set_log_level(config, LOG_LEVEL_ERROR)` DEBUG stays hidden even in verbose mode.
 **Parameters**:
 - `config`: Pointer to the `Log` configuration object.
-- `verbose`: `true` to enable verbose output, `false` to restrict to warnings and above.
+- `verbose`: `true` to show DEBUG and INFO, `false` to hide them.
 **Return Value**: `true` on success, `false` if `config` is `NULL`.
 **Usage Case**: Toggle between a developer-friendly verbose mode and a quieter production mode with a single call.
 
@@ -1090,6 +1090,7 @@ int main() {
     /* One logger shared by every thread — no external locking required. */
     Thread    t[THREADS];
     WorkerArg args[THREADS];
+    
     for (int i = 0; i < THREADS; ++i) {
         args[i].logger = logger;
         args[i].id     = i;
@@ -1114,7 +1115,7 @@ int main() {
  [INFO] - thread 2 message 2
 total INFO logged: 12
 ```
-> **Why it matters:** the internal mutex makes `log_message` and the file-handle operations atomic, so you can hand the same `Log*` to every worker thread without wrapping calls in your own lock. Verified race-free under Helgrind.
+> **Why it matters:** the internal mutex makes `log_message` and the file-handle operations atomic, so you can hand the same `Log*` to every worker thread without wrapping calls in your own lock. Checked race-free with ThreadSanitizer, with threads logging while others call every setter.
 
 ---
 

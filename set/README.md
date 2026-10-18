@@ -15,7 +15,7 @@ Unlike the `map` module — which stores opaque, caller-owned pointers — `set`
 - **Ordered & unique:** elements are kept sorted by your comparator; duplicates are rejected (like `std::set`).
 - **Red-Black Tree:** guaranteed O(log n) insert / erase / find / `lower_bound` / `upper_bound`.
 - **Value semantics:** the set owns deep copies of your elements — no dangling references.
-- **Pooled — scales to 10M+ elements:** nodes are carved from large slabs (a node *pool* with a free-list), so building a big set makes **far fewer than one `malloc` per element**, tear-down is O(slabs) (not one `free` per node), and erased slots are recycled. The element is stored *inline* in its node, and the per-element footprint matches a typed container (element alignment is inferred from `elemSize`, so a generic `void*` set wastes no space). Building **10 million** `int`s and destroying them takes ~2 s and ~470 MB — comparable to `std::set`. Proven by `tests/test_set_memory.c`.
+- **Pooled — scales to 10M+ elements:** nodes are carved from large slabs (a node *pool* with a free-list), so building a big set makes **far fewer than one `malloc` per element**, tear-down is O(slabs) (not one `free` per node), and erased slots are recycled. The element is stored *inline* in its node, and the per-element footprint matches a typed container (element alignment is inferred from `elemSize`, so a generic `void*` set wastes no space). Building **10 million** `int`s and destroying them took ~2 s and ~470 MB in our measurements — comparable to `std::set` (the benchmark program is not part of the repository).
 - **Bidirectional iterators:** forward (`begin`/`end`) and reverse (`rbegin`/`rend`), with `increment`/`decrement`.
 - **Set algebra:** `union`, `intersection`, `difference`, `symmetric_difference`, plus `is_subset` / `is_superset` / `is_disjoint`.
 - **Lexicographic comparison:** the full `is_equal` / `is_less` / … family, like `std::set`'s relational operators.
@@ -1223,6 +1223,7 @@ X != Y : yes
 #include <stdio.h>
 #include <string.h>
 #include "set/set.h"
+#include "fmt/fmt.h"
 
 
 typedef struct { 
@@ -1485,7 +1486,7 @@ unique sorted: 1 2 5 7 9  | count=5 max=9
 #include "set/set.h"
 
 
-static int cmp_key(const KeyType a, const KeyType b) {     /* map keys are char* */
+static int cmp_key(const void* a, const void* b) {     /* map keys are char* */
     return strcmp((const char*)a, (const char*)b);
 }
 static int cmp_str(const void* a, const void* b) {         /* set elements are char* */

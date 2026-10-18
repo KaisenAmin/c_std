@@ -50,12 +50,29 @@ gcc -std=c17 -O2 main.c uuid/uuid.c secrets/secrets.c -lbcrypt -o main.exe
 
 MD5 and SHA-1 are embedded, so **no OpenSSL is required**.
 
+### The `UUID` name and `<windows.h>`
+
+The type is `Uuid` (used throughout this README); `UUID` is an alias for it. Windows declares its own `UUID` (a `GUID`) in `<rpcdce.h>`, which
+`<windows.h>` pulls in, and the two names used to collide in any translation
+unit that had both (including one with c_std's `unittest.h`, `encoding.h`,
+`serial_port.h`, `concurrent.h` or the network headers). Now both include
+orders compile:
+
+- `<windows.h>` (or one of those headers) first: `UUID` keeps meaning Windows'
+  `GUID`; write `Uuid` for this library's values.
+- `uuid.h` first: `UUID` is this library's type, and a later `<windows.h>`
+  does not redeclare it (Windows RPC functions such as `UuidCreate` then take a
+  `Uuid*`, which has the same 16-byte layout).
+
+Portable code can simply use `Uuid` everywhere. Define
+`CSTD_UUID_NO_ALIAS` to never declare `UUID`.
+
 ## Function Descriptions
 
-### `UUID uuid_v4(void)`
+### `Uuid uuid_v4(void)`
 
 **Purpose**:  
-Generates a version-4 (random) UUID — 122 bits come from the cross-platform `secrets` CSPRNG, with the version nibble set to 4 and the variant to RFC 4122.
+Generates a version-4 (random) UUID — 122 bits come from the cross-platform `secrets` CSPRNG (BCryptGenRandom on Windows, `getrandom()` with a `/dev/urandom` fallback on Linux), with the version nibble set to 4 and the variant to RFC 4122. If the OS generator fails, the bits come from a clock/counter fallback that is not cryptographically random but still never repeats a UUID within the process (the same applies to `uuid_v7`).
 
 **Parameters**:  
 None.
@@ -68,10 +85,10 @@ Use when you need an unpredictable identifier and don't care about ordering — 
 
 ---
 
-### `UUID uuid_v7(void)`
+### `Uuid uuid_v7(void)`
 
 **Purpose**:  
-Generates a version-7 (Unix-time-ordered) UUID. The first 48 bits are the current Unix timestamp in milliseconds (big-endian), so v7 UUIDs sort chronologically; the remaining bits are random.
+Generates a version-7 (Unix-time-ordered) UUID. The first 48 bits are the current Unix timestamp in milliseconds (big-endian), so v7 UUIDs sort chronologically. The next 42 free bits are a counter (RFC 9562 §6.2 method 1, as in Python 3.14): it starts at a random value in every new millisecond and is incremented for each UUID made in the same millisecond, so within one process every `uuid_v7()` compares greater than the previous one, also across threads (it used to be in random order within a millisecond, out of order about half the time). If the clock goes backwards the last timestamp is reused, and if the counter runs out the timestamp moves 1 ms ahead. The last 32 bits are random. Across processes the order holds at millisecond granularity.
 
 **Parameters**:  
 None.
@@ -84,7 +101,7 @@ The recommended choice for new database primary keys and log identifiers — RFC
 
 ---
 
-### `UUID uuid_v3(UUID namespace_id, const char *name)`
+### `Uuid uuid_v3(Uuid namespace_id, const char *name)`
 
 **Purpose**:  
 Generates a deterministic version-3 (name-based, **MD5**) UUID by hashing the 16 bytes of `namespace_id` followed by `name`. The same namespace and name always produce the same UUID.
@@ -101,7 +118,7 @@ Derive a stable ID from a known string for interoperability with existing MD5-ba
 
 ---
 
-### `UUID uuid_v5(UUID namespace_id, const char *name)`
+### `Uuid uuid_v5(Uuid namespace_id, const char *name)`
 
 **Purpose**:  
 Like `uuid_v3` but hashes with **SHA-1** (the first 16 bytes of the 20-byte digest). Deterministic, and the recommended name-based version.
@@ -118,7 +135,7 @@ Stable IDs for URLs, file paths, or account names — anywhere the same input mu
 
 ---
 
-### `UUID uuid_nil(void)`
+### `Uuid uuid_nil(void)`
 
 **Purpose**:  
 Returns the Nil UUID — all 128 bits zero (`00000000-0000-0000-0000-000000000000`).
@@ -134,7 +151,7 @@ Use as a sentinel "no UUID" value, e.g. the default in a struct before a real UU
 
 ---
 
-### `UUID uuid_max(void)`
+### `Uuid uuid_max(void)`
 
 **Purpose**:  
 Returns the Max UUID — all 128 bits one (`ffffffff-ffff-ffff-ffff-ffffffffffff`), defined by RFC 9562.
@@ -150,7 +167,7 @@ A convenient upper sentinel for range comparisons over UUIDs.
 
 ---
 
-### `UUID uuid_namespace_dns(void)`
+### `Uuid uuid_namespace_dns(void)`
 
 **Purpose**:  
 Returns the predefined DNS namespace UUID (`6ba7b810-9dad-11d1-80b4-00c04fd430c8`) from RFC 9562 Appendix C.
@@ -166,7 +183,7 @@ Pass as the `namespace_id` argument to `uuid_v3` / `uuid_v5` when the name is a 
 
 ---
 
-### `UUID uuid_namespace_url(void)`
+### `Uuid uuid_namespace_url(void)`
 
 **Purpose**:  
 Returns the predefined URL namespace UUID (`6ba7b811-9dad-11d1-80b4-00c04fd430c8`).
@@ -182,7 +199,7 @@ Use with `uuid_v3` / `uuid_v5` when the name is a URL.
 
 ---
 
-### `UUID uuid_namespace_oid(void)`
+### `Uuid uuid_namespace_oid(void)`
 
 **Purpose**:  
 Returns the predefined ISO OID namespace UUID (`6ba7b812-9dad-11d1-80b4-00c04fd430c8`).
@@ -198,7 +215,7 @@ Use with `uuid_v3` / `uuid_v5` when the name is an ISO object identifier.
 
 ---
 
-### `UUID uuid_namespace_x500(void)`
+### `Uuid uuid_namespace_x500(void)`
 
 **Purpose**:  
 Returns the predefined X.500 namespace UUID (`6ba7b814-9dad-11d1-80b4-00c04fd430c8`).
@@ -214,7 +231,7 @@ Use with `uuid_v3` / `uuid_v5` when the name is an X.500 distinguished name.
 
 ---
 
-### `void uuid_to_string(UUID u, char out[UUID_STR_LEN])`
+### `void uuid_to_string(Uuid u, char out[UUID_STR_LEN])`
 
 **Purpose**:  
 Writes the canonical lowercase string form `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, plus a NUL terminator, into `out`.
@@ -231,7 +248,7 @@ Render a UUID for logging, JSON, HTTP headers, or database text columns.
 
 ---
 
-### `void uuid_to_urn(UUID u, char out[UUID_URN_LEN])`
+### `void uuid_to_urn(Uuid u, char out[UUID_URN_LEN])`
 
 **Purpose**:  
 Writes the URN form `urn:uuid:xxxxxxxx-…`, plus a NUL terminator, into `out`.
@@ -248,7 +265,7 @@ Emit the RFC 9562 URN form where a namespaced URI is expected.
 
 ---
 
-### `bool uuid_from_string(const char *str, UUID *out)`
+### `bool uuid_from_string(const char *str, Uuid *out)`
 
 **Purpose**:  
 Parses a UUID string into `out`. Accepts the canonical hyphenated form, a bare 32-hex-digit form, a brace-wrapped `{…}` form, and the `urn:uuid:…` form, all case-insensitively; hyphens are optional and ignored.
@@ -265,7 +282,7 @@ Read a UUID back from configuration, a request parameter, or a database column.
 
 ---
 
-### `void uuid_to_bytes(UUID u, unsigned char out[16])`
+### `void uuid_to_bytes(Uuid u, unsigned char out[16])`
 
 **Purpose**:  
 Copies the 16 raw bytes (big-endian field order) of `u` into `out`.
@@ -282,7 +299,7 @@ Store a UUID as a compact 16-byte BLOB or transmit it on the wire.
 
 ---
 
-### `UUID uuid_from_bytes(const unsigned char in[16])`
+### `Uuid uuid_from_bytes(const unsigned char in[16])`
 
 **Purpose**:  
 Builds a UUID from 16 raw bytes (big-endian field order). The bytes are stored verbatim — no version/variant fixing — so it round-trips exactly with `uuid_to_bytes`.
@@ -298,7 +315,7 @@ Reconstruct a UUID from a 16-byte BLOB read from storage or the network.
 
 ---
 
-### `int uuid_version(UUID u)`
+### `int uuid_version(Uuid u)`
 
 **Purpose**:  
 Returns the version nibble of `u` (octet 6, high 4 bits).
@@ -314,7 +331,7 @@ Branch on how a UUID was generated, or validate that an external UUID is the ver
 
 ---
 
-### `UuidVariant uuid_variant(UUID u)`
+### `UuidVariant uuid_variant(Uuid u)`
 
 **Purpose**:  
 Returns the variant of `u` (the top bits of octet 8).
@@ -330,7 +347,7 @@ Verify that a UUID uses the standard RFC 4122 / 9562 variant before relying on i
 
 ---
 
-### `bool uuid_is_nil(UUID u)`
+### `bool uuid_is_nil(Uuid u)`
 
 **Purpose**:  
 Tests whether `u` is the Nil UUID (all 16 bytes zero).
@@ -346,7 +363,7 @@ Detect an unset/sentinel UUID before using it.
 
 ---
 
-### `bool uuid_is_max(UUID u)`
+### `bool uuid_is_max(Uuid u)`
 
 **Purpose**:  
 Tests whether `u` is the Max UUID (all 16 bytes `0xFF`).
@@ -362,7 +379,7 @@ Detect the Max sentinel, e.g. as an open-ended range upper bound.
 
 ---
 
-### `bool uuid_equal(UUID a, UUID b)`
+### `bool uuid_equal(Uuid a, Uuid b)`
 
 **Purpose**:  
 Compares two UUIDs for byte-for-byte equality.
@@ -379,10 +396,12 @@ Membership tests, deduplication, and asserting that two IDs refer to the same en
 
 ---
 
-### `int uuid_compare(UUID a, UUID b)`
+### `int uuid_compare(Uuid a, Uuid b)`
 
 **Purpose**:  
-Lexicographically orders two UUIDs by their 16 big-endian bytes. For v7 UUIDs this is also chronological order.
+Lexicographically orders two UUIDs by their 16 big-endian bytes. For v7 UUIDs this is also chronological order (creation order within one process).
+
+`uuid_compare` and `uuid_variant` are macros for the linked functions `cstd_uuid_compare` / `cstd_uuid_variant`, because Linux libuuid (util-linux) exports functions with the same names and other signatures. Define `CSTD_UUID_NO_FUNC_ALIAS` to drop the two macros (for example in a file that also includes libuuid's header) and call the `cstd_` names. Note that with the c_std root on the include path, `#include <uuid/uuid.h>` finds this header, not libuuid's; give libuuid's directory first (or add the c_std root with `-idirafter`) in code that needs both.
 
 **Parameters**:  
 - `a`: The first UUID.
@@ -396,7 +415,7 @@ Use as the comparator when sorting UUIDs or keying an ordered container — v7 U
 
 ---
 
-### `unsigned long long uuid_v7_timestamp_ms(UUID u)`
+### `unsigned long long uuid_v7_timestamp_ms(Uuid u)`
 
 **Purpose**:  
 Extracts the embedded Unix-millisecond timestamp from a version-7 UUID.
@@ -425,8 +444,8 @@ int main(void) {
 
     /* Random (v4) and time-ordered (v7) — values differ every run, so we
        report their version/variant rather than the (random) text. */
-    UUID a = uuid_v4();
-    UUID b = uuid_v7();
+    Uuid a = uuid_v4();
+    Uuid b = uuid_v7();
     
     fmt_printf("v4: version=%d  rfc4122=%d\n", uuid_version(a), uuid_variant(a) == UUID_VARIANT_RFC4122);
     fmt_printf("v7: version=%d  rfc4122=%d\n", uuid_version(b), uuid_variant(b) == UUID_VARIANT_RFC4122);
@@ -437,7 +456,7 @@ int main(void) {
     fmt_printf("v5(dns, python.org): %s\n", s);
 
     /* Parse a canonical string back into a UUID and round-trip it. */
-    UUID parsed;
+    Uuid parsed;
     if (uuid_from_string("6ba7b810-9dad-11d1-80b4-00c04fd430c8", &parsed)) {
         uuid_to_string(parsed, s);
         fmt_printf("parsed namespace DNS: %s\n", s);
@@ -478,8 +497,8 @@ int main(void) {
     fmt_printf("v5:  %s\n", s);
 
     /* Same namespace + name always yields the same UUID. */
-    UUID a = uuid_v5(uuid_namespace_url(), "https://example.com");
-    UUID b = uuid_v5(uuid_namespace_url(), "https://example.com");
+    Uuid a = uuid_v5(uuid_namespace_url(), "https://example.com");
+    Uuid b = uuid_v5(uuid_namespace_url(), "https://example.com");
 
     fmt_printf("v5 stable across calls: %d\n", uuid_equal(a, b));
 
@@ -507,7 +526,7 @@ urn: urn:uuid:6ba7b810-9dad-11d1-80b4-00c04fd430c8
 #include "fmt/fmt.h"
 
 int main(void) {
-    UUID u;
+    Uuid u;
 
     /* All five input forms parse to the same UUID. */
     const char* forms[] = {
@@ -528,7 +547,7 @@ int main(void) {
     fmt_printf("all 5 forms parse to NS_DNS: %d\n", all_match);
     fmt_printf("reject \"not-a-uuid\": %d\n", uuid_from_string("not-a-uuid", &u) == false);
 
-    UUID v5 = uuid_v5(uuid_namespace_dns(), "python.org");
+    Uuid v5 = uuid_v5(uuid_namespace_dns(), "python.org");
     fmt_printf("v5 version=%d rfc4122=%d\n", uuid_version(v5), uuid_variant(v5) == UUID_VARIANT_RFC4122);
 
     unsigned char raw[16];
@@ -561,11 +580,11 @@ that makes them excellent database primary keys.
 
 /* qsort comparator over UUID using uuid_compare. */
 static int cmp(const void* a, const void* b) {
-    return uuid_compare(*(const UUID*)a, *(const UUID*)b);
+    return uuid_compare(*(const Uuid*)a, *(const Uuid*)b);
 }
 
 /* Build a v7-shaped UUID with a chosen millisecond timestamp. */
-static UUID v7_with_ts(unsigned long long ms) {
+static Uuid v7_with_ts(unsigned long long ms) {
     unsigned char b[16] = {0};
 
     for (int i = 0; i < 6; i++) {
@@ -580,8 +599,8 @@ static UUID v7_with_ts(unsigned long long ms) {
 
 int main(void) {
     /* Three v7 UUIDs created out of timestamp order. */
-    UUID arr[3] = { v7_with_ts(3000), v7_with_ts(1000), v7_with_ts(2000) };
-    qsort(arr, 3, sizeof(UUID), cmp);
+    Uuid arr[3] = { v7_with_ts(3000), v7_with_ts(1000), v7_with_ts(2000) };
+    qsort(arr, 3, sizeof(Uuid), cmp);
 
     fmt_printf("sorted timestamps: %llu %llu %llu\n",
                uuid_v7_timestamp_ms(arr[0]),
@@ -590,7 +609,7 @@ int main(void) {
 
     fmt_printf("ascending: %d\n", uuid_compare(arr[0], arr[1]) < 0 && uuid_compare(arr[1], arr[2]) < 0);
 
-    UUID now = uuid_v7();
+    Uuid now = uuid_v7();
     fmt_printf("live v7 is version 7: %d\n", uuid_version(now) == 7);
     
     return 0;

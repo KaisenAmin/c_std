@@ -23,7 +23,7 @@ This library provides a simple and efficient way to read, manipulate, and write 
 To use this library, include the `csv.h` header in your C project and compile the `csv.c` source file along with your project files.
 
 ```bash
-gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_reader.c file_io/file_writer.c
+gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_reader.c file_io/file_writer.c string/std_string.c encoding/encoding.c -I.
 ```
 
 > **Note:** The examples below reference two sample files: `sources/test.csv` (a CSV with a header row followed by data rows) and `sources/test_10.csv` (ten data rows without a header row).
@@ -87,7 +87,7 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
 ---
 
 ### `void csv_file_read(CsvFile *file, const char *filename)`
-**Purpose**: Reads the contents of a CSV file into a `CsvFile` structure.
+**Purpose**: Reads the contents of a CSV file into a `CsvFile` structure, one row per line. Lines may be of any length (lines over 1023 bytes used to be split into extra rows).
 **Parameters**:
   - `file`: Pointer to the `CsvFile` structure where the CSV contents will be stored.
   - `filename`: The name of the CSV file to read.
@@ -97,7 +97,7 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
 ---
 
 ### `void csv_file_write(const CsvFile *file, const char *filename)`
-**Purpose**: Writes the contents of a `CsvFile` structure to a specified file.
+**Purpose**: Writes the contents of a `CsvFile` structure to a specified file, byte-identical to `csv_file_export_to_string` (cells longer than 2047 bytes used to be cut).
 **Parameters**:
   - `file`: Pointer to the `CsvFile` structure containing the CSV data.
   - `filename`: The name of the file where the CSV data will be written.
@@ -106,12 +106,12 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
 
 ---
 
-### `void csv_file_append_row(CsvFile *file, CsvRow *row)`
+### `bool csv_file_append_row(CsvFile *file, CsvRow *row)`
 **Purpose**: Appends a new row to a `CsvFile` structure.
 **Parameters**:
   - `file`: Pointer to the `CsvFile` structure where the row will be appended.
-  - `row`: Pointer to the `CsvRow` structure to append.
-**Return Value**: None.
+  - `row`: Pointer to the `CsvRow` structure to append. The file takes ownership of it.
+**Return Value**: `true` on success. `false` if `file` or `row` is `NULL`, if the row already belongs to this file (it is left alone), or if memory runs out — then the row is destroyed, since ownership passed to the file (it used to be dropped and leaked).
 **Usage Case**: Checks if the `CsvFile` has enough capacity to hold the new row; if not, reallocates memory for the `rows` array doubling its capacity. Appends the new row at the end of the `rows` array. Logs the resizing and appending process, including memory allocation checks and errors.
 
 ---
@@ -146,7 +146,7 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
 ---
 
 ### `CsvRow* csv_row_read_next(FileReader *reader, char delimiter)`
-**Purpose**: Reads the next row from a file using a `FileReader` object.
+**Purpose**: Reads the next row (one line, of any length) from a file using a `FileReader` object.
 **Parameters**:
   - `reader`: Pointer to the `FileReader` object used to read the file.
   - `delimiter`: The character used to separate fields in the row.
@@ -162,7 +162,7 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
   - `colIndex`: The index at which to insert the new column.
   - `colData`: Pointer to the `CsvRow` containing the data for the new column.
 **Return Value**: None.
-**Usage Case**: Inserts a column into each row of the `CsvFile` at the specified index. If a row does not have a corresponding value in `colData`, a `NULL` value is inserted. Handles memory reallocation to ensure enough space for the new column and logs the process, including memory allocation and shifting of cells to make room.
+**Usage Case**: Inserts a column into each row of the `CsvFile` at the specified index. If a row does not have a corresponding value in `colData`, an empty cell is inserted; rows shorter than `colIndex` are padded with empty cells so the new value lands in that column. `colIndex` may be at most the width of the widest row (append as the last column); larger indexes are rejected. Handles memory reallocation to ensure enough space for the new column and logs the process, including memory allocation and shifting of cells to make room.
 
 ---
 
@@ -200,7 +200,7 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
 **Parameters**:
   - `file`: Pointer to the `CsvFile` to search.
   - `searchTerm`: The term to search for in the cells of the CSV file.
-**Return Value**: An array of pointers to the rows that contain the search term. The array is null-terminated. If no matches are found, the function returns `NULL`.
+**Return Value**: An array of pointers to the rows that contain the search term, terminated by a `NULL` entry. If no row matches, the array holds only the terminator (it is not `NULL`); `NULL` is returned only for invalid arguments or out of memory. Free the array (not the rows) with `free`.
 **Usage Case**: Searches through each row and each cell in the CSV file for the given search term. Allocates memory to store pointers to matching rows and resizes the array to match the exact number of found rows. Logs memory allocation and search progress for each row and cell, as well as when matches are found. The function breaks the inner loop after finding the first occurrence in a row, ensuring only the first match per row is returned.
 
 ---
@@ -241,7 +241,7 @@ gcc -std=c17 -O2 -o my_program my_program.c csv/csv.c fmt/fmt.c file_io/file_rea
 **Parameters**:
   - `file`: Pointer to the `CsvFile` to be exported.
 **Return Value**: A JSON string representing the CSV file. The caller is responsible for freeing the allocated memory.
-**Usage Case**: Loops through each row and cell of the CSV file, converting the data into JSON format. Each cell is represented as a JSON field (`"fieldX": "value"`) where `X` is the cell's index. The function dynamically allocates memory for the JSON string and ensures proper formatting (e.g., commas, curly braces). Logs all operations and errors, including memory allocation failures.
+**Usage Case**: Loops through each row and cell of the CSV file, converting the data into JSON format. Each cell is represented as a JSON field (`"fieldX": "value"`) where `X` is the cell's index; quotes, backslashes and control characters in the cells are escaped, so the output is valid JSON (they used to be copied verbatim). The function dynamically allocates memory for the JSON string.Logs all operations and errors, including memory allocation failures.
 
 ---
 
@@ -310,7 +310,7 @@ The seven functions below turn the library into a usable mini-DataFrame — in-m
   - `ascending`: `true` for A→Z, `false` for Z→A.
   - `skipHeader`: `true` keeps row 0 pinned (almost always what you want when the file has a header).
 **Return Value**: None.
-**Usage Case**: Uses `qsort` under the hood; not stable across equal keys. Missing cells are treated as empty string for ordering. Comparison is `strcmp`, so numeric strings sort lexicographically (`"10" < "2"`). For numeric sort, project the column first or use `csv_file_filter` to build a typed view.
+**Usage Case**: Stable merge sort (rows with equal keys keep their order) with no shared state, so different files can be sorted on different threads (it used `qsort` with file-static comparator state before).Missing cells are treated as empty string for ordering. Comparison is `strcmp`, so numeric strings sort lexicographically (`"10" < "2"`). For numeric sort, project the column first or use `csv_file_filter` to build a typed view.
 
 ---
 
@@ -366,7 +366,7 @@ The plain `csv_file_write` / `csv_file_export_to_string` / `csv_file_load_from_s
 **Parameters**:
   - `file`: Source file. May be NULL (returns NULL).
 **Return Value**: Newly-allocated NUL-terminated CSV string (caller frees with `free()`), or NULL on bad input / OOM. An empty file yields `""`.
-**Usage Case**: Produce valid CSV from arbitrary user data. For data with no special characters the output is byte-identical to `csv_file_export_to_string`.
+**Usage Case**: Produce valid CSV from arbitrary user data. For data with no special characters the output is byte-identical to `csv_file_export_to_string`, except that a row holding a single empty field is written as `""` (an empty line would be skipped by the reader, so the row used to be lost in a write/read round trip).
 
 ### `bool csv_file_write_rfc4180(const CsvFile *file, const char *filename)`
 **Purpose**: Write the file to disk with RFC 4180 quoting. Serializes via `csv_file_export_to_string_rfc4180`, then writes the bytes in binary mode so the on-disk output is byte-identical across platforms and matches the in-memory string exactly.
@@ -385,7 +385,7 @@ The plain `csv_file_write` / `csv_file_export_to_string` / `csv_file_load_from_s
 **Usage Case**: Parse CSV produced by spreadsheets or any RFC 4180 source where fields may contain commas, quotes, or embedded newlines.
 
 ### `bool csv_file_read_rfc4180(CsvFile *file, const char *filename)`
-**Purpose**: Read a CSV file from disk with full RFC 4180 semantics. Slurps the whole file in binary mode (preserving CRLF and embedded newlines exactly) and parses it with `csv_file_load_from_string_rfc4180`. Fixes both the legacy `csv_file_read` 1024-byte line truncation and its inability to handle multi-line quoted records.
+**Purpose**: Read a CSV file from disk with full RFC 4180 semantics. Slurps the whole file in binary mode (preserving CRLF and embedded newlines exactly) and parses it with `csv_file_load_from_string_rfc4180`. Unlike the line-based legacy `csv_file_read`, it handles quoted records that span several lines.
 **Parameters**:
   - `file`: Target CsvFile (already created via `csv_file_create`).
   - `filename`: Path of the CSV file to read.
@@ -567,9 +567,9 @@ int main() {
 Order ID,Product Name,Column Header,Customer,Quantity,Discount,Tax,Profit,Region,Category,Rating
 1,"Eldon Base for stackable storage shelf, platinum",Data 1,Muhammed MacIntyre,3,-213.25,38.94,35,Nunavut,Storage & Organization,0.8
 2,"1.7 Cubic Foot Compact ""Cube"" Office Refrigerators",Data 2,Barry French,293,457.81,208.16,68.02,Nunavut,Appliances,0.58
-3,"Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl",(null),Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
-4,R380,(null),Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
-5,Holmes HEPA Air Purifier,(null),Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
+3,"Cardinal Slant-D Ring Binder, Heavy Gauge Vinyl",,Barry French,293,46.71,8.69,2.99,Nunavut,Binders and Binder Accessories,0.39
+4,R380,,Clay Rozendal,483,1198.97,195.99,3.99,Nunavut,Telephones and Communication,0.58
+5,Holmes HEPA Air Purifier,,Carlos Soltero,515,30.94,21.78,5.94,Nunavut,Appliances,0.5
 ```
 
 ---

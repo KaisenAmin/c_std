@@ -23,8 +23,8 @@ extern "C" {
 /* #define FILE_WRITER_LOGGING_ENABLE */
 
 #ifdef FILE_WRITER_LOGGING_ENABLE
-    #define FILE_WRITER_LOG(fmt, ...) \
-        do { fprintf(stderr, "[FILE_WRITER LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define FILE_WRITER_LOG(...) \
+        do { fprintf(stderr, "[FILE_WRITER LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define FILE_WRITER_LOG(...) do { } while (0)
 #endif

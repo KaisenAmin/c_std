@@ -22,8 +22,8 @@ extern "C" {
 /* #define TURTLE_LOGGING_ENABLE */
 
 #ifdef TURTLE_LOGGING_ENABLE
-    #define TURTLE_LOG(fmt, ...) \
-        do { fprintf(stderr, "[TURTLE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define TURTLE_LOG(...) \
+        do { fprintf(stderr, "[TURTLE LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define TURTLE_LOG(...) do { } while (0)
 #endif
@@ -55,6 +55,14 @@ typedef struct {
     int     fontSize;
     Color   color;
 } TurtleText;
+
+/* A finished fill (turtle_end_fill): the outline triangulated, in the fill
+   colour it had when it was closed. */
+typedef struct {
+    Vector2* triangles;      /* 3 vertices per triangle */
+    int      triangleCount;
+    Color    color;
+} TurtleFill;
 
 /* Single turtle's state (one cursor in the world). */
 typedef struct {
@@ -100,6 +108,11 @@ typedef struct {
     TurtleText* texts;
     int         textCount;
     int         textCapacity;
+
+    TurtleFill* fills;          /* every completed fill, drawn under the lines */
+    int         fillCount;
+    int         fillCapacity;
+    Vector2     homePosition;   /* the start position, where turtle_home goes */
 } Turtle;
 
 /* User draw callback invoked once per frame by `turtle_done`. */

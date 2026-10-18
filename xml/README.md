@@ -30,6 +30,8 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 The documentation includes detailed descriptions of all the functions provided by the library, along with usage examples. It covers basic XML operations such as parsing XML files, creating elements, and traversing nodes in an XML document.
 
 
+**Out of memory**: an allocation failure anywhere inside the parser or serializer makes the call fail normally — `xml_parse_file` / `xml_parse_string` / `xml_create_document` / `xml_to_string` return `NULL`, and `xml_set_element_text` / `xml_set_element_attribute` leave the element unchanged — instead of crashing. Memory that a failed call had already taken may leak. File names are UTF-8 on every platform (opened with the wide-character API on Windows).
+
 ### Function Descriptions:
 
 ### `XmlDocument* xml_parse_file(const char* filename)`
@@ -169,14 +171,14 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `const char* xml_get_element_text(XmlNode* element)`
+### `char* xml_get_element_text(XmlNode* element)`
 
 **Purpose**: Retrieves the text content of an XML element.
 
 **Parameters**:
 - `element`: The XML element from which to retrieve the text.
 
-**Return Value**: The text content of the element, or `NULL` if the element has no text.
+**Return Value**: A `malloc`'d copy of the element's text, which the caller must `free()`, or `NULL` if the element has no text. (The return type used to be `const char*`, like the borrowed-pointer getters, which hid that the copy must be freed.)
 
 **Usage Case**: Use to extract the text value from a leaf element.
 
@@ -323,7 +325,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `node`: Element to enumerate. May be `NULL`.
 - `out_count`: Receives the number of children (excluding the trailing `NULL`). May be `NULL` if you don't care.
 
-**Return Value**: A newly-allocated, `NULL`-terminated array of wrappers, or `NULL` on bad input / allocation failure. Caller frees every wrapper with `free()` AND the array itself with `free()`. `tag_name` and `text` inside each wrapper are borrowed pointers into the document — do not free them individually.
+**Return Value**: A newly-allocated, `NULL`-terminated array of wrappers, or `NULL` on bad input / allocation failure. The caller frees only the array itself with `free()`: the wrappers are owned by the document and released by `xml_deallocate_document` (freeing them yourself as well is a double free). `tag_name` and `text` inside each wrapper are borrowed pointers into the document — do not free them individually.
 
 **Usage Case**: Use when you need to iterate over all direct children of a node.
 
@@ -338,7 +340,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `attr_name`: Attribute name (case-sensitive). Must NOT be `NULL`.
 - `attr_value`: Attribute value to match. `NULL` means "any value".
 
-**Return Value**: A newly-allocated `XmlNode*` wrapper around the match (caller frees with `free()`), or `NULL` if no match / bad input. The root itself is checked first, so a root carrying the attribute is a valid result.
+**Return Value**: An `XmlNode*` wrapper around the match, owned by the document (released by `xml_deallocate_document`; do not `free()` it), or `NULL` if no match / bad input. The root itself is checked first, so a root carrying the attribute is a valid result.
 
 **Usage Case**: Use to locate an element by a known attribute value (e.g., find element with `id="b2"`).
 
@@ -420,6 +422,7 @@ The documentation includes detailed descriptions of all the functions provided b
 ```c
 #include "xml/xml.h"
 #include "fmt/fmt.h"
+#include <stdlib.h>
 
 int main() {
     XmlDocument* doc = xml_parse_file("sample.xml");
@@ -430,7 +433,9 @@ int main() {
 
         XmlNode* author = xml_find_element_by_tag(root, "author");
         if (author) {
-            fmt_printf("Author: %s\n", xml_get_element_text(author));
+            char* author_text = xml_get_element_text(author);   /* malloc'd copy */
+            fmt_printf("Author: %s\n", author_text);
+            free(author_text);
         }
     }
 

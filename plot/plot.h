@@ -15,20 +15,27 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include "raylib.h"
+/* raylib.h is included by plot.c only: no type in this header comes from it,
+   and exposing it clashed with matrix.h (struct Matrix) and with every
+   header that includes <windows.h> (Rectangle, CloseWindow, DrawText, ...). */
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* Smallest canvas side, in pixels: the axes keep 60 px of padding on every
+   side (plot_set_size rejects less, plot_set_window_size clamps to it). */
+#define PLOT_MIN_SIZE 200
+
 
 /* #define PLOT_LOGGING_ENABLE */
 
 #ifdef PLOT_LOGGING_ENABLE
-    #define PLOT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[PLOT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define PLOT_LOG(...) \
+        do { fprintf(stderr, "[PLOT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
-    #define PLOT_LOG(fmt, ...) do { } while (0)
+    #define PLOT_LOG(...) do { } while (0)
 #endif
 
 

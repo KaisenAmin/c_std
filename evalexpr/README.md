@@ -39,9 +39,14 @@ To use the EvalExpr library in your project:
 2. **Compile Your Code:**
    Use a command similar to the following (adjust paths as needed):
    ```bash
-   gcc -std=c11 -O2 -o evalexpr_example evalexpr.c main.c -lm
+   gcc -std=c11 -O2 -I. -o evalexpr_example evalexpr/evalexpr.c main.c -lm
    ```
-   The `-lm` flag is required to link the math library for operations such as `pow()`.
+   The `-lm` flag is required to link the math library for operations such as `pow()`. The module is plain C11/C17 (no POSIX functions such as `strdup`), so strict `-std=c11` builds work on glibc too.
+
+**Notes on input**:
+- Numbers always use `.` as the decimal point (`3.5`, `.5`, `1e-3`, hexadecimal `0x1A`), whatever the `LC_NUMERIC` locale is: a program that called `setlocale(LC_ALL, "")` under a decimal-comma locale used to get a tokenize error for every fraction.
+- A literal too small for a normal `double` (`1e-320`) becomes the subnormal value (or `0`); one too large (`1e400`) is an `EVAL_EXPR_ERROR_TOKENIZE`.
+- An expression may hold at most `MAX_TOKENS` (128) tokens (numbers, operators, parentheses, unary signs); a longer one fails with `EVAL_EXPR_ERROR_TOKENIZE`.
 
 ---
 
@@ -83,7 +88,7 @@ To use the EvalExpr library in your project:
 **Purpose**: Converts an infix arithmetic expression to its Reverse Polish Notation (RPN) form and returns it as a heap-allocated string.
 **Parameters**:
 - `expr`: The null-terminated expression string.
-**Return Value**: A dynamically allocated null-terminated string containing the space-separated RPN tokens, or `NULL` on failure. The caller must `free` the returned string.
+**Return Value**: A dynamically allocated null-terminated string containing the space-separated RPN tokens, or `NULL` on failure. The caller must `free` the returned string. There is no length limit (the text used to be cut silently at 1 KB), and every number is written with as many digits as it takes (15 to 17 significant) to read back as the same `double` (`3.14159265`, not `3.14159`; `0.1` stays `0.1`), with `.` as the decimal point.Unary minus is written as `neg`.
 **Usage Case**: Use for debugging, logging, or when you need the RPN representation for further processing.
 
 ---
@@ -93,7 +98,7 @@ To use the EvalExpr library in your project:
 **Parameters**:
 - `expr`: The null-terminated expression string.
 - `numTokens`: A pointer to an `int` that receives the number of tokens found.
-**Return Value**: A heap-allocated array of heap-allocated strings, one per token, or `NULL` on failure. Release it with `eval_expr_free_tokens` (or, manually, `free` each string and then the array itself).
+**Return Value**: A heap-allocated array of heap-allocated strings, one per token, or `NULL` on failure. Release it with `eval_expr_free_tokens` (or, manually, `free` each string and then the array itself). Number tokens use the same round-trip text as `eval_expr_to_rpn_string`.
 **Usage Case**: Use for debugging or when you need programmatic access to the individual tokens.
 
 ---
@@ -109,7 +114,7 @@ To use the EvalExpr library in your project:
 ---
 
 ### `int eval_expr_is_valid(const char* expr)`
-**Purpose**: Checks whether an arithmetic expression is syntactically valid by attempting to tokenize it and convert it to RPN.
+**Purpose**: Checks whether an arithmetic expression is syntactically valid: it must tokenize, operands and binary operators must alternate (starting and ending with an operand, unary minus only before an operand) and parentheses must balance and not be empty. `"2 3"`, `"2 3 +"`, `"(2)(3)"`, `"()"` and `""` are invalid; the evaluation functions reject the same inputs with `EVAL_EXPR_ERROR_SHUNTING`. Runtime errors such as division by zero are not detected here.
 **Parameters**:
 - `expr`: The null-terminated expression string to validate.
 **Return Value**: `1` if the expression is valid, or `0` if it is not.

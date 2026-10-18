@@ -382,7 +382,7 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 **Purpose**: Returns the ISO 8601 week number (1–53). If `yearNumber` is non-NULL, it is updated only when the week belongs to an adjacent year.
 **Parameters**:
 - `date`: Pointer to the Date object.
-- `yearNumber`: Output pointer updated for edge-case weeks that belong to an adjacent year; may be NULL.
+- `yearNumber`: Output pointer that receives the year the week belongs to (the date's year, or the adjacent year for a week at the edge of the year); may be NULL.
 **Return Value**: ISO week number (1–53), or -1 on error.
 **Usage Case**: Use for week-based scheduling or reporting.
 
@@ -967,9 +967,9 @@ int main() {
 
 **Result**
 ```
-Week number for 2024-04-15: 16, Year: 0
+Week number for 2024-04-15: 16, Year: 2024
 ```
-> Note: `Year` is 0 because `date_week_number` only updates `yearNumber` for edge-case weeks that belong to an adjacent year; for normal mid-year weeks the caller's initial value is preserved.
+> Note: `yearNumber` always receives the year the week belongs to: the date's own year for mid-year weeks (2024 here), or the adjacent year for a week at the edge of the year (for example ISO week 1 of the next year in late December).
 
 ---
 

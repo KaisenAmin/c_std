@@ -23,8 +23,8 @@ extern "C" {
 /* #define MATRIX_LOGGING_ENABLE */
 
 #ifdef MATRIX_LOGGING_ENABLE
-    #define MATRIX_LOG(fmt, ...) \
-        do { fprintf(stderr, "[MATRIX LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define MATRIX_LOG(...) \
+        do { fprintf(stderr, "[MATRIX LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define MATRIX_LOG(...) do { } while (0)
 #endif

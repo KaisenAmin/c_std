@@ -25,8 +25,8 @@ extern "C" {
 /* #define HASHMAP_LOGGING_ENABLE */
 
 #ifdef HASHMAP_LOGGING_ENABLE
-    #define HASHMAP_LOG(fmt, ...) \
-        do { fprintf(stderr, "[HASHMAP LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define HASHMAP_LOG(...) \
+        do { fprintf(stderr, "[HASHMAP LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define HASHMAP_LOG(...) do { } while (0)
 #endif
@@ -41,8 +41,8 @@ typedef void* KeyType;
 typedef void* ValueType;
 
 /* Callbacks: hash, comparator, value/key deallocator. */
-typedef size_t (*HashFunc)          (const KeyType);
-typedef int    (*CompareFuncHashMap)(const KeyType, const KeyType);
+typedef size_t (*HashFunc)          (const void*);
+typedef int    (*CompareFuncHashMap)(const void*, const void*);
 typedef void   (*ValueDeallocFunc)  (void*);
 
 
@@ -64,6 +64,8 @@ struct HashMapIterator {
     HashMap*     map;
     size_t       bucket_index;
     HashMapNode* current_node;
+    bool         bucket_local;  /* set by begin/end_bucket: increment stops at the end of
+                                   this bucket's chain instead of moving to the next bucket */
 };
 
 
@@ -194,26 +196,26 @@ bool               hashmap_not_equal               (const HashMap* map1, const H
 /* ------------------------------------------------------------------ */
 
 void               hashmap_print                   (const HashMap* map,
-                                                    void (*print_key)(const KeyType),
-                                                    void (*print_value)(const ValueType));
+                                                    void (*print_key)(const void*),
+                                                    void (*print_value)(const void*));
 
 
 /* ------------------------------------------------------------------ */
 /* Default hash functions for common types                            */
 /* ------------------------------------------------------------------ */
 
-size_t             hashmap_hash_int                (const KeyType key);
-size_t             hashmap_hash_string             (const KeyType key);
-size_t             hashmap_hash_pointer            (const KeyType key);
+size_t             hashmap_hash_int                (const void* key);
+size_t             hashmap_hash_string             (const void* key);
+size_t             hashmap_hash_pointer            (const void* key);
 
 
 /* ------------------------------------------------------------------ */
 /* Default comparators for common types                               */
 /* ------------------------------------------------------------------ */
 
-int                hashmap_compare_int             (const KeyType key1, const KeyType key2);
-int                hashmap_compare_string          (const KeyType key1, const KeyType key2);
-int                hashmap_compare_pointer         (const KeyType key1, const KeyType key2);
+int                hashmap_compare_int             (const void* key1, const void* key2);
+int                hashmap_compare_string          (const void* key1, const void* key2);
+int                hashmap_compare_pointer         (const void* key1, const void* key2);
 
 
 #ifdef __cplusplus

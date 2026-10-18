@@ -31,8 +31,8 @@ extern "C" {
 /* #define STACK_LOGGING_ENABLE */
 
 #ifdef STACK_LOGGING_ENABLE
-    #define STACK_LOG(fmt, ...) \
-        do { fprintf(stderr, "[STACK LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define STACK_LOG(...) \
+        do { fprintf(stderr, "[STACK LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define STACK_LOG(...) do { } while (0)
 #endif
@@ -119,6 +119,7 @@ static inline void* stack_pop(Stack* stk) {
 /* ------------------------------------------------------------------ */
 
 Stack*  stack_create                  (size_t itemSize);
+void    stack_set_compare             (Stack* stk, VectorCompareFunc compare);
 Stack*  stack_copy                    (const Stack* src);
 
 

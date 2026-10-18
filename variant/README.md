@@ -27,7 +27,7 @@ The library was rewritten from scratch during the audit. Design rules:
   and others that were never implemented — those have been removed in
   favour of the simpler `variant_to_string`, `variant_clone`, and
   `variant_set_*` families that exist for real.
-- **Fast & small**: ~32 bytes for a primitive variant, no allocation.
+- **Fast & small**: `sizeof(Variant)` is 24 bytes on 64-bit platforms; a primitive variant needs no allocation.
   Strings and custom types are heap-allocated only because they have
   to be.
 
@@ -127,7 +127,7 @@ in [`variant.c`](variant.c).
 ### `Variant variant_from_string(const char* v)`
 **Purpose**: Creates an owning Variant that deep-copies the given C string.
 **Parameters**:
-  - `v`: The NUL-terminated string to copy. NULL is treated as an empty string.
+  - `v`: The NUL-terminated string to copy. `NULL` gives a `VARIANT_TYPE_NONE` variant (not an empty string).
 **Return Value**: A `Variant` of type `VARIANT_TYPE_STRING` that owns its buffer.
 **Usage Case**: Use when a string must outlive the original buffer, or when the Variant is stored in a container that may destroy the original.
 
@@ -403,13 +403,13 @@ in [`variant.c`](variant.c).
 **Purpose**: Returns the storage size of the active payload type.
 **Parameters**:
   - `v`: The Variant to inspect.
-**Return Value**: `sizeof` of the active payload (e.g. 4 for int, pointer size for string/custom). 0 for NONE.
+**Return Value**: The payload size: `sizeof` of the primitive type (e.g. 4 for int), the string's length (`strlen`, without the NUL) for a string, the registered type's size for a custom value, and 0 for NONE.
 **Usage Case**: Use when you need to know the memory footprint of a Variant's payload.
 
 ---
 
 ### `size_t variant_hash(const Variant* v)`
-**Purpose**: Computes an FNV-1a hash over the live bytes of the Variant, mixed with the type tag.
+**Purpose**: Computes an FNV-1a hash of the Variant's value, mixed with the type tag. It agrees with `variant_equal`: `0.0` and `-0.0` hash alike, every NaN hashes alike, and a CUSTOM value uses its descriptor's `hash` hook (if the descriptor has a `compare` hook but no `hash`, all values of that type hash alike, which is correct but slow; without either, the bytes are hashed). Before, raw bytes were hashed, so equal values could hash differently.
 **Parameters**:
   - `v`: The Variant to hash. NULL → 0.
 **Return Value**: A `size_t` hash value. Two equal Variants produce the same hash.
@@ -447,7 +447,7 @@ in [`variant.c`](variant.c).
 ---
 
 ### `int variant_compare(const Variant* a, const Variant* b)`
-**Purpose**: Total ordering comparison. Same-tag variants compare by value; different-tag variants compare by tag (enum order).
+**Purpose**: Total ordering comparison. Same-tag variants compare by value; different-tag variants compare by tag (enum order). Floating point: NaN sorts after every number and equals only NaN, `-0.0` equals `0.0` (NaN used to compare equal to everything). CUSTOM variants of different `VariantTypeInfo` are never equal; they are ordered by descriptor (stable within a run).
 **Parameters**:
   - `a`: First Variant.
   - `b`: Second Variant.
@@ -558,7 +558,7 @@ in [`variant.c`](variant.c).
   - `a`: Target array.
   - `index`: Zero-based index. Must be < `variant_array_size(a)`.
   - `v`: Replacement Variant.
-**Return Value**: `true` on success, `false` on out-of-range or NULL.
+**Return Value**: `true` on success, `false` on out-of-range, NULL, or when the deep copy of a string / custom value runs out of memory (the old element is then kept).
 **Usage Case**: Use to update an element in the array without removing and re-inserting it.
 
 ---
@@ -973,7 +973,8 @@ static int Point_print(char* buf, size_t n, const void* p) {
 }
 
 static const VariantTypeInfo POINT_INFO = {
-    sizeof(Point), Point_copy, NULL, Point_compare, Point_print, "Point"
+    sizeof(Point), Point_copy, NULL, Point_compare, Point_print, "Point",
+    NULL   /* hash: optional; equal Points then share one hash bucket */
 };
 
 int main(void) {

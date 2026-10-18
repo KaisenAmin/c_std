@@ -15,8 +15,18 @@
     #include <windows.h>
     #include <bcrypt.h>
 #else
+    #include <errno.h>
     #include <fcntl.h>
     #include <unistd.h>
+    /* Linux getrandom(2) needs no file descriptor, so it keeps working when a
+       busy process has run out of descriptors (where opening /dev/urandom
+       fails). */
+    #if defined(__linux__) && defined(__has_include)
+        #if __has_include(<sys/random.h>)
+            #include <sys/random.h>
+            #define SECRETS_HAVE_GETRANDOM 1
+        #endif
+    #endif
 #endif
 
 
@@ -32,21 +42,55 @@ bool secrets_token_bytes(unsigned char *buffer, size_t size) {
         return false;
     }
 #ifdef _WIN32
-    if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, buffer, (ULONG)size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
-        SECRETS_LOG("[secrets_token_bytes]: Error: BCryptGenRandom failed");
-        if (size) memset(buffer, 0, size);
-        return false;
+    size_t done = 0;
+    while (done < size) {   /* BCryptGenRandom takes a ULONG length */
+        size_t chunk = size - done;
+        if (chunk > (size_t)ULONG_MAX) {
+            chunk = (size_t)ULONG_MAX;
+        }
+        if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, buffer + done, (ULONG)chunk, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
+            SECRETS_LOG("[secrets_token_bytes]: Error: BCryptGenRandom failed");
+            memset(buffer, 0, size);
+            return false;
+        }
+        done += chunk;
     }
 #else
-    int fd = open("/dev/urandom", O_RDONLY);
+    size_t got = 0;
+#ifdef SECRETS_HAVE_GETRANDOM
+    while (got < size) {
+        ssize_t r = getrandom(buffer + got, size - got, 0);
+        if (r < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;   /* e.g. ENOSYS on a pre-3.17 kernel: use /dev/urandom */
+        }
+        got += (size_t)r;
+    }
+    if (got == size) {
+        SECRETS_LOG("[secrets_token_bytes]: Exiting secrets_token_bytes (getrandom)");
+        return true;
+    }
+#endif
+    int oflags = O_RDONLY;
+#ifdef O_CLOEXEC
+    oflags |= O_CLOEXEC;
+#endif
+    int fd;
+    do {
+        fd = open("/dev/urandom", oflags);
+    } while (fd < 0 && errno == EINTR);
     if (fd < 0) {
         SECRETS_LOG("[secrets_token_bytes]: Error: Unable to open /dev/urandom");
         if (size) memset(buffer, 0, size);
         return false;
     }
-    size_t got = 0;
-    while (got < size) {                       
+    while (got < size) {
         ssize_t r = read(fd, buffer + got, size - got);
+        if (r < 0 && errno == EINTR) {
+            continue;
+        }
         if (r <= 0) {
             SECRETS_LOG("[secrets_token_bytes]: Error: Unable to read from /dev/urandom");
             close(fd);
@@ -64,15 +108,17 @@ bool secrets_token_bytes(unsigned char *buffer, size_t size) {
 
 /**
  * @brief Generate a cryptographically secure random integer in the range [0, n).
- * 
+ *
  * @param n Upper limit (exclusive).
- * @return A cryptographically secure random integer.
+ * @return A cryptographically secure random integer in [0, n), or -1 on error
+ *         (n <= 0, or RNG failure). -1 is never a valid result; n <= 0 used to
+ *         return 0, which is.
  */
 int secrets_randbelow(int n) {
     SECRETS_LOG("[secrets_randbelow]: Entering secrets_randbelow with n: %d", n);
     if (n <= 0) {
         SECRETS_LOG("[secrets_randbelow]: Error: n must be positive, got %d", n);
-        return 0;
+        return -1;
     }
 
 
@@ -180,18 +226,29 @@ void secrets_token_hex(char *buffer, size_t nbytes) {
 }
 
 
+/* The base64url alphabet (RFC 4648 §5). */
+static const char urlsafe_table[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789-_";
+
+
 /**
- * @brief Generate a cryptographically secure random URL-safe token.
- * 
- * @param buffer A pointer to the array where the token will be stored.
- * @param nbytes The number of random bytes to encode as Base64.
+ * @brief Generate a cryptographically secure random URL-safe token of
+ *        @p nbytes characters.
+ *
+ * Each character is drawn uniformly from the 64-character URL-safe alphabet,
+ * so the token carries 6 random bits per character: 6 * nbytes bits. This is
+ * NOT Python's token_urlsafe(nbytes), which base64url-encodes nbytes random
+ * bytes (8 * nbytes bits, about 1.33 * nbytes characters); use
+ * secrets_token_urlsafe_b64 for that. The buffer contract (nbytes + 1 bytes)
+ * is kept so existing callers stay memory-safe.
+ *
+ * @param buffer A pointer to the array where the token will be stored (at least nbytes + 1 bytes).
+ * @param nbytes The number of characters to generate.
  */
 void secrets_token_urlsafe(char *buffer, size_t nbytes) {
     SECRETS_LOG("[secrets_token_urlsafe]: Entering secrets_token_urlsafe with nbytes: %zu", nbytes);
-    static const char urlsafe_table[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz"
-        "0123456789-_";
 
     if (!buffer || nbytes == 0) {
         if (buffer) buffer[0] = '\0';
@@ -219,6 +276,60 @@ void secrets_token_urlsafe(char *buffer, size_t nbytes) {
     free(bytes);
 
     SECRETS_LOG("[secrets_token_urlsafe]: Exiting secrets_token_urlsafe");
+}
+
+
+/**
+ * @brief Python's secrets.token_urlsafe(nbytes): @p nbytes random bytes,
+ *        base64url-encoded without padding (8 * nbytes bits of entropy in
+ *        SECRETS_URLSAFE_B64_LEN(nbytes) characters, e.g. 22 for 16 bytes).
+ *
+ * @param buffer      Destination; always NUL-terminated when buffer_size > 0
+ *                    (an empty string on failure).
+ * @param buffer_size Size of @p buffer: at least SECRETS_URLSAFE_B64_LEN(nbytes) + 1.
+ * @param nbytes      Number of random bytes to encode.
+ * @return true on success; false for a NULL / too small buffer or an RNG failure.
+ */
+bool secrets_token_urlsafe_b64(char* buffer, size_t buffer_size, size_t nbytes) {
+    if (!buffer || buffer_size == 0) {
+        return false;
+    }
+    buffer[0] = '\0';
+    if (nbytes > (SIZE_MAX - 2) / 4 || buffer_size < SECRETS_URLSAFE_B64_LEN(nbytes) + 1) {
+        SECRETS_LOG("[secrets_token_urlsafe_b64]: Error: buffer too small for %zu bytes", nbytes);
+        return false;
+    }
+    if (nbytes == 0) {
+        return true;
+    }
+
+    unsigned char* bytes = (unsigned char*)malloc(nbytes);
+    if (!bytes) {
+        return false;
+    }
+    if (!secrets_token_bytes(bytes, nbytes)) {
+        free(bytes);
+        return false;
+    }
+
+    size_t o = 0;
+    for (size_t i = 0; i < nbytes; i += 3) {
+        unsigned long v = (unsigned long)bytes[i] << 16;
+        if (i + 1 < nbytes) v |= (unsigned long)bytes[i + 1] << 8;
+        if (i + 2 < nbytes) v |= (unsigned long)bytes[i + 2];
+        buffer[o++] = urlsafe_table[(v >> 18) & 63];
+        buffer[o++] = urlsafe_table[(v >> 12) & 63];
+        if (i + 1 < nbytes) buffer[o++] = urlsafe_table[(v >> 6) & 63];
+        if (i + 2 < nbytes) buffer[o++] = urlsafe_table[v & 63];
+    }
+    buffer[o] = '\0';
+
+    volatile unsigned char* wipe = bytes;   /* the raw secret bytes */
+    for (size_t i = 0; i < nbytes; i++) {
+        wipe[i] = 0;
+    }
+    free(bytes);
+    return true;
 }
 
 
@@ -374,23 +485,26 @@ void* secrets_choice(const void* seq, size_t size, size_t elem_size) {
 
 
 /**
- * @brief Generate a non-negative integer with exactly k random bits.
- * 
- * @param k Number of random bits to generate (must be between 1 and 32).
- * @return A random integer with exactly k random bits.
+ * @brief Generate a non-negative integer with exactly k random bits, reporting
+ *        errors separately from the value.
+ *
+ * @param k   Number of random bits to generate (must be between 1 and 32).
+ * @param out Receives the value on success.
+ * @return true on success; false for a NULL @p out, k outside [1, 32], or an
+ *         RNG failure (*out is then left unchanged).
  */
-unsigned int secrets_randbits(int k) {
+bool secrets_randbits_checked(int k, unsigned int* out) {
     SECRETS_LOG("[secrets_randbits]: Entering secrets_randbits with k: %d", k);
 
     const int max_bits = (int)(sizeof(unsigned int) * CHAR_BIT);
-    if (k <= 0 || k > max_bits) {
+    if (!out || k <= 0 || k > max_bits) {
         SECRETS_LOG("[secrets_randbits]: Error: k must be in [1, %d], got %d", max_bits, k);
-        return 0;
+        return false;
     }
 
     unsigned int random_value = 0;
     if (!secrets_token_bytes((unsigned char *)&random_value, sizeof(random_value))) {
-        return 0;   /* RNG failure */
+        return false;   /* RNG failure */
     }
 
     // (1U << k) is UB when k == 32 (shift by full width). Mask only when
@@ -398,7 +512,24 @@ unsigned int secrets_randbits(int k) {
     if (k < max_bits) {
         random_value &= (1U << k) - 1;
     }
-    
+
     SECRETS_LOG("[secrets_randbits]: Generated random bits: %u", random_value);
-    return random_value;
+    *out = random_value;
+    return true;
+}
+
+
+/**
+ * @brief Generate a non-negative integer with exactly k random bits.
+ *
+ * Every value in [0, 2^k) is a valid result, so errors (k outside [1, 32],
+ * RNG failure) cannot be told apart from a drawn 0: they return 0. Use
+ * secrets_randbits_checked when that matters.
+ *
+ * @param k Number of random bits to generate (must be between 1 and 32).
+ * @return A random integer with exactly k random bits, or 0 on error.
+ */
+unsigned int secrets_randbits(int k) {
+    unsigned int value = 0;
+    return secrets_randbits_checked(k, &value) ? value : 0;
 }

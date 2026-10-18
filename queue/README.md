@@ -53,6 +53,20 @@ Call once at the start of any FIFO usage to obtain a typed queue. Pass `sizeof(M
 
 ---
 
+### `void queue_set_compare(Queue* q, QueueCompareFunc compare)`
+
+**Purpose**:  
+Sets the element comparator (qsort convention) used by `queue_is_equal`, `queue_is_less` and the other comparisons. Without one the elements' bytes are compared, which is not the numeric order of `int`, negative or floating-point elements. `queue_copy` keeps the comparator.
+
+**Parameters**:  
+- `q`: The queue (NULL is ignored).
+- `compare`: The comparator, or `NULL` for byte comparison.
+
+**Return Value**:  
+None.
+
+---
+
 ### `void queue_deallocate(Queue* q)`
 
 **Purpose**:  
@@ -89,7 +103,7 @@ The primary way to enqueue a value. For structs, pass the address of a local or 
 ### `void queue_pop(Queue* q)`
 
 **Purpose**:  
-Removes the element at the front of the queue. All remaining elements shift one position toward the front (**O(n)**).
+Removes the element at the front of the queue in **O(1)**: only a front index advances, nothing is shifted (the popped slots are reclaimed in bulk by a later push).
 
 **Parameters**:  
 - `q`: Pointer to the Queue. Passing `NULL` or an empty queue is a safe no-op.
@@ -238,7 +252,7 @@ Use as a guard to detect when a queue has changed since the last checkpoint.
 ### `bool queue_is_less(const Queue* q1, const Queue* q2)`
 
 **Purpose**:  
-Lexicographic less-than comparison over the raw byte content of both queues.
+Lexicographic less-than comparison of both queues' elements, using the comparator from `queue_set_compare` (each element's raw bytes without one). Queues with different element sizes are unordered (`false`).
 
 **Parameters**:  
 - `q1`: First Queue. May be `NULL`.
@@ -255,7 +269,7 @@ Sort or rank queues by content — for example, comparing serialized message buf
 ### `bool queue_is_greater(const Queue* q1, const Queue* q2)`
 
 **Purpose**:  
-Lexicographic greater-than comparison over the raw byte content of both queues.
+Lexicographic greater-than comparison of both queues' elements, using the comparator from `queue_set_compare` (each element's raw bytes without one). Queues with different element sizes are unordered (`false`).
 
 **Parameters**:  
 - `q1`: First Queue. May be `NULL`.
@@ -306,7 +320,7 @@ Relational comparison in ordered data structures or assertion checks.
 ### `void queue_sort(Queue* q, QueueCompareFunc comp)`
 
 **Purpose**:  
-Sorts the elements of the queue in place using the caller-supplied comparison function. The sort is performed directly on the underlying contiguous storage (quicksort).
+Sorts the elements of the queue in place using the caller-supplied comparison function. The sort is performed directly on the underlying contiguous storage with `algorithm_sort` (introsort: O(n log n), not stable).
 
 **Parameters**:  
 - `q`: Pointer to the Queue to sort. Passing `NULL` is a safe no-op.
@@ -421,7 +435,7 @@ Iterate over queue contents for inspection or statistics without popping element
 
 **Behavioral notes**
 
-- `queue_pop()` is **O(n)** because the underlying contiguous Vector shifts all remaining elements one slot forward. Use a deque- or list-backed FIFO if O(1) pop is required.
+- `queue_pop()` is **O(1)** (a front-index bump) and `queue_push()` is amortized **O(1)**: the popped prefix is compacted in bulk only when it is at least as long as the live part, otherwise the buffer doubles.
 - `queue_swap` is a safe no-op when `q1->itemSize != q2->itemSize`.
 - `queue_is_equal(NULL, NULL)` returns `true`; every other comparison involving at least one `NULL` returns `false`.
 
@@ -1174,11 +1188,11 @@ Incoming FIFO order:
   Order #105  priority=3  item=Widget E
 
 Processing by priority (lowest number first):
-  Processing Order #104 [priority 1]: Widget D
   Processing Order #102 [priority 1]: Widget B
+  Processing Order #104 [priority 1]: Widget D
   Processing Order #103 [priority 2]: Widget C
-  Processing Order #105 [priority 3]: Widget E
   Processing Order #101 [priority 3]: Widget A
+  Processing Order #105 [priority 3]: Widget E
 
 Original FIFO still intact (5 orders).
 ```

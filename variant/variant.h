@@ -36,8 +36,8 @@ extern "C" {
 /* #define VARIANT_LOGGING_ENABLE */
 
 #ifdef VARIANT_LOGGING_ENABLE
-    #define VARIANT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[VARIANT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define VARIANT_LOG(...) \
+        do { fprintf(stderr, "[VARIANT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define VARIANT_LOG(...) do { } while (0)
 #endif
@@ -62,6 +62,7 @@ typedef void (*VariantCopyFn)   (void* dest, const void* src);
 typedef void (*VariantDestroyFn)(void* p);
 typedef int  (*VariantCompareFn)(const void* a, const void* b);
 typedef int  (*VariantPrintFn)  (char* buf, size_t buflen, const void* p);
+typedef size_t (*VariantHashFn) (const void* p);
 
 
 typedef struct {
@@ -71,6 +72,11 @@ typedef struct {
     VariantCompareFn  compare;     /* memcmp fallback if NULL              */
     VariantPrintFn    print;       /* "<TYPE>" fallback if NULL            */
     const char*       type_name;   /* "custom" fallback if NULL            */
+    /* Optional, must agree with `compare` (equal values -> equal hash).
+       NULL: the bytes are hashed when `compare` is NULL; with a `compare`
+       hook and no `hash`, every value of the type hashes alike (correct,
+       but all such keys share one bucket). */
+    VariantHashFn     hash;
 } VariantTypeInfo;
 
 

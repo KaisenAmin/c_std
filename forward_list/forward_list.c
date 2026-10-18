@@ -4,6 +4,7 @@
  * @class ForwardList
 */
 
+#include <stdint.h>   /* SIZE_MAX */
 #include <stdlib.h>
 #include <string.h>
 #include "forward_list.h"
@@ -27,6 +28,12 @@ ForwardList *forward_list_create(size_t itemSize) {
         FORWARD_LIST_LOG("[forward_list_create] Error: Item size cannot be zero.");
         return NULL;
     }
+    if (itemSize > SIZE_MAX - sizeof(ForwardListNode)) {
+        /* a node is header + itemSize bytes: a huge itemSize wrapped that sum
+           to a tiny malloc, followed by an itemSize-byte memcpy */
+        FORWARD_LIST_LOG("[forward_list_create] Error: Item size too large.");
+        return NULL;
+    }
 
     ForwardList *list = (ForwardList*) malloc(sizeof(ForwardList));
     if (!list) {
@@ -40,9 +47,41 @@ ForwardList *forward_list_create(size_t itemSize) {
     list->size = 0;
     list->sentinel.value = NULL;
     list->sentinel.next  = NULL;
+    list->compare = NULL;
 
     FORWARD_LIST_LOG("[forward_list_create] ForwardList created with item size: %zu", itemSize);
     return list;
+}
+
+
+/**
+ * @brief Sets the comparator used to order and match elements.
+ *
+ * forward_list_sort, forward_list_merge, forward_list_unique, forward_list_remove
+ * and the forward_list_is_* comparisons call `compare(a, b)` on element pointers
+ * (negative / zero / positive, like strcmp). Without a comparator they fall back
+ * to memcmp, which is byte order: on little-endian machines it does not sort
+ * multi-byte integers, negative numbers or floating-point values numerically,
+ * and it also compares struct padding bytes.
+ *
+ * @param list    The list. NULL is ignored.
+ * @param compare The comparator, or NULL to go back to memcmp.
+ */
+void forward_list_set_compare(ForwardList *list, ForwardListCompare compare) {
+    if (!list) {
+        FORWARD_LIST_LOG("[forward_list_set_compare] Error: NULL list pointer.");
+        return;
+    }
+    list->compare = compare;
+}
+
+
+/* Compares two element values with the list's comparator, or memcmp if none. */
+static int flist_cmp(const ForwardList *list, const void *a, const void *b) {
+    if (list->compare) {
+        return list->compare(a, b);
+    }
+    return memcmp(a, b, list->itemSize);
 }
 
 
@@ -70,7 +109,7 @@ static ForwardListNode *flist_split(ForwardListNode *head) {
 
 
 // Merge two sorted lists
-static ForwardListNode *flist_merge_two(ForwardListNode *a, ForwardListNode *b, size_t itemSize) {
+static ForwardListNode *flist_merge_two(ForwardListNode *a, ForwardListNode *b, const ForwardList *list) {
     if (!a) {
         return b;
     }
@@ -83,7 +122,7 @@ static ForwardListNode *flist_merge_two(ForwardListNode *a, ForwardListNode *b, 
     dummy.next = NULL;
 
     while (a != NULL && b != NULL) {
-        if (memcmp(a->value, b->value, itemSize) <= 0) {
+        if (flist_cmp(list, a->value, b->value) <= 0) {
             tail->next = a;
             a = a->next;
         } 
@@ -102,17 +141,17 @@ static ForwardListNode *flist_merge_two(ForwardListNode *a, ForwardListNode *b, 
 
 
 // Recursive merge sort implementation
-static ForwardListNode *flist_merge_sort(ForwardListNode *head, size_t itemSize) {
+static ForwardListNode *flist_merge_sort(ForwardListNode *head, const ForwardList *list) {
     if (head == NULL || head->next == NULL) {
         return head;
     }
 
     ForwardListNode *middle = flist_split(head);
-    ForwardListNode *left = flist_merge_sort(head, itemSize);
-    ForwardListNode *right = flist_merge_sort(middle, itemSize);
+    ForwardListNode *left = flist_merge_sort(head, list);
+    ForwardListNode *right = flist_merge_sort(middle, list);
 
     FORWARD_LIST_LOG("[flist_merge_sort] Sorted and merged two halves.");
-    return flist_merge_two(left, right, itemSize);
+    return flist_merge_two(left, right, list);
 }
 
 
@@ -140,6 +179,19 @@ static ForwardListNode* flist_make_node(const ForwardList* list, const void* val
 /* Free a node (its value is inline, so a single free releases both). */
 static void flist_free_node(ForwardListNode* node) {
     free(node);
+}
+
+/* The before_begin sentinel's `next` is only a cached copy of `head`, taken
+ * when forward_list_before_begin was called. Every *_after function that is
+ * handed the sentinel resyncs it first, so a sentinel obtained before a
+ * push_front / pop_front / sort / ... still means "before the current head"
+ * (it used to point at a stale, possibly freed node: leaks and double
+ * frees). The function then writes sentinel.next back to head. */
+static void flist_sync_sentinel(ForwardList* list, const ForwardListNode* pos) {
+    if (pos == &list->sentinel) {
+        list->sentinel.value = NULL;
+        list->sentinel.next  = list->head;
+    }
 }
 
 
@@ -256,6 +308,7 @@ void forward_list_clear(ForwardList *list) {
     list->head = NULL;
     list->size = 0;
     FORWARD_LIST_LOG("[forward_list_clear] Cleared %zu nodes. List is now empty.", nodesCleared);
+    (void)nodesCleared;   /* only logged */
 }
 
 
@@ -511,6 +564,8 @@ void forward_list_emplace_after(ForwardList *list, ForwardListNode *pos, void *v
         return;
     }
 
+    flist_sync_sentinel(list, pos);
+
     // Insert the new node after the specified position
     newNode->next = pos->next;
     pos->next = newNode;
@@ -547,39 +602,34 @@ void forward_list_insert_after(ForwardList *list, ForwardListNode *pos, void *va
         return;
     }
     if (pos == NULL) {
+        /* At the beginning, in source order: the same as inserting after
+           before_begin (pushing each value to the front reversed them). */
         FORWARD_LIST_LOG("[forward_list_insert_after] Special case: inserting at the beginning.");
-        for (size_t i = 0; i < numValues; ++i) {
-            void *currentValue = (char *)value + i * list->itemSize;
-            forward_list_push_front(list, currentValue);
-        }
-        return;
+        pos = &list->sentinel;
     }
 
-
+    flist_sync_sentinel(list, pos);
     bool pos_is_sentinel = (pos == &list->sentinel);
-    ForwardListNode* first_inserted = NULL;
 
     for (size_t i = 0; i < numValues; ++i) {
         void *currentValue = (char *)value + i * list->itemSize;
         ForwardListNode *newNode = flist_make_node(list, currentValue);
         if (newNode == NULL) {
+            /* Keep what was inserted so far reachable (head included). */
             FORWARD_LIST_LOG("[forward_list_insert_after] Error: Memory allocation failed for new node.");
-            return;
+            break;
         }
 
         newNode->next = pos->next;
         pos->next = newNode;
-        if (!first_inserted) {
-            first_inserted = newNode;
-        }
         pos = newNode;
         list->size++;
 
         FORWARD_LIST_LOG("[forward_list_insert_after] Inserted value after the specified position.");
     }
 
-    if (pos_is_sentinel && first_inserted) {
-        list->head = first_inserted;
+    if (pos_is_sentinel) {
+        list->head = list->sentinel.next;
     }
 }
 
@@ -606,6 +656,7 @@ void forward_list_erase_after(ForwardList *list, ForwardListNode *pos) {
         FORWARD_LIST_LOG("[forward_list_erase_after] Error: NULL position node.");
         return;
     }
+    flist_sync_sentinel(list, pos);
     if (!pos->next) {
         FORWARD_LIST_LOG("[forward_list_erase_after] Warning: Attempting to erase after the end of the list.");
         return;
@@ -648,6 +699,17 @@ void forward_list_swap(ForwardList *list1, ForwardList *list2) {
     list1->size = list2->size;
     list2->size = tempSize;
 
+    /* The element size and comparator describe the nodes, so they travel
+       with them; otherwise lists of different element types would end up
+       reading their nodes with the wrong size. */
+    size_t tempItemSize = list1->itemSize;
+    list1->itemSize = list2->itemSize;
+    list2->itemSize = tempItemSize;
+
+    ForwardListCompare tempCompare = list1->compare;
+    list1->compare = list2->compare;
+    list2->compare = tempCompare;
+
     FORWARD_LIST_LOG("[forward_list_swap] Swapped the contents of two lists.");
 }
 
@@ -656,8 +718,9 @@ void forward_list_swap(ForwardList *list1, ForwardList *list2) {
  * @brief Resizes the ForwardList to the specified size.
  *
  * This function resizes the `list` to contain `newSize` elements. If the current size of the list
- * is greater than `newSize`, elements are removed from the front of the list. If the current size is
- * less than `newSize`, new elements are added to the front of the list, initialized to zero.
+ * is greater than `newSize`, elements are removed from the back of the list. If the current size is
+ * less than `newSize`, zero-initialized elements are appended at the back. Linear in the old plus
+ * the new size (each removed / appended element used to walk the list from the head: O(n^2)).
  *
  * @param list Pointer to the ForwardList to be resized.
  * @param newSize The new size of the list.
@@ -668,43 +731,52 @@ void forward_list_resize(ForwardList *list, size_t newSize) {
         return;
     }
 
-    while (list->size > newSize) {
-        /* Find and remove the tail. O(n) per pop — acceptable for resize. */
-        if (list->size == 1) {
-            forward_list_pop_front(list);
-            continue;
+    if (list->size > newSize) {
+        /* Cut once after element newSize - 1 and free the rest. */
+        ForwardListNode* rest;
+        if (newSize == 0) {
+            rest = list->head;
+            list->head = NULL;
         }
-
-        ForwardListNode* prev = list->head;
-        while (prev->next && prev->next->next) {
-            prev = prev->next;
+        else {
+            ForwardListNode* last = list->head;
+            for (size_t i = 1; i < newSize; ++i) {
+                last = last->next;
+            }
+            rest = last->next;
+            last->next = NULL;
         }
-
-        flist_free_node(prev->next);
-        prev->next = NULL;
-        list->size--;
-
-        FORWARD_LIST_LOG("[forward_list_resize] Shrunk by dropping tail.");
+        while (rest) {
+            ForwardListNode* next = rest->next;
+            flist_free_node(rest);
+            rest = next;
+        }
+        list->size = newSize;
+        FORWARD_LIST_LOG("[forward_list_resize] Shrunk by dropping the tail.");
     }
 
-    while (list->size < newSize) {
-        ForwardListNode* node = flist_make_node(list, NULL);  // NULL value -> zero-filled
-        if (!node) {
-            FORWARD_LIST_LOG("[forward_list_resize] Error: node alloc failed.");
-            break;
+    if (list->size < newSize) {
+        /* Find the tail once, then append. */
+        ForwardListNode* tail = list->head;
+        while (tail && tail->next) {
+            tail = tail->next;
         }
-
-        if (!list->head) {
-            list->head = node;
-        } 
-        else {
-            ForwardListNode* tail = list->head;
-            while (tail->next) tail = tail->next;
-            tail->next = node;
+        while (list->size < newSize) {
+            ForwardListNode* node = flist_make_node(list, NULL);  // NULL value -> zero-filled
+            if (!node) {
+                FORWARD_LIST_LOG("[forward_list_resize] Error: node alloc failed.");
+                break;
+            }
+            if (tail) {
+                tail->next = node;
+            }
+            else {
+                list->head = node;
+            }
+            tail = node;
+            list->size++;
         }
-        list->size++;
-
-        FORWARD_LIST_LOG("[forward_list_resize] Appended zero-filled element.");
+        FORWARD_LIST_LOG("[forward_list_resize] Appended zero-filled elements.");
     }
 
     FORWARD_LIST_LOG("[forward_list_resize] Resizing completed.");
@@ -731,6 +803,12 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
         FORWARD_LIST_LOG("[forward_list_splice_after] Error: NULL other list pointer.");
         return;
     }
+    if (other == list) {
+        /* Splicing a list into itself would link its tail to one of its own
+           nodes (a cycle); there is nothing to move. */
+        FORWARD_LIST_LOG("[forward_list_splice_after] Error: list and other are the same list.");
+        return;
+    }
     if (pos == NULL) {
         FORWARD_LIST_LOG("[forward_list_splice_after] Splicing at the beginning as pos is NULL.");
         if (other->head != NULL) {
@@ -753,6 +831,7 @@ void forward_list_splice_after(ForwardList *list, ForwardListNode *pos, ForwardL
 
     // Regular splicing after a given node
     FORWARD_LIST_LOG("[forward_list_splice_after] Splicing after a given node.");
+    flist_sync_sentinel(list, pos);
     if (other->head != NULL) {
         ForwardListNode *otherCurrent = other->head;
 
@@ -797,25 +876,29 @@ void forward_list_remove(ForwardList *list, void *value) {
     }
 
     FORWARD_LIST_LOG("[forward_list_remove] Removing elements equal to the specified value.");
-    
-    while (list->head != NULL && memcmp(list->head->value, value, list->itemSize) == 0) { 
-        forward_list_pop_front(list);
-        FORWARD_LIST_LOG("[forward_list_remove] Removed element from the front.");
-    }
 
-    ForwardListNode *current = list->head;
-    while (current != NULL && current->next != NULL) {
-        if (memcmp(current->next->value, value, list->itemSize) == 0) {
-            ForwardListNode *temp = current->next;
-            current->next = temp->next;
-
-            flist_free_node(temp);
+    /* `value` may point into a matching node (remove(l, front(l))): unlink
+       the matches but free them only after the scan, so the comparisons
+       never read freed memory (LWG 526). */
+    ForwardListNode *doomed = NULL;
+    ForwardListNode **link = &list->head;
+    while (*link != NULL) {
+        ForwardListNode *node = *link;
+        if (flist_cmp(list, node->value, value) == 0) {
+            *link = node->next;
+            node->next = doomed;
+            doomed = node;
             list->size--;
             FORWARD_LIST_LOG("[forward_list_remove] Removed element from the list.");
-        } 
-        else {
-            current = current->next;
         }
+        else {
+            link = &node->next;
+        }
+    }
+    while (doomed != NULL) {
+        ForwardListNode *next = doomed->next;
+        flist_free_node(doomed);
+        doomed = next;
     }
 
     FORWARD_LIST_LOG("[forward_list_remove] Removal of elements completed.");
@@ -890,7 +973,7 @@ void forward_list_unique(ForwardList *list) {
 
     ForwardListNode *current = list->head;
     while (current->next != NULL) {
-        if (memcmp(current->value, current->next->value, list->itemSize) == 0) {
+        if (flist_cmp(list, current->value, current->next->value) == 0) {
             ForwardListNode *duplicate = current->next;
             current->next = duplicate->next;
 
@@ -927,9 +1010,17 @@ void forward_list_merge(ForwardList *list1, ForwardList *list2) {
         FORWARD_LIST_LOG("[forward_list_merge] Error: NULL list2 pointer.");
         return;
     }
+    if (list1 == list2) {
+        FORWARD_LIST_LOG("[forward_list_merge] list1 and list2 are the same list, nothing to merge.");
+        return;
+    }
+    if (list1->itemSize != list2->itemSize) {
+        FORWARD_LIST_LOG("[forward_list_merge] Error: lists have different item sizes.");
+        return;
+    }
     if (list2->head == NULL) {
         FORWARD_LIST_LOG("[forward_list_merge] list2 is empty, nothing to merge.");
-        return;  
+        return;
     }
 
     FORWARD_LIST_LOG("[forward_list_merge] Merging list1 and list2.");
@@ -938,7 +1029,7 @@ void forward_list_merge(ForwardList *list1, ForwardList *list2) {
     dummy.next = NULL;
 
     while (list1->head != NULL && list2->head != NULL) {
-        if (memcmp(list1->head->value, list2->head->value, list1->itemSize) <= 0) {
+        if (flist_cmp(list1, list1->head->value, list2->head->value) <= 0) {
             tail->next = list1->head;
             list1->head = list1->head->next;
         } 
@@ -980,7 +1071,7 @@ void forward_list_sort(ForwardList *list) {
     }
 
     FORWARD_LIST_LOG("[forward_list_sort] Sorting the ForwardList.");
-    list->head = flist_merge_sort(list->head, list->itemSize);
+    list->head = flist_merge_sort(list->head, list);
     FORWARD_LIST_LOG("[forward_list_sort] Sorting completed.");
 }
 
@@ -1017,12 +1108,6 @@ void forward_list_reverse(ForwardList *list) {
 }
 
 
-// Helper function for comparing node values
-static int flist_compare_values(const void *a, const void *b, size_t size) {
-    return memcmp(a, b, size);
-}
-
-
 /**
  * @brief Compares two ForwardLists to determine if the first list is lexicographically less than the second.
  * 
@@ -1041,11 +1126,16 @@ bool forward_list_is_less(const ForwardList *list1, const ForwardList *list2) {
         return false;
     }
     
+    if (list1->itemSize != list2->itemSize) {
+        FORWARD_LIST_LOG("[forward_list_is_less] Error: lists have different item sizes.");
+        return false;
+    }
+
     FORWARD_LIST_LOG("[forward_list_is_less] Comparing if list1 is less than list2 lexicographically.");
     ForwardListNode *node1 = list1->head, *node2 = list2->head;
 
     while (node1 && node2) {
-        int cmp = flist_compare_values(node1->value, node2->value, list1->itemSize);
+        int cmp = flist_cmp(list1, node1->value, node2->value);
         if (cmp != 0) {
             return cmp < 0;
         }
@@ -1096,11 +1186,15 @@ bool forward_list_is_equal(const ForwardList *list1, const ForwardList *list2) {
         FORWARD_LIST_LOG("[forward_list_is_equal] Error: NULL ForwardList pointer(s).");
         return false;
     }
+    if (list1->itemSize != list2->itemSize) {
+        FORWARD_LIST_LOG("[forward_list_is_equal] Lists have different item sizes.");
+        return false;
+    }
     FORWARD_LIST_LOG("[forward_list_is_equal] Checking if list1 is equal to list2.");
 
     ForwardListNode *node1 = list1->head, *node2 = list2->head;
     while (node1 && node2) {
-        if (flist_compare_values(node1->value, node2->value, list1->itemSize) != 0) {
+        if (flist_cmp(list1, node1->value, node2->value) != 0) {
             FORWARD_LIST_LOG("[forward_list_is_equal] Lists are not equal.");
             return false;
         }

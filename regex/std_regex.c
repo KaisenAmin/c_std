@@ -1,16 +1,37 @@
 /* Regex backend selection. Prefer PCRE when it is available -- always on
  * Windows (which ships <pcre.h> here) and on Linux/Unix whenever libpcre's
  * <pcre.h> is installed -- so BOTH platforms get the full PCRE feature set
- * (lookaround, \d, lazy quantifiers, '.' excluding newline, ...). When
- * <pcre.h> is absent, fall back to POSIX <regex.h> (in libc), which handles
- * basic ERE patterns but not PCRE-only constructs. */
-#if CSTD_REGEX_USE_PCRE || __has_include(<pcre.h>)
-  #define CSTD_REGEX_USE_PCRE 1
+ * (lookaround, \d, lazy quantifiers, ...). When <pcre.h> is absent, fall
+ * back to POSIX <regex.h> (in libc), which handles ERE patterns but not
+ * PCRE-only constructs.
+ *
+ * Define CSTD_REGEX_USE_PCRE to 1 or 0 to force a backend (it used to be
+ * impossible to force POSIX while <pcre.h> was installed). Neither header
+ * available (e.g. MSVC without PCRE) is a clear build error. */
+#ifndef CSTD_REGEX_USE_PCRE
+  #if defined(__has_include)
+    #if __has_include(<pcre.h>)
+      #define CSTD_REGEX_USE_PCRE 1
+    #else
+      #define CSTD_REGEX_USE_PCRE 0
+    #endif
+  #else
+    #define CSTD_REGEX_USE_PCRE 1
+  #endif
+#endif
+
+#if CSTD_REGEX_USE_PCRE
   #include <pcre.h>
 #else
-  #define CSTD_REGEX_USE_PCRE 0
+  #if defined(__has_include)
+    #if !__has_include(<regex.h>)
+      #error "c_std regex: needs PCRE (<pcre.h>, link -lpcre) or POSIX <regex.h>; neither was found. Install PCRE (see regex/README.md)."
+    #endif
+  #endif
   #include <regex.h>
+  #include <langinfo.h>   /* nl_langinfo(CODESET) for REGEX_UTF8 */
 #endif
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -27,61 +48,136 @@ struct Regex {
 #else
     regex_t compiled;   /* POSIX compiled pattern */
     int     valid;      /* 1 once regcomp succeeded, so deallocate is safe */
+    int     newline;    /* compiled with REG_NEWLINE (REGEX_MULTILINE) */
 #endif
+    int     utf8;       /* REGEX_UTF8: scans step over whole UTF-8 characters */
 };
 
 
+/* Option for regex_exec_at: only accept a non-empty match that starts exactly
+   at the offset. Used right after an empty match, so a scan makes progress
+   without skipping a real match there (the standard PCRE scan loop). */
+#define REGEX_EXEC_NONEMPTY_AT_START 1
+
+
 #if !CSTD_REGEX_USE_PCRE
-/* Translate the PCRE escapes this project uses (\d \w \s and their negations)
- * into POSIX ERE bracket expressions, so patterns authored for the Windows
- * PCRE backend keep working against <regex.h>. Any other "\X" passes through
- * unchanged (POSIX ERE treats a backslash before a special char as a literal,
- * matching PCRE for \. \/ etc.). Character-class context is tracked so a \d
- * inside [...] expands to "0-9" rather than a nested class.
- * Returns a malloc'd string the caller must free, or NULL on OOM. */
-static char* regex_pcre_to_posix(const char* p) {
+/* Appends n bytes to the growing translation buffer; 0 on OOM. */
+static int regex_out_put(char** out, size_t* len, size_t* cap, const char* s, size_t n) {
+    while (*len + n + 1 > *cap) {
+        size_t nc = *cap * 2;
+        char* nb = (char*)realloc(*out, nc);
+        if (!nb) {
+            return 0;
+        }
+        *out = nb;
+        *cap = nc;
+    }
+    memcpy(*out + *len, s, n);
+    *len += n;
+    return 1;
+}
+
+/* Translates PCRE-isms (\d \w \s and their negations) into POSIX ERE. With
+   `dot_excludes_newline`, an unescaped '.' outside brackets becomes "[^\n]",
+   so '.' does not match a newline unless REGEX_DOTALL is given, as in PCRE
+   (POSIX '.' matches every character when REG_NEWLINE is off). Bracket
+   expressions are copied as one unit, with POSIX rules for where they end:
+   a ']' right after '[' or '[^' is literal, and [:class:], [.coll.] and
+   [=equiv=] are skipped whole. Any other "\X" passes through unchanged
+   (POSIX ERE treats a backslash before a special char as a literal, matching
+   PCRE for \. \/ etc.). Returns a malloc'd string, or NULL on OOM. */
+static char* regex_pcre_to_posix(const char* p, int dot_excludes_newline) {
     size_t cap = strlen(p) * 8 + 16, len = 0;
     char* out = (char*)malloc(cap);
     if (!out) {
         return NULL;
     }
-    int in_class = 0;
+
     for (size_t i = 0; p[i]; i++) {
         char c = p[i];
+        const char* rep = NULL;
+
         if (c == '\\' && p[i + 1]) {
             char n = p[i + 1];
-            const char* rep = NULL;
-            if (!in_class) {
-                if      (n == 'd') rep = "[0-9]";
-                else if (n == 'D') rep = "[^0-9]";
-                else if (n == 'w') rep = "[A-Za-z0-9_]";
-                else if (n == 'W') rep = "[^A-Za-z0-9_]";
-                else if (n == 's') rep = "[ \t\n\r\f\v]";
-                else if (n == 'S') rep = "[^ \t\n\r\f\v]";
-            } else {
-                if      (n == 'd') rep = "0-9";
-                else if (n == 'w') rep = "A-Za-z0-9_";
-                else if (n == 's') rep = " \t\n\r\f\v";
+            if      (n == 'd') rep = "[0-9]";
+            else if (n == 'D') rep = "[^0-9]";
+            else if (n == 'w') rep = "[A-Za-z0-9_]";
+            else if (n == 'W') rep = "[^A-Za-z0-9_]";
+            else if (n == 's') rep = "[ \t\n\r\f\v]";
+            else if (n == 'S') rep = "[^ \t\n\r\f\v]";
+            int ok = rep ? regex_out_put(&out, &len, &cap, rep, strlen(rep)) : regex_out_put(&out, &len, &cap, p + i, 2);
+            if (!ok) {
+                free(out);
+                return NULL;
             }
-            if (rep) {
-                size_t rl = strlen(rep);
-                while (len + rl + 1 > cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; }
-                memcpy(out + len, rep, rl);
-                len += rl;
-                i++;            /* consume the escape letter */
-                continue;
-            }
-            /* keep "\X" verbatim */
-            while (len + 3 > cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; }
-            out[len++] = '\\';
-            out[len++] = n;
-            i++;
+            i++;            /* consume the escaped character */
             continue;
         }
-        if (c == '[') in_class = 1;
-        else if (c == ']') in_class = 0;
-        while (len + 2 > cap) { cap *= 2; char* nb = (char*)realloc(out, cap); if (!nb) { free(out); return NULL; } out = nb; }
-        out[len++] = c;
+
+        if (c == '[') {
+            /* Copy the bracket expression, expanding \d \w \s inside it. */
+            size_t j = i + 1;
+            if (p[j] == '^') {
+                j++;
+            }
+            if (p[j] == ']') {
+                j++;        /* a leading ']' is a literal member */
+            }
+            if (!regex_out_put(&out, &len, &cap, p + i, j - i)) {
+                free(out);
+                return NULL;
+            }
+            while (p[j] && p[j] != ']') {
+                if (p[j] == '[' && (p[j + 1] == ':' || p[j + 1] == '.' || p[j + 1] == '=')) {
+                    char kind = p[j + 1];
+                    size_t k = j + 2;
+                    while (p[k] && !(p[k] == kind && p[k + 1] == ']')) {
+                        k++;
+                    }
+                    if (!p[k]) {
+                        break;      /* unterminated: let regcomp report it */
+                    }
+                    if (!regex_out_put(&out, &len, &cap, p + j, k + 2 - j)) {
+                        free(out);
+                        return NULL;
+                    }
+                    j = k + 2;
+                    continue;
+                }
+                if (p[j] == '\\' && (p[j + 1] == 'd' || p[j + 1] == 'w' || p[j + 1] == 's')) {
+                    const char* in = p[j + 1] == 'd' ? "0-9" : p[j + 1] == 'w' ? "A-Za-z0-9_" : " \t\n\r\f\v";
+                    if (!regex_out_put(&out, &len, &cap, in, strlen(in))) {
+                        free(out);
+                        return NULL;
+                    }
+                    j += 2;
+                    continue;
+                }
+                if (!regex_out_put(&out, &len, &cap, p + j, 1)) {
+                    free(out);
+                    return NULL;
+                }
+                j++;
+            }
+            if (!p[j]) {
+                i = j - 1;      /* unterminated bracket: copied as is */
+                continue;
+            }
+            if (!regex_out_put(&out, &len, &cap, "]", 1)) {
+                free(out);
+                return NULL;
+            }
+            i = j;
+            continue;
+        }
+
+        if (c == '.' && dot_excludes_newline) {
+            rep = "[^\n]";
+        }
+        if (!(rep ? regex_out_put(&out, &len, &cap, rep, strlen(rep)) : regex_out_put(&out, &len, &cap, &c, 1))) {
+            free(out);
+            return NULL;
+        }
     }
     out[len] = '\0';
     return out;
@@ -111,6 +207,7 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
         REGEX_LOG("[regex_compile] Memory allocation failed.");
         return NULL;
     }
+    regex->utf8 = (flags & REGEX_UTF8) != 0;
 
 #if CSTD_REGEX_USE_PCRE
     const char *error;
@@ -127,6 +224,17 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
     if (flags & REGEX_DOTALL) {
         pcre_flags |= PCRE_DOTALL;
     }
+    if (flags & REGEX_UTF8) {
+        /* Without it PCRE works on bytes: '.' is one byte of a multi-byte
+           character and caseless matching folds ASCII only. */
+        int utf8_supported = 0;
+        if (pcre_config(PCRE_CONFIG_UTF8, &utf8_supported) != 0 || !utf8_supported) {
+            REGEX_LOG("[regex_compile] This PCRE build has no UTF-8 support.");
+            free(regex);
+            return NULL;
+        }
+        pcre_flags |= PCRE_UTF8;
+    }
 
     regex->compiled_pattern = pcre_compile(pattern, pcre_flags, &error, &erroffset, NULL);
 
@@ -136,8 +244,26 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
         return NULL;
     }
 #else
-    /* POSIX backend: translate PCRE-isms, then regcomp with ERE semantics. */
-    char* posix_pat = regex_pcre_to_posix(pattern);
+    /* POSIX backend: translate PCRE-isms, then regcomp with ERE semantics.
+       MULTILINE needs REG_NEWLINE for line anchors, and REG_NEWLINE also
+       stops '.' from matching a newline, so MULTILINE | DOTALL cannot be
+       expressed: refuse it instead of silently dropping DOTALL. */
+    if ((flags & REGEX_MULTILINE) && (flags & REGEX_DOTALL)) {
+        REGEX_LOG("[regex_compile] REGEX_MULTILINE | REGEX_DOTALL is not supported by the POSIX backend.");
+        free(regex);
+        return NULL;
+    }
+    if (flags & REGEX_UTF8) {
+        /* POSIX regex reads characters in the current LC_CTYPE encoding, so
+           UTF-8 semantics need a UTF-8 locale (setlocale(LC_CTYPE, "")). */
+        const char* codeset = nl_langinfo(CODESET);
+        if (!codeset || (strcmp(codeset, "UTF-8") != 0 && strcmp(codeset, "utf8") != 0)) {
+            REGEX_LOG("[regex_compile] REGEX_UTF8 needs a UTF-8 LC_CTYPE locale on the POSIX backend.");
+            free(regex);
+            return NULL;
+        }
+    }
+    char* posix_pat = regex_pcre_to_posix(pattern, !(flags & REGEX_DOTALL));
     if (!posix_pat) {
         REGEX_LOG("[regex_compile] Pattern translation failed (OOM).");
         free(regex);
@@ -150,8 +276,8 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
     if (flags & REGEX_MULTILINE) {
         cflags |= REG_NEWLINE;
     }
-    /* REGEX_DOTALL: with REG_NEWLINE off (the default here) POSIX '.' already
-       matches newline, so no extra flag is required. */
+    /* REGEX_DOTALL: POSIX '.' matches a newline when REG_NEWLINE is off, so
+       the translator leaves '.' alone; without DOTALL it became "[^\n]". */
     int reg_rc = regcomp(&regex->compiled, posix_pat, cflags);
     free(posix_pat);
     if (reg_rc != 0) {
@@ -160,6 +286,7 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
         return NULL;
     }
     regex->valid = 1;
+    regex->newline = (cflags & REG_NEWLINE) != 0;
 #endif
 
     REGEX_LOG("[regex_compile] Compilation successful.");
@@ -167,9 +294,248 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
 }
 
 
+/* Fills the group arrays of `match` from (start, end) offset pairs into
+   `subject`; a pair with start < 0 is a group that did not participate and
+   is reported as an empty group at the start of the whole match. */
+static RegexResult regex_fill_groups(RegexMatch* match, const char* subject, int ngroups, const long* so, const long* eo) {
+    match->group_count = ngroups;
+    if (ngroups <= 0) {
+        match->group_count = 0;
+        return REGEX_SUCCESS;
+    }
+    match->group_starts  = (const char**) malloc((size_t)ngroups * sizeof(char*));
+    match->group_lengths = (size_t*)      malloc((size_t)ngroups * sizeof(size_t));
+    if (!match->group_starts || !match->group_lengths) {
+        REGEX_LOG("[regex_fill_groups] OOM allocating group buffers.");
+        free((void*)match->group_starts);
+        free(match->group_lengths);
+        match->group_starts = NULL;
+        match->group_lengths = NULL;
+        match->group_count = 0;
+        return REGEX_MATCH_ERROR;
+    }
+    for (int i = 0; i < ngroups; i++) {
+        if (so[i] >= 0 && eo[i] >= so[i]) {
+            match->group_starts[i]  = subject + so[i];
+            match->group_lengths[i] = (size_t)(eo[i] - so[i]);
+        }
+        else {
+            match->group_starts[i]  = match->start;
+            match->group_lengths[i] = 0;
+        }
+    }
+    return REGEX_SUCCESS;
+}
+
+
+/**
+ * Internal: searches `subject` (of length `subject_len`) for the first match
+ * that starts at or after byte `offset`.
+ *
+ * Unlike matching on `subject + offset`, the text before `offset` stays
+ * visible: '^' and \A do not match in the middle of the subject, and \b and
+ * lookbehind see the preceding characters. Every scanning helper (find_all,
+ * count, replace, split) walks the subject with this function.
+ *
+ * With REGEX_EXEC_NONEMPTY_AT_START only a non-empty match starting exactly
+ * at `offset` is accepted.
+ */
+static RegexResult regex_exec_at(Regex* regex, const char* subject, size_t subject_len, size_t offset, int options, RegexMatch* match) {
+    /* Make the match always safe to pass to regex_match_free(), even on the
+       no-match / error paths below where the group buffers are never set. */
+    if (match) {
+        match->group_starts  = NULL;
+        match->group_lengths = NULL;
+        match->group_count   = 0;
+    }
+    if (offset > subject_len) {
+        return REGEX_NO_MATCH;
+    }
+
+#if CSTD_REGEX_USE_PCRE
+    if (!regex->compiled_pattern) {
+        return REGEX_MATCH_ERROR;
+    }
+    if (subject_len > (size_t)INT_MAX) {
+        REGEX_LOG("[regex_exec_at] Subject too long for PCRE (%zu bytes).", subject_len);
+        return REGEX_MATCH_ERROR;
+    }
+
+    int capture_count = 0;
+    if (pcre_fullinfo(regex->compiled_pattern, NULL, PCRE_INFO_CAPTURECOUNT, &capture_count) != 0 || capture_count < 0) {
+        return REGEX_MATCH_ERROR;
+    }
+    /* Room for every group, so no group is silently dropped. */
+    int ovecsize = (capture_count + 1) * 3;
+    int stack_ovector[30];
+    int* ovector = stack_ovector;
+    if (ovecsize > 30) {
+        ovector = (int*)malloc((size_t)ovecsize * sizeof(int));
+        if (!ovector) {
+            return REGEX_MATCH_ERROR;
+        }
+    }
+    else {
+        ovecsize = 30;
+    }
+
+    int pcre_options = 0;
+    if (options & REGEX_EXEC_NONEMPTY_AT_START) {
+        pcre_options |= PCRE_NOTEMPTY_ATSTART | PCRE_ANCHORED;
+    }
+    if (regex->utf8 && offset > 0) {
+        /* Calls past offset 0 come only from a scan whose first call (at
+           offset 0) already checked the whole subject, and the scan keeps
+           offsets on character boundaries: skip the O(n) re-check. An
+           invalid subject fails that first call (REGEX_MATCH_ERROR). */
+        pcre_options |= PCRE_NO_UTF8_CHECK;
+    }
+    int rc = pcre_exec(regex->compiled_pattern, NULL, subject, (int)subject_len, (int)offset, pcre_options, ovector, ovecsize);
+
+    if (rc < 0) {
+        REGEX_LOG("[regex_exec_at] Match failed with code %d", rc);
+        if (ovector != stack_ovector) {
+            free(ovector);
+        }
+        return (rc == PCRE_ERROR_NOMATCH) ? REGEX_NO_MATCH : REGEX_MATCH_ERROR;
+    }
+
+    RegexResult result = REGEX_SUCCESS;
+    if (match) {
+        match->start  = subject + ovector[0];
+        match->end    = subject + ovector[1];
+        match->length = (size_t)(ovector[1] - ovector[0]);
+
+        long so[64], eo[64];
+        long* gso = so;
+        long* geo = eo;
+        if (capture_count > 64) {
+            gso = (long*)malloc((size_t)capture_count * sizeof(long));
+            geo = (long*)malloc((size_t)capture_count * sizeof(long));
+        }
+        if (!gso || !geo) {
+            result = REGEX_MATCH_ERROR;
+        }
+        else {
+            for (int i = 1; i <= capture_count; i++) {
+                /* Groups at index >= rc did not participate (pcre leaves them unset). */
+                gso[i - 1] = (i < rc) ? ovector[2 * i] : -1;
+                geo[i - 1] = (i < rc) ? ovector[2 * i + 1] : -1;
+            }
+            result = regex_fill_groups(match, subject, capture_count, gso, geo);
+        }
+        if (gso != so) {
+            free(gso);
+        }
+        if (geo != eo) {
+            free(geo);
+        }
+        REGEX_LOG("[regex_exec_at] Match found: %.*s", (int)(match->length), match->start);
+    }
+    if (ovector != stack_ovector) {
+        free(ovector);
+    }
+    return result;
+#else
+    size_t ngroups = regex->compiled.re_nsub;
+    size_t nmatch  = ngroups + 1;
+    regmatch_t* pm = (regmatch_t*) malloc(nmatch * sizeof(regmatch_t));
+    if (!pm) {
+        REGEX_LOG("[regex_exec_at] OOM allocating match buffer.");
+        return REGEX_MATCH_ERROR;
+    }
+    /* '^' must not match at the offset unless it really is a line start. */
+    int eflags = 0;
+    if (offset > 0 && !(regex->newline && subject[offset - 1] == '\n')) {
+        eflags |= REG_NOTBOL;
+    }
+#ifdef REG_STARTEND
+    /* Search the whole subject from `offset`, so word boundaries can see the
+       character before it; offsets come back relative to `subject`. */
+    const char* base = subject;
+    pm[0].rm_so = (regoff_t)offset;
+    pm[0].rm_eo = (regoff_t)subject_len;
+    int rc = regexec(&regex->compiled, subject, nmatch, pm, eflags | REG_STARTEND);
+#else
+    const char* base = subject + offset;
+    int rc = regexec(&regex->compiled, base, nmatch, pm, eflags);
+#endif
+    if (rc != 0) {
+        REGEX_LOG("[regex_exec_at] Match failed with code %d", rc);
+        free(pm);
+        return (rc == REG_NOMATCH) ? REGEX_NO_MATCH : REGEX_MATCH_ERROR;
+    }
+    /* POSIX returns the longest match at the leftmost position, so if that
+       is empty or not at the offset there is no non-empty match there. */
+    if ((options & REGEX_EXEC_NONEMPTY_AT_START) &&
+        (base + pm[0].rm_so != subject + offset || pm[0].rm_eo == pm[0].rm_so)) {
+        free(pm);
+        return REGEX_NO_MATCH;
+    }
+
+    RegexResult result = REGEX_SUCCESS;
+    if (match) {
+        match->start  = base + pm[0].rm_so;
+        match->end    = base + pm[0].rm_eo;
+        match->length = (size_t)(pm[0].rm_eo - pm[0].rm_so);
+
+        long* gso = (long*)malloc((ngroups ? ngroups : 1) * sizeof(long));
+        long* geo = (long*)malloc((ngroups ? ngroups : 1) * sizeof(long));
+        if (!gso || !geo) {
+            result = REGEX_MATCH_ERROR;
+        }
+        else {
+            for (size_t i = 1; i <= ngroups; i++) {
+                gso[i - 1] = (pm[i].rm_so >= 0) ? (long)pm[i].rm_so : -1;
+                geo[i - 1] = (pm[i].rm_so >= 0) ? (long)pm[i].rm_eo : -1;
+            }
+            result = regex_fill_groups(match, base, (int)ngroups, gso, geo);
+        }
+        free(gso);
+        free(geo);
+        REGEX_LOG("[regex_exec_at] Match found: %.*s", (int)(match->length), match->start);
+    }
+    free(pm);
+    return result;
+#endif
+}
+
+
+/* Internal: finds the next match of a left-to-right scan and moves `*pos` past
+   it. Start a scan with *pos = 0 and *options = 0. After an empty match the
+   next search must not return the same empty match, so it first asks for a
+   non-empty match at that position and otherwise steps one byte forward (one
+   whole character with REGEX_UTF8).
+   Returns 1 with the match in `m` (free it with regex_match_free), or 0 when
+   the scan is over; `*rr` is then REGEX_NO_MATCH, or REGEX_MATCH_ERROR if the
+   engine failed. */
+static int regex_scan_next(Regex* regex, const char* subject, size_t subject_len, size_t* pos, int* options, RegexMatch* m, RegexResult* rr) {
+    for (;;) {
+        *rr = regex_exec_at(regex, subject, subject_len, *pos, *options, m);
+        if (*rr == REGEX_SUCCESS) {
+            *pos = (size_t)(m->end - subject);
+            *options = (m->length == 0) ? REGEX_EXEC_NONEMPTY_AT_START : 0;
+            return 1;
+        }
+        if (*rr != REGEX_NO_MATCH) {
+            return 0;      /* engine error */
+        }
+        if (*options == 0 || *pos >= subject_len) {
+            return 0;      /* nothing more */
+        }
+        /* No non-empty match at the empty match's position: step forward. */
+        (*pos)++;
+        while (regex->utf8 && *pos < subject_len && ((unsigned char)subject[*pos] & 0xC0) == 0x80) {
+            (*pos)++;   /* never stop inside a UTF-8 character */
+        }
+        *options = 0;
+    }
+}
+
+
 /**
  * @brief Matches a string against a compiled regular expression.
- * 
+ *
  * @param regex The compiled regex object.
  * @param string The string to match.
  * @param match Optional pointer to store match details (start/end/length) for the first match.
@@ -178,119 +544,15 @@ Regex* regex_compile(const char* pattern, RegexFlags flags) {
 RegexResult regex_match(Regex* regex, const char* string, RegexMatch* match) {
     if (!regex || !string) {
         REGEX_LOG("[regex_match] NULL regex or input string.");
+        if (match) {
+            match->group_starts  = NULL;
+            match->group_lengths = NULL;
+            match->group_count   = 0;
+        }
         return REGEX_MATCH_ERROR;
     }
     REGEX_LOG("[regex_match] Matching string: %s", string);
-
-    /* Make the match always safe to pass to regex_match_free(), even on the
-       no-match / error paths below where the group buffers are never set. */
-    if (match) {
-        match->group_starts  = NULL;
-        match->group_lengths = NULL;
-        match->group_count   = 0;
-    }
-
-#if CSTD_REGEX_USE_PCRE
-    if (!regex->compiled_pattern) {
-        return REGEX_MATCH_ERROR;
-    }
-    int ovector[30];  // Array for storing the start and end positions of the matches
-    int rc = pcre_exec(regex->compiled_pattern, NULL, string, (int)strlen(string), 0, 0, ovector, 30);
-
-    if (rc < 0) {
-        REGEX_LOG("[regex_match] Match failed with code %d", rc);
-        return (rc == PCRE_ERROR_NOMATCH) ? REGEX_NO_MATCH : REGEX_MATCH_ERROR;
-    }
-
-    if (match) {
-        match->start = string + ovector[0];
-        match->end = string + ovector[1];
-        match->length = (size_t)(ovector[1] - ovector[0]);
-        match->group_count = rc - 1;  // Subtract 1 because rc includes the whole match as group 0
-
-
-        if (match->group_count > 0) {
-            match->group_starts = (const char**) malloc((size_t)match->group_count * sizeof(char*));
-            match->group_lengths = (size_t*) malloc((size_t)match->group_count * sizeof(size_t));
-            if (!match->group_starts || !match->group_lengths) {
-                REGEX_LOG("[regex_match] OOM allocating group buffers.");
-                free((void*)match->group_starts);
-                free(match->group_lengths);
-
-                match->group_starts = NULL;
-                match->group_lengths = NULL;
-                match->group_count = 0;
-
-                return REGEX_MATCH_ERROR;
-            }
-            for (int i = 1; i <= match->group_count; i++) {
-                match->group_starts[i-1] = string + ovector[2 * i];
-                match->group_lengths[i-1] = (size_t)(ovector[2 * i + 1] - ovector[2 * i]);
-            }
-        }
-        else {
-            match->group_starts = NULL;
-            match->group_lengths = NULL;
-        }
-
-        REGEX_LOG("[regex_match] Match found: %.*s", (int)(match->length), match->start);
-    }
-#else
-    size_t ngroups = regex->compiled.re_nsub;
-    size_t nmatch  = ngroups + 1;
-    regmatch_t* pm = (regmatch_t*) malloc(nmatch * sizeof(regmatch_t));
-    if (!pm) {
-        REGEX_LOG("[regex_match] OOM allocating match buffer.");
-        return REGEX_MATCH_ERROR;
-    }
-    int rc = regexec(&regex->compiled, string, nmatch, pm, 0);
-    if (rc != 0) {
-        REGEX_LOG("[regex_match] Match failed with code %d", rc);
-        free(pm);
-        return (rc == REG_NOMATCH) ? REGEX_NO_MATCH : REGEX_MATCH_ERROR;
-    }
-
-    if (match) {
-        match->start  = string + pm[0].rm_so;
-        match->end    = string + pm[0].rm_eo;
-        match->length = (size_t)(pm[0].rm_eo - pm[0].rm_so);
-        match->group_count = (int)ngroups;
-
-        if (ngroups > 0) {
-            match->group_starts  = (const char**) malloc(ngroups * sizeof(char*));
-            match->group_lengths = (size_t*)      malloc(ngroups * sizeof(size_t));
-            if (!match->group_starts || !match->group_lengths) {
-                REGEX_LOG("[regex_match] OOM allocating group buffers.");
-                free((void*)match->group_starts);
-                free(match->group_lengths);
-                match->group_starts = NULL;
-                match->group_lengths = NULL;
-                match->group_count = 0;
-                free(pm);
-                return REGEX_MATCH_ERROR;
-            }
-            for (size_t i = 1; i <= ngroups; i++) {
-                if (pm[i].rm_so >= 0) {
-                    match->group_starts[i-1]  = string + pm[i].rm_so;
-                    match->group_lengths[i-1] = (size_t)(pm[i].rm_eo - pm[i].rm_so);
-                }
-                else {   /* group did not participate in the match */
-                    match->group_starts[i-1]  = string;
-                    match->group_lengths[i-1] = 0;
-                }
-            }
-        }
-        else {
-            match->group_starts = NULL;
-            match->group_lengths = NULL;
-        }
-
-        REGEX_LOG("[regex_match] Match found: %.*s", (int)(match->length), match->start);
-    }
-    free(pm);
-#endif
-
-    return REGEX_SUCCESS;
+    return regex_exec_at(regex, string, strlen(string), 0, 0, match);
 }
 
 
@@ -324,30 +586,30 @@ RegexResult regex_search(Regex* regex, const char* string, RegexMatch* match) {
 int regex_find_all(Regex* regex, const char* string, RegexMatch* matches, int max_matches) {
     if (!regex || !string || !matches || max_matches <= 0) {
         REGEX_LOG("[regex_find_all] Invalid arguments.");
-        return 0;
+        return -1;   /* as documented; 0 ("no match") hid the error */
     }
     REGEX_LOG("[regex_find_all] Finding all matches in string: %s", string);
 
     int count = 0;
-    const char* current = string;
+    size_t len = strlen(string);
+    size_t pos = 0;
+    int options = 0;
+    RegexResult rr = REGEX_NO_MATCH;
     RegexMatch temp_match;
 
-    while (count < max_matches && regex_match(regex, current, &temp_match) == REGEX_SUCCESS) {
+    /* Scan the original string, so ^, \b and lookbehind keep their meaning
+       after the first match. */
+    while (count < max_matches && regex_scan_next(regex, string, len, &pos, &options, &temp_match, &rr)) {
         matches[count] = temp_match;
         REGEX_LOG("[regex_find_all] Match %d found: %.*s", count + 1, (int)temp_match.length, temp_match.start);
         count++;
-
-        // Guard against zero-length match (e.g. pattern "a*" matching ""):
-        // without this, current never advances and we loop forever.
-        if (temp_match.end == temp_match.start) {
-            if (*temp_match.end == '\0') {
-                break;  // end of string anyway
-            }
-            current = temp_match.end + 1;        // skip a char to make progress
+    }
+    if (count < max_matches && rr == REGEX_MATCH_ERROR) {
+        REGEX_LOG("[regex_find_all] Matching failed after %d match(es).", count);
+        for (int i = 0; i < count; i++) {
+            regex_match_free(&matches[i]);
         }
-        else {
-            current = temp_match.end;
-        }
+        return -1;
     }
 
     REGEX_LOG("[regex_find_all] Total matches found: %d", count);
@@ -487,30 +749,21 @@ int regex_count_matches(const char* pattern, const char* string, RegexFlags flag
     }
 
     int count = 0;
-    const char* cursor = string;
+    size_t len = strlen(string);
+    size_t pos = 0;
+    int options = 0;
+    RegexResult rr = REGEX_NO_MATCH;
     RegexMatch m;
 
-    while (regex_match(r, cursor, &m) == REGEX_SUCCESS) {
+    while (regex_scan_next(r, string, len, &pos, &options, &m, &rr)) {
         count++;
-        /* Snapshot the post-match position BEFORE freeing the per-match
-           buffers. Advancing by `m.length` alone is wrong because the
-           match may start at an offset within `cursor` — we have to jump
-           past the match, not by its length. */
-        const char* match_end = m.end;
-        size_t consumed = m.length;
         regex_match_free(&m);
-
-        if (consumed == 0) {
-            if (*cursor == '\0') {
-                break;
-            }
-            cursor++;
-        }
-        else {
-            cursor = match_end;
-        }
     }
     regex_deallocate(r);
+    if (rr == REGEX_MATCH_ERROR) {
+        REGEX_LOG("[regex_count_matches]: matching failed -> -1");
+        return -1;
+    }
     REGEX_LOG("[regex_count_matches]: exit -> %d", count);
     return count;
 }
@@ -635,13 +888,20 @@ static int regex_buf_append(char** buf, size_t* len, size_t* cap, const char* sr
 }
 
 
+static int regex_append_with_refs(char** buf, size_t* len, size_t* cap,
+                                  const char* replacement, const RegexMatch* m);
+
+
 /**
- * @brief Internal: shared engine for regex_replace and regex_replace_first.
+ * @brief Internal: shared engine for regex_replace, regex_replace_first and
+ *        regex_replace_groups.
  *
  * @param max_replacements -1 means "replace all". Any other non-negative
  *                         value caps the number of substitutions.
+ * @param expand_refs      Non-zero to expand $N backreferences in
+ *                         @p replacement; zero to insert it literally.
  */
-static char* regex_replace_impl(const char* pattern, const char* string, const char* replacement, RegexFlags flags, int max_replacements) {
+static char* regex_replace_impl(const char* pattern, const char* string, const char* replacement, RegexFlags flags, int max_replacements, int expand_refs) {
     if (!pattern || !string || !replacement) {
         return NULL;
     }
@@ -655,60 +915,43 @@ static char* regex_replace_impl(const char* pattern, const char* string, const c
     size_t outl = 0;
     size_t outc = 0;
 
-    const char* cursor    = string;
-    size_t replacements   = 0;
-    size_t replacement_n  = strlen(replacement);
+    size_t len           = strlen(string);
+    size_t copied        = 0;   /* string[0..copied) is already in `out` */
+    size_t pos           = 0;
+    int options          = 0;
+    size_t replacements  = 0;
+    size_t replacement_n = strlen(replacement);
+    RegexResult rr       = REGEX_NO_MATCH;
 
     RegexMatch m;
     while ((max_replacements < 0 || (int)replacements < max_replacements) &&
-           regex_match(r, cursor, &m) == REGEX_SUCCESS) {
-        /* Bytes from cursor up to the match start. */
-        size_t prefix = (size_t)(m.start - cursor);
-        if (!regex_buf_append(&out, &outl, &outc, cursor, prefix)) {
-            regex_match_free(&m); 
-            regex_deallocate(r); 
-            free(out); 
-            return NULL;
+           regex_scan_next(r, string, len, &pos, &options, &m, &rr)) {
+        /* Unmatched bytes up to the match start, then the replacement. */
+        size_t ms = (size_t)(m.start - string);
+        int ok = regex_buf_append(&out, &outl, &outc, string + copied, ms - copied);
+        if (ok) {
+            ok = expand_refs ? regex_append_with_refs(&out, &outl, &outc, replacement, &m)
+                             : regex_buf_append(&out, &outl, &outc, replacement, replacement_n);
         }
-        /* The replacement. */
-        if (!regex_buf_append(&out, &outl, &outc, replacement, replacement_n)) {
-            regex_match_free(&m); 
-            regex_deallocate(r); 
-            free(out); 
+        copied = (size_t)(m.end - string);
+        regex_match_free(&m);
+        if (!ok) {
+            regex_deallocate(r);
+            free(out);
             return NULL;
         }
         replacements++;
-        cursor = m.end;
-        size_t consumed = m.length;
-        regex_match_free(&m);
-        /* Zero-length match: avoid infinite loop. */
-        if (consumed == 0) {
-            if (*cursor == '\0') {
-                break;
-            }
-            /* Copy the un-replaced byte and advance. */
-            if (!regex_buf_append(&out, &outl, &outc, cursor, 1)) {
-                regex_deallocate(r); 
-                free(out); 
-                return NULL;
-            }
-            cursor++;
-        }
-    }
-    /* Append the rest of the string. */
-    if (!regex_buf_append(&out, &outl, &outc, cursor, strlen(cursor))) {
-        regex_deallocate(r); 
-        free(out); 
-        return NULL;
-    }
-    if (!out) {
-
-        out = (char*)malloc(1);
-        if (out) {
-            out[0] = '\0';
-        }
     }
     regex_deallocate(r);
+    if (rr == REGEX_MATCH_ERROR && (max_replacements < 0 || (int)replacements < max_replacements)) {
+        free(out);
+        return NULL;
+    }
+    /* Append the rest of the string. */
+    if (!regex_buf_append(&out, &outl, &outc, string + copied, len - copied)) {
+        free(out);
+        return NULL;
+    }
     return out;
 }
 
@@ -733,7 +976,7 @@ static char* regex_replace_impl(const char* pattern, const char* string, const c
 char* regex_replace(const char* pattern, const char* string, const char* replacement, RegexFlags flags) {
     REGEX_LOG("[regex_replace]: enter (pattern='%s', flags=0x%X, replace_all=true)",
               pattern ? pattern : "(null)", (unsigned)flags);
-    char* out = regex_replace_impl(pattern, string, replacement, flags, -1);
+    char* out = regex_replace_impl(pattern, string, replacement, flags, -1, 0);
     REGEX_LOG("[regex_replace]: exit -> %p", (void*)out);
     return out;
 }
@@ -751,7 +994,7 @@ char* regex_replace(const char* pattern, const char* string, const char* replace
 char* regex_replace_first(const char* pattern, const char* string, const char* replacement, RegexFlags flags) {
     REGEX_LOG("[regex_replace_first]: enter (pattern='%s', flags=0x%X, replace_all=false)",
               pattern ? pattern : "(null)", (unsigned)flags);
-    char* out = regex_replace_impl(pattern, string, replacement, flags, 1);
+    char* out = regex_replace_impl(pattern, string, replacement, flags, 1, 0);
     REGEX_LOG("[regex_replace_first]: exit -> %p", (void*)out);
     return out;
 }
@@ -787,7 +1030,10 @@ static int regex_append_with_refs(char** buf, size_t* len, size_t* cap,
                 int    g = 0;
                 size_t j = i + 1;
                 while (replacement[j] >= '0' && replacement[j] <= '9') {
-                    g = g * 10 + (replacement[j] - '0');
+                    /* saturate: a long digit run used to overflow int (UB);
+                       INT_MAX names no group, so it expands to nothing */
+                    int d = replacement[j] - '0';
+                    g = (g > (INT_MAX - d) / 10) ? INT_MAX : g * 10 + d;
                     j++;
                 }
                 const char* gs = NULL;
@@ -855,68 +1101,7 @@ char* regex_replace_groups(const char* pattern, const char* string,
                            const char* replacement, RegexFlags flags) {
     REGEX_LOG("[regex_replace_groups]: enter (pattern='%s', flags=0x%X)",
               pattern ? pattern : "(null)", (unsigned)flags);
-    if (!pattern || !string || !replacement) {
-        return NULL;
-    }
-
-    Regex* r = regex_compile(pattern, flags);
-    if (!r) {
-        return NULL;
-    }
-
-    char*  out  = NULL;
-    size_t outl = 0;
-    size_t outc = 0;
-
-    const char* cursor = string;
-    RegexMatch  m;
-
-    while (regex_match(r, cursor, &m) == REGEX_SUCCESS) {
-        /* Bytes from cursor up to the match start, verbatim. */
-        size_t prefix = (size_t)(m.start - cursor);
-        if (!regex_buf_append(&out, &outl, &outc, cursor, prefix)) {
-            regex_match_free(&m);
-            regex_deallocate(r);
-            free(out);
-            return NULL;
-        }
-        /* The replacement, with $-backreferences expanded against this match. */
-        if (!regex_append_with_refs(&out, &outl, &outc, replacement, &m)) {
-            regex_match_free(&m);
-            regex_deallocate(r);
-            free(out);
-            return NULL;
-        }
-        cursor = m.end;
-        size_t consumed = m.length;
-        regex_match_free(&m);
-
-        /* Zero-length match: copy one byte and advance to guarantee progress. */
-        if (consumed == 0) {
-            if (*cursor == '\0') {
-                break;
-            }
-            if (!regex_buf_append(&out, &outl, &outc, cursor, 1)) {
-                regex_deallocate(r);
-                free(out);
-                return NULL;
-            }
-            cursor++;
-        }
-    }
-    /* Append the remainder of the string after the last match. */
-    if (!regex_buf_append(&out, &outl, &outc, cursor, strlen(cursor))) {
-        regex_deallocate(r);
-        free(out);
-        return NULL;
-    }
-    if (!out) {
-        out = (char*)malloc(1);
-        if (out) {
-            out[0] = '\0';
-        }
-    }
-    regex_deallocate(r);
+    char* out = regex_replace_impl(pattern, string, replacement, flags, -1, 1);
     REGEX_LOG("[regex_replace_groups]: exit -> %p", (void*)out);
     return out;
 }
@@ -961,17 +1146,16 @@ char** regex_split(const char* pattern, const char* string, RegexFlags flags, in
     int     ntokens = 0;
     int     cap = 0;
 
-    const char* cursor = string;
+    const char* cursor = string;   /* start of the current token */
+    size_t len = strlen(string);
+    size_t pos = 0;
+    int options = 0;
+    RegexResult rr = REGEX_NO_MATCH;
     RegexMatch m;
-    while (regex_match(r, cursor, &m) == REGEX_SUCCESS) {
-        size_t consumed = m.length;
-        /* Zero-length match would never advance — skip these for split. */
-        if (consumed == 0) {
+    while (regex_scan_next(r, string, len, &pos, &options, &m, &rr)) {
+        /* Empty matches do not split (documented: split at non-empty matches). */
+        if (m.length == 0) {
             regex_match_free(&m);
-            if (*cursor == '\0') {
-                break;
-            }
-            cursor++;
             continue;
         }
 
@@ -1011,6 +1195,15 @@ char** regex_split(const char* pattern, const char* string, RegexFlags flags, in
         tokens[ntokens++] = tok;
         cursor = m.end;
         regex_match_free(&m);
+    }
+    if (rr == REGEX_MATCH_ERROR) {
+        for (int i = 0; i < ntokens; i++) {
+            free(tokens[i]);
+        }
+        free(tokens);
+        regex_deallocate(r);
+        REGEX_LOG("[regex_split]: matching failed -> NULL");
+        return NULL;
     }
 
     /* Last token = remainder of string. */

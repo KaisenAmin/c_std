@@ -4,8 +4,8 @@
  * @brief Implementation of the BigInt library using GMP.
  */
 
-#include "bigint.h"
-#include <gmp.h>
+#include "bigint.h"   /* includes <gmp.h> (with its MSVC warnings silenced) */
+#include <limits.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -43,10 +43,40 @@ BigInt *bigint_create(void)
  * @param str A pointer to the decimal string representation.
  * @return Pointer to the new BigInt, or NULL if the string is invalid or allocation fails.
  */
+/* A malloc'ed copy of the value in @p base: mpz_get_str(NULL, ...) returns
+   GMP-allocated memory, which free() only releases correctly with GMP's
+   default allocator and a shared C runtime heap. */
+static char* bigint_str_base(const mpz_t value, int base) {
+    size_t n = mpz_sizeinbase(value, base) + 2;   /* sign and terminator */
+    char* buf = (char*)malloc(n);
+    if (buf) {
+        mpz_get_str(buf, base, value);
+    }
+    return buf;
+}
+
 BigInt *bigint_from_string(const char *str) {
     if (!str) {
         BIGINT_LOG("[bigint_from_string]: Input string is NULL.");
         return NULL;
+    }
+    /* Strictly [+-]digits: mpz_set_str skips whitespace anywhere ("12 34"
+       read as 1234) and rejects a leading '+'. */
+    const char* digits = str;
+    if (*digits == '+' || *digits == '-') {
+        digits++;
+    }
+    if (*digits == '\0') {
+        return NULL;
+    }
+    for (const char* p = digits; *p; ++p) {
+        if (*p < '0' || *p > '9') {
+            BIGINT_LOG("[bigint_from_string]: '%s' is not a decimal integer.", str);
+            return NULL;
+        }
+    }
+    if (*str == '+') {
+        str++;   /* GMP does not accept the '+' */
     }
     else {
         BIGINT_LOG("[bigint_from_string]: Received input string: %s", str);
@@ -141,7 +171,7 @@ char *bigint_to_string(const BigInt *bi) {
         BIGINT_LOG("[bigint_to_string]: Converting BigInt to string.");
     }
 
-    char *str = mpz_get_str(NULL, 10, bi->value);
+    char *str = bigint_str_base(bi->value, 10);
     if (!str) {
         BIGINT_LOG("[bigint_to_string]: Conversion failed, returned NULL.");
     }
@@ -353,7 +383,9 @@ void bigint_normalize(BigInt *bi) {
     }
 
     // Get the number of bits required to represent the BigInt in base 2.
-    mp_bitcnt_t bits = mpz_sizeinbase(bi->value, 2);
+    /* mp_bitcnt_t is GMP's own bit-count type (32 bits on Win64), which every
+       mpz bit count already fits. */
+    mp_bitcnt_t bits = (mp_bitcnt_t)mpz_sizeinbase(bi->value, 2);
     mpz_realloc2(bi->value, bits);
 
     BIGINT_LOG("[bigint_normalize]: Normalized BigInt to %lu bits", (unsigned long)bits);
@@ -482,7 +514,8 @@ BigInt *bigint_mod(const BigInt *a, const BigInt *b) {
  * @param exponent Pointer to the exponent BigInt.
  * @param modulus Pointer to the modulus BigInt. Must be non-zero.
  * @return Pointer to a new BigInt representing (base^exponent) mod modulus, or NULL if any
- *         input is NULL or if modulus is zero.
+ *         input is NULL, if modulus is zero, or if the exponent is negative and base has no
+ *         inverse modulo modulus (GMP would abort the whole process in that case).
  */
 BigInt *bigint_powmod(const BigInt *base, const BigInt *exponent, const BigInt *modulus) {
     if (!base || !exponent || !modulus) {
@@ -508,6 +541,21 @@ BigInt *bigint_powmod(const BigInt *base, const BigInt *exponent, const BigInt *
     }
     else {
         BIGINT_LOG("[bigint_powmod]: Allocated result BigInt successfully.");
+    }
+
+    if (mpz_sgn(exponent->value) < 0) {
+        /* A negative exponent means (base^-1)^|e|: mpz_powm raises a fatal
+           "division by zero" (process exit) when the inverse doesn't exist,
+           e.g. powmod(2, -1, 4). */
+        mpz_t inv;
+        mpz_init(inv);
+        int invertible = mpz_invert(inv, base->value, modulus->value);
+        mpz_clear(inv);
+        if (!invertible) {
+            BIGINT_LOG("[bigint_powmod]: base has no inverse modulo modulus; negative exponent undefined.");
+            bigint_deallocate(res);
+            return NULL;
+        }
     }
 
     mpz_powm(res->value, base->value, exponent->value, modulus->value);
@@ -661,6 +709,9 @@ int bigint_is_prime(const BigInt* a, int reps) {
         BIGINT_LOG("[bigint_is_prime]: Input BigInt is valid.");
     }
     
+    if (mpz_cmp_ui(a->value, 2) < 0) {
+        return 0;   /* primes are >= 2; GMP tests |n|, so -7 came back "prime" */
+    }
     int result = mpz_probab_prime_p(a->value, reps);
     BIGINT_LOG("[bigint_is_prime]: Primality test result = %d", result);
     return result;
@@ -706,13 +757,19 @@ BigInt* bigint_next_prime(const BigInt* a) {
  * @param a Pointer to the BigInt.
  * @param rem Pointer to a BigInt pointer where the remainder will be stored.
  *            If NULL, the remainder is discarded.
- * @return Pointer to a new BigInt representing the integer square root, or NULL on error.
+ * @return Pointer to a new BigInt representing the integer square root, or NULL on error
+ *         (NULL input, a negative input, or allocation failure).
  */
 BigInt* bigint_sqrt(const BigInt* a, BigInt** rem) {
     if (!a) {
         BIGINT_LOG("[bigint_sqrt]: Input BigInt is NULL.");
         return NULL;
-    } 
+    }
+    if (mpz_sgn(a->value) < 0) {
+        /* mpz_sqrt / mpz_sqrtrem abort the process on a negative operand */
+        BIGINT_LOG("[bigint_sqrt]: Negative input has no integer square root.");
+        return NULL;
+    }
     else {
         BIGINT_LOG("[bigint_sqrt]: Input BigInt is valid.");
     }
@@ -780,8 +837,18 @@ BigInt* bigint_sqrt(const BigInt* a, BigInt** rem) {
   #define BIGINT_GETPID()  ((unsigned long)getpid())
 #endif
 
-static int             bigint_rand_initialized = 0;
-static gmp_randstate_t bigint_rand_state;
+#if defined(_MSC_VER) && !defined(__clang__)
+  #define BIGINT_TLS __declspec(thread)
+#else
+  #define BIGINT_TLS _Thread_local
+#endif
+/* One generator per thread: the old process-wide state was lazily
+   initialised and advanced by mpz_urandomb with no locking, so two threads
+   could initialise it twice or corrupt it. A thread's state lives until the
+   process ends (GMP has no thread-exit hook). */
+static BIGINT_TLS int             bigint_rand_initialized = 0;
+static BIGINT_TLS gmp_randstate_t bigint_rand_state;
+static BIGINT_TLS unsigned long   bigint_rand_marker;   /* its address differs per thread */
 
 BigInt* bigint_random(unsigned long bits) {
     BigInt* res = bigint_create();
@@ -800,6 +867,7 @@ BigInt* bigint_random(unsigned long bits) {
         unsigned long seed = (unsigned long) time(NULL);
         seed ^= BIGINT_GETPID() << 16;
         seed ^= (unsigned long)(uintptr_t)&seed;
+        seed ^= (unsigned long)((uintptr_t)&bigint_rand_marker >> 4);   /* differs per thread */
         gmp_randseed_ui(bigint_rand_state, seed);
         bigint_rand_initialized = 1;
         BIGINT_LOG("[bigint_random]: Initialized persistent random state with seed %lu.", seed);
@@ -924,7 +992,8 @@ unsigned long bigint_bit_length(const BigInt* a) {
     if (mpz_sgn(a->value) == 0) {
         return 0;
     }
-    unsigned long bits = mpz_sizeinbase(a->value, 2);
+    size_t full = mpz_sizeinbase(a->value, 2);
+    unsigned long bits = (full > ULONG_MAX) ? ULONG_MAX : (unsigned long)full;   /* saturate */
     BIGINT_LOG("[bigint_bit_length]: Computed bit-length: %lu", bits);
     return bits;
 }
@@ -1071,7 +1140,7 @@ char* bigint_to_hex(const BigInt* a) {
         BIGINT_LOG("[bigint_to_hex]: Converting BigInt to hexadecimal string.");
     }
     
-    char* hexStr = mpz_get_str(NULL, 16, a->value);
+    char* hexStr = bigint_str_base(a->value, 16);
     if (!hexStr) {
         BIGINT_LOG("[bigint_to_hex]: Conversion failed, returned NULL.");
     } 
@@ -1104,7 +1173,7 @@ unsigned long bigint_num_digits(const BigInt* a) {
        — it's a buffer-sizing helper, not an exact digit count. Convert
        to a string and measure to get the true count; strip a leading
        minus sign so the count is of digits only. */
-    char* s = mpz_get_str(NULL, 10, a->value);
+    char* s = bigint_str_base(a->value, 10);
     if (!s) {
         return 0;
     }
@@ -1218,7 +1287,8 @@ unsigned long bigint_log2(const BigInt* a) {
         BIGINT_LOG("[bigint_log2]: BigInt is zero, returning 0.");
         return 0;
     }
-    unsigned long bits = mpz_sizeinbase(a->value, 2);
+    size_t full = mpz_sizeinbase(a->value, 2);
+    unsigned long bits = (full > ULONG_MAX) ? ULONG_MAX : (unsigned long)full;   /* saturate */
     unsigned long log2_val = (bits > 0) ? bits - 1 : 0;
     BIGINT_LOG("[bigint_log2]: Computed floor(log2(|a|)) as %lu", log2_val);
 

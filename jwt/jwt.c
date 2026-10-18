@@ -35,6 +35,13 @@
 
 #include "../string/std_string.h"
 
+#if defined(_WIN32)
+#include <wchar.h>
+/* MultiByteToWideChar without <windows.h>, whose <wincrypt.h> names
+   (X509_NAME, ...) clash with OpenSSL's. */
+__declspec(dllimport) int __stdcall MultiByteToWideChar(unsigned int, unsigned long, const char*, int, wchar_t*, int);
+#endif
+
 /* =================================================================== */
 /* Internal types                                                       */
 /* =================================================================== */
@@ -133,16 +140,36 @@ static char* jwt_base64url_encode(const unsigned char* in, size_t in_len, size_t
     return out;
 }
 
-/* Decode `in_len` base64url chars (with or without "=" padding; tolerates
- * stray "+" / "/" from buggy producers). Returns malloc'd bytes; length
- * in *out_len. NULL on invalid input or OOM. */
-static unsigned char* jwt_base64url_decode(const char* in, size_t in_len, size_t* out_len) {
-    /* Strip any trailing '=' padding. */
-    while (in_len > 0 && in[in_len - 1] == '=') in_len--;
+/* Decode `in_len` base64url chars. Returns malloc'd bytes; length in
+ * *out_len. NULL on invalid input or OOM.
+ *
+ * strict (JWS segments, RFC 7515 §2): URL-safe alphabet only, no "="
+ * padding, and the unused low bits of the last character must be zero, so
+ * each byte string has exactly one accepted spelling (a deny-list or replay
+ * cache keyed on the token string can't be bypassed by re-spelling the
+ * signature). Lenient (JWK members): trailing "=" and "+" / "/" from buggy
+ * producers are tolerated. */
+static unsigned char* jwt_base64url_decode_mode(const char* in, size_t in_len, size_t* out_len, bool strict) {
+    if (!strict) {
+        /* Strip any trailing '=' padding. */
+        while (in_len > 0 && in[in_len - 1] == '=') in_len--;
+    }
 
     /* Validate every character. */
     for (size_t i = 0; i < in_len; ++i) {
         if (k_b64u_decode_table[(unsigned char)in[i]] < 0) {
+            return NULL;
+        }
+        if (strict && (in[i] == '+' || in[i] == '/')) {
+            return NULL;
+        }
+    }
+    if (strict) {
+        size_t t = in_len % 4;
+        if (t == 2 && (k_b64u_decode_table[(unsigned char)in[in_len - 1]] & 0x0F) != 0) {
+            return NULL;   /* non-zero padding bits */
+        }
+        if (t == 3 && (k_b64u_decode_table[(unsigned char)in[in_len - 1]] & 0x03) != 0) {
             return NULL;
         }
     }
@@ -183,6 +210,16 @@ static unsigned char* jwt_base64url_decode(const char* in, size_t in_len, size_t
     }
     if (out_len) *out_len = o;
     return out;
+}
+
+/* Token segments: strict. */
+static unsigned char* jwt_base64url_decode(const char* in, size_t in_len, size_t* out_len) {
+    return jwt_base64url_decode_mode(in, in_len, out_len, true);
+}
+
+/* JWK members: lenient. */
+static unsigned char* jwt_base64url_decode_lenient(const char* in, size_t in_len, size_t* out_len) {
+    return jwt_base64url_decode_mode(in, in_len, out_len, false);
 }
 
 /* =================================================================== */
@@ -323,14 +360,16 @@ const char* jwt_alg_to_string(JwtAlgorithm a) {
  * @brief Parse a JWT algorithm name string into the enum.
  *
  * Recognizes "none", "HS256", "HS384", "HS512", "RS256", "RS384",
- * "RS512" (case-sensitive — RFC 7518 is case-sensitive). Anything else
- * returns `JWT_ALG_NONE`. NULL input also returns `JWT_ALG_NONE`.
+ * "RS512", ... (case-sensitive — RFC 7518 is case-sensitive). Anything
+ * else, and NULL, returns `JWT_ALG_UNKNOWN`, which is never accepted (it
+ * used to return `JWT_ALG_NONE`, so allow-listing "none" also accepted
+ * every garbled `alg` with an empty signature).
  *
  * @param s Algorithm name as it appears in a JOSE header.
- * @return Enum value, or `JWT_ALG_NONE` on no match.
+ * @return Enum value, or `JWT_ALG_UNKNOWN` on no match.
  */
 JwtAlgorithm jwt_alg_from_string(const char* s) {
-    if (!s) return JWT_ALG_NONE;
+    if (!s) return JWT_ALG_UNKNOWN;
     if (strcmp(s, "HS256") == 0) return JWT_ALG_HS256;
     if (strcmp(s, "HS384") == 0) return JWT_ALG_HS384;
     if (strcmp(s, "HS512") == 0) return JWT_ALG_HS512;
@@ -344,7 +383,7 @@ JwtAlgorithm jwt_alg_from_string(const char* s) {
     if (strcmp(s, "PS384") == 0) return JWT_ALG_PS384;
     if (strcmp(s, "PS512") == 0) return JWT_ALG_PS512;
     if (strcmp(s, "none")  == 0) return JWT_ALG_NONE;
-    return JWT_ALG_NONE;
+    return JWT_ALG_UNKNOWN;
 }
 
 /**
@@ -451,8 +490,10 @@ static bool jwt_ec_curve_matches_alg(EVP_PKEY* pkey, JwtAlgorithm alg) {
  * @return Newly-allocated key, or NULL on OOM / NULL secret with len>0.
  */
 JwtKey* jwt_key_hmac(const unsigned char* secret, size_t secret_len) {
-    if (!secret && secret_len > 0) {
-        JWT_LOG("[jwt_key_hmac]: NULL secret with non-zero length");
+    if (!secret || secret_len == 0) {
+        /* an empty secret (e.g. a JWKS "oct" entry with an empty "k") is
+           never a usable HMAC key; the README already promised NULL */
+        JWT_LOG("[jwt_key_hmac]: NULL or empty secret");
         return NULL;
     }
 
@@ -556,9 +597,38 @@ JwtKey* jwt_key_rsa_public_pem(const char* pem, size_t pem_len) {
     return k;
 }
 
+/* fopen for a UTF-8 path: the narrow fopen on Windows reads the path in the
+   ANSI code page, so a non-ASCII key / JWKS path failed there. */
+static FILE* jwt_fopen_utf8(const char* path, const char* mode) {
+#if defined(_WIN32)
+    wchar_t wmode[8];
+    size_t i = 0;
+    for (; mode[i] && i < 7; ++i) {
+        wmode[i] = (wchar_t)(unsigned char)mode[i];
+    }
+    wmode[i] = L'\0';
+    int n = MultiByteToWideChar(65001 /* CP_UTF8 */, 0x8 /* MB_ERR_INVALID_CHARS */, path, -1, NULL, 0);
+    if (n <= 0) {
+        return NULL;
+    }
+    wchar_t* wpath = (wchar_t*)malloc((size_t)n * sizeof(wchar_t));
+    if (!wpath) {
+        return NULL;
+    }
+    FILE* f = NULL;
+    if (MultiByteToWideChar(65001, 0x8, path, -1, wpath, n) > 0) {
+        f = _wfopen(wpath, wmode);
+    }
+    free(wpath);
+    return f;
+#else
+    return fopen(path, mode);
+#endif
+}
+
 /* Helper: load a whole file into memory. Caller frees *out. */
 static bool jwt_slurp_file(const char* path, char** out, size_t* out_len) {
-    FILE* f = fopen(path, "rb");
+    FILE* f = jwt_fopen_utf8(path, "rb");
     if (!f) return false;
     if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return false; }
     long n = ftell(f);
@@ -767,8 +837,8 @@ static unsigned char* jwks_decode_b64u_field(JsonElement* obj, const char* name,
                                              size_t* out_len) {
     JsonElement* e = json_get_element(obj, name);
     if (!e || e->type != JSON_STRING || !e->value.string_val) return NULL;
-    return jwt_base64url_decode(e->value.string_val,
-                                strlen(e->value.string_val), out_len);
+    return jwt_base64url_decode_lenient(e->value.string_val,
+                                        strlen(e->value.string_val), out_len);
 }
 
 /* Build an RSA public EVP_PKEY from raw modulus + exponent bytes.
@@ -776,10 +846,30 @@ static unsigned char* jwks_decode_b64u_field(JsonElement* obj, const char* name,
    the deprecated RSA_new() / EVP_PKEY_assign_RSA() path. */
 static EVP_PKEY* jwks_make_rsa_pubkey(const unsigned char* n_bytes, size_t n_len,
                                       const unsigned char* e_bytes, size_t e_len) {
-    if (!n_bytes || !e_bytes || n_len == 0 || e_len == 0) return NULL;
+    if (!n_bytes || !e_bytes) return NULL;
+    while (n_len > 0 && n_bytes[0] == 0) { n_bytes++; n_len--; }
+    while (e_len > 0 && e_bytes[0] == 0) { e_bytes++; e_len--; }
+    if (n_len == 0 || e_len == 0) return NULL;
+
+    /* Parameter sanity (any modulus and exponent used to be accepted):
+       RFC 7518 §3.3 / §3.5 require 2048 bits or more for RS* / PS*; 16384
+       bits is OpenSSL's verification limit. The modulus is odd, and the
+       exponent is odd, at least 3 and smaller than the modulus. */
+    size_t n_bits = (n_len - 1) * 8;
+    for (unsigned top = n_bytes[0]; top; top >>= 1) n_bits++;
+    if (n_bits < 2048 || n_bits > 16384) {
+        JWT_LOG("[jwks]: RSA modulus of %zu bits rejected (2048..16384)", n_bits);
+        return NULL;
+    }
+    if (!(n_bytes[n_len - 1] & 1) || !(e_bytes[e_len - 1] & 1) ||
+        (e_len == 1 && e_bytes[0] < 3) || e_len > n_len) {
+        JWT_LOG("[jwks]: RSA modulus / exponent rejected");
+        return NULL;
+    }
+
     BIGNUM* bn_n = BN_bin2bn(n_bytes, (int)n_len, NULL);
     BIGNUM* bn_e = BN_bin2bn(e_bytes, (int)e_len, NULL);
-    if (!bn_n || !bn_e) {
+    if (!bn_n || !bn_e || BN_cmp(bn_e, bn_n) >= 0) {
         if (bn_n) BN_free(bn_n);
         if (bn_e) BN_free(bn_e);
         return NULL;
@@ -1725,6 +1815,10 @@ char* jwt_encode(const JwtToken* t, const JwtKey* signing_key) {
         return NULL;
     }
     JWT_LOG("[jwt_encode]: encoding (alg=%s)", jwt_alg_to_string(t->alg));
+    if ((int)t->alg < (int)JWT_ALG_NONE || (int)t->alg >= (int)JWT_ALG_UNKNOWN) {
+        JWT_LOG("[jwt_encode]: unknown algorithm");
+        return NULL;
+    }
 
     /* Reject obviously-wrong key shape before doing any work. */
     if (t->alg != JWT_ALG_NONE) {
@@ -1734,6 +1828,15 @@ char* jwt_encode(const JwtToken* t, const JwtKey* signing_key) {
         }
         if (jwt_alg_is_hmac(t->alg) && signing_key->kind != JWT_KEY_KIND_HMAC) {
             JWT_LOG("[jwt_encode]: HMAC algorithm requires HMAC key");
+            return NULL;
+        }
+        /* RFC 7518 §3.2: the HMAC key MUST be at least as long as the hash
+           output (32 / 48 / 64 bytes). Signing with a 1-byte secret used to
+           succeed; verification can still opt into the same floor with
+           opts->reject_weak_hmac_key for keys it did not create. */
+        if (jwt_alg_is_hmac(t->alg) && signing_key->secret_len < jwt_hmac_min_key_len(t->alg)) {
+            JWT_LOG("[jwt_encode]: HMAC secret too short (%zu < %zu) for %s",
+                    signing_key->secret_len, jwt_hmac_min_key_len(t->alg), jwt_alg_to_string(t->alg));
             return NULL;
         }
         if (jwt_alg_uses_rsa_key(t->alg) && signing_key->kind != JWT_KEY_KIND_RSA_PRIVATE) {
@@ -1920,9 +2023,8 @@ JwtToken* jwt_decode(const char* compact_jwt) {
         jwt_deallocate(t); return NULL;
     }
     t->alg = jwt_alg_from_string(alg->value.string_val);
-    /* If the header says something the enum doesn't know about, alg
-       becomes JWT_ALG_NONE — that's fine. Verification will reject it
-       because JWT_ALG_NONE won't be in the caller's allow-list. */
+    /* An `alg` the enum doesn't know becomes JWT_ALG_UNKNOWN, which
+       verification always rejects (allow-listed or not). */
     JWT_LOG("[jwt_decode]: decoded token (alg=%s, sig_len=%zu)",
             jwt_alg_to_string(t->alg), t->signature_len);
 
@@ -1950,6 +2052,9 @@ static bool jwtp_json_num_to_int64(double v, int64_t* out) {
 
 /* Is `alg` in opts->allowed_algs? */
 static bool jwt_alg_allowed(JwtAlgorithm alg, const JwtAlgorithm* allowed, size_t n) {
+    if (alg == JWT_ALG_UNKNOWN) {
+        return false;   /* never, even if a caller put it in the list */
+    }
     for (size_t i = 0; i < n; ++i) {
         if (allowed[i] == alg) return true;
     }
@@ -2093,9 +2198,13 @@ JwtStatus jwt_verify(const JwtToken* t,
         return JWT_ERR_INVALID_SIGNATURE;
     }
 
-    /* 4. Time-based claims. */
+    /* 4. Time-based claims. A negative leeway counts as 0, and now - leeway /
+       now + leeway saturate (a huge leeway or now_unix used to overflow
+       int64, which is undefined behavior). */
     int64_t now = opts->now_unix ? opts->now_unix : (int64_t)time(NULL);
-    int64_t leeway = opts->leeway_seconds;
+    int64_t leeway = (opts->leeway_seconds > 0) ? opts->leeway_seconds : 0;
+    int64_t earliest = (now < INT64_MIN + leeway) ? INT64_MIN : now - leeway;
+    int64_t latest   = (now > INT64_MAX - leeway) ? INT64_MAX : now + leeway;
 
     JsonElement* exp = json_get_element(t->payload, "exp");
     if (exp) {
@@ -2104,9 +2213,10 @@ JwtStatus jwt_verify(const JwtToken* t,
             JWT_LOG("[jwt_verify]: exp claim is not a representable number");
             return JWT_ERR_INVALID_FORMAT;
         }
-        /* Compare without arithmetic on the token-controlled value (exp_v + leeway
-           could overflow for a hostile exp): expired iff exp_v < now - leeway. */
-        if (exp_v < now - leeway) {
+        /* RFC 7519 §4.1.4: valid only while now is BEFORE exp, so expired iff
+           exp_v <= now - leeway (exp == now used to pass). No arithmetic on
+           the token-controlled value: exp_v + leeway could overflow. */
+        if (exp_v <= earliest) {
             JWT_LOG("[jwt_verify]: token expired (exp=%lld now=%lld leeway=%lld)",
                     (long long)exp_v, (long long)now, (long long)leeway);
             return JWT_ERR_EXPIRED;
@@ -2123,8 +2233,9 @@ JwtStatus jwt_verify(const JwtToken* t,
             JWT_LOG("[jwt_verify]: nbf claim is not a representable number");
             return JWT_ERR_INVALID_FORMAT;
         }
-        /* not-yet-valid iff nbf_v > now + leeway (no arithmetic on nbf_v). */
-        if (nbf_v > now + leeway) {
+        /* RFC 7519 §4.1.5: valid from nbf on, so not-yet-valid iff
+           nbf_v > now + leeway (no arithmetic on nbf_v). */
+        if (nbf_v > latest) {
             JWT_LOG("[jwt_verify]: token not yet valid (nbf=%lld now=%lld leeway=%lld)",
                     (long long)nbf_v, (long long)now, (long long)leeway);
             return JWT_ERR_NOT_YET_VALID;
@@ -2329,10 +2440,11 @@ JwtStatus jwt_decode_and_verify_with_keys(const char* compact_jwt,
             case JWT_ERR_INVALID_SUBJECT:
             case JWT_ERR_INVALID_FORMAT:
             case JWT_ERR_TOKEN_TOO_LARGE:
-            case JWT_ERR_WEAK_KEY:
                 jwt_deallocate(t);
                 return rc;
             default:
+                /* JWT_ERR_WEAK_KEY belongs here: it is about this key, and the
+                   next candidate may be a strong one (it used to end the loop). */
                 last_rc = rc;
                 break;
         }
@@ -2345,12 +2457,13 @@ JwtStatus jwt_decode_and_verify_with_keys(const char* compact_jwt,
 /**
  * @brief Decode + verify using a `JwtKeySet`, picking the right key by `kid`.
  *
- * If the token's header carries a `kid`, the matching keyset entry is
- * tried first (this is the fast path for properly-rotated IdPs). If
- * `kid` is absent OR no entry matches, the function falls back to
+ * If the token's header carries a `kid` and entries with that `kid` exist,
+ * only those entries are tried (the other keys used to be tried as well).
+ * If `kid` is absent OR no entry matches, the function falls back to
  * trying every key in the set whose shape is compatible with the
  * token's algorithm — covering pathological cases where the IdP forgot
- * to publish `kid`s.
+ * to publish `kid`s. An entry whose JWK `alg` names another algorithm
+ * than the token's is never tried (RFC 7517 §4.4).
  *
  * @param compact_jwt Serialized JWT.
  * @param set         Parsed keyset (e.g. from `jwt_keyset_from_json`).
@@ -2368,24 +2481,52 @@ JwtStatus jwt_decode_and_verify_with_keyset(const char* compact_jwt,
         return JWT_ERR_GENERIC;
     }
 
-    /* Peek at the header (untrusted!) to read kid. */
-    JwtToken* peeked = jwt_decode(compact_jwt);
-    const char* kid = peeked ? jwt_get_header_string(peeked, "kid") : NULL;
-    const JwtKey* primary = kid ? jwt_keyset_lookup(set, kid) : NULL;
-    if (peeked) jwt_deallocate(peeked);
-
-    /* Build a candidate list: primary key first (if any), then everything
-       else in declared order. */
-    const size_t n = set->count;
-    const JwtKey** candidates = (const JwtKey**)calloc(n + 1, sizeof(JwtKey*));
-    if (!candidates) return JWT_ERR_MEMORY;
-    size_t k = 0;
-    if (primary) candidates[k++] = primary;
-    for (size_t i = 0; i < n; ++i) {
-        if (set->entries[i].key && set->entries[i].key != primary) {
-            candidates[k++] = set->entries[i].key;
+    /* Size guard BEFORE the peek: jwt_decode base64-decodes and parses
+       the whole token, which max_token_bytes is meant to prevent. */
+    if (opts->max_token_bytes > 0) {
+        for (size_t i = 0; i <= opts->max_token_bytes; ++i) {
+            if (compact_jwt[i] == '\0') break;
+            if (i == opts->max_token_bytes) return JWT_ERR_TOKEN_TOO_LARGE;
         }
     }
+
+    /* Peek at the header (untrusted!) to read kid and alg. */
+    JwtToken* peeked = jwt_decode(compact_jwt);
+    if (!peeked) return JWT_ERR_INVALID_FORMAT;
+    if (!opts->allowed_algs || opts->allowed_algs_count == 0 ||
+        !jwt_alg_allowed(peeked->alg, opts->allowed_algs, opts->allowed_algs_count)) {
+        jwt_deallocate(peeked);   /* same answer jwt_verify gives, before any key filtering */
+        return JWT_ERR_INVALID_ALG;
+    }
+    const char* kid = jwt_get_header_string(peeked, "kid");
+    const char* alg = jwt_alg_to_string(peeked->alg);
+
+    const size_t n = set->count;
+    bool kid_known = false;
+    for (size_t i = 0; kid && i < n; ++i) {
+        if (set->entries[i].key && set->entries[i].kid && strcmp(set->entries[i].kid, kid) == 0) {
+            kid_known = true;
+            break;
+        }
+    }
+
+    /* Candidates in declared order: only the entries carrying the token's
+       kid when there are any, and never an entry bound to another alg. */
+    const JwtKey** candidates = (const JwtKey**)calloc(n + 1, sizeof(JwtKey*));
+    if (!candidates) {
+        jwt_deallocate(peeked);
+        return JWT_ERR_MEMORY;
+    }
+    size_t k = 0;
+    for (size_t i = 0; i < n; ++i) {
+        const JwksEntry* e = &set->entries[i];
+        if (!e->key) continue;
+        if (kid_known && !(e->kid && strcmp(e->kid, kid) == 0)) continue;
+        if (e->alg && strcmp(e->alg, alg) != 0) continue;
+        candidates[k++] = e->key;
+    }
+    jwt_deallocate(peeked);   /* kid pointed into it */
+
     JwtStatus rc = jwt_decode_and_verify_with_keys(compact_jwt, candidates, k,
                                                    opts, out);
     free(candidates);
@@ -2503,13 +2644,20 @@ const char* jwt_get_claim_string(const JwtToken* t, const char* name) {
 
 /**
  * @brief Fetch a custom integer claim by name.
- * @return true if the claim is present and numeric; false otherwise.
+ *
+ * A fraction is truncated toward zero. A value outside the int64 range
+ * (1e300, which is valid JSON) is reported as not usable instead of being
+ * cast, which is undefined behavior.
+ *
+ * @return true if the claim is present, numeric and in the int64 range; false otherwise.
  */
 bool jwt_get_claim_int(const JwtToken* t, const char* name, int64_t* out) {
     if (!t || !name) return false;
     JsonElement* e = json_get_element(t->payload, name);
     if (!e || e->type != JSON_NUMBER) return false;
-    if (out) *out = (int64_t)e->value.number_val;
+    int64_t v;
+    if (!jwtp_json_num_to_int64(e->value.number_val, &v)) return false;
+    if (out) *out = v;
     return true;
 }
 

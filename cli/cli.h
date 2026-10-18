@@ -25,8 +25,8 @@ extern "C" {
 /* #define CLI_LOGGING_ENABLE */
 
 #ifdef CLI_LOGGING_ENABLE
-    #define CLI_LOG(fmt, ...) \
-        do { fprintf(stderr, "[CLI LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define CLI_LOG(...) \
+        do { fprintf(stderr, "[CLI LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define CLI_LOG(...) do { } while (0)
 #endif
@@ -86,10 +86,21 @@ struct CliOption {
 
 
 typedef struct CliOptionGroup {
-    const char*  groupName;
-    CliOption*   options;
-    size_t       numOptions;
+    const char*     groupName;
+    CliOption*      options;
+    size_t          numOptions;
+    unsigned char*  registered;   /* registered[i]: options[i] was added to the parser by this group */
 } CliOptionGroup;
+
+
+/* A dependency declared with cli_set_option_dependencies: when the first
+   option is given, the second one must be given too. */
+typedef struct CliOptionDependency {
+    char*  longOpt;
+    char   shortOpt;
+    char*  dependsOnLongOpt;
+    char   dependsOnShortOpt;
+} CliOptionDependency;
 
 
 struct CliCommand {
@@ -125,6 +136,8 @@ struct CliParser {
     CliPostExecutionHook  postExecutionHook;
     void*                 preExecutionHookUserData;
     void*                 userData;
+    CliOptionDependency*  dependencies;
+    size_t                numDependencies;
 };
 
 

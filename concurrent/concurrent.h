@@ -6,11 +6,51 @@
  *
  * Cross-platform threading primitives (Win32 + POSIX) — threads,
  * mutexes, condition variables, thread-local storage, one-time init.
- * Based on the public-domain tinycthread design.
+ *
+ * This file is an ALTERED version of TinyCThread (modified and extended for
+ * c_std; it is not the original software). TinyCThread is distributed under
+ * the zlib/libpng license, whose notice follows:
+ *
+ *   Copyright (c) 2012 Marcus Geelnard
+ *   Copyright (c) 2013-2016 Evan Nemerson
+ *
+ *   This software is provided 'as-is', without any express or implied
+ *   warranty. In no event will the authors be held liable for any damages
+ *   arising from the use of this software.
+ *
+ *   Permission is granted to anyone to use this software for any purpose,
+ *   including commercial applications, and to alter it and redistribute it
+ *   freely, subject to the following restrictions:
+ *
+ *   1. The origin of this software must not be misrepresented; you must not
+ *      claim that you wrote the original software. If you use this software
+ *      in a product, an acknowledgment in the product documentation would be
+ *      appreciated but is not required.
+ *
+ *   2. Altered source versions must be plainly marked as such, and must not be
+ *      misrepresented as being the original software.
+ *
+ *   3. This notice may not be removed or altered from any source
+ *      distribution.
  */
 
-#ifndef _CONCURRENT_H_
-#define _CONCURRENT_H_
+#ifndef CONCURRENT_H_
+#define CONCURRENT_H_
+
+
+#if !defined(_WIN32) && !defined(_WIN64) && (defined(__unix__) || defined(__APPLE__))
+  #if !defined(_GNU_SOURCE)
+    #define _GNU_SOURCE
+  #endif
+  #if !defined(_POSIX_C_SOURCE) || ((_POSIX_C_SOURCE - 0) < 200809L)
+    #undef _POSIX_C_SOURCE
+    #define _POSIX_C_SOURCE 200809L
+  #endif
+  #if !defined(_XOPEN_SOURCE) || ((_XOPEN_SOURCE - 0) < 700)
+    #undef _XOPEN_SOURCE
+    #define _XOPEN_SOURCE 700
+  #endif
+#endif
 
 #include <stdio.h>
 #include <time.h>
@@ -19,8 +59,8 @@
 /* #define CONCURRENT_LOGGING_ENABLE */
 
 #ifdef CONCURRENT_LOGGING_ENABLE
-    #define CONCURRENT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[CONCURRENT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define CONCURRENT_LOG(...) \
+        do { fprintf(stderr, "[CONCURRENT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define CONCURRENT_LOG(...) do { } while (0)
 #endif
@@ -56,23 +96,6 @@
   #define _CONDITION_EVENT_ALL 1
 #endif
 
-/* Activate POSIX functionality (clock_gettime, recursive mutexes). */
-#if defined(_TTHREAD_POSIX_)
-  #undef _FEATURES_H
-  #if !defined(_GNU_SOURCE)
-    #define _GNU_SOURCE
-  #endif
-  #if !defined(_POSIX_C_SOURCE) || ((_POSIX_C_SOURCE - 0) < 199309L)
-    #undef _POSIX_C_SOURCE
-    #define _POSIX_C_SOURCE 199309L
-  #endif
-  #if !defined(_XOPEN_SOURCE) || ((_XOPEN_SOURCE - 0) < 500)
-    #undef _XOPEN_SOURCE
-    #define _XOPEN_SOURCE 500
-  #endif
-  #define _XPG6
-#endif
-
 #if defined(_TTHREAD_POSIX_)
   #include <pthread.h>
   #include <semaphore.h>
@@ -101,11 +124,14 @@
   #define TTHREAD_NORETURN
 #endif
 
-/* timespec_get fallback for platforms that don't ship it. */
+/* timespec_get fallback for platforms that don't ship it (MinGW's msvcrt).
+   struct timespec itself is only replaced where the C library has none (old
+   MSVC): renaming it unconditionally broke user code passing a struct
+   timespec to nanosleep, clock_gettime or pthread_mutex_timedlock. */
 #ifndef TIME_UTC
   #define TIME_UTC 1
   #define _TTHREAD_EMULATE_TIMESPEC_GET_
-  #if defined(_TTHREAD_WIN32_)
+  #if defined(_TTHREAD_WIN32_) && !defined(_TIMESPEC_DEFINED) && defined(_MSC_VER) && _MSC_VER < 1900
     struct _tthread_timespec {
       time_t tv_sec;
       long   tv_nsec;
@@ -174,9 +200,12 @@ typedef enum {
 
 /* Condition variable. */
 #if defined(_TTHREAD_WIN32_)
+  /* Built on a counting semaphore: every signal leaves one permit, so two
+     signals can never collapse into one the way they could on an auto-reset
+     event (a lost wakeup). Treat the fields as opaque. */
   typedef struct {
-    HANDLE           mEvents[2];           /* signal + broadcast events           */
-    unsigned int     mWaitersCount;        /* number of waiters                   */
+    HANDLE           mSemaphore;           /* one permit per pending wakeup       */
+    unsigned int     mWaitersCount;        /* waiters not yet given a permit      */
     CRITICAL_SECTION mWaitersCountLock;    /* protects mWaitersCount              */
   } ThreadCondition;
 #else
@@ -192,9 +221,20 @@ typedef enum {
 #endif
 
 
-/* Counting semaphore. */
+/* Counting semaphore. macOS has no unnamed POSIX semaphores (sem_init fails
+   with ENOSYS), so there - or when CSTD_SEMAPHORE_CONDVAR is defined - it is
+   built from a mutex and a condition variable. */
+#if defined(__APPLE__) && !defined(CSTD_SEMAPHORE_CONDVAR)
+  #define CSTD_SEMAPHORE_CONDVAR
+#endif
 #if defined(_TTHREAD_WIN32_)
   typedef HANDLE Semaphore;
+#elif defined(CSTD_SEMAPHORE_CONDVAR)
+  typedef struct {
+    pthread_mutex_t mutex;
+    pthread_cond_t  cond;
+    unsigned int    count;
+  } Semaphore;
 #else
   typedef sem_t Semaphore;
 #endif
@@ -227,24 +267,73 @@ typedef int (*ThreadStart)(void* arg);
 /* TLS slot destructor. */
 typedef void (*ThreadSpecificDestructor)(void* val);
 
+#ifndef TSS_DTOR_ITERATIONS   /* also a C11 <threads.h> name */
 #if defined(_TTHREAD_WIN32_)
   #define TSS_DTOR_ITERATIONS (4)
 #else
   #define TSS_DTOR_ITERATIONS PTHREAD_DESTRUCTOR_ITERATIONS
 #endif
+#endif
 
-/* One-time initialisation. */
+/* One-time initialisation. C11 <threads.h> uses the same names (call_once,
+   ONCE_FLAG_INIT): the prefixed forms concurrent_call_once / CSTD_ONCE_FLAG_INIT
+   never clash. The short names are also provided unless <threads.h> was
+   included first (ONCE_FLAG_INIT already defined) or CSTD_NO_C11_NAMES is
+   defined - define it when <threads.h> is included AFTER this header. */
 #if defined(_TTHREAD_WIN32_)
   typedef struct {
     LONG volatile    status;
     CRITICAL_SECTION lock;
   } OnceFlag;
-  #define ONCE_FLAG_INIT {0,}
+  #define CSTD_ONCE_FLAG_INIT {0,}
 #else
-  #define OnceFlag pthread_once_t
-  #define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
+  typedef pthread_once_t OnceFlag;
+  #define CSTD_ONCE_FLAG_INIT PTHREAD_ONCE_INIT
 #endif
 
+
+/* Link-time names. These functions keep their documented names in C code,
+ * but the library exports them with a "cstd_" prefix: generic global symbols
+ * such as mutex_lock, thread_create or call_once (also a C11 <threads.h>
+ * name) clashed at link time with any other library or program defining
+ * the same name ("multiple definition of ..."). */
+#define mutex_init                  cstd_mutex_init
+#define mutex_lock                  cstd_mutex_lock
+#define mutex_timed_lock            cstd_mutex_timed_lock
+#define mutex_trylock               cstd_mutex_trylock
+#define mutex_unlock                cstd_mutex_unlock
+#define mutex_destroy               cstd_mutex_destroy
+#define semaphore_init              cstd_semaphore_init
+#define semaphore_wait              cstd_semaphore_wait
+#define semaphore_trywait           cstd_semaphore_trywait
+#define semaphore_post              cstd_semaphore_post
+#define semaphore_destroy           cstd_semaphore_destroy
+#define rwlock_init                 cstd_rwlock_init
+#define rwlock_rdlock               cstd_rwlock_rdlock
+#define rwlock_tryrdlock            cstd_rwlock_tryrdlock
+#define rwlock_wrlock               cstd_rwlock_wrlock
+#define rwlock_trywrlock            cstd_rwlock_trywrlock
+#define rwlock_unlock               cstd_rwlock_unlock
+#define rwlock_destroy              cstd_rwlock_destroy
+#define condition_init              cstd_condition_init
+#define condition_signal            cstd_condition_signal
+#define condition_broadcast         cstd_condition_broadcast
+#define condition_wait              cstd_condition_wait
+#define condition_timedwait         cstd_condition_timedwait
+#define condition_destroy           cstd_condition_destroy
+#define thread_create               cstd_thread_create
+#define thread_join                 cstd_thread_join
+#define thread_detach               cstd_thread_detach
+#define thread_equal                cstd_thread_equal
+#define thread_sleep                cstd_thread_sleep
+#define thread_exit                 cstd_thread_exit
+#define thread_yield                cstd_thread_yield
+#define thread_current              cstd_thread_current
+#define thread_hardware_concurrency cstd_thread_hardware_concurrency
+#define thread_specific_create      cstd_thread_specific_create
+#define thread_specific_set         cstd_thread_specific_set
+#define thread_specific_get         cstd_thread_specific_get
+#define thread_specific_delete      cstd_thread_specific_delete
 
 /* ------------------------------------------------------------------ */
 /* Mutex                                                              */
@@ -325,9 +414,15 @@ void               thread_specific_delete         (ThreadSpecific key);
 /* ------------------------------------------------------------------ */
 
 #if defined(_TTHREAD_WIN32_)
-void               call_once                      (OnceFlag* flag, void (*func)(void));
+void               cstd_call_once                 (OnceFlag* flag, void (*func)(void));
+  #define          concurrent_call_once(flag,func) cstd_call_once(flag,func)
 #else
-  #define          call_once(flag,func)           pthread_once(flag,func)
+  #define          concurrent_call_once(flag,func) pthread_once(flag,func)
+#endif
+
+#if !defined(CSTD_NO_C11_NAMES) && !defined(ONCE_FLAG_INIT)
+  #define          ONCE_FLAG_INIT                 CSTD_ONCE_FLAG_INIT
+  #define          call_once(flag,func)           concurrent_call_once(flag,func)
 #endif
 
 

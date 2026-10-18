@@ -21,7 +21,7 @@ The UnitTest library is a lightweight and minimal testing framework for the C pr
 6. **Parameterized Tests**: Test cases can accept parameters for versatile testing scenarios.
 7. **Setup and Teardown**: Customizable functions for pre-test and post-test setup.
 8. **Detailed Reports**: Generate concise summaries of test results.
-9. **Timeouts**: Enforce execution time limits for test cases.
+9. **Timeouts**: Fail test cases that run longer than a limit (checked when the test returns; a test that hangs is not interrupted).
 10. **Safe Resource Management**: Safeguard memory usage with `UNITTEST_MALLOC` and `UNITTEST_FREE`.
 
 ---
@@ -30,6 +30,8 @@ The UnitTest library is a lightweight and minimal testing framework for the C pr
 The UnitTest library consists of:
 - **Header File**: `unittest.h` defines the API, macros, and data structures.
 - **Implementation File**: `unittest.c` provides the implementation of the API and utility functions.
+
+`unittest.h` only includes standard C headers (plus the plain-C `regex/std_regex.h` declarations used by the regex assertions); platform headers such as `<windows.h>` stay inside `unittest.c`, so their macros (`min`, `max`, `ERROR`, ...) do not leak into test files. The regex module only has to be linked when a regex assertion is used.
 
 ---
 
@@ -61,17 +63,6 @@ The UnitTest library consists of:
 
 ---
 
-### `void unittest_report(void)`
-
-**Purpose**: Prints a summary of all test results, including the number of tests, assertions, and failures.
-
-**Parameters**: None.
-
-**Return Value**: None.
-
-**Usage Case**: Call at the end of `main()` to print a human-readable test summary.
-
----
 
 ### Macros
 
@@ -128,12 +119,13 @@ The UnitTest library consists of:
 
 ---
 
-### `UNITTEST_RUN_TEST(test)`
+### `UNITTEST_RUN_TEST(test, total_tests)`
 
-**Purpose**: Runs an individual test case within a suite.
+**Purpose**: Runs an individual test case within a suite: setup, the test, teardown, retries (see `UNITTEST_RETRY_COUNT`), then a progress bar and a `Test passed` / `Test failed` / `Test skipped` line. A test counts once in `unittest_run` however many attempts it took; a skipped test is reported as skipped, never as passed.
 
 **Parameters**:
 - `test`: The name of the test case function to run.
+- `total_tests`: Number of tests in the suite, used to size the progress bar.
 
 **Return Value**: None.
 
@@ -143,13 +135,13 @@ The UnitTest library consists of:
 
 ### `UNITTEST_REPORT()`
 
-**Purpose**: Generates and prints the test results summary.
+**Purpose**: Generates and prints the test results summary (tests, assertions, failures, skipped, then every skip reason and the elapsed real / CPU time). Exits the process with status 1 if any test failed.
 
 **Parameters**: None.
 
 **Return Value**: None.
 
-**Usage Case**: Call at the end of `main()` as a macro alternative to `unittest_report()`.
+**Usage Case**: Call at the end of `main()` to print a human-readable test summary.
 
 ---
 
@@ -167,16 +159,17 @@ The UnitTest library consists of:
 - **Behavior**:
   - Retries a test up to `count` times if it initially fails.
   - If the test passes in any of the retries, it is marked as successful.
-  - Logs each retry attempt, providing details about the failure and retry process.
+  - Logs each retry attempt ("Test failed: X. Retrying..." is only printed when another attempt follows).
+  - The test still counts as a single test in the report.
 
 ---
 
 ### `UNITTEST_CHECK_NO_LEAKS(code_block)`
 
-**Purpose**: Ensures that no memory is leaked during the execution of a code block.
+**Purpose**: Ensures that no memory is leaked during the execution of a code block. It counts as one assertion; a leak prints the leaked records and fails the test (one failure, counted by `UNITTEST_RUN_TEST`).
 
 **Parameters**:
-- `code_block`: Code to execute and monitor.
+- `code_block`: Code to execute and monitor (it may contain top-level commas such as `int a, b;`).
 
 **Return Value**: None.
 
@@ -211,6 +204,14 @@ The UnitTest library consists of:
 **Usage Case**: Use to unconditionally fail a test with a descriptive message when an expected condition cannot be expressed as a boolean.
 
 ---
+
+> **Message arguments are standard C17.** In every assertion below, `message_format, ...` is
+> simply the macro's variadic part: the printf-style format is its first argument and
+> anything after it fills the format. A call without extra arguments
+> (`unittest_assert(x > 0, "x must be positive")`) is valid ISO C17 and compiles cleanly
+> under `-std=c17 -Wpedantic` (the macros used to rely on the GNU `, ##__VA_ARGS__`
+> extension). With GCC and Clang the format is still checked against its arguments. An
+> empty message (`""`) gives the default text where one exists (e.g. `Pointer is NULL`).
 
 ### `unittest_assert(condition, message_format, ...)`
 
@@ -254,7 +255,7 @@ The UnitTest library consists of:
 
 ### `unittest_assert_regex_group(pattern, input, group_index, expected, flags, message_format, ...)`
 
-**Purpose**: Asserts that a specific captured group from a regex match equals an expected string.
+**Purpose**: Asserts that a specific captured group from a regex match equals an expected string. `group_index` 0 is the FIRST capturing group (unlike `regex_match_group`, where 0 is the whole match). The group must equal `expected` exactly (a prefix no longer passes), and a failure fails the test like every other assertion (it used to only bump the failure counter while the test was reported as passed).
 
 **Parameters**:
 - `pattern`: The regex pattern to match.
@@ -419,14 +420,14 @@ The framework now includes tools for memory tracking:
 
 ### `void unittest_set_timeout(double timeout_ms)`
 
-**Purpose**: Sets a timeout in milliseconds for test execution.
+**Purpose**: Sets a timeout in milliseconds for test execution. The elapsed time is checked when the test returns: a slower test is marked failed (and retried if retries are configured), but a test that never returns is not interrupted.
 
 **Parameters**:
 - `timeout_ms`: Timeout value in milliseconds.
 
 **Return Value**: None.
 
-**Usage Case**: Call in `main()` before running suites to enforce a maximum execution time per test.
+**Usage Case**: Call in `main()` before running suites to fail tests that exceed a maximum execution time.
 
 ---
 
@@ -730,7 +731,7 @@ The framework now includes tools for memory tracking:
 
 **Parameters**:
 - `function_name`: The name of the mocked function.
-- `query`: The argument value to match against stubbed return values.
+- `query`: The argument value to match against stubbed return values. May be `NULL`, which matches only a stub registered with a `NULL` argument (a `NULL` on either side used to crash `strcmp`).
 
 **Return Value**: The stubbed `void*` value associated with the query, or `NULL` if not found.
 
@@ -814,7 +815,7 @@ The framework now includes tools for memory tracking:
 
 ### `UNITTEST_VERIFY_ARGUMENTS(func, ...)`
 
-**Purpose**: Verifies the arguments of a mocked function call.
+**Purpose**: Verifies the arguments of the most recent call to a mocked function (call index `-1` of `unittest_verify_mock_call`). The macro passed only three arguments to that four-parameter function before, so it did not compile.
 
 **Parameters**:
 - `func`: The name of the mocked function.
@@ -1220,7 +1221,7 @@ int main(void) {
 
 UNITTEST_CASE(test_addition) {
     int result = 2 + 2;
-    unittest_assert_int_eq(5, result, "Expected %d but got %d", 4, result);
+    unittest_assert_int_eq(5, result, "Expected %d but got %d", 5, result);   /* fails on purpose */
 }
 
 UNITTEST_SUITE(math_tests) {
@@ -1235,14 +1236,16 @@ int main() {
 ```
 **Result**
 ```
-Elapsed time for test_addition: 0.01 ms
-Test failed: test_addition. Retrying...
-Test ultimately failed after retries: test_addition
+test_addition failed:
+	main.c:5: Expected 5 but got 4
+Elapsed time for test_addition: 0.09 ms
+
+Progress: [==================================================] 1/1 (100.00%)Test failed: test_addition
 
 
 1 tests, 1 assertions, 1 failures, 0 skipped
 
-Finished in 0.00581600 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00029450 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1276,9 +1279,14 @@ int main() {
 ```
 **Result**
 ```
-1 tests, 1 assertions, 0 failures
+.Elapsed time for test_example: 0.02 ms
 
-Finished in 0.00268240 seconds (real) 0.00000000 seconds (proc)
+Progress: [==================================================] 1/1 (100.00%)Test passed: test_example
+
+
+1 tests, 1 assertions, 0 failures, 0 skipped
+
+Finished in 0.00026380 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1316,16 +1324,18 @@ int main() {
 **Result**
 ```
 test_strings failed:
-        main.c:6: Expected 'Hello, World!' but got 'Hello, '
-Elapsed time for test_strings: 5.24 ms
-Test failed: test_strings. Retrying...
-Test ultimately failed after retries: test_strings
-.Elapsed time for test_floats: 0.04 ms
+	main.c:6: Expected 'Hello, World!' but got 'Hello'
+Elapsed time for test_strings: 0.10 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test failed: test_strings
+.Elapsed time for test_floats: 0.00 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_floats
 
 
 2 tests, 2 assertions, 1 failures, 0 skipped
 
-Finished in 0.01202710 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00044280 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1355,10 +1365,14 @@ int main() {
 
 **Result**
 ```
+.Elapsed time for test_timing: 1.40 ms
 
-1 tests, 1 assertions, 0 failures
+Progress: [==================================================] 1/1 (100.00%)Test passed: test_timing
 
-Finished in 0.00345860 seconds (real) 0.00000000 seconds (proc)
+
+1 tests, 1 assertions, 0 failures, 0 skipped
+
+Finished in 0.00161390 seconds (real) 0.01562500 seconds (proc)
 ```
 
 ---
@@ -1386,14 +1400,16 @@ int main() {
 ```
 **Result**
 ```
-Elapsed time for test_integer_failure: 0.01 ms
-Test failed: test_integer_failure. Retrying...
-Test ultimately failed after retries: test_integer_failure
+test_integer_failure failed:
+	main.c:6: Expected 10 but got 9
+Elapsed time for test_integer_failure: 0.10 ms
+
+Progress: [================>                                 ] 1/3 (33.33%)Test failed: test_integer_failure
 
 
 1 tests, 1 assertions, 1 failures, 0 skipped
 
-Finished in 0.00909300 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00024440 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1424,15 +1440,15 @@ int main() {
 **Result**
 ```
 test_double_failure failed:
-        main.c:6: Expected 9.00000 but got 9.06010
-Elapsed time for test_double_failure: 5.15 ms
-Test failed: test_double_failure. Retrying...
-Test ultimately failed after retries: test_double_failure
+	main.c:6: Expected 9.00000 but got 9.06010
+Elapsed time for test_double_failure: 0.07 ms
+
+Progress: [================>                                 ] 1/3 (33.33%)Test failed: test_double_failure
 
 
 1 tests, 1 assertions, 1 failures, 0 skipped
 
-Finished in 0.01118970 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00033290 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1464,15 +1480,15 @@ int main() {
 **Result**
 ```
 test_string_failure failed:
-        main.c:6: String mismatch: Expected 'UnitTest' but got 'TestUnit'
-Elapsed time for test_string_failure: 5.92 ms
-Test failed: test_string_failure. Retrying...
-Test ultimately failed after retries: test_string_failure
+	main.c:7: String mismatch: Expected 'UnitTest' but got 'TestUnit'
+Elapsed time for test_string_failure: 0.14 ms
+
+Progress: [================>                                 ] 1/3 (33.33%)Test failed: test_string_failure
 
 
 1 tests, 1 assertions, 1 failures, 0 skipped
 
-Finished in 0.01298610 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00041560 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1503,13 +1519,16 @@ int main() {
 ```
 **Result**
 ```
-F
 test_custom_failure failed:
-        main.c:6: Value should be greater than 40
+	main.c:7: Value should be greater than 40
+Elapsed time for test_custom_failure: 0.06 ms
 
-1 tests, 1 assertions, 1 failures
+Progress: [==================================================] 1/1 (100.00%)Test failed: test_custom_failure
 
-Finished in 0.00012000 seconds (real) 0.00000000 seconds (proc)
+
+1 tests, 1 assertions, 1 failures, 0 skipped
+
+Finished in 0.00032820 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1558,25 +1577,25 @@ int main() {
 **Result**
 ```
 test_integer_failure failed:
-        main.c:6: Expected 10 but got 9
-Elapsed time for test_integer_failure: 4.56 ms
-Test failed: test_integer_failure. Retrying...
-Test ultimately failed after retries: test_integer_failure
+	main.c:8: Expected 10 but got 9
+Elapsed time for test_integer_failure: 0.06 ms
+
+Progress: [================>                                 ] 1/3 (33.33%)Test failed: test_integer_failure
 test_double_failure failed:
-        main.c:12: Expected 3.14 but got 3.15
-Elapsed time for test_double_failure: 4.34 ms
-Test failed: test_double_failure. Retrying...
-Test ultimately failed after retries: test_double_failure
+	main.c:15: Expected 3.14 but got 3.15
+Elapsed time for test_double_failure: 0.10 ms
+
+Progress: [=================================>                ] 2/3 (66.67%)Test failed: test_double_failure
 test_string_failure failed:
-        main.c:18: Expected 'Hello' but got 'World'
-Elapsed time for test_string_failure: 4.88 ms
-Test failed: test_string_failure. Retrying...
-Test ultimately failed after retries: test_string_failure
+	main.c:22: Expected 'Hello' but got 'World'
+Elapsed time for test_string_failure: 0.08 ms
+
+Progress: [==================================================] 3/3 (100.00%)Test failed: test_string_failure
 
 
 3 tests, 3 assertions, 3 failures, 0 skipped
 
-Finished in 0.02825010 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00086720 seconds (real) 0.00000000 seconds (proc)
 ``` 
 
 ---
@@ -1621,13 +1640,14 @@ int main() {
 ```
 **Result**
 ```
-...
-Elapsed time for test_regex_basic_match: 1.13 ms
+...Elapsed time for test_regex_basic_match: 0.05 ms
+
+Progress: [==================================================] 1/1 (100.00%)Test passed: test_regex_basic_match
 
 
 1 tests, 3 assertions, 0 failures, 0 skipped
 
-Finished in 0.00368750 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00020900 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1661,9 +1681,14 @@ int main() {
 ```
 **Result**
 ```
-1 tests, 5 assertions, 0 failures
+.....Elapsed time for test_random_integer_generation: 0.02 ms
 
-Finished in 0.04441680 seconds (real) 0.00000000 seconds (proc)
+Progress: [==================================================] 1/1 (100.00%)Test passed: test_random_integer_generation
+
+
+1 tests, 5 assertions, 0 failures, 0 skipped
+
+Finished in 0.00024410 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -1720,17 +1745,20 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_mean_calculation: 0.01 ms
-Test passed: test_mean_calculation
-.Elapsed time for test_median_calculation: 0.01 ms
-Test passed: test_median_calculation
+.Elapsed time for test_mean_calculation: 0.02 ms
+
+Progress: [================>                                 ] 1/3 (33.33%)Test passed: test_mean_calculation
+.Elapsed time for test_median_calculation: 0.00 ms
+
+Progress: [=================================>                ] 2/3 (66.67%)Test passed: test_median_calculation
 .Elapsed time for test_variance_calculation: 0.01 ms
-Test passed: test_variance_calculation
+
+Progress: [==================================================] 3/3 (100.00%)Test passed: test_variance_calculation
 
 
 3 tests, 3 assertions, 0 failures, 0 skipped
 
-Finished in 0.00100000 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00066200 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -1779,9 +1807,11 @@ int main() {
 ```
 **Result**
 ```
-5 tests, 5 assertions, 0 failures
+.....
 
-Finished in 0.00034030 seconds (real) 0.00000000 seconds (proc)
+5 tests, 5 assertions, 0 failures, 0 skipped
+
+Finished in 0.00002300 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -1828,17 +1858,21 @@ int main() {
 ```
 **Result**
 ```
+Elapsed time for test_feature: 0.01 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test skipped: test_feature
+.Elapsed time for test_always_run: 0.00 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_always_run
+
 
 2 tests, 1 assertions, 0 failures, 1 skipped
 
 Skipped Tests:
 ---------------
-test_feature skipped:
-        File: main.c
-        Line: 9
-        Reason: Feature is not enabled; skipping test.
+test_feature: Feature is not enabled; skipping test. (main.c:12)
 
-Finished in 0.00016000 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00042510 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1878,13 +1912,17 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_long_running: 1336.24 ms
-.Elapsed time for test_fast: 0.06 ms
+.Elapsed time for test_long_running: 1314.35 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_long_running
+.Elapsed time for test_fast: 0.01 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_fast
 
 
 2 tests, 2 assertions, 0 failures, 0 skipped
 
-Finished in 1.34042110 seconds (real) 0.00000000 seconds (proc)
+Finished in 1.31479460 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -1935,16 +1973,19 @@ int main() {
 **Result**
 ```
 Memory leak detected: 100 bytes not freed. Allocated at main.c:5
-Elapsed time for test_memory_leak: 5.30 ms
-Failed Tests :
-----------
-Memory leak detected: 100 bytes not freed
-.Elapsed time for test_no_memory_leak: 0.04 ms
+test_memory_leak failed:
+	main.c:16: Memory leak detected: 100 bytes not freed
+Elapsed time for test_memory_leak: 0.22 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test failed: test_memory_leak
+.Elapsed time for test_no_memory_leak: 0.00 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_no_memory_leak
 
 
-2 tests, 0 assertions, 1 failures, 0 skipped
+2 tests, 2 assertions, 1 failures, 0 skipped
 
-Finished in 0.01151540 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00056510 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -1979,12 +2020,14 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_no_memory_leak: 0.09 ms
+.Elapsed time for test_no_memory_leak: 0.02 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_no_memory_leak
 
 
-1 tests, 0 assertions, 0 failures, 0 skipped
+1 tests, 1 assertions, 0 failures, 0 skipped
 
-Finished in 0.00197990 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00021960 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2022,13 +2065,14 @@ Elapsed time for test_flaky: 0.01 ms
 Test failed: test_flaky. Retrying...
 Elapsed time for test_flaky: 0.00 ms
 Test failed: test_flaky. Retrying...
-.Elapsed time for test_flaky: 0.04 ms
-Progress: [==================================================] 3/3 (100.00%)Test passed: test_flaky
+.Elapsed time for test_flaky: 0.00 ms
+
+Progress: [==================================================] 1/1 (100.00%)Test passed: test_flaky
 
 
-3 tests, 3 assertions, 0 failures, 0 skipped
+1 tests, 3 assertions, 0 failures, 0 skipped
 
-Finished in 0.01456210 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00043280 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2066,15 +2110,15 @@ int main() {
 **Result**
 ```
 .test_pointer_not_null failed:
-        main.c:13: Pointer is <null>
-Elapsed time for test_pointer_not_null: 4.60 ms
-Test failed: test_pointer_not_null. Retrying...
-Test ultimately failed after retries: test_pointer_not_null
+	main.c:12: Pointer is <null>
+Elapsed time for test_pointer_not_null: 0.12 ms
+
+Progress: [==================================================] 1/1 (100.00%)Test failed: test_pointer_not_null
 
 
 1 tests, 2 assertions, 1 failures, 0 skipped
 
-Finished in 0.01094550 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00030200 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -2103,8 +2147,8 @@ UNITTEST_CASE(test_value_out_of_range) {
 
 
 UNITTEST_SUITE(range_tests) {
-    UNITTEST_RUN_TEST(test_value_in_range, 1);
-    UNITTEST_RUN_TEST(test_value_out_of_range, 1);
+    UNITTEST_RUN_TEST(test_value_in_range, 2);
+    UNITTEST_RUN_TEST(test_value_out_of_range, 2);
 }
 
 
@@ -2117,17 +2161,19 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_value_in_range: 0.08 ms
+.Elapsed time for test_value_in_range: 0.02 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_value_in_range
 test_value_out_of_range failed:
-        main.c:16: Value 25.00 is not in range [10.00, 20.00]
-Elapsed time for test_value_out_of_range: 5.27 ms
-Test failed: test_value_out_of_range. Retrying...
-Test ultimately failed after retries: test_value_out_of_range
+	main.c:17: Value 25.00 is not in range [10.00, 20.00]
+Elapsed time for test_value_out_of_range: 0.10 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test failed: test_value_out_of_range
 
 
 2 tests, 2 assertions, 1 failures, 0 skipped
 
-Finished in 0.01392990 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00047480 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2199,12 +2245,12 @@ UNITTEST_CASE(test_double_arrays_not_equal) {
 
 
 UNITTEST_SUITE(array_tests) {
-    UNITTEST_RUN_TEST(test_arrays_equal, 1);
-    UNITTEST_RUN_TEST(test_arrays_not_equal, 1);
-    UNITTEST_RUN_TEST(test_string_arrays_equal, 1);
-    UNITTEST_RUN_TEST(test_string_arrays_not_equal, 1);
-    UNITTEST_RUN_TEST(test_double_arrays_equal, 1);
-    UNITTEST_RUN_TEST(test_double_arrays_not_equal, 1);
+    UNITTEST_RUN_TEST(test_arrays_equal, 6);
+    UNITTEST_RUN_TEST(test_arrays_not_equal, 6);
+    UNITTEST_RUN_TEST(test_string_arrays_equal, 6);
+    UNITTEST_RUN_TEST(test_string_arrays_not_equal, 6);
+    UNITTEST_RUN_TEST(test_double_arrays_equal, 6);
+    UNITTEST_RUN_TEST(test_double_arrays_not_equal, 6);
 }
 
 
@@ -2217,29 +2263,35 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_arrays_equal: 0.08 ms
+.Elapsed time for test_arrays_equal: 0.02 ms
+
+Progress: [========>                                         ] 1/6 (16.67%)Test passed: test_arrays_equal
 test_arrays_not_equal failed:
-        main.c:16: Arrays mismatch at index 2 (expected: 3, actual: 0)
-Elapsed time for test_arrays_not_equal: 5.39 ms
-Test failed: test_arrays_not_equal. Retrying...
-Test ultimately failed after retries: test_arrays_not_equal
-....Elapsed time for test_string_arrays_equal: 0.24 ms
+	main.c:17: Arrays mismatch at index 2 (expected: 3, actual: 0)
+Elapsed time for test_arrays_not_equal: 0.14 ms
+
+Progress: [================>                                 ] 2/6 (33.33%)Test failed: test_arrays_not_equal
+....Elapsed time for test_string_arrays_equal: 0.00 ms
+
+Progress: [=========================>                        ] 3/6 (50.00%)Test passed: test_string_arrays_equal
 ..test_string_arrays_not_equal failed:
-        main.c:35: String arrays mismatch at index 2
-Elapsed time for test_string_arrays_not_equal: 5.17 ms
-Test failed: test_string_arrays_not_equal. Retrying...
-Test ultimately failed after retries: test_string_arrays_not_equal
-.....Elapsed time for test_double_arrays_equal: 0.23 ms
+	main.c:38: String arrays mismatch at index 2
+Elapsed time for test_string_arrays_not_equal: 0.12 ms
+
+Progress: [=================================>                ] 4/6 (66.67%)Test failed: test_string_arrays_not_equal
+.....Elapsed time for test_double_arrays_equal: 0.01 ms
+
+Progress: [=========================================>        ] 5/6 (83.33%)Test passed: test_double_arrays_equal
 ..test_double_arrays_not_equal failed:
-        main.c:55: Double arrays mismatch at index 2: expected 3.30, got 3.00
-Elapsed time for test_double_arrays_not_equal: 5.86 ms
-Test failed: test_double_arrays_not_equal. Retrying...
-Test ultimately failed after retries: test_double_arrays_not_equal
+	main.c:60: Double arrays mismatch at index 2: expected 3.30, got 3.00
+Elapsed time for test_double_arrays_not_equal: 0.10 ms
+
+Progress: [==================================================] 6/6 (100.00%)Test failed: test_double_arrays_not_equal
 
 
 6 tests, 17 assertions, 3 failures, 0 skipped
 
-Finished in 0.04452300 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00179540 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -2282,8 +2334,8 @@ UNITTEST_CASE(test_invalid_email) {
 
 
 UNITTEST_SUITE(email_tests) {
-    UNITTEST_RUN_TEST(test_valid_email, 1);
-    UNITTEST_RUN_TEST(test_invalid_email, 1);
+    UNITTEST_RUN_TEST(test_valid_email, 2);
+    UNITTEST_RUN_TEST(test_invalid_email, 2);
 }
 
 
@@ -2295,13 +2347,17 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_valid_email: 0.19 ms
-.Elapsed time for test_invalid_email: 0.06 ms
+.Elapsed time for test_valid_email: 0.06 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_valid_email
+.Elapsed time for test_invalid_email: 0.03 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_invalid_email
 
 
 2 tests, 1 assertions, 0 failures, 0 skipped
 
-Finished in 0.00502870 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00047070 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2362,8 +2418,8 @@ UNITTEST_CASE(test_invalid_date) {
 
 
 UNITTEST_SUITE(date_tests) {
-    UNITTEST_RUN_TEST(test_valid_date, 1);
-    UNITTEST_RUN_TEST(test_invalid_date, 1);
+    UNITTEST_RUN_TEST(test_valid_date, 2);
+    UNITTEST_RUN_TEST(test_invalid_date, 2);
 }
 
 
@@ -2379,13 +2435,17 @@ int main() {
 Group 1: 21
 Group 2: 10
 Group 3: 2024
-....Elapsed time for test_valid_date: 3.36 ms
-.Elapsed time for test_invalid_date: 0.05 ms
+....Elapsed time for test_valid_date: 0.13 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_valid_date
+.Elapsed time for test_invalid_date: 0.01 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_invalid_date
 
 
 2 tests, 6 assertions, 0 failures, 0 skipped
 
-Finished in 0.00696130 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00058300 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -2447,8 +2507,8 @@ UNITTEST_CASE(test_invalid_group_index) {
 
 
 UNITTEST_SUITE(regex_group_tests) {
-    UNITTEST_RUN_TEST(test_regex_group_validation, 1);
-    UNITTEST_RUN_TEST(test_invalid_group_index, 1);
+    UNITTEST_RUN_TEST(test_regex_group_validation, 2);
+    UNITTEST_RUN_TEST(test_invalid_group_index, 2);
 }
 
 
@@ -2461,15 +2521,19 @@ int main() {
 ```
 **Result**
 ```
-...Elapsed time for test_regex_group_validation: 0.42 ms
+...Elapsed time for test_regex_group_validation: 0.07 ms
+
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_regex_group_validation
 test_invalid_group_index failed:
-        main.cpp:41: Group index 3 out of bounds
-Elapsed time for test_invalid_group_index: 3.61 ms
+	main.c:44: Group index 3 out of bounds
+Elapsed time for test_invalid_group_index: 0.08 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test failed: test_invalid_group_index
 
 
-2 tests, 0 assertions, 1 failures, 0 skipped
+2 tests, 4 assertions, 1 failures, 0 skipped
 
-Finished in 0.00845910 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00059170 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -2540,10 +2604,10 @@ UNITTEST_CASE(test_struct_array_comparison) {
 
 
 UNITTEST_SUITE(array_tests) {
-    UNITTEST_RUN_TEST(test_integer_array_comparison, 1);
-    UNITTEST_RUN_TEST(test_float_array_comparison, 1);
-    UNITTEST_RUN_TEST(test_double_array_comparison, 1);
-    UNITTEST_RUN_TEST(test_struct_array_comparison, 1);
+    UNITTEST_RUN_TEST(test_integer_array_comparison, 4);
+    UNITTEST_RUN_TEST(test_float_array_comparison, 4);
+    UNITTEST_RUN_TEST(test_double_array_comparison, 4);
+    UNITTEST_RUN_TEST(test_struct_array_comparison, 4);
 }
 
 
@@ -2556,15 +2620,23 @@ int main() {
 ```
 **Result**
 ```
-.Elapsed time for test_integer_array_comparison: 0.20 ms
-.Elapsed time for test_float_array_comparison: 0.07 ms
-.Elapsed time for test_double_array_comparison: 0.04 ms
-.Elapsed time for test_struct_array_comparison: 0.04 ms
+.Elapsed time for test_integer_array_comparison: 0.02 ms
+
+Progress: [============>                                     ] 1/4 (25.00%)Test passed: test_integer_array_comparison
+.Elapsed time for test_float_array_comparison: 0.00 ms
+
+Progress: [=========================>                        ] 2/4 (50.00%)Test passed: test_float_array_comparison
+.Elapsed time for test_double_array_comparison: 0.00 ms
+
+Progress: [=====================================>            ] 3/4 (75.00%)Test passed: test_double_array_comparison
+.Elapsed time for test_struct_array_comparison: 0.00 ms
+
+Progress: [==================================================] 4/4 (100.00%)Test passed: test_struct_array_comparison
 
 
 4 tests, 4 assertions, 0 failures, 0 skipped
 
-Finished in 0.00949780 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00080600 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -2604,8 +2676,8 @@ UNITTEST_CASE(test_file_existence) {
 
 
 UNITTEST_SUITE(file_tests) {
-    UNITTEST_RUN_TEST(test_file_comparison, 1);
-    UNITTEST_RUN_TEST(test_file_existence, 1);
+    UNITTEST_RUN_TEST(test_file_comparison, 2);
+    UNITTEST_RUN_TEST(test_file_existence, 2);
 }
 
 
@@ -2617,11 +2689,17 @@ int main() {
 ```
 **Result**
 ```
-Debug: Written to file1: 30 bytes, to file2: 30 bytes
-.Elapsed time for test_file_comparison: 4.14 ms
-..Elapsed time for test_file_existence: 0.17 ms
+.Elapsed time for test_file_comparison: 2.76 ms
 
-Finished in 0.00910570 seconds (real) 0.00000000 seconds (proc)
+Progress: [=========================>                        ] 1/2 (50.00%)Test passed: test_file_comparison
+..Elapsed time for test_file_existence: 0.12 ms
+
+Progress: [==================================================] 2/2 (100.00%)Test passed: test_file_existence
+
+
+2 tests, 3 assertions, 0 failures, 0 skipped
+
+Finished in 0.00331440 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2682,13 +2760,14 @@ int main() {
 ```
 ..Debug: Found call 'database_query' at index 0
 ..Debug: Found call 'database_query' at index 1
-...Elapsed time for test_database_query_mock: 4.83 ms
+...Elapsed time for test_database_query_mock: 0.12 ms
+
 Progress: [==================================================] 1/1 (100.00%)Test passed: test_database_query_mock
 
 
 1 tests, 7 assertions, 0 failures, 0 skipped
 
-Finished in 0.01160650 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00031260 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2752,14 +2831,14 @@ int main() {
 ```
 ..Debug: Found call 'api_request' at index 0
 ..Debug: Found call 'api_request' at index 1
-...Elapsed time for test_api_request_mock: 5.13 ms
+...Elapsed time for test_api_request_mock: 0.11 ms
+
 Progress: [==================================================] 1/1 (100.00%)Test passed: test_api_request_mock
 
 
 1 tests, 7 assertions, 0 failures, 0 skipped
 
-Finished in 0.01178220 seconds (real) 0.00000000 seconds (proc)
-
+Finished in 0.00027940 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ---
@@ -2840,20 +2919,25 @@ int main() {
 **Result**
 ```
 .Debug: Found call 'database_query' at index 0
-..Elapsed time for test_database_query_count: 2.96 ms
+..Elapsed time for test_database_query_count: 0.05 ms
+Debug: Teardown completed. All stubs and mocks cleared.
+
 Progress: [================>                                 ] 1/3 (33.33%)Test passed: test_database_query_count
 .Debug: Found call 'database_query' at index 1
-..Elapsed time for test_database_query_delete: 1.95 ms
+..Elapsed time for test_database_query_delete: 0.05 ms
+Debug: Teardown completed. All stubs and mocks cleared.
+
 Progress: [=================================>                ] 2/3 (66.67%)Test passed: test_database_query_delete
 .Debug: Found call 'database_query' at index 2
-..Elapsed time for test_database_query_drop_table: 2.40 ms
+..Elapsed time for test_database_query_drop_table: 0.03 ms
+Debug: Teardown completed. All stubs and mocks cleared.
+
 Progress: [==================================================] 3/3 (100.00%)Test passed: test_database_query_drop_table
 
 
 3 tests, 9 assertions, 0 failures, 0 skipped
 
-Finished in 0.02833920 seconds (real) 0.00000000 seconds (proc)
-
+Finished in 0.00069550 seconds (real) 0.00000000 seconds (proc)
 ```
 
 --- 
@@ -2964,40 +3048,46 @@ int main() {
 ```
 **Result**
 ```
-.....Elapsed time for test_random_integers: 0.44 ms
+.....Elapsed time for test_random_integers: 0.02 ms
+
 Progress: [======>                                           ] 1/8 (12.50%)Test passed: test_random_integers
-.....Elapsed time for test_random_floats: 0.34 ms
+.....Elapsed time for test_random_floats: 0.00 ms
+
 Progress: [============>                                     ] 2/8 (25.00%)Test passed: test_random_floats
-.....Elapsed time for test_random_doubles: 0.21 ms
+.....Elapsed time for test_random_doubles: 0.00 ms
+
 Progress: [==================>                               ] 3/8 (37.50%)Test passed: test_random_doubles
-..Generated String: oWrS3EXbiX
-..Generated String: 1xmS1J4mBZ
-..Generated String: bzFOXgdYG9
-..Generated String: p6HseDHHFK
-..Generated String: qmDmox7sn4
-Elapsed time for test_random_strings: 6.43 ms
+..Generated String: 6IRaQAzuD2
+..Generated String: 3I9E9H7405
+..Generated String: MCHbmKAAaN
+..Generated String: YOhTUfO5a9
+..Generated String: w9UmnDwmFO
+Elapsed time for test_random_strings: 0.17 ms
+
 Progress: [=========================>                        ] 4/8 (50.00%)Test passed: test_random_strings
 Edge Case Integer: -2147483648
 .Edge Case Integer: -1
 .Edge Case Integer: 0
 .Edge Case Integer: 1
 .Edge Case Integer: 2147483647
-.Elapsed time for test_edge_case_integers: 5.27 ms
+.Elapsed time for test_edge_case_integers: 0.18 ms
+
 Progress: [===============================>                  ] 5/8 (62.50%)Test passed: test_edge_case_integers
 Edge Case Float: -340282346638528859811704183484516925440.000000
 .Edge Case Float: -1.000000
 .Edge Case Float: 0.000000
 .Edge Case Float: 1.000000
 .Edge Case Float: 340282346638528859811704183484516925440.000000
-.Elapsed time for test_edge_case_floats: 9.02 ms
+.Elapsed time for test_edge_case_floats: 0.23 ms
+
 Progress: [=====================================>            ] 6/8 (75.00%)Test passed: test_edge_case_floats
-Edge Case Double: -179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868504 
-55133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000
+Edge Case Double: -179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000
 .Edge Case Double: -1.000000
 .Edge Case Double: 0.000000
 .Edge Case Double: 1.000000
 .Edge Case Double: 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000
-.Elapsed time for test_edge_case_doubles: 30.33 ms
+.Elapsed time for test_edge_case_doubles: 0.94 ms
+
 Progress: [===========================================>      ] 7/8 (87.50%)Test passed: test_edge_case_doubles
 Edge Case String: ''
 .Edge Case String: 'a'
@@ -3005,14 +3095,15 @@ Edge Case String: ''
 .Edge Case String: ''
 .Edge Case String: 'newline
 '
-.Edge Case String: 'tab '
-.Elapsed time for test_edge_case_strings: 14.15 ms
+.Edge Case String: 'tab	'
+.Elapsed time for test_edge_case_strings: 0.23 ms
+
 Progress: [==================================================] 8/8 (100.00%)Test passed: test_edge_case_strings
 
 
 8 tests, 46 assertions, 0 failures, 0 skipped
 
-Finished in 0.12817030 seconds (real) 0.00000000 seconds (proc)
+Finished in 0.00317750 seconds (real) 0.00000000 seconds (proc)
 ```
 
 ----

@@ -225,6 +225,9 @@ PriorityQueue* priority_queue_create(size_t itemSize, PQCompareFunc compare) {
         return NULL;
     }
     pq->compare = compare;
+    /* the is_* comparisons go through vector_is_*: order the elements with
+       the queue's comparator rather than by their bytes */
+    vector_set_compare(pq->vec, compare);
 
     PQUEUE_LOG("[priority_queue_create]: exit ok pq=%p vec=%p", (void*)pq, (void*)pq->vec);
     return pq;
@@ -775,7 +778,8 @@ bool priority_queue_is_not_equal(const PriorityQueue* a, const PriorityQueue* b)
 
 
 /**
- * @brief Lexicographic less-than over the underlying storage bytes.
+ * @brief Lexicographic less-than over the underlying heap storage, comparing
+ *        elements with the queue's comparator.
  *
  * Returns false if either operand is NULL.
  *
@@ -798,7 +802,8 @@ bool priority_queue_is_less(const PriorityQueue* a, const PriorityQueue* b) {
 
 
 /**
- * @brief Lexicographic greater-than over the underlying storage bytes.
+ * @brief Lexicographic greater-than over the underlying heap storage, comparing
+ *        elements with the queue's comparator.
  *
  * Returns false if either operand is NULL.
  *

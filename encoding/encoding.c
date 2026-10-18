@@ -11,11 +11,13 @@
 #include <assert.h>
 #include <limits.h>
 #include "encoding.h"
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>   /* MultiByteToWideChar / WideCharToMultiByte */
+#endif
 
 
 
 
-bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
 #define UNI_REPLACEMENT_CHAR (uint32_t)0x0000FFFD
 #define UNI_SUR_HIGH_START  (unsigned int)0xD800
@@ -472,7 +474,7 @@ static ConversionResult ConvertUTF8toUTF16 (const uint8_t** sourceStart, const u
  * verifying its legality, and then directly storing it in the UTF-32 output. It also replaces any illegal 
  * sequences with a replacement character and ensures no overflow occurs in the output buffer.
  */
-ConversionResult ConvertUTF8toUTF32 (
+static ConversionResult ConvertUTF8toUTF32 (
         const uint8_t** sourceStart, const uint8_t* sourceEnd, 
         uint32_t** targetStart, uint32_t* targetEnd, ConversionFlags flags) {
 
@@ -568,7 +570,9 @@ ConversionResult ConvertUTF8toUTF32 (
 */
 static int decode_char(unsigned char c) {
     ENCODING_LOG("[decode_char] Decoding character: %c", c);
-    char retval = -1;
+    /* int, not char: where char is unsigned (ARM, MSVC /J) -1 became 255, so
+       '=' and invalid characters were never detected. */
+    int retval = -1;
 
     if (c >= 'A' && c <= 'Z') {
         retval = c - 'A';
@@ -585,121 +589,6 @@ static int decode_char(unsigned char c) {
     }
     
     return retval;
-}
-
-
-/**
- * Given a block id between 0 and 7 inclusive, this will return the index of
- * the octet in which this block starts. For example, given 3 it will return 1
- * because block 3 starts in octet 1:
- *
- * +--------+--------+
- * | ......<|.3 >....|
- * +--------+--------+
- *  octet 1 | octet 2
- */
-static int get_octet(int block) {
-    ENCODING_LOG("[get_octet] Calculating octet for block: %d", block);
-    assert(block >= 0 && block < 8);
-    
-    int octet = (block * 5) / 8;
-    ENCODING_LOG("[get_octet] Block %d starts in octet: %d", block, octet);
-    
-    return octet;
-}
-
-
-/**
- * Given a block id between 0 and 7 inclusive, this will return how many bits
- * we can drop at the end of the octet in which this block starts. 
- * For example, given block 0 it will return 3 because there are 3 bits
- * we don't care about at the end:
- *
- *  +--------+-
- *  |< 0 >...|
- *  +--------+-
- *
- * Given block 1, it will return -2 because there
- * are actually two bits missing to have a complete block:
- *
- *  +--------+-
- *  |.....< 1|..
- *  +--------+-
- **/
-static int get_offset(int block) {
-    ENCODING_LOG("[get_offset] Calculating offset for block: %d", block);
-    assert(block >= 0 && block < 8);
-    int offset = (8 - 5 - (5 * block) % 8);
-    ENCODING_LOG("[get_offset] Calculated offset for block %d is: %d", block, offset);
-
-    return offset;
-}
-
-
-/**
- * Like "b >> offset" but it will do the right thing with negative offset.
- * We need this as bitwise shifting by a negative offset is undefined
- * behavior.
- */
-static unsigned char shift_right(unsigned char byte, signed char offset) {
-    ENCODING_LOG("[shift_right] Shifting byte %02x to the right by %d bits", byte, offset);
-
-    unsigned char result;
-    if (offset > 0) {
-        result = byte >> offset;
-    } 
-    else {
-        result = byte << -offset;
-    }
-
-    ENCODING_LOG("[shift_right] Result after shifting: %02x", result);
-    return result;
-}
-
-
-/**
- * Shift the byte to the left by the specified offset
- * This function calls shift_right with the negative of the offset,
- * effectively performing a left shift.
- */
-static unsigned char shift_left(unsigned char byte, signed char offset) {
-    ENCODING_LOG("[shift_left] Shifting byte %02x to the left by %d bits", byte, offset);
-    unsigned char result = shift_right(byte, -offset);
-    ENCODING_LOG("[shift_left] Result after shifting: %02x", result);
-
-    return result;
-}
-
-
-static int decode_sequence(const unsigned char *coded, unsigned char *plain) {
-    ENCODING_LOG("[decode_sequence] Starting sequence decoding");
-
-    assert(CHAR_BIT == 8);
-    assert(coded && plain);
-
-    plain[0] = 0;
-    for (int block = 0; block < 8; block++) {
-        int offset = get_offset(block);
-        int octet = get_octet(block);
-
-        ENCODING_LOG("[decode_sequence] Decoding block %d, offset: %d, octet: %d", block, offset, octet);
-
-        int c = decode_char(coded[block]);
-        if (c < 0) {
-            ENCODING_LOG("[decode_sequence] Invalid character at block %d", block);
-            return octet;
-        }
-
-        plain[octet] |= shift_left(c, offset);
-        if (offset < 0) {
-            assert(octet < 4);
-            plain[octet + 1] = shift_left(c, 8 + offset);
-            ENCODING_LOG("[decode_sequence] Block overflows to next octet.");
-        }
-    }
-
-    ENCODING_LOG("[decode_sequence] Decoding completed successfully");
-    return 5;
 }
 
 
@@ -769,67 +658,82 @@ char* encoding_base64_encode(const char* input, size_t length) {
  * @return A malloc'd buffer (NUL-terminated for convenience) with the decoded
  *         bytes, or NULL on invalid length / allocation failure. Caller frees.
  */
+/* Value of one base64 alphabet character, -1 for anything else. */
+static int enc_b64_value(unsigned char c) {
+    if (c >= 'A' && c <= 'Z') return c - 'A';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+    if (c >= '0' && c <= '9') return c - '0' + 52;
+    if (c == '+') return 62;
+    if (c == '/') return 63;
+    return -1;
+}
+
 char* encoding_base64_decode_ex(const char* input, size_t length, size_t* out_len) {
     if (out_len) {
         *out_len = 0;
     }
-    if (length % 4 != 0) {
-        ENCODING_LOG("[encoding_base64_decode] Error: Invalid input length. Length must be a multiple of 4.");
+    if (!input && length > 0) {
         return NULL;
     }
 
-    if (length == 0) {
-        char* empty = (char*) malloc(1);
-        if (!empty) {
-            return NULL;
-        }
-
-        empty[0] = '\0';
-        return empty;
-    }
-
-    size_t output_length = length / 4 * 3;
-    if (input[length - 1] == '=') {
-        output_length--;
-    }
-    if (input[length - 2] == '=') {
-        output_length--;
-    }
-
-    char* decoded = (char*) malloc(output_length + 1);
+    /* Strict RFC 4648 (like crypto_hash_from_base64 and Python's b64decode):
+       only the 64 alphabet characters, then '=' padding to a multiple of 4
+       at the very end. ASCII whitespace (MIME line breaks) is skipped. Any
+       other character, padding in the middle ("TWE=TWE="), a lone "====" or
+       a group of one character is an error: invalid bytes used to decode as
+       garbage through a 123-entry table that bytes >= '{' read past. */
+    char* decoded = (char*)malloc(length / 4 * 3 + 4);
     if (!decoded) {
         ENCODING_LOG("[encoding_base64_decode] Error: Memory allocation failed.");
         return NULL;
     }
 
-    static const unsigned char d[] = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0, 0, 0, 0, 0, 0,
-        0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0,
-        0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
-    };
-
-    for (size_t i = 0, j = 0; i < length;) {
-        uint32_t sextet_a = input[i] == '=' ? 0 & i++ : d[(unsigned char)input[i++]];
-        uint32_t sextet_b = input[i] == '=' ? 0 & i++ : d[(unsigned char)input[i++]];
-        uint32_t sextet_c = input[i] == '=' ? 0 & i++ : d[(unsigned char)input[i++]];
-        uint32_t sextet_d = input[i] == '=' ? 0 & i++ : d[(unsigned char)input[i++]];
-        uint32_t triple = (sextet_a << 18) + (sextet_b << 12) + (sextet_c << 6) + sextet_d;
-
-        if (j < output_length) {
-            decoded[j++] = (triple >> 16) & 0xFF;
+    size_t j = 0;
+    int quad[4];
+    int q = 0;
+    int pad = 0;
+    for (size_t i = 0; i < length; ++i) {
+        unsigned char c = (unsigned char)input[i];
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            continue;
         }
-        if (j < output_length) {
-            decoded[j++] = (triple >> 8) & 0xFF;
+        if (c == '=') {
+            pad++;
+            continue;
         }
-        if (j < output_length) {
-            decoded[j++] = triple & 0xFF;
+        int v = enc_b64_value(c);
+        if (v < 0 || pad > 0) {
+            ENCODING_LOG("[encoding_base64_decode] Error: Invalid character or data after padding.");
+            free(decoded);
+            return NULL;
+        }
+        quad[q++] = v;
+        if (q == 4) {
+            uint32_t triple = ((uint32_t)quad[0] << 18) | ((uint32_t)quad[1] << 12) | ((uint32_t)quad[2] << 6) | (uint32_t)quad[3];
+            decoded[j++] = (char)((triple >> 16) & 0xFF);
+            decoded[j++] = (char)((triple >> 8) & 0xFF);
+            decoded[j++] = (char)(triple & 0xFF);
+            q = 0;
         }
     }
 
-    decoded[output_length] = '\0';
+    bool ok = (q == 0 && pad == 0) || (q == 2 && pad == 2) || (q == 3 && pad == 1);
+    if (!ok) {
+        ENCODING_LOG("[encoding_base64_decode] Error: Invalid length or padding.");
+        free(decoded);
+        return NULL;
+    }
+    if (q == 2) {
+        decoded[j++] = (char)((quad[0] << 2) | (quad[1] >> 4));
+    }
+    else if (q == 3) {
+        decoded[j++] = (char)((quad[0] << 2) | (quad[1] >> 4));
+        decoded[j++] = (char)(((quad[1] & 0x0F) << 4) | (quad[2] >> 2));
+    }
+
+    decoded[j] = '\0';
     if (out_len) {
-        *out_len = output_length;
+        *out_len = j;
     }
 
     ENCODING_LOG("[encoding_base64_decode] Decoding completed successfully.");
@@ -882,10 +786,15 @@ char* encoding_url_encode(const char* input, size_t length) {
 
     size_t result_index = 0;
     for (size_t i = 0; i < length; ++i) {
-        char ch = input[i];
-        if (isalnum(ch) || ch == '-' || ch == '.' || ch == '_' || ch == '~') {
-            result[result_index++] = ch;
-        } 
+        /* RFC 3986 unreserved characters, tested as ASCII: isalnum on a plain
+           char is undefined for bytes >= 0x80 and follows the locale, so after
+           setlocale(LC_ALL, "") bytes such as 0xE9 were copied unescaped. */
+        unsigned char ch = (unsigned char)input[i];
+        bool unreserved = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') ||
+                          ch == '-' || ch == '.' || ch == '_' || ch == '~';
+        if (unreserved) {
+            result[result_index++] = (char)ch;
+        }
         else {
             static const char hex[] = "0123456789ABCDEF";
             result[result_index++] = '%';
@@ -1049,43 +958,66 @@ char* encoding_base32_encode(const char* input, size_t length) {
  * (the NUL-terminated `char*` return cannot convey a length when the data has
  * embedded `0x00` bytes).
  *
+ * Accepts the RFC 4648 alphabet in either case (TOTP secrets are often
+ * lowercase), with or without the trailing '=' padding. Any other character,
+ * a '=' followed by data, or a length no Base32 text can have is an error
+ * (it used to end decoding early and return a partial result).
+ *
  * @param input   Pointer to the Base32 encoded input string.
- * @param length  Length of the input; must be a multiple of 8.
+ * @param length  Length of the input.
  * @param out_len Optional out-pointer; receives the decoded byte count (0 on
  *                error). May be NULL.
  * @return A malloc'd buffer (NUL-terminated for convenience) with the decoded
- *         bytes, or NULL on invalid length / allocation failure. Caller frees.
+ *         bytes, or NULL on invalid input / allocation failure. Caller frees.
  */
 char* encoding_base32_decode_ex(const char* input, size_t length, size_t* out_len) {
     if (out_len) {
         *out_len = 0;
     }
-    if (length % 8 != 0) {
-        ENCODING_LOG("[encoding_base32_decode] Error: Invalid input length. Length must be a multiple of 8.");
+    if (input == NULL && length > 0) {
+        return NULL;
+    }
+    size_t data_len = 0;
+    while (data_len < length && input[data_len] != '=') {
+        data_len++;
+    }
+    for (size_t k = data_len; k < length; ++k) {
+        if (input[k] != '=') {
+            ENCODING_LOG("[encoding_base32_decode] Error: data after padding.");
+            return NULL;
+        }
+    }
+    size_t rem = data_len % 8;
+    /* a final group carries 2, 4, 5 or 7 characters; with padding the whole
+       text must be a multiple of 8 */
+    if (rem == 1 || rem == 3 || rem == 6 || (length > data_len && (length % 8 != 0 || length - data_len >= 8))) {
+        ENCODING_LOG("[encoding_base32_decode] Error: Invalid input length.");
         return NULL;
     }
 
-    size_t olength = (length / 8) * 5;
-    unsigned char* result = (unsigned char*) malloc(olength + 1);
+    unsigned char* result = (unsigned char*) malloc(data_len * 5 / 8 + 1);
     if (!result) {
         ENCODING_LOG("[encoding_base32_decode] Error: Memory allocation failed.");
         return NULL;
     }
 
-    size_t i = 0, j = 0;
-    while (i < length) {
-        if (input[i] == '=') {
-            break; 
+    size_t j = 0;
+    unsigned int bits = 0;
+    int nbits = 0;
+    for (size_t i = 0; i < data_len; ++i) {
+        int v = decode_char((unsigned char)toupper((unsigned char)input[i]));
+        if (v < 0) {
+            ENCODING_LOG("[encoding_base32_decode] Error: invalid character.");
+            free(result);
+            return NULL;
         }
-
-        int n = decode_sequence((const unsigned char*)&input[i], &result[j]);
-        if (n < 5) { // Less than 5 bytes decoded, indicates padding or end of input
-            j += n;
-            break;
+        bits = (bits << 5) | (unsigned int)v;
+        nbits += 5;
+        if (nbits >= 8) {
+            nbits -= 8;
+            result[j++] = (unsigned char)(bits >> nbits);
+            bits &= (1u << nbits) - 1u;
         }
-
-        i += 8;
-        j += 5;
     }
 
     result[j] = '\0';
@@ -1101,11 +1033,11 @@ char* encoding_base32_decode_ex(const char* input, size_t length, size_t* out_le
  * @brief Decodes a Base32 encoded string back to binary data.
  *
  * Back-compat wrapper over `encoding_base32_decode_ex` that discards the decoded
- * length. Use `encoding_base32_decode_ex` for binary payloads. The input length
- * must be a multiple of 8.
+ * length. Use `encoding_base32_decode_ex` for binary payloads. Padding is
+ * optional and either letter case is accepted.
  *
  * @param input Pointer to the Base32 encoded input string.
- * @param length Length of the Base32 encoded string. Must be a multiple of 8.
+ * @param length Length of the Base32 encoded string.
  * @return A dynamically allocated buffer containing the decoded binary data.
  *         Returns NULL if an error occurs (e.g., memory allocation failure, invalid input length).
  *
@@ -1285,7 +1217,8 @@ char* encoding_base16_decode(const char* input, size_t length) {
  * @note The caller is responsible for freeing the returned UTF-16 string.
  */
 uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    /* empty input gives an empty string (NULL is the failure value) */
+    if (input == NULL || length > (SIZE_MAX / sizeof(uint16_t) - 1) / 2) {
         ENCODING_LOG("[encoding_utf32_to_utf16] Error: Invalid input or length");
         return NULL;
     }
@@ -1303,7 +1236,8 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
     for (size_t i = 0; i < length; ++i) {
         uint32_t ch = input[i];
 
-        if (ch > UNI_MAX_LEGAL_UTF32) {
+        if (ch > UNI_MAX_LEGAL_UTF32 || (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END)) {
+            /* a surrogate is not a character: it would make ill-formed UTF-16 */
             ENCODING_LOG("[encoding_utf32_to_utf16] Error: Invalid character encountered");
             free(output);
             return NULL;
@@ -1345,7 +1279,7 @@ uint16_t* encoding_utf32_to_utf16(const uint32_t* input, size_t length) {
  * @note The caller is responsible for freeing the returned UTF-32 string.
  */
 uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL || length > SIZE_MAX / sizeof(uint32_t) - 1) {
         ENCODING_LOG("[encoding_utf16_to_utf32] Error: Invalid input or length");
         return NULL;
     }
@@ -1381,6 +1315,12 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
                 return NULL;
             }
         }
+        else if (ch >= UNI_SUR_LOW_START && ch <= UNI_SUR_LOW_END) {
+            /* a low surrogate without its high half (it used to be copied) */
+            ENCODING_LOG("[encoding_utf16_to_utf32] Error: Lone low surrogate");
+            free(output);
+            return NULL;
+        }
         output[j++] = ch;
     }
 
@@ -1407,7 +1347,7 @@ uint32_t* encoding_utf16_to_utf32(const uint16_t* input, size_t length) {
  * @note The caller is responsible for freeing the returned UTF-8 string.
  */
 uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL || length > SIZE_MAX / 4 - 1) {
         ENCODING_LOG("[encoding_utf16_to_utf8] Error: Invalid input or length");
         return NULL;
     }
@@ -1415,7 +1355,7 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     ENCODING_LOG("[encoding_utf16_to_utf8] Starting UTF-16 to UTF-8 conversion");
 
     size_t maxOutLength = length * 4;
-    uint8_t* output = (uint8_t*)malloc(maxOutLength);
+    uint8_t* output = (uint8_t*)malloc(maxOutLength + 1);
     if (!output) {
         ENCODING_LOG("[encoding_utf16_to_utf8] Error: Memory allocation failed");
         return NULL;
@@ -1425,7 +1365,8 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
     const uint16_t* sourceEnd = input + length;
     uint8_t* targetStart = output;
     uint8_t* targetEnd = output + maxOutLength;
-    ConversionResult result = ConvertUTF16toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+    /* strict: a lone surrogate is an error, not 3 CESU-8 bytes */
+    ConversionResult result = ConvertUTF16toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, strictConversion);
 
     if (result != conversionOK) {
         ENCODING_LOG("[encoding_utf16_to_utf8] Error: Conversion from UTF-16 to UTF-8 failed");
@@ -1465,7 +1406,7 @@ uint8_t* encoding_utf16_to_utf8(const uint16_t* input, size_t length) {
  * @note The caller is responsible for freeing the returned UTF-8 string.
  */
 uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL || length > SIZE_MAX / 4 - 1) {
         ENCODING_LOG("[encoding_utf32_to_utf8] Error: Invalid input or length");
         return NULL;
     }
@@ -1473,7 +1414,7 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
 
     // Estimate maximum output size (4 bytes per UTF-32 character)
     size_t maxOutLength = length * 4;
-    uint8_t* output = (uint8_t*)malloc(maxOutLength);
+    uint8_t* output = (uint8_t*)malloc(maxOutLength + 1);
     if (!output) {
         ENCODING_LOG("[encoding_utf32_to_utf8] Error: Memory allocation failed");
         return NULL;
@@ -1484,7 +1425,7 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
     uint8_t* targetStart = output;
     uint8_t* targetEnd = output + maxOutLength;
 
-    ConversionResult result = ConvertUTF32toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+    ConversionResult result = ConvertUTF32toUTF8(&sourceStart, sourceEnd, &targetStart, targetEnd, strictConversion);
     if (result != conversionOK) {
         ENCODING_LOG("[encoding_utf32_to_utf8] Error: Conversion from UTF-32 to UTF-8 failed");
         free(output);
@@ -1520,9 +1461,12 @@ uint8_t* encoding_utf32_to_utf8(const uint32_t* input, size_t length) {
  * @return True if the string is a valid UTF-8 encoded string, false otherwise.
  */
 bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
-    if (input == NULL || *input == NULL || length == 0) {
+    if (input == NULL || (*input == NULL && length > 0)) {
         ENCODING_LOG("[encoding_is_utf8_string] Error: Invalid input or length");
         return false;
+    }
+    if (length == 0) {
+        return true;   /* the empty string is valid UTF-8 */
     }
 
     ENCODING_LOG("[encoding_is_utf8_string] Validating if the input is a valid UTF-8 string");
@@ -1562,7 +1506,7 @@ bool encoding_is_utf8_string(const uint8_t** input, size_t length) {
  * @note The caller is responsible for freeing the returned UTF-16 string.
  */
 uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL || length > SIZE_MAX / (2 * sizeof(uint16_t)) - 1) {
         ENCODING_LOG("[encoding_utf8_to_utf16] Error: Invalid input or length");
         return NULL;
     }
@@ -1570,7 +1514,7 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
     ENCODING_LOG("[encoding_utf8_to_utf16] Starting UTF-8 to UTF-16 conversion");
 
     size_t maxOutLength = length * 2;
-    uint16_t* output = (uint16_t*)malloc(maxOutLength * sizeof(uint16_t));
+    uint16_t* output = (uint16_t*)malloc((maxOutLength + 1) * sizeof(uint16_t));
     if (!output) {
         ENCODING_LOG("[encoding_utf8_to_utf16] Error: Memory allocation failed for output");
         return NULL;
@@ -1582,7 +1526,7 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
     uint16_t* targetEnd = output + maxOutLength;
 
     // Perform the UTF-8 to UTF-16 conversion using lenient conversion method
-    ConversionResult result = ConvertUTF8toUTF16(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+    ConversionResult result = ConvertUTF8toUTF16(&sourceStart, sourceEnd, &targetStart, targetEnd, strictConversion);
 
     if (result != conversionOK) {
         ENCODING_LOG("[encoding_utf8_to_utf16] Error: Conversion from UTF-8 to UTF-16 failed");
@@ -1622,14 +1566,14 @@ uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length) {
  * @note The caller is responsible for freeing the returned UTF-32 string.
  */
 uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL || length > SIZE_MAX / sizeof(uint32_t) - 1) {
         ENCODING_LOG("[encoding_utf8_to_utf32] Error: Invalid input or length");
         return NULL;
     }
     ENCODING_LOG("[encoding_utf8_to_utf32] Starting UTF-8 to UTF-32 conversion");
 
     size_t maxOutLength = length;
-    uint32_t* output = (uint32_t*)malloc(maxOutLength * sizeof(uint32_t));
+    uint32_t* output = (uint32_t*)malloc((maxOutLength + 1) * sizeof(uint32_t));
     if (!output) {
         ENCODING_LOG("[encoding_utf8_to_utf32] Error: Memory allocation failed");
         return NULL; 
@@ -1641,22 +1585,22 @@ uint32_t* encoding_utf8_to_utf32(const uint8_t* input, size_t length) {
     uint32_t* targetEnd = output + maxOutLength;
 
     // Perform the UTF-8 to UTF-32 conversion using a lenient conversion method
-    ConversionResult result = ConvertUTF8toUTF32(&sourceStart, sourceEnd, &targetStart, targetEnd, lenientConversion);
+    ConversionResult result = ConvertUTF8toUTF32(&sourceStart, sourceEnd, &targetStart, targetEnd, strictConversion);
     if (result != conversionOK) {
         ENCODING_LOG("[encoding_utf8_to_utf32] Error: Conversion to UTF-32 failed");
         free(output);
         return NULL;
     }
 
-    size_t actualLength = targetStart - output;
+    size_t actualLength = (size_t)(targetStart - output);
+    output[actualLength] = 0;   /* terminated before shrinking: a failed realloc returned it unterminated */
     uint32_t* resizedOutput = (uint32_t*)realloc(output, (actualLength + 1) * sizeof(uint32_t));
     if (resizedOutput) {
-        resizedOutput[actualLength] = 0; 
         ENCODING_LOG("[encoding_utf8_to_utf32] Conversion completed successfully, length: %zu", actualLength);
         return resizedOutput;
     }
 
-    ENCODING_LOG("[encoding_utf8_to_utf32] Error: Memory reallocation failed");
+    ENCODING_LOG("[encoding_utf8_to_utf32] Memory reallocation failed; returning the larger buffer");
     return output;
 }
 
@@ -1727,7 +1671,7 @@ void encoding_hex_dump(const void *data, size_t size) {
  * @note The caller is responsible for freeing the returned encoded string.
  */
 char* encoding_base85_encode(const uint8_t* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL && length > 0) {   /* empty input encodes to "" */
         ENCODING_LOG("[encoding_base85_encode] Error: Invalid input or length");
         return NULL;
     }
@@ -1792,7 +1736,7 @@ char* encoding_base85_encode(const uint8_t* input, size_t length) {
  * @note The caller is responsible for freeing the returned decoded data.
  */
 uint8_t* encoding_base85_decode(const char* input, size_t length) {
-    if (input == NULL || length == 0) {
+    if (input == NULL && length > 0) {
         ENCODING_LOG("[encoding_base85_decode] Error: Invalid input or length");
         return NULL;
     }
@@ -1809,7 +1753,7 @@ uint8_t* encoding_base85_decode(const char* input, size_t length) {
     size_t input_index = 0;
     size_t decoded_index = 0;
     while (input_index < length) {
-        if (isspace(input[input_index])) {
+        if (isspace((unsigned char)input[input_index])) {
             input_index++;   // Skip whitespace
             continue;
         }
@@ -1821,16 +1765,19 @@ uint8_t* encoding_base85_decode(const char* input, size_t length) {
             continue;
         }
 
-        uint32_t acc = 0;
+        uint64_t acc = 0;
         int count = 0;
-        for (int i = 0; i < 5 && input_index < length; ++i) {
-            if (isspace(input[input_index])) {
-                // Skip whitespace within the group
+        /* Whitespace inside a group (wrapped Ascii85 lines) is skipped
+           without using up one of the group's 5 places: it used to end the
+           group early, and the short group was taken as the final one, so
+           everything after the first line break was dropped. */
+        while (count < 5 && input_index < length) {
+            if (isspace((unsigned char)input[input_index])) {
                 input_index++;
                 continue;
             }
 
-            char ch = input[input_index++];
+            unsigned char ch = (unsigned char)input[input_index++];
             if (ch < 33 || ch > 117) {
                 ENCODING_LOG("[encoding_base85_decode] Error: Invalid character encountered");
                 free(decoded);
@@ -1841,6 +1788,15 @@ uint8_t* encoding_base85_decode(const char* input, size_t length) {
             count++;
         }
 
+        if (count == 0) {
+            break;   /* only trailing whitespace */
+        }
+        if (count == 1) {
+            /* a final group needs at least 2 characters (1 byte) */
+            ENCODING_LOG("[encoding_base85_decode] Error: Truncated final group");
+            free(decoded);
+            return NULL;
+        }
         int padding = 0;
         if (count < 5) {
             padding = 5 - count;
@@ -1848,12 +1804,18 @@ uint8_t* encoding_base85_decode(const char* input, size_t length) {
                 acc = acc * 85 + 84; // Assume 'u' for padding, which is the highest value (84)
             }
         }
+        if (count == 5 && acc > 0xFFFFFFFFull) {
+            /* e.g. "uuuuu" (85^5 - 1): no 4 bytes encode to it; it used to wrap */
+            ENCODING_LOG("[encoding_base85_decode] Error: Group value exceeds 2^32 - 1");
+            free(decoded);
+            return NULL;
+        }
 
         for (int i = 3; i >= 0; --i) {
             if (i < padding) {
                 break; 
             }
-            decoded[decoded_index++] = (acc >> (i * 8)) & 0xFF;
+            decoded[decoded_index++] = (uint8_t)((acc >> (i * 8)) & 0xFF);
         }
         if (count < 5) {
             break; 
@@ -1898,7 +1860,7 @@ char* encoding_base58_encode(const void *data, size_t binsz) {
 
     const uint8_t *bin = (const uint8_t*)data;
     int carry;
-    size_t i, j, high, zcount = 0;
+    size_t i, j, zcount = 0;
     size_t size;
 
     // Count leading zero bytes
@@ -1916,16 +1878,23 @@ char* encoding_base58_encode(const void *data, size_t binsz) {
     }
     memset(buf, 0, size);
 
-    for (i = zcount, high = size - 1; i < binsz; ++i, high = j) {
-        for (carry = bin[i], j = size - 1; (j > high) || carry; --j) {
+    /* Same `used`-digits bookkeeping as the decoder (the old `high = j` form
+       could skip the most significant digit once a pass reached index 0). */
+    size_t used = 0;
+    for (i = zcount; i < binsz; ++i) {
+        size_t k = 0;
+        for (carry = bin[i]; k < used || carry; ++k) {
+            if (k == size) {
+                ENCODING_LOG("[encoding_base58_encode] Error: Encoded value exceeds the work buffer");
+                free(buf);
+                return NULL;
+            }
+            j = size - 1 - k;
             carry += 256 * buf[j];
             buf[j] = carry % 58;
             carry /= 58;
-
-            if (!j) {
-                break;
-            }
         }
+        used = k;
     }
 
     for (j = 0; j < size && !buf[j]; ++j) {
@@ -1991,27 +1960,34 @@ char *encoding_base58_decode(const char *b58, size_t *binszp) {
     memset(bin, 0, binsz);
 
     size_t i, j;
-    int carry;
-    size_t high = binsz - 1;
+    /* `used` = how many trailing bytes of bin can be non-zero. The previous
+       `high = j` bookkeeping marked index 0 as untouched after a pass that
+       ended there, so later digits stopped multiplying the most significant
+       byte and valid input decoded to wrong data. */
+    size_t used = 0;
 
     // Process the Base58 string
     for (i = 0; i < b58sz; ++i) {
         if (b58[i] & 0x80 || b58digits_map[(unsigned char)b58[i]] == -1) {
             ENCODING_LOG("[encoding_base58_decode] Error: Invalid Base58 character encountered");
             free(bin);
-            return NULL; 
+            return NULL;
         }
 
-        for (carry = b58digits_map[(unsigned char)b58[i]], j = binsz - 1; (j > high) || carry; --j) {
-            carry += 58 * bin[j];
-            bin[j] = carry % 256;
-            carry /= 256;
-
-            if (!j) {
-                break; 
+        uint32_t carry = (uint32_t)b58digits_map[(unsigned char)b58[i]];
+        size_t k = 0;
+        for (; k < used || carry; ++k) {
+            if (k == binsz) {
+                ENCODING_LOG("[encoding_base58_decode] Error: Decoded value exceeds the work buffer");
+                free(bin);
+                return NULL;
             }
+            size_t idx = binsz - 1 - k;
+            carry += 58u * bin[idx];
+            bin[idx] = (uint8_t)(carry & 0xFFu);
+            carry >>= 8;
         }
-        high = j;
+        used = k;
     }
 
     /* Skip residual zero bytes in the work buffer */
@@ -2130,13 +2106,21 @@ uint8_t* encoding_base91_decode(const char* encoded, size_t* decoded_length) {
  * @note The caller is responsible for freeing the returned encoded string.
  */
 char* encoding_base91_encode(const uint8_t* data, size_t length) {
-    if (!data || length == 0) {
+    if (!data && length > 0) {   /* empty input encodes to "" */
         ENCODING_LOG("[encoding_base91_encode] Error: Invalid input data or length");
         return NULL;
     }
     ENCODING_LOG("[encoding_base91_encode] Starting Base91 encoding");
 
-    size_t estimated_length = length * 1.23 + 2; // +2 for padding and null terminator
+    /* Exact worst case: every 13 input bits become 2 characters (16/13 per
+       byte), plus up to 2 tail characters and the terminator. The previous
+       length * 1.23 + 2 was below 16/13: long inputs returned NULL and the
+       tail characters were silently dropped. */
+    if (length > (SIZE_MAX - 8) / 2 / 8) {
+        ENCODING_LOG("[encoding_base91_encode] Error: Input too large");
+        return NULL;
+    }
+    size_t estimated_length = 2 * ((length * 8) / 13 + 1) + 3;
     char* encoded = (char*) malloc(estimated_length);
     if (!encoded) {
         ENCODING_LOG("[encoding_base91_encode] Error: Memory allocation failed");
@@ -2274,25 +2258,62 @@ char* encoding_wchar_to_utf8(const wchar_t* wstr) {
 #else
     ENCODING_LOG("[encoding_wchar_to_utf8] Converting wchar to UTF-8 on non-Windows platform");
 
-    setlocale(LC_ALL, "en_US.UTF-8");
-
-    size_t utf8Length = wcstombs(NULL, wstr, 0);
-    if (utf8Length == (size_t)-1) {
-        ENCODING_LOG("[encoding_wchar_to_utf8] Error: wcstombs failed");
-        return NULL;
+    /* wchar_t holds Unicode code points here (UTF-32; UTF-16 pairs are
+       combined where it is 16 bits), so the UTF-8 is produced directly. The
+       old wcstombs path called setlocale(LC_ALL, "en_US.UTF-8") on every
+       call: it changed the whole process's locale, raced with other
+       threads, and failed for non-ASCII text where that locale is missing.
+       Invalid code points become U+FFFD. */
+    size_t utf8Length = 0;
+    for (size_t i = 0; wstr[i] != 0; ++i) {
+        uint32_t cp = (uint32_t)wstr[i];
+        if (sizeof(wchar_t) == 2 && cp >= 0xD800 && cp <= 0xDBFF && (uint32_t)wstr[i + 1] >= 0xDC00 && (uint32_t)wstr[i + 1] <= 0xDFFF) {
+            utf8Length += 4;
+            i++;
+            continue;
+        }
+        if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
+            cp = 0xFFFD;
+        }
+        utf8Length += cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
     }
 
-    char* utf8Str = (char*)malloc((utf8Length + 1) * sizeof(char));
+    char* utf8Str = (char*)malloc(utf8Length + 1);
     if (!utf8Str) {
         ENCODING_LOG("[encoding_wchar_to_utf8] Error: Cannot allocate memory for UTF-8 string");
         return NULL;
     }
 
-    if (wcstombs(utf8Str, wstr, utf8Length + 1) == (size_t)-1) {
-        ENCODING_LOG("[encoding_wchar_to_utf8] Error: Conversion from wchar to UTF-8 failed");
-        free(utf8Str);
-        return NULL;
+    size_t o = 0;
+    for (size_t i = 0; wstr[i] != 0; ++i) {
+        uint32_t cp = (uint32_t)wstr[i];
+        if (sizeof(wchar_t) == 2 && cp >= 0xD800 && cp <= 0xDBFF && (uint32_t)wstr[i + 1] >= 0xDC00 && (uint32_t)wstr[i + 1] <= 0xDFFF) {
+            cp = 0x10000 + ((cp - 0xD800) << 10) + ((uint32_t)wstr[i + 1] - 0xDC00);
+            i++;
+        }
+        else if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
+            cp = 0xFFFD;
+        }
+        if (cp < 0x80) {
+            utf8Str[o++] = (char)cp;
+        }
+        else if (cp < 0x800) {
+            utf8Str[o++] = (char)(0xC0 | (cp >> 6));
+            utf8Str[o++] = (char)(0x80 | (cp & 0x3F));
+        }
+        else if (cp < 0x10000) {
+            utf8Str[o++] = (char)(0xE0 | (cp >> 12));
+            utf8Str[o++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+            utf8Str[o++] = (char)(0x80 | (cp & 0x3F));
+        }
+        else {
+            utf8Str[o++] = (char)(0xF0 | (cp >> 18));
+            utf8Str[o++] = (char)(0x80 | ((cp >> 12) & 0x3F));
+            utf8Str[o++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+            utf8Str[o++] = (char)(0x80 | (cp & 0x3F));
+        }
     }
+    utf8Str[o] = '\0';
 #endif
 
     ENCODING_LOG("[encoding_wchar_to_utf8] Conversion successful");

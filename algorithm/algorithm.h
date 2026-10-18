@@ -27,8 +27,8 @@ extern "C" {
 /* #define ALGORITHM_LOGGING_ENABLE */
 
 #ifdef ALGORITHM_LOGGING_ENABLE
-    #define ALGORITHM_LOG(fmt, ...) \
-        do { fprintf(stderr, "[ALGORITHM LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define ALGORITHM_LOG(...) \
+        do { fprintf(stderr, "[ALGORITHM LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define ALGORITHM_LOG(...) do { } while (0)
 #endif
@@ -72,8 +72,16 @@ typedef bool     (*CompareFuncBool)            (const void*, const void*);
 typedef bool     (*UnaryPredicateFunc)         (const void*);
 typedef bool     (*BoolPredicateFunc)          (const void*);
 typedef bool     (*PredicateFunc)              (const void*);
+typedef bool     (*ContextPredicateFunc)       (const void* item, void* ctx);
+typedef bool     (*CombinationFunc)            (const void* combination, size_t r, void* ctx);
 
-typedef int      (*CompareFunc)                (const void*, const void*);
+typedef int      (*AlgorithmCompareFunc)       (const void*, const void*);
+
+
+#ifndef CSTD_COMPAREFUNC_DEFINED
+#define CSTD_COMPAREFUNC_DEFINED
+typedef AlgorithmCompareFunc CompareFunc;
+#endif
 typedef uint32_t (*UniformRandomNumberGenerator)(void);
 
 
@@ -81,10 +89,7 @@ typedef uint32_t (*UniformRandomNumberGenerator)(void);
 /* Built-in incrementers for algorithm_iota                           */
 /* ------------------------------------------------------------------ */
 
-/* Ready-made incrementers for built-in numeric types — pass these as
- * the `increment` argument to algorithm_iota for the common case.
- * Each does exactly `*(T*)current += 1` on a value of the
- * corresponding type. */
+
 void  algorithm_inc_int                       (void* current);
 void  algorithm_inc_char                      (void* current);
 void  algorithm_inc_short                     (void* current);
@@ -113,11 +118,12 @@ void  algorithm_inc_size_t                    (void* current);
 /* Sorting / merging                                                  */
 /* ------------------------------------------------------------------ */
 
-void  algorithm_sort                          (void* base, size_t num, size_t size, CompareFunc comp);
-void  algorithm_stable_sort                   (void* base, size_t num, size_t size, CompareFunc comp);
+void  algorithm_sort                          (void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+void  algorithm_sort_unstable                 (void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+void  algorithm_stable_sort                   (void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
 void  algorithm_merge                         (const void* base1, size_t num1, const void* base2, size_t num2,
-                                               size_t size, void* result, CompareFunc comp);
-void  algorithm_inplace_merge                 (void* base, size_t middle, size_t num, size_t size, CompareFunc comp);
+                                               size_t size, void* result, AlgorithmCompareFunc comp);
+void  algorithm_inplace_merge                 (void* base, size_t middle, size_t num, size_t size, AlgorithmCompareFunc comp);
 
 
 /* ------------------------------------------------------------------ */
@@ -157,9 +163,9 @@ void  algorithm_shuffle                       (void* base, size_t num, size_t si
 /* Replace / remove                                                   */
 /* ------------------------------------------------------------------ */
 
-void  algorithm_replace                       (void* base, size_t num, size_t size, const void* old_val, const void* new_val, CompareFunc comp);
+void  algorithm_replace                       (void* base, size_t num, size_t size, const void* old_val, const void* new_val, AlgorithmCompareFunc comp);
 void  algorithm_replace_if                    (void* base, size_t num, size_t size, const void* val, BoolPredicateFunc pred);
-void  algorithm_remove_copy                   (const void* source, size_t num, size_t size, void* result, const void* val, CompareFunc comp);
+void  algorithm_remove_copy                   (const void* source, size_t num, size_t size, void* result, const void* val, AlgorithmCompareFunc comp);
 
 
 /* ------------------------------------------------------------------ */
@@ -174,19 +180,19 @@ void  algorithm_transform                     (const void* base, size_t num, siz
 /* Searching / boundaries                                             */
 /* ------------------------------------------------------------------ */
 
-void* algorithm_find                          (const void* base, size_t num, size_t size, const void* val, CompareFunc comp);
+void* algorithm_find                          (const void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
 void* algorithm_find_if                       (const void* base, size_t num, size_t size, BoolPredicateFunc pred);
 void* algorithm_find_if_not                   (const void* base, size_t num, size_t size, BoolPredicateFunc pred);
-void* algorithm_find_end                      (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, CompareFunc comp);
-void* algorithm_find_first_of                 (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, CompareFunc comp);
-void* algorithm_adjacent_find                 (const void* base, size_t num, size_t size, CompareFunc comp);
-void* algorithm_max_element                   (const void* base, size_t num, size_t size, CompareFunc comp);
-void* algorithm_min_element                   (const void* base, size_t num, size_t size, CompareFunc comp);
-void* algorithm_lower_bound                   (const void* base, size_t num, size_t size, const void* val, CompareFunc comp);
-void* algorithm_upper_bound                   (const void* base, size_t num, size_t size, const void* val, CompareFunc comp);
-void* algorithm_is_sorted_until               (const void* base, size_t num, size_t size, CompareFunc comp);
+void* algorithm_find_end                      (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, AlgorithmCompareFunc comp);
+void* algorithm_find_first_of                 (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, AlgorithmCompareFunc comp);
+void* algorithm_adjacent_find                 (const void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+void* algorithm_max_element                   (const void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+void* algorithm_min_element                   (const void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+void* algorithm_lower_bound                   (const void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
+void* algorithm_upper_bound                   (const void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
+void* algorithm_is_sorted_until               (const void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
 void* algorithm_partition                     (void* base, size_t num, size_t size, BoolPredicateFunc pred);
-void* algorithm_remove                        (void* base, size_t num, size_t size, const void* val, CompareFunc comp);
+void* algorithm_remove                        (void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
 void* algorithm_begin                         (void* base);
 void* algorithm_end                           (void* base, size_t num, size_t size);
 
@@ -210,21 +216,21 @@ void* algorithm_reduce                        (const void* base, size_t num, siz
 bool  algorithm_all_of                        (const void* base, size_t num, size_t size, BoolPredicateFunc pred);
 bool  algorithm_any_of                        (const void* base, size_t num, size_t size, BoolPredicateFunc pred);
 bool  algorithm_none_of                       (const void* base, size_t num, size_t size, BoolPredicateFunc pred);
-bool  algorithm_is_sorted                     (const void* base, size_t num, size_t size, CompareFunc comp);
-bool  algorithm_equal                         (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, CompareFunc comp);
-bool  algorithm_is_permutation                (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, CompareFunc comp);
-bool  algorithm_includes                      (const void* first1, size_t num1, size_t size1, const void* first2, size_t num2, size_t size2, CompareFunc comp);
+bool  algorithm_is_sorted                     (const void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+bool  algorithm_equal                         (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, AlgorithmCompareFunc comp);
+bool  algorithm_is_permutation                (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, AlgorithmCompareFunc comp);
+bool  algorithm_includes                      (const void* first1, size_t num1, size_t size1, const void* first2, size_t num2, size_t size2, AlgorithmCompareFunc comp);
 
 
 /* ------------------------------------------------------------------ */
 /* Counting                                                           */
 /* ------------------------------------------------------------------ */
 
-size_t algorithm_count                        (const void* base, size_t num, size_t size, const void* val, CompareFunc comp);
+size_t algorithm_count                        (const void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
 size_t algorithm_count_if                     (const void* base, size_t num, size_t size, BoolPredicateFunc pred);
-size_t algorithm_binary_search                (const void* base, size_t num, size_t size, const void* val, CompareFunc comp);
-size_t algorithm_unique                       (void* base, size_t num, size_t size, CompareFunc comp);
-size_t algorithm_unique_copy                  (const void* first, size_t num, size_t size, void* result, CompareFunc comp);
+size_t algorithm_binary_search                (const void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
+size_t algorithm_unique                       (void* base, size_t num, size_t size, AlgorithmCompareFunc comp);
+size_t algorithm_unique_copy                  (const void* first, size_t num, size_t size, void* result, AlgorithmCompareFunc comp);
 size_t algorithm_remove_copy_if               (const void* source, size_t num, size_t size, void* result, BoolPredicateFunc pred);
 
 
@@ -232,16 +238,29 @@ size_t algorithm_remove_copy_if               (const void* source, size_t num, s
 /* Ranges / mismatch                                                  */
 /* ------------------------------------------------------------------ */
 
-Pair  algorithm_equal_range                   (const void* base, size_t num, size_t size, const void* val, CompareFunc comp);
+Pair  algorithm_equal_range                   (const void* base, size_t num, size_t size, const void* val, AlgorithmCompareFunc comp);
 Pair  algorithm_mismatch                      (const void* base1, size_t num1, size_t size1, const void* base2, size_t num2, size_t size2, CompareFuncBool comp);
 
 
 /* ------------------------------------------------------------------ */
-/* Permutations                                                       */
+/* Permutations / combinations                                        */
 /* ------------------------------------------------------------------ */
 
 bool  algorithm_next_permutation              (void* first, void* last, size_t size, CompareFuncBool comp);
 bool  algorithm_prev_permutation              (void* first, void* last, size_t size, CompareFuncBool comp);
+
+/* Python's itertools.combinations(iterable, r) / math.comb(n, r) */
+size_t algorithm_combination                  (const void* base, size_t num, size_t size, size_t r, CombinationFunc callback, void* ctx);
+size_t algorithm_combination_count            (size_t n, size_t r);
+bool   algorithm_next_combination             (size_t* indices, size_t n, size_t r);
+
+
+/* ------------------------------------------------------------------ */
+/* Filtering (Python's filter(function, iterable))                    */
+/* ------------------------------------------------------------------ */
+
+size_t algorithm_filter                       (const void* base, size_t num, size_t size, void* result, BoolPredicateFunc pred);
+size_t algorithm_filter_ctx                   (const void* base, size_t num, size_t size, void* result, ContextPredicateFunc pred, void* ctx);
 
 
 #ifdef __cplusplus

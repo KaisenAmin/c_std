@@ -24,8 +24,8 @@ extern "C" {
 /* #define EVALEXPR_LOGGING_ENABLE */
 
 #ifdef EVALEXPR_LOGGING_ENABLE
-    #define EVALEXPR_LOG(fmt, ...) \
-        do { fprintf(stderr, "[EVALEXPR LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define EVALEXPR_LOG(...) \
+        do { fprintf(stderr, "[EVALEXPR LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define EVALEXPR_LOG(...) do { } while (0)
 #endif
@@ -41,20 +41,10 @@ extern "C" {
 #define EVAL_EXPR_ERROR_EVAL_RPN      -3
 #define MAX_TOKENS                   128
 
-
-typedef enum {
-    TOKEN_NUMBER,
-    TOKEN_OPERATOR,
-    TOKEN_PAREN_LEFT,
-    TOKEN_PAREN_RIGHT
-} TokenType;
-
-
-typedef struct {
-    TokenType type;
-    double    value;     /* TOKEN_NUMBER payload   */
-    char      op;        /* TOKEN_OPERATOR payload */
-} Token;
+/* The tokenizer's Token / TokenType types are private to evalexpr.c (no
+ * function here takes them). In this header the name TokenType collided with
+ * the TokenType enumerator of <winnt.h>, so evalexpr.h could not be combined
+ * with <windows.h> or with the c_std headers that include it. */
 
 
 /* ------------------------------------------------------------------ */

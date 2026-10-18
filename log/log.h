@@ -38,8 +38,8 @@ extern "C" {
 /* #define LOG_LOGGING_ENABLE */
 
 #ifdef LOG_LOGGING_ENABLE
-    #define LOG_LOG(fmt, ...) \
-        do { fprintf(stderr, "[LOG LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define LOG_LOG(...) \
+        do { fprintf(stderr, "[LOG LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define LOG_LOG(...) do { } while (0)
 #endif
@@ -87,6 +87,8 @@ typedef struct {
     char               current_file_path[LOG_MAX_PATH];/* currently open log file              */
     bool               errors_to_stderr;              /* route ERROR/FATAL console out to stderr */
     bool               auto_flush;                    /* flush after every emitted record     */
+    size_t             max_file_size;                 /* automatic rotation size; 0 = off     */
+    char               archive_path_format[LOG_MAX_PATH];/* strftime pattern for archives     */
     void*              _lock;                         /* internal recursive Mutex (opaque); NULL = unlocked */
 } Log;
 

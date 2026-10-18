@@ -5,7 +5,9 @@
 */
 
 #if defined(__linux__)
-#define _GNU_SOURCE 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include <unistd.h>
 #endif 
@@ -343,14 +345,22 @@ recurse:
                     continue;
                 }
 
+                /* Overflow is tested before each step: the old guard computed
+                   sse * 10 itself, which is signed overflow (UB) for long
+                   digit runs. Too many digits is a parse failure. */
+                bool overflow = false;
                 do {
-                    sse *= 10;
-                    sse += *bp++ - '0';
+                    int digit = *bp - '0';
+                    if (sse > ((time_t)TIME_MAX - digit) / 10) {
+                        overflow = true;
+                        break;
+                    }
+                    sse = sse * 10 + digit;
+                    bp++;
                     rulim /= 10;
-                } while ((sse * 10 <= TIME_MAX) &&
-                     rulim && *bp >= '0' && *bp <= '9');
+                } while (rulim && *bp >= '0' && *bp <= '9');
 
-                if (sse < 0 || (uint64_t)sse > TIME_MAX) {
+                if (overflow || sse < 0 || (uint64_t)sse > TIME_MAX) {
                     bp = NULL;
                     continue;
                 }
@@ -398,9 +408,12 @@ recurse:
         case 'G':	/* The year corresponding to the ISO week
                  * number with century.
                  */
-            do
+            /* Test before advancing: the old do/while stepped over the
+               terminator of an exhausted input and read past it. */
+            if (!isdigit(*bp))
+                return NULL;
+            while (isdigit(*bp))
                 bp++;
-            while (isdigit(*bp));
             continue;
 
         case 'V':	/* The ISO 8601:1988 week number as decimal */
@@ -475,6 +488,9 @@ recurse:
             default:
 namedzone:
                 bp = zname;
+                /* No zone text left: bp[1] below would be past the terminator. */
+                if (*bp == '\0')
+                    goto out;
 
                 /* Nautical / Military style */
                 if (delim(bp[1]) &&
@@ -628,6 +644,10 @@ out:
         }
     }
 
+    /* tm_mon indexes the 13-entry start_of_month rows below. */
+    if (HAVE_MON(state) && (tm->tm_mon < 0 || tm->tm_mon > 11))
+        return NULL;
+
     if (!HAVE_YDAY(state) && HAVE_YEAR(state)) {
         if (HAVE_MON(state) && HAVE_MDAY(state)) {
             /* calculate day of year (ordinal date) */
@@ -656,22 +676,30 @@ out:
         int isleap;
 
         if (!HAVE_MON(state)) {
-            /* calculate month of day of year */
-            i = 0;
+            /* calculate month of day of year. The ordinal comes from %j or
+               the week arithmetic and can be negative or past the year's
+               end; the old scan then indexed start_of_month out of bounds. */
+            if (tm->tm_yday < 0)
+                return NULL;
             isleap = isleap_sum(tm->tm_year, TM_YEAR_BASE);
-            while (tm->tm_yday >= start_of_month[isleap][i])
-                i++;
-            if (i > 12) {
-                i = 1;
+            while (tm->tm_yday >= start_of_month[isleap][12]) {  /* spills into the next year */
                 tm->tm_yday -= start_of_month[isleap][12];
                 tm->tm_year++;
+                if (tm->tm_year > 9999 - TM_YEAR_BASE)
+                    return NULL;
+                isleap = isleap_sum(tm->tm_year, TM_YEAR_BASE);
             }
-            tm->tm_mon = i - 1;
+            i = 0;
+            while (tm->tm_yday >= start_of_month[isleap][i + 1])
+                i++;
+            tm->tm_mon = i;
             state |= S_MON;
         }
 
         if (!HAVE_MDAY(state)) {
-            /* calculate day of month */
+            /* calculate day of month (tm_mon indexes start_of_month[][13]) */
+            if (tm->tm_mon < 0 || tm->tm_mon > 11)
+                return NULL;
             isleap = isleap_sum(tm->tm_year, TM_YEAR_BASE);
             tm->tm_mday = tm->tm_yday -
                 start_of_month[isleap][tm->tm_mon] + 1;
@@ -679,14 +707,15 @@ out:
         }
 
         if (!HAVE_WDAY(state)) {
-            /* calculate day of week */
-            i = 0;
-            week_offset = first_wday_of(tm->tm_year);
-            while (i++ <= tm->tm_yday) {
-                if (week_offset++ >= 6)
-                    week_offset = 0;
-            }
-            tm->tm_wday = week_offset;
+            /* calculate day of week (Sakamoto). The old walk started from
+               first_wday_of(tm_year) - years since 1900, not the year - and
+               was off for most dates. */
+            static const int month_key[12] = { 0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4 };
+            int y = tm->tm_year + TM_YEAR_BASE;
+            if (tm->tm_mon < 2)
+                y -= 1;
+            int w = (y + y / 4 - y / 100 + y / 400 + month_key[tm->tm_mon] + tm->tm_mday) % 7;
+            tm->tm_wday = (w < 0) ? w + 7 : w;
             state |= S_WDAY;
         }
     }
@@ -753,24 +782,143 @@ static const unsigned char *find_string(const unsigned char *bp, int *tgt, const
 }
 #endif
 
-static bool is_persian_leap_year(int year) { // winner (Musa Akrami method) ! ;D
-    if (year <= 0) {
+/* ------------------------------------------------------------------------
+ * Persian (Jalali / Solar Hijri) calendar.
+ *
+ * One algorithm (Kazimierz Borkowski's, the one used by jalaali-js and most
+ * libraries) now drives leap years, validation and both conversions. The
+ * module used to combine an astronomical leap-year approximation with an
+ * unrelated 33-year conversion formula; the two disagreed (e.g. around
+ * 1436/1437 and 1469/1470), so valid dates failed to convert and converted
+ * dates failed validation. Supported range: Persian years 1..3177.
+ * Day numbers are Julian Day Numbers (JDN), shared with the Gregorian code.
+ * ---------------------------------------------------------------------- */
+#define PERSIAN_MIN_YEAR 1
+#define PERSIAN_MAX_YEAR 3177
+
+static long long jal_div(long long a, long long b) { return a / b; }            /* truncating, as in the reference */
+static long long jal_mod(long long a, long long b) { return a - (a / b) * b; }
+
+
+static bool jal_cal(long long jy, int* leap, long long* gy, long long* march) {
+    static const long long breaks[] = { -61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210,
+                                        1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178 };
+    const int bl = (int)(sizeof(breaks) / sizeof(breaks[0]));
+    long long jp = breaks[0], jm, jump = 0, leapJ = -14, leapG, n;
+
+    if (jy < jp || jy >= breaks[bl - 1]) {
+        return false;
+    }
+    long long g = jy + 621;
+    for (int i = 1; i < bl; ++i) {
+        jm = breaks[i];
+        jump = jm - jp;
+        if (jy < jm) {
+            break;
+        }
+        leapJ += jal_div(jump, 33) * 8 + jal_div(jal_mod(jump, 33), 4);
+        jp = jm;
+    }
+    n = jy - jp;
+    leapJ += jal_div(n, 33) * 8 + jal_div(jal_mod(n, 33) + 3, 4);
+    if (jal_mod(jump, 33) == 4 && jump - n == 4) {
+        leapJ += 1;
+    }
+    leapG = jal_div(g, 4) - jal_div((jal_div(g, 100) + 1) * 3, 4) - 150;
+    if (march) {
+        *march = 20 + leapJ - leapG;
+    }
+    if (jump - n < 6) {
+        n = n - jump + jal_div(jump + 4, 33) * 33;
+    }
+    long long l = jal_mod(jal_mod(n + 1, 33) - 1, 4);
+    if (l == -1) {
+        l = 4;
+    }
+    if (leap) {
+        *leap = (int)l;
+    }
+    if (gy) {
+        *gy = g;
+    }
+    return true;
+}
+
+/* Gregorian date <-> JDN (the reference's g2d/d2g; valid for any year). */
+static long long jal_g2d(long long gy, long long gm, long long gd) {
+    long long d = jal_div((gy + jal_div(gm - 8, 6) + 100100) * 1461, 4)
+                + jal_div(153 * jal_mod(gm + 9, 12) + 2, 5)
+                + gd - 34840408;
+    return d - jal_div(jal_div(gy + 100100 + jal_div(gm - 8, 6), 100) * 3, 4) + 752;
+}
+
+static void jal_d2g(long long jdn, long long* gy, long long* gm, long long* gd) {
+    long long j = 4 * jdn + 139361631;
+    j = j + jal_div(jal_div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+    long long i = jal_div(jal_mod(j, 1461), 4) * 5 + 308;
+    *gd = jal_div(jal_mod(i, 153), 5) + 1;
+    *gm = jal_mod(jal_div(i, 153), 12) + 1;
+    *gy = jal_div(j, 1461) - 100100 + jal_div(8 - *gm, 6);
+}
+
+/* Persian date -> JDN, or -1 outside the supported range. */
+static long long jal_j2d(long long jy, long long jm, long long jd) {
+    long long gy, march;
+    if (!jal_cal(jy, NULL, &gy, &march)) {
+        return -1;
+    }
+    return jal_g2d(gy, 3, march) + (jm - 1) * 31 - jal_div(jm, 7) * (jm - 7) + jd - 1;
+}
+
+/* JDN -> Persian date; false outside the supported range. */
+static bool jal_d2j(long long jdn, int* jyOut, int* jmOut, int* jdOut) {
+    long long gy, gm, gd, march;
+    int leap;
+    jal_d2g(jdn, &gy, &gm, &gd);
+    long long jy = gy - 621;
+    if (!jal_cal(jy, &leap, NULL, &march)) {
+        return false;
+    }
+    long long k = jdn - jal_g2d(gy, 3, march);
+    long long jm, jd;
+    if (k >= 0 && k <= 185) {          /* months 1-6: 31 days */
+        jm = 1 + jal_div(k, 31);
+        jd = jal_mod(k, 31) + 1;
+    }
+    else {
+        if (k >= 0) {
+            k -= 186;                  /* months 7-12 of this year */
+        }
+        else {                         /* before Farvardin 1: end of the previous year */
+            jy -= 1;
+            k += 179;
+            if (leap == 1) {
+                k += 1;
+            }
+        }
+        jm = 7 + jal_div(k, 30);
+        jd = jal_mod(k, 30) + 1;
+    }
+    if (jy < PERSIAN_MIN_YEAR || jy > PERSIAN_MAX_YEAR) {
+        return false;
+    }
+    *jyOut = (int)jy;
+    *jmOut = (int)jm;
+    *jdOut = (int)jd;
+    return true;
+}
+
+static bool is_persian_leap_year(int year) {
+    int leap;
+    if (year < PERSIAN_MIN_YEAR || year > PERSIAN_MAX_YEAR || !jal_cal(year, &leap, NULL, NULL)) {
         DATE_LOG("Error: Invalid year passed to is_persian_leap_year. Year: %d\n", year);
         return false;
     }
-
-	const double QUARTER_DAY = 0.24219858156;
-	double testLeap = (year + 2346) * QUARTER_DAY;
-	testLeap -= (int)(testLeap);
-
-	if (testLeap < QUARTER_DAY) {
-        return true;
-    }
-	else return false;
+    return leap == 0;
 }
 
 static int persian_days_in_month(int year, int month) {
-    if (year <= 0 || month <= 0 || month > 12) {
+    if (year < PERSIAN_MIN_YEAR || year > PERSIAN_MAX_YEAR || month <= 0 || month > 12) {
         DATE_LOG("Error: Invalid year or month passed to persian_days_in_month. Year: %d, Month: %d\n", year, month);
         return -1; // Indicate an error
     }
@@ -786,6 +934,11 @@ static int persian_days_in_month(int year, int month) {
     }
 }
 
+/* Gregorian years accepted by the library: the Julian Day Number stays
+   non-negative and all day arithmetic stays far from integer overflow. */
+#define GREGORIAN_MIN_YEAR (-4712)
+#define GREGORIAN_MAX_YEAR 1000000
+
 static bool date_is_valid_ymd(int y, int m, int d, CalendarType type) {
     if (y == 0 || m <= 0 || m > 12 || d <= 0) {
         DATE_LOG("Error: Invalid year, month, or day in date_is_valid_ymd. Year: %d, Month: %d, Day: %d\n", y, m, d);
@@ -793,6 +946,10 @@ static bool date_is_valid_ymd(int y, int m, int d, CalendarType type) {
     }
 
     if (type == Gregorian) {
+        if (y < GREGORIAN_MIN_YEAR || y > GREGORIAN_MAX_YEAR) {
+            DATE_LOG("Error: Gregorian year %d outside the supported range.\n", y);
+            return false;
+        }
         // Existing Gregorian logic...
         int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
         if (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) {
@@ -828,37 +985,68 @@ static int days_in_month(int year, int month, CalendarType type) {
     return 0; // Default case for unsupported calendar types
 }
 
-static long gregorian_to_jdn(int year, int month, int day) {
-    if (month < 3) {
-        year--;
-        month += 12;
-    }
-    return day + (153 * (month - 3) + 2) / 5 + 365 * year + year / 4 - year / 100 + year / 400 - 32045;
+/* True Julian Day Number of a proleptic Gregorian date (2024-03-20 -> 2460390),
+   the axis shared with the Persian conversions. 64-bit arithmetic: `365 * year`
+   overflowed int for large (e.g. parsed) years, which is undefined behavior.
+   (The previous version also lacked the 4800-year offset, so it was not a JDN;
+   only its weekday, offset by a multiple of 7, happened to be right.) */
+static long long gregorian_to_jdn(int year, int month, int day) {
+    long long a = (14 - month) / 12;
+    long long y = (long long)year + 4800 - a;
+    long long m = month + 12 * a - 3;
+    return day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045;
 }
 
-// Helper function to convert Persian date to Julian Day Number.
-//
-// The previous implementation used a closed-form 33-year-cycle formula
-// that disagrees with `is_persian_leap_year` (the Akrami astronomical
-// rule) AND lived on a different epoch than `gregorian_to_jdn`. Both
-// bugs surfaced through `date_day_of_week` and `date_days_to` for
-// Persian inputs: e.g. 1403/1/1 -> 1404/1/1 reported 365 days (1403 is
-// a leap year) and 1403/1/3 reported Thursday instead of Friday.
-//
-// Now we route Persian dates through the (already-correct) Persian ->
-// Gregorian conversion and reuse `gregorian_to_jdn`, so the Persian
-// day axis is aligned with the Gregorian one by construction. Both
-// day-of-week and inter-day arithmetic then agree across calendars.
-static long persian_to_jdn(int year, int month, int day) {
-    Date persian = { year, month, day, Persian };
-    Date* gregorian = date_solar_to_gregorian(&persian);
-    if (!gregorian) {
-        DATE_LOG("Error: Persian->Gregorian conversion failed in persian_to_jdn.\n");
+// Persian date -> Julian Day Number (shared day axis with gregorian_to_jdn),
+// or -1 for a date outside the supported range.
+static long long persian_to_jdn(int year, int month, int day) {
+    return jal_j2d(year, month, day);
+}
+
+// JDN of a valid date in either calendar, or -1 when the date is invalid.
+static long long date_jdn_of(const Date* date) {
+    if (!date || !date_is_valid_ymd(date->year, date->month, date->day, date->calendarType)) {
         return -1;
     }
-    long jdn = gregorian_to_jdn(gregorian->year, gregorian->month, gregorian->day);
-    free(gregorian);
-    return jdn;
+    if (date->calendarType == Gregorian) {
+        return gregorian_to_jdn(date->year, date->month, date->day);
+    }
+    if (date->calendarType == Persian) {
+        return persian_to_jdn(date->year, date->month, date->day);
+    }
+    return -1;
+}
+
+// Fills *out with the date of day number jdn in the requested calendar; false
+// when that day is outside the calendar's supported range.
+static bool date_from_jdn(long long jdn, CalendarType type, Date* out) {
+    if (jdn < 0) {
+        return false;
+    }
+    if (type == Gregorian) {
+        long long gy, gm, gd;
+        jal_d2g(jdn, &gy, &gm, &gd);
+        if (gy < GREGORIAN_MIN_YEAR || gy > GREGORIAN_MAX_YEAR || gy == 0) {
+            return false;
+        }
+        out->year = (int)gy;
+        out->month = (int)gm;
+        out->day = (int)gd;
+        out->calendarType = Gregorian;
+        return true;
+    }
+    if (type == Persian) {
+        int jy, jm, jd;
+        if (!jal_d2j(jdn, &jy, &jm, &jd)) {
+            return false;
+        }
+        out->year = jy;
+        out->month = jm;
+        out->day = jd;
+        out->calendarType = Persian;
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -978,46 +1166,25 @@ Date* date_add_days(const Date* orig_date, int ndays) {
         return NULL;
     }
 
+    /* Work on the Julian Day axis: O(1) instead of a day-by-day walk, and a
+       result outside the calendar's range (e.g. before Persian year 1) is
+       reported as NULL instead of looping/overflowing into a garbage date. */
+    long long jdn = date_jdn_of(orig_date);
+    if (jdn < 0) {
+        DATE_LOG("Error: Cannot map the original date to a day number in date_add_days.\n");
+        return NULL;
+    }
+
     Date* new_date = (Date*)malloc(sizeof(Date));
     if (!new_date) {
         DATE_LOG("Error: Memory allocation failed for new date in date_add_days.\n");
         return NULL;
     }
 
-    *new_date = *orig_date;
-
-    while (ndays != 0) {
-        if (ndays > 0) {
-            // Adding days
-            int days_this_month = days_in_month(new_date->year, new_date->month, new_date->calendarType);
-            if (new_date->day + ndays > days_this_month) {
-                ndays -= (days_this_month - new_date->day + 1);
-                new_date->day = 1;
-                if (++new_date->month > 12) {
-                    new_date->month = 1;
-                    new_date->year++;
-                }
-            } 
-            else {
-                new_date->day += ndays;
-                ndays = 0;
-            }
-        } 
-        else {
-            // Subtracting days
-            if (new_date->day + ndays < 1) {
-                ndays += new_date->day;
-                if (--new_date->month < 1) {
-                    new_date->month = 12;
-                    new_date->year--;
-                }
-                new_date->day = days_in_month(new_date->year, new_date->month, new_date->calendarType);
-            } 
-            else {
-                new_date->day += ndays;
-                ndays = 0;
-            }
-        }
+    if (!date_from_jdn(jdn + ndays, orig_date->calendarType, new_date)) {
+        DATE_LOG("Error: Result of date_add_days is outside the supported range.\n");
+        free(new_date);
+        return NULL;
     }
     return new_date;
 }
@@ -1203,16 +1370,10 @@ int date_day_of_week(const Date* date) {
         return -1; // Indicate an error
     }
 
-    long jdn;
-    if (date->calendarType == Gregorian) {
-        jdn = gregorian_to_jdn(date->year, date->month, date->day);
-    } 
-    else if (date->calendarType == Persian) {
-        jdn = persian_to_jdn(date->year, date->month, date->day);
-    } 
-    else {
-        DATE_LOG("Error: Unsupported calendar type in date_day_of_week.\n");
-        return -1; // Indicate an error for unsupported calendar types
+    long long jdn = date_jdn_of(date);
+    if (jdn < 0) {
+        DATE_LOG("Error: Invalid date or unsupported calendar type in date_day_of_week.\n");
+        return -1; // Indicate an error (an invalid date has no weekday)
     }
     // gregorian_to_jdn / persian_to_jdn produce values where jdn % 7 == 0
     // corresponds to Monday. Map to Monday = 1, ..., Sunday = 7.
@@ -1231,6 +1392,12 @@ int date_day_of_year(const Date* date) {
     if (date == NULL) {
         DATE_LOG("Error: Date is null in date_day_of_year.\n");
         return -1; // Indicate an error
+    }
+    /* The month indexes the tables below: an invalid (e.g. null or parsed)
+       month used to read outside them. */
+    if (!date_is_valid(date)) {
+        DATE_LOG("Error: Invalid date in date_day_of_year.\n");
+        return -1;
     }
 
     int dayOfYear;
@@ -1271,6 +1438,11 @@ int date_days_in_month(const Date* date) {
     if (!date) {
         DATE_LOG("Error: Date pointer is NULL in date_days_in_month.\n");
         return -1; // Indicate an error
+    }
+    if (date->month < 1 || date->month > 12 ||
+        (date->calendarType == Persian && (date->year < PERSIAN_MIN_YEAR || date->year > PERSIAN_MAX_YEAR))) {
+        DATE_LOG("Error: Invalid month/year in date_days_in_month.\n");
+        return -1; // the month indexes a 12-entry table below
     }
 
     int days;
@@ -1350,9 +1522,25 @@ int date_days_in_year(const Date* date) {
  * 
  * @return The ISO 8601 week number, or -1 in case of an error (e.g., unsupported calendar type or NULL date).
  */
+/* Number of ISO 8601 weeks (52 or 53) in Gregorian year y: 53 when the year
+   starts on a Thursday, or is a leap year starting on a Wednesday. */
+static int iso_weeks_in_year(int y) {
+    long long yy = y;
+    long long p = (yy + yy / 4 - yy / 100 + yy / 400) % 7;
+    long long q = ((yy - 1) + (yy - 1) / 4 - (yy - 1) / 100 + (yy - 1) / 400) % 7;
+    if (p < 0) p += 7;
+    if (q < 0) q += 7;
+    return (p == 4 || q == 3) ? 53 : 52;
+}
+
 int date_week_number(const Date* date, int* yearNumber) {
     if (!date) {
         DATE_LOG("Error: Date is NULL in date_week_number.\n");
+        return -1;
+    }
+
+    if (!date_is_valid(date)) {
+        DATE_LOG("Error: Invalid date in date_week_number.\n");
         return -1;
     }
 
@@ -1362,22 +1550,23 @@ int date_week_number(const Date* date, int* yearNumber) {
     // Determine the week number based on the calendar type
     int week;
     if (date->calendarType == Gregorian) {
-        // ISO week number calculation for Gregorian calendar
+        /* ISO 8601: week = (ordinal - weekday + 10) / 7 (Monday = 1). Days
+           before week 1 belong to the last week (52 or 53) of the previous
+           year, and a "week 53" in a 52-week year is week 1 of the next. */
+        int isoYear = date->year;
         week = ((dayOfYear - wday + 10) / 7);
-        Date temp_date = {date->year, 12, 31, Gregorian};
-
-        if (yearNumber != NULL) {
-            if (week < 1) {
-                *yearNumber = date->year - 1;
-            } 
-            else if (week == 53 && (date_day_of_year(&temp_date) - wday) < 28) {
-                *yearNumber = date->year + 1;
-            } 
-            else {
-                *yearNumber = date->year;
-            }
+        if (week < 1) {
+            isoYear = date->year - 1;
+            week = iso_weeks_in_year(isoYear);
         }
-    } 
+        else if (week > iso_weeks_in_year(date->year)) {
+            isoYear = date->year + 1;
+            week = 1;
+        }
+        if (yearNumber != NULL) {
+            *yearNumber = isoYear;
+        }
+    }
     else if (date->calendarType == Persian) {
         // Simplified week number calculation for Persian calendar
         week = (dayOfYear + 6) / 7;
@@ -1768,10 +1957,18 @@ Date* date_from_string(const char* string, const char* format, CalendarType type
             return NULL; // Failed to parse string
         }
 
-        // Additional validation can be added here for Persian dates
-    } 
+    }
     else {
         DATE_LOG("Error: Unsupported calendar type in date_from_string.\n");
+        free(date);
+        return NULL;
+    }
+
+    /* A parsed but impossible date (month 13, day 0 from a partial format,
+       an unbounded year, ...) is a parse failure: returning it let later calls
+       index month tables out of bounds or overflow day arithmetic. */
+    if (!date_is_valid(date)) {
+        DATE_LOG("Error: parsed date is not a valid date in date_from_string.\n");
         free(date);
         return NULL;
     }
@@ -1818,6 +2015,14 @@ char* date_to_string(const Date* date, const char* format) {
             .tm_year = date->year - 1900,
             .tm_isdst = -1
         };
+        /* strftime's %a/%A/%u/%w/%j/%U/%W read these; left at 0 they printed
+           "Sunday" and day 001 for every date. */
+        int dow = date_day_of_week(date);      /* Monday = 1 .. Sunday = 7 */
+        int doy = date_day_of_year(date);
+        if (dow > 0 && doy > 0) {
+            tm_date.tm_wday = dow % 7;         /* Sunday = 0 */
+            tm_date.tm_yday = doy - 1;
+        }
 
         if (strftime(date_str, buf_size, format, &tm_date) == 0) {
             DATE_LOG("Error: Failed to format date in date_to_string.\n");
@@ -1862,28 +2067,11 @@ long date_to_julian_day(const Date* date) {
         return -1;
     }
 
-    /* Route Persian dates through the (well-tested) Persian -> Gregorian
-       conversion, then apply the same true-JDN formula. That way both
-       calendars share a single day axis and `date_days_to`, sorting by
-       JDN, and any future cross-calendar code stays correct. */
-    if (date->calendarType == Persian) {
-        Date* gregorian = date_solar_to_gregorian(date);
-        if (!gregorian) {
-            DATE_LOG("Error: Persian->Gregorian conversion failed in date_to_julian_day.\n");
-            return -1;
-        }
-        long jd = date_to_julian_day(gregorian);
-        free(gregorian);
-        return jd;
-    }
-
-    int a = (14 - date->month) / 12;
-    int y = date->year + 4800 - a;
-    int m = date->month + 12 * a - 3;
-
-    long jd = date->day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045;
-
-    return jd;
+    /* Both calendars share one day axis (the Julian Day Number), so
+       `date_days_to`, sorting by JDN and cross-calendar code agree. The
+       arithmetic is 64-bit; the supported year ranges keep it within long. */
+    long long jd = date_jdn_of(date);
+    return (jd < 0) ? -1 : (long)jd;
 }
 
 /**
@@ -2016,50 +2204,22 @@ Date* date_gregorian_to_solar(const Date* gregorian_date) {
         DATE_LOG("Error: The provided Gregorian date is NULL in date_gregorian_to_solar.\n");
         return NULL;
     }
-    long gy = gregorian_date->year;
-    long gm = gregorian_date->month;
-    long gd = gregorian_date->day;
-    long jalali_date[3];
-    long days;
-    
-    // Calculate number of days
-    long gy2 = (gm > 2) ? (gy + 1) : gy;
-    long g_d_m[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
-    days = 355666 + (365 * gy) + ((gy2 + 3) / 4) - ((gy2 + 99) / 100) + ((gy2 + 399) / 400) + gd + g_d_m[gm - 1];
-    
-    // Convert to Jalali
-    long jy = -1595 + (33 * (days / 12053));
-    days %= 12053;
-    jy += 4 * (days / 1461);
-    days %= 1461;
-
-    if (days > 365) {
-        jy += (days - 1) / 365;
-        days = (days - 1) % 365;
+    /* Validate first: an out-of-range month used to index a 12-entry table. */
+    if (gregorian_date->calendarType != Gregorian || !date_is_valid(gregorian_date)) {
+        DATE_LOG("Error: Invalid Gregorian date in date_gregorian_to_solar.\n");
+        return NULL;
     }
 
-    jalali_date[0] = jy;
-    if (days < 186) {
-        jalali_date[1] = 1 + (days / 31);
-        jalali_date[2] = 1 + (days % 31);
-    } 
-    else {
-        jalali_date[1] = 7 + ((days - 186) / 30);
-        jalali_date[2] = 1 + ((days - 186) % 30);
-    }
-
-    // Create new Date for Jalali
     Date* solar_date = (Date*)malloc(sizeof(Date));
     if (!solar_date) {
         DATE_LOG("Error: Memory allocation failed in date_gregorian_to_solar.\n");
         return NULL;
     }
-
-    solar_date->year = jalali_date[0];
-    solar_date->month = jalali_date[1];
-    solar_date->day = jalali_date[2];
-    solar_date->calendarType = Persian;
-
+    if (!date_from_jdn(gregorian_to_jdn(gregorian_date->year, gregorian_date->month, gregorian_date->day), Persian, solar_date)) {
+        DATE_LOG("Error: Date is outside the Persian calendar's supported range.\n");
+        free(solar_date);
+        return NULL;
+    }
     return solar_date;
 }
 
@@ -2079,57 +2239,9 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
         DATE_LOG("Error: The provided Persian date is NULL in date_solar_to_gregorian.\n");
         return NULL;
     }
-
-    long jy = solar_date->year;
-    long jm = solar_date->month;
-    long jd = solar_date->day;
-    
-    if (solar_date->month == 12 && solar_date->day > 29 && !is_persian_leap_year(solar_date->year)) {
-        DATE_LOG("Error: the date is not valid because year is not leap year");
+    if (solar_date->calendarType != Persian || !date_is_valid(solar_date)) {
+        DATE_LOG("Error: Invalid Persian date in date_solar_to_gregorian.\n");
         return NULL;
-    }
-    if (jm == 12 && jd == 30 && date_is_leap_year(solar_date)) {
-        jd = 29; // Adjust the day for calculation
-    }
-    // Adjust for Persian calendar specifics
-    jy += 1595;
-    long days = -355668 + (365 * jy) + ((jy / 33) * 8) + (((jy % 33) + 3) / 4);
-
-    // Adjust for months
-    if (jm < 7) {
-        days += (jm - 1) * 31;
-    } 
-    else {
-        days += ((jm - 7) * 30) + 186;
-    }
-
-    // Adjust for leap years and days in month
-    if (jm == 12 && is_persian_leap_year(solar_date->year) && jd > 29) {
-        jd = 29; // Adjust the day in a leap year
-    }
-    days += jd;
-
-    // Convert to Gregorian
-    long gy = 400 * (days / 146097);
-    days %= 146097;
-    if (days > 36524) {
-        gy += 100 * (--days / 36524);
-        days %= 36524;
-        if (days >= 365) days++;
-    }
-
-    gy += 4 * (days / 1461);
-    days %= 1461;
-    if (days > 365) {
-        gy += (days - 1) / 365;
-        days = (days - 1) % 365;
-    }
-
-    long gd = days + 1;
-    long gm;
-    long sal_a[13] = {0, 31, (gy % 4 == 0 && (gy % 100 != 0 || gy % 400 == 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    for (gm = 0; gm < 13 && gd > sal_a[gm]; gm++) {
-        gd -= sal_a[gm];
     }
 
     Date* gregorian_new_date = (Date*)malloc(sizeof(Date));
@@ -2137,15 +2249,10 @@ Date* date_solar_to_gregorian(const Date* solar_date) {
         DATE_LOG("Error: Memory allocation failed in date_solar_to_gregorian.\n");
         return NULL;
     }
-
-    gregorian_new_date->year = gy;
-    gregorian_new_date->month = gm;
-    gregorian_new_date->day = gd;
-
-    if (jm == 12 && is_persian_leap_year(solar_date->year) && solar_date->day == 30) {
-        gregorian_new_date->day += 1;
+    if (!date_from_jdn(persian_to_jdn(solar_date->year, solar_date->month, solar_date->day), Gregorian, gregorian_new_date)) {
+        free(gregorian_new_date);
+        return NULL;
     }
-    gregorian_new_date->calendarType = Gregorian;
     return gregorian_new_date;
 }
 

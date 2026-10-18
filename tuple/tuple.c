@@ -22,7 +22,16 @@ static int tuplep_lex_compare(const Tuple* t1, const Tuple* t2) {
         if (s1 != s2) {
             return s1 < s2 ? -1 : 1;
         }
-        int c = (s1 == 0) ? 0 : memcmp(t1->elements[i].data, t2->elements[i].data, s1);
+        /* a slot comparator orders values (255 < 256, -1 < 1, 0.5 < 2.0);
+           without one the bytes are compared */
+        TupleCompareFunc cmp = t1->elements[i].compare ? t1->elements[i].compare : t2->elements[i].compare;
+        int c;
+        if (s1 == 0 || !t1->elements[i].data || !t2->elements[i].data) {
+            c = 0;
+        }
+        else {
+            c = cmp ? cmp(t1->elements[i].data, t2->elements[i].data) : memcmp(t1->elements[i].data, t2->elements[i].data, s1);
+        }
         if (c != 0) {
             return c < 0 ? -1 : 1;
         }
@@ -139,6 +148,29 @@ bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size) {
     tuple->elements[index].size = size;
     TUPLE_LOG("[tuple_set]: Data set successfully at index %zu.", index);
 
+    return true;
+}
+
+
+/**
+ * @brief Sets the comparator used for slot `index` by tuple_is_equal / is_less / ... .
+ *
+ * Tuple slots are untyped, so without a comparator a slot is compared byte by
+ * byte, which orders int, negative and floating-point values wrongly (on
+ * little-endian (255) > (256)). The comparator stays with the slot when its
+ * value is replaced with tuple_set. When only one of two tuples has a
+ * comparator for a slot, it is used.
+ *
+ * @param tuple   The tuple.
+ * @param index   Slot index.
+ * @param compare qsort-style comparator for the slot's values, or NULL for bytes.
+ * @return `false` if the tuple is NULL or the index is out of range.
+ */
+bool tuple_set_compare(Tuple* tuple, size_t index, TupleCompareFunc compare) {
+    if (!tuple || index >= tuple->size) {
+        return false;
+    }
+    tuple->elements[index].compare = compare;
     return true;
 }
 
@@ -362,13 +394,12 @@ size_t tuple_size(const Tuple* tuple) {
 bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
     TUPLE_LOG("[tuple_is_equal]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
 
-    if (t1 == NULL) {
-        TUPLE_LOG("[tuple_is_equal]: Error: Param 't1' is NULL.");
-        return false;
-    }
-    if (t2 == NULL) {
-        TUPLE_LOG("[tuple_is_equal]: Error: Param 't2' is NULL.");
-        return false;
+    /* Two NULLs are equal and NULL differs from any tuple, so is_equal and
+       is_not_equal are always each other's negation (both used to be false
+       for (NULL, t)). */
+    if (t1 == NULL || t2 == NULL) {
+        TUPLE_LOG("[tuple_is_equal]: NULL operand.");
+        return t1 == t2;
     }
 
     if (tuple_size(t1) != tuple_size(t2)) {
@@ -376,12 +407,11 @@ bool tuple_is_equal(const Tuple* t1, const Tuple* t2) {
         return false;
     }
 
-    for (size_t i = 0; i < tuple_size(t1); ++i) {
-        if (t1->elements[i].size != t2->elements[i].size ||
-            memcmp(t1->elements[i].data, t2->elements[i].data, t1->elements[i].size) != 0) {
-            TUPLE_LOG("[tuple_is_equal]: Elements at index %zu are not equal.", i);
-            return false;
-        }
+    /* element by element, with the slot comparators (no memcmp on the NULL
+       data of unset slots) */
+    if (tuplep_lex_compare(t1, t2) != 0) {
+        TUPLE_LOG("[tuple_is_equal]: Tuples differ.");
+        return false;
     }
 
     TUPLE_LOG("[tuple_is_equal]: Tuples are equal.");
@@ -461,20 +491,7 @@ bool tuple_is_greater(const Tuple* t1, const Tuple* t2) {
  */
 bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2) {
     TUPLE_LOG("[tuple_is_not_equal]: Entering with t1: %p, t2: %p", (void*)t1, (void*)t2);
-
-    if (t1 == NULL) {
-        TUPLE_LOG("[tuple_is_not_equal]: Error: Param 't1' is null.");
-        return false;
-    }
-    if (t2 == NULL) {
-        TUPLE_LOG("[tuple_is_not_equal]: Error: Param 't2' is null.");
-        return false;
-    }
-
-    bool result = !tuple_is_equal(t1, t2);
-    TUPLE_LOG("[tuple_is_not_equal]: Returning result: %d", result);
-
-    return result;
+    return !tuple_is_equal(t1, t2);   /* NULL vs a tuple: not equal */
 }
 
 

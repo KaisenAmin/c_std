@@ -10,8 +10,15 @@
 
 
 
-// Global statistics for tracking
-static SortStats global_stats;
+/* Statistics of the sort currently running on this thread. Thread-local: one
+   process-wide struct made concurrent sorts (even of unrelated arrays) race
+   and return each other's counters. */
+#if defined(_MSC_VER) && !defined(__clang__)
+#define SORT_THREAD_LOCAL __declspec(thread)
+#else
+#define SORT_THREAD_LOCAL _Thread_local
+#endif
+static SORT_THREAD_LOCAL SortStats global_stats;
 
 /**
  * @brief Zero-initialize a SortStats counter structure.
@@ -63,6 +70,218 @@ static void update_stats(bool is_comparison, bool is_swap, bool is_recursive) {
     }
 }
 
+/* ------------------------------------------------------------------------
+ * Introsort core shared by sort_quicksort, sort_quicksort_optimized and the
+ * introspective sorts: median-of-three Hoare partitioning (balanced even with
+ * many equal keys), recursion only into the smaller part (O(log n) stack),
+ * a heapsort fallback once the depth exceeds 2*log2(n) (O(n log n) worst case)
+ * and insertion sort for small ranges. The previous Lomuto quicksort recursed
+ * n deep on sorted, reversed or all-equal input and overflowed the stack.
+ * ---------------------------------------------------------------------- */
+#define SORT_SMALL_RANGE 16
+
+static size_t sort_floor_log2(size_t n) {
+    size_t r = 0;
+    while (n > 1) {
+        n >>= 1;
+        r++;
+    }
+    return r;
+}
+
+/* Stable insertion sort of array[lo, hi) (no stats reset). */
+static void sort_insertion_range(ElementType* array, size_t lo, size_t hi, CompareFunc compare) {
+    for (size_t i = lo + 1; i < hi; i++) {
+        ElementType key = array[i];
+        size_t j = i;
+        while (j > lo && compare(array[j - 1], key) > 0) {
+            array[j] = array[j - 1];
+            j--;
+        }
+        array[j] = key;
+    }
+}
+
+/* Hoare partition of array[lo..hi] (inclusive, hi > lo) around the median of
+   three. Returns p with lo <= p < hi such that array[lo..p] <= pivot <=
+   array[p+1..hi]. */
+static size_t sort_hoare_partition(ElementType* array, size_t lo, size_t hi, CompareFunc compare, SwapFunc swap) {
+    size_t mid = lo + (hi - lo) / 2;
+    if (compare(array[mid], array[lo]) < 0) {
+        swap(&array[mid], &array[lo]);
+    }
+    if (compare(array[hi], array[lo]) < 0) {
+        swap(&array[hi], &array[lo]);
+    }
+    if (compare(array[hi], array[mid]) < 0) {
+        swap(&array[hi], &array[mid]);
+    }
+    ElementType pivot = array[mid];
+    size_t i = lo - 1;   /* unsigned wrap is well defined; the first ++ brings it to lo */
+    size_t j = hi + 1;
+    for (;;) {
+        do {
+            i++;
+        } while (compare(array[i], pivot) < 0);
+        do {
+            j--;
+        } while (compare(array[j], pivot) > 0);
+        if (i >= j) {
+            return j;
+        }
+        swap(&array[i], &array[j]);
+    }
+}
+
+static void sort_heapsort_range(ElementType* array, size_t n, CompareFunc compare, SwapFunc swap) {
+    sort_build_heap(array, n, compare, swap);
+    for (size_t i = n - 1; i > 0; i--) {
+        swap(&array[0], &array[i]);
+        sort_heapify(array, i, 0, compare, swap);
+    }
+}
+
+static void sort_introsort_loop(ElementType* array, size_t lo, size_t hi, size_t depth, CompareFunc compare, SwapFunc swap) {
+    while (hi > lo && hi - lo >= SORT_SMALL_RANGE) {
+        if (depth == 0) {
+            sort_heapsort_range(array + lo, hi - lo + 1, compare, swap);
+            return;
+        }
+        depth--;
+        update_stats(false, false, true);
+        size_t p = sort_hoare_partition(array, lo, hi, compare, swap);
+        if (p - lo < hi - p) {
+            sort_introsort_loop(array, lo, p, depth, compare, swap);
+            lo = p + 1;
+        }
+        else {
+            sort_introsort_loop(array, p + 1, hi, depth, compare, swap);
+            hi = p;
+        }
+    }
+}
+
+/* Full introsort of array[0, size): small ranges are left for one final
+   insertion pass, which is linear because every element is then near its
+   place. */
+static void sort_introsort(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap) {
+    if (size < 2) {
+        return;
+    }
+    sort_introsort_loop(array, 0, size - 1, 2 * sort_floor_log2(size), compare, swap);
+    sort_insertion_range(array, 0, size, compare);
+}
+
+/* ------------------------------------------------------------------------
+ * Stable natural merge sort (used by sort_timsort): finds the existing
+ * ascending runs (strictly descending runs are reversed, which keeps
+ * stability), extends short runs with insertion sort and merges neighbours
+ * bottom-up. O(n) on sorted input, O(n log n) worst case, stable.
+ * ---------------------------------------------------------------------- */
+#define SORT_MIN_RUN 32
+
+static void sort_merge_runs(ElementType* array, ElementType* tmp, size_t lo, size_t mid, size_t hi, CompareFunc compare) {
+    /* array[lo, mid) and array[mid, hi) are sorted; merge stably via tmp. */
+    if (mid <= lo || mid >= hi || compare(array[mid - 1], array[mid]) <= 0) {
+        return; /* already in order */
+    }
+    size_t n1 = mid - lo;
+    memcpy(tmp, array + lo, n1 * sizeof(ElementType));
+    size_t i = 0, j = mid, k = lo;
+    while (i < n1 && j < hi) {
+        if (compare(array[j], tmp[i]) < 0) {
+            array[k++] = array[j++];
+        }
+        else {
+            array[k++] = tmp[i++];   /* ties keep the left (earlier) element first */
+        }
+    }
+    while (i < n1) {
+        array[k++] = tmp[i++];
+    }
+}
+
+static bool sort_natural_mergesort(ElementType* array, size_t size, CompareFunc compare) {
+    if (size < 2) {
+        return true;
+    }
+    size_t* runs = (size_t*)malloc((size / SORT_MIN_RUN + 2) * sizeof(size_t));
+    ElementType* tmp = (ElementType*)malloc(size * sizeof(ElementType));
+    if (!runs || !tmp) {
+        free(runs);
+        free(tmp);
+        return false;
+    }
+
+    size_t nruns = 0;
+    size_t pos = 0;
+    while (pos < size) {
+        size_t start = pos++;
+        if (pos < size) {
+            if (compare(array[pos], array[pos - 1]) < 0) {           /* strictly descending */
+                while (pos < size && compare(array[pos], array[pos - 1]) < 0) {
+                    pos++;
+                }
+                for (size_t a = start, b = pos - 1; a < b; a++, b--) { /* reverse in place */
+                    ElementType t = array[a];
+                    array[a] = array[b];
+                    array[b] = t;
+                }
+            }
+            else {
+                while (pos < size && compare(array[pos], array[pos - 1]) >= 0) {
+                    pos++;
+                }
+            }
+        }
+        if (pos - start < SORT_MIN_RUN) {                            /* extend a short run */
+            size_t end = (start + SORT_MIN_RUN < size) ? start + SORT_MIN_RUN : size;
+            sort_insertion_range(array, start, end, compare);
+            pos = end;
+        }
+        runs[nruns++] = start;
+    }
+    runs[nruns] = size;
+
+    /* Merge neighbouring runs until one is left. */
+    while (nruns > 1) {
+        size_t out = 0;
+        for (size_t r = 0; r < nruns; r += 2) {
+            if (r + 1 < nruns) {
+                sort_merge_runs(array, tmp, runs[r], runs[r + 1], runs[r + 2], compare);
+            }
+            runs[out++] = runs[r];
+        }
+        runs[out] = size;
+        nruns = out;
+    }
+
+    free(runs);
+    free(tmp);
+    return true;
+}
+
+/* 64-bit generator for sort_shuffle (splitmix64): no global state and no
+   srand()/rand(), whose RAND_MAX of 32767 on Windows biased large shuffles. */
+static uint64_t sort_rng_next(uint64_t* state) {
+    uint64_t z = (*state += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
+/* Uniform index in [0, bound) by rejection (no modulo bias). */
+static size_t sort_rng_below(uint64_t* state, size_t bound) {
+    uint64_t b = (uint64_t)bound;
+    uint64_t limit = UINT64_MAX - (UINT64_MAX % b);
+    uint64_t x;
+    do {
+        x = sort_rng_next(state);
+    } while (x >= limit);
+    return (size_t)(x % b);
+}
+
+
 
 /**
  * @brief Default comparator for `int*` elements.
@@ -74,7 +293,7 @@ static void update_stats(bool is_comparison, bool is_swap, bool is_recursive) {
  * @param b Pointer to the second int.
  * @return Negative if `*a < *b`, zero if equal, positive if `*a > *b`.
  */
-int sort_compare_int(const ElementType a, const ElementType b) {
+int sort_compare_int(const void* a, const void* b) {
     SORT_LOG("[sort_compare_int]: enter (a=%p, b=%p)", (void*)a, (void*)b);
     if (!a && !b) {
         return 0;
@@ -110,7 +329,7 @@ int sort_compare_int(const ElementType a, const ElementType b) {
  * @param b Pointer to the second string.
  * @return Result of `strcmp(a, b)` — negative / 0 / positive.
  */
-int sort_compare_string(const ElementType a, const ElementType b) {
+int sort_compare_string(const void* a, const void* b) {
     SORT_LOG("[sort_compare_string]: enter (a=%p, b=%p)", (void*)a, (void*)b);
     if (!a && !b) {
         return 0;
@@ -134,7 +353,7 @@ int sort_compare_string(const ElementType a, const ElementType b) {
  * @param b Pointer to the second float.
  * @return Negative if `*a < *b`, zero if equal, positive if `*a > *b`.
  */
-int sort_compare_float(const ElementType a, const ElementType b) {
+int sort_compare_float(const void* a, const void* b) {
     SORT_LOG("[sort_compare_float]: enter (a=%p, b=%p)", (void*)a, (void*)b);
     if (!a && !b) {
         return 0;
@@ -168,7 +387,7 @@ int sort_compare_float(const ElementType a, const ElementType b) {
  * @param b Pointer to the second double.
  * @return Negative if `*a < *b`, zero if equal, positive if `*a > *b`.
  */
-int sort_compare_double(const ElementType a, const ElementType b) {
+int sort_compare_double(const void* a, const void* b) {
     SORT_LOG("[sort_compare_double]: enter (a=%p, b=%p)", (void*)a, (void*)b);
     if (!a && !b) {
         return 0;
@@ -206,7 +425,7 @@ int sort_compare_double(const ElementType a, const ElementType b) {
  * @param b Second pointer.
  * @return Negative if `a < b`, zero if equal, positive if `a > b`.
  */
-int sort_compare_pointer(const ElementType a, const ElementType b) {
+int sort_compare_pointer(const void* a, const void* b) {
     SORT_LOG("[sort_compare_pointer]: enter (a=%p, b=%p)", (void*)a, (void*)b);
     if (!a && !b) {
         return 0;
@@ -261,7 +480,7 @@ void sort_swap_generic(ElementType a, ElementType b) {
  *        Used by `sort_print_array`. Prints "NULL" for null pointers.
  * @param element Pointer to the int to print.
  */
-void sort_print_int(const ElementType element) {
+void sort_print_int(const void* element) {
     SORT_LOG("[sort_print_int]: enter (element=%p)", (void*)element);
     if (!element) {
         printf("NULL");
@@ -275,7 +494,7 @@ void sort_print_int(const ElementType element) {
  *        Wraps the string in double quotes.
  * @param element Pointer to a C string.
  */
-void sort_print_string(const ElementType element) {
+void sort_print_string(const void* element) {
     SORT_LOG("[sort_print_string]: enter (element=%p)", (void*)element);
     if (!element) {
         printf("NULL");
@@ -289,7 +508,7 @@ void sort_print_string(const ElementType element) {
  * @brief Default print callback for `float*` elements (2 decimal places).
  * @param element Pointer to the float to print.
  */
-void sort_print_float(const ElementType element) {
+void sort_print_float(const void* element) {
     SORT_LOG("[sort_print_float]: enter (element=%p)", (void*)element);
     if (!element) {
         printf("NULL");
@@ -303,7 +522,7 @@ void sort_print_float(const ElementType element) {
  * @brief Default print callback for `double*` elements (2 decimal places).
  * @param element Pointer to the double to print.
  */
-void sort_print_double(const ElementType element) {
+void sort_print_double(const void* element) {
     SORT_LOG("[sort_print_double]: enter (element=%p)", (void*)element);
     if (!element) {
         printf("NULL");
@@ -317,7 +536,7 @@ void sort_print_double(const ElementType element) {
  * @brief Default print callback that emits the raw pointer address.
  * @param element The pointer to print.
  */
-void sort_print_pointer(const ElementType element) {
+void sort_print_pointer(const void* element) {
     SORT_LOG("[sort_print_pointer]: enter (element=%p)", (void*)element);
     if (!element) {
         printf("NULL");
@@ -353,16 +572,7 @@ void sort_insertion(ElementType* array, size_t size, CompareFunc compare, SwapFu
     double start_time = get_time_ms();
     reset_global_stats();
 
-    for (size_t i = 1; i < size; i++) {
-        ElementType key = array[i];
-        int j = (int)i - 1;
-
-        while (j >= 0 && compare(array[j], key) > 0) {
-            array[j + 1] = array[j];
-            j--;
-        }
-        array[j + 1] = key;
-    }
+    sort_insertion_range(array, 0, size, compare);   /* size_t indexes: no int truncation */
 
     global_stats.execution_time_ms = get_time_ms() - start_time;
     global_stats.stable = true;
@@ -371,29 +581,16 @@ void sort_insertion(ElementType* array, size_t size, CompareFunc compare, SwapFu
     SORT_LOG("[sort_insertion]: Sorted %zu elements in %.3f ms", size, global_stats.execution_time_ms);
 }
 
-// QuickSort - O(n log n) average, O(n²) worst case
-static void quicksort_recursive(ElementType* array, size_t left, size_t right, CompareFunc compare, SwapFunc swap) {
-    if (left < right) {
-        update_stats(false, false, true);
-        size_t pivot_index = sort_partition(array, left, right, compare, swap);
-        
-        if (pivot_index > 0) {
-            quicksort_recursive(array, left, pivot_index - 1, compare, swap);
-        }
-        quicksort_recursive(array, pivot_index + 1, right, compare, swap);
-    }
-}
 
 
 /**
- * @brief In-place quicksort with Lomuto partitioning.
+ * @brief In-place quicksort (introsort).
  *
- * Divides the array around a pivot (last element) and recurses on each side.
- * **Not stable.** Fast on average but degrades to O(n²) on already-sorted or
- * reverse-sorted input — use `sort_quicksort_optimized` for median-of-three
- * pivot selection.
+ * Median-of-three Hoare partitioning, recursion into the smaller side only,
+ * a heapsort fallback past 2*log2(n) levels and insertion sort for small
+ * ranges. **Not stable.** Sorted, reversed and all-equal inputs are fast.
  *
- * Time complexity: O(n log n) average, O(n²) worst.
+ * Time complexity: O(n log n) average and worst case.
  * Space complexity: O(log n) recursion stack.
  *
  * @param array   Array of element pointers.
@@ -411,7 +608,7 @@ void sort_quicksort(ElementType* array, size_t size, CompareFunc compare, SwapFu
     double start_time = get_time_ms();
     reset_global_stats();
 
-    quicksort_recursive(array, 0, size - 1, compare, swap);
+    sort_introsort(array, size, compare, swap);
 
     global_stats.execution_time_ms = get_time_ms() - start_time;
     global_stats.stable = false;
@@ -635,8 +832,26 @@ void sort_shell(ElementType* array, size_t size, CompareFunc compare, SwapFunc s
     double start_time = get_time_ms();
     reset_global_stats();
 
-    // Using Knuth's gap sequence
-    for (size_t gap = size / 2; gap > 0; gap /= 2) {
+    /* Ciura's gap sequence (1, 4, 10, 23, 57, 132, 301, 701), extended by
+       x2.25 beyond 701; the old size/2, size/4, ... gaps are notably slower. */
+    size_t gaps[64];
+    size_t ngaps = 0;
+    static const size_t ciura[] = {1, 4, 10, 23, 57, 132, 301, 701};
+    for (size_t k = 0; k < sizeof(ciura) / sizeof(ciura[0]) && ciura[k] < size; ++k) {
+        gaps[ngaps++] = ciura[k];
+    }
+    if (ngaps == sizeof(ciura) / sizeof(ciura[0])) {
+        size_t g = 701;
+        while (ngaps < 64 && g <= SIZE_MAX / 9) {
+            g = g * 9 / 4;
+            if (g >= size) {
+                break;
+            }
+            gaps[ngaps++] = g;
+        }
+    }
+    while (ngaps-- > 0) {
+        size_t gap = gaps[ngaps];
         for (size_t i = gap; i < size; i++) {
             ElementType temp = array[i];
             size_t j;
@@ -695,8 +910,18 @@ void sort_counting(ElementType* array, size_t size, CompareFunc compare, SwapFun
         }
     }
 
-    size_t range = max_val - min_val + 1;
-    size_t* count = (size_t*)calloc(range, sizeof(size_t));
+    /* The range is computed in 64 bits: max - min + 1 in int overflowed for
+       wide inputs (e.g. INT_MIN..INT_MAX) and wrapped to a tiny count array
+       that was then written out of bounds. A range much larger than the
+       input is better served by a comparison sort (stable, like this one). */
+    uint64_t range = (uint64_t)((int64_t)max_val - (int64_t)min_val) + 1;
+    if (range > (uint64_t)size * 4 + 1024 || range > SIZE_MAX / sizeof(size_t)) {
+        SORT_LOG("[sort_counting]: value range %llu too wide for counting -> stable merge sort", (unsigned long long)range);
+        sort_mergesort(array, size, compare, swap);
+        return;
+    }
+
+    size_t* count = (size_t*)calloc((size_t)range, sizeof(size_t));
     ElementType* output = (ElementType*)malloc(size * sizeof(ElementType));
 
     if (!count || !output) {
@@ -708,27 +933,22 @@ void sort_counting(ElementType* array, size_t size, CompareFunc compare, SwapFun
 
     // Count occurrences
     for (size_t i = 0; i < size; i++) {
-        int val = *(int*)array[i];
-        count[val - min_val]++;
+        count[(size_t)((int64_t)*(int*)array[i] - min_val)]++;
     }
 
     // Calculate positions
-    for (size_t i = 1; i < range; i++) {
+    for (size_t i = 1; i < (size_t)range; i++) {
         count[i] += count[i - 1];
     }
 
-    // Build output array
-    for (int i = (int)size - 1; i >= 0; i--) {
-        int val = *(int*)array[i];
-        size_t index = count[val - min_val] - 1;
-        output[index] = array[i];
-        count[val - min_val]--;
+    // Build output array (backwards keeps equal keys in order: stable)
+    for (size_t i = size; i-- > 0; ) {
+        size_t slot = (size_t)((int64_t)*(int*)array[i] - min_val);
+        output[--count[slot]] = array[i];
     }
 
     // Copy back to original array
-    for (size_t i = 0; i < size; i++) {
-        array[i] = output[i];
-    }
+    memcpy(array, output, size * sizeof(ElementType));
 
     free(count);
     free(output);
@@ -742,16 +962,17 @@ void sort_counting(ElementType* array, size_t size, CompareFunc compare, SwapFun
 
 
 /**
- * @brief LSD (least-significant-digit) radix sort over base-10 integers.
+ * @brief LSD (least-significant-digit) radix sort over 32-bit integers.
  *
- * Runs a stable counting sort for each decimal digit, from least to most
- * significant. **Stable.** Beats comparison-based sorts when keys are
- * bounded-size integers.
+ * Runs a stable counting pass for each byte of the key, from least to most
+ * significant (4 passes of 256 buckets). Negative values are supported: the
+ * sign bit is flipped so the unsigned key order equals the int order.
+ * **Stable.** Beats comparison-based sorts for large integer arrays.
  *
- * @warning Only valid for arrays whose elements are non-negative `int*`.
+ * @warning Only valid for arrays whose elements are `int*`.
  *          The `compare` and `swap` parameters are unused.
  *
- * Time complexity: O(d · (n + 10)) where d = number of digits in `max`.
+ * Time complexity: O(4 · (n + 256)).
  * Space complexity: O(n) extra.
  *
  * @param array   Array of `int*` element pointers.
@@ -769,51 +990,37 @@ void sort_radix(ElementType* array, size_t size, CompareFunc compare, SwapFunc s
     double start_time = get_time_ms();
     reset_global_stats();
 
-    // Find maximum value to determine number of digits
-    int max_val = *(int*)array[0];
-    for (size_t i = 1; i < size; i++) {
-        int val = *(int*)array[i];
-        if (val > max_val) {
-            max_val = val;
-        }
+    /* Byte-wise LSD passes over (value XOR sign bit): the old base-10 version
+       indexed count[] with negative digits for negative keys (stack
+       corruption) and overflowed `exp *= 10` for keys >= 1e9. */
+    ElementType* output = (ElementType*)malloc(size * sizeof(ElementType));
+    if (!output) {
+        SORT_LOG("[sort_radix]: allocation failed -> early exit");
+        return;
     }
 
-    // Perform counting sort for each digit
-    for (int exp = 1; max_val / exp > 0; exp *= 10) {
-        size_t count[10] = {0};
-        ElementType* output = (ElementType*)malloc(size * sizeof(ElementType));
-
-        if (!output) {
-            SORT_LOG("[sort_radix]: allocation failed -> early exit");
-            return;
-        }
-
-        // Count occurrences
+    ElementType* src = array;
+    ElementType* dst = output;
+    for (unsigned shift = 0; shift < 32; shift += 8) {
+        size_t count[257] = {0};
         for (size_t i = 0; i < size; i++) {
-            int val = *(int*)array[i];
-            count[(val / exp) % 10]++;
+            uint32_t key = (uint32_t)*(int*)src[i] ^ 0x80000000u;
+            count[((key >> shift) & 0xFFu) + 1]++;
         }
-
-        // Calculate positions
-        for (int i = 1; i < 10; i++) {
-            count[i] += count[i - 1];
+        for (size_t b = 1; b < 257; b++) {
+            count[b] += count[b - 1];
         }
-
-        // Build output array
-        for (int i = (int)size - 1; i >= 0; i--) {
-            int val = *(int*)array[i];
-            size_t index = count[(val / exp) % 10] - 1;
-            output[index] = array[i];
-            count[(val / exp) % 10]--;
-        }
-
-        // Copy back to original array
         for (size_t i = 0; i < size; i++) {
-            array[i] = output[i];
+            uint32_t key = (uint32_t)*(int*)src[i] ^ 0x80000000u;
+            dst[count[(key >> shift) & 0xFFu]++] = src[i];
         }
-
-        free(output);
+        ElementType* t = src;
+        src = dst;
+        dst = t;
     }
+    /* After an even number (4) of passes the result is back in `array`. */
+
+    free(output);
 
     global_stats.execution_time_ms = get_time_ms() - start_time;
     global_stats.stable = true;
@@ -833,8 +1040,8 @@ void sort_radix(ElementType* array, size_t size, CompareFunc compare, SwapFunc s
  * @warning Only valid for arrays whose elements are `float*`. Performance
  *          degrades to O(n²) on heavily skewed distributions.
  *
- * Time complexity: O(n + k) expected for uniform input; O(n²) worst.
- * Space complexity: O(n · k) extra.
+ * Time complexity: O(n) expected for uniform input; O(n²) worst.
+ * Space complexity: O(n) extra.
  *
  * @param array   Array of `float*` element pointers.
  * @param size    Number of elements.
@@ -851,28 +1058,15 @@ void sort_bucket(ElementType* array, size_t size, CompareFunc compare, SwapFunc 
     double start_time = get_time_ms();
     reset_global_stats();
 
-    // Create buckets
-    size_t num_buckets = size;
-    ElementType** buckets = (ElementType**)malloc(num_buckets * sizeof(ElementType*));
-    size_t* bucket_sizes = (size_t*)calloc(num_buckets, sizeof(size_t));
-
-    if (!buckets || !bucket_sizes) {
-        SORT_LOG("[sort_bucket]: allocation failed (buckets=%p, bucket_sizes=%p) -> early exit", (void*)buckets, (void*)bucket_sizes);
-        free(buckets);
-        free(bucket_sizes);
-        return;
-    }
-
-    // Initialize buckets
-    for (size_t i = 0; i < num_buckets; i++) {
-        buckets[i] = (ElementType*)malloc(size * sizeof(ElementType));
-        bucket_sizes[i] = 0;
-    }
-
     // Find min and max for bucket range
     float min_val = *(float*)array[0], max_val = *(float*)array[0];
-    for (size_t i = 1; i < size; i++) {
+    bool finite = true;
+    for (size_t i = 0; i < size; i++) {
         float val = *(float*)array[i];
+        if (!isfinite(val)) {
+            finite = false;
+            break;
+        }
         if (val < min_val) {
             min_val = val;
         }
@@ -880,31 +1074,64 @@ void sort_bucket(ElementType* array, size_t size, CompareFunc compare, SwapFunc 
             max_val = val;
         }
     }
-
-    // Distribute elements into buckets
-    for (size_t i = 0; i < size; i++) {
-        float val = *(float*)array[i];
-        size_t bucket_index = (size_t)((val - min_val) / (max_val - min_val) * (num_buckets - 1));
-        buckets[bucket_index][bucket_sizes[bucket_index]++] = array[i];
+    if (finite && max_val == min_val) {
+        SORT_LOG("[sort_bucket]: all keys equal -> already sorted");
+        return; /* (the old code divided 0/0 here and cast NaN to size_t) */
+    }
+    if (!finite || !isfinite(max_val - min_val)) {
+        /* NaN or infinite keys cannot be projected onto buckets. */
+        SORT_LOG("[sort_bucket]: non-finite keys -> stable merge sort");
+        sort_mergesort(array, size, compare, swap);
+        return;
     }
 
-    // Sort individual buckets and merge
-    size_t index = 0;
-    for (size_t i = 0; i < num_buckets; i++) {
-        if (bucket_sizes[i] > 0) {
-            sort_insertion(buckets[i], bucket_sizes[i], compare, swap);
-            for (size_t j = 0; j < bucket_sizes[i]; j++) {
-                array[index++] = buckets[i][j];
-            }
+    /* One counting pass sizes every bucket exactly, so all buckets share a
+       single n-element array (the old version allocated n buckets of n slots:
+       O(n^2) memory, never NULL-checked). */
+    size_t num_buckets = size;
+    size_t* starts = (size_t*)calloc(num_buckets + 1, sizeof(size_t));
+    size_t* index_of = (size_t*)malloc(size * sizeof(size_t));
+    ElementType* output = (ElementType*)malloc(size * sizeof(ElementType));
+    if (!starts || !index_of || !output) {
+        SORT_LOG("[sort_bucket]: allocation failed -> early exit");
+        free(starts);
+        free(index_of);
+        free(output);
+        return;
+    }
+
+    double span = (double)max_val - (double)min_val;
+    for (size_t i = 0; i < size; i++) {
+        double pos = ((double)*(float*)array[i] - (double)min_val) / span * (double)(num_buckets - 1);
+        size_t b = (pos <= 0.0) ? 0 : (pos >= (double)(num_buckets - 1)) ? num_buckets - 1 : (size_t)pos;
+        index_of[i] = b;
+        starts[b + 1]++;
+    }
+    for (size_t b = 1; b <= num_buckets; b++) {
+        starts[b] += starts[b - 1];
+    }
+    size_t* fill = (size_t*)malloc(num_buckets * sizeof(size_t));
+    if (!fill) {
+        free(starts);
+        free(index_of);
+        free(output);
+        return;
+    }
+    memcpy(fill, starts, num_buckets * sizeof(size_t));
+    for (size_t i = 0; i < size; i++) {          /* in input order: stable */
+        output[fill[index_of[i]]++] = array[i];
+    }
+    for (size_t b = 0; b < num_buckets; b++) {   /* sort each bucket (stable insertion sort) */
+        if (starts[b + 1] - starts[b] > 1) {
+            sort_insertion_range(output, starts[b], starts[b + 1], compare);
         }
     }
+    memcpy(array, output, size * sizeof(ElementType));
 
-    // Clean up
-    for (size_t i = 0; i < num_buckets; i++) {
-        free(buckets[i]);
-    }
-    free(buckets);
-    free(bucket_sizes);
+    free(fill);
+    free(starts);
+    free(index_of);
+    free(output);
 
     global_stats.execution_time_ms = get_time_ms() - start_time;
     global_stats.stable = true;
@@ -940,9 +1167,7 @@ void sort_introspective(ElementType* array, size_t size, CompareFunc compare, Sw
     double start_time = get_time_ms();
     reset_global_stats();
 
-    size_t max_depth = 2 * (size_t)log2(size);
-    (void)max_depth; // depth bound is documented; actual enforcement happens in sort_introspective_optimized
-    sort_introspective_optimized(array, size, compare, swap);
+    sort_introsort(array, size, compare, swap);   /* depth limit 2*log2(n), heapsort fallback */
 
     global_stats.execution_time_ms = get_time_ms() - start_time;
     global_stats.stable = false;
@@ -1188,10 +1413,13 @@ void sort_shuffle(ElementType* array, size_t size, SwapFunc swap) {
         return;
     }
 
-    srand((unsigned int)time(NULL));
-
+    /* Local generator seeded from the clock and addresses: uniform for any size
+       (rand() is limited to 32767 on Windows), no shared state, and the caller's
+       rand() sequence is not reseeded. */
+    uint64_t state = (uint64_t)time(NULL) ^ ((uint64_t)clock() << 20) ^ (uint64_t)(uintptr_t)array
+                     ^ ((uint64_t)(uintptr_t)&state << 7);
     for (size_t i = size - 1; i > 0; i--) {
-        size_t j = (size_t)rand() % (i + 1);
+        size_t j = sort_rng_below(&state, i + 1);
         swap(&array[i], &array[j]);
     }
 }
@@ -1354,8 +1582,8 @@ void sort_heapify(ElementType* array, size_t size, size_t index, CompareFunc com
  */
 void sort_build_heap(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap) {
     SORT_LOG("[sort_build_heap]: enter (array=%p, size=%zu)", (void*)array, size);
-    for (int i = (int)size / 2 - 1; i >= 0; i--) {
-        sort_heapify(array, size, (size_t)i, compare, swap);
+    for (size_t i = size / 2; i-- > 0; ) {   /* size_t: no int truncation for big arrays */
+        sort_heapify(array, size, i, compare, swap);
     }
 }
 
@@ -1443,28 +1671,9 @@ void sort_quicksort_optimized(ElementType* array, size_t size, CompareFunc compa
         return;
     }
 
-    // Use insertion sort for small arrays
-    if (size <= 10) {
-        SORT_LOG("[sort_quicksort_optimized]: size<=10, falling back to insertion sort");
-        sort_insertion(array, size, compare, swap);
-        return;
-    }
-
-    // Use median-of-three pivot selection
-    size_t mid = size / 2;
-    if (compare(array[0], array[mid]) > 0) {
-        swap(&array[0], &array[mid]);
-    }
-    if (compare(array[0], array[size-1]) > 0) {
-        swap(&array[0], &array[size-1]);
-    }
-    if (compare(array[mid], array[size-1]) > 0) {
-        swap(&array[mid], &array[size-1]);
-    }
-
-    // Use the median as pivot
-    swap(&array[mid], &array[size-1]);
-
+    /* sort_quicksort is the median-of-three introsort with an insertion-sort
+       cutoff, i.e. exactly what this variant promises. (The old version
+       picked a median once and then ran the plain O(n^2)-worst Lomuto sort.) */
     sort_quicksort(array, size, compare, swap);
 }
 
@@ -1521,25 +1730,16 @@ void sort_introspective_optimized(ElementType* array, size_t size, CompareFunc c
         return;
     }
 
-    size_t max_depth = 2 * (size_t)log2(size);
+    double start_time = get_time_ms();
+    reset_global_stats();
 
-    // Use insertion sort for small arrays
-    if (size <= 16) {
-        SORT_LOG("[sort_introspective_optimized]: size<=16, falling back to insertion sort");
-        sort_insertion(array, size, compare, swap);
-        return;
-    }
+    /* Real depth-limited introsort (the old code computed the depth bound
+       and never enforced it). */
+    sort_introsort(array, size, compare, swap);
 
-    // Use heap sort if depth limit exceeded
-    if (max_depth == 0) {
-        SORT_LOG("[sort_introspective_optimized]: max_depth==0, falling back to heapsort");
-        sort_heapsort(array, size, compare, swap);
-        return;
-    }
-
-    // Use optimized quicksort
-    SORT_LOG("[sort_introspective_optimized]: dispatching to optimized quicksort (max_depth=%zu)", max_depth);
-    sort_quicksort_optimized(array, size, compare, swap);
+    global_stats.execution_time_ms = get_time_ms() - start_time;
+    global_stats.stable = false;
+    global_stats.in_place = true;
 }
 
 
@@ -1652,12 +1852,12 @@ void sort_adaptive(ElementType* array, size_t size, CompareFunc compare, SwapFun
 
 
 /**
- * @brief Simplified Timsort placeholder.
+ * @brief Timsort-style stable sort (natural merge sort).
  *
- * Real Timsort detects natural runs and merges them stably, providing very
- * fast performance on partially-sorted data. This implementation currently
- * delegates to `sort_adaptive`; the signature is reserved so callers can
- * upgrade to a full Timsort later without API change.
+ * Detects the natural ascending/descending runs, extends short runs with
+ * insertion sort and merges neighbouring runs stably. **Stable.** O(n) on
+ * already-sorted (or reversed) input, O(n log n) worst case, O(n) extra memory.
+ * (It previously delegated to sort_adaptive, i.e. an unstable shell/quick sort.)
  *
  * @param array   Array of element pointers.
  * @param size    Number of elements.
@@ -1666,8 +1866,19 @@ void sort_adaptive(ElementType* array, size_t size, CompareFunc compare, SwapFun
  */
 void sort_timsort(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap) {
     SORT_LOG("[sort_timsort]: enter (array=%p, size=%zu)", (void*)array, size);
-    // Simplified Timsort implementation
-    sort_adaptive(array, size, compare, swap);
+    if (!array || size <= 1 || !compare || !swap) {
+        return;
+    }
+    double start_time = get_time_ms();
+    reset_global_stats();
+    if (!sort_natural_mergesort(array, size, compare)) {
+        SORT_LOG("[sort_timsort]: allocation failed -> falling back to stable merge sort");
+        sort_mergesort(array, size, compare, swap);
+        return;
+    }
+    global_stats.execution_time_ms = get_time_ms() - start_time;
+    global_stats.stable = true;
+    global_stats.in_place = false;
 }
 
 
@@ -2107,7 +2318,10 @@ ElementType* sort_partial_sort(ElementType* array, size_t size, size_t k, Compar
  * `array[n]`, and all elements after are greater than or equal. The two
  * sub-ranges themselves are NOT sorted.
  *
- * Average O(n); worst case O(n²) (without median-of-three protection).
+ * Average O(n). Each round splits the range three ways (< pivot, == pivot,
+ * > pivot) around a median-of-three pivot, so inputs with many equal keys
+ * stay linear (the old two-way partition put every equal key on one side and
+ * was quadratic on them).
  *
  * @param array   Array of element pointers.
  * @param size    Length of the array.
@@ -2125,18 +2339,52 @@ ElementType sort_nth_element(ElementType* array, size_t size, size_t n, CompareF
 
     size_t left = 0, right = size - 1;
     while (left < right) {
-        size_t p = sort_partition_median_of_three(array, left, right, compare, swap);
-        if (p == n) {
-            return array[n];
-        }
-        else if (p < n) {
-            left  = p + 1;
-        }
-        else if (p > 0) {
-            right = p - 1;
+        /* median of three as the pivot value (the element pointer is copied:
+           swaps only move array slots) */
+        size_t mid = left + (right - left) / 2;
+        ElementType a = array[left], b = array[mid], c = array[right];
+        ElementType pivot;
+        if (compare(a, b) < 0) {
+            pivot = (compare(b, c) < 0) ? b : (compare(a, c) < 0) ? c : a;
         }
         else {
-            break;
+            pivot = (compare(a, c) < 0) ? a : (compare(b, c) < 0) ? c : b;
+        }
+        /* [left, lt) < pivot, [lt, gt] == pivot, (gt, right] > pivot */
+        size_t lt = left, i = left, gt = right;
+        bool gtBelowZero = false;
+        while (i <= gt && !gtBelowZero) {
+            int r = compare(array[i], pivot);
+            if (r < 0) {
+                if (lt != i) {
+                    swap(&array[lt], &array[i]);
+                }
+                lt++;
+                i++;
+            }
+            else if (r > 0) {
+                if (i != gt) {
+                    swap(&array[i], &array[gt]);
+                }
+                if (gt == 0) {
+                    gtBelowZero = true;
+                }
+                else {
+                    gt--;
+                }
+            }
+            else {
+                i++;
+            }
+        }
+        if (n < lt) {
+            right = lt - 1;      /* lt > left here: the pivot value is in the range */
+        }
+        else if (gtBelowZero || n <= gt) {
+            return array[n];     /* n falls among the keys equal to the pivot */
+        }
+        else {
+            left = gt + 1;
         }
     }
     return array[n];

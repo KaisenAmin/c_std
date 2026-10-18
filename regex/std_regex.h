@@ -20,8 +20,8 @@ extern "C" {
 /* #define REGEX_LOGGING_ENABLE */
 
 #ifdef REGEX_LOGGING_ENABLE
-    #define REGEX_LOG(fmt, ...) \
-        do { fprintf(stderr, "[REGEX LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define REGEX_LOG(...) \
+        do { fprintf(stderr, "[REGEX LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define REGEX_LOG(...) do { } while (0)
 #endif
@@ -45,7 +45,9 @@ typedef enum {
     REGEX_DEFAULT          = 0,
     REGEX_CASE_INSENSITIVE = 1,
     REGEX_MULTILINE        = 2,
-    REGEX_DOTALL           = 4
+    REGEX_DOTALL           = 4,
+    REGEX_UTF8             = 8     /* pattern and subjects are UTF-8: '.', classes and case-insensitive
+                                      matching work on characters instead of bytes (see README) */
 } RegexFlags;
 
 

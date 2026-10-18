@@ -100,7 +100,7 @@ Initialise a matrix from a C array literal without writing individual `matrix_se
 ### `Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end)`
 
 **Purpose**:  
-Fills a newly created `row × col` matrix with random integers in the range `[start, end)`.
+Fills a newly created `row × col` matrix with uniformly distributed random integers in the range `[start, end)` (the full `size_t` range is supported). It uses its own generator, so it does not reseed or disturb the program's `rand()` sequence; it is not suitable for cryptographic use (see the `secrets` module).
 
 **Parameters**:  
 - `row`: Number of rows.  
@@ -286,14 +286,14 @@ Combinatorics, polynomial arithmetic, and numerical analysis.
 ### `Matrix* matrix_helmert(size_t n, bool full)`
 
 **Purpose**:  
-Generates an `n × n` Helmert matrix — an orthogonal matrix used in multivariate statistics.
+Generates a Helmert matrix — an orthogonal matrix used in multivariate statistics — exactly as `scipy.linalg.helmert`.
 
 **Parameters**:  
 - `n`: Size of the matrix.  
-- `full`: If `true`, returns the full Helmert matrix; otherwise, the reduced (normalised) form.
+- `full`: If `true`, returns the full `n × n` Helmert matrix; otherwise the reduced `(n-1) × n` form, which drops the first (constant `1/√n`) row.
 
 **Return Value**:  
-Pointer to the Helmert matrix, or `NULL` on failure.
+Pointer to the Helmert matrix, or `NULL` if `n` is 0 (or 1 for the reduced form) or allocation fails.
 
 **Usage Case**:  
 Contrast coding in ANOVA, principal component preprocessing.
@@ -323,10 +323,10 @@ Generates a Vandermonde matrix where each row is a geometric progression of the 
 
 **Parameters**:  
 - `matrix`: 1×m input row matrix containing the base values.  
-- `n`: Number of columns (degree + 1).
+- `n`: Size of the result: an `n × n` matrix built from the first `n` input elements.
 
 **Return Value**:  
-Pointer to the Vandermonde matrix, or `NULL` on failure.
+Pointer to the Vandermonde matrix, or `NULL` if `n` is 0 or larger than the number of input elements, or allocation fails.
 
 **Usage Case**:  
 Polynomial interpolation, least-squares curve fitting.
@@ -336,14 +336,14 @@ Polynomial interpolation, least-squares curve fitting.
 ### `Matrix* matrix_companion(const Matrix* coefficients, size_t n)`
 
 **Purpose**:  
-Constructs the companion matrix of a monic polynomial given its coefficients.
+Constructs the companion matrix of a polynomial given its coefficients, like `scipy.linalg.companion`: the first row is `-a[1..n-1] / a[0]` and the sub-diagonal is all ones, so the eigenvalues of the result are the roots of the polynomial.
 
 **Parameters**:  
-- `coefficients`: 1×n row matrix of polynomial coefficients (highest degree first).  
-- `n`: Number of coefficients (= degree of polynomial).
+- `coefficients`: row matrix of polynomial coefficients (highest degree first).  
+- `n`: Number of coefficients to use (= polynomial degree + 1); at least 2 and at most the number of elements in `coefficients`.
 
 **Return Value**:  
-Pointer to the `(n-1) × (n-1)` companion matrix, or `NULL` on failure.
+Pointer to the `(n-1) × (n-1)` companion matrix, or `NULL` if `n` is out of range, the leading coefficient is 0, or allocation fails.
 
 **Usage Case**:  
 Finding polynomial roots by computing matrix eigenvalues.
@@ -2131,13 +2131,13 @@ Partitioning a dataset into equal folds/batches, or separating stacked blocks.
 ### `Matrix* matrix_inverse(const Matrix* matrix)`
 
 **Purpose**:  
-Computes the inverse of a square matrix using LU decomposition with the adjugate formula.
+Computes the inverse of a square matrix by Gauss–Jordan elimination with partial pivoting (O(n³)).
 
 **Parameters**:  
 - `matrix`: Square matrix to invert.
 
 **Return Value**:  
-Newly allocated inverse matrix, or `NULL` if the matrix is singular or not square.
+Newly allocated inverse matrix, or `NULL` if the matrix is not square or is singular, i.e. a pivot is no larger than `n·DBL_EPSILON` times the largest entry. The test is relative, so small-scale matrices such as `0.01·I` invert normally.
 
 **Usage Case**:  
 Solve linear systems `Ax = b` via `x = A^{-1} b`, compute pseudo-inverses.
@@ -2156,7 +2156,7 @@ Computes the Moore–Penrose pseudo-inverse — the C analogue of NumPy's `numpy
 A new `n × m` pseudo-inverse, or `NULL` if `matrix` is `NULL` or the SVD/allocation fails. Free it with `matrix_deallocate`.
 
 **Usage Case**:  
-Least-squares solutions (`x = pinv(A)·b`), inverting non-square Jacobians. Singular values at or below `1e-15·σ_max` (NumPy's default `rcond`) are treated as zero, so it is robust to rank deficiency.
+Least-squares solutions (`x = pinv(A)·b`), inverting non-square Jacobians. Singular values at or below `rcond·σ_max`, with `rcond` the larger of `1e-15` and `max(m, n)·eps` (NumPy's defaults), are treated as zero; because the SVD is computed on `A` itself, a zero singular value really comes out at rounding level, so rank-deficient inputs give NumPy's result.
 
 ---
 
@@ -2343,7 +2343,7 @@ Zeroing self-loops in an adjacency matrix, or setting a regularisation term on t
 ### `bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U)`
 
 **Purpose**:  
-Performs LU decomposition of a square matrix without pivoting: `matrix = L × U`, where `L` is unit lower triangular and `U` is upper triangular.
+Performs LU decomposition of a square matrix without pivoting (Doolittle): `matrix = L × U`, where `L` is unit lower triangular and `U` is upper triangular.
 
 **Parameters**:  
 - `matrix`: Square matrix to factorise.  
@@ -2351,7 +2351,7 @@ Performs LU decomposition of a square matrix without pivoting: `matrix = L × U`
 - `U`: Output pointer filled with the upper triangular factor.
 
 **Return Value**:  
-`true` on success; `false` if the matrix is not square, has a zero pivot, or allocation fails.
+`true` on success; `false` if an argument is `NULL`, the matrix is not square, a pivot that must be divided by is zero (at the rounding level of the matrix's entries — then no LU factorization without pivoting exists, e.g. `[[0,1],[1,0]]`), or allocation fails. On failure `*L` and `*U` are set to `NULL`. For solving systems prefer `matrix_solve`, which pivots.
 
 **Usage Case**:  
 Solving linear systems, computing determinants, matrix inversion.
@@ -2361,7 +2361,7 @@ Solving linear systems, computing determinants, matrix inversion.
 ### `bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R)`
 
 **Purpose**:  
-Performs QR decomposition using the Gram-Schmidt process: `A = Q × R`, where `Q` is orthogonal and `R` is upper triangular.
+Performs the thin QR decomposition with Householder reflections: `A = Q × R`, where `Q` (`m × n`) has orthonormal columns and `R` (`n × n`) is upper triangular with a non-negative diagonal (the same factors Gram-Schmidt gives for full-rank input, but numerically stable, and without NaN for rank-deficient input).
 
 **Parameters**:  
 - `A`: Matrix to decompose (must have at least as many rows as columns).  
@@ -2430,7 +2430,7 @@ Principal-axis analysis, vibration modes, PCA of a covariance matrix. Eigenvecto
 ### `bool matrix_svd(const Matrix* matrix, Matrix** U, Matrix** S, Matrix** V)`
 
 **Purpose**:  
-Computes the (thin) singular value decomposition — the C analogue of NumPy's `numpy.linalg.svd(M, full_matrices=False)`. Factors an `m × n` matrix (`m ≥ n`) as `A = U·diag(S)·Vᵀ`, computed via the symmetric eigen-decomposition of `AᵀA`.
+Computes the (thin) singular value decomposition — the C analogue of NumPy's `numpy.linalg.svd(M, full_matrices=False)`. Factors an `m × n` matrix (`m ≥ n`) as `A = U·diag(S)·Vᵀ`, computed with one-sided Jacobi rotations on `A` itself (so small singular values stay accurate; `U` always has orthonormal columns).
 
 **Parameters**:  
 - `matrix`: The matrix to decompose (must have `rows ≥ cols`).
@@ -2515,7 +2515,7 @@ Finding the roots/zeros of a polynomial, eigenvalues via the characteristic poly
 ### `double matrix_determinant(const Matrix* matrix)`
 
 **Purpose**:  
-Computes the scalar determinant of a square matrix using LU decomposition.
+Computes the scalar determinant of a square matrix: closed-form for sizes up to 3×3, LU decomposition with partial pivoting (O(n³)) above that.
 
 **Parameters**:  
 - `matrix`: Square matrix.
@@ -3177,7 +3177,7 @@ Computes the `p`-th percentile of the flattened data — the C analogue of NumPy
 - `p`: The percentile in `[0, 100]`.
 
 **Return Value**:  
-The `p`-th percentile, or `0.0` if `matrix` is `NULL`/invalid or a temporary allocation fails.
+The `p`-th percentile, `NaN` if `p` is outside `[0, 100]` (or is `NaN`), or `0.0` if `matrix` is `NULL`/invalid or a temporary allocation fails.
 
 **Usage Case**:  
 Robust statistics — medians (`p = 50`), quartiles, outlier thresholds (`p = 99`).
@@ -3319,13 +3319,13 @@ Quantifying linear relationships between variables (feature selection, explorato
 ### `int matrix_rank(const Matrix* matrix)`
 
 **Purpose**:  
-Computes the rank (number of linearly independent rows or columns) using Gaussian elimination with tolerance-based zero detection.
+Computes the rank (number of linearly independent rows or columns) like `numpy.linalg.matrix_rank`: the number of singular values above `σmax · max(rows, cols) · DBL_EPSILON`. Works for any shape.
 
 **Parameters**:  
 - `matrix`: Input matrix.
 
 **Return Value**:  
-Rank as a non-negative integer, or `0` on `NULL` input or failure.
+Rank as a non-negative integer (at most `min(rows, cols)`), or `-1` on `NULL` input or failure.
 
 **Usage Case**:  
 Detect linear dependence, verify full-rank conditions before inversion or least-squares solving.
@@ -3545,10 +3545,10 @@ Validate rotation matrices, the Q factor in QR decomposition.
 ### `bool matrix_is_hankel(const Matrix* matrix)`
 
 **Purpose**:  
-Returns `true` if the matrix is a Hankel matrix (every element on each anti-diagonal is equal).
+Returns `true` if the matrix is a Hankel matrix (every element on each anti-diagonal is equal, i.e. `a[i][j] == a[i-1][j+1]` everywhere).
 
 **Parameters**:  
-- `matrix`: Square matrix to check.
+- `matrix`: Matrix to check (any shape).
 
 **Return Value**:  
 `true` if Hankel; `false` otherwise.
@@ -3593,13 +3593,13 @@ Pre-condition check before Cholesky factorisation, covariance matrix validation,
 ### `bool matrix_is_sparse(const Matrix* matrix)`
 
 **Purpose**:  
-Returns `true` if more than half of the elements are exactly zero (a simple density-based sparsity heuristic).
+Returns `true` if fewer than 30% of the elements are non-zero, i.e. more than 70% are exactly zero (a simple density-based sparsity heuristic).
 
 **Parameters**:  
 - `matrix`: Matrix to check.
 
 **Return Value**:  
-`true` if the zero ratio exceeds 0.5; `false` otherwise.
+`true` if the non-zero ratio is below 0.3; `false` otherwise (or for `NULL` / empty input).
 
 **Usage Case**:  
 Choose between dense and sparse algorithms at runtime; warn when dense storage is wasteful.
@@ -5029,8 +5029,8 @@ Original matrix:
 | 4.00000 5.00000 6.00000 |
 
 Matrix after scalar multiplication by 2.000000:
-| 2.00000  4.00000  6.00000 |
-| 8.00000 10.00000 12.00000 |
+|  2.00000  4.00000  6.00000 |
+|  8.00000 10.00000 12.00000 |
 ```
 
 ---
@@ -5716,8 +5716,8 @@ Original Matrix:
 | 2.00000 6.00000 |
 
 Inverse Matrix:
-| 0.60000 -0.70000 |
-|-0.20000  0.40000 |
+|  0.60000 -0.70000 |
+| -0.20000  0.40000 |
 ```
 
 ---
@@ -6202,8 +6202,8 @@ int main() {
 ```
 Circulan Matrix:
 | 1.00000 2.00000 3.00000 |
-| 2.00000 3.00000 1.00000 |
 | 3.00000 1.00000 2.00000 |
+| 2.00000 3.00000 1.00000 |
 ```
 
 ---
@@ -6253,12 +6253,12 @@ int main() {
 ```
 **Result:**
 ```
-Helmert Matrix : 
-| 0.44721  0.44721  0.44721  0.44721  0.44721 |
-| 0.70711 -0.70711        0        0        0 |
-| 0.40825  0.40825 -0.81650        0        0 |
-| 0.28868  0.28868  0.28868 -0.86603        0 |
-| 0.22361  0.22361  0.22361  0.22361 -0.89443 |
+Helmert Matrix :
+|  0.44721  0.44721  0.44721  0.44721  0.44721 |
+|  0.70711 -0.70711  0.00000  0.00000  0.00000 |
+|  0.40825  0.40825 -0.81650  0.00000  0.00000 |
+|  0.28868  0.28868  0.28868 -0.86603  0.00000 |
+|  0.22361  0.22361  0.22361  0.22361 -0.89443 |
 ```
 
 ---
@@ -6392,9 +6392,9 @@ Lower Triangular Matrix L:
 | 0.75000 1.00000 0.00000 |
 | 0.50000 2.00000 1.00000 |
 Upper Triangular Matrix U:
-| 4.00000  3.00000  2.00000 |
-| 0.00000 -0.25000 -0.50000 |
-| 0.00000  0.00000  3.00000 |
+|  4.00000  3.00000  2.00000 |
+|  0.00000 -0.25000 -0.50000 |
+|  0.00000  0.00000  3.00000 |
 ```
 
 ---
@@ -6442,17 +6442,17 @@ int main() {
 **Result:**
 ```
 Original Matrix A:
-| 4.00000  12.00000 -16.00000 |
-| 12.00000  37.00000 -43.00000 |
+|   4.00000  12.00000 -16.00000 |
+|  12.00000  37.00000 -43.00000 |
 | -16.00000 -43.00000  98.00000 |
 Orthogonal Matrix Q:
 |  0.19612  0.16948  0.96582 |
 |  0.58835  0.76762 -0.25416 |
 | -0.78446  0.61809  0.05083 |
 Upper Triangular Matrix R:
-| 20.39608   57.85426 -105.31436 |
-| 0.00000    3.85806   24.85307 |
-| 0.00000    0.00000    0.45750 |
+|   20.39608   57.85426 -105.31436 |
+|    0.00000    3.85806   24.85307 |
+|    0.00000    0.00000    0.45750 |
 ```
 
 ---
@@ -6475,12 +6475,12 @@ int main() {
 ```
 **Result:**
 ```
-Pascal Matrix : 
-| 1.00000  1.00000  1.00000  1.00000  1.00000 |
-| 1.00000  2.00000  3.00000  4.00000  5.00000 |
-| 1.00000  3.00000  6.00000 10.00000 15.00000 |
-| 1.00000  4.00000 10.00000 20.00000 35.00000 |
-| 1.00000  5.00000 15.00000 35.00000 70.00000 |
+Pascal Matrix :
+|  1.00000  1.00000  1.00000  1.00000  1.00000 |
+|  1.00000  2.00000  3.00000  4.00000  5.00000 |
+|  1.00000  3.00000  6.00000 10.00000 15.00000 |
+|  1.00000  4.00000 10.00000 20.00000 35.00000 |
+|  1.00000  5.00000 15.00000 35.00000 70.00000 |
 ```
 
 ---
@@ -6685,9 +6685,11 @@ int main() {
 **Result:**
 ```
 Companion Matrix : 
-|  0.00000 -0.66667 |
-|  1.00000 -0.33333 |
+| -2.00000 -3.00000 |
+|  1.00000  0.00000 |
 ```
+
+Its eigenvalues, `-1 ± 1.41421i`, are the roots of `x² + 2x + 3` (the same matrix as `scipy.linalg.companion([1, 2, 3])`).
 
 ---
 
@@ -8325,7 +8327,7 @@ corrcoef(M) =
 
 ## Example 73 : `matrix_eig` and `matrix_svd`
 
-The C analogues of NumPy's `numpy.linalg.eig` (for a symmetric matrix → real eigenvalues, via Jacobi) and `numpy.linalg.svd` (thin SVD, via the eigen-decomposition of `AᵀA`). Eigenvalues come back ascending and singular values descending, matching NumPy. (Eigen/singular *vectors* are unique only up to sign, so this example prints the values, which are unique.)
+The C analogues of NumPy's `numpy.linalg.eig` (for a symmetric matrix → real eigenvalues, via Jacobi) and `numpy.linalg.svd` (thin SVD, via one-sided Jacobi). Eigenvalues come back ascending and singular values descending, matching NumPy. (Eigen/singular *vectors* are unique only up to sign, so this example prints the values, which are unique.)
 
 ```c
 #include "matrix/matrix.h"

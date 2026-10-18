@@ -16,6 +16,10 @@ The Vector library allows for creating dynamic arrays that can resize automatica
 - **Memory Efficiency:** Elements live in a single contiguous buffer grown with `realloc` (doubling), so peak memory tracks the live element count — the same storage model as C++ `std::vector`. Scales cleanly to 10–100 million elements.
 - **Generic Container:** Can store elements of any data type, including structures.
 - **Various Utility Functions:** Functions for comparison, swapping, and checking the state of the vector.
+- **std::vector speed in hot loops:** `push_back`, `at`, `size`, `data`, `front` / `back`, `pop_back` and `begin` / `end` are `static inline` in the header, so a loop compiles into the caller exactly like `std::vector`. Typed macros (`VECTOR_PUSH_BACK`, `VECTOR_AT`, `VECTOR_FOREACH`, ...) remove the remaining type-erasure cost where the element type is known. See [Performance compared with `std::vector`](#performance-compared-with-stdvector).
+- **Everything `std::vector` has, plus more:** range insert / assign / append, fill, C++20 `erase_if` / `erase`, find, sort, binary search, unique, reverse, slices and copies — and things `std::vector` cannot do: adopt a `malloc`'d buffer (`vector_from_buffer`), hand its buffer over (`vector_release`), append uninitialised elements to fill in place (`vector_append_uninit`), O(1) unordered removal (`vector_swap_remove`).
+- **A sort faster than `std::sort`:** `VECTOR_DEFINE_SORT` generates a pattern-defeating quicksort for your element type with the comparison inlined — about 2x faster than `std::sort` on random data.
+- **Alias-safe:** every function that takes an element or a range may be given a pointer into the same vector (`v.push_back(v[0])`, appending a vector to itself, ...), even when the call reallocates.
 
 ## Installation and Compilation
 
@@ -44,6 +48,20 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
+### `void vector_set_compare(Vector* vec, VectorCompareFunc compare)`
+
+**Purpose**: Sets the element comparator (`int (*)(const void*, const void*)`, qsort convention) used by `vector_is_equal`, `vector_is_less` and the other comparisons. Without a comparator each element's bytes are compared with `memcmp`: fine for equality of plain data and for ordering byte-like elements (`char`, `unsigned char`), but not the numeric order of `int`, negative numbers or `double` (on little-endian `{256}` would sort before `{1}`, and `0.0` would not equal `-0.0`). When only one of the two vectors has a comparator, that one is used. Vectors with different element sizes are never equal and never ordered.
+
+**Parameters**:
+- `vec`: The vector (NULL is ignored).
+- `compare`: The comparator, or `NULL` for byte comparison.
+
+**Return Value**: None.
+
+**Usage Case**: Call once after `vector_create` when the vector will be compared with the relational functions.
+
+---
+
 ### `bool vector_is_equal(const Vector* vec1, const Vector* vec2)`
 
 **Purpose**: Compares two vectors and checks if they are equal in terms of both size and content.
@@ -52,7 +70,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `vec1`: The first vector to compare.
 - `vec2`: The second vector to compare.
 
-**Return Value**: `true` if both vectors have identical elements in the same order, otherwise `false`.
+**Return Value**: `true` if both vectors have equal elements in the same order (per the comparator set with `vector_set_compare`, or byte for byte without one), otherwise `false`.
 
 **Usage Case**: Use when you need to verify that two vectors hold the same sequence of elements.
 
@@ -60,7 +78,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### `bool vector_is_less(const Vector* vec1, const Vector* vec2)`
 
-**Purpose**: Checks if the first vector is lexicographically less than the second vector.
+**Purpose**: Checks if the first vector is lexicographically less than the second vector, comparing elements with the comparator set by `vector_set_compare` (or their bytes without one, which is not the numeric order of `int`/`double`).
 
 **Parameters**:
 - `vec1`: The first vector to compare.
@@ -128,7 +146,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `bool vector_is_empty(Vector* vec)`
+### `bool vector_is_empty(const Vector* vec)`
 
 **Purpose**: Checks if the vector is empty, meaning it contains no elements.
 
@@ -163,7 +181,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - `vec`: The vector to which the item is added.
 - `item`: A pointer to the item being added to the vector.
 
-**Return Value**: `true` if the operation succeeds, otherwise `false` (e.g., memory allocation failure).
+**Return Value**: `true` if the operation succeeds, otherwise `false` (e.g., memory allocation failure). A `NULL` `item` is rejected (`false`, nothing added) here and in `vector_emplace_back`; `vector_insert`, `vector_assign` and `vector_emplace` ignore a `NULL` item (they used to copy from it and crash).
 
 **Usage Case**: Use to append elements one at a time to the end of the vector.
 
@@ -214,15 +232,15 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `void vector_resize(Vector* vec, size_t size)`
+### `bool vector_resize(Vector* vec, size_t size)`
 
-**Purpose**: Resizes the vector to contain the specified number of elements. If the new size is larger, additional elements will be zero-initialized.
+**Purpose**: Resizes the vector to contain the specified number of elements. If the new size is larger, additional elements will be zero-initialized. Growing uses the same doubling policy as `vector_push_back`, so calling `resize(size + 1)` in a loop does not reallocate every time (it used to grow to exactly `size`, one realloc per call).
 
 **Parameters**:
 - `vec`: The vector to resize.
 - `size`: The new size of the vector.
 
-**Return Value**: None.
+**Return Value**: `true` on success; `false` if `vec` is NULL or memory could not be allocated (the vector is then unchanged). It used to return nothing and fail silently.
 
 **Usage Case**: Use to explicitly set the number of elements, growing or shrinking the vector.
 
@@ -358,13 +376,13 @@ The documentation includes detailed descriptions of all the functions provided b
 **Parameters**:
 - `vec`: The vector to access.
 
-**Return Value**: A constant pointer to one before the first element (reverse-end sentinel).
+**Return Value**: A constant pointer to one before the first element (reverse-end sentinel), or `NULL` for an empty vector — the same value `vector_crbegin` returns then, so a `for (it = crbegin; it != crend; --it)` loop runs zero times. It is only a sentinel: never dereference it.
 
 **Usage Case**: Use as the end bound for read-only reverse iteration.
 
 ---
 
-### `void* vector_begin(Vector* vec)`
+### `void* vector_begin(const Vector* vec)`
 
 **Purpose**: Returns a pointer to the first element in the vector.
 
@@ -377,7 +395,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `void* vector_end(Vector* vec)`
+### `void* vector_end(const Vector* vec)`
 
 **Purpose**: Returns a pointer to the element following the last element in the vector.
 
@@ -403,7 +421,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `void* vector_front(Vector* vec)`
+### `void* vector_front(const Vector* vec)`
 
 **Purpose**: Returns a pointer to the first element in the vector.
 
@@ -416,7 +434,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `void* vector_back(Vector* vec)`
+### `void* vector_back(const Vector* vec)`
 
 **Purpose**: Returns a pointer to the last element in the vector.
 
@@ -429,7 +447,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `void* vector_data(Vector* vec)`
+### `void* vector_data(const Vector* vec)`
 
 **Purpose**: Returns a pointer to the underlying array used by the vector.
 
@@ -476,7 +494,7 @@ The documentation includes detailed descriptions of all the functions provided b
 **Parameters**:
 - `vec`: The vector to access.
 
-**Return Value**: A pointer to one before the first element (reverse-end sentinel).
+**Return Value**: A pointer to one before the first element (reverse-end sentinel), or `NULL` for an empty vector — the same value `vector_rbegin` returns then, so a `for (it = rbegin; it != rend; --it)` loop runs zero times (it used to run once and dereference NULL). Never dereference it.
 
 **Usage Case**: Use as the end bound for reverse iteration.
 
@@ -495,7 +513,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `size_t vector_capacity(Vector* vec)`
+### `size_t vector_capacity(const Vector* vec)`
 
 **Purpose**: Returns the total capacity of the vector (the number of elements it can store without resizing).
 
@@ -518,6 +536,485 @@ The documentation includes detailed descriptions of all the functions provided b
 **Return Value**: The maximum number of elements the vector can hold.
 
 **Usage Case**: Use to guard against requesting sizes larger than what the system can support.
+
+---
+
+### `size_t vector_item_size(const Vector* vec)`
+
+**Purpose**: Returns the size in bytes of one element (the `itemSize` the vector was created with).
+
+**Parameters**:
+- `vec`: The vector (may be `NULL`, which gives 0).
+
+**Return Value**: The element size in bytes.
+
+**Usage Case**: Generic code that receives a `Vector*` and needs to step through `vector_data` by hand.
+
+---
+
+### `Vector* vector_create_with_capacity(size_t itemSize, size_t capacity)`
+
+**Purpose**: Creates an empty vector with room for `capacity` elements. `capacity == 0` allocates no element buffer at all (it is created by the first insertion), which is what an empty `std::vector` costs; `vector_create` reserves 32 elements.
+
+**Parameters**:
+- `itemSize`: Size of one element in bytes (> 0).
+- `capacity`: Number of elements to reserve.
+
+**Return Value**: The new vector, or `NULL` for `itemSize == 0` / out of memory.
+
+**Usage Case**: When the final size is known in advance (one allocation, no regrowth), or for many small or often-empty vectors.
+
+---
+
+### `Vector* vector_from_array(size_t itemSize, const void* data, size_t count)`
+
+**Purpose**: Creates a vector holding a copy of `count` elements from `data` (the range constructor of `std::vector`), with one allocation and one copy.
+
+**Parameters**:
+- `itemSize`: Size of one element in bytes.
+- `data`: The elements to copy (may be `NULL` only when `count` is 0).
+- `count`: Number of elements.
+
+**Return Value**: The new vector (capacity == `count`), or `NULL` on invalid arguments / out of memory.
+
+**Usage Case**: Turning a C array or a buffer received from another API into a vector.
+
+---
+
+### `Vector* vector_from_buffer(void* buffer, size_t itemSize, size_t count, size_t capacity)`
+
+**Purpose**: Wraps an existing `malloc`'d buffer in a vector **without copying** it. The vector takes ownership: it reallocs and frees the buffer from then on. `std::vector` cannot adopt a buffer.
+
+**Parameters**:
+- `buffer`: Memory from `malloc` / `calloc` / `realloc` holding `count` elements with room for `capacity` (`NULL` only when `capacity` is 0).
+- `itemSize`: Size of one element (> 0).
+- `count`: Number of valid elements (`<= capacity`).
+- `capacity`: Number of elements the buffer can hold.
+
+**Return Value**: The vector, or `NULL` for invalid arguments / out of memory — the buffer then still belongs to the caller.
+
+**Usage Case**: Taking over an array produced by a parser, a file reader or `vector_release`.
+
+---
+
+### `Vector* vector_copy(const Vector* src)`
+
+**Purpose**: Deep copy: a new vector with the same elements, element size and comparator (the copy constructor of `std::vector`; capacity == size).
+
+**Parameters**:
+- `src`: The vector to copy.
+
+**Return Value**: The copy, or `NULL` for a `NULL` source / out of memory.
+
+**Usage Case**: Keeping a snapshot before modifying a vector.
+
+---
+
+### `Vector* vector_slice(const Vector* vec, size_t pos, size_t count)`
+
+**Purpose**: Creates a new vector with a copy of the elements `[pos, pos + count)`.
+
+**Parameters**:
+- `vec`: The source vector.
+- `pos`: First element of the range.
+- `count`: Number of elements.
+
+**Return Value**: The new vector (with the source's comparator), or `NULL` when the range does not lie inside the vector or memory runs out.
+
+**Usage Case**: Splitting work into chunks, or taking a sub-range of results.
+
+---
+
+### `void* vector_release(Vector* vec, size_t* count)`
+
+**Purpose**: Hands the element buffer to the caller, who must `free()` it. The vector stays valid and becomes empty, with no buffer. A zero-copy way to pass the elements to an API that takes ownership of an array; `std::vector` cannot release its storage.
+
+**Parameters**:
+- `vec`: The vector.
+- `count`: Receives the number of elements in the returned buffer (may be `NULL`).
+
+**Return Value**: The buffer (`NULL` when the vector had none or `vec` is `NULL`).
+
+**Usage Case**: Returning the result of a computation as a plain array, or moving it into another vector with `vector_from_buffer`.
+
+---
+
+### `bool vector_resize_with(Vector* vec, size_t size, const void* fill)`
+
+**Purpose**: Like `vector_resize`, but new elements are copies of `*fill` (`std::vector::resize(n, value)`). `fill` may point into the vector; `NULL` zero-fills like `vector_resize`.
+
+**Parameters**:
+- `vec`: The vector.
+- `size`: The new number of elements.
+- `fill`: The value for new elements.
+
+**Return Value**: `true` on success; `false` (vector unchanged) for `NULL` / out of memory.
+
+**Usage Case**: Growing a vector to a fixed size with a default value such as -1.
+
+---
+
+### `void* vector_emplace_back_slot(Vector* vec)`
+
+**Purpose**: Appends a new zero-filled element and returns a pointer to it, so a large element can be built in place instead of being built elsewhere and copied in (the C form of `emplace_back`).
+
+**Parameters**:
+- `vec`: The vector.
+
+**Return Value**: The new last element (valid until the vector grows again), or `NULL` for a `NULL` vector / out of memory.
+
+**Usage Case**: Appending big structs field by field.
+
+---
+
+### `bool vector_insert_range(Vector* vec, size_t pos, const void* data, size_t count)`
+
+**Purpose**: Inserts copies of `count` elements from `data` before position `pos` with a single shift (`std::vector::insert(pos, first, last)`). `data` may point into the vector.
+
+**Parameters**:
+- `vec`: The vector.
+- `pos`: Insert position (`0 .. size`).
+- `data`: The elements to insert.
+- `count`: Number of elements.
+
+**Return Value**: `true` on success (also for `count == 0`); `false` (vector unchanged) for `NULL` arguments, `pos > size` or out of memory.
+
+**Usage Case**: Inserting a block of elements: inserting them one at a time with `vector_insert` shifts the tail once per element.
+
+---
+
+### `bool vector_insert_fill(Vector* vec, size_t pos, size_t count, const void* item)`
+
+**Purpose**: Inserts `count` copies of `*item` before position `pos` (`std::vector::insert(pos, n, value)`). `item` may be one of the vector's own elements.
+
+**Parameters**:
+- `vec`: The vector.
+- `pos`: Insert position (`0 .. size`).
+- `count`: Number of copies.
+- `item`: The value to insert.
+
+**Return Value**: `true` on success (also for `count == 0`); `false` (vector unchanged) otherwise.
+
+**Usage Case**: Padding a sequence in the middle.
+
+---
+
+### `bool vector_assign_range(Vector* vec, const void* data, size_t count)`
+
+**Purpose**: Replaces the contents with copies of `count` elements from `data` (`std::vector::assign(first, last)`). `data` may point into the vector (keeping a sub-range).
+
+**Parameters**:
+- `vec`: The vector.
+- `data`: The new elements.
+- `count`: Number of elements.
+
+**Return Value**: `true` on success; `false` (vector unchanged) for `NULL` arguments / out of memory.
+
+**Usage Case**: Reusing one vector (and its buffer) for a series of inputs.
+
+---
+
+### `bool vector_assign_fill(Vector* vec, size_t count, const void* item)`
+
+**Purpose**: Replaces the contents with `count` copies of `*item` (`std::vector::assign(n, value)`). `item` may be one of the vector's elements. An all-zero value into a new buffer uses `calloc` (no fill pass); a value whose bytes are all equal becomes one `memset`.
+
+**Parameters**:
+- `vec`: The vector.
+- `count`: The new number of elements.
+- `item`: The value.
+
+**Return Value**: `true` on success; `false` (vector unchanged) for `NULL` arguments / out of memory.
+
+**Usage Case**: Initialising a table of counters or flags.
+
+---
+
+### `void vector_fill(Vector* vec, const void* item)`
+
+**Purpose**: Overwrites every element with a copy of `*item` (`std::fill` over the vector); `item` may be one of the vector's elements.
+
+**Parameters**:
+- `vec`: The vector.
+- `item`: The value.
+
+**Return Value**: None.
+
+**Usage Case**: Resetting all elements without changing the size.
+
+---
+
+### `bool vector_append(Vector* vec, const void* data, size_t count)`
+
+**Purpose**: Appends copies of `count` elements from `data` with one growth step and one copy (`insert(end(), first, last)` / C++23 `append_range`). `data` may point into the vector: `vector_append(v, vector_data(v), vector_size(v))` doubles it.
+
+**Parameters**:
+- `vec`: The vector.
+- `data`: The elements to append.
+- `count`: Number of elements.
+
+**Return Value**: `true` on success (also for `count == 0`); `false` (vector unchanged) for `NULL` arguments / out of memory.
+
+**Usage Case**: Concatenating arrays; much faster than a loop of `vector_push_back`.
+
+---
+
+### `void* vector_append_uninit(Vector* vec, size_t count)`
+
+**Purpose**: Adds `count` elements at the end **without initialising them** and returns a pointer to the first, to be filled in place. Filling a vector this way runs at the speed of a plain array loop; `std::vector` has no equivalent (`resize` first writes every element, C++23 `resize_and_overwrite` exists only for `std::string`). The typed form is `VECTOR_APPEND_UNINIT(v, T, n)`.
+
+**Parameters**:
+- `vec`: The vector.
+- `count`: Number of new elements.
+
+**Return Value**: The first new element (valid until the vector grows again), or `NULL` for a `NULL` vector / out of memory (vector unchanged). For `count == 0` the end of the elements is returned (`NULL` when the vector has no buffer yet).
+
+**Usage Case**: Generating or decoding many elements: write them straight into the vector.
+
+---
+
+### `bool vector_append_vector(Vector* dst, const Vector* src)`
+
+**Purpose**: Appends all elements of `src` to `dst`; `src` may be `dst` itself.
+
+**Parameters**:
+- `dst`: The vector to extend.
+- `src`: The vector to copy from (same element size).
+
+**Return Value**: `true` on success; `false` for `NULL` vectors, different element sizes or out of memory (`dst` unchanged).
+
+**Usage Case**: Merging partial results.
+
+---
+
+### `bool vector_swap_remove(Vector* vec, size_t pos)`
+
+**Purpose**: Removes the element at `pos` in O(1) by moving the last element into its place. The order of the elements is not kept; `std::vector::erase` is O(n).
+
+**Parameters**:
+- `vec`: The vector.
+- `pos`: Index of the element to remove.
+
+**Return Value**: `true` when an element was removed; `false` for `NULL` / `pos >= size`.
+
+**Usage Case**: Unordered collections such as particle or entity lists, where removing from the middle must be cheap.
+
+---
+
+### `bool vector_pop_back_value(Vector* vec, void* out)`
+
+**Purpose**: Removes the last element, copying it to `out` first. Unlike `vector_pop_back` (which returns a pointer into the buffer that the next insertion overwrites), the value is safe to keep.
+
+**Parameters**:
+- `vec`: The vector.
+- `out`: Receives the element (may be `NULL` to just drop it).
+
+**Return Value**: `true` when an element was removed; `false` for a `NULL` or empty vector.
+
+**Usage Case**: Using the vector as a stack: `while (vector_pop_back_value(v, &x)) { ... }`.
+
+---
+
+### `size_t vector_erase_if(Vector* vec, VectorPredicateFunc pred, void* ctx)`
+
+**Purpose**: Removes every element for which `pred(element, ctx)` returns `true`, keeping the order of the rest, in one pass (C++20 `std::erase_if`). With a known element type, `VECTOR_ERASE_IF` does the same with the condition inlined.
+
+**Parameters**:
+- `vec`: The vector.
+- `pred`: `bool pred(const void* item, void* ctx)`.
+- `ctx`: Passed to `pred` unchanged (e.g. a threshold).
+
+**Return Value**: The number of elements removed.
+
+**Usage Case**: Filtering: calling `vector_erase` for each element instead is O(n²).
+
+---
+
+### `size_t vector_remove_value(Vector* vec, const void* value)`
+
+**Purpose**: Removes every element equal to `*value` (C++20 `std::erase`), using the comparator from `vector_set_compare` or, without one, the bytes (a fast specialised scan for 1/2/4/8-byte elements). `value` may be one of the vector's elements.
+
+**Parameters**:
+- `vec`: The vector.
+- `value`: The value to remove.
+
+**Return Value**: The number of elements removed.
+
+**Usage Case**: Removing all occurrences of an ID or a sentinel.
+
+---
+
+### `size_t vector_find(const Vector* vec, const void* value)`
+
+**Purpose**: Linear search for the first element equal to `*value` (comparator from `vector_set_compare`, else the bytes; byte comparison of 1/2/4/8-byte elements is unrolled like `std::find` and about 6x faster than a `memcmp` per element).
+
+**Parameters**:
+- `vec`: The vector.
+- `value`: The value to look for.
+
+**Return Value**: Its index, or `VECTOR_NPOS`.
+
+**Usage Case**: Membership tests and lookups in small or unsorted vectors.
+
+---
+
+### `bool vector_contains(const Vector* vec, const void* value)`
+
+**Purpose**: `true` when an element equal to `*value` is present (see `vector_find`).
+
+**Parameters**:
+- `vec`: The vector.
+- `value`: The value to look for.
+
+**Return Value**: `true` if found.
+
+**Usage Case**: Avoiding duplicates before a push.
+
+---
+
+### `bool vector_sort(Vector* vec, VectorCompareFunc compare)`
+
+**Purpose**: Sorts the elements in ascending order of `compare` (a qsort-style comparator; `NULL` uses the one from `vector_set_compare`). Not stable. For speed, `VECTOR_DEFINE_SORT` generates a sort for the element type that is about 4x faster.
+
+**Parameters**:
+- `vec`: The vector.
+- `compare`: `int compare(const void* a, const void* b)`.
+
+**Return Value**: `true` when sorted; `false` for a `NULL` vector or when no comparator is available.
+
+**Usage Case**: Sorting with a runtime-chosen comparator.
+
+---
+
+### `size_t vector_binary_search(const Vector* vec, const void* value, VectorCompareFunc compare)`
+
+**Purpose**: Binary search in a vector sorted ascending by `compare` (`NULL`: the comparator from `vector_set_compare`); O(log n).
+
+**Parameters**:
+- `vec`: The sorted vector.
+- `value`: The value to look for.
+- `compare`: The comparator the vector is sorted by.
+
+**Return Value**: The index of the **first** element equal to `*value` (like `std::lower_bound` followed by a check), or `VECTOR_NPOS` (also when no comparator is available).
+
+**Usage Case**: Fast lookups in a sorted vector.
+
+---
+
+### `void vector_reverse(Vector* vec)`
+
+**Purpose**: Reverses the order of the elements in place (`std::reverse`).
+
+**Parameters**:
+- `vec`: The vector.
+
+**Return Value**: None.
+
+**Usage Case**: Turning an ascending sort into a descending one.
+
+---
+
+### `size_t vector_unique(Vector* vec)`
+
+**Purpose**: Removes consecutive duplicate elements, keeping the first of each run (`std::unique` followed by `erase`); sort first to remove all duplicates. Equality: the comparator from `vector_set_compare`, else the bytes.
+
+**Parameters**:
+- `vec`: The vector.
+
+**Return Value**: The number of elements removed.
+
+**Usage Case**: Deduplicating a sorted list.
+
+---
+
+### `void vector_for_each(Vector* vec, VectorVisitFunc fn, void* ctx)`
+
+**Purpose**: Calls `fn(element, ctx)` for every element, front to back.
+
+**Parameters**:
+- `vec`: The vector.
+- `fn`: `void fn(void* item, void* ctx)`; it may modify the element.
+- `ctx`: Passed to `fn` unchanged.
+
+**Return Value**: None.
+
+**Usage Case**: Applying an operation to every element through a callback. With a known element type, `VECTOR_FOREACH` is the inlined form.
+
+---
+
+## Typed fast paths (macros)
+
+The functions above work with `void*` and a runtime element size. That costs a little in tight loops: the element copy goes through `memcpy`, which may alias anything, so the compiler must reload the vector's fields after every store. These macros take the element **type** and use typed loads and stores, so the compiler can keep everything in registers, exactly like `std::vector<T>`. Use them where the element type is known.
+
+| Macro | Meaning |
+| --- | --- |
+| `VECTOR_PUSH_BACK(v, T, value)` | append `value`; `true`, or `false` when memory runs out |
+| `VECTOR_AT(v, T, i)` | element `i` as an lvalue, unchecked (`operator[]`) |
+| `VECTOR_DATA(v, T)` | `T*` to the buffer |
+| `VECTOR_FRONT(v, T)` / `VECTOR_BACK(v, T)` | first / last element (lvalue, unchecked) |
+| `VECTOR_POP_BACK(v, T)` | remove and return the last element (unchecked) |
+| `VECTOR_APPEND_UNINIT(v, T, n)` | `T*` to `n` new uninitialised elements at the end (`NULL` when memory runs out) |
+| `VECTOR_FOREACH(v, T, p)` | `for (T* p ...)` over every element |
+| `VECTOR_ERASE_IF(v, T, x, cond)` | remove every element `x` for which `cond` is true, keeping the order |
+| `VECTOR_DEFINE_SORT(name, T, LESS)` | defines `name(Vector*)` and `name_array(T*, size_t)`: a typed sort (below) |
+
+Rules: `v` is evaluated more than once (pass a plain variable), `T` must be the element type the vector was created with (`sizeof(T) == itemSize`), and `value` / `cond` are evaluated once per call / per element.
+
+```c
+Vector* v = vector_create(sizeof(int));
+for (int i = 0; i < 1000; i++) {
+    VECTOR_PUSH_BACK(v, int, i * i);
+}
+long long sum = 0;
+VECTOR_FOREACH(v, int, p) {
+    sum += *p;
+}
+VECTOR_ERASE_IF(v, int, x, x % 2 != 0);     /* keep the even squares */
+```
+
+### Sorting with `VECTOR_DEFINE_SORT`
+
+`vector_sort` goes through `qsort` and calls the comparator through a function pointer for every comparison. `VECTOR_DEFINE_SORT(name, T, LESS)` instead generates a sort for the element type, at file scope, with the comparison inlined — the way `std::sort` inlines a lambda:
+
+```c
+typedef struct { const char* name; int score; } Player;
+#define BY_SCORE(a, b) ((a).score < (b).score)
+VECTOR_DEFINE_SORT(sort_players, Player, BY_SCORE)   /* sort_players(Vector*), sort_players_array(Player*, size_t) */
+
+#define INT_LESS(a, b) ((a) < (b))
+VECTOR_DEFINE_SORT(sort_ints, int, INT_LESS)
+```
+
+`LESS(a, b)` receives two elements (lvalues of type `T`) and is true when `a` goes before `b`; it must be a strict weak order, as for `std::sort`. The algorithm is **pattern-defeating quicksort** (pdqsort, by Orson Peters — the unstable sort of Rust and Go): introsort with branchless block partitioning, a ninther pivot, pattern breaking, special handling of runs of equal elements and an early exit for sorted input. It is O(n log n) in the worst case (heapsort fallback), O(n) for sorted, reversed or all-equal input, not stable, and allocates nothing.
+
+---
+
+## Performance compared with `std::vector`
+
+Same workloads in C and C++ (one non-inlined function per workload, identical data and checksums), MinGW-w64 GCC / G++ 14.2 `-O2`, Windows; best of 15 runs, minimum over 3 interleaved rounds. `C ÷ C++` below 1.0 means the C vector is faster. "generic" is the `void*` API, "typed" the macros above.
+
+| Workload (`int` unless noted) | C | C++ `std::vector` | C ÷ C++ |
+| --- | --: | --: | :--: |
+| `push_back` 10M, generic / typed | 0.037 / 0.031 s | 0.029 s | 1.29 / 1.08 |
+| `reserve` + `push_back` 10M, generic / typed | 0.021 / 0.015 s | 0.013 s | 1.72 / 1.20 |
+| fill 10M computed values (`VECTOR_APPEND_UNINIT` vs `resize` + `[]`) | **0.0099 s** | 0.0122 s | **0.82** |
+| indexed read 10M, generic / `VECTOR_FOREACH` | 0.0046 s | 0.0046 s | 1.00 |
+| `push_back` 2M 64-byte structs | 0.065 s | 0.064 s | 1.00 |
+| insert at front 30k / erase at front 30k | 0.038 / 0.037 s | 0.038 / 0.038 s | 0.99 / 0.98 |
+| copy 10M / append a 10M range | 0.0089 / 0.0091 s | 0.0088 / 0.0091 s | 1.02 / 1.00 |
+| `pop_back` 10M, generic / typed | 0.0140 / 0.0137 s | 0.0140 s | 1.00 / 0.98 |
+| `resize` 10M (zero-filled) | **0.0060 s** | 0.0077 s | **0.78** |
+| `assign` 10M copies | **0.0086 s** | 0.0089 s | **0.97** |
+| `erase_if` half of 10M, callback / `VECTOR_ERASE_IF` | 0.030 / 0.019 s | 0.019 s | 1.58 / 1.00 |
+| 100k vectors of 16 elements | **0.010 s** | 0.024 s | **0.43** |
+| linear find x20 in 10M | **0.063 s** | 0.071 s | **0.89** |
+| sort 5M random ints (`VECTOR_DEFINE_SORT` vs `std::sort`) | **0.157 s** | 0.317 s | **0.50** |
+| sort 5M ints with 10 distinct values | **0.025 s** | 0.102 s | **0.24** |
+| sort 5M sorted / reversed ints | **0.0044 / 0.010 s** | 0.051 / 0.038 s | **0.09 / 0.27** |
+| sort 500k 64-byte structs by key | **0.032 s** | 0.040 s | **0.80** |
+
+- **Faster than `std::vector`:** zero-initialised growth (`resize`, `assign_fill` with zero) comes from `calloc` — the operating system hands out pages that are already zero, so there is no fill pass; `VECTOR_APPEND_UNINIT` lets you write elements in place without the zero-fill that `std::vector::resize` must do; many small vectors are cheaper because the first allocation already holds 32 elements (`std::vector` reallocates at 1, 2, 4, 8 and 16); `vector_find` / `vector_remove_value` use unrolled integer scans; and the generated sort is pdqsort, which beats libstdc++'s introsort on every input above. The one measured sort input where `std::sort` is faster is an interleaved ascending/descending ("organ pipe") sequence: 0.070 s against 0.037 s.
+- **At parity:** reads, copies, appends, insert / erase, pop, and pushes of larger elements.
+- **Still slower — per-element `push_back` into a growing vector.** `std::vector` keeps its begin / end pointers in registers across the whole loop. The C `Vector` is a heap object with public fields whose growth function is out of line, so every push must store the new size back to memory and reload the buffer pointer: about 8–20% with the typed macro, more with the generic API (a runtime element size and a `memcpy` that may alias the vector's own fields). For bulk work use `vector_append`, `vector_append_uninit` / `VECTOR_APPEND_UNINIT` or `vector_insert_range`, which are as fast as or faster than `std::vector`. A callback-based `vector_erase_if` pays one indirect call per element; `VECTOR_ERASE_IF` inlines the condition and is at parity.
 
 ---
 
@@ -1854,6 +2351,299 @@ Count:  8
 Mean:   5.0000
 Median: 4.5000
 Pstdev: 2.0000
+```
+
+---
+
+## Example 32 : bulk operations — `append`, `insert_range`, `insert_fill`, `erase_if`, `remove_value`, `find`
+
+Each of these does its work with one growth step and one pass instead of a loop of single-element calls.
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+
+static bool greater_than(const void* item, void* ctx) {
+    return *(const int*)item > *(const int*)ctx;
+}
+
+static void print_ints(const char* label, const Vector* v) {
+    fmt_printf("%s:", label);
+    for (size_t i = 0; i < vector_size(v); ++i) {
+        fmt_printf(" %d", *(const int*)vector_at(v, i));
+    }
+    fmt_printf("\n");
+}
+
+int main(void) {
+    int first[] = {1, 2, 3, 4};
+    Vector* v = vector_from_array(sizeof(int), first, 4);
+    print_ints("from_array", v);
+
+    int more[] = {10, 20, 30};
+    vector_append(v, more, 3);
+    print_ints("append", v);
+
+    int mid[] = {7, 8};
+    vector_insert_range(v, 2, mid, 2);
+    print_ints("insert_range at 2", v);
+
+    int zero = 0;
+    vector_insert_fill(v, 0, 3, &zero);
+    print_ints("insert_fill 3 zeros", v);
+
+    vector_append(v, vector_data(v), vector_size(v));   /* the source may be the vector itself */
+    fmt_printf("appended to itself: %zu elements\n", vector_size(v));
+
+    int limit = 8;
+    size_t removed = vector_erase_if(v, greater_than, &limit);
+    fmt_printf("erase_if > 8 removed %zu\n", removed);
+    print_ints("now", v);
+
+    removed = vector_remove_value(v, &zero);
+    fmt_printf("remove_value 0 removed %zu\n", removed);
+    print_ints("now", v);
+
+    int key = 7;
+    fmt_printf("find 7 -> index %zu, contains 99: %s\n", vector_find(v, &key),
+               vector_contains(v, &(int){99}) ? "yes" : "no");
+
+    vector_deallocate(v);
+    return 0;
+}
+```
+**Result**
+```
+from_array: 1 2 3 4
+append: 1 2 3 4 10 20 30
+insert_range at 2: 1 2 7 8 3 4 10 20 30
+insert_fill 3 zeros: 0 0 0 1 2 7 8 3 4 10 20 30
+appended to itself: 24 elements
+erase_if > 8 removed 6
+now: 0 0 0 1 2 7 8 3 4 0 0 0 1 2 7 8 3 4
+remove_value 0 removed 6
+now: 1 2 7 8 3 4 1 2 7 8 3 4
+find 7 -> index 2, contains 99: no
+```
+
+---
+
+## Example 33 : typed macros — `VECTOR_PUSH_BACK`, `VECTOR_FOREACH`, `VECTOR_ERASE_IF`, `VECTOR_APPEND_UNINIT`
+
+With the element type known, the macros compile to the same code as `std::vector<int>`.
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    Vector* v = vector_create(sizeof(int));
+    for (int i = 1; i <= 10; i++) {
+        VECTOR_PUSH_BACK(v, int, i * i);
+    }
+
+    long sum = 0;
+    VECTOR_FOREACH(v, int, p) {
+        sum += *p;
+    }
+    fmt_printf("10 squares, sum %ld, last %d\n", sum, VECTOR_BACK(v, int));
+
+    VECTOR_ERASE_IF(v, int, x, x % 2 != 0);       /* keep the even squares */
+    fmt_printf("even squares:");
+    VECTOR_FOREACH(v, int, p) {
+        fmt_printf(" %d", *p);
+    }
+    fmt_printf("\n");
+
+    /* five new elements, written in place */
+    int* tail = VECTOR_APPEND_UNINIT(v, int, 5);
+    if (tail) {
+        for (int i = 0; i < 5; i++) {
+            tail[i] = -i;
+        }
+    }
+    VECTOR_AT(v, int, 0) = 1000;                  /* an lvalue, like operator[] */
+    int popped = VECTOR_POP_BACK(v, int);
+    fmt_printf("popped %d, size %zu, first %d\n", popped, vector_size(v), VECTOR_FRONT(v, int));
+
+    vector_deallocate(v);
+    return 0;
+}
+```
+**Result**
+```
+10 squares, sum 385, last 100
+even squares: 4 16 36 64 100
+popped -4, size 9, first 1000
+```
+
+---
+
+## Example 34 : sort structs with `VECTOR_DEFINE_SORT`, then `vector_binary_search` and `vector_unique`
+
+`VECTOR_DEFINE_SORT` generates a pdqsort for the element type; `vector_sort` takes a runtime comparator instead.
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+
+typedef struct {
+    const char* name;
+    int score;
+} Player;
+
+#define BY_SCORE(a, b) ((a).score < (b).score)
+VECTOR_DEFINE_SORT(sort_players, Player, BY_SCORE)
+
+#define INT_LESS(a, b) ((a) < (b))
+VECTOR_DEFINE_SORT(sort_ints, int, INT_LESS)
+
+static int compare_ints(const void* a, const void* b) {
+    int x = *(const int*)a, y = *(const int*)b;
+    return (x > y) - (x < y);
+}
+
+int main(void) {
+    Player players[] = {{"Sara", 72}, {"Omid", 95}, {"Leila", 64}, {"Reza", 88}, {"Nika", 79}};
+    Vector* team = vector_from_array(sizeof(Player), players, 5);
+    sort_players(team);
+    vector_reverse(team);                         /* highest score first */
+    VECTOR_FOREACH(team, Player, p) {
+        fmt_printf("%-6s %d\n", p->name, p->score);
+    }
+
+    int raw[] = {5, 3, 9, 3, 1, 5, 9, 9, 2};
+    Vector* nums = vector_from_array(sizeof(int), raw, 9);
+    sort_ints(nums);
+    int key = 9;
+    fmt_printf("first 9 at index %zu\n", vector_binary_search(nums, &key, compare_ints));
+    size_t dups = vector_unique(nums);
+    fmt_printf("removed %zu duplicates:", dups);
+    VECTOR_FOREACH(nums, int, p) {
+        fmt_printf(" %d", *p);
+    }
+    fmt_printf("\n");
+
+    vector_deallocate(team);
+    vector_deallocate(nums);
+    return 0;
+}
+```
+**Result**
+```
+Omid   95
+Reza   88
+Nika   79
+Sara   72
+Leila  64
+first 9 at index 6
+removed 4 duplicates: 1 2 3 5 9
+```
+
+---
+
+## Example 35 : ownership — `vector_release`, `vector_from_buffer`, `vector_copy`, `vector_slice`
+
+A vector can hand its buffer to the caller and adopt a `malloc`'d one, without copying the elements.
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include <stdlib.h>
+
+int main(void) {
+    double* samples = malloc(4 * sizeof(double));
+    if (!samples) {
+        return 1;
+    }
+    for (int i = 0; i < 4; i++) {
+        samples[i] = i * 1.5;
+    }
+
+    /* the vector takes the buffer over: no copy, and it frees it later */
+    Vector* v = vector_from_buffer(samples, sizeof(double), 4, 4);
+    double extra = 99.0;
+    vector_push_back(v, &extra);                  /* grows the adopted buffer */
+
+    Vector* copy = vector_copy(v);
+    Vector* middle = vector_slice(v, 1, 3);
+    fmt_printf("copy has %zu, slice [1, 4) = %.1f %.1f %.1f\n", vector_size(copy),
+               *(double*)vector_at(middle, 0), *(double*)vector_at(middle, 1), *(double*)vector_at(middle, 2));
+
+    /* hand the buffer back as a plain array */
+    size_t count = 0;
+    double* arr = vector_release(v, &count);
+    fmt_printf("released %zu doubles, last %.1f, vector now has %zu\n", count, arr[count - 1], vector_size(v));
+    free(arr);
+
+    vector_deallocate(v);
+    vector_deallocate(copy);
+    vector_deallocate(middle);
+    return 0;
+}
+```
+**Result**
+```
+copy has 5, slice [1, 4) = 1.5 3.0 4.5
+released 5 doubles, last 99.0, vector now has 0
+```
+
+---
+
+## Example 36 : `vector_swap_remove`, `vector_pop_back_value`, `vector_emplace_back_slot`, `vector_assign_fill`
+
+```c
+#include "vector/vector.h"
+#include "fmt/fmt.h"
+#include <string.h>
+
+typedef struct {
+    int id;
+    char tag[16];
+} Entity;
+
+int main(void) {
+    Vector* world = vector_create(sizeof(Entity));
+    for (int i = 0; i < 5; i++) {
+        Entity* e = vector_emplace_back_slot(world);   /* zero-filled, built in place */
+        e->id = i;
+        strcpy(e->tag, i % 2 ? "odd" : "even");
+    }
+
+    vector_swap_remove(world, 1);                 /* O(1): the last entity takes its place */
+    VECTOR_FOREACH(world, Entity, e) {
+        fmt_printf("[%d %s] ", e->id, e->tag);
+    }
+    fmt_printf("\n");
+
+    Entity last;
+    while (vector_pop_back_value(world, &last)) {
+        fmt_printf("popped %d\n", last.id);
+    }
+
+    Vector* counters = vector_create(sizeof(int));
+    int start = 3;
+    vector_assign_fill(counters, 6, &start);
+    int marker = -1;
+    vector_resize_with(counters, 8, &marker);
+    VECTOR_FOREACH(counters, int, c) {
+        fmt_printf("%d ", *c);
+    }
+    fmt_printf("\n");
+
+    vector_deallocate(world);
+    vector_deallocate(counters);
+    return 0;
+}
+```
+**Result**
+```
+[0 even] [4 even] [2 even] [3 odd]
+popped 3
+popped 2
+popped 4
+popped 0
+3 3 3 3 3 3 -1 -1
 ```
 
 ---

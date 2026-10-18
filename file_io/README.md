@@ -72,7 +72,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - `size`: Size in bytes of each element.
 - `count`: Number of elements to write.
 - `writer`: A pointer to the `FileWriter` structure.
-**Return Value**: The number of elements written, or `0` on error.
+**Return Value**: The number of elements written, or `0` on error. Exactly `size * count` bytes are taken from `buffer` in every mode (it need not be NUL-terminated); the Unicode path used to ignore them and write up to the first NUL.
 **Usage Case**: Use this as the primary raw write function for arbitrary binary or text data.
 
 ---
@@ -106,7 +106,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - `sizes`: Array of byte sizes corresponding to each buffer.
 - `count`: Number of buffers to write.
 **Return Value**: `true` if all buffers were written, `false` on any error.
-**Usage Case**: Use this to efficiently write multiple discontiguous data chunks in one operation.
+**Usage Case**: Use this to efficiently write multiple discontiguous data chunks in one operation. `sizes[i]` is the byte length of `buffers[i]`. Each buffer is written exactly as `file_writer_write(buffers[i], 1, sizes[i], writer)` would write it, so a batch and single writes can be mixed on one writer (`WRITE_TEXT` stays UTF-8; it used to be widened to UTF-16 on Windows).
 
 ---
 
@@ -126,7 +126,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - `src_writer`: A pointer to the source `FileWriter` structure.
 - `dest_writer`: A pointer to the destination `FileWriter` structure.
 **Return Value**: `true` on success, `false` if any read or write step fails.
-**Usage Case**: Use this to duplicate a file's content into another file using writer handles you already have open.
+**Usage Case**: Use this to duplicate a file's content into another file using writer handles you already have open. Both writers are flushed first, so data still buffered in `src_writer` is included. The bytes are appended verbatim through `dest_writer`'s own stream at its current position (after anything it has already written); the destination path is no longer reopened and truncated behind the open writer.
 
 ---
 
@@ -272,8 +272,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - `size`: Size in bytes of each element.
 - `count`: Number of elements to read.
 - `reader`: A pointer to the `FileReader` structure.
-**Return Value**: The number of elements read, or `0` on error.
-**Usage Case**: Use this as the primary raw read function for arbitrary binary or text data.
+**Return Value**: The number of elements read, or `0` on error. In `READ_UNICODE` mode: the number of UTF-8 bytes stored (NUL-terminated) for up to `count` characters; a character that does not fit stays for the next call, so nothing is lost.
+**Usage Case**: Use this as the primary raw read function for arbitrary binary or text data. In `READ_TEXT` mode the data is NUL-terminated when the read is shorter than requested (the terminator is written inside the `size * count` region you passed); a read that fills the whole region is not terminated, so pass `count = sizeof(buffer) - 1` when you need a C string.
 
 ---
 
@@ -283,8 +283,8 @@ This library provides a comprehensive set of functions for reading from and writ
 - `buffer`: Pointer to the destination buffer for the line.
 - `size`: Maximum number of characters to read, including the null terminator.
 - `reader`: A pointer to the `FileReader` structure.
-**Return Value**: `true` if a line was read, `false` at EOF or on error.
-**Usage Case**: Use this to process a text file one line at a time.
+**Return Value**: `true` if a line was read, `false` at EOF or on error. The line break is never included, in any mode (the Unicode path on Windows used to keep the `\n`).
+**Usage Case**: Use this to process a text file one line at a time. `READ_UNICODE` decodes the same way on every platform: a UTF-8 byte-order mark selects UTF-8, otherwise the file is UTF-16LE (with or without a BOM), and CR LF counts as one line break. On POSIX this no longer depends on the process locale.
 
 ---
 
@@ -293,8 +293,8 @@ This library provides a comprehensive set of functions for reading from and writ
 **Parameters**:
 - `reader`: A pointer to the `FileReader` structure.
 - `format`: A `scanf`-style format string followed by pointers to the variables to fill.
-**Return Value**: The number of items successfully matched, or `0` on error.
-**Usage Case**: Use this to parse structured data from a file in a known format without manual string splitting.
+**Return Value**: The number of items successfully matched, or `0` on error or when nothing matched (it used to return `(size_t)-1` then).
+**Usage Case**: Use this to parse structured data from a file in a known format without manual string splitting. It parses one line read with `file_reader_read_line`, so UTF-8 text in a `READ_TEXT` file arrives unchanged.
 
 ---
 
@@ -304,7 +304,7 @@ This library provides a comprehensive set of functions for reading from and writ
 - `reader`: A pointer to the `FileReader` structure.
 - `buffer`: Output parameter that receives a pointer to the allocated array of line strings.
 - `num_lines`: Number of lines to read.
-**Return Value**: `true` on success, `false` on error.
+**Return Value**: `true` on success. `false` on error or when the file has fewer than `num_lines` lines; `*buffer` is then `NULL` and nothing needs to be freed (the partial array used to leak). A read error ends the call instead of being retried forever.
 **Usage Case**: Use this to bulk-read a fixed number of lines into memory for batch processing.
 
 ---
@@ -394,7 +394,7 @@ int main() {
     FileWriter* writer = file_writer_open("./sources/test_uni.txt", WRITE_UNICODE);
     const char* unicodeContent = "سلام به همه دوستان.\n"; // Example in Persian
 
-    size_t unicodeWritten = file_writer_write((void*)unicodeContent, strlen(unicodeContent), sizeof(char), writer);
+    size_t unicodeWritten = file_writer_write((void*)unicodeContent, sizeof(char), strlen(unicodeContent), writer);
     fmt_printf("Written %zu item(s) to Unicode file.\n", unicodeWritten);
 
     file_writer_close(writer);
@@ -403,7 +403,7 @@ int main() {
 ```
 **Result**
 ```
-Written 20 item(s) to Unicode file.
+Written 35 item(s) to Unicode file.
 ```
 
 ---
@@ -420,7 +420,7 @@ int main() {
     FileWriter* writer = file_writer_open("./sources/test_uni.txt", WRITE_UNICODE);
     const char* unicodeContent = "سلام امین\n"; // Example in Persian
 
-    size_t unicodeWritten = file_writer_write((void*)unicodeContent, strlen(unicodeContent), sizeof(char), writer);
+    size_t unicodeWritten = file_writer_write((void*)unicodeContent, sizeof(char), strlen(unicodeContent), writer);
     fmt_printf("Written %zu item(s) to Unicode file.\n", unicodeWritten);
     fmt_printf("Cursor position is %zu\n", file_writer_get_position(writer));
     
@@ -431,7 +431,7 @@ int main() {
 ```
 **Result**
 ```
-Written 10 item(s) to Unicode file.
+Written 18 item(s) to Unicode file.
 Cursor position is 24
 ```
 
@@ -596,7 +596,7 @@ int main() {
 ```
 **Result**
 ```
-Size of file is 113
+Size of file is 88
 ```
 > Note: The exact size reflects the accumulated bytes written by Examples 3–5 in sequence.
 
@@ -779,7 +779,8 @@ int main() {
     const char* englishText = "Hello, this is a test text.";
     const char* persianText = "سلام، این یک متن آزمایشی است."; // Unicode content
     const void* buffers[2] = { englishText, persianText };
-    size_t sizes[2] = { string_length_cstr(englishText), string_length_utf8(persianText) };
+    /* sizes are BYTE counts (string_length_utf8 would count characters) */
+    size_t sizes[2] = { string_length_cstr(englishText), string_length_cstr(persianText) };
     
     // Write both buffers in a single batch operation
     if (!file_writer_write_batch(writer, buffers, sizes, 2)) {
@@ -893,7 +894,6 @@ int main() {
 **Result**
 ```
 Line: Hello, this is a test text.سلام، این یک متن آزمایشی است.Name: John Doe, Age: 30, Occupation: Software Developer
-
 Line: This is another line with number: 123.456000
 ```
 

@@ -25,8 +25,8 @@ extern "C" {
 /* #define DATE_LOGGING_ENABLE */
 
 #ifdef DATE_LOGGING_ENABLE
-    #define DATE_LOG(fmt, ...) \
-        do { fprintf(stderr, "[DATE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define DATE_LOG(...) \
+        do { fprintf(stderr, "[DATE LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define DATE_LOG(...) do { } while (0)
 #endif
@@ -157,6 +157,9 @@ char*        date_to_string                    (const Date* date, const char* fo
 /* ------------------------------------------------------------------ */
 
 #if defined(_WIN32) || defined(_WIN64)
+/* Exported as date_win_strptime: a generic global name clashed at link time
+ * with other code defining win_strptime. Call it as win_strptime. */
+#define win_strptime date_win_strptime
 char*        win_strptime                      (const char* buf, const char* fmt, struct tm* tm);
 #endif
 

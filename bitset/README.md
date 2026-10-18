@@ -80,16 +80,16 @@ in these examples i rewrite cpp example in Bitset code
 
 ---
 
-### `void bitset_set_from_string(Bitset* bs, const char* str);`
-- **Purpose**:  
-  Sets the bits of a `Bitset` based on a string of '0's and '1's.
-  
-- **Parameters**:  
+### `bool bitset_set_from_string(Bitset* bs, const char* str);`
+- **Purpose**:
+  Sets the bits of a `Bitset` based on a string of '0's and '1's, like `std::bitset`'s string constructor: the last character used is bit 0 (so the string reads most-significant bit first), only the first `size` characters of a longer string are used, and all bits above the string's length are cleared.
+
+- **Parameters**:
   - `bs`: A pointer to the `Bitset`.
   - `str`: A string containing '0's and '1's to set the bits.
-  
-- **Return Value**:  
-  No return value. Logs a warning if the string is longer than the `Bitset`.
+
+- **Return Value**:
+  `true` on success; `false` (bitset unchanged) for a `NULL` argument or any character other than `'0'` / `'1'` in the part that is used (`std::bitset` throws `invalid_argument` there). It used to read the rightmost characters of a long string, store any other character as 0 and keep the old upper bits.
 
 ---
 

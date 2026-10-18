@@ -4,6 +4,12 @@
  * @class Time
 */
 
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
@@ -985,6 +991,24 @@ char* time_to_iso_string(const Time* t) {
  * time_deallocate(a); time_deallocate(b); time_deallocate(c);
  * @endcode
  */
+/* Reads 1..maxDigits decimal digits (no sign, no whitespace) at *pp into
+   *out and advances *pp. Returns the number of digits, or 0 if there is no
+   digit or more than maxDigits follow. */
+static int time_read_digits(const char** pp, int maxDigits, int* out) {
+    const char* p = *pp;
+    int n = 0, v = 0;
+    while (n < maxDigits && isdigit((unsigned char)p[n])) {
+        v = v * 10 + (p[n] - '0');
+        n++;
+    }
+    if (n == 0 || isdigit((unsigned char)p[n])) {
+        return 0;
+    }
+    *out = v;
+    *pp = p + n;
+    return n;
+}
+
 Time* time_from_string(const char* str) {
     TIME_LOG("[time_from_string]: Entering function.");
 
@@ -1005,27 +1029,38 @@ Time* time_from_string(const char* str) {
         p++; 
     }
 
-    int h = -1, m = -1, s = -1, ms = 0;
-    int consumed = 0;
-
-    /* Try HH:MM:SS.mmm first (ISO style). */
-    if (sscanf(p, "%d:%d:%d.%d%n", &h, &m, &s, &ms, &consumed) == 4) {
-        /* matched */
-    }
-    /* Then HH:MM:SS:mmm (project's own to_string style). */
-    else if (sscanf(p, "%d:%d:%d:%d%n", &h, &m, &s, &ms, &consumed) == 4) {
-        /* matched */
-    }
-    /* Finally bare HH:MM:SS. */
-    else if (sscanf(p, "%d:%d:%d%n", &h, &m, &s, &consumed) == 3) {
-        ms = 0;
-    }
-    else {
+    /* HH:MM:SS, then optionally ".f" (ISO 8601 fraction, 1-3 digits, scaled
+       by position: ".5" is 500 ms, ".05" is 50 ms) or ":mmm" (this module's
+       own to_string form, a plain millisecond count). Components are 1-2
+       digits with no sign: sscanf("%d") read the fraction as an integer
+       (".5" became 5 ms) and accepted "12:-0:+5". */
+    int h = 0, m = 0, s = 0, ms = 0;
+    const char* q = p;
+    if (!time_read_digits(&q, 2, &h) || *q++ != ':' ||
+        !time_read_digits(&q, 2, &m) || *q++ != ':' ||
+        !time_read_digits(&q, 2, &s)) {
         TIME_LOG("[time_from_string]: Error: could not parse '%s'", str);
         return NULL;
     }
+    if (*q == '.') {
+        q++;
+        int frac = 0;
+        int digits = time_read_digits(&q, 3, &frac);
+        if (!digits) {
+            TIME_LOG("[time_from_string]: Error: bad fraction in '%s'", str);
+            return NULL;
+        }
+        ms = frac * (digits == 1 ? 100 : digits == 2 ? 10 : 1);
+    }
+    else if (*q == ':') {
+        q++;
+        if (!time_read_digits(&q, 3, &ms)) {
+            TIME_LOG("[time_from_string]: Error: bad milliseconds in '%s'", str);
+            return NULL;
+        }
+    }
 
-    const char* tail = p + consumed;
+    const char* tail = q;
     if (paren) {
         if (*tail != ')') {
             TIME_LOG("[time_from_string]: Error: missing closing parenthesis.");

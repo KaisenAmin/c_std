@@ -24,8 +24,8 @@ extern "C" {
 /* #define DIR_LOGGING_ENABLE */
 
 #ifdef DIR_LOGGING_ENABLE
-    #define DIR_LOG(fmt, ...) \
-        do { fprintf(stderr, "[DIR LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define DIR_LOG(...) \
+        do { fprintf(stderr, "[DIR LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define DIR_LOG(...) do { } while (0)
 #endif

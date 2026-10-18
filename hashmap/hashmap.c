@@ -23,6 +23,7 @@
 #include <string.h>
 #include <math.h>
 #include "hashmap.h"
+#include "../crypto/crypto.h"   /* XXH3 for hashmap_hash_string: static inline there, no OpenSSL needed */
 
 
 
@@ -201,6 +202,7 @@ static HashMapNode* hmap_find_node_in_bucket(HashMapNode* head, KeyType key, Com
     }
 
     HASHMAP_LOG("[hmap_find_node_in_bucket] : Key %p not found (walked %zu node(s))", (void*)key, steps);
+    (void)steps;   /* only logged */
     return NULL;
 }
 
@@ -224,12 +226,16 @@ static size_t hmap_find_next_occupied_bucket(const HashMap* map, size_t start_in
  *
  * Reinterprets the int value as a `size_t` — fine for non-adversarial
  * inputs, but trivially collidable if attacker-controlled. Suitable
- * for application code that owns its keyspace.
+ * for application code that owns its keyspace. The identity is the
+ * right choice here: bucket counts are always prime and the bucket is
+ * `hash % bucket_count`, so consecutive and strided keys spread evenly
+ * (the same design as libstdc++'s std::hash<int> + prime bucket counts),
+ * and it costs nothing.
  *
  * @param key Pointer to an `int`. NULL → 0.
  * @return Hash value.
  */
-size_t hashmap_hash_int(const KeyType key) {
+size_t hashmap_hash_int(const void* key) {
     if (!key) {
         HASHMAP_LOG("[hashmap_hash_int] : NULL key, returning 0");
         return 0;
@@ -241,28 +247,30 @@ size_t hashmap_hash_int(const KeyType key) {
 }
 
 /**
- * @brief Default hash function for null-terminated C strings (djb2).
+ * @brief Default hash function for null-terminated C strings (XXH3-64).
  *
- * Implements djb2: `hash = hash * 33 + c` starting from 5381. Decent
- * distribution for typical text input.
+ * Hashes the string's bytes (without the terminator) with XXH3 — the
+ * same value as `crypto_xxh3_64(key, strlen(key), 0)`, truncated to
+ * `size_t`. The implementation is the static inline code in
+ * crypto/crypto.h, so hashmap needs neither crypto.c nor OpenSSL. Fast for
+ * short and long keys alike, the same on every platform, and free of the
+ * trivially constructible collision families of the djb2 hash used
+ * before (where e.g. "Ez" and "FY" collide, and so does every string
+ * built from such pairs). Like any unkeyed hash it is not a defence
+ * against deliberate hash flooding.
  *
  * @param key Pointer to a NUL-terminated string. NULL → 0.
  * @return Hash value.
  */
-size_t hashmap_hash_string(const KeyType key) {
+size_t hashmap_hash_string(const void* key) {
     if (!key) {
         HASHMAP_LOG("[hashmap_hash_string] : NULL key, returning 0");
         return 0;
     }
     const char* str = (const char*)key;
-    size_t hash = 5381;
-    int c;
+    size_t hash = (size_t)cryp_xxh3_64(str, strlen(str), 0);
 
-    while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c; // hash * 33 + c
-    }
-
-    HASHMAP_LOG("[hashmap_hash_string] : \"%s\" -> hash %zu", (const char*)key, hash);
+    HASHMAP_LOG("[hashmap_hash_string] : \"%s\" -> hash %zu", str, hash);
     return hash;
 }
 
@@ -270,12 +278,14 @@ size_t hashmap_hash_string(const KeyType key) {
  * @brief Default hash function for raw pointer keys (identity).
  *
  * Returns the pointer reinterpreted as `size_t` — uses the address
- * itself as the hash. Useful when keys are object identities.
+ * itself as the hash. Useful when keys are object identities. The
+ * prime bucket count spreads aligned addresses (multiples of 8 or 16)
+ * evenly, so no extra mixing is needed.
  *
  * @param key Pointer to use as the key. NULL → 0.
  * @return The pointer value as a `size_t`.
  */
-size_t hashmap_hash_pointer(const KeyType key) {
+size_t hashmap_hash_pointer(const void* key) {
     if (!key) {
         HASHMAP_LOG("[hashmap_hash_pointer] : NULL key, returning 0");
         return 0;
@@ -291,7 +301,7 @@ size_t hashmap_hash_pointer(const KeyType key) {
  * Three-way comparison (-1 / 0 / +1) over `*(int*)key1` vs
  * `*(int*)key2`. Both NULL compare equal; only one NULL compares less.
  */
-int hashmap_compare_int(const KeyType key1, const KeyType key2) {
+int hashmap_compare_int(const void* key1, const void* key2) {
     if (!key1 && !key2) {
         HASHMAP_LOG("[hashmap_compare_int] : both NULL -> 0");
         return 0;
@@ -328,7 +338,7 @@ int hashmap_compare_int(const KeyType key1, const KeyType key2) {
  * Thin wrapper over `strcmp`. Both NULL compare equal; only one NULL
  * compares less.
  */
-int hashmap_compare_string(const KeyType key1, const KeyType key2) {
+int hashmap_compare_string(const void* key1, const void* key2) {
     if (!key1 && !key2) {
         HASHMAP_LOG("[hashmap_compare_string] : both NULL -> 0");
         return 0;
@@ -353,7 +363,7 @@ int hashmap_compare_string(const KeyType key1, const KeyType key2) {
  *
  * Three-way comparison over the address values themselves.
  */
-int hashmap_compare_pointer(const KeyType key1, const KeyType key2) {
+int hashmap_compare_pointer(const void* key1, const void* key2) {
     if (!key1 && !key2) {
         HASHMAP_LOG("[hashmap_compare_pointer] : both NULL -> 0");
         return 0;
@@ -590,7 +600,9 @@ ValueType hashmap_at(const HashMap* map, KeyType key) {
  *
  * Analogous to C++'s `unordered_map::operator[]`. Note that NULL is
  * both the "newly-inserted" sentinel and a legitimate value — use
- * `hashmap_contains` first if that ambiguity matters.
+ * `hashmap_contains` first if that ambiguity matters. Like
+ * hashmap_insert, it takes ownership of @p key when the map has a key
+ * deallocator: stored if absent, freed if an equal key already exists.
  *
  * @return Borrowed value pointer, or NULL.
  */
@@ -600,16 +612,19 @@ ValueType hashmap_operator_bracket(HashMap* map, KeyType key) {
         return NULL;
     }
 
-    ValueType value = hashmap_at(map, key);
-    if (value) {
-        return value;
+    size_t bucket_index = map->hash_func(key) % map->bucket_count;
+    HashMapNode* node = hmap_find_node_in_bucket(map->buckets[bucket_index], key, map->compare_func);
+    if (node) {
+        /* existing key: same ownership rule as hashmap_insert - with a key
+           deallocator the passed-in duplicate is the map's to free */
+        if (map->dealloc_key && key != node->key) {
+            map->dealloc_key(key);
+        }
+        return node->value;
     }
 
-    // If key doesn't exist, create a new entry with NULL value
-    if (hashmap_insert(map, key, NULL)) {
-        return hashmap_at(map, key);
-    }
-
+    // If key doesn't exist, create a new entry with NULL value (the map now owns `key`)
+    hashmap_insert(map, key, NULL);
     return NULL;
 }
 
@@ -621,7 +636,7 @@ ValueType hashmap_operator_bracket(HashMap* map, KeyType key) {
  * `hashmap_end`. Iteration order is not stable across rehashes.
  */
 HashMapIterator hashmap_begin(const HashMap* map) {
-    HashMapIterator it = {NULL, 0, NULL};
+    HashMapIterator it = {NULL, 0, NULL, false};
     if (!map) {
         return it;
     }
@@ -642,7 +657,7 @@ HashMapIterator hashmap_begin(const HashMap* map) {
  *        iterator that has walked off the end.
  */
 HashMapIterator hashmap_end(const HashMap* map) {
-    HashMapIterator it = {NULL, 0, NULL};
+    HashMapIterator it = {NULL, 0, NULL, false};
     if (!map) {
         HASHMAP_LOG("[hashmap_end] : NULL map -> sentinel iterator");
         return it;
@@ -696,6 +711,14 @@ void hashmap_iterator_increment(HashMapIterator* it) {
     if (it->current_node->next) {
         it->current_node = it->current_node->next;
         HASHMAP_LOG("[hashmap_iterator_increment] : Moved to next node in bucket");
+        return;
+    }
+
+    // A bucket-local iterator ends with its chain: {map, bucket, NULL} is exactly
+    // what hashmap_end_bucket returns, so begin_bucket/end_bucket loops terminate.
+    if (it->bucket_local) {
+        it->current_node = NULL;
+        HASHMAP_LOG("[hashmap_iterator_increment] : Reached end of bucket %zu", it->bucket_index);
         return;
     }
 
@@ -930,12 +953,20 @@ bool hashmap_insert(HashMap* map, KeyType key, ValueType value) {
     HashMapNode* existing_node = hmap_find_node_in_bucket(map->buckets[bucket_index], key, map->compare_func);
 
     if (existing_node) {
-        // Update existing value
-        if (map->dealloc_value && existing_node->value) {
+        // Update existing value. Re-inserting the pointer that is already stored
+        // must not free it (that left a dangling value in the table).
+        if (map->dealloc_value && existing_node->value && existing_node->value != value) {
             map->dealloc_value(existing_node->value);
         }
         existing_node->value = value;
         HASHMAP_LOG("[hashmap_insert] : Updated existing key %p", (void*)key);
+        /* The node keeps the key it already has. With a key deallocator the
+           map owns every key passed in, so the duplicate is freed here (as
+           map_insert does); it used to be dropped and leaked, e.g.
+           hashmap_insert(m, strdup("k"), v) on an existing "k". */
+        if (map->dealloc_key && key != existing_node->key) {
+            map->dealloc_key(key);
+        }
         return true;
     }
 
@@ -1073,6 +1104,7 @@ HashMapIterator hashmap_begin_bucket(const HashMap* map, size_t bucket_index) {
     it.map = (HashMap*)map;
     it.bucket_index = bucket_index;
     it.current_node = map->buckets[bucket_index];
+    it.bucket_local = true;
 
     HASHMAP_LOG("[hashmap_begin_bucket] : Iterator to bucket %zu head (node=%p)", bucket_index, (void*)it.current_node);
     return it;
@@ -1093,6 +1125,7 @@ HashMapIterator hashmap_end_bucket(const HashMap* map, size_t bucket_index) {
     it.map = (HashMap*)map;
     it.bucket_index = bucket_index;
     it.current_node = NULL;
+    it.bucket_local = true;
 
     HASHMAP_LOG("[hashmap_end_bucket] : End-of-bucket iterator at bucket %zu", bucket_index);
     return it;
@@ -1145,11 +1178,15 @@ float hashmap_max_load_factor(const HashMap* map) {
  * @param max_load_factor  New threshold; values <= 0 are rejected.
  */
 void hashmap_max_load_factor_set(HashMap* map, float max_load_factor) {
-    if (!map || max_load_factor <= 0.0f) {
+    /* The factor is kept in thousandths: anything below 0.001 became 0, so
+       every insert doubled the bucket array (~2.9 GB for 24 entries), and a
+       huge or NaN value made the float -> size_t conversion undefined. Such
+       values are ignored now, like <= 0 always was. */
+    if (!map || !(max_load_factor >= 0.001f) || max_load_factor > 1000000.0f) {
         return;
     }
 
-    map->max_load_factor_numerator = (size_t)(max_load_factor * 1000);
+    map->max_load_factor_numerator = (size_t)(max_load_factor * 1000 + 0.5f);
     map->max_load_factor_denominator = 1000;
 
     HASHMAP_LOG("[hashmap_max_load_factor_set] : Set max load factor to %.3f", max_load_factor);
@@ -1338,7 +1375,7 @@ void hashmap_swap(HashMap* map1, HashMap* map2) {
  * @param print_key   Optional callback to render keys.
  * @param print_value Optional callback to render values.
  */
-void hashmap_print(const HashMap* map, void (*print_key)(const KeyType), void (*print_value)(const ValueType)) {
+void hashmap_print(const HashMap* map, void (*print_key)(const void*), void (*print_value)(const void*)) {
     HASHMAP_LOG("[hashmap_print] : Printing map %p", (void*)map);
 
     if (!map) {
@@ -1409,11 +1446,17 @@ HashMap* hashmap_copy(const HashMap* src) {
 
     while (!hashmap_iterator_equal(&it, &end)) {
         HashMapEntry entry = hashmap_iterator_dereference(&it);
-        hashmap_insert(dest, entry.key, entry.value);
+        if (!hashmap_insert(dest, entry.key, entry.value)) {
+            /* allocation failed: no partial copy (it used to be returned as a
+               success). dest has no deallocators, so this frees nodes only. */
+            hashmap_deallocate(dest);
+            return NULL;
+        }
         copied++;
         hashmap_iterator_increment(&it);
     }
 
     HASHMAP_LOG("[hashmap_copy] : Copied %zu entr%s -> dest=%p", copied, copied == 1 ? "y" : "ies", (void*)dest);
+    (void)copied;   /* only logged */
     return dest;
 }

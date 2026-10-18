@@ -19,7 +19,7 @@ This PostgreSQL C library provides a simplified interface for connecting to a Po
 To use this library, include `postgres.h` in your project and compile the source files with your C compiler. For GCC, the following command can be used:
 
 ```bash
-gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./database/postgres.c ./string/string.c ./fmt/fmt.c -lpq
+gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./database/postgres.c ./string/std_string.c ./fmt/fmt.c ./encoding/encoding.c -lpq
 ```
 
 ## Documentation
@@ -48,7 +48,7 @@ The documentation includes detailed descriptions of all the functions provided b
   - `host`: The hostname or IP address of the database server.  
   - `port`: The port number on which the database server is listening.  
 **Return Value**: Nothing (void).  
-**Usage Case**: Used to set the connection parameters for the `Postgres` structure before attempting to connect to the database.
+**Usage Case**: Used to set the connection parameters for the `Postgres` structure before attempting to connect to the database. Calling it again on a connected structure closes that connection first (it used to be dropped and leaked).
 
 ---
 
@@ -57,7 +57,7 @@ The documentation includes detailed descriptions of all the functions provided b
 **Parameters**:  
   - `pg`: A pointer to the `Postgres` structure representing the connection.  
 **Return Value**: `true` if the connection is successful, `false` otherwise.  
-**Usage Case**: Used to establish a connection to the PostgreSQL database after initializing the connection parameters.
+**Usage Case**: Used to establish a connection to the PostgreSQL database after initializing the connection parameters. Each field is handed to libpq as its own parameter (`PQconnectdbParams`), so a value may contain spaces, quotes or `=` (a password `"x dbname=other"` is just a password). An existing connection on `pg` is closed first.
 
 ---
 
@@ -69,7 +69,7 @@ The documentation includes detailed descriptions of all the functions provided b
     - keyword/value: `"host=db port=5432 dbname=app user=svc password=secret sslmode=require connect_timeout=10"`  
     - URI: `"postgresql://svc:secret@db:5432/app?sslmode=require"`  
 **Return Value**: `true` on a successful connection, `false` on NULL arguments or if the connection could not be established.  
-**Usage Case**: Connect straight from one environment variable (`getenv("DATABASE_URL")`), and gain access to every libpq parameter (`sslmode`, `connect_timeout`, `application_name`, …) without modelling each one. Any pre-existing connection is closed first, so it is also safe for reconnection.
+**Usage Case**: Connect straight from one environment variable (`getenv("DATABASE_URL")`), and gain access to every libpq parameter (`sslmode`, `connect_timeout`, `application_name`, …) without modelling each one. Any pre-existing connection is closed first, so it is also safe for reconnection. The string is kept in the structure, so `postgres_reconnect` reopens the same connection later.
 
 ---
 
@@ -181,7 +181,7 @@ The documentation includes detailed descriptions of all the functions provided b
   - `pg`: A pointer to the `Postgres` structure representing the connection.  
   - `tableName`: The name of the table whose row count is to be retrieved.  
 **Return Value**: The number of rows in the table, or `-1` if an error occurred.  
-**Usage Case**: Used to quickly get the total number of rows in a specified database table.
+**Usage Case**: Used to quickly get the total number of rows in a specified database table. `tableName` follows the identifier rules in *Names in SQL text* (Example B), so `"cars; DROP TABLE users"` is one (missing) table name, not two statements.
 
 ---
 
@@ -324,7 +324,7 @@ The documentation includes detailed descriptions of all the functions provided b
   - `pgRes`: Pointer to the `PostgresResult` structure.  
   - `row`, `col`: Zero-based cell coordinates.  
   - `fallback`: Value returned for any failure mode.  
-**Return Value**: The cell parsed as a `double` (integer, decimal, or scientific notation), or `fallback` for a NULL result, an out-of-range row/column, a SQL `NULL`, an empty cell, or non-numeric text.  
+**Return Value**: The cell parsed as a `double` (integer, decimal, or scientific notation), or `fallback` for a NULL result, an out-of-range row/column, a SQL `NULL`, an empty cell, non-numeric text, or a value beyond the `double` range (`1e400`). Parsing does not depend on the C locale's decimal separator.
 **Usage Case**: Reading `AVG(...)`, prices, ratios, and other numeric scalars where a SQL `NULL` (e.g. an aggregate over zero rows) must degrade to a sentinel instead of crashing.
 
 ---
@@ -469,11 +469,11 @@ The documentation includes detailed descriptions of all the functions provided b
 ---
 
 ### `char* postgres_object_id_status(const PostgresResult* pgRes)`  
-**Purpose**: Retrieves the object ID of the inserted row if the last command was an `INSERT`.  
-**Parameters**:  
-  - `pgRes`: Pointer to the `PostgresResult` structure containing the result of the last command.  
-**Return Value**: A string representing the object ID, or `NULL` if an error occurred.  
-**Usage Case**: Used after an `INSERT` statement to retrieve the ID of the newly inserted row.
+**Purpose**: Returns libpq's `PQoidStatus`: the OID of the inserted row when an `INSERT` inserted exactly one row into a table created `WITH OIDS`.
+**Parameters**:
+  - `pgRes`: Pointer to the `PostgresResult` structure containing the result of the last command.
+**Return Value**: A string representing the object ID (`"0"` or `""` when there is none), or `NULL` if an error occurred.
+**Usage Case**: Legacy only: PostgreSQL 12 removed `WITH OIDS` tables, so on current servers this never returns a row id. To get the id of a new row, use `INSERT ... RETURNING id` and read the returned value.
 
 ---
 
@@ -619,17 +619,17 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `int postgres_request_cancle(Postgres* pg)`  
-**Purpose**: Sends a request to cancel the currently executed command.  
-**Parameters**:  
-  - `pg`: Pointer to the `Postgres` structure representing the connection.  
-**Return Value**: `0` if the cancellation request was successfully dispatched, or `-1` if an error occurred.  
+### `int postgres_request_cancel(Postgres* pg)`
+**Purpose**: Sends a request to cancel the currently executed command (thread-safe `PQgetCancel` / `PQcancel`, so another thread may call it). `postgres_request_cancle`, the old misspelled name, is kept and does the same.
+**Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+**Return Value**: `0` if the cancellation request was successfully dispatched, or `-1` if an error occurred (it used to return libpq's `1` / `0`, the opposite). A dispatched request may still arrive after the command finished.  
 **Usage Case**: Used to cancel long-running or unresponsive queries.
 
 ---
 
 ### `bool postgres_reconnect(Postgres* pg)`  
-**Purpose**: Disconnects from the PostgreSQL database and attempts to reconnect using the stored connection parameters.  
+**Purpose**: Disconnects from the PostgreSQL database and reconnects the way the last connection was made: with the string given to `postgres_connect_uri`, or with the `postgres_init` fields after `postgres_connect`. It also works after an explicit `postgres_disconnect`.  
 **Parameters**:  
   - `pg`: Pointer to the `Postgres` structure representing the connection.  
 **Return Value**: `true` if reconnection is successful, `false` otherwise.  
@@ -641,17 +641,17 @@ The documentation includes detailed descriptions of all the functions provided b
 **Purpose**: Checks if the connection to the PostgreSQL database server is still alive.  
 **Parameters**:  
   - `pg`: Pointer to the `Postgres` structure representing the connection.  
-**Return Value**: `true` if the connection is alive, `false` otherwise.  
+**Return Value**: `true` if the server answers, `false` otherwise (also when `pg` has no connection). The ping uses the parameters of the live connection, read back from libpq, so it reaches the same server whichever connect function was used and however long the values are.  
 **Usage Case**: Used to verify whether the database server is reachable.
 
 ---
 
 ### `PostgresResult* postgres_query_execution_time(Postgres* pg, const char* query)`  
-**Purpose**: Measures and returns the execution time of a query in addition to the query result.  
-**Parameters**:  
-  - `pg`: Pointer to the `Postgres` structure representing the connection.  
-  - `query`: The SQL query to be executed.  
-**Return Value**: A pointer to the `PostgresResult` structure containing the query result and execution time, or `NULL` if an error occurred.  
+**Purpose**: Runs a query and measures it, but `PostgresResult` has no field for the time, so the measurement is discarded — use `postgres_query_with_time`, which returns the time through an out-parameter.
+**Parameters**:
+  - `pg`: Pointer to the `Postgres` structure representing the connection.
+  - `query`: The SQL query to be executed.
+**Return Value**: A pointer to the `PostgresResult` structure containing the query result (only), or `NULL` if an error occurred.
 **Usage Case**: Useful for benchmarking queries and optimizing database performance.
 
 ---
@@ -665,7 +665,7 @@ The documentation includes detailed descriptions of all the functions provided b
   - `language`: The language used to define the function (e.g., `plpgsql`, `sql`).
   - `functionBody`: The logic of the function, written in the specified language.
   - `paramDefinitions`: The definitions of the function parameters (e.g., `param1 integer, param2 integer`).
-**Return Value**: `true` if the function is successfully created, `false` otherwise.
+**Return Value**: `true` if the function is successfully created, `false` otherwise. An existing function with the same signature is replaced; the `DROP` and the `CREATE` run as one transaction, so if the new definition is rejected the old function is kept. The body may be any length and may itself contain `$$`. `functionName` and `language` follow the identifier rules in *Names in SQL text* (Example B). `returnType` and `paramDefinitions` are SQL fragments; they are refused (`false`) if they could end the statement (see Example B). Because of the `DROP`, `paramDefinitions` cannot contain `DEFAULT` clauses (PostgreSQL rejects them in `DROP FUNCTION`).
 **Usage Case**: Useful for adding custom functionality to the database through user-defined functions.
 
 ---
@@ -687,8 +687,8 @@ The documentation includes detailed descriptions of all the functions provided b
   - `pg`: Pointer to the `Postgres` structure representing the connection.
   - `viewName`: Name of the view to be created.
   - `query`: The SQL query that defines the view.
-**Return Value**: `true` if the view is successfully created, `false` otherwise.
-**Usage Case**: Useful for encapsulating complex SQL queries into reusable views for easier access and abstraction.
+**Return Value**: `true` if the view is successfully created, `false` otherwise. `false` is also returned, without contacting the server, when `query` is not a single statement (see Example B); a trailing `;` is allowed.
+**Usage Case**: Useful for encapsulating complex SQL queries into reusable views for easier access and abstraction. `viewName` may be schema-qualified and follows the identifier rules in Example B.
 
 ---
 
@@ -708,10 +708,10 @@ The documentation includes detailed descriptions of all the functions provided b
   - `pg`: Pointer to the `Postgres` structure representing the connection.
   - `triggerName`: Name of the trigger to be created.
   - `tableName`: Name of the table where the trigger is applied.
-  - `timing`: Trigger timing (e.g., "BEFORE", "AFTER").
-  - `event`: Event that activates the trigger (e.g., "INSERT", "UPDATE", "DELETE").
+  - `timing`: Trigger timing: `"BEFORE"`, `"AFTER"` or `"INSTEAD OF"` (any letter case); anything else is refused.
+  - `event`: Event that activates the trigger (e.g., "INSERT", "UPDATE", "INSERT OR UPDATE", "UPDATE OF name"); refused if it could end the statement (Example B).
   - `function`: Function called by the trigger.
-**Return Value**: `true` if the trigger is successfully created, `false` otherwise.
+**Return Value**: `true` if the trigger is successfully created, `false` otherwise. `triggerName`, `tableName` and `function` follow the identifier rules in Example B.
 **Usage Case**: Useful for automating actions in response to database events.
 
 ---
@@ -775,7 +775,7 @@ The documentation includes detailed descriptions of all the functions provided b
 **Purpose**: Deallocates a prepared SQL statement, freeing up resources.
 **Parameters**:
   - `pg`: Pointer to the `Postgres` structure representing the connection.
-  - `stmtName`: Name of the prepared statement to be deallocated.
+  - `stmtName`: Name of the prepared statement to be deallocated, exactly as given to `postgres_prepare_statement` (letter case matters: `"MyStmt"` used to be folded to `mystmt` and never found).
 **Return Value**: `true` if the statement is cleared successfully, `false` otherwise.
 **Usage Case**: Use this to release resources when a prepared statement is no longer needed.
 
@@ -815,8 +815,8 @@ The documentation includes detailed descriptions of all the functions provided b
 **Purpose**: Retrieves the result of a previously sent asynchronous query.
 **Parameters**:
   - `pg`: Pointer to the `Postgres` structure representing the connection.
-**Return Value**: A `PostgresResult` structure containing the query result, or `NULL` if no result is ready yet or an error occurred.
-**Usage Case**: Call this function repeatedly until the query result is available.
+**Return Value**: A `PostgresResult` structure containing the next result, or `NULL` when every result has been read or a statement failed. After a failure the remaining results are drained, so the connection is immediately ready for the next query, and `postgres_get_last_error` describes the error (it is empty after a clean end).
+**Usage Case**: Call it in a loop until it returns `NULL`: `while ((r = postgres_get_async_result(pg)) != NULL) { ...; postgres_clear_result(r); }`.
 
 ---
 
@@ -826,9 +826,9 @@ The documentation includes detailed descriptions of all the functions provided b
   - `pg`: Pointer to the `Postgres` structure representing the connection.
   - `tableName`: Name of the table to copy data into.
   - `csvFilePath`: Path to the CSV file.
-  - `delimiter`: Delimiter used in the CSV file (e.g., `,`).
-**Return Value**: `true` if the operation is successful, `false` otherwise.
-**Usage Case**: Useful for efficiently loading bulk data into a table from a CSV file.
+  - `delimiter`: Delimiter used in the CSV file (e.g., `,`); only its first character is used, and it is passed to the server as an escaped literal.
+**Return Value**: `true` only if the server accepted the whole file. A bad row, a type error or a constraint violation makes the COPY fail and the function return `false` (the load is rolled back and `postgres_get_last_error` holds the server message). A missing file is detected before the COPY starts.
+**Usage Case**: Useful for efficiently loading bulk data into a table from a CSV file. `tableName` follows the identifier rules in *Names in SQL text* (Example B); a column list such as `"cars(a, b)"` is not accepted.
 
 ---
 
@@ -884,7 +884,7 @@ The documentation includes detailed descriptions of all the functions provided b
 ---
 
 ### `PostgresResult* postgres_query_with_time(Postgres* pg, const char* query, double* out_seconds)`
-**Purpose**: Executes a SQL query, returns the result, and writes the elapsed wall-clock time in seconds to `*out_seconds`.
+**Purpose**: Executes a SQL query, returns the result, and writes the elapsed wall-clock time in seconds to `*out_seconds`, measured with a monotonic clock (it used `clock()`, which is CPU time on Linux/macOS and stayed near 0 while waiting for the server).
 **Parameters**:
   - `pg`: Pointer to the `Postgres` structure representing the connection.
   - `query`: The SQL query to execute.
@@ -3111,7 +3111,7 @@ Transaction committed.
 
 ---
 
-### Example 35 : send and get query result in async way `postgres_send_query` and `postgres_get_async_result`
+### Example 35 : send and get query result in async way `postgres_send_async_query` and `postgres_get_async_result`
 
 ```c
 #include "database/postgres.h"
@@ -3263,6 +3263,40 @@ postgres_clear_result(res);
 `postgres_escape_identifier` returns a properly-quoted, escape-aware
 string — much safer than `snprintf` against a raw `tableName`.
 
+The catalog helpers that compare a table name as a value
+(`postgres_table_exists`, `postgres_get_table_schema`, `_columns`,
+`_primary_keys`, `_foreign_keys`, `_indexes`, `_size`, `_index_count`,
+`postgres_get_column_details`, `postgres_get_table_constraints`) bind it as a
+query parameter, so any name, including one with quotes, is safe to pass as
+is.
+
+### Names in SQL text
+
+The functions that put a name into SQL text as an identifier
+(`postgres_get_table_row_count`, the create/drop view/trigger/function/schema
+helpers, savepoints, `postgres_copy_from_csv`) never splice it as raw SQL:
+
+- A name that already is identifier SQL is used unchanged: plain identifiers
+  (`cars`, `Test_Schema`) and double-quoted ones (`"Mixed Case"`, or anything
+  returned by `postgres_escape_identifier`), joined by `.` where the object can
+  be schema-qualified (`public.cars`). So case folding and qualification work
+  as before: `CARS` still means `cars`.
+- Anything else is quoted as ONE identifier. `Mixed Case` names the table
+  `"Mixed Case"`, and `cars; DROP TABLE users` is just an odd (usually
+  missing) name, never a second statement.
+- Prepared statement names are always matched exactly
+  (`postgres_clear_prepared_statement`), because libpq stores them verbatim.
+
+Parameters that are SQL by nature (a view's defining query, a function's
+return type and parameter list, a trigger event) are checked before use:
+outside quoted text and comments they may not contain `;`, parentheses and
+quotes must balance, and every string, quoted identifier, dollar quote and
+comment must end inside the parameter (a `--` comment needs its newline). A
+backslash before a quote inside a string literal is refused, because `E''`
+strings end such a literal elsewhere. A parameter that fails the check makes
+the function return `false` without sending anything. A trailing `;` on a
+view query is allowed and dropped.
+
 **Result**
 ```
 (no console output — just uses escaped identifier to build a safe query)
@@ -3334,8 +3368,22 @@ postgres_clear_result(res);
   pointer; later NULL-checks would falsely succeed. Now sets it to
   NULL.
 - **`CON_INFO_SIZE` was a fixed 256 bytes.** Long
-  passwords/hostnames silently truncated. The conninfo buffer is now
-  sized to the actual operands.
+  passwords/hostnames silently truncated. `postgres_connect` no longer
+  builds a conninfo string at all: each field goes to `PQconnectdbParams`
+  separately, which also stops a value with spaces from adding keywords
+  (`password = "x dbname=other"` used to select database `other`).
+  `postgres_ping` had kept the 256-byte buffer (and passed NULL fields after
+  `postgres_connect_uri`); it now pings with the live connection's own
+  parameters.
+- **Connections leaked on re-init and double connect.** `postgres_init` on a
+  connected structure and a second `postgres_connect` dropped the old
+  `PGconn` without closing it. Both close it now.
+- **`postgres_reconnect` broke URI connections.** It always reconnected with
+  the `postgres_init` fields, which are NULL after `postgres_connect_uri`, so
+  it closed a working connection and failed. The URI is now kept and reused.
+- **Names were spliced into SQL verbatim** (row count, schemas, savepoints,
+  `DEALLOCATE`, views, triggers, functions, `COPY`), so a name like
+  `x; DROP TABLE t` ran a second statement. See *Names in SQL text*.
 - **NULL-check on `pg` was missing in many functions** — `postgres_disconnect`,
   `postgres_query`, `postgres_execute_non_query`, `postgres_get_last_error`,
   `postgres_get_affected_rows`, `postgres_begin/commit/rollback_transaction`

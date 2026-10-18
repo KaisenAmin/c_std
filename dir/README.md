@@ -68,7 +68,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 **Purpose**: Checks whether a file exists at the specified path.
 **Parameters**:
 - `filePath`: A string representing the path of the file to check.
-**Return Value**: `true` if the path exists and is a file; `false` if it does not exist or an error occurs.
+**Return Value**: `true` if the path exists and is not a directory (symbolic links are followed); `false` if it does not exist, is a directory, or an error occurs.
 **Usage Case**: Use before reading or processing a file to guard against missing-file errors.
 
 ---
@@ -149,7 +149,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 **Purpose**: Recursively removes a directory and all of its contents (files and subdirectories).
 **Parameters**:
 - `dirPath`: A string representing the path of the directory to be removed.
-**Return Value**: `true` if the directory and its contents were successfully removed; `false` if an error occurred.
+**Return Value**: `true` if the directory and its contents were successfully removed; `false` if an error occurred. `dirPath` must name an existing directory: a plain file, or (on Windows) a path with `*` or `?` wildcards, is refused rather than deleted. Symbolic links inside the tree are removed, never followed.
 **Usage Case**: Use when you need to completely delete a directory tree, similar to `rm -rf`.
 
 ---
@@ -160,7 +160,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 - `oldName`: A string representing the current name of the file or directory.
 - `newName`: A string representing the new name for the file or directory.
 **Return Value**: `true` if the renaming was successful; `false` if it failed (e.g., either argument is null, or the underlying rename operation fails).
-**Usage Case**: Use to rename files or directories in-place without copying and deleting.
+**Usage Case**: Use to rename files or directories in-place without copying and deleting. An existing file at `newName` is replaced on every platform. An existing directory is not replaced on Windows, and POSIX replaces it only when it is empty. A rename across volumes fails.
 
 ---
 
@@ -179,8 +179,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 **Parameters**:
 - `srcDir`: The path of the source directory to be copied.
 - `destDir`: The path of the destination directory.
-**Return Value**: `true` if the directory and its contents were successfully copied; `false` if an error occurred.
-**Usage Case**: Use to back up or duplicate a directory tree without removing the original.
+**Return Value**: `true` if the directory and its contents were successfully copied; `false` if an error occurred, including when `destDir` is `srcDir` itself or inside it (that copy would never end).
+**Usage Case**: Use to back up or duplicate a directory tree without removing the original. On POSIX, symbolic links are recreated as links instead of being followed.
 
 ---
 
@@ -190,7 +190,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 - `srcPath`: A pointer to a string representing the source file path.
 - `destPath`: A pointer to a string representing the destination file path.
 **Return Value**: `true` if the file was successfully moved; `false` if an error occurs.
-**Usage Case**: Use to relocate a file to a different path, removing it from the original location.
+**Usage Case**: Use to relocate a file to a different path, removing it from the original location. An existing file at `destPath` is replaced on every platform (Windows used to refuse). A move across volumes or file systems fails; use `dir_copy_file` followed by a delete there.
 
 ---
 
@@ -222,7 +222,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 - `option`: Filter specifying what to collect: `DIR_LIST_FILES`, `DIR_LIST_DIRECTORIES`, or `DIR_LIST_ALL`.
 - `result`: A `Vector*` where results are stored. Each element is a heap-allocated `char*` that the caller must `free`.
 **Return Value**: `void`. Errors are handled internally via logging.
-**Usage Case**: Use to collect all files (or directories) under a subtree for bulk processing such as archiving or indexing.
+**Usage Case**: Use to collect all files (or directories) under a subtree for bulk processing such as archiving or indexing. A symbolic link (or Windows junction) to a directory is listed but not descended into, so link loops cannot make the walk repeat itself.
 
 ---
 
@@ -233,8 +233,8 @@ This library is dedicated to directory and file operations, offering comprehensi
 - `pattern`: The glob pattern to match file names against (e.g., `"*.txt"`).
 - `callback`: A function pointer `bool (*)(const char* filePath, void* userData)`. Return `true` to continue searching, `false` to stop.
 - `userData`: Arbitrary pointer passed through to each callback invocation.
-**Return Value**: `true` if the search completed without error; `false` if any argument is null or the directory cannot be opened.
-**Usage Case**: Use to find all files of a given type in a directory and process or collect them in a single pass.
+**Return Value**: `true` if the search completed without error (also when nothing matched); `false` if any argument is null or the directory cannot be opened.
+**Usage Case**: Use to find all files of a given type in a directory and process or collect them in a single pass. Directories (including `.` and `..`) are never reported, on any platform; the callback receives the bare entry name, not a full path.
 
 ---
 
@@ -275,11 +275,11 @@ This library is dedicated to directory and file operations, offering comprehensi
 ---
 
 ### `char* dir_dir_name(const char* dirpath)`
-**Purpose**: Returns the directory portion of a path (everything up to, but not including, the last component). If the input is `"."`, the current working directory name is returned.
+**Purpose**: Returns the name of the directory a path refers to: its last component, with trailing separators ignored (`"a/b/"` -> `"b"`, `"/foo"` -> `"foo"`). If the input is `"."`, the current working directory's name is returned. On Windows both `\` and `/` are separators. (Earlier wording called this the "directory portion", which it never was; `"a/b/c.txt"` gives `"c.txt"`.)
 **Parameters**:
 - `dirpath`: A pointer to a string representing the directory path.
 **Return Value**: A dynamically allocated string containing the directory name. The caller must call `free()` on it.
-**Usage Case**: Use to strip the file name off a full path when you need only the parent directory.
+**Usage Case**: Use to get the display name of a directory from its path, for example the name of the current directory.
 
 ---
 
@@ -375,7 +375,7 @@ This library is dedicated to directory and file operations, offering comprehensi
 **Purpose**: Calculates the total size of a directory and all its contents (including subdirectories) in bytes.
 **Parameters**:
 - `dirPath`: A pointer to a string representing the path of the directory.
-**Return Value**: The total size in bytes, or `-1` if an error occurs (e.g., null path or inaccessible directory).
+**Return Value**: The total size in bytes, or `-1` if an error occurs (e.g., null path or inaccessible directory). Subdirectories that cannot be read are skipped (their size is not counted; they used to subtract 1 each), and symbolic links / junctions are not followed, so a link back to an ancestor cannot count the same data repeatedly.
 **Usage Case**: Use to report disk usage for a directory tree, or to enforce a storage quota.
 
 ---
@@ -412,23 +412,21 @@ This library is dedicated to directory and file operations, offering comprehensi
 ---
 
 ### `bool dir_encrypt_file(const char* filePath, const char* password, uint8_t* iv)`
-**Purpose**: Encrypts the contents of a file in-place using DES-CBC mode. The encrypted data overwrites the original file.
+**Purpose**: Encrypts the contents of a file with a password and replaces the file atomically (temporary file + rename), so a failure never destroys the original. The key is derived with PBKDF2-HMAC-SHA256 from a random salt and the data is encrypted and authenticated with AES-256-GCM (`crypto_password_encrypt`). The output is the 8-byte marker `CSTDAEG1` followed by a self-describing blob (iteration count, salt, nonce, tag, ciphertext). Earlier versions used single DES with the password bytes as the raw 8-byte key; such files can still be decrypted.
 **Parameters**:
 - `filePath`: A pointer to a string representing the path to the file to be encrypted.
-- `password`: The encryption password (must be 8 bytes or fewer).
-- `iv`: A pointer to an 8-byte initialization vector for CBC mode.
-**Return Value**: `true` if the file was successfully encrypted; `false` if any argument is null, the file cannot be opened, or encryption fails.
+- `password`: The encryption password (any length, not empty).
+- `iv`: Not used any more (a random nonce is generated for every file and stored in it); kept for API compatibility and may be `NULL`.
+**Return Value**: `true` if the file was successfully encrypted; `false` if an argument is invalid, the file cannot be read or replaced, or encryption fails.
 **Usage Case**: Use to protect sensitive files on disk with a password before storing or transmitting them.
 
----
-
 ### `bool dir_decrypt_file(const char* filePath, const char* password, uint8_t* iv)`
-**Purpose**: Decrypts the contents of a file in-place using DES-CBC mode. The decrypted data overwrites the encrypted file.
+**Purpose**: Decrypts a file written by `dir_encrypt_file` and replaces it atomically with the exact original bytes. A wrong password or any modification of the file fails the authentication: the function returns `false` and leaves the file unchanged. Files encrypted by older versions (DES, with the `CSTDDES2` marker or none) are still decrypted; they need the original 8-byte IV and password.
 **Parameters**:
 - `filePath`: A pointer to a string representing the path to the file to be decrypted.
-- `password`: The decryption password (must be 8 bytes or fewer; must match the password used for encryption).
-- `iv`: A pointer to the same 8-byte initialization vector used during encryption.
-**Return Value**: `true` if the file was successfully decrypted; `false` if any argument is null, the file cannot be opened, or decryption fails.
+- `password`: The password used for encryption.
+- `iv`: Only needed for files from older versions (the 8-byte DES IV); may be `NULL` otherwise.
+**Return Value**: `true` if the file was successfully decrypted; `false` if any argument is null, the file cannot be read or written, it is not an encrypted file, or the password is wrong (the file is left unchanged in every failure case).
 **Usage Case**: Use to restore a previously encrypted file to its original readable form.
 
 ---
@@ -1111,7 +1109,7 @@ Regular File
 
 ---
 
-## Example 24 : encrypt and decrypt file with des mode cbc `dir_encrypt_file` and `dir_decrypt_file`
+## Example 24 : encrypt and decrypt a file with a password (`dir_encrypt_file` and `dir_decrypt_file`)
 
 ```c
 #include "dir/dir.h"

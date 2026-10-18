@@ -38,6 +38,15 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 ---
 
+### `void stack_set_compare(Stack* stk, VectorCompareFunc compare)`
+- **Purpose**: Sets the element comparator (qsort convention) used by the `stack_is_*` comparisons. Without one the elements' bytes are compared, which is not the numeric order of `int` or `double` elements. `stack_copy` keeps the comparator.
+- **Parameters**:
+    - `stk`: The stack (NULL is ignored).
+    - `compare`: The comparator, or `NULL` for byte comparison.
+- **Returns**: Nothing.
+
+---
+
 ### `bool stack_is_equal(const Stack* stk1, const Stack* stk2)`
 - **Purpose**: Checks whether two stacks are equal by comparing their contents.
 - **Parameters**: 
@@ -49,7 +58,7 @@ To use the Stack library in your project, include the `stack.h` header file in y
 ---
 
 ### `bool stack_is_less(const Stack* stk1, const Stack* stk2)`
-- **Purpose**: Compares two stacks to determine if the first stack is less than the second stack (based on the lexicographical order of the elements).
+- **Purpose**: Compares two stacks to determine if the first stack is less than the second stack (based on the lexicographical order of the elements, compared with the comparator from `stack_set_compare`, or by their bytes without one).
 - **Parameters**: 
     - `stk1`: The first stack.
     - `stk2`: The second stack.
@@ -98,21 +107,21 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 ---
 
-### `void stack_push(const Stack* stk, const void* item)`
-- **Purpose**: Pushes a new item onto the top of the stack.
-- **Parameters**: 
+### `bool stack_push(Stack* stk, const void* item)`
+- **Purpose**: Pushes a copy of the item (`itemSize` bytes) onto the top of the stack.
+- **Parameters**:
     - `stk`: The stack onto which the item will be pushed.
     - `item`: A pointer to the item to be added to the stack.
-- **Returns**: `void`.
+- **Returns**: `true` on success; `false` for a `NULL` stack or item, or when memory runs out.
 - **Use case**: Used to add a new item to the stack.
 
 ---
 
-### `void* stack_pop(const Stack* stk)`
-- **Purpose**: Removes the top item from the stack and returns it.
-- **Parameters**: 
+### `void* stack_pop(Stack* stk)`
+- **Purpose**: Removes the top item from the stack and returns a pointer to it.
+- **Parameters**:
     - `stk`: The stack from which the top item will be popped.
-- **Returns**: A pointer to the item that was removed from the stack.
+- **Returns**: A pointer to the removed item, still inside the stack's buffer: it stays readable only until the next push / emplace / reserve (copy it out, or use `stack_pop_value` to pop into your own buffer). `NULL` for an empty or `NULL` stack.
 - **Use case**: Used to remove and retrieve the last added item from the stack.
 
 ---
@@ -144,7 +153,7 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 ---
 
-### `void stack_clear(const Stack* stk)`
+### `void stack_clear(Stack* stk)`
 - **Purpose**: Removes all items from the stack, effectively emptying it.
 - **Parameters**: 
     - `stk`: The stack to be cleared.
@@ -153,13 +162,13 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 ---
 
-### `void stack_emplace(const Stack* stk, void* item)`
-- **Purpose**: Adds a new item to the top of the stack without copying the item.
-- **Parameters**: 
+### `void* stack_emplace(Stack* stk, const void* item)`
+- **Purpose**: Adds a copy of the item to the top of the stack (C has no in-place construction, so this copies `itemSize` bytes exactly like `stack_push`).
+- **Parameters**:
     - `stk`: The stack onto which the item will be added.
-    - `item`: A pointer to the item that will be added directly (without copying).
-- **Returns**: `void`.
-- **Use case**: Used for performance optimization, particularly when avoiding unnecessary memory copying is important.
+    - `item`: A pointer to the item to copy in.
+- **Returns**: A pointer to the new top element (like C++17 `std::stack::emplace`), or `NULL` on failure.
+- **Use case**: When you want the address of the element just added.
 
 ---
 
@@ -252,7 +261,7 @@ To use the Stack library in your project, include the `stack.h` header file in y
 
 - `stack_push` now returns `bool` (`false` on allocation failure or NULL args). Old code that ignores the return value still compiles.
 - `stack_emplace` now returns a `void*` to the just-inserted top element (mirrors C++17 `std::stack::emplace`'s return). `NULL` on failure.
-- `stack_swap` refuses to swap stacks with differing element sizes; it sets `STACK_ERROR_ITEM_SIZE_MISMATCH` and leaves both stacks untouched.
+- `stack_swap` refuses to swap stacks with differing element sizes and leaves both stacks untouched (there is no error state to read: compare `itemSize`s first if you need to know).
 - `stack_is_equal(NULL, NULL)` returns `true` (consistent with `stack_is_not_equal(NULL, NULL) == false`).
 
 ---

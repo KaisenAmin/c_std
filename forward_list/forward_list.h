@@ -25,8 +25,8 @@ extern "C" {
 /* #define FORWARD_LIST_LOGGING_ENABLE */
 
 #ifdef FORWARD_LIST_LOGGING_ENABLE
-    #define FORWARD_LIST_LOG(fmt, ...) \
-        do { fprintf(stderr, "[FORWARD_LIST LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define FORWARD_LIST_LOG(...) \
+        do { fprintf(stderr, "[FORWARD_LIST LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define FORWARD_LIST_LOG(...) do { } while (0)
 #endif
@@ -35,6 +35,9 @@ extern "C" {
 
 typedef struct ForwardListNode ForwardListNode;
 typedef struct ForwardList     ForwardList;
+
+/* Element comparator: negative / zero / positive like strcmp. */
+typedef int (*ForwardListCompare)(const void* a, const void* b);
 
 struct ForwardListNode {
     void*            value;
@@ -47,12 +50,18 @@ struct ForwardList {
     size_t           itemSize;
     size_t           size;
     /* Per-list `before_begin` sentinel. `value` is always NULL; `next` is
-     * refreshed to `head` on every call to forward_list_before_begin so
-     * the canonical `before_begin()->next == begin()` invariant holds.
+     * refreshed to `head` on every call to forward_list_before_begin and
+     * whenever the sentinel is passed to a *_after function, so a sentinel
+     * obtained earlier stays valid across push_front, pop_front, sort, ...
+     * (read `next` only right after forward_list_before_begin).
      * Lives in the struct (instead of a function-local static) so that
      * holding sentinels for several lists at once doesn't clobber each
      * other. */
     ForwardListNode  sentinel;
+    /* Optional value comparator used by sort, merge, unique, remove and the
+     * is_* comparisons. NULL means plain memcmp (byte order), which is only
+     * a meaningful order for byte-like data. */
+    ForwardListCompare compare;
 };
 
 
@@ -61,6 +70,7 @@ struct ForwardList {
 /* ------------------------------------------------------------------ */
 
 ForwardList*      forward_list_create               (size_t itemSize);
+void              forward_list_set_compare          (ForwardList* list, ForwardListCompare compare);
 void              forward_list_deallocate           (ForwardList* list);
 void              forward_list_clear                (ForwardList* list);
 

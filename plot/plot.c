@@ -11,7 +11,14 @@
 #include <stdbool.h>
 #include <math.h>
 #include <float.h>
+#include <stdio.h>
 #include <raylib.h>
+#if defined(_WIN32)
+#include <wchar.h>
+/* MultiByteToWideChar without <windows.h>, whose names (Rectangle,
+   CloseWindow, DrawText, ...) clash with raylib's. */
+__declspec(dllimport) int __stdcall MultiByteToWideChar(unsigned int, unsigned long, const char*, int, wchar_t*, int);
+#endif
 
 /* Compatibility shim for raylib 4.x vs 5.x. */
 #if !defined(GetTextureData)
@@ -46,28 +53,56 @@ static char* p_strdup(const char* s) {
 static void compute_extents(const Plot* plot, float* xMin, float* xMax, float* yMin, float* yMax) {
     float axMin =  FLT_MAX, axMax = -FLT_MAX;
     float ayMin =  FLT_MAX, ayMax = -FLT_MAX;
+    bool hasBar = false;
     for (size_t s = 0; s < plot->seriesCount; ++s) {
         const PlotSeries* ser = &plot->series[s];
+        if (ser->pltype == PLTYPE_BAR && ser->dataSize > 0) {
+            hasBar = true;
+        }
 
         for (size_t i = 0; i < ser->dataSize; ++i) {
             float xv = ser->xData ? ser->xData[i] : (float)i;
-            if (xv < axMin) {
-                axMin = xv;
+            float yv = ser->yData[i];
+            /* inf / NaN would make the whole range infinite (or NaN) */
+            if (isfinite(xv)) {
+                if (xv < axMin) {
+                    axMin = xv;
+                }
+                if (xv > axMax) {
+                    axMax = xv;
+                }
             }
-            if (xv > axMax) {
-                axMax = xv;
-            }
-            if (ser->yData[i] < ayMin) {
-                ayMin = ser->yData[i];
-            }
-            if (ser->yData[i] > ayMax) {
-                ayMax = ser->yData[i];
+            if (isfinite(yv)) {
+                if (yv < ayMin) {
+                    ayMin = yv;
+                }
+                if (yv > ayMax) {
+                    ayMax = yv;
+                }
             }
         }
+    }
+    if (axMin > axMax) {   /* no finite x at all */
+        axMin = 0.0f;
+        axMax = 1.0f;
+    }
+    if (ayMin > ayMax) {
+        ayMin = 0.0f;
+        ayMax = 1.0f;
     }
     if (axMax == axMin) {
         axMin -= 1.0f;
         axMax += 1.0f;
+    }
+    /* Bars grow from zero, so the auto range must contain it: with yMin as
+       the baseline the smallest bar had no height at all. */
+    if (hasBar) {
+        if (ayMin > 0.0f) {
+            ayMin = 0.0f;
+        }
+        if (ayMax < 0.0f) {
+            ayMax = 0.0f;
+        }
     }
     if (ayMax == ayMin) {
         ayMin -= 1.0f;
@@ -91,6 +126,19 @@ static void compute_extents(const Plot* plot, float* xMin, float* xMax, float* y
     }
 }
 
+
+/* A pixel coordinate from a float, clamped far outside any canvas: (int) of
+   a value beyond the int range - a point far outside a pinned range, or an
+   infinite value - is undefined behaviour. NaN must be filtered first. */
+static int plot_px(float v) {
+    if (v < -1.0e6f) {
+        return -1000000;
+    }
+    if (v > 1.0e6f) {
+        return 1000000;
+    }
+    return (int)v;
+}
 
 /* Draw the plot contents into the currently-bound render target.
  * Shared by plot_draw (live window) and plot_export_image (offscreen). */
@@ -123,21 +171,38 @@ static void render_plot(const Plot* plot, Font font) {
     DrawTextPro(font, plot->yLabel, yLabelPos, (Vector2){0, 0}, -90, (float)plot->labelFontSize, 2, plotcolor_to_raylib(plot->axisColor));
     DrawText(plot->title, plot->width / 2 - MeasureText(plot->title, plot->titleFontSize) / 2, 10, plot->titleFontSize, plotcolor_to_raylib(plot->axisColor));
 
+    float pieAngle = 0.0f;   /* pie series continue where the previous one ended */
+    size_t pieSlice = 0;     /* palette index across all pie slices */
+    /* Series are clipped to the plot area: points outside a pinned range used
+       to paint over the title, the labels and the legend. */
+    BeginScissorMode(padding, padding, plot->width - 2 * padding, plot->height - 2 * padding);
     for (size_t s = 0; s < plot->seriesCount; ++s) {
         const PlotSeries* ser = &plot->series[s];
         Color c = plotcolor_to_raylib(ser->color);
 
         if (ser->pltype == PLTYPE_LINE) {
-            for (size_t i = 0; i + 1 < ser->dataSize; ++i) {
-                int x1 = padding + (int)(((ser->xData ? ser->xData[i]     : (float)i)     - xMin) / xRange * (plot->width  - 2 * padding));
-                int y1 = plot->height - padding - (int)((ser->yData[i]     - yMin) / yRange * (plot->height - 2 * padding));
-                int x2 = padding + (int)(((ser->xData ? ser->xData[i + 1] : (float)(i + 1)) - xMin) / xRange * (plot->width  - 2 * padding));
-                int y2 = plot->height - padding - (int)((ser->yData[i + 1] - yMin) / yRange * (plot->height - 2 * padding));
-
-                DrawLine(x1, y1, x2, y2, c);
-                DrawCircle(x1, y1, 3, c);
+            /* every point gets a marker (the last one had none, so a
+               one-point series was invisible); NaN points break the line */
+            bool havePrev = false;
+            int px = 0, py = 0;
+            for (size_t i = 0; i < ser->dataSize; ++i) {
+                float fx = ((ser->xData ? ser->xData[i] : (float)i) - xMin) / xRange * (plot->width - 2 * padding);
+                float fy = (ser->yData[i] - yMin) / yRange * (plot->height - 2 * padding);
+                if (isnan(fx) || isnan(fy)) {
+                    havePrev = false;
+                    continue;
+                }
+                int x = padding + plot_px(fx);
+                int y = plot->height - padding - plot_px(fy);
+                if (havePrev) {
+                    DrawLine(px, py, x, y, c);
+                }
+                DrawCircle(x, y, 3, c);
+                px = x;
+                py = y;
+                havePrev = true;
             }
-        } 
+        }
         else if (ser->pltype == PLTYPE_BAR) {
             int avail = plot->width - 2 * padding;
             int barWidth = ser->dataSize ? (int)(avail / ser->dataSize) - 4 : 4;
@@ -145,38 +210,74 @@ static void render_plot(const Plot* plot, Font font) {
             if (barWidth < 2) {
                 barWidth = 2;
             }
+            if (barWidth > avail) {
+                barWidth = avail;
+            }
+            /* Baseline at value 0 (clamped to the visible range); bar centres
+               are mapped into [padding + w/2, width - padding - w/2] so the
+               first and last bars stay inside the axes (they used to stick
+               out by half a bar, even off the canvas). */
+            float zero = (0.0f < yMin) ? yMin : (0.0f > yMax) ? yMax : 0.0f;
+            int y0 = plot->height - padding - plot_px((zero - yMin) / yRange * (plot->height - 2 * padding));
+            int inner = avail - barWidth;
             for (size_t i = 0; i < ser->dataSize; ++i) {
-                int x = padding + (int)(((ser->xData ? ser->xData[i] : (float)i) - xMin) / xRange * avail);
-                int y = plot->height - padding - (int)((ser->yData[i] - yMin) / yRange * (plot->height - 2 * padding));
-                int h = (plot->height - padding) - y;
+                float t = ((ser->xData ? ser->xData[i] : (float)i) - xMin) / xRange;
+                float fy = (ser->yData[i] - yMin) / yRange * (plot->height - 2 * padding);
+                if (isnan(t) || isnan(fy)) {
+                    continue;
+                }
+                int x = padding + barWidth / 2 + plot_px(t * (float)inner);
+                int y = plot->height - padding - plot_px(fy);
+                int top = (y < y0) ? y : y0;
+                int h = (y < y0) ? (y0 - y) : (y - y0);   /* negative values hang below 0 */
 
-                DrawRectangle(x - barWidth / 2, y, barWidth, h, c);
-                DrawRectangleLines(x - barWidth / 2, y, barWidth, h, plotcolor_to_raylib(plot->axisColor));
+                DrawRectangle(x - barWidth / 2, top, barWidth, h, c);
+                DrawRectangleLines(x - barWidth / 2, top, barWidth, h, plotcolor_to_raylib(plot->axisColor));
             }
         } 
         else if (ser->pltype == PLTYPE_SCATTER) {
             for (size_t i = 0; i < ser->dataSize; ++i) {
-                int x = padding + (int)(((ser->xData ? ser->xData[i] : (float)i) - xMin) / xRange * (plot->width - 2 * padding));
-                int y = plot->height - padding - (int)((ser->yData[i] - yMin) / yRange * (plot->height - 2 * padding));
+                float fx = ((ser->xData ? ser->xData[i] : (float)i) - xMin) / xRange * (plot->width - 2 * padding);
+                float fy = (ser->yData[i] - yMin) / yRange * (plot->height - 2 * padding);
+                if (isnan(fx) || isnan(fy)) {
+                    continue;
+                }
+                int x = padding + plot_px(fx);
+                int y = plot->height - padding - plot_px(fy);
 
                 DrawCircle(x, y, 6, c);
                 DrawCircleLines(x, y, 6, plotcolor_to_raylib(plot->axisColor));
             }
         } 
         else if (ser->pltype == PLTYPE_PIE) {
+            /* All pie series form ONE pie: "one series per slice" (each with
+               its own colour, as in the README) used to paint full discs on
+               top of each other, each normalised to 100%. A series with
+               several values gets one palette colour per slice instead of the
+               same colour for every slice. */
             float total = 0;
-            for (size_t i = 0; i < ser->dataSize; ++i) {
-                if (ser->yData[i] > 0) {
-                    total += ser->yData[i];
+            for (size_t ps = 0; ps < plot->seriesCount; ++ps) {
+                const PlotSeries* ps_ser = &plot->series[ps];
+                if (ps_ser->pltype != PLTYPE_PIE) {
+                    continue;
+                }
+                for (size_t i = 0; i < ps_ser->dataSize; ++i) {
+                    if (ps_ser->yData[i] > 0) {
+                        total += ps_ser->yData[i];
+                    }
                 }
             }
             if (total <= 0) {
                 continue;
             }
+            size_t positive = 0;
+            for (size_t i = 0; i < ser->dataSize; ++i) {
+                positive += ser->yData[i] > 0;
+            }
 
             Vector2 center = {(float)(plot->width / 2), (float)(plot->height / 2)};
             float radius = (float)((plot->height < plot->width ? plot->height : plot->width) / 3);
-            float startAngle = 0;
+            float startAngle = pieAngle;
 
             for (size_t i = 0; i < ser->dataSize; ++i) {
                 if (ser->yData[i] <= 0) {
@@ -184,10 +285,20 @@ static void render_plot(const Plot* plot, Font font) {
                 }
                 float sliceAngle = (ser->yData[i] / total) * 360.0f;
                 if (sliceAngle < 0.1f) {
+                    startAngle += sliceAngle;
                     continue;
                 }
-                
-                DrawCircleSector(center, radius, startAngle, startAngle + sliceAngle, 50, c);
+                static const unsigned char pal[10][3] = {
+                    {31, 119, 180}, {255, 127, 14}, {44, 160, 44}, {214, 39, 40}, {148, 103, 189},
+                    {140, 86, 75}, {227, 119, 194}, {127, 127, 127}, {188, 189, 34}, {23, 190, 207}
+                };
+                Color sc = c;
+                if (positive > 1) {
+                    sc = (Color){ pal[pieSlice % 10][0], pal[pieSlice % 10][1], pal[pieSlice % 10][2], 255 };
+                }
+                pieSlice++;
+
+                DrawCircleSector(center, radius, startAngle, startAngle + sliceAngle, 50, sc);
                 float midAngle = startAngle + sliceAngle / 2.0f;
                 float labelX = center.x + cosf(DEG2RAD * midAngle) * (radius * 0.6f);
                 float labelY = center.y + sinf(DEG2RAD * midAngle) * (radius * 0.6f);
@@ -198,6 +309,7 @@ static void render_plot(const Plot* plot, Font font) {
                 DrawText(label, (int)(labelX - labelW / 2), (int)labelY, 16, plotcolor_to_raylib(plot->axisColor));
                 startAngle += sliceAngle;
             }
+            pieAngle = startAngle;
         } 
         else if (ser->pltype == PLTYPE_HISTOGRAM) {
             const int numBins = 10;
@@ -208,13 +320,11 @@ static void render_plot(const Plot* plot, Font font) {
             int binCounts[10] = {0};
 
             for (size_t i = 0; i < ser->dataSize; ++i) {
-                int binIdx = (int)((ser->yData[i] - yMin) / binWidth);
-                if (binIdx < 0) {
-                    binIdx = 0;
+                float pos = (ser->yData[i] - yMin) / binWidth;
+                if (isnan(pos)) {
+                    continue;
                 }
-                if (binIdx >= numBins) {
-                    binIdx = numBins - 1;
-                }
+                int binIdx = (pos < 0.0f) ? 0 : (pos >= (float)numBins) ? numBins - 1 : (int)pos;
                 binCounts[binIdx]++;
             }
             float maxCount = 0;
@@ -236,6 +346,8 @@ static void render_plot(const Plot* plot, Font font) {
             }
         }
     }
+
+    EndScissorMode();
 
     if (plot->showLegend && plot->seriesCount > 0) {
         int legendW = 180, legendH = (int)(30 * plot->seriesCount + 10);
@@ -623,11 +735,13 @@ void plot_set_window_size(Plot* plot, int width, int height) {
         PLOT_LOG("[plot_set_window_size]: NULL plot -> noop");
         return;
     }
-    if (width  < 100) {
-        width  = 100;
+    /* at least PLOT_MIN_SIZE: smaller canvases left no room inside the
+       120 px of padding (inverted axes, negative bar sizes) */
+    if (width  < PLOT_MIN_SIZE) {
+        width  = PLOT_MIN_SIZE;
     }
-    if (height < 100) {
-        height = 100;
+    if (height < PLOT_MIN_SIZE) {
+        height = PLOT_MIN_SIZE;
     }
 
     plot->width  = width;
@@ -833,11 +947,29 @@ bool plot_export_image(Plot* plot, const char* filename) {
         return false;
     }
 
-    SetTraceLogLevel(LOG_NONE);
-    SetConfigFlags(FLAG_WINDOW_HIDDEN);
-    InitWindow(plot->width, plot->height, "Plot Export");
+    /* Reuse a window that is already open (closing it would tear down the
+       caller's context); otherwise open a hidden one just for the export. */
+    bool ownWindow = !IsWindowReady();
+    if (ownWindow) {
+        SetTraceLogLevel(LOG_NONE);
+        SetConfigFlags(FLAG_WINDOW_HIDDEN);
+        InitWindow(plot->width, plot->height, "Plot Export");
+        if (!IsWindowReady()) {
+            /* no display / GL context: the GL calls below would crash */
+            SetTraceLogLevel(LOG_INFO);
+            PLOT_LOG("[plot_export_image]: InitWindow failed -> false");
+            return false;
+        }
+    }
 
     RenderTexture2D target = LoadRenderTexture(plot->width, plot->height);
+    if (target.id == 0) {
+        if (ownWindow) {
+            CloseWindow();
+            SetTraceLogLevel(LOG_INFO);
+        }
+        return false;
+    }
     Font font = GetFontDefault();
 
     BeginTextureMode(target);
@@ -850,7 +982,16 @@ bool plot_export_image(Plot* plot, const char* filename) {
     bool ok = ExportImage(img, filename);
     UnloadImage(img);
     UnloadRenderTexture(target);
-    CloseWindow();
+    if (ownWindow) {
+        /* raylib keeps the config flags after CloseWindow: clear "hidden" so
+           a later plot_draw / turtle window is visible (moved off screen
+           first so the export window does not flash), and put the default
+           log level back. */
+        SetWindowPosition(-32000, -32000);
+        ClearWindowState(FLAG_WINDOW_HIDDEN);
+        CloseWindow();
+        SetTraceLogLevel(LOG_INFO);
+    }
 
     PLOT_LOG("[plot_export_image]: exit -> %s (file=%s)", ok ? "true" : "false", filename);
     return ok;
@@ -1034,12 +1175,13 @@ bool plot_set_axis_labels(Plot* plot, const char* xLabel, const char* yLabel) {
  * @param width  Desired canvas width in pixels. Must be > 0.
  * @param height Desired canvas height in pixels. Must be > 0.
  *
- * @return true on success; false on NULL plot or non-positive
- *         dimensions (the plot is left unchanged in that case).
+ * @return true on success; false on NULL plot or a dimension below
+ *         PLOT_MIN_SIZE (200 px: the axes keep 60 px of padding on every
+ *         side) - the plot is left unchanged in that case.
  */
 bool plot_set_size(Plot* plot, int width, int height) {
     PLOT_LOG("[plot_set_size]: enter (plot=%p, width=%d, height=%d)", (void*)plot, width, height);
-    if (!plot || width <= 0 || height <= 0) {
+    if (!plot || width < PLOT_MIN_SIZE || height < PLOT_MIN_SIZE) {
         PLOT_LOG("[plot_set_size]: bad arg -> false");
         return false;
     }
@@ -1848,6 +1990,65 @@ bool plot_linspace(float start, float end, size_t n, float* out) {
 }
 
 
+/* fopen for a UTF-8 path (narrow fopen on Windows reads the path in the
+   ANSI code page). */
+static FILE* plot_fopen_utf8(const char* path, const char* mode) {
+#if defined(_WIN32)
+    wchar_t wmode[8];
+    size_t i = 0;
+    for (; mode[i] && i < 7; ++i) {
+        wmode[i] = (wchar_t)(unsigned char)mode[i];
+    }
+    wmode[i] = L'\0';
+    int n = MultiByteToWideChar(65001 /* CP_UTF8 */, 0x8 /* MB_ERR_INVALID_CHARS */, path, -1, NULL, 0);
+    if (n <= 0) {
+        return NULL;
+    }
+    wchar_t* wpath = (wchar_t*)malloc((size_t)n * sizeof(wchar_t));
+    if (!wpath) {
+        return NULL;
+    }
+    FILE* f = NULL;
+    if (MultiByteToWideChar(65001, 0x8, path, -1, wpath, n) > 0) {
+        f = _wfopen(wpath, wmode);
+    }
+    free(wpath);
+    return f;
+#else
+    return fopen(path, mode);
+#endif
+}
+
+/* A CSV text cell (RFC 4180): quoted when it holds a comma, quote or line
+   break, with quotes doubled. `prefix_done` means "x_" was already written
+   in front, so the text continues an unquoted cell. */
+static bool plot_csv_write_text(FILE* f, const char* text, bool prefix_done) {
+    bool quote = strpbrk(text, ",\"\r\n") != NULL;
+    if (!quote) {
+        return fputs(text, f) >= 0;
+    }
+    if (prefix_done) {
+        /* "x_" + a label that needs quoting: drop the characters that would
+           need it rather than emit a half-quoted cell */
+        for (const char* p = text; *p; ++p) {
+            if (!strchr(",\"\r\n", *p) && fputc(*p, f) == EOF) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (fputc('"', f) == EOF) {
+        return false;
+    }
+    for (const char* p = text; *p; ++p) {
+        if ((*p == '"' && fputc('"', f) == EOF) || fputc(*p, f) == EOF) {
+            return false;
+        }
+    }
+    return fputc('"', f) != EOF;
+}
+
+
 /**
  * @brief Dump every series of the plot to @p filename in CSV form.
  *
@@ -1864,8 +2065,12 @@ bool plot_linspace(float start, float end, size_t n, float* out) {
  *
  * If series have different lengths, the file uses the longest series
  * as the row count and leaves shorter series' missing cells empty
- * ("ragged CSV"). All numeric values are formatted with `%g` for
- * compactness.
+ * ("ragged CSV"). When the series do NOT share one set of x values (a
+ * scatter series with its own x array), every series gets its own x
+ * column instead: `x_<label>,<label>,...` (only the first series' x used
+ * to be written). Numbers use `%.9g` (exact for float; `%g` kept 6
+ * digits), and labels are quoted per RFC 4180 when they contain a comma,
+ * quote or line break.
  *
  * Suitable for hand-off to spreadsheets, Pandas, or any other
  * downstream tool that wants the raw data the plot is showing.
@@ -1877,8 +2082,8 @@ bool plot_linspace(float start, float end, size_t n, float* out) {
  *                 contents are overwritten.
  *
  * @return true on success; false on NULL plot/filename, empty plot
- *         (no series), or if the file could not be opened for
- *         writing.
+ *         (no series), or if the file could not be opened or written
+ *         (the path is UTF-8; on Windows it is opened with the wide API).
  *
  * @code
  *     if (!plot_export_csv(plot, "out.csv")) {
@@ -1897,7 +2102,7 @@ bool plot_export_csv(const Plot* plot, const char* filename) {
         return false;
     }
 
-    FILE* f = fopen(filename, "w");
+    FILE* f = plot_fopen_utf8(filename, "w");
     if (!f) {
         PLOT_LOG("[plot_export_csv]: cannot open %s -> false", filename);
         return false;
@@ -1911,44 +2116,80 @@ bool plot_export_csv(const Plot* plot, const char* filename) {
         }
     }
 
-    /* Header. */
-    fprintf(f, "x");
-    for (size_t s = 0; s < plot->seriesCount; ++s) {
-        const char* lbl = plot->series[s].label;
-        if (lbl && *lbl) {
-            fprintf(f, ",%s", lbl);
+    /* One shared x column when every series uses the same x values. */
+    bool sharedX = true;
+    const PlotSeries* first = &plot->series[0];
+    for (size_t s = 1; s < plot->seriesCount && sharedX; ++s) {
+        const PlotSeries* ser = &plot->series[s];
+        if ((ser->xData == NULL) != (first->xData == NULL)) {
+            sharedX = false;
         }
-        else {            
-            fprintf(f, ",series_%zu", s);
+        for (size_t r = 0; sharedX && ser->xData && r < ser->dataSize; ++r) {
+            sharedX = r < first->dataSize && ser->xData[r] == first->xData[r];
         }
     }
-    fputc('\n', f);
+
+    bool ok = true;
+    /* Header. */
+    if (sharedX) {
+        ok &= fputs("x", f) >= 0;
+    }
+    for (size_t s = 0; s < plot->seriesCount; ++s) {
+        char fallback[32];
+        const char* lbl = plot->series[s].label;
+        if (!lbl || !*lbl) {
+            snprintf(fallback, sizeof(fallback), "series_%zu", s);
+            lbl = fallback;
+        }
+        if (!sharedX) {
+            ok &= fputs(s ? ",x_" : "x_", f) >= 0;
+            ok &= plot_csv_write_text(f, lbl, true);
+        }
+        ok &= fputc(',', f) != EOF;
+        ok &= plot_csv_write_text(f, lbl, false);
+    }
+    ok &= fputc('\n', f) != EOF;
 
     /* Rows. */
-    for (size_t r = 0; r < rows; ++r) {
-        /* x column uses implicit index unless the first series has its own. */
-        const PlotSeries* first = &plot->series[0];
-        if (first->xData && r < first->dataSize) {
-            fprintf(f, "%g", (double)first->xData[r]);
-        } 
-        else {
-            fprintf(f, "%zu", r);
+    for (size_t r = 0; r < rows && ok; ++r) {
+        if (sharedX) {
+            /* x column uses implicit index unless the series have their own. */
+            if (first->xData && r < first->dataSize) {
+                ok &= fprintf(f, "%.9g", (double)first->xData[r]) >= 0;
+            }
+            else {
+                ok &= fprintf(f, "%zu", r) >= 0;
+            }
         }
         for (size_t s = 0; s < plot->seriesCount; ++s) {
             const PlotSeries* ser = &plot->series[s];
-            if (r < ser->dataSize) {
-                fprintf(f, ",%g", (double)ser->yData[r]);
+            if (!sharedX) {
+                if (s > 0) {
+                    ok &= fputc(',', f) != EOF;
+                }
+                if (r < ser->dataSize) {
+                    if (ser->xData) {
+                        ok &= fprintf(f, "%.9g", (double)ser->xData[r]) >= 0;
+                    }
+                    else {
+                        ok &= fprintf(f, "%zu", r) >= 0;
+                    }
+                }
             }
-            else {                  
-                fputc(',', f);
+            if (r < ser->dataSize) {
+                ok &= fprintf(f, ",%.9g", (double)ser->yData[r]) >= 0;
+            }
+            else {
+                ok &= fputc(',', f) != EOF;
             }
         }
-        fputc('\n', f);
+        ok &= fputc('\n', f) != EOF;
     }
 
-    fclose(f);
-    PLOT_LOG("[plot_export_csv]: exit -> true (rows=%zu, file=%s)", rows, filename);
-    return true;
+    ok &= !ferror(f);
+    ok &= fclose(f) == 0;
+    PLOT_LOG("[plot_export_csv]: exit -> %s (rows=%zu, file=%s)", ok ? "true" : "false", rows, filename);
+    return ok;
 }
 
 

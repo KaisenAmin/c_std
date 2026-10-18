@@ -5,16 +5,25 @@
 */
 
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include "list.h"
+#include <stdint.h>
 
 
+/* MSVC's C mode has no max_align_t; this union has the same alignment. */
+#if defined(_MSC_VER) && !defined(__clang__)
+typedef union { long long ll; long double ld; double d; void* p; } dll_max_align_t;
+#define DLL_MAX_ALIGN _Alignof(dll_max_align_t)
+#else
+#define DLL_MAX_ALIGN _Alignof(max_align_t)
+#endif
 
 /* Single-allocation nodes: the element is stored INLINE right after the Node
  * header (one malloc per element, like std::list) instead of in a second heap
  * block reached through node->value.*/
 #define DLL_VALUE_OFFSET \
-    ((sizeof(Node) + _Alignof(max_align_t) - 1) & ~(_Alignof(max_align_t) - 1))
+    ((sizeof(Node) + DLL_MAX_ALIGN - 1) & ~(DLL_MAX_ALIGN - 1))
 
 /* Allocate a detached node holding a COPY of `value` (itemSize bytes) stored
  * inline. next/prev are NULL; the caller links it in. Returns NULL on OOM. */
@@ -33,7 +42,13 @@ static Node* dll_make_node(const List* list, const void* value) {
 
 
 static Node* dll_make_owning_node(void* value) {
-    Node* node = (Node*)malloc(sizeof(Node));
+    /* dll_free_node tells an owned (emplaced) value from an inline one by
+       checking node->value == node + DLL_VALUE_OFFSET. With a bare
+       sizeof(Node) allocation, a separately malloc'd value could start
+       exactly at that address (small heap blocks are 32 bytes apart) and was
+       then never freed. Allocating past the offset makes that address part
+       of this very block, so no other allocation can be there. */
+    Node* node = (Node*)malloc(DLL_VALUE_OFFSET + 1);
     if (!node) {
         LIST_LOG("[dll_make_owning_node] : Error: node malloc failed.");
         return NULL;
@@ -123,8 +138,9 @@ static Node* dll_merge_sort(Node* head, CompareFunction compare) {
  * @return Pointer to the newly created list, or NULL if memory allocation fails.
  */
 List *list_create(size_t itemSize, CompareFunction compare) {
-    if (itemSize == 0) {
-        LIST_LOG("[list_create] Error: Item size must be greater than 0.");
+    if (itemSize == 0 || itemSize > SIZE_MAX - DLL_VALUE_OFFSET) {
+        /* the node size (header + item) must not wrap around */
+        LIST_LOG("[list_create] Error: Item size must be greater than 0 and fit a node.");
         return NULL;
     }
 
@@ -214,19 +230,21 @@ void *list_insert(List *list, size_t index, void *value) {
         LIST_LOG("[list_insert] : Error: Index out of bounds in list_insert. Index: %zu, List size: %zu", index, list->size);
         return NULL;
     }
+    if (value == NULL) {
+        return NULL;   /* the node copies itemSize bytes from value */
+    }
+    size_t before = list->size;
     if (index == 0) {
         LIST_LOG("[list_insert] : Inserting value at the front of the list.");
         list_push_front(list, value);
-        LIST_LOG("[list_insert] : Successfully inserted value at the front.");
-
-        return list->head->value;
-    } 
+        /* push_front reports nothing: on failure the old head (or NULL on an
+           empty list) used to be returned as the "new" element */
+        return (list->size > before) ? list->head->value : NULL;
+    }
     else if (index == list->size) {
         LIST_LOG("[list_insert] : Inserting value at the back of the list.");
         list_push_back(list, value);
-        LIST_LOG("[list_insert] : Successfully inserted value at the back.");
-
-        return list->tail->value;
+        return (list->size > before) ? list->tail->value : NULL;
     }
 
     Node *newNode = dll_make_node(list, value);
@@ -345,22 +363,27 @@ void list_resize(List *list, size_t newSize, void *defaultValue) {
     while (list->size > newSize) {
         list_pop_back(list);
     }
-    while (list->size < newSize) {
-        void *newValue = malloc(list->itemSize);
-
-        if (!newValue) {
-            LIST_LOG("[list_resize] : Error: Memory allocation failed in list_resize.");
-            return;
+    if (list->size < newSize) {
+        void *newValue = defaultValue;
+        if (newValue == NULL) {
+            newValue = calloc(1, list->itemSize);   /* zero-initialised elements */
+            if (!newValue) {
+                LIST_LOG("[list_resize] : Error: Memory allocation failed in list_resize.");
+                return;
+            }
         }
-        if (defaultValue != NULL) {
-            memcpy(newValue, defaultValue, list->itemSize); // Use the provided default value
-        } 
-        else {
-            memset(newValue, 0, list->itemSize); 
+        while (list->size < newSize) {
+            size_t before = list->size;
+            list_push_back(list, newValue);
+            if (list->size == before) {
+                /* out of memory: the old loop retried forever */
+                LIST_LOG("[list_resize] : Error: could not add an element; stopping at %zu.", list->size);
+                break;
+            }
         }
-
-        list_push_back(list, newValue);
-        free(newValue); 
+        if (newValue != defaultValue) {
+            free(newValue);
+        }
     }
 
     LIST_LOG("[list_resize] : List resized successfully. New size: %zu", list->size);
@@ -1028,6 +1051,11 @@ void list_remove(List *list, void *value) {
     }
 
     Node *current = list->head;
+    /* `value` may point into one of the matching nodes
+       (list_remove(l, list_front(l))): unlink matches as we go but free them
+       only after the scan, so the comparison never reads freed memory
+       (std::list::remove has the same requirement, LWG 526). */
+    Node *doomed = NULL;
 
     LIST_LOG("[list_remove] : Starting removal of nodes matching the provided value.");
     while (current != NULL) {
@@ -1042,18 +1070,24 @@ void list_remove(List *list, void *value) {
             else {
                 list->head = next;
             }
-            if (next) { 
+            if (next) {
                 next->prev = current->prev;
             }
-            else { 
+            else {
                 list->tail = current->prev;
             }
-            dll_free_node(current);
+            current->next = doomed;
+            doomed = current;
 
             list->size--;
             LIST_LOG("[list_remove] : Node removed, new list size: %zu", list->size);
         }
         current = next;
+    }
+    while (doomed != NULL) {
+        Node *next = doomed->next;
+        dll_free_node(doomed);
+        doomed = next;
     }
 
     LIST_LOG("[list_remove] : Finished removing nodes. Final list size: %zu", list->size);
@@ -1251,31 +1285,37 @@ void list_merge(List *list1, List *list2) {
  * 
  * @return true if list1 is less than list2, false otherwise.
  */
+/* Lexicographic three-way comparison (-1, 0, 1) with list1's comparator, or
+   list2's when list1 has none (is_greater used to take list2's because it
+   called is_less(list2, list1)). *ok is false when neither list has one. */
+static int dll_compare_lists(const List *list1, const List *list2, bool *ok) {
+    CompareFunction cmp = list1->compare ? list1->compare : list2->compare;
+    *ok = (cmp != NULL);
+    if (cmp == NULL) {
+        return 0;
+    }
+    Node *node1 = list1->head;
+    Node *node2 = list2->head;
+    while (node1 != NULL && node2 != NULL) {
+        int c = cmp(node1->value, node2->value);
+        if (c != 0) {
+            return (c < 0) ? -1 : 1;
+        }
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+    // Common prefix is equal: the shorter list is "less".
+    return (node1 != NULL) ? 1 : (node2 != NULL) ? -1 : 0;
+}
+
 bool list_is_less(const List *list1, const List *list2) {
     if (list1 == NULL || list2 == NULL) {
         LIST_LOG("[list_is_less] : Error: Null pointer provided for one or both lists in list_is_less.");
         return false;
     }
-    if (list1->compare == NULL) {
-        LIST_LOG("[list_is_less] : Error: list1 has no compare function.");
-        return false;
-    }
-    LIST_LOG("[list_is_less] : Comparing if list1 is less than list2 lexicographically.");
-
-    Node *node1 = list1->head;
-    Node *node2 = list2->head;
-
-    while (node1 != NULL && node2 != NULL) {
-        int cmp = list1->compare(node1->value, node2->value);
-        if (cmp != 0) {
-            return cmp < 0;
-        }
-        node1 = node1->next;
-        node2 = node2->next;
-    }
-
-    // Common prefix is equal: shorter list is "less".
-    return node1 == NULL && node2 != NULL;
+    bool ok;
+    int r = dll_compare_lists(list1, list2, &ok);
+    return ok && r < 0;   /* no comparator: no ordering */
 }
 
 
@@ -1294,7 +1334,8 @@ bool list_is_greater(const List *list1, const List *list2) {
     }
 
     LIST_LOG("[list_is_greater] : Comparing if list1 is greater than list2.");
-    bool result = list_is_less(list2, list1);
+    bool ok;
+    bool result = dll_compare_lists(list1, list2, &ok) > 0 && ok;
     LIST_LOG("[list_is_greater] : Comparison result in list_is_greater: %d", result);
 
     return result;
@@ -1319,22 +1360,21 @@ bool list_is_equal(const List *list1, const List *list2) {
         return false;
     }
 
-    Node *node1 = list1->head;
-    Node *node2 = list2->head;
-
-    while (node1 != NULL && node2 != NULL) {
-        int cmp_result = list1->compare(node1->value, node2->value);
-        LIST_LOG("[list_is_equal] : Comparing node values using custom comparison function: result = %d", cmp_result);
-
-        if (cmp_result != 0) {
-            LIST_LOG("[list_is_equal] : Nodes are not equal, returning false.");
+    bool ok;
+    int r = dll_compare_lists(list1, list2, &ok);
+    if (ok) {
+        return r == 0;
+    }
+    /* No comparator on either list (it used to call a NULL function):
+       elements are equal when their bytes are equal. */
+    if (list1->itemSize != list2->itemSize) {
+        return false;
+    }
+    for (Node *node1 = list1->head, *node2 = list2->head; node1 && node2; node1 = node1->next, node2 = node2->next) {
+        if (memcmp(node1->value, node2->value, list1->itemSize) != 0) {
             return false;
         }
-
-        node1 = node1->next;
-        node2 = node2->next;
     }
-
     LIST_LOG("[list_is_equal] : Lists are equal, returning true.");
     return true;
 }

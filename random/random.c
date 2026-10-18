@@ -18,38 +18,119 @@
 /* Internal PRNG state. The module now owns its generator (xorshift32)
    instead of relying on libc rand(), so getstate/setstate can actually
    snapshot and restore the sequence — rand()'s state is opaque and not
-   round-trippable through a single integer. */
+   round-trippable through a single integer.
+
+   The state is advanced with an atomic compare-and-swap, so concurrent
+   callers never lose an update or receive the same draw (a plain
+   read-modify-write raced). Draws from several threads still interleave in
+   an unspecified order; seed per thread-independent run for reproducibility. */
 static unsigned int rand_state = 1u;
 
-/* Advance and return the next 32-bit value. Marsaglia xorshift32. */
-static unsigned int prng_next32(void) {
-    unsigned int x = rand_state;
+#if defined(_MSC_VER) && !defined(__clang__)
+    #include <intrin.h>
+    static unsigned int rs_load(void) {
+        return (unsigned int)_InterlockedCompareExchange((volatile long*)&rand_state, 0, 0);
+    }
+    static void rs_store(unsigned int v) {
+        _InterlockedExchange((volatile long*)&rand_state, (long)v);
+    }
+    static int rs_cas(unsigned int* expected, unsigned int desired) {
+        long prev = _InterlockedCompareExchange((volatile long*)&rand_state, (long)desired, (long)*expected);
+        if ((unsigned int)prev == *expected) {
+            return 1;
+        }
+        *expected = (unsigned int)prev;
+        return 0;
+    }
+#else
+    static unsigned int rs_load(void) {
+        return __atomic_load_n(&rand_state, __ATOMIC_RELAXED);
+    }
+    static void rs_store(unsigned int v) {
+        __atomic_store_n(&rand_state, v, __ATOMIC_RELAXED);
+    }
+    static int rs_cas(unsigned int* expected, unsigned int desired) {
+        return __atomic_compare_exchange_n(&rand_state, expected, desired, 1, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+    }
+#endif
+
+/* One Marsaglia xorshift32 step. */
+static unsigned int prng_step(unsigned int x) {
     if (x == 0) {
         x = 2463534242u;  /* xorshift requires non-zero state */
-    }  
+    }
 
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
-    rand_state = x;
+    return x;
+}
+
+/* Advance and return the next 32-bit value. */
+static unsigned int prng_next32(void) {
+    unsigned int old = rs_load();
+    unsigned int x;
+    do {
+        x = prng_step(old);
+    } while (!rs_cas(&old, x));
 
     return x;
 }
 
+static unsigned long long prng_next64(void) {
+    unsigned long long hi = (unsigned long long)prng_next32() << 32;
+    return hi | (unsigned long long)prng_next32();
+}
 
-/* Internal helper: random size_t in [0, n). Used by shuffle/choice/sample. */
+/* Uniform integer in [0, n), n >= 1. The lowest (2^32 mod n) raw values are
+   rejected so every result is equally likely: a plain `% n` favoured the low
+   residues (up to 2:1 for large n). At most half of the draws are rejected. */
+static unsigned int prng_below32(unsigned int n) {
+    unsigned int threshold = (0u - n) % n;
+    for (;;) {
+        unsigned int r = prng_next32();
+        if (r >= threshold) {
+            return r % n;
+        }
+    }
+}
+
+static unsigned long long prng_below64(unsigned long long n) {
+    unsigned long long threshold = (0ull - n) % n;
+    for (;;) {
+        unsigned long long r = prng_next64();
+        if (r >= threshold) {
+            return r % n;
+        }
+    }
+}
+
+
+/* Internal helper: unbiased random size_t in [0, n). Used by shuffle/choice/sample. */
 static size_t random_index(size_t n) {
     if (n == 0) {
         return 0;
     }
     if (n <= 0xFFFFFFFFu) {
-        return (size_t)(prng_next32() % (unsigned int)n);
+        return (size_t)prng_below32((unsigned int)n);
     }
-    /* For very large n (>= 2^32), compose two draws into a 64-bit value. */
-    unsigned long long hi = (unsigned long long)prng_next32() << 32;
-    unsigned long long lo = (unsigned long long)prng_next32();
 
-    return (size_t)((hi | lo) % (unsigned long long)n);
+    return (size_t)prng_below64((unsigned long long)n);
+}
+
+
+/* Turns a seed into a generator state. xorshift32 is linear, so using small
+   seeds raw gave strongly correlated streams (the first random() was below
+   0.1 for every seed 1..1000), and seed 0 was the same stream as seed 1. A
+   bijective 32-bit mixer (lowbias32) of seed + golden ratio fixes both. */
+static unsigned int random_seed_to_state(unsigned int seed) {
+    unsigned int x = seed + 0x9E3779B9u;
+    x ^= x >> 16;
+    x *= 0x7FEB352Du;
+    x ^= x >> 15;
+    x *= 0x846CA68Bu;
+    x ^= x >> 16;
+    return x ? x : 0x6D2B79F5u;
 }
 
 
@@ -65,7 +146,7 @@ void random_seed(unsigned int seed) {
     /* Seed both the internal xorshift state and libc rand(). Internal
        generator is what now drives every public random_* function;
        libc rand() is kept seeded for any caller that still pokes at it. */
-    rand_state = seed ? seed : 1u;
+    rs_store(random_seed_to_state(seed));
     srand(seed);
 
     RANDOM_LOG("[random_seed]: Seed set to: %u", seed);
@@ -92,7 +173,11 @@ int random_randint(int a, int b) {
         b = temp;
     }
 
-    int result = a + (int)(prng_next32() % (unsigned int)(b - a + 1));
+    /* The span is computed in 64 bits: `b - a + 1` in int overflowed for
+       spans above INT_MAX and was 0 (division by zero) for the full range. */
+    long long span = (long long)b - (long long)a + 1;
+    unsigned long long offset = (span > 0xFFFFFFFFLL) ? (unsigned long long)prng_next32() : (unsigned long long)prng_below32((unsigned int)span);
+    int result = (int)((long long)a + (long long)offset);
     RANDOM_LOG("[random_randint]: Generated random integer: %d in range [%d, %d]", result, a, b);
     RANDOM_LOG("[random_randint]: Exiting with result: %d", result);
 
@@ -106,33 +191,53 @@ int random_randint(int a, int b) {
  * @param a The start of the range (inclusive).
  * @param b The end of the range (exclusive).
  * @param step The step value (can be positive or negative, but not zero).
- * 
- * @return A random integer within the range `[a, b)` with the given step.
- *         Returns -1 if `a >= b` or `step <= 0`.
+ *
+ * @return A random integer within the range `[a, b)` with the given step,
+ *         or -1 for an empty range (`a == b`, `step == 0`, or a step pointing
+ *         away from `b`). -1 can also be a valid result (randrange(-5, 0, 1)),
+ *         so use random_randrange_checked when that matters.
  */
 int random_randrange(int a, int b, int step) {
+    int out;
+    return random_randrange_checked(a, b, step, &out) ? out : -1;
+}
+
+
+/**
+ * @brief random_randrange with an unambiguous error report.
+ *
+ * @param out Receives the random value on success (left unchanged otherwise).
+ * @return true on success; false for an empty range (a == b, step == 0, or a
+ *         step that points away from b) or a NULL @p out.
+ */
+bool random_randrange_checked(int a, int b, int step, int* out) {
     RANDOM_LOG("[random_randrange]: Entering with a: %d, b: %d, step: %d", a, b, step);
 
-    if (a == b || step == 0) {
+    if (out == NULL || a == b || step == 0) {
         RANDOM_LOG("[random_randrange]: Error: invalid range (a == b) or step (step == 0).");
-        return -1;
+        return false;
     }
     if ((step > 0 && a > b) || (step < 0 && a < b)) {
         RANDOM_LOG("[random_randrange]: Error: logic error with range and step values.");
-        return -1;
+        return false;
     }
 
-    int range = abs(b - a);
-    int num_steps = (range + abs(step) - 1) / abs(step);
-    RANDOM_LOG("[random_randrange]: Calculated num_steps: %d", num_steps);
+    /* 64-bit arithmetic: abs(b - a) and a + k * step overflowed int for wide
+       ranges (randrange(INT_MIN, INT_MAX, 1) always returned INT_MIN). The
+       step count is at most 2^32 - 1. */
+    long long range = llabs((long long)b - (long long)a);
+    long long astep = llabs((long long)step);
+    long long num_steps = (range + astep - 1) / astep;
+    RANDOM_LOG("[random_randrange]: Calculated num_steps: %lld", num_steps);
 
-    int random_step = (int)(prng_next32() % (unsigned int)num_steps);
-    RANDOM_LOG("[random_randrange]: Generated random_step: %d", random_step);
+    long long random_step = (long long)prng_below32((unsigned int)num_steps);
+    RANDOM_LOG("[random_randrange]: Generated random_step: %lld", random_step);
 
-    int result = a + random_step * step;
+    int result = (int)((long long)a + random_step * (long long)step);
     RANDOM_LOG("[random_randrange]: Exiting with result: %d", result);
 
-    return result;
+    *out = result;
+    return true;
 }
 
 
@@ -326,16 +431,20 @@ void random_shuffle(void *array, size_t n, size_t size) {
         size_t j = i + random_index(n - i);
         RANDOM_LOG("[random_shuffle]: Swapping element %zu with element %zu", i, j);
 
-        void* temp = malloc(size);
-        if (temp == NULL) {
-            RANDOM_LOG("[random_shuffle]: Error: memory allocation failed in random_shuffle.");
-            return;
+        if (j != i) {
+            /* swap through a small stack buffer: no allocation, so the
+               shuffle can never stop half-way */
+            unsigned char tmp[64];
+            unsigned char* p = (unsigned char*)arr + i * size;
+            unsigned char* q = (unsigned char*)arr + j * size;
+            for (size_t done = 0; done < size; ) {
+                size_t chunk = (size - done < sizeof(tmp)) ? size - done : sizeof(tmp);
+                memcpy(tmp, p + done, chunk);
+                memcpy(p + done, q + done, chunk);
+                memcpy(q + done, tmp, chunk);
+                done += chunk;
+            }
         }
-
-        memcpy(temp, arr + j * size, size);
-        memcpy(arr + j * size, arr + i * size, size);
-        memcpy(arr + i * size, temp, size);
-        free(temp);
 
         RANDOM_LOG("[random_shuffle]: Completed swap between elements %zu and %zu", i, j);
     }
@@ -430,64 +539,65 @@ double random_triangular(double low, double high, double mode) {
  * @param choices Pointer to the array where the selected elements will be stored.
  * @param weights Pointer to the array of weights corresponding to each element in the input array.
  *
- * @note The function performs error checking to ensure valid inputs. If any error is detected,
- *       an error message is printed and the function returns without performing the selection.
+ * @return true on success. false (and @p choices untouched) for NULL
+ *         array / choices, n == 0, size == 0, num_choices == 0, or weights
+ *         that are negative, not finite, or all zero (element 0 used to be
+ *         picked every time then).
  *
- * @note The function uses cumulative weights to perform weighted random sampling.
+ * @note An element with weight 0 is never chosen. Each draw is a binary
+ *       search over the cumulative weights.
  */
-void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights) {
+bool random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights) {
     RANDOM_LOG("[random_choices]: Entering random_choices with array: %p, n: %zu, size: %zu, num_choices: %zu, choices: %p, weights: %p", (void*)array, n, size, num_choices, (void*)choices, (void*)weights);
 
-    if (array == NULL) {
-        RANDOM_LOG("[random_choices]: Error: array is NULL in random_choices.");
-        return;
+    if (array == NULL || choices == NULL || n == 0 || size == 0 || num_choices == 0) {
+        RANDOM_LOG("[random_choices]: Error: invalid arguments in random_choices.");
+        return false;
     }
-    if (n == 0) {
-        RANDOM_LOG("[random_choices]: Error: size of array is zero in random_choices.");
-        return;
-    }
-    if (num_choices == 0) {
-        RANDOM_LOG("[random_choices]: Error: number of choices is zero in random_choices.");
-        return;
-    }
-
 
     double *cumulative_weights = (double *)malloc(n * sizeof(double));
     if (cumulative_weights == NULL) {
         RANDOM_LOG("[random_choices]: Error: memory allocation failed for cumulative_weights in random_choices.");
-        return;
+        return false;
     }
 
-    // Calculate cumulative weights
-    RANDOM_LOG("[random_choices]: Calculating cumulative weights.");
-    cumulative_weights[0] = weights ? weights[0] : 1.0;
-    RANDOM_LOG("[random_choices]: cumulative_weights[0] = %f", cumulative_weights[0]);
-
-    for (size_t i = 1; i < n; i++) {
+    // Cumulative weights; every weight must be finite and >= 0, the total > 0
+    double total = 0.0;
+    for (size_t i = 0; i < n; i++) {
         double w = weights ? weights[i] : 1.0;
-        cumulative_weights[i] = cumulative_weights[i - 1] + w;
-        RANDOM_LOG("[random_choices]: cumulative_weights[%zu] = %f", i, cumulative_weights[i]);
+        if (!(w >= 0.0) || !isfinite(w)) {   /* also rejects NaN */
+            RANDOM_LOG("[random_choices]: Error: weight %zu is negative or not finite.", i);
+            free(cumulative_weights);
+            return false;
+        }
+        total += w;
+        cumulative_weights[i] = total;
+    }
+    if (!(total > 0.0) || !isfinite(total)) {
+        RANDOM_LOG("[random_choices]: Error: the weights add up to zero (or overflow).");
+        free(cumulative_weights);
+        return false;
     }
 
-    // Make random choices
+    // Make random choices: r in [0, total); the first i with cumulative[i] > r
     for (size_t i = 0; i < num_choices; i++) {
-        double r = random_uniform(0.0, cumulative_weights[n - 1]);
-        RANDOM_LOG("[random_choices]: Generated random number r = %f for choice %zu", r, i);
-
-        size_t index = 0;
-        while (index < n - 1 && r > cumulative_weights[index]) {
-            index++;
+        double r = random_random() * total;
+        size_t lo = 0, hi = n - 1;
+        while (lo < hi) {
+            size_t mid = lo + (hi - lo) / 2;
+            if (cumulative_weights[mid] > r) {
+                hi = mid;
+            }
+            else {
+                lo = mid + 1;
+            }
         }
-        RANDOM_LOG("[random_choices]: Selected index %zu for choice %zu", index, i);
-
-        memcpy((char *)choices + i * size, (char *)array + index * size, size);
-        RANDOM_LOG("[random_choices]: Copied choice %zu from array index %zu", i, index);
+        RANDOM_LOG("[random_choices]: Selected index %zu for choice %zu", lo, i);
+        memcpy((char *)choices + i * size, (char *)array + lo * size, size);
     }
 
     free(cumulative_weights);
-
-    RANDOM_LOG("[random_choices]: Freed cumulative_weights memory.");
-    RANDOM_LOG("[random_choices]: Exiting random_choices.");
+    return true;
 }
 
 
@@ -568,9 +678,9 @@ void random_setstate(const unsigned int *state) {
     RANDOM_LOG("[random_setstate]: Entering random_setstate with state: %p", (void*)state);
 
     if (state != NULL) {
-        rand_state = *state;
-        srand(rand_state);
-        RANDOM_LOG("[random_setstate]: State set to: %u", rand_state);
+        rs_store(*state);
+        srand(*state);
+        RANDOM_LOG("[random_setstate]: State set to: %u", *state);
     } 
     else {
         RANDOM_LOG("[random_setstate]: Error: state is NULL in random_setstate.");
@@ -590,8 +700,8 @@ void random_getstate(unsigned int *state) {
     RANDOM_LOG("[random_getstate]: Entering random_getstate with state: %p", (void*)state);
 
     if (state != NULL) {
-        *state = rand_state;
-        RANDOM_LOG("[random_getstate]: Retrieved state: %u", rand_state);
+        *state = rs_load();
+        RANDOM_LOG("[random_getstate]: Retrieved state: %u", *state);
     } 
     else {
         RANDOM_LOG("[random_getstate]: Error: state is NULL in random_getstate.");
@@ -614,20 +724,12 @@ void random_getstate(unsigned int *state) {
 double random_gauss(double mean, double stddev) {
     RANDOM_LOG("[random_gauss]: Entering random_gauss with mean: %f, stddev: %f", mean, stddev);
 
-    static int hasSpare = 0;
-    static double spare;
-
-    if (hasSpare) {
-        hasSpare = 0;
-
-        RANDOM_LOG("[random_gauss]: Using spare value for Gaussian generation: %f", spare);
-        double result = mean + stddev * spare;
-        RANDOM_LOG("[random_gauss]: Exiting random_gauss with result: %f", result);
-
-        return result;
-    }
-
-    hasSpare = 1;
+    /* Marsaglia polar method. Each accepted pair holds two normal values, but
+       the second is no longer cached: a static spare was shared by all
+       threads and survived random_seed / random_setstate, so a reseeded
+       stream (and gamma, beta, lognormal built on it) could start with a
+       value left over from the old one. A call now depends only on the
+       generator state. */
     double u, v, s;
     do {
         u = random_random() * 2.0 - 1.0;
@@ -638,8 +740,6 @@ double random_gauss(double mean, double stddev) {
     } while (s >= 1.0 || s == 0.0);
 
     s = sqrt(-2.0 * log(s) / s);
-    spare = v * s;
-    RANDOM_LOG("[random_gauss]: Spare value stored: %f", spare);
 
     double result = mean + stddev * (u * s);
     RANDOM_LOG("[random_gauss]: Exiting random_gauss with result: %f", result);
@@ -864,31 +964,51 @@ double random_weibull(double shape, double scale) {
  */
 double random_vonmises(double mu, double kappa) {
     RANDOM_LOG("[random_vonmises]: Entering random_vonmises with mu: %f, kappa: %f", mu, kappa);
-    if (kappa <= 0.0) {
+    if (!(kappa > 0.0)) {   /* also rejects NaN, which would never leave the loop */
         RANDOM_LOG("[random_vonmises]: Error: kappa is less than or equal to 0 in random_vonmises.");
         return NAN;
     }
 
     const double tau = 2 * M_PI;
-    double r = 1 + sqrt(1 + 4 * kappa * kappa);
-    double rho = (r - sqrt(2 * r)) / (2 * kappa);
-    double s = (1 + rho * rho) / (2 * rho);
+    double theta;
 
-    double U, W, Y, Z, V;
-    do {
-        U = random_random();
-        Z = cos(M_PI * U);
-        W = (1 + s * Z) / (s + Z);
-        V = random_random();
-        
-    } while (kappa * (s - W) - log(4 * V * (s - 1)) < 0);
+    if (kappa <= 1e-6) {
+        /* Practically uniform on the circle. */
+        theta = tau * random_random();
+    }
+    else {
+        /* Best & Fisher (1979) rejection sampler, as used by CPython's
+           random.vonmisesvariate. */
+        double s = 0.5 / kappa;
+        double r = s + sqrt(1.0 + s * s);
+        double z, d, u2;
 
-    Y = 2 * random_random() - 1;
-    if (Y < 0) {
-        W = -W;
+        do {
+            z = cos(M_PI * random_random());
+            d = z / (r + z);
+            u2 = random_random();
+        } while (!(u2 < 1.0 - d * d || u2 <= (1.0 - d) * exp(d)));
+
+        double q = 1.0 / r;
+        double f = (q + z) / (1.0 + q * z);
+        if (f > 1.0) {
+            f = 1.0;     /* rounding guard for acos */
+        }
+        else if (f < -1.0) {
+            f = -1.0;
+        }
+        /* The angle is mirrored around mu, not around mu + pi/2. */
+        theta = (random_random() > 0.5) ? mu + acos(f) : mu - acos(f);
     }
 
-    double result = fmod(mu + acos(W), tau);
+    /* Python-style modulo: the result is in [0, 2*pi) even for negative mu. */
+    double result = fmod(theta, tau);
+    if (result < 0.0) {
+        result += tau;
+    }
+    if (result >= tau) {
+        result = 0.0;
+    }
     RANDOM_LOG("[random_vonmises]: Exiting random_vonmises with result: %f", result);
 
     return result;

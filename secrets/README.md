@@ -40,7 +40,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Return**: `true` on success; `false` if `buffer` is `NULL` or the system CSPRNG is unavailable.
 - **Details**:
   - This function generates random bytes using platform-specific methods.
-  - On **Windows**, it uses `BCryptGenRandom`, and on **Unix-based systems**, it reads from `/dev/urandom`.
+  - On **Windows**, it uses `BCryptGenRandom` (in chunks, so requests of 4 GiB and more are filled completely); on **Linux** it uses `getrandom(2)`, and on other Unix systems (or a kernel without `getrandom`) it reads `/dev/urandom` (opened with `O_CLOEXEC`; a read interrupted by a signal is retried).
   - On failure it logs the error, **zeroes** the buffer, and returns `false` — it never calls `exit()`, so a CSPRNG failure is recoverable by the caller. (Existing call sites that ignore the return value still compile unchanged.)
   - The generated random bytes are stored in the provided `buffer`.
 
@@ -51,11 +51,11 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Purpose**: Generate a cryptographically secure random integer in the range [0, n).
 - **Parameters**:
   - `n`: Upper limit (exclusive).
-- **Return**: A cryptographically secure random integer between 0 and `n-1`.
+- **Return**: A cryptographically secure random integer between 0 and `n-1`, or `-1` on error (`n ≤ 0` or an RNG failure); `-1` is never a valid result.
 - **Details**:
   - This function calls `secrets_token_bytes` to generate random bytes and converts them to an unsigned integer.
   - It uses **rejection sampling** (discarding values ≥ the largest exact multiple of `n`) to eliminate modulo bias, ensuring every output in `[0, n)` is equally probable.
-  - Returns `0` immediately when `n ≤ 0`.
+  - Returns `-1` immediately when `n ≤ 0` (it used to return `0`, which is also a valid result).
 
 ---
 
@@ -86,16 +86,27 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### `void secrets_token_urlsafe(char *buffer, size_t nbytes)`
 
-- **Purpose**: Generate a cryptographically secure random URL-safe token.
+- **Purpose**: Generate a cryptographically secure random URL-safe token of `nbytes` **characters**.
 - **Parameters**:
-  - `buffer`: A pointer to the array where the Base64-encoded URL-safe token will be stored.
-  - `nbytes`: The number of random bytes to encode as a URL-safe token.
+  - `buffer`: A pointer to the array where the token will be stored; it must hold `nbytes + 1` bytes.
+  - `nbytes`: The number of characters to generate.
 - **Return**: No return value.
 - **Details**:
-  - This function generates `nbytes` random bytes using `secrets_token_bytes`.
-  - It converts each byte to a Base64 URL-safe character using a predefined table (`A-Z`, `a-z`, `0-9`, `-`, and `_`).
-  - The resulting token is stored in the provided `buffer`.
+  - Each character is drawn uniformly from the URL-safe alphabet (`A-Z`, `a-z`, `0-9`, `-`, `_`), so the token carries **6 random bits per character** (6 × `nbytes` bits).
+  - This is **not** Base64 and not Python's `token_urlsafe(nbytes)`, which encodes `nbytes` random bytes (8 × `nbytes` bits, about 1.33 × `nbytes` characters): `secrets_token_urlsafe(buf, 16)` gives 16 characters with 96 bits, Python's `token_urlsafe(16)` 22 characters with 128 bits. For the Python behaviour use `secrets_token_urlsafe_b64`; for a given strength here, use at least `ceil(bits / 6)` characters (22 for 128 bits).
   - Allocates memory dynamically for the random bytes and frees it after use.
+
+---
+
+### `bool secrets_token_urlsafe_b64(char *buffer, size_t buffer_size, size_t nbytes)`
+
+- **Purpose**: Python's `secrets.token_urlsafe(nbytes)`: `nbytes` random bytes, base64url-encoded without padding (8 × `nbytes` bits of entropy).
+- **Parameters**:
+  - `buffer`: Destination for the token.
+  - `buffer_size`: Size of `buffer`; must be at least `SECRETS_URLSAFE_B64_LEN(nbytes) + 1` (the macro gives the token length: 22 for 16 bytes, 43 for 32).
+  - `nbytes`: Number of random bytes to encode.
+- **Return**: `true` on success; `false` for a `NULL` or too small buffer, or an RNG failure (the buffer then holds an empty string).
+- **Details**: The raw random bytes are wiped before they are freed.
 
 ---
 
@@ -149,10 +160,10 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Purpose**: Generate a non-negative integer with exactly `k` random bits.
 - **Parameters**:
   - `k`: The number of random bits to generate (must be between 1 and 32).
-- **Return**: A random integer with exactly `k` random bits.
+- **Return**: A random integer with exactly `k` random bits, or `0` on error.
 - **Details**:
   - This function generates a random integer with `k` bits using cryptographically secure randomness.
-  - If `k` is outside the valid range (1 to 32), it logs an error and exits the program.
+  - If `k` is outside the valid range (1 to 32) or the RNG fails, it returns `0` (it never exits). Because `0` is also a valid `k`-bit value, use `bool secrets_randbits_checked(int k, unsigned int *out)` when an error must be detected: it returns `false` on error and stores the value in `*out` on success.
   - It calls `secrets_token_bytes` to generate random bytes, masks the extra bits using `(1U << k) - 1`, and returns the result.
   - Logs the number of bits requested and the generated random value.
 

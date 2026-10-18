@@ -23,7 +23,7 @@ The ConfigFile library is a versatile and easy-to-use solution for handling conf
 To compile the Config library along with your main program, use the following GCC command:
 
 ```bash
-gcc -std=c17 -O2 -Wall -Wextra -o main ./main.c ./config/config.c ./file_io/file_reader.c ./file_io/file_writer.c ./fmt/fmt.c ./string/std_string.c ./encoding/encoding.c -I. -lm
+gcc -std=c17 -O2 -Wall -Wextra -o main ./main.c ./config/config.c ./crypto/crypto.c ./file_io/file_reader.c ./file_io/file_writer.c ./fmt/fmt.c ./string/std_string.c ./encoding/encoding.c -I. -lssl -lcrypto -lm
 ```
 
 ## Usage
@@ -37,7 +37,7 @@ To use the config library in your project, include the `config.h` header file in
 **Parameters**:
   - `filename`: Path to the INI file to be loaded.
 **Return Value**: A pointer to the `ConfigFile` structure.
-**Usage Case**: Use at program startup to load an INI file into memory before any get/set operations.
+**Usage Case**: Use at program startup to load an INI file into memory before any get/set operations. The file is parsed with the same rules as `config_load_string` (no line-length limit, `key=` is an empty value, a line with an empty key is skipped, a leading UTF-8 byte-order mark is ignored, section names are trimmed so `[ net ]` is section `net`, a repeated `[section]` header continues the existing section, and a repeated key replaces the earlier value).
 
 ---
 
@@ -68,7 +68,7 @@ To use the config library in your project, include the `config.h` header file in
   - `key`: The key whose value is to be set or updated.
   - `value`: The new value to be assigned to the key.
 **Return Value**: None.
-**Usage Case**: Use to programmatically add or update a key-value pair before saving the configuration.
+**Usage Case**: Use to programmatically add or update a key-value pair before saving the configuration. A section, key or value that would break the INI layout when saved (a line break anywhere, `=` in a key, `[`/`]` in a section name, an empty key or one starting with `[`, `#` or `;`) is refused and nothing is changed: such text could otherwise inject new sections and keys into the saved file.
 
 ---
 
@@ -176,7 +176,7 @@ To use the config library in your project, include the `config.h` header file in
   - `section`: The section name where the key is located.
   - `key`: The key whose integer value is to be retrieved.
   - `default_value`: The default value to return if the key does not exist.
-**Return Value**: The integer value associated with the key, or the default value if not found.
+**Return Value**: The integer value associated with the key, or the default value if the key is missing, the value is not a whole decimal number, or it does not fit in an `int` (it used to wrap, e.g. `4294967297` read as `1`).
 **Usage Case**: Use to read numeric settings such as port numbers or retry counts without manual `atoi` calls.
 
 ---
@@ -231,19 +231,19 @@ To use the config library in your project, include the `config.h` header file in
 ---
 
 ### `char *config_get_encrypted_value(const ConfigFile *config, const char *section, const char *key, const char *encryption_key)`
-**Purpose**: Retrieves an encrypted value for a specific key in a section, and decrypts it using the provided encryption key.
+**Purpose**: Retrieves a value stored with `config_set_encrypted_value` and decrypts it with the provided encryption key (AES-256-GCM, key derived with PBKDF2-SHA256). A wrong key or a tampered value is detected and returns `NULL`. Values written by older versions of the library (single-byte XOR) are still readable.
 **Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section name where the key is located.
   - `key`: The key whose value is encrypted.
   - `encryption_key`: The key to decrypt the value.
-**Return Value**: The decrypted value as a string. The caller is responsible for freeing the memory.
+**Return Value**: The decrypted value as a string, or `NULL` (missing key, wrong encryption key, corrupted value). The caller is responsible for freeing the memory.
 **Usage Case**: Use to securely retrieve sensitive settings such as passwords or API tokens stored encrypted in the INI file.
 
 ---
 
 ### `void config_set_encrypted_value(ConfigFile *config, const char *section, const char *key, const char *value, const char *encryption_key)`
-**Purpose**: Sets an encrypted value for a specific key in a section.
+**Purpose**: Encrypts `value` with AES-256-GCM (key derived from `encryption_key` with PBKDF2-SHA256 and a random salt; random nonce per value) and stores it as `enc:v1:<hex>`, which is safe to keep in a text INI file. Requires linking the `crypto` module (OpenSSL).
 **Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
   - `section`: The section where the key is located.
@@ -262,7 +262,7 @@ To use the config library in your project, include the `config.h` header file in
   - `section`: The section name to which the comment will be added.
   - `comment`: The comment text.
 **Return Value**: None.
-**Usage Case**: Use to annotate sections with human-readable notes that are preserved when the file is saved.
+**Usage Case**: Use to annotate sections with human-readable notes that are preserved when the file is saved: `config_save` and `config_to_string` write the comment right after the `[section]` header, every line prefixed with `; ` (unless it already starts with `;` or `#`), so reading the file back keeps it inside its section.
 
 ---
 
@@ -288,7 +288,7 @@ To use the config library in your project, include the `config.h` header file in
 ---
 
 ### `void config_reload(ConfigFile **config_ptr)`
-**Purpose**: Reloads the configuration from the file, updating the in-memory representation.
+**Purpose**: Reloads the configuration from the file, updating the in-memory representation. The registered modification callback and the default section are kept; if the file cannot be read, `*config_ptr` is left unchanged.
 **Parameters**:
   - `config_ptr`: Double pointer to the `ConfigFile` structure to be reloaded.
 **Return Value**: None.
@@ -306,14 +306,14 @@ To use the config library in your project, include the `config.h` header file in
 
 ---
 
-### `void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size)`
-**Purpose**: Validates the structure of the configuration against an expected template.
+### `bool config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size)`
+**Purpose**: Validates the structure of the configuration against an expected template: every section named in the template must be present.
 **Parameters**:
   - `config`: Pointer to the `ConfigFile` structure.
-  - `expected_structure`: Pointer to an array of `ConfigSection` structures that define the expected structure.
+  - `expected_structure`: Pointer to an array of `ConfigSection` structures that define the expected structure (only `section_name` is used).
   - `structure_size`: The number of elements in the `expected_structure` array.
-**Return Value**: None.
-**Usage Case**: Use at startup to assert that all required sections are present and emit diagnostics for any that are missing.
+**Return Value**: `true` if every expected section is present; `false` if one is missing (or on `NULL` arguments).
+**Usage Case**: Use at startup to check that all required sections are present; on `false`, find the missing ones with `config_has_section`.
 
 ---
 
@@ -636,13 +636,12 @@ int main() {
         {(char*)"network", NULL, 0, NULL}
     };
 
-    // Validate the structure
-    config_validate_structure(config, expected_structure, sizeof(expected_structure) / sizeof(ConfigSection));
-    
-    // Iterate through the expected structure and check for each section
-    for (size_t i = 0; i < sizeof(expected_structure) / sizeof(ConfigSection); ++i) {
-        if (!config_has_section(config, expected_structure[i].section_name)) {
-            fmt_printf("Section '%s' is missing in the configuration.\n", expected_structure[i].section_name);
+    // Validate the structure; on failure, report which sections are missing
+    if (!config_validate_structure(config, expected_structure, sizeof(expected_structure) / sizeof(ConfigSection))) {
+        for (size_t i = 0; i < sizeof(expected_structure) / sizeof(ConfigSection); ++i) {
+            if (!config_has_section(config, expected_structure[i].section_name)) {
+                fmt_printf("Section '%s' is missing in the configuration.\n", expected_structure[i].section_name);
+            }
         }
     }
 

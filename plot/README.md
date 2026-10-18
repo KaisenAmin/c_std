@@ -45,6 +45,12 @@ framework.
 | Colors     | `plot_color`, `plot_color_rgb`, `plot_color_hex` |
 | Render     | `plot_draw`, `plot_export_image` |
 
+`plot.h` does not include `raylib.h` (only `plot.c` does), so it combines
+freely with `matrix/matrix.h` (raylib has its own `struct Matrix`) and with
+headers that include `<windows.h>` (which clashes with raylib's `Rectangle`,
+`CloseWindow`, `DrawText`, ...). Code that calls raylib directly includes
+`raylib.h` itself.
+
 ---
 
 ## Function Definitions
@@ -57,9 +63,9 @@ framework.
 Allocates and initializes a new `Plot` object with default styling: white background, light-grey grid, black axes, 800×600 pixels, legend and grid both enabled, and an empty series array. The plot owns deep copies of every string argument.
 
 **Parameters**:  
-- `title`: Window/chart title string. May be `NULL` (defaults to an empty string).
-- `xLabel`: Horizontal-axis label. May be `NULL`.
-- `yLabel`: Vertical-axis label. May be `NULL`.
+- `title`: Window/chart title string. May be `NULL` (defaults to `"Untitled Plot"`).
+- `xLabel`: Horizontal-axis label. May be `NULL` (defaults to `"X Axis"`).
+- `yLabel`: Vertical-axis label. May be `NULL` (defaults to `"Y Axis"`).
 
 **Return Value**:  
 A pointer to the newly created `Plot`, or `NULL` on memory allocation failure.
@@ -151,7 +157,7 @@ Use when both x and y coordinates are independently meaningful — for example, 
 ### `int plot_add_bar(Plot* plot, const float* y, size_t n, const char* label, PlotColor color)`
 
 **Purpose**:  
-Convenience wrapper around `plot_add_series` for `PLTYPE_BAR` with implicit x-indices.
+Convenience wrapper around `plot_add_series` for `PLTYPE_BAR` with implicit x-indices. Bars grow from 0 (negative values hang below it) and the automatic y-range always includes 0 when the plot has bar series; the outermost bars stay inside the axes. (Bars used to start at the smallest value, so the minimum bar had no height, and the first and last bars stuck out past the axes.)
 
 **Parameters**:  
 - `plot`: Target plot.
@@ -257,15 +263,15 @@ Use as a guard before calling accessors or mutators on a specific series index.
 ### `bool plot_set_size(Plot* plot, int width, int height)`
 
 **Purpose**:  
-Sets the plot's render dimensions. This is the **strict** setter: it rejects non-positive values.
+Sets the plot's render dimensions. This is the **strict** setter: it rejects sizes below `PLOT_MIN_SIZE` (200 px). The axes keep 60 px of padding on every side, so smaller canvases left no plot area (inverted axes, negative bar sizes).
 
-**Parameters**:  
+**Parameters**:
 - `plot`: Target plot.
-- `width`: Desired width in pixels. Must be > 0.
-- `height`: Desired height in pixels. Must be > 0.
+- `width`: Desired width in pixels. Must be ≥ `PLOT_MIN_SIZE` (200).
+- `height`: Desired height in pixels. Must be ≥ `PLOT_MIN_SIZE` (200).
 
-**Return Value**:  
-`true` if the dimensions were applied; `false` if either value is ≤ 0 or `plot` is `NULL`.
+**Return Value**:
+`true` if the dimensions were applied; `false` if either value is below 200 or `plot` is `NULL`.
 
 **Usage Case**:  
 Use when you need a precise canvas size and want explicit failure on bad input rather than silent clamping.
@@ -275,12 +281,12 @@ Use when you need a precise canvas size and want explicit failure on bad input r
 ### `void plot_set_window_size(Plot* plot, int width, int height)`
 
 **Purpose**:  
-Sets the plot's render dimensions with **lenient** clamping: both `width` and `height` are silently raised to a minimum of 100 if they fall below that threshold.
+Sets the plot's render dimensions with **lenient** clamping: both `width` and `height` are silently raised to `PLOT_MIN_SIZE` (200) if they fall below it.
 
-**Parameters**:  
+**Parameters**:
 - `plot`: Target plot. Passing `NULL` is a safe no-op.
-- `width`: Desired width in pixels (clamped to ≥ 100).
-- `height`: Desired height in pixels (clamped to ≥ 100).
+- `width`: Desired width in pixels (clamped to ≥ 200).
+- `height`: Desired height in pixels (clamped to ≥ 200).
 
 **Return Value**:  
 None.
@@ -521,24 +527,24 @@ Use for interactive exploratory visualization. For headless/automated contexts u
 ### `bool plot_export_image(Plot* plot, const char* filename)`
 
 **Purpose**:  
-Renders the plot off-screen using a hidden raylib window and writes the result to a PNG file. The window is opened and closed internally; the caller does not need to manage any window state.
+Renders the plot off-screen and writes the result to a PNG file. If no raylib window is open, a hidden one is opened (raylib needs a GL context) and closed again, and the raylib state it changes (the hidden-window flag, the log level) is put back; if a window is already open (e.g. a turtle window), it is reused and left open. Without a display / GL context it returns `false` instead of crashing. The file name goes to raylib's `ExportImage`, which uses the narrow (ANSI) file API on Windows.
 
 **Parameters**:  
 - `plot`: The plot to render. Must not be `NULL`.
 - `filename`: Path of the output PNG file.
 
 **Return Value**:  
-`true` if the file was written successfully; `false` on any error (bad input, GL failure, or write failure).
+`true` if the file was written successfully; `false` on any error (bad input, no window / GL context, or write failure).
 
-**Usage Case**:  
-The primary API for generating chart images in scripts, CI pipelines, report generators, and any headless environment.
+**Usage Case**:
+The primary API for generating chart images in scripts and report generators. It still needs a graphical environment for the hidden window: on a server without a display (plain CI containers) it returns `false`; run it under a virtual display such as Xvfb there.
 
 ---
 
 ### `bool plot_export_csv(const Plot* plot, const char* filename)`
 
 **Purpose**:  
-Serializes every series as columns in a CSV file. The header row uses each series' label (falling back to `series_N` for unlabeled series). Rows that extend past a shorter series' length are written with a blank cell for that column.
+Serializes every series as columns in a CSV file. The header row uses each series' label (falling back to `series_N` for unlabeled series), quoted per RFC 4180 when it contains a comma, quote or line break. Values are written with `%.9g` (exact for `float`). When all series share one set of x values the file has one `x` column; otherwise (e.g. scatter series with their own x arrays) every series gets its own `x_<label>` column next to its values. Rows that extend past a shorter series' length are written with blank cells for that series. The path is UTF-8 (opened with the wide API on Windows).
 
 **Parameters**:  
 - `plot`: The plot to serialize. Must not be `NULL`.
@@ -677,7 +683,7 @@ Use to compare how the same dataset looks as a line chart vs a bar chart vs a sc
 ### `bool plot_set_xlim(Plot* plot, float min, float max)`
 
 **Purpose**:  
-Pins the x-axis to a fixed `[min, max]` range instead of auto-scaling to the data. The range is honored by every subsequent `plot_draw` / `plot_export_image`. Points outside the range are mapped outside the plot area (and clipped by the renderer). Call `plot_autoscale` to revert.
+Pins the x-axis to a fixed `[min, max]` range instead of auto-scaling to the data. The range is honored by every subsequent `plot_draw` / `plot_export_image`. Points outside the range are mapped outside the plot area and clipped to it (they used to be drawn over the title, labels and legend).Call `plot_autoscale` to revert.
 
 **Parameters**:  
 - `plot`: Target plot. Must be non-`NULL`.
@@ -746,7 +752,7 @@ Inspect, log, or persist the current scale; lay out a second chart to match.
 ### `bool plot_get_ylim(const Plot* plot, float* outMin, float* outMax)`
 
 **Purpose**:  
-The y-axis counterpart to `plot_get_xlim`.
+The y-axis counterpart to `plot_get_xlim`. Without a manual range, the bounds include 0 when the plot contains bar series.
 
 **Parameters**:  
 - `plot`: Plot to query. Must be non-`NULL`.
@@ -779,7 +785,7 @@ Use when producing charts for dark-mode dashboards, presentation slides, or term
 ### `void plot_apply_theme_light(Plot* plot)`
 
 **Purpose**:  
-Applies a symmetric light theme: white background, light-grey grid, black axes, white legend box with black text. Equivalent to the default palette but available as an explicit call.
+Applies a symmetric light theme: white background, light-grey grid, black axes, an off-white (`#F5F5F5`) legend box with black text.Equivalent to the default palette but available as an explicit call.
 
 **Parameters**:  
 - `plot`: Target plot. Passing `NULL` is a safe no-op.
@@ -872,11 +878,11 @@ Fills `out` with `n` linearly-spaced values from `start` to `end` inclusive, fol
 **Parameters**:  
 - `start`: First value in the sequence.
 - `end`: Last value in the sequence.
-- `n`: Number of points to generate. Must be ≥ 2.
+- `n`: Number of points to generate (≥ 1; with `n == 1` the single value is `start`, as in NumPy).
 - `out`: Output array of at least `n` floats. Must not be `NULL`.
 
 **Return Value**:  
-`true` on success; `false` if `n < 2` or `out` is `NULL`.
+`true` on success; `false` if `n == 0` or `out` is `NULL`.
 
 **Usage Case**:  
 Use to build a domain x-axis for scatter or series with explicit x — for example, `plot_linspace(0, 2π, 200, x)` to sample a trig function.
@@ -924,14 +930,14 @@ Visualize the distribution of a dataset (latencies, measurements, Gaussian sampl
 ### `int plot_add_pie(Plot* plot, const float* values, size_t n, const char* label, PlotColor color)`
 
 **Purpose**:  
-Convenience wrapper around `plot_add_series` for `PLTYPE_PIE`. Each value becomes a slice sized in proportion to the total.
+Convenience wrapper around `plot_add_series` for `PLTYPE_PIE`. Each value becomes a slice sized in proportion to the total. All pie series of a plot form one pie: a series with one value is one slice in its own color, and a series with several values gets a distinct palette color per slice (all slices used to share the series color, and each series was drawn as its own full disc on top of the others).
 
 **Parameters**:  
 - `plot`: Target plot.
 - `values`: Slice magnitudes (non-negative).
 - `n`: Number of slices.
 - `label`: Legend label. May be `NULL`.
-- `color`: Base color for the slices.
+- `color`: Color of the slice when the series has a single value; series with several values use a built-in palette.
 
 **Return Value**:  
 Index of the new series, or `-1` on failure.
@@ -1323,7 +1329,7 @@ d = 51,102,153,128
 int main(void) {
     Plot* p = plot_create("size", "x", "y");
 
-    /* Lenient: clamps to a minimum of 100. */
+    /* Lenient: clamps to a minimum of PLOT_MIN_SIZE (200). */
     plot_set_window_size(p, 5, 5);
     fmt_printf("after lenient: %dx%d\n", p->width, p->height);
 
@@ -1342,8 +1348,8 @@ int main(void) {
 **Sample output**
 
 ```
-after lenient: 100x100
-strict reject ok=0, size=100x100
+after lenient: 200x200
+strict reject ok=0, size=200x200
 strict accept ok=1, size=1024x768
 ```
 

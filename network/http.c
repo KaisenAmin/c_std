@@ -1,3 +1,9 @@
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -9,12 +15,12 @@
 #include "../concurrent/thread_pool.h"
 #include "../concurrent/concurrent.h"
 
-/* POSIX raises SIGPIPE (default action: terminate the process) when you write
- * to a socket whose peer has closed its read end. A server must never die
- * because one client hung up, so we ignore the signal once at start-up. Windows
- * has no SIGPIPE (send simply fails), so this is a no-op there. */
+/* SIGPIPE: the server writes only through tcp_send, which passes MSG_NOSIGNAL
+ * (or uses SO_NOSIGPIPE), so a client that hangs up cannot kill the process
+ * and the server no longer changes the application's SIGPIPE disposition. */
+
 #ifndef _WIN32
-#include <signal.h>
+#include <time.h>
 #endif
 
 
@@ -45,6 +51,26 @@
 #define HTTP_DEFAULT_TIMEOUT_MS 30000L               /* per-conn recv/send timeout*/
 #endif
 
+/* Slow-drip (slow-loris) limits. The idle timeout alone restarts on every
+ * byte, so a client dripping one byte just under it could hold a worker
+ * forever. A request must instead arrive within 4 idle timeouts plus 1 ms per
+ * byte received (an average of at least ~1 KB/s for large uploads). */
+#ifndef HTTP_REQUEST_DEADLINE_FACTOR
+#define HTTP_REQUEST_DEADLINE_FACTOR 4
+#endif
+#ifndef HTTP_MIN_BYTES_PER_SEC
+#define HTTP_MIN_BYTES_PER_SEC 1000u
+#endif
+/* Connections waiting for a worker, per worker, before new ones get 503. */
+#ifndef HTTP_MAX_QUEUED_PER_WORKER
+#define HTTP_MAX_QUEUED_PER_WORKER 16
+#endif
+/* Chunked framing: limit on one chunk-size line (digits, leading zeros and
+   extensions) and on all trailer bytes together. */
+#ifndef HTTP_MAX_CHUNK_LINE
+#define HTTP_MAX_CHUNK_LINE   4096u
+#endif
+
 
 static HttpRoute routes[MAX_ROUTES];
 static size_t route_count = 0;
@@ -58,9 +84,11 @@ static size_t route_count = 0;
 /* server starts) and is read-only while serving, so it needs no lock.  */
 /* ------------------------------------------------------------------ */
 static Mutex          srv_lock;
-static OnceFlag       srv_lock_once = ONCE_FLAG_INIT;
+static OnceFlag       srv_lock_once = CSTD_ONCE_FLAG_INIT;
 static bool           server_running        = false; /* accept loop should run    */
 static bool           srv_listening         = false; /* listen socket is live     */
+static bool           srv_starting          = false; /* http_start_server_ex is setting up */
+static bool           srv_stop_pending      = false; /* stop arrived while starting */
 static TcpSocket      srv_listen_sock;                /* valid while srv_listening */
 static unsigned short srv_port              = 0;      /* actual bound port         */
 static int            srv_worker_count      = 0;      /* 0 => auto (hw concurrency)*/
@@ -70,13 +98,16 @@ static void hp_srv_lock_init(void) {
     mutex_init(&srv_lock, MUTEX_PLAIN);
 }
 
-/* Ignore SIGPIPE exactly once (POSIX); no-op on Windows. */
-#ifndef _WIN32
-static OnceFlag srv_sigpipe_once = ONCE_FLAG_INIT;
-static void hp_ignore_sigpipe(void) {
-    signal(SIGPIPE, SIG_IGN);
-}
+/* Monotonic milliseconds, for the request deadline. */
+static long long hp_now_ms(void) {
+#if defined(_WIN32) || defined(_WIN64)
+    return (long long)GetTickCount64();
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000LL + (long long)(ts.tv_nsec / 1000000L);
 #endif
+}
 
 
 /* ------------------------------------------------------------------ */
@@ -85,22 +116,83 @@ static void hp_ignore_sigpipe(void) {
 
 static int hp_hex_value(int c);   /* defined later; used by the chunk decoder */
 
-/* True if `s` contains the token "chunked" (case-insensitive). Good enough to
- * detect `Transfer-Encoding: chunked` (possibly after other codings). */
-static bool ci_contains_chunked(const char* s) {
-    if (!s) {
+/* Transfer-Encoding classification (RFC 9112 6.1): the codings form a
+ * comma-separated list and "chunked" frames the message only as the FINAL
+ * coding. A substring test for "chunked" (used before) also matched "notchunked" and
+ * "chunked, gzip", which a front-end proxy may frame differently
+ * (request smuggling). */
+typedef enum { HP_TE_CHUNKED, HP_TE_OTHER, HP_TE_INVALID } HpTeKind;
+
+static bool hp_token_ieq(const char* a, size_t n, const char* b) {
+    if (strlen(b) != n) {
         return false;
     }
-    size_t n = strlen(s);
-    for (size_t i = 0; i + 7 <= n; ++i) {
-        if (tolower((unsigned char)s[i + 0]) == 'c' && tolower((unsigned char)s[i + 1]) == 'h' &&
-            tolower((unsigned char)s[i + 2]) == 'u' && tolower((unsigned char)s[i + 3]) == 'n' &&
-            tolower((unsigned char)s[i + 4]) == 'k' && tolower((unsigned char)s[i + 5]) == 'e' &&
-            tolower((unsigned char)s[i + 6]) == 'd') {
-            return true;
+    for (size_t i = 0; i < n; ++i) {
+        if (tolower((unsigned char)a[i]) != tolower((unsigned char)b[i])) {
+            return false;
         }
     }
-    return false;
+    return true;
+}
+
+/* HP_TE_CHUNKED: the list is exactly "chunked"; HP_TE_INVALID: "chunked"
+ * appears but is not the only/final coding (or the list is empty);
+ * HP_TE_OTHER: other codings only (or "chunked" last after others), which
+ * this server cannot decode. */
+static HpTeKind hp_te_classify(const char* v) {
+    size_t count = 0, chunked_at = (size_t)-1;
+    const char* p = v ? v : "";
+    while (*p) {
+        while (*p == ' ' || *p == '	' || *p == ',') {
+            p++;
+        }
+        if (!*p) {
+            break;
+        }
+        const char* s = p;
+        while (*p && *p != ',') {
+            p++;
+        }
+        const char* e = p;
+        while (e > s && (e[-1] == ' ' || e[-1] == '	')) {
+            e--;
+        }
+        if (hp_token_ieq(s, (size_t)(e - s), "chunked")) {
+            if (chunked_at != (size_t)-1) {
+                return HP_TE_INVALID;          /* chunked twice */
+            }
+            chunked_at = count;
+        }
+        count++;
+    }
+    if (count == 0) {
+        return HP_TE_INVALID;
+    }
+    if (chunked_at == (size_t)-1) {
+        return HP_TE_OTHER;
+    }
+    if (chunked_at != count - 1) {
+        return HP_TE_INVALID;                  /* chunked not final */
+    }
+    return (count == 1) ? HP_TE_CHUNKED : HP_TE_OTHER;
+}
+
+/* Response side (client): the body is chunk-framed whenever chunked is the
+ * final coding, whatever other codings precede it. */
+static bool hp_te_final_is_chunked(const char* v) {
+    if (!v) {
+        return false;
+    }
+    const char* last = strrchr(v, ',');
+    const char* s = last ? last + 1 : v;
+    while (*s == ' ' || *s == '	') {
+        s++;
+    }
+    const char* e = s + strlen(s);
+    while (e > s && (e[-1] == ' ' || e[-1] == '	')) {
+        e--;
+    }
+    return hp_token_ieq(s, (size_t)(e - s), "chunked");
 }
 
 /* Strict RFC-7230 Content-Length parse: 1*DIGIT, overflow-checked. -1 on miss. */
@@ -181,6 +273,84 @@ static bool raw_header_value(const char* buf, size_t header_len, const char* nam
 }
 
 
+/* Like raw_header_value, but looks at EVERY occurrence: returns 0 if the
+ * header is absent, 1 if present (all copies carry the same value, which is
+ * copied to `out`), and -1 if copies disagree. Two different Content-Length
+ * values must be rejected (RFC 9112 6.3); only the first was looked at. */
+static int raw_header_unique(const char* buf, size_t header_len, const char* name,
+                             char* out, size_t out_size) {
+    if (!raw_header_value(buf, header_len, name, out, out_size)) {
+        return 0;
+    }
+    size_t namelen = strlen(name);
+    const char* first_nl = (const char*)memchr(buf, '\n', header_len);
+    const char* p = first_nl ? first_nl + 1 : buf + header_len;
+    while ((size_t)(p - buf) < header_len) {
+        const char* nl  = (const char*)memchr(p, '\n', header_len - (size_t)(p - buf));
+        const char* end = nl ? nl : buf + header_len;
+        const char* colon = (const char*)memchr(p, ':', (size_t)(end - p));
+        if (colon && (size_t)(colon - p) == namelen && hp_token_ieq(p, namelen, name)) {
+            const char* v  = colon + 1;
+            const char* ve = end;
+            if (ve > v && ve[-1] == '\r') {
+                ve--;
+            }
+            while (v < ve && (*v == ' ' || *v == '\t')) {
+                v++;
+            }
+            while (ve > v && (ve[-1] == ' ' || ve[-1] == '\t')) {
+                ve--;
+            }
+            if ((size_t)(ve - v) != strlen(out) || memcmp(v, out, (size_t)(ve - v)) != 0) {
+                return -1;
+            }
+        }
+        if (!nl) {
+            break;
+        }
+        p = nl + 1;
+    }
+    return 1;
+}
+
+/* Every header line must be `name ":" value` with a non-empty name that has
+ * no whitespace (RFC 9112 5.1: "Transfer-Encoding : chunked" must be
+ * rejected, and line folding is obsolete). Such a line used to be skipped,
+ * so the message was framed differently from how a lenient proxy reads it. */
+static bool raw_headers_wellformed(const char* buf, size_t header_len) {
+    const char* first_nl = (const char*)memchr(buf, '\n', header_len);
+    if (!first_nl) {
+        return false;
+    }
+    const char* p = first_nl + 1;
+    while ((size_t)(p - buf) < header_len) {
+        const char* nl  = (const char*)memchr(p, '\n', header_len - (size_t)(p - buf));
+        const char* end = nl ? nl : buf + header_len;
+        size_t linelen = (size_t)(end - p);
+        if (linelen > 0 && p[linelen - 1] == '\r') {
+            linelen--;
+        }
+        if (linelen == 0) {
+            break;                              /* the blank line ending the block */
+        }
+        const char* colon = (const char*)memchr(p, ':', linelen);
+        if (!colon || colon == p) {
+            return false;
+        }
+        for (const char* q = p; q < colon; ++q) {
+            if (*q == ' ' || *q == '\t') {
+                return false;
+            }
+        }
+        if (!nl) {
+            break;
+        }
+        p = nl + 1;
+    }
+    return true;
+}
+
+
 /* Growable byte buffer (for the decoded chunked body). */
 typedef struct { char* data; size_t len; size_t cap; } HttpBuf;
 
@@ -222,6 +392,9 @@ typedef struct {
     size_t   need;     /* size being parsed, then data bytes remaining */
     size_t   digits;   /* hex digits seen for the current size         */
     bool     in_ext;   /* inside a chunk-extension (after ';')         */
+    size_t   line_bytes;    /* bytes of the current chunk-size line      */
+    size_t   trailer_bytes; /* bytes of all trailer lines so far         */
+    bool     too_large;     /* stopped by the body cap (-> 413, not 400) */
 } CkdState;
 
 /* Returns false (and leaves phase == CKD_ERROR) on protocol error / overflow /
@@ -230,6 +403,17 @@ static bool ckd_feed(CkdState* st, const char* in, size_t n, HttpBuf* out, size_
     size_t i = 0;
     while (i < n && st->phase != CKD_DONE && st->phase != CKD_ERROR) {
         char c = in[i];
+        /* Leading zeros, extensions and trailers carry no data; without these
+           caps a peer could feed them forever. */
+        if (st->phase == CKD_SIZE && ++st->line_bytes > HTTP_MAX_CHUNK_LINE) {
+            st->phase = CKD_ERROR;
+            break;
+        }
+        if ((st->phase == CKD_TRAILER || st->phase == CKD_TRAILER_SKIP) &&
+            ++st->trailer_bytes > HTTP_MAX_HEADER_BYTES) {
+            st->phase = CKD_ERROR;
+            break;
+        }
         switch (st->phase) {
             case CKD_SIZE:
                 if (st->in_ext) {
@@ -254,6 +438,7 @@ static bool ckd_feed(CkdState* st, const char* in, size_t n, HttpBuf* out, size_
             case CKD_DATA: {
                 size_t take = n - i;
                 if (take > st->need) { take = st->need; }
+                if (out->len > max - take) { st->too_large = true; st->phase = CKD_ERROR; break; }
                 if (!httpbuf_append(out, in + i, take, max)) { st->phase = CKD_ERROR; break; }
                 st->need -= take;
                 i += take;
@@ -266,7 +451,7 @@ static bool ckd_feed(CkdState* st, const char* in, size_t n, HttpBuf* out, size_
                 break;
             case CKD_DATA_LF:
                 if (c != '\n') { st->phase = CKD_ERROR; break; }
-                i++; st->phase = CKD_SIZE; st->need = 0; st->digits = 0; st->in_ext = false;
+                i++; st->phase = CKD_SIZE; st->need = 0; st->digits = 0; st->in_ext = false; st->line_bytes = 0;
                 break;
             case CKD_TRAILER:                       /* at start of a trailer line */
                 if (c == '\r') { st->phase = CKD_TRAILER_LF; }
@@ -296,8 +481,10 @@ static bool ckd_feed(CkdState* st, const char* in, size_t n, HttpBuf* out, size_
 
 
 /* Match a registered route template against a concrete request path.
- * Supports a single `{name}` placeholder that parses as an integer into
- * *id_out. Returns true on full match. */
+ * Supports a single `{name}` placeholder that must be a decimal integer
+ * (optionally negative) fitting in an int; it is stored in *id_out.
+ * Returns true on full match. A non-numeric segment ("/users/abc") used to
+ * match with id 0, and atoi on "99999999999" was undefined behaviour. */
 static bool match_route(const char* route, const char* path, int* id_out) {
     if (!route || !path) {
         return false;
@@ -317,14 +504,28 @@ static bool match_route(const char* route, const char* path, int* id_out) {
                 route_ptr++;  // advance past '}' only if present
             }
 
-            // Parse the dynamic segment in the path as an integer.
+            // The dynamic segment must be an integer that fits in an int.
+            const char* seg = path_ptr;
+            bool neg = (*seg == '-');
+            const char* d = neg ? seg + 1 : seg;
+            long long v = 0;
+            int ndig = 0;
+            while (*d >= '0' && *d <= '9') {
+                v = v * 10 + (*d - '0');
+                if (v > (long long)INT_MAX + 1) {
+                    return false;               /* out of range */
+                }
+                ndig++;
+                d++;
+            }
+            if (ndig == 0 || (*d && *d != '/') || (!neg && v > INT_MAX)) {
+                HTTP_LOG("route placeholder: segment is not an integer");
+                return false;
+            }
             if (id_out) {
-                *id_out = atoi(path_ptr);
+                *id_out = neg ? (int)(-v) : (int)v;
             }
-
-            while (*path_ptr && *path_ptr != '/') {
-                path_ptr++;
-            }
+            path_ptr = d;
         }
         else {
             if (*route_ptr != *path_ptr) {
@@ -475,30 +676,74 @@ HttpMethod http_parse_method(const char* request) {
  * Validates the request-line shape (two spaces) BEFORE allocating, so
  * malformed input returns NULL instead of crashing.
  *
- * @param request Null-terminated raw request bytes. NULL is rejected.
- * @param length  Total number of bytes in `request`; enables length-aware,
- *                binary-safe parsing of bodies that may contain embedded NULs.
+ * @param request Raw request bytes; they need not be NUL-terminated. NULL is
+ *                rejected.
+ * @param length  Total number of bytes in `request`. Nothing past it is read,
+ *                and bodies may contain embedded NULs.
  * @return Newly-allocated request, or NULL on malformed input / OOM.
  */
+/* Bounded memmem: first occurrence of needle[0..m) in hay[0..n), or NULL.
+   The request parser uses it instead of strstr/strchr because its input is
+   only `length` bytes long and need not be NUL-terminated. */
+static const char* hp_find(const char* hay, size_t n, const char* needle, size_t m) {
+    if (m == 0) {
+        return hay;
+    }
+    if (n < m) {
+        return NULL;
+    }
+    const char* last = hay + (n - m);
+    for (const char* p = hay; p <= last; p++) {
+        p = (const char*)memchr(p, needle[0], (size_t)(last - p) + 1);
+        if (!p) {
+            return NULL;
+        }
+        if (memcmp(p, needle, m) == 0) {
+            return p;
+        }
+    }
+    return NULL;
+}
+
+
 HttpRequest* http_parse_request_ex(const char* request, size_t length) {
     if (!request) {
         HTTP_LOG("parse_request: NULL input");
         return NULL;
     }
 
-    // Validate the request line shape FIRST so we never deref a NULL from
-    // strchr below. The minimum valid line is "GET / HTTP/1.1\r\n".
-    const char* sp1 = strchr(request, ' ');
+    /* Every search below stays inside request[0..length): the buffer need
+       not be NUL-terminated (e.g. straight from recv()). */
+    const char* end = request + length;
+    const char* line_end = hp_find(request, length, "\r\n", 2);
+    if (!line_end) {
+        line_end = end;
+    }
+
+    // Validate the request line shape FIRST so we never deref a NULL below.
+    // The minimum valid line is "GET / HTTP/1.1\r\n".
+    const char* sp1 = (const char*)memchr(request, ' ', (size_t)(line_end - request));
     if (!sp1) {
         HTTP_LOG("parse_request: malformed request (no space after method)");
         return NULL;
     }
 
     const char* path_start = sp1 + 1;
-    const char* sp2 = strchr(path_start, ' ');
-    if (!sp2) {
+    const char* sp2 = (const char*)memchr(path_start, ' ', (size_t)(line_end - path_start));
+    if (!sp2 || sp2 == path_start) {
         HTTP_LOG("parse_request: malformed request (no space after path)");
         return NULL;
+    }
+    /* The rest of the line must be exactly "HTTP/<digit>.<digit>" (RFC 9112
+       3); "GET / FOO" or a third space used to be accepted. */
+    {
+        const char* ver = sp2 + 1;
+        size_t vlen = (size_t)(line_end - ver);
+        if (vlen != 8 || memcmp(ver, "HTTP/", 5) != 0 ||
+            ver[5] < '0' || ver[5] > '9' || ver[6] != '.' || ver[7] < '0' || ver[7] > '9') {
+            HTTP_LOG("parse_request: malformed HTTP-version");
+            return NULL;
+        }
     }
 
     HttpRequest* req = (HttpRequest*)malloc(sizeof(HttpRequest));
@@ -523,43 +768,54 @@ HttpRequest* http_parse_request_ex(const char* request, size_t length) {
     if (query_start) {
         *query_start = '\0';
         HTTP_LOG("parse_request: path split at '?' -> path='%s' query='%s'", req->path, query_start + 1);
-        char* query_string = string_strdup(query_start + 1);
-        if (query_string) {
-            char* token = strtok(query_string, "&");
+        /* Split "a=1&b=2" by scanning in place. This parser runs concurrently on
+           the server's thread-pool workers, so it must not use strtok (whose
+           hidden position is process-global on POSIX). Empty segments and
+           segments without '=' are skipped, as before. */
+        const char* p = query_start + 1;
+        while (*p && req->query_param_count < MAX_QUERY_PARAMS) {
+            const char* seg = p;
+            const char* amp = strchr(seg, '&');
+            size_t seg_len = amp ? (size_t)(amp - seg) : strlen(seg);
+            p = amp ? amp + 1 : seg + seg_len;
 
-            while (token && req->query_param_count < MAX_QUERY_PARAMS) {
-                char* equal_sign = strchr(token, '=');
-                if (equal_sign) {
-                    *equal_sign = '\0';
-                    req->query_params[req->query_param_count].name = string_strdup(token);
-                    req->query_params[req->query_param_count].value = string_strdup(equal_sign + 1);
-                    req->query_param_count++;
+            const char* equal_sign = (const char*)memchr(seg, '=', seg_len);
+            if (!equal_sign) {
+                continue;
+            }
+            size_t name_len = (size_t)(equal_sign - seg);
+            char* name = string_strndup(seg, name_len);
+            char* value = string_strndup(equal_sign + 1, seg_len - name_len - 1);
+            if (!name || !value) {
+                HTTP_LOG("parse_request: OOM duplicating query parameter");
+                free(name);
+                free(value);
+                break;
+            }
+            req->query_params[req->query_param_count].name = name;
+            req->query_params[req->query_param_count].value = value;
+            req->query_param_count++;
 
-                    HTTP_LOG("parse_request: query[%zu] '%s'='%s'", req->query_param_count, token, equal_sign + 1);
-                }
-                token = strtok(NULL, "&");
-            }
-            if (req->query_param_count == MAX_QUERY_PARAMS && token) {
-                HTTP_LOG("parse_request: hit MAX_QUERY_PARAMS=%d, trailing params dropped",
-                         MAX_QUERY_PARAMS);
-            }
-            free(query_string);
+            HTTP_LOG("parse_request: query[%zu] '%s'='%s'", req->query_param_count, name, value);
+        }
+        if (req->query_param_count == MAX_QUERY_PARAMS && *p) {
+            HTTP_LOG("parse_request: hit MAX_QUERY_PARAMS=%d, trailing params dropped",
+                     MAX_QUERY_PARAMS);
         }
     }
 
     // Parse headers (start of first \r\n after the request line)
-    const char* eol = strstr(request, "\r\n");
-    if (eol) {
-        const char* header_start = eol + 2;
+    if (line_end < end) {
+        const char* header_start = line_end + 2;
 
-        while (header_start && *header_start != '\r' && req->header_count < MAX_HEADERS) {
-            const char* header_end = strstr(header_start, "\r\n");
+        while (header_start < end && *header_start != '\r' && req->header_count < MAX_HEADERS) {
+            const char* header_end = hp_find(header_start, (size_t)(end - header_start), "\r\n", 2);
             if (!header_end) {
                 break;
             }
 
-            const char* colon = strchr(header_start, ':');
-            if (colon && colon < header_end) {
+            const char* colon = (const char*)memchr(header_start, ':', (size_t)(header_end - header_start));
+            if (colon) {
                 req->headers[req->header_count].name = string_strndup(header_start, (size_t)(colon - header_start));
                 // Skip leading space after ":" if present.
 
@@ -587,7 +843,7 @@ HttpRequest* http_parse_request_ex(const char* request, size_t length) {
 
     // Parse body — length-aware so binary bodies with embedded NULs survive
     // intact (string_strdup would have truncated at the first NUL).
-    const char* body_start = strstr(request, "\r\n\r\n");
+    const char* body_start = hp_find(request, length, "\r\n\r\n", 4);
     if (body_start) {
         body_start += 4;
         size_t body_off = (size_t)(body_start - request);
@@ -690,6 +946,70 @@ void http_free_request(HttpRequest* request) {
  * @param message  Reason phrase (`"OK"`, `"Not Found"`, …). Copied; caller
  *                 keeps ownership.
  */
+/* A header name must be an HTTP token. Anything else (CR, LF, ':', spaces,
+   controls) is rejected, so caller data cannot start a new header line. */
+static bool hp_is_token(const char* s) {
+    if (!s || !*s) {
+        return false;
+    }
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (c <= 32 || c >= 127 || strchr("()<>@,;:\\\"/[]?={}", c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+/* Copy of a header value (or reason phrase) with CR and LF replaced by spaces,
+   as Go's net/http does: a value echoed from user input then cannot end its
+   header line and inject further headers or a body. */
+static char* hp_header_value_dup(const char* v) {
+    size_t n = strlen(v);
+    char* out = (char*)malloc(n + 1);
+    if (!out) {
+        return NULL;
+    }
+    for (size_t i = 0; i < n; i++) {
+        out[i] = (v[i] == '\r' || v[i] == '\n') ? ' ' : v[i];
+    }
+    out[n] = '\0';
+    return out;
+}
+
+
+/* Sets Content-Type, replacing an earlier one instead of adding a duplicate. */
+static void hp_set_content_type(HttpResponse* response, const char* type) {
+    http_response_remove_header(response, "Content-Type");
+    http_add_header(response, "Content-Type", type);
+}
+
+
+/* Installs a copy of `len` bytes as the body (NUL-terminated for
+   convenience; body_length is authoritative) and drops any JSON body, which
+   the serializer would otherwise send instead. */
+static bool hp_set_body_raw(HttpResponse* response, const void* data, size_t len) {
+    char* copy = (char*)malloc(len + 1);
+    if (!copy) {
+        HTTP_LOG("set_body: OOM copying %zu bytes", len);
+        return false;
+    }
+    if (len) {
+        memcpy(copy, data, len);
+    }
+    copy[len] = '\0';
+    free(response->body);
+    response->body = copy;
+    response->body_length = len;
+    if (response->json_body) {
+        json_deallocate(response->json_body);
+        response->json_body = NULL;
+    }
+    return true;
+}
+
+
 void http_set_status(HttpResponse* response, int code, const char* message) {
     if (!response || !message) {
         HTTP_LOG("set_status: NULL response or message — no-op");
@@ -698,9 +1018,10 @@ void http_set_status(HttpResponse* response, int code, const char* message) {
     HTTP_LOG("set_status: %d -> %d, message='%s'", response->status_code, code, message);
     response->status_code = code;
 
-    // Free any previous status_message
+    // Free any previous status_message; CR/LF in the reason phrase would
+    // split the status line.
     free(response->status_message);
-    response->status_message = string_strdup(message);
+    response->status_message = hp_header_value_dup(message);
 }
 
 
@@ -728,16 +1049,23 @@ void http_set_json_body(HttpResponse* response, JsonElement* json) {
         return;
     }
 
-    if (response->json_body) {
+    /* Detach the previous tree first (it may be `json` itself), so storing
+       the serialized text below does not free it. */
+    JsonElement* old = response->json_body;
+    response->json_body = NULL;
+
+    char* text = json_serialize(json);
+    if (text) {
+        hp_set_body_raw(response, text, strlen(text));
+        free(text);
+    }
+    if (old && old != json) {
         HTTP_LOG("set_json_body: freeing previous JSON body");
-        json_deallocate(response->json_body);
+        json_deallocate(old);
     }
     response->json_body = json;
-
-    free(response->body);
-    response->body = json_serialize(json);
-    HTTP_LOG("set_json_body: serialized JSON body (%zu bytes), added Content-Type: application/json", response->body ? strlen(response->body) : 0);
-    http_add_header(response, "Content-Type", "application/json");
+    HTTP_LOG("set_json_body: serialized JSON body (%zu bytes), set Content-Type: application/json", response->body_length);
+    hp_set_content_type(response, "application/json");
 }
 
 
@@ -756,12 +1084,38 @@ void http_set_body(HttpResponse* response, const char* body) {
         return;
     }
 
-    // Free any previous body — the original code leaked on overwrite.
-    free(response->body);
-    response->body = string_strdup(body);
-    HTTP_LOG("set_body: set %zu bytes, added Content-Type: text/plain", strlen(body));
-    http_add_header(response, "Content-Type", "text/plain");
+    // Replaces any previous body, including a JSON body (which the
+    // serializer would otherwise still send).
+    if (!hp_set_body_raw(response, body, strlen(body))) {
+        return;
+    }
+    HTTP_LOG("set_body: set %zu bytes, set Content-Type: text/plain", strlen(body));
+    hp_set_content_type(response, "text/plain");
+}
 
+
+/**
+ * @brief Attach a binary body (it may contain NUL bytes) to the response.
+ *
+ * Copies exactly @p length bytes, replaces any previous text or JSON body, and
+ * sets `Content-Type` to @p content_type (replacing an earlier one), or to
+ * `application/octet-stream` when it is NULL. The serializer sends exactly
+ * these bytes with a matching `Content-Length`.
+ *
+ * @param response     Response to update. NULL is a no-op.
+ * @param data         Body bytes. May be NULL only when @p length is 0.
+ * @param length       Number of bytes.
+ * @param content_type MIME type, e.g. `"image/png"`, or NULL.
+ */
+void http_set_body_bytes(HttpResponse* response, const void* data, size_t length, const char* content_type) {
+    if (!response || (!data && length > 0)) {
+        HTTP_LOG("set_body_bytes: NULL response or data — no-op");
+        return;
+    }
+    if (!hp_set_body_raw(response, data, length)) {
+        return;
+    }
+    hp_set_content_type(response, content_type ? content_type : "application/octet-stream");
 }
 
 
@@ -785,8 +1139,19 @@ void http_add_header(HttpResponse* response, const char* header, const char* val
         HTTP_LOG("add_header: MAX_HEADERS=%d reached, dropping '%s'", MAX_HEADERS, header);
         return;
     }
-    response->headers[response->header_count].name = string_strdup(header);
-    response->headers[response->header_count].value = string_strdup(value);
+    if (!hp_is_token(header)) {
+        HTTP_LOG("add_header: invalid header name rejected");
+        return;
+    }
+    char* name_copy = string_strdup(header);
+    char* value_copy = hp_header_value_dup(value);
+    if (!name_copy || !value_copy) {
+        free(name_copy);
+        free(value_copy);
+        return;
+    }
+    response->headers[response->header_count].name = name_copy;
+    response->headers[response->header_count].value = value_copy;
     response->header_count++;
 
     HTTP_LOG("add_header: [%zu] '%s' = '%s'", response->header_count, header, value);
@@ -829,8 +1194,10 @@ char* http_serialize_response_ex(HttpResponse* response, bool head_only, size_t*
         body_len = json_str ? strlen(json_str) : 0;
     }
     else if (response->body) {
+        /* body_length is authoritative (binary bodies contain NULs); 0 means
+           the body was set directly as a C string. */
         body     = response->body;
-        body_len = strlen(response->body);
+        body_len = response->body_length ? response->body_length : strlen(response->body);
     }
 
     /* Framing: respect a handler-set Content-Length or a Transfer-Encoding:
@@ -839,7 +1206,7 @@ char* http_serialize_response_ex(HttpResponse* response, bool head_only, size_t*
      * connection — which breaks keep-alive and strict clients/proxies. */
     bool has_cl = (http_response_get_header(response, "Content-Length") != NULL);
     const char* te = http_response_get_header(response, "Transfer-Encoding");
-    bool chunked = ci_contains_chunked(te);
+    bool chunked = hp_te_final_is_chunked(te);
     bool auto_cl = !has_cl && !chunked;
 
     char   cl_line[48];
@@ -992,6 +1359,7 @@ void http_free_response(HttpResponse* response) {
     }
     free(response->body);
     response->body = NULL;
+    response->body_length = 0;
 
     for (size_t i = 0; i < response->header_count; i++) {
         free(response->headers[i].name);
@@ -1020,7 +1388,13 @@ void http_register_route(const char* path, HttpMethod method, HttpHandler handle
         return;
     }
     if (route_count < MAX_ROUTES) {
-        routes[route_count].path = string_strdup(path);
+        char* copy = string_strdup(path);
+        if (!copy) {
+            /* a route with a NULL path crashed the matcher's strcmp */
+            HTTP_LOG("register_route: out of memory, dropping %s", path);
+            return;
+        }
+        routes[route_count].path = copy;
         routes[route_count].method = method;
         routes[route_count].handler = handler;
         HTTP_LOG("register_route: [%zu] %s %s -> handler %p", route_count, http_method_to_string(method), path, (void*)handler);
@@ -1080,6 +1454,14 @@ static int hp_serve_conn(void* arg) {
  * @return TCP_SUCCESS after a clean shutdown, or the failing TcpStatus if
  *         init/socket/bind/listen failed (e.g. TCP_ERR_BIND for a busy port).
  */
+/* Startup failed before the server was published: nothing to stop any more. */
+static void hp_srv_start_failed(void) {
+    mutex_lock(&srv_lock);
+    srv_starting     = false;
+    srv_stop_pending = false;
+    mutex_unlock(&srv_lock);
+}
+
 TcpStatus http_start_server_ex(int port) {
     TcpSocket      server_socket;
     TcpStatus      status;
@@ -1088,29 +1470,48 @@ TcpStatus http_start_server_ex(int port) {
     long           timeout_ms;
     unsigned short bound_port = (unsigned short)port;
 
-    call_once(&srv_lock_once, hp_srv_lock_init);
-#ifndef _WIN32
-    call_once(&srv_sigpipe_once, hp_ignore_sigpipe);
-#endif
+    concurrent_call_once(&srv_lock_once, hp_srv_lock_init);
+
+    mutex_lock(&srv_lock);
+    srv_starting     = true;
+    srv_stop_pending = false;
+    mutex_unlock(&srv_lock);
 
     status = tcp_init();
     if (status != TCP_SUCCESS) {
         HTTP_LOG("failed to initialize network");
+        mutex_lock(&srv_lock);
+        srv_starting = false;
+        mutex_unlock(&srv_lock);
         return status;
     }
 
     status = tcp_socket_create(&server_socket);
     if (status != TCP_SUCCESS) {
         HTTP_LOG("failed to create server socket");
+        hp_srv_start_failed();
         tcp_cleanup();
 
         return status;
     }
+#if defined(_WIN32) || defined(_WIN64)
+    {
+        /* On Windows SO_REUSEADDR lets a second socket bind a port that is
+           already listening (port sharing), so starting the server twice
+           "succeeded" and connections were split between the two.
+           SO_EXCLUSIVEADDRUSE gives the POSIX behaviour (the bind fails), and
+           Windows rebinds a port in TIME_WAIT without SO_REUSEADDR anyway. */
+        BOOL exclusive = TRUE;
+        setsockopt(server_socket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char*)&exclusive, sizeof(exclusive));
+    }
+#else
     tcp_set_reuse_addr(server_socket, true);
+#endif
 
     status = tcp_bind(server_socket, "0.0.0.0", (unsigned short)port);
     if (status != TCP_SUCCESS) {
         HTTP_LOG("failed to bind server socket on port %d", port);
+        hp_srv_start_failed();
         tcp_close(server_socket);
         tcp_cleanup();
 
@@ -1120,6 +1521,7 @@ TcpStatus http_start_server_ex(int port) {
     status = tcp_listen(server_socket, HTTP_LISTEN_BACKLOG);
     if (status != TCP_SUCCESS) {
         HTTP_LOG("failed to listen on server socket");
+        hp_srv_start_failed();
         tcp_close(server_socket);
         tcp_cleanup();
 
@@ -1136,8 +1538,19 @@ TcpStatus http_start_server_ex(int port) {
         }
     }
 
-    /* Publish listening state and snapshot config under the lock. */
+    /* Publish listening state and snapshot config under the lock. A stop
+     * that arrived while we were still setting up is honoured here (it used
+     * to be overwritten by server_running = true, so the server ran on). */
     mutex_lock(&srv_lock);
+    srv_starting = false;
+    if (srv_stop_pending) {
+        srv_stop_pending = false;
+        mutex_unlock(&srv_lock);
+        HTTP_LOG("stop requested during startup; not serving");
+        tcp_close(server_socket);
+        tcp_cleanup();
+        return TCP_SUCCESS;
+    }
     srv_listen_sock = server_socket;
     srv_port        = bound_port;
     srv_listening   = true;
@@ -1175,6 +1588,7 @@ TcpStatus http_start_server_ex(int port) {
     HTTP_LOG("HTTP server listening on port %u (%d workers, %ld ms timeout)",
              (unsigned)bound_port, workers, timeout_ms);
 
+    long accept_backoff_ms = 0;
     for (;;) {
         TcpSocket client_socket;
         TcpStatus a;
@@ -1196,6 +1610,19 @@ TcpStatus http_start_server_ex(int port) {
         }
 
         if (a == TCP_SUCCESS) {
+            accept_backoff_ms = 0;
+            /* Bounded backlog: when the workers are this far behind, answer
+               503 at once instead of queueing without limit (each queued
+               connection holds a descriptor). */
+            if (thread_pool_queued_count(pool) >= workers * HTTP_MAX_QUEUED_PER_WORKER) {
+                static const char busy[] =
+                    "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                if (tcp_wait_writable(client_socket, 100) == TCP_SUCCESS) {
+                    tcp_send_all(client_socket, busy, sizeof(busy) - 1);
+                }
+                tcp_close(client_socket);
+                continue;
+            }
             HttpConnJob* job = (HttpConnJob*)malloc(sizeof(*job));
             if (!job) {
                 tcp_close(client_socket);   /* shed load instead of crashing */
@@ -1211,9 +1638,15 @@ TcpStatus http_start_server_ex(int port) {
             }
         } 
         else {
-            /* Transient accept() error (EINTR / ECONNABORTED / EMFILE ...):
-             * yield rather than hot-spin, then loop and re-check the flag. */
-            thread_yield();
+            /* accept() error (EINTR / ECONNABORTED / EMFILE ...). A persistent
+             * one such as running out of descriptors used to spin at 100% CPU
+             * (yield only): back off 1, 2, 4 ... up to 100 ms instead. */
+            accept_backoff_ms = accept_backoff_ms ? accept_backoff_ms * 2 : 1;
+            if (accept_backoff_ms > 100) {
+                accept_backoff_ms = 100;
+            }
+            struct timespec pause = { 0, accept_backoff_ms * 1000000L };
+            thread_sleep(&pause, NULL);
         }
     }
 
@@ -1249,16 +1682,25 @@ void http_start_server(int port) {
  * Flips the internal run flag and then opens a throwaway loopback connection so
  * the accept loop returns immediately, observes the flag, and begins a graceful
  * shutdown (drain in-flight connections, join workers). Safe to call from any
- * thread or a signal handler-driven path. A no-op if no server is listening.
+ * thread. A stop that arrives while http_start_server_ex is still setting up
+ * (socket / bind / listen) makes that start return without serving. Before
+ * the server thread has entered http_start_server_ex at all there is nothing
+ * to stop: use http_server_wait_listening() first when the stop may come
+ * immediately after spawning the server thread. Not async-signal-safe (it
+ * takes a mutex and opens a socket): from a signal handler, set a flag and
+ * call this from a normal thread.
  */
 void http_stop_server(void) {
     unsigned short port;
     bool           was_listening;
 
-    call_once(&srv_lock_once, hp_srv_lock_init);
+    concurrent_call_once(&srv_lock_once, hp_srv_lock_init);
 
     mutex_lock(&srv_lock);
     server_running = false;
+    if (srv_starting) {
+        srv_stop_pending = true;
+    }
     port = srv_port;
     was_listening  = srv_listening;
     mutex_unlock(&srv_lock);
@@ -1278,6 +1720,35 @@ void http_stop_server(void) {
 
 
 /**
+ * @brief Wait until a server started on another thread is listening.
+ *
+ * Polls every millisecond. Use it after spawning the server thread when the
+ * program may need to call http_stop_server right away: once this returns
+ * true, the stop cannot be lost.
+ *
+ * @param timeout_ms Maximum wait in milliseconds (< 0 waits indefinitely).
+ * @return true once the server is listening; false on timeout.
+ */
+bool http_server_wait_listening(long timeout_ms) {
+    concurrent_call_once(&srv_lock_once, hp_srv_lock_init);
+    long long deadline = hp_now_ms() + (timeout_ms < 0 ? 0 : timeout_ms);
+    for (;;) {
+        mutex_lock(&srv_lock);
+        bool listening = srv_listening;
+        mutex_unlock(&srv_lock);
+        if (listening) {
+            return true;
+        }
+        if (timeout_ms >= 0 && hp_now_ms() >= deadline) {
+            return false;
+        }
+        struct timespec ms = { 0, 1000000L };
+        thread_sleep(&ms, NULL);
+    }
+}
+
+
+/**
  * @brief Set the worker-thread pool size used by the next http_start_server*.
  *        n <= 0 selects automatic sizing (hardware concurrency). Call before
  *        starting the server.
@@ -1285,7 +1756,7 @@ void http_stop_server(void) {
  * @param n Desired worker-thread count, or <= 0 for automatic sizing.
  */
 void http_server_set_worker_count(int n) {
-    call_once(&srv_lock_once, hp_srv_lock_init);
+    concurrent_call_once(&srv_lock_once, hp_srv_lock_init);
     mutex_lock(&srv_lock);
     srv_worker_count = n;
     mutex_unlock(&srv_lock);
@@ -1301,7 +1772,7 @@ void http_server_set_worker_count(int n) {
  *                   to disable timeouts.
  */
 void http_server_set_client_timeout(long timeout_ms) {
-    call_once(&srv_lock_once, hp_srv_lock_init);
+    concurrent_call_once(&srv_lock_once, hp_srv_lock_init);
     mutex_lock(&srv_lock);
     srv_client_timeout_ms = timeout_ms;
     mutex_unlock(&srv_lock);
@@ -1316,7 +1787,7 @@ void http_server_set_client_timeout(long timeout_ms) {
  */
 unsigned short http_server_get_port(void) {
     unsigned short p;
-    call_once(&srv_lock_once, hp_srv_lock_init);
+    concurrent_call_once(&srv_lock_once, hp_srv_lock_init);
     mutex_lock(&srv_lock);
     p = srv_listening ? srv_port : 0;
     mutex_unlock(&srv_lock);
@@ -1326,16 +1797,33 @@ unsigned short http_server_get_port(void) {
 
 /* Blocking recv gated by a per-read IDLE timeout. We wait up to timeout_ms for
  * the socket to become readable using select() (via tcp_wait_readable) and only
- * then call tcp_recv. This is the portable way to bound a read: SO_RCVTIMEO is
- * silently ignored by recv() on the non-overlapped Winsock sockets this library
- * creates, whereas select() is honored everywhere. An idle peer is therefore
+ * then call tcp_recv. Waiting first also lets a timeout be told apart from a
+ * real receive error and leaves the socket's own SO_RCVTIMEO setting alone,
+ * which callers may use for their own purposes. An idle peer is therefore
  * cut after timeout_ms (slow-loris defense) while a peer that keeps sending data
  * is never penalized. timeout_ms <= 0 blocks indefinitely (original behavior).
  * Returns TCP_ERR_WOULD_BLOCK to flag a timeout, distinct from RECV/CLOSE. */
+/* Read budget for one request: besides the per-read idle timeout, the whole
+ * request must arrive within HTTP_REQUEST_DEADLINE_FACTOR idle timeouts plus
+ * 1000 / HTTP_MIN_BYTES_PER_SEC ms per byte received, so a client dripping a
+ * byte just inside the idle timeout cannot hold a worker indefinitely. */
+typedef struct {
+    long      idle_ms;    /* per-read idle timeout; <= 0 means no limits */
+    long long start;      /* hp_now_ms() when reading began */
+    size_t    received;   /* bytes read so far */
+} HpReadBudget;
+
 static TcpStatus hp_recv_to(TcpSocket socket, void* buf, size_t len,
-                              size_t* got, long timeout_ms) {
-    if (timeout_ms > 0) {
-        TcpStatus w = tcp_wait_readable(socket, timeout_ms);
+                              size_t* got, HpReadBudget* budget) {
+    if (budget->idle_ms > 0) {
+        long long allowed = (long long)budget->idle_ms * HTTP_REQUEST_DEADLINE_FACTOR
+                          + (long long)(budget->received * 1000ULL / HTTP_MIN_BYTES_PER_SEC);
+        long long left = budget->start + allowed - hp_now_ms();
+        if (left <= 0) {
+            return TCP_ERR_WOULD_BLOCK;          /* whole-request deadline passed */
+        }
+        long wait = (left < budget->idle_ms) ? (long)left : budget->idle_ms;
+        TcpStatus w = tcp_wait_readable(socket, wait);
         if (w == TCP_ERR_WOULD_BLOCK) {
             return TCP_ERR_WOULD_BLOCK;          /* idle past the deadline */
         }
@@ -1343,7 +1831,11 @@ static TcpStatus hp_recv_to(TcpSocket socket, void* buf, size_t len,
             return TCP_ERR_RECV;                 /* select error */
         }
     }
-    return tcp_recv(socket, buf, len, got);
+    TcpStatus st = tcp_recv(socket, buf, len, got);
+    if (st == TCP_SUCCESS) {
+        budget->received += *got;
+    }
+    return st;
 }
 
 /* Send the whole buffer, but first (when timeout_ms > 0) make sure the peer is
@@ -1384,6 +1876,7 @@ static bool hp_read_full_request_to(TcpSocket socket, long timeout_ms,
         return false;
     }
     size_t len = 0, scanned = 0, header_end = 0;
+    HpReadBudget budget = { timeout_ms, hp_now_ms(), 0 };
 
     /* Phase 1: read until the CRLFCRLF that ends the header block. */
     while (header_end == 0) {
@@ -1409,7 +1902,7 @@ static bool hp_read_full_request_to(TcpSocket socket, long timeout_ms,
             buf = nb; cap = nc;
         }
         size_t got = 0;
-        TcpStatus st = hp_recv_to(socket, buf + len, cap - len, &got, timeout_ms);
+        TcpStatus st = hp_recv_to(socket, buf + len, cap - len, &got, &budget);
         if (st != TCP_SUCCESS || got == 0) {
             free(buf);
             /* idle timeout -> 408; clean close before any byte -> drop; otherwise
@@ -1432,21 +1925,44 @@ static bool hp_read_full_request_to(TcpSocket socket, long timeout_ms,
     /* Decide framing from the raw header block. */
     char te[80], clbuf[32];
     bool chunked = false;
-    if (raw_header_value(buf, header_end, "Transfer-Encoding", te, sizeof te)) {
-        chunked = ci_contains_chunked(te);
-        if (!chunked) { 
-            free(buf); 
-            *out_status = 501; 
-            return false; 
-        }  /* unsupported coding */
+    if (!raw_headers_wellformed(buf, header_end)) {
+        free(buf);
+        *out_status = 400;
+        return false;
+    }
+    int te_n = raw_header_unique(buf, header_end, "Transfer-Encoding", te, sizeof te);
+    if (te_n < 0) {
+        free(buf);
+        *out_status = 400;
+        return false;
+    }
+    if (te_n > 0) {
+        HpTeKind k = hp_te_classify(te);
+        if (k == HP_TE_INVALID) {
+            free(buf);
+            *out_status = 400;          /* chunked not final / duplicated */
+            return false;
+        }
+        if (k == HP_TE_OTHER) {
+            free(buf);
+            *out_status = 501;          /* unsupported coding */
+            return false;
+        }
+        chunked = true;
     }
     long cl = -1;
-    if (raw_header_value(buf, header_end, "Content-Length", clbuf, sizeof clbuf)) {
+    int cl_n = raw_header_unique(buf, header_end, "Content-Length", clbuf, sizeof clbuf);
+    if (cl_n < 0) {
+        free(buf);
+        *out_status = 400;              /* conflicting Content-Length values */
+        return false;
+    }
+    if (cl_n > 0) {
         cl = hp_parse_clen(clbuf);
-        if (cl < 0) { 
-            free(buf); 
-            *out_status = 400; 
-            return false; 
+        if (cl < 0) {
+            free(buf);
+            *out_status = 400;
+            return false;
         }
     }
     if (chunked && cl >= 0) { 
@@ -1457,18 +1973,18 @@ static bool hp_read_full_request_to(TcpSocket socket, long timeout_ms,
 
     /* Phase 2: read the body. */
     if (chunked) {
-        CkdState ck = { CKD_SIZE, 0, 0, false };
+        CkdState ck = { CKD_SIZE, 0, 0, false, 0, 0, false };
         HttpBuf  body = { NULL, 0, 0 };
         if (len > header_end && !ckd_feed(&ck, buf + header_end, len - header_end, &body, HTTP_MAX_BODY_BYTES)) {
-            free(buf); 
+            free(buf);
             free(body.data);
-            *out_status = (body.len >= HTTP_MAX_BODY_BYTES) ? 413 : 400;
+            *out_status = ck.too_large ? 413 : 400;
             return false;
         }
         char tmp[HTTP_READ_CHUNK];
         while (ck.phase != CKD_DONE) {
             size_t got = 0;
-            TcpStatus st = hp_recv_to(socket, tmp, sizeof tmp, &got, timeout_ms);
+            TcpStatus st = hp_recv_to(socket, tmp, sizeof tmp, &got, &budget);
             if (st != TCP_SUCCESS || got == 0) {
                 free(buf); 
                 free(body.data);
@@ -1476,9 +1992,9 @@ static bool hp_read_full_request_to(TcpSocket socket, long timeout_ms,
                 return false;
             }
             if (!ckd_feed(&ck, tmp, got, &body, HTTP_MAX_BODY_BYTES)) {
-                free(buf); 
+                free(buf);
                 free(body.data);
-                *out_status = (body.len >= HTTP_MAX_BODY_BYTES) ? 413 : 400;
+                *out_status = ck.too_large ? 413 : 400;
                 return false;
             }
         }
@@ -1522,7 +2038,7 @@ static bool hp_read_full_request_to(TcpSocket socket, long timeout_ms,
         }
         while (len < need) {
             size_t got = 0;
-            TcpStatus st = hp_recv_to(socket, buf + len, cap - len, &got, timeout_ms);
+            TcpStatus st = hp_recv_to(socket, buf + len, cap - len, &got, &budget);
 
             if (st != TCP_SUCCESS || got == 0) {
                 free(buf);
@@ -1983,11 +2499,11 @@ void http_set_html_body(HttpResponse* response, const char* html) {
         HTTP_LOG("set_html_body: NULL response or html — no-op");
         return;
     }
-    free(response->body);
-
-    response->body = string_strdup(html);
-    HTTP_LOG("set_html_body: set %zu bytes, added Content-Type: text/html", strlen(html));
-    http_add_header(response, "Content-Type", "text/html; charset=utf-8");
+    if (!hp_set_body_raw(response, html, strlen(html))) {
+        return;
+    }
+    HTTP_LOG("set_html_body: set %zu bytes, set Content-Type: text/html", strlen(html));
+    hp_set_content_type(response, "text/html; charset=utf-8");
 }
 
 
@@ -2015,17 +2531,21 @@ void http_set_cookie(HttpResponse* response, const char* name, const char* value
         return;
     }
     HTTP_LOG("set_cookie: name='%s' value='%s' path='%s' max_age=%d http_only=%d", name, value, path ? path : "(none)", max_age, http_only);
+    if (!hp_is_token(name)) {
+        HTTP_LOG("set_cookie: invalid cookie name rejected");
+        return;
+    }
 
     /* Compute upper bound on the buffer: name=value + "; Path=..." (max
        ~64 chars worth of path) + "; Max-Age=-2147483648" + "; HttpOnly". */
     size_t need = strlen(name) + 1 + strlen(value) + 1;
-    if (path) {     
+    if (path) {
         need += 8 + strlen(path);
     }
     if (max_age >= 0) {
         need += 32;
     }
-    if (http_only) {   
+    if (http_only) {
         need += 12;
     }
 
@@ -2034,9 +2554,25 @@ void http_set_cookie(HttpResponse* response, const char* name, const char* value
         return;
     }
 
-    size_t off = (size_t)snprintf(buf, need, "%s=%s", name, value);
+    /* Keep only bytes RFC 6265 allows (as Go's net/http does): a ';' or CR/LF
+       from user input would otherwise add cookie attributes or headers. */
+    size_t off = (size_t)snprintf(buf, need, "%s=", name);
+    for (const char* p = value; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c >= 0x21 && c <= 0x7E && c != '"' && c != ',' && c != ';' && c != '\\') {
+            buf[off++] = (char)c;
+        }
+    }
+    buf[off] = '\0';
     if (path) {
-        off += (size_t)snprintf(buf + off, need - off, "; Path=%s", path);
+        off += (size_t)snprintf(buf + off, need - off, "; Path=");
+        for (const char* p = path; *p; p++) {
+            unsigned char c = (unsigned char)*p;
+            if (c >= 0x20 && c != 0x7F && c != ';') {
+                buf[off++] = (char)c;
+            }
+        }
+        buf[off] = '\0';
     }
     if (max_age >= 0) {
         off += (size_t)snprintf(buf + off, need - off, "; Max-Age=%d", max_age);
@@ -2068,7 +2604,7 @@ char* http_get_cookie(HttpRequest* req, const char* name) {
         return NULL;
     }
 
-    const char* cookie_header = http_get_header(req, "Cookie");
+    const char* cookie_header = http_get_header_ci(req, "Cookie");   /* header names are case-insensitive */
     if (!cookie_header) {
         HTTP_LOG("get_cookie: no Cookie header in request");
         return NULL;
@@ -2129,16 +2665,53 @@ void http_redirect(HttpResponse* response, int code, const char* location) {
     HTTP_LOG("redirect: %d -> '%s'", code, location);
 
     http_set_status(response, code, http_status_text(code));
-    http_add_header(response, "Location", location);
+    http_add_header(response, "Location", location);   /* CR/LF neutralized there */
 
-    /* Minimal HTML fallback body. */
-    size_t need = 64 + 2 * strlen(location);
+    /* Minimal HTML fallback body. The location is HTML-escaped: inserted raw
+       it let a redirect target such as "/x\"><script>..." run script. CR/LF
+       are neutralized first, as in the Location header. */
+    char* clean = hp_header_value_dup(location);
+    if (!clean) {
+        return;
+    }
+    size_t len = strlen(clean);
+    size_t esc_cap = 6 * len + 1;
+    char* esc = (char*)malloc(esc_cap);
+    if (!esc) {
+        free(clean);
+        return;
+    }
+    size_t e = 0;
+    for (size_t i = 0; i < len; i++) {
+        const char* rep = NULL;
+        switch (clean[i]) {
+            case '&':  rep = "&amp;";  break;
+            case '<':  rep = "&lt;";   break;
+            case '>':  rep = "&gt;";   break;
+            case '"':  rep = "&quot;"; break;
+            case '\'': rep = "&#39;";  break;
+            default:   break;
+        }
+        if (rep) {
+            size_t rl = strlen(rep);
+            memcpy(esc + e, rep, rl);
+            e += rl;
+        }
+        else {
+            esc[e++] = clean[i];
+        }
+    }
+    esc[e] = '\0';
+    free(clean);
+
+    size_t need = 64 + 2 * e;
     char* body = (char*)malloc(need);
     if (body) {
-        snprintf(body, need,"<html><body>Redirecting to <a href=\"%s\">%s</a></body></html>", location, location);
+        snprintf(body, need,"<html><body>Redirecting to <a href=\"%s\">%s</a></body></html>", esc, esc);
         http_set_html_body(response, body);
         free(body);
     }
+    free(esc);
 }
 
 
@@ -2421,6 +2994,15 @@ bool http_url_parse(const char* url, HttpUrl* out) {
     if (!url) {
         return false;
     }
+    /* No spaces or control characters anywhere: they would be written to the
+       request line and Host header verbatim, so "...\r\nX-Injected: 1" in a
+       URL could add headers or a second request. */
+    for (const char* c = url; *c; c++) {
+        unsigned char ch = (unsigned char)*c;
+        if (ch <= 0x20 || ch == 0x7F) {
+            return false;
+        }
+    }
 
     const char* sep = strstr(url, "://");
     if (!sep || sep == url) {
@@ -2618,13 +3200,14 @@ HttpResponse* http_parse_response(const char* data, size_t length) {
     int         ndig = 0;
     const char* c    = code_beg;
 
-    while (c < data + line_len && *c >= '0' && *c <= '9') {
+    /* status-code = 3DIGIT; an unbounded digit run overflowed the int (UB) */
+    while (c < data + line_len && *c >= '0' && *c <= '9' && ndig < 4) {
         code = code * 10 + (*c - '0');
         ndig++;
         c++;
     }
 
-    if (ndig == 0) {
+    if (ndig != 3) {
         return NULL;
     }
 
@@ -2761,7 +3344,10 @@ static void cl_close(TcpSocket sock) {
 /* One recv, gated by a per-read idle timeout (select), SSL-aware. Returns
  * TCP_ERR_WOULD_BLOCK on idle timeout. */
 static TcpStatus cl_recv(TcpSocket s, void* buf, size_t len, size_t* got, long timeout_ms) {
-    if (timeout_ms > 0) {
+    SSL* ssl = tcp_get_ssl(s);
+    /* Bytes OpenSSL has already decrypted do not make the socket readable,
+       so only wait when nothing is buffered. */
+    if (timeout_ms > 0 && !(ssl && SSL_pending(ssl) > 0)) {
         TcpStatus w = tcp_wait_readable(s, timeout_ms);
         if (w == TCP_ERR_WOULD_BLOCK) {
             return TCP_ERR_WOULD_BLOCK;
@@ -2770,7 +3356,7 @@ static TcpStatus cl_recv(TcpSocket s, void* buf, size_t len, size_t* got, long t
             return TCP_ERR_RECV;
         }
     }
-    if (tcp_get_ssl(s) != NULL) {
+    if (ssl != NULL) {
         return tcp_ssl_recv(s, buf, len, got);
     }
     return tcp_recv(s, buf, len, got);
@@ -2807,13 +3393,16 @@ static TcpStatus cl_send_all(TcpSocket s, const void* buf, size_t len, long time
 }
 
 /* Establish client TLS on an already-connected socket (SNI = host). When
- * !insecure, require the peer certificate chain to verify. */
-static TcpStatus cl_tls_client_handshake(TcpSocket sock, const char* host, bool insecure) {
+ * !insecure, require the peer certificate chain to verify. The handshake is
+ * bounded by timeout_ms, like the connect and every read. */
+static TcpStatus cl_tls_client_handshake(TcpSocket sock, const char* host, bool insecure, long timeout_ms) {
     if (tcp_ssl_init_client() != TCP_SUCCESS) {
         return TCP_ERR_SSL;
     }
 
-    TcpStatus st = tcp_ssl_connect(sock, host);
+    /* Verification is chosen per connection: an earlier verified request (or
+       tcp_ssl_set_verify) no longer makes tls_insecure requests fail. */
+    TcpStatus st = tcp_ssl_connect_verify(sock, host, timeout_ms, !insecure);
     if (st != TCP_SUCCESS) {
         return st;
     }
@@ -2832,7 +3421,7 @@ static TcpStatus cl_tls_client_handshake(TcpSocket sock, const char* host, bool 
  * Connection headers are skipped so we stay authoritative. */
 static bool cl_build_request(HttpBuf* b, HttpMethod method, const HttpUrl* u,
                              const HttpHeader* headers, size_t header_count,
-                             const void* body, size_t body_len) {
+                             const void* body, size_t body_len, bool strip_credentials) {
     const char* m = http_method_to_string(method);
     if (!m) {
         return false;
@@ -2883,6 +3472,21 @@ static bool cl_build_request(HttpBuf* b, HttpMethod method, const HttpUrl* u,
             cl_ci_eq(headers[i].name, "Connection")) {
             continue;
         }
+        /* After a redirect to another origin, credentials stay behind (as in
+           browsers and curl): the new host must not receive the caller's
+           bearer token or cookies, least of all over http after https. */
+        if (strip_credentials &&
+            (cl_ci_eq(headers[i].name, "Authorization") ||
+             cl_ci_eq(headers[i].name, "Proxy-Authorization") ||
+             cl_ci_eq(headers[i].name, "Cookie"))) {
+            continue;
+        }
+        /* A header name must be a token and a value must not contain CR/LF,
+           or the caller's data could add headers or a second request. */
+        if (!hp_is_token(headers[i].name) || strpbrk(headers[i].value, "\r\n")) {
+            HTTP_LOG("client: invalid request header rejected");
+            return false;
+        }
         if (!cl_append_str(b, headers[i].name) || !cl_append_str(b, ": ") ||
             !cl_append_str(b, headers[i].value) || !cl_append_str(b, "\r\n")) {
             return false;
@@ -2922,7 +3526,10 @@ static bool cl_read_response(TcpSocket s, long timeout_ms, HttpMethod method,
         return false;
     }
     size_t len = 0, scanned = 0, header_end = 0;
+    int code = 0;
+    int interim = 0;
 
+    for (;;) {   /* interim 1xx responses (e.g. 103 Early Hints) are skipped */
     /* Phase 1: status line + headers, up to CRLFCRLF. */
     while (header_end == 0) {
         if (len == cap) {
@@ -2964,20 +3571,47 @@ static bool cl_read_response(TcpSocket s, long timeout_ms, HttpMethod method,
     }
     buf[len] = '\0';
 
-    /* status code (for no-body rules) */
-    int code = 0;
+    /* status code (for no-body rules): exactly three digits */
+    code = 0;
     {
+        int ndig = 0;
         const char* sp = (const char*)memchr(buf, ' ', header_end);
         if (sp) {
             const char* c = sp + 1;
-            while (c < buf + header_end && *c == ' ') { 
-                c++; 
+            while (c < buf + header_end && *c == ' ') {
+                c++;
             }
-            while (c < buf + header_end && *c >= '0' && *c <= '9') { 
-                code = code * 10 + (*c - '0'); 
-                c++; 
+            while (c < buf + header_end && *c >= '0' && *c <= '9' && ndig < 4) {
+                code = code * 10 + (*c - '0');
+                ndig++;
+                c++;
             }
         }
+        if (ndig != 3) {
+            free(buf);
+            return false;
+        }
+    }
+    if (code >= 100 && code <= 199 && code != 101) {
+        /* An interim response: the final one follows on the same connection
+           (RFC 9110 15.2). It used to be returned as the answer. */
+        if (++interim > 16) {
+            free(buf);
+            return false;
+        }
+        memmove(buf, buf + header_end, len - header_end);
+        len -= header_end;
+        header_end = 0;
+        for (size_t i = 0; i + 4 <= len; ++i) {
+            if (buf[i] == '\r' && buf[i+1] == '\n' && buf[i+2] == '\r' && buf[i+3] == '\n') {
+                header_end = i + 4;
+                break;
+            }
+        }
+        scanned = len;
+        continue;
+    }
+    break;
     }
     bool no_body = (method == HTTP_HEAD) || (code / 100 == 1) || code == 204 || code == 304;
 
@@ -2985,7 +3619,7 @@ static bool cl_read_response(TcpSocket s, long timeout_ms, HttpMethod method,
     bool chunked = false;
 
     if (!no_body && raw_header_value(buf, header_end, "Transfer-Encoding", te, sizeof te)) {
-        chunked = ci_contains_chunked(te);
+        chunked = hp_te_final_is_chunked(te);
     }
 
     long cl = -1;
@@ -3009,7 +3643,7 @@ static bool cl_read_response(TcpSocket s, long timeout_ms, HttpMethod method,
     }
 
     if (chunked) {
-        CkdState ck   = { CKD_SIZE, 0, 0, false };
+        CkdState ck   = { CKD_SIZE, 0, 0, false, 0, 0, false };
         HttpBuf  body = { NULL, 0, 0 };
 
         if (len > header_end && !ckd_feed(&ck, buf + header_end, len - header_end, &body, HTTP_MAX_BODY_BYTES)) {
@@ -3129,8 +3763,30 @@ static bool cl_read_response(TcpSocket s, long timeout_ms, HttpMethod method,
  * Handles absolute (scheme://...), root-relative (/path) and relative paths.
  * Returns a malloc'd NUL-terminated URL, or NULL on OOM. */
 static char* cl_resolve_redirect(const HttpUrl* base, const char* loc) {
-    if (strstr(loc, "://")) {
-        return string_strdup(loc);              /* already absolute */
+    /* Absolute only when Location starts with a scheme (RFC 3986:
+       ALPHA *(ALPHA / DIGIT / "+" / "-" / ".") "://"); a "://" later in the
+       string, e.g. "/login?next=http://x", is part of a relative reference. */
+    {
+        const char* c = loc;
+        if (isalpha((unsigned char)*c)) {
+            while (isalnum((unsigned char)*c) || *c == '+' || *c == '-' || *c == '.') {
+                c++;
+            }
+            if (strncmp(c, "://", 3) == 0) {
+                return string_strdup(loc);          /* already absolute */
+            }
+        }
+    }
+    if (loc[0] == '/' && loc[1] == '/') {
+        /* Protocol-relative "//host/path": a new host, the current scheme. */
+        HttpBuf pr = { NULL, 0, 0 };
+        bool okp = cl_append_str(&pr, base->scheme) && cl_append_str(&pr, ":") &&
+                   cl_append_str(&pr, loc) && httpbuf_append(&pr, "", 1, SIZE_MAX);
+        if (!okp) {
+            free(pr.data);
+            return NULL;
+        }
+        return pr.data;
     }
 
     HttpBuf b = { NULL, 0, 0 };
@@ -3139,7 +3795,7 @@ static char* cl_resolve_redirect(const HttpUrl* base, const char* loc) {
     unsigned short defport = base->is_https ? 443u : 80u;
 
     ok = ok && cl_append_str(&b, base->scheme) && cl_append_str(&b, "://");
-    
+
     if (ipv6) { 
         ok = ok && cl_append_str(&b, "[");
     }
@@ -3156,7 +3812,11 @@ static char* cl_resolve_redirect(const HttpUrl* base, const char* loc) {
 
     if (loc[0] == '/') {
         ok = ok && cl_append_str(&b, loc);
-    } 
+    }
+    else if (loc[0] == '?') {
+        /* query-only reference: same path, new query */
+        ok = ok && cl_append_str(&b, (base->path && base->path[0]) ? base->path : "/") && cl_append_str(&b, loc);
+    }
     else {
         const char* path  = (base->path && base->path[0]) ? base->path : "/";
         const char* slash = strrchr(path, '/');
@@ -3228,12 +3888,25 @@ HttpResponse* http_request(HttpMethod method, const char* url,
     size_t cur_body_len = body_len;
     HttpResponse* result = NULL;
 
+    /* Origin (scheme, host, port) of the first request: credential headers
+       are only sent while redirects stay on it. */
+    char origin_scheme[16] = "";
+    char origin_host[256] = "";
+    unsigned short origin_port = 0;
+
     if (cur_url) {
         for (int hop = 0; ; ++hop) {
             HttpUrl u;
             if (!http_url_parse(cur_url, &u)) {
                 break;
             }
+            if (hop == 0) {
+                snprintf(origin_scheme, sizeof origin_scheme, "%s", u.scheme);
+                snprintf(origin_host, sizeof origin_host, "%s", u.host);
+                origin_port = u.port;
+            }
+            bool same_origin = strcmp(u.scheme, origin_scheme) == 0 &&
+                               cl_ci_eq(u.host, origin_host) && u.port == origin_port;
 
             TcpSocket sock;
             if (tcp_socket_create(&sock) != TCP_SUCCESS) { 
@@ -3245,14 +3918,14 @@ HttpResponse* http_request(HttpMethod method, const char* url,
                 http_url_free(&u); 
                 break;
             }
-            if (u.is_https && cl_tls_client_handshake(sock, u.host, insecure) != TCP_SUCCESS) {
+            if (u.is_https && cl_tls_client_handshake(sock, u.host, insecure, timeout_ms) != TCP_SUCCESS) {
                 cl_close(sock); 
                 http_url_free(&u); 
                 break;
             }
 
             HttpBuf req = { NULL, 0, 0 };
-            if (!cl_build_request(&req, cur_method, &u, headers, header_count, cur_body, cur_body_len)) {
+            if (!cl_build_request(&req, cur_method, &u, headers, header_count, cur_body, cur_body_len, !same_origin)) {
                 free(req.data); 
                 cl_close(sock); 
                 http_url_free(&u); 

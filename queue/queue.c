@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "queue.h"
 #include "../algorithm/algorithm.h"
 
@@ -44,7 +45,41 @@ static void qbuf_compact(Queue* q) {
     }
 }
 
+/* Compacts before an append into a full buffer, keeping `*item` pointing at the
+ * same element when it lives inside the queue (q.push(q.front()) idiom): the
+ * memmove shifts the live run down by frontIndex slots. An item in the dead
+ * (already popped) prefix would be overwritten, so compaction is skipped then
+ * and the vector grows instead (vector_push_back handles that alias itself). */
+static void qbuf_compact_for_push(Queue* q, const void** item) {
+    Vector* v = q->vec;
+    if (v->size != v->capacitySize || q->frontIndex == 0) {
+        return;
+    }
+    /* Compact only when the dead prefix is at least as long as the live run:
+       the memmove of `live` elements is then paid for by as many pops, so
+       push stays amortized O(1). Reclaiming a few slots by moving almost the
+       whole buffer made every push O(n) for a queue kept near capacity; in
+       that case the vector grows (doubling) instead. */
+    if (q->frontIndex < v->size - q->frontIndex) {
+        return;
+    }
+    uintptr_t p = (uintptr_t)*item;
+    uintptr_t b = (uintptr_t)v->items;
+    size_t deadBytes = q->frontIndex * v->itemSize;
+    if (v->items && p >= b && p < b + v->capacitySize * v->itemSize) {
+        size_t off = (size_t)(p - b);
+        if (off < deadBytes) {
+            return;
+        }
+        qbuf_compact(q);
+        *item = (const char*)v->items + (off - deadBytes);
+        return;
+    }
+    qbuf_compact(q);
+}
+
 static int qbuf_lex_compare(const Queue* q1, const Queue* q2) {
+    VectorCompareFunc cmp = q1->vec->compare ? q1->vec->compare : q2->vec->compare;
     size_t isz  = q1->vec->itemSize;
     size_t n1   = q1->vec->size - q1->frontIndex;
     size_t n2   = q2->vec->size - q2->frontIndex;
@@ -53,7 +88,7 @@ static int qbuf_lex_compare(const Queue* q1, const Queue* q2) {
     const char* b = (const char*)q2->vec->items + q2->frontIndex * isz;
 
     for (size_t i = 0; i < minN; ++i) {
-        int c = memcmp(a + i * isz, b + i * isz, isz);
+        int c = cmp ? cmp(a + i * isz, b + i * isz) : memcmp(a + i * isz, b + i * isz, isz);
         if (c != 0) {
             return (c < 0) ? -1 : 1;
         }
@@ -64,6 +99,19 @@ static int qbuf_lex_compare(const Queue* q1, const Queue* q2) {
     return 0;
 }
 
+
+
+/**
+ * @brief Sets the element comparator used by the queue_is_* comparisons.
+ *
+ * Without one the elements' bytes are compared (memcmp), which is not the
+ * numeric order of int / double elements. NULL queue is a no-op.
+ */
+void queue_set_compare(Queue* q, QueueCompareFunc compare) {
+    if (q && q->vec) {
+        vector_set_compare(q->vec, compare);
+    }
+}
 
 
 /**
@@ -131,6 +179,7 @@ Queue* queue_copy(const Queue* src) {
         QUEUE_LOG("[queue_copy]: queue_create(itemSize=%zu) failed -> NULL", src->vec->itemSize);
         return NULL;
     }
+    vector_set_compare(dst->vec, src->vec->compare);
 
     size_t n = src->vec->size - src->frontIndex;
     if (n > 0 && !vector_reserve(dst->vec, n)) {
@@ -292,9 +341,7 @@ bool queue_push(Queue* q, const void* item) {
         return false;
     }
 
-    if (q->vec->size == q->vec->capacitySize && q->frontIndex > 0) {
-        qbuf_compact(q);
-    }
+    qbuf_compact_for_push(q, &item);
     if (!vector_push_back(q->vec, item)) {
         QUEUE_LOG("[queue_push]: vector_push_back failed -> false");
         return false;
@@ -332,9 +379,7 @@ void* queue_emplace(Queue* q, const void* item, size_t itemSize) {
         QUEUE_LOG("[queue_emplace]: item-size mismatch (%zu vs %zu) -> NULL", itemSize, q->vec->itemSize);
         return NULL;
     }
-    if (q->vec->size == q->vec->capacitySize && q->frontIndex > 0) {
-        qbuf_compact(q);
-    }
+    qbuf_compact_for_push(q, &item);
     if (!vector_emplace_back(q->vec, (void*)item, itemSize)) {
         QUEUE_LOG("[queue_emplace]: vector_emplace_back failed -> NULL");
         return NULL;
@@ -490,7 +535,8 @@ bool queue_is_not_equal(const Queue* q1, const Queue* q2) {
 
 
 /**
- * @brief Lexicographic less-than over the underlying vector bytes.
+ * @brief Lexicographic less-than over the elements (comparator from
+ *        queue_set_compare, else each element's bytes).
  *
  * Returns false if either operand is NULL.
  *
@@ -501,7 +547,7 @@ bool queue_is_not_equal(const Queue* q1, const Queue* q2) {
 bool queue_is_less(const Queue* q1, const Queue* q2) {
     QUEUE_LOG("[queue_is_less]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
 
-    if (!q1 || !q2 || !q1->vec || !q2->vec) {
+    if (!q1 || !q2 || !q1->vec || !q2->vec || q1->vec->itemSize != q2->vec->itemSize) {
         QUEUE_LOG("[queue_is_less]: one receiver NULL -> false");
         return false;
     }
@@ -513,7 +559,8 @@ bool queue_is_less(const Queue* q1, const Queue* q2) {
 
 
 /**
- * @brief Lexicographic greater-than over the underlying vector bytes.
+ * @brief Lexicographic greater-than over the elements (comparator from
+ *        queue_set_compare, else each element's bytes).
  *
  * Returns false if either operand is NULL.
  *
@@ -523,7 +570,7 @@ bool queue_is_less(const Queue* q1, const Queue* q2) {
  */
 bool queue_is_greater(const Queue* q1, const Queue* q2) {
     QUEUE_LOG("[queue_is_greater]: enter q1=%p q2=%p", (const void*)q1, (const void*)q2);
-    if (!q1 || !q2 || !q1->vec || !q2->vec) {
+    if (!q1 || !q2 || !q1->vec || !q2->vec || q1->vec->itemSize != q2->vec->itemSize) {
         QUEUE_LOG("[queue_is_greater]: one receiver NULL -> false");
         return false;
     }

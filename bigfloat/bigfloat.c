@@ -24,6 +24,57 @@ BigFloat* bigfloat_create(void) {
 }
 
 /**
+ * @brief Creates a new BigFloat initialized to 0.0 with the given precision.
+ * @param bits Precision in bits (MPFR_PREC_MIN .. MPFR_PREC_MAX).
+ * @return Pointer to the new BigFloat, or NULL for an invalid precision or
+ *         if allocation fails.
+ */
+BigFloat* bigfloat_create_with_precision(mpfr_prec_t bits) {
+    if (bits < MPFR_PREC_MIN || bits > MPFR_PREC_MAX) {
+        BIGFLOAT_LOG("[bigfloat_create_with_precision]: Invalid precision %ld.", (long)bits);
+        return NULL;
+    }
+    BigFloat* bf = malloc(sizeof(BigFloat));
+    if (!bf) {
+        return NULL;
+    }
+    mpfr_init2(bf->value, bits);
+    mpfr_set_zero(bf->value, +1);
+    return bf;
+}
+
+/**
+ * @brief Precision of a BigFloat in bits (0 for NULL).
+ */
+mpfr_prec_t bigfloat_get_precision(const BigFloat* a) {
+    return a ? mpfr_get_prec(a->value) : 0;
+}
+
+/**
+ * @brief Changes the precision of a BigFloat, rounding its value to nearest.
+ * @return true on success, false for NULL or an invalid precision.
+ */
+bool bigfloat_set_precision(BigFloat* a, mpfr_prec_t bits) {
+    if (!a || bits < MPFR_PREC_MIN || bits > MPFR_PREC_MAX) {
+        return false;
+    }
+    mpfr_prec_round(a->value, bits, MPFR_RNDN);
+    return true;
+}
+
+/* A zero result whose precision is the larger of the operands' (b may be
+ * NULL). Results used to take the global default precision, so values made
+ * at 256 bits were computed at 53 bits after mpfr_set_default_prec(53):
+ * 1e100 + 1 lost the 1. */
+static BigFloat* bigfloat_result_for(const BigFloat* a, const BigFloat* b) {
+    mpfr_prec_t bits = mpfr_get_prec(a->value);
+    if (b && mpfr_get_prec(b->value) > bits) {
+        bits = mpfr_get_prec(b->value);
+    }
+    return bigfloat_create_with_precision(bits);
+}
+
+/**
  * @brief Creates a BigFloat from a string.
  * @param str A pointer to the string representation.
  * @return Pointer to the new BigFloat, or NULL on error.
@@ -92,7 +143,7 @@ BigFloat* bigfloat_add(const BigFloat* a, const BigFloat* b) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -115,7 +166,7 @@ BigFloat* bigfloat_subtract(const BigFloat* a, const BigFloat* b) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -138,7 +189,7 @@ BigFloat* bigfloat_multiply(const BigFloat* a, const BigFloat* b) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -160,12 +211,12 @@ BigFloat* bigfloat_divide(const BigFloat* a, const BigFloat* b) {
         BIGFLOAT_LOG("[bigfloat_divide]: One or both input BigFloats are NULL.");
         return NULL;
     }
-    if (mpfr_cmp_ui(b->value, 0) == 0) {
+    if (mpfr_zero_p(b->value)) {
         BIGFLOAT_LOG("[bigfloat_divide]: Division by zero error.");
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -192,7 +243,7 @@ BigFloat* bigfloat_sqrt(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -215,7 +266,7 @@ BigFloat* bigfloat_pow(const BigFloat* base, const BigFloat* exponent) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(base, exponent);
     if (!res) {
         return NULL;
     }
@@ -242,7 +293,7 @@ BigFloat* bigfloat_log(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -264,7 +315,7 @@ BigFloat* bigfloat_exp(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -286,7 +337,7 @@ BigFloat* bigfloat_trig_sin(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -308,7 +359,7 @@ BigFloat* bigfloat_trig_cos(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -330,7 +381,7 @@ BigFloat* bigfloat_trig_tan(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -345,10 +396,13 @@ BigFloat* bigfloat_trig_tan(const BigFloat* a) {
  * @brief Compares two BigFloats.
  * @param a Pointer to the first BigFloat.
  * @param b Pointer to the second BigFloat.
- * @return 
+ * @return
  *      - `-1` if a < b
  *      - `0` if a == b
  *      - `1` if a > b
+ *
+ * NaN is ordered after every number and equal only to NaN (mpfr_cmp
+ * returns 0 for a NaN operand, which made NaN "equal" to everything).
  */
 int bigfloat_compare(const BigFloat* a, const BigFloat* b) {
     if (!a || !b) {
@@ -359,6 +413,10 @@ int bigfloat_compare(const BigFloat* a, const BigFloat* b) {
     // MPFR's mpfr_cmp returns any "negative / zero / positive" int — not
     // strictly -1/0/1. Normalize so callers can rely on the documented
     // contract (e.g., `if (bigfloat_compare(a, b) == -1)`).
+    int na = mpfr_nan_p(a->value) != 0, nb = mpfr_nan_p(b->value) != 0;
+    if (na || nb) {
+        return na - nb;
+    }
     int cmp_result = mpfr_cmp(a->value, b->value);
     int normalized = (cmp_result < 0) ? -1 : (cmp_result > 0) ? 1 : 0;
     BIGFLOAT_LOG("[bigfloat_compare]: Comparison result = %d", normalized);
@@ -377,7 +435,8 @@ bool bigfloat_is_zero(const BigFloat* a) {
         return false;
     }
 
-    bool result = (mpfr_cmp_ui(a->value, 0) == 0);
+    /* mpfr_zero_p, not mpfr_cmp_ui(x, 0) == 0, which is also true for NaN */
+    bool result = mpfr_zero_p(a->value) != 0;
     BIGFLOAT_LOG("[bigfloat_is_zero]: The number is %s.", result ? "zero" : "non-zero");
 
     return result;
@@ -411,11 +470,13 @@ char* bigfloat_to_string(const BigFloat* a) {
         return NULL;
     }
 
-    // Use mpfr_asprintf so the buffer grows to fit any value. The old
-    // fixed 128-byte buffer overflowed for values whose magnitude or
-    // precision needed more characters (e.g. >1e80 with %.50Rf).
     char* mpfr_str = NULL;
-    int n = mpfr_asprintf(&mpfr_str, "%.50Rf", a->value);
+    /* Fixed notation with 50 decimals, as before, except for tiny non-zero
+       values: those printed as 0.000...0 below ~5e-51 and kept only a few
+       significant digits below ~1e-6. Magnitudes under 2^-20 (~9.5e-7) are
+       printed in scientific notation with 51 significant digits instead. */
+    const char* fmt = (mpfr_regular_p(a->value) && mpfr_get_exp(a->value) <= -20) ? "%.50Re" : "%.50Rf";
+    int n = mpfr_asprintf(&mpfr_str, fmt, a->value);
     if (n < 0 || !mpfr_str) {
         BIGFLOAT_LOG("[bigfloat_to_string]: mpfr_asprintf failed.");
         return NULL;
@@ -448,7 +509,7 @@ BigFloat* bigfloat_abs(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -470,7 +531,7 @@ BigFloat* bigfloat_negate(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -492,7 +553,7 @@ BigFloat* bigfloat_floor(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -514,7 +575,7 @@ BigFloat* bigfloat_ceil(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -536,7 +597,7 @@ BigFloat* bigfloat_round(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -558,7 +619,7 @@ BigFloat* bigfloat_trunc(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -585,7 +646,7 @@ BigFloat* bigfloat_reciprocal(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -613,7 +674,7 @@ BigFloat* bigfloat_mod(const BigFloat* a, const BigFloat* b) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -638,7 +699,7 @@ BigFloat* bigfloat_exp2(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -660,7 +721,7 @@ BigFloat* bigfloat_log10(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -682,7 +743,7 @@ BigFloat* bigfloat_cbrt(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -705,7 +766,7 @@ BigFloat* bigfloat_hypot(const BigFloat* a, const BigFloat* b) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -733,7 +794,7 @@ BigFloat* bigfloat_fmod(const BigFloat* a, const BigFloat* b) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, b);
     if (!res) {
         return NULL;
     }
@@ -757,7 +818,7 @@ BigFloat* bigfloat_lgamma(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }
@@ -781,7 +842,7 @@ BigFloat* bigfloat_erf(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) { 
         BIGFLOAT_LOG("[bigfloat_erf]: memory allocation failed.");
         return NULL;
@@ -805,7 +866,7 @@ BigFloat* bigfloat_expm1(const BigFloat* a) {
         return NULL;
     }
 
-    BigFloat* res = bigfloat_create();
+    BigFloat* res = bigfloat_result_for(a, NULL);
     if (!res) {
         return NULL;
     }

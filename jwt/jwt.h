@@ -43,8 +43,8 @@ extern "C" {
 /* #define JWT_LOGGING_ENABLE */
 
 #ifdef JWT_LOGGING_ENABLE
-    #define JWT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[JWT LOG]: " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define JWT_LOG(...) \
+        do { fprintf(stderr, "[JWT LOG]: "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define JWT_LOG(...) do { } while (0)
 #endif
@@ -67,7 +67,9 @@ typedef enum {
     JWT_ALG_ES512,      /* ECDSA P-521 + SHA-512 (note: P-521, not P-512)   */
     JWT_ALG_PS256,      /* RSASSA-PSS + SHA-256 + MGF1-SHA-256 (§3.5)       */
     JWT_ALG_PS384,      /* RSASSA-PSS + SHA-384 + MGF1-SHA-384              */
-    JWT_ALG_PS512       /* RSASSA-PSS + SHA-512 + MGF1-SHA-512              */
+    JWT_ALG_PS512,      /* RSASSA-PSS + SHA-512 + MGF1-SHA-512              */
+    JWT_ALG_UNKNOWN     /* unrecognised `alg` string: never signs or verifies,
+                           even if allow-listed (it used to map to NONE)     */
 } JwtAlgorithm;
 
 
@@ -83,7 +85,7 @@ typedef enum {
     JWT_ERR_INVALID_ALG,           /* alg not in allow-list                         */
     JWT_ERR_INVALID_KEY,           /* HMAC alg with RSA key, or vice versa          */
     JWT_ERR_INVALID_SIGNATURE,     /* signature bytes don't verify                  */
-    JWT_ERR_EXPIRED,               /* exp claim < now - leeway                      */
+    JWT_ERR_EXPIRED,               /* exp claim <= now - leeway                     */
     JWT_ERR_NOT_YET_VALID,         /* nbf claim > now + leeway                      */
     JWT_ERR_INVALID_ISSUER,
     JWT_ERR_INVALID_AUDIENCE,

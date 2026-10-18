@@ -25,8 +25,8 @@ extern "C" {
 /* #define DEQUE_LOGGING_ENABLE */
 
 #ifdef DEQUE_LOGGING_ENABLE
-    #define DEQUE_LOG(fmt, ...) \
-        do { fprintf(stderr, "[DEQUE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define DEQUE_LOG(...) \
+        do { fprintf(stderr, "[DEQUE LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define DEQUE_LOG(...) do { } while (0)
 #endif
@@ -55,6 +55,9 @@ struct DequeIterator {
 };
 
 
+/* Element comparator, qsort convention (negative / zero / positive). */
+typedef int (*DequeCompareFunc)(const void* a, const void* b);
+
 struct Deque {
     size_t  itemSize;
     size_t  blockSize;            /* elements per block (power of two)  */
@@ -67,6 +70,11 @@ struct Deque {
     void**  blocks;               /* array of blocks; each block is a   */
                                   /* contiguous blockSize*itemSize byte */
                                   /* buffer holding elements inline     */
+    DequeCompareFunc compare;     /* optional, for the is_* comparisons */
+                                  /* (NULL: memcmp of each element)     */
+    void**  map;                  /* allocation holding the block       */
+    size_t  mapCapacity;          /* pointers: blocks == map + offset,  */
+                                  /* with spare slots on both sides     */
 };
 
 
@@ -118,6 +126,7 @@ static inline void* deque_back(const Deque* deque) {
 /* ------------------------------------------------------------------ */
 
 Deque*         deque_create                   (size_t itemSize);
+void           deque_set_compare              (Deque* deque, DequeCompareFunc compare);
 void           deque_clear                    (Deque* deque);
 void           deque_deallocate               (Deque* deque);
 
@@ -173,6 +182,15 @@ DequeIterator  deque_crend                    (const Deque* deque);
 
 /* ------------------------------------------------------------------ */
 /* Iterator operations                                                */
+/* Link-time names. These functions keep their documented names in C code,
+ * but the library exports them with a "deque_" prefix: generic global symbols
+ * such as iterator_increment clashed at link time with any other library or program
+ * defining the same name ("multiple definition of ..."). */
+#define iterator_increment deque_iterator_increment
+#define iterator_decrement deque_iterator_decrement
+#define iterator_equals    deque_iterator_equals
+#define iterator_get       deque_iterator_get
+
 /* ------------------------------------------------------------------ */
 
 void           iterator_increment             (DequeIterator* it);

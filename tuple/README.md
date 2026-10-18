@@ -50,6 +50,21 @@ The `Tuple` structure contains two key elements:
 
 ---
 
+### `bool tuple_set_compare(Tuple* tuple, size_t index, TupleCompareFunc compare)`
+
+**Purpose**: Sets the comparator (`int (*)(const void*, const void*)`, qsort convention) used for slot `index` by `tuple_is_equal`, `tuple_is_less` and the other comparisons. Tuple slots are untyped, so without a comparator a slot is compared byte by byte, which is not the numeric order of `int`, negative or floating-point values (`(255) < (256)` was false). The comparator stays with the slot when `tuple_set` replaces the value; when only one of two tuples has a comparator for a slot, it is used.
+
+**Parameters**:
+- `tuple`: A pointer to the `Tuple`.
+- `index`: The slot index.
+- `compare`: The comparator, or `NULL` for byte comparison.
+
+**Return Value**: `false` if the tuple is `NULL` or the index is out of range, `true` otherwise.
+
+**Usage Case**: Call once per numeric slot before comparing tuples.
+
+---
+
 ### `bool tuple_set(Tuple* tuple, size_t index, void* data, size_t size)`
 
 **Purpose**: Assigns new data to the specified element of the tuple, allocating memory for the data and replacing any existing data.
@@ -97,7 +112,7 @@ The `Tuple` structure contains two key elements:
 
 ### `Tuple* tuple_tie(size_t num, ...)`
 
-**Purpose**: Takes a variable number of pointers and stores them in a newly created tuple. Each element in the tuple is a pointer to the original data.
+**Purpose**: Takes a variable number of pointers and stores them in a newly created tuple. Each element holds a copy of the **pointer** (an 8-byte slot the tuple allocates and frees), so `tuple_get` returns a pointer to that slot — cast it to `T**` and dereference twice, as in Example 7. The pointed-to variables are borrowed: never copied or freed. Unlike `std::tie`, assigning through the tuple does not write to the variables.
 
 **Parameters**:
 - `num`: The number of pointers to be tied together into the tuple.
@@ -125,7 +140,7 @@ The `Tuple` structure contains two key elements:
 
 ### `Tuple* tuple_forward_as_tuple(size_t num, ...)`
 
-**Purpose**: Takes a variable number of arguments and stores them in a newly created tuple. The pointers to the original arguments are stored directly without allocating new memory.
+**Purpose**: Takes a variable number of pointers and stores them in a newly created tuple, exactly like `tuple_tie`: each element is an allocated 8-byte copy of the pointer (`tuple_get` returns a `T**`), and the pointed-to arguments are borrowed, not copied.
 
 **Parameters**:
 - `num`: The number of arguments to be stored in the tuple.
@@ -152,7 +167,7 @@ The `Tuple` structure contains two key elements:
 
 ### `bool tuple_is_equal(const Tuple* t1, const Tuple* t2)`
 
-**Purpose**: Compares two tuples element by element. Returns `true` if the tuples have the same size and their corresponding elements are equal in both size and content.
+**Purpose**: Compares two tuples element by element. Returns `true` if the tuples have the same size and their corresponding elements are equal in both size and content. Two `NULL` tuples are equal; `NULL` and a tuple are not.
 
 **Parameters**:
 - `t1`: A pointer to the first `Tuple` object.
@@ -166,7 +181,7 @@ The `Tuple` structure contains two key elements:
 
 ### `bool tuple_is_less(const Tuple* t1, const Tuple* t2)`
 
-**Purpose**: Compares two tuples element by element and returns `true` if the first tuple is lexicographically less than the second tuple.
+**Purpose**: Compares two tuples element by element and returns `true` if the first tuple is lexicographically less than the second tuple. Slots are compared with their comparator (`tuple_set_compare`), or byte by byte without one.
 
 **Parameters**:
 - `t1`: A pointer to the first `Tuple` object.
@@ -194,7 +209,7 @@ The `Tuple` structure contains two key elements:
 
 ### `bool tuple_is_not_equal(const Tuple* t1, const Tuple* t2)`
 
-**Purpose**: Compares two tuples and returns `true` if the tuples are not equal, i.e., if they differ in size or content.
+**Purpose**: Compares two tuples and returns `true` if the tuples are not equal, i.e., if they differ in size or content. Always the negation of `tuple_is_equal` (so `NULL` vs a tuple is "not equal").
 
 **Parameters**:
 - `t1`: A pointer to the first `Tuple` object.
@@ -777,7 +792,7 @@ Name is Hello amin and age is 27
 
 `C++ Same Code`
 
-```c
+```cpp
 #include <iostream>     // std::cout
 #include <tuple>        // std::tuple, std::get, std::forward_as_tuple
 #include <string>       // std::string

@@ -32,8 +32,8 @@ extern "C" {
 /* #define SET_LOGGING_ENABLE */
 
 #ifdef SET_LOGGING_ENABLE
-    #define SET_LOG(fmt, ...) \
-        do { fprintf(stderr, "[SET LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define SET_LOG(...) \
+        do { fprintf(stderr, "[SET LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define SET_LOG(...) do { } while (0)
 #endif

@@ -27,7 +27,7 @@ extern "C" {
 #define NUMBERS_PHI        1.61803398874989484820  // Golden ratio
 #define NUMBERS_TAU        6.283185307179586       // 2 * PI
 #define NUMBERS_SQRT5      2.23606797749979        // sqrt(5)
-#define NUMBERS_CUBE_RT2   1.25992104989487        // Cube root of 2
+#define NUMBERS_CUBE_RT2   1.2599210498948731647672106  // Cube root of 2
 
 // Physics constants
 #define NUMBERS_C          299792458.0            // Speed of light (m/s)
@@ -64,7 +64,7 @@ extern "C" {
 #define NUMBERS_KG_TO_TON      0.001             // Kilograms to metric tons
 
 // Area
-#define NUMBERS_SQFT_TO_SQM    0.092903          // Square feet to square meters
+#define NUMBERS_SQFT_TO_SQM    0.09290304        // Square feet to square meters (0.3048^2, exact)
 #define NUMBERS_SQM_TO_SQFT    10.7639104167097  // Square meters to square feet
 #define NUMBERS_ACRE_TO_SQM    4046.8564224      // Acres to square meters
 #define NUMBERS_SQM_TO_ACRE    0.00024710538147  // Square meters to acres
@@ -100,10 +100,10 @@ extern "C" {
 // Energy and Power
 #define NUMBERS_J_TO_CAL       0.23900573613767  // Joules to calories
 #define NUMBERS_CAL_TO_J       4.184             // Calories to joules
-#define NUMBERS_J_TO_KWH       2.77778e-7        // Joules to kilowatt-hours
+#define NUMBERS_J_TO_KWH       (1.0 / 3600000.0) // Joules to kilowatt-hours (exact inverse of KWH_TO_J)
 #define NUMBERS_KWH_TO_J       3600000.0         // Kilowatt-hours to joules
-#define NUMBERS_W_TO_HP        0.00134102209     // Watts to horsepower
-#define NUMBERS_HP_TO_W        745.699872        // Horsepower to watts
+#define NUMBERS_W_TO_HP        (1.0 / 745.69987158227022)  // Watts to (mechanical) horsepower
+#define NUMBERS_HP_TO_W        745.69987158227022          // Horsepower (550 ft*lbf/s) to watts
 
 // Time
 #define NUMBERS_SEC_TO_MIN     0.01666666666667  // Seconds to minutes

@@ -43,11 +43,11 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 ### Command and Option Registration
 
 ### `bool cli_register_command(CliParser *parser, const CliCommand *command)`
-**Purpose**: Registers a new command with the CLI parser. Commands define specific actions or behaviors in the application that can be triggered by command-line arguments.
+**Purpose**: Registers a new command with the CLI parser. Commands define specific actions or behaviors in the application that can be triggered by command-line arguments. The name, description and aliases are copied; `NULL` entries in `aliases` are skipped.
 **Parameters**:
   - `parser`: The `CliParser` instance.
-  - `command`: A pointer to the `CliCommand` structure that defines the command.
-**Return Value**: `true` if the command is registered successfully, `false` otherwise.
+  - `command`: A pointer to the `CliCommand` structure that defines the command. `handler` must not be `NULL`.
+**Return Value**: `true` if the command is registered successfully, `false` otherwise (missing handler, a name or alias already used by another command or alias, or out of memory).
 **Usage Case**:
   ```c
   CliCommand myCommand = {.name = "greet", .handler = greetCommandHandler};
@@ -55,7 +55,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
   ```
 
 ### `bool cli_unregister_command(CliParser *parser, const char *name)`
-**Purpose**: Removes a previously registered command from the parser.
+**Purpose**: Removes a previously registered command (with its aliases) from the parser.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `name`: The name of the command to be removed.
@@ -75,7 +75,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
   ```
 
 ### `bool cli_unregister_option(CliParser *parser, const char *longOpt, char shortOpt)`
-**Purpose**: Unregisters an option from the parser using its long or short identifier.
+**Purpose**: Unregisters an option from the parser using its long or short identifier. Dependencies that mention it are dropped as well.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `longOpt`: The long option name (e.g., `"--help"`).
@@ -103,7 +103,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 **Usage Case**: `const CliCommand *cmd = cli_find_command(parser, "greet");`
 
 ### `void cli_set_default_command_handler(CliParser *parser, CliCommandHandler handler)`
-**Purpose**: Sets a default command handler to be used when no specific command is matched.
+**Purpose**: Sets a default command handler to be used when no specific command is matched. It is called with `command == NULL` and the unmatched token plus every argument after it.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `handler`: A function pointer to the command handler.
@@ -117,7 +117,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
   ```
 
 ### `void cli_add_option_group(CliParser *parser, const char *groupName, const CliOption *options, size_t numOptions)`
-**Purpose**: Groups related options together under a named group for better organization in help messages.
+**Purpose**: Groups related options together under a named group. Each option is also registered with the parser (an option that is already registered is skipped and stays owned by its first registration); the strings inside `options` must stay valid while the group exists.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `groupName`: The name of the option group.
@@ -134,7 +134,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
   ```
 
 ### `void cli_remove_option_group(CliParser *parser, const char *groupName)`
-**Purpose**: Removes a previously defined option group from the parser.
+**Purpose**: Removes a previously defined option group from the parser, together with the options the group registered (they are no longer matched by `cli_parse_args` or listed by `cli_print_help`).
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `groupName`: The name of the option group to remove.
@@ -144,7 +144,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 ### Error Handling
 
 ### `void cli_set_error_handler(CliParser *parser, CliErrorHandler handler)`
-**Purpose**: Sets a custom function to handle parsing errors.
+**Purpose**: Sets a custom function to handle parsing errors. It is called with the offending token (an unknown option or command, an option with a missing value), with the option's `validationErrorMessage` / `customErrorMessage` when a value is rejected and the option has one, or with an `"Option 'a' requires 'b'."` message for a missing dependency. The handler's `userData` is `parser->userData`.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `handler`: A function pointer to the error handler.
@@ -166,7 +166,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 **Usage Case**: `cli_display_error(parser, "Invalid command.");`
 
 ### `CliError cli_get_last_error(const CliParser *parser)`
-**Purpose**: Retrieves the last error that occurred during parsing.
+**Purpose**: Retrieves the last error recorded by the library on the calling thread (each thread has its own). `cli_parse_args` records its outcome there and in `parser->lastError`, so after a failed parse the message names the offending option or command; it used to show whatever unrelated call had run last.
 **Parameters**:
   - `parser`: The `CliParser` instance.
 **Return Value**: The last `CliError` encountered.
@@ -175,7 +175,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 ### Parsing Arguments
 
 ### `CliStatusCode cli_parse_args(CliParser *parser, int argc, char *argv[])`
-**Purpose**: Parses command-line arguments according to the configured options and commands. This function is the core of the CLI parsing process.
+**Purpose**: Parses command-line arguments according to the configured options and commands. This function is the core of the CLI parsing process. `argv[0]` is the program name. Options may come before the command and can be written as `--name`, `--name=value`, `--name value`, `-x`, bundled flags `-abc`, `-ovalue` or `-o value`; `--` ends option processing. A `CLI_REQUIRED_ARG` option takes the next token as its value only when that token is not itself an option (`-5` counts as a value), and a missing value is a `CLI_ERROR_PARSE`. A `CLI_OPTIONAL_ARG` option takes a value only when it is attached (`--color=red`, `-cred`), so it never swallows the next word. The first non-option token selects a command, whose handler gets the remaining arguments; if no command matches, the default command handler (if set) gets that token and the rest, otherwise the result is `CLI_ERROR_COMMAND_NOT_FOUND`. Unknown options are ignored unless strict mode is enabled.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `argc`: The argument count (number of command-line arguments).
@@ -184,17 +184,17 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 **Usage Case**: `CliStatusCode status = cli_parse_args(parser, argc, argv);`
 
 ### `bool cli_parse_args_with_delimiter(CliParser *parser, int argc, char *argv[], const char *delimiter)`
-**Purpose**: Parses command-line arguments using a specified delimiter, allowing for more complex argument structures.
+**Purpose**: Parses command-line arguments like `cli_parse_args`, also accepting `--key<delimiter>value` for long options. Such a token is split at the **first** delimiter after the leading `--`, so the value may contain the delimiter (`--filter=name=bob` gives `name=bob`) or be empty (`--name:` gives `""`). `argv[0]`, values given as separate tokens, commands and their arguments, and everything after `--` are passed through unchanged.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `argc`: The argument count.
   - `argv`: The argument vector.
-  - `delimiter`: The delimiter used to separate command arguments.
+  - `delimiter`: The key/value separator (non-empty, e.g. `":"` or `"="`).
 **Return Value**: `true` if parsing succeeds, `false` otherwise.
-**Usage Case**: `cli_parse_args_with_delimiter(parser, argc, argv, ",");`
+**Usage Case**: `cli_parse_args_with_delimiter(parser, argc, argv, ":");   /* --port:8080 */`
 
 ### `bool cli_process_option_group(CliParser *parser, const char *groupName, int argc, char *argv[])`
-**Purpose**: Parses command-line arguments for a specific option group.
+**Purpose**: Parses command-line arguments for a specific option group. Group options are matched with the same rules as `cli_parse_args` (`-l`, `--level`, `--level=x`, `-lx`), and each handler receives its option's own `userData`.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `groupName`: The name of the option group to process.
@@ -206,7 +206,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 ### Miscellaneous Functions
 
 ### `void cli_print_help(const CliParser *parser)`
-**Purpose**: Prints a detailed help message, including descriptions of all options and commands. This function is typically used when the user requests help with a `--help` or `-h` option.
+**Purpose**: Prints a help message to `stdout`: the usage line (the custom usage set with `cli_set_custom_usage`, or `Usage: <progName> [options] [commands]`), then every option and command with its description. This function is typically used when the user requests help with a `--help` or `-h` option.
 **Parameters**:
   - `parser`: The `CliParser` instance.
 **Return Value**: None.
@@ -221,7 +221,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 **Usage Case**: `cli_print_version(parser, "1.0.0");`
 
 ### `void cli_set_custom_usage(CliParser *parser, const char *usage)`
-**Purpose**: Allows setting a custom usage message, overriding the default usage message generated by the parser.
+**Purpose**: Allows setting a custom usage message, overriding the default usage line printed by `cli_print_help` (the option and command lists are still printed after it, so the usage text should not repeat them).
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `usage`: The custom usage message.
@@ -255,7 +255,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 ### Interactive Mode and Pipelining
 
 ### `void cli_enter_interactive_mode(CliParser *parser, const char *prompt)`
-**Purpose**: Enters an interactive mode where commands can be input repeatedly. This mode is useful for applications that require continuous user interaction.
+**Purpose**: Enters an interactive mode where commands can be input repeatedly. This mode is useful for applications that require continuous user interaction. Each line is parsed like a command line (`calculate 20 20` runs `calculate` with two arguments); `exit` or `quit` leaves the loop.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `prompt`: The prompt string to display in the interactive mode.
@@ -273,11 +273,11 @@ To use the Cli library in your project, include the `cli.h` header file in your 
   - `parser`: The `CliParser` instance.
   - `commandName`: The name of the command to alias.
   - `alias`: The alias name.
-**Return Value**: `true` if the alias is registered successfully, `false` otherwise.
+**Return Value**: `true` if the alias is registered successfully, `false` otherwise (unknown command, the alias is already a command name or alias, or out of memory).
 **Usage Case**: `cli_register_command_alias(parser, "greet", "hello");`
 
 ### `bool cli_add_option_alias(CliParser *parser, const char *optionName, const char *alias)`
-**Purpose**: Registers an alias for an option, allowing users to use alternative names for options.
+**Purpose**: Registers an alias for an option, allowing users to use alternative names for options. The alias is a full copy of the option (type, handler, validators, description and error messages) under the new long name.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `optionName`: The name of the option to alias.
@@ -286,7 +286,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 **Usage Case**: `cli_add_option_alias(parser, "--verbose", "-v");`
 
 ### `bool cli_set_option_dependencies(CliParser *parser, const char *longOpt, char shortOpt, const char *dependsOnLongOpt, char dependsOnShortOpt)`
-**Purpose**: Defines dependencies between options, where the presence of one option requires the presence of another.
+**Purpose**: Defines dependencies between options, where the presence of one option requires the presence of another. Both options must be registered. `cli_parse_args` enforces it: when the first option is given without the second, parsing fails with `CLI_ERROR_PARSE` and the message `Option 'a' requires 'b'.` before any command runs.
 **Parameters**:
   - `parser`: The `CliParser` instance.
   - `longOpt`: The long option name that has a dependency.
@@ -302,7 +302,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 ### Validation and Confirmation
 
 ### `bool cli_validate_option_argument(const CliOption *option, const char *value)`
-**Purpose**: Validates the argument passed to an option, typically used to check if the value meets certain criteria (e.g., a valid port number).
+**Purpose**: Validates the argument passed to an option, typically used to check if the value meets certain criteria (e.g., a valid port number). `cli_parse_args` already runs `validator` / `optionValidator` on every value it gives an option, before calling the handler, and fails with `CLI_ERROR_VALIDATION_FAILED` (message: the option's `validationErrorMessage`, else its `customErrorMessage`); call this function to check a value yourself.
 **Parameters**:
   - `option`: The `CliOption` to validate.
   - `value`: The argument value to validate.
@@ -310,7 +310,7 @@ To use the Cli library in your project, include the `cli.h` header file in your 
 **Usage Case**: `cli_validate_option_argument(option, "8080");`
 
 ### `bool cli_prompt_confirmation(const char *promptMessage)`
-**Purpose**: Prompts the user for confirmation with a customizable message and waits for a Y/N response.
+**Purpose**: Prompts the user for confirmation with a customizable message and waits for a Y/N response. The prompt is printed as `message (y/n): `; `y`, `yes`, `n` and `no` are accepted in any letter case, other answers re-ask (in a loop, any line length), and end of input counts as no.
 **Parameters**:
   - `promptMessage`: The message to display in the confirmation prompt.
 **Return Value**: `true` if the user confirms (Y), `false` otherwise (N).
@@ -365,7 +365,8 @@ Option handlers and validators receive the raw `const char* value` from the comm
 **Return Value**: None.
 **Usage Case**:
   ```c
-  void preExecutionHook(const CliParser *parser) {
+  void preExecutionHook(const CliParser *parser, void *userData) {
+      (void)parser; (void)userData;
       printf("Preparing to execute a command...\n");
   }
   cli_set_pre_execution_hook(parser, preExecutionHook);
@@ -379,7 +380,8 @@ Option handlers and validators receive the raw `const char* value` from the comm
 **Return Value**: None.
 **Usage Case**:
   ```c
-  void postExecutionHook(const CliParser *parser) {
+  void postExecutionHook(const CliParser *parser, void *userData) {
+      (void)parser; (void)userData;
       printf("Command execution completed.\n");
   }
   cli_set_post_execution_hook(parser, postExecutionHook);
@@ -458,10 +460,9 @@ int main(int argc, char *argv[]) {
     }
     fmt_printf("CLI parser created successfully.\n");
 
-    const char *customUsage = "Usage: MyApp [options]\n"
-                              "Options:\n"
-                              "  -h, --help    Display this help message\n"
-                              "  -v, --version Display version information\n";
+    /* printed by cli_print_help in place of the default "Usage: ..." line,
+       before the generated Options / Commands lists */
+    const char *customUsage = "Usage: MyApp [options]";
     fmt_printf("Setting custom usage message...\n");
     cli_set_custom_usage(parser, customUsage);
     fmt_printf("Custom usage message set successfully.\n");
@@ -515,20 +516,19 @@ int main(int argc, char *argv[]) {
 **Result**
 ```
 ./main --help
-
 Creating CLI parser...
 CLI parser created successfully.
 Setting custom usage message...
 Custom usage message set successfully.
 Options registered successfully.
 Testing argument parsing...
+Usage: MyApp [options]
 Options:
   --help, h	Display this help message
   --version, v	Display version information
 Arguments parsed successfully.
 
 ./main --version
-
 Creating CLI parser...
 CLI parser created successfully.
 Setting custom usage message...
@@ -539,7 +539,6 @@ Version: MyApp v1.0.0
 Arguments parsed successfully.
 
 ./main
-
 Creating CLI parser...
 CLI parser created successfully.
 Setting custom usage message...
@@ -597,14 +596,7 @@ int main(int argc, char *argv[]) {
     }
 
     cli_enable_strict_mode(parser, true);
-    const char *customUsage = "Usage: MyStrictApp [options] [commands]\n"
-                          "\nOptions:\n"
-                          "  --greet <name>  Greet a user by name\n"
-                          "  --version       Show version information\n"
-                          "  -h, --help      Display this help message\n"
-                          "\nCommands:\n"
-                          "  (No commands are currently supported)\n";
-    cli_set_custom_usage(parser, customUsage);
+    cli_set_custom_usage(parser, "Usage: MyStrictApp [options]");
 
 
     // Register the --greet option
@@ -663,52 +655,53 @@ int main(int argc, char *argv[]) {
 **Result**
 ```
 ./main --test
-
 Creating CLI parser...
+Testing CLI argument parsing...
 Error: Unrecognized option '--test'.
 Use '--help' to see available options.
+Usage: MyStrictApp [options]
 Options:
-  --greet,      Greet a user by name
-  --help, h     Display this help message
+  --greet,  	Greet a user by name
+  --version,  	Show version information
+  --help, h	Display this help message
 Failed to parse arguments. Error code: 1
+MyStrictApp execution completed.
 
 ./main --greet "best programmer"
-
 Creating CLI parser...
 Testing CLI argument parsing...
 Hello, best programmer! Welcome to MyStrictApp
 Arguments parsed successfully.
+MyStrictApp execution completed.
+
+./main --help
 Creating CLI parser...
 Testing CLI argument parsing...
-MyStrictApp version 1.0.0
-Arguments parsed successfully.
-
-./main --help 
-
-Creating CLI parser...
-Testing CLI argument parsing...
+Usage: MyStrictApp [options]
 Options:
-  --greet,      Greet a user by name
-  --version,    Show version information
-  --help, h     Display this help message
+  --greet,  	Greet a user by name
+  --version,  	Show version information
+  --help, h	Display this help message
 Arguments parsed successfully.
+MyStrictApp execution completed.
 
-./main -h  
-
+./main -h
 Creating CLI parser...
 Testing CLI argument parsing...
+Usage: MyStrictApp [options]
 Options:
-  --greet,      Greet a user by name
-  --version,    Show version information
-  --help, h     Display this help message
+  --greet,  	Greet a user by name
+  --version,  	Show version information
+  --help, h	Display this help message
 Arguments parsed successfully.
+MyStrictApp execution completed.
 
 ./main --version
-
 Creating CLI parser...
 Testing CLI argument parsing...
 MyStrictApp version 1.0.0
 Arguments parsed successfully.
+MyStrictApp execution completed.
 ```
 
 ---
@@ -734,13 +727,13 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    const char *customUsage = "Usage: ExampleApp [options]\n"
-                              "Options:\n"
-                              "  --example  An example option\n"
-                              "  --help     Show this help message\n";
-    cli_set_custom_usage(parser, customUsage);
+    cli_set_custom_usage(parser, "Usage: ExampleApp [options]");
 
-    // Set the custom error handler
+    // Unknown options are only errors in strict mode
+    cli_enable_strict_mode(parser, true);
+
+    // Set the custom error handler (it receives parser->userData)
+    parser->userData = (void *)"ExampleApp";
     cli_set_error_handler(parser, customErrorHandler);
 
     // Add the --help option
@@ -756,8 +749,10 @@ int main(int argc, char *argv[]) {
     cli_register_option(parser, &helpOption);
 
     fmt_printf("Testing CLI parser with invalid arguments...\n");
+    (void)argc;
+    (void)argv;
     const char *testArgs[] = {"ExampleApp", "--invalid"};
-    CliStatusCode status = cli_parse_args(parser, argc, (char**)testArgs);
+    CliStatusCode status = cli_parse_args(parser, 2, (char**)testArgs);
 
     if (status != CLI_SUCCESS) {
         fmt_fprintf(stderr, "Parser returned an error. Error code: %d\n", status);
@@ -771,28 +766,14 @@ int main(int argc, char *argv[]) {
 ```
 **Result**
 ```
-./main --help
-
-[Application Error] --invalid
-Options:
-  --help, h     Show this help message
-Parser returned an error. Error code: 1
-
-./main --invalid
-
+./main
 Testing CLI parser with invalid arguments...
-[Application Error] --invalid
+[ExampleApp Error] --invalid
+Usage: ExampleApp [options]
 Options:
-  --help, h     Show this help message
+  --help, h	Show this help message
 Parser returned an error. Error code: 1
-
-./main h
-
-Testing CLI parser with invalid arguments...
-[Application Error] --invalid
-Options:
-  --help, h     Show this help message
-Parser returned an error. Error code: 1
+CLI parser test completed.
 ```
 
 ---
@@ -928,11 +909,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Set a custom usage message
-    cli_set_custom_usage(parser, "Usage: DemoApp [options] [commands]\n"
-                                  "Options:\n"
-                                  "  -h, --help    Display this help message\n"
-                                  "Commands:\n"
-                                  "  greet [name]  Greet someone by name, or the world if no name is given");
+    cli_set_custom_usage(parser, "Usage: DemoApp [options] [command]");
 
     // Register the "--help" option
     CliOption helpOption = {
@@ -985,37 +962,34 @@ int main(int argc, char *argv[]) {
 **Result**
 ```
 ./main
-
+Usage: DemoApp [options] [command]
 Options:
+  --help, h	Display this help message
 Commands:
-  greet Greets the user. Usage: greet [name]
+  greet	Greets the user. Usage: greet [name]
 
-./main --help 
-
+./main --help
+Usage: DemoApp [options] [command]
 Options:
-  --help, h     Display this help message
+  --help, h	Display this help message
 Commands:
-  greet Greets the user. Usage: greet [name]
+  greet	Greets the user. Usage: greet [name]
 
 ./main greet Amin
-
 Hello, Amin!
 
 ./main greet Amin
-
 Hello, Amin!
 
 ./main greet
-
 Hello, world!
 
-./main invalid   
-
+./main invalid
+Usage: DemoApp [options] [command]
 Options:
-  --help, h     Display this help message
+  --help, h	Display this help message
 Commands:
-  greet Greets the user. Usage: greet [name]
-
+  greet	Greets the user. Usage: greet [name]
 ```
 
 ---
@@ -1381,13 +1355,7 @@ void versionOptionHandler(const CliOption *option, const char *value, void *user
 int main(int argc, char *argv[]) {
     CliParser *parser = cli_parser_create("calc");
 
-    cli_set_custom_usage(parser, "calc [command] [options]\n"
-                                  "Commands:\n"
-                                  "  add <num1> <num2>     Add two numbers\n"
-                                  "  subtract <num1> <num2> Subtract two numbers\n"
-                                  "Options:\n"
-                                  "  --help, -h             Show this help message\n"
-                                  "  --version, -v          Show version information");
+    cli_set_custom_usage(parser, "Usage: calc [options] <command> <num1> <num2>");
 
     CliCommand addCommand = {
         .name = "add",
@@ -1448,7 +1416,7 @@ int main(int argc, char *argv[]) {
 ```
 **Result**
 ```
-/main add 10 20
+./main add 10 20
 Addition is 10 + 20 = 30
 
 ./main subtract 30 50
@@ -1458,12 +1426,13 @@ Subtraction is 30 - 50 = -20
 Version 1.0.0
 
 ./main --help
+Usage: calc [options] <command> <num1> <num2>
 Options:
-  --help, h     Show help message
-  --version, v  Show version information
+  --help, h	Show help message
+  --version, v	Show version information
 Commands:
-  add   Add two numbers
-  subtract      Subtract two numbers
+  add	Add two numbers
+  subtract	Subtract two numbers
 
 ./main invalid
 Unknown command or option. Use '--help' for usage information.
@@ -1755,11 +1724,9 @@ bool validateNumber(const char *value, void *userData) {
 }
 
 void countHandler(const CliOption *option, const char *value, void *userData) {
+    (void)option;
     (void)userData;
-    if (!cli_validate_option_argument(option, value)) {
-        fmt_fprintf(stderr, "Invalid value for --count: '%s' (must be a non-negative integer)\n", value);
-        return;
-    }
+    /* cli_parse_args runs the validator first: only accepted values get here */
     fmt_printf("Count set to: %s\n", value);
 }
 
@@ -1772,6 +1739,7 @@ int main(int argc, char *argv[]) {
         .optionType = CLI_REQUIRED_ARG,
         .handler = countHandler,
         .validator = validateNumber,
+        .validationErrorMessage = "--count must be a non-negative integer",
         .description = "Set a numeric count"
     };
     cli_register_option(parser, &countOption);
@@ -1800,7 +1768,7 @@ Count set to: 10
 Count set to: 3
 
 ./main --count abc
-Invalid value for --count: 'abc' (must be a non-negative integer)
+Parse error (code 7): --count must be a non-negative integer
 ```
 
 ---
@@ -1913,10 +1881,10 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 ```
+Note: global options (--port, --verbose) must appear BEFORE the command name. `validatePort` is attached as the option's validator, so `cli_parse_args` rejects a bad port before `portOptionHandler` runs.
+
 **Result**
 ```
-Note: global options (--port, --verbose) must appear BEFORE the command name.
-
 ./main --port 8080 start
 Port set to 8080
 Server started on port 8080...
@@ -1931,10 +1899,18 @@ Server started on port 8080...
 Error: Port not specified or invalid. Use --port to set a valid port.
 
 ./main --port bad_value start
-Invalid port: bad_value (must be 1-65535)
-Error: Port not specified or invalid. Use --port to set a valid port.
+Port must be between 1 and 65535
+Error: Failed to parse arguments
+Usage: ServerApp [options] [commands]
+Options:
+  --port, p	Set server port
+  --verbose, v	Enable verbose output
+  --help, h	Show help message
+Commands:
+  start	Starts the server
 
 ./main --help
+Usage: ServerApp [options] [commands]
 Options:
   --port, p	Set server port
   --verbose, v	Enable verbose output
@@ -2001,7 +1977,7 @@ group processed: yes
 
 ## Example 18 : `--key=value` syntax with `cli_parse_args_with_delimiter`
 
-`cli_parse_args_with_delimiter` splits each argument on a delimiter before parsing, so a single `--name=Alice` token is expanded to `--name` `Alice`.
+`cli_parse_args_with_delimiter` accepts `--key<delimiter>value` for long options: the token is split at the first delimiter after `--` (so the value itself may contain the delimiter), and nothing else on the command line is split.
 
 ```c
 #include "cli/cli.h"
@@ -2021,12 +1997,12 @@ int main(void) {
     };
     cli_register_option(parser, &nameOpt);
 
-    /* The user typed:  greet --name=Alice
-       The "=" delimiter splits "--name=Alice" into "--name" "Alice". */
-    char *argv[] = { "greet", "--name=Alice" };
+    /* The user typed:  greet --name:Alice
+       The ":" delimiter makes "--name:Alice" mean "--name=Alice". */
+    char *argv[] = { "greet", "--name:Alice" };
     int argc = 2;
 
-    bool ok = cli_parse_args_with_delimiter(parser, argc, argv, "=");
+    bool ok = cli_parse_args_with_delimiter(parser, argc, argv, ":");
     fmt_printf("parse ok: %s\n", ok ? "yes" : "no");
 
     cli_parser_deallocate(parser);
@@ -2158,7 +2134,7 @@ after:  option=missing, command=missing
 
 ## Example 21 : Declaring option dependencies with `cli_set_option_dependencies`
 
-Declare that one option is only meaningful alongside another. The call validates that both options are registered, so a dependency on an unknown option is reported via `cli_get_last_error`.
+Declare that one option is only meaningful alongside another. The call validates that both options are registered, so a dependency on an unknown option is reported via `cli_get_last_error`; `cli_parse_args` then rejects a command line that gives the first option without the second.
 
 ```c
 #include "cli/cli.h"
@@ -2191,6 +2167,15 @@ int main(void) {
         fmt_printf("declare (--output needs --missing): failed -> %s\n", err.message);
     }
 
+    /* The dependency is enforced while parsing. */
+    char *alone[] = { "convert", "--output", "out.txt" };
+    CliStatusCode rc = cli_parse_args(parser, 3, alone);
+    fmt_printf("parse '--output out.txt': %s\n", rc == CLI_SUCCESS ? "ok" : cli_get_last_error(parser).message);
+
+    char *both[] = { "convert", "--output", "out.txt", "--format", "png" };
+    rc = cli_parse_args(parser, 5, both);
+    fmt_printf("parse '--output out.txt --format png': %s\n", rc == CLI_SUCCESS ? "ok" : cli_get_last_error(parser).message);
+
     cli_parser_deallocate(parser);
     return 0;
 }
@@ -2201,6 +2186,8 @@ int main(void) {
 ```
 declare (--output needs --format): ok
 declare (--output needs --missing): failed -> Error: Dependency option '--missing' not found.
+parse '--output out.txt': Option '--output' requires '--format'.
+parse '--output out.txt --format png': ok
 ```
 
 ---

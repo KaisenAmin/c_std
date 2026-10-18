@@ -23,8 +23,8 @@ extern "C" {
 /* #define CSV_LOGGING_ENABLE */
 
 #ifdef CSV_LOGGING_ENABLE
-    #define CSV_LOG(fmt, ...) \
-        do { fprintf(stderr, "[CSV LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define CSV_LOG(...) \
+        do { fprintf(stderr, "[CSV LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define CSV_LOG(...) do { } while (0)
 #endif
@@ -114,7 +114,7 @@ bool       csv_file_write_rfc4180            (const CsvFile* file, const char* f
 CsvRow*    csv_file_get_row                (const CsvFile* file, size_t index);
 CsvRow*    csv_file_get_header             (const CsvFile* file);
 void       csv_file_set_header             (CsvFile* file, CsvRow* header);
-void       csv_file_append_row             (CsvFile* file, CsvRow* row);
+bool       csv_file_append_row(CsvFile* file, CsvRow* row);
 void       csv_file_remove_row             (CsvFile* file, size_t index);
 void       csv_file_concatenate            (CsvFile* file1, const CsvFile* file2);
 

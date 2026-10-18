@@ -18,9 +18,18 @@
 #include <stdbool.h>
 
 #if defined(_WIN32) || defined(_WIN64)
+/* HANDLE; <setupapi.h> is included by serial_port.c only. Lean, so the full
+   <windows.h> does not pull in the old <winsock.h>, which clashes with a
+   later <winsock2.h> (network/tcp.h) in the same file. */
+#ifndef WIN32_LEAN_AND_MEAN
+  #define WIN32_LEAN_AND_MEAN
+  #define SERIAL_PORT_UNDEF_LEAN_AND_MEAN
+#endif
 #include <windows.h>
-#include <setupapi.h>
-#include <tchar.h>
+#ifdef SERIAL_PORT_UNDEF_LEAN_AND_MEAN
+  #undef WIN32_LEAN_AND_MEAN
+  #undef SERIAL_PORT_UNDEF_LEAN_AND_MEAN
+#endif
 #else
 #include <fcntl.h>
 #include <unistd.h>
@@ -39,8 +48,8 @@ extern "C" {
 /* #define SERIAL_LOGGING_ENABLE */
 
 #ifdef SERIAL_LOGGING_ENABLE
-    #define SERIAL_LOG(fmt, ...) \
-        do { fprintf(stderr, "[SERIAL LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define SERIAL_LOG(...) \
+        do { fprintf(stderr, "[SERIAL LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define SERIAL_LOG(...) do { } while (0)
 #endif
@@ -96,6 +105,7 @@ typedef struct {
 #if defined(_WIN32) || defined(_WIN64)
     volatile LONG       stop;     /* non-zero asks the event thread to exit   */
     HANDLE              thread;   /* event-thread handle; joined in serial_close */
+    HANDLE              stop_event; /* set by serial_close to wake the thread  */
 #endif
 } SerialPortCallbackData;
 

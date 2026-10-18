@@ -7,7 +7,7 @@
 
 ## Thread Safety
 
-All functions that access SSL context or SSL mappings are thread-safe. The library uses a cross-platform mutex to protect global state. You can safely use the TCP library in a multithreaded server or client.
+All functions that access SSL context or SSL mappings are thread-safe. The library uses a cross-platform mutex to protect global state (the SSL context and the socket→SSL table); it is held only for those lookups, never across a handshake or an `SSL_read`/`SSL_write`, so one slow or idle peer cannot stall the TLS connections handled by other threads. You can safely use the TCP library in a multithreaded server or client. As with OpenSSL itself, a single TLS connection must be used by one thread at a time, and must not be closed while another thread is still reading or writing it.
 
 ## IPv6 Support
 
@@ -22,7 +22,7 @@ The functions `tcp_connect` and `tcp_bind` now support both IPv4 and IPv6 addres
 
 ## Error Handling and Resource Management
 
-All resource allocations and error paths are robust; SSL objects and mappings are always cleaned up. If an error occurs during SSL handshake or socket operations, all resources are released and mappings are cleared.
+Error paths release what they allocated: if an SSL handshake or socket operation fails, the SSL object and its socket mapping are freed. Close a TLS connection with `tcp_ssl_close` (it also closes the socket) and a plain one with `tcp_close`.
 
 ## TcpSocket 
 
@@ -79,7 +79,7 @@ This function is useful when validating user input or any IP addresses before pe
 ### `TcpStatus tcp_socket_create(TcpSocket* sock)`
 
 **Purpose**:  
-The `tcp_socket_create` function creates a new TCP socket. It handles the socket creation process for both Windows and Unix-like systems. The created socket is stored in the `sock` parameter.
+The `tcp_socket_create` function creates a new TCP socket. It handles the socket creation process for both Windows and Unix-like systems. The created socket is stored in the `sock` parameter. The socket is dual-stack (IPv6 with `IPV6_V6ONLY` off), so the same socket can bind or connect to IPv6 addresses such as `"::1"` and to IPv4 addresses (handled as IPv4-mapped addresses, which every address-reporting function shows back in plain `a.b.c.d` form). Where IPv6 is unavailable it falls back to an IPv4 socket. On POSIX it also suppresses `SIGPIPE` for writes to a closed peer (`MSG_NOSIGNAL`, or `SO_NOSIGPIPE` on macOS), so a client hanging up cannot kill the process.
 
 **Parameters**:  
 - `sock`: A pointer to the `TcpSocket` where the created socket will be stored.
@@ -98,7 +98,7 @@ The `tcp_bind` function binds a TCP socket to a specific host and port. It allow
 
 **Parameters**:  
 - `sock`: The TCP socket to bind.
-- `host`: The host address to bind to. It can be an IP address or a hostname. Passing NULL, an empty string, or "0.0.0.0" binds the socket to all available interfaces.
+- `host`: The host address to bind to. It can be an IPv4 or IPv6 address or a hostname. Passing NULL, an empty string, `"0.0.0.0"` or `"::"` binds the socket to all available interfaces (IPv4 and IPv6).
 - `port`: The port number to bind the socket to.
 
 **Return Value**:  
@@ -169,7 +169,7 @@ This function is commonly used in client applications to connect to a server. Fo
 ### `TcpStatus tcp_init(void)`
 
 **Purpose**:  
-The `tcp_init` function is used to initialize the network API on Windows systems. It calls `WSAStartup`, which is required for using sockets in Windows. On Unix-like systems, no initialization is required, so the function does nothing on those platforms.
+The `tcp_init` function is used to initialize the network API on Windows systems. It calls `WSAStartup`, which is required for using sockets in Windows. On Unix-like systems there is no socket library to start, so it has nothing to do there; calling it is still the documented first step. The library's internal lock no longer depends on it (TLS functions used before `tcp_init` used to deadlock on POSIX and crash on Windows).
 
 **Parameters**:  
 This function does not take any parameters.
@@ -244,7 +244,7 @@ This function is used in client-server applications to receive data from a conne
 ### `TcpStatus tcp_close(TcpSocket socket)`
 
 **Purpose**:  
-This function closes a TCP socket. It handles the platform-specific logic for closing a socket on both Windows and Unix-like systems.
+This function closes a TCP socket. It handles the platform-specific logic for closing a socket on both Windows and Unix-like systems. Any SSL association of the socket is dropped as well (an SSL object the library created for it is freed), so a later socket that the OS gives the same handle value never inherits a stale SSL object. Use `tcp_ssl_close` to end a TLS session cleanly (it sends close_notify first).
 
 **Parameters**:  
 - `socket`: The TCP socket that needs to be closed.
@@ -291,7 +291,7 @@ This function sets the timeout for receiving or sending data on a TCP socket. Th
 - `TCP_ERR_GENERIC`: An error occurred while setting the timeout.
 
 **Usage Case**:  
-Use this function when you need to control how long a TCP socket should wait before timing out during data transfer operations. This is helpful when dealing with unreliable or slow network connections.
+Use this function when you need to control how long a TCP socket should wait before timing out during data transfer operations. This is helpful when dealing with unreliable or slow network connections. A timed-out `tcp_recv`/`tcp_send` returns `TCP_ERR_RECV`/`TCP_ERR_SEND`. On Windows this works because the library creates its sockets with `WSA_FLAG_OVERLAPPED` (Winsock ignores these options on sockets created without it); sockets accepted from a library listener inherit it.
 
 ---
 
@@ -387,7 +387,7 @@ This function sets the `SO_REUSEADDR` option on a TCP socket, allowing the reuse
 - `TCP_ERR_GENERIC`: An error occurred while setting the option.
 
 **Usage Case**:  
-This function is useful in server applications where multiple sockets need to bind to the same local address for handling different clients.
+On POSIX, set it on a listening socket so a restarted server can bind its port again while old connections are in `TIME_WAIT`. On Windows the option means something else: it lets another socket bind a port that is already in use (port sharing), so a second copy of a server "succeeds" and connections are split between them. The HTTP server therefore uses `SO_EXCLUSIVEADDRUSE` on Windows instead (Windows rebinds `TIME_WAIT` ports without `SO_REUSEADDR`).
 
 ---
 
@@ -444,7 +444,7 @@ This function associates an SSL object with a TCP socket, enabling the socket fo
 None.
 
 **Usage Case**:  
-This function is typically used when setting up SSL for a specific socket after initializing an SSL context. It allows the socket to use the SSL object for encrypted communication.
+This function is typically used when setting up SSL for a specific socket after initializing an SSL context. It allows the socket to use the SSL object for encrypted communication. An SSL object attached this way stays owned by the caller: `tcp_close` only drops the association (while `tcp_ssl_close` / `tcp_disable_ssl` still shut it down and free it). Passing `NULL` removes the association without freeing anything. There is no limit on the number of TLS sockets.
 
 ---
 
@@ -514,14 +514,14 @@ This function initializes SSL/TLS support by creating an SSL context, loading th
 - `TCP_ERR_SSL`: Failed to load the certificate, private key, or verify the private key.
 
 **Usage Case**:  
-Called during application startup to initialize SSL/TLS support and set up the necessary certificate and key for secure communication over TCP sockets.
+Called during application startup to initialize SSL/TLS support and set up the necessary certificate and key for secure communication over TCP sockets. This builds the **server** context used by `tcp_ssl_accept`; outbound connections use a separate client context (`tcp_ssl_init_client`), so one process can be a TLS server and a TLS/HTTPS client at the same time.
 
 ---
 
 ### `TcpStatus tcp_ssl_init_client(void)`
 
 **Purpose**:  
-Initializes a **client-side** SSL context (`TLS_client_method`) — no certificate or key required, unlike `tcp_ssl_init` (which builds a *server* context and mandates a cert/key). It also loads the system CA store so `tcp_ssl_get_verify_result` can confirm the peer's certificate chain. No-op if a context already exists. This is what makes outbound `https://` (and the HTTP client) possible.
+Initializes a **client-side** SSL context (`TLS_client_method`) — no certificate or key required, unlike `tcp_ssl_init` (which builds a *server* context and mandates a cert/key). It also loads the system CA store so `tcp_ssl_get_verify_result` can confirm the peer's certificate chain. No-op if a client context already exists; it is independent of the server context made by `tcp_ssl_init`. This is what makes outbound `https://` (and the HTTP client) possible; `tcp_ssl_connect` creates it on first use if needed.
 
 **Parameters**:  
 None.
@@ -565,7 +565,17 @@ Make the TLS handshake itself **fail closed** on an untrusted or hostname-mismat
 `TCP_SUCCESS`, or `TCP_ERR_SETUP` if no SSL context has been created yet (call `tcp_ssl_init_client` first).
 
 **Usage Case**:  
-Production clients that should refuse to talk to a server presenting a bad certificate. Process-global (affects the shared context). `tcp_connect_tls` calls this for you.
+Production clients that should refuse to talk to a server presenting a bad certificate. Process-global default for later handshakes on the existing contexts. `tcp_connect_tls` and the HTTP client do **not** use it: they choose verification per connection (`tcp_ssl_connect_verify`), so a verified request never makes a later `tls_insecure` one fail.
+
+---
+
+### `TcpStatus tcp_ssl_connect_verify(TcpSocket socket, const char* host, long timeout_ms, bool verify)`
+
+**Purpose**:  
+Same as `tcp_ssl_connect_timeout`, with certificate verification chosen for this connection only: `verify == true` aborts the handshake on an untrusted or hostname-mismatched certificate, `false` accepts any certificate. It does not touch the shared client context, so concurrent connections with different settings don't interfere.
+
+**Return Value**:  
+As `tcp_ssl_connect_timeout`.
 
 ---
 
@@ -593,7 +603,7 @@ One-shot **secure client connect**: create a socket, connect to `host:port` with
 
 **Parameters**:  
 - `host` / `port`: the server to dial.  
-- `timeout_ms`: connect timeout (`< 0` blocks).  
+- `timeout_ms`: connect timeout, and separately the deadline for the TLS handshake (`< 0` blocks for the connect; `<= 0` leaves the handshake unbounded).  
 - `verify`: `true` requires the certificate chain **and** hostname to validate (fail-closed); `false` establishes TLS without trust checks (self-signed / testing).  
 - `out_socket`: receives the ready TLS socket on success.
 
@@ -638,7 +648,24 @@ This function initiates an SSL/TLS connection to a remote host. It sets up the n
 - `TCP_ERR_SSL_HANDSHAKE`: SSL handshake failed.
 
 **Usage Case**:  
-Used to establish secure communication with a remote server using SSL/TLS after setting up a TCP socket.
+Used to establish secure communication with a remote server using SSL/TLS after setting up a TCP socket. The handshake has no time limit; use `tcp_ssl_connect_timeout` when the server is not trusted to answer.
+
+---
+
+### `TcpStatus tcp_ssl_connect_timeout(TcpSocket socket, const char* host, long timeout_ms)`
+
+**Purpose**:  
+Same as `tcp_ssl_connect`, but the whole handshake must finish within `timeout_ms` milliseconds. The socket is put in non-blocking mode for the handshake and switched back afterwards, so a server that accepts the TCP connection but never answers the ClientHello cannot hang the caller.
+
+**Parameters**:  
+- `socket`, `host`: as for `tcp_ssl_connect`.
+- `timeout_ms`: handshake deadline in milliseconds; `<= 0` means no limit (same as `tcp_ssl_connect`).
+
+**Return Value**:  
+As `tcp_ssl_connect`, plus `TCP_ERR_WOULD_BLOCK` when the deadline passes. On failure no SSL object is left attached to the socket.
+
+**Usage Case**:  
+Any client connection to a server that might stall; the HTTP client uses it with its `timeout_ms`.
 
 ---
 
@@ -657,14 +684,31 @@ This function performs the SSL/TLS handshake for a server-side connection, accep
 - `TCP_ERR_SSL_HANDSHAKE`: SSL handshake failed.
 
 **Usage Case**:  
-Used by servers to establish a secure SSL/TLS connection after a client connects to a listening TCP socket.
+Used by servers to establish a secure SSL/TLS connection after a client connects to a listening TCP socket. A client that connects and never sends a ClientHello keeps this call waiting; servers should prefer `tcp_ssl_accept_timeout`.
+
+---
+
+### `TcpStatus tcp_ssl_accept_timeout(TcpSocket socket, long timeout_ms)`
+
+**Purpose**:  
+Same as `tcp_ssl_accept`, but the client must complete the handshake within `timeout_ms` milliseconds.
+
+**Parameters**:  
+- `socket`: an accepted TCP socket.
+- `timeout_ms`: handshake deadline in milliseconds; `<= 0` means no limit.
+
+**Return Value**:  
+As `tcp_ssl_accept`, plus `TCP_ERR_WOULD_BLOCK` when the deadline passes (close the socket with `tcp_close`).
+
+**Usage Case**:  
+TLS servers, so idle or malicious clients are dropped instead of tying up a worker thread.
 
 ---
 
 ### `TcpStatus tcp_ssl_close(TcpSocket socket)`
 
 **Purpose**:  
-This function initiates the SSL/TLS shutdown sequence for the specified socket and frees the associated SSL object. It also closes the underlying TCP socket.
+This function sends the TLS close_notify for the specified socket and frees the associated SSL object. It also closes the underlying TCP socket. It does not wait for the peer's close_notify, so a silent peer cannot block it.
 
 **Parameters**:  
 - `socket`: The TCP socket that has an active SSL connection.
@@ -713,9 +757,11 @@ This function receives data over an SSL-encrypted TCP connection. It reads data 
 
 **Return Value**:  
 - `TCP_SUCCESS`: Data was successfully received or the operation needs to be retried.
-- `TCP_ERR_RECV`: There was an error during the receive operation.
+- `TCP_ERR_RECV`: There was an error during the receive operation (for example a connection reset).
 - `TCP_ERR_NO_SSL`: No SSL context was found for the socket.
-- `TCP_ERR_CLOSE`: The connection was closed by the peer.
+- `TCP_ERR_CLOSE`: The connection was closed by the peer (close_notify, or the TCP connection ended without one).
+
+The socket and its SSL object are never closed or freed by this function, whatever the error; the caller closes them with `tcp_ssl_close`.
 
 **Usage Case**:  
 Use this function to securely receive data over an SSL connection, typically used for encrypted communications like HTTPS.
@@ -745,7 +791,7 @@ Use this function to measure the connection quality for latency-sensitive applic
 ### `TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len)`
 
 **Purpose**:  
-This function sends data asynchronously through a non-blocking TCP socket. It ensures the function does not block if the send operation would normally block.
+This function sends data asynchronously through a non-blocking TCP socket. It ensures the function does not block if the send operation would normally block. A non-blocking send may accept only part of the buffer and `TCP_SUCCESS` does not say how much: use `tcp_async_send_ex(socket, buf, len, &sent)`, which reports the byte count, when you need to send the rest later.
 
 **Parameters**:  
 - `socket`: The non-blocking TCP socket to send data through.
@@ -765,7 +811,7 @@ Useful for applications that need to send data asynchronously, ensuring the appl
 ### `TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len)`
 
 **Purpose**:  
-This function receives data asynchronously from a non-blocking TCP socket. It ensures the function does not block if no data is available.
+This function receives data asynchronously from a non-blocking TCP socket. It ensures the function does not block if no data is available. It does not report how many bytes arrived; use `tcp_async_recv_ex(socket, buf, len, &received)` for that.
 
 **Parameters**:  
 - `socket`: The non-blocking TCP socket to receive data from.
@@ -775,6 +821,7 @@ This function receives data asynchronously from a non-blocking TCP socket. It en
 **Return Value**:  
 - `TCP_SUCCESS`: Data was received successfully.
 - `TCP_ERR_RECV`: An error occurred during receiving.
+- `TCP_ERR_CLOSE`: The peer closed the connection (as `tcp_recv` reports it; this used to be `TCP_ERR_RECV`).
 - `TCP_ERR_WOULD_BLOCK`: No data is available, and the operation would block.
 
 **Usage Case**:  
@@ -991,7 +1038,7 @@ Use for length-prefixed or fixed-size protocol frames where a short write silent
 ### `TcpStatus tcp_recv_all(TcpSocket socket, void* buf, size_t len)`
 
 **Purpose**:  
-Receives **exactly** `len` bytes by looping over partial reads. The mirror of `tcp_send_all` for fixed-size frames or length-prefixed protocols. A clean peer close mid-stream is reported as `TCP_ERR_RECV` because an incomplete frame is a protocol error.
+Receives **exactly** `len` bytes by looping over partial reads. The mirror of `tcp_send_all` for fixed-size frames or length-prefixed protocols. A clean peer close mid-stream is reported as `TCP_ERR_CLOSE` (what `tcp_recv` returns for it): the frame is incomplete.
 
 **Parameters**:  
 - `socket`: The TCP socket to receive from.  
@@ -1000,7 +1047,8 @@ Receives **exactly** `len` bytes by looping over partial reads. The mirror of `t
 
 **Return Value**:  
 - `TCP_SUCCESS`: All `len` bytes were received.  
-- `TCP_ERR_RECV`: Peer closed the connection before all bytes arrived, or a receive error occurred.
+- `TCP_ERR_CLOSE`: Peer closed the connection before all bytes arrived.  
+- `TCP_ERR_RECV`: A receive error occurred.
 
 **Usage Case**:  
 Receiving a fixed-size header before reading a variable-length body avoids reassembling split TCP segments manually.
@@ -1071,8 +1119,8 @@ int main() {
     fmt_printf("Client connected.\n");
 
     // Echo loop: receive data and send it back
-    while ((status = tcp_recv(client_socket, recv_buffer, BUFFER_SIZE, &received)) == TCP_SUCCESS && received > 0) {
-        recv_buffer[received] = '\0'; 
+    while ((status = tcp_recv(client_socket, recv_buffer, BUFFER_SIZE - 1, &received)) == TCP_SUCCESS && received > 0) {
+        recv_buffer[received] = '\0';   /* room kept for the terminator */
         fmt_printf("Received: %s\n", recv_buffer);
 
         status = tcp_send(client_socket, recv_buffer, received, &sent);
@@ -1150,7 +1198,7 @@ int main() {
     fmt_printf("Sent: %s\n", send_buffer);
 
     // Receive echo back from the server
-    status = tcp_recv(socket, recv_buffer, BUFFER_SIZE, &received);
+    status = tcp_recv(socket, recv_buffer, BUFFER_SIZE - 1, &received);   /* room for the terminator */
     if (status == TCP_SUCCESS && received > 0) {
         recv_buffer[received] = '\0'; 
         fmt_printf("Received: %s\n", recv_buffer);
@@ -1448,15 +1496,8 @@ int main() {
         return 1;
     }
 
-    // Enable SSL for the socket
-    status = tcp_enable_ssl(listen_socket);
-    if (status != TCP_SUCCESS) {
-        fmt_fprintf(stderr, "Enabling SSL failed.\n");
-        tcp_close(listen_socket);
-        tcp_ssl_cleanup();
-        tcp_cleanup();
-        return 1;
-    }
+    /* No SSL on the listening socket: tcp_ssl_accept below creates the
+       TLS session for each accepted client. */
 
     // Bind socket to local port
     status = tcp_bind(listen_socket, "0.0.0.0", atoi(PORT));
@@ -1504,8 +1545,8 @@ int main() {
     fmt_printf("SSL Client connected.\n");
 
     // SSL echo loop: receive data and send it back
-    while ((status = tcp_ssl_recv(client_socket, recv_buffer, BUFFER_SIZE, &received)) == TCP_SUCCESS && received > 0) {
-        recv_buffer[received] = '\0';
+    while ((status = tcp_ssl_recv(client_socket, recv_buffer, BUFFER_SIZE - 1, &received)) == TCP_SUCCESS && received > 0) {
+        recv_buffer[received] = '\0';   /* room kept for the terminator */
         fmt_printf("Received: %s\n", recv_buffer);
 
         status = tcp_ssl_send(client_socket, recv_buffer, received, &sent);
@@ -1684,7 +1725,7 @@ Standard one-shot datagram send for unconnected sockets. For connected sockets, 
 ### `UdpStatus udp_recvfrom(UdpSocket socket, void* buf, size_t len, size_t* received, char* src_host, size_t src_host_len, unsigned short* src_port)`
 
 **Purpose**:  
-Receives a single UDP datagram. Optionally writes the sender's address and port. The sender's address may come back in IPv4-mapped form (e.g. `::ffff:127.0.0.1`) — that string is still valid input to `udp_sendto`, so echo servers work without extra translation.
+Receives a single UDP datagram. Optionally writes the sender's address and port. If the datagram is larger than `len`, its first `len` bytes are stored, `*received` is `len`, and the function returns `UDP_ERR_BUFFER_TOO_SMALL` on every platform (Windows used to return `UDP_ERR_RECV` with 0 bytes, POSIX silently truncated). `udp_recvfrom_endpoint` behaves the same way.The sender's address may come back in IPv4-mapped form (e.g. `::ffff:127.0.0.1`) — that string is still valid input to `udp_sendto`, so echo servers work without extra translation.
 
 **Parameters**:  
 - `socket`: The UDP socket to receive on.  
@@ -1845,7 +1886,7 @@ Joins a multicast group so the socket receives datagrams sent to that group addr
 **Parameters**:  
 - `socket`: The UDP socket to join the group on.  
 - `group_addr`: Multicast group address (IPv4 like `"224.0.0.1"` or IPv6 like `"ff02::1"`).  
-- `iface_addr`: Local interface address to join on. Pass `NULL` for the default interface.
+- `iface_addr`: Interface to join on. IPv4 groups: the local interface address. IPv6 groups: the interface name (e.g. `"eth0"`; on Windows the adapter alias) or its numeric index (`"12"`). Pass `NULL` for the default interface. An unknown interface is an error (for IPv6 it used to be ignored on Windows and silently replaced by the default interface on POSIX).
 
 **Return Value**:  
 - `UDP_SUCCESS` on success.  
@@ -1864,7 +1905,7 @@ Leaves a multicast group previously joined with `udp_join_multicast_group`.
 **Parameters**:  
 - `socket`: The UDP socket to leave the group on.  
 - `group_addr`: The multicast group address to leave.  
-- `iface_addr`: Local interface address. Pass `NULL` for the default interface.
+- `iface_addr`: As for `udp_join_multicast_group`. Pass `NULL` for the default interface.
 
 **Return Value**:  
 - `UDP_SUCCESS` on success.  
@@ -2098,7 +2139,7 @@ int main() {
     size_t received;
 
     while (1) {
-        UdpStatus status = udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+        UdpStatus status = udp_recvfrom(sock, buf, sizeof(buf) - 1, &received, src_host, sizeof(src_host), &src_port);
         if (status == UDP_SUCCESS && received > 0) {
             buf[received] = '\0';
             fmt_printf("Received from %s:%u: %s\n", src_host, src_port, buf);
@@ -2147,7 +2188,7 @@ int main() {
     unsigned short src_port;
     size_t received;
 
-    udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+    udp_recvfrom(sock, buf, sizeof(buf) - 1, &received, src_host, sizeof(src_host), &src_port);
     buf[received] = '\0';
 
     fmt_printf("Received from %s:%u: %s\n", src_host, src_port, buf);
@@ -2207,7 +2248,7 @@ int main() {
     unsigned short src_port;
     size_t received;
 
-    udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+    udp_recvfrom(sock, buf, sizeof(buf) - 1, &received, src_host, sizeof(src_host), &src_port);
     buf[received] = '\0';
 
     fmt_printf("Received broadcast from %s:%u: %s\n", src_host, src_port, buf);
@@ -2270,7 +2311,7 @@ int main() {
     unsigned short src_port;
     size_t received;
 
-    udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+    udp_recvfrom(sock, buf, sizeof(buf) - 1, &received, src_host, sizeof(src_host), &src_port);
     buf[received] = '\0';
 
     fmt_printf("Received multicast from %s:%u: %s\n", src_host, src_port, buf);
@@ -2314,7 +2355,7 @@ int main() {
     time_t start = time(NULL);
 
     while (1) {
-        UdpStatus status = udp_recvfrom(sock, buf, sizeof(buf), &received, src_host, sizeof(src_host), &src_port);
+        UdpStatus status = udp_recvfrom(sock, buf, sizeof(buf) - 1, &received, src_host, sizeof(src_host), &src_port);
         if (status == UDP_SUCCESS && received > 0) {
             buf[received] = '\0';
             fmt_printf("Received from %s:%u: %s\n", src_host, src_port, buf);
@@ -2414,9 +2455,9 @@ int handle_client(void* arg) {
     TcpSocket client_socket = *(TcpSocket*)arg;
     free(arg); // Free the argument as soon as possible to avoid memory leaks
 
-    tcp_enable_ssl(client_socket);
+    /* tcp_ssl_accept creates the TLS session itself (calling tcp_enable_ssl
+       first leaked one SSL object per client) */
     if (tcp_ssl_accept(client_socket) != TCP_SUCCESS) {
-        tcp_ssl_close(client_socket);
         tcp_close(client_socket);
         return -1;
     }
@@ -2428,8 +2469,7 @@ int handle_client(void* arg) {
         tcp_ssl_send(client_socket, buffer, received, &sent);
     }
 
-    tcp_ssl_close(client_socket);
-    tcp_close(client_socket);
+    tcp_ssl_close(client_socket);   /* also closes the socket: no tcp_close after it */
 
     return 0;
 }
@@ -2456,7 +2496,7 @@ int handle_client(void* arg) {
     char buffer[BUFFER_SIZE] = {0};
     size_t received, sent;
 
-    if (tcp_recv(client_socket, buffer, BUFFER_SIZE, &received) == TCP_SUCCESS) {
+    if (tcp_recv(client_socket, buffer, BUFFER_SIZE - 1, &received) == TCP_SUCCESS) {   /* keep the final '\0' */
         fmt_printf("Request:\n%s\n", buffer);
 
         // Simple HTTP response
@@ -2560,7 +2600,7 @@ int handle_client(void* arg) {
     size_t received;
 
     // Receive the file request from the client
-    if (tcp_recv(client_socket, request, BUFFER_SIZE, &received) != TCP_SUCCESS || received == 0) {
+    if (tcp_recv(client_socket, request, BUFFER_SIZE - 1, &received) != TCP_SUCCESS || received == 0) {
         fmt_fprintf(stderr, "Failed to receive data from client.\n");
         tcp_close(client_socket);
         return -1;
@@ -2577,6 +2617,16 @@ int handle_client(void* arg) {
     char* filename = strtok(NULL, " ");
     if (filename == NULL) {
         fmt_fprintf(stderr, "Filename not specified in request.\n");
+        tcp_close(client_socket);
+        return -1;
+    }
+
+    /* Serve plain file names from the current directory only: a request
+       for "../secret" or "/etc/passwd" must not read arbitrary files. */
+    filename[strcspn(filename, "\r\n")] = '\0';
+    if (strstr(filename, "..") || strchr(filename, '/') || strchr(filename, '\\') || strchr(filename, ':')) {
+        const char* errMsg = "Forbidden.\n";
+        tcp_send(client_socket, errMsg, strlen(errMsg), NULL);
         tcp_close(client_socket);
         return -1;
     }
@@ -2676,7 +2726,7 @@ if __name__ == "__main__":
 
 ## HTTP Server
 
-The HTTP layer is a small, single-threaded HTTP/1.1 server built on top of `TcpSocket`. It supports method+path routing, query-string parsing, JSON request/response bodies (via the project's JSON module), and conventional helpers for setting status, headers, and body content.
+The HTTP layer is a small HTTP/1.1 server built on top of `TcpSocket`, serving connections from a thread pool.It supports method+path routing, query-string parsing, JSON request/response bodies (via the project's JSON module), and conventional helpers for setting status, headers, and body content.
 
 ### Features
 - Routes register with method + path; paths may contain a single `{id}` placeholder that is parsed as an integer into `HttpRequest::id`.
@@ -2747,7 +2797,7 @@ Parsing a request whose body is binary (file upload, protobuf, image) where `str
 ### `bool http_read_full_request(TcpSocket socket, char** out_data, size_t* out_len, int* out_status)`
 
 **Purpose**:  
-Reads one **complete** request off a connected socket: loops `recv` until the full header block (`\r\n\r\n`) arrives, then reads the body framed by `Content-Length` or decodes a `Transfer-Encoding: chunked` body into a contiguous buffer. Enforces `HTTP_MAX_HEADER_BYTES` / `HTTP_MAX_BODY_BYTES`, and rejects request-smuggling vectors (both `Content-Length` *and* `Transfer-Encoding`) and unsupported transfer-codings. This is what fixes the old "single 4 KB `recv`" truncation.
+Reads one **complete** request off a connected socket: loops `recv` until the full header block (`\r\n\r\n`) arrives, then reads the body framed by `Content-Length` or decodes a `Transfer-Encoding: chunked` body into a contiguous buffer. Enforces `HTTP_MAX_HEADER_BYTES` / `HTTP_MAX_BODY_BYTES`, and rejects request-smuggling vectors (both `Content-Length` *and* `Transfer-Encoding`, conflicting duplicate `Content-Length` headers, `chunked` that is not the only coding, whitespace before a header's colon) with 400 and unsupported transfer-codings with 501. An over-long chunked body gets 413 like an over-long `Content-Length` one (it used to get 400).This is what fixes the old "single 4 KB `recv`" truncation.
 
 **Parameters**:  
 - `socket`: A connected client socket.  
@@ -2851,7 +2901,7 @@ First call inside every handler to declare the response outcome before setting t
 ### `void http_set_body(HttpResponse* response, const char* body)`
 
 **Purpose**:  
-Copies `body` into the response and appends a `Content-Type: text/plain` header. Frees any previous body so repeated calls do not leak.
+Copies `body` into the response and sets `Content-Type: text/plain` (replacing an earlier `Content-Type`). Replaces any previous body — including a JSON body from `http_set_json_body`, which would otherwise still be sent — so repeated calls neither leak nor send stale data. `http_set_html_body`, `http_send_error` and `http_redirect` behave the same way.
 
 **Parameters**:  
 - `response`: The response to modify.  
@@ -2862,6 +2912,25 @@ None.
 
 **Usage Case**:  
 Set a plain-text body for simple API endpoints or error messages.
+
+---
+
+### `void http_set_body_bytes(HttpResponse* response, const void* data, size_t length, const char* content_type)`
+
+**Purpose**:  
+Sets a **binary** body (it may contain NUL bytes): copies exactly `length` bytes, sets `body_length`, replaces any previous text or JSON body, and sets `Content-Type` to `content_type` (or `application/octet-stream` when `NULL`). The serializer sends exactly these bytes with a matching `Content-Length`.
+
+**Parameters**:  
+- `response`: The response to modify.  
+- `data`: The bytes (may be `NULL` only when `length` is 0).  
+- `length`: Number of bytes.  
+- `content_type`: MIME type such as `"image/png"`, or `NULL`.
+
+**Return Value**:  
+None.
+
+**Usage Case**:  
+Serving images, archives, protobuf or any other binary payload.
 
 ---
 
@@ -2902,7 +2971,7 @@ Return structured JSON data from REST API endpoints.
 ### `void http_add_header(HttpResponse* response, const char* header, const char* value)`
 
 **Purpose**:  
-Appends a `Name: Value` response header. No deduplication is performed — calling twice with the same name yields two entries. Headers beyond `MAX_HEADERS` are silently dropped.
+Appends a `Name: Value` response header. No deduplication is performed — calling twice with the same name yields two entries. Headers beyond `MAX_HEADERS` are silently dropped. A name that is not a valid HTTP token (for example one containing CR, LF, `:` or spaces) is rejected, and CR/LF in the value are replaced by spaces (as Go's `net/http` does), so a value echoed from user input cannot inject further headers or a body. `http_set_status` treats the reason phrase the same way.
 
 **Parameters**:  
 - `response`: The response to modify.  
@@ -2920,7 +2989,7 @@ Add `Cache-Control`, `Access-Control-Allow-Origin`, or any custom response heade
 ### `void http_set_cookie(HttpResponse* response, const char* name, const char* value, const char* path, int max_age, bool http_only)`
 
 **Purpose**:  
-Appends a `Set-Cookie` header in the form `name=value[; Path=...][; Max-Age=N][; HttpOnly]`. Multiple calls produce multiple `Set-Cookie` headers — the standard way to send several cookies.
+Appends a `Set-Cookie` header in the form `name=value[; Path=...][; Max-Age=N][; HttpOnly]`. Multiple calls produce multiple `Set-Cookie` headers — the standard way to send several cookies. The name must be a valid token; from the value only the bytes RFC 6265 allows are kept (no spaces, `"`, `,`, `;`, `\` or control characters), and `;` and control characters are dropped from the path, so user input cannot add cookie attributes or headers.
 
 **Parameters**:  
 - `response`: The response to modify.  
@@ -2941,7 +3010,7 @@ Issue session cookies or other persistent client-side state after successful aut
 ### `void http_redirect(HttpResponse* response, int code, const char* location)`
 
 **Purpose**:  
-Builds a redirect response: sets the 3xx status (coerces invalid codes to 302), appends a `Location:` header, and writes a small HTML fallback body with the link.
+Builds a redirect response: sets the 3xx status (coerces invalid codes to 302), appends a `Location:` header (CR/LF neutralized), and writes a small HTML fallback body with the link, HTML-escaped so a hostile location cannot inject markup or script.
 
 **Parameters**:  
 - `response`: The response to modify.  
@@ -3045,7 +3114,7 @@ Emitting a correct `Content-Length`, chunk-encoding a streamed body, or building
 ### `void http_free_response(HttpResponse* response)`
 
 **Purpose**:  
-Releases every heap allocation owned by an `HttpResponse` (status message, headers, body, JSON tree) and zeroes the fields. Does NOT free the struct itself — typically a stack variable. `NULL`-safe.
+Releases every heap allocation owned by an `HttpResponse` (status message, headers, body, JSON tree) and zeroes the fields. Does NOT free the struct itself — typically a stack variable. `NULL`-safe. **Not for client responses:** a response returned by `http_get` / `http_request` / `http_parse_response` is heap-allocated and must be released with `http_response_free`, which also frees the struct (the near-identical names do opposite things; `http_response_free` on a stack response would `free` stack memory).
 
 **Parameters**:  
 - `response`: The response to clean up. May be `NULL`.
@@ -3124,9 +3193,9 @@ Sets the worker-pool size used by the next `http_start_server*`. `n <= 0` select
 ### `void http_server_set_client_timeout(long timeout_ms)`
 
 **Purpose**:  
-Sets the per-connection idle read/write timeout in milliseconds (slow-loris defense; also bounds how long a graceful shutdown waits to drain). A stalled peer is dropped with `408 Request Timeout`. `timeout_ms <= 0` disables the timeout. Defaults to 30000 ms. Call **before** starting the server.
+Sets the per-connection idle read/write timeout in milliseconds (slow-loris defense; also bounds how long a graceful shutdown waits to drain). A stalled peer is dropped with `408 Request Timeout`. Because a client could otherwise drip one byte just inside the idle timeout forever, the whole request must also arrive within 4 idle timeouts plus 1 ms per byte received (an average of about 1 KB/s for large uploads; tunable with `HTTP_REQUEST_DEADLINE_FACTOR` / `HTTP_MIN_BYTES_PER_SEC`), chunked bodies may not pad size lines (leading zeros, extensions) beyond 4 KiB or trailers beyond 64 KiB, and when the workers are more than 16 connections per worker behind, new connections get an immediate `503`. `timeout_ms <= 0` disables all of these limits. Defaults to 30000 ms. Call **before** starting the server.
 
-> Implemented with `select()` (`tcp_wait_readable`/`tcp_wait_writable`) rather than `SO_RCVTIMEO`, because `recv()` silently ignores `SO_RCVTIMEO` on the non-overlapped Winsock sockets this library creates. `select()` is honored on every platform.
+> Implemented with readiness waits (`tcp_wait_readable`/`tcp_wait_writable`: `select()` on Windows, `poll()` on POSIX, so descriptors above `FD_SETSIZE` are fine) rather than `SO_RCVTIMEO`, so a timeout is reported as `TCP_ERR_WOULD_BLOCK` and kept apart from real receive errors. For HTTPS the TLS handshake is bounded by the same `timeout_ms`.
 
 ---
 
@@ -3140,7 +3209,12 @@ Returns the actual port the server is currently listening on (useful after bindi
 ### `void http_stop_server(void)`
 
 **Purpose**:  
-Initiates a graceful shutdown: flips the internal run flag and then opens a throwaway loopback connection so the server's blocked `accept()` returns immediately, observes the flag, drains in-flight connections, and joins the workers. Safe to call from any thread. A no-op if no server is listening.
+Initiates a graceful shutdown: flips the internal run flag and then opens a throwaway loopback connection so the server's blocked `accept()` returns immediately, observes the flag, drains in-flight connections, and joins the workers. Safe to call from any thread, but not async-signal-safe (from a signal handler, set a flag and call it from a normal thread). A stop that arrives while `http_start_server_ex` is still setting up (socket, bind, listen) makes that start return without serving — it used to be lost. Before the server thread has entered `http_start_server_ex` there is nothing to stop yet: when a stop may follow right after spawning the server thread, call `http_server_wait_listening(timeout_ms)` first. A no-op if no server is listening.
+
+### `bool http_server_wait_listening(long timeout_ms)`
+
+**Purpose**:  
+Waits until a server started on another thread is listening (polls every millisecond). Returns `true` once it is, `false` after `timeout_ms` (`< 0` waits indefinitely). After it returns `true`, `http_stop_server` cannot be lost.
 
 **Parameters**:  
 None.
@@ -3356,7 +3430,17 @@ Perform one request and return the final `HttpResponse` (after redirects), or
 - `tls_insecure` — skip certificate/hostname verification (self-signed / testing).
 
 Redirects: `301/302/303` downgrade a non-GET/HEAD request to `GET` and drop the
-body; `307/308` preserve method and body.
+body; `307/308` preserve method and body. A `Location` is absolute only when it
+starts with a scheme (`https://…`); `//host/path` keeps the current scheme, and
+anything else (including `/login?next=http://x`) is resolved against the current
+URL. Once a redirect leaves the original origin (scheme, host or port changes),
+`Authorization`, `Proxy-Authorization` and `Cookie` headers are no longer sent,
+as browsers and curl do.
+
+Request hygiene: URLs containing spaces or control characters, header names that
+are not HTTP tokens, and header values containing CR/LF are rejected (the call
+returns `NULL`), so attacker-influenced URLs or values cannot inject headers or a
+second request.
 
 ### `http_get` / `http_post` / `http_put` / `http_delete`
 
@@ -3394,7 +3478,8 @@ int main(void) {
 > present on typical Linux installs but is **empty on a bare MinGW/Windows**
 > OpenSSL build — there `https://` with verification fails closed (secure by
 > default). Set `tls_insecure = true` to connect anyway, or install a CA bundle.
-> Hostname matching is not yet enforced.
+> The certificate's host name is checked too (`SSL_set1_host`): a valid
+> certificate issued for another host fails the handshake.
 
 ---
 
@@ -5013,7 +5098,7 @@ int main(void) {
     tcp_init();
     tcp_ssl_init_client();                                  /* create the client context */
 
-    /* Ship cacert.pem alongside the binary and trust exactly it. */
+    /* Ship cacert.pem alongside the binary: it is ADDED to the default trust store. */
     if (tcp_ssl_load_verify_locations("cacert.pem", NULL) != TCP_SUCCESS) {
         fmt_fprintf(stderr, "could not load CA bundle\n");
     }
@@ -5039,7 +5124,7 @@ int main(void) {
 could not load CA bundle
 verified connect: TCP_SUCCESS
 ```
-> With a real `cacert.pem` shipped next to the binary, the first line is absent and the connection is validated against exactly the CAs you pinned — which is what makes `verify = true` work on a bare MinGW build that has no system trust store.
+> With a real `cacert.pem` shipped next to the binary, the first line is absent and the connection is validated against that bundle **in addition to** the default trust store that `tcp_ssl_init_client` loads (`SSL_CTX_set_default_verify_paths`) — this adds trust, it is not pinning. That is what makes `verify = true` work on a MinGW build whose OpenSSL has no default CA file.
 
 ---
 

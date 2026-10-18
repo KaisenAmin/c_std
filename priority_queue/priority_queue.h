@@ -38,8 +38,8 @@ extern "C" {
 /* #define PQUEUE_LOGGING_ENABLE */
 
 #ifdef PQUEUE_LOGGING_ENABLE
-    #define PQUEUE_LOG(fmt, ...) \
-        do { fprintf(stderr, "[PQUEUE LOG]: " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define PQUEUE_LOG(...) \
+        do { fprintf(stderr, "[PQUEUE LOG]: "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define PQUEUE_LOG(...) do { } while (0)
 #endif

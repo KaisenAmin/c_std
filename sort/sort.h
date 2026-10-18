@@ -22,8 +22,8 @@ extern "C" {
 /* #define SORT_LOGGING_ENABLE */
 
 #ifdef SORT_LOGGING_ENABLE
-    #define SORT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[SORT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define SORT_LOG(...) \
+        do { fprintf(stderr, "[SORT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define SORT_LOG(...) do { } while (0)
 #endif
@@ -38,9 +38,18 @@ extern "C" {
 typedef void* ElementType;
 
 /* User-supplied callbacks. */
-typedef int  (*CompareFunc)(const ElementType, const ElementType);
+typedef int  (*SortCompareFunc)(const void*, const void*);
+
+/* Historical name. algorithm.h defines the same type under the same name;
+ * the guard makes the second typedef a no-op. (The arguments used to be
+ * `const ElementType`, i.e. `void* const`, so standard qsort comparators
+ * taking `const void*` were rejected by GCC 14 and Clang.) */
+#ifndef CSTD_COMPAREFUNC_DEFINED
+#define CSTD_COMPAREFUNC_DEFINED
+typedef SortCompareFunc CompareFunc;
+#endif
 typedef void (*SwapFunc)   (ElementType, ElementType);
-typedef void (*PrintFunc)  (const ElementType);
+typedef void (*PrintFunc)  (const void*);
 
 
 /* Algorithm selector for `sort_generic`. */
@@ -84,110 +93,110 @@ void sort_print_stats                  (const SortStats* stats);
 /* Basic sorting algorithms                                           */
 /* ------------------------------------------------------------------ */
 
-void sort_insertion                    (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_quicksort                    (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_mergesort                    (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_heapsort                     (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_bubblesort                   (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_selection                    (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_shell                        (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_counting                     (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_radix                        (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_bucket                       (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_introspective                (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
+void sort_insertion                    (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_quicksort                    (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_mergesort                    (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_heapsort                     (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_bubblesort                   (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_selection                    (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_shell                        (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_counting                     (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_radix                        (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_bucket                       (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_introspective                (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Optimized variants                                                 */
 /* ------------------------------------------------------------------ */
 
-void sort_quicksort_optimized          (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_mergesort_optimized          (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_introspective_optimized      (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
+void sort_quicksort_optimized          (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_mergesort_optimized          (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_introspective_optimized      (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Parallel variants (basic implementations)                          */
 /* ------------------------------------------------------------------ */
 
-void sort_parallel_mergesort           (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_parallel_quicksort           (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
+void sort_parallel_mergesort           (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_parallel_quicksort           (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Stable variants                                                    */
 /* ------------------------------------------------------------------ */
 
-void sort_stable_quicksort             (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_stable_heapsort              (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
+void sort_stable_quicksort             (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_stable_heapsort              (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Adaptive sorting                                                   */
 /* ------------------------------------------------------------------ */
 
-void sort_adaptive                     (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void sort_timsort                      (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
+void sort_adaptive                     (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void sort_timsort                      (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Generic dispatcher (algorithm selectable at call time)             */
 /* ------------------------------------------------------------------ */
 
-void sort_generic                      (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap, SortAlgorithm algorithm, SortStats* stats);
+void sort_generic                      (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap, SortAlgorithm algorithm, SortStats* stats);
 
 
 /* ------------------------------------------------------------------ */
 /* Utility / introspection                                            */
 /* ------------------------------------------------------------------ */
 
-bool        sort_is_sorted             (ElementType* array, size_t size, CompareFunc compare);
-size_t      sort_is_sorted_until       (ElementType* array, size_t size, CompareFunc compare);
-size_t      sort_unique                (ElementType* array, size_t size, CompareFunc compare);
+bool        sort_is_sorted             (ElementType* array, size_t size, SortCompareFunc compare);
+size_t      sort_is_sorted_until       (ElementType* array, size_t size, SortCompareFunc compare);
+size_t      sort_unique                (ElementType* array, size_t size, SortCompareFunc compare);
 void        sort_reverse               (ElementType* array, size_t size, SwapFunc swap);
 void        sort_shuffle               (ElementType* array, size_t size, SwapFunc swap);
-ElementType*sort_partial_sort          (ElementType* array, size_t size, size_t k, CompareFunc compare, SwapFunc swap);
-ElementType sort_median                (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-ElementType sort_nth_element           (ElementType* array, size_t size, size_t n, CompareFunc compare, SwapFunc swap);
+ElementType*sort_partial_sort          (ElementType* array, size_t size, size_t k, SortCompareFunc compare, SwapFunc swap);
+ElementType sort_median                (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+ElementType sort_nth_element           (ElementType* array, size_t size, size_t n, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Search                                                             */
 /* ------------------------------------------------------------------ */
 
-size_t      sort_binary_search         (ElementType* array, size_t size, ElementType target, CompareFunc compare);
-size_t      sort_lower_bound           (ElementType* array, size_t size, ElementType target, CompareFunc compare);
-size_t      sort_upper_bound           (ElementType* array, size_t size, ElementType target, CompareFunc compare);
-ElementType*sort_binary_search_range   (ElementType* array, size_t size, ElementType target, CompareFunc compare, size_t* count);
+size_t      sort_binary_search         (ElementType* array, size_t size, ElementType target, SortCompareFunc compare);
+size_t      sort_lower_bound           (ElementType* array, size_t size, ElementType target, SortCompareFunc compare);
+size_t      sort_upper_bound           (ElementType* array, size_t size, ElementType target, SortCompareFunc compare);
+ElementType*sort_binary_search_range   (ElementType* array, size_t size, ElementType target, SortCompareFunc compare, size_t* count);
 
 
 /* ------------------------------------------------------------------ */
 /* Merge primitives                                                   */
 /* ------------------------------------------------------------------ */
 
-void        sort_merge                 (ElementType* array, size_t left, size_t mid, size_t right, CompareFunc compare, SwapFunc swap);
-void        sort_merge_inplace         (ElementType* array, size_t left, size_t mid, size_t right, CompareFunc compare, SwapFunc swap);
-ElementType*sort_merge_sorted_arrays   (ElementType* arr1, size_t size1, ElementType* arr2, size_t size2, CompareFunc compare, SwapFunc swap, size_t* result_size);
+void        sort_merge                 (ElementType* array, size_t left, size_t mid, size_t right, SortCompareFunc compare, SwapFunc swap);
+void        sort_merge_inplace         (ElementType* array, size_t left, size_t mid, size_t right, SortCompareFunc compare, SwapFunc swap);
+ElementType*sort_merge_sorted_arrays   (ElementType* arr1, size_t size1, ElementType* arr2, size_t size2, SortCompareFunc compare, SwapFunc swap, size_t* result_size);
 
 
 /* ------------------------------------------------------------------ */
 /* Heap primitives                                                    */
 /* ------------------------------------------------------------------ */
 
-void        sort_heapify               (ElementType* array, size_t size, size_t index, CompareFunc compare, SwapFunc swap);
-void        sort_build_heap            (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap);
-void        sort_heap_insert           (ElementType* array, size_t* size, ElementType element, CompareFunc compare, SwapFunc swap);
+void        sort_heapify               (ElementType* array, size_t size, size_t index, SortCompareFunc compare, SwapFunc swap);
+void        sort_build_heap            (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap);
+void        sort_heap_insert           (ElementType* array, size_t* size, ElementType element, SortCompareFunc compare, SwapFunc swap);
 
-ElementType sort_heap_extract_max      (ElementType* array, size_t* size, CompareFunc compare, SwapFunc swap);
+ElementType sort_heap_extract_max      (ElementType* array, size_t* size, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
 /* Partition primitives                                               */
 /* ------------------------------------------------------------------ */
 
-size_t      sort_partition             (ElementType* array, size_t left, size_t right, CompareFunc compare, SwapFunc swap);
-size_t      sort_partition_three_way   (ElementType* array, size_t left, size_t right, ElementType pivot, CompareFunc compare, SwapFunc swap);
-size_t      sort_partition_median_of_three (ElementType* array, size_t left, size_t right, CompareFunc compare, SwapFunc swap);
+size_t      sort_partition             (ElementType* array, size_t left, size_t right, SortCompareFunc compare, SwapFunc swap);
+size_t      sort_partition_three_way   (ElementType* array, size_t left, size_t right, ElementType pivot, SortCompareFunc compare, SwapFunc swap);
+size_t      sort_partition_median_of_three (ElementType* array, size_t left, size_t right, SortCompareFunc compare, SwapFunc swap);
 
 
 /* ------------------------------------------------------------------ */
@@ -195,18 +204,18 @@ size_t      sort_partition_median_of_three (ElementType* array, size_t left, siz
 /* ------------------------------------------------------------------ */
 
 void sort_print_array                  (ElementType* array, size_t size, PrintFunc print);
-void sort_benchmark_algorithms         (ElementType* array, size_t size, CompareFunc compare, SwapFunc swap, PrintFunc print);
+void sort_benchmark_algorithms         (ElementType* array, size_t size, SortCompareFunc compare, SwapFunc swap, PrintFunc print);
 
 
 /* ------------------------------------------------------------------ */
 /* Default comparators for common types                               */
 /* ------------------------------------------------------------------ */
 
-int  sort_compare_int                  (const ElementType a, const ElementType b);
-int  sort_compare_string               (const ElementType a, const ElementType b);
-int  sort_compare_float                (const ElementType a, const ElementType b);
-int  sort_compare_double               (const ElementType a, const ElementType b);
-int  sort_compare_pointer              (const ElementType a, const ElementType b);
+int  sort_compare_int                  (const void* a, const void* b);
+int  sort_compare_string               (const void* a, const void* b);
+int  sort_compare_float                (const void* a, const void* b);
+int  sort_compare_double               (const void* a, const void* b);
+int  sort_compare_pointer              (const void* a, const void* b);
 
 
 /* ------------------------------------------------------------------ */
@@ -220,11 +229,11 @@ void sort_swap_generic                 (ElementType a, ElementType b);
 /* Default print callbacks for common types                           */
 /* ------------------------------------------------------------------ */
 
-void sort_print_int                    (const ElementType element);
-void sort_print_string                 (const ElementType element);
-void sort_print_float                  (const ElementType element);
-void sort_print_double                 (const ElementType element);
-void sort_print_pointer                (const ElementType element);
+void sort_print_int                    (const void* element);
+void sort_print_string                 (const void* element);
+void sort_print_float                  (const void* element);
+void sort_print_double                 (const void* element);
+void sort_print_pointer                (const void* element);
 
 
 

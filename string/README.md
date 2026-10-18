@@ -13,16 +13,55 @@ To compile the String library along with your main program, use the following GC
 if you need other lib just you can add name of libs .c 
 
 ```bash
-gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./string/string.c
+gcc -std=c11 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./string/std_string.c
 ```
 
 Ensure you have the GCC compiler installed on your system and that all source files are in the correct directory structure as shown in the project.
 
 ## Usage
 
-To use the String library in your project, include the `string.h` header file in your source code.
+To use the String library in your project, include the `string/std_string.h` header file in your source code.
 
-Absolutely, adding a brief description for each function at the top of your README can greatly enhance its clarity and usability. Here's how you might structure this section:
+## Design
+
+- **Small strings live inside the `String`.** Up to `STRING_SSO_CAPACITY - 1` = 31 bytes are stored in the struct's own `sso` buffer, so `string_create("hello")` is a single allocation (the struct) and a String set up with `string_init` on the stack needs none at all — the small-string optimisation of `std::string` (libstdc++ keeps 15 characters inline). Longer contents use one heap buffer that grows by doubling with `realloc`; `string_shrink_to_fit` moves a short content back inline. (Every String used to own a private memory pool four times its capacity, and every growth created a new pool.)
+- **Hot paths are inline.** `string_length`, `string_at`, `string_c_str`, `string_data`, `string_front` / `string_back`, `string_begin` / `string_end`, `string_empty`, `string_clear`, `string_push_back`, `string_pop_back`, `string_append`, `string_concatenate`, `string_compare` and `string_is_equal` are `static inline` in the header, so a loop over a String compiles like one over `std::string`.
+- **Binary-safe.** A String may contain `'\0'` bytes (`string_create_n`, `string_append_n`): searching, comparing, splitting, replacing, counting, copying and concatenating all work by size, never stop at the first NUL.
+- **Fast search.** `string_find`, `string_contains`, `string_count`, `string_split`, `string_replace` / `string_replace_all` and `string_remove` share one search: on x86 / x86-64 it compares the needle's first and last byte at 16 positions per SSE2 instruction (`-DSTRING_NO_SIMD` turns that off), elsewhere `memchr` + `memcmp`.
+- **Arguments may alias the String.** `string_append(s, s->dataStr + 3)`, `string_concatenate(s, s)`, `string_insert(s, 0, s->dataStr)`, `string_replace_all(s, "a", s->dataStr)` work even when the buffer moves.
+- **Locale-independent.** Case functions, trimming and `string_compare_ignore_case` use ASCII rules, so UTF-8 text is never corrupted by a single-byte locale.
+- **Portable, warning-free.** Plain C99 or later; compiles without warnings with GCC and Clang (`-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion`, C99 to C17), MSVC (`/W4`) and as C++11 to C++20; tested on x86-64 and x86, with and without SSE2.
+- **One rule:** because a String may point into itself (`dataStr == sso`), never copy the struct by value (`String b = *a;`); use `string_clone` to copy and `string_swap` to exchange.
+
+## Performance compared with `std::string`
+
+Same workloads and checksums in C and C++, one non-inlined function per workload, MinGW-w64 GCC / G++ 14.2 `-O2`, Windows, best of several runs. "was" is this library before this rewrite. `C ÷ C++` below 1.0 means the C String is faster. Heap Strings are compared with `new std::string` / `delete` (the String API returns `String*`).
+
+| Workload | C now | was | C++ `std::string` | C ÷ C++ |
+| --- | --: | --: | --: | :--: |
+| `find`, no match, 4 MiB text ×20 | **5.5 ms** | 6.2 ms | 27.6 ms | **0.20** |
+| `find`, match near the end, 4 MiB ×20 | **6.3 ms** | 8.3 ms | 65.8 ms | **0.10** |
+| `count` "the" in 4 MiB ×5 | **8.3 ms** | 8.8 ms | 19.5 ms | **0.43** |
+| `to_upper`, 4 MiB | **1.1 ms** | 2.8 ms | 3.4 ms | **0.33** |
+| `substr` (20 bytes) ×2M | **0.092 s** | 0.185 s | 0.182 s | **0.51** |
+| `trim` ×1M | **0.054 s** | 0.113 s | 0.095 s | **0.57** |
+| `replace_all`, 4 MiB | **5.7 ms** | 11.2 ms | 6.8 ms | **0.85** |
+| `from_int` ×3M | **0.160 s** | 0.430 s | 0.168 s | **0.95** |
+| `compare` 100 bytes ×20M | **0.116 s** | 0.309 s | 0.121 s | **0.96** |
+| `push_back` ×20M | **0.034 s** | 0.061 s | 0.035 s | **0.97** |
+| `concatenate` 8 bytes ×5M | **0.032 s** | 0.051 s | 0.032 s | **0.97** |
+| `format` "%d:%s" ×1M | 0.050 s | 0.139 s | 0.050 s | 0.99 |
+| `append` "abc" ×10M | 0.034 s | 0.103 s | 0.033 s | 1.02 |
+| `insert` / `erase` at the front ×50k | 24.1 / 23.9 ms | 63.2 / 24.0 ms | 23.7 / 23.7 ms | 1.02 / 1.01 |
+| indexed loop (`string_at`) over 4 MiB ×4 | 6.2 ms | 38.5 ms | 6.1 ms | 1.03 |
+| `is_equal` 100 bytes ×20M | 0.121 s | 0.315 s | 0.116 s | 1.04 |
+| copy (`string_create` of 100 bytes) ×1M | 0.096 s | 0.113 s | 0.091 s | 1.06 |
+| create + free, 11 / 100 bytes ×2M / ×1M | 0.097 / 0.096 s | 0.193 / 0.105 s | 0.087 / 0.088 s | 1.12 / 1.09 |
+| `split` 1000 fields ×300 | 0.033 s | 0.058 s | 0.019 s | 1.75 |
+
+- **Faster than `std::string`:** the SSE2 substring search (`find`, `count`, `contains`, `split`, `replace`) runs 5–10× faster than libstdc++'s `find`; `to_upper`, `trim` and `substr` do less work per call (one pass, no temporary).
+- **At parity:** appending, `push_back`, comparing, formatting, numbers, inserting / erasing and element access — the inline header functions compile to the same code as `std::string`'s.
+- **Slower:** creating heap Strings costs one `malloc` of the 64-byte `String` (the struct carries the 32-byte inline buffer) against a 32-byte `std::string`; that allocator difference is the whole gap for create / copy, and `split` creates one String per field, so it pays it 1000 times per call (the search itself takes 4 ns per field). A String on the stack (`string_init`) allocates nothing for short contents, like a `std::string` local.
 
 ---
 
@@ -41,7 +80,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `String* string_create(const char* initialStr)`
 - **Purpose**:  
-  Creates a new `String` object initialized with the provided `initialStr`. If no string is provided (`initialStr` is `NULL`), the `String` object is initialized with an empty string.
+  Creates a new `String` object initialized with the provided `initialStr`. If no string is provided (`initialStr` is `NULL`), the `String` object is initialized with an empty string. Up to 31 characters this is one allocation (the content is stored inside the String).
 - **Parameters**:
   - `initialStr`: The initial string to be stored in the `String` object. Can be `NULL` for an empty string.
 - **Return Value**:  
@@ -49,13 +88,44 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 ---
 
+#### `String* string_create_n(const char* data, size_t length)`
+- **Purpose**:  
+  Creates a String holding exactly `length` bytes from `data` — binary-safe, the bytes may include `'\0'` (`std::string(data, length)`).
+- **Parameters**:
+  - `data`: The bytes (may be `NULL` only when `length` is 0).
+  - `length`: Number of bytes.
+- **Return Value**:  
+  - The new String, or `NULL` for invalid arguments or out of memory.
+
+---
+
+#### `String* string_clone(const String* str)`
+- **Purpose**:  
+  Creates an independent copy of `str` (binary-safe; `std::string`'s copy constructor). Use it instead of copying the struct.
+- **Return Value**:  
+  - The copy, or `NULL` for a `NULL` String or out of memory.
+
+---
+
+#### `bool string_init(String* str, const char* initialStr)` / `void string_destroy(String* str)`
+- **Purpose**:  
+  A String whose memory you provide — on the stack or inside another struct. The String itself is not allocated, and a content of up to 31 bytes needs no allocation at all. Use every String function on it as usual, and release it with `string_destroy`, which frees a heap buffer if the content grew beyond the inline one and leaves the String empty and reusable. Never pass such a String to `string_deallocate` (that frees the struct).
+- **Parameters**:
+  - `str`: The String to set up / release.
+  - `initialStr`: Initial content (`NULL` for empty).
+- **Return Value**:  
+  - `string_init`: `true` on success; `false` for `NULL` `str` or out of memory (`str` is then a valid empty String).
+
+---
+
 #### `String* string_create_with_pool(size_t size)`
 - **Purpose**:  
-  Creates a new `String` object that uses a globally initialized memory pool for memory management.
-- **Parameters**:
-  - `size`: The size of the global memory pool to be initialized.
+  Creates a new, empty `String` object with room for `size` bytes, so it can grow to that length without reallocating.
+- **Parameters**:  
+  - `size`: The number of bytes to reserve.
 - **Return Value**:  
-  - Returns a pointer to the newly created `String` object, or `NULL` if memory allocation or pool initialization fails.
+  - Returns a pointer to the newly created `String` object, or `NULL` if memory allocation fails.
+- **Note**: Earlier versions carved such strings out of one shared global pool. That memory was never returned (programs that created and freed these strings grew without bound), the `size` of every call after the first was ignored, and the new string had no buffer, so `string_contains`, `string_compare` or `string_replace` crashed on it. Each string now owns its memory like one from `string_create`.
 
 ---
 
@@ -94,18 +164,18 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `int string_compare(const String* str1, const String* str2)`
 - **Purpose**:  
-  Compares two `String` objects lexicographically.
+  Compares two `String` objects lexicographically, byte by byte over their whole size (embedded `'\0'` bytes included); a prefix sorts first. Inline.
 - **Parameters**:
   - `str1`: The first `String` object.
   - `str2`: The second `String` object.
 - **Return Value**:  
-  - Returns `0` if both strings are equal, less than `0` if `str1` is less than `str2`, and greater than `0` if `str1` is greater than `str2`.
+  - Returns `0` if both strings are equal, `-1` if `str1` is less than `str2`, and `1` if `str1` is greater than `str2`. A `NULL` String sorts before any other; two `NULL`s are equal.
 
 ---
 
 #### `bool string_is_equal(const String* str1, const String* str2)`
 - **Purpose**:  
-  Checks if two `String` objects are lexicographically equal.
+  Checks if two `String` objects hold the same bytes (same size and contents, embedded `'\0'` included; inline: a size check and one `memcmp`).
 - **Parameters**:
   - `str1`: The first `String` object.
   - `str2`: The second `String` object.
@@ -232,7 +302,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `void string_shrink_to_fit(String *str)`
 - **Purpose**:  
-  Reduces the capacity of the `String` object to fit its current size, shrinking the capacity to match the exact size of the string plus the null terminator. If the current capacity is already optimal, no action is taken.
+  Reduces the capacity of the `String` object to fit its current size: a content of up to 31 bytes moves back into the String's inline buffer (capacity `STRING_SSO_CAPACITY`, the heap buffer is freed), a longer one gets a heap buffer of exactly its size plus the terminator.
 - **Parameters**:
   - `str`: The `String` object to shrink. Must not be `NULL`.
 - **Return Value**:  
@@ -242,7 +312,13 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `void string_append(String *str, const char *strItem)`
 - **Purpose**:  
-  Appends a C-string (`strItem`) to the end of the `String` object. If the new size exceeds the current capacity, the function reallocates memory to accommodate the additional characters.
+  Appends a C-string (`strItem`) to the end of the `String` object; the capacity doubles when it is exceeded (amortised O(1)). Inline: when it fits, the copy happens at the call site, and for a literal the compiler folds the `strlen`. `strItem` may point into `str`.
+
+---
+
+#### `void string_append_n(String *str, const char *data, size_t length)`
+- **Purpose**:  
+  Appends exactly `length` bytes from `data` — binary-safe, the bytes may include `'\0'` (`std::string::append(data, length)`). `data` may point into `str`.
 - **Parameters**:
   - `str`: The `String` object to which the string will be appended. Must not be `NULL`.
   - `strItem`: The C-string to append. Must not be `NULL`.
@@ -253,7 +329,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `void string_push_back(String *str, char chItem)`
 - **Purpose**:  
-  Appends a single character (`chItem`) to the end of the `String` object. If necessary, the function reallocates memory to accommodate the additional character.
+  Appends a single character (`chItem`) to the end of the `String` object; amortised O(1) (the buffer doubles when full). Inline.
 - **Parameters**:
   - `str`: The `String` object to which the character will be appended. Must not be `NULL`.
   - `chItem`: The character to append.
@@ -310,6 +386,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 ---
 
 #### `void string_swap(String *str1, String *str2)`
+
+Exchanges the contents in O(1); correct whether either content is inline or on the heap.
 - **Purpose**:  
   Swaps the contents of two `String` objects.
 - **Parameters**:
@@ -331,8 +409,10 @@ Absolutely, adding a brief description for each function at the top of your READ
 ---
 
 #### `void string_deallocate(String *str)`
+
+For Strings from `string_create` and the other functions returning `String*`; a String set up with `string_init` is released with `string_destroy`.
 - **Purpose**:  
-  Deallocates the memory used by the `String` object and its associated resources, including the memory pool. If the `String` object is `NULL`, the function logs a warning and does nothing.
+  Deallocates the memory used by the `String` object and its associated resources, including the memory pool. If the `String` object is `NULL`, the function logs a warning and does nothing. Call it exactly once per `String` (set your pointer to `NULL` afterwards if it may be reached again). Earlier versions ignored a second call through a registry of live strings, but freed addresses are reused: a stale second call then freed the next `String` allocated at the same address.
 - **Parameters**:
   - `str`: The `String` object to be deallocated. Must not be `NULL`.
 - **Return Value**:  
@@ -403,7 +483,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `size_t string_copy(const String* str, char* buffer, size_t pos, size_t len)`
 - **Purpose**:  
-  Copies up to `len` characters from the `String` object, starting at the specified position `pos`, into the provided buffer. It ensures the copied string is null-terminated.
+  Copies up to `len` characters from the `String` object, starting at the specified position `pos`, into the provided buffer. It ensures the copied string is null-terminated. `len == 0` (or a `len` past the end) copies the whole rest of the string, so `buffer` must hold `string_length(str) - pos + 1` bytes in that case.
 - **Parameters**:
   - `str`: The `String` object to copy from. Must not be `NULL`.
   - `buffer`: The buffer to copy the substring into. Must not be `NULL`.
@@ -432,7 +512,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `str`: The `String` object to search in. Must not be `NULL`.
   - `buffer`: The substring to search for. Must not be `NULL`.
-  - `pos`: The ending position for the search.
+  - `pos`: The last index at which a match may START (as in `std::string::rfind`); pass a large value such as `SIZE_MAX` to search the whole string. `string_rfind("abc", "ab", 0)` is `0`.
 - **Return Value**:  
   - The index of the last occurrence of the substring, or `-1` if not found or an error occurs.
 
@@ -480,9 +560,9 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `str`: The `String` object to search in. Must not be `NULL`.
   - `buffer`: The buffer containing characters to exclude. Must not be `NULL`.
-  - `pos`: The starting position for the search. Must be within the bounds of the string.
-- **Return Value**:  
-  The index of the last non-matching character, or `-1` if all characters match or an error occurs.
+  - `pos`: The starting position for the search; a position past the end starts at the last character.
+- **Return Value**:
+  The index of the last non-matching character, or `-1` if all characters match or an error occurs. An empty `buffer` excludes nothing, so the result is `pos` itself (clamped), like `std::string::find_last_not_of`.
 
 ---
 
@@ -541,8 +621,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   Returns a pointer to one position before the start of the string data, typically used for reverse iteration.
 - **Parameters**:
   - `str`: The `String` object. Must not be `NULL`.
-- **Return Value**:  
-  A pointer to one position before the first character, or `NULL` on error.
+- **Return Value**:
+  A pointer to one position before the first character (a sentinel: never dereference it), or `NULL` on error. For an empty string it is `NULL`, the same value `string_rbegin` returns, so `for (it = rbegin; it != rend; --it)` runs zero times.
 
 ---
 
@@ -581,8 +661,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   Returns a constant pointer to one position before the start of the string data, used for reverse iteration.
 - **Parameters**:
   - `str`: The `String` object to retrieve the reverse end pointer from. Must not be `NULL`.
-- **Return Value**:  
-  A constant pointer to one before the first character, or `NULL` on error.
+- **Return Value**:
+  A constant pointer to one before the first character (never dereference it), or `NULL` on error. `NULL` for an empty string, matching `string_crbegin`.
 
 ---
 
@@ -618,18 +698,18 @@ Absolutely, adding a brief description for each function at the top of your READ
 
 #### `bool string_set_pool_size(String* str, size_t newSize)`
 - **Purpose**:  
-  Resizes the memory pool for the `String` object. If the pool already exists, it is destroyed and recreated with the new size.
+  Kept for compatibility: Strings no longer use memory pools, so this reserves room for `newSize` bytes (like `string_reserve`) and keeps the content.
 - **Parameters**:
-  - `str`: The `String` object to resize the memory pool for. Must not be `NULL`.
-  - `newSize`: The new size for the memory pool. Must be greater than zero.
+  - `str`: The `String` object. Must not be `NULL`.
+  - `newSize`: The number of bytes to make room for. Must be greater than zero.
 - **Return Value**:  
-  Returns `true` if the pool was successfully resized, otherwise `false`.
+  Returns `true` on success, `false` for invalid arguments or out of memory.
 
 ---
 
 #### `void string_concatenate(String* str1, const String* str2)`
 - **Purpose**:  
-  Concatenates the content of the second `String` object (`str2`) to the first `String` object (`str1`).
+  Concatenates the content of the second `String` object (`str2`) to the first `String` object (`str1`), by size (binary-safe). `str2` may be `str1` itself (the String doubles). Inline.
 - **Parameters**:
   - `str1`: The `String` object to which the content will be appended. Must not be `NULL`.
   - `str2`: The `String` object whose content will be appended to `str1`. Must not be `NULL`.
@@ -683,9 +763,9 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to split. Must not be `NULL`.
   - `delimiter`: The delimiter used to split the string. Must not be `NULL`.
   - `count`: A pointer to an integer where the number of splits will be stored.
-- **Functionality**:
-  - Splits the `String` object into multiple strings based on the provided delimiter.
-  - Stores the split results in an array and returns the number of splits through `count`.
+- **Functionality**:  
+  - Splits the `String` object at every occurrence of `delimiter`, matched as a whole string, like Python's `str.split(sep)`: `"a,,b"` split on `","` gives `"a"`, `""`, `"b"`, and the result always has at least one element. (Earlier versions used `strtok`, which treated `delimiter` as a set of characters, dropped empty fields and was not reentrant.)
+  - Stores the split results in an array and returns the number of splits through `count`; `count` is set to `0` on error (including an empty `delimiter`).
 - **Return Value**:  
   An array of `String*` containing the split strings, or `NULL` if an error occurs.
 
@@ -807,10 +887,10 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `hexStr`: The hex-encoded `String` object. Must not be `NULL` and must have an even number of characters.
 - **Functionality**:
-  - Validates the input and checks if the hex string length is even.
+  - Validates the input and checks if the hex string length is even and every character is a hex digit (`0-9`, `a-f`, `A-F`).
   - Converts every two hex digits into a character and appends it to a new `String` object.
-- **Return Value**:  
-  A new `String` object containing the decoded ASCII characters, or `NULL` if an error occurs.
+- **Return Value**:
+  A new `String` object containing the decoded bytes, or `NULL` if an error occurs (odd length, empty input, or a non-hex character).
 
 ---
 
@@ -823,7 +903,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Searches for occurrences of `substr` in the string and counts how many times it appears.
 - **Return Value**:  
-  The number of occurrences of `substr`, or `0` if an error occurs.
+  The number of non-overlapping occurrences of `substr`, or `0` if an error occurs. An empty `substr` counts `length + 1` positions, as in Python.
 
 ---
 
@@ -896,9 +976,9 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `value`: The double value to convert.
 - **Functionality**:
-  - Converts the double value into a string and creates a new `String` object.
-- **Return Value**:  
-  A new `String` object containing the string representation of the double value.
+  - Converts the double value into a string (`"%f"`, six decimals, never truncated even for values like `1e300`) and creates a new `String` object.
+- **Return Value**:
+  A new `String` object containing the string representation of the double value, or `NULL` on allocation failure.
 
 ---
 
@@ -909,10 +989,10 @@ Absolutely, adding a brief description for each function at the top of your READ
   - `str`: The `String` object to tokenize. Must not be `NULL`.
   - `delimiters`: A C-string containing delimiter characters.
   - `count`: A pointer to an integer to store the number of tokens.
-- **Functionality**:
-  - Splits the string into tokens based on the provided delimiters and returns an array of `String` objects.
+- **Functionality**:  
+  - Splits the string into tokens based on the provided delimiters and returns an array of `String` objects. Every character of `delimiters` is a separator and runs of separators are skipped, so no token is empty. It is reentrant (no `strtok`), so it is safe inside a caller's own `strtok` loop and across threads.
 - **Return Value**:  
-  An array of `String` objects representing the tokens, or `NULL` if an error occurs.
+  An array of `String` objects representing the tokens, or `NULL` if an error occurs or there are no tokens; `count` is `0` then.
 
 ---
 
@@ -949,7 +1029,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Functionality**:
   - Decodes the Base64 string into its original binary form.
 - **Return Value**:  
-  A new `String` object containing the decoded binary data, or `NULL` if an error occurs.
+  A new `String` object containing the decoded binary data, or `NULL` if an error occurs. The result may contain `0x00` bytes; use `string_length` for its size (it used to be cut at the first `0x00`). Characters outside the Base64 alphabet are skipped.
 
 ---
 
@@ -971,8 +1051,8 @@ Absolutely, adding a brief description for each function at the top of your READ
 - **Parameters**:
   - `str`: The `String` object to repeat.
   - `count`: The number of times to repeat the string.
-- **Functionality**:
-  - Repeats the content of the string `count` times and returns a new `String` object.
+- **Functionality**:  
+  - Repeats the content of the string `count` times and returns a new `String` object, or `NULL` if `length * count` does not fit in memory (the size computation used to overflow and corrupt the heap).
 
 ---
 
@@ -1013,8 +1093,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   Converts the `String` object to title case, where the first letter of each word is capitalized, and the other letters are lowercase.
 - **Parameters**:
   - `str`: The `String` object to convert. Must not be `NULL`.
-- **Functionality**:
-  - Capitalizes the first letter of each word while converting the rest of the characters to lowercase.
+- **Functionality**:  
+  - Capitalizes the first letter of each word while converting the rest of the characters to lowercase. Case mapping is ASCII-only and locale-independent (as for `string_to_casefold`, `string_swap_case`, `string_to_upper` and `string_to_lower`): bytes of UTF-8 characters are kept unchanged and count as part of a word, so `"été"` stays one word.
 
 ---
 
@@ -1033,8 +1113,8 @@ Absolutely, adding a brief description for each function at the top of your READ
   Converts all characters in the `String` object to lowercase.
 - **Parameters**:
   - `str`: The `String` object to convert. Must not be `NULL`.
-- **Functionality**:
-  - Iterates through the string and converts each character to lowercase.
+- **Functionality**:  
+  - Iterates through the string and converts each ASCII letter to lowercase. Other bytes, including UTF-8 sequences, are left unchanged under every locale (with `setlocale(LC_ALL, "")` the `<ctype.h>` functions used to rewrite UTF-8 lead bytes and corrupt the text).
 
 ---
 
@@ -1227,7 +1307,7 @@ Absolutely, adding a brief description for each function at the top of your READ
 ---
 
 #### `void string_reserve(String *str, size_t newCapacity)`
-  - **Purpose:** Ensures that a `String` object has enough capacity to store at least `newCapacity` characters. If the current capacity of the string is less than `newCapacity`, the function reallocates memory to increase it. If the current capacity already meets or exceeds `newCapacity`, no action is taken and the function returns immediately.
+  - **Purpose:** Ensures that a `String` object can store at least `newCapacity` characters plus the terminator without reallocating (`string_capacity` is then at least `newCapacity + 1`). If it already can, nothing happens.
   - **Parameters:**
     - `str` (`String*`): A pointer to the `String` object whose capacity you want to reserve. Must not be `NULL`.
     - `newCapacity` (`size_t`): The minimum number of characters (not including the null terminator) that the `String` object should be able to store after the call.
@@ -1276,9 +1356,7 @@ int main() {
 String after push_back: !
 Character at index 1: !
 Length: 1, Capacity: 32
-Info : String object is null no need to clear in string_clear.
 String after clear:
-Info : String object is null no need to clear in string_clear.
 Hello C Programmers
 ```
 
@@ -1316,8 +1394,7 @@ int main() {
 ```
 String after append: Hello, World!
 String after resize: Hello
-String capacity after shrink to fit: 6
-Info : String object is null no need to clear in string_clear.
+String capacity after shrink to fit: 32
 ```
 
 ---
@@ -1355,7 +1432,6 @@ int main() {
 String after assign: New String
 String after insert: New Test String
 String after erase: est String
-Info : String object is null no need to clear in string_clear.
 ```
 
 ---
@@ -1453,7 +1529,6 @@ Last character : d
 Wowww: a
 First character: H
 Max size is 18446744073709551615
-Info : String object is null no need to clear in string_clear.
 ```
 
 ---
@@ -1606,7 +1681,6 @@ int main() {
 **Result:**
 ```
 Data: Hello, World!
-Info : String object is null no need to clear in string_clear.
 ```
 
 ---
@@ -1635,7 +1709,6 @@ int main() {
 **Result:**
 ```
 Hello amin
-Info : String object is null no need to clear in string_clear.
 ```
 
 ---
@@ -1666,7 +1739,6 @@ int main() {
 **Result:**
 ```
 String in reverse: nima olleH
-Info : String object is null no need to clear in string_clear.
 ```
 
 ---
@@ -2219,7 +2291,6 @@ int main() {
 ```
 Trimmed Start: 'Hello World   '
 Trimmed End: 'Hello World'
-Info : String object is null no need to clear in string_clear.
 Trimmed Both: 'Hello World'
 ```
 
@@ -3096,7 +3167,7 @@ int main() {
 ```
 **Result**
 ```
-"121 is palindrome 1"
+121 is palindrome 1
 ```
 
 ---
@@ -3228,3 +3299,48 @@ int main() {
 'Hello!
 Are you #1?' is printable 0
 ```
+
+---
+
+## Example 64 : a String on the stack, binary data and copies — `string_init`, `string_create_n`, `string_append_n`, `string_clone`
+
+```c
+#include "string/std_string.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    /* no allocation at all: the String lives on the stack and its short
+       content inside it */
+    String greeting;
+    string_init(&greeting, "hello");
+    string_append(&greeting, ", world");
+    fmt_printf("%s (%zu bytes, inline: %s)\n", string_c_str(&greeting), string_length(&greeting),
+               greeting.dataStr == greeting.sso ? "yes" : "no");
+
+    string_append(&greeting, " - and now long enough to need a heap buffer");
+    fmt_printf("%zu bytes, inline: %s\n", string_length(&greeting), greeting.dataStr == greeting.sso ? "yes" : "no");
+    string_destroy(&greeting);                 /* frees the heap buffer; the struct is ours */
+
+    /* binary-safe: the NUL bytes are part of the content */
+    String* record = string_create_n("id\0name\0age", 11);
+    string_append_n(record, "\0x", 2);
+    fmt_printf("record has %zu bytes, \"age\" at %d, 'e' appears %zu times\n",
+               string_length(record), string_find(record, "age", 0), string_count(record, "e"));
+
+    String* copy = string_clone(record);
+    fmt_printf("copy equal: %s\n", string_is_equal(copy, record) ? "yes" : "no");
+
+    string_deallocate(record);
+    string_deallocate(copy);
+    return 0;
+}
+```
+**Result**
+```
+hello, world (12 bytes, inline: yes)
+56 bytes, inline: no
+record has 13 bytes, "age" at 8, 'e' appears 2 times
+copy equal: yes
+```
+
+---

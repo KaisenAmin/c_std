@@ -1,4 +1,12 @@
+/*
+ * ALTERED version of TinyCThread (Copyright (c) 2012 Marcus Geelnard,
+ * Copyright (c) 2013-2016 Evan Nemerson), modified and extended for c_std.
+ * Distributed under the zlib/libpng license; the full notice is in
+ * concurrent.h and must not be removed from source distributions.
+ */
 #include "concurrent.h"
+#include <stdint.h>   /* intptr_t */
+#include <limits.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -34,6 +42,39 @@
  * @note On Windows, for timed mutexes, CreateMutex is used. For non-timed mutexes,
  *       InitializeCriticalSection is used.
  */
+#if defined(_TTHREAD_WIN32_)
+/* Milliseconds from now until the absolute TIME_UTC deadline `ts`, rounded up
+   and clamped below INFINITE (0xFFFFFFFF). The old 32-bit arithmetic wrapped
+   for deadlines more than ~49.7 days away, so they expired almost at once.
+   *more is set when the deadline lies past the clamp: the caller waits again. */
+static DWORD _cthread_ms_until(const struct timespec *ts, int *more) {
+  struct timespec now;
+  timespec_get(&now, TIME_UTC);
+  *more = 0;
+
+  long long dsec = (long long)ts->tv_sec - (long long)now.tv_sec;
+  long long dns  = (long long)ts->tv_nsec - (long long)now.tv_nsec;
+  if (dsec < 0 || (dsec == 0 && dns <= 0)) {
+    return 0;
+  }
+  const long long cap = 0xFFFFFFFELL;
+  if (dsec > cap / 1000 + 1) {
+    *more = 1;
+    return (DWORD)cap;
+  }
+  long long total_ns = dsec * 1000000000LL + dns;
+  long long ms = (total_ns + 999999LL) / 1000000LL;
+  if (ms <= 0) {
+    return 0;
+  }
+  if (ms > cap) {
+    *more = 1;
+    return (DWORD)cap;
+  }
+  return (DWORD)ms;
+}
+#endif
+
 int mutex_init(Mutex *mtx, int type) {
   CONCURRENT_LOG("[mutex_init]: enter (mtx=%p, type=%d)", (void*)mtx, type);
   #if defined(_TTHREAD_WIN32_)
@@ -126,8 +167,9 @@ void mutex_destroy(Mutex *mtx) {
  *
  * @return THREAD_SUCCESS if the mutex was successfully locked,
  *         THREAD_ERROR if there was an error locking the mutex.
- *         On Windows, if WaitForSingleObject fails or returns WAIT_ABANDONED,
- *         THREAD_ERROR is returned. On POSIX systems, if pthread_mutex_lock
+ *         On Windows, if WaitForSingleObject fails, THREAD_ERROR is returned;
+ *         an abandoned mutex (its owner thread exited while holding it) is
+ *         acquired normally.On POSIX systems, if pthread_mutex_lock
  *         fails, THREAD_ERROR is returned.
  *
  * @note On Windows, for non-recursive, non-timed mutexes, additional logic is
@@ -153,6 +195,10 @@ int mutex_lock(Mutex *mtx) {
         case WAIT_OBJECT_0:
           break;
         case WAIT_ABANDONED:
+          /* The previous owner thread exited holding it; this thread now
+             owns the mutex, so the lock succeeded (as for WAIT_OBJECT_0). */
+          CONCURRENT_LOG("[mutex_lock]: acquired an abandoned mutex");
+          break;
         default:
           CONCURRENT_LOG("[mutex_lock]: WaitForSingleObject failed -> THREAD_ERROR");
           return THREAD_ERROR;
@@ -211,35 +257,35 @@ int mutex_lock(Mutex *mtx) {
 int mutex_timed_lock(Mutex *mtx, const struct timespec *ts) {
   CONCURRENT_LOG("[mutex_timed_lock]: enter (mtx=%p, ts=%p)", (void*)mtx, (void*)ts);
   #if defined(_TTHREAD_WIN32_)
-    struct timespec current_ts;
-    DWORD timeoutMs;
-
     if (!mtx->mTimed) {
       CONCURRENT_LOG("[mutex_timed_lock]: guard tripped (mtx is not timed) -> THREAD_ERROR");
       return THREAD_ERROR;
     }
 
-    timespec_get(&current_ts, TIME_UTC);
-
-    if ((current_ts.tv_sec > ts->tv_sec) || ((current_ts.tv_sec == ts->tv_sec) && (current_ts.tv_nsec >= ts->tv_nsec))) {
-      timeoutMs = 0;
-    }
-    else {
-      timeoutMs  = (DWORD)(ts->tv_sec  - current_ts.tv_sec)  * 1000;
-      timeoutMs += (ts->tv_nsec - current_ts.tv_nsec) / 1000000;
-      timeoutMs += 1;
-    }
-
-    CONCURRENT_LOG("[mutex_timed_lock]: win32 WaitForSingleObject (timeoutMs=%lu)", (unsigned long)timeoutMs);
     /* TODO: the timeout for WaitForSingleObject doesn't include time
       while the computer is asleep. */
-    switch (WaitForSingleObject(mtx->mHandle.mut, timeoutMs)) {
+    DWORD wr;
+    for (;;) {
+      int more;
+      DWORD timeoutMs = _cthread_ms_until(ts, &more);
+      CONCURRENT_LOG("[mutex_timed_lock]: win32 WaitForSingleObject (timeoutMs=%lu)", (unsigned long)timeoutMs);
+      wr = WaitForSingleObject(mtx->mHandle.mut, timeoutMs);
+      if (wr == WAIT_TIMEOUT && more) {
+        continue;   /* deadline beyond one maximal wait: keep waiting */
+      }
+      break;
+    }
+    switch (wr) {
       case WAIT_OBJECT_0:
         break;
       case WAIT_TIMEOUT:
         CONCURRENT_LOG("[mutex_timed_lock]: exit -> THREAD_TIMEOUT");
         return THREAD_TIMEOUT;
       case WAIT_ABANDONED:
+        /* The previous owner thread died holding it; this thread now owns
+           the mutex: the lock succeeded. */
+        CONCURRENT_LOG("[mutex_timed_lock]: acquired an abandoned mutex");
+        break;
       default:
         CONCURRENT_LOG("[mutex_timed_lock]: exit -> THREAD_ERROR");
         return THREAD_ERROR;
@@ -325,8 +371,9 @@ int mutex_timed_lock(Mutex *mtx, const struct timespec *ts) {
  * @note On Windows, for non-timed mutexes, TryEnterCriticalSection is used to
  *       attempt to enter the critical section without blocking. For timed
  *       mutexes, WaitForSingleObject with a zero timeout is used to check the
- *       mutex's state. If the mutex is recursive and already locked by the calling
- *       thread, it is considered busy to prevent recursive locking.
+ *       mutex's state. A recursive mutex already held by the calling thread is
+ *       re-entered (THREAD_SUCCESS, one more unlock needed); a non-recursive mutex
+ *       already held by the caller reports THREAD_BUSY.
  * @note On POSIX systems, pthread_mutex_trylock is used to attempt to lock the
  *       mutex. If it returns 0, the mutex was successfully locked. Otherwise,
  *       if it is already locked by another thread, the function will return
@@ -350,7 +397,15 @@ int mutex_trylock(Mutex *mtx) {
 
     if ((!mtx->mRecursive) && (ret == THREAD_SUCCESS)){
       if (mtx->mAlreadyLocked) {
-        LeaveCriticalSection(&(mtx->mHandle.cs));
+        /* The caller already holds this non-recursive mutex; both Win32
+           objects are recursive, so undo the extra acquisition with the
+           matching call (a timed mutex is a HANDLE, not a CRITICAL_SECTION). */
+        if (mtx->mTimed) {
+          ReleaseMutex(mtx->mHandle.mut);
+        }
+        else {
+          LeaveCriticalSection(&(mtx->mHandle.cs));
+        }
         ret = THREAD_BUSY;
       }
       else {
@@ -445,20 +500,12 @@ int condition_init(ThreadCondition *cond) {
     /* Init critical section */
     InitializeCriticalSection(&cond->mWaitersCountLock);
 
-    /* Init events */
-    cond->mEvents[_CONDITION_EVENT_ONE] = CreateEvent(NULL, false, false, NULL);
-    if (cond->mEvents[_CONDITION_EVENT_ONE] == NULL) {
-      CONCURRENT_LOG("[condition_init]: CreateEvent(_ONE) failed -> THREAD_ERROR");
-      cond->mEvents[_CONDITION_EVENT_ALL] = NULL;
-      return THREAD_ERROR;
-    }
-
-    cond->mEvents[_CONDITION_EVENT_ALL] = CreateEvent(NULL, true, false, NULL);
-    if (cond->mEvents[_CONDITION_EVENT_ALL] == NULL) {
-      CONCURRENT_LOG("[condition_init]: CreateEvent(_ALL) failed -> THREAD_ERROR");
-      CloseHandle(cond->mEvents[_CONDITION_EVENT_ONE]);
-      cond->mEvents[_CONDITION_EVENT_ONE] = NULL;
-
+    /* One semaphore permit per wakeup (signal posts one, broadcast posts one
+       per waiter), so wakeups are counted and cannot be lost. */
+    cond->mSemaphore = CreateSemaphore(NULL, 0, LONG_MAX, NULL);
+    if (cond->mSemaphore == NULL) {
+      CONCURRENT_LOG("[condition_init]: CreateSemaphore failed -> THREAD_ERROR");
+      DeleteCriticalSection(&cond->mWaitersCountLock);
       return THREAD_ERROR;
     }
     CONCURRENT_LOG("[condition_init]: exit -> THREAD_SUCCESS");
@@ -497,11 +544,9 @@ int condition_init(ThreadCondition *cond) {
 void condition_destroy(ThreadCondition *cond) {
   CONCURRENT_LOG("[condition_destroy]: enter (cond=%p)", (void*)cond);
   #if defined(_TTHREAD_WIN32_)
-    if (cond->mEvents[_CONDITION_EVENT_ONE] != NULL) {
-      CloseHandle(cond->mEvents[_CONDITION_EVENT_ONE]);
-    }
-    if (cond->mEvents[_CONDITION_EVENT_ALL] != NULL) {
-      CloseHandle(cond->mEvents[_CONDITION_EVENT_ALL]);
+    if (cond->mSemaphore != NULL) {
+      CloseHandle(cond->mSemaphore);
+      cond->mSemaphore = NULL;
     }
     DeleteCriticalSection(&cond->mWaitersCountLock);
   #else
@@ -537,20 +582,26 @@ void condition_destroy(ThreadCondition *cond) {
 int condition_signal(ThreadCondition *cond) {
   CONCURRENT_LOG("[condition_signal]: enter (cond=%p)", (void*)cond);
   #if defined(_TTHREAD_WIN32_)
-    int haveWaiters;
+    int ok = 1;
 
-    /* Are there any waiters? */
+    /* Hand one waiter a permit and stop counting it as waiting, so a second
+       signal goes to a different waiter. (Two SetEvent calls on an auto-reset
+       event used to merge into one while the waiters were still on their way
+       into the wait, losing a wakeup.) */
     EnterCriticalSection(&cond->mWaitersCountLock);
-    haveWaiters = (cond->mWaitersCount > 0);
+    if (cond->mWaitersCount > 0) {
+      CONCURRENT_LOG("[condition_signal]: waiters present, posting one permit");
+      cond->mWaitersCount--;
+      ok = ReleaseSemaphore(cond->mSemaphore, 1, NULL) != 0;
+      if (!ok) {
+        cond->mWaitersCount++;
+      }
+    }
     LeaveCriticalSection(&cond->mWaitersCountLock);
 
-    /* If we have any waiting threads, send them a signal */
-    if(haveWaiters) {
-      CONCURRENT_LOG("[condition_signal]: waiters present, SetEvent(_ONE)");
-      if (SetEvent(cond->mEvents[_CONDITION_EVENT_ONE]) == 0) {
-        CONCURRENT_LOG("[condition_signal]: SetEvent failed -> THREAD_ERROR");
-        return THREAD_ERROR;
-      }
+    if (!ok) {
+      CONCURRENT_LOG("[condition_signal]: ReleaseSemaphore failed -> THREAD_ERROR");
+      return THREAD_ERROR;
     }
     CONCURRENT_LOG("[condition_signal]: exit -> THREAD_SUCCESS");
     return THREAD_SUCCESS;
@@ -591,20 +642,24 @@ int condition_signal(ThreadCondition *cond) {
 int condition_broadcast(ThreadCondition *cond) {
   CONCURRENT_LOG("[condition_broadcast]: enter (cond=%p)", (void*)cond);
   #if defined(_TTHREAD_WIN32_)
-    int haveWaiters;
+    int ok = 1;
 
-    /* Are there any waiters? */
+    /* One permit for every current waiter; threads that start waiting later
+       are not counted and so are not woken by this broadcast. */
     EnterCriticalSection(&cond->mWaitersCountLock);
-    haveWaiters = (cond->mWaitersCount > 0);
+    unsigned int n = cond->mWaitersCount;
+    if (n > 0) {
+      CONCURRENT_LOG("[condition_broadcast]: waking %u waiter(s)", n);
+      ok = ReleaseSemaphore(cond->mSemaphore, (LONG)n, NULL) != 0;
+      if (ok) {
+        cond->mWaitersCount = 0;
+      }
+    }
     LeaveCriticalSection(&cond->mWaitersCountLock);
 
-    /* If we have any waiting threads, send them a signal */
-    if(haveWaiters) {
-      CONCURRENT_LOG("[condition_broadcast]: waiters present, SetEvent(_ALL)");
-      if (SetEvent(cond->mEvents[_CONDITION_EVENT_ALL]) == 0) {
-        CONCURRENT_LOG("[condition_broadcast]: SetEvent failed -> THREAD_ERROR");
-        return THREAD_ERROR;
-      }
+    if (!ok) {
+      CONCURRENT_LOG("[condition_broadcast]: ReleaseSemaphore failed -> THREAD_ERROR");
+      return THREAD_ERROR;
     }
 
     CONCURRENT_LOG("[condition_broadcast]: exit -> THREAD_SUCCESS");
@@ -623,9 +678,9 @@ int condition_broadcast(ThreadCondition *cond) {
  * A Windows-specific function for waiting on a condition variable with a timeout.
  *
  * This function implements the timed wait functionality for condition variables
- * on Windows, which is not natively supported as it is in POSIX. It uses the
- * WaitForMultipleObjects function to wait on both "signal" and "broadcast" events
- * associated with the condition variable for a specified duration.
+ * on Windows, which is not natively supported as it is in POSIX. It waits on the
+ * condition variable's counting semaphore, which holds one permit per pending
+ * wakeup, for a specified duration.
  *
  * @param cond Pointer to the condition variable on which to wait. Must not be NULL.
  * @param mtx Pointer to the mutex associated with the condition variable. This mutex
@@ -638,17 +693,15 @@ int condition_broadcast(ThreadCondition *cond) {
  *         THREAD_TIMEOUT if the condition was not signaled before the timeout expired,
  *         THREAD_ERROR if an error occurred during waiting.
  *
- * @note This function increments the waiters count before waiting and decrements it
- *       after waiting. If the calling thread is the last waiter, it resets the
- *       "broadcast" event to non-signaled state to ensure correct behavior for future
- *       waits.
+ * @note This function increments the waiters count before waiting. A signal or
+ *       broadcast removes the woken waiters from the count when it posts their
+ *       permits; a waiter that times out without a permit removes itself.
  * @note The mutex associated with the condition variable is unlocked before entering
  *       the wait state and is locked again after the wait is completed, regardless of
  *       the outcome. This ensures that the mutex is held by the calling thread when
  *       this function returns.
  * @note The function handles the WAIT_TIMEOUT and WAIT_FAILED cases, returning
- *       appropriate error codes. It also takes care of properly resetting the
- *       "broadcast" event if the calling thread is the last waiter.
+ *       appropriate error codes.
  * @note It is important to handle the return values correctly in the calling context
  *       to ensure that the condition wait logic integrates seamlessly with the
  *       application's synchronization logic.
@@ -656,50 +709,42 @@ int condition_broadcast(ThreadCondition *cond) {
 #if defined(_TTHREAD_WIN32_)
 static int _cnd_timedwait_win32(ThreadCondition *cond, Mutex *mtx, DWORD timeout) {
   DWORD result;
-  int lastWaiter;
 
-  /* Increment number of waiters */
+  /* Count this thread as a waiter before releasing the mutex, so a signal
+     sent right after the unlock is not missed. */
   EnterCriticalSection(&cond->mWaitersCountLock);
   ++ cond->mWaitersCount;
   LeaveCriticalSection(&cond->mWaitersCountLock);
 
-  /* Release the mutex while waiting for the condition (will decrease
-     the number of waiters when done)... */
   mutex_unlock(mtx);
 
-  /* Wait for either event to become signaled due to cnd_signal() or
-     cnd_broadcast() being called */
-  result = WaitForMultipleObjects(2, cond->mEvents, false, timeout);
-  if (result == WAIT_TIMEOUT) {
-    /* The mutex is locked again before the function returns, even if an error occurred */
-    mutex_lock(mtx);
-    return THREAD_TIMEOUT;
-  }
-  else if (result == WAIT_FAILED) {
-    /* The mutex is locked again before the function returns, even if an error occurred */
-    mutex_lock(mtx);
-    return THREAD_ERROR;
-  }
+  /* Each signal/broadcast leaves one semaphore permit per woken waiter
+     (and removes those waiters from the count), so permits are never lost. */
+  result = WaitForSingleObject(cond->mSemaphore, timeout);
 
-  /* Check if we are the last waiter */
-  EnterCriticalSection(&cond->mWaitersCountLock);
-  -- cond->mWaitersCount;
-  lastWaiter = (result == (WAIT_OBJECT_0 + _CONDITION_EVENT_ALL)) && (cond->mWaitersCount == 0);
-  LeaveCriticalSection(&cond->mWaitersCountLock);
-
-  /* If we are the last waiter to be notified to stop waiting, reset the event */
-  if (lastWaiter) {
-    if (ResetEvent(cond->mEvents[_CONDITION_EVENT_ALL]) == 0) {
-      /* The mutex is locked again before the function returns, even if an error occurred */
-      mutex_lock(mtx);
-      return THREAD_ERROR;
+  int ret = THREAD_SUCCESS;
+  if (result != WAIT_OBJECT_0) {
+    /* Timed out (or failed). A signaller may have posted a permit for this
+       thread after the wait gave up: take it, and this counts as a wakeup.
+       Otherwise this thread is still counted as waiting and removes itself;
+       a timed-out waiter that stayed counted used to absorb later signals. */
+    EnterCriticalSection(&cond->mWaitersCountLock);
+    if (WaitForSingleObject(cond->mSemaphore, 0) == WAIT_OBJECT_0) {
+      ret = THREAD_SUCCESS;
     }
+    else {
+      if (cond->mWaitersCount > 0) {
+        -- cond->mWaitersCount;
+      }
+      ret = (result == WAIT_TIMEOUT) ? THREAD_TIMEOUT : THREAD_ERROR;
+    }
+    LeaveCriticalSection(&cond->mWaitersCountLock);
   }
 
-  /* Re-acquire the mutex */
+  /* The mutex is locked again before the function returns, even if an error occurred */
   mutex_lock(mtx);
 
-  return THREAD_SUCCESS;
+  return ret;
 }
 #endif
 
@@ -790,21 +835,19 @@ int condition_wait(ThreadCondition *cond, Mutex *mtx) {
 int condition_timedwait(ThreadCondition *cond, Mutex *mtx, const struct timespec *ts) {
   CONCURRENT_LOG("[condition_timedwait]: enter (cond=%p, mtx=%p, ts=%p)", (void*)cond, (void*)mtx, (void*)ts);
   #if defined(_TTHREAD_WIN32_)
-    struct timespec now;
-    if (timespec_get(&now, TIME_UTC) == TIME_UTC) {
-      unsigned long long nowInMilliseconds = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-      unsigned long long tsInMilliseconds  = ts->tv_sec * 1000 + ts->tv_nsec / 1000000;
-      DWORD delta = (tsInMilliseconds > nowInMilliseconds) ? (DWORD)(tsInMilliseconds - nowInMilliseconds) : 0;
+    int more;
+    DWORD delta = _cthread_ms_until(ts, &more);
 
-      CONCURRENT_LOG("[condition_timedwait]: win32 path, delta=%lu ms", (unsigned long)delta);
-      int out = _cnd_timedwait_win32(cond, mtx, delta);
-      CONCURRENT_LOG("[condition_timedwait]: exit -> %d", out);
-      return out;
+    CONCURRENT_LOG("[condition_timedwait]: win32 path, delta=%lu ms", (unsigned long)delta);
+    int out = _cnd_timedwait_win32(cond, mtx, delta);
+    if (out == THREAD_TIMEOUT && more) {
+      /* The deadline is further away than one maximal wait. Report a
+         wakeup (spurious wakeups are allowed): the caller re-checks its
+         predicate and waits again with the same deadline. */
+      out = THREAD_SUCCESS;
     }
-    else {
-      CONCURRENT_LOG("[condition_timedwait]: timespec_get failed -> THREAD_ERROR");
-      return THREAD_ERROR;
-    }
+    CONCURRENT_LOG("[condition_timedwait]: exit -> %d", out);
+    return out;
   #else
     int ret;
     CONCURRENT_LOG("[condition_timedwait]: posix pthread_cond_timedwait path");
@@ -886,26 +929,33 @@ static void NTAPI _cthread_tss_callback(PVOID h, DWORD dwReason, PVOID pv) {
 
 /*
 * This code snippet registers the _cthread_tss_callback function as a thread local storage (TLS) callback in Windows applications.
-* It uses compiler-specific pragmas and attributes to place the p_thread_callback variable in a specific section (.CRT$XLB)
+* It uses compiler-specific pragmas and attributes to place the cstd_p_thread_callback variable in a specific section (.CRT$XLB)
 * of the executable, ensuring that the callback is automatically called by the system during thread or process 
 * initialization and termination. 
 * This mechanism is crucial for properly managing thread-specific storage cleanup in C applications compiled with MSVC, 
 * especially across different architectures like x64 and x86.
 */
 #if defined(_MSC_VER)
+  /* x64: the callback pointer must be a const object for const_seg to place
+     it in .CRT$XLB (a non-const variable went to .data and was never
+     called), and the same pragma must be reset afterwards. The linker must
+     also keep the TLS directory and the pointer. */
   #ifdef _M_X64
+    #pragma comment(linker, "/INCLUDE:_tls_used")
+    #pragma comment(linker, "/INCLUDE:cstd_p_thread_callback")
     #pragma const_seg(".CRT$XLB")
-  #else
-    #pragma data_seg(".CRT$XLB")
-  #endif
-  PIMAGE_TLS_CALLBACK p_thread_callback = _cthread_tss_callback;
-  #ifdef _M_X64
-    #pragma data_seg()
-  #else
+    extern const PIMAGE_TLS_CALLBACK cstd_p_thread_callback;
+    const PIMAGE_TLS_CALLBACK cstd_p_thread_callback = _cthread_tss_callback;
     #pragma const_seg()
+  #else
+    #pragma comment(linker, "/INCLUDE:__tls_used")
+    #pragma comment(linker, "/INCLUDE:_cstd_p_thread_callback")
+    #pragma data_seg(".CRT$XLB")
+    PIMAGE_TLS_CALLBACK cstd_p_thread_callback = _cthread_tss_callback;
+    #pragma data_seg()
   #endif
 #else
-  PIMAGE_TLS_CALLBACK p_thread_callback __attribute__((section(".CRT$XLB"))) = _cthread_tss_callback;
+  PIMAGE_TLS_CALLBACK cstd_p_thread_callback __attribute__((section(".CRT$XLB"))) = _cthread_tss_callback;
 #endif
 
 #endif /* defined(_TTHREAD_WIN32_) */
@@ -1062,7 +1112,8 @@ unsigned long thread_current(void) {
 unsigned long thread_hardware_concurrency(void) {
     CONCURRENT_LOG("[thread_hardware_concurrency]: enter");
     #ifdef _TTHREAD_POSIX_
-      unsigned long n = sysconf(_SC_NPROCESSORS_ONLN);
+      long r = sysconf(_SC_NPROCESSORS_ONLN);
+      unsigned long n = (r > 0) ? (unsigned long)r : 0;   /* -1 (failure) used to become ULONG_MAX */
       CONCURRENT_LOG("[thread_hardware_concurrency]: exit -> %lu", n);
       return n;
     #elif defined(_TTHREAD_WIN32_)
@@ -1279,28 +1330,43 @@ int thread_sleep(const struct timespec *duration, struct timespec *remaining) {
       return -2;
     }
   #else
-    struct timespec start;
-    DWORD t;
-
-    timespec_get(&start, TIME_UTC);
-
-    t = SleepEx((DWORD)(duration->tv_sec * 1000 + duration->tv_nsec / 1000000 +
-                (((duration->tv_nsec % 1000000) == 0) ? 0 : 1)),
-                true);
-
-    if (t == 0) {
-      CONCURRENT_LOG("[thread_sleep]: exit -> 0 (completed)");
-      return 0;
+    /* Absolute deadline, slept toward in chunks below INFINITE: the old
+       single DWORD conversion wrapped for durations beyond ~49.7 days. */
+    struct timespec deadline;
+    timespec_get(&deadline, TIME_UTC);
+    deadline.tv_sec  += duration->tv_sec;
+    deadline.tv_nsec += duration->tv_nsec;
+    while (deadline.tv_nsec >= 1000000000L) {
+      deadline.tv_nsec -= 1000000000L;
+      deadline.tv_sec  += 1;
     }
-    else {
-      if (remaining != NULL) {
-        timespec_get(remaining, TIME_UTC);
-        remaining->tv_sec -= start.tv_sec;
-        remaining->tv_nsec -= start.tv_nsec;
 
+    for (;;) {
+      int more;
+      DWORD ms = _cthread_ms_until(&deadline, &more);
+      DWORD t = SleepEx(ms, true);
+      if (t == 0) {
+        if (more) {
+          continue;
+        }
+        CONCURRENT_LOG("[thread_sleep]: exit -> 0 (completed)");
+        return 0;
+      }
+
+      /* Interrupted by an APC: report the time still left, which is the
+         deadline minus now (it used to report the time already slept). */
+      if (remaining != NULL) {
+        struct timespec now;
+        timespec_get(&now, TIME_UTC);
+        remaining->tv_sec  = deadline.tv_sec - now.tv_sec;
+        remaining->tv_nsec = deadline.tv_nsec - now.tv_nsec;
         if (remaining->tv_nsec < 0) {
           remaining->tv_nsec += 1000000000;
           remaining->tv_sec -= 1;
+        }
+        if (remaining->tv_sec < 0) {
+          remaining->tv_sec = 0;
+          remaining->tv_nsec = 0;
         }
       }
 
@@ -1407,9 +1473,9 @@ int thread_specific_create(ThreadSpecific *key, ThreadSpecificDestructor dtor) {
  *       their associated data will not be automatically freed; it is the responsibility
  *       of the application to ensure that all thread-specific data is cleaned up before
  *       a key is deleted.
- * @note On POSIX systems, pthread_key_delete is used to delete the key. The POSIX
- *       implementation automatically invokes the destructor function for any non-NULL
- *       values associated with the key in any thread before the key is deleted.
+ * @note On POSIX systems, pthread_key_delete is used to delete the key. It does NOT
+ *       invoke the destructor for values still stored in any thread; free them (or let
+ *       their threads exit first) before deleting the key.
  * @note Care must be taken to ensure that thread_specific_delete is called at an
  *       appropriate time when no threads will be using the key, to avoid undefined behavior.
  */
@@ -1420,20 +1486,20 @@ void thread_specific_delete(ThreadSpecific key) {
     struct CThreadTSSData* prev = NULL;
 
     if (data != NULL) {
-      if (data == _cthread_tss_head) {
-        _cthread_tss_head = data->next;
+      /* Unlink the node from this thread's list before freeing it; a node
+         left linked was read and freed again by the exit-time cleanup. */
+      struct CThreadTSSData** link = &_cthread_tss_head;
+      while (*link != NULL && *link != data) {
+        prev = *link;
+        link = &(*link)->next;
       }
-      else {
-        prev = _cthread_tss_head;
-        if (prev != NULL) {
-          while (prev->next != data) {
-            prev = prev->next;
-          }
+      if (*link == data) {
+        *link = data->next;
+        if (data == _cthread_tss_tail) {
+          _cthread_tss_tail = prev;
         }
       }
-      if (data == _cthread_tss_tail) {
-        _cthread_tss_tail = prev;
-      }
+      TlsSetValue(key, NULL);
       free (data);
     }
     _cthread_tss_dtors[key] = NULL;
@@ -1510,9 +1576,9 @@ void *thread_specific_get(ThreadSpecific key) {
  *       structure with the key for the current thread. This mechanism allows the
  *       library to track and clean up thread-local data.
  * @note On POSIX systems, pthread_setspecific is used directly to associate the value
- *       with the key for the current thread. POSIX takes care of managing the storage
- *       and automatically invokes the destructor function for the old value if one is
- *       set.
+ *       with the key for the current thread. The previous value is simply replaced (its
+ *       destructor is not called); the destructor only runs for the value still stored
+ *       when the thread exits.
  * @note This function can fail on Windows if memory allocation for the new data
  *       structure fails or if TlsSetValue fails. On POSIX systems, failure can occur
  *       if pthread_setspecific encounters an error.
@@ -1532,22 +1598,22 @@ int thread_specific_set(ThreadSpecific key, void *val) {
       data->key = key;
       data->next = NULL;
 
-      if (_cthread_tss_tail != NULL) {
-        _cthread_tss_tail->next = data;
-      }
-      else {
-        _cthread_tss_tail = data;
-      }
-
-      if (_cthread_tss_head == NULL){
-          _cthread_tss_head = data;
-      }
-
       if (!TlsSetValue(key, data)){
           CONCURRENT_LOG("[thread_specific_set]: TlsSetValue failed -> THREAD_ERROR");
           free (data);
           return THREAD_ERROR;
       }
+
+      /* Append to this thread's list (walked at thread exit to run the
+         destructors). The tail must move to the new node, otherwise the
+         next append overwrites tail->next and orphans this node. */
+      if (_cthread_tss_tail != NULL) {
+        _cthread_tss_tail->next = data;
+      }
+      else {
+        _cthread_tss_head = data;
+      }
+      _cthread_tss_tail = data;
     }
     data->value = val;
   #else
@@ -1606,7 +1672,7 @@ int _tthread_timespec_get(struct timespec *ts, int base) {
 * ensuring that concurrent calls do not re-execute the already completed initialization code.
 */
 #if defined(_TTHREAD_WIN32_)
-void call_once(OnceFlag *flag, void (*func)(void)) {
+void cstd_call_once(OnceFlag *flag, void (*func)(void)) {
   CONCURRENT_LOG("[call_once]: enter (flag=%p, func=%p)", (void*)flag, (void*)(intptr_t)func);
   while (flag->status < 3) {
     switch (flag->status) {
@@ -1665,6 +1731,16 @@ int semaphore_init(Semaphore* sem, unsigned int initial_count) {
     return THREAD_ERROR;
   }
   return THREAD_SUCCESS;
+#elif defined(CSTD_SEMAPHORE_CONDVAR)
+  if (pthread_mutex_init(&sem->mutex, NULL) != 0) {
+    return THREAD_ERROR;
+  }
+  if (pthread_cond_init(&sem->cond, NULL) != 0) {
+    pthread_mutex_destroy(&sem->mutex);
+    return THREAD_ERROR;
+  }
+  sem->count = initial_count;
+  return THREAD_SUCCESS;
 #else
   if (sem_init(sem, 0, initial_count) != 0) {
     CONCURRENT_LOG("[semaphore_init]: sem_init failed -> THREAD_ERROR");
@@ -1691,6 +1767,16 @@ int semaphore_wait(Semaphore* sem) {
   }
 #if defined(_TTHREAD_WIN32_)
   return (WaitForSingleObject(*sem, INFINITE) == WAIT_OBJECT_0) ? THREAD_SUCCESS : THREAD_ERROR;
+#elif defined(CSTD_SEMAPHORE_CONDVAR)
+  if (pthread_mutex_lock(&sem->mutex) != 0) {
+    return THREAD_ERROR;
+  }
+  while (sem->count == 0) {
+    pthread_cond_wait(&sem->cond, &sem->mutex);
+  }
+  sem->count--;
+  pthread_mutex_unlock(&sem->mutex);
+  return THREAD_SUCCESS;
 #else
   int r;
   do {
@@ -1724,6 +1810,17 @@ int semaphore_trywait(Semaphore* sem) {
     return THREAD_BUSY;
   }
   return THREAD_ERROR;
+#elif defined(CSTD_SEMAPHORE_CONDVAR)
+  if (pthread_mutex_lock(&sem->mutex) != 0) {
+    return THREAD_ERROR;
+  }
+  int out = THREAD_BUSY;
+  if (sem->count > 0) {
+    sem->count--;
+    out = THREAD_SUCCESS;
+  }
+  pthread_mutex_unlock(&sem->mutex);
+  return out;
 #else
   if (sem_trywait(sem) == 0) {
     return THREAD_SUCCESS;
@@ -1751,6 +1848,14 @@ int semaphore_post(Semaphore* sem) {
   }
 #if defined(_TTHREAD_WIN32_)
   return ReleaseSemaphore(*sem, 1, NULL) ? THREAD_SUCCESS : THREAD_ERROR;
+#elif defined(CSTD_SEMAPHORE_CONDVAR)
+  if (pthread_mutex_lock(&sem->mutex) != 0) {
+    return THREAD_ERROR;
+  }
+  sem->count++;
+  pthread_cond_signal(&sem->cond);
+  pthread_mutex_unlock(&sem->mutex);
+  return THREAD_SUCCESS;
 #else
   return (sem_post(sem) == 0) ? THREAD_SUCCESS : THREAD_ERROR;
 #endif
@@ -1774,6 +1879,9 @@ void semaphore_destroy(Semaphore* sem) {
   }
 #if defined(_TTHREAD_WIN32_)
   CloseHandle(*sem);
+#elif defined(CSTD_SEMAPHORE_CONDVAR)
+  pthread_cond_destroy(&sem->cond);
+  pthread_mutex_destroy(&sem->mutex);
 #else
   sem_destroy(sem);
 #endif

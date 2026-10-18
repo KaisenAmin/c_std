@@ -314,7 +314,7 @@ Efficiently hand off a processed batch from one queue to another — for example
 ### `bool priority_queue_is_equal(const PriorityQueue* a, const PriorityQueue* b)`
 
 **Purpose**:  
-Returns `true` if both queues have identical heap storage layout (same size, same item size, same bytes). Two `NULL` pointers compare equal; a single `NULL` operand returns `false`.
+Returns `true` if both queues have the same heap storage layout: same size, same item size, and elements that the queue's comparator reports as equal, position by position. Two `NULL` pointers compare equal; a single `NULL` operand returns `false`.
 
 **Parameters**:  
 - `a`, `b`: Priority queues to compare. Either may be `NULL`.
@@ -346,7 +346,7 @@ Guard condition to detect when a queue has changed since a last checkpoint.
 ### `bool priority_queue_is_less(const PriorityQueue* a, const PriorityQueue* b)`
 
 **Purpose**:  
-Lexicographic less-than comparison of the underlying heap byte arrays.
+Lexicographic less-than comparison of the underlying heap arrays, comparing elements with the queue's comparator (it used to compare raw bytes, so `{256}` was less than `{1}`).
 
 **Parameters**:  
 - `a`, `b`: Priority queues to compare. Either may be `NULL` (returns `false`).
@@ -378,7 +378,7 @@ Range checks and ordering assertions on priority queues.
 ### `bool priority_queue_is_greater(const PriorityQueue* a, const PriorityQueue* b)`
 
 **Purpose**:  
-Lexicographic greater-than comparison of the underlying heap byte arrays.
+Lexicographic greater-than comparison of the underlying heap arrays, comparing elements with the queue's comparator.
 
 **Parameters**:  
 - `a`, `b`: Priority queues to compare. Either may be `NULL` (returns `false`).

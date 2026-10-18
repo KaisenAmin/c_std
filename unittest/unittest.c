@@ -32,8 +32,71 @@
  * single-threaded test runs.
  */
 
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "unittest.h"
+#include <stdarg.h>
 #include <time.h>
+
+#if defined(_WIN32)
+#include <windows.h>
+#include <io.h>
+#elif defined(__MACH__) && defined(__APPLE__)
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <unistd.h>
+#else
+#include <sys/time.h>
+#include <unistd.h>
+#endif
+
+#if defined(_MSC_VER)
+#define strdup _strdup   /* MSVC deprecates the POSIX name; same function */
+#endif
+
+
+/* See unittest.h: the assertion macros build their failure message here. */
+void unittest_set_failure(const char* func, const char* file, int line, const char* fallback,
+                          const char* fmt, ...) {
+    int n = snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: ",
+                     func ? func : "?", file ? file : "?", line);
+    if (n < 0) {
+        unittest_last_message[0] = '\0';
+        return;
+    }
+    size_t used = ((size_t)n < UNITTEST_MESSAGE_LEN) ? (size_t)n : UNITTEST_MESSAGE_LEN - 1;
+    if (fmt && fmt[0] == ' ') {
+        fmt++;   /* the marker space the assertion macros put in front */
+    }
+    if (!fmt || fmt[0] == '\0') {
+        if (fallback) {
+            snprintf(unittest_last_message + used, UNITTEST_MESSAGE_LEN - used, "%s", fallback);
+        }
+        return;
+    }
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(unittest_last_message + used, UNITTEST_MESSAGE_LEN - used, fmt, args);
+    va_end(args);
+}
+
+void unittest_append_failure(const char* fmt, ...) {
+    if (!fmt) {
+        return;
+    }
+    size_t used = strlen(unittest_last_message);
+    if (used >= UNITTEST_MESSAGE_LEN - 1) {
+        return;   /* already full (vsnprintf truncated it) */
+    }
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(unittest_last_message + used, UNITTEST_MESSAGE_LEN - used, fmt, args);
+    va_end(args);
+}
 
 
 /** @brief Global mock-call registry head. */
@@ -72,6 +135,7 @@ double unittest_real_timer = 0;
 double unittest_proc_timer = 0;
 
 char unittest_last_message[UNITTEST_MESSAGE_LEN];
+char unittest_skip_log[UNITTEST_SKIP_LOG_LEN];
 
 /* ---- Optional per-test setup/teardown hooks ---- */
 void (*unittest_setup)(void)    = NULL;
@@ -141,10 +205,13 @@ double unittest_timer_cpu(void) {
 #if defined(_WIN32)
     FILETIME createTime, exitTime, kernelTime, userTime;
     if (GetProcessTimes(GetCurrentProcess(), &createTime, &exitTime, &kernelTime, &userTime)) {
-        ULARGE_INTEGER userSysTime;
-        memcpy(&userSysTime, &userTime, sizeof(ULARGE_INTEGER));
+        ULARGE_INTEGER user, kernel;
+        user.LowPart    = userTime.dwLowDateTime;
+        user.HighPart   = userTime.dwHighDateTime;
+        kernel.LowPart  = kernelTime.dwLowDateTime;
+        kernel.HighPart = kernelTime.dwHighDateTime;
 
-        return (double)userSysTime.QuadPart / 1e7;
+        return (double)(user.QuadPart + kernel.QuadPart) / 1e7;   /* 100 ns units */
     }
     return -1.0;
 
@@ -248,7 +315,7 @@ void remove_memory_record(void* address) {
  * block leaks, but safe to invoke ad-hoc at any time — it does not
  * mutate the list.
  */
-void print_memory_leaks() {
+void print_memory_leaks(void) {
     MemoryRecord* current = memory_head;
     while (current) {
         printf("Memory leak detected: %zu bytes not freed. Allocated at %s:%d\n",
@@ -311,6 +378,15 @@ void unittest_free(void* ptr) {
  * @param args           Array of pointers, each treated as a C string.
  */
 void unittest_register_mock_call(const char* function_name, size_t arg_count, void** args) {
+    if (!function_name || (arg_count > 0 && !args)) {
+        return;
+    }
+    /* actual_args holds MAX_ARGS entries: apply the documented cap (more
+       arguments used to be written past the end of the array). */
+    if (arg_count > MAX_ARGS) {
+        arg_count = MAX_ARGS;
+    }
+
     // Determine current index for the function
     int index = 0;
     MockCall* current = mock_registry.head;
@@ -322,14 +398,31 @@ void unittest_register_mock_call(const char* function_name, size_t arg_count, vo
     }
 
     // Register the new call
-    MockCall* new_call = (MockCall*)malloc(sizeof(MockCall));
+    MockCall* new_call = (MockCall*)calloc(1, sizeof(MockCall));
+    if (!new_call) {
+        return;
+    }
     new_call->function_name = strdup(function_name);
+    if (!new_call->function_name) {
+        free(new_call);
+        return;
+    }
     new_call->call_count = index + 1;
     new_call->arg_count = arg_count;
     new_call->index = index; // Set the unique index
 
     for (size_t i = 0; i < arg_count; i++) {
-        new_call->actual_args[i] = strdup((const char*)args[i]);
+        /* A NULL argument is recorded as NULL (strdup(NULL) is undefined). */
+        new_call->actual_args[i] = args[i] ? strdup((const char*)args[i]) : NULL;
+        if (args[i] && !new_call->actual_args[i]) {
+            /* out of memory: don't record a call whose argument reads as NULL */
+            for (size_t k = 0; k < i; k++) {
+                free(new_call->actual_args[k]);
+            }
+            free(new_call->function_name);
+            free(new_call);
+            return;
+        }
     }
 
     new_call->next = mock_registry.head;
@@ -382,10 +475,14 @@ void unittest_verify_mock_call(const char* function_name, size_t arg_count, void
 
     for (size_t i = 0; i < arg_count; i++) {
         const char* actual_arg = (const char*)call->actual_args[i];
-        const char* expected_arg = (const char*)expected_args[i];
+        const char* expected_arg = expected_args ? (const char*)expected_args[i] : NULL;
 
-        if (strcmp(actual_arg, expected_arg) != 0) {
-            unittest_assert(false, "Argument %zu mismatch in '%s' at index %d: expected '%s', got '%s'", i, function_name, call_index, expected_arg, actual_arg);
+        /* NULL arguments are allowed and only match NULL (strcmp(NULL) crashed). */
+        bool same = (actual_arg && expected_arg) ? strcmp(actual_arg, expected_arg) == 0
+                                                 : actual_arg == expected_arg;
+        if (!same) {
+            unittest_assert(false, "Argument %zu mismatch in '%s' at index %d: expected '%s', got '%s'", i, function_name, call_index,
+                            expected_arg ? expected_arg : "(null)", actual_arg ? actual_arg : "(null)");
         }
     }
 }
@@ -449,8 +546,11 @@ void unittest_register_stub(const char* function_name, const char* arg, void* re
  */
 void* unittest_get_stub_return_value(const char* function_name, const char* arg) {
     for (int i = 0; i < stub_count; i++) {
-        if (strcmp(stub_registry[i].function_name, function_name) == 0 &&
-            strcmp(stub_registry[i].arg, arg) == 0) {
+        /* A stub may be registered with a NULL argument; NULL matches NULL
+           only (strcmp on it crashed). */
+        const char* stubArg = stub_registry[i].arg;
+        bool sameArg = (stubArg && arg) ? strcmp(stubArg, arg) == 0 : stubArg == arg;
+        if (function_name && strcmp(stub_registry[i].function_name, function_name) == 0 && sameArg) {
             return stub_registry[i].return_value;
         }
     }
@@ -469,6 +569,16 @@ void* unittest_get_stub_return_value(const char* function_name, const char* arg)
  *         if no entry matches.
  */
 MockCall* unittest_get_mock_call_by_index(const char* function_name, int call_index) {
+    if (call_index < 0) {
+        /* Most recent call: the highest occurrence index. */
+        MockCall* latest = NULL;
+        for (MockCall* m = mock_registry.head; m; m = m->next) {
+            if (strcmp(m->function_name, function_name) == 0 && (!latest || m->index > latest->index)) {
+                latest = m;
+            }
+        }
+        return latest;
+    }
     MockCall* current = mock_registry.head;
     while (current) {
         if (strcmp(current->function_name, function_name) == 0 && current->index == call_index) {
@@ -491,19 +601,34 @@ MockCall* unittest_get_mock_call_by_index(const char* function_name, int call_in
  *
  * @return Random integer in the inclusive range.
  */
+/* 64 random bits from rand(): RAND_MAX is only guaranteed to be 32767 (it is
+   on Windows), so take 15 bits per call. */
+static unsigned long long unittest_rand_u64(void) {
+    unsigned long long r = 0;
+    for (int i = 0; i < 5; ++i) {
+        r = (r << 15) ^ (unsigned long long)(rand() & 0x7FFF);
+    }
+    return r;
+}
+
 int unittest_generate_random_int(int min, int max) {
     // Guard against inverted range (would cause div-by-zero on max == min - 1
     // or a negative divisor on max < min). Swap so min <= max.
     if (max < min) {
         int t = min; min = max; max = t;
     }
-    
-    long long span = (long long)max - (long long)min + 1; // can't overflow int range
-    if (span <= 0) {
-        return min;
-    }
 
-    return min + (int)((unsigned long long)rand() % (unsigned long long)span);
+    unsigned long long span = (unsigned long long)((long long)max - (long long)min) + 1ULL;   /* 1 .. 2^32 */
+    /* Rejection sampling: drop the top partial block so every value is
+       equally likely (rand() % span could not even reach values above
+       RAND_MAX, and favoured small ones). */
+    unsigned long long limit = (~0ULL / span) * span;
+    unsigned long long r;
+    do {
+        r = unittest_rand_u64();
+    } while (r >= limit);
+
+    return (int)((long long)min + (long long)(r % span));
 }
 
 
@@ -511,7 +636,10 @@ int unittest_generate_random_int(int min, int max) {
  * @brief Uniformly-distributed pseudo-random `float` in `[min, max]`.
  */
 float unittest_generate_random_float(float min, float max) {
-    return min + ((float)rand() / RAND_MAX) * (max - min);
+    /* 24 random bits (a float's precision), not RAND_MAX+1 possible values */
+    double u = (double)(unittest_rand_u64() >> 40) / (double)((1ULL << 24) - 1);
+    float r = min + (float)(u * ((double)max - (double)min));
+    return r;
 }
 
 
@@ -519,7 +647,9 @@ float unittest_generate_random_float(float min, float max) {
  * @brief Uniformly-distributed pseudo-random `double` in `[min, max]`.
  */
 double unittest_generate_random_double(double min, double max) {
-    return min + ((double)rand() / RAND_MAX) * (max - min);
+    /* 53 random bits (a double's precision) */
+    double u = (double)(unittest_rand_u64() >> 11) / (double)((1ULL << 53) - 1);
+    return min + u * (max - min);
 }
 
 
@@ -634,7 +764,10 @@ void unittest_free_generated_data(void* data) {
  */
 void unittest_display_progress(int completed, int total) {
     int bar_width = 50;  // Width of the progress bar
-    float progress = (float)completed / total;
+    if (total < completed) {
+        total = completed;   /* a too-small total_tests showed "3/1 (300.00%)" */
+    }
+    float progress = total > 0 ? (float)completed / (float)total : 1.0f;
     int pos = (int)(bar_width * progress);
 
     printf("\rProgress: [");
@@ -694,6 +827,43 @@ void unittest_reset_state(void) {
     unittest_retry_count = 0;
     unittest_param     = NULL;
     unittest_last_message[0] = '\0';
+    unittest_skip_log[0] = '\0';
+}
+
+
+/**
+ * @brief Record a skipped test (used by `UNITTEST_SKIP`).
+ *
+ * Sets `unittest_last_message`, increments `unittest_skipped` and appends
+ * one line to `unittest_skip_log`, which `UNITTEST_REPORT` prints (it used
+ * to print only the last message, which could also be a later failure).
+ */
+void unittest_record_skip(const char* func, const char* file, int line, const char* reason) {
+    snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s skipped:\n\tFile: %s\n\tLine: %d\n\tReason: %s",
+             func, file, line, reason ? reason : "");
+    unittest_skipped++;
+    size_t used = strlen(unittest_skip_log);
+    if (used < UNITTEST_SKIP_LOG_LEN - 1) {
+        snprintf(unittest_skip_log + used, UNITTEST_SKIP_LOG_LEN - used, "%s: %s (%s:%d)\n",
+                 func, reason ? reason : "", file, line);
+    }
+}
+
+
+/**
+ * @brief Does @p path name an existing file or directory?
+ *
+ * Used by `unittest_assert_file_exists` / `_not_exists`.
+ */
+bool unittest_file_exists(const char* path) {
+    if (path == NULL) {
+        return false;
+    }
+#if defined(_WIN32)
+    return _access(path, 0) == 0;
+#else
+    return access(path, F_OK) == 0;
+#endif
 }
 
 

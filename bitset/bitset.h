@@ -20,17 +20,17 @@
 extern "C" {
 #endif
 
-/* Sentinel returned by `bitset_test`-style functions when the
- * position is out of range. */
+/* Legacy constant, kept for source compatibility. No function returns it:
+ * bitset_test reports an out-of-range position as `false`. */
 #define BITSET_OUT_OF_RANGE -1
 
 /* #define BITSET_LOGGING_ENABLE */
 
 #ifdef BITSET_LOGGING_ENABLE
-    #define BITSET_LOG(fmt, ...) \
-        do { fprintf(stderr, "[BITSET LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define BITSET_LOG(...) \
+        do { fprintf(stderr, "[BITSET LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
-    #define BITSET_LOG(fmt, ...) do { } while (0)
+    #define BITSET_LOG(...) do { } while (0)
 #endif
 
 
@@ -59,7 +59,7 @@ Bitset*             bitset_set                    (Bitset* bs, size_t pos, bool 
 Bitset*             bitset_reset                  (Bitset* bs, size_t pos);
 Bitset*             bitset_flip                   (Bitset* bs, size_t pos);
 Bitset*             bitset_flip_all               (Bitset* bs);
-void                bitset_set_from_string        (Bitset* bs, const char* bits);
+bool                bitset_set_from_string        (Bitset* bs, const char* bits);
 
 
 /* ------------------------------------------------------------------ */

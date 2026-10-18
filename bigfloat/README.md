@@ -10,8 +10,8 @@ The **BigFloat** library in C provides a powerful interface for performing arbit
 
 ## **Key Features**  
 
-- **Arbitrary-Precision Floating-Point Arithmetic** – Perform high-precision calculations with full control over precision and rounding.  
-- **Accurate Rounding** – Supports all IEEE 754 rounding modes (`MPFR_RNDN`, `MPFR_RNDZ`, `MPFR_RNDU`, `MPFR_RNDD`, and `MPFR_RNDA`).  
+- **Arbitrary-Precision Floating-Point Arithmetic** – Perform high-precision calculations; every value carries its own precision (`bigfloat_create_with_precision`, `bigfloat_set_precision`), and a result gets the larger precision of its operands.
+- **Accurate Rounding** – Every operation is correctly rounded to nearest (`MPFR_RNDN`) by MPFR. Other rounding modes are not exposed; call MPFR on `bf->value` directly for them.  
 - **Basic Arithmetic Operations** – Addition, subtraction, multiplication, division, and exponentiation.  
 - **Advanced Mathematical Functions** – Includes logarithms, exponentials, trigonometric functions, and more.  
 - **Conversion Utilities** – Convert BigFloats to and from string representations.  
@@ -20,7 +20,7 @@ The **BigFloat** library in C provides a powerful interface for performing arbit
 
 ### **A note on precision**
 
-`bigfloat_create` and `bigfloat_from_*` use MPFR's **default precision** (53 bits ≈ ~16 decimal digits — the same as `double`). The example outputs below were captured with elevated default precision. To get more digits, set the precision once at program start, *before* creating any `BigFloat`:
+`bigfloat_create` and `bigfloat_from_*` use MPFR's **default precision** (53 bits ≈ ~16 decimal digits — the same as `double`); `bigfloat_create_with_precision(bits)` makes a zero with any precision, and `bigfloat_set_precision` / `bigfloat_get_precision` change and read it. The result of an operation gets the **larger precision of its operands** (it used to get the global default, so 256-bit values were computed at 53 bits when the default was lower). The example outputs below were captured with elevated default precision. To get more digits everywhere, set the precision once at program start, *before* creating any `BigFloat`:
 
 ```c
 #include <mpfr.h>
@@ -76,15 +76,19 @@ Use the following command to compile your project using **MPFR**:
 gcc -std=c11 -O2 -o bigfloat_example bigfloat.c main.c -lmpfr -lgmp
 ```
 
-#### **If Using CMake:**  
+#### **If Using CMake:**
 
-Modify your **CMakeLists.txt** to link against **MPFR**:
+Use the module's own `bigfloat/CMakeLists.txt`, which finds MPFR and GMP (the old
+snippet here linked a target named `MPFR`, which does not exist on case-sensitive
+systems, and left out GMP):
 
 ```cmake
-add_library(bigfloat SHARED bigfloat.c)
-target_include_directories(bigfloat PUBLIC ${CMAKE_SOURCE_DIR}/bigfloat)
-target_link_libraries(bigfloat MPFR)
+add_subdirectory(path/to/c_std/bigfloat c_std_bigfloat)
+target_link_libraries(your_app PRIVATE c_std_bigfloat)
 ```
+
+or link the whole library with `target_link_libraries(your_app PRIVATE cstd)` (see the
+top-level README).
 
 ---
 ## Function Descriptions
@@ -93,7 +97,16 @@ target_link_libraries(bigfloat MPFR)
 **Purpose**: Creates a new `BigFloat` initialized to zero.
 **Parameters**: None.
 **Return Value**: A pointer to a new `BigFloat`, or `NULL` if memory allocation fails.
-**Usage Case**: Allocates memory for a `BigFloat` structure. Initializes the internal MPFR value (`mpfr_t`) to 0.0 using `mpfr_init`. Logs the creation if logging is enabled.
+**Usage Case**: Allocates memory for a `BigFloat` structure. Initializes the internal MPFR value (`mpfr_t`) with `mpfr_init` (MPFR's current default precision) and sets it to +0. Logs the creation if logging is enabled.
+
+---
+
+### `BigFloat* bigfloat_create_with_precision(mpfr_prec_t bits)`
+**Purpose**: Creates a new `BigFloat` initialized to zero with a precision of `bits` bits, independent of MPFR's default.
+**Return Value**: A pointer to the new `BigFloat`, or `NULL` if `bits` is outside `MPFR_PREC_MIN .. MPFR_PREC_MAX` or memory runs out.
+
+### `mpfr_prec_t bigfloat_get_precision(const BigFloat* a)` / `bool bigfloat_set_precision(BigFloat* a, mpfr_prec_t bits)`
+**Purpose**: Read a value's precision in bits (`0` for `NULL`), or change it, rounding the value to nearest (`false` for `NULL` or an invalid precision). Operations give their result the larger precision of their operands.
 
 ---
 
@@ -140,7 +153,7 @@ target_link_libraries(bigfloat MPFR)
 ### `BigFloat* bigfloat_divide(const BigFloat* a, const BigFloat* b)`
 **Purpose**: Computes the division of two `BigFloat` numbers (`a / b`).
 **Parameters**: `a`: A pointer to the numerator `BigFloat`. `b`: A pointer to the denominator `BigFloat`.
-**Return Value**: A pointer to a new `BigFloat` representing `a / b`, or `NULL` if `b` is zero or an error occurs.
+**Return Value**: A pointer to a new `BigFloat` representing `a / b`, or `NULL` if `b` is zero or an error occurs. A NaN divisor gives NaN (it used to be rejected as a division by zero; the same applies to `reciprocal`, `mod`, `fmod` and `log10`).
 **Usage Case**: If `b` is zero, logs an error and returns `NULL` (division by zero is undefined). Calls `bigfloat_create()` to allocate a result `BigFloat`. Uses `mpfr_div` to compute the quotient with rounding mode `MPFR_RNDN` (nearest). Logs the division process if logging is enabled.
 
 ---
@@ -196,8 +209,8 @@ target_link_libraries(bigfloat MPFR)
 ### `BigFloat* bigfloat_trig_tan(const BigFloat* a)`
 **Purpose**: Computes the tangent (`tan(a)`) of a `BigFloat` (angle in radians).
 **Parameters**: `a`: A pointer to the `BigFloat` representing the angle in radians.
-**Return Value**: A pointer to a new `BigFloat` representing `tan(a)`, or `NULL` on error (if `a` is a singularity point such as `π/2 + kπ`).
-**Usage Case**: Calls `bigfloat_create()` to allocate a result `BigFloat`. Uses `mpfr_tan` to compute the tangent with rounding mode `MPFR_RNDN` (nearest). If `a` is near a singularity (such as `π/2 + kπ`), logs a warning. Logs the computation process if logging is enabled.
+**Return Value**: A pointer to a new `BigFloat` representing `tan(a)`, or `NULL` only if `a` is `NULL` or memory runs out. `π/2 + kπ` is never exactly representable, so near those points the result is simply a very large (finite) value; `tan` of NaN or ±Inf is NaN.
+**Usage Case**: Allocates a result with the precision of `a`. Uses `mpfr_tan` to compute the tangent with rounding mode `MPFR_RNDN` (nearest). Logs the computation process if logging is enabled.
 
 ---
 
@@ -258,10 +271,10 @@ target_link_libraries(bigfloat MPFR)
 ---
 
 ### `BigFloat* bigfloat_mod(const BigFloat* a, const BigFloat* b)`
-**Purpose**: Computes the modulo (`a % b`) operation for `BigFloat` numbers.
+**Purpose**: Computes the **floored** modulo of `a` by `b`, like Python's `%`: the result has the sign of the divisor `b` (`-7 mod 3 = 2`, `7 mod -3 = -2`). For C's `fmod` (sign of the dividend: `fmod(-7, 3) = -1`) use `bigfloat_fmod`.
 **Parameters**: `a`: A pointer to the dividend `BigFloat`. `b`: A pointer to the divisor `BigFloat`.
-**Return Value**: A pointer to a new `BigFloat` representing `a % b`, or `NULL` if `b` is zero (division by zero).
-**Usage Case**: If `b` is zero, logs an error and returns `NULL`. Calls `bigfloat_create()` to allocate a result `BigFloat`. Uses `mpfr_fmod` to compute the remainder of `a / b`. Logs the computation if logging is enabled.
+**Return Value**: A pointer to a new `BigFloat` representing `a mod b`, or `NULL` if `b` is zero (division by zero).
+**Usage Case**: If `b` is zero, logs an error and returns `NULL`. Computes `mpfr_fmod(a, b)` and, when that remainder is non-zero and its sign differs from `b`'s, adds `b`. Logs the computation if logging is enabled.
 
 ---
 
@@ -306,17 +319,17 @@ target_link_libraries(bigfloat MPFR)
 ---
 
 ### `char* bigfloat_to_string(const BigFloat* a)`
-**Purpose**: Converts a `BigFloat` to a decimal string representation.
+**Purpose**: Converts a `BigFloat` to a decimal string representation: fixed notation with 50 decimals (e.g. `1.50000000000000000000000000000000000000000000000000`), except for non-zero values smaller than about `1e-6`, which use scientific notation with 51 significant digits (`1e-60` at the default 53-bit precision prints as `9.99999999999999970433463913134255209226123025818521e-61`, the exact binary value). Tiny values used to print as `0.000…0` and so did not survive a `to_string` / `from_string` round trip.
 **Parameters**: `a`: A pointer to the `BigFloat` to be converted.
 **Return Value**: A dynamically allocated string containing the decimal representation of `a`, or `NULL` on error.
-**Usage Case**: Calls `mpfr_get_str` to obtain a decimal string. Allocates and formats the output string. Logs the conversion if logging is enabled. The caller is responsible for freeing the returned string.
+**Usage Case**: Formats with `mpfr_asprintf`. The caller is responsible for freeing the returned string with `free`.
 
 ---
 
 ### `int bigfloat_compare(const BigFloat* a, const BigFloat* b)`
 **Purpose**: Compares two `BigFloat` values to determine their relative order.
 **Parameters**: `a`: A pointer to the first `BigFloat`. `b`: A pointer to the second `BigFloat`.
-**Return Value**: `-1` if `a < b`, `0` if `a == b`, `1` if `a > b`.
+**Return Value**: `-1` if `a < b`, `0` if `a == b`, `1` if `a > b`. NaN is ordered after every number and equals only NaN (it used to compare equal to everything).
 **Usage Case**: Uses `mpfr_cmp` to compare the two `BigFloat` values. Logs the comparison result if logging is enabled.
 
 ---
@@ -332,7 +345,7 @@ target_link_libraries(bigfloat MPFR)
 ### `bool bigfloat_is_zero(const BigFloat* a)`
 **Purpose**: Checks if a `BigFloat` is exactly zero.
 **Parameters**: `a`: A pointer to the `BigFloat` value to check.
-**Return Value**: `true` if `a == 0.0`, `false` otherwise.
+**Return Value**: `true` if `a` is +0 or -0, `false` otherwise (including NaN, which used to count as zero).
 **Usage Case**: Uses `mpfr_zero_p` to check if the value is zero. Logs the check result if logging is enabled.
 
 ---

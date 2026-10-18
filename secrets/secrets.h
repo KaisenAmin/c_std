@@ -25,8 +25,8 @@ extern "C" {
 /* #define SECRETS_LOGGING_ENABLE */
 
 #ifdef SECRETS_LOGGING_ENABLE
-    #define SECRETS_LOG(fmt, ...) \
-        do { fprintf(stderr, "[SECRETS LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define SECRETS_LOG(...) \
+        do { fprintf(stderr, "[SECRETS LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define SECRETS_LOG(...) do { } while (0)
 #endif
@@ -39,6 +39,7 @@ extern "C" {
 int           secrets_randbelow          (int n);
 size_t        secrets_randbelow_size     (size_t n);
 unsigned int  secrets_randbits           (int k);
+bool          secrets_randbits_checked   (int k, unsigned int* out);
 
 
 /* ------------------------------------------------------------------ */
@@ -48,6 +49,11 @@ unsigned int  secrets_randbits           (int k);
 bool          secrets_token_bytes        (unsigned char* buffer, size_t nbytes);
 void          secrets_token_hex          (char* buffer, size_t nbytes);
 void          secrets_token_urlsafe      (char* buffer, size_t nbytes);
+bool          secrets_token_urlsafe_b64  (char* buffer, size_t buffer_size, size_t nbytes);
+
+/* Characters secrets_token_urlsafe_b64 writes for `nbytes` random bytes
+   (unpadded base64url); the buffer needs one more for the NUL. */
+#define SECRETS_URLSAFE_B64_LEN(nbytes) ((((size_t)(nbytes)) * 4 + 2) / 3)
 bool          secrets_token_from_alphabet(char* buffer, size_t length, const char* alphabet);
 
 

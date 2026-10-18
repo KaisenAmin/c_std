@@ -12,10 +12,11 @@ The Span library is a custom C implementation inspired by the C++ `std::span` co
   - `Span span_view(...)` — value-type constructor, no heap (closest to `std::span`).
   - `Span* span_create(...)` — heap-allocated wrapper, retained for backward compatibility.
 - **`std::span`-style sizing:** `span_size()` returns the **element count**. Use `span_size_bytes()` for the byte count.
-- **Bounds-checked access** via `span_at()`, with explicit `SpanError` reporting on failure.
+- **Bounds-checked access** via `span_at()`, which returns `NULL` for an out-of-range index.
 - **Subviews** (`span_first`, `span_last`, `span_subspan`) return non-owning views by value.
 - **Iterators** (`span_begin/end`, `span_rbegin/rend`, `span_increment/decrement`) with `NULL` as the safe reverse-end sentinel (no undefined-behaviour pointer arithmetic).
-- **Library code never calls `exit()`** — failures set `span_last_error`.
+- **Library code never calls `exit()`** — every function reports failure through its return value (`NULL`, an empty span, `false`); there is no global error state.
+- **Comparisons:** `span_is_less` and the other ordering tests need spans with the same element size; spans of different element sizes are unordered (all ordering tests `false`, `span_is_not_equal` `true`).
 
 ## Usage
 To use the Span library, include the `span.h` header file in your C source file.
@@ -49,12 +50,11 @@ Some examples also depend on the `vector` module; if so, add `./vector/vector.c`
 ---
 
 ### Function Descriptions
-ُ
 
 ### `Span span_view(void* data, size_t elemCount, size_t elemSize)`
   - **Purpose**: Creates a non-owning view as a value (closest to `std::span`). No heap allocation, no copy.
   - **Parameters**: `data` (pointer to externally-owned storage), `elemCount`, `elemSize`.
-  - **Returns**: A `Span` value. Returns an empty span on invalid arguments (and sets `span_last_error`).
+  - **Returns**: A `Span` value. Returns an empty span on invalid arguments.
   - **Use case**: Preferred when you don't need a heap-allocated wrapper. Pass spans by value.
 
 ---
@@ -62,7 +62,7 @@ Some examples also depend on the `vector` module; if so, add `./vector/vector.c`
 ### `Span* span_create(void* data, size_t elemCount, size_t elemSize)`
   - **Purpose**: Heap-allocated wrapper around a non-owning view. The data is **not** copied. Passing `data == NULL` with `elemCount == 0` creates a valid empty span.
   - **Parameters**: `data`, `elemCount`, `elemSize`.
-  - **Returns**: A pointer to a newly allocated `Span`, or `NULL` on allocation failure / invalid arguments (sets `span_last_error`).
+  - **Returns**: A pointer to a newly allocated `Span`, or `NULL` on allocation failure / invalid arguments.
   - **Use case**: When you want a long-lived `Span` you can pass around by pointer. The underlying data continues to be managed by its original owner.
 
 ---
@@ -129,19 +129,19 @@ Some examples also depend on the `vector` module; if so, add `./vector/vector.c`
 ---
 
 ### `void* span_rend(Span* span)`**
-  - **Purpose**: Returns a reverse iterator pointing to one before the first element in the span.
+  - **Purpose**: Returns the reverse-end sentinel. It is always `NULL` (a pointer one before the first element would be undefined behaviour to form); `span_decrement` returns `NULL` when it steps past the first element, so `ptr != span_rend(span)` ends a reverse loop.
   - **Parameters**:
-    - `span`: The span to operate on.
-  - **Returns**: A pointer to one before the first element.
+    - `span`: The span to operate on (not used).
+  - **Returns**: `NULL`.
   - **Use case**: Used to define the end of reverse iteration.
 
 ---
 
 ### `const void* span_crend(const Span* span)`**
-  - **Purpose**: Returns a constant reverse iterator pointing to one before the first element in the span.
+  - **Purpose**: The read-only reverse-end sentinel; always `NULL`, like `span_rend`.
   - **Parameters**:
-    - `span`: The span to operate on.
-  - **Returns**: A constant pointer to one before the first element.
+    - `span`: The span to operate on (not used).
+  - **Returns**: `NULL`.
   - **Use case**: Used to define the end of reverse iteration in a read-only context.
 
 ---
@@ -223,6 +223,15 @@ Some examples also depend on the `vector` module; if so, add `./vector/vector.c`
 
 ---
 
+### `void span_set_compare(Span* span, SpanCompareFunc compare)`
+  - **Purpose**: Sets the element comparator (`int (*)(const void*, const void*)`, qsort convention) used by `span_is_equal`, `span_is_less` and the other comparisons. Without one the spans' bytes are compared, which is not the numeric order of `int`, negative or floating-point elements (`{256}` sorted before `{1}`). `span_first`, `span_last` and `span_subspan` keep the comparator; when only one of two spans has one (and the element sizes match), it is used.
+  - **Parameters**:
+    - `span`: The span (NULL is ignored).
+    - `compare`: The comparator, or `NULL` for byte comparison.
+  - **Returns**: Nothing.
+
+---
+
 ### `bool span_is_equal(const Span* span1, const Span* span2)`
   - **Purpose**: Checks if two spans are equal (based on element comparison).
   - **Parameters**:
@@ -234,7 +243,7 @@ Some examples also depend on the `vector` module; if so, add `./vector/vector.c`
 ---
 
 ### `bool span_is_less(const Span* span1, const Span* span2)`
-  - **Purpose**: Checks if the first span is less than the second span (lexicographically).
+  - **Purpose**: Checks if the first span is less than the second span (lexicographically), comparing elements with the comparator from `span_set_compare`, or the bytes without one.
   - **Parameters**:
     - `span1`: The first span.
     - `span2`: The second span.
@@ -323,7 +332,7 @@ Some examples also depend on the `vector` module; if so, add `./vector/vector.c`
 
 ### Examples 
 
-### Example 1: Using `span_create` with Data Copy
+### Example 1: Using `span_create` (a view: the data is not copied)
 
 This example demonstrates how to create a span from an array of integers and access its elements.
 

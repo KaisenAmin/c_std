@@ -48,7 +48,7 @@ contract; consult the source for full semantics and platform notes.
   - `thr`: Pointer to a `Thread` handle that receives the new thread on success.
   - `func`: Entry-point function of type `ThreadStart` (`int (*)(void*)`).
   - `arg`: Opaque argument forwarded unchanged to `func`.
-**Return Value**: `THREAD_SUCCESS` on success; on failure `*thr` is left untouched and an error code is returned.
+**Return Value**: `THREAD_SUCCESS` on success; on failure an error code is returned and `*thr` is reset (`NULL` on Windows, `0` on POSIX), so it must not be joined or detached.
 **Usage Case**: Use to launch independent units of work; pair with `thread_join` or `thread_detach` depending on whether you need the result.
 
 ---
@@ -86,7 +86,7 @@ contract; consult the source for full semantics and platform notes.
 **Purpose**: Return a numeric identifier for the calling thread.
 **Parameters**: None.
 **Return Value**: The current thread's ID (`GetCurrentThreadId` on Windows, `pthread_self` cast on POSIX).
-**Usage Case**: Use for logging, debugging, or constructing per-thread keys without a full TLS key allocation.
+**Usage Case**: Use for logging, debugging, or constructing per-thread keys without a full TLS key allocation. The value is a plain number, not a `Thread` handle: it cannot be passed to `thread_join`, `thread_detach` or `thread_equal`.
 
 ---
 
@@ -94,9 +94,9 @@ contract; consult the source for full semantics and platform notes.
 **Purpose**: Suspend the calling thread for at least the duration specified by `duration`.
 **Parameters**:
   - `duration`: Pointer to a `timespec` holding the sleep length (seconds + nanoseconds).
-  - `remaining`: If the sleep is interrupted early (POSIX only), the unslept time is written here. May be NULL.
+  - `remaining`: If the sleep is interrupted early (a signal on POSIX, an APC on Windows), the unslept time is written here. May be NULL.
 **Return Value**: Zero on success, `-1` if interrupted, other negative values on error.
-**Usage Case**: Use for rate-limiting, polling loops, or simulating latency in tests. The while-loop pattern (`while (thread_sleep(&dur, &rem)) dur = rem;`) handles POSIX signal interruptions.
+**Usage Case**: Use for rate-limiting, polling loops, or simulating latency in tests. The while-loop pattern (`while (thread_sleep(&dur, &rem) == -1) dur = rem;`) resumes after interruptions.
 
 ---
 
@@ -121,7 +121,7 @@ contract; consult the source for full semantics and platform notes.
 **Purpose**: Query the number of hardware threads (logical CPU cores) available to the process.
 **Parameters**: None.
 **Return Value**: The hardware thread count, or `0` if the value cannot be determined.
-**Usage Case**: Use to size a thread pool to match the machine — `thread_pool_create((int)thread_hardware_concurrency())`.
+**Usage Case**: Use to size a thread pool to match the machine — `thread_pool_create((int)thread_hardware_concurrency())`; fall back to a fixed count when it returns `0`.
 
 ---
 
@@ -150,7 +150,7 @@ contract; consult the source for full semantics and platform notes.
 **Purpose**: Attempt to acquire the mutex without blocking.
 **Parameters**:
   - `mutex`: Pointer to an initialised `Mutex`.
-**Return Value**: `THREAD_SUCCESS` if the mutex was acquired, `THREAD_BUSY` if another thread already holds it.
+**Return Value**: `THREAD_SUCCESS` if the mutex was acquired, `THREAD_BUSY` if another thread already holds it. A `MUTEX_RECURSIVE` mutex already held by the caller is re-entered (`THREAD_SUCCESS`, one more `mutex_unlock` needed); a non-recursive one held by the caller reports `THREAD_BUSY`.
 **Usage Case**: Use in non-blocking polling loops — check `THREAD_BUSY` and retry later or fall back to alternative work rather than blocking the thread.
 
 ---
@@ -185,7 +185,7 @@ contract; consult the source for full semantics and platform notes.
 
 ### Semaphores
 
-A counting semaphore tracks a number of interchangeable tokens (resources). `semaphore_wait` takes one (blocking when none remain); `semaphore_post` returns one. Backed by `CreateSemaphore` on Windows and `sem_t` on POSIX.
+A counting semaphore tracks a number of interchangeable tokens (resources). `semaphore_wait` takes one (blocking when none remain); `semaphore_post` returns one. Backed by `CreateSemaphore` on Windows and `sem_t` on POSIX. macOS has no unnamed POSIX semaphores, so there (or anywhere `CSTD_SEMAPHORE_CONDVAR` is defined) `Semaphore` is built from a mutex and a condition variable with the same API.
 
 ### `int semaphore_init(Semaphore* sem, unsigned int initial_count)`
 **Purpose**: Initialise a counting semaphore with `initial_count` available tokens.
@@ -391,7 +391,7 @@ A read-write lock (`RWLock`) lets **many threads read shared data at once**, but
 ---
 
 ### `void thread_specific_delete(ThreadSpecific key)`
-**Purpose**: Release the TLS key itself. Per-thread destructors are NOT re-run.
+**Purpose**: Release the TLS key itself. No destructor runs for values still stored in other threads (on any platform) — free them before deleting the key.
 **Parameters**:
   - `key`: The TLS key to release.
 **Return Value**: None.
@@ -408,6 +408,8 @@ A read-write lock (`RWLock`) lets **many threads read shared data at once**, but
   - `func`: Void function to invoke on the first call.
 **Return Value**: None.
 **Usage Case**: Use to lazily initialise shared resources (global caches, singletons, loaded libraries) in a thread-safe way without explicit locking at every call site.
+
+**C11 `<threads.h>` names**: C11 uses the same names (`call_once`, `ONCE_FLAG_INIT`). The prefixed forms `concurrent_call_once(flag, func)` and `CSTD_ONCE_FLAG_INIT` are always available and never clash. The short names are defined as aliases unless `<threads.h>` was included first, or `CSTD_NO_C11_NAMES` is defined — define it when a file includes `<threads.h>` *after* `concurrent.h`.
 
 ---
 
@@ -443,7 +445,7 @@ A read-write lock (`RWLock`) lets **many threads read shared data at once**, but
 ---
 
 ### `void thread_pool_destroy(ThreadPool* pool)`
-**Purpose**: Signal workers to stop (in-flight tasks finish first; queued tasks are discarded), join all threads, and free all pool resources.
+**Purpose**: Signal workers to stop (in-flight tasks finish first; queued tasks are discarded), join all threads, and free all pool resources. Tasks submitted while the pool is shutting down are refused (`thread_pool_add_task_checked` returns `false`).
 **Parameters**:
   - `pool`: The pool to destroy. NULL is a no-op.
 **Return Value**: None.
@@ -457,7 +459,7 @@ A read-write lock (`RWLock`) lets **many threads read shared data at once**, but
   - `pool`: Pool created by `thread_pool_create`.
   - `function`: Function to invoke on a worker.
   - `arg`: Opaque argument forwarded to `function` (keep it alive until the task finishes).
-**Return Value**: `true` if the task was enqueued; `false` on a NULL pool/function or allocation failure.
+**Return Value**: `true` if the task was enqueued; `false` on a NULL pool/function, allocation failure, or when the pool is being destroyed.
 **Usage Case**: **Prefer this in production** so you can apply back-pressure or surface an error when a task cannot be accepted.
 
 ---
@@ -481,7 +483,7 @@ A read-write lock (`RWLock`) lets **many threads read shared data at once**, but
 ---
 
 ### `int thread_pool_thread_count(ThreadPool* pool)`
-**Purpose**: Number of worker threads actually running. Usually equals the count requested at creation, but can be smaller if some threads failed to start. Fixed for the pool's lifetime.
+**Purpose**: Number of worker threads running. Always equals the count requested at creation (`thread_pool_create` returns NULL if any worker fails to start). Fixed for the pool's lifetime.
 **Parameters**:
   - `pool`: The pool to query. NULL → 0.
 **Return Value**: Number of live worker threads.
@@ -493,7 +495,7 @@ A read-write lock (`RWLock`) lets **many threads read shared data at once**, but
 **Purpose**: Like `thread_pool_wait`, but bounded — returns `false` if the deadline passes while tasks are still outstanding, so a stuck task can't hang a graceful shutdown forever.
 **Parameters**:
   - `pool`: Pool to wait on. NULL → `true` (nothing to wait for).
-  - `timeout_ms`: Maximum time to wait, in milliseconds.
+  - `timeout_ms`: Maximum time to wait, in milliseconds (negative is treated as `0`). Measured on a monotonic clock, so wall-clock changes do not stretch or shorten it.
 **Return Value**: `true` if the pool drained (no pending tasks); `false` on timeout.
 **Usage Case**: Graceful shutdown with a deadline — wait for in-flight work, but don't block indefinitely on a hung task.
 
@@ -1852,7 +1854,7 @@ sum of items: 28000 (expected 28000)
 #define ROUNDS    1000
 #define K_KEYS    4
 
-static int compare_ints(const KeyType a, const KeyType b) {
+static int compare_ints(const void* a, const void* b) {
     return *(const int*)a - *(const int*)b;
 }
 
@@ -1948,7 +1950,7 @@ total increments: 32000 (expected 32000)
 #define READ_ITERS 2000
 
 
-static int compare_ints(const KeyType a, const KeyType b) {
+static int compare_ints(const void* a, const void* b) {
     return *(const int*)a - *(const int*)b;
 }
 

@@ -1,10 +1,29 @@
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "udp.h"
 #include "../concurrent/concurrent.h"
 #include <string.h>
 #include <stdio.h>
 
+#include <limits.h>
+#include <stdlib.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <iphlpapi.h>     /* if_nametoindex() (Vista+) */
+#endif
+
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;   /* MinGW and POSIX provide ssize_t; MSVC does not */
+#endif
+
 #if !defined(_WIN32) && !defined(_WIN64)
-#include <sys/select.h>   /* select(), fd_set, FD_* — udp_wait_readable */
+#include <errno.h>
+#include <poll.h>         /* poll() — udp_wait_readable/writable        */
 #include <sys/ioctl.h>    /* ioctl(), FIONREAD — udp_bytes_available    */
 #endif
 
@@ -18,11 +37,92 @@
 // keyword goes BEFORE `static` — placing the MSVC/GCC vendor-specific
 static _Thread_local UdpStatusInfo udp_last_error;
 
-// Mutex for any global state (mainly for WSAStartup/cleanup refcount)
-static Mutex udp_mutex;
+// Mutex for any global state (mainly for WSAStartup/cleanup refcount).
+// Initialized exactly once by udp_lock(): udp_cleanup before udp_init used
+// to lock an uninitialized mutex (crash on Windows), and the old plain
+// "initialized" flag raced when two threads called udp_init at once.
+static Mutex    udp_mutex;
+static OnceFlag udp_mutex_once = CSTD_ONCE_FLAG_INIT;
+static void udp_mutex_init_once(void) {
+    mutex_init(&udp_mutex, MUTEX_PLAIN);
+}
+static void udp_lock(void) {
+    concurrent_call_once(&udp_mutex_once, udp_mutex_init_once);
+    mutex_lock(&udp_mutex);
+}
 #if defined(_WIN32) || defined(_WIN64)
 static int udp_wsa_refcount = 0;   /* Windows-only: WSAStartup/WSACleanup balance */
 #endif
+
+/* Receives one datagram. Returns the byte count stored in `buf` (>= 0) or -1
+   on error; *truncated is set when the datagram was larger than `len` (its
+   first `len` bytes are in `buf`). Windows reports that as WSAEMSGSIZE (it
+   used to become a plain receive error with 0 bytes) and POSIX recvfrom
+   truncated silently; recvmsg's MSG_TRUNC flag tells us there. */
+static long udp_recv_dgram(UdpSocket socket, void* buf, size_t len,
+                           struct sockaddr_storage* addr, socklen_t* addrlen, bool* truncated) {
+    *truncated = false;
+#if defined(_WIN32) || defined(_WIN64)
+    int n = recvfrom(socket, (char*)buf, (int)len, 0, (struct sockaddr*)addr, addrlen);
+    if (n == SOCKET_ERROR) {
+        if (WSAGetLastError() == WSAEMSGSIZE) {
+            *truncated = true;
+            return (long)len;
+        }
+        return -1;
+    }
+    return (long)n;
+#else
+    struct iovec iov;
+    struct msghdr msg;
+    memset(&msg, 0, sizeof msg);
+    iov.iov_base = buf;
+    iov.iov_len  = len;
+    msg.msg_name    = addr;
+    msg.msg_namelen = *addrlen;
+    msg.msg_iov     = &iov;
+    msg.msg_iovlen  = 1;
+    ssize_t n;
+    do {
+        n = recvmsg(socket, &msg, 0);
+    } while (n < 0 && errno == EINTR);
+    if (n < 0) {
+        return -1;
+    }
+    *addrlen = msg.msg_namelen;
+    if (msg.msg_flags & MSG_TRUNC) {
+        *truncated = true;
+    }
+    return (long)n;
+#endif
+}
+
+/* IPv6 multicast interface: a name ("eth0"; on Windows the interface alias)
+   or a numeric index ("12"); empty/NULL = let the OS choose. Returns false
+   for an unknown interface - it used to be ignored on Windows and turned
+   into index 0 (the default interface) on POSIX, so the join went to the
+   wrong interface without an error. */
+static bool udp_iface_index(const char* iface, unsigned int* out) {
+    *out = 0;
+    if (!iface || !*iface) {
+        return true;
+    }
+    char* end = NULL;
+    unsigned long v = strtoul(iface, &end, 10);
+    if (end != iface && *end == '\0') {
+        if (v > UINT_MAX) {
+            return false;
+        }
+        *out = (unsigned int)v;
+        return true;
+    }
+    unsigned int idx = if_nametoindex(iface);
+    if (idx == 0) {
+        return false;
+    }
+    *out = idx;
+    return true;
+}
 
 // Internal: set last error
 static void udp_set_last_error(UdpStatus code, int sys_errno, const char* msg) {
@@ -130,14 +230,8 @@ static int udp_resolve_sockaddr(const char* host, unsigned short port, struct so
  * @return `UDP_SUCCESS`, or `UDP_ERR_SETUP` if `WSAStartup` fails on Windows.
  */
 UdpStatus udp_init(void) {
-    static int mutex_initialized = 0;
-
-    if (!mutex_initialized) {
-        mutex_init(&udp_mutex, MUTEX_PLAIN);
-        mutex_initialized = 1;
-    }
     UDP_LOG("udp_init() called");
-    mutex_lock(&udp_mutex);
+    udp_lock();
 
 #if defined(_WIN32) || defined(_WIN64)
     if (udp_wsa_refcount == 0) {
@@ -172,7 +266,7 @@ UdpStatus udp_init(void) {
  */
 UdpStatus udp_cleanup(void) {
     UDP_LOG("udp_cleanup() called");
-    mutex_lock(&udp_mutex);
+    udp_lock();
 
 #if defined(_WIN32) || defined(_WIN64)
     if (udp_wsa_refcount > 0) {
@@ -210,7 +304,9 @@ UdpStatus udp_socket_create(UdpSocket* sock) {
     }
 
 #if defined(_WIN32) || defined(_WIN64)
-    *sock = WSASocket(AF_INET6, SOCK_DGRAM, 0, NULL, 0, 0);
+    /* WSA_FLAG_OVERLAPPED: without it Winsock ignores SO_RCVTIMEO/SO_SNDTIMEO,
+       so udp_set_timeout would succeed and blocking recvfrom never time out. */
+    *sock = WSASocket(AF_INET6, SOCK_DGRAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
     if (*sock == UDP_INVALID_SOCKET) {
         udp_set_last_error_sys(UDP_ERR_SOCKET);
         UDP_LOG("Socket create failed: %d", WSAGetLastError());
@@ -342,7 +438,17 @@ UdpStatus udp_sendto(UdpSocket socket, const void* buf, size_t len, size_t* sent
         return UDP_ERR_RESOLVE;
     }
 
+#if defined(_WIN32) || defined(_WIN64)
+    /* Winsock takes an int length: refuse what does not fit (no datagram is
+       that large; the (int) conversion would have sent a wrong length). */
+    if (len > (size_t)INT_MAX) {
+        udp_set_last_error(UDP_ERR_SEND, 0, "Datagram too large");
+        return UDP_ERR_SEND;
+    }
+    int n = sendto(socket, (const char*)buf, (int)len, 0, (struct sockaddr*)&addr, (int)addrlen);
+#else
     ssize_t n = sendto(socket, buf, len, 0, (struct sockaddr*)&addr, addrlen);
+#endif
     if (n < 0) {
         udp_set_last_error_sys(UDP_ERR_SEND);
         UDP_LOG("Sendto failed: %d", errno);
@@ -392,7 +498,8 @@ UdpStatus udp_recvfrom(UdpSocket socket, void* buf, size_t len, size_t* received
 
     struct sockaddr_storage addr;
     socklen_t addrlen = sizeof(addr);
-    ssize_t n = recvfrom(socket, buf, len, 0, (struct sockaddr*)&addr, &addrlen);
+    bool truncated = false;
+    long n = udp_recv_dgram(socket, buf, len, &addr, &addrlen, &truncated);
 
     if (n < 0) {
 #if defined(_WIN32) || defined(_WIN64)
@@ -455,8 +562,9 @@ UdpStatus udp_recvfrom(UdpSocket socket, void* buf, size_t len, size_t* received
     }
 
     UDP_LOG("Recvfrom %s:%u %zu bytes", src_host ? src_host : "?", src_port ? *src_port : 0, received ? *received : 0);
-    if (buf && received && *received > 0) {
-        UDP_LOG("Buffer null-terminated at %zu", *received);
+    if (truncated) {
+        udp_set_last_error(UDP_ERR_BUFFER_TOO_SMALL, 0, "Datagram larger than the buffer (truncated)");
+        return UDP_ERR_BUFFER_TOO_SMALL;
     }
 
     return UDP_SUCCESS;
@@ -663,15 +771,12 @@ UdpStatus udp_join_multicast_group(UdpSocket socket, const char* group_addr, con
             udp_set_last_error(UDP_ERR_GENERIC, 0, "Invalid IPv6 multicast address");
             return UDP_ERR_GENERIC;
         }
-        mreq6.ipv6mr_interface = 0;
-        if (iface_addr && *iface_addr) {
-            // convert iface_addr to index
-#if defined(_WIN32) || defined(_WIN64)
-            // Windows: use if_nametoindex if available, else skip
-#else
-            mreq6.ipv6mr_interface = if_nametoindex(iface_addr);
-#endif
+        unsigned int ifindex = 0;
+        if (!udp_iface_index(iface_addr, &ifindex)) {
+            udp_set_last_error(UDP_ERR_GENERIC, 0, "Unknown IPv6 multicast interface (use a name or an index)");
+            return UDP_ERR_GENERIC;
         }
+        mreq6.ipv6mr_interface = ifindex;
         if (setsockopt(socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
             udp_set_last_error_sys(UDP_ERR_GENERIC);
             return UDP_ERR_GENERIC;
@@ -730,14 +835,12 @@ UdpStatus udp_leave_multicast_group(UdpSocket socket, const char* group_addr, co
             udp_set_last_error(UDP_ERR_GENERIC, 0, "Invalid IPv6 multicast address");
             return UDP_ERR_GENERIC;
         }
-        mreq6.ipv6mr_interface = 0;
-        if (iface_addr && *iface_addr) {
-#if defined(_WIN32) || defined(_WIN64)
-            // Windows: use if_nametoindex if available, else skip
-#else
-            mreq6.ipv6mr_interface = if_nametoindex(iface_addr);
-#endif
+        unsigned int ifindex = 0;
+        if (!udp_iface_index(iface_addr, &ifindex)) {
+            udp_set_last_error(UDP_ERR_GENERIC, 0, "Unknown IPv6 multicast interface (use a name or an index)");
+            return UDP_ERR_GENERIC;
         }
+        mreq6.ipv6mr_interface = ifindex;
         if (setsockopt(socket, IPPROTO_IPV6, IPV6_LEAVE_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
             udp_set_last_error_sys(UDP_ERR_GENERIC);
             return UDP_ERR_GENERIC;
@@ -947,7 +1050,15 @@ UdpStatus udp_connect(UdpSocket socket, const char* host, unsigned short port) {
     struct sockaddr_storage addr;
     socklen_t addr_len = 0;
 
-    if (udp_resolve_sockaddr(host, port, &addr, &addr_len, AF_UNSPEC, SOCK_DGRAM, 0) != 0) {
+    /* Resolve the way udp_sendto does: the library's sockets are dual-stack
+       AF_INET6, so an IPv4 peer must be given as a v4-mapped address (a plain
+       sockaddr_in made connect() fail). The AF_UNSPEC retry covers sockets
+       the caller created as AF_INET. */
+    int rs = udp_resolve_sockaddr(host, port, &addr, &addr_len, AF_INET6, SOCK_DGRAM, AI_V4MAPPED | AI_ALL);
+    if (rs != 0) {
+        rs = udp_resolve_sockaddr(host, port, &addr, &addr_len, AF_UNSPEC, SOCK_DGRAM, 0);
+    }
+    if (rs != 0) {
         udp_set_last_error(UDP_ERR_RESOLVE, 0, "Failed to resolve peer");
         return UDP_ERR_RESOLVE;
     }
@@ -1260,6 +1371,38 @@ UdpStatus udp_bytes_available(UdpSocket socket, size_t* available) {
 }
 
 
+/* Waits for readability or writability: 1 ready, 0 timeout, -1 error. */
+static int udp_wait_ready(UdpSocket socket, long timeout_ms, int want_write) {
+#if defined(_WIN32) || defined(_WIN64)
+    /* Winsock's fd_set is a counted array of handles, so any socket fits. */
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(socket, &fds);
+
+    struct timeval tv;
+    struct timeval* tvp = NULL;
+    if (timeout_ms >= 0) {
+        tv.tv_sec  = (long)(timeout_ms / 1000);
+        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+        tvp = &tv;
+    }
+    int rc = want_write ? select(0, NULL, &fds, NULL, tvp) : select(0, &fds, NULL, NULL, tvp);
+#else
+    /* poll(): FD_SET on a descriptor >= FD_SETSIZE would write past fd_set. */
+    struct pollfd pfd;
+    pfd.fd = (int)socket;
+    pfd.events = want_write ? POLLOUT : POLLIN;
+    pfd.revents = 0;
+    int wait = (timeout_ms < 0) ? -1 : (timeout_ms > INT_MAX ? INT_MAX : (int)timeout_ms);
+    int rc;
+    do {
+        rc = poll(&pfd, 1, wait);
+    } while (rc < 0 && errno == EINTR);
+#endif
+    return rc < 0 ? -1 : (rc == 0 ? 0 : 1);
+}
+
+
 /**
  * @brief Wait until the socket has a datagram ready to read, or time out.
  *
@@ -1270,35 +1413,16 @@ UdpStatus udp_bytes_available(UdpSocket socket, size_t* available) {
  *  - `timeout_ms < 0`  → wait indefinitely.
  *  - `timeout_ms == 0` → poll and return immediately.
  *
- * (Uses `select`; on POSIX the socket fd must be below `FD_SETSIZE`, which
- * holds for normal usage.)
+ * (Uses `select` on Windows and `poll` on POSIX, so any descriptor number
+ * works, including ones at or above `FD_SETSIZE`.)
  *
  * @param socket     Valid UDP socket.
  * @param timeout_ms Timeout in milliseconds (see above).
  * @return `UDP_SUCCESS` if the socket is readable, `UDP_ERR_NO_DATA` on
- *         timeout, or `UDP_ERR_GENERIC` on a select() error.
+ *         timeout, or `UDP_ERR_GENERIC` on a select()/poll() error.
  */
 UdpStatus udp_wait_readable(UdpSocket socket, long timeout_ms) {
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(socket, &readfds);
-
-    struct timeval tv;
-    struct timeval* tvp = NULL;
-
-    if (timeout_ms >= 0) {
-        tv.tv_sec  = (long)(timeout_ms / 1000);
-        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
-        tvp = &tv;
-    }
-
-#if defined(_WIN32) || defined(_WIN64)
-    int nfds = 0;                       /* ignored by Winsock */
-#else
-    int nfds = (int)socket + 1;
-#endif
-
-    int rc = select(nfds, &readfds, NULL, NULL, tvp);
+    int rc = udp_wait_ready(socket, timeout_ms, 0);
     if (rc < 0) {
         udp_set_last_error_sys(UDP_ERR_GENERIC);
         return UDP_ERR_GENERIC;
@@ -1370,11 +1494,25 @@ UdpStatus udp_resolve_endpoint(const char* host, unsigned short port, UdpEndpoin
  *         `UDP_ERR_SEND` on invalid arguments or a send failure (`*sent` set to 0).
  */
 UdpStatus udp_sendto_endpoint(UdpSocket socket, const void* buf, size_t len, size_t* sent, const UdpEndpoint* dest) {
-    if (!buf || len == 0 || !dest || dest->len == 0) {
+    /* A zero-length datagram is valid UDP (e.g. an empty probe for
+       udp_request_reply); only a NULL buffer with a non-zero length is not. */
+    static const char empty = 0;
+    if ((!buf && len > 0) || !dest || dest->len == 0) {
         udp_set_last_error(UDP_ERR_SEND, 0, "Invalid udp_sendto_endpoint arguments");
         return UDP_ERR_SEND;
     }
+    if (!buf) {
+        buf = &empty;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    if (len > (size_t)INT_MAX) {
+        udp_set_last_error(UDP_ERR_SEND, 0, "Datagram too large");
+        return UDP_ERR_SEND;
+    }
+    int n = sendto(socket, (const char*)buf, (int)len, 0, (const struct sockaddr*)&dest->addr, (int)dest->len);
+#else
     ssize_t n = sendto(socket, buf, len, 0, (const struct sockaddr*)&dest->addr, dest->len);
+#endif
     if (n < 0) {
         udp_set_last_error_sys(UDP_ERR_SEND);
         if (sent) { *sent = 0; }
@@ -1405,7 +1543,8 @@ UdpStatus udp_recvfrom_endpoint(UdpSocket socket, void* buf, size_t len, size_t*
     }
     struct sockaddr_storage addr;
     socklen_t               addrlen = sizeof(addr);
-    ssize_t n = recvfrom(socket, buf, len, 0, (struct sockaddr*)&addr, &addrlen);
+    bool truncated = false;
+    long n = udp_recv_dgram(socket, buf, len, &addr, &addrlen, &truncated);
     if (n < 0) {
 #if defined(_WIN32) || defined(_WIN64)
         int err = WSAGetLastError();
@@ -1429,6 +1568,10 @@ UdpStatus udp_recvfrom_endpoint(UdpSocket socket, void* buf, size_t len, size_t*
     if (src) {
         memcpy(&src->addr, &addr, sizeof(src->addr));
         src->len = addrlen;
+    }
+    if (truncated) {
+        udp_set_last_error(UDP_ERR_BUFFER_TOO_SMALL, 0, "Datagram larger than the buffer (truncated)");
+        return UDP_ERR_BUFFER_TOO_SMALL;
     }
     return UDP_SUCCESS;
 }
@@ -1557,6 +1700,10 @@ UdpStatus udp_request_reply(UdpSocket socket, const UdpEndpoint* dest,
         UdpEndpoint src;
         size_t      got = 0;
         UdpStatus   r = udp_recvfrom_endpoint(socket, reply, reply_cap, &got, &src);
+        if (r == UDP_ERR_BUFFER_TOO_SMALL && (!match_source || udp_endpoint_equal(&src, dest))) {
+            *reply_len = got;                  /* reply truncated to reply_cap */
+            return r;
+        }
         if (r != UDP_SUCCESS) {
             continue;                          /* transient recv issue, resend */
         }
@@ -1582,25 +1729,7 @@ UdpStatus udp_request_reply(UdpSocket socket, const UdpEndpoint* dest,
  *         `UDP_ERR_GENERIC` on a select() error.
  */
 UdpStatus udp_wait_writable(UdpSocket socket, long timeout_ms) {
-    fd_set writefds;
-    FD_ZERO(&writefds);
-    FD_SET(socket, &writefds);
-
-    struct timeval  tv;
-    struct timeval* tvp = NULL;
-    if (timeout_ms >= 0) {
-        tv.tv_sec  = (long)(timeout_ms / 1000);
-        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
-        tvp = &tv;
-    }
-
-#if defined(_WIN32) || defined(_WIN64)
-    int nfds = 0;
-#else
-    int nfds = (int)socket + 1;
-#endif
-
-    int rc = select(nfds, NULL, &writefds, NULL, tvp);
+    int rc = udp_wait_ready(socket, timeout_ms, 1);
     if (rc < 0) {
         udp_set_last_error_sys(UDP_ERR_GENERIC);
         return UDP_ERR_GENERIC;

@@ -14,15 +14,20 @@ ecosystem.
 
 ## Highlights
 
-- **Zero memory leaks.** Every module, test suite, and README example is verified
-  under Valgrind (`--leak-check=full`) — `0 leaks, 0 errors`. Network/socket code is
-  additionally checked for descriptor leaks (`--track-fds=yes`).
+- **Leak-checked.** The runnable README examples were run on Linux under Valgrind
+  (`--leak-check=full --track-fds=yes`) without leaked memory or descriptors.
+  Examples that need a GUI, a PostgreSQL server, serial hardware or the internet
+  were not part of that run.
 
 - **Cross-platform.** Builds and runs on **Windows** (MSVC and MinGW-w64) and
-  **Linux** (GCC/Clang), with POSIX/Win32 backends behind one API. Compiles cleanly
-  under `-Wall -Wextra`.
+  **Linux** (GCC/Clang), with POSIX/Win32 backends behind one API. The library builds
+  without warnings under `-Wall -Wextra` (GCC and Clang).
 
-- **Pure C17.** No C++ — just portable standard C with thin platform shims.
+- **C17.** No C++ — C17 with thin platform shims. The default build uses the GNU dialect
+  (`-std=gnu17`, for the POSIX/Win32 declarations some modules need); pass
+  `-DCMAKE_C_EXTENSIONS=OFF` for `-std=c17`. The `<MODULE>_LOG` debug macros and the
+  `unittest` assertion macros are standard C (no `, ##__VA_ARGS__`), so they stay clean
+  under `-std=c17 -Wpedantic`.
 
 - **40+ modules.** Containers, algorithms, smart pointers, strings, JSON/XML/CSV/INI,
   networking (TCP/UDP/HTTP), crypto & JWT, arbitrary-precision math, graphics, and more.
@@ -30,14 +35,15 @@ ecosystem.
 - **Familiar APIs.** Modeled on the C++ STL (`vector`, `map`, `unique_ptr`, …) and the
   Python standard library (`random`, `statistics`, `json`, `regex`, `turtle`, …).
 
-- **Heavily tested with true results.** Deep per-module test suites, plus runnable
-  examples in every README whose shown output is captured from a real run.
+- **Runnable examples.** Every module README contains complete example programs
+  with the output they print. (The repository does not ship a separate test suite.)
 
 - **Fast & predictable.** Efficient data structures (geometric `vector` growth
-  with inlined `push_back`/`at`, O(1) average `hashmap`, O(log n) `map`), clear
+  with inlined `push_back`/`at`, typed `vector` macros and a pdqsort generator
+  faster than `std::sort`, O(1) average `hashmap`, O(log n) `map`), clear
   ownership rules and deallocators.
 
-- **CMake build.** Build the whole library, a single module, or one example at a time,
+- **CMake build.** Build the whole library, a single module, or your own example programs,
   with GCC, Clang, or MSVC.
 
 ## Benchmarks vs the C++ STL
@@ -54,7 +60,16 @@ best of three runs (lower is better). Absolute numbers vary by machine; the
 
 | C container ↔ C++ STL | Workload (N) | C&nbsp;STL | C++&nbsp;STL | C ÷ C++ |
 | --- | --- | --: | --: | :--: |
-| `vector` ↔ `std::vector<int>` | `push_back` + sum, 10,000,000 | 0.041 s | 0.031 s | 1.3× |
+| `vector` ↔ `std::vector<int>` | `push_back` + sum, 10,000,000 | 0.040 s | 0.030 s | 1.3× |
+| `vector` typed macros ↔ `std::vector<int>` | `VECTOR_PUSH_BACK` + `VECTOR_FOREACH`, 10,000,000 | 0.037 s | 0.030 s | 1.2× |
+| `vector` ↔ `std::vector<int>` | fill 10,000,000 computed values (`VECTOR_APPEND_UNINIT` ↔ `resize` + `[]`) | **0.0099 s** | 0.0122 s | **0.82×** |
+| `VECTOR_DEFINE_SORT` ↔ `std::sort` | sort 5,000,000 random `int`s | **0.157 s** | 0.317 s | **0.50×** |
+| `algorithm_sort` (stable) ↔ `std::stable_sort` | sort 5,000,000 random `int`s (comparator through a pointer) | 0.451 s | 0.383 s | 1.18× |
+| `algorithm_sort_unstable` ↔ `std::sort` | sort 5,000,000 random `int`s (comparator through a pointer) | **0.280 s** | 0.313 s | **0.89×** |
+| `algorithm_filter` ↔ `std::copy_if` | keep the odd ones of 5,000,000 random `int`s | **0.0099 s** | 0.0171 s | **0.58×** |
+| `string` ↔ `std::string` | `find` in 4 MiB of text, ×20 | **0.0055 s** | 0.0276 s | **0.20×** |
+| `string` ↔ `std::string` | `push_back` ×20,000,000 / `append` "abc" ×10,000,000 | 0.034 / 0.034 s | 0.035 / 0.033 s | 0.97× / 1.02× |
+| `string` ↔ `std::string` | `substr` / `trim` ×2,000,000 / ×1,000,000 | **0.092 / 0.054 s** | 0.182 / 0.095 s | **0.51× / 0.57×** |
 | `map` ↔ `std::map<int,int>` (ordered / RB-tree) | insert + lookup, 1,000,000 | **1.00 s** | 1.20 s | **0.83×** |
 | `hashmap` ↔ `std::unordered_map<int,int>` | insert + lookup, 1,000,000 | **0.231 s** | 0.364 s | **0.63×** |
 | `set` ↔ `std::set<int>` (ordered / RB-tree) | insert + lookup, 1,000,000 | 1.17 s | 1.05 s | 1.1× |
@@ -68,24 +83,45 @@ best of three runs (lower is better). Absolute numbers vary by machine; the
 `C ÷ C++` is the C time divided by the C++ time — **below 1.0 means the C
 library is faster.**
 
-- **Where C wins — `map` and `hashmap`.** Both allocate their tree nodes /
+- **Where C wins — `map`, `hashmap`, bulk `vector` work and sorting.** Both allocate their tree nodes /
   buckets from a pooled slab allocator, so a million inserts cost a handful of
   big `malloc`s instead of a million tiny ones, beating the STL's per-node `new`.
+  The `vector` fills in place without `std::vector`'s zero-fill pass
+  (`VECTOR_APPEND_UNINIT`; zero-initialised growth comes straight from `calloc`),
+  and `VECTOR_DEFINE_SORT` generates a pattern-defeating quicksort (pdqsort) for
+  the element type that is about 2× faster than libstdc++'s `std::sort` on random
+  data. The full comparison — every common operation, generic API and typed
+  macros — is in [`vector/README.md`](vector/README.md#performance-compared-with-stdvector).
+  `algorithm_sort_unstable` is a pdqsort too and beats `std::sort` even though
+  it calls its comparator through a function pointer (`algorithm_sort` itself
+  is stable: equal elements keep their order); `algorithm_filter` / `copy_if`
+  collect the predicate's answers in a bit mask before copying, so a random
+  predicate costs no branch mispredictions. Function-by-function numbers are in
+  [`algorithm/README.md`](algorithm/README.md#performance-compared-with-c-algorithm).
+  `String` keeps up to 31 bytes inside the struct (small-string optimisation),
+  inlines its hot paths like `std::string` does, and searches with SSE2 (5–10×
+  faster `find`); creating many short heap Strings is the one place it trails,
+  by the size of its 64-byte struct — see
+  [`string/README.md`](string/README.md#performance-compared-with-stdstring).
 - **About `set` — near parity.** Same pooled-slab, inline-element RB-tree as
   `map`. Lookups are actually a hair *faster* than `std::set`; inserts are a
   little slower, so it nets ~1.1×. Unlike `map` (which stores caller-owned
   pointers and skips the copy), `set` has value semantics and deep-copies each
   element exactly like `std::set`, so it can't win the copy back — and its node
   carries the publicly-inspectable `key`/`left`/`right`/`parent`/`color` fields
-  (the test suite walks them to check the red-black invariants), which a templated
+  (so a test can walk them to check the red-black invariants), which a templated
   `std::set` node doesn't expose. A large RB-tree is cache-miss-bound, so that
   slightly larger node is the whole gap.
-- **Where C++ wins — `vector` and `priority_queue`.** Both are tight loops over
-  raw `int`s. The C `vector` now inlines `push_back`/`at` at the call site just
-  like `std::vector` and closes most of the gap (~1.3×); the small residual is the
-  type-erased ABI — a runtime `itemSize` stride and a size-dispatched element copy
-  where C++ has a compile-time `sizeof(int)`, plus the bounds check in `vector_at`
-  that `operator[]` skips. The C `priority_queue` size-dispatches its heap moves
+- **Where C++ wins — per-element `vector` pushes and `priority_queue`.** Both are
+  tight loops over raw `int`s. The C `vector` inlines `push_back`/`at` at the call
+  site just like `std::vector` (reads, copies, appends, insert / erase and pop are
+  at parity), but a growing loop of single pushes stays ~1.3× with the generic
+  API: a runtime `itemSize` stride and a size-dispatched element copy where C++
+  has a compile-time `sizeof(int)`, plus the bounds check in `vector_at` that
+  `operator[]` skips. The typed macros (`VECTOR_PUSH_BACK`, `VECTOR_FOREACH`)
+  remove the type erasure and land at ~1.1–1.2×; what is left is that the
+  `Vector` is a heap object with public fields, so each push stores its size back
+  to memory where `std::vector` keeps its pointers in registers. The C `priority_queue` size-dispatches its heap moves
   the same way (~1.4×); its residual is the **comparator** — one indirect call
   through a function pointer per comparison, which `std::priority_queue` inlines
   from its template argument. Either way it's a small fixed per-element cost — the
@@ -120,13 +156,14 @@ library is faster.**
   `std::stack`'s default `deque` adding blocks — in exchange the C stack keeps its
   elements fully contiguous.
 
-Reproduce it yourself — a C and a C++ program over the identical key stream:
+The benchmark programs themselves (`bench.c` / `bench.cpp`) are not part of the
+repository, so treat the table as indicative. To measure on your machine, write a C
+and a C++ program that run the workloads above over the same key stream, and link
+the C one against the built library, which contains every container:
 
 ```bash
-# C  (link the containers used + algorithm, which queue depends on):
-gcc -O2 bench.c vector/vector.c queue/queue.c priority_queue/priority_queue.c \
-    hashmap/hashmap.c map/map.c algorithm/algorithm.c -I. -o bench_c && ./bench_c
-# C++:
+cmake -S . -B build && cmake --build build
+gcc -O2 bench.c -I. build/libcstd.a -o bench_c && ./bench_c
 g++ -O2 -std=c++17 bench.cpp -o bench_cpp && ./bench_cpp
 ```
 
@@ -170,8 +207,8 @@ Every module lives in its own directory with a `.c` source, a `.h` header, and a
 | Module | Analogous to | Description |
 |--------|--------------|-------------|
 | `array` | `std::array` | Fixed-size array wrapper with bounds-checked access. |
-| `vector` | `std::vector` | Dynamic, automatically resizing array with memory pooling. |
-| `string` | `std::string` | Growable string with a rich manipulation API (`string/std_string.h`). |
+| `vector` | `std::vector` | Dynamic, automatically resizing array (one contiguous buffer, grown geometrically). |
+| `string` | `std::string` | Growable, binary-safe string with small-string optimisation, SSE2 search and a rich (Python-style) manipulation API (`string/std_string.h`). |
 | `list` | `std::list` | Doubly linked list. |
 | `forward_list` | `std::forward_list` | Singly linked list. |
 | `deque` | `std::deque` | Double-ended queue with fast insertion/removal at both ends. |
@@ -190,7 +227,7 @@ Every module lives in its own directory with a `.c` source, a `.h` header, and a
 ### Algorithms & numerics
 | Module | Description |
 |--------|-------------|
-| `algorithm` | Generic algorithms inspired by `<algorithm>`: sort, search, transform, accumulate, … |
+| `algorithm` | Generic algorithms inspired by `<algorithm>`: stable sort, pdqsort, search, transform, accumulate, … plus Python's `filter` and `itertools.combinations`. |
 | `sort` | Stand-alone sorting library: 8+ algorithms, benchmarking and search helpers. |
 | `statistics` | Mean, median, variance, … (mirrors Python's `statistics`). |
 | `random` | Pseudo-random numbers and sequence helpers (mirrors Python's `random`). |
@@ -211,7 +248,7 @@ Every module lives in its own directory with a `.c` source, a `.h` header, and a
 | `xml` | Parse, create, modify and traverse XML documents. |
 | `csv` | Read, write and manipulate CSV files. |
 | `config` | Read/modify/save INI-style configuration files. |
-| `regex` | Regular-expression compile/match/search (PCRE on Windows, POSIX on Linux). |
+| `regex` | Regular-expression compile/match/search (PCRE when it is installed — required on Windows; otherwise POSIX `<regex.h>`). |
 | `cli` | Command-line argument/option/sub-command parser. |
 | `log` | Leveled logging (DEBUG…FATAL) to console and/or file. |
 | `file_io` | `FileReader` / `FileWriter` with text and binary (UTF-8/UTF-16) modes. |
@@ -268,10 +305,11 @@ To build the whole project you need:
 
 | Library | Used by | Required? |
 |---------|---------|-----------|
-| **OpenSSL** (`libssl`, `libcrypto`) | `crypto`, `jwt`, `network` | Yes |
-| **raylib** | `plot`, `turtle` | Yes |
-| **GMP** | `bigint` | Yes |
-| **MPFR** | `bigfloat` | Yes |
+| **OpenSSL** (`libssl`, `libcrypto`) | `crypto`, `jwt`, `network` (and `config`, `dir`, which use `crypto`) | Optional — those modules are skipped (with a warning) when it is missing |
+| **raylib** | `plot`, `turtle` | Optional — those two modules are skipped when it is missing |
+| **GMP** | `bigint`, `bigfloat` | Optional — skipped when missing |
+| **MPFR** | `bigfloat` | Optional — skipped when missing |
+| **PCRE** (PCRE1, `libpcre`) | `regex` | Required on Windows (there is no POSIX `<regex.h>`); optional elsewhere — without it `regex` uses POSIX regex |
 | **PostgreSQL / libpq** | `database` | Optional — the `database` module is skipped automatically if libpq is missing |
 | **pthreads** | `concurrent`, `network` | Provided by the toolchain (winpthread on Windows) |
 
@@ -298,6 +336,7 @@ pacman -S --needed \
   mingw-w64-x86_64-raylib \
   mingw-w64-x86_64-gmp \
   mingw-w64-x86_64-mpfr \
+  mingw-w64-x86_64-pcre \
   mingw-w64-x86_64-postgresql
 ```
 
@@ -317,6 +356,10 @@ sudo apt install \
 > `libraylib-dev` is available on Debian 12+ / Ubuntu 22.04+. On older releases,
 > install raylib from source (<https://github.com/raysan5/raylib>) or omit the
 > `plot`/`turtle` modules.
+>
+> PCRE is optional on Linux. Where the distribution still ships PCRE1, install its
+> development package (`libpcre3-dev`) to get the PCRE backend for `regex`;
+> otherwise the POSIX regex in libc is used.
 
 ### Fedora
 
@@ -349,8 +392,8 @@ Binaries are written to `build/bin/`.
 
 ### Build / run one piece at a time
 
-The project is fully modular — you can compile a single module or a single example
-without building the rest:
+The project is fully modular — you can compile a single module (or one of your
+`examples/<name>.c` programs) without building the rest:
 
 ```bash
 # Compile just one module's objects
@@ -359,6 +402,28 @@ cmake --build build --target vector
 # Compile every module library (no executables)
 cmake --build build --target modules
 
+```
+
+To use the library from your own CMake project, add the c_std root and link the
+`cstd` target: it carries its include path and every library it needs (OpenSSL,
+raylib, GMP/MPFR, libpq, threads, the Windows system libraries), so nothing else has
+to be listed. `cmake --install build --prefix <dir>` installs `libcstd` and the
+headers (under `include/c_std/<module>/`).
+
+```cmake
+add_subdirectory(path/to/c_std c_std)
+target_link_libraries(your_app PRIVATE cstd)
+```
+
+Each module directory also has its own `CMakeLists.txt`: a standalone build of
+that module plus the c_std modules it includes (target `c_std_<module>`, e.g.
+`c_std_json` also compiles `fmt`, `map`, `string`, `vector`, ...), with only the
+third-party libraries that module needs. The top-level build does not use these
+files.
+
+```cmake
+add_subdirectory(path/to/c_std/json c_std_json)
+target_link_libraries(your_app PRIVATE c_std_json)
 ```
 
 ### Choosing a compiler (GCC / Clang / MSVC)
@@ -371,11 +436,13 @@ cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=gcc
 
 # Clang
 cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang
-# On MSYS2, `clang` is usually the CLANG64 toolchain, whose linker does not search
-# the MinGW-w64 library directory. If you installed the dependencies into mingw64,
-# point clang's linker at them:
-#   cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang \
-#         -DCMAKE_EXE_LINKER_FLAGS="-LC:/msys64/mingw64/lib"
+# On MSYS2, use the clang of the environment your libraries come from: in the
+# "MSYS2 MinGW x64" shell that is mingw-w64-x86_64-clang (installed above), which
+# shares the mingw64 libraries and C runtime with GCC. Do not point the CLANG64
+# clang at C:/msys64/mingw64/lib with -L: the result mixes the UCRT startup code
+# of clang64 with the msvcrt libraries of mingw64. To build in the CLANG64
+# environment instead, install the mingw-w64-clang-x86_64-* versions of the
+# packages from the "MSYS2 Clang x64" shell.
 
 # MSVC — from an “x64 Native Tools Command Prompt for VS”
 cmake -S . -B build -G "Ninja"            # or: -G "Visual Studio 17 2022"
@@ -383,25 +450,32 @@ cmake --build build --config Release
 ```
 
 On MSVC, install the third-party libraries with [vcpkg](https://vcpkg.io)
-(`vcpkg install openssl raylib gmp mpfr libpq`) and pass
+(`vcpkg install openssl raylib gmp mpfr libpq pcre`) and pass
 `-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake` when configuring.
+Every library source compiles with `cl` (VS 2022, `/std:c17`). Two MSVC
+differences to know about: `UPTR_AUTO` is a no-op there (MSVC has no cleanup
+attribute, so call `uptr_destroy` yourself), and — on every Windows compiler —
+the library's UUID type is `Uuid`: `UUID` is only an alias for it, which
+steps aside when `<windows.h>` (directly or through the socket headers) already
+defines Windows' own `UUID` (see `uuid/README.md`).
 
 ### Build options
 
 | Option | Default | Effect |
 |--------|---------|--------|
 | `C_STD_BUILD_MAIN` | `ON` | Build the `main` demo executable. |
+| `C_STD_BUILD_EXAMPLES` | `ON` | Build every `examples/<name>.c` you put there into an executable `<name>`. |
+| `CMAKE_C_EXTENSIONS` | `ON` | `OFF` compiles with `-std=c17` instead of `-std=gnu17`. |
 
 
 ---
 
 ## Examples
 
-The `examples/` directory contains a small, self-contained program for (almost)
-every module — `examples/<module>_example.c` — taken from that module's `README.md`.
-Each one is compiled by CMake into its own executable named `<module>_example`, so
-you can build and run them individually (see
-[Build / run one piece at a time](#build--run-one-piece-at-a-time)).
+Every module's `README.md` contains complete example programs. The repository does
+not ship an `examples/` directory (it is listed in `.gitignore`), but CMake builds
+whatever you put there: save an example as `examples/<name>.c` and run
+`cmake --build build --target <name>` (or `--target examples` for all of them).
 
 A few examples are **compile-only** because they need external resources at run time:
 `network` (sockets), `database` (a running PostgreSQL server), `serial_port`
@@ -457,12 +531,12 @@ int main(void) {
 ```
 ```
 {
-    "lib": "c_std",
-    "tags": [
-      "c",
-      "stl"
+  "lib": "c_std",
+  "tags": [
+    "c",
+    "stl"
   ],
-    "version": 1
+  "version": 1
 }
 ```
 
@@ -528,14 +602,20 @@ host=localhost port=8080
 #include "fmt/fmt.h"
 
 int main(void) {
-    random_seed(42);
-    fmt_printf("dice rolls: %d %d %d\n", random_randint(1, 6), random_randint(1, 6), random_randint(1, 6));
+    random_seed(2024);
+    /* one call per statement: the order in which a function's arguments are
+       evaluated is unspecified, so three calls inside one printf could print
+       in a different order with another compiler */
+    int a = random_randint(1, 6);
+    int b = random_randint(1, 6);
+    int c = random_randint(1, 6);
+    fmt_printf("dice rolls: %d %d %d\n", a, b, c);
     
     return 0;
 }
 ```
 ```
-dice rolls: 4 5 1
+dice rolls: 2 6 3
 ```
 
 ### crypto — SHA-256 of a string
@@ -711,6 +791,7 @@ int main(void) {
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain
+Content-Length: 13
 
 Hello, world!
 ```
@@ -799,7 +880,8 @@ the module directory you are interested in — e.g. [`vector/README.md`](vector/
 
 Contributions are welcome — extending libraries, improving performance, or fixing
 bugs. Fork the repository, make your changes, and submit a pull request. New modules
-just need their directory added to the `C_STD_MODULES` list in `CMakeLists.txt`.
+just need their directory added to the `C_STD_MODULES` list in `CMakeLists.txt` (and a
+standalone `CMakeLists.txt` in the directory, like the other modules have).
 
 ## License
 

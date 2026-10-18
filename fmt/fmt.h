@@ -8,7 +8,7 @@
  *
  * Go-style printf/scanf surface. The `fmt_print` / `fmt_println` /
  * `fmt_sprint` / `fmt_sprintln` / `fmt_fprint` / `fmt_fprintln`
- * variadic macros expand to internal `__fmt_*` functions terminated
+ * variadic macros expand to internal `fmt_*_impl` functions terminated
  * with a `NULL` sentinel — the C printf-style `fmt_printf` /
  * `fmt_sprintf` / `fmt_fprintf` are also available.
  */
@@ -28,8 +28,8 @@ extern "C" {
 /* #define FMT_LOGGING_ENABLE */
 
 #ifdef FMT_LOGGING_ENABLE
-    #define FMT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[FMT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define FMT_LOG(...) \
+        do { fprintf(stderr, "[FMT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define FMT_LOG(...) do { } while (0)
 #endif
@@ -41,20 +41,20 @@ extern "C" {
 
 #define FMT_END_ARGS (NULL)
 
-#define fmt_print(...)             __fmt_print     (__VA_ARGS__, NULL)
-#define fmt_println(...)           __fmt_println   (__VA_ARGS__, NULL)
-#define fmt_sprint(...)            __fmt_sprint    (__VA_ARGS__, NULL)
-#define fmt_sprintln(...)          __fmt_sprintln  (__VA_ARGS__, NULL)
-#define fmt_fprint(stream, ...)    __fmt_fprint    (stream, __VA_ARGS__, NULL)
-#define fmt_fprintln(stream, ...)  __fmt_fprintln  (stream, __VA_ARGS__, NULL)
+#define fmt_print(...)             fmt_print_impl     (__VA_ARGS__, NULL)
+#define fmt_println(...)           fmt_println_impl   (__VA_ARGS__, NULL)
+#define fmt_sprint(...)            fmt_sprint_impl    (__VA_ARGS__, NULL)
+#define fmt_sprintln(...)          fmt_sprintln_impl  (__VA_ARGS__, NULL)
+#define fmt_fprint(stream, ...)    fmt_fprint_impl    (stream, __VA_ARGS__, NULL)
+#define fmt_fprintln(stream, ...)  fmt_fprintln_impl  (stream, __VA_ARGS__, NULL)
 
 
 /* ------------------------------------------------------------------ */
 /* stdout writers — Go-style variadic                                 */
 /* ------------------------------------------------------------------ */
 
-void   __fmt_print          (const char* str, ...);
-void   __fmt_println        (const char* str, ...);
+void   fmt_print_impl          (const char* str, ...);
+void   fmt_println_impl        (const char* str, ...);
 
 
 /* ------------------------------------------------------------------ */
@@ -68,8 +68,8 @@ void   fmt_printf           (const char* format, ...);
 /* String builders — Go-style variadic                                */
 /* ------------------------------------------------------------------ */
 
-char*  __fmt_sprint         (const char* str, ...);
-char*  __fmt_sprintln       (const char* str, ...);
+char*  fmt_sprint_impl         (const char* str, ...);
+char*  fmt_sprintln_impl       (const char* str, ...);
 
 
 /* ------------------------------------------------------------------ */
@@ -92,8 +92,8 @@ int    fmt_scanf            (const char* format, ...);
 /* Stream writers — Go-style variadic                                 */
 /* ------------------------------------------------------------------ */
 
-int    __fmt_fprint         (FILE* stream, const char* str, ...);
-int    __fmt_fprintln       (FILE* stream, const char* str, ...);
+int    fmt_fprint_impl         (FILE* stream, const char* str, ...);
+int    fmt_fprintln_impl       (FILE* stream, const char* str, ...);
 
 
 /* ------------------------------------------------------------------ */

@@ -123,22 +123,22 @@ To use the List library in your project, include the `list.h` header file in you
 ---
 
 ### `void list_emplace_front(List* list, void* value)`
-**Purpose**: Inserts an element at the front by storing `value` directly without an extra copy (the pointer itself is stored).
+**Purpose**: Inserts an element at the front by storing `value` directly without an extra copy (the pointer itself is stored). **The list takes ownership of `value`**: it must come from `malloc`/`calloc`/`realloc` and hold an `itemSize`-byte element, and the list `free`s it when the element is popped, erased, removed or cleared, or the list is deallocated. Never emplace a stack variable, a static, or memory you free yourself (that is an invalid or double `free`).
 **Parameters**:
 - `list`: Pointer to the list.
-- `value`: Pointer to store directly in the new front node.
+- `value`: Heap pointer to store directly in the new front node; ownership passes to the list.
 **Return Value**: None.
-**Usage Case**: Use when the caller manages element lifetime and wants to avoid the copy overhead of `list_push_front`.
+**Usage Case**: Use to hand an already heap-allocated element to the list without the copy that `list_push_front` makes.
 
 ---
 
 ### `void list_emplace_back(List* list, void* value)`
-**Purpose**: Inserts an element at the back by storing `value` directly without an extra copy.
+**Purpose**: Inserts an element at the back by storing `value` directly without an extra copy. As with `list_emplace_front`, **the list takes ownership**: `value` must be a heap block of `itemSize` bytes, and the list frees it.
 **Parameters**:
 - `list`: Pointer to the list.
-- `value`: Pointer to store directly in the new back node.
+- `value`: Heap pointer to store directly in the new back node; ownership passes to the list.
 **Return Value**: None.
-**Usage Case**: Use when the caller manages element lifetime and wants to avoid the copy overhead of `list_push_back`.
+**Usage Case**: Use to hand an already heap-allocated element to the list without the copy that `list_push_back` makes.
 
 ---
 
@@ -147,8 +147,8 @@ To use the List library in your project, include the `list.h` header file in you
 **Parameters**:
 - `list`: Pointer to the list.
 - `index`: Zero-based position at which to insert the new element.
-- `value`: Pointer to the data to copy into the new node.
-**Return Value**: A pointer to the inserted value, or `NULL` if the insertion fails.
+- `value`: Pointer to the data to copy into the new node. Must not be `NULL`.
+**Return Value**: A pointer to the inserted value, or `NULL` if the insertion fails (`value == NULL`, index out of range, out of memory). At index 0 / the end it used to return the old first/last element — or crash on an empty list — when the insertion had failed.
 **Usage Case**: Insert an element at an arbitrary position, such as maintaining a sorted-by-index structure.
 
 ---
@@ -188,8 +188,8 @@ To use the List library in your project, include the `list.h` header file in you
 **Parameters**:
 - `list`: Pointer to the list.
 - `newSize`: The desired number of elements after the operation.
-- `defaultValue`: Pointer to the value used to fill new slots when growing.
-**Return Value**: None.
+- `defaultValue`: Pointer to the value used to fill new slots when growing; `NULL` fills them with zero bytes.
+**Return Value**: None. If memory runs out while growing, the list stops at the size it reached (`list_length` tells; it used to retry forever).
 **Usage Case**: Pre-allocate or trim a list to a known size, filling gaps with a sentinel value.
 
 ---
@@ -345,7 +345,7 @@ To use the List library in your project, include the `list.h` header file in you
 ---
 
 ### `bool list_is_equal(const List* list1, const List* list2)`
-**Purpose**: Returns `true` if both lists have the same length and every corresponding element compares equal via the comparator.
+**Purpose**: Returns `true` if both lists have the same length and every corresponding element compares equal via the comparator. **Comparator rule (all six comparisons)**: `list1`'s comparator is used, or `list2`'s when `list1` has none. With no comparator on either list, elements are equal when their bytes are equal, and there is no ordering: `list_is_less` / `list_is_greater` return `false` and the `_or_equal` forms answer equality only (a missing comparator used to crash the equality checks).
 **Parameters**:
 - `list1`: Pointer to the first list.
 - `list2`: Pointer to the second list.

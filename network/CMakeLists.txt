@@ -1,14 +1,44 @@
+# Standalone build of the c_std "network" module.
+#
+# The top-level CMakeLists.txt does not use this file: it builds every module
+# into the single `cstd` library (link `cstd` to get all of them). Use this
+# file to build only this module, together with the c_std modules it uses
+# (concurrent, encoding, file_io, fmt, json, map, string, vector), e.g. from your own project:
+#
+#     add_subdirectory(path/to/c_std/network c_std_network)
+#     target_link_libraries(your_app PRIVATE c_std_network)
+#
+# or on its own: cmake -S path/to/c_std/network -B build-network && cmake --build build-network
+# Sources are #include "<module>/<header>.h" relative to the c_std root.
+# (Generated from the modules' #include graph.)
+cmake_minimum_required(VERSION 3.15)
+project(c_std_network LANGUAGES C)
 
-add_library(network SHARED tcp.c udp.c http.c ../concurrent/concurrent.c)
+get_filename_component(_c_std_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(_c_std_network_sources "")
+foreach(_m concurrent encoding file_io fmt json map network string vector)
+    file(GLOB _s CONFIGURE_DEPENDS "${_c_std_root}/${_m}/*.c")
+    list(APPEND _c_std_network_sources ${_s})
+endforeach()
 
-# Specify the include directories for this library
-target_include_directories(network PUBLIC ${CMAKE_SOURCE_DIR}/network)
-
-target_link_libraries(network fmt ssl stdcrypto stdstring json)
-
-# Link platform-specific libraries
-if(WIN32)
-    target_link_libraries(network ws2_32)
+add_library(c_std_network STATIC ${_c_std_network_sources})
+target_include_directories(c_std_network PUBLIC "${_c_std_root}")
+set_target_properties(c_std_network PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED ON C_EXTENSIONS ON)
+if(MSVC)
+    target_compile_options(c_std_network PRIVATE /W3 /utf-8)
+    target_compile_definitions(c_std_network PRIVATE _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
 else()
-    target_link_libraries(network pthread)
+    target_compile_options(c_std_network PRIVATE -Wall -Wextra)
+endif()
+
+find_package(OpenSSL REQUIRED)
+target_link_libraries(c_std_network PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+
+find_package(Threads REQUIRED)
+target_link_libraries(c_std_network PUBLIC Threads::Threads)
+
+if(WIN32)
+    target_link_libraries(c_std_network PUBLIC ws2_32 iphlpapi ole32 oleaut32 wbemuuid rpcrt4 bthprops winmm bcrypt crypt32 setupapi shlwapi)
+else()
+    target_link_libraries(c_std_network PUBLIC ${CMAKE_DL_LIBS} m)
 endif()

@@ -17,8 +17,8 @@
 
 #ifdef UDP_LOGGING_ENABLE
     #include <stdio.h>
-    #define UDP_LOG(fmt, ...) \
-        do { fprintf(stderr, "[UDP LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define UDP_LOG(...) \
+        do { fprintf(stderr, "[UDP LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define UDP_LOG(...) do { } while (0)
 #endif

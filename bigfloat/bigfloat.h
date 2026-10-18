@@ -12,7 +12,14 @@
 #ifndef BIGFLOAT_H_
 #define BIGFLOAT_H_
 
-#include <mpfr.h>
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4146 4244)   /* inside GMP's own inline functions */
+#endif
+#include <mpfr.h>           /* includes <gmp.h> */
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -24,8 +31,8 @@ extern "C" {
 /* #define BIGFLOAT_LOGGING_ENABLE */
 
 #ifdef BIGFLOAT_LOGGING_ENABLE
-    #define BIGFLOAT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[BIGFLOAT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define BIGFLOAT_LOG(...) \
+        do { fprintf(stderr, "[BIGFLOAT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define BIGFLOAT_LOG(...) do { } while (0)
 #endif
@@ -45,6 +52,9 @@ typedef struct {
 /* ------------------------------------------------------------------ */
 
 BigFloat*  bigfloat_create                    (void);
+BigFloat*  bigfloat_create_with_precision     (mpfr_prec_t bits);
+mpfr_prec_t bigfloat_get_precision            (const BigFloat* a);
+bool       bigfloat_set_precision             (BigFloat* a, mpfr_prec_t bits);
 BigFloat*  bigfloat_from_string               (const char* str);
 BigFloat*  bigfloat_from_double               (double value);
 BigFloat*  bigfloat_copy                      (const BigFloat* src);

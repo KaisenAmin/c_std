@@ -14,6 +14,8 @@ This Random library in C provides a set of functions for generating random numbe
 - **Random Floating-Point Generation:** Functions to generate random floating-point numbers between 0 and 1, or within specified ranges.
 - **Array Shuffling:** A generic function to shuffle elements of an array, supporting different data types.
 - **Documentation:** This library is fully and comprehensively documented using Doxygen format.
+- **Thread safety:** The generator state is advanced with an atomic compare-and-swap, so calls from several threads never lose an update or return the same draw. The order in which threads receive draws is up to the scheduler, so only single-threaded use (or one seeded run per thread order) is reproducible. No function keeps hidden state besides the one 32-bit generator state.
+- **Unbiased integers:** `randint`, `randrange`, `choice`, `shuffle` and `sample` use rejection sampling, so every outcome is equally likely (a plain `% n` favoured small values), and they accept the full `int` range.
 
 ## Installation and Compilation
 
@@ -37,7 +39,8 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Return**: No return value.
 - **Details**:
   - This function initializes the random number generator with a specific seed value to ensure that subsequent calls to random number generation functions produce a reproducible sequence.
-  - It logs the seed value and uses `srand()` to set the seed, ensuring that the random generator produces the same numbers when the same seed is provided.
+  - The seed is scrambled into the 32-bit generator state with a bijective mixer, so every seed (including 0) gives its own stream and neighbouring seeds (1, 2, 3, ...) give unrelated streams. Using the raw seed made the first values of small seeds strongly correlated and made seeds 0 and 1 identical. Streams therefore differ from earlier versions of this library for the same seed.
+  - `srand(seed)` is still called for code that uses libc `rand()` directly.
   - Logs entry, seed setting, and exit.
 
 ---
@@ -51,7 +54,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Return**: A random integer within the range `[a, b]`.
 - **Details**:
   - If `a > b`, their values are swapped to ensure the correct range.
-  - It uses the `rand()` function to generate a random integer and constrains the result to the desired range.
+  - Any `int` bounds work, including `random_randint(INT_MIN, INT_MAX)` (the span is computed in 64 bits; it used to overflow, and the full range divided by zero). Every value in the range is equally likely (rejection sampling).
   - Logs the input values, any necessary swaps, and the final result.
 
 ---
@@ -63,21 +66,22 @@ The documentation includes detailed descriptions of all the functions provided b
   - `a`: The start of the range (inclusive).
   - `b`: The end of the range (exclusive).
   - `step`: The step value for the range (cannot be zero).
-- **Return**: A random integer in the range `[a, b)` that follows the step value, or `-1` if the input is invalid.
+- **Return**: A random integer in the range `[a, b)` that follows the step value, or `-1` if the range is empty. Note that `-1` is also a legitimate result of a range that contains it (`random_randrange(-5, 0, 1)`); use `random_randrange_checked` to tell the two apart.
 - **Details**:
-  - This function generates a random integer from the sequence that starts at `a` and increments by `step` until it reaches `b`.
-  - If `a == b` or `step == 0`, it logs an error and returns `-1`. It also validates that the step direction is correct based on the relationship between `a` and `b`.
+  - This function generates a random integer from the sequence that starts at `a` and moves by `step` (positive or negative) until it reaches `b`.
+  - The range is empty — and `-1` is returned — when `a == b`, `step == 0`, or the step points away from `b` (`a < b` with a negative step, or `a > b` with a positive one).
+  - The arithmetic is done in 64 bits, so wide ranges such as `random_randrange(INT_MIN, INT_MAX, 1)` work, and every element of the sequence is equally likely.
   - Logs the range, step, and the final result.
 
 ---
 
 ### `double random_random()`
 
-- **Purpose**: Generates a random double in the range `[0, 1)` using the standard library's `rand()` function.
+- **Purpose**: Generates a random double in the range `[0, 1)` from the module's own generator (xorshift32, seeded by `random_seed`).
 - **Parameters**: None.
 - **Return**: A random double precision floating-point number in the range `[0, 1)`.
 - **Details**:
-  - This function generates a random double by dividing the result of `rand()` by `RAND_MAX` to constrain the output to the range `[0, 1)`.
+  - It divides a 32-bit draw by 2^32, so the result is always strictly below 1.0.
   - Logs the generated random double and exits with the result.
 
 ---
@@ -104,7 +108,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Details**:
   - This function generates a random double precision floating-point number between `a` and `b`, exclusive of `b`.
   - If `a > b`, their values are swapped to ensure the correct range.
-  - It uses the `rand()` function, scaling the result by `(b - a)` to generate a value within the desired range.
+  - It scales a `random_random()` draw by `(b - a)` to generate a value within the desired range.
   - Logs the input values, any necessary swaps, and the final result.
 
 ---
@@ -135,6 +139,14 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
+### `bool random_randrange_checked(int a, int b, int step, int* out)`
+
+- **Purpose**: `random_randrange` with an unambiguous error report.
+- **Parameters**: as `random_randrange`, plus `out`, which receives the value on success.
+- **Return**: `true` on success; `false` for an empty range or a `NULL` `out` (then `*out` is left unchanged).
+
+---
+
 ### `void random_shuffle(void *array, size_t n, size_t size)`
 
 - **Purpose**: Shuffles an array of any type using the Fisher-Yates algorithm.
@@ -161,7 +173,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Return**: Pointer to the randomly selected element or `NULL` for invalid input.
 - **Details**:
   - This function returns a randomly selected element from the array. It logs an error and returns `NULL` if the array is `NULL` or `n` is zero.
-  - A random index is generated using `random_randint`, and the corresponding element is retrieved from the array.
+  - An unbiased random index in `[0, n)` (rejection sampling on the module's generator) selects the element.
   - Logs the selected index and the pointer to the result before returning the randomly chosen element.
 
 ---
@@ -182,7 +194,7 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ---
 
-### `void random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights)`
+### `bool random_choices(void *array, size_t n, size_t size, size_t num_choices, void *choices, double *weights)`
 
 - **Purpose**: Selects multiple random elements from an array based on specified weights.
 - **Parameters**:
@@ -191,14 +203,12 @@ The documentation includes detailed descriptions of all the functions provided b
   - `size`: The size of each element in the input array.
   - `num_choices`: The number of elements to select.
   - `choices`: Pointer to the array where the selected elements will be stored.
-  - `weights`: Pointer to the array of weights corresponding to each element in the input array.
-- **Return**: No return value.
+  - `weights`: Pointer to the array of weights corresponding to each element in the input array, or `NULL` for equal weights.
+- **Return**: `true` on success; `false` — with `choices` untouched — for a `NULL` `array` or `choices`, `n`, `size` or `num_choices` of zero, or weights that are negative, not finite, or all zero (all-zero weights used to pick element 0 every time).
 - **Details**:
-  - The function checks for valid inputs, including whether the `array`, `weights`, or `num_choices` are valid.
-  - It uses cumulative weights to perform weighted random sampling. The weights determine the likelihood of selecting an element.
-  - The function calculates cumulative weights, generates a random number for each choice, and finds the corresponding element in the array based on that random number.
+  - Elements are chosen with replacement, each with probability proportional to its weight; an element of weight 0 is never chosen.
+  - Each draw is a binary search over the cumulative weights (O(log n)).
   - The selected elements are copied into the `choices` array.
-  - The function logs errors, cumulative weight calculation, and every random selection step.
   - Memory for cumulative weights is dynamically allocated and freed after use.
 
 ---
@@ -226,7 +236,7 @@ The documentation includes detailed descriptions of all the functions provided b
 - **Parameters**:
   - `state`: A pointer to the state value to set the random number generator. If `state` is `NULL`, the function does nothing.
 - **Details**:
-  - This function allows the user to set the random number generator state to make the sequence of generated random numbers reproducible.
+  - This function allows the user to set the random number generator state to make the sequence of generated random numbers reproducible. The state is the whole generator: after `random_setstate` every function, `random_gauss` and the distributions built on it included, continues exactly as it did after the matching `random_getstate`.
   - Logs the entry into the function, state assignment, and exit. If the `state` is `NULL`, it logs an error.
 
 ---
@@ -244,13 +254,13 @@ The documentation includes detailed descriptions of all the functions provided b
 
 ### `double random_gauss(double mean, double stddev)`
 
-- **Purpose**: Generates a random double number based on the Gaussian (normal) distribution using the Box-Muller transform.
+- **Purpose**: Generates a random double number based on the Gaussian (normal) distribution using the Marsaglia polar method.
 - **Parameters**:
   - `mean`: The mean (mu) of the distribution.
   - `stddev`: The standard deviation (sigma) of the distribution.
 - **Details**:
-  - Utilizes the Box-Muller transform to produce normally-distributed numbers. It generates two independent random values from a uniform distribution, transforms them into normally distributed numbers, and returns one. The spare value is stored for the next call to avoid recomputation.
-  - If a spare value is already available, the function uses that instead of recalculating.
+  - Uses the Marsaglia polar form of the Box-Muller transform: two uniform values are drawn (redrawn while outside the unit circle) and turned into a normally-distributed number.
+  - No spare value is cached between calls. A cached spare was shared by all threads and survived `random_seed` / `random_setstate`, so reseeding could still return a value from the old stream; now each call depends only on the generator state, which makes `gauss`, `lognormal`, `gamma` and `beta` reproducible.
 
 ---
 
@@ -334,8 +344,9 @@ The documentation includes detailed descriptions of all the functions provided b
   - `mu`: The mean direction of the distribution (in radians).
   - `kappa`: The concentration parameter (must be greater than 0).
 - **Details**:
-  - The von Mises distribution is a continuous probability distribution on the circle, useful in directional statistics. The function uses a rejection sampling algorithm to generate a random number from the von Mises distribution.
-  - Returns `NaN` if `kappa` is less than or equal to 0.
+  - The von Mises distribution is a continuous probability distribution on the circle, useful in directional statistics. The function uses the Best–Fisher rejection sampler (the same algorithm as Python's `random.vonmisesvariate`); for `kappa <= 1e-6` it returns a uniform angle.
+  - The result is an angle in `[0, 2π)`, also when `mu` is negative.
+  - Returns `NaN` if `kappa` is less than or equal to 0 or is `NaN`.
 
 ---
 
@@ -424,7 +435,7 @@ Random number between 50 and 100 with step 10: 70
 Random number between 50 and 100 with step 10: 60
 Random number between 50 and 100 with step 10: 80
 Value is 4
-Error: invalid range or step value
+Invalid step input.
 Invalid step input.
 ```
 
@@ -912,12 +923,18 @@ int main() {
 ```
 **Result:**
 ```
-Random Pareto value: 1.524975
-Random Pareto value: 1.486391
-Random Pareto value: 10.856653
-Random Pareto value: 1.058269
-Random Pareto value: 1.108613
+Random Pareto value: 3.480958
+Random Pareto value: 1.059191
+Random Pareto value: 1.478565
+Random Pareto value: 3.694395
+Random Pareto value: 1.132016
+Random Pareto value: 2.675945
+Random Pareto value: 1.351576
+Random Pareto value: 2.850620
+Random Pareto value: 2.191857
+Random Pareto value: 1.382896
 ```
+(seeded with the current time, so every run prints different values)
 
 ---
 
@@ -1050,7 +1067,7 @@ fixed `random_seed` yields **byte-identical output on every platform**.
 #include "fmt/fmt.h"
 
 int main(void) {
-    random_seed(2026);   /* fixed seed -> fully reproducible output */
+    random_seed(2026);   
 
     /* Reproducible random bytes, e.g. a deterministic test/fuzz payload. */
     unsigned char payload[8];
@@ -1077,9 +1094,9 @@ int main(void) {
 
 **Result**
 ```
-payload: 14 b5 55 1f 0f 5c 1b 97
-rollout (30%): 0 0 0 0 0 0 1 0 0 0
-1 of 10 enabled
+payload: f4 c9 95 4a 01 34 cd 86
+rollout (30%): 1 0 0 1 0 1 0 0 1 1
+5 of 10 enabled
 ```
 
 ## License

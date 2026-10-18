@@ -19,7 +19,7 @@ The library is designed to be lightweight, efficient, and easy to integrate into
 - **Configurable Parameters**: Support for setting baud rate, data bits, parity, stop bits, and flow control.
 - **Blocking and Non-Blocking Reads**: Options for synchronous and asynchronous data retrieval.
 - **Event Handling**: Register callbacks for serial events (e.g., data received).
-- **Error Handling**: Retrieve detailed error messages for diagnostics.
+- **Error Handling**: Every call reports failure with `-1` (or `false` / `NULL`); the operating-system reason is left in `GetLastError()` (Windows) or `errno` (POSIX).
 - **Logging**: Built-in logging for debugging and development.
 
 ---
@@ -79,9 +79,10 @@ gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c -lsetupa
 #### `int serial_open(const char* port_name, SerialPort* port)`
 - **Purpose**: Opens a serial port.
 - **Parameters**:
-  - `port_name`: Name of the port (e.g., "COM1" or "/dev/ttyS0").
+  - `port_name`: Name of the port (e.g., "COM1" or "/dev/ttyS0"). On Windows a bare `COMn` name (as returned by `serial_list_ports`) is opened as `\\.\COMn`, so COM10 and above work too; other names are used unchanged.
   - `port`: Pointer to a `SerialPort` structure to initialize.
 - **Return**: `0` on success, non-zero on failure.
+- **Notes**: The port starts in blocking-read mode: `serial_read` returns as soon as at least one byte is available (Windows: set through `SetCommTimeouts`; POSIX: `VMIN=1`, `VTIME=0`).
 
 ---
 
@@ -98,9 +99,9 @@ gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c -lsetupa
 - **Parameters**:
   - `port`: Pointer to the `SerialPort` structure representing the port.
   - `config`: Pointer to a `SerialConfig` structure containing configuration settings.
-- **Return**: `0` on success, non-zero on failure.
+- **Return**: `0` on success, non-zero on failure. Unsupported settings fail instead of being replaced: `data_bits` outside 5..8, an unknown parity / stop-bits / flow-control value, a baud rate `<= 0`, or on POSIX a rate termios cannot name (the standard rates up to 230400, plus 460800 .. 4000000 where the system defines them).
 - **Details**:
-  - Configurable parameters include baud rate, data bits, parity, stop bits, and flow control.
+  - Configurable parameters include baud rate, data bits, parity, stop bits, and flow control. With parity enabled, received bytes are parity-checked on Windows as well.
 
 ---
 
@@ -109,7 +110,7 @@ gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c -lsetupa
 - **Parameters**:
   - `port`: Pointer to the `SerialPort` structure representing the port.
   - `config`: Pointer to a `SerialConfig` structure to populate.
-- **Return**: `0` on success, non-zero on failure.
+- **Return**: `0` on success, non-zero on failure. On POSIX `baud_rate` is the real rate (9600), not the termios speed code, and `data_bits` reports 5, 6, 7 or 8, so the values round-trip through `serial_configure`.
 
 ---
 
@@ -129,7 +130,7 @@ gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c -lsetupa
   - `port`: Pointer to the `SerialPort` structure representing the port.
   - `buffer`: Pointer to the buffer to store the read data.
   - `size`: Size of the buffer.
-- **Return**: Number of bytes read, or negative value on failure.
+- **Return**: Number of bytes read, or negative value on failure. It waits for the first byte and then returns what has arrived, up to `size` bytes; it does not wait for the whole buffer to fill. With a read timeout set by `serial_set_timeouts`, `0` means no byte arrived in time.
 
 ---
 
@@ -188,6 +189,12 @@ gcc -std=c17 -O2 -Wall -Wextra -o main main.c serial_port/serial_port.c -lsetupa
   `0` for either value to disable that timeout. On Windows this calls
   `SetCommTimeouts`; on POSIX it programs `VMIN`/`VTIME`. (POSIX
   `write_ms` is ignored — `write()` blocks until the kernel drains.)
+  A read returns as soon as at least one byte is available; with
+  `read_ms > 0` it gives up after `read_ms` without data (returns 0). On
+  Windows, `read_ms == 0` used to program all-zero timeouts, which make
+  `ReadFile` wait until the whole buffer is filled. On POSIX `VTIME`
+  counts tenths of a second up to 255, so `read_ms` above 25500 returns
+  `-1` (it used to be cut to 25.5 s silently).
 
 ---
 
@@ -569,7 +576,10 @@ int main() {
 **Result (when COM4 is present and no data is waiting):**
 ```
 No data received.
+Sent 12 bytes: Hello, COM1!
 ```
+
+The port is opened for overlapped I/O, so the event thread waiting for incoming characters does not hold up `serial_write`, `serial_read` or `serial_close`.
 
 **Result (when COM4 is present and data is waiting):**
 ```

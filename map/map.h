@@ -24,8 +24,8 @@ extern "C" {
 /* #define MAP_LOGGING_ENABLE */
 
 #ifdef MAP_LOGGING_ENABLE
-    #define MAP_LOG(fmt, ...) \
-        do { fprintf(stderr, "[MAP LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define MAP_LOG(...) \
+        do { fprintf(stderr, "[MAP LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define MAP_LOG(...) do { } while (0)
 #endif
@@ -39,7 +39,7 @@ typedef void* KeyType;
 typedef void* ValueType;
 
 /* Comparator + deallocator callbacks. */
-typedef int  (*CompareFuncMap)  (const KeyType, const KeyType);
+typedef int  (*CompareFuncMap)  (const void*, const void*);
 typedef void (*ValueDeallocFunc)(void*);
 
 struct MapNode {
@@ -167,8 +167,8 @@ CompareFuncMap  map_key_comp                (const Map* map);
 /* ------------------------------------------------------------------ */
 
 void            map_print                   (const Map* map,
-                                             void (*printKey)(const KeyType),
-                                             void (*printValue)(const ValueType));
+                                             void (*printKey)(const void*),
+                                             void (*printValue)(const void*));
 
 
 #ifdef __cplusplus

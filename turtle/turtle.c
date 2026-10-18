@@ -7,10 +7,49 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <stdint.h>
 #include "turtle.h"
+#if defined(_WIN32)
+#include <wchar.h>
+/* MultiByteToWideChar without <windows.h>, whose names (Rectangle,
+   CloseWindow, DrawText, ...) clash with raylib's. */
+__declspec(dllimport) int __stdcall MultiByteToWideChar(unsigned int, unsigned long, const char*, int, wchar_t*, int);
+#endif
+
+/* fopen for a UTF-8 path (narrow fopen on Windows reads the path in the
+   ANSI code page, so non-ASCII names only worked with a UTF-8 code page). */
+static FILE* turtle_fopen_utf8(const char* path, const char* mode) {
+#if defined(_WIN32)
+    wchar_t wmode[8];
+    size_t i = 0;
+    for (; mode[i] && i < 7; ++i) {
+        wmode[i] = (wchar_t)(unsigned char)mode[i];
+    }
+    wmode[i] = L'\0';
+    int n = MultiByteToWideChar(65001 /* CP_UTF8 */, 0x8 /* MB_ERR_INVALID_CHARS */, path, -1, NULL, 0);
+    if (n <= 0) {
+        return NULL;
+    }
+    wchar_t* wpath = (wchar_t*)malloc((size_t)n * sizeof(wchar_t));
+    if (!wpath) {
+        return NULL;
+    }
+    FILE* f = NULL;
+    if (MultiByteToWideChar(65001, 0x8, path, -1, wpath, n) > 0) {
+        f = _wfopen(wpath, wmode);
+    }
+    free(wpath);
+    return f;
+#else
+    return fopen(path, mode);
+#endif
+}
 
 
 #define INITIAL_CAPACITY 1024
+
+static void turtle_free_fills(Turtle *state);
 
 static Color get_color_from_hex(const char *hex) {
     unsigned int r, g, b;
@@ -35,6 +74,36 @@ static Color get_color_from_hex(const char *hex) {
  * 
  * @return A pointer to the newly created Turtle state. Exits the program if memory allocation fails.
  */
+/* Angles given to and returned by the API are in the current unit
+   (turtle_degrees / turtle_radians); the heading is stored in degrees. Only
+   turtle_heading used to convert, so turtle_left(t, PI/2) in radians mode
+   turned 1.57 degrees. */
+static float turtle_to_degrees(const Turtle* state, float angle) {
+    float full = state->fullcircle_degrees;
+    return (full != 0.0f) ? angle * (360.0f / full) : angle;
+}
+
+static float turtle_from_degrees(const Turtle* state, float degrees) {
+    return degrees * (state->fullcircle_degrees / 360.0f);
+}
+
+/* Bearing from the turtle to (x, y) in degrees, [0, 360), counterclockwise
+   on screen like the heading (screen y grows downwards). */
+static float turtle_bearing_degrees(const Turtle* state, float x, float y) {
+    float dx = x - state->turtle->position.x;
+    float dy = y - state->turtle->position.y;
+    float deg = atan2f(-dy, dx) * (180.0f / PI);
+    if (deg < 0.0f) {
+        deg += 360.0f;
+    }
+    /* -0 (a point straight right, dy == 0) prints as "-0.0"; a tiny negative
+       angle can round up to 360 */
+    if (deg == 0.0f || deg >= 360.0f) {
+        deg = 0.0f;
+    }
+    return deg;
+}
+
 Turtle *turtle_create(void) {
     TURTLE_LOG("[turtle_create]: Creating new turtle.");
     Turtle *state = (Turtle *)calloc(1, sizeof(Turtle));
@@ -52,6 +121,7 @@ Turtle *turtle_create(void) {
     }
 
     state->turtle->position = (Vector2){400.0f, 300.0f};
+    state->homePosition = state->turtle->position;
     state->turtle->heading = 0.0f;
     state->turtle->pencolor = BLACK;
     state->turtle->fillcolor = BLACK;
@@ -128,6 +198,8 @@ void turtle_deallocate(Turtle *state) {
         free(state->lines);
         free(state->stamps);
         free(state->fillPoints);
+        turtle_free_fills(state);
+        free(state->fills);
         for (int i = 0; i < state->textCount; ++i) {
             free(state->texts[i].text);
         }
@@ -147,7 +219,11 @@ void turtle_deallocate(Turtle *state) {
  */
 void turtle_close_window(void) {
     TURTLE_LOG("[turtle_close_window]: Closing window.");
-    CloseWindow();
+    /* turtle_done already closes the window, and the examples call this
+       afterwards as well: raylib's CloseWindow must not run twice. */
+    if (IsWindowReady()) {
+        CloseWindow();
+    }
 }
 
 
@@ -196,7 +272,9 @@ void turtle_set_speed(Turtle *state, float speed) {
 
     TURTLE_LOG("[turtle_set_speed]: Setting turtle speed to %.2f", speed);
     state->turtle->speed = speed;
-    state->stepSize = speed * 5;
+    /* A step of 0 (speed 0, as in Python's "fastest") or below made
+       turtle_forward loop forever; such a speed now draws instantly. */
+    state->stepSize = (speed > 0.0f && isfinite(speed)) ? speed * 5 : 0.0f;
 }
 
 
@@ -264,19 +342,33 @@ bool turtle_is_down(Turtle *state) {
  * 
  * @param state A pointer to the Turtle structure whose line buffer might be resized.
  */
-static void resize_lines_if_needed(Turtle *state) {
+/* The capacity after doubling @p cap for elements of @p elem bytes, or 0
+   when it would overflow int / size_t. */
+static int turtle_grown_capacity(int cap, size_t elem) {
+    if (cap > INT_MAX / 2) {
+        return 0;
+    }
+    int newCap = cap > 0 ? cap * 2 : INITIAL_CAPACITY;
+    return ((size_t)newCap > SIZE_MAX / elem) ? 0 : newCap;
+}
+
+/* The resize helpers return false - leaving the array as it was - when the
+   allocation fails; callers then skip the write (they used to write one
+   element past the buffer). */
+static bool resize_lines_if_needed(Turtle *state) {
     if (state->lineCount >= state->lineCapacity) {
-        int newCap = state->lineCapacity * 2;
-        Line *resized = (Line *)realloc(state->lines, newCap * sizeof(Line));
+        int newCap = turtle_grown_capacity(state->lineCapacity, sizeof(Line));
+        Line *resized = newCap ? (Line *)realloc(state->lines, (size_t)newCap * sizeof(Line)) : NULL;
 
         if (!resized) {
             TURTLE_LOG("Error: Failed to reallocate memory for lines (capacity %d)", newCap);
-            return;
+            return false;
         }
 
         state->lines = resized;
         state->lineCapacity = newCap;
     }
+    return true;
 }
 
 
@@ -288,20 +380,21 @@ static void resize_lines_if_needed(Turtle *state) {
  * 
  * @param state A pointer to the Turtle structure whose stamp buffer might be resized.
  */
-static void resize_stamps_if_needed(Turtle *state) {
+static bool resize_stamps_if_needed(Turtle *state) {
     if (state->stampCount >= state->stampCapacity) {
-        int newCap = state->stampCapacity * 2;
+        int newCap = turtle_grown_capacity(state->stampCapacity, sizeof(Stamp));
         TURTLE_LOG("[resize_stamps_if_needed]: Resizing stamps array. New capacity: %d", newCap);
 
-        Stamp *resized = (Stamp *)realloc(state->stamps, newCap * sizeof(Stamp));
+        Stamp *resized = newCap ? (Stamp *)realloc(state->stamps, (size_t)newCap * sizeof(Stamp)) : NULL;
         if (!resized) {
             TURTLE_LOG("Error: Failed to reallocate memory for stamps (capacity %d)", newCap);
-            return;
+            return false;
         }
 
         state->stamps = resized;
         state->stampCapacity = newCap;
     }
+    return true;
 }
 
 
@@ -313,32 +406,177 @@ static void resize_stamps_if_needed(Turtle *state) {
  * 
  * @param state A pointer to the Turtle structure whose fill points buffer might be resized.
  */
-static void resize_fill_points_if_needed(Turtle *state) {
+static bool resize_fill_points_if_needed(Turtle *state) {
     if (state->fillPointCount >= state->fillPointCapacity) {
-        int newCap = state->fillPointCapacity * 2;
+        int newCap = turtle_grown_capacity(state->fillPointCapacity, sizeof(Vector2));
         TURTLE_LOG("[resize_fill_points_if_needed]: Resizing fill points array. New capacity: %d", newCap);
 
-        Vector2 *resized = (Vector2 *)realloc(state->fillPoints, newCap * sizeof(Vector2));
+        Vector2 *resized = newCap ? (Vector2 *)realloc(state->fillPoints, (size_t)newCap * sizeof(Vector2)) : NULL;
         if (!resized) {
             TURTLE_LOG("Error: Failed to reallocate memory for fill points (capacity %d)", newCap);
-            return;
+            return false;
         }
 
         state->fillPoints = resized;
         state->fillPointCapacity = newCap;
     }
+    return true;
 }
 
+/* Record a vertex of the fill in progress (skipped when out of memory). */
+static void turtle_add_fill_point(Turtle *state) {
+    if (state->turtle->filling && resize_fill_points_if_needed(state)) {
+        state->fillPoints[state->fillPointCount++] = state->turtle->position;
+    }
+}
 
-/* Render every recorded text label. Called from each frame-drawing routine
- * (turtle_forward, turtle_draw, turtle_done) so labels persist like lines. */
-static void turtle_render_texts(const Turtle *state) {
+/* Append a pen-down segment; returns its index, or -1 when out of memory. */
+static int turtle_add_line(Turtle *state, Vector2 start, Vector2 end) {
+    if (!resize_lines_if_needed(state)) {
+        return -1;
+    }
+    Line *l = &state->lines[state->lineCount];
+    l->start = start;
+    l->end = end;
+    l->color = state->turtle->pencolor;
+    l->thickness = state->turtle->thickness;
+    return state->lineCount++;
+}
+
+static void turtle_free_fills(Turtle *state) {
+    for (int i = 0; i < state->fillCount; ++i) {
+        free(state->fills[i].triangles);
+    }
+    state->fillCount = 0;
+}
+
+static float turtle_cross(Vector2 o, Vector2 a, Vector2 b) {
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+static bool turtle_in_triangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c) {
+    float d1 = turtle_cross(a, b, p);
+    float d2 = turtle_cross(b, c, p);
+    float d3 = turtle_cross(c, a, p);
+    bool neg = (d1 < 0.0f) || (d2 < 0.0f) || (d3 < 0.0f);
+    bool pos = (d1 > 0.0f) || (d2 > 0.0f) || (d3 > 0.0f);
+    return !(neg && pos);
+}
+
+/* raylib's DrawTriangle wants counter-clockwise vertices as seen on screen
+   (y grows downwards), i.e. a negative cross product here. */
+static void turtle_emit_triangle(Vector2* out, int* count, Vector2 a, Vector2 b, Vector2 c) {
+    if (turtle_cross(a, b, c) > 0.0f) {
+        Vector2 t = b;
+        b = c;
+        c = t;
+    }
+    out[3 * *count] = a;
+    out[3 * *count + 1] = b;
+    out[3 * *count + 2] = c;
+    (*count)++;
+}
+
+/* Ear-clipping triangulation of the fill outline, so concave shapes fill
+   correctly (DrawTriangleFan from the first vertex covered areas outside a
+   concave outline). A self-intersecting outline falls back to a fan for the
+   part that is left. Returns 3 * *count vertices (malloc'ed) or NULL. */
+static Vector2* turtle_triangulate(const Vector2* pts, int n, int* count) {
+    *count = 0;
+    int* idx = (int*)malloc((size_t)n * sizeof(int));
+    if (!idx) {
+        return NULL;
+    }
+    int m = 0;
+    for (int i = 0; i < n; ++i) {   /* drop repeated points */
+        if (m == 0 || pts[i].x != pts[idx[m - 1]].x || pts[i].y != pts[idx[m - 1]].y) {
+            idx[m++] = i;
+        }
+    }
+    while (m > 1 && pts[idx[m - 1]].x == pts[idx[0]].x && pts[idx[m - 1]].y == pts[idx[0]].y) {
+        m--;                        /* a closing point equal to the first */
+    }
+    if (m < 3) {
+        free(idx);
+        return NULL;
+    }
+    double area2 = 0.0;
+    for (int i = 0; i < m; ++i) {
+        Vector2 p = pts[idx[i]], q = pts[idx[(i + 1) % m]];
+        area2 += (double)p.x * q.y - (double)q.x * p.y;
+    }
+    float orient = (area2 > 0.0) ? 1.0f : -1.0f;   /* sign of a convex corner */
+
+    Vector2* tris = (Vector2*)malloc((size_t)3 * (size_t)(m - 2) * sizeof(Vector2));
+    if (!tris) {
+        free(idx);
+        return NULL;
+    }
+    while (m > 3) {
+        bool clipped = false;
+        for (int i = 0; i < m && !clipped; ++i) {
+            int ip = (i + m - 1) % m, in = (i + 1) % m;
+            Vector2 a = pts[idx[ip]], b = pts[idx[i]], c = pts[idx[in]];
+            float cr = turtle_cross(a, b, c);
+            if (cr == 0.0f) {
+                memmove(&idx[i], &idx[i + 1], (size_t)(m - i - 1) * sizeof(int));   /* collinear: no area */
+                m--;
+                clipped = true;
+                break;
+            }
+            if (cr * orient < 0.0f) {
+                continue;                   /* reflex corner */
+            }
+            bool ear = true;
+            for (int j = 0; j < m && ear; ++j) {
+                if (j != i && j != ip && j != in && turtle_in_triangle(pts[idx[j]], a, b, c)) {
+                    ear = false;
+                }
+            }
+            if (ear) {
+                turtle_emit_triangle(tris, count, a, b, c);
+                memmove(&idx[i], &idx[i + 1], (size_t)(m - i - 1) * sizeof(int));
+                m--;
+                clipped = true;
+            }
+        }
+        if (!clipped) {
+            break;                          /* self-intersecting: fan the rest */
+        }
+    }
+    for (int i = 1; i + 1 < m; ++i) {
+        turtle_emit_triangle(tris, count, pts[idx[0]], pts[idx[i]], pts[idx[i + 1]]);
+    }
+    free(idx);
+    return tris;
+}
+
+/* Everything recorded so far: fills (under the lines, each in its own
+   colour), lines, stamps and text. Shared by every routine that draws a
+   frame, so a fill no longer vanishes during later animation. */
+static void turtle_render_scene(const Turtle *state) {
+    for (int f = 0; f < state->fillCount; ++f) {
+        const TurtleFill *fill = &state->fills[f];
+        for (int t = 0; t < fill->triangleCount; ++t) {
+            DrawTriangle(fill->triangles[3 * t], fill->triangles[3 * t + 1], fill->triangles[3 * t + 2], fill->color);
+        }
+    }
+    for (int i = 0; i < state->lineCount; i++) {
+        DrawLineEx(state->lines[i].start, state->lines[i].end, state->lines[i].thickness, state->lines[i].color);
+    }
+    for (int i = 0; i < state->stampCount; i++) {
+        DrawCircleV(state->stamps[i].position, 5, state->stamps[i].color);
+    }
     for (int i = 0; i < state->textCount; ++i) {
-        DrawText(state->texts[i].text,
-                 (int)state->texts[i].position.x,
-                 (int)state->texts[i].position.y,
-                 state->texts[i].fontSize,
-                 state->texts[i].color);
+        DrawText(state->texts[i].text, (int)state->texts[i].position.x, (int)state->texts[i].position.y,
+                 state->texts[i].fontSize, state->texts[i].color);
+    }
+}
+
+static void turtle_render_cursor(const Turtle *state) {
+    DrawCircleV(state->turtle->position, 5, state->turtle->pencolor);
+    if (state->dot.drawn) {
+        DrawCircleV(state->turtle->position, state->dot.size / 2, state->dot.color);
     }
 }
 
@@ -351,59 +589,63 @@ static void turtle_render_texts(const Turtle *state) {
  * movement to ensure smooth transitions. If the turtle is in fill mode, it also adds points to the 
  * fill buffer.
  * 
+ * Heading 0 points to the right and angles grow counterclockwise on screen
+ * (turtle_left turns counterclockwise). A negative distance moves backwards;
+ * a speed of 0 or less moves the whole distance at once. The move is
+ * animated in steps but recorded as ONE line (it was one line per pixel:
+ * forward(100) left 100 segments, every frame redrew all of them, and
+ * turtle_undo removed 1/100 of the move).
+ *
  * @param state A pointer to the Turtle structure representing the turtle's state.
  * @param distance The distance (in units) by which to move the turtle forward.
  */
 void turtle_forward(Turtle *state, float distance) {
+    if (!state || !state->turtle || !isfinite(distance)) {
+        return;   /* an infinite distance would never finish */
+    }
     TURTLE_LOG("[turtle_forward]: Moving turtle forward by %.2f units.", distance);
-    state->distanceRemaining = distance;
+    /* A negative distance walks backwards (as in Python); it used to be
+       ignored. The heading is counterclockwise on screen: y grows downwards
+       there, so the y step is -sin (adding +sin turned turtle_left into a
+       clockwise turn and mirrored every drawing). */
+    float direction = (distance < 0.0f) ? -1.0f : 1.0f;
+    state->distanceRemaining = fabsf(distance);
     float rad = DEG2RAD * state->turtle->heading;
+    int lineIndex = (state->turtle->penDown && state->distanceRemaining > 0.0f)
+                    ? turtle_add_line(state, state->turtle->position, state->turtle->position) : -1;
 
     while (state->distanceRemaining > 0) {
-        float move = fminf(state->stepSize, state->distanceRemaining);  // Use a smaller step size for smoother movement
+        float move = (state->stepSize > 0.0f) ? fminf(state->stepSize, state->distanceRemaining)
+                                              : state->distanceRemaining;   /* speed <= 0: in one go */
         Vector2 start = state->turtle->position;
 
-        state->turtle->position.x += move * cosf(rad);
-        state->turtle->position.y += move * sinf(rad);
+        state->turtle->position.x += direction * move * cosf(rad);
+        state->turtle->position.y -= direction * move * sinf(rad);
 
         TURTLE_LOG("[turtle_forward]: Turtle position updated to (%.2f, %.2f).", state->turtle->position.x, state->turtle->position.y);
 
-        if (state->turtle->penDown) {
-            TURTLE_LOG("[turtle_forward]: Drawing line from (%.2f, %.2f) to (%.2f, %.2f).", start.x, start.y, state->turtle->position.x, state->turtle->position.y);
-            resize_lines_if_needed(state);
-            state->lines[state->lineCount].start = start;
-            state->lines[state->lineCount].end = state->turtle->position;
-            state->lines[state->lineCount].color = state->turtle->pencolor;
-            state->lines[state->lineCount].thickness = state->turtle->thickness;
-            state->lineCount++;
+        (void)start;
+        if (lineIndex >= 0) {
+            state->lines[lineIndex].end = state->turtle->position;   /* the move's line grows */
         }
 
-        if (state->turtle->filling) {
-            TURTLE_LOG("[turtle_forward]: Adding point to fill at (%.2f, %.2f).", state->turtle->position.x, state->turtle->position.y);
-            resize_fill_points_if_needed(state);
-            state->fillPoints[state->fillPointCount++] = state->turtle->position;
-        }
-
-        state->distanceRemaining -= move;
+        float next = state->distanceRemaining - move;
+        /* a step below the float resolution of a huge distance would not
+           change it: finish instead of looping forever */
+        state->distanceRemaining = (next < state->distanceRemaining) ? next : 0.0f;
 
         BeginDrawing();
         ClearBackground(state->backgroundColor);
-        for (int i = 0; i < state->lineCount; i++) {
-            DrawLineEx(state->lines[i].start, state->lines[i].end, state->lines[i].thickness, state->lines[i].color);
-        }
-        for (int i = 0; i < state->stampCount; i++) {
-            DrawCircleV(state->stamps[i].position, 5, state->stamps[i].color);
-        }
-        turtle_render_texts(state);
-        DrawCircleV(state->turtle->position, 5, state->turtle->pencolor);
-        if (state->dot.drawn) {
-            DrawCircleV(state->turtle->position, state->dot.size / 2, state->dot.color);
-        }
+        turtle_render_scene(state);
+        turtle_render_cursor(state);
         EndDrawing();
 
         if (state->distanceRemaining > 0) {
             WaitTime(0.005f);  // Adjust wait time for smoother animation
         }
+    }
+    if (fabsf(distance) > 0.0f) {
+        turtle_add_fill_point(state);   /* one vertex per move */
     }
 }
 
@@ -440,17 +682,18 @@ void turtle_position(Turtle *state, float *x, float *y) {
 /**
  * @brief Turns the turtle by a specified angle.
  * 
- * This function adjusts the turtle's heading by the specified angle in degrees.
- * 
+ * This function adjusts the turtle's heading by the specified angle, in the
+ * current angle unit (degrees, or radians after turtle_radians).
+ *
  * @param state A pointer to the Turtle structure.
- * @param angle The angle (in degrees) to turn the turtle.
+ * @param angle The angle to turn the turtle (positive = counterclockwise).
  */
 void turtle_turn(Turtle *state, float angle) {
     if (!state || !state->turtle) {
         return;
     }
-    TURTLE_LOG("[turtle_turn]: Turning turtle by %.2f degrees.", angle);
-    state->turtle->heading += angle;
+    TURTLE_LOG("[turtle_turn]: Turning turtle by %.2f.", angle);
+    state->turtle->heading += turtle_to_degrees(state, angle);
 }
 
 
@@ -466,8 +709,8 @@ void turtle_right(Turtle *state, float angle) {
     if (!state || !state->turtle) {
         return;
     }
-    TURTLE_LOG("[turtle_right]: Turning turtle right by %.2f degrees.", angle);
-    state->turtle->heading -= angle;
+    TURTLE_LOG("[turtle_right]: Turning turtle right by %.2f.", angle);
+    state->turtle->heading -= turtle_to_degrees(state, angle);
 }
 
 
@@ -483,8 +726,8 @@ void turtle_left(Turtle *state, float angle) {
     if (!state || !state->turtle) {
         return;
     }
-    TURTLE_LOG("[turtle_left]: Turning turtle left by %.2f degrees.", angle);
-    state->turtle->heading += angle;
+    TURTLE_LOG("[turtle_left]: Turning turtle left by %.2f.", angle);
+    state->turtle->heading += turtle_to_degrees(state, angle);
 }
 
 
@@ -617,17 +860,18 @@ void turtle_begin_fill(Turtle *state) {
     TURTLE_LOG("[turtle_begin_fill]: Starting fill.");
 
     state->turtle->filling = true;
-    state->fillPointCount = 0; // Reset fill point count
-    resize_fill_points_if_needed(state);
-    state->fillPoints[state->fillPointCount++] = state->turtle->position;
+    state->fillPointCount = 0; // a new outline (finished fills are kept in state->fills)
+    turtle_add_fill_point(state);
 }
 
 
 /**
  * @brief Ends the fill operation for the turtle.
  * 
- * This function completes the fill operation and draws a filled shape using the points collected
- * during the fill process. The shape is drawn using the turtle's current fill color.
+ * This function completes the fill operation: the outline collected since turtle_begin_fill is
+ * triangulated (concave outlines fill correctly) and kept, in the current fill color, with every
+ * earlier fill; all of them are drawn under the lines in every later frame. (Only the last fill
+ * used to survive, redrawn in whatever the fill color was at drawing time.)
  * 
  * @param state A pointer to the Turtle structure.
  */
@@ -637,27 +881,39 @@ void turtle_end_fill(Turtle *state) {
     }
     TURTLE_LOG("[turtle_end_fill]: Ending fill with %d points.", state->fillPointCount);
 
-    if (state->fillPointCount > 2) {
+    if (state->turtle->filling && state->fillPointCount > 2) {
+        int triangles = 0;
+        Vector2 *tris = turtle_triangulate(state->fillPoints, state->fillPointCount, &triangles);
+        bool stored = false;
+        if (tris && triangles > 0) {
+            if (state->fillCount >= state->fillCapacity) {
+                int newCap = turtle_grown_capacity(state->fillCapacity, sizeof(TurtleFill));
+                TurtleFill *grown = newCap ? (TurtleFill *)realloc(state->fills, (size_t)newCap * sizeof(TurtleFill)) : NULL;
+                if (grown) {
+                    state->fills = grown;
+                    state->fillCapacity = newCap;
+                }
+            }
+            if (state->fillCount < state->fillCapacity) {
+                state->fills[state->fillCount].triangles = tris;
+                state->fills[state->fillCount].triangleCount = triangles;
+                state->fills[state->fillCount].color = state->turtle->fillcolor;
+                state->fillCount++;
+                stored = true;
+            }
+        }
+        if (!stored) {
+            free(tris);
+        }
         TURTLE_LOG("[turtle_end_fill]: Drawing filled shape.");
         BeginDrawing();
         ClearBackground(state->backgroundColor);
-        
-        // Draw existing lines
-        for (int i = 0; i < state->lineCount; i++) {
-            DrawLineEx(state->lines[i].start, state->lines[i].end, state->lines[i].thickness, state->lines[i].color);
-        }
-
-        // Draw the filled shape
-        DrawTriangleFan(state->fillPoints, state->fillPointCount, state->turtle->fillcolor);
-        
-        // Draw lines again on top
-        for (int i = 0; i < state->lineCount; i++) {
-            DrawLineEx(state->lines[i].start, state->lines[i].end, state->lines[i].thickness, state->lines[i].color);
-        }
-
+        turtle_render_scene(state);
+        turtle_render_cursor(state);
         EndDrawing();
     }
     state->turtle->filling = false;
+    state->fillPointCount = 0;
 }
 
 
@@ -671,35 +927,14 @@ void turtle_end_fill(Turtle *state) {
  */
 void turtle_draw(Turtle *state) {
     TURTLE_LOG("[turtle_draw]: Begin drawing.");
+    if (!state || !state->turtle) {
+        return;
+    }
 
     BeginDrawing();
     ClearBackground(state->backgroundColor);
-
-    if (state->fillPointCount > 2) {
-        TURTLE_LOG("[turtle_draw]: Drawing fill with %d points.", state->fillPointCount);
-        DrawTriangleFan(state->fillPoints, state->fillPointCount, state->turtle->fillcolor);
-    }
-
-    for (int i = 0; i < state->lineCount; i++) {
-        TURTLE_LOG("[turtle_draw]: Drawing line %d from (%.2f, %.2f) to (%.2f, %.2f).", i, state->lines[i].start.x, state->lines[i].start.y, state->lines[i].end.x, state->lines[i].end.y);
-        DrawLineEx(state->lines[i].start, state->lines[i].end, state->lines[i].thickness, state->lines[i].color);
-    }
-
-    for (int i = 0; i < state->stampCount; i++) {
-        TURTLE_LOG("[turtle_draw]: Drawing stamp %d at position (%.2f, %.2f).", i, state->stamps[i].position.x, state->stamps[i].position.y);
-        DrawCircleV(state->stamps[i].position, 5, state->stamps[i].color);
-    }
-
-    turtle_render_texts(state);
-
-    TURTLE_LOG("[turtle_draw]: Drawing turtle at position (%.2f, %.2f).", state->turtle->position.x, state->turtle->position.y);
-    DrawCircleV(state->turtle->position, 5, state->turtle->pencolor);
-
-    if (state->dot.drawn) {
-        TURTLE_LOG("[turtle_draw]: Drawing dot at position (%.2f, %.2f) with size %.2f.", state->turtle->position.x, state->turtle->position.y, state->dot.size);
-        DrawCircleV(state->turtle->position, state->dot.size / 2, state->dot.color);
-    }
-
+    turtle_render_scene(state);
+    turtle_render_cursor(state);
     EndDrawing();
     TURTLE_LOG("[turtle_draw]: End drawing.");
 }
@@ -751,38 +986,20 @@ void turtle_end_drawing(void) {
  */
 void turtle_done(Turtle *state, TurtleDrawFunc user_draw) {
     TURTLE_LOG("[turtle_done]: Begin main draw loop.");
+    if (!state || !state->turtle) {
+        return;
+    }
 
     while (!WindowShouldClose()) {
         BeginDrawing();
-        ClearBackground(state->backgroundColor); 
+        ClearBackground(state->backgroundColor);
+        turtle_render_scene(state);
 
-        if (state->fillPointCount > 2) {
-            TURTLE_LOG("[turtle_done]: Drawing fill with %d points.", state->fillPointCount);
-            DrawTriangleFan(state->fillPoints, state->fillPointCount, state->turtle->fillcolor);
+        if (user_draw) {   /* NULL is allowed: nothing extra to draw */
+            user_draw(state);
         }
 
-        for (int i = 0; i < state->lineCount; i++) {
-            TURTLE_LOG("[turtle_done]: Drawing line %d from (%.2f, %.2f) to (%.2f, %.2f).", i, state->lines[i].start.x, state->lines[i].start.y, state->lines[i].end.x, state->lines[i].end.y);
-            DrawLineEx(state->lines[i].start, state->lines[i].end, state->lines[i].thickness, state->lines[i].color);
-        }
-
-        for (int i = 0; i < state->stampCount; i++) {
-            TURTLE_LOG("[turtle_done]: Drawing stamp %d at position (%.2f, %.2f).", i, state->stamps[i].position.x, state->stamps[i].position.y);
-            DrawCircleV(state->stamps[i].position, 5, state->stamps[i].color);
-        }
-
-        turtle_render_texts(state);
-
-        user_draw(state);
-
-        TURTLE_LOG("[turtle_done]: Drawing turtle at position (%.2f, %.2f).", state->turtle->position.x, state->turtle->position.y);
-        DrawCircleV(state->turtle->position, 5, state->turtle->pencolor);
-
-        if (state->dot.drawn) {
-            TURTLE_LOG("[turtle_done]: Drawing dot at position (%.2f, %.2f) with size %.2f.", state->turtle->position.x, state->turtle->position.y, state->dot.size);
-            DrawCircleV(state->turtle->position, state->dot.size / 2, state->dot.color);
-        }
-
+        turtle_render_cursor(state);
         EndDrawing();
     }
 
@@ -808,20 +1025,10 @@ void turtle_set_position(Turtle *state, float x, float y) {
 
     if (state->turtle->penDown) {
         TURTLE_LOG("[turtle_set_position]: Pen is down. Drawing line from (%.2f, %.2f) to (%.2f, %.2f)", state->turtle->position.x, state->turtle->position.y, x, y);
-        resize_lines_if_needed(state);
-        state->lines[state->lineCount].start = state->turtle->position;
-        state->lines[state->lineCount].end = (Vector2){x, y};
-        state->lines[state->lineCount].color = state->turtle->pencolor;
-        state->lines[state->lineCount].thickness = state->turtle->thickness;
-        state->lineCount++;
+        turtle_add_line(state, state->turtle->position, (Vector2){x, y});
     }
     state->turtle->position = (Vector2){x, y};
-
-    if (state->turtle->filling) {
-        TURTLE_LOG("[turtle_set_position]: Adding fill point at (%.2f, %.2f)", x, y);
-        resize_fill_points_if_needed(state);
-        state->fillPoints[state->fillPointCount++] = state->turtle->position;
-    }
+    turtle_add_fill_point(state);
 }
 
 
@@ -842,21 +1049,10 @@ void turtle_set_x(Turtle *state, float x) {
 
     if (state->turtle->penDown) {
         TURTLE_LOG("[turtle_set_x]: Pen is down. Drawing line from (%.2f, %.2f) to (%.2f, %.2f)", state->turtle->position.x, state->turtle->position.y, x, state->turtle->position.y);
-        resize_lines_if_needed(state);
-
-        state->lines[state->lineCount].start = state->turtle->position;
-        state->lines[state->lineCount].end = (Vector2){x, state->turtle->position.y};
-        state->lines[state->lineCount].color = state->turtle->pencolor;
-        state->lines[state->lineCount].thickness = state->turtle->thickness;
-        state->lineCount++;
+        turtle_add_line(state, state->turtle->position, (Vector2){x, state->turtle->position.y});
     }
     state->turtle->position.x = x;
-
-    if (state->turtle->filling) {
-        TURTLE_LOG("[turtle_set_x]: Adding fill point at (%.2f, %.2f)", x, state->turtle->position.y);
-        resize_fill_points_if_needed(state);
-        state->fillPoints[state->fillPointCount++] = state->turtle->position;
-    }
+    turtle_add_fill_point(state);
 }
 
 
@@ -877,21 +1073,10 @@ void turtle_set_y(Turtle *state, float y) {
 
     if (state->turtle->penDown) {
         TURTLE_LOG("[turtle_set_y]: Pen is down. Drawing line from (%.2f, %.2f) to (%.2f, %.2f)", state->turtle->position.x, state->turtle->position.y, state->turtle->position.x, y);
-        resize_lines_if_needed(state);
-
-        state->lines[state->lineCount].start = state->turtle->position;
-        state->lines[state->lineCount].end = (Vector2){state->turtle->position.x, y};
-        state->lines[state->lineCount].color = state->turtle->pencolor;
-        state->lines[state->lineCount].thickness = state->turtle->thickness;
-        state->lineCount++;
+        turtle_add_line(state, state->turtle->position, (Vector2){state->turtle->position.x, y});
     }
     state->turtle->position.y = y;
-
-    if (state->turtle->filling) {
-        TURTLE_LOG("[turtle_set_y]: Adding fill point at (%.2f, %.2f)", state->turtle->position.x, y);
-        resize_fill_points_if_needed(state);
-        state->fillPoints[state->fillPointCount++] = state->turtle->position;
-    }
+    turtle_add_fill_point(state);
 }
 
 
@@ -908,15 +1093,17 @@ void turtle_set_heading(Turtle *state, float to_angle) {
         return;
     }
 
-    TURTLE_LOG("[turtle_set_heading]: Setting heading to %.2f degrees", to_angle);
-    state->turtle->heading = to_angle;
+    TURTLE_LOG("[turtle_set_heading]: Setting heading to %.2f", to_angle);
+    state->turtle->heading = turtle_to_degrees(state, to_angle);
 }
 
 
 /**
- * @brief Moves the turtle to the home position (0, 0) and resets its heading.
- * 
- * This function moves the turtle to the origin (0, 0) from its current position and resets its heading to 0 degrees.
+ * @brief Moves the turtle to its home position and resets its heading.
+ *
+ * Home is where the turtle started (the centre of the default 800x600
+ * window, as set by turtle_create / turtle_reset); it used to be the screen
+ * corner (0, 0). A line is drawn on the way when the pen is down.
  * 
  * @param state A pointer to the Turtle structure.
  */
@@ -925,18 +1112,18 @@ void turtle_home(Turtle *state) {
         return;
     }
 
-    float currentX = state->turtle->position.x;
-    float currentY = state->turtle->position.y;
-    float distance = sqrtf(currentX * currentX + currentY * currentY);
-    float headingToHome = atan2f(-currentY, -currentX) * (180.0f / PI);
+    float dx = state->homePosition.x - state->turtle->position.x;
+    float dy = state->homePosition.y - state->turtle->position.y;
+    float distance = sqrtf(dx * dx + dy * dy);
+    float headingToHome = turtle_bearing_degrees(state, state->homePosition.x, state->homePosition.y);
 
     TURTLE_LOG("[turtle_home]: Heading towards home with angle %.2f and distance %.2f", headingToHome, distance);
 
-    turtle_set_heading(state, headingToHome);
+    state->turtle->heading = headingToHome;
     turtle_forward(state, distance);
 
     TURTLE_LOG("[turtle_home]: Reached home. Setting heading to 0.");
-    turtle_set_heading(state, 0.0f);
+    state->turtle->heading = 0.0f;
 }
 
 
@@ -946,9 +1133,13 @@ void turtle_home(Turtle *state) {
  * This function draws a circle or an arc with the specified radius, extent, and number of steps. If the number of steps is not provided, it is automatically calculated.
  * 
  * @param state A pointer to the Turtle structure.
+ * As in Python's turtle the centre lies `radius` units to the left of the
+ * turtle; a negative radius puts it on the right (clockwise), and a negative
+ * extent draws the arc backwards.
+ *
  * @param radius The radius of the circle.
- * @param extent The angular extent of the circle or arc in degrees. (Default is 360 for a full circle).
- * @param steps The number of steps to divide the circle into (optional).
+ * @param extent The angular extent of the circle or arc in the current angle unit (360 degrees for a full circle).
+ * @param steps The number of steps to divide the circle into (0 = automatic).
  */
 void turtle_circle(Turtle *state, float radius, float extent, int steps) {
     if (!state || !state->turtle) {
@@ -956,32 +1147,44 @@ void turtle_circle(Turtle *state, float radius, float extent, int steps) {
         return;
     }
     TURTLE_LOG("[turtle_circle]: Drawing circle with radius %.2f, extent %.2f, steps %d", radius, extent, steps);
+    if (!isfinite(radius) || !isfinite(extent)) {
+        return;
+    }
 
     if (steps <= 0) {
         // Auto-calculate steps, guarding against zero (which would have
         // caused division-by-zero in the angle_step / length_step calcs).
-        steps = (int)(fabsf(radius) * PI / 4.0f);
+        float autoSteps = fabsf(radius) * PI / 4.0f;
+        steps = (autoSteps > 3600.0f) ? 3600 : (int)autoSteps;   /* no int overflow for huge radii */
         if (steps < 8) {
             steps = 8;  // floor for small radii
         }
         TURTLE_LOG("[turtle_circle]: Calculated steps as %d", steps);
     }
 
-    float angle_step = extent / steps;
-    float length_step = (2.0f * PI * fabsf(radius) * (extent / 360.0f)) / steps;
+    /* Python turtle's circle: the centre is `radius` to the LEFT of the
+       turtle (right for a negative radius), and a negative extent goes the
+       other way round. Each step moves along a chord. A negative extent used
+       to draw nothing and only turn the heading. */
+    float w = turtle_to_degrees(state, extent) / (float)steps;
+    float w2 = 0.5f * w;
+    float l = 2.0f * radius * sinf(w2 * (PI / 180.0f));
+    if (radius < 0.0f) {
+        l = -l;
+        w = -w;
+        w2 = -w2;
+    }
     Vector2 startPosition = state->turtle->position;
 
-    TURTLE_LOG("[turtle_circle]: Starting circle at position (%.2f, %.2f), angle step %.2f, length step %.2f", startPosition.x, startPosition.y, angle_step, length_step);
+    TURTLE_LOG("[turtle_circle]: Starting circle at position (%.2f, %.2f), angle step %.2f, chord %.2f", startPosition.x, startPosition.y, w, l);
 
+    state->turtle->heading += w2;
     for (int i = 0; i < steps; i++) {
-        turtle_forward(state, length_step);
-        turtle_left(state, radius > 0 ? angle_step : -angle_step);
+        turtle_forward(state, l);
+        state->turtle->heading += w;
     }
-
-    if (state->isFilling) {
-        TURTLE_LOG("[turtle_circle]: Filling the circle sector.");
-        DrawCircleSector(startPosition, fabs(radius), 0, 360, 36, state->fillColor);
-    }
+    state->turtle->heading -= w2;
+    (void)startPosition;   /* a circle inside begin/end_fill is filled from its chords */
     TURTLE_LOG("[turtle_circle]: Circle drawing completed.");
 }
 
@@ -1025,8 +1228,10 @@ void turtle_dot(Turtle *state, float size, unsigned char r, unsigned char g, uns
 int turtle_stamp(Turtle *state) {
     if (!state || !state->turtle) return 0;
     TURTLE_LOG("[turtle_stamp]: Stamping at position (%.2f, %.2f) with color (R: %d, G: %d, B: %d, A: %d)", state->turtle->position.x, state->turtle->position.y, state->turtle->pencolor.r, state->turtle->pencolor.g, state->turtle->pencolor.b, state->turtle->pencolor.a);
-    resize_stamps_if_needed(state);
-    
+    if (!resize_stamps_if_needed(state)) {
+        return 0;   /* out of memory: no stamp */
+    }
+
     state->stamps[state->stampCount].position = state->turtle->position;
     state->stamps[state->stampCount].color = state->turtle->pencolor;
     state->stamps[state->stampCount].id = state->nextStampID;
@@ -1047,6 +1252,9 @@ int turtle_stamp(Turtle *state) {
  */
 void turtle_clear_stamp(Turtle *state, int stamp_id) {
     TURTLE_LOG("[turtle_clear_stamp]: Clearing stamp with ID %d", stamp_id);
+    if (!state) {
+        return;
+    }
 
     for (int i = 0; i < state->stampCount; i++) {
         if (state->stamps[i].id == stamp_id) {
@@ -1098,6 +1306,9 @@ float turtle_distance(Turtle *state, float x, float y) {
  * @return float The distance between the two turtles.
  */
 float turtle_distance_turtle(Turtle *state, Tu *other_turtle) {
+    if (!state || !state->turtle || !other_turtle) {
+        return 0.0f;
+    }
     TURTLE_LOG("[turtle_distance_turtle]: Calculating distance between turtles at (%.2f, %.2f) and (%.2f, %.2f)", state->turtle->position.x, state->turtle->position.y, other_turtle->position.x, other_turtle->position.y);
 
     float distance = sqrtf((state->turtle->position.x - other_turtle->position.x) * (state->turtle->position.x - other_turtle->position.x) + (state->turtle->position.y - other_turtle->position.y) * (state->turtle->position.y - other_turtle->position.y));
@@ -1117,6 +1328,9 @@ float turtle_distance_turtle(Turtle *state, Tu *other_turtle) {
  */
 void turtle_degrees(Turtle *state, float fullcircle) {
     TURTLE_LOG("[turtle_degrees]: Setting full circle degrees to %.2f", fullcircle);
+    if (!state || !(fullcircle > 0.0f) || !isfinite(fullcircle)) {
+        return;
+    }
     state->fullcircle_degrees = fullcircle;
 }
 
@@ -1130,6 +1344,9 @@ void turtle_degrees(Turtle *state, float fullcircle) {
  */
 void turtle_radians(Turtle *state) {
     TURTLE_LOG("[turtle_radians]: Setting full circle to 2 * PI (radians mode)");
+    if (!state) {
+        return;
+    }
     state->fullcircle_degrees = 2 * PI;
 }
 
@@ -1192,10 +1409,8 @@ void turtle_backward(Turtle *state, float distance) {
         return;
     }
     TURTLE_LOG("[turtle_backward]: Stepping back %.2f units", distance);
-
-    state->turtle->heading += 180.0f;
-    turtle_forward(state, distance);
-    state->turtle->heading -= 180.0f;
+    /* turning by 180 and back left rounding noise in the heading */
+    turtle_forward(state, -distance);
 }
 
 
@@ -1308,6 +1523,7 @@ void turtle_reset(Turtle *state) {
     state->lineCount      = 0;
     state->stampCount     = 0;
     state->fillPointCount = 0;
+    turtle_free_fills(state);
     for (int i = 0; i < state->textCount; ++i) {
         free(state->texts[i].text);
     }
@@ -1325,6 +1541,7 @@ void turtle_reset(Turtle *state) {
 
     if (state->turtle) {
         state->turtle->position  = (Vector2){400.0f, 300.0f};
+        state->homePosition      = state->turtle->position;
         state->turtle->heading   = 0.0f;
         state->turtle->pencolor  = BLACK;
         state->turtle->fillcolor = BLACK;
@@ -1348,10 +1565,11 @@ void turtle_clear(Turtle *state) {
         return;
     }
     TURTLE_LOG("[turtle_clear]: Clearing %d lines and %d stamps", state->lineCount, state->stampCount);
-    
+
     state->lineCount      = 0;
     state->stampCount     = 0;
     state->fillPointCount = 0;
+    turtle_free_fills(state);
     for (int i = 0; i < state->textCount; ++i) {
         free(state->texts[i].text);
     }
@@ -1360,19 +1578,23 @@ void turtle_clear(Turtle *state) {
 
 
 /**
- * @brief Remove the most recently drawn line.
+ * @brief Undo the most recent drawn move.
  *
- * Logo's classic `undo` undoes one move at a time. The implementation
- * here pops the last segment added by `turtle_forward`; if there is
- * nothing to undo, returns false.
+ * Removes the last line (one turtle_forward / turtle_set_position / ...
+ * with the pen down - a move is recorded as one line) and puts the turtle
+ * back at that line's start. Pen-up moves and turns are not recorded, so
+ * they are not undone. Returns false if there is nothing to undo.
  *
- * @return true if a line was removed, false on empty / NULL.
+ * @return true if a move was undone, false on empty / NULL.
  */
 bool turtle_undo(Turtle *state) {
     if (!state || state->lineCount == 0) {
         return false;
     }
     state->lineCount--;
+    if (state->turtle) {
+        state->turtle->position = state->lines[state->lineCount].start;
+    }
     TURTLE_LOG("[turtle_undo]: One line removed (%d remain)", state->lineCount);
     
     return true;
@@ -1383,25 +1605,21 @@ bool turtle_undo(Turtle *state) {
  * @brief Angle (in degrees, 0..360) from the turtle's current
  *        position to the point @p (x, y).
  *
- * Uses the same y-axis convention as `turtle_forward` (heading 0 is
- * +x, increasing heading rotates counter-clockwise mathematically /
- * clockwise visually on screen). Returns 0 on NULL.
+ * Uses the same convention as `turtle_forward` (heading 0 is +x and the
+ * angle grows counterclockwise on screen), in the current angle unit, so
+ * `turtle_set_heading(t, turtle_towards(t, x, y))` faces the point.
+ * Returns 0 on NULL.
  */
 float turtle_towards(const Turtle *state, float x, float y) {
     if (!state || !state->turtle) {
         return 0.0f;
     }
 
-    float dx = x - state->turtle->position.x;
-    float dy = y - state->turtle->position.y;
-    float deg = atan2f(dy, dx) * (180.0f / 3.14159265358979323846f);
-
-    if (deg < 0) {
-        deg += 360.0f;
-    }
-
+    /* Same orientation as the heading (counterclockwise on screen), in the
+       current angle unit. */
+    float deg = turtle_bearing_degrees(state, x, y);
     TURTLE_LOG("[turtle_towards]: bearing to (%.2f,%.2f) = %.2f deg", x, y, deg);
-    return deg;
+    return turtle_from_degrees(state, deg);
 }
 
 
@@ -1415,7 +1633,7 @@ void turtle_face_towards(Turtle *state, float x, float y) {
         return;
     }
 
-    state->turtle->heading = turtle_towards(state, x, y);
+    state->turtle->heading = turtle_bearing_degrees(state, x, y);
     TURTLE_LOG("[turtle_face_towards]: heading set to %.2f", state->turtle->heading);
 }
 
@@ -1671,7 +1889,7 @@ bool turtle_export_svg(const Turtle *state, const char *filename) {
     if (vbW <= 0.0f) vbW = 1.0f;
     if (vbH <= 0.0f) vbH = 1.0f;
 
-    FILE *f = fopen(filename, "w");
+    FILE *f = turtle_fopen_utf8(filename, "w");
     if (!f) {
         TURTLE_LOG("[turtle_export_svg]: cannot open '%s' for writing.", filename);
         return false;

@@ -748,7 +748,7 @@ bool map_insert(Map* map, KeyType key, ValueType value) {
 
         if (cmp == 0) {
             MAP_LOG("[map_insert] : Key found, replacing the existing value.");
-            if (map->deallocValue) {
+            if (map->deallocValue && (*curr)->value != value) {
                 map->deallocValue((*curr)->value);
             }
 
@@ -926,8 +926,10 @@ void map_swap(Map* map1, Map* map2) {
  * @return The number of elements matching the key (0 or 1), or 0 if a null pointer is provided.
  */
 size_t map_count(const Map* map, KeyType key) {
-    if (map == NULL) {
-        MAP_LOG("[map_count] : Error: Null pointer provided for map in map_count.");
+    if (map == NULL || key == NULL) {
+        /* NULL key: 0, like the other lookups (it went to the comparator,
+           and strcmp-style comparators crashed) */
+        MAP_LOG("[map_count] : Error: Null pointer provided for map or key in map_count.");
         return 0;
     }
 
@@ -1122,8 +1124,8 @@ bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value) 
  * @return true if the element was successfully erased, false if the key was not found or the map was NULL.
  */
 bool map_erase(Map* map, KeyType key) {
-    if (map == NULL || map->root == NULL) {
-        MAP_LOG("[map_erase] : Error: map or map root is null in map_erase.");
+    if (map == NULL || map->root == NULL || key == NULL) {
+        MAP_LOG("[map_erase] : Error: map, map root or key is null in map_erase.");
         return false;
     }
     
@@ -1618,7 +1620,7 @@ ValueType map_node_get_value(MapNode* node) {
  * @param printKey A function pointer for printing the key.
  * @param printValue A function pointer for printing the value.
  */
-void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType)) {
+void map_print(const Map* map, void (*printKey)(const void*), void (*printValue)(const void*)) {
     if (map == NULL || map->root == NULL) {
         MAP_LOG("[map_print] : Error: Map object or map->root is NULL and invalid in map_print.");
         return;
@@ -1664,7 +1666,12 @@ Map* map_copy(const Map* src) {
     for (MapIterator it = map_begin(src); it.node != map_end(src).node; map_iterator_increment(&it)) {
         KeyType key = map_node_get_key(it.node);
         ValueType value = map_node_get_value(it.node);
-        map_insert(newMap, key, value);
+        if (!map_insert(newMap, key, value)) {
+            /* allocation failed: no partial copy (it used to be returned as a
+               success). The copy has no deallocators, so this frees nodes only. */
+            map_deallocate(newMap);
+            return NULL;
+        }
     }
 
     MAP_LOG("[map_copy] : Map copy operation completed successfully.");

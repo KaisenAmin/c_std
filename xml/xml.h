@@ -25,8 +25,8 @@ extern "C" {
 /* #define XML_LOGGING_ENABLE */
 
 #ifdef XML_LOGGING_ENABLE
-    #define XML_LOG(fmt, ...) \
-        do { fprintf(stderr, "[XML LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define XML_LOG(...) \
+        do { fprintf(stderr, "[XML LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define XML_LOG(...) do { } while (0)
 #endif
@@ -130,7 +130,7 @@ XmlNode*      xml_find_element_by_attribute    (XmlNode* root, const char* attr_
 XmlNode**     xml_get_children                 (XmlNode* node, size_t* out_count);
 XmlNode**     xml_find_elements_by_tag         (XmlNode* root, const char* tag_name, size_t* out_count);
 const char*   xml_get_tag_name                 (XmlNode* node);
-const char*   xml_get_element_text             (XmlNode* element);
+char*         xml_get_element_text             (XmlNode* element);   /* malloc'd copy: caller frees */
 const char*   xml_get_element_attribute        (XmlNode* element, const char* name);
 XmlAttribute* xml_get_attributes              (XmlNode* element, size_t* out_count);
 void          xml_free_attributes              (XmlAttribute* attributes);

@@ -5,9 +5,21 @@
  * Cross-platform serial-port implementation. Doxygen blocks live above
  * each public function.
  */
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "serial_port.h"
 
 #if defined(_WIN32) || defined(_WIN64)
+/* Kept out of the public header: setupapi.h needs the full USER API, so
+   exposing it broke builds that combine this header with raylib's
+   workaround (NOGDI / NOUSER / WIN32_LEAN_AND_MEAN). */
+#include <setupapi.h>
+#include <tchar.h>
+
 /* Avoid the import lib dependency by carrying our own copy of
  * GUID_DEVINTERFACE_COMPORT (defined in MSDN as
  * {86E0D1E0-8089-11D0-9CE4-08003E301F73}). */
@@ -55,21 +67,73 @@ bool serial_is_open(const SerialPort* port) {
  * -------------------------------------------------------------------- */
 
 #if defined(_WIN32) || defined(_WIN64)
+/* The port is opened for overlapped I/O. With a synchronous handle Windows
+ * serializes every call on it, so the event thread's pending WaitCommEvent
+ * blocked serial_write/serial_read/ClearCommError, and serial_close could hang
+ * forever on an idle line. This runs one read or write and waits for it, which
+ * keeps serial_read/serial_write blocking and honouring COMMTIMEOUTS. */
+static BOOL serial_io_wait(HANDLE h, BOOL is_write, void* buf, DWORD len, DWORD* done) {
+    OVERLAPPED ov;
+    memset(&ov, 0, sizeof(ov));
+    ov.hEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if (!ov.hEvent) {
+        return FALSE;
+    }
+    *done = 0;
+    BOOL ok = is_write ? WriteFile(h, buf, len, NULL, &ov) : ReadFile(h, buf, len, NULL, &ov);
+    if (ok || GetLastError() == ERROR_IO_PENDING) {
+        ok = GetOverlappedResult(h, &ov, done, TRUE);
+    }
+    DWORD err = GetLastError();
+    CloseHandle(ov.hEvent);
+    SetLastError(err);
+    return ok;
+}
+
+
 static DWORD WINAPI SerialEventThread(LPVOID param) {
     SerialPort* port = (SerialPort*)param;
     if (!port || !handle_is_open_win(port->handle)) return 0;
 
     SerialPortCallbackData* cd = (SerialPortCallbackData*)port->callback_data;
-    while (cd && InterlockedCompareExchange(&cd->stop, 0, 0) == 0) {
-        DWORD event_mask = 0;
-        if (!WaitCommEvent((HANDLE)port->handle, &event_mask, NULL)) {
-            SERIAL_LOG("[SerialEventThread]: WaitCommEvent failed (%lu) — exiting", GetLastError());
-            break;
+    HANDLE h = (HANDLE)port->handle;
+    OVERLAPPED ov;
+    memset(&ov, 0, sizeof(ov));
+    ov.hEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if (!cd || !ov.hEvent) {
+        if (ov.hEvent) {
+            CloseHandle(ov.hEvent);
         }
-        if (cd->callback) {
+        return 0;
+    }
+    HANDLE waits[2] = { cd->stop_event, ov.hEvent };
+
+    while (InterlockedCompareExchange(&cd->stop, 0, 0) == 0) {
+        DWORD event_mask = 0;   /* written by the driver; valid until the wait ends */
+        ResetEvent(ov.hEvent);
+        if (!WaitCommEvent(h, &event_mask, &ov)) {
+            if (GetLastError() != ERROR_IO_PENDING) {
+                SERIAL_LOG("[SerialEventThread]: WaitCommEvent failed (%lu) — exiting", GetLastError());
+                break;
+            }
+            /* Wait for a port event or for serial_close's stop request. */
+            DWORD w = WaitForMultipleObjects(2, waits, FALSE, INFINITE);
+            DWORD dummy = 0;
+            if (w != WAIT_OBJECT_0 + 1) {
+                CancelIo(h);
+                GetOverlappedResult(h, &ov, &dummy, TRUE);   /* let the cancel finish before ov/event_mask go away */
+                break;
+            }
+            if (!GetOverlappedResult(h, &ov, &dummy, FALSE)) {
+                SERIAL_LOG("[SerialEventThread]: WaitCommEvent completion failed (%lu) — exiting", GetLastError());
+                break;
+            }
+        }
+        if (event_mask != 0 && cd->callback && InterlockedCompareExchange(&cd->stop, 0, 0) == 0) {
             cd->callback((int)event_mask, cd->user_data);
         }
     }
+    CloseHandle(ov.hEvent);
     return 0;
 }
 #endif
@@ -231,8 +295,11 @@ int serial_list_ports(SerialPortInformation** ports, size_t* count) {
             continue;
         }
 
-        char full[256];
+        /* "/dev/" + any d_name fits; a path too long for the name field is
+           skipped (a truncated device path would open the wrong file). */
+        char full[sizeof("/dev/") + sizeof(entry->d_name)];
         snprintf(full, sizeof(full), "/dev/%s", entry->d_name);
+        if (strlen(full) >= sizeof((*ports)[0].name)) continue;
 
         struct stat st;
         if (stat(full, &st) != 0 || !S_ISCHR(st.st_mode)) continue;
@@ -253,8 +320,9 @@ int serial_list_ports(SerialPortInformation** ports, size_t* count) {
             cap = new_cap;
         }
 
-        snprintf((*ports)[idx].name,        sizeof((*ports)[idx].name),        "%s", full);
-        snprintf((*ports)[idx].description, sizeof((*ports)[idx].description), "Serial Port %s", entry->d_name);
+        memcpy((*ports)[idx].name, full, strlen(full) + 1);   /* fits: checked above */
+        snprintf((*ports)[idx].description, sizeof((*ports)[idx].description), "Serial Port %.*s",
+                 (int)(sizeof((*ports)[idx].description) - sizeof("Serial Port ")), entry->d_name);
         snprintf((*ports)[idx].hardware_id, sizeof((*ports)[idx].hardware_id), "N/A");
         idx++;
     }
@@ -292,13 +360,42 @@ int serial_open(const char* port_name, SerialPort* port) {
     strncpy(port->port_name, port_name, sizeof(port->port_name) - 1);
 
 #if defined(_WIN32) || defined(_WIN64)
-    HANDLE h = CreateFileA(port_name, GENERIC_READ | GENERIC_WRITE,
-                           0, NULL, OPEN_EXISTING, 0, NULL);
+    /* A bare "COMn" is opened as "\\.\COMn": CreateFile only maps COM1..COM9
+       without the device prefix, so COM10 and above (as returned by
+       serial_list_ports) failed to open. The prefix is valid for COM1..9
+       too. Names in any other form are used unchanged. */
+    char device[sizeof(port->port_name) + 4];
+    const char* open_name = port_name;
+    if ((port_name[0] == 'C' || port_name[0] == 'c') && (port_name[1] == 'O' || port_name[1] == 'o') &&
+        (port_name[2] == 'M' || port_name[2] == 'm') && port_name[3] >= '0' && port_name[3] <= '9') {
+        size_t k = 4;
+        while (port_name[k] >= '0' && port_name[k] <= '9') {
+            k++;
+        }
+        if (port_name[k] == '\0' && k < sizeof(port->port_name)) {
+            snprintf(device, sizeof(device), "\\\\.\\%s", port_name);
+            open_name = device;
+        }
+    }
+
+    /* Overlapped, so the event thread's WaitCommEvent does not serialize
+       (and block) every other call on the handle; see serial_io_wait. */
+    HANDLE h = CreateFileA(open_name, GENERIC_READ | GENERIC_WRITE,
+                           0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if (h == INVALID_HANDLE_VALUE) {
-        SERIAL_LOG("[serial_open]: CreateFileA(%s) failed (%lu)", port_name, GetLastError());
+        SERIAL_LOG("[serial_open]: CreateFileA(%s) failed (%lu)", open_name, GetLastError());
         return -1;
     }
     port->handle = h;
+
+    /* Start with the documented blocking read (return once at least one byte
+       arrived), like VMIN=1/VTIME=0 on POSIX. The handle otherwise kept the
+       driver's previous COMMTIMEOUTS, often all zero, which makes ReadFile
+       wait until the WHOLE buffer is filled. Not every device accepts
+       timeouts (a pipe does not), so failure here is not fatal. */
+    if (serial_set_timeouts(port, 0, 0) != 0) {
+        SERIAL_LOG("[serial_open]: SetCommTimeouts not supported by %s (%lu)", open_name, GetLastError());
+    }
     return 0;
 #else
     /* Open WITHOUT O_NONBLOCK so the documented blocking serial_read
@@ -308,6 +405,17 @@ int serial_open(const char* port_name, SerialPort* port) {
     if (fd < 0) {
         SERIAL_LOG("[serial_open]: open(%s) failed: %s", port_name, strerror(errno));
         return -1;
+    }
+    if (fd == 0) {
+        /* A zeroed SerialPort (handle 0) means "closed", so a process with
+           stdin closed got a port that serial_is_open rejected (and leaked).
+           Move it above the standard descriptors. */
+        int moved = fcntl(fd, F_DUPFD, 3);
+        close(fd);
+        if (moved < 0) {
+            return -1;
+        }
+        fd = moved;
     }
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags >= 0) {
@@ -350,18 +458,25 @@ int serial_close(SerialPort* port) {
     }
 
 #if defined(_WIN32) || defined(_WIN64)
-    /* Ask the event thread to exit first, then close. WaitCommEvent
-     * unblocks when the handle is closed. */
+    /* Ask the event thread to exit first, then close the handle. */
     SerialPortCallbackData* cd = (SerialPortCallbackData*)port->callback_data;
     if (cd) {
-        /* Ask the worker to stop, force any pending WaitCommEvent to return
-         * immediately, then JOIN the thread before freeing cd. */
+        /* Signal the stop event (the thread waits on it next to its
+         * overlapped WaitCommEvent, so it wakes even on an idle line), then
+         * JOIN the thread before freeing cd. */
         InterlockedExchange(&cd->stop, 1);
+        if (cd->stop_event) {
+            SetEvent(cd->stop_event);
+        }
         SetCommMask((HANDLE)port->handle, 0);
         if (cd->thread) {
             WaitForSingleObject(cd->thread, INFINITE);
             CloseHandle(cd->thread);
             cd->thread = NULL;
+        }
+        if (cd->stop_event) {
+            CloseHandle(cd->stop_event);
+            cd->stop_event = NULL;
         }
     }
 
@@ -388,27 +503,80 @@ int serial_close(SerialPort* port) {
 
 #if !defined(_WIN32) && !defined(_WIN64)
 /* Translate an integer baud rate to the matching termios B* constant. */
+/* Every rate termios can name (the table used to stop at 230400, so Linux's
+   B460800 .. B4000000 failed to configure). */
+static const struct {
+    int     rate;
+    speed_t code;
+} serial_baud_table[] = {
+    {50, B50}, {75, B75}, {110, B110}, {134, B134}, {150, B150}, {200, B200}, {300, B300},
+    {600, B600}, {1200, B1200}, {1800, B1800}, {2400, B2400}, {4800, B4800}, {9600, B9600},
+    {19200, B19200}, {38400, B38400}, {57600, B57600}, {115200, B115200}, {230400, B230400},
+#ifdef B460800
+    {460800, B460800},
+#endif
+#ifdef B500000
+    {500000, B500000},
+#endif
+#ifdef B576000
+    {576000, B576000},
+#endif
+#ifdef B921600
+    {921600, B921600},
+#endif
+#ifdef B1000000
+    {1000000, B1000000},
+#endif
+#ifdef B1152000
+    {1152000, B1152000},
+#endif
+#ifdef B1500000
+    {1500000, B1500000},
+#endif
+#ifdef B2000000
+    {2000000, B2000000},
+#endif
+#ifdef B2500000
+    {2500000, B2500000},
+#endif
+#ifdef B3000000
+    {3000000, B3000000},
+#endif
+#ifdef B3500000
+    {3500000, B3500000},
+#endif
+#ifdef B4000000
+    {4000000, B4000000},
+#endif
+};
+
 static speed_t get_baud_rate_constant(int baud_rate) {
-    switch (baud_rate) {
-        case 50:     return B50;
-        case 75:     return B75;
-        case 110:    return B110;
-        case 134:    return B134;
-        case 150:    return B150;
-        case 200:    return B200;
-        case 300:    return B300;
-        case 600:    return B600;
-        case 1200:   return B1200;
-        case 1800:   return B1800;
-        case 2400:   return B2400;
-        case 4800:   return B4800;
-        case 9600:   return B9600;
-        case 19200:  return B19200;
-        case 38400:  return B38400;
-        case 57600:  return B57600;
-        case 115200: return B115200;
-        case 230400: return B230400;
-        default:     return 0;
+    for (size_t i = 0; i < sizeof(serial_baud_table) / sizeof(serial_baud_table[0]); i++) {
+        if (serial_baud_table[i].rate == baud_rate) {
+            return serial_baud_table[i].code;
+        }
+    }
+    return 0;
+}
+
+/* The inverse: a termios B* constant to its baud rate, 0 if unknown. */
+static int get_baud_rate_value(speed_t code) {
+    for (size_t i = 0; i < sizeof(serial_baud_table) / sizeof(serial_baud_table[0]); i++) {
+        if (serial_baud_table[i].code == code) {
+            return serial_baud_table[i].rate;
+        }
+    }
+    return 0;
+}
+
+/* Character size from c_cflag (CS5..CS8; everything but CS7 used to be
+   reported as 8). */
+static int get_data_bits_value(tcflag_t cflag) {
+    switch (cflag & CSIZE) {
+        case CS5: return 5;
+        case CS6: return 6;
+        case CS7: return 7;
+        default:  return 8;
     }
 }
 #endif
@@ -418,11 +586,22 @@ static speed_t get_baud_rate_constant(int baud_rate) {
  * @brief Apply a configuration to an open port.
  *
  * @return 0 on success, -1 on bad arg / OS failure / unsupported
- *         baud rate (POSIX only).
+ *         settings: data_bits outside 5..8, an unknown parity, stop-bits or
+ *         flow-control value, a baud rate <= 0, or (POSIX) a rate termios
+ *         cannot name. Nothing is substituted silently (data_bits 9 used to
+ *         become 8 on POSIX).
  */
 int serial_configure(SerialPort* port, const SerialConfig* config) {
     if (!port || !config || !serial_is_open(port)) {
         SERIAL_LOG("[serial_configure]: bad arg or port closed");
+        return -1;
+    }
+    if (config->baud_rate <= 0 || config->data_bits < 5 || config->data_bits > 8 ||
+        (config->parity != SERIAL_PARITY_NONE && config->parity != SERIAL_PARITY_ODD && config->parity != SERIAL_PARITY_EVEN) ||
+        (config->stop_bits != SERIAL_STOP_BITS_ONE && config->stop_bits != SERIAL_STOP_BITS_TWO) ||
+        (config->flow_control != SERIAL_FLOW_CONTROL_NONE && config->flow_control != SERIAL_FLOW_CONTROL_HARDWARE &&
+         config->flow_control != SERIAL_FLOW_CONTROL_SOFTWARE)) {
+        SERIAL_LOG("[serial_configure]: unsupported configuration");
         return -1;
     }
 
@@ -433,9 +612,12 @@ int serial_configure(SerialPort* port, const SerialConfig* config) {
         SERIAL_LOG("[serial_configure]: GetCommState failed (%lu)", GetLastError());
         return -1;
     }
-    dcb.BaudRate = config->baud_rate;
+    dcb.BaudRate = (DWORD)config->baud_rate;
     dcb.ByteSize = (BYTE)config->data_bits;
-    dcb.Parity   = (BYTE)config->parity;
+    dcb.Parity   = (BYTE)(config->parity == SERIAL_PARITY_ODD ? ODDPARITY :
+                          config->parity == SERIAL_PARITY_EVEN ? EVENPARITY : NOPARITY);
+    dcb.fParity  = (config->parity != SERIAL_PARITY_NONE);   /* check parity on receive (was never set) */
+    dcb.fBinary  = TRUE;
     dcb.StopBits = (BYTE)(config->stop_bits == SERIAL_STOP_BITS_ONE ? ONESTOPBIT : TWOSTOPBITS);
 
     if (config->flow_control == SERIAL_FLOW_CONTROL_HARDWARE) {
@@ -486,8 +668,8 @@ int serial_configure(SerialPort* port, const SerialConfig* config) {
             options.c_cflag |= CS7; 
             break;
         case 8:
-        default: 
-            options.c_cflag |= CS8; 
+        default:   /* only 8 gets here: other values were rejected above */
+            options.c_cflag |= CS8;
             break;
     }
 
@@ -553,8 +735,9 @@ int serial_get_config(SerialPort* port, SerialConfig* config) {
         SERIAL_LOG("[serial_get_config]: tcgetattr failed: %s", strerror(errno));
         return -1;
     }
-    config->baud_rate = (int)cfgetispeed(&options);
-    config->data_bits = ((options.c_cflag & CSIZE) == CS7) ? 7 : 8;
+    /* cfgetispeed returns a B* code (B9600 is 13 on Linux), not a rate. */
+    config->baud_rate = get_baud_rate_value(cfgetispeed(&options));
+    config->data_bits = get_data_bits_value(options.c_cflag);
     config->parity    = (options.c_cflag & PARENB)
                           ? ((options.c_cflag & PARODD) ? SERIAL_PARITY_ODD : SERIAL_PARITY_EVEN)
                           : SERIAL_PARITY_NONE;
@@ -588,7 +771,10 @@ int serial_write(SerialPort* port, const void* data, size_t size) {
 
 #if defined(_WIN32) || defined(_WIN64)
     DWORD written = 0;
-    if (!WriteFile((HANDLE)port->handle, data, (DWORD)size, &written, NULL)) {
+    if (size > MAXDWORD) {
+        size = MAXDWORD;
+    }
+    if (!serial_io_wait((HANDLE)port->handle, TRUE, (void*)data, (DWORD)size, &written)) {
         SERIAL_LOG("[serial_write]: WriteFile failed (%lu)", GetLastError());
         return -1;
     }
@@ -617,7 +803,10 @@ int serial_read(SerialPort* port, void* buffer, size_t size) {
 
 #if defined(_WIN32) || defined(_WIN64)
     DWORD got = 0;
-    if (!ReadFile((HANDLE)port->handle, buffer, (DWORD)size, &got, NULL)) {
+    if (size > MAXDWORD) {
+        size = MAXDWORD;
+    }
+    if (!serial_io_wait((HANDLE)port->handle, FALSE, buffer, (DWORD)size, &got)) {
         SERIAL_LOG("[serial_read]: ReadFile failed (%lu)", GetLastError());
         return -1;
     }
@@ -658,7 +847,7 @@ int serial_read_nonblocking(SerialPort* port, void* buffer, size_t size) {
     DWORD want = (DWORD)size;
     if (cs.cbInQue < want) want = cs.cbInQue;
     DWORD got = 0;
-    if (!ReadFile((HANDLE)port->handle, buffer, want, &got, NULL)) {
+    if (!serial_io_wait((HANDLE)port->handle, FALSE, buffer, want, &got)) {
         SERIAL_LOG("[serial_read_nonblocking]: ReadFile failed (%lu)", GetLastError());
         return -1;
     }
@@ -689,7 +878,9 @@ int serial_read_nonblocking(SerialPort* port, void* buffer, size_t size) {
  * @brief Register a callback to be invoked when the port receives a
  *        character or signals an error.
  *
- * Windows: spawns a background thread that blocks in WaitCommEvent.
+ * Windows: spawns a background thread that waits in an overlapped
+ * WaitCommEvent; reads, writes and serial_close keep working while it waits.
+ * Only one callback can be registered per open port.
  *
  * POSIX: not implemented (use select()/poll()).
  *
@@ -702,15 +893,27 @@ int serial_set_event_callback(SerialPort* port, SerialEventCallback callback, vo
     }
 
 #if defined(_WIN32) || defined(_WIN64)
+    if (port->callback_data) {
+        /* A second thread would race the first for the same events, and the
+           first one's data would leak. */
+        SERIAL_LOG("[serial_set_event_callback]: a callback is already registered");
+        return -1;
+    }
     SerialPortCallbackData* cd = (SerialPortCallbackData*)calloc(1, sizeof(*cd));
     if (!cd) return -1;
     cd->callback  = callback;
     cd->user_data = user_data;
     cd->stop      = 0;
+    cd->stop_event = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if (!cd->stop_event) {
+        free(cd);
+        return -1;
+    }
     port->callback_data = cd;
 
     if (!SetCommMask((HANDLE)port->handle, EV_RXCHAR | EV_ERR)) {
         SERIAL_LOG("[serial_set_event_callback]: SetCommMask failed (%lu)", GetLastError());
+        CloseHandle(cd->stop_event);
         free(cd);
         port->callback_data = NULL;
         return -1;
@@ -719,6 +922,7 @@ int serial_set_event_callback(SerialPort* port, SerialEventCallback callback, vo
     HANDLE t = CreateThread(NULL, 0, SerialEventThread, port, 0, NULL);
     if (!t) {
         SERIAL_LOG("[serial_set_event_callback]: CreateThread failed (%lu)", GetLastError());
+        CloseHandle(cd->stop_event);
         free(cd);
         port->callback_data = NULL;
         return -1;
@@ -806,25 +1010,25 @@ int serial_flush_output(SerialPort* port) {
  * Pass `0` for either value to disable that timeout. On Windows this
  * uses SetCommTimeouts; on POSIX it programs VMIN/VTIME on the input
  * side. (The POSIX write timeout is ignored — write() blocks until
- * the kernel drains its buffer.)
+ * the kernel drains its buffer.) VTIME counts tenths of a second up to
+ * 255, so on POSIX read_ms above 25500 is rejected (it used to be cut
+ * to 25.5 s silently).
  *
  * @return 0 on success, -1 on error.
  */
 int serial_set_timeouts(SerialPort* port, int read_ms, int write_ms) {
     if (!port || !serial_is_open(port) || read_ms < 0 || write_ms < 0) return -1;
 #if defined(_WIN32) || defined(_WIN64)
+    /* ReadIntervalTimeout = ReadTotalTimeoutMultiplier = MAXDWORD with a
+       constant 0 < c < MAXDWORD is the documented "return as soon as one
+       byte is available, or after c ms with nothing" mode (read_ms == 0
+       uses c = MAXDWORD - 1, about 49.7 days, as "forever"). All-zero fields
+       (used before for read_ms == 0) instead wait for the whole buffer, so a
+       read of 127 bytes never returned a 19-byte reply. */
     COMMTIMEOUTS t = {0};
-    if (read_ms == 0) {
-        /* No timeout — block until at least 1 byte arrives. */
-        t.ReadIntervalTimeout         = 0;
-        t.ReadTotalTimeoutMultiplier  = 0;
-        t.ReadTotalTimeoutConstant    = 0;
-    } 
-    else {
-        t.ReadIntervalTimeout         = MAXDWORD;
-        t.ReadTotalTimeoutMultiplier  = MAXDWORD;
-        t.ReadTotalTimeoutConstant    = (DWORD)read_ms;
-    }
+    t.ReadIntervalTimeout         = MAXDWORD;
+    t.ReadTotalTimeoutMultiplier  = MAXDWORD;
+    t.ReadTotalTimeoutConstant    = (read_ms == 0) ? MAXDWORD - 1 : (DWORD)read_ms;
     t.WriteTotalTimeoutMultiplier = 0;
     t.WriteTotalTimeoutConstant   = (DWORD)write_ms;
 
@@ -837,8 +1041,11 @@ int serial_set_timeouts(SerialPort* port, int read_ms, int write_ms) {
     }
 
     /* VTIME is in tenths of a second. */
+    if (read_ms > 25500) {
+        SERIAL_LOG("[serial_set_timeouts]: read_ms %d exceeds the termios limit of 25500", read_ms);
+        return -1;
+    }
     int tenths = (read_ms + 99) / 100;
-    if (tenths > 255) tenths = 255;
     if (read_ms == 0) {
         opt.c_cc[VMIN]  = 1;
         opt.c_cc[VTIME] = 0;

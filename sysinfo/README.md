@@ -58,7 +58,7 @@ The SysInfo library offers a variety of functions to gather information about th
 ### `Vector* sysinfo_running_services()`
 
 - **Purpose**:  
-  This function retrieves a list of currently running services on the system. It handles both Windows and Linux platforms, storing the names of the services in a dynamically allocated vector of strings (`Vector*`).
+  This function retrieves a list of currently running services on the system. It handles both Windows and Linux platforms, storing the names of the services in a dynamically allocated vector of strings (`Vector*`). On Windows only active services are listed (stopped ones used to be included as well).
 - **Parameters**:  
   - None.
 - **Return Value**:  
@@ -103,7 +103,7 @@ The SysInfo library offers a variety of functions to gather information about th
 ### `Vector* sysinfo_open_ports()`
 
 - **Purpose**:  
-  This function retrieves a list of currently open network ports on the system. It gathers information for both Windows and Linux platforms and returns a vector of integers representing the open ports.
+  This function retrieves a list of currently open network ports on the system: listening TCP ports and bound UDP ports, IPv4 and IPv6, each port number once. Windows reads the IP helper tables, Linux runs `ss -lntu`; both return the same kind of list (Windows used to list every TCP connection, including client ports, and Linux missed IPv6 listeners).
 - **Parameters**:  
   - None.
 - **Return Value**:  
@@ -181,7 +181,7 @@ The SysInfo library offers a variety of functions to gather information about th
   None.
 
 - **Return Value**:  
-  - `true`: If the system is detected to be running in a virtualized environment (using `PF_VIRT_FIRMWARE_ENABLED` or `PF_HYPERVISOR_PRESENT` on Windows).
+  - `true`: If the system is detected to be running in a virtualized environment. Windows checks the CPUID "hypervisor present" bit; note that a host with Hyper-V or virtualization-based security enabled (for example for WSL2) runs under the hypervisor too and reports `true`. (It used to test `PF_VIRT_FIRMWARE_ENABLED`, which only says that VT-x/AMD-V is enabled in the firmware, i.e. usually a bare-metal host.)
   - `false`: If the system is not running in a virtualized environment.
 
 ---
@@ -231,7 +231,9 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_product_version()`
+> **Identity strings** (`sysinfo_product_version` … `sysinfo_build_abi`, `sysinfo_cpu_model`) return `const char*` into a per-thread static buffer: do not `free` it, and copy the text if you need it after the next call of the same function on the same thread. (They used to be `char*` into one buffer shared by all threads.) The functions in the later sections that return `char*` hand you heap memory to `free`.
+
+### `const char* sysinfo_product_version()`
 
 - **Purpose**:  
   This function retrieves the version of the operating system, providing key information about the specific release version of the OS ( Windows 10, Ubuntu 20.04). It helps identify the system's OS version for compatibility checks or system profiling.
@@ -245,7 +247,7 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_product_type()`
+### `const char* sysinfo_product_type()`
 
 - **Purpose**:  
   This function retrieves the product type or name of the operating system (e.g., `"Windows"`, `"Ubuntu"`). It identifies the specific OS to help determine system compatibility or environment details.
@@ -259,7 +261,7 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_kernel_version()`
+### `const char* sysinfo_kernel_version()`
 
 - **Purpose**:  
   This function retrieves the kernel version of the operating system. The kernel version gives detailed information about the OS, which is useful for diagnostics, debugging, or ensuring compatibility (e.g., `"10.0.19045"` on Windows, `"6.8.0-35-generic"` on Linux).
@@ -273,7 +275,7 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_kernel_type()`
+### `const char* sysinfo_kernel_type()`
 
 - **Purpose**:  
   This function returns the type of the operating system kernel, providing a high-level classification (e.g., `"Windows NT"` for Windows systems or `"Linux"` for Linux-based systems).
@@ -287,10 +289,10 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_boot_unique_id()`
+### `const char* sysinfo_boot_unique_id()`
 
 - **Purpose**:  
-  This function generates a unique identifier representing the current boot session of the machine. It is useful for tracking the current boot session or for session-specific operations.
+  This function generates a unique identifier representing the current boot session of the machine. It is useful for tracking the current boot session or for session-specific operations. The value is the same for every call during one boot and changes after a reboot. Linux: `/proc/sys/kernel/random/boot_id`. Windows: the machine GUID plus the boot counter Windows keeps in the registry (`...\\PrefetchParameters\\BootId`), or the boot time when that counter is missing (the millisecond tick count used before changed on every call).
 
 - **Parameters**:  
   None.
@@ -301,7 +303,7 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_cpu_architecture()`
+### `const char* sysinfo_cpu_architecture()`
 
 - **Purpose**:  
   This function detects and returns the CPU architecture of the system (e.g., `"x86_64"`, `"ARM"`, `"IA64"`). It helps to identify the processor type in use, useful for compatibility and system profiling.
@@ -315,7 +317,7 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_cpu_model()`
+### `const char* sysinfo_cpu_model()`
 
 - **Purpose**:  
   Returns the human-readable CPU brand/model string (e.g. `"Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz"`, `"AMD Ryzen 7 5800X"`). It complements `sysinfo_cpu_architecture` (`"x86_64"`) and `sysinfo_cpu_cores` with the marketing name that telemetry, inventory, and support diagnostics universally record. On Windows it reads the registry value `HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0\ProcessorNameString`; on Linux it parses the first `model name` line of `/proc/cpuinfo` (falling back to `Hardware` on boards that omit it). Leading/trailing whitespace is trimmed.
@@ -329,10 +331,10 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_machine_host_name()`
+### `const char* sysinfo_machine_host_name()`
 
 - **Purpose**:  
-  This function retrieves the host name or fully qualified domain name (FQDN) of the machine. It is useful for network-related tasks where the machine's identity is required.
+  This function retrieves the host name of the machine (Windows: the computer name; Linux: `gethostname`). It does no DNS lookup: the Linux version used to resolve the canonical name, which could block for seconds and, when the lookup failed, replaced the valid name with `"Unknown_Host_Name"`.
 
 - **Parameters**:  
   None.
@@ -343,7 +345,7 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_machine_unique_id()`
+### `const char* sysinfo_machine_unique_id()`
 
 - **Purpose**:  
   This function provides a unique identifier for the machine, typically based on hardware properties or a system-specific identifier. It is useful for ensuring persistent identification of the machine across reboots.
@@ -357,10 +359,10 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_pretty_product_name()`
+### `const char* sysinfo_pretty_product_name()`
 
 - **Purpose**:  
-  This function returns a human-readable string that combines the operating system’s product name and version in a user-friendly format, giving more intuitive system information.
+  This function returns a human-readable string that combines the operating system’s product name and version in a user-friendly format, giving more intuitive system information. On Windows it distinguishes Windows 11 (build 22000 and later, which still reports version 10.0 — it used to say "Windows 10") and the Server editions.
 
 - **Parameters**:  
   None.
@@ -370,10 +372,10 @@ The SysInfo library offers a variety of functions to gather information about th
 
 ---
 
-### `char* sysinfo_build_abi()`
+### `const char* sysinfo_build_abi()`
 
 - **Purpose**:  
-  This function returns information about the system's Application Binary Interface (ABI), including architecture, endianness, and data model. It is useful for determining system capabilities and compatibility with certain applications.
+  This function returns information about the system's Application Binary Interface (ABI), including architecture, endianness, and data model (`llp64`, `lp64` or `ilp32`, from the compiler's type sizes — it used to be hard-coded per OS, wrong for 32-bit builds). It is useful for determining system capabilities and compatibility with certain applications.
 
 - **Parameters**:  
   None.
@@ -418,7 +420,7 @@ The SysInfo library offers a variety of functions to gather information about th
   This function returns information about the total, used, and available disk space for the given path on the system. It is useful for disk space monitoring and system diagnostics.
 
 - **Parameters**:  
-  - `path`: A string representing the file path for which to check disk space.
+  - `path`: A string representing the file path for which to check disk space. `NULL` or `""` returns `NULL` on every platform (Windows used to report the current drive).
 
 - **Return Value**:  
   - A string containing the total, used, and available disk space in MB. The caller must free the memory.
@@ -429,7 +431,7 @@ The SysInfo library offers a variety of functions to gather information about th
 ### `char** sysinfo_list_bluetooth_devices(int* count)`
 
 - **Purpose**:  
-  This function scans for Bluetooth devices and returns a list of names for the devices currently connected or remembered by the system.
+  This function returns the names of the Bluetooth devices known to the system (paired, remembered or connected). It does not scan for new devices: Windows used to run a ~5 second inquiry on every call. Linux uses `bluetoothctl devices` (BlueZ); it used to run `hcitool dev`, which lists the local adapters (including a "Devices:" header line) rather than devices.
 
 - **Parameters**:  
   - `count`: A pointer to an integer where the function will store the number of found Bluetooth devices.
@@ -1055,15 +1057,14 @@ int main() {
 }
 ```
 
-**Output on Linux:**
+**Output on Windows** (values depend on the machine):
 ```
-Disk Space Info for C:\: Total: 594597 MB, Used: 541148 MB, Available: 53449 MB
+Disk Space Info for C:\: Total: 657425 MB, Used: 629686 MB, Available: 27738 MB
 ```
 
-**Output on Windows:**
-```
-Disk Space Info for /: Total: 59459 MB, Used: 54114 MB, Available: 5344 MB
-```
+**Output on Linux:** `C:\` is not a path there, so the program prints
+`Failed to retrieve disk space information for C:\`. Use `"/"` (or any
+mounted directory) on Linux.
 
 ---
 
@@ -1674,7 +1675,7 @@ rather than the per-host values themselves.
 int main(void) {
     /* The CPU model is machine-specific, so verify it is a usable, non-empty
        string rather than printing the (per-machine) value itself. */
-    char* cpu = sysinfo_cpu_model();
+    const char* cpu = sysinfo_cpu_model();
     fmt_printf("cpu model non-empty: %s\n", (cpu && cpu[0] != '\0') ? "yes" : "no");
 
     /* This process's resident memory is machine-specific; check the invariants. */

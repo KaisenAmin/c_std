@@ -4,17 +4,145 @@
  * @class Tcp
 */
 
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include "tcp.h"
 #include "../fmt/fmt.h"
 #include "../concurrent/concurrent.h"
 
-#if !defined(_WIN32) && !defined(_WIN64)
-#include <sys/select.h>   /* select(), fd_set, FD_* — tcp_wait_readable/writable */
-#include <sys/ioctl.h>    /* ioctl(), FIONREAD — tcp_bytes_available             */
+#include <limits.h>
 #include <errno.h>        /* errno, EINPROGRESS — tcp_connect_timeout            */
-#endif 
+
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <poll.h>         /* poll() — tcp_wait_readable/writable (no FD_SETSIZE)  */
+#include <sys/ioctl.h>    /* ioctl(), FIONREAD — tcp_bytes_available             */
+#include <time.h>         /* clock_gettime — TLS handshake deadline              */
+#endif
+
+
+/* send() to a peer that has closed raises SIGPIPE on POSIX, whose default
+   action kills the process. MSG_NOSIGNAL (Linux, BSD) turns that into an
+   EPIPE error instead; macOS lacks it and gets SO_NOSIGPIPE on each socket
+   (see tcp_socket_create). */
+#if defined(MSG_NOSIGNAL)
+    #define TCP_SEND_FLAGS MSG_NOSIGNAL
+#else
+    #define TCP_SEND_FLAGS 0
+#endif
+
+
+/* Address family of a socket (AF_INET6 for the library's dual-stack sockets,
+   AF_INET where IPv6 is unavailable or for sockets made elsewhere). */
+static int tcp_socket_family(TcpSocket s) {
+#if defined(_WIN32) || defined(_WIN64)
+    WSAPROTOCOL_INFOA info;
+    int len = (int)sizeof(info);
+    if (getsockopt(s, SOL_SOCKET, SO_PROTOCOL_INFOA, (char*)&info, &len) == 0) {
+        return info.iAddressFamily;
+    }
+#else
+    struct sockaddr_storage ss;
+    socklen_t len = sizeof(ss);
+    memset(&ss, 0, sizeof(ss));
+    if (getsockname(s, (struct sockaddr*)&ss, &len) == 0 && ss.ss_family != AF_UNSPEC) {
+        return ss.ss_family;
+    }
+#endif
+    return AF_INET;
+}
+
+
+/* Converts a resolved address to the socket's family: an IPv4 address becomes
+   its v4-mapped IPv6 form (::ffff:a.b.c.d) for a dual-stack socket, and a
+   v4-mapped address is unmapped for an IPv4 socket. Returns false when the
+   address cannot be used with that family (native IPv6 on an IPv4 socket). */
+static bool tcp_addr_for_family(const struct sockaddr* in, int family, struct sockaddr_storage* out, socklen_t* out_len) {
+    memset(out, 0, sizeof(*out));
+    if (in->sa_family == family) {
+        size_t n = (family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+        memcpy(out, in, n);
+        *out_len = (socklen_t)n;
+        return true;
+    }
+    if (family == AF_INET6 && in->sa_family == AF_INET) {
+        const struct sockaddr_in* v4 = (const struct sockaddr_in*)in;
+        struct sockaddr_in6* v6 = (struct sockaddr_in6*)out;
+        v6->sin6_family = AF_INET6;
+        v6->sin6_port = v4->sin_port;
+        unsigned char* b = (unsigned char*)&v6->sin6_addr;
+        b[10] = 0xff;
+        b[11] = 0xff;
+        memcpy(b + 12, &v4->sin_addr, 4);
+        *out_len = (socklen_t)sizeof(struct sockaddr_in6);
+        return true;
+    }
+    if (family == AF_INET && in->sa_family == AF_INET6) {
+        const struct sockaddr_in6* v6 = (const struct sockaddr_in6*)in;
+        const unsigned char* b = (const unsigned char*)&v6->sin6_addr;
+        static const unsigned char prefix[12] = {0,0,0,0,0,0,0,0,0,0,0xff,0xff};
+        if (memcmp(b, prefix, 12) != 0) {
+            return false;
+        }
+        struct sockaddr_in* v4 = (struct sockaddr_in*)out;
+        v4->sin_family = AF_INET;
+        v4->sin_port = v6->sin6_port;
+        memcpy(&v4->sin_addr, b + 12, 4);
+        *out_len = (socklen_t)sizeof(struct sockaddr_in);
+        return true;
+    }
+    return false;
+}
+
+
+/* Formats an address as text, showing v4-mapped IPv6 addresses (what a
+   dual-stack socket reports for IPv4 peers) in plain dotted IPv4 form. */
+static bool tcp_format_addr(const struct sockaddr_storage* ss, char* host, size_t host_len, unsigned short* port) {
+    struct sockaddr_storage tmp;
+    socklen_t tmp_len;
+    const struct sockaddr_storage* a = ss;
+    if (ss->ss_family == AF_INET6 && tcp_addr_for_family((const struct sockaddr*)ss, AF_INET, &tmp, &tmp_len)) {
+        a = &tmp;
+    }
+    if (a->ss_family == AF_INET) {
+        const struct sockaddr_in* s = (const struct sockaddr_in*)a;
+        if (inet_ntop(AF_INET, (void*)&s->sin_addr, host, (socklen_t)host_len) == NULL) {
+            return false;
+        }
+        if (port) {
+            *port = ntohs(s->sin_port);
+        }
+        return true;
+    }
+    if (a->ss_family == AF_INET6) {
+        const struct sockaddr_in6* s = (const struct sockaddr_in6*)a;
+        if (inet_ntop(AF_INET6, (void*)&s->sin6_addr, host, (socklen_t)host_len) == NULL) {
+            return false;
+        }
+        if (port) {
+            *port = ntohs(s->sin6_port);
+        }
+        return true;
+    }
+    return false;
+}
+
+
+/* Monotonic milliseconds, for deadlines. */
+static long long tcp_now_ms(void) {
+#if defined(_WIN32) || defined(_WIN64)
+    return (long long)GetTickCount64();
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000LL + (long long)(ts.tv_nsec / 1000000L);
+#endif
+}
 
 
 static TcpStatus get_sock_address(int (*fn)(TcpSocket, struct sockaddr*, socklen_t*), TcpSocket socket, char* address, size_t address_len, unsigned short* port);
@@ -26,9 +154,16 @@ static TcpStatus get_sock_address(int (*fn)(TcpSocket, struct sockaddr*, socklen
 // server thread plus client requests in the same process — never re-init or
 // destroy a mutex another caller is relying on.
 static Mutex    tcp_mutex;
-static OnceFlag tcp_mutex_once = ONCE_FLAG_INIT;
+static OnceFlag tcp_mutex_once = CSTD_ONCE_FLAG_INIT;
 static void tcp_mutex_init_once(void) {
     mutex_init(&tcp_mutex, MUTEX_RECURSIVE);
+}
+
+/* Every lock goes through here, so the mutex is initialized even when a
+   function such as tcp_close runs before tcp_init. */
+static void tcp_lock(void) {
+    concurrent_call_once(&tcp_mutex_once, tcp_mutex_init_once);
+    mutex_lock(&tcp_mutex);
 }
 
 
@@ -36,49 +171,73 @@ static void tcp_mutex_init_once(void) {
 typedef struct {
     TcpSocket socket;
     SSL* ssl;
+    bool owned;   /* created by this library (enable/connect/accept): freed on close */
 } SocketSSLMapping;
 
 
-static SocketSSLMapping sslMappings[MAX_SSL_CONNECTIONS];
-static SSL_CTX* ssl_ctx = NULL;
+/* socket -> SSL table, grown on demand (it used to be a fixed 256 entries
+   that silently stopped storing new connections). All access is under
+   tcp_mutex. */
+static SocketSSLMapping* sslMappings = NULL;
+static size_t sslMapCount = 0;
+static size_t sslMapCap = 0;
+
+/* Separate contexts for the two roles: a server context (certificate and
+   key) cannot make client connections and a client context cannot accept
+   them, so one shared context broke every process that does both. */
+static SSL_CTX* ssl_server_ctx = NULL;
+static SSL_CTX* ssl_client_ctx = NULL;
 
 
-// Initialize the SSL mappings
-static void initialize_ssl_mappings() {
-    for (int i = 0; i < MAX_SSL_CONNECTIONS; i++) {
-        sslMappings[i].socket = TCP_INVALID_SOCKET;
-        sslMappings[i].ssl = NULL;
+// Find the mapping entry for a socket (NULL if none)
+static SocketSSLMapping* get_ssl_mapping(TcpSocket socket) {
+    for (size_t i = 0; i < sslMapCount; i++) {
+        if (sslMappings[i].socket == socket) {
+            return &sslMappings[i];
+        }
     }
+    return NULL;
 }
 
-// Remove SSL mapping for a socket
+// Remove SSL mapping for a socket (the SSL object itself is not freed)
 static void remove_ssl_mapping(TcpSocket socket) {
-    for (int i = 0; i < MAX_SSL_CONNECTIONS; i++) {
+    for (size_t i = 0; i < sslMapCount; i++) {
         if (sslMappings[i].socket == socket) {
-            sslMappings[i].socket = TCP_INVALID_SOCKET;
-            sslMappings[i].ssl = NULL;
+            sslMappings[i] = sslMappings[sslMapCount - 1];
+            sslMapCount--;
             break;
         }
     }
 }
 
-
-// Find or allocate a mapping entry for a given socket
-static SocketSSLMapping* get_ssl_mapping(TcpSocket socket, bool allocate) {
-    SocketSSLMapping* emptySlot = NULL;
-    for (int i = 0; i < MAX_SSL_CONNECTIONS; i++) {
-        if (sslMappings[i].socket == socket) {
-            return &sslMappings[i];
-        } 
-        else if (!emptySlot && sslMappings[i].socket == TCP_INVALID_SOCKET && allocate) {
-            emptySlot = &sslMappings[i];
+/* Stores ssl for socket. If the socket already had a different SSL that the
+   library created, that one is freed (a second handshake on the same socket,
+   or tcp_enable_ssl followed by tcp_ssl_accept, used to leak it). Returns
+   false only when the table cannot grow. */
+static bool put_ssl_mapping(TcpSocket socket, SSL* ssl, bool owned) {
+    SocketSSLMapping* m = get_ssl_mapping(socket);
+    if (m) {
+        if (m->ssl && m->ssl != ssl && m->owned) {
+            SSL_free(m->ssl);
         }
+        m->ssl = ssl;
+        m->owned = owned;
+        return true;
     }
-    if (allocate && emptySlot) {
-        emptySlot->socket = socket;
-        return emptySlot;
+    if (sslMapCount == sslMapCap) {
+        size_t cap = sslMapCap ? sslMapCap * 2 : 16;
+        SocketSSLMapping* grown = (SocketSSLMapping*)realloc(sslMappings, cap * sizeof(*grown));
+        if (!grown) {
+            return false;
+        }
+        sslMappings = grown;
+        sslMapCap = cap;
     }
-    return NULL;
+    sslMappings[sslMapCount].socket = socket;
+    sslMappings[sslMapCount].ssl = ssl;
+    sslMappings[sslMapCount].owned = owned;
+    sslMapCount++;
+    return true;
 }
 
 
@@ -90,11 +249,16 @@ static void tcp_format_error_message(TcpStatusInfo* status_info) {
     }
 
 #if defined(_WIN32) || defined(_WIN64)
-    // Retrieves the last Winsock error description
-    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                  NULL, status_info->sys_errno,
-                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                  (LPSTR)status_info->message, sizeof(status_info->message), NULL);
+    // Retrieves the last Winsock error description. FormatMessageA: the
+    // TCHAR macro became FormatMessageW under UNICODE builds and wrote up to
+    // twice the buffer size; an unknown code left the message uninitialized.
+    status_info->message[0] = '\0';
+    if (FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                       NULL, (DWORD)status_info->sys_errno,
+                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                       status_info->message, (DWORD)sizeof(status_info->message), NULL) == 0) {
+        snprintf(status_info->message, sizeof(status_info->message), "error %d", status_info->sys_errno);
+    }
 #else
     // Uses strerror_r for thread-safe error string retrieval on Unix-like systems
     strerror_r(status_info->sys_errno, status_info->message, sizeof(status_info->message));
@@ -178,24 +342,51 @@ TcpStatus tcp_socket_create(TcpSocket* sock) {
         return TCP_ERR_SOCKET;
     }
 
+    /* A dual-stack IPv6 socket (IPV6_V6ONLY off) serves both IPv6 and IPv4
+       (as v4-mapped addresses), so tcp_bind/tcp_connect accept "::1" as well
+       as "127.0.0.1". Without IPv6 support it falls back to IPv4. */
     #if defined(_WIN32) || defined(_WIN64)
-        *sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0);
+        /* WSA_FLAG_OVERLAPPED: Winsock only honours SO_RCVTIMEO/SO_SNDTIMEO
+           (tcp_set_timeout) on sockets created with it; plain blocking
+           send()/recv() work the same either way. */
+        *sock = WSASocket(AF_INET6, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+        if (*sock != TCP_INVALID_SOCKET) {
+            DWORD off = 0;
+            setsockopt(*sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&off, sizeof(off));
+        }
+        else {
+            *sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+        }
         if (*sock == TCP_INVALID_SOCKET) {
             TcpStatusInfo status_info;
             tcp_get_last_error(&status_info); // Populate status_info with the last error
             TCP_LOG("[tcp_socket_create] Error: Socket creation failed with error: %s in tcp_socket_create\n", status_info.message);
-           
+
             return TCP_ERR_SOCKET;
         }
     #else
-    *sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    *sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+    if (*sock >= 0) {
+        int off = 0;
+        setsockopt(*sock, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof(off));
+    }
+    else {
+        *sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    }
     if (*sock < 0) {
         TcpStatusInfo status_info;
-        tcp_get_last_error(&status_info); 
+        tcp_get_last_error(&status_info);
         TCP_LOG("[tcp_socket_create] Error: Socket creation failed with error: %s in tcp_socket_create\n", status_info.message);
-    
+
         return TCP_ERR_SOCKET;
     }
+    #if defined(SO_NOSIGPIPE)
+    {
+        /* No MSG_NOSIGNAL on this platform: stop SIGPIPE per socket instead. */
+        int on = 1;
+        setsockopt(*sock, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+    }
+    #endif
     #endif
 
     TCP_LOG("[tcp_socket_create] Socket created successfully in tcp_socket_create.\n");
@@ -216,23 +407,51 @@ TcpStatus tcp_socket_create(TcpSocket* sock) {
  * @return TCP_SUCCESS if the binding is successful, TCP_ERR_RESOLVE if the host address is invalid, or TCP_ERR_BIND if binding fails.
  */
 TcpStatus tcp_bind(TcpSocket sock, const char* host, unsigned short port) {
+    int family = tcp_socket_family(sock);
+
+    /* "All interfaces": the dual-stack wildcard accepts IPv4 and IPv6. */
+    if (!host || !*host || strcmp(host, "0.0.0.0") == 0 || strcmp(host, "::") == 0) {
+        struct sockaddr_storage ss;
+        socklen_t len;
+        memset(&ss, 0, sizeof(ss));
+        if (family == AF_INET6) {
+            struct sockaddr_in6* a6 = (struct sockaddr_in6*)&ss;
+            a6->sin6_family = AF_INET6;
+            a6->sin6_port = htons(port);
+            len = (socklen_t)sizeof(*a6);
+        }
+        else {
+            struct sockaddr_in* a4 = (struct sockaddr_in*)&ss;
+            a4->sin_family = AF_INET;
+            a4->sin_addr.s_addr = htonl(INADDR_ANY);
+            a4->sin_port = htons(port);
+            len = (socklen_t)sizeof(*a4);
+        }
+        return (bind(sock, (struct sockaddr*)&ss, len) == 0) ? TCP_SUCCESS : TCP_ERR_BIND;
+    }
+
     struct addrinfo hints, *res = NULL, *p = NULL;
     char port_str[16];
-    
+
     snprintf(port_str, sizeof(port_str), "%u", port);
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    
-    int status = getaddrinfo((host && *host) ? host : NULL, port_str, &hints, &res);
+
+    int status = getaddrinfo(host, port_str, &hints, &res);
     if (status != 0) {
         return TCP_ERR_RESOLVE;
     }
 
     TcpStatus result = TCP_ERR_BIND;
     for (p = res; p; p = p->ai_next) {
-        if (bind(sock, p->ai_addr, p->ai_addrlen) == 0) {
+        struct sockaddr_storage a;
+        socklen_t alen;
+        if (!tcp_addr_for_family(p->ai_addr, family, &a, &alen)) {
+            continue;
+        }
+        if (bind(sock, (struct sockaddr*)&a, alen) == 0) {
             result = TCP_SUCCESS;
             break;
         }
@@ -313,19 +532,7 @@ TcpStatus tcp_accept(TcpSocket socket, TcpSocket* client_socket) {
 
     char client_ip[INET6_ADDRSTRLEN] = "?";
     unsigned short client_port = 0;
-
-    if (client_addr.ss_family == AF_INET) {
-        struct sockaddr_in* s4 = (struct sockaddr_in*)&client_addr;
-
-        inet_ntop(AF_INET, &s4->sin_addr, client_ip, sizeof(client_ip));
-        client_port = ntohs(s4->sin_port);
-    }
-    else if (client_addr.ss_family == AF_INET6) {
-        struct sockaddr_in6* s6 = (struct sockaddr_in6*)&client_addr;
-
-        inet_ntop(AF_INET6, &s6->sin6_addr, client_ip, sizeof(client_ip));
-        client_port = ntohs(s6->sin6_port);
-    }
+    tcp_format_addr(&client_addr, client_ip, sizeof(client_ip), &client_port);
 
     (void)client_ip;
     (void)client_port;
@@ -364,9 +571,15 @@ TcpStatus tcp_connect(TcpSocket socket, const char* host, unsigned short port) {
         return TCP_ERR_RESOLVE;
     }
 
+    int family = tcp_socket_family(socket);
     TcpStatus result = TCP_ERR_CONNECT;
     for (p = res; p; p = p->ai_next) {
-        if (connect(socket, p->ai_addr, p->ai_addrlen) == 0) {
+        struct sockaddr_storage a;
+        socklen_t alen;
+        if (!tcp_addr_for_family(p->ai_addr, family, &a, &alen)) {
+            continue;
+        }
+        if (connect(socket, (struct sockaddr*)&a, alen) == 0) {
             result = TCP_SUCCESS;
             break;
         }
@@ -398,7 +611,7 @@ TcpStatus tcp_init(void) {
     // the lock and then call tcp_get_ssl / tcp_set_ssl which lock again.
     // Initialized once (never re-initialized) so repeated/concurrent tcp_init
     // calls are safe.
-    call_once(&tcp_mutex_once, tcp_mutex_init_once);
+    concurrent_call_once(&tcp_mutex_once, tcp_mutex_init_once);
     TCP_LOG("[tcp_init] Network API initialized successfully.\n");
     return TCP_SUCCESS;
 }
@@ -451,7 +664,8 @@ TcpStatus tcp_send(TcpSocket socket, const void* buf, size_t len, size_t* sent) 
     size_t total_sent = 0;
     while (len > 0) {
 #if defined(_WIN32) || defined(_WIN64)
-        int n = send(socket, (const char*)buf, (int)len, 0);
+        int chunk = (len > (size_t)INT_MAX) ? INT_MAX : (int)len;
+        int n = send(socket, (const char*)buf, chunk, 0);
         if (n == SOCKET_ERROR) {
             if (sent) {
                 *sent = total_sent;
@@ -464,7 +678,10 @@ TcpStatus tcp_send(TcpSocket socket, const void* buf, size_t len, size_t* sent) 
             return TCP_ERR_SEND;
         }
 #else
-        ssize_t n = send(socket, buf, len, 0);
+        ssize_t n = send(socket, buf, len, TCP_SEND_FLAGS);
+        if (n < 0 && errno == EINTR) {
+            continue;   /* interrupted by a signal before sending anything */
+        }
         if (n <= 0) {
             if (n == 0) {
                 return TCP_ERR_CLOSE;
@@ -519,7 +736,8 @@ TcpStatus tcp_recv(TcpSocket socket, void* buf, size_t len, size_t* received) {
     // SIZE_MAX and looked like a giant successful read — masking every
     // hard error and turning timeouts into infinite hangs.
 #if defined(_WIN32) || defined(_WIN64)
-    int n = recv(socket, (char*)buf, (int)len, 0);
+    int want = (len > (size_t)INT_MAX) ? INT_MAX : (int)len;
+    int n = recv(socket, (char*)buf, want, 0);
     if (n == SOCKET_ERROR) {
         TcpStatusInfo status_info;
         tcp_get_last_error(&status_info);
@@ -528,7 +746,10 @@ TcpStatus tcp_recv(TcpSocket socket, void* buf, size_t len, size_t* received) {
         return TCP_ERR_RECV;
     }
 #else
-    ssize_t n = recv(socket, buf, len, 0);
+    ssize_t n;
+    do {
+        n = recv(socket, buf, len, 0);
+    } while (n < 0 && errno == EINTR);
 
     if (n < 0) {
         TcpStatusInfo status_info;
@@ -563,6 +784,20 @@ TcpStatus tcp_recv(TcpSocket socket, void* buf, size_t len, size_t* received) {
  */
 TcpStatus tcp_close(TcpSocket socket) {
     int result = 0;
+
+    /* Drop the socket's SSL mapping (freeing an SSL object the library
+       created). A leftover mapping was inherited by the next socket the OS
+       gave the same handle value, sending plain traffic through a foreign,
+       unhandshaken SSL object. */
+    tcp_lock();
+    SocketSSLMapping* mapping = get_ssl_mapping(socket);
+    if (mapping) {
+        if (mapping->owned && mapping->ssl) {
+            SSL_free(mapping->ssl);
+        }
+        remove_ssl_mapping(socket);
+    }
+    mutex_unlock(&tcp_mutex);
 
     #if defined(_WIN32) || defined(_WIN64)
     result = closesocket(socket);
@@ -933,28 +1168,8 @@ TcpStatus tcp_get_peer_name(TcpSocket socket, char* host, size_t host_len, unsig
         return TCP_ERR_GENERIC;
     }
 
-    if (addr.ss_family == AF_INET) {
-        struct sockaddr_in* s = (struct sockaddr_in*)&addr;
-        if (inet_ntop(AF_INET, &s->sin_addr, host, host_len) == NULL) {
-            TCP_LOG("[tcp_get_peer_name] Error: inet_ntop() failed for IPv4 address.\n");
-            return TCP_ERR_GENERIC;
-        }
-        if (port) {
-            *port = ntohs(s->sin_port);
-        }
-    }
-    else if (addr.ss_family == AF_INET6) {
-        struct sockaddr_in6* s = (struct sockaddr_in6*)&addr;
-        if (inet_ntop(AF_INET6, &s->sin6_addr, host, host_len) == NULL) {
-            TCP_LOG("[tcp_get_peer_name] Error: inet_ntop() failed for IPv6 address.\n");
-            return TCP_ERR_GENERIC;
-        }
-        if (port) {
-            *port = ntohs(s->sin6_port);
-        }
-    }
-    else {
-        TCP_LOG("[tcp_get_peer_name] Error: Unknown socket family.\n");
+    if (!tcp_format_addr(&addr, host, host_len, port)) {
+        TCP_LOG("[tcp_get_peer_name] Error: could not format the peer address.\n");
         return TCP_ERR_GENERIC;
     }
 
@@ -994,28 +1209,8 @@ TcpStatus tcp_get_sock_name(TcpSocket socket, char* host, size_t host_len, unsig
         return TCP_ERR_GENERIC;
     }
 
-    if (addr.ss_family == AF_INET) {
-        struct sockaddr_in* s = (struct sockaddr_in*)&addr;
-        if (inet_ntop(AF_INET, &s->sin_addr, host, host_len) == NULL) {
-            TCP_LOG("[tcp_get_sock_name] Error: inet_ntop() failed for IPv4 address.\n");
-            return TCP_ERR_GENERIC;
-        }
-        if (port) {
-            *port = ntohs(s->sin_port);
-        }
-    }
-    else if (addr.ss_family == AF_INET6) {
-        struct sockaddr_in6* s = (struct sockaddr_in6*)&addr;
-        if (inet_ntop(AF_INET6, &s->sin6_addr, host, host_len) == NULL) {
-            TCP_LOG("[tcp_get_sock_name] Error: inet_ntop() failed for IPv6 address.\n");
-            return TCP_ERR_GENERIC;
-        }
-        if (port) {
-            *port = ntohs(s->sin6_port);
-        }
-    }
-    else {
-        TCP_LOG("[tcp_get_sock_name] Error: Unknown socket family.\n");
+    if (!tcp_format_addr(&addr, host, host_len, port)) {
+        TCP_LOG("[tcp_get_sock_name] Error: could not format the local address.\n");
         return TCP_ERR_GENERIC;
     }
 
@@ -1033,16 +1228,22 @@ TcpStatus tcp_get_sock_name(TcpSocket socket, char* host, size_t host_len, unsig
  * @param ssl The SSL object to associate with the socket.
  */
 void tcp_set_ssl(TcpSocket socket, SSL* ssl) {
-    mutex_lock(&tcp_mutex);
-    SocketSSLMapping* mapping = get_ssl_mapping(socket, true);
-
-    if (mapping) {
-        mapping->ssl = ssl;
-    }
+    tcp_lock();
     if (!ssl) {
         remove_ssl_mapping(socket);
     }
-
+    else {
+        /* The caller keeps ownership of an SSL attached here: the library
+           never frees it. */
+        SocketSSLMapping* mapping = get_ssl_mapping(socket);
+        if (mapping) {
+            mapping->ssl = ssl;
+            mapping->owned = false;
+        }
+        else if (!put_ssl_mapping(socket, ssl, false)) {
+            TCP_LOG("[tcp_set_ssl] Error: out of memory for the SSL table.\n");
+        }
+    }
     mutex_unlock(&tcp_mutex);
 }
 
@@ -1056,9 +1257,9 @@ void tcp_set_ssl(TcpSocket socket, SSL* ssl) {
  * @return The SSL object associated with the socket, or NULL if no SSL object is associated.
  */
 SSL* tcp_get_ssl(TcpSocket socket) {
-    mutex_lock(&tcp_mutex);
+    tcp_lock();
 
-    SocketSSLMapping* mapping = get_ssl_mapping(socket, false);
+    SocketSSLMapping* mapping = get_ssl_mapping(socket);
     SSL* ssl = mapping ? mapping->ssl : NULL;
 
     mutex_unlock(&tcp_mutex);
@@ -1080,28 +1281,36 @@ SSL* tcp_get_ssl(TcpSocket socket) {
  * - `TCP_ERR_GENERIC`: Failed to create or associate an SSL object with the socket.
  */
 TcpStatus tcp_enable_ssl(TcpSocket socket) {
-    mutex_lock(&tcp_mutex);
+    tcp_lock();
 
-    if (ssl_ctx == NULL) {
+    /* A server context if one exists (the usual use: before tcp_ssl_accept),
+       otherwise the client context. */
+    SSL_CTX* ctx = ssl_server_ctx ? ssl_server_ctx : ssl_client_ctx;
+    if (ctx == NULL) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_enable_ssl] SSL context is not initialized.\n");
         return TCP_ERR_SETUP;
     }
 
-    SSL* ssl = SSL_new(ssl_ctx);
+    SSL* ssl = SSL_new(ctx);
     if (!ssl) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_enable_ssl] Failed to create SSL object.\n");
         return TCP_ERR_GENERIC;
     }
-    if (SSL_set_fd(ssl, socket) == 0) {
+    if (SSL_set_fd(ssl, (int)socket) == 0) {
         SSL_free(ssl);
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_enable_ssl] Failed to associate socket with SSL.\n");
         return TCP_ERR_GENERIC;
     }
 
-    tcp_set_ssl(socket, ssl);
+    if (!put_ssl_mapping(socket, ssl, true)) {
+        SSL_free(ssl);
+        mutex_unlock(&tcp_mutex);
+        TCP_LOG("[tcp_enable_ssl] Failed to store the SSL object.\n");
+        return TCP_ERR_GENERIC;
+    }
     mutex_unlock(&tcp_mutex);
 
     return TCP_SUCCESS;
@@ -1120,24 +1329,36 @@ TcpStatus tcp_enable_ssl(TcpSocket socket) {
  * - `TCP_SUCCESS`: SSL/TLS shutdown completed successfully.
  * - `TCP_ERR_NO_SSL`: No SSL object was associated with the socket.
  */
+/* Removes the socket's SSL mapping and returns its SSL object (or NULL). The
+   caller then owns the SSL; the slow shutdown runs without the global lock. */
+static SSL* tcp_ssl_take(TcpSocket socket) {
+    tcp_lock();
+    SocketSSLMapping* mapping = get_ssl_mapping(socket);
+    SSL* ssl = mapping ? mapping->ssl : NULL;
+    if (mapping) {
+        remove_ssl_mapping(socket);
+    }
+    mutex_unlock(&tcp_mutex);
+    return ssl;
+}
+
+
 TcpStatus tcp_disable_ssl(TcpSocket socket) {
-    mutex_lock(&tcp_mutex);
-    SSL* ssl = tcp_get_ssl(socket);
+    SSL* ssl = tcp_ssl_take(socket);
 
     if (!ssl) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_disable_ssl] No SSL object associated with the socket.\n");
         return TCP_ERR_NO_SSL;
     }
 
+    /* Bidirectional shutdown: the plain TCP stream continues afterwards, so
+       the peer's close_notify must be consumed first. */
     int shutdownResult = SSL_shutdown(ssl);
     if (shutdownResult == 0) {
         SSL_shutdown(ssl);
     }
 
     SSL_free(ssl);
-    tcp_set_ssl(socket, NULL);
-    mutex_unlock(&tcp_mutex);
 
     TCP_LOG("[tcp_disable_ssl] SSL shutdown completed.\n");
     return TCP_SUCCESS;
@@ -1159,49 +1380,46 @@ TcpStatus tcp_disable_ssl(TcpSocket socket) {
  * - `TCP_ERR_SSL`: Failed to load the certificate, private key, or verify the private key.
  */
 TcpStatus tcp_ssl_init(const char* cert, const char* key) {
-    mutex_lock(&tcp_mutex);
-    if (ssl_ctx != NULL) {
+    tcp_lock();
+    if (ssl_server_ctx != NULL) {
         mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_init] SSL context is already initialized.\n");
-        return TCP_SUCCESS; 
+        TCP_LOG("[tcp_ssl_init] SSL server context is already initialized.\n");
+        return TCP_SUCCESS;
     }
 
-    SSL_load_error_strings();   
+    SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
-    ssl_ctx = SSL_CTX_new(TLS_server_method()); 
+    SSL_CTX* ctx = SSL_CTX_new(TLS_server_method());
 
-    if (!ssl_ctx) {
+    if (!ctx) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_init] Error creating SSL context: %s\n", ERR_error_string(ERR_get_error(), NULL));
 
-        return TCP_ERR_SETUP; 
+        return TCP_ERR_SETUP;
     }
-    if (SSL_CTX_use_certificate_file(ssl_ctx, cert, SSL_FILETYPE_PEM) <= 0) {
-        SSL_CTX_free(ssl_ctx);
-        ssl_ctx = NULL; 
+    if (SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM) <= 0) {
+        SSL_CTX_free(ctx);
         mutex_unlock(&tcp_mutex);
 
         TCP_LOG("[tcp_ssl_init] Error loading certificate from file: %s\n", ERR_error_string(ERR_get_error(), NULL));
         return TCP_ERR_SSL;
     }
-    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, key, SSL_FILETYPE_PEM) <= 0) {
-        SSL_CTX_free(ssl_ctx);
-        ssl_ctx = NULL; 
+    if (SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM) <= 0) {
+        SSL_CTX_free(ctx);
         mutex_unlock(&tcp_mutex);
 
         TCP_LOG("[tcp_ssl_init] Error loading private key from file: %s\n", ERR_error_string(ERR_get_error(), NULL));
         return TCP_ERR_SSL;
     }
-    if (!SSL_CTX_check_private_key(ssl_ctx)) {
-        SSL_CTX_free(ssl_ctx);
-        ssl_ctx = NULL; 
+    if (!SSL_CTX_check_private_key(ctx)) {
+        SSL_CTX_free(ctx);
         mutex_unlock(&tcp_mutex);
 
         TCP_LOG("[tcp_ssl_init] Private key does not match the public certificate: %s\n", ERR_error_string(ERR_get_error(), NULL));
         return TCP_ERR_SSL;
     }
 
-    initialize_ssl_mappings();
+    ssl_server_ctx = ctx;
     mutex_unlock(&tcp_mutex);
 
     TCP_LOG("[tcp_ssl_init] OpenSSL and SSL context initialized successfully.\n");
@@ -1216,23 +1434,25 @@ TcpStatus tcp_ssl_init(const char* cert, const char* key) {
  * Unlike tcp_ssl_init (which builds a server context and requires a cert/key),
  * this creates a context suitable for outbound TLS — no cert/key needed — and
  * loads the system CA store so tcp_ssl_get_verify_result can confirm the peer
- * chain. No-op if a context already exists.
+ * chain. The client context is separate from tcp_ssl_init's server context,
+ * so one process can be both a TLS server and a TLS client. No-op if a client
+ * context already exists.
  *
- * @return `TCP_SUCCESS` on success (or if a context already exists);
+ * @return `TCP_SUCCESS` on success (or if a client context already exists);
  *         `TCP_ERR_SETUP` if the client SSL context cannot be created.
  */
 TcpStatus tcp_ssl_init_client(void) {
-    mutex_lock(&tcp_mutex);
-    if (ssl_ctx != NULL) {
+    tcp_lock();
+    if (ssl_client_ctx != NULL) {
         mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_init_client] SSL context already initialized.\n");
+        TCP_LOG("[tcp_ssl_init_client] SSL client context already initialized.\n");
         return TCP_SUCCESS;
     }
 
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
-    ssl_ctx = SSL_CTX_new(TLS_client_method());
-    if (!ssl_ctx) {
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_init_client] Error creating client SSL context: %s\n", ERR_error_string(ERR_get_error(), NULL));
         return TCP_ERR_SETUP;
@@ -1240,9 +1460,9 @@ TcpStatus tcp_ssl_init_client(void) {
 
     /* Best-effort: load the OS trust store. Present on most Linux installs;
        may be empty on a bare MinGW box (callers can then use insecure mode). */
-    SSL_CTX_set_default_verify_paths(ssl_ctx);
+    SSL_CTX_set_default_verify_paths(ctx);
 
-    initialize_ssl_mappings();
+    ssl_client_ctx = ctx;
     mutex_unlock(&tcp_mutex);
 
     TCP_LOG("[tcp_ssl_init_client] client SSL context initialized.\n");
@@ -1270,20 +1490,29 @@ long tcp_ssl_get_verify_result(TcpSocket socket) {
  *
  * With verify_peer = true the TLS handshake aborts on an untrusted or
  * hostname-mismatched certificate (SSL_VERIFY_PEER); with false it succeeds and
- * the result is available via tcp_ssl_get_verify_result. Process-global.
+ * the result is available via tcp_ssl_get_verify_result. Process-global
+ * default for later connections on the existing contexts (client and, for
+ * client-certificate checks, server); tcp_connect_tls and the HTTP client set
+ * the mode per connection and are not affected by it.
  *
  * @param verify_peer `true` to fail the handshake on an untrusted or
  *                    hostname-mismatched certificate; `false` for SSL_VERIFY_NONE.
  * @return TCP_SUCCESS, or TCP_ERR_SETUP if no SSL context exists yet.
  */
 TcpStatus tcp_ssl_set_verify(bool verify_peer) {
-    mutex_lock(&tcp_mutex);
-    if (ssl_ctx == NULL) {
+    tcp_lock();
+    if (ssl_client_ctx == NULL && ssl_server_ctx == NULL) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_set_verify] SSL context not initialized.\n");
         return TCP_ERR_SETUP;
     }
-    SSL_CTX_set_verify(ssl_ctx, verify_peer ? SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
+    int mode = verify_peer ? SSL_VERIFY_PEER : SSL_VERIFY_NONE;
+    if (ssl_client_ctx) {
+        SSL_CTX_set_verify(ssl_client_ctx, mode, NULL);
+    }
+    if (ssl_server_ctx) {
+        SSL_CTX_set_verify(ssl_server_ctx, mode, NULL);
+    }
     mutex_unlock(&tcp_mutex);
     return TCP_SUCCESS;
 }
@@ -1301,13 +1530,19 @@ TcpStatus tcp_ssl_load_verify_locations(const char* ca_file, const char* ca_path
     if (!ca_file && !ca_path) {
         return TCP_ERR_GENERIC;
     }
-    mutex_lock(&tcp_mutex);
-    if (ssl_ctx == NULL) {
+    tcp_lock();
+    if (ssl_client_ctx == NULL && ssl_server_ctx == NULL) {
         mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_load_verify_locations] SSL context not initialized.\n");
         return TCP_ERR_SETUP;
     }
-    int rc = SSL_CTX_load_verify_locations(ssl_ctx, ca_file, ca_path);
+    int rc = 1;
+    if (ssl_client_ctx) {
+        rc = SSL_CTX_load_verify_locations(ssl_client_ctx, ca_file, ca_path);
+    }
+    if (rc == 1 && ssl_server_ctx) {
+        rc = SSL_CTX_load_verify_locations(ssl_server_ctx, ca_file, ca_path);
+    }
     mutex_unlock(&tcp_mutex);
     if (rc != 1) {
         TCP_LOG("[tcp_ssl_load_verify_locations] failed: %s\n", ERR_error_string(ERR_get_error(), NULL));
@@ -1343,11 +1578,6 @@ TcpStatus tcp_connect_tls(const char* host, unsigned short port, long timeout_ms
     if (st != TCP_SUCCESS) {
         return st;
     }
-    /* Fail-closed when verifying: a bad chain/hostname then aborts the handshake. */
-    st = tcp_ssl_set_verify(verify);
-    if (st != TCP_SUCCESS) {
-        return st;
-    }
 
     TcpSocket sock;
     st = tcp_socket_create(&sock);
@@ -1359,7 +1589,10 @@ TcpStatus tcp_connect_tls(const char* host, unsigned short port, long timeout_ms
         tcp_close(sock);
         return st;
     }
-    st = tcp_ssl_connect(sock, host);   /* SNI + hostname verification */
+    /* Fail-closed when verifying: a bad chain/hostname then aborts the
+       handshake. The mode is set on this connection only (it used to be
+       written into the shared context, breaking later insecure requests). */
+    st = tcp_ssl_connect_verify(sock, host, timeout_ms, verify);   /* SNI + hostname verification, bounded */
     if (st != TCP_SUCCESS) {
         tcp_close(sock);
         return st;
@@ -1385,13 +1618,18 @@ TcpStatus tcp_connect_tls(const char* host, unsigned short port, long timeout_ms
  * - `TCP_SUCCESS`: SSL context and OpenSSL resources were cleaned up successfully.
  */
 TcpStatus tcp_ssl_cleanup(void) {
-    mutex_lock(&tcp_mutex);
+    tcp_lock();
 
-    if (ssl_ctx != NULL) {
-        SSL_CTX_free(ssl_ctx);
-        ssl_ctx = NULL;
-        TCP_LOG("[tcp_ssl_cleanup] SSL context cleaned up successfully.\n");
+    /* SSL objects still in use hold their own reference to their context. */
+    if (ssl_server_ctx != NULL) {
+        SSL_CTX_free(ssl_server_ctx);
+        ssl_server_ctx = NULL;
     }
+    if (ssl_client_ctx != NULL) {
+        SSL_CTX_free(ssl_client_ctx);
+        ssl_client_ctx = NULL;
+    }
+    TCP_LOG("[tcp_ssl_cleanup] SSL contexts cleaned up successfully.\n");
 
     EVP_cleanup();
     ERR_free_strings();
@@ -1418,36 +1656,134 @@ TcpStatus tcp_ssl_cleanup(void) {
  * - `TCP_ERR_SSL`: Failed to create SSL object or set up file descriptor/SNI.
  * - `TCP_ERR_SSL_HANDSHAKE`: The SSL handshake failed.
  */
-TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host) {
-    mutex_lock(&tcp_mutex);
-    if (ssl_ctx == NULL) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_connect] SSL context is not initialized. Call tcp_ssl_init first.\n");
-        return TCP_ERR_SETUP; 
-    }
-    if (host == NULL || host[0] == '\0') {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_connect] Host parameter is null or empty.\n");
-        return TCP_ERR_RESOLVE; 
-    }
+/* Creates an SSL object for `socket` from the role's context (server or
+   client). The mutex only covers reading the context pointer; SSL_new takes
+   its own reference. *status explains a NULL result. */
+static SSL* tcp_ssl_new_for(TcpSocket socket, bool server, const char* where, TcpStatus* status) {
+    tcp_lock();
+    SSL_CTX* ctx = server ? ssl_server_ctx : ssl_client_ctx;
+    SSL* ssl = ctx ? SSL_new(ctx) : NULL;
+    mutex_unlock(&tcp_mutex);
 
-    SSL* ssl = SSL_new(ssl_ctx);
+    if (!ctx) {
+        TCP_LOG("[%s] SSL %s context is not initialized.\n", where, server ? "server (tcp_ssl_init)" : "client");
+        *status = TCP_ERR_SETUP;
+        return NULL;
+    }
     if (ssl == NULL) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_connect] Failed to create SSL object: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        return TCP_ERR_SSL; 
+        TCP_LOG("[%s] Failed to create SSL object: %s\n", where, ERR_error_string(ERR_get_error(), NULL));
+        *status = TCP_ERR_SSL;
+        return NULL;
+    }
+    if (SSL_set_fd(ssl, (int)socket) == 0) {
+        TCP_LOG("[%s] Failed to set file descriptor for SSL: %s\n", where, ERR_error_string(ERR_get_error(), NULL));
+        SSL_free(ssl);
+        *status = TCP_ERR_SSL;
+        return NULL;
+    }
+    (void)where;
+    *status = TCP_SUCCESS;
+    return ssl;
+}
+
+
+/* Runs the TLS handshake (SSL_connect or SSL_accept). With timeout_ms > 0 the
+   socket is switched to non-blocking mode for the handshake and every wait is
+   bounded by one overall deadline, so a peer that never speaks TLS cannot hang
+   the caller; the socket's blocking mode is restored afterwards. No lock is
+   held: a slow handshake must not stall other connections.
+   Returns 1 on success, 0 on handshake failure, -1 on timeout. */
+static int tcp_ssl_handshake(SSL* ssl, TcpSocket socket, bool server, long timeout_ms) {
+    if (timeout_ms <= 0) {
+        return ((server ? SSL_accept(ssl) : SSL_connect(ssl)) == 1) ? 1 : 0;
     }
 
-    if (SSL_set_fd(ssl, socket) == 0) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_connect] Failed to set file descriptor for SSL: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        SSL_free(ssl); 
+#if defined(_WIN32) || defined(_WIN64)
+    bool was_nonblocking = false;      /* Winsock cannot report the mode */
+#else
+    int fl = fcntl((int)socket, F_GETFL, 0);
+    bool was_nonblocking = (fl >= 0) && (fl & O_NONBLOCK);
+#endif
+    if (!was_nonblocking && tcp_set_non_blocking(socket, true) != TCP_SUCCESS) {
+        return 0;
+    }
 
-        return TCP_ERR_SSL; 
+    long long deadline = tcp_now_ms() + timeout_ms;
+    int result = 0;
+    for (;;) {
+        int rc = server ? SSL_accept(ssl) : SSL_connect(ssl);
+        if (rc == 1) {
+            result = 1;
+            break;
+        }
+        int err = SSL_get_error(ssl, rc);
+        if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
+            result = 0;
+            break;
+        }
+        long long left = deadline - tcp_now_ms();
+        if (left <= 0) {
+            result = -1;
+            break;
+        }
+        TcpStatus w = (err == SSL_ERROR_WANT_READ) ? tcp_wait_readable(socket, (long)left)
+                                                   : tcp_wait_writable(socket, (long)left);
+        if (w == TCP_ERR_WOULD_BLOCK) {
+            result = -1;
+            break;
+        }
+        if (w != TCP_SUCCESS) {
+            result = 0;
+            break;
+        }
+    }
+
+    if (!was_nonblocking) {
+        tcp_set_non_blocking(socket, false);
+    }
+    return result;
+}
+
+
+/* Stores the handshaked `ssl` for `socket` (owned by the library). Frees it
+   and fails only when the table cannot grow. */
+static TcpStatus tcp_ssl_store(TcpSocket socket, SSL* ssl, const char* where) {
+    tcp_lock();
+    bool ok = put_ssl_mapping(socket, ssl, true);
+    mutex_unlock(&tcp_mutex);
+
+    if (!ok) {
+        TCP_LOG("[%s] Failed to map SSL object with socket.\n", where);
+        SSL_free(ssl);
+        return TCP_ERR_SSL;
+    }
+    (void)where;
+    return TCP_SUCCESS;
+}
+
+
+/* Client handshake. verify < 0 keeps the client context's default mode;
+   0 / 1 sets SSL_VERIFY_NONE / SSL_VERIFY_PEER for this connection only. */
+static TcpStatus tcp_ssl_connect_impl(TcpSocket socket, const char* host, long timeout_ms, int verify) {
+    if (host == NULL || host[0] == '\0') {
+        TCP_LOG("[tcp_ssl_connect] Host parameter is null or empty.\n");
+        return TCP_ERR_RESOLVE;
+    }
+
+    /* A client handshake needs the client context; create it on first use. */
+    TcpStatus st = tcp_ssl_init_client();
+    if (st != TCP_SUCCESS) {
+        return st;
+    }
+    SSL* ssl = tcp_ssl_new_for(socket, false, "tcp_ssl_connect", &st);
+    if (ssl == NULL) {
+        return st;
+    }
+    if (verify >= 0) {
+        SSL_set_verify(ssl, verify ? SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
     }
 
     if (SSL_set_tlsext_host_name(ssl, host) == 0) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_connect] Failed to set SNI Hostname: %s\n", ERR_error_string(ERR_get_error(), NULL));
         SSL_free(ssl);
 
@@ -1469,29 +1805,55 @@ TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host) {
         }
     }
 
-    if (SSL_connect(ssl) != 1) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_connect] SSL handshake failed: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        SSL_free(ssl); 
+    int hs = tcp_ssl_handshake(ssl, socket, false, timeout_ms);
+    if (hs != 1) {
+        TCP_LOG("[tcp_ssl_connect] SSL handshake %s: %s\n", hs < 0 ? "timed out" : "failed", ERR_error_string(ERR_get_error(), NULL));
+        SSL_free(ssl);
 
-        return TCP_ERR_SSL_HANDSHAKE; 
+        return hs < 0 ? TCP_ERR_WOULD_BLOCK : TCP_ERR_SSL_HANDSHAKE;
     }
 
     // Successfully established SSL connection, map the SSL object with the socket
-    SocketSSLMapping* mapping = get_ssl_mapping(socket, true);
-    if (!mapping) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_connect] Failed to map SSL object with socket.\n");
-        SSL_free(ssl); 
-
-        return TCP_ERR_SSL; 
+    st = tcp_ssl_store(socket, ssl, "tcp_ssl_connect");
+    if (st != TCP_SUCCESS) {
+        return st;
     }
-
-    mapping->ssl = ssl;
-    mutex_unlock(&tcp_mutex);
 
     TCP_LOG("[tcp_ssl_connect] Successfully established SSL connection to %s.\n", host);
     return TCP_SUCCESS;
+}
+
+
+TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host) {
+    return tcp_ssl_connect_impl(socket, host, 0, -1);
+}
+
+
+/**
+ * @brief Like tcp_ssl_connect, but the whole TLS handshake must finish within
+ *        @p timeout_ms milliseconds.
+ *
+ * @param socket     A connected TCP socket.
+ * @param host       Server name for SNI and certificate hostname checks.
+ * @param timeout_ms Handshake deadline in milliseconds; `<= 0` waits without a limit.
+ * @return As tcp_ssl_connect, plus `TCP_ERR_WOULD_BLOCK` when the deadline passes.
+ */
+TcpStatus tcp_ssl_connect_timeout(TcpSocket socket, const char* host, long timeout_ms) {
+    return tcp_ssl_connect_impl(socket, host, timeout_ms, -1);
+}
+
+
+/**
+ * @brief Like tcp_ssl_connect_timeout, with certificate verification chosen
+ *        for this connection only.
+ *
+ * `verify == true` aborts the handshake on an untrusted or hostname-mismatched
+ * certificate; `false` accepts any certificate. Unlike tcp_ssl_set_verify it
+ * does not change the shared client context, so concurrent connections with
+ * different settings do not affect each other.
+ */
+TcpStatus tcp_ssl_connect_verify(TcpSocket socket, const char* host, long timeout_ms, bool verify) {
+    return tcp_ssl_connect_impl(socket, host, timeout_ms, verify ? 1 : 0);
 }
 
 
@@ -1510,58 +1872,45 @@ TcpStatus tcp_ssl_connect(TcpSocket socket, const char* host) {
  * - `TCP_ERR_SSL_HANDSHAKE`: SSL/TLS handshake failed.
  */
 TcpStatus tcp_ssl_accept(TcpSocket socket) {
-    mutex_lock(&tcp_mutex);
-    if (ssl_ctx == NULL) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_accept] SSL context is not initialized. Call tcp_ssl_init first.\n");
-        return TCP_ERR_SETUP; 
-    }
+    return tcp_ssl_accept_timeout(socket, 0);
+}
 
-    SSL* ssl = SSL_new(ssl_ctx);
+
+/**
+ * @brief Like tcp_ssl_accept, but the client must complete the TLS handshake
+ *        within @p timeout_ms milliseconds.
+ *
+ * Use it in servers so a client that connects and never sends a ClientHello
+ * is dropped instead of holding a worker forever.
+ *
+ * @param socket     An accepted TCP socket.
+ * @param timeout_ms Handshake deadline in milliseconds; `<= 0` waits without a limit.
+ * @return As tcp_ssl_accept, plus `TCP_ERR_WOULD_BLOCK` when the deadline passes.
+ */
+TcpStatus tcp_ssl_accept_timeout(TcpSocket socket, long timeout_ms) {
+    TcpStatus st;
+    SSL* ssl = tcp_ssl_new_for(socket, true, "tcp_ssl_accept", &st);
     if (ssl == NULL) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_accept] Failed to create SSL object: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        return TCP_ERR_SSL; 
-    }
-    if (SSL_set_fd(ssl, socket) == 0) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("[tcp_ssl_accept] Failed to set file descriptor for SSL: %s\n", ERR_error_string(ERR_get_error(), NULL));
-        SSL_free(ssl); 
-
-        return TCP_ERR_SSL; 
+        return st;
     }
 
     // Wait for a TLS/SSL client to initiate the TLS/SSL handshake
-    int acceptResult = SSL_accept(ssl);
-    if (acceptResult <= 0) {
-        
-        int sslError = SSL_get_error(ssl, acceptResult);
-        TCP_LOG("[tcp_ssl_accept] SSL_accept failed with SSL error: %d\n", sslError);
-        if (sslError == SSL_ERROR_SYSCALL) {
-            unsigned long err;
-            while ((err = ERR_get_error()) != 0) {
-                TCP_LOG("[tcp_ssl_accept] OpenSSL Error: %s\n", ERR_error_string(err, NULL));
-            }
-            if (errno != 0) { 
-                TCP_LOG("[tcp_ssl_accept] Syscall error: %s\n", strerror(errno));
-            }
+    int hs = tcp_ssl_handshake(ssl, socket, true, timeout_ms);
+    if (hs != 1) {
+        TCP_LOG("[tcp_ssl_accept] SSL_accept %s\n", hs < 0 ? "timed out" : "failed");
+        unsigned long err;
+        while ((err = ERR_get_error()) != 0) {
+            TCP_LOG("[tcp_ssl_accept] OpenSSL Error: %s\n", ERR_error_string(err, NULL));
         }
         SSL_free(ssl);
-        mutex_unlock(&tcp_mutex);
-        return TCP_ERR_SSL_HANDSHAKE;
+        return hs < 0 ? TCP_ERR_WOULD_BLOCK : TCP_ERR_SSL_HANDSHAKE;
     }
 
     // Handshake was successful, store the SSL object with the socket for further operations
-    SocketSSLMapping* mapping = get_ssl_mapping(socket, true);
-    if (!mapping) {
-        mutex_unlock(&tcp_mutex);
-        TCP_LOG("Failed to map SSL object with socket.\n");
-        SSL_free(ssl); 
-
-        return TCP_ERR_SSL; 
+    st = tcp_ssl_store(socket, ssl, "tcp_ssl_accept");
+    if (st != TCP_SUCCESS) {
+        return st;
     }
-    mapping->ssl = ssl;
-    mutex_unlock(&tcp_mutex);
 
     TCP_LOG("SSL handshake completed successfully.\n");
     return TCP_SUCCESS;
@@ -1582,38 +1931,30 @@ TcpStatus tcp_ssl_accept(TcpSocket socket) {
  * - Other TcpStatus codes may be returned from the `tcp_close` function if the socket fails to close.
  */
 TcpStatus tcp_ssl_close(TcpSocket socket) {
-    mutex_lock(&tcp_mutex);
-    SSL* ssl = tcp_get_ssl(socket);
+    SSL* ssl = tcp_ssl_take(socket);
 
     if (!ssl) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_close] No SSL object associated with the socket. Closing socket without SSL shutdown.\n");
         tcp_close(socket);
 
-        return TCP_ERR_NO_SSL; 
+        return TCP_ERR_NO_SSL;
     }
 
+    /* Send close_notify only. The socket is closed right after, so waiting
+       for the peer's close_notify (a second SSL_shutdown) would just let a
+       silent peer block the caller. */
     int shutdownResult = SSL_shutdown(ssl);
-    if (shutdownResult == 0) {
-        shutdownResult = SSL_shutdown(ssl);
-        if (shutdownResult != 1) {
-            TCP_LOG("[tcp_ssl_close] SSL shutdown did not complete cleanly: %s\n", ERR_error_string(SSL_get_error(ssl, shutdownResult), NULL));
-        }
-    } 
-    else if (shutdownResult < 0) {
+    if (shutdownResult < 0) {
         TCP_LOG("[tcp_ssl_close] SSL shutdown failed: %s\n", ERR_error_string(SSL_get_error(ssl, shutdownResult), NULL));
     }
 
     SSL_free(ssl);
-    tcp_set_ssl(socket, NULL);
 
     TcpStatus closeStatus = tcp_close(socket);
     if (closeStatus != TCP_SUCCESS) {
         TCP_LOG("[tcp_ssl_close] Socket close failed.\n");
-        mutex_unlock(&tcp_mutex);
         return closeStatus;
     }
-    mutex_unlock(&tcp_mutex);
 
     TCP_LOG("[tcp_ssl_close] SSL connection and socket closed successfully.\n");
     return TCP_SUCCESS;
@@ -1638,67 +1979,60 @@ TcpStatus tcp_ssl_close(TcpSocket socket) {
  * - `TCP_ERR_CLOSE`: The connection was closed by the peer.
  */
 TcpStatus tcp_ssl_send(TcpSocket socket, const void* buf, size_t len, size_t* sent) {
-    mutex_lock(&tcp_mutex);
-
     if (!buf || len == 0) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_send] Invalid buffer or length for SSL send.\n");
-        return TCP_ERR_SEND; 
+        return TCP_ERR_SEND;
     }
 
+    /* The global lock only guards the lookup. SSL_write on a blocking socket
+       can wait on a slow peer, which must not stall other connections. */
     SSL* ssl = tcp_get_ssl(socket);
     if (!ssl) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_send] No SSL object associated with the socket. Cannot send data.\n");
-        return TCP_ERR_NO_SSL; 
+        return TCP_ERR_NO_SSL;
     }
 
-    int totalSent = 0;
-    int result = 0;
+    size_t totalSent = 0;
     const char* dataPtr = (const char*)buf;
 
     while (len > 0) {
-        result = SSL_write(ssl, dataPtr, len);
+        int chunk = (len > (size_t)INT_MAX) ? INT_MAX : (int)len;
+        int result = SSL_write(ssl, dataPtr, chunk);
         if (result <= 0) {
             int sslError = SSL_get_error(ssl, result);
             switch (sslError) {
                 case SSL_ERROR_WANT_WRITE:
                 case SSL_ERROR_WANT_READ:
                     TCP_LOG("[tcp_ssl_send] SSL_write needs to be called again.\n");
-                    
+
                     if (sent) {
                         *sent = totalSent;
                     }
-                    mutex_unlock(&tcp_mutex);
                     return TCP_SUCCESS; // Not an error, but the send needs to be retried
                 case SSL_ERROR_ZERO_RETURN:
                     TCP_LOG("[tcp_ssl_send] SSL connection closed by peer.\n");
-                    mutex_unlock(&tcp_mutex);
                     return TCP_ERR_CLOSE;
 
                 case SSL_ERROR_SYSCALL:
                     TCP_LOG("[tcp_ssl_send] SSL write syscall error: %s\n", strerror(errno));
-                    mutex_unlock(&tcp_mutex);
                     return TCP_ERR_SEND;
 
                 default:
                     TCP_LOG("[tcp_ssl_send] SSL write error: %s\n", ERR_error_string(ERR_get_error(), NULL));
-                    mutex_unlock(&tcp_mutex);
                     return TCP_ERR_SEND;
             }
         }
 
-        totalSent += result;
+        totalSent += (size_t)result;
         dataPtr += result;
-        len -= result;
+        len -= (size_t)result;
     }
 
     if (sent) {
         *sent = totalSent;
     }
-    mutex_unlock(&tcp_mutex);
 
-    TCP_LOG("Sent %d bytes over SSL.\n", totalSent);
+    TCP_LOG("Sent %zu bytes over SSL.\n", totalSent);
     return TCP_SUCCESS;
 }
 
@@ -1721,76 +2055,72 @@ TcpStatus tcp_ssl_send(TcpSocket socket, const void* buf, size_t len, size_t* se
  * - `TCP_ERR_CLOSE`: The connection was closed by the peer.
  */
 TcpStatus tcp_ssl_recv(TcpSocket socket, void* buf, size_t len, size_t* received) {
-    mutex_lock(&tcp_mutex);
     if (!buf || len == 0) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_recv] Invalid buffer or length for SSL receive.\n");
-        return TCP_ERR_RECV; 
+        return TCP_ERR_RECV;
     }
 
+    /* The global lock only guards the lookup; a blocking SSL_read waiting for
+       this peer must not stall every other TLS connection. */
     SSL* ssl = tcp_get_ssl(socket);
     if (!ssl) {
-        mutex_unlock(&tcp_mutex);
         TCP_LOG("[tcp_ssl_recv] No SSL object associated with the socket. Cannot receive data.\n");
-        return TCP_ERR_NO_SSL; 
+        return TCP_ERR_NO_SSL;
     }
 
-    int result = SSL_read(ssl, buf, len);
+    int want = (len > (size_t)INT_MAX) ? INT_MAX : (int)len;
+    int result = SSL_read(ssl, buf, want);
     if (result > 0) {
         if (received) {
-            *received = result;
+            *received = (size_t)result;
         }
-        
+
         TCP_LOG("[tcp_ssl_recv] Received %d bytes over SSL.\n", result);
-        mutex_unlock(&tcp_mutex);
         return TCP_SUCCESS;
-    } 
-    else {
-        int sslError = SSL_get_error(ssl, result);
-        switch (sslError) {
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                // The operation did not complete; the same call can be retried later
-                if (received) {
-                    *received = 0;
-                }
-                
-                TCP_LOG("[tcp_ssl_recv] SSL_read needs to be called again.\n");
-                mutex_unlock(&tcp_mutex);
-                return TCP_SUCCESS; // Not an error, but the read needs to be retried
+    }
 
-            case SSL_ERROR_ZERO_RETURN:
-                // The connection was closed
-                TCP_LOG("[tcp_ssl_recv] SSL connection closed by peer.\n");
-                mutex_unlock(&tcp_mutex);
-                return TCP_ERR_CLOSE;
-
-            case SSL_ERROR_SYSCALL: {
-                if (ERR_peek_error() == 0) { // No specific SSL error
-                    if (result == 0 || errno == 0) {
-                        TCP_LOG("[tcp_ssl_recv] SSL connection closed by peer or EOF reached.\n");
-                        SSL_free(ssl);
-                        tcp_set_ssl(socket, NULL); // Ensure to clear the SSL mapping
-                        tcp_close(socket); // Close the socket as the connection is done
-                        mutex_unlock(&tcp_mutex);
-                        return TCP_ERR_CLOSE;
-                    } 
-                    else {
-                        TCP_LOG("[tcp_ssl_recv] SSL syscall error: %s\n", strerror(errno));
-                    }
-                }
-                
-                TCP_LOG("[tcp_ssl_recv] SSL read syscall error: %s\n", strerror(errno));
-                mutex_unlock(&tcp_mutex);
-                return TCP_ERR_RECV;
+    int sslError = SSL_get_error(ssl, result);
+    switch (sslError) {
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+            // The operation did not complete; the same call can be retried later
+            if (received) {
+                *received = 0;
             }
-            default:
-                TCP_LOG("[tcp_ssl_recv] SSL read error: %s\n", ERR_error_string(ERR_get_error(), NULL));
-                mutex_unlock(&tcp_mutex);
-                return TCP_ERR_RECV;
+
+            TCP_LOG("[tcp_ssl_recv] SSL_read needs to be called again.\n");
+            return TCP_SUCCESS; // Not an error, but the read needs to be retried
+
+        case SSL_ERROR_ZERO_RETURN:
+            // The connection was closed
+            TCP_LOG("[tcp_ssl_recv] SSL connection closed by peer.\n");
+            return TCP_ERR_CLOSE;
+
+        case SSL_ERROR_SYSCALL:
+            /* EOF or a reset from the transport. The SSL object and the
+               socket stay owned by the caller, who closes them with
+               tcp_ssl_close; freeing or closing them here made that
+               documented close a second close of the same handle. */
+            ERR_clear_error();
+            TCP_LOG("[tcp_ssl_recv] Transport closed or failed during SSL_read (result %d).\n", result);
+            return (result == 0) ? TCP_ERR_CLOSE : TCP_ERR_RECV;
+
+        default: {
+#ifdef SSL_R_UNEXPECTED_EOF_WHILE_READING
+            /* OpenSSL 3 reports a peer that closes without close_notify as an
+               SSL error; for the caller that is simply the end of the stream. */
+            unsigned long e = ERR_peek_error();
+            if (ERR_GET_LIB(e) == ERR_LIB_SSL && ERR_GET_REASON(e) == SSL_R_UNEXPECTED_EOF_WHILE_READING) {
+                ERR_clear_error();
+                TCP_LOG("[tcp_ssl_recv] Peer closed without close_notify.\n");
+                return TCP_ERR_CLOSE;
+            }
+#endif
+            TCP_LOG("[tcp_ssl_recv] SSL read error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+            ERR_clear_error();
+            return TCP_ERR_RECV;
         }
     }
-    mutex_unlock(&tcp_mutex);
 }
 
 
@@ -1860,6 +2190,23 @@ TcpStatus tcp_get_connection_quality(TcpSocket socket, float* rtt, float* varian
  * - `TCP_ERR_WOULD_BLOCK`: The connection is currently blocked, and the send operation would block.
  */
 TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
+    return tcp_async_send_ex(socket, buf, len, NULL);
+}
+
+
+/**
+ * @brief tcp_async_send that also reports how many bytes were sent.
+ *
+ * A non-blocking send may accept only part of the buffer: `*sent` (may be
+ * NULL) receives the count, so the caller can send the rest later.
+ * tcp_async_send discards it and returns TCP_SUCCESS for a partial send.
+ *
+ * @return TCP_SUCCESS (`*sent` > 0), TCP_ERR_WOULD_BLOCK (`*sent` = 0) or TCP_ERR_SEND.
+ */
+TcpStatus tcp_async_send_ex(TcpSocket socket, const void* buf, size_t len, size_t* sent) {
+    if (sent) {
+        *sent = 0;
+    }
 
     #if defined(_WIN32) || defined(_WIN64)
     int result = send(socket, (const char*)buf, (int)len, 0);
@@ -1876,7 +2223,10 @@ TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
         return TCP_ERR_SEND;
     }
     #else
-    ssize_t result = send(socket, buf, len, 0);
+    ssize_t result;
+    do {
+        result = send(socket, buf, len, TCP_SEND_FLAGS);
+    } while (result < 0 && errno == EINTR);
 
     if (result < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -1888,6 +2238,9 @@ TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
     }
     #endif
 
+    if (sent) {
+        *sent = (size_t)result;
+    }
     return TCP_SUCCESS;
 }
 
@@ -1906,9 +2259,26 @@ TcpStatus tcp_async_send(TcpSocket socket, const void* buf, size_t len) {
  * @return TcpStatus
  * - `TCP_SUCCESS`: Data was received successfully.
  * - `TCP_ERR_RECV`: An error occurred while receiving data.
+ * - `TCP_ERR_CLOSE`: The peer closed the connection (as tcp_recv reports it).
  * - `TCP_ERR_WOULD_BLOCK`: No data is available to read; this is expected for non-blocking operations.
+ *
+ * Use tcp_async_recv_ex to learn how many bytes arrived.
  */
 TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len) {
+    return tcp_async_recv_ex(socket, buf, len, NULL);
+}
+
+
+/**
+ * @brief tcp_async_recv that also reports how many bytes were received.
+ *
+ * @param received Receives the byte count (0 unless TCP_SUCCESS). May be NULL.
+ * @return As tcp_async_recv.
+ */
+TcpStatus tcp_async_recv_ex(TcpSocket socket, void* buf, size_t len, size_t* received) {
+    if (received) {
+        *received = 0;
+    }
     #if defined(_WIN32) || defined(_WIN64)
     int result = recv(socket, (char*)buf, (int)len, 0);
 
@@ -1935,10 +2305,14 @@ TcpStatus tcp_async_recv(TcpSocket socket, void* buf, size_t len) {
     }
     #endif
     if (result == 0) {
-        // Connection has been gracefully closed by the peer
-        return TCP_ERR_RECV;
+        // Connection has been gracefully closed by the peer (tcp_recv
+        // reports this as TCP_ERR_CLOSE too; it used to be TCP_ERR_RECV)
+        return TCP_ERR_CLOSE;
     }
 
+    if (received) {
+        *received = (size_t)result;
+    }
     return TCP_SUCCESS;
 }
 
@@ -1961,34 +2335,12 @@ static TcpStatus get_sock_address(int (*fn)(TcpSocket, struct sockaddr*, socklen
         return TCP_ERR_GENERIC;
     }
 
-    if (addr.ss_family == AF_INET) {
-        struct sockaddr_in* s = (struct sockaddr_in*)&addr;
-
-        if (inet_ntop(AF_INET, &s->sin_addr, address, address_len) == NULL) {
-            TCP_LOG("[get_sock_address] Error: inet_ntop() failed for IPv4 address.\n");
-            return TCP_ERR_GENERIC;
-        }
-        if (port) {
-            *port = ntohs(s->sin_port);
-        }
-    }
-    else if (addr.ss_family == AF_INET6) {
-        struct sockaddr_in6* s = (struct sockaddr_in6*)&addr;
-
-        if (inet_ntop(AF_INET6, &s->sin6_addr, address, address_len) == NULL) {
-            TCP_LOG("[get_sock_address] Error: inet_ntop() failed for IPv6 address.\n");
-            return TCP_ERR_GENERIC;
-        }
-        if (port) {
-            *port = ntohs(s->sin6_port);
-        }
-    }
-    else {
-        TCP_LOG("[get_sock_address] Error: Unknown socket family.\n");
+    if (!tcp_format_addr(&addr, address, address_len, port)) {
+        TCP_LOG("[get_sock_address] Error: could not format the address.\n");
         return TCP_ERR_GENERIC;
     }
 
-    TCP_LOG("[get_sock_address] Retrieved address: %s, port: %u\n", address, *port);
+    TCP_LOG("[get_sock_address] Retrieved address: %s, port: %u\n", address, port ? *port : 0);
     return TCP_SUCCESS;
 }
 
@@ -2222,9 +2574,9 @@ TcpStatus tcp_send_all(TcpSocket socket, const void* buf, size_t len) {
  * `tcp_recv` (and the underlying `recv()`) may return fewer bytes than
  * requested; for fixed-size frames or length-prefixed protocols the
  * caller must loop until the full frame arrives. This wrapper does
- * that. A clean peer close mid-stream (recv returns 0 bytes) is
- * reported as `TCP_ERR_RECV` — an incomplete frame is a protocol
- * error, not a happy-path EOF.
+ * that. A clean peer close mid-stream is reported as `TCP_ERR_CLOSE`
+ * (what tcp_recv returns for it) — an incomplete frame, not a
+ * happy-path EOF.
  *
  * Treats zero-length input as a no-op success.
  *
@@ -2254,9 +2606,9 @@ TcpStatus tcp_recv_all(TcpSocket socket, void* buf, size_t len) {
             return rc;
         }
         if (got == 0) {
-            /* Peer closed mid-frame. */
+            /* defensive: tcp_recv reports a peer close as TCP_ERR_CLOSE */
             TCP_LOG("[tcp_recv_all] EOF after %zu/%zu bytes", len - remaining, len);
-            return TCP_ERR_RECV;
+            return TCP_ERR_CLOSE;
         }
 
         p += got;
@@ -2271,6 +2623,8 @@ TcpStatus tcp_recv_all(TcpSocket socket, void* buf, size_t len) {
  * indefinitely; 0 polls. Returns TCP_SUCCESS (ready), TCP_ERR_WOULD_BLOCK
  * (timed out), or TCP_ERR_GENERIC (select failed). */
 static TcpStatus tcp_wait_ready(TcpSocket socket, long timeout_ms, bool want_write) {
+#if defined(_WIN32) || defined(_WIN64)
+    /* Winsock's fd_set is a counted array of handles, so any socket fits. */
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(socket, &fds);
@@ -2283,15 +2637,29 @@ static TcpStatus tcp_wait_ready(TcpSocket socket, long timeout_ms, bool want_wri
         tvp = &tv;
     }
 
-#if defined(_WIN32) || defined(_WIN64)
-    int nfds = 0;                       /* ignored by Winsock */
-#else
-    int nfds = (int)socket + 1;
-#endif
-
+    /* Winsock reports a failed non-blocking connect only in exceptfds, so a
+       write wait watches it too; otherwise a refused connection looked like
+       a timeout after the whole budget. The caller then reads SO_ERROR. */
+    fd_set efds;
+    FD_ZERO(&efds);
+    FD_SET(socket, &efds);
     int rc = want_write
-        ? select(nfds, NULL, &fds, NULL, tvp)
-        : select(nfds, &fds, NULL, NULL, tvp);
+        ? select(0, NULL, &fds, &efds, tvp)
+        : select(0, &fds, NULL, NULL, tvp);
+#else
+    /* poll() instead of select(): FD_SET on a descriptor >= FD_SETSIZE (1024)
+       writes past the fd_set, which a busy server reaches easily. */
+    struct pollfd pfd;
+    pfd.fd = (int)socket;
+    pfd.events = want_write ? POLLOUT : POLLIN;
+    pfd.revents = 0;
+
+    int wait = (timeout_ms < 0) ? -1 : (timeout_ms > INT_MAX ? INT_MAX : (int)timeout_ms);
+    int rc;
+    do {
+        rc = poll(&pfd, 1, wait);
+    } while (rc < 0 && errno == EINTR);
+#endif
 
     if (rc < 0) {
         return TCP_ERR_GENERIC;
@@ -2446,9 +2814,15 @@ TcpStatus tcp_connect_timeout(TcpSocket socket, const char* host, unsigned short
         return TCP_ERR_GENERIC;
     }
 
+    int family = tcp_socket_family(socket);
     TcpStatus result = TCP_ERR_CONNECT;
     for (p = res; p; p = p->ai_next) {
-        int rc = connect(socket, p->ai_addr, (socklen_t)p->ai_addrlen);
+        struct sockaddr_storage a;
+        socklen_t alen;
+        if (!tcp_addr_for_family(p->ai_addr, family, &a, &alen)) {
+            continue;
+        }
+        int rc = connect(socket, (struct sockaddr*)&a, alen);
         if (rc == 0) {
             result = TCP_SUCCESS;       /* connected immediately (e.g. loopback) */
             break;

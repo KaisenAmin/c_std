@@ -1,5 +1,46 @@
 #include "thread_pool.h"
 #include <stdlib.h>
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <time.h>
+#endif
+
+/* Monotonic milliseconds, for timeouts that must not follow wall-clock
+   steps (NTP / manual changes). */
+static long long tp_now_ms(void) {
+#if defined(_WIN32) || defined(_WIN64)
+    return (long long)GetTickCount64();
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000LL + ts.tv_nsec / 1000000L;
+#endif
+}
+
+/* Enqueues `task` unless the pool is shutting down (G4-11: tasks were still
+   accepted, and run, while thread_pool_destroy was in progress). */
+static bool tp_enqueue(ThreadPool* pool, Task* newTask) {
+    mutex_lock(&pool->queue.lock);
+    if (!pool->keepAlive) {
+        mutex_unlock(&pool->queue.lock);
+        return false;
+    }
+    /* `pending` goes up before the task becomes visible, so thread_pool_wait
+       never sees an empty queue and pending == 0 in between. */
+    mutex_lock(&pool->workMutex);
+    pool->pending++;
+    mutex_unlock(&pool->workMutex);
+
+    if (pool->queue.rear == NULL) {
+        pool->queue.front = pool->queue.rear = newTask;
+    } else {
+        pool->queue.rear->next = newTask;
+        pool->queue.rear = newTask;
+    }
+    pool->queue.count++;
+    condition_signal(&pool->queue.hasTasks);
+    mutex_unlock(&pool->queue.lock);
+    return true;
+}
 
 /* Worker loop:
  *   1. Wait for a task to appear (or for keepAlive to drop).
@@ -152,23 +193,10 @@ void thread_pool_add_task(ThreadPool* pool, TaskFunction function, void* arg) {
     newTask->arg = arg;
     newTask->next = NULL;
 
-    /* Increment `pending` BEFORE pushing to the queue so that
-       thread_pool_wait can never observe count=0 + pending=0 between
-       enqueue and the worker picking it up. */
-    mutex_lock(&pool->workMutex);
-    pool->pending++;
-    mutex_unlock(&pool->workMutex);
-
-    mutex_lock(&pool->queue.lock);
-    if (pool->queue.rear == NULL) {
-        pool->queue.front = pool->queue.rear = newTask;
-    } else {
-        pool->queue.rear->next = newTask;
-        pool->queue.rear = newTask;
+    if (!tp_enqueue(pool, newTask)) {
+        THREAD_POOL_LOG("add_task: pool is shutting down; task dropped");
+        free(newTask);
     }
-    pool->queue.count++;
-    condition_signal(&pool->queue.hasTasks);
-    mutex_unlock(&pool->queue.lock);
 }
 
 
@@ -205,12 +233,32 @@ void thread_pool_destroy(ThreadPool* pool) {
     if (!pool) return;
     THREAD_POOL_LOG("destroying pool");
 
-    /* Tell every worker to wake up and exit at the next opportunity.
-       Workers that are mid-task will finish the current task first. */
+
     mutex_lock(&pool->queue.lock);
+    int discarded = 0;
+    while (pool->queue.front != NULL) {
+        Task* task = pool->queue.front;
+        pool->queue.front = task->next;
+        free(task);
+        discarded++;
+    }
+    pool->queue.rear = NULL;
+    pool->queue.count = 0;
     pool->keepAlive = false;
     condition_broadcast(&pool->queue.hasTasks);
     mutex_unlock(&pool->queue.lock);
+
+    /* Discarded tasks no longer count as pending, so a concurrent
+       thread_pool_wait can return. */
+    if (discarded > 0) {
+        mutex_lock(&pool->workMutex);
+        pool->pending -= discarded;
+        if (pool->pending <= 0) {
+            pool->pending = 0;
+            condition_broadcast(&pool->allIdle);
+        }
+        mutex_unlock(&pool->workMutex);
+    }
 
     /* Only join threads that were actually started — guards against
        partial-create failures in thread_pool_create. */
@@ -252,8 +300,9 @@ void thread_pool_destroy(ThreadPool* pool) {
  * @param function Function to invoke on a worker.
  * @param arg      Opaque argument forwarded to `function` (caller keeps it
  *                 alive until the task finishes).
- * @return `true` if the task was enqueued, `false` on a NULL pool/function or
- *         allocation failure (in which case nothing was queued).
+ * @return `true` if the task was enqueued, `false` on a NULL pool/function,
+ *         allocation failure, or while thread_pool_destroy is shutting the
+ *         pool down (in which case nothing was queued).
  */
 bool thread_pool_add_task_checked(ThreadPool* pool, TaskFunction function, void* arg) {
     if (!pool || !function) {
@@ -270,20 +319,11 @@ bool thread_pool_add_task_checked(ThreadPool* pool, TaskFunction function, void*
     newTask->arg = arg;
     newTask->next = NULL;
 
-    mutex_lock(&pool->workMutex);
-    pool->pending++;
-    mutex_unlock(&pool->workMutex);
-
-    mutex_lock(&pool->queue.lock);
-    if (pool->queue.rear == NULL) {
-        pool->queue.front = pool->queue.rear = newTask;
-    } else {
-        pool->queue.rear->next = newTask;
-        pool->queue.rear = newTask;
+    if (!tp_enqueue(pool, newTask)) {
+        THREAD_POOL_LOG("add_task_checked: pool is shutting down; refused");
+        free(newTask);
+        return false;
     }
-    pool->queue.count++;
-    condition_signal(&pool->queue.hasTasks);
-    mutex_unlock(&pool->queue.lock);
     return true;
 }
 
@@ -331,8 +371,8 @@ int thread_pool_queued_count(ThreadPool* pool) {
 /**
  * @brief Number of worker threads actually running in the pool.
  *
- * Usually equals the count requested in `thread_pool_create`, but can be
- * smaller if some threads failed to start. Fixed for the pool's lifetime.
+ * Always equals the count requested in `thread_pool_create` (which returns
+ * NULL when any worker fails to start). Fixed for the pool's lifetime.
  *
  * @param pool Pool to query (NULL → 0).
  * @return Number of live worker threads.
@@ -349,6 +389,9 @@ int thread_pool_thread_count(ThreadPool* pool) {
  * passes while work is still outstanding, so a stuck task can't hang a
  * graceful shutdown forever. The pool remains usable on either outcome.
  *
+ * The timeout is measured on a monotonic clock (wall-clock steps do not
+ * stretch or cut it short); a negative timeout is treated as 0.
+ *
  * @param pool       Pool to wait on (NULL → `true`, nothing to wait for).
  * @param timeout_ms Maximum time to wait, in milliseconds.
  * @return `true` if the pool drained (no pending tasks), `false` on timeout.
@@ -357,22 +400,31 @@ bool thread_pool_wait_timeout(ThreadPool* pool, long timeout_ms) {
     if (!pool) {
         return true;
     }
-
-    /* Absolute deadline = now + timeout (condition_timedwait uses absolute time). */
-    struct timespec deadline;
-    timespec_get(&deadline, TIME_UTC);
-    deadline.tv_sec  += timeout_ms / 1000;
-    deadline.tv_nsec += (timeout_ms % 1000) * 1000000L;
-    if (deadline.tv_nsec >= 1000000000L) {
-        deadline.tv_sec  += 1;
-        deadline.tv_nsec -= 1000000000L;
+    if (timeout_ms < 0) {
+        timeout_ms = 0;   /* a negative value gave an unnormalized tv_nsec */
     }
+    long long deadline_ms = tp_now_ms() + timeout_ms;
 
     mutex_lock(&pool->workMutex);
     while (pool->pending > 0) {
-        int rc = condition_timedwait(&pool->allIdle, &pool->workMutex, &deadline);
-        if (rc != THREAD_SUCCESS) {
-            break;   /* THREAD_TIMEOUT (deadline passed) or an error */
+        long long left = deadline_ms - tp_now_ms();
+        if (left <= 0) {
+            break;
+        }
+        /* condition_timedwait wants an absolute wall-clock time: wait in
+           slices of at most 50 ms, re-checking the monotonic deadline, so a
+           clock step can only shift one slice. */
+        long slice = (left > 50) ? 50 : (long)left;
+        struct timespec until;
+        timespec_get(&until, TIME_UTC);
+        until.tv_nsec += slice * 1000000L;
+        if (until.tv_nsec >= 1000000000L) {
+            until.tv_sec  += 1;
+            until.tv_nsec -= 1000000000L;
+        }
+        int rc = condition_timedwait(&pool->allIdle, &pool->workMutex, &until);
+        if (rc != THREAD_SUCCESS && rc != THREAD_TIMEOUT) {
+            break;   /* an error */
         }
     }
     bool drained = (pool->pending == 0);

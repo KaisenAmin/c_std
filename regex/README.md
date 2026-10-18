@@ -13,7 +13,8 @@ This Regex library in C provides functionality to compile, match, and search reg
 - **Regex Compilation:** Compile regex patterns with optional flags for case-insensitive, multiline, and dotall modes.
 - **Pattern Matching:** Match compiled regex patterns against strings, returning details of matches (start, end, length).
 - **Pattern Search:** Search for patterns in strings, finding all occurrences.
-- **Cross-Platform Support:** Uses PCRE on Windows and POSIX regex on other platforms.
+- **Cross-Platform Support:** Uses PCRE whenever `<pcre.h>` is available (always on Windows) and POSIX `<regex.h>` otherwise. Compile with `-DCSTD_REGEX_USE_PCRE=1` or `-DCSTD_REGEX_USE_PCRE=0` to force a backend; if neither header exists (for example MSVC without PCRE) the build stops with a message naming what to install. On the POSIX backend only ERE syntax is available (no lookaround, lazy quantifiers or non-capturing groups), and `\b` needs a libc with `REG_STARTEND` (glibc, macOS, BSD) to see the character before a scan position.
+- **Same flags on both backends:** `.` excludes newline unless `REGEX_DOTALL` is set, `REGEX_MULTILINE` makes `^`/`$` work per line, and `group_count` is the number of groups in the pattern (unset groups read as empty) on both backends. One limitation: the POSIX backend refuses `REGEX_MULTILINE | REGEX_DOTALL` (`regex_compile` returns `NULL`), because POSIX line mode also stops `.` from matching a newline. Also on POSIX in `REGEX_MULTILINE` mode, negated classes such as `[^a]`, `\D`, `\W`, `\S` do not match a newline.
 - **Error Handling:** Provides detailed error messages for compilation and matching errors.
 
 ## Installation and Compilation
@@ -68,6 +69,7 @@ The library includes detailed function descriptions for compiling and matching r
   - `REGEX_CASE_INSENSITIVE`: Enables case-insensitive matching, allowing patterns to match regardless of letter case (e.g., "Hello" will match "hello").
   - `REGEX_MULTILINE`: Multiline matching mode. In this mode, the `^` and `$` symbols match the start and end of each line, rather than the entire string.
   - `REGEX_DOTALL`: Enables dotall mode, where the `.` symbol matches any character, including newline characters. Without this flag, `.` will not match newlines.
+  - `REGEX_UTF8`: The pattern and the subjects are UTF-8, and `.`, character classes and `REGEX_CASE_INSENSITIVE` work on characters: `.` matches `"ا"` (two bytes) once, and `É` matches `é` case-insensitively. Without it the PCRE backend works on **bytes** (a non-ASCII character is several `.` matches, and only ASCII letters are folded). With PCRE, a subject that is not valid UTF-8 makes matching return `REGEX_MATCH_ERROR`, and a scan (`regex_find_all`, `regex_replace`, `regex_split`, ...) never stops inside a character. `\d`, `\w` and `\s` stay ASCII. On the POSIX backend the flag needs a UTF-8 `LC_CTYPE` locale (call `setlocale(LC_CTYPE, "")` with e.g. `LANG=C.UTF-8`); otherwise `regex_compile` returns `NULL`. Without the flag the POSIX backend follows the current `LC_CTYPE` locale.
 
 ---
 
@@ -125,7 +127,8 @@ The library includes detailed function descriptions for compiling and matching r
   - `string`: The string to search.
   - `matches`: Pointer to an array of `RegexMatch` objects for storing match results.
   - `max_matches`: Maximum number of matches to find.
-- **Return**: The number of matches found or `-1` on error.
+- **Return**: The number of matches found or `-1` on error, including invalid arguments (`regex`, `string` or `matches` `NULL`, or `max_matches <= 0`; this used to return `0`, the same as "no match").
+- **Notes**: The scan always runs over the original `string` (PCRE `start_offset`, POSIX `REG_STARTEND`/`REG_NOTBOL`), so `^`, `\A`, `\b` and lookbehind keep their meaning after the first match: `^a` finds one match in `"aaa"`, not three. An empty match is followed by a search for a non-empty match at the same position, as in Python's `re`.
 
 ---
 
@@ -190,7 +193,7 @@ The following seven helpers were added in the production-hardening pass. Each on
 - **Parameters**:
   - `pattern`, `string`, `flags`: Same as `regex_test`.
 - **Return**: Number of matches, or `-1` on error.
-- **Notes**: Handles zero-length matches (`\b`, `^$`, …) by advancing one byte per zero-width hit so the walk always terminates.
+- **Notes**: Anchors and word boundaries are evaluated against the whole string (`regex_count_matches("^a", "aaa", 0)` is 1). Zero-length matches (`\b`, `^$`, …) are counted once per position, so the walk always terminates.
 
 ---
 

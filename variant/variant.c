@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 
 static char* dup_cstr(const char* s) {
@@ -880,10 +881,23 @@ bool variant_get_custom(const Variant* v, void** out, const VariantTypeInfo** ou
 
 static int cmp_prim_int(int a, int b)       { return (a > b) - (a < b); }
 static int cmp_prim_long(long a, long b)    { return (a > b) - (a < b); }
-static int cmp_prim_float(float a, float b)
-        { return a < b ? -1 : a > b ? 1 : 0; }
-static int cmp_prim_double(double a, double b)
-        { return a < b ? -1 : a > b ? 1 : 0; }
+/* Total order for floating point: NaN sorts after every number and equals
+   other NaNs (it used to "equal" everything, so NaN == 1.0 and NaN == 2.0
+   while 1.0 != 2.0, which broke qsort and hash keys). -0.0 == 0.0. */
+static int cmp_prim_float(float a, float b) {
+    int na = (a != a), nb = (b != b);
+    if (na || nb) {
+        return na - nb;
+    }
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+static int cmp_prim_double(double a, double b) {
+    int na = (a != a), nb = (b != b);
+    if (na || nb) {
+        return na - nb;
+    }
+    return a < b ? -1 : a > b ? 1 : 0;
+}
 static int cmp_prim_char(char a, char b)    { return (a > b) - (a < b); }
 static int cmp_prim_bool(bool a, bool b)    { return (int)a - (int)b; }
 static int cmp_prim_ptr(const void* a, const void* b)
@@ -943,7 +957,11 @@ int variant_compare(const Variant* a, const Variant* b) {
         }
         case VARIANT_TYPE_CUSTOM:
             if (a->as.custom.info != b->as.custom.info) {
-                return 0;
+                uintptr_t ia = (uintptr_t)a->as.custom.info, ib = (uintptr_t)b->as.custom.info;
+                return ia < ib ? -1 : 1;
+            }
+            if (!a->as.custom.data || !b->as.custom.data) {
+                return (a->as.custom.data != NULL) - (b->as.custom.data != NULL);
             }
             if (a->as.custom.info && a->as.custom.info->compare) {
                 return a->as.custom.info->compare(a->as.custom.data, b->as.custom.data);
@@ -964,7 +982,8 @@ int variant_compare(const Variant* a, const Variant* b) {
  * underlying buffers compare equal under `strcmp`; two CUSTOMs are
  * equal iff they share the same `VariantTypeInfo` AND either the
  * descriptor's `compare` hook returns 0 OR `memcmp` over `info->size`
- * bytes returns 0.
+ * bytes returns 0. Floating point: 0.0 equals -0.0 and NaN equals NaN
+ * (and nothing else), so the relation is a proper equivalence.
  *
  * @param a, b  Variants to compare. Either may be NULL.
  */
@@ -983,6 +1002,28 @@ static size_t fnv1a(const void* data, size_t n, size_t seed) {
     return hash;
 }
 
+/* Hashes agree with cmp_prim_float / cmp_prim_double: -0.0 hashes like 0.0
+   and every NaN alike (raw bytes made equal values hash differently). */
+static size_t vrt_hash_float(float f, size_t seed) {
+    if (f != f) {
+        return fnv1a("nan", 3, seed);
+    }
+    if (f == 0.0f) {
+        f = 0.0f;
+    }
+    return fnv1a(&f, sizeof f, seed);
+}
+
+static size_t vrt_hash_double(double d, size_t seed) {
+    if (d != d) {
+        return fnv1a("nan", 3, seed);
+    }
+    if (d == 0.0) {
+        d = 0.0;
+    }
+    return fnv1a(&d, sizeof d, seed);
+}
+
 /** @brief Hash suitable for use as a hashmap key. */
 size_t variant_hash(const Variant* v) {
     if (!v) {
@@ -998,10 +1039,10 @@ size_t variant_hash(const Variant* v) {
             return fnv1a(&v->as.i, sizeof v->as.i, seed);
         case VARIANT_TYPE_LONG:    
             return fnv1a(&v->as.l, sizeof v->as.l, seed);
-        case VARIANT_TYPE_FLOAT:   
-            return fnv1a(&v->as.f, sizeof v->as.f, seed);
-        case VARIANT_TYPE_DOUBLE:  
-            return fnv1a(&v->as.d, sizeof v->as.d, seed);
+        case VARIANT_TYPE_FLOAT:
+            return vrt_hash_float(v->as.f, seed);
+        case VARIANT_TYPE_DOUBLE:
+            return vrt_hash_double(v->as.d, seed);
         case VARIANT_TYPE_CHAR:    
             return fnv1a(&v->as.c, sizeof v->as.c, seed);
         case VARIANT_TYPE_BOOL:    
@@ -1012,7 +1053,17 @@ size_t variant_hash(const Variant* v) {
             return v->as.s ? fnv1a(v->as.s, strlen(v->as.s), seed) : seed;
         case VARIANT_TYPE_CUSTOM:
             if (v->as.custom.info && v->as.custom.data) {
-                return fnv1a(v->as.custom.data, v->as.custom.info->size, seed);
+                const VariantTypeInfo* info = v->as.custom.info;
+                if (info->hash) {
+                    size_t h = info->hash(v->as.custom.data);
+                    return fnv1a(&h, sizeof h, seed);
+                }
+                if (info->compare) {
+                    /* equality is decided by the hook, so the raw bytes (e.g.
+                       a char* member) may differ between equal values */
+                    return seed;
+                }
+                return fnv1a(v->as.custom.data, info->size, seed);
             }
             return seed;
     }
@@ -1064,12 +1115,20 @@ static char* alloc_sprintf(const char* fmt, ...) {
     va_start(args, fmt);
     int n = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
-    if (n < 0) return NULL;
+
+    if (n < 0) {
+        return NULL;
+    }
+
     char* out = (char*)malloc((size_t)n + 1);
-    if (!out) return NULL;
+    if (!out) { 
+        return NULL;
+    }
+
     va_start(args, fmt);
     vsnprintf(out, (size_t)n + 1, fmt, args);
     va_end(args);
+
     return out;
 }
 
@@ -1142,6 +1201,7 @@ int variant_print(const Variant* v) {
     }
     int n = printf("%s", s);
     free(s);
+
     return n;
 }
 
@@ -1183,6 +1243,11 @@ VariantArray* variant_array_new(size_t initial_capacity) {
     a->size = 0;
     a->cap  = 0;
 
+    if (initial_capacity > SIZE_MAX / sizeof(Variant)) {
+        VARIANT_LOG("[variant_array_new]: initial_capacity %zu too large", initial_capacity);
+        free(a);
+        return NULL;
+    }
     if (initial_capacity > 0) {
         a->data = (Variant*)malloc(initial_capacity * sizeof(Variant));
         if (!a->data) {
@@ -1231,8 +1296,16 @@ bool variant_array_reserve(VariantArray* a, size_t min_capacity) {
         return true;
     }
 
+    if (min_capacity > SIZE_MAX / sizeof(Variant)) {
+        VARIANT_LOG("[variant_array_reserve]: %zu elements do not fit in size_t bytes", min_capacity);
+        return false;
+    }
     size_t new_cap = a->cap ? a->cap : 4;
     while (new_cap < min_capacity) {
+        if (new_cap > (SIZE_MAX / sizeof(Variant)) / 2) {
+            new_cap = min_capacity;   /* doubling would overflow (or loop forever at 0) */
+            break;
+        }
         new_cap *= 2;
     }
 
@@ -1256,16 +1329,26 @@ bool variant_array_push(VariantArray* a, const Variant* v) {
         VARIANT_LOG("[variant_array_push]: NULL arg");
         return false;
     }
+    /* `v` may point into this array (push(a, at(a, 0))): read it before the
+       reserve below can realloc a->data. A shallow copy is enough - the
+       string / custom payload it points to does not move. */
+    Variant src = *v;
     if (!variant_array_reserve(a, a->size + 1)) {
         return false;
     }
 
     /* Trivial (non-owning) variants clone by plain struct copy; only STRING /
-     * CUSTOM need variant_clone's deep copy. */
-    a->data[a->size] = vrt_is_trivial(v->type) ? *v : variant_clone(v);
+     * CUSTOM need variant_clone's deep copy, which yields NONE when it runs
+     * out of memory: report that instead of storing a NONE as a success. */
+    Variant copy = vrt_is_trivial(src.type) ? src : variant_clone(&src);
+    if (copy.type == VARIANT_TYPE_NONE && src.type != VARIANT_TYPE_NONE) {
+        VARIANT_LOG("[variant_array_push]: deep copy failed");
+        return false;
+    }
+    a->data[a->size] = copy;
     a->size++;
 
-    VARIANT_LOG("[variant_array_push]: pushed %s, size now %zu", variant_type_name(v), a->size);
+    VARIANT_LOG("[variant_array_push]: pushed %s, size now %zu", variant_type_name(&src), a->size);
     return true;
 }
 
@@ -1302,6 +1385,10 @@ bool variant_array_set(VariantArray* a, size_t index, const Variant* v) {
     }
 
     Variant copy = vrt_is_trivial(v->type) ? *v : variant_clone(v);
+    if (copy.type == VARIANT_TYPE_NONE && v->type != VARIANT_TYPE_NONE) {
+        VARIANT_LOG("[variant_array_set]: deep copy failed, element %zu kept", index);
+        return false;   /* the old element stays */
+    }
     variant_destroy(&a->data[index]);
     a->data[index] = copy;
     VARIANT_LOG("[variant_array_set]: replaced index %zu with %s",
@@ -1426,6 +1513,20 @@ static void destroy_mem_string(void* p) {
 }
 
 
+static size_t hash_mem_bytes(const void* p, size_t n) { return fnv1a(p, n, 0); }
+static size_t hash_mem_int(const void* p)    { return hash_mem_bytes(p, sizeof(int)); }
+static size_t hash_mem_long(const void* p)   { return hash_mem_bytes(p, sizeof(long)); }
+static size_t hash_mem_float(const void* p)  { return vrt_hash_float(*(const float*)p, 0); }
+static size_t hash_mem_double(const void* p) { return vrt_hash_double(*(const double*)p, 0); }
+static size_t hash_mem_char(const void* p)   { return hash_mem_bytes(p, sizeof(char)); }
+static size_t hash_mem_bool(const void* p)   { return (size_t)(*(const bool*)p ? 1 : 0); }
+static size_t hash_mem_ptr(const void* p)    { return hash_mem_bytes(p, sizeof(void*)); }
+static size_t hash_mem_string(const void* p) {
+    const char* s = *(const char* const*)p;
+    return s ? fnv1a(s, strlen(s), 0) : 0;
+}
+
+
 static int cmp_mem_int(const void* a, const void* b) { 
     return cmp_prim_int(*(const int*)a, *(const int*)b);    
 }
@@ -1517,11 +1618,11 @@ static int print_mem_string(char* buf, size_t n, const void* p) {
 }
 
 
-const VariantTypeInfo variant_typeinfo_int     = { sizeof(int),    copy_mem_int,    NULL,                cmp_mem_int,    print_mem_int,    "int"     };
-const VariantTypeInfo variant_typeinfo_long    = { sizeof(long),   copy_mem_long,   NULL,                cmp_mem_long,   print_mem_long,   "long"    };
-const VariantTypeInfo variant_typeinfo_float   = { sizeof(float),  copy_mem_float,  NULL,                cmp_mem_float,  print_mem_float,  "float"   };
-const VariantTypeInfo variant_typeinfo_double  = { sizeof(double), copy_mem_double, NULL,                cmp_mem_double, print_mem_double, "double"  };
-const VariantTypeInfo variant_typeinfo_char    = { sizeof(char),   copy_mem_char,   NULL,                cmp_mem_char,   print_mem_char,   "char"    };
-const VariantTypeInfo variant_typeinfo_bool    = { sizeof(bool),   copy_mem_bool,   NULL,                cmp_mem_bool,   print_mem_bool,   "bool"    };
-const VariantTypeInfo variant_typeinfo_pointer = { sizeof(void*),  copy_mem_ptr,    NULL,                cmp_mem_ptr,    print_mem_ptr,    "pointer" };
-const VariantTypeInfo variant_typeinfo_string  = { sizeof(char*),  copy_mem_string, destroy_mem_string,  cmp_mem_string, print_mem_string, "string"  };
+const VariantTypeInfo variant_typeinfo_int     = { sizeof(int),    copy_mem_int,    NULL,                cmp_mem_int,    print_mem_int,    "int", hash_mem_int };
+const VariantTypeInfo variant_typeinfo_long    = { sizeof(long),   copy_mem_long,   NULL,                cmp_mem_long,   print_mem_long,   "long", hash_mem_long };
+const VariantTypeInfo variant_typeinfo_float   = { sizeof(float),  copy_mem_float,  NULL,                cmp_mem_float,  print_mem_float,  "float", hash_mem_float };
+const VariantTypeInfo variant_typeinfo_double  = { sizeof(double), copy_mem_double, NULL,                cmp_mem_double, print_mem_double, "double", hash_mem_double };
+const VariantTypeInfo variant_typeinfo_char    = { sizeof(char),   copy_mem_char,   NULL,                cmp_mem_char,   print_mem_char,   "char", hash_mem_char };
+const VariantTypeInfo variant_typeinfo_bool    = { sizeof(bool),   copy_mem_bool,   NULL,                cmp_mem_bool,   print_mem_bool,   "bool", hash_mem_bool };
+const VariantTypeInfo variant_typeinfo_pointer = { sizeof(void*),  copy_mem_ptr,    NULL,                cmp_mem_ptr,    print_mem_ptr,    "pointer", hash_mem_ptr };
+const VariantTypeInfo variant_typeinfo_string  = { sizeof(char*),  copy_mem_string, destroy_mem_string,  cmp_mem_string, print_mem_string, "string", hash_mem_string };

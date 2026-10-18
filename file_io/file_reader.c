@@ -4,11 +4,207 @@
  * @class FileReader
 */
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include "file_reader.h"
 #include "../string/std_string.h"
 #include "../encoding/encoding.h"
+#include <stdint.h>
+#include <stdarg.h>
+#include <wchar.h>
+
+
+
+
+/* UTF-8 encoding of a code point; returns its length (1..4). */
+static int fr_utf8_encode(uint32_t cp, char* out) {
+    if (cp < 0x80) {
+        out[0] = (char)cp;
+        return 1;
+    }
+    if (cp < 0x800) {
+        out[0] = (char)(0xC0 | (cp >> 6));
+        out[1] = (char)(0x80 | (cp & 0x3F));
+        return 2;
+    }
+    if (cp < 0x10000) {
+        out[0] = (char)(0xE0 | (cp >> 12));
+        out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        out[2] = (char)(0x80 | (cp & 0x3F));
+        return 3;
+    }
+    out[0] = (char)(0xF0 | (cp >> 18));
+    out[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+    out[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    out[3] = (char)(0x80 | (cp & 0x3F));
+    return 4;
+}
+
+static int fr_utf8_len(uint32_t cp) {
+    return cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+}
+
+#if defined(_WIN32) || defined(_WIN64)
+
+/* Next character as UTF-8 into out (room bytes). Returns its length, 0 at end
+   of file or on error, -1 if it does not fit (it is left unread). */
+static int fr_unicode_getc(FileReader* reader, char* out, size_t room) {
+    FILE* f = reader->file_reader;
+    wint_t u = fgetwc(f);
+    if (u == WEOF) {
+        return 0;
+    }
+    uint32_t cp = (uint32_t)u;
+    if (u >= 0xD800 && u <= 0xDBFF) {
+        if (room < 4) {
+            ungetwc(u, f);
+            return -1;
+        }
+        wint_t lo = fgetwc(f);
+        if (lo != WEOF && lo >= 0xDC00 && lo <= 0xDFFF) {
+            cp = 0x10000 + (((uint32_t)u - 0xD800) << 10) + ((uint32_t)lo - 0xDC00);
+        }
+        else {
+            if (lo != WEOF) {
+                ungetwc(lo, f);
+            }
+            cp = 0xFFFD;
+        }
+    }
+    else if (u >= 0xDC00 && u <= 0xDFFF) {
+        cp = 0xFFFD;
+    }
+    if ((size_t)fr_utf8_len(cp) > room) {
+        ungetwc(u, f);
+        return -1;
+    }
+    return fr_utf8_encode(cp, out);
+}
+
+#else
+
+/* Detects the encoding at the start of the file and skips its BOM. */
+static void fr_unicode_at_start(FileReader* reader) {
+    FILE* f = reader->file_reader;
+    unsigned char b[3];
+    size_t n = fread(b, 1, 3, f);
+    if (n == 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
+        reader->unicode_form = 1;
+        return;
+    }
+    reader->unicode_form = 0;
+    fseek(f, (n >= 2 && b[0] == 0xFF && b[1] == 0xFE) ? 2 : 0, SEEK_SET);
+}
+
+/* One code point at the current position, without CR LF folding; false at
+   end of file. Invalid input decodes as U+FFFD. */
+static bool fr_unicode_next_cp(FileReader* reader, uint32_t* cp) {
+    FILE* f = reader->file_reader;
+    if (reader->unicode_form == 1) {
+        int c = fgetc(f);
+        if (c == EOF) {
+            return false;
+        }
+        int extra = (c < 0x80) ? 0 : ((c & 0xE0) == 0xC0) ? 1 : ((c & 0xF0) == 0xE0) ? 2 : ((c & 0xF8) == 0xF0) ? 3 : -1;
+        if (extra < 0) {
+            *cp = 0xFFFD;
+            return true;
+        }
+        uint32_t v = (extra == 0) ? (uint32_t)c : (uint32_t)(c & (0x3F >> extra));
+        for (int i = 0; i < extra; i++) {
+            long at = ftell(f);
+            int d = fgetc(f);
+            if (d == EOF || (d & 0xC0) != 0x80) {
+                if (d != EOF) {
+                    fseek(f, at, SEEK_SET);
+                }
+                *cp = 0xFFFD;
+                return true;
+            }
+            v = (v << 6) | (uint32_t)(d & 0x3F);
+        }
+        *cp = v;
+        return true;
+    }
+
+    unsigned char b[2];
+    if (fread(b, 1, 2, f) != 2) {
+        return false;   /* end of file (an odd trailing byte is not a unit) */
+    }
+    uint32_t u = (uint32_t)(b[0] | (b[1] << 8));
+    if (u >= 0xD800 && u <= 0xDBFF) {
+        long at = ftell(f);
+        if (fread(b, 1, 2, f) == 2) {
+            uint32_t lo = (uint32_t)(b[0] | (b[1] << 8));
+            if (lo >= 0xDC00 && lo <= 0xDFFF) {
+                *cp = 0x10000 + ((u - 0xD800) << 10) + (lo - 0xDC00);
+                return true;
+            }
+        }
+        fseek(f, at, SEEK_SET);
+        *cp = 0xFFFD;
+        return true;
+    }
+    *cp = (u >= 0xDC00 && u <= 0xDFFF) ? 0xFFFD : u;
+    return true;
+}
+
+static int fr_unicode_getc(FileReader* reader, char* out, size_t room) {
+    FILE* f = reader->file_reader;
+    long start = ftell(f);
+    if (start == 0) {
+        fr_unicode_at_start(reader);
+    }
+    long pos = ftell(f);
+
+    uint32_t cp;
+    if (!fr_unicode_next_cp(reader, &cp)) {
+        return 0;
+    }
+    if (cp == '\r') {
+        long afterCr = ftell(f);
+        uint32_t next;
+        if (fr_unicode_next_cp(reader, &next) && next == '\n') {
+            cp = '\n';
+        }
+        else {
+            fseek(f, afterCr, SEEK_SET);
+        }
+    }
+    if ((size_t)fr_utf8_len(cp) > room) {
+        fseek(f, pos, SEEK_SET);
+        return -1;
+    }
+    return fr_utf8_encode(cp, out);
+}
+
+#endif
+
+/* Reads one line of a READ_UNICODE stream as UTF-8 without its line break.
+   Returns false only when nothing at all could be read (end of file or an
+   error). A line longer than the buffer continues on the next call. */
+static bool fr_unicode_read_line(FileReader* reader, char* buffer, size_t size) {
+    size_t out = 0;
+    bool any = false;
+    while (out + 1 < size) {
+        int n = fr_unicode_getc(reader, buffer + out, size - 1 - out);
+        if (n <= 0) {
+            break;
+        }
+        any = true;
+        if (n == 1 && buffer[out] == '\n') {
+            break;
+        }
+        out += (size_t)n;
+    }
+    buffer[out] = '\0';
+    if (out > 0 && buffer[out - 1] == '\r') {
+        buffer[--out] = '\0';
+    }
+    return any;
+}
+
 
 
 /**
@@ -47,7 +243,7 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
             #if defined(_WIN32) || defined(_WIN64)
             modeStr = "r, ccs=UTF-16LE";
             #else
-            modeStr = "r";
+            modeStr = "rb";   /* decoded by fr_unicode_getc */
             #endif
             break;
         case READ_BUFFERED:
@@ -93,6 +289,7 @@ FileReader* file_reader_open(const char* filename, const ReadMode mode) {
     reader->is_open = true;
     reader->encoding = READ_ENCODING_UTF16;
     reader->file_path = string_strdup(filename);
+    reader->unicode_form = 0;
 
     FILE_READER_LOG("[file_reader_open] File '%s' opened successfully in mode '%s'.", filename, modeStr);
     return reader;
@@ -312,16 +509,27 @@ size_t file_reader_get_size(FileReader* reader) {
         return 0;
     }
 
-    long current_position = file_reader_get_position(reader);
+    /* ftell / fseek work with long: read the position as long (a failed
+       ftell used to turn into a size of SIZE_MAX through the size_t helper). */
+    long current_position = ftell(reader->file_reader);
+    if (current_position < 0) {
+        FILE_READER_LOG("[file_reader_get_size] Error: ftell failed.");
+        return 0;
+    }
     if (fseek(reader->file_reader, 0, SEEK_END) != 0) {
         FILE_READER_LOG("[file_reader_get_size] Error: fseek failed to seek to end of file.");
         return 0;
     }
 
-    size_t size = file_reader_get_position(reader);
+    long end = ftell(reader->file_reader);
     if (fseek(reader->file_reader, current_position, SEEK_SET) != 0) {
         FILE_READER_LOG("[file_reader_get_size] Error: fseek failed to return to original position.");
     }
+    if (end < 0) {
+        FILE_READER_LOG("[file_reader_get_size] Error: ftell failed at the end of the file.");
+        return 0;
+    }
+    size_t size = (size_t)end;
 
     FILE_READER_LOG("[file_reader_get_size] File size is %zu bytes.", size);
     return size;
@@ -354,40 +562,40 @@ size_t file_reader_read(void* buffer, size_t size, size_t count, FileReader* rea
 
     if (reader->mode == READ_TEXT) {
         size_t elements_read = fread(buffer, size, count, reader->file_reader);
-        ((char*)buffer)[elements_read] = '\0'; // Null-terminate
+        /* NUL-terminate at the byte offset (not the element index), and only
+           inside the region the caller declared (size * count bytes): writing
+           at buffer[elements_read] overflowed a full buffer by one byte and,
+           for size > 1, clobbered data mid-buffer. A full read is therefore not
+           terminated; pass count - 1 (as the examples do) to always get one. */
+        if (size > 0 && elements_read < count) {
+            ((char*)buffer)[elements_read * size] = '\0';
+        }
         FILE_READER_LOG("[file_reader_read] Read %zu elements from text file.", elements_read);
         return elements_read;
     }
 
-    // For Unicode (UTF-16) reading, handle conversion to UTF-8
+    /* Unicode: up to `count` characters, decoded to UTF-8 into the
+       size * count byte buffer (NUL-terminated). Returns the number of UTF-8
+       bytes stored. Characters that do not fit stay for the next call; the
+       old code truncated the converted text (losing it) and, on POSIX, read
+       4-byte wchar_t elements as UTF-16 units. */
     if (reader->mode == READ_UNICODE) {
-        wchar_t* rawBuffer = (wchar_t*)malloc(sizeof(wchar_t) * (count + 1)); 
-        if (!rawBuffer) {
-            FILE_READER_LOG("[file_reader_read] Error: Memory allocation failed.");
+        if (size == 0 || count == 0 || count > SIZE_MAX / size) {
             return 0;
         }
-
-        size_t actualRead = fread(rawBuffer, sizeof(wchar_t), count, reader->file_reader);
-        rawBuffer[actualRead] = L'\0'; // Null-terminate the UTF-16 buffer
-
-        char* utf8Buffer = (char*) encoding_utf16_to_utf8((uint16_t*)rawBuffer, actualRead);
-        free(rawBuffer);
-
-        if (!utf8Buffer) {
-            FILE_READER_LOG("[file_reader_read] Error: UTF-16 to UTF-8 conversion failed.");
-            return 0;
+        size_t cap = size * count;
+        char* out = (char*)buffer;
+        size_t len = 0;
+        for (size_t chars = 0; chars < count && len + 1 < cap; chars++) {
+            int n = fr_unicode_getc(reader, out + len, cap - 1 - len);
+            if (n <= 0) {
+                break;
+            }
+            len += (size_t)n;
         }
-
-        size_t utf8Length = strlen(utf8Buffer);
-
-        // Copy converted UTF-8 data to the output buffer
-        size_t bytesToCopy = (utf8Length < count * size) ? utf8Length : count * size - 1;
-        memcpy(buffer, utf8Buffer, bytesToCopy);
-        ((char*)buffer)[bytesToCopy] = '\0'; // Null-terminate the output buffer
-        free(utf8Buffer);
-
-        FILE_READER_LOG("[file_reader_read] Read %zu UTF-16 elements and converted to UTF-8 (%zu bytes).", actualRead, bytesToCopy);
-        return bytesToCopy;
+        out[len] = '\0';
+        FILE_READER_LOG("[file_reader_read] Read %zu UTF-8 bytes from a Unicode file.", len);
+        return len;
     }
 
     FILE_READER_LOG("[file_reader_read] Error: Unsupported read mode.");
@@ -476,30 +684,22 @@ bool file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
         FILE_READER_LOG("[file_reader_read_line] Error: Invalid argument.");
         return false;
     }
+    if (size == 0) {
+        return false;
+    }
     if (reader->encoding == READ_ENCODING_UTF16 && reader->mode == READ_UNICODE) {
-        wchar_t wBuffer[1024];
-        if (fgetws(wBuffer, 1024, reader->file_reader) == NULL) {
-            if (!feof(reader->file_reader)) {
-                FILE_READER_LOG("[file_reader_read_line] Error: Failed to read line in UTF-16 mode.");
-            }
+        /* Same result as the text path: the line without its line break
+           (the Windows fgetws path used to keep the '\n'). */
+        if (!fr_unicode_read_line(reader, buffer, size)) {
+            FILE_READER_LOG("[file_reader_read_line] No more lines in UTF-16 mode.");
             return false;
         }
-
-        char* utf8Buffer = encoding_wchar_to_utf8(wBuffer);
-        if (!utf8Buffer) {
-            FILE_READER_LOG("[file_reader_read_line] Error: Conversion to UTF-8 failed.");
-            return false;
-        }
-
-        strncpy(buffer, utf8Buffer, size - 1);
-        buffer[size - 1] = '\0';
-        free(utf8Buffer);
-
         FILE_READER_LOG("[file_reader_read_line] Line read successfully in UTF-16 mode.");
-    } 
+    }
     else {
         // For UTF-8 and other encodings
-        if (fgets(buffer, size, reader->file_reader) == NULL) {
+        /* fgets takes an int count; a larger buffer is simply used up to INT_MAX */
+        if (fgets(buffer, (size > INT_MAX) ? INT_MAX : (int)size, reader->file_reader) == NULL) {
             if (!feof(reader->file_reader)) {
                 FILE_READER_LOG("[file_reader_read_line] Error: Failed to read line in non-UTF-16 mode.");
             }
@@ -529,28 +729,27 @@ size_t file_reader_read_fmt(FileReader* reader, const char* format, ...) {
         return 0;
     }
 
-    wchar_t wBuffer[1024]; 
-    if (fgetws(wBuffer, sizeof(wBuffer) / sizeof(wchar_t), reader->file_reader) == NULL) {
+    /* One line through file_reader_read_line, so the stream is decoded the
+       same way as there: a READ_TEXT stream is UTF-8 bytes as is (fgetws
+       used to widen each byte and re-encode it as Latin-1: mojibake). */
+    char line[4096];
+    if (!file_reader_read_line(line, sizeof(line), reader)) {
         FILE_READER_LOG("[file_reader_read_fmt] Error: Failed to read formatted data.");
-        return 0; 
-    }
-
-    char* utf8Buffer = encoding_wchar_to_utf8(wBuffer);
-    if (!utf8Buffer) {
-        FILE_READER_LOG("[file_reader_read_fmt] Error: UTF-16 to UTF-8 conversion failed.");
         return 0;
     }
 
     va_list args;
     va_start(args, format);
-
-    size_t read = vsscanf(utf8Buffer, format, args);
-
+    int matched = vsscanf(line, format, args);
     va_end(args);
-    free(utf8Buffer);
 
-    FILE_READER_LOG("[file_reader_read_fmt] Read %zu formatted items successfully.", read);
-    return read; 
+    /* vsscanf returns EOF (-1) when nothing could be converted; as size_t
+       that became SIZE_MAX. The documented result is 0. */
+    if (matched < 0) {
+        matched = 0;
+    }
+    FILE_READER_LOG("[file_reader_read_fmt] Read %d formatted items successfully.", matched);
+    return (size_t)matched;
 }
 
 
@@ -570,10 +769,7 @@ bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
         return false;
     }
 
-    /* Binary fast-path: byte-for-byte copy with no encoding conversion.
-       The wchar/UTF-8 path below assumes UTF-16 source data and will
-       corrupt arbitrary binary content (it reads pairs of bytes as
-       wchar_t and converts to UTF-8). */
+    /* Binary fast-path: byte-for-byte copy with no encoding conversion. */
     if (src_reader->mode == READ_BINARY ||
         dest_writer->mode == WRITE_BINARY) {
         unsigned char buf[4096];
@@ -593,50 +789,101 @@ bool file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
         return true;
     }
 
-    wchar_t wBuffer[1024]; // Wide character buffer for UTF-16 data
-    size_t bytesRead, bytesToWrite;
-
-    while ((bytesRead = fread(wBuffer, sizeof(wchar_t), 1024, src_reader->file_reader)) > 0) {
-        char* utf8Buffer = NULL;
-        size_t utf8BufferSize = 0;
-
-        switch (src_reader->encoding) {
-            case READ_ENCODING_UTF16:
-                utf8Buffer = encoding_wchar_to_utf8(wBuffer);
-                if (!utf8Buffer) {
-                    FILE_READER_LOG("[file_reader_copy] Error: Conversion to UTF-8 failed.");
-                    return false;
-                }
-                utf8BufferSize = string_length_utf8(utf8Buffer);
-                FILE_READER_LOG("[file_reader_copy] Successfully converted UTF-16 data to UTF-8.");
-                break;
-
-            default:
-                FILE_READER_LOG("[file_reader_copy] Error: Unsupported encoding in file_reader_copy.");
+    if (src_reader->mode != READ_UNICODE) {
+        /* Text source: the bytes already are the (UTF-8/ASCII) text. They used
+           to be reinterpreted as UTF-16 code units, which turned "Hello" into
+           CJK mojibake. file_writer_write applies the destination's own mode
+           (e.g. UTF-16 output for WRITE_UNICODE). */
+        char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), src_reader->file_reader)) > 0) {
+            if (file_writer_write(buf, 1, n, dest_writer) < n) {
+                FILE_READER_LOG("[file_reader_copy] Error: Could not write all data to the destination file.");
                 return false;
+            }
         }
-
-        // Write the UTF-8 data to the destination file
-        bytesToWrite = utf8BufferSize;
-        size_t bytesWritten = file_writer_write(utf8Buffer, sizeof(char), bytesToWrite, dest_writer);
-        free(utf8Buffer);
-
-        if (bytesWritten < bytesToWrite) {
-            FILE_READER_LOG("[file_reader_copy] Error: Could not write all data to the destination file.");
+        if (!feof(src_reader->file_reader)) {
+            FILE_READER_LOG("[file_reader_copy] Error: Read error in text copy.");
             return false;
         }
-
-        FILE_READER_LOG("[file_reader_copy] Successfully copied %zu bytes.", bytesWritten);
+        FILE_READER_LOG("[file_reader_copy] Text copy completed.");
+        return true;
     }
 
-    if (feof(src_reader->file_reader)) {
-        FILE_READER_LOG("[file_reader_copy] File copy operation completed successfully.");
-    } 
-    else {
-        FILE_READER_LOG("[file_reader_copy] Error: Unexpected end of file during copy operation.");
+    /* UTF-16 (little-endian) source -> UTF-8. Read raw bytes and convert an
+       explicit number of 16-bit units: the old loop handed an unterminated
+       wchar_t buffer to a NUL-terminated converter (stack over-read, stale
+       data in the output), used wchar_t (4 bytes on POSIX) as the unit, and
+       wrote a code-point count as a byte count (truncating non-ASCII text).
+       An odd trailing byte or a high surrogate at the end of a chunk is
+       carried over to the next chunk. A leading byte-order mark is skipped. */
+    unsigned char raw[4096 + 4];
+    size_t carry = 0;
+    bool first = true;
+
+    for (;;) {
+        size_t n = fread(raw + carry, 1, 4096, src_reader->file_reader);
+        size_t avail = carry + n;
+        size_t start = 0;
+        if (first && avail >= 2) {
+            if (raw[0] == 0xFF && raw[1] == 0xFE) {
+                start = 2;
+            }
+            first = false;
+        }
+
+        size_t units = (avail - start) / 2;
+        bool eof = (n == 0);
+        if (units > 0 && !eof) {
+            uint16_t lastUnit = (uint16_t)(raw[start + 2 * (units - 1)] | (raw[start + 2 * (units - 1) + 1] << 8));
+            if (lastUnit >= 0xD800 && lastUnit <= 0xDBFF) {
+                units--; /* keep the high surrogate for its low half */
+            }
+        }
+
+        if (units > 0) {
+            uint16_t* codeUnits = (uint16_t*)malloc(units * sizeof(uint16_t));
+            if (!codeUnits) {
+                FILE_READER_LOG("[file_reader_copy] Error: Memory allocation failed.");
+                return false;
+            }
+            for (size_t i = 0; i < units; ++i) {
+                codeUnits[i] = (uint16_t)(raw[start + 2 * i] | (raw[start + 2 * i + 1] << 8));
+            }
+            char* utf8Buffer = (char*)encoding_utf16_to_utf8(codeUnits, units);
+            free(codeUnits);
+            if (!utf8Buffer) {
+                FILE_READER_LOG("[file_reader_copy] Error: Conversion to UTF-8 failed.");
+                return false;
+            }
+            size_t bytesToWrite = strlen(utf8Buffer);   /* bytes, not code points */
+            size_t bytesWritten = file_writer_write(utf8Buffer, sizeof(char), bytesToWrite, dest_writer);
+            free(utf8Buffer);
+            if (bytesWritten < bytesToWrite) {
+                FILE_READER_LOG("[file_reader_copy] Error: Could not write all data to the destination file.");
+                return false;
+            }
+            FILE_READER_LOG("[file_reader_copy] Successfully copied %zu bytes.", bytesWritten);
+        }
+
+        size_t consumed = start + units * 2;
+        carry = avail - consumed;
+        if (carry) {
+            memmove(raw, raw + consumed, carry);
+        }
+        if (eof) {
+            break;
+        }
+    }
+
+    if (!feof(src_reader->file_reader)) {
+        FILE_READER_LOG("[file_reader_copy] Error: Read error during copy operation.");
         return false;
     }
-
+    if (carry) {
+        FILE_READER_LOG("[file_reader_copy] Warning: %zu trailing byte(s) did not form a complete UTF-16 character.", carry);
+    }
+    FILE_READER_LOG("[file_reader_copy] File copy operation completed successfully.");
     return true;
 }
 
@@ -658,7 +905,11 @@ bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines
         return false;
     }
 
-    *buffer = (char**) malloc(num_lines * sizeof(char*));
+    *buffer = NULL;
+    if (num_lines == 0 || num_lines > SIZE_MAX / sizeof(char*)) {
+        return false;
+    }
+    *buffer = (char**) calloc(num_lines, sizeof(char*));
     if (!*buffer) {
         FILE_READER_LOG("[file_reader_read_lines] Error: Memory allocation failed for buffer.");
         return false;
@@ -677,22 +928,32 @@ bool file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines
                     free((*buffer)[i]);
                 }
                 free(*buffer);
+                *buffer = NULL;
                 return false;
             }
             FILE_READER_LOG("[file_reader_read_lines] Successfully read line %zu: %s", lines_read, line_buffer);
             lines_read++;
         } 
         else {
+            /* End of file or a read error (ferror set, feof clear): stop.
+               Retrying the same failing read spun forever at 100% CPU. */
             FILE_READER_LOG("[file_reader_read_lines] Warning: Failed to read line %zu.", lines_read);
+            break;
         }
     }
 
     if (lines_read == num_lines) {
         FILE_READER_LOG("[file_reader_read_lines] Successfully read all %zu lines.", num_lines);
-    } 
-    else {
-        FILE_READER_LOG("[file_reader_read_lines] Warning: Only %zu lines were read out of %zu.", lines_read, num_lines);
+        return true;
     }
 
-    return lines_read == num_lines;
+    /* Short read: release everything and hand back NULL. The partial array
+       used to leak, with its unread slots uninitialized. */
+    FILE_READER_LOG("[file_reader_read_lines] Warning: Only %zu lines were read out of %zu.", lines_read, num_lines);
+    for (size_t i = 0; i < lines_read; ++i) {
+        free((*buffer)[i]);
+    }
+    free(*buffer);
+    *buffer = NULL;
+    return false;
 }

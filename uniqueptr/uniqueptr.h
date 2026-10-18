@@ -46,8 +46,8 @@ extern "C" {
 /* #define UNIQUEPTR_LOGGING_ENABLE */
 
 #ifdef UNIQUEPTR_LOGGING_ENABLE
-    #define UPTR_LOG(fmt, ...) \
-        do { fprintf(stderr, "[UNIQUEPTR] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define UPTR_LOG(...) \
+        do { fprintf(stderr, "[UNIQUEPTR] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define UPTR_LOG(...) do { } while (0)
 #endif

@@ -17,7 +17,7 @@ The BigInt library in C provides a robust interface for performing arbitrary-pre
 - **Comparison Functions:** Easily compare two BigInts. `bigint_compare` and `bigint_cmp_abs` return strictly `-1`, `0`, or `1` (not just any signed value), so callers can safely use `if (bigint_compare(a, b) == -1)`.
 - **GMP-Powered:** Built on top of GMP for high performance and reliability.
 - **Cross-Platform:** Works on Linux, Windows, and other platforms where GMP is available.
-- **Random Numbers:** `bigint_random` uses a persistent internal random state (initialized once per process), so back-to-back calls produce distinct values — they do *not* repeat when invoked within the same second.
+- **Random Numbers:** `bigint_random` uses a persistent internal random state (initialized once per thread, on first use), so back-to-back calls produce distinct values — they do *not* repeat when invoked within the same second — and threads never share (or race on) a generator. It is not a cryptographic generator.
 
 ## Installation and Compilation
 
@@ -61,7 +61,7 @@ To use the BigInt library in your project:
 **Purpose**: Creates a BigInt from a decimal string representation.
 **Parameters**: `str`: A pointer to a null-terminated decimal string representing the integer.
 **Return Value**: A pointer to the new BigInt, or `NULL` if the string is invalid or memory allocation fails.
-**Usage Case**: Calls `bigint_create()` to allocate and initialize a new BigInt, then uses `mpz_set_str` to convert the string into the internal GMP format. If conversion fails (i.e. the string is not a valid decimal representation), the function logs the error, deallocates the BigInt, and returns `NULL`.
+**Usage Case**: Accepts exactly an optional sign (`+` or `-`) followed by one or more decimal digits; anything else — including spaces anywhere (`"12 34"`, `" 7"`, which GMP's `mpz_set_str` would silently accept) — returns `NULL`.
 
 ---
 
@@ -84,8 +84,8 @@ To use the BigInt library in your project:
 ### `char* bigint_to_string(const BigInt* bi)`
 **Purpose**: Converts a BigInt to its decimal string representation.
 **Parameters**: `bi`: A pointer to the BigInt to convert.
-**Return Value**: A dynamically allocated string containing the decimal representation of the BigInt. The caller is responsible for freeing this string.
-**Usage Case**: Uses GMP's `mpz_get_str` to convert the internal `mpz_t` value to a string (base 10), logs the conversion operation, and returns `NULL` if `bi` is `NULL`.
+**Return Value**: A dynamically allocated string containing the decimal representation of the BigInt (allocated with `malloc`, so release it with `free()` — not GMP's allocator, whatever GMP is configured with). The caller is responsible for freeing this string.
+**Usage Case**: Uses GMP's `mpz_get_str` into a `malloc`'ed buffer (base 10), and returns `NULL` if `bi` is `NULL` or allocation fails.
 
 ---
 
@@ -133,7 +133,7 @@ To use the BigInt library in your project:
 **Purpose**: Normalizes the BigInt by removing any leading zeros in its internal representation.
 **Parameters**: `bi`: A pointer to the BigInt to normalize.
 **Return Value**: None.
-**Usage Case**: GMP automatically maintains a normalized representation, so no explicit action is needed. The function logs that normalization was (conceptually) performed and uses `(void)bi;` to suppress unused parameter warnings.
+**Usage Case**: GMP already keeps its digits normalized; this call shrinks the allocation to the value's current size (`mpz_realloc2`), releasing memory left over from a larger earlier value.
 
 ---
 
@@ -149,7 +149,7 @@ To use the BigInt library in your project:
 **Purpose**: Raises a BigInt (`base`) to the power of another BigInt (`exponent`).
 **Parameters**: `base`: A pointer to the base BigInt. `exponent`: A pointer to the exponent BigInt (assumed to be non-negative).
 **Return Value**: A pointer to a new BigInt representing `base^exponent`, or `NULL` if `exponent` is negative.
-**Usage Case**: Checks that the exponent is non-negative using `mpz_sgn`, converts the exponent to an unsigned long with `mpz_get_ui` (assumes it fits), uses `mpz_pow_ui` to compute the power, and logs the power operation.
+**Usage Case**: Checks that the exponent is non-negative and fits in an `unsigned long` (a larger exponent returns `NULL`), then uses `mpz_pow_ui` to compute the power.
 
 ---
 
@@ -164,7 +164,7 @@ To use the BigInt library in your project:
 ### `BigInt* bigint_powmod(const BigInt* base, const BigInt* exponent, const BigInt* modulus)`
 **Purpose**: Computes the modular exponentiation of a BigInt. In other words, it calculates (base^exponent) mod modulus.
 **Parameters**: `base`: A pointer to the base BigInt. `exponent`: A pointer to the exponent BigInt. `modulus`: A pointer to the modulus BigInt (must be non-zero).
-**Return Value**: A pointer to a new BigInt representing (base^exponent) mod modulus, or `NULL` if any input is `NULL` or if the modulus is zero.
+**Return Value**: A pointer to a new BigInt representing (base^exponent) mod modulus, or `NULL` if any input is `NULL`, if the modulus is zero, or if the exponent is negative and `base` has no inverse modulo `modulus` (GMP used to abort the whole program for, e.g., `powmod(2, -1, 4)`).
 **Usage Case**: Validates that none of the input pointers are `NULL` and that the modulus is non-zero, uses GMP's `mpz_powm` function to compute the result, and logs each step of the operation.
 
 ---
@@ -212,7 +212,7 @@ To use the BigInt library in your project:
 ### `BigInt* bigint_sqrt(const BigInt* a, BigInt** rem)`
 **Purpose**: Computes the integer square root (the floor of the true square root) of a BigInt, and optionally returns the remainder.
 **Parameters**: `a`: A pointer to the BigInt whose square root is to be computed. `rem`: A pointer to a `BigInt*` where the remainder will be stored (if not `NULL`).
-**Return Value**: A pointer to a new BigInt representing the integer square root, or `NULL` if the input is `NULL` or if memory allocation fails.
+**Return Value**: A pointer to a new BigInt representing the integer square root, or `NULL` if the input is `NULL` or negative (GMP used to abort the program on a negative input) or if memory allocation fails.
 **Usage Case**: Validates the input BigInt, uses GMP's `mpz_sqrtrem` function to compute both the square root and the remainder, and logs whether the remainder was stored or discarded.
 
 ---
@@ -221,7 +221,7 @@ To use the BigInt library in your project:
 **Purpose**: Generates a random BigInt with the specified number of bits.
 **Parameters**: `bits`: The number of bits for the random BigInt.
 **Return Value**: A pointer to a new BigInt containing a random value, or `NULL` if memory allocation fails.
-**Usage Case**: Initializes a GMP random state and seeds it (using the current time), uses GMP's `mpz_urandomb` function to generate a random BigInt with the specified bit length, logs the seeding and random generation process, and clears the random state before returning the result.
+**Usage Case**: Uses a GMP random state that each thread creates on its first call (seeded from the time, the process id and the thread) and keeps for later calls; `mpz_urandomb` draws a uniformly random value in `[0, 2^bits)`. Not suitable for cryptographic keys.
 
 ---
 
@@ -236,7 +236,7 @@ To use the BigInt library in your project:
 ### `int bigint_is_prime(const BigInt* a, int reps)`
 **Purpose**: Checks whether a BigInt is prime using a probabilistic test.
 **Parameters**: `a`: A pointer to the BigInt to test. `reps`: The number of repetitions for the primality test (higher values yield greater accuracy).
-**Return Value**: An integer result: `0` if the BigInt is composite, `1` if the BigInt is probably prime, `2` if the BigInt is definitely prime.
+**Return Value**: An integer result: `0` if the BigInt is composite (or below 2: zero, one and negative numbers are not prime — GMP tests `|n|`, which reported `-7` as prime), `1` if the BigInt is probably prime, `2` if the BigInt is definitely prime.
 **Usage Case**: Uses GMP's `mpz_probab_prime_p` function to perform the test and logs the input parameters and the result of the primality test.
 
 ---
@@ -292,8 +292,8 @@ To use the BigInt library in your project:
 ### `char* bigint_to_hex(const BigInt* a)`
 **Purpose**: Converts a BigInt to its hexadecimal string representation.
 **Parameters**: `a`: A pointer to the BigInt to convert.
-**Return Value**: A pointer to the hexadecimal string representation, or `NULL` if `a` is `NULL`.
-**Usage Case**: Uses GMP's `mpz_get_str` with base 16 to convert the BigInt and logs the conversion operation.
+**Return Value**: A pointer to the hexadecimal string representation (`malloc`'ed; release with `free()`), or `NULL` if `a` is `NULL`.
+**Usage Case**: Uses GMP's `mpz_get_str` with base 16 into a `malloc`'ed buffer.
 
 ---
 
@@ -301,7 +301,7 @@ To use the BigInt library in your project:
 **Purpose**: Returns the number of decimal digits required to represent a BigInt.
 **Parameters**: `a`: A pointer to the BigInt.
 **Return Value**: The number of decimal digits needed to represent the BigInt, or `0` if `a` is `NULL`.
-**Usage Case**: Uses GMP's `mpz_sizeinbase` with base 10 to compute the number of digits and logs the computed number of digits.
+**Usage Case**: Formats the value in base 10 and counts the digits (the sign is not counted). `mpz_sizeinbase(_, 10)` alone can be one too large, so it is only used to size the buffer.
 
 ---
 

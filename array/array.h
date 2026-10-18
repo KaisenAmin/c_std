@@ -12,6 +12,7 @@
 #define ARRAY_H_
 
 #include <stddef.h>
+#include <stdint.h>     /* uintptr_t */
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
@@ -98,12 +99,15 @@ extern "C" {
  * is out of range. Unlike the raw `array_at` accessor, this performs a
  * bounds check before computing the address.
  */
-static inline void *__array_at_checked_impl(void *data, size_t count,
+/* The lookup helpers take `const void*` (like strchr), so they work on a
+   const array too (passing its data used to discard the qualifier); the
+   result must then only be read. */
+static inline void *arrayp_at_checked_impl(const void *data, size_t count,
                                             size_t elem_size, size_t index) {
     if (index >= count) {
         return NULL;
     }
-    return (unsigned char *)data + index * elem_size;
+    return (unsigned char *)(uintptr_t)data + index * elem_size;
 }
 
 
@@ -127,7 +131,7 @@ static inline void *__array_at_checked_impl(void *data, size_t count,
  *       `int* p = array_at_checked(a, i); if (p) *p = 42;`
  */
 #define array_at_checked(arr, index) \
-    __array_at_checked_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (index))
+    arrayp_at_checked_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (index))
 
 
 /**
@@ -135,15 +139,21 @@ static inline void *__array_at_checked_impl(void *data, size_t count,
  *
  * This macro assigns the provided value to every element of the array.
  *
- * @param arr An instance of a fixed-size array.
- * @param value The value to fill in (assigned directly to each element).
+ * `value` is evaluated exactly once, like std::array::fill (it used to be
+ * evaluated for every element: array_fill(a, k++) stored k, k+1, k+2, ...).
+ * The first element gets the value and the others are copied from it, so no
+ * macro-local variable can capture a caller's name either.
+ *
+ * @param arr An instance of a fixed-size array (evaluated more than once).
+ * @param value The value to fill in.
  */
-#define array_fill(arr, value)                       \
-    do {                                             \
-        size_t _i;                                   \
-        for (_i = 0; _i < array_size(arr); ++_i) {    \
-            (arr).data[_i] = (value);                \
-        }                                            \
+#define array_fill(arr, value)                                              \
+    do {                                                                    \
+        (arr).data[0] = (value);                                            \
+        for (size_t array_fill_i_ = 1; array_fill_i_ < array_size(arr);     \
+             ++array_fill_i_) {                                             \
+            (arr).data[array_fill_i_] = (arr).data[0];                      \
+        }                                                                   \
     } while (0)
 
 /**
@@ -157,7 +167,7 @@ static inline void *__array_at_checked_impl(void *data, size_t count,
  *
  * Reverses a block of memory in place.
  */
-static inline void __array_reverse_impl(void *data, size_t count, size_t elem_size) {
+static inline void arrayp_reverse_impl(void *data, size_t count, size_t elem_size) {
     unsigned char *ptr = (unsigned char*)data;
     for (size_t i = 0; i < count / 2; i++) {
         size_t j = count - 1 - i;
@@ -175,7 +185,7 @@ static inline void __array_reverse_impl(void *data, size_t count, size_t elem_si
  * @brief Reverses the array in place.
  */
 #define array_reverse(arr) \
-    __array_reverse_impl((arr).data, array_size(arr), sizeof((arr).data[0]))
+    arrayp_reverse_impl((arr).data, array_size(arr), sizeof((arr).data[0]))
 
 
 /**
@@ -183,7 +193,7 @@ static inline void __array_reverse_impl(void *data, size_t count, size_t elem_si
  *
  * Sorts an array using the standard qsort function.
  */
-static inline void __array_sort_impl(void *data, size_t count, size_t elem_size,
+static inline void arrayp_sort_impl(void *data, size_t count, size_t elem_size,
                                        int (*compare)(const void *, const void *)) {
     qsort(data, count, elem_size, compare);
 }
@@ -193,7 +203,7 @@ static inline void __array_sort_impl(void *data, size_t count, size_t elem_size,
  * @brief Sorts the array using the provided comparison function.
  */
 #define array_sort(arr, compare) \
-    __array_sort_impl((arr).data, array_size(arr), sizeof((arr).data[0]), compare)
+    arrayp_sort_impl((arr).data, array_size(arr), sizeof((arr).data[0]), compare)
 
 
 /**
@@ -201,7 +211,7 @@ static inline void __array_sort_impl(void *data, size_t count, size_t elem_size,
  *
  * Copies the content from the source to destination.
  */
-static inline void __array_copy_impl(void *dest, const void *src, size_t count, size_t elem_size) {
+static inline void arrayp_copy_impl(void *dest, const void *src, size_t count, size_t elem_size) {
     memcpy(dest, src, count * elem_size);
 }
 
@@ -211,7 +221,7 @@ static inline void __array_copy_impl(void *dest, const void *src, size_t count, 
  *        Both arrays must be of the same type and size.
  */
 #define array_copy(dest, src) \
-    __array_copy_impl((dest).data, (src).data, array_size(dest), sizeof((dest).data[0]))
+    arrayp_copy_impl((dest).data, (src).data, array_size(dest), sizeof((dest).data[0]))
 
 
 /**
@@ -233,10 +243,10 @@ static inline void __array_copy_impl(void *dest, const void *src, size_t count, 
  * Searches the array for an element equal to the key using the
  * comparison function. Returns the matching element, or NULL.
  */
-static inline void *__array_find_impl(void *data, size_t count, size_t elem_size,
+static inline void *arrayp_find_impl(const void *data, size_t count, size_t elem_size,
                                         const void *key,
                                         int (*cmp)(const void *, const void *)) {
-    unsigned char *ptr = (unsigned char*)data;
+    unsigned char *ptr = (unsigned char*)(uintptr_t)data;
     for (size_t i = 0; i < count; i++) {
         if (cmp(ptr + i * elem_size, key) == 0)
             return ptr + i * elem_size;
@@ -249,15 +259,15 @@ static inline void *__array_find_impl(void *data, size_t count, size_t elem_size
  * @brief Finds an element in the array using the provided comparator.
  */
 #define array_find(arr, key, cmp) \
-    __array_find_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (key), (cmp))
+    arrayp_find_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (key), (cmp))
 
 
 /**
  * @brief Internal implementation of array_find_if.
  */
-static inline void *__array_find_if_impl(void *data, size_t count, size_t elem_size,
+static inline void *arrayp_find_if_impl(const void *data, size_t count, size_t elem_size,
                                            bool (*predicate)(const void*)) {
-    unsigned char *ptr = (unsigned char*)data;
+    unsigned char *ptr = (unsigned char*)(uintptr_t)data;
     for (size_t i = 0; i < count; i++) {
          if (predicate(ptr + i * elem_size))
              return ptr + i * elem_size;
@@ -270,7 +280,7 @@ static inline void *__array_find_if_impl(void *data, size_t count, size_t elem_s
  * @brief Finds an element in the array for which the predicate returns true.
  */
 #define array_find_if(arr, predicate) \
-    __array_find_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+    arrayp_find_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
 
 
 /**
@@ -279,12 +289,12 @@ static inline void *__array_find_if_impl(void *data, size_t count, size_t elem_s
  * Returns a pointer to the smallest element according to `cmp`
  * (the first one encountered on ties), or NULL if the array is empty.
  */
-static inline void *__array_min_element_impl(void *data, size_t count, size_t elem_size,
+static inline void *arrayp_min_element_impl(const void *data, size_t count, size_t elem_size,
                                              int (*cmp)(const void *, const void *)) {
     if (count == 0) {
         return NULL;
     }
-    unsigned char *ptr  = (unsigned char *)data;
+    unsigned char *ptr  = (unsigned char *)(uintptr_t)data;
     unsigned char *best = ptr;
     for (size_t i = 1; i < count; i++) {
         unsigned char *cur = ptr + i * elem_size;
@@ -306,7 +316,7 @@ static inline void *__array_min_element_impl(void *data, size_t count, size_t el
  * <0, 0, or >0.
  */
 #define array_min_element(arr, cmp) \
-    __array_min_element_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (cmp))
+    arrayp_min_element_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (cmp))
 
 
 /**
@@ -315,12 +325,12 @@ static inline void *__array_min_element_impl(void *data, size_t count, size_t el
  * Returns a pointer to the largest element according to `cmp`
  * (the first one encountered on ties), or NULL if the array is empty.
  */
-static inline void *__array_max_element_impl(void *data, size_t count, size_t elem_size,
+static inline void *arrayp_max_element_impl(const void *data, size_t count, size_t elem_size,
                                              int (*cmp)(const void *, const void *)) {
     if (count == 0) {
         return NULL;
     }
-    unsigned char *ptr  = (unsigned char *)data;
+    unsigned char *ptr  = (unsigned char *)(uintptr_t)data;
     unsigned char *best = ptr;
     for (size_t i = 1; i < count; i++) {
         unsigned char *cur = ptr + i * elem_size;
@@ -342,7 +352,7 @@ static inline void *__array_max_element_impl(void *data, size_t count, size_t el
  * <0, 0, or >0.
  */
 #define array_max_element(arr, cmp) \
-    __array_max_element_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (cmp))
+    arrayp_max_element_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (cmp))
 
 
 /**
@@ -350,7 +360,7 @@ static inline void *__array_max_element_impl(void *data, size_t count, size_t el
  *
  * Applies a function to every element in the array.
  */
-static inline void __array_for_each_impl(void *data, size_t count, size_t elem_size,
+static inline void arrayp_for_each_impl(void *data, size_t count, size_t elem_size,
                                            void (*func)(void *)) {
     unsigned char *ptr = (unsigned char *)data;
     for (size_t i = 0; i < count; i++) {
@@ -362,9 +372,12 @@ static inline void __array_for_each_impl(void *data, size_t count, size_t elem_s
 /**
  * @brief Applies a function to each element of the array.
  *        The provided function must accept a pointer to an element.
+ *        `func` may modify the elements, so the array must not be const
+ *        (for a read-only pass over a const array use array_count_if /
+ *        array_any_of / array_reduce).
  */
 #define array_for_each(arr, func) \
-    __array_for_each_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (func))
+    arrayp_for_each_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (func))
 
 
 /**
@@ -373,7 +386,7 @@ static inline void __array_for_each_impl(void *data, size_t count, size_t elem_s
  * Applies a transformation function to each element of the source array and
  * writes the result to the destination array.
  */
-static inline void __array_transform_impl(const void *src, void *dest, size_t count,
+static inline void arrayp_transform_impl(const void *src, void *dest, size_t count,
                                             size_t elem_size,
                                             void (*func)(const void *, void *)) {
     const unsigned char *s = (const unsigned char *)src;
@@ -389,7 +402,7 @@ static inline void __array_transform_impl(const void *src, void *dest, size_t co
  *        same type and size.
  */
 #define array_transform(src, dest, func) \
-    __array_transform_impl((src).data, (dest).data, array_size(src), sizeof((src).data[0]), (func))
+    arrayp_transform_impl((src).data, (dest).data, array_size(src), sizeof((src).data[0]), (func))
 
 
 /**
@@ -398,7 +411,7 @@ static inline void __array_transform_impl(const void *src, void *dest, size_t co
  * Reduces the array to a single value by applying a binary reduction
  * function. `result` must be large enough to hold one element.
  */
-static inline void __array_reduce_impl(const void *data, size_t count, size_t elem_size,
+static inline void arrayp_reduce_impl(const void *data, size_t count, size_t elem_size,
                                          void *result,
                                          void (*reduce_func)(const void *, const void *, void *)) {
     if (count == 0) {
@@ -427,13 +440,13 @@ static inline void __array_reduce_impl(const void *data, size_t count, size_t el
  *        `result` must be large enough to hold one element.
  */
 #define array_reduce(arr, result, reduce_func) \
-    __array_reduce_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (result), (reduce_func))
+    arrayp_reduce_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (result), (reduce_func))
 
 
 /**
  * @brief Internal implementation of array_count_if.
  */
-static inline size_t __array_count_if_impl(const void *data, size_t count, size_t elem_size,
+static inline size_t arrayp_count_if_impl(const void *data, size_t count, size_t elem_size,
                                              bool (*predicate)(const void *)) {
     size_t result = 0;
     const unsigned char *ptr = (const unsigned char *)data;
@@ -450,13 +463,13 @@ static inline size_t __array_count_if_impl(const void *data, size_t count, size_
  *        given predicate.
  */
 #define array_count_if(arr, predicate) \
-    __array_count_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+    arrayp_count_if_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
 
 
 /**
  * @brief Internal implementation of array_any_of.
  */
-static inline bool __array_any_of_impl(const void *data, size_t count, size_t elem_size,
+static inline bool arrayp_any_of_impl(const void *data, size_t count, size_t elem_size,
                                          bool (*predicate)(const void *)) {
     const unsigned char *ptr = (const unsigned char *)data;
     for (size_t i = 0; i < count; i++) {
@@ -472,13 +485,13 @@ static inline bool __array_any_of_impl(const void *data, size_t count, size_t el
  *        predicate.
  */
 #define array_any_of(arr, predicate) \
-    __array_any_of_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+    arrayp_any_of_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
 
 
 /**
  * @brief Internal implementation of array_all_of.
  */
-static inline bool __array_all_of_impl(const void *data, size_t count, size_t elem_size,
+static inline bool arrayp_all_of_impl(const void *data, size_t count, size_t elem_size,
                                          bool (*predicate)(const void *)) {
     const unsigned char *ptr = (const unsigned char *)data;
     for (size_t i = 0; i < count; i++) {
@@ -494,28 +507,142 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
  *        predicate.
  */
 #define array_all_of(arr, predicate) \
-    __array_all_of_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+    arrayp_all_of_impl((arr).data, array_size(arr), sizeof((arr).data[0]), (predicate))
+
+
+/*
+ * Relational operators. The element type is known at compile time, so
+ * integer and floating-point elements are compared by VALUE (as std::array
+ * does): a single memcmp over the buffer ordered {256} before {1}, {-1}
+ * after {0} and every negative double wrongly, and said 0.0 != -0.0.
+ * Other element types (structs, pointers) are still compared byte by byte;
+ * use array_find / your own loop with a comparator for those.
+ */
+#define ARRAY_ELEM_BYTES_    0
+#define ARRAY_ELEM_SIGNED_   1
+#define ARRAY_ELEM_UNSIGNED_ 2
+#define ARRAY_ELEM_FLOAT_    3
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(__cplusplus)
+#define arrayp_elem_kind(arr) _Generic((arr).data[0],                          \
+    _Bool: ARRAY_ELEM_UNSIGNED_,                                                 \
+    char: (((char)-1 < 0) ? ARRAY_ELEM_SIGNED_ : ARRAY_ELEM_UNSIGNED_),          \
+    signed char: ARRAY_ELEM_SIGNED_, short: ARRAY_ELEM_SIGNED_,                  \
+    int: ARRAY_ELEM_SIGNED_, long: ARRAY_ELEM_SIGNED_,                           \
+    long long: ARRAY_ELEM_SIGNED_,                                               \
+    unsigned char: ARRAY_ELEM_UNSIGNED_, unsigned short: ARRAY_ELEM_UNSIGNED_,   \
+    unsigned int: ARRAY_ELEM_UNSIGNED_, unsigned long: ARRAY_ELEM_UNSIGNED_,     \
+    unsigned long long: ARRAY_ELEM_UNSIGNED_,                                    \
+    float: ARRAY_ELEM_FLOAT_, double: ARRAY_ELEM_FLOAT_,                         \
+    long double: ARRAY_ELEM_FLOAT_,                                              \
+    default: ARRAY_ELEM_BYTES_)
+#else
+#define arrayp_elem_kind(arr) ARRAY_ELEM_BYTES_
+#endif
+
+static inline long long arrayp_load_signed(const void* p, size_t size) {
+    switch (size) {
+        case 1: { signed char v; memcpy(&v, p, 1); return v; }
+        case 2: { short v; memcpy(&v, p, sizeof v); return v; }
+        case 4: { int v; memcpy(&v, p, sizeof v); return v; }
+        default: { long long v; memcpy(&v, p, sizeof v); return v; }
+    }
+}
+
+static inline unsigned long long arrayp_load_unsigned(const void* p, size_t size) {
+    switch (size) {
+        case 1: { unsigned char v; memcpy(&v, p, 1); return v; }
+        case 2: { unsigned short v; memcpy(&v, p, sizeof v); return v; }
+        case 4: { unsigned int v; memcpy(&v, p, sizeof v); return v; }
+        default: { unsigned long long v; memcpy(&v, p, sizeof v); return v; }
+    }
+}
+
+static inline long double arrayp_load_float(const void* p, size_t size) {
+    if (size == sizeof(float)) { float v; memcpy(&v, p, sizeof v); return v; }
+    if (size == sizeof(double)) { double v; memcpy(&v, p, sizeof v); return v; }
+    long double v; memcpy(&v, p, sizeof v); return v;
+}
+
+/* -1 if a < b, 1 if b < a, else 0 (equal, or unordered NaN). */
+static inline int arrayp_elem_order(const void* a, const void* b, size_t size, int kind) {
+    switch (kind) {
+        case ARRAY_ELEM_SIGNED_: {
+            long long x = arrayp_load_signed(a, size), y = arrayp_load_signed(b, size);
+            return (x < y) ? -1 : (y < x);
+        }
+        case ARRAY_ELEM_UNSIGNED_: {
+            unsigned long long x = arrayp_load_unsigned(a, size), y = arrayp_load_unsigned(b, size);
+            return (x < y) ? -1 : (y < x);
+        }
+        case ARRAY_ELEM_FLOAT_: {
+            long double x = arrayp_load_float(a, size), y = arrayp_load_float(b, size);
+            return (x < y) ? -1 : (y < x) ? 1 : 0;
+        }
+        default: {
+            int c = memcmp(a, b, size);
+            return (c > 0) - (c < 0);
+        }
+    }
+}
+
+/* Lexicographic three-way comparison using only "<", like std::array. */
+static inline int arrayp_compare_impl(const void* a, const void* b, size_t count, size_t size, int kind) {
+    const unsigned char* pa = (const unsigned char*)a;
+    const unsigned char* pb = (const unsigned char*)b;
+    for (size_t i = 0; i < count; ++i) {
+        int c = arrayp_elem_order(pa + i * size, pb + i * size, size, kind);
+        if (c != 0) {
+            return c;
+        }
+    }
+    return 0;
+}
+
+/* Element-wise ==: 0.0 equals -0.0, NaN equals nothing. */
+static inline bool arrayp_equal_impl(const void* a, const void* b, size_t count, size_t size, int kind) {
+    if (kind == ARRAY_ELEM_BYTES_) {
+        return memcmp(a, b, count * size) == 0;
+    }
+    const unsigned char* pa = (const unsigned char*)a;
+    const unsigned char* pb = (const unsigned char*)b;
+    for (size_t i = 0; i < count; ++i) {
+        if (kind == ARRAY_ELEM_FLOAT_) {
+            if (!(arrayp_load_float(pa + i * size, size) == arrayp_load_float(pb + i * size, size))) {
+                return false;
+            }
+        }
+        else if (arrayp_elem_order(pa + i * size, pb + i * size, size, kind) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#define arrayp_compare(arr1, arr2) \
+    arrayp_compare_impl((arr1).data, (arr2).data, array_size(arr1), sizeof((arr1).data[0]), arrayp_elem_kind(arr1))
 
 
 /**
- * @brief Returns true if the two arrays are equal (lexicographic).
+ * @brief Returns true if the two arrays hold equal elements (by value for
+ *        integer / floating-point elements, bytewise otherwise).
  */
 #define array_is_equal(arr1, arr2) \
-    (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) == 0)
+    arrayp_equal_impl((arr1).data, (arr2).data, array_size(arr1), sizeof((arr1).data[0]), arrayp_elem_kind(arr1))
 
 
 /**
  * @brief Returns true if the two arrays are not equal.
  */
 #define array_is_not_equal(arr1, arr2) \
-    (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) != 0)
+    (!array_is_equal(arr1, arr2))
 
 
 /**
  * @brief Returns true if `arr1` is lexicographically less than `arr2`.
  */
 #define array_is_less(arr1, arr2) \
-    (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) < 0)
+    (arrayp_compare(arr1, arr2) < 0)
 
 
 /**
@@ -523,14 +650,14 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
  *        to `arr2`.
  */
 #define array_is_less_or_equal(arr1, arr2) \
-    (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) <= 0)
+    (arrayp_compare(arr1, arr2) <= 0)
 
 
 /**
  * @brief Returns true if `arr1` is lexicographically greater than `arr2`.
  */
 #define array_is_greater(arr1, arr2) \
-    (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) > 0)
+    (arrayp_compare(arr1, arr2) > 0)
 
 
 /**
@@ -538,7 +665,7 @@ static inline bool __array_all_of_impl(const void *data, size_t count, size_t el
  *        equal to `arr2`.
  */
 #define array_is_greater_or_equal(arr1, arr2) \
-    (memcmp((arr1).data, (arr2).data, sizeof((arr1).data)) >= 0)
+    (arrayp_compare(arr1, arr2) >= 0)
 
 
 #ifdef __cplusplus

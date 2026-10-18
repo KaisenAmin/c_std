@@ -2,16 +2,38 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <locale.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 
 
-/* Returns the precedence of the operator. Higher numbers mean higher precedence. */
+typedef enum {
+    TOKEN_NUMBER,
+    TOKEN_OPERATOR,
+    TOKEN_PAREN_LEFT,
+    TOKEN_PAREN_RIGHT
+} EvalTokenType;
+
+typedef struct {
+    EvalTokenType type;
+    double        value;     /* TOKEN_NUMBER payload   */
+    char          op;        /* TOKEN_OPERATOR payload */
+} Token;
+
+
+/* Internal operator code for unary minus (prefix negation). */
+#define EVAL_OP_NEGATE '~'
+
+/* Returns the precedence of the operator. Higher numbers mean higher precedence.
+   Unary minus binds tighter than * and / but looser than ^, as in Python and
+   ordinary math notation: -2^2 = -(2^2) = -4 and 2*-3 = -6. */
 static int precedence(char op) {
     switch (op) {
-        case '^': 
+        case '^':
+            return 5;
+        case EVAL_OP_NEGATE:
             return 4;
         case '*':
         case '/': 
@@ -25,15 +47,237 @@ static int precedence(char op) {
 }
 
 
-/* Returns whether the operator is right-associative. (Only exponentiation is.) */
+/* Writes the printable form of an operator. Unary minus is "-" in an infix token
+   list, but "neg" in RPN output, where a bare "-" would read as subtraction. */
+static void op_to_text(char op, int rpn, char *out, size_t size) {
+    if (op == EVAL_OP_NEGATE) {
+        snprintf(out, size, "%s", rpn ? "neg" : "-");
+    }
+    else {
+        snprintf(out, size, "%c", op);
+    }
+}
+
+/* Returns whether the operator is right-associative (exponentiation and the
+   prefix negation). */
 static int is_right_associative(char op) {
-    return (op == '^');
+    return (op == '^' || op == EVAL_OP_NEGATE);
 }
 
 
 /* Returns whether the character is a valid operator. */
 static int is_operator(char ch) {
     return (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '^');
+}
+
+
+/* strdup is POSIX (C23), not C17: a strict -std=c11 build on glibc does not
+   declare it. */
+static char *eval_strdup(const char *s) {
+    size_t n = strlen(s) + 1;
+    char *copy = (char *)malloc(n);
+    if (copy) {
+        memcpy(copy, s, n);
+    }
+    return copy;
+}
+
+
+/* The current LC_NUMERIC decimal point ("." in the C locale). */
+static const char *eval_decimal_point(void) {
+    const struct lconv *lc = localeconv();
+    return (lc && lc->decimal_point && lc->decimal_point[0]) ? lc->decimal_point : ".";
+}
+
+
+/* Length of the numeric literal at s, 0 if there is none: decimal ("12",
+   "3.5", ".5", "1e-3") or hexadecimal ("0x1A", "0x1.8p1"), the forms strtod
+   reads, but always with '.' as the decimal point. */
+static size_t eval_literal_length(const char *s) {
+    size_t i = 0;
+    size_t digits = 0;
+
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        i = 2;
+        while (isxdigit((unsigned char)s[i])) {
+            i++;
+            digits++;
+        }
+        if (s[i] == '.') {
+            i++;
+            while (isxdigit((unsigned char)s[i])) {
+                i++;
+                digits++;
+            }
+        }
+        if (digits > 0) {
+            if (s[i] == 'p' || s[i] == 'P') {
+                size_t k = i + 1;
+                if (s[k] == '+' || s[k] == '-') {
+                    k++;
+                }
+                if (isdigit((unsigned char)s[k])) {
+                    while (isdigit((unsigned char)s[k])) {
+                        k++;
+                    }
+                    i = k;
+                }
+            }
+            return i;
+        }
+        i = 0;   /* "0x" without a hex digit: just the 0 */
+    }
+
+    while (isdigit((unsigned char)s[i])) {
+        i++;
+        digits++;
+    }
+    if (s[i] == '.') {
+        i++;
+        while (isdigit((unsigned char)s[i])) {
+            i++;
+            digits++;
+        }
+    }
+    if (digits == 0) {
+        return 0;
+    }
+    if (s[i] == 'e' || s[i] == 'E') {
+        size_t k = i + 1;
+        if (s[k] == '+' || s[k] == '-') {
+            k++;
+        }
+        if (isdigit((unsigned char)s[k])) {
+            while (isdigit((unsigned char)s[k])) {
+                k++;
+            }
+            i = k;
+        }
+    }
+    return i;
+}
+
+
+/* Reads the numeric literal at s into *out and its end into *endp; 0 if there
+   is no literal or it overflows. strtod follows LC_NUMERIC, so under a
+   decimal-comma locale "3.5" read as 3 and every fraction was a tokenize
+   error: the literal is handed over with the locale's decimal point (and in
+   its original form for a runtime whose strtod ignores the locale). A literal
+   that underflows to a subnormal or to zero (1e-320) is accepted; only ERANGE
+   with an infinite result (1e400) is an error. */
+static int eval_read_number(const char *s, const char **endp, double *out) {
+    size_t len = eval_literal_length(s);
+    if (len == 0) {
+        return 0;
+    }
+
+    const char *dp = eval_decimal_point();
+    size_t dpl = strlen(dp);
+    char small[64];
+    size_t cap = len + dpl + 1;
+    char *buf = (cap <= sizeof(small)) ? small : (char *)malloc(cap);
+    if (!buf) {
+        return 0;
+    }
+
+    size_t k = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (s[i] == '.') {
+            memcpy(buf + k, dp, dpl);
+            k += dpl;
+        }
+        else {
+            buf[k++] = s[i];
+        }
+    }
+    buf[k] = '\0';
+
+    char *end = NULL;
+    errno = 0;
+    double v = strtod(buf, &end);
+    int ok = (*end == '\0');
+    if (!ok && strcmp(dp, ".") != 0) {
+        memcpy(buf, s, len);
+        buf[len] = '\0';
+        errno = 0;
+        v = strtod(buf, &end);
+        ok = (*end == '\0');
+    }
+    int overflow = (errno == ERANGE && isinf(v));
+    if (buf != small) {
+        free(buf);
+    }
+    if (!ok || overflow) {
+        return 0;
+    }
+
+    *out = v;
+    *endp = s + len;
+    return 1;
+}
+
+
+/* Writes v as the shortest of %.15g / %.16g / %.17g that reads back as the
+   same double, always with '.' as the decimal point. Plain %g kept 6 digits,
+   so 3.14159265 came out as 3.14159. */
+static void eval_format_number(double v, char *out, size_t size) {
+    if (!isfinite(v)) {
+        snprintf(out, size, "%g", v);
+        return;
+    }
+
+    const char *dp = eval_decimal_point();
+    for (int prec = 15; prec <= 17; prec++) {
+        snprintf(out, size, "%.*g", prec, v);
+        if (strcmp(dp, ".") != 0) {
+            char *hit = strstr(out, dp);
+            if (hit) {
+                size_t dpl = strlen(dp);
+                *hit = '.';
+                memmove(hit + 1, hit + dpl, strlen(hit + dpl) + 1);
+            }
+        }
+
+        const char *digits = (out[0] == '-') ? out + 1 : out;
+        const char *end = NULL;
+        double back = 0.0;
+        if (eval_read_number(digits, &end, &back) && *end == '\0' && ((out[0] == '-') ? -back : back) == v) {
+            return;
+        }
+    }
+}
+
+
+/* Space-separated RPN text of the tokens, heap-allocated (NULL when out of
+   memory). It used to be built in a char[1024] and silently cut short. */
+static char *eval_rpn_text(const Token *rpn, int count) {
+    enum { PIECE = 40 };   /* longest number text is 24 bytes, "neg" is 3 */
+    char *text = (char *)malloc((size_t)(count > 0 ? count : 0) * PIECE + 1);
+    if (!text) {
+        return NULL;
+    }
+
+    size_t pos = 0;
+    for (int i = 0; i < count; i++) {
+        char piece[PIECE];
+        if (rpn[i].type == TOKEN_NUMBER) {
+            eval_format_number(rpn[i].value, piece, sizeof(piece));
+        }
+        else if (rpn[i].type == TOKEN_OPERATOR) {
+            op_to_text(rpn[i].op, 1, piece, sizeof(piece));
+        }
+        else {
+            continue;
+        }
+        size_t n = strlen(piece);
+        if (pos > 0) {
+            text[pos++] = ' ';
+        }
+        memcpy(text + pos, piece, n);
+        pos += n;
+    }
+    text[pos] = '\0';
+    return text;
 }
 
 
@@ -55,88 +299,64 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS], const char **var
             continue;
         }
 
-        int is_unary_sign = 0;
-        int paren_unary   = 0;
-        
-        if ((expr[pos] == '-' || expr[pos] == '+')) {
-            if (tcount == 0 ||
-                tokens[tcount - 1].type == TOKEN_OPERATOR || tokens[tcount - 1].type == TOKEN_PAREN_LEFT) {
-                int look = pos + 1;
-
-                while (isspace((unsigned char)expr[look])) {
-                    look++;
-                }
-                if (isdigit((unsigned char)expr[look]) || expr[look] == '.') {
-                    is_unary_sign = 1;
-                }
-                else if (expr[look] == '(') {
-                    paren_unary = 1;
-                }
-                else if (var_count > 0 && (isalpha((unsigned char)expr[look]) || expr[look] == '_')) {
-                    /* "-x" / "+x": emit a synthetic 0 and let the operator
-                       branch treat the sign as binary -> "0 - x". */
-                    paren_unary = 1;
-                }
-            }
-        }
-
-        // -(...) form: emit synthetic 0, fall through to operator branch.
-        if (paren_unary) {
-            if (tcount >= MAX_TOKENS) {
-                EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
-                return -1;
-            }
-
-            tokens[tcount].type  = TOKEN_NUMBER;
-            tokens[tcount].value = 0.0;
-            tcount++;
-        }
-
-        // -5 / + 5 form: consume sign + any whitespace, then parse the
-        // number, then apply the sign.
-        if (is_unary_sign) {
+        /* A sign at the start, after an operator or after '(' is unary. It is
+           a real prefix operator now: the old trick of emitting a synthetic 0
+           and a binary minus gave wrong results after * / ^ - (2*-(3) was -3,
+           3--(2) was 1, 10/-(2+3) reported division by zero). */
+        if ((expr[pos] == '-' || expr[pos] == '+') &&
+            (tcount == 0 || tokens[tcount - 1].type == TOKEN_OPERATOR || tokens[tcount - 1].type == TOKEN_PAREN_LEFT)) {
             char sign = expr[pos];
-            pos++;
-            while (isspace((unsigned char)expr[pos])) {
-                pos++;
+            int look = pos + 1;
+            while (isspace((unsigned char)expr[look])) {
+                look++;
             }
 
-            char *endptr;
-            errno = 0;
-            double val = strtod(&expr[pos], &endptr);
+            /* "-5" stays a single numeric token, unless the literal is the
+               base of '^' (-2^2 must be -(2^2), not (-2)^2). */
+            if (isdigit((unsigned char)expr[look]) || expr[look] == '.') {
+                const char *endptr;
+                double val = 0.0;
 
-            if (errno != 0 || endptr == &expr[pos]) {
-                EVALEXPR_LOG("[tokenize] : Invalid unary numeric literal at position %d.", pos);
-                return -1;
+                if (!eval_read_number(&expr[look], &endptr, &val)) {
+                    EVALEXPR_LOG("[tokenize] : Invalid unary numeric literal at position %d.", look);
+                    return -1;
+                }
+                const char *after = endptr;
+                while (isspace((unsigned char)*after)) {
+                    after++;
+                }
+                if (*after != '^') {
+                    if (tcount >= MAX_TOKENS) {
+                        EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
+                        return -1;
+                    }
+                    tokens[tcount].type = TOKEN_NUMBER;
+                    tokens[tcount].value = (sign == '-') ? -val : val;
+                    tcount++;
+                    pos = (int)(endptr - expr);
+                    continue;
+                }
             }
+
             if (sign == '-') {
-                val = -val;
+                if (tcount >= MAX_TOKENS) {
+                    EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
+                    return -1;
+                }
+                tokens[tcount].type = TOKEN_OPERATOR;
+                tokens[tcount].op = EVAL_OP_NEGATE;
+                tcount++;
             }
-            if (tcount >= MAX_TOKENS) {
-                EVALEXPR_LOG("[tokenize] : Token buffer overflow.");
-                return -1;
-            }
-
-            tokens[tcount].type = TOKEN_NUMBER;
-            tokens[tcount].value = val;
-            tcount++;
-            pos = endptr - expr;
-
+            pos++;   /* a unary '+' changes nothing */
             continue;
         }
 
         if (isdigit((unsigned char)expr[pos]) || expr[pos] == '.') {
-            char *endptr;
-            errno = 0;
-            double val = strtod(&expr[pos], &endptr);
+            const char *endptr;
+            double val = 0.0;
 
-            if (errno != 0) {
-                EVALEXPR_LOG("[tokenize] : Error converting number.");
-                return -1;
-            }
-            if (endptr == &expr[pos]) {
-                // No digits consumed without this
-                // guard the loop would never advance and spin forever.
+            if (!eval_read_number(&expr[pos], &endptr, &val)) {
+                /* no digits ("."), or out of range ("1e400") */
                 EVALEXPR_LOG("[tokenize] : Invalid numeric literal at position %d.", pos);
                 return -1;
             }
@@ -148,7 +368,7 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS], const char **var
             tokens[tcount].type = TOKEN_NUMBER;
             tokens[tcount].value = val;
             tcount++;
-            pos = endptr - expr;
+            pos = (int)(endptr - expr);
 
             continue;
         }
@@ -246,16 +466,67 @@ static int tokenize(const char *expr, Token tokens[MAX_TOKENS], const char **var
  * @param output Array where the RPN tokens will be stored.
  * @return The number of tokens in the RPN output, or -1 on error.
  */
+/* Checks the infix structure: operands and binary operators must alternate,
+   starting and ending with an operand, unary minus only where an operand is
+   due, and parentheses balanced and never empty. Shunting-yard alone accepts
+   "2 3 +" (and computes 5), "2 3", "(2)(3)", "()" and "", so eval_expr_is_valid
+   called them valid. */
+static int infix_is_well_formed(const Token tokens[MAX_TOKENS], int numTokens) {
+    int expectOperand = 1;
+    int depth = 0;
+
+    for (int i = 0; i < numTokens; i++) {
+        const Token *t = &tokens[i];
+
+        if (expectOperand) {
+            if (t->type == TOKEN_NUMBER) {
+                expectOperand = 0;
+            }
+            else if (t->type == TOKEN_PAREN_LEFT) {
+                depth++;
+            }
+            else if (!(t->type == TOKEN_OPERATOR && t->op == EVAL_OP_NEGATE)) {
+                return 0;   /* binary operator, ')' or "()" where an operand is due */
+            }
+        }
+        else {
+            if (t->type == TOKEN_OPERATOR && t->op != EVAL_OP_NEGATE) {
+                expectOperand = 1;
+            }
+            else if (t->type == TOKEN_PAREN_RIGHT) {
+                if (--depth < 0) {
+                    return 0;
+                }
+            }
+            else {
+                return 0;   /* two operands in a row: "2 3", "(2)(3)", "2(3)" */
+            }
+        }
+    }
+
+    return !expectOperand && depth == 0;
+}
+
+
 static int shunting_yard(const Token tokens[MAX_TOKENS], int numTokens, Token output[MAX_TOKENS]) {
     Token opStack[MAX_TOKENS];
     int opCount = 0;
     int outCount = 0;
+
+    if (!infix_is_well_formed(tokens, numTokens)) {
+        EVALEXPR_LOG("[shunting_yard] : Malformed expression (operand/operator order or parentheses).");
+        return -1;
+    }
 
     for (int i = 0; i < numTokens; i++) {
         Token token = tokens[i];
 
         if (token.type == TOKEN_NUMBER) {
             output[outCount++] = token;
+        }
+        else if (token.type == TOKEN_OPERATOR && token.op == EVAL_OP_NEGATE) {
+            /* A prefix operator has no left operand, so it never pops anything. */
+            opStack[opCount++] = token;
         }
         else if (token.type == TOKEN_OPERATOR) {
             // While there is an operator at the top of the operator stack.
@@ -322,6 +593,13 @@ static int eval_rpn(const Token rpnTokens[MAX_TOKENS], int numTokens, double *re
         Token token = rpnTokens[i];
         if (token.type == TOKEN_NUMBER) {
             stack[stackTop++] = token.value;
+        }
+        else if (token.type == TOKEN_OPERATOR && token.op == EVAL_OP_NEGATE) {
+            if (stackTop < 1) {
+                EVALEXPR_LOG("[eval_rpn] : Missing operand for unary minus.");
+                return -1;
+            }
+            stack[stackTop - 1] = -stack[stackTop - 1];
         }
         else if (token.type == TOKEN_OPERATOR) {
             if (stackTop < 2) {
@@ -558,6 +836,9 @@ double eval_expr_with_vars(const char *expr, const char **names, const double *v
  * Converts an arithmetic expression from infix notation to a string in Reverse Polish Notation (RPN).
  *
  * The returned string is dynamically allocated. The caller must free it.
+ * There is no length limit, and every number is written with as many digits
+ * as it takes (15 to 17 significant) to read back as the same double, with
+ * '.' as the decimal point.
  *
  * @param expr A null‐terminated C string containing the infix expression.
  * @return A newly allocated string representing the RPN form, or NULL on error.
@@ -571,8 +852,6 @@ char *eval_expr_to_rpn_string(const char *expr) {
 
     Token tokens[MAX_TOKENS];
     Token rpnTokens[MAX_TOKENS];
-    char buffer[1024] = {0};
-    size_t pos = 0;
 
     int numTokens = tokenize(expr, tokens, NULL, NULL, 0);
     if (numTokens < 0) {
@@ -586,38 +865,14 @@ char *eval_expr_to_rpn_string(const char *expr) {
         return NULL;
     }
 
-    // Build a string representing the RPN expression.
-    for (int i = 0; i < rpnCount; i++) {
-        if (rpnTokens[i].type == TOKEN_NUMBER) {
-            int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%g ", rpnTokens[i].value);
-
-            if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
-                EVALEXPR_LOG("[eval_expr_to_rpn_string] : Buffer overflow while building RPN string for expression: %s", expr);
-                break;
-            }
-            pos += n;
-        } 
-        else if (rpnTokens[i].type == TOKEN_OPERATOR) {
-            int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%c ", rpnTokens[i].op);
-
-            if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
-                EVALEXPR_LOG("[eval_expr_to_rpn_string] : Buffer overflow while building RPN string for expression: %s", expr);
-                break;
-            }
-            pos += n;
-        }
+    char *text = eval_rpn_text(rpnTokens, rpnCount);
+    if (!text) {
+        EVALEXPR_LOG("[eval_expr_to_rpn_string] : Out of memory while building the RPN string for expression: %s", expr);
+        return NULL;
     }
 
-    // Remove trailing space, if any.
-    if (pos > 0 && buffer[pos - 1] == ' ') {
-        buffer[pos - 1] = '\0';
-    } 
-    else {
-        buffer[pos] = '\0';
-    }
-
-    EVALEXPR_LOG("[eval_expr_to_rpn_string] : Successfully converted expression to RPN: %s", buffer);
-    return strdup(buffer);
+    EVALEXPR_LOG("[eval_expr_to_rpn_string] : Successfully converted expression to RPN: %s", text);
+    return text;
 }
 
 
@@ -689,7 +944,9 @@ const char *eval_expr_error_message(int error) {
 /**
  * Tokenizes an arithmetic expression and returns an array of strings representing each token.
  *
- * For a number token, the string will be the number (using %g format).
+ * For a number token, the string will be the number with as many digits as it
+ * takes (15 to 17 significant) to read back as the same double, with '.' as
+ * the decimal point.
  * For an operator token, the string will contain the operator character.
  * For parentheses, the string will be "(" or ")".
  *
@@ -735,10 +992,10 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
         char buffer[64] = {0};
         switch (tokens[i].type) {
             case TOKEN_NUMBER:
-                snprintf(buffer, sizeof(buffer), "%g", tokens[i].value);
+                eval_format_number(tokens[i].value, buffer, sizeof(buffer));
                 break;
             case TOKEN_OPERATOR:
-                snprintf(buffer, sizeof(buffer), "%c", tokens[i].op);
+                op_to_text(tokens[i].op, 0, buffer, sizeof(buffer));
                 break;
             case TOKEN_PAREN_LEFT:
                 strncpy(buffer, "(", sizeof(buffer) - 1);
@@ -751,7 +1008,7 @@ char **eval_expr_tokenize(const char *expr, int *numTokens) {
                 break;
         }
 
-        tokenStrs[i] = strdup(buffer);
+        tokenStrs[i] = eval_strdup(buffer);
         if (!tokenStrs[i]) {
             EVALEXPR_LOG("[eval_expr_tokenize] : Memory allocation failed for token %d", i);
             for (int j = 0; j < i; j++) {
@@ -828,10 +1085,14 @@ void eval_expr_print_debug(const char *expr) {
     printf("Debug: Tokens:\n");
     for (int i = 0; i < numTokens; i++) {
         if (tokens[i].type == TOKEN_NUMBER) {
-            printf("  Token %d: [NUMBER] %g\n", i, tokens[i].value);
+            char number[40];
+            eval_format_number(tokens[i].value, number, sizeof(number));
+            printf("  Token %d: [NUMBER] %s\n", i, number);
         } 
         else if (tokens[i].type == TOKEN_OPERATOR) {
-            printf("  Token %d: [OPERATOR] %c\n", i, tokens[i].op);
+            char opText[8];
+            op_to_text(tokens[i].op, 0, opText, sizeof(opText));
+            printf("  Token %d: [OPERATOR] %s\n", i, opText);
         } 
         else if (tokens[i].type == TOKEN_PAREN_LEFT) {
             printf("  Token %d: [PAREN_LEFT] (\n", i);
@@ -850,29 +1111,9 @@ void eval_expr_print_debug(const char *expr) {
     }
 
     // Build and print RPN string.
-    char buffer[1024] = {0};
-    size_t pos = 0;
-    for (int i = 0; i < rpnCount; i++) {
-        if (rpnTokens[i].type == TOKEN_NUMBER) {
-            int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%g ", rpnTokens[i].value);
-            if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
-                break;
-            }
-            pos += n;
-        } 
-        else if (rpnTokens[i].type == TOKEN_OPERATOR) {
-            int n = snprintf(buffer + pos, sizeof(buffer) - pos, "%c ", rpnTokens[i].op);
-            if (n < 0 || (size_t)n >= sizeof(buffer) - pos) {
-                break;
-            }
-            pos += n;
-        }
-    }
-    
-    if (pos > 0 && buffer[pos - 1] == ' ') {
-        buffer[pos - 1] = '\0';
-    }
-    printf("Debug: RPN: %s\n", buffer);
+    char *rpnText = eval_rpn_text(rpnTokens, rpnCount);
+    printf("Debug: RPN: %s\n", rpnText ? rpnText : "(out of memory)");
+    free(rpnText);
 
     double result = eval_expr(expr);
     if (result != result) {  

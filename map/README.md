@@ -103,7 +103,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 ### `Map* map_create(CompareFuncMap comp, ValueDeallocFunc deallocKey, ValueDeallocFunc deallocValue)`
 **Purpose**: Creates and initializes a new empty map backed by a Red-Black Tree.
 **Parameters**:
-- `comp`: A function pointer for comparing keys; required to determine key ordering.
+- `comp`: A function pointer for comparing keys, `int (*)(const void*, const void*)` like a `qsort` comparator; required to determine key ordering. (It used to be declared with `const KeyType` parameters, i.e. `void* const`, which made GCC 14 and Clang reject ordinary `const void*` comparators.)
 - `deallocKey`: A function pointer to deallocate keys on node deletion; may be `NULL` when the map does not own key memory.
 - `deallocValue`: A function pointer to deallocate values on node deletion; may be `NULL` when the map does not own value memory.
 **Return Value**: A pointer to the newly created map, or `NULL` if `comp` is `NULL` or memory allocation fails.
@@ -166,7 +166,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 
 ---
 
-### `void map_print(const Map* map, void (*printKey)(const KeyType), void (*printValue)(const ValueType))`
+### `void map_print(const Map* map, void (*printKey)(const void*), void (*printValue)(const void*))`
 **Purpose**: Traverses the map in ascending key order and prints every key-value pair using the caller-supplied print callbacks.
 **Parameters**:
 - `map`: A pointer to the `Map` to be printed.
@@ -327,7 +327,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 ---
 
 ### `bool map_insert(Map* map, KeyType key, ValueType value)`
-**Purpose**: Inserts a new key-value pair; if the key already exists, the existing value is replaced (calling `deallocValue` on the old one if set).
+**Purpose**: Inserts a new key-value pair; if the key already exists, the existing value is replaced (calling `deallocValue` on the old one if set). The node keeps the key it already has, so with a key deallocator the map also frees the `key` you passed in on that path (the map owns every key handed to it; do not free it yourself afterwards). `hashmap_insert` does the same.
 **Parameters**:
 - `map`: A pointer to the `Map` where the key-value pair will be inserted.
 - `key`: The key to insert.
@@ -349,7 +349,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 ---
 
 ### `bool map_emplace_hint(Map* map, MapIterator hint, KeyType key, ValueType value)`
-**Purpose**: Like `map_emplace` but accepts a hint iterator that may speed up insertion when the hint is close to the correct position.
+**Purpose**: Like `map_emplace`; the hint iterator is accepted for API compatibility with `std::map::emplace_hint` but not used: the insertion always searches from the root (O(log n)).
 **Parameters**:
 - `map`: A pointer to the `Map` where the key-value pair should be inserted.
 - `hint`: A `MapIterator` providing a positional hint for faster insertion.
@@ -380,7 +380,7 @@ The `MapIteratorPair` structure is a utility structure that holds two iterators.
 #include "map/map.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
     return (*ia - *ib);
@@ -427,7 +427,7 @@ Found value: 10
 #include "string/std_string.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
     return (*ia - *ib);
@@ -483,7 +483,7 @@ Found value for 1: Alice
 #include "string/std_string.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
 
@@ -520,7 +520,7 @@ Value for key 1: Hello
 #include "map/map.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     const int* ia = (const int*)a;
     const int* ib = (const int*)b;
     return (*ia - *ib);
@@ -563,7 +563,7 @@ Value in map3b for key 1: 100
 #include "fmt/fmt.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     return *(const int*)a - *(const int*)b;
 }
 
@@ -623,7 +623,7 @@ Key 2 erased.
 #include "string/std_string.h"
 
 
-int compare_strings(const KeyType a, const KeyType b) {
+int compare_strings(const void* a, const void* b) {
     return strcmp((const char*)a, (const char*)b);
 }
 
@@ -691,7 +691,7 @@ apple: red
 #include "fmt/fmt.h"
 
 
-int compare_doubles(const KeyType a, const KeyType b) {
+int compare_doubles(const void* a, const void* b) {
     const double* da = (const double*)a;
     const double* db = (const double*)b;
 
@@ -752,7 +752,7 @@ Upper bound for 3.000000: 3.300000
 #include "fmt/fmt.h"
 
 
-int compare_doubles(const KeyType a, const KeyType b) {
+int compare_doubles(const void* a, const void* b) {
     const double* da = (const double*)a;
     const double* db = (const double*)b;
 
@@ -817,7 +817,7 @@ int main() {
 #include "fmt/fmt.h"
 
 
-int compare_strings(const KeyType a, const KeyType b) {
+int compare_strings(const void* a, const void* b) {
     String* strA = *(String**)a;
     String* strB = *(String**)b;
     return strcmp(string_c_str(strA), string_c_str(strB));
@@ -892,7 +892,7 @@ Found value for 'key1': Hello
 #include "fmt/fmt.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     return *(const int*)a - *(const int*)b;
 }
 
@@ -963,7 +963,7 @@ int main() {
 #include "fmt/fmt.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     return *(const int*)a - *(const int*)b;
 }
 
@@ -1028,17 +1028,17 @@ int main() {
 #include "string/std_string.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     return *(int*)a - *(int*)b;
 }
 
 
-void print_int(const KeyType key) {
+void print_int(const void* key) {
     fmt_printf("%d", *(const int*)key);
 }
 
 
-void print_string(const ValueType value) {
+void print_string(const void* value) {
     fmt_printf("%s", (const char*)value);
 }
 
@@ -1070,7 +1070,7 @@ int main() {
 #include "fmt/fmt.h"
 
 
-int compare_ints(const KeyType a, const KeyType b) {
+int compare_ints(const void* a, const void* b) {
     return *(int*)a - *(int*)b;
 }
 
@@ -1078,11 +1078,11 @@ void int_deallocator(void* data) {
     free(data);
 }
 
-void print_key(const KeyType key) {
+void print_key(const void* key) {
     fmt_printf("%d", *(const int*)key);
 }
 
-void print_value(const ValueType value) {
+void print_value(const void* value) {
     fmt_printf("%d", *(const int*)value);
 }
 

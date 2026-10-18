@@ -23,8 +23,8 @@ extern "C" {
 /* #define TUPLE_LOGGING_ENABLE */
 
 #ifdef TUPLE_LOGGING_ENABLE
-    #define TUPLE_LOG(fmt, ...) \
-        do { fprintf(stderr, "[TUPLE LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define TUPLE_LOG(...) \
+        do { fprintf(stderr, "[TUPLE LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define TUPLE_LOG(...) do { } while (0)
 #endif
@@ -34,11 +34,19 @@ extern "C" {
 /* Public types                                                       */
 /* ------------------------------------------------------------------ */
 
-/* One slot in a Tuple. `data` is heap-owned by the Tuple (except
- * for `tuple_tie`-built tuples, which borrow). */
+/* Element comparator, qsort convention (negative / zero / positive). */
+typedef int (*TupleCompareFunc)(const void* a, const void* b);
+
+/* One slot in a Tuple. `data` is always heap-owned by the Tuple: for
+ * tuple_tie / tuple_forward_as_tuple it is an 8-byte copy of the POINTER
+ * that was passed in, so tuple_get returns a `T**` (the pointed-to objects
+ * are borrowed, never copied or freed). `compare` is optional
+ * (tuple_set_compare): without it the slot is compared byte by byte,
+ * which is not the numeric order of int / float values. */
 typedef struct {
     void*  data;
     size_t size;
+    TupleCompareFunc compare;
 } TupleElement;
 
 /* Fixed-arity heterogeneous container. Use `tuple_create` for an
@@ -67,6 +75,7 @@ Tuple*  tuple_forward_as_tuple        (size_t num, ...);
 void    tuple_deallocate              (Tuple* tuple);
 void    tuple_swap                    (Tuple* a, Tuple* b);
 bool    tuple_set                     (Tuple* tuple, size_t index, void* data, size_t size);
+bool    tuple_set_compare             (Tuple* tuple, size_t index, TupleCompareFunc compare);
 
 
 /* ------------------------------------------------------------------ */

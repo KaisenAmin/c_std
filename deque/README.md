@@ -35,6 +35,16 @@ To use the Deque library in your project, include the `deque.h` header file in y
 
 ---
 
+### `void deque_set_compare(Deque* deque, DequeCompareFunc compare)`
+**Purpose**: Sets the element comparator (`int (*)(const void*, const void*)`, qsort convention) used by `deque_is_equal`, `deque_is_less` and the other comparisons. Without one each element's bytes are compared with `memcmp`, which is not the numeric order of `int`, negative or floating-point elements (`{256}` would sort before `{1}` on little-endian). When only one of the two deques has a comparator, it is used.
+**Parameters**:
+- `deque`: Pointer to the deque (NULL is ignored).
+- `compare`: The comparator, or `NULL` for byte comparison.
+**Return Value**: None.
+**Usage Case**: Call after `deque_create` when deques of numbers or structs are compared.
+
+---
+
 ### `void deque_clear(Deque* deque)`
 **Purpose**: Removes all elements and resets the deque to its initial empty state, but keeps the deque struct itself valid for reuse.
 **Parameters**:
@@ -81,7 +91,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 ---
 
 ### `void deque_resize(Deque* deque, size_t newSize)`
-**Purpose**: Grows or shrinks the deque to exactly `newSize` elements.
+**Purpose**: Grows or shrinks the deque to exactly `newSize` elements. If memory runs out while growing, it stops and keeps the elements added so far (it used to retry forever); check `deque_length` when that matters.
 **Parameters**:
 - `deque`: Pointer to the deque to resize.
 - `newSize`: The desired number of elements after the call.
@@ -311,7 +321,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 ---
 
 ### `void iterator_increment(DequeIterator* it)`
-**Purpose**: Advances `it` one position forward (for forward iterators) or one position backward (for reverse iterators), setting `it->current` to `NULL` when the end or beginning is reached.
+**Purpose**: Advances `it` one position forward (for forward iterators) or one position backward (for reverse iterators), setting `it->current` to `NULL` when the end or beginning is reached. At the end / rend it stays there.
 **Parameters**:
 - `it`: Pointer to the `DequeIterator` to advance.
 **Return Value**: None.
@@ -320,7 +330,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 ---
 
 ### `void iterator_decrement(DequeIterator* it)`
-**Purpose**: Moves `it` one position backward (for forward iterators) or one position forward (for reverse iterators), setting `it->current` to `NULL` when the boundary is crossed.
+**Purpose**: Moves `it` one position backward (for forward iterators) or one position forward (for reverse iterators), setting `it->current` to `NULL` when the boundary is crossed. Decrementing `deque_end` gives the last element and decrementing `deque_rend` gives the first one. (Reverse iterators used to move toward the front here too, and decrementing `rend` left a wild `current` pointer.)
 **Parameters**:
 - `it`: Pointer to the `DequeIterator` to step back.
 **Return Value**: None.
@@ -345,6 +355,8 @@ To use the Deque library in your project, include the `deque.h` header file in y
 **Return Value**: Pointer to the current element, or `NULL` if the iterator is out of bounds.
 **Usage Case**: Dereference an iterator to read or write the element it points to.
 
+**Iterator invalidation**: iterators remember a position in the deque's block map, so `deque_pop_front`, `deque_pop_back`, `deque_push_front` and `deque_push_back` keep every iterator to a remaining element valid, except when a push has to move the block map (when it runs out of spare slots at that end; the elements themselves never move then, so element pointers from `deque_at` / `iterator_get` stay valid). `deque_insert`, `deque_erase`, `deque_emplace`, `deque_resize`, `deque_assign`, `deque_clear`, `deque_shrink_to_fit`, `deque_swap` and removing the last element invalidate all iterators. (Before, `pop_front` and `push_front` moved every outstanding iterator to another element.)
+
 ---
 
 ### `bool deque_is_equal(const Deque* deque1, const Deque* deque2)`
@@ -368,7 +380,7 @@ To use the Deque library in your project, include the `deque.h` header file in y
 ---
 
 ### `bool deque_is_less(const Deque* deque1, const Deque* deque2)`
-**Purpose**: Returns `true` if `deque1` is lexicographically less than `deque2`.
+**Purpose**: Returns `true` if `deque1` is lexicographically less than `deque2`, comparing elements with the comparator from `deque_set_compare` (their bytes without one).
 **Parameters**:
 - `deque1`: Pointer to the first deque.
 - `deque2`: Pointer to the second deque.

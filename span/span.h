@@ -40,8 +40,8 @@ extern "C" {
 /* #define SPAN_LOGGING_ENABLE */
 
 #ifdef SPAN_LOGGING_ENABLE
-    #define SPAN_LOG(fmt, ...) \
-        do { fprintf(stderr, "[SPAN LOG]: " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define SPAN_LOG(...) \
+        do { fprintf(stderr, "[SPAN LOG]: "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define SPAN_LOG(...) do { } while (0)
 #endif
@@ -51,10 +51,15 @@ extern "C" {
 /* Public types                                                       */
 /* ------------------------------------------------------------------ */
 
+/* Element comparator, qsort convention (negative / zero / positive). */
+typedef int (*SpanCompareFunc)(const void* a, const void* b);
+
 typedef struct {
     void*  data;      /* pointer to externally-owned storage   */
     size_t size;      /* NUMBER OF ELEMENTS (not bytes!)        */
     size_t elemSize;  /* size of each element in bytes          */
+    SpanCompareFunc compare;  /* optional, for the is_* comparisons */
+                              /* (NULL: bytes); kept by sub-views    */
 } Span;
 
 
@@ -65,6 +70,7 @@ typedef struct {
 Span         span_view                 (void* data, size_t elemCount, size_t elemSize);
 Span*        span_create               (void* data, size_t elemCount, size_t elemSize);
 void         span_destroy              (Span* span);
+void         span_set_compare          (Span* span, SpanCompareFunc compare);
 
 
 /* ------------------------------------------------------------------ */

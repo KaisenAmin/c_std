@@ -52,7 +52,9 @@ structurally impossible:
 7. **Standard claims are honored.** `exp`, `nbf`, `iat`, `iss`, `sub`,
    `aud` (both string and array forms), and optionally header `typ` are
    all validated when the corresponding options are set, with symmetric
-   `leeway_seconds` for clock skew.
+   `leeway_seconds` for clock skew (a negative leeway counts as 0). As
+   RFC 7519 §4.1.4 requires, a token is valid only while the current time
+   is before `exp` (plus leeway): `exp == now` is already expired.
 8. **DoS guards.** `opts->max_token_bytes` caps the size of tokens the
    parser will even look at. `opts->reject_weak_hmac_key` refuses HMAC
    secrets shorter than the digest output length (RFC 7518 §3.2).
@@ -91,7 +93,7 @@ structurally impossible:
 **Parameters**:
 - `secret`: Pointer to the raw secret bytes.
 - `secret_len`: Number of bytes to copy from `secret`.
-**Return Value**: A newly allocated `JwtKey*`, or `NULL` on OOM or if `secret_len` is 0.
+**Return Value**: A newly allocated `JwtKey*`, or `NULL` on OOM or if `secret` is NULL or `secret_len` is 0. Note that `jwt_encode` refuses HMAC keys shorter than the hash output (32 bytes for HS256, 48 for HS384, 64 for HS512, RFC 7518 §3.2).
 **Usage Case**: Use when creating or verifying HS256/HS384/HS512 tokens with a shared secret; the caller may free its buffer immediately after this call.
 
 ---
@@ -187,7 +189,7 @@ structurally impossible:
 **Purpose**: Parses a JWKS document (`{"keys":[...]}`) into usable keys.
 **Parameters**:
 - `jwks_json`: Null-terminated JSON string containing the JWKS document.
-**Return Value**: A newly allocated `JwtKeySet*`, or `NULL` only on JSON-level parse failure; entries with invalid material, `use=enc`, or unsupported `kty`/`crv` are silently skipped.
+**Return Value**: A newly allocated `JwtKeySet*`, or `NULL` only on JSON-level parse failure; entries with invalid material, `use=enc`, or unsupported `kty`/`crv` are silently skipped. RSA entries must have a 2048- to 16384-bit odd modulus (RFC 7518 §3.3) and an odd exponent of at least 3 that is smaller than the modulus; others are skipped.
 **Usage Case**: Use to load a provider's published JWKS for subsequent token verification; an empty-but-valid keyset is returned if all entries are skipped.
 
 ---
@@ -443,7 +445,7 @@ structurally impossible:
 **Parameters**:
 - `t`: The token to encode.
 - `signing_key`: The key whose shape must match the token's algorithm.
-**Return Value**: A malloc'd compact JWT string the caller must `free`, or `NULL` if the key shape does not match the algorithm or on OOM.
+**Return Value**: A malloc'd compact JWT string the caller must `free`, or `NULL` if the key shape does not match the algorithm, the algorithm is `JWT_ALG_UNKNOWN`, an HMAC secret is shorter than the RFC 7518 §3.2 minimum (32 / 48 / 64 bytes for HS256 / HS384 / HS512; short secrets used to be accepted), or on OOM.
 **Usage Case**: Use as the final step to produce the compact JWT string for transmission to clients.
 
 ---
@@ -454,7 +456,7 @@ structurally impossible:
 **Purpose**: Parses a compact JWT without verifying the signature.
 **Parameters**:
 - `compact_jwt`: Null-terminated compact JWT string (three dot-separated base64url segments).
-**Return Value**: A newly allocated `JwtToken*`, or `NULL` on malformed input; the token must not be trusted until verified.
+**Return Value**: A newly allocated `JwtToken*`, or `NULL` on malformed input; the token must not be trusted until verified. The segments must be strict RFC 7515 base64url: URL-safe alphabet only, no `=` padding, and zero unused bits in the last character, so every token has exactly one accepted spelling (padded or `+`/`/` variants of a signature used to verify too). An unrecognised `alg` header becomes `JWT_ALG_UNKNOWN`.
 **Usage Case**: Use to read the `kid` header before key selection, then pass the result to `jwt_verify`.
 
 ---
@@ -490,13 +492,13 @@ structurally impossible:
 - `key_count`: Number of keys in `keys`.
 - `opts`: Validation options; `opts->allowed_algs` is mandatory.
 - `out`: Output pointer set to the parsed token on success, or `NULL` on failure.
-**Return Value**: `JWT_SUCCESS`, `JWT_ERR_INVALID_SIGNATURE` if no key verified, `JWT_ERR_INVALID_KEY` if no key was shape-compatible, or another `JWT_ERR_*` on key-independent failures.
+**Return Value**: `JWT_SUCCESS`, `JWT_ERR_INVALID_SIGNATURE` if no key verified, `JWT_ERR_INVALID_KEY` if no key was shape-compatible, or another `JWT_ERR_*` on key-independent failures. `JWT_ERR_WEAK_KEY` (with `reject_weak_hmac_key`) is about one key, so the next key is still tried; it is returned only when it was the last key's failure.
 **Usage Case**: Use during key rotation overlap windows when both old and new public keys must be accepted.
 
 ---
 
 ### `JwtStatus jwt_decode_and_verify_with_keyset(const char* compact_jwt, const JwtKeySet* set, const JwtValidationOptions* opts, JwtToken** out)`
-**Purpose**: Auto-selects a key by the token's `kid` header if present and found in the set; otherwise tries every shape-compatible key.
+**Purpose**: Auto-selects a key by the token's `kid` header: when entries with that `kid` exist, only they are tried; when `kid` is absent or unknown, every shape-compatible key is tried. An entry whose JWK `alg` differs from the token's `alg` is never tried (RFC 7517 §4.4), and a token whose `alg` is not in `opts->allowed_algs` is rejected with `JWT_ERR_INVALID_ALG` before any key is chosen. `opts->max_token_bytes` is checked before the token is even parsed to read `kid`.
 **Parameters**:
 - `compact_jwt`: Null-terminated compact JWT string.
 - `set`: The key set to select from.
@@ -612,7 +614,7 @@ structurally impossible:
 - `t`: The token to query.
 - `name`: The claim name to look up.
 - `out`: Pointer to receive the integer value.
-**Return Value**: `true` on success, `false` if absent or wrong type.
+**Return Value**: `true` on success, `false` if absent, wrong type, or outside the `int64_t` range (e.g. `1e300`; a fraction is truncated toward zero). Claims travel as JSON numbers (doubles), so integers beyond ±2^53 are not exact, and `INT64_MAX` written by `jwt_set_claim_int` rounds up to 2^63, which this getter reports as out of range.
 **Usage Case**: Use to read numeric custom claims such as user IDs or permission bitmasks.
 
 ---
@@ -700,7 +702,7 @@ structurally impossible:
 **Purpose**: Parses the RFC 7518 algorithm name and returns the corresponding enum value.
 **Parameters**:
 - `s`: Null-terminated RFC 7518 algorithm name string.
-**Return Value**: The corresponding `JwtAlgorithm` enum value, or `JWT_ALG_NONE` for unknown strings.
+**Return Value**: The corresponding `JwtAlgorithm` enum value, or `JWT_ALG_UNKNOWN` for unknown strings and NULL. `JWT_ALG_UNKNOWN` never verifies, even if allow-listed (unknown names used to map to `JWT_ALG_NONE`, so allowing "none" also accepted any garbled `alg`).
 **Usage Case**: Use when deserializing an algorithm name from external configuration or a JWKS `alg` field.
 
 ---
@@ -865,9 +867,11 @@ JWT payloads can carry arbitrary JSON. Below, a single token carries a user ID, 
 #include "json/json.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main(void) {
-    JwtKey* k = jwt_key_hmac((const unsigned char*)"k", 1);
+    const char* secret = "an-hs256-secret-of-at-least-32-bytes";   /* RFC 7518 §3.2 */
+    JwtKey* k = jwt_key_hmac((const unsigned char*)secret, strlen(secret));
 
     JwtToken* t = jwt_create(JWT_ALG_HS256);
     jwt_set_claim_string(t, "name", "Alice");
@@ -917,9 +921,11 @@ Real APIs reject tokens that are expired, not-yet-valid, signed by the wrong iss
 #include "jwt/jwt.h"
 #include "fmt/fmt.h"
 #include <stdlib.h>
+#include <string.h>
 
 int main(void) {
-    JwtKey* k = jwt_key_hmac((const unsigned char*)"k", 1);
+    const char* secret = "an-hs256-secret-of-at-least-32-bytes";   /* RFC 7518 §3.2 */
+    JwtKey* k = jwt_key_hmac((const unsigned char*)secret, strlen(secret));
     int64_t now = 1700000000;   /* fixed time for the test */
 
     /* Issue a token that expired 60 seconds ago. */
@@ -1033,8 +1039,8 @@ typedef struct { const char* kid; JwtKey* key; } KidEntry;
 
 int main(void) {
     /* Pretend we have two HMAC keys. */
-    JwtKey* k_2023 = jwt_key_hmac((const unsigned char*)"old-secret", 10);
-    JwtKey* k_2024 = jwt_key_hmac((const unsigned char*)"new-secret", 10);
+    JwtKey* k_2023 = jwt_key_hmac((const unsigned char*)"old-secret-0123456789abcdefghijkl", 32);
+    JwtKey* k_2024 = jwt_key_hmac((const unsigned char*)"new-secret-0123456789abcdefghijkl", 32);
     KidEntry ring[] = { {"key-2023", k_2023}, {"key-2024", k_2024} };
 
     /* Mint a token with kid=key-2024. */

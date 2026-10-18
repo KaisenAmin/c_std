@@ -79,9 +79,9 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 ### `char* encoding_base32_decode(const char* input, size_t length)`
 **Purpose**: Decodes a Base32 encoded string back to its original binary data.
 **Parameters**:
-- `input`: Pointer to the Base32 encoded string (with or without padding).
+- `input`: Pointer to the Base32 encoded string, with or without the trailing `=` padding; upper- or lowercase letters (TOTP secrets are often lowercase).
 - `length`: Length of the encoded string.
-**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
+**Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure: a character outside the alphabet, data after `=`, or a length no Base32 text can have (it used to stop at the first bad character and return what it had). The caller must `free()` the result.
 **Usage Case**: Reverse of `encoding_base32_encode`; use to recover binary data from a Base32 string.
 
 ---
@@ -89,8 +89,8 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 ### `char* encoding_base32_decode_ex(const char* input, size_t length, size_t* out_len)`
 **Purpose**: Like `encoding_base32_decode`, but also writes the exact number of decoded bytes to `*out_len`. Because Base32 padding makes the decoded length unrecoverable from the input length alone, this is the correct variant when decoding binary data.
 **Parameters**:
-- `input`: Pointer to the Base32 encoded string.
-- `length`: Length of the encoded string (must be a multiple of 8).
+- `input`: Pointer to the Base32 encoded string (padding optional, either case).
+- `length`: Length of the encoded string.
 - `out_len`: Optional out-pointer; receives the decoded byte count (`0` on error). May be `NULL`.
 **Return Value**: A `malloc`'d buffer with the decoded bytes (NUL-terminated for convenience), or `NULL` on error. The caller must `free()` it.
 **Usage Case**: Recovering binary payloads (keys, tokens) from Base32 without losing the trailing/embedded NUL bytes.
@@ -133,7 +133,7 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 - `input`: Pointer to the Base64 encoded string.
 - `length`: Length of the encoded string.
 **Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
-**Usage Case**: Reverse of `encoding_base64_encode`; use to recover binary data from a Base64 string.
+**Usage Case**: Reverse of `encoding_base64_encode`; use to recover binary data from a Base64 string. Decoding is strict (RFC 4648, as in `crypto_hash_from_base64` and Python): only the 64 alphabet characters plus final `=` padding to a multiple of 4; ASCII whitespace is skipped. Anything else (`"T@Fu"`, `"TWE"` without padding, `"===="`, padding in the middle) returns `NULL`; invalid characters used to decode into garbage. `string_base64_decode` (string module) is the lenient variant that skips unknown characters.
 
 ---
 
@@ -141,9 +141,9 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 **Purpose**: Like `encoding_base64_decode`, but also writes the exact number of decoded bytes to `*out_len`. The plain `encoding_base64_decode` returns a NUL-terminated `char*`, which silently loses the length when the decoded data is binary and contains embedded `0x00` bytes (keys, images, JWT signatures, …). **This is the variant to use for arbitrary binary payloads.**
 **Parameters**:
 - `input`: Pointer to the Base64 encoded string.
-- `length`: Length of the encoded string (must be a multiple of 4).
+- `length`: Length of the encoded string (a multiple of 4 once whitespace is ignored).
 - `out_len`: Optional out-pointer; receives the decoded byte count (`0` on error or empty input). May be `NULL`.
-**Return Value**: A `malloc`'d buffer with the decoded bytes (NUL-terminated for convenience), or `NULL` on invalid length / allocation failure. The caller must `free()` it.
+**Return Value**: A `malloc`'d buffer with the decoded bytes (NUL-terminated for convenience), or `NULL` on invalid input (see `encoding_base64_decode`) or allocation failure. The caller must `free()` it.
 **Usage Case**: Decoding a base64 blob whose plaintext is binary — the only correct way to learn how many bytes you actually got.
 
 ---
@@ -164,8 +164,9 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 - `input`: Pointer to the Ascii85 encoded string.
 - `length`: Length of the encoded string.
 **Return Value**: A dynamically allocated buffer containing the decoded binary data, or `NULL` on failure. The caller must `free()` the result.
-**Usage Case**: Reverse of `encoding_base85_encode`; use to recover binary data from an Ascii85 encoded string.
+**Usage Case**: Reverse of `encoding_base85_encode`; use to recover binary data from an Ascii85 encoded string. Whitespace anywhere, including inside a 5-character group (wrapped PostScript/PDF lines), is ignored; it used to end the decode at the first line break.
 
+**Errors**: a 5-character group whose value exceeds 2^32 - 1 (such as `uuuuu`) and a final group of a single character are rejected with `NULL` (they used to wrap around or be ignored). Empty input decodes to an empty buffer.
 ---
 
 ### `char* encoding_base91_encode(const uint8_t* data, size_t length)`
@@ -194,7 +195,7 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 - `input`: Pointer to the string to encode.
 - `length`: Length of the input string.
 **Return Value**: A dynamically allocated null-terminated percent-encoded string, or `NULL` on failure. The caller must `free()` the result.
-**Usage Case**: Use when constructing URLs that must include arbitrary text in query parameters or path components.
+**Usage Case**: Use when constructing URLs that must include arbitrary text in query parameters or path components. Only the RFC 3986 unreserved ASCII characters (`A-Z a-z 0-9 - . _ ~`) are kept; every other byte, including each byte of a UTF-8 character, becomes `%XX`, whatever the current locale.
 
 ---
 
@@ -207,6 +208,8 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 **Usage Case**: Use when parsing URL query parameters or path components that may contain percent-encoded characters.
 
 ---
+
+**All UTF converters** (`encoding_utf8_to_utf16/32`, `encoding_utf16_to_utf8/32`, `encoding_utf32_to_utf8/16`) are strict: a lone surrogate (an unpaired `0xD800..0xDFFF` in UTF-16, or a surrogate code point in UTF-32) makes them return `NULL` instead of producing ill-formed output. Empty input (`length == 0`) gives an empty, terminated string rather than `NULL`; `NULL` always means failure. The Base85 and Base91 encoders likewise return `""` for empty input.
 
 ### `uint16_t* encoding_utf8_to_utf16(const uint8_t* input, size_t length)`
 **Purpose**: Converts a UTF-8 encoded byte sequence to a null-terminated UTF-16 encoded string.
@@ -286,6 +289,7 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 **Return Value**: `true` if all `length` bytes form a valid UTF-8 string, `false` as soon as an ill-formed sequence is found.
 **Usage Case**: Use when you need to validate a multi-character UTF-8 string before processing it.
 
+**Note**: the empty string (`length == 0`) is valid UTF-8 and returns `true`.
 ---
 
 ### `void encoding_hex_dump(const void* data, size_t size)`
@@ -312,7 +316,7 @@ To use the Encoding library in your project, include the `encoding.h` header fil
 **Parameters**:
 - `wstr`: Pointer to the null-terminated wide character string.
 **Return Value**: A dynamically allocated null-terminated UTF-8 string, or `NULL` on failure. The caller must `free()` the result.
-**Usage Case**: Use when converting Windows `wchar_t` strings to portable UTF-8 for storage, logging, or transmission.
+**Usage Case**: Use when converting Windows `wchar_t` strings to portable UTF-8 for storage, logging, or transmission. On POSIX the conversion is done directly from the code points and does not touch the process locale (it used to call `setlocale(LC_ALL, "en_US.UTF-8")` on every call, and failed where that locale is not installed).
 
 ---
 

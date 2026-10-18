@@ -4,16 +4,369 @@
  * @class Postgres
 */
 
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <stdarg.h>
+#include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <math.h>
+#if defined(_WIN32)
+    #include <windows.h>
+#endif
 #include "postgres.h"
 #include "../string/std_string.h"
+#include <locale.h>
+#if defined(_WIN32)
+#include <wchar.h>
+#include <windows.h>   /* MultiByteToWideChar */
+#endif
+
+/* fopen for a UTF-8 path (narrow fopen on Windows reads the path in the
+   ANSI code page, so non-ASCII names only worked with a UTF-8 code page). */
+static FILE* pg_fopen_utf8(const char* path, const char* mode) {
+#if defined(_WIN32)
+    wchar_t wmode[8];
+    size_t i = 0;
+    for (; mode[i] && i < 7; ++i) {
+        wmode[i] = (wchar_t)(unsigned char)mode[i];
+    }
+    wmode[i] = L'\0';
+    int n = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
+    if (n <= 0) {
+        return NULL;
+    }
+    wchar_t* wpath = (wchar_t*)malloc((size_t)n * sizeof(wchar_t));
+    if (!wpath) {
+        return NULL;
+    }
+    FILE* f = NULL;
+    if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wpath, n) > 0) {
+        f = _wfopen(wpath, wmode);
+    }
+    free(wpath);
+    return f;
+#else
+    return fopen(path, mode);
+#endif
+}
 
 
 
-#define CON_INFO_SIZE 256 
+
+
+/* Formats into a heap buffer sized for the result, so a long statement is
+   never cut short (fixed buffers used to truncate SQL and run it anyway).
+   Returns NULL on failure; the caller frees the string. */
+static char* pg_format(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    if (n < 0) {
+        return NULL;
+    }
+
+    char* sql = (char*)malloc((size_t)n + 1);
+    if (!sql) {
+        return NULL;
+    }
+    va_start(ap, fmt);
+    vsnprintf(sql, (size_t)n + 1, fmt, ap);
+    va_end(ap);
+    return sql;
+}
+
+
+/* Runs one SQL command built by pg_format and frees it. A NULL `sql` (the
+   formatting failed) counts as an error. Returns true on PGRES_COMMAND_OK. */
+static bool pg_run_command(Postgres* pg, char* sql, const char* where) {
+    if (!sql) {
+        POSTGRES_LOG("[%s] Error: could not build the SQL command.", where);
+        return false;
+    }
+    POSTGRES_LOG("[%s] Executing: %s", where, sql);
+
+    PGresult* res = PQexec(pg->connection, sql);
+    free(sql);
+    bool ok = PQresultStatus(res) == PGRES_COMMAND_OK;
+    if (!ok) {
+        POSTGRES_LOG("[%s] Error: %s", where, PQerrorMessage(pg->connection));
+    }
+    (void)where;
+    PQclear(res);
+    return ok;
+}
+
+
+/* Runs a catalog query whose only parameter ($1) is a table name. Binding it
+   as a parameter means quotes in the name cannot change the statement. */
+static PostgresResult* pg_query_table_param(Postgres* pg, const char* sql, const char* tableName) {
+    const char* params[1] = { tableName };
+    return postgres_query_params(pg, sql, 1, params);
+}
+
+
+/* Characters the server accepts in an unquoted identifier. Bytes >= 0x80
+   count as letters, as in the server's lexer (multibyte names). */
+static bool pg_ident_start(unsigned char c) {
+    return c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c >= 0x80;
+}
+
+static bool pg_ident_char(unsigned char c) {
+    return pg_ident_start(c) || (c >= '0' && c <= '9') || c == '$';
+}
+
+
+/* True when `name` is already identifier SQL: segments joined by '.', each
+   either a plain identifier or a non-empty double-quoted one with "" escapes.
+   `max_segments` is 1 for names that cannot be schema-qualified. */
+static bool pg_is_ident_sql(const char* name, int max_segments) {
+    const unsigned char* p = (const unsigned char*)name;
+    int segments = 0;
+
+    for (;;) {
+        if (*p == '"') {
+            size_t len = 0;
+            p++;
+            for (;;) {
+                if (*p == '\0') {
+                    return false;
+                }
+                if (*p == '"') {
+                    if (p[1] != '"') {
+                        break;
+                    }
+                    p++;
+                }
+                p++;
+                len++;
+            }
+            p++;   /* closing quote */
+            if (len == 0) {
+                return false;
+            }
+        }
+        else if (pg_ident_start(*p)) {
+            while (pg_ident_char(*p)) {
+                p++;
+            }
+        }
+        else {
+            return false;
+        }
+
+        if (++segments > max_segments) {
+            return false;
+        }
+        if (*p == '\0') {
+            return true;
+        }
+        if (*p != '.') {
+            return false;
+        }
+        p++;
+    }
+}
+
+
+/* Returns `name` as identifier SQL in a malloc'd string. A name that is
+   already a plain or quoted identifier (optionally schema-qualified, up to
+   `max_segments` parts) is kept as is, so case folding and qualification
+   behave exactly as when it was spliced verbatim. Anything else is quoted
+   as ONE identifier, so no name can end the statement or add SQL. */
+static char* pg_ident(Postgres* pg, const char* name, int max_segments) {
+    if (pg_is_ident_sql(name, max_segments)) {
+        return string_strdup(name);
+    }
+
+    char* q = PQescapeIdentifier(pg->connection, name, strlen(name));
+    if (!q) {
+        POSTGRES_LOG("[pg_ident] Error: could not quote identifier: %s", PQerrorMessage(pg->connection));
+        return NULL;
+    }
+    char* out = string_strdup(q);
+    PQfreemem(q);
+    return out;
+}
+
+
+/* Quotes `name` exactly (no case folding), for names that libpq itself uses
+   verbatim, such as prepared statement names given to PQprepare. */
+static char* pg_ident_exact(Postgres* pg, const char* name) {
+    char* q = PQescapeIdentifier(pg->connection, name, strlen(name));
+    if (!q) {
+        POSTGRES_LOG("[pg_ident_exact] Error: could not quote identifier: %s", PQerrorMessage(pg->connection));
+        return NULL;
+    }
+    char* out = string_strdup(q);
+    PQfreemem(q);
+    return out;
+}
+
+
+/* Length of `s` without trailing whitespace and ';' (a view query written as
+   "SELECT ... ;" is common and harmless). */
+static size_t pg_trim_statement_end(const char* s) {
+    size_t n = strlen(s);
+    while (n > 0 && (s[n - 1] == ';' || s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n')) {
+        n--;
+    }
+    return n;
+}
+
+
+/* Lexical check for a caller-supplied SQL fragment (a type, a parameter
+   list, a view query, a trigger event) before it is spliced into one
+   statement. It tokenizes the way the server's lexer does (identifiers
+   absorb their '$', so only a '$' outside an identifier starts a parameter
+   or a dollar quote; block comments nest) and requires that, outside quoted
+   text and comments, there is no ';' and parentheses balance, and that every
+   quote and comment ends inside the fragment. So the fragment cannot end the
+   statement and start another. A backslash before a quote inside a string
+   literal is refused: E'' strings (and standard_conforming_strings = off)
+   end such a literal at a different place than standard SQL does. */
+static bool pg_fragment_ok(const char* s, size_t len) {
+    int depth = 0;
+    size_t i = 0;
+
+    while (i < len) {
+        unsigned char c = (unsigned char)s[i];
+
+        if (pg_ident_start(c)) {
+            while (i < len && pg_ident_char((unsigned char)s[i])) {
+                i++;
+            }
+            continue;
+        }
+
+        if (c == '\'' || c == '"') {
+            size_t j = i + 1;
+            for (;;) {
+                if (j >= len) {
+                    return false;               /* unterminated */
+                }
+                if (c == '\'' && s[j] == '\\' && j + 1 < len && s[j + 1] == '\'') {
+                    return false;
+                }
+                if ((unsigned char)s[j] == c) {
+                    if (j + 1 < len && (unsigned char)s[j + 1] == c) {
+                        j += 2;                 /* doubled quote */
+                        continue;
+                    }
+                    break;
+                }
+                j++;
+            }
+            i = j + 1;
+            continue;
+        }
+
+        if (c == '$') {
+            if (i + 1 < len && s[i + 1] >= '0' && s[i + 1] <= '9') {
+                i += 2;                         /* positional parameter $n */
+                while (i < len && s[i] >= '0' && s[i] <= '9') {
+                    i++;
+                }
+                continue;
+            }
+
+            /* Dollar quote: $$ or $tag$, closed by the same tag. */
+            size_t t = i + 1;
+            if (t < len && pg_ident_start((unsigned char)s[t])) {
+                while (t < len && pg_ident_char((unsigned char)s[t]) && s[t] != '$') {
+                    t++;
+                }
+            }
+            if (t >= len || s[t] != '$') {
+                return false;
+            }
+            size_t tagLen = t - i + 1;
+            size_t k = t + 1;
+            for (;;) {
+                if (k + tagLen > len) {
+                    return false;               /* unterminated */
+                }
+                if (memcmp(s + k, s + i, tagLen) == 0) {
+                    break;
+                }
+                k++;
+            }
+            i = k + tagLen;
+            continue;
+        }
+
+        if (c == '-' && i + 1 < len && s[i + 1] == '-') {
+            /* Line comment: it must end inside the fragment, or it would
+               swallow the SQL that follows the fragment. */
+            while (i < len && s[i] != '\n' && s[i] != '\r') {
+                i++;
+            }
+            if (i >= len) {
+                return false;
+            }
+            continue;
+        }
+
+        if (c == '/' && i + 1 < len && s[i + 1] == '*') {
+            int nest = 1;
+            i += 2;
+            while (nest > 0) {
+                if (i + 1 >= len) {
+                    return false;               /* unterminated */
+                }
+                if (s[i] == '/' && s[i + 1] == '*') {
+                    nest++;
+                    i += 2;
+                }
+                else if (s[i] == '*' && s[i + 1] == '/') {
+                    nest--;
+                    i += 2;
+                }
+                else {
+                    i++;
+                }
+            }
+            continue;
+        }
+
+        if (c == ';') {
+            return false;
+        }
+        if (c == '(') {
+            depth++;
+        }
+        else if (c == ')' && --depth < 0) {
+            return false;
+        }
+        i++;
+    }
+
+    return depth == 0;
+}
+
+
+/* Monotonic seconds for measuring query time (clock() is CPU time on POSIX,
+   which barely moves while waiting on the server). */
+static double pg_now_seconds(void) {
+#if defined(_WIN32)
+    LARGE_INTEGER freq, count;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&count);
+    return (double)count.QuadPart / (double)freq.QuadPart;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+#endif
+}
 
 
 
@@ -75,6 +428,14 @@ void postgres_init(Postgres* pg, const char* database, const char* user, const c
     free(pg->password);
     free(pg->host);
     free(pg->port);
+    free(pg->conninfo);
+    pg->conninfo = NULL;
+
+    /* A connection made with the old values is closed, not just forgotten:
+       dropping the pointer leaked the server session and its socket. */
+    if (pg->connection) {
+        PQfinish(pg->connection);
+    }
 
     pg->database = string_strdup(database);
     pg->user     = string_strdup(user);
@@ -82,6 +443,18 @@ void postgres_init(Postgres* pg, const char* database, const char* user, const c
     pg->host     = string_strdup(host);
     pg->port     = string_strdup(port);
     pg->connection = NULL;
+    if (!pg->database || !pg->user || !pg->password || !pg->host || !pg->port) {
+        /* out of memory: all or nothing (postgres_connect then reports the
+           missing parameters instead of using a half-initialised struct) */
+        free(pg->database);
+        free(pg->user);
+        free(pg->password);
+        free(pg->host);
+        free(pg->port);
+        pg->database = pg->user = pg->password = pg->host = pg->port = NULL;
+        POSTGRES_LOG("[postgres_init] Error: out of memory.");
+        return;
+    }
 
     POSTGRES_LOG("[postgres_init] Postgres initialized with database: %s, user: %s, host: %s, port: %s", database, user, host, port);
 }
@@ -103,17 +476,21 @@ bool postgres_connect(Postgres* pg) {
         return false;
     }
 
-    size_t needed = 64 + strlen(pg->database) + strlen(pg->user) + strlen(pg->password) + strlen(pg->host) + strlen(pg->port);
-    char* conninfo = (char*)malloc(needed);
-
-    if (!conninfo) {
-        POSTGRES_LOG("[postgres_connect] Error: malloc for conninfo failed.");
-        return false;
+    /* Connecting again replaces the old connection instead of leaking it. */
+    if (pg->connection) {
+        PQfinish(pg->connection);
+        pg->connection = NULL;
     }
+    /* The fields are the connection source from now on (see reconnect). */
+    free(pg->conninfo);
+    pg->conninfo = NULL;
 
-    snprintf(conninfo, needed, "dbname=%s user=%s password=%s host=%s port=%s", pg->database, pg->user, pg->password, pg->host, pg->port);
-    pg->connection = PQconnectdb(conninfo);
-    free(conninfo);
+    /* Each value goes to libpq as its own parameter. A conninfo string built
+       with "%s" let a value with spaces add keywords of its own (a password
+       "x dbname=other" picked the database), and broke on such passwords. */
+    const char* keywords[] = { "dbname", "user", "password", "host", "port", NULL };
+    const char* values[]   = { pg->database, pg->user, pg->password, pg->host, pg->port, NULL };
+    pg->connection = PQconnectdbParams(keywords, values, 0);
 
     if (PQstatus(pg->connection) != CONNECTION_OK) {
         POSTGRES_LOG("[postgres_connect] Error: Connection to database failed: %s", PQerrorMessage(pg->connection));
@@ -162,13 +539,23 @@ bool postgres_connect_uri(Postgres* pg, const char* conninfo) {
         return false;
     }
 
+    /* Copied first: `conninfo` may be pg->conninfo itself (reconnect). The
+       string is kept so postgres_reconnect can use it again. */
+    char* copy = string_strdup(conninfo);
+    if (!copy) {
+        POSTGRES_LOG("[postgres_connect_uri] Error: out of memory.");
+        return false;
+    }
+    free(pg->conninfo);
+    pg->conninfo = copy;
+
     /* Close any prior connection so reconnecting never leaks a PGconn. */
     if (pg->connection) {
         PQfinish(pg->connection);
         pg->connection = NULL;
     }
 
-    pg->connection = PQconnectdb(conninfo);
+    pg->connection = PQconnectdb(copy);
     if (PQstatus(pg->connection) != CONNECTION_OK) {
         POSTGRES_LOG("[postgres_connect_uri] Error: Connection failed: %s", PQerrorMessage(pg->connection));
         PQfinish(pg->connection);
@@ -270,6 +657,11 @@ PostgresResult* postgres_query(Postgres* pg, const char* query) {
         }
 
         PostgresResult* pgRes = (PostgresResult*) malloc(sizeof(PostgresResult));
+        if (pgRes == NULL) {
+            /* out of memory: the PGresult would leak and the write crash */
+            PQclear(res);
+            return NULL;
+        }
         pgRes->result = res;
         POSTGRES_LOG("[postgres_query] Query executed successfully: %s", query);
 
@@ -326,6 +718,8 @@ void postgres_deallocate(Postgres* pg) {
             free(pg->port);
             pg->port = NULL;
         }
+        free(pg->conninfo);
+        pg->conninfo = NULL;
         if (pg->connection) {
             PQfinish(pg->connection);
             pg->connection = NULL;
@@ -504,12 +898,14 @@ void postgres_print_result(PostgresResult* pgRes) {
             return;
         }
 
-        // Calculate column widths
+        // Calculate column widths (printf's "%-*s" takes an int width)
         for (int i = 0; i < nFields; i++) {
-            widths[i] = string_length_cstr(PQfname(pgRes->result, i));
+            size_t name_len = string_length_cstr(PQfname(pgRes->result, i));
+            widths[i] = (name_len > INT_MAX) ? INT_MAX : (int)name_len;
 
             for (int j = 0; j < nRows; j++) {
-                int len = string_length_cstr(PQgetvalue(pgRes->result, j, i));
+                size_t value_len = string_length_cstr(PQgetvalue(pgRes->result, j, i));
+                int len = (value_len > INT_MAX) ? INT_MAX : (int)value_len;
                 if (len > widths[i]) {
                     widths[i] = len;
                 }
@@ -560,10 +956,18 @@ int postgres_get_table_row_count(Postgres* pg, const char* tableName) {
         return -1;
     }
 
-    char query[CON_INFO_SIZE];
-    snprintf(query, sizeof(query), "SELECT COUNT(*) from %s", tableName);
+    /* The name goes in as an identifier (see pg_ident), never as raw SQL:
+       "cars; DROP TABLE users" used to run the DROP. */
+    char* table = pg_ident(pg, tableName, 3);
+    char* query = table ? pg_format("SELECT COUNT(*) FROM %s", table) : NULL;
+    free(table);
+    if (!query) {
+        POSTGRES_LOG("[postgres_get_table_row_count] Error: could not build the query.");
+        return -1;
+    }
 
     PostgresResult* pgRes = postgres_query(pg, query);
+    free(query);
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         int rowCount = atoi(PQgetvalue(pgRes->result, 0, 0));
         postgres_clear_result(pgRes);
@@ -598,15 +1002,12 @@ bool postgres_table_exists(Postgres* pg, const char* tableName) {
         return false;
     }
 
-    char query[CON_INFO_SIZE * 2];
-    snprintf(query, sizeof(query), 
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT EXISTS ("
         "SELECT FROM information_schema.tables "
         "WHERE table_schema = 'public' "
-        "AND table_name = '%s'"
+        "AND table_name = $1"
         ")", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         bool exists = strcmp(PQgetvalue(pgRes->result, 0, 0), "t") == 0;
@@ -676,14 +1077,11 @@ PostgresResult* postgres_get_table_schema(Postgres* pg, const char* tableName) {
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 2];
-    snprintf(query, sizeof(query), 
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT column_name, data_type "
         "FROM information_schema.columns "
         "WHERE table_schema = 'public' "
-        "AND table_name = '%s';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "AND table_name = $1;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_schema] Successfully retrieved schema for table '%s'.", tableName);
@@ -752,14 +1150,11 @@ PostgresResult* postgres_get_table_columns(Postgres* pg, const char* tableName) 
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 2];
-    snprintf(query, sizeof(query), 
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT column_name "
         "FROM information_schema.columns "
         "WHERE table_schema = 'public' "
-        "AND table_name = '%s';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "AND table_name = $1;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_columns] Successfully retrieved columns for table '%s'.", tableName);
@@ -793,16 +1188,13 @@ PostgresResult* postgres_get_table_primary_keys(Postgres* pg, const char* tableN
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 2];
-    snprintf(query, sizeof(query), 
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS data_type "
         "FROM pg_index i "
         "JOIN pg_attribute a ON a.attrelid = i.indrelid "
         "AND a.attnum = ANY(i.indkey) "
-        "WHERE i.indrelid = '%s'::regclass "
+        "WHERE i.indrelid = $1::regclass "
         "AND i.indisprimary;", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_primary_keys] Successfully retrieved primary keys for table '%s'.", tableName);
@@ -836,8 +1228,7 @@ PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableN
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 4];
-    snprintf(query, sizeof(query),
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT "
         "    tc.constraint_name, "
         "    kcu.column_name, "
@@ -850,9 +1241,7 @@ PostgresResult* postgres_get_table_foreign_keys(Postgres* pg, const char* tableN
         "      AND tc.table_schema = kcu.table_schema "
         "    JOIN information_schema.constraint_column_usage AS ccu "
         "      ON ccu.constraint_name = tc.constraint_name "
-        "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='%s';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = $1;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_foreign_keys] Successfully retrieved foreign keys for table '%s'.", tableName);
@@ -886,13 +1275,10 @@ PostgresResult* postgres_get_table_indexes(Postgres* pg, const char* tableName) 
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 4];
-    snprintf(query, sizeof(query),
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT indexname, indexdef "
         "FROM pg_indexes "
-        "WHERE tablename='%s';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "WHERE tablename = $1;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_indexes] Successfully retrieved indexes for table '%s'.", tableName);
@@ -926,11 +1312,8 @@ PostgresResult* postgres_get_table_size(Postgres* pg, const char* tableName) {
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 4];
-    snprintf(query, sizeof(query),
-        "SELECT pg_size_pretty(pg_total_relation_size('%s')) AS size;", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+    PostgresResult* pgRes = pg_query_table_param(pg,
+        "SELECT pg_size_pretty(pg_total_relation_size($1::regclass)) AS size;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_size] Successfully retrieved size for table '%s'.", tableName);
@@ -963,13 +1346,10 @@ int postgres_get_table_index_count(Postgres* pg, const char* tableName) {
         return -1;
     }
 
-    char query[CON_INFO_SIZE * 4];
-    snprintf(query, sizeof(query),
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT COUNT(*) AS index_count "
         "FROM pg_indexes "
-        "WHERE tablename='%s';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "WHERE tablename = $1;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         int index_count = atoi(PQgetvalue(pgRes->result, 0, 0));
@@ -1005,14 +1385,11 @@ PostgresResult* postgres_get_column_details(Postgres* pg, const char* tableName)
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 4];
-    snprintf(query, sizeof(query), 
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT column_name, data_type, is_nullable, column_default "
         "FROM information_schema.columns "
         "WHERE table_schema = 'public' "
-        "AND table_name = '%s';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "AND table_name = $1;", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_column_details] Successfully retrieved column details for table '%s'.", tableName);
@@ -1142,10 +1519,29 @@ double postgres_get_value_as_double(const PostgresResult* pgRes, int row, int co
         return fallback;
     }
 
+    /* PostgreSQL always writes '.', but strtod follows the C locale: under a
+       locale with a decimal comma "2.5" read as 2. Swap in the locale's
+       decimal point before parsing. */
+    char local[128];
+    const struct lconv* lc = localeconv();
+    if (lc && lc->decimal_point && strcmp(lc->decimal_point, ".") != 0 && strlen(v) < sizeof(local) &&
+        strlen(lc->decimal_point) == 1) {
+        size_t k = 0;
+        for (; v[k]; ++k) {
+            local[k] = (v[k] == '.') ? lc->decimal_point[0] : v[k];
+        }
+        local[k] = '\0';
+        v = local;
+    }
+
     char* end = NULL;
+    errno = 0;
     double parsed = strtod(v, &end);
     if (end == v) {                   /* no number at all */
         return fallback;
+    }
+    if (errno == ERANGE && (parsed == HUGE_VAL || parsed == -HUGE_VAL)) {
+        return fallback;              /* "1e400": out of range, like the int getter */
     }
     while (*end == ' ' || *end == '\t') {
         end++;
@@ -1175,8 +1571,7 @@ PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableNa
         return NULL;
     }
 
-    char query[CON_INFO_SIZE * 4];
-    snprintf(query, sizeof(query), 
+    PostgresResult* pgRes = pg_query_table_param(pg,
         "SELECT "
         "tc.constraint_name, "
         "tc.constraint_type, "
@@ -1191,9 +1586,7 @@ PostgresResult* postgres_get_table_constraints(Postgres* pg, const char* tableNa
         "ON ccu.constraint_name = tc.constraint_name "
         "LEFT JOIN information_schema.check_constraints AS chk "
         "ON tc.constraint_name = chk.constraint_name "
-        "WHERE tc.table_name = '%s' AND tc.table_schema = 'public';", tableName);
-
-    PostgresResult* pgRes = postgres_query(pg, query);
+        "WHERE tc.table_name = $1 AND tc.table_schema = 'public';", tableName);
 
     if (pgRes && PQresultStatus(pgRes->result) == PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_table_constraints] Successfully retrieved constraints for table '%s'.", tableName);
@@ -1791,18 +2184,36 @@ PostgresResult* postgres_get_result(Postgres* pg) {
 
 /**
  * @brief Sends a request to cancel the currently executed command.
- * 
+ *
+ * Uses PQgetCancel / PQcancel (the deprecated PQrequestCancel is not
+ * thread-safe), so it may be called from another thread than the one
+ * running the query. A successful dispatch does not guarantee the command
+ * is cancelled: it may already have finished.
+ *
  * @param pg Pointer to the Postgres structure representing the connection.
  * @return 0 if the cancellation request was successfully dispatched, or -1 if an error occurred.
+ *         (It used to return PQrequestCancel's 1 / 0, the opposite of this contract.)
  */
-int postgres_request_cancle(Postgres* pg) {
+int postgres_request_cancel(Postgres* pg) {
     if (pg == NULL || pg->connection == NULL) {
-        POSTGRES_LOG("[postgres_request_cancle] Error: pg connection is null.");
+        POSTGRES_LOG("[postgres_request_cancel] Error: pg connection is null.");
         return -1;
     }
 
-    POSTGRES_LOG("[postgres_request_cancle] Sending cancel request to the PostgreSQL server.");
-    return PQrequestCancel(pg->connection);
+    POSTGRES_LOG("[postgres_request_cancel] Sending cancel request to the PostgreSQL server.");
+    PGcancel* cancel = PQgetCancel(pg->connection);
+    if (cancel == NULL) {
+        return -1;
+    }
+    char errbuf[256];
+    int ok = PQcancel(cancel, errbuf, (int)sizeof(errbuf));
+    PQfreeCancel(cancel);
+    return ok ? 0 : -1;
+}
+
+/** @brief Old, misspelled name of postgres_request_cancel (kept for compatibility). */
+int postgres_request_cancle(Postgres* pg) {
+    return postgres_request_cancel(pg);
 }
 
 
@@ -1820,8 +2231,11 @@ bool postgres_reconnect(Postgres* pg) {
     POSTGRES_LOG("[postgres_reconnect] Disconnecting and attempting to reconnect to the database.");
     postgres_disconnect(pg);
 
-    // Attempt to reconnect
-    if (!postgres_connect(pg)) {
+    /* Reconnect the way the last connection was made: with the string kept
+       by postgres_connect_uri, or with the postgres_init fields. (It always
+       used the fields, so a URI connection was closed and never reopened.) */
+    bool ok = pg->conninfo ? postgres_connect_uri(pg, pg->conninfo) : postgres_connect(pg);
+    if (!ok) {
         POSTGRES_LOG("[postgres_reconnect] Error: Reconnection failed.");
         return false;
     }
@@ -1843,12 +2257,41 @@ bool postgres_ping(Postgres* pg) {
         return false;
     }
 
-    char conninfo[CON_INFO_SIZE];
-    snprintf(conninfo, sizeof(conninfo), "dbname=%s user=%s password=%s host=%s port=%s", 
-             pg->database, pg->user, pg->password, pg->host, pg->port);
+    /* Ping with the parameters the live connection really uses (PQconninfo),
+       whichever function made it. Rebuilding a conninfo string from the
+       fields cut long values at 256 bytes (so another server was pinged) and
+       passed NULL fields after postgres_connect_uri. */
+    PQconninfoOption* options = PQconninfo(pg->connection);
+    if (!options) {
+        POSTGRES_LOG("[postgres_ping] Error: could not read the connection parameters.");
+        return false;
+    }
+    size_t count = 0;
+    for (const PQconninfoOption* o = options; o->keyword; o++) {
+        count++;
+    }
+    const char** keywords = (const char**)calloc(count + 1, sizeof(*keywords));
+    const char** values   = (const char**)calloc(count + 1, sizeof(*values));
+    if (!keywords || !values) {
+        free(keywords);
+        free(values);
+        PQconninfoFree(options);
+        return false;
+    }
+    size_t used = 0;
+    for (const PQconninfoOption* o = options; o->keyword; o++) {
+        if (o->val && o->val[0] != '\0') {
+            keywords[used] = o->keyword;
+            values[used]   = o->val;
+            used++;
+        }
+    }
 
     POSTGRES_LOG("[postgres_ping] Pinging the database server.");
-    PGPing ping_status = PQping(conninfo);
+    PGPing ping_status = PQpingParams(keywords, values, 0);
+    free(keywords);
+    free(values);
+    PQconninfoFree(options);
 
     if (ping_status == PQPING_OK) {
         POSTGRES_LOG("[postgres_ping] Database server is reachable.");
@@ -1907,37 +2350,37 @@ bool postgres_create_function(Postgres* pg, const char* functionName, const char
         return false;
     }
 
-    // First, drop the function if it already exists
-    char dropQuery[4096];
-    snprintf(dropQuery, sizeof(dropQuery), "DROP FUNCTION IF EXISTS %s(%s);", functionName, paramDefinitions);
-    POSTGRES_LOG("[postgres_create_function] Executing: %s", dropQuery);
-    
-    PGresult *dropRes = PQexec(pg->connection, dropQuery);
-    if (PQresultStatus(dropRes) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_create_function] Error: Failed to drop existing function %s", PQerrorMessage(pg->connection));
-        PQclear(dropRes);
+    /* The return type and parameter list are SQL by nature; they are only
+       checked so they cannot end the statement and run more SQL. */
+    if (!pg_fragment_ok(returnType, strlen(returnType)) || !pg_fragment_ok(paramDefinitions, strlen(paramDefinitions))) {
+        POSTGRES_LOG("[postgres_create_function] Error: returnType or paramDefinitions is not a single SQL fragment.");
         return false;
     }
-    PQclear(dropRes);
 
-    // Now, create the new function
-    char createQuery[4096];
-    snprintf(createQuery, sizeof(createQuery), "CREATE FUNCTION %s(%s) RETURNS %s AS $$ %s $$ LANGUAGE %s;",
-        functionName, paramDefinitions, returnType, functionBody, language);
-    
-    POSTGRES_LOG("[postgres_create_function] Executing: %s", createQuery);
-    PGresult *createRes = PQexec(pg->connection, createQuery);
+    /* Dollar-quote the body with a tag that does not occur in it, so a body
+       containing "$$" cannot end the literal early. */
+    char tag[32] = "$$";
+    for (unsigned n = 0; strstr(functionBody, tag) != NULL; n++) {
+        snprintf(tag, sizeof(tag), "$cstd%u$", n);
+    }
 
-    if (PQresultStatus(createRes) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_create_function] Error: Function creation failed %s", PQerrorMessage(pg->connection));
-        PQclear(createRes);
+    char* name = pg_ident(pg, functionName, 3);
+    char* lang = pg_ident(pg, language, 1);
+    char* sql = NULL;
+    if (name && lang) {
+        /* DROP and CREATE go out in one PQexec, which runs them as a single
+           implicit transaction: if CREATE fails, the old function is kept. */
+        sql = pg_format("DROP FUNCTION IF EXISTS %s(%s); CREATE FUNCTION %s(%s) RETURNS %s AS %s %s %s LANGUAGE %s;",
+            name, paramDefinitions, name, paramDefinitions, returnType, tag, functionBody, tag, lang);
+    }
+    free(name);
+    free(lang);
 
+    if (!pg_run_command(pg, sql, "postgres_create_function")) {
         return false;
     }
 
     POSTGRES_LOG("[postgres_create_function] Function created successfully.");
-    PQclear(createRes);
-
     return true;
 }
 
@@ -1964,19 +2407,17 @@ bool postgres_drop_function(Postgres* pg, const char* functionName, const char* 
         return false;
     }
 
-    char dropQuery[4096];
-    snprintf(dropQuery, sizeof(dropQuery), "DROP FUNCTION IF EXISTS %s(%s);", functionName, paramDefinitions);
-    POSTGRES_LOG("[postgres_drop_function] Executing: %s", dropQuery);
-
-    PGresult *dropRes = PQexec(pg->connection, dropQuery);
-    if (PQresultStatus(dropRes) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_drop_function] Error: Failed to drop function %s", PQerrorMessage(pg->connection));
-        PQclear(dropRes);
-
+    if (!pg_fragment_ok(paramDefinitions, strlen(paramDefinitions))) {
+        POSTGRES_LOG("[postgres_drop_function] Error: paramDefinitions is not a single SQL fragment.");
         return false;
     }
 
-    PQclear(dropRes);
+    char* name = pg_ident(pg, functionName, 3);
+    char* sql = name ? pg_format("DROP FUNCTION IF EXISTS %s(%s);", name, paramDefinitions) : NULL;
+    free(name);
+    if (!pg_run_command(pg, sql, "postgres_drop_function")) {
+        return false;
+    }
     POSTGRES_LOG("[postgres_drop_function] Function dropped successfully.");
 
     return true;
@@ -2005,20 +2446,21 @@ bool postgres_create_view(Postgres* pg, const char* viewName, const char* query)
         return false;
     }
 
-    char createQuery[4096];
-    snprintf(createQuery, sizeof(createQuery), "CREATE VIEW %s AS %s;", viewName, query);
-    POSTGRES_LOG("[postgres_create_view] Executing: %s", createQuery);
-
-    PGresult *res = PQexec(pg->connection, createQuery);
-
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_create_view] Error: View creation failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
-
+    /* The defining query is SQL by design; it is only checked so that it
+       cannot end the CREATE VIEW and run another statement. A trailing ';'
+       is allowed and dropped. */
+    size_t queryLen = pg_trim_statement_end(query);
+    if (queryLen == 0 || !pg_fragment_ok(query, queryLen)) {
+        POSTGRES_LOG("[postgres_create_view] Error: query is not a single SQL statement.");
         return false;
     }
 
-    PQclear(res);
+    char* name = pg_ident(pg, viewName, 3);
+    char* sql = name ? pg_format("CREATE VIEW %s AS %.*s;", name, (int)queryLen, query) : NULL;
+    free(name);
+    if (!pg_run_command(pg, sql, "postgres_create_view")) {
+        return false;
+    }
     POSTGRES_LOG("[postgres_create_view] View created successfully.");
 
     return true;
@@ -2046,18 +2488,12 @@ bool postgres_drop_view(Postgres* pg, const char* viewName) {
         return false;
     }
 
-    char dropQuery[4096];
-    snprintf(dropQuery, sizeof(dropQuery), "DROP VIEW IF EXISTS %s;", viewName);
-    POSTGRES_LOG("[postgres_drop_view] Executing: %s", dropQuery);
-
-    PGresult *res = PQexec(pg->connection, dropQuery);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_drop_view] Error: View drop failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
+    char* name = pg_ident(pg, viewName, 3);
+    char* sql = name ? pg_format("DROP VIEW IF EXISTS %s;", name) : NULL;
+    free(name);
+    if (!pg_run_command(pg, sql, "postgres_drop_view")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_drop_view] View dropped successfully.");
 
     return true;
@@ -2089,21 +2525,49 @@ bool postgres_create_trigger(Postgres* pg, const char* triggerName, const char* 
         return false;
     }
 
-    char createQuery[4096];
-    snprintf(createQuery, sizeof(createQuery),
-        "CREATE TRIGGER %s %s %s ON %s FOR EACH ROW EXECUTE FUNCTION %s();",
-        triggerName, timing, event, tableName, function);
-    
-    POSTGRES_LOG("[postgres_create_trigger] Executing: %s", createQuery);
-
-    PGresult *res = PQexec(pg->connection, createQuery);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_create_trigger] Error: Trigger creation failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
+    /* timing is one of three keywords; the event list ("INSERT OR UPDATE OF
+       col") is checked so it cannot end the statement. */
+    static const char* const timings[] = { "BEFORE", "AFTER", "INSTEAD OF" };
+    const char* timingSql = NULL;
+    for (size_t t = 0; t < sizeof(timings) / sizeof(timings[0]) && !timingSql; t++) {
+        size_t k = 0;
+        for (;;) {
+            char a = timing[k];
+            if (a >= 'a' && a <= 'z') {
+                a = (char)(a - 'a' + 'A');
+            }
+            if (a == '\0' || a != timings[t][k]) {
+                break;
+            }
+            k++;
+        }
+        if (timing[k] == '\0' && timings[t][k] == '\0') {
+            timingSql = timings[t];
+        }
+    }
+    if (!timingSql) {
+        POSTGRES_LOG("[postgres_create_trigger] Error: timing must be BEFORE, AFTER or INSTEAD OF.");
+        return false;
+    }
+    if (event[0] == '\0' || !pg_fragment_ok(event, strlen(event))) {
+        POSTGRES_LOG("[postgres_create_trigger] Error: event is not a single SQL fragment.");
         return false;
     }
 
-    PQclear(res);
+    char* trigger = pg_ident(pg, triggerName, 1);
+    char* table   = pg_ident(pg, tableName, 3);
+    char* func    = pg_ident(pg, function, 3);
+    char* sql = NULL;
+    if (trigger && table && func) {
+        sql = pg_format("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW EXECUTE FUNCTION %s();",
+            trigger, timingSql, event, table, func);
+    }
+    free(trigger);
+    free(table);
+    free(func);
+    if (!pg_run_command(pg, sql, "postgres_create_trigger")) {
+        return false;
+    }
     POSTGRES_LOG("[postgres_create_trigger] Trigger created successfully.");
 
     return true;
@@ -2132,20 +2596,14 @@ bool postgres_drop_trigger(Postgres* pg, const char* triggerName, const char* ta
         return false;
     }
 
-    char dropQuery[4096];
-    snprintf(dropQuery, sizeof(dropQuery), "DROP TRIGGER IF EXISTS %s ON %s;", triggerName, tableName);
-    
-    POSTGRES_LOG("[postgres_drop_trigger] Executing: %s", dropQuery);
-
-    PGresult *res = PQexec(pg->connection, dropQuery);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_drop_trigger] Error: Trigger drop failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
-
+    char* trigger = pg_ident(pg, triggerName, 1);
+    char* table   = pg_ident(pg, tableName, 3);
+    char* sql = (trigger && table) ? pg_format("DROP TRIGGER IF EXISTS %s ON %s;", trigger, table) : NULL;
+    free(trigger);
+    free(table);
+    if (!pg_run_command(pg, sql, "postgres_drop_trigger")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_drop_trigger] Trigger dropped successfully.");
 
     return true;
@@ -2173,20 +2631,12 @@ bool postgres_create_schema(Postgres* pg, const char* schemaName) {
         return false;
     }
 
-    char query[1024];
-    snprintf(query, sizeof(query), "CREATE SCHEMA %s;", schemaName);
-
-    POSTGRES_LOG("[postgres_create_schema] Executing: %s", query);
-
-    PGresult *res = PQexec(pg->connection, query);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_create_schema] Error: Schema creation failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
-
+    char* schema = pg_ident(pg, schemaName, 1);
+    char* sql = schema ? pg_format("CREATE SCHEMA %s;", schema) : NULL;
+    free(schema);
+    if (!pg_run_command(pg, sql, "postgres_create_schema")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_create_schema] Schema created successfully.");
 
     return true;
@@ -2215,19 +2665,12 @@ bool postgres_drop_schema(Postgres* pg, const char* schemaName, bool cascade) {
         return false;
     }
 
-    char query[1024];
-    snprintf(query, sizeof(query), "DROP SCHEMA %s%s;", schemaName, cascade ? " CASCADE" : "");
-
-    POSTGRES_LOG("[postgres_drop_schema] Executing: %s", query);
-
-    PGresult *res = PQexec(pg->connection, query);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_drop_schema] Error: Schema drop failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
+    char* schema = pg_ident(pg, schemaName, 1);
+    char* sql = schema ? pg_format("DROP SCHEMA %s%s;", schema, cascade ? " CASCADE" : "") : NULL;
+    free(schema);
+    if (!pg_run_command(pg, sql, "postgres_drop_schema")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_drop_schema] Schema dropped successfully.");
 
     return true;
@@ -2339,19 +2782,17 @@ bool postgres_clear_prepared_statement(Postgres* pg, const char* stmtName) {
         return false;
     }
 
-    char query[256];
-    snprintf(query, sizeof(query), "DEALLOCATE %s;", stmtName);
-
     POSTGRES_LOG("[postgres_clear_prepared_statement] Deallocating statement: %s", stmtName);
 
-    PGresult *res = PQexec(pg->connection, query);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_clear_prepared_statement] Error: Statement deallocation failed %s", PQerrorMessage(pg->connection));
-        PQclear(res);
+    /* postgres_prepare_statement hands the name to PQprepare, which uses it
+       verbatim, so it is quoted exactly here: DEALLOCATE with the bare name
+       folded "MyStmt" to mystmt and never found it. */
+    char* name = pg_ident_exact(pg, stmtName);
+    char* sql = name ? pg_format("DEALLOCATE %s;", name) : NULL;
+    free(name);
+    if (!pg_run_command(pg, sql, "postgres_clear_prepared_statement")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_clear_prepared_statement] Statement %s deallocated successfully.", stmtName);
     return true;
 }
@@ -2378,19 +2819,14 @@ bool postgres_savepoint(Postgres* pg, const char* savepointName) {
         return false;
     }
 
-    char query[256];
-    snprintf(query, sizeof(query), "SAVEPOINT %s;", savepointName);
-
     POSTGRES_LOG("[postgres_savepoint] Creating savepoint: %s", savepointName);
 
-    PGresult* res = PQexec(pg->connection, query);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_savepoint] Error: Failed to create savepoint %s", PQerrorMessage(pg->connection));
-        PQclear(res);
+    char* name = pg_ident(pg, savepointName, 1);
+    char* sql = name ? pg_format("SAVEPOINT %s;", name) : NULL;
+    free(name);
+    if (!pg_run_command(pg, sql, "postgres_savepoint")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_savepoint] Savepoint %s created successfully.", savepointName);
     return true;
 }
@@ -2416,19 +2852,14 @@ bool postgres_rollback_to_savepoint(Postgres* pg, const char* savepointName) {
         return false;
     }
 
-    char query[256];
-    snprintf(query, sizeof(query), "ROLLBACK TO SAVEPOINT %s;", savepointName);
-
     POSTGRES_LOG("[postgres_rollback_to_savepoint] Rolling back to savepoint: %s", savepointName);
 
-    PGresult* res = PQexec(pg->connection, query);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        POSTGRES_LOG("[postgres_rollback_to_savepoint] Error: Failed to rollback to savepoint %s\n", PQerrorMessage(pg->connection));
-        PQclear(res);
+    char* name = pg_ident(pg, savepointName, 1);
+    char* sql = name ? pg_format("ROLLBACK TO SAVEPOINT %s;", name) : NULL;
+    free(name);
+    if (!pg_run_command(pg, sql, "postgres_rollback_to_savepoint")) {
         return false;
     }
-
-    PQclear(res);
     POSTGRES_LOG("[postgres_rollback_to_savepoint] Rolled back to savepoint %s successfully.", savepointName);
     return true;
 }
@@ -2471,8 +2902,15 @@ bool postgres_send_async_query(Postgres* pg, const char* query) {
  * This function retrieves the result of a previously sent asynchronous query. It should be called repeatedly
  * until the result is fully available.
  *
+ * Call it in a loop until it returns NULL. NULL means either that every
+ * result has been read or that a statement failed; in the failure case the
+ * remaining results are drained first (so the next postgres_send_async_query is
+ * not refused with "another command is already in progress") and
+ * postgres_get_last_error tells what went wrong (it is "" after a clean end).
+ *
  * @param pg Pointer to the Postgres structure representing the connection.
- * @return A pointer to a PostgresResult structure containing the result, or NULL if an error occurs or no result is ready yet.
+ * @return A pointer to a PostgresResult structure containing the result, or NULL when there are no more
+ *         results or a statement failed.
  */
 PostgresResult* postgres_get_async_result(Postgres* pg) {
     if (pg == NULL || pg->connection == NULL) {
@@ -2487,6 +2925,13 @@ PostgresResult* postgres_get_async_result(Postgres* pg) {
     if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
         POSTGRES_LOG("[postgres_get_async_result] Error: Query failed %s", PQerrorMessage(pg->connection));
         PQclear(res);
+        /* Drain the rest (up to the terminating NULL): returning while
+           results were pending left the connection busy, and the next
+           postgres_send_async_query failed. */
+        PGresult* rest;
+        while ((rest = PQgetResult(pg->connection)) != NULL) {
+            PQclear(rest);
+        }
         return NULL;
     }
 
@@ -2494,6 +2939,10 @@ PostgresResult* postgres_get_async_result(Postgres* pg) {
     if (pgRes == NULL) {
         POSTGRES_LOG("[postgres_get_async_result] Error: Failed to allocate memory for PostgresResult.");
         PQclear(res);
+        PGresult* rest;
+        while ((rest = PQgetResult(pg->connection)) != NULL) {
+            PQclear(rest);
+        }
         return NULL;
     }
 
@@ -2522,45 +2971,91 @@ bool postgres_copy_from_csv(Postgres* pg, const char* tableName, const char* csv
         return false;
     }
 
-    char query[1024];
-    snprintf(query, sizeof(query), "COPY %s FROM STDIN WITH CSV HEADER DELIMITER '%c';", tableName, delimiter[0]);
+    if (delimiter[0] == '\0') {
+        POSTGRES_LOG("[postgres_copy_from_csv] Error: Empty delimiter.");
+        return false;
+    }
+
+    FILE* file = pg_fopen_utf8(csvFilePath, "rb");
+    if (file == NULL) {
+        POSTGRES_LOG("[postgres_copy_from_csv] Error: Could not open CSV file %s", csvFilePath);
+        return false;
+    }
+
+    char delim[2] = { delimiter[0], '\0' };
+    char* delimLiteral = PQescapeLiteral(pg->connection, delim, 1);
+    if (!delimLiteral) {
+        POSTGRES_LOG("[postgres_copy_from_csv] Error: Could not escape the delimiter: %s", PQerrorMessage(pg->connection));
+        fclose(file);
+        return false;
+    }
+    char* table = pg_ident(pg, tableName, 3);
+    char* sql = table ? pg_format("COPY %s FROM STDIN WITH CSV HEADER DELIMITER %s;", table, delimLiteral) : NULL;
+    free(table);
+    PQfreemem(delimLiteral);
+    if (!sql) {
+        fclose(file);
+        return false;
+    }
 
     POSTGRES_LOG("[postgres_copy_from_csv] Executing COPY command to load data into table: %s", tableName);
 
-    PGresult* res = PQexec(pg->connection, query);
+    PGresult* res = PQexec(pg->connection, sql);
+    free(sql);
     if (PQresultStatus(res) != PGRES_COPY_IN) {
         POSTGRES_LOG("[postgres_copy_from_csv] Error: COPY operation failed %s", PQerrorMessage(pg->connection));
         PQclear(res);
+        fclose(file);
         return false;
     }
+    PQclear(res);
 
-    FILE* file = fopen(csvFilePath, "r");
-    if (file == NULL) {
-        POSTGRES_LOG("[postgres_copy_from_csv] Error: Could not open CSV file %s", csvFilePath);
-        PQclear(res);
-        return false;
-    }
-
-    char buffer[1024];
-    while (fgets(buffer, sizeof(buffer), file) != NULL) {
-        if (PQputCopyData(pg->connection, buffer, strlen(buffer)) != 1) {
+    const char* failure = NULL;
+    char buffer[8192];
+    size_t n;
+    while ((n = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        if (PQputCopyData(pg->connection, buffer, (int)n) != 1) {
             POSTGRES_LOG("[postgres_copy_from_csv] Error: Failed to send CSV data to server %s", PQerrorMessage(pg->connection));
-            fclose(file);
-            PQclear(res);
-            return false;
+            failure = "client failed to send the CSV data";
+            break;
         }
+    }
+    if (!failure && ferror(file)) {
+        POSTGRES_LOG("[postgres_copy_from_csv] Error: Could not read CSV file %s", csvFilePath);
+        failure = "client failed to read the CSV file";
     }
     fclose(file);
 
-    if (PQputCopyEnd(pg->connection, NULL) != 1) {
+    /* End the COPY. A non-NULL message makes the server abort it. */
+    if (PQputCopyEnd(pg->connection, failure) != 1) {
         POSTGRES_LOG("[postgres_copy_from_csv] Error: Failed to complete COPY operation %s", PQerrorMessage(pg->connection));
-        PQclear(res);
-        return false;
+        if (!failure) {
+            failure = "COPY end failed";
+        }
     }
 
-    PQclear(res);
-    POSTGRES_LOG("[postgres_copy_from_csv] Data successfully copied from CSV file %s to table %s", csvFilePath, tableName);
-    return true;
+    /* The server reports the real outcome of the COPY (a bad row, a type
+       error, a constraint violation) only in the final result, so all
+       results must be read; otherwise the error would be silently dropped
+       by the next query. */
+    bool ok = (failure == NULL);
+    PGresult* r;
+    while ((r = PQgetResult(pg->connection)) != NULL) {
+        ExecStatusType st = PQresultStatus(r);
+        if (st != PGRES_COMMAND_OK) {
+            POSTGRES_LOG("[postgres_copy_from_csv] Error: COPY failed: %s", PQresultErrorMessage(r));
+            ok = false;
+        }
+        PQclear(r);
+        if (st == PGRES_COPY_IN || st == PGRES_COPY_OUT || st == PGRES_COPY_BOTH) {
+            break;   /* the COPY could not be ended; do not spin on it */
+        }
+    }
+
+    if (ok) {
+        POSTGRES_LOG("[postgres_copy_from_csv] Data successfully copied from CSV file %s to table %s", csvFilePath, tableName);
+    }
+    return ok;
 }
 
 
@@ -2712,12 +3207,12 @@ PostgresResult* postgres_query_with_time(Postgres* pg, const char* query, double
         return NULL;
     }
 
-    clock_t start = clock();
+    double start = pg_now_seconds();
     PostgresResult* res = postgres_query(pg, query);
-    clock_t end   = clock();
+    double end   = pg_now_seconds();
 
     if (out_seconds) {
-        *out_seconds = (double)(end - start) / (double)CLOCKS_PER_SEC;
+        *out_seconds = end - start;
     }
 
     return res;

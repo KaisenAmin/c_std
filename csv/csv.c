@@ -207,7 +207,15 @@ static void parse_csv_line(const char *line, char delimiter, CsvRow *row) {
 
     for (size_t i = 0; line[i] != '\0'; ++i) {
         if (line[i] == '"') {
-            inQuotes = !inQuotes;
+            /* A quote opens quoting only at the start of a field; inside an
+               unquoted field it is literal (5'10" is a height, not the
+               start of a quoted section that swallows the delimiters). */
+            if (inQuotes) {
+                inQuotes = false;
+            }
+            else if (i == start) {
+                inQuotes = true;
+            }
         } 
         else if (line[i] == delimiter && !inQuotes) {
             /* Append the field [start, i) straight from the line buffer with a
@@ -221,6 +229,54 @@ static void parse_csv_line(const char *line, char delimiter, CsvRow *row) {
     csvp_row_append_cell_n(row, line + start, strlen(line + start));
 
     CSV_LOG("[parse_csv_line]: Function end.");
+}
+
+
+/* Reads one line of any length (without its line break) into a malloc'd
+ * string; NULL at end of input or on OOM. The fixed 1024-byte buffer used
+ * before returned the rest of a longer line as an extra "line", which became
+ * a separate, cut-off row. */
+static char* csvp_read_line_alloc(FileReader *reader) {
+    if (reader->mode == READ_UNICODE && reader->encoding == READ_ENCODING_UTF16) {
+        /* decoded by the reader; lines of UTF-16 CSV are read in one go */
+        size_t cap = 1 << 16;
+        char *line = (char*)malloc(cap);
+        if (!line) {
+            return NULL;
+        }
+        if (!file_reader_read_line(line, cap, reader)) {
+            free(line);
+            return NULL;
+        }
+        return line;
+    }
+    size_t cap = 256, len = 0;
+    char *line = (char*)malloc(cap);
+    if (!line) {
+        return NULL;
+    }
+    int ch;
+    while ((ch = fgetc(reader->file_reader)) != EOF && ch != '\n') {
+        if (len + 1 >= cap) {
+            char *grown = (char*)realloc(line, cap * 2);
+            if (!grown) {
+                free(line);
+                return NULL;
+            }
+            line = grown;
+            cap *= 2;
+        }
+        line[len++] = (char)ch;
+    }
+    if (ch == EOF && len == 0) {
+        free(line);
+        return NULL;
+    }
+    if (len > 0 && line[len - 1] == '\r') {
+        len--;
+    }
+    line[len] = '\0';
+    return line;
 }
 
 
@@ -247,15 +303,22 @@ void csv_file_read(CsvFile *file, const char *filename) {
         return;
     }
 
-    char buffer[BUFFER_SIZE] = {0};
-
     CSV_LOG("[csv_file_read]: Reading lines from file.");
-    while (file_reader_read_line(buffer, BUFFER_SIZE, fr)) {
+    char *line;
+    while ((line = csvp_read_line_alloc(fr)) != NULL) {
+        if (line[0] == '\0') {
+            free(line);   /* blank line: no row, as in csv_file_load_from_string */
+            continue;
+        }
         CsvRow *row = csv_row_create();
-        buffer[strcspn(buffer, "\r\n")] = 0; 
-        CSV_LOG("[csv_file_read]: Read line: %s", buffer);
+        if (!row) {
+            free(line);
+            break;
+        }
+        CSV_LOG("[csv_file_read]: Read line: %s", line);
 
-        parse_csv_line(buffer, file->delimiter, row);
+        parse_csv_line(line, file->delimiter, row);
+        free(line);
         CSV_LOG("[csv_file_read]: Appending row to file.");
         csv_file_append_row(file, row);
     }
@@ -296,16 +359,23 @@ void csv_file_write(const CsvFile *file, const char *filename) {
     }
 
     CSV_LOG("[csv_file_write]: Writing rows to file.");
+    /* Raw writes: file_writer_write_fmt formats into a 2048-byte buffer, so
+       longer cells were cut to 2047 bytes (and flushed after every cell). */
+    char delim = file->delimiter;
     for (size_t i = 0; i < file->size; ++i) {
         CsvRow *row = file->rows[i];
         for (size_t j = 0; j < row->size; ++j) {
-            file_writer_write_fmt(fw, "%s", row->cells[j]);
+            const char *cell = row->cells[j] ? row->cells[j] : "";
+            size_t n = strlen(cell);
+            if (n) {
+                file_writer_write((void*)cell, 1, n, fw);
+            }
             if (j < row->size - 1) {
-                file_writer_write_fmt(fw, "%c", file->delimiter);
+                file_writer_write(&delim, 1, 1, fw);
             }
         }
 
-        file_writer_write_fmt(fw, "\n");
+        file_writer_write((void*)"\n", 1, 1, fw);
         CSV_LOG("[csv_file_write]: Finished writing row %zu.", i);
     }
 
@@ -325,11 +395,18 @@ void csv_file_write(const CsvFile *file, const char *filename) {
  * @param file The CsvFile to which the row will be appended.
  * @param row The CsvRow to append to the file.
  */
-void csv_file_append_row(CsvFile *file, CsvRow *row) {
+bool csv_file_append_row(CsvFile *file, CsvRow *row) {
     CSV_LOG("[csv_file_append_row]: Function start.");
     if (!file || !row) {
         CSV_LOG("[csv_file_append_row]: Error - NULL parameter passed.");
-        return;
+        return false;
+    }
+    for (size_t i = 0; i < file->size; ++i) {
+        if (file->rows[i] == row) {
+            /* already owned: storing it twice meant a double free later */
+            CSV_LOG("[csv_file_append_row]: Error - row already belongs to this file.");
+            return false;
+        }
     }
 
     if (file->size >= file->capacity) {
@@ -338,8 +415,12 @@ void csv_file_append_row(CsvFile *file, CsvRow *row) {
         CsvRow **newRows = (CsvRow**)realloc(file->rows, newCapacity * sizeof(CsvRow *));
         
         if (!newRows) {
+            /* The row is handed over even on failure (it is destroyed
+               here): it used to be dropped, and every caller passing a
+               freshly built row leaked it. */
             CSV_LOG("[csv_file_append_row]: Error - Unable to allocate memory for new rows.");
-            return;
+            csv_row_destroy(row);
+            return false;
         }
 
         file->rows = newRows;
@@ -350,6 +431,7 @@ void csv_file_append_row(CsvFile *file, CsvRow *row) {
     file->rows[file->size++] = row;
 
     CSV_LOG("[csv_file_append_row]: Function end.");
+    return true;
 }
 
 
@@ -458,20 +540,20 @@ CsvRow* csv_row_read_next(FileReader *reader, char delimiter) {
         return NULL;
     }
 
-    char buffer[BUFFER_SIZE];
-    if (!file_reader_read_line(buffer, BUFFER_SIZE, reader)) {
+    char *line = csvp_read_line_alloc(reader);
+    if (!line) {
         CSV_LOG("[csv_row_read_next]: No more lines to read or error occurred.");
         return NULL; // No more lines to read or error occurred
     }
-
-    buffer[strcspn(buffer, "\r\n")] = 0;
-    CSV_LOG("[csv_row_read_next]: Read line: %s", buffer);
+    CSV_LOG("[csv_row_read_next]: Read line: %s", line);
 
     CsvRow *row = csv_row_create();
     if (!row) {
+        free(line);
         return NULL;
     }
-    parse_csv_line(buffer, delimiter, row);
+    parse_csv_line(line, delimiter, row);
+    free(line);
 
     CSV_LOG("[csv_row_read_next]: Function end.");
     return row;
@@ -492,26 +574,48 @@ CsvRow* csv_row_read_next(FileReader *reader, char delimiter) {
 void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colData) {
     CSV_LOG("[csv_file_insert_column]: Function start.");
 
-    if (!file || !colData || colIndex > colData->size) {
-        CSV_LOG("[csv_file_insert_column]: Error - Invalid parameters (file, colData, or colIndex).");
+    if (!file || !colData) {
+        CSV_LOG("[csv_file_insert_column]: Error - Invalid parameters (file or colData).");
+        return;
+    }
+
+    /* The new column may go anywhere up to just past the widest row. (The old
+       check compared colIndex with the number of values, which said nothing
+       about the rows, so a short row was written past its cells array.) */
+    size_t maxWidth = 0;
+    for (size_t i = 0; i < file->size; ++i) {
+        if (file->rows[i] && file->rows[i]->size > maxWidth) {
+            maxWidth = file->rows[i]->size;
+        }
+    }
+    if (colIndex > maxWidth) {
+        CSV_LOG("[csv_file_insert_column]: Error - colIndex %zu is past the widest row (%zu).", colIndex, maxWidth);
         return;
     }
 
     for (size_t i = 0; i < file->size; ++i) {
         CsvRow *row = file->rows[i];
+        if (!row) {
+            continue;
+        }
         CSV_LOG("[csv_file_insert_column]: Processing row %zu.", i);
-        char *cellValue = NULL;
 
-        if (i < colData->size) {
-            cellValue = string_strdup(colData->cells[i]);
-            if (cellValue == NULL) {
-                CSV_LOG("[csv_file_insert_column]: Error - Memory allocation failed for cell value in row %zu.", i);
-                continue;
-            }
+        /* Rows without a value get an empty cell (never NULL: the rest of the
+           module, e.g. find_rows/export/column_sum, expects real strings). */
+        const char *src = (i < colData->size && colData->cells[i]) ? colData->cells[i] : "";
+        char *cellValue = string_strdup(src);
+        if (cellValue == NULL) {
+            CSV_LOG("[csv_file_insert_column]: Error - Memory allocation failed for cell value in row %zu.", i);
+            continue;
         }
 
-        if (row->size == row->capacity) {
-            size_t newCapacity = row->capacity == 0 ? 1 : row->capacity * 2;
+        /* Room for padding a short row out to colIndex plus the new cell. */
+        size_t needed = (row->size > colIndex ? row->size : colIndex) + 1;
+        if (needed > row->capacity) {
+            size_t newCapacity = row->capacity ? row->capacity * 2 : 1;
+            if (newCapacity < needed) {
+                newCapacity = needed;
+            }
             CSV_LOG("[csv_file_insert_column]: Resizing row %zu cells to new capacity %zu.", i, newCapacity);
             char **newCells = (char**)realloc(row->cells, newCapacity * sizeof(char *));
 
@@ -522,6 +626,23 @@ void csv_file_insert_column(CsvFile *file, size_t colIndex, const CsvRow *colDat
             }
             row->cells = newCells;
             row->capacity = newCapacity;
+        }
+
+        /* A jagged row shorter than colIndex is padded with empty cells so the
+           new value lands in the requested column. */
+        bool padded = true;
+        while (row->size < colIndex) {
+            char *empty = string_strdup("");
+            if (!empty) {
+                padded = false;
+                break;
+            }
+            row->cells[row->size++] = empty;
+        }
+        if (!padded) {
+            CSV_LOG("[csv_file_insert_column]: Error - Memory allocation failed while padding row %zu.", i);
+            free(cellValue);
+            continue;
         }
 
         // Shift cells to the right to make space for the new cell
@@ -577,6 +698,15 @@ void csv_file_set_header(CsvFile *file, CsvRow *header) {
     if (!file || !header) {
         CSV_LOG("[csv_file_set_header]: Error - Null parameters passed.");
         return;
+    }
+    if (file->size > 0 && file->rows[0] == header) {
+        return;   /* already the header: destroying it first left a dangling row */
+    }
+    for (size_t i = 1; i < file->size; ++i) {
+        if (file->rows[i] == header) {
+            CSV_LOG("[csv_file_set_header]: Error - the row already belongs to this file.");
+            return;
+        }
     }
 
     if (file->size > 0) {
@@ -718,7 +848,9 @@ bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *forma
 
     CSV_LOG("[csv_validate_cell_format]: Validating cell at index %zu.", index);
     char* cell = row->cells[index];
-    char buffer[256];
+    if (!cell) {
+        return false;
+    }
 
     {
         const char* p = format;
@@ -752,10 +884,20 @@ bool csv_validate_cell_format(const CsvRow *row, size_t index, const char *forma
     }
 
     CSV_LOG("[csv_validate_cell_format]: Formatting the cell value with the given format.");
-    snprintf(buffer, sizeof(buffer), format, cell);
+    /* sized buffer: a fixed 256 bytes made every longer cell "invalid" */
+    int need = snprintf(NULL, 0, format, cell);
+    if (need < 0) {
+        return false;
+    }
+    char* buffer = (char*)malloc((size_t)need + 1);
+    if (!buffer) {
+        return false;
+    }
+    snprintf(buffer, (size_t)need + 1, format, cell);
 
     CSV_LOG("[csv_validate_cell_format]: Comparing formatted cell value with actual cell value.");
     bool result = strcmp(cell, buffer) == 0;
+    free(buffer);
 
     CSV_LOG("[csv_validate_cell_format]: Validation result: %s.", result ? "Valid" : "Invalid");
     CSV_LOG("[csv_validate_cell_format]: Function end.");
@@ -782,11 +924,17 @@ void csv_file_concatenate(CsvFile *file1, const CsvFile *file2) {
     }
 
     CSV_LOG("[csv_file_concatenate]: Concatenating file2 into file1.");
-    for (size_t i = 0; i < file2->size; ++i) {
+    /* count fixed up front: with file1 == file2 the bound grew with every
+       appended row and the loop never ended */
+    size_t count = file2->size;
+    for (size_t i = 0; i < count; ++i) {
         CsvRow *row2 = file2->rows[i];
         CSV_LOG("[csv_file_concatenate]: Processing row %zu from file2.", i);
 
-        CsvRow *newRow = csv_row_create();  
+        CsvRow *newRow = csv_row_create();
+        if (!newRow) {
+            return;
+        }
         CSV_LOG("[csv_file_concatenate]: Created new row for file1.");
 
         for (size_t j = 0; j < row2->size; ++j) {
@@ -918,6 +1066,43 @@ static bool json_append(char** json, size_t* cap, size_t* len, const char* s) {
  * csv_file_destroy(f);
  * @endcode
  */
+/* Appends `s` as the inside of a JSON string: quotes, backslashes and control
+   characters are escaped (cells used to be inserted verbatim, so a quote or
+   newline in the data produced invalid JSON). */
+static bool csvp_json_append_escaped(char** json, size_t* cap, size_t* len, const char* s) {
+    char tmp[8];
+    for (const unsigned char* p = (const unsigned char*)s; *p; ++p) {
+        const char* piece = NULL;
+        switch (*p) {
+            case '"':  piece = "\\\""; break;
+            case '\\': piece = "\\\\"; break;
+            case '\n': piece = "\\n"; break;
+            case '\r': piece = "\\r"; break;
+            case '\t': piece = "\\t"; break;
+            case '\b': piece = "\\b"; break;
+            case '\f': piece = "\\f"; break;
+            default:
+                if (*p < 0x20) {
+                    snprintf(tmp, sizeof tmp, "\\u%04x", *p);
+                    piece = tmp;
+                }
+                break;
+        }
+        if (piece) {
+            if (!json_append(json, cap, len, piece)) {
+                return false;
+            }
+        }
+        else {
+            char one[2] = { (char)*p, '\0' };
+            if (!json_append(json, cap, len, one)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 char* csv_export_to_json(const CsvFile *file) {
     CSV_LOG("[csv_export_to_json]: Function start.");
     if (!file) {
@@ -943,22 +1128,15 @@ char* csv_export_to_json(const CsvFile *file) {
         }
 
         for (size_t j = 0; j < row->size; ++j) {
-            const char *cell = row->cells[j];
-            // Size each line precisely: field name (up to 32 digits) + cell length + 12 fixed chars.
-            size_t cell_len = strlen(cell);
-            size_t line_cap = cell_len + 64;
-            char *line = (char*)malloc(line_cap);
-            if (!line) { 
-                free(json); 
-                return NULL; 
-            }
-            snprintf(line, line_cap, "    \"field%zu\": \"%s\"%s\n", j, cell, (j < row->size - 1) ? "," : "");
-            bool ok = json_append(&json, &cap, &len, line);
-            free(line);
-
-            if (!ok) { 
-                free(json); 
-                return NULL; 
+            const char *cell = row->cells[j] ? row->cells[j] : "";
+            char head[64];
+            snprintf(head, sizeof head, "    \"field%zu\": \"", j);
+            bool ok = json_append(&json, &cap, &len, head) &&
+                      csvp_json_append_escaped(&json, &cap, &len, cell) &&
+                      json_append(&json, &cap, &len, (j < row->size - 1) ? "\",\n" : "\"\n");
+            if (!ok) {
+                free(json);
+                return NULL;
             }
         }
         if (!json_append(&json, &cap, &len, (i < file->size - 1) ? "  },\n" : "  }\n")) {
@@ -1002,9 +1180,9 @@ void csv_file_load_from_string(CsvFile *file, const char *data) {
         const char *line_end = strchr(p, '\n');
         size_t line_len = line_end ? (size_t)(line_end - p) : strlen(p);
 
-        /* Skip wholly-empty lines (matches csv_file_read which also
-           appends an empty row only when the line had content). */
-        if (line_len == 0) {
+        /* Skip wholly-empty lines, a lone "\r" (blank CRLF line) included;
+           csv_file_read does the same. */
+        if (line_len == 0 || (line_len == 1 && p[0] == '\r')) {
             if (!line_end) {
                 break;
             }
@@ -1181,30 +1359,38 @@ void csv_file_remove_column(CsvFile *file, size_t columnIndex) {
 }
 
 
-/* qsort thunk for csv_file_sort — read the index + direction from a
-   small fixed struct passed via the (POSIX) qsort_s isn't portable, so
-   we use file-static state instead. Not thread-safe, but neither is the
-   rest of this library. */
-static size_t g_sort_col   = 0;
-static int    g_sort_sign  = 1;   /* +1 ascending, -1 descending */
-
-static int csvp_sort_cmp(const void *a, const void *b) {
-    CsvRow * const *pa = (CsvRow * const *)a;
-    CsvRow * const *pb = (CsvRow * const *)b;
-    const CsvRow *ra = *pa;
-    const CsvRow *rb = *pb;
-    
+/* Comparison for csv_file_sort with its column / direction passed in (the
+   file-static globals used with qsort before were shared by all threads). */
+static int csvp_sort_cmp(const CsvRow *ra, const CsvRow *rb, size_t col, int sign) {
     /* Treat missing cells as empty string for ordering purposes. */
-    const char *va = (ra && g_sort_col < ra->size) ? ra->cells[g_sort_col] : "";
-    const char *vb = (rb && g_sort_col < rb->size) ? rb->cells[g_sort_col] : "";
-    return g_sort_sign * strcmp(va ? va : "", vb ? vb : "");
+    const char *va = (ra && col < ra->size) ? ra->cells[col] : "";
+    const char *vb = (rb && col < rb->size) ? rb->cells[col] : "";
+    return sign * strcmp(va ? va : "", vb ? vb : "");
+}
+
+/* Stable bottom-up merge sort of rows[0..n) using tmp[0..n). */
+static void csvp_merge_sort(CsvRow **rows, CsvRow **tmp, size_t n, size_t col, int sign) {
+    for (size_t width = 1; width < n; width *= 2) {
+        for (size_t lo = 0; lo < n; lo += 2 * width) {
+            size_t mid = (lo + width < n) ? lo + width : n;
+            size_t hi  = (lo + 2 * width < n) ? lo + 2 * width : n;
+            size_t i = lo, j = mid, k = lo;
+            while (i < mid && j < hi) {
+                tmp[k++] = (csvp_sort_cmp(rows[j], rows[i], col, sign) < 0) ? rows[j++] : rows[i++];
+            }
+            while (i < mid) { tmp[k++] = rows[i++]; }
+            while (j < hi)  { tmp[k++] = rows[j++]; }
+        }
+        memcpy(rows, tmp, n * sizeof(CsvRow*));
+    }
 }
 
 
 /**
  * @brief Sort the rows of `file` by the string value in `columnIndex`.
  *
- * In-place. Uses `qsort`; not stable across equal keys. Missing cells
+ * In-place, stable (rows with equal keys keep their order) and
+ * thread-safe (no shared state). Missing cells
  * are treated as empty strings for ordering purposes. Comparison is by
  * `strcmp`, so `"10"` < `"2"` — for numeric sort, project or pad the
  * column first.
@@ -1228,9 +1414,13 @@ void csv_file_sort(CsvFile *file, size_t columnIndex, bool ascending, bool skipH
         return;
     }
 
-    g_sort_col  = columnIndex;
-    g_sort_sign = ascending ? 1 : -1;
-    qsort(file->rows + start, n, sizeof(CsvRow*), csvp_sort_cmp);
+    CsvRow **tmp = (CsvRow**)malloc(n * sizeof(CsvRow*));
+    if (!tmp) {
+        CSV_LOG("[csv_file_sort]: out of memory.");
+        return;
+    }
+    csvp_merge_sort(file->rows + start, tmp, n, columnIndex, ascending ? 1 : -1);
+    free(tmp);
 
     CSV_LOG("[csv_file_sort]: sorted %zu row(s) on column %zu (asc=%d).", n, columnIndex, (int)ascending);
 }
@@ -1614,6 +1804,16 @@ char *csv_file_export_to_string_rfc4180(const CsvFile *file) {
 
     for (size_t i = 0; i < file->size; ++i) {
         CsvRow *row = file->rows[i];
+        if (row->size == 1 && (!row->cells[0] || row->cells[0][0] == '\0')) {
+            /* A lone empty field would be an empty line, which the reader
+               skips as "no record": write it as "" so the row survives a
+               write/read round trip. */
+            if (!csvp_buf_append_n(&out, &cap, &len, "\"\"\n", 3)) {
+                free(out);
+                return NULL;
+            }
+            continue;
+        }
         for (size_t j = 0; j < row->size; ++j) {
             const char *cell = row->cells[j] ? row->cells[j] : "";
             if (!csvp_append_quoted_field(&out, &cap, &len, cell, file->delimiter)) {
@@ -1728,6 +1928,7 @@ void csv_file_load_from_string_rfc4180(CsvFile *file, const char *data) {
     }
 
     bool in_quotes = false;
+    bool at_field_start = true;   /* a quote opens a quoted field only here */
     size_t chars_in_record = 0;   /* input chars consumed for the current record */
     const char *p = data;
 
@@ -1757,16 +1958,20 @@ void csv_file_load_from_string_rfc4180(CsvFile *file, const char *data) {
             continue;
         }
 
-        if (c == '"') {                      /* opening quote */
+        if (c == '"' && at_field_start) {    /* opening quote */
             in_quotes = true;
+            at_field_start = false;
             p += 1;
             chars_in_record += 1;
             continue;
         }
+        /* A quote inside an unquoted field (5'10") is literal: it used to
+           open quoting and swallow the rest of the record and the next. */
         if (c == delim) {                    /* field separator */
             csvp_row_append_cell_n(row, field, flen);
             flen = 0;
             field[0] = '\0';
+            at_field_start = true;
             p += 1;
             chars_in_record += 1;
             continue;
@@ -1787,6 +1992,7 @@ void csv_file_load_from_string_rfc4180(CsvFile *file, const char *data) {
             flen = 0;
             field[0] = '\0';
             chars_in_record = 0;
+            at_field_start = true;
             p += adv;
             continue;
         }
@@ -1794,6 +2000,7 @@ void csv_file_load_from_string_rfc4180(CsvFile *file, const char *data) {
         if (!csvp_field_push(&field, &fcap, &flen, c)) {   /* ordinary char */
             goto done;
         }
+        at_field_start = false;
         p += 1;
         chars_in_record += 1;
     }

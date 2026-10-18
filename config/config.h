@@ -25,8 +25,8 @@ extern "C" {
 /* #define CONFIG_LOGGING_ENABLE */
 
 #ifdef CONFIG_LOGGING_ENABLE
-    #define CONFIG_LOG(fmt, ...) \
-        do { fprintf(stderr, "[CONFIG LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define CONFIG_LOG(...) \
+        do { fprintf(stderr, "[CONFIG LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define CONFIG_LOG(...) do { } while (0)
 #endif
@@ -152,7 +152,7 @@ bool              config_next_entry                   (ConfigIterator* iterator,
 /* Validation / callbacks                                             */
 /* ------------------------------------------------------------------ */
 
-void              config_validate_structure           (const ConfigFile* config, const ConfigSection* expected_structure, size_t structure_size);
+bool              config_validate_structure           (const ConfigFile* config, const ConfigSection* expected_structure, size_t structure_size);
 void              config_register_modification_callback(ConfigFile* config, void (*callback)(const char* section, const char* key, const char* value));
 
 

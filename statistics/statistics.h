@@ -23,8 +23,8 @@ extern "C" {
 /* #define STATISTICS_LOGGING_ENABLE */
 
 #ifdef STATISTICS_LOGGING_ENABLE
-    #define STATISTICS_LOG(fmt, ...) \
-        do { fprintf(stderr, "[STATISTICS LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define STATISTICS_LOG(...) \
+        do { fprintf(stderr, "[STATISTICS LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define STATISTICS_LOG(...) do { } while (0)
 #endif
@@ -109,8 +109,16 @@ LinearRegression  statistics_linear_regression(const double* x, const double* y,
 /* Mode (generic over element type)                                   */
 /* ------------------------------------------------------------------ */
 
+/* Elements are equal when their bytes are equal (memcmp). For values whose
+   bytes do not decide equality - strings (char* pointers), doubles where
+   0.0 == -0.0, structs with padding - use the _by variants with a qsort-style
+   comparator (0 = equal). */
+typedef int (*StatisticsCompareFunc)(const void* a, const void* b);
+
 void*             statistics_mode             (void* data, size_t n, size_t size);
 void*             statistics_multimode        (void* data, size_t n, size_t size, size_t* mode_count);
+void*             statistics_mode_by          (void* data, size_t n, size_t size, StatisticsCompareFunc compare);
+void*             statistics_multimode_by     (void* data, size_t n, size_t size, StatisticsCompareFunc compare, size_t* mode_count);
 
 
 #ifdef __cplusplus

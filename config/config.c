@@ -7,9 +7,41 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include "config.h"
 #include "../string/std_string.h"
 #include "../fmt/fmt.h"
+#include "../crypto/crypto.h"   /* authenticated encryption for config_*_encrypted_value */
+
+#if defined(_MSC_VER)
+/* MSVC has no <strings.h>; its CRT spells this _stricmp. */
+#define strcasecmp _stricmp
+#else
+#include <strings.h>
+#endif
+
+
+/* Reentrant strtok: the same splitting, with the position kept in *save
+   instead of strtok's hidden global state (which broke a caller's own strtok
+   loop and raced between threads on POSIX). */
+static char* cfg_strtok_r(char* s, const char* delim, char** save) {
+    char* p = s ? s : *save;
+    if (p == NULL) {
+        return NULL;
+    }
+    p += strspn(p, delim);
+    if (*p == '\0') {
+        *save = p;
+        return NULL;
+    }
+    char* end = p + strcspn(p, delim);
+    if (*end != '\0') {
+        *end++ = '\0';
+    }
+    *save = end;
+    return p;
+}
 
 
 static char *trim_whitespace(char *str) {
@@ -37,6 +69,18 @@ static char *trim_whitespace(char *str) {
 }
 
 
+/* Marker of values written by config_set_encrypted_value. */
+#define CFG_ENC_PREFIX     "enc:v1:"
+#define CFG_ENC_PREFIX_LEN (sizeof(CFG_ENC_PREFIX) - 1)
+
+static int cfg_hex_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+/* Legacy single-byte XOR, used only to read values written by old versions. */
 static void xor_encrypt_decrypt(const char *input, char *output, char key, size_t size) {
     if (!input || !output) {
         CONFIG_LOG("[xor_encrypt_decrypt] Error: NULL input or output provided to xor_encrypt_decrypt.\n");
@@ -62,6 +106,52 @@ static bool cfg_file_add_section(ConfigFile* config, ConfigSection* sec) {
     }
     config->sections[config->section_count++] = sec;
     return true;
+}
+
+static ConfigSection* cfg_find_section(const ConfigFile* config, const char* name) {
+    for (size_t i = 0; i < config->section_count; ++i) {
+        if (config->sections[i]->section_name && strcmp(config->sections[i]->section_name, name) == 0) {
+            return config->sections[i];
+        }
+    }
+    return NULL;
+}
+
+/* The section comment set with config_set_comment, as INI comment lines
+   (each line gets "; " unless it already starts with ';' or '#', so a
+   multi-line comment cannot turn into keys or sections). Written right
+   after the [section] header, so reading the file back keeps it in its
+   section. Calls emit(piece, ctx) for each piece; false stops. */
+static bool cfg_emit_section_comment(const char* comment, bool (*emit)(const char*, void*), void* ctx) {
+    const char* p = comment;
+    while (p && *p) {
+        size_t n = strcspn(p, "\r\n");
+        char* line = (char*)malloc(n + 1);
+        if (!line) {
+            return false;
+        }
+        memcpy(line, p, n);
+        line[n] = '\0';
+        const char* t = line;
+        while (*t == ' ' || *t == '\t') {
+            t++;
+        }
+        bool ok = (*t == ';' || *t == '#') ? emit(t, ctx) : (emit("; ", ctx) && emit(t, ctx));
+        ok = ok && emit("\n", ctx);
+        free(line);
+        if (!ok) {
+            return false;
+        }
+        p += n;
+        while (*p == '\r' || *p == '\n') {
+            p++;
+        }
+    }
+    return true;
+}
+
+static bool cfg_emit_to_writer(const char* s, void* ctx) {
+    return s[0] == '\0' || file_writer_write_fmt((FileWriter*)ctx, "%s", s) > 0;
 }
 
 /* Append `entry` to a section's entry array, growing it GEOMETRICALLY (the old
@@ -116,94 +206,29 @@ ConfigFile *config_create(const char *filename) {
     config->modification_callback = NULL;  // init: previously read uninitialized
     CONFIG_LOG("[config_create] Initialized ConfigFile structure.");
 
-    char line[1024];
-    ConfigSection *current_section = NULL;
-
-    while (file_reader_read_line(line, sizeof(line), fr)) {
-        String* str = string_create(line);
-        string_trim(str);
-
-        const char *trimmed = string_c_str(str);
-        char *writable_trimmed = string_strdup(trimmed);
-        string_deallocate(str);
-
-        ConfigEntry entry = {0};
-        entry.isComment = false;
-        entry.key = NULL;
-        entry.value = NULL;
-
-        if (writable_trimmed[0] == '#' || writable_trimmed[0] == ';') {
-            entry.isComment = true;
-            entry.value = string_strdup(writable_trimmed);
-            CONFIG_LOG("[config_create] Comment found: %s", entry.value);
-        }
-        else if (writable_trimmed[0] == '[') {
-            size_t raw_len = strlen(writable_trimmed);
-            if (raw_len < 2 || writable_trimmed[raw_len - 1] != ']') {
-                CONFIG_LOG("[config_create] Malformed section header: %s", writable_trimmed);
-                free(writable_trimmed);
-                continue;  // skip malformed [section] line
-            }
-
-            current_section = (ConfigSection*) malloc(sizeof(ConfigSection));
-            if (!current_section) {
-                CONFIG_LOG("[config_create] Error: Memory allocation failed for ConfigSection.");
-                free(writable_trimmed);
-                file_reader_close(fr);
-                config_deallocate(config);
-                return NULL;
-            }
-
-            size_t section_name_length = raw_len - 2;  // Exclude '[' and ']'
-            current_section->section_name = (char*) malloc(section_name_length + 1);
-            if (!current_section->section_name) {
-                free(current_section);
-                free(writable_trimmed);
-                file_reader_close(fr);
-                config_deallocate(config);
-                return NULL;
-            }
-            memcpy(current_section->section_name, writable_trimmed + 1, section_name_length);
-            current_section->section_name[section_name_length] = '\0';
-            current_section->entries = NULL;
-            current_section->entry_count = 0;
-            current_section->entry_capacity = 0;
-            current_section->comment = NULL;  // init: previously read uninitialized by config_set_comment
-
-            if (!cfg_file_add_section(config, current_section)) {
-                free(current_section->section_name);
-                free(current_section);
-                current_section = NULL;
-            }
-            else {
-                CONFIG_LOG("[config_create] New section added: [%s]", current_section->section_name);
-            }
-        }
-        else if (current_section && strchr(writable_trimmed, '=')) {
-            char *key = strtok(writable_trimmed, "=");
-            char *value = strtok(NULL, "");
-            entry.key = string_strdup(trim_whitespace(key));
-            entry.value = string_strdup(trim_whitespace(value));
-            CONFIG_LOG("[config_create] Key-Value pair found: %s = %s", entry.key, entry.value);
-        }
-
-        if (current_section && (entry.isComment || entry.key)) {
-            if (!cfg_section_add_entry(current_section, entry)) {
-                /* OOM: couldn't store the entry; release its strings. */
-                free(entry.key);
-                free(entry.value);
-            }
-        }
-        else {
-            /* The entry could not be attached to a section — e.g. a comment line
-               that appears before the first [section] header. Free its strdup'd
-               fields here so they don't leak (entry.key is NULL in that case,
-               and free(NULL) is a no-op). */
-            free(entry.key);
-            free(entry.value);
-        }
-
-        free(writable_trimmed);
+    /* The whole file goes through config_load_string, so a file and a string
+       parse identically: the old line loop read 1023-byte pieces (a long
+       value was split and its tail parsed as a new key), stored "key=" with
+       a NULL value that vanished on save, and took "=value" as key "value". */
+    char* data = NULL;
+    size_t dataLen = 0;
+    if (!file_reader_read_all(fr, &data, &dataLen)) {
+        CONFIG_LOG("[config_create] Error: Unable to read file '%s'.", filename);
+        file_reader_close(fr);
+        config_deallocate(config);
+        return NULL;
+    }
+    const char* text = data;
+    if (dataLen >= 3 && (unsigned char)text[0] == 0xEF && (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) {
+        text += 3;   /* UTF-8 byte-order mark */
+    }
+    bool parsed = config_load_string(config, text);
+    free(data);
+    if (!parsed) {
+        CONFIG_LOG("[config_create] Error: Out of memory while parsing '%s'.", filename);
+        file_reader_close(fr);
+        config_deallocate(config);
+        return NULL;
     }
 
     CONFIG_LOG("[config_create] Configuration successfully loaded from '%s'.", filename);
@@ -242,6 +267,9 @@ void config_save(const ConfigFile *config, const char *filename) {
         
         CONFIG_LOG("[config_save] Writing section [%s].", section->section_name);
         file_writer_write_fmt(fw, "[%s]\n", section->section_name);
+        if (section->comment) {
+            cfg_emit_section_comment(section->comment, cfg_emit_to_writer, fw);   /* was never written */
+        }
 
         for (size_t j = 0; j < section->entry_count; j++) {
             ConfigEntry *entry = &section->entries[j];
@@ -339,6 +367,14 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         CONFIG_LOG("[config_set_value] Error: Value is NULL.");
         return;
     }
+    /* config_save writes these verbatim, so a line break (or '=' / '[' in a
+       key) would let the text create new keys and sections when the file is
+       read back: "bob\n[admin]\nis_admin=true" injected an [admin] section. */
+    if (strpbrk(section, "\r\n[]") || strpbrk(key, "\r\n=") || strpbrk(value, "\r\n") ||
+        key[0] == '\0' || key[0] == '[' || key[0] == '#' || key[0] == ';') {
+        CONFIG_LOG("[config_set_value] Error: Section, key or value would break the INI format.");
+        return;
+    }
 
     // Find or create the section
     ConfigSection *sec = NULL;
@@ -360,9 +396,9 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
         sec->entries = NULL;
         sec->entry_count = 0;
         sec->entry_capacity = 0;
-        sec->comment = NULL;   
+        sec->comment = NULL;
 
-        if (!cfg_file_add_section(config, sec)) {
+        if (!sec->section_name || !cfg_file_add_section(config, sec)) {
             free(sec->section_name);
             free(sec);
             CONFIG_LOG("[config_set_value] Error: Memory allocation failed for sections array.");
@@ -375,8 +411,13 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
     for (size_t j = 0; j < sec->entry_count; ++j) {
         if (sec->entries[j].key && strcmp(sec->entries[j].key, key) == 0) {
             CONFIG_LOG("[config_set_value] Updating existing key '%s' in section '%s'.", key, section);
+            char* copy = string_strdup(value);
+            if (!copy) {
+                CONFIG_LOG("[config_set_value] Error: Memory allocation failed for value.");
+                return;   /* the old value stays */
+            }
             free(sec->entries[j].value);
-            sec->entries[j].value = string_strdup(value);
+            sec->entries[j].value = copy;
 
             CONFIG_LOG("[config_set_value] Key '%s' updated with value '%s'.", key, value);
             
@@ -393,7 +434,7 @@ void config_set_value(ConfigFile *config, const char *section, const char *key, 
     newEntry.key = string_strdup(key);         // Allocate and set key
     newEntry.value = string_strdup(value);     // Allocate and set value
     
-    if (!cfg_section_add_entry(sec, newEntry)) {
+    if (!newEntry.key || !newEntry.value || !cfg_section_add_entry(sec, newEntry)) {
         free(newEntry.key);
         free(newEntry.value);
         CONFIG_LOG("[config_set_value] Error: Memory allocation failed for new entry.");
@@ -677,9 +718,12 @@ int config_get_int(const ConfigFile *config, const char *section, const char *ke
         CONFIG_LOG("[config_get_int] Found value='%s' for key='%s'.", value, key);
 
         char *end;
+        errno = 0;
         long int_val = strtol(value, &end, 10);
 
-        if (end != value && *end == '\0') {
+        /* out of int range (long is 64-bit on Linux, 32-bit on Windows) is
+           invalid too: the (int) cast used to wrap "4294967297" to 1 */
+        if (end != value && *end == '\0' && errno != ERANGE && int_val >= INT_MIN && int_val <= INT_MAX) {
             CONFIG_LOG("[config_get_int] Successfully parsed integer value '%ld'.", int_val);
             return (int)int_val; 
         }
@@ -896,7 +940,8 @@ bool config_next_entry(ConfigIterator *iterator, const char **section, const cha
  * @brief Reloads the configuration from the file, updating the in-memory representation.
  *
  * This function reloads the configuration from the original file, discarding any changes that have been made in memory.
- * The in-memory configuration is replaced with the newly loaded data.
+ * The in-memory configuration is replaced with the newly loaded data; the registered modification callback and the
+ * default section are kept. On failure (file missing or unreadable) *config_ptr is left unchanged.
  *
  * @param config_ptr Pointer to the pointer of the ConfigFile structure. The structure will be updated with the new data.
  */
@@ -917,8 +962,13 @@ void config_reload(ConfigFile **config_ptr) {
     }
 
     CONFIG_LOG("[config_reload] Successfully reloaded configuration from '%s'.", (*config_ptr)->filename);
-    config_deallocate(*config_ptr); 
-    *config_ptr = new_config; 
+    /* The callback and default section belong to the ConfigFile, not to
+       the file contents: keep them (config_clear does too). */
+    new_config->modification_callback = (*config_ptr)->modification_callback;
+    new_config->default_section = (*config_ptr)->default_section;
+    (*config_ptr)->default_section = NULL;
+    config_deallocate(*config_ptr);
+    *config_ptr = new_config;
 
     CONFIG_LOG("[config_reload] Configuration reloaded successfully.");
 }
@@ -949,20 +999,22 @@ void config_register_modification_callback(ConfigFile *config, void (*callback)(
  * @brief Validates the structure of the configuration against an expected template.
  *
  * This function checks the configuration to ensure it conforms to a specified structure template.
- * It validates the presence of required sections and optionally their keys. If any required section
- * is missing, a warning is printed.
+ * It checks that every section named in the template is present.
  *
  * @param config Pointer to the ConfigFile structure.
  * @param expected_structure Pointer to an array of ConfigSection structures representing the expected configuration structure.
  * @param structure_size The number of elements in the expected_structure array.
+ * @return true if every expected section is present; false if one is missing or on NULL arguments
+ *         (the result used to be only logged, with logging disabled).
  */
-void config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size) {
+bool config_validate_structure(const ConfigFile *config, const ConfigSection *expected_structure, size_t structure_size) {
     CONFIG_LOG("[config_validate_structure] Validating configuration structure.");
 
-    if (!config || !expected_structure) {
+    if (!config || (!expected_structure && structure_size > 0)) {
         CONFIG_LOG("[config_validate_structure] Error: Invalid arguments provided.");
-        return;
+        return false;
     }
+    bool all_found = true;
 
     for (size_t i = 0; i < structure_size; ++i) {
         const ConfigSection *expected_sec = &expected_structure[i];
@@ -970,7 +1022,7 @@ void config_validate_structure(const ConfigFile *config, const ConfigSection *ex
 
         CONFIG_LOG("[config_validate_structure] Validating section: '%s'.", expected_sec->section_name);
         for (size_t j = 0; j < config->section_count; ++j) {
-            if (strcmp(config->sections[j]->section_name, expected_sec->section_name) == 0) {
+            if (expected_sec->section_name && strcmp(config->sections[j]->section_name, expected_sec->section_name) == 0) {
                 section_found = true;
                 CONFIG_LOG("[config_validate_structure] Section '%s' found.", expected_sec->section_name);
                 // Additional validation for keys and values can be added here
@@ -980,9 +1032,11 @@ void config_validate_structure(const ConfigFile *config, const ConfigSection *ex
 
         if (!section_found) {
             CONFIG_LOG("[config_validate_structure] Warning: Section '%s' is missing in the configuration.", expected_sec->section_name);
+            all_found = false;
         }
     }
     CONFIG_LOG("[config_validate_structure] Configuration structure validation completed.");
+    return all_found;
 }
 
 
@@ -1003,10 +1057,12 @@ void config_validate_structure(const ConfigFile *config, const ConfigSection *ex
 char **config_get_array(const ConfigFile *config, const char *section, const char *key, size_t *array_size) {
     CONFIG_LOG("[config_get_array] Retrieving array for key '%s' in section '%s'.", key, section);
 
+    if (array_size) {
+        *array_size = 0;
+    }
     if (!config || !section || !key || !array_size) {
         CONFIG_LOG("[config_get_array] Error: Invalid arguments provided.");
-        *array_size = 0;
-        return NULL;
+        return NULL;   /* (it wrote through array_size even when that was NULL) */
     }
 
     const char *value = config_get_value(config, section, key);
@@ -1031,7 +1087,8 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
     }
 
     char *value_copy = string_strdup(value);
-    char *token = strtok(value_copy, ",");
+    char *save = NULL;
+    char *token = value_copy ? cfg_strtok_r(value_copy, ",", &save) : NULL;
     size_t idx = 0;
 
     while (token) {
@@ -1039,7 +1096,7 @@ char **config_get_array(const ConfigFile *config, const char *section, const cha
         char *trimmed = trim_whitespace(token);
         array[idx++] = string_strdup(trimmed);
         CONFIG_LOG("[config_get_array] Added element '%s' to the array.", trimmed);
-        token = strtok(NULL, ",");
+        token = cfg_strtok_r(NULL, ",", &save);
     }
     free(value_copy);
     // Adjust to actual count (the comma-count is an upper bound; empty tokens
@@ -1126,13 +1183,57 @@ char *config_get_encrypted_value(const ConfigFile *config, const char *section, 
     }
 
     size_t value_size = strlen(encrypted_value);
+
+    /* Current format: "enc:v1:" + hex(crypto_password_encrypt blob) -- AES-256-GCM
+       with a PBKDF2-SHA256 key; a wrong key fails authentication (NULL). */
+    if (value_size >= CFG_ENC_PREFIX_LEN && strncmp(encrypted_value, CFG_ENC_PREFIX, CFG_ENC_PREFIX_LEN) == 0) {
+        const char *hex = encrypted_value + CFG_ENC_PREFIX_LEN;
+        size_t hex_len = value_size - CFG_ENC_PREFIX_LEN;
+        if (hex_len == 0 || hex_len % 2 != 0) {
+            CONFIG_LOG("[config_get_encrypted_value] Error: Malformed encrypted value for key '%s'.", key);
+            return NULL;
+        }
+        size_t blob_len = hex_len / 2;
+        uint8_t *blob = (uint8_t*) malloc(blob_len);
+        if (!blob) {
+            return NULL;
+        }
+        for (size_t i = 0; i < blob_len; ++i) {
+            int hi = cfg_hex_value(hex[2 * i]);
+            int lo = cfg_hex_value(hex[2 * i + 1]);
+            if (hi < 0 || lo < 0) {
+                CONFIG_LOG("[config_get_encrypted_value] Error: Malformed encrypted value for key '%s'.", key);
+                free(blob);
+                return NULL;
+            }
+            blob[i] = (uint8_t)((hi << 4) | lo);
+        }
+        size_t plain_len = 0;
+        uint8_t *plain = crypto_password_decrypt(blob, blob_len, encryption_key, &plain_len);
+        free(blob);
+        if (!plain) {
+            CONFIG_LOG("[config_get_encrypted_value] Error: Wrong key or corrupted value for '%s'.", key);
+            return NULL;
+        }
+        char *result = (char*) malloc(plain_len + 1);
+        if (result) {
+            memcpy(result, plain, plain_len);
+            result[plain_len] = '\0';
+        }
+        crypto_secure_zero(plain, plain_len);
+        free(plain);
+        return result;
+    }
+
+    /* Legacy values written by older versions (single-byte XOR, kept only so
+       existing files can still be read; it offers no security). */
     char *decrypted_value = (char*) malloc(value_size + 1);
     if (!decrypted_value) {
         CONFIG_LOG("[config_get_encrypted_value] Error: Memory allocation failed.");
         return NULL;
     }
 
-    CONFIG_LOG("[config_get_encrypted_value] Decrypting value for key '%s'.", key);
+    CONFIG_LOG("[config_get_encrypted_value] Decrypting legacy value for key '%s'.", key);
     xor_encrypt_decrypt(encrypted_value, decrypted_value, encryption_key[0], value_size);
     decrypted_value[value_size] = '\0';
 
@@ -1161,28 +1262,38 @@ void config_set_encrypted_value(ConfigFile *config, const char *section, const c
         return;
     }
     
+    /* AES-256-GCM with a PBKDF2-SHA256 key derived from encryption_key (random
+       salt and nonce per value), stored hex-encoded so the INI file stays text.
+       The old single-byte XOR was trivially reversible and could produce bytes
+       ('\n', '=', NUL) that broke the file, so values did not even round-trip. */
     size_t value_size = strlen(value);
-    char *encrypted_value = (char*) malloc(value_size + 1);
-    if (!encrypted_value) {
-        CONFIG_LOG("[config_set_encrypted_value] Error: Memory allocation failed.");
+    size_t blob_len = 0;
+    uint8_t *blob = crypto_password_encrypt((const uint8_t*)value, value_size, encryption_key, 0, &blob_len);
+    if (!blob) {
+        CONFIG_LOG("[config_set_encrypted_value] Error: Encryption failed.");
         return;
     }
 
-    CONFIG_LOG("[config_set_encrypted_value] Encrypting value.");
-    xor_encrypt_decrypt(value, encrypted_value, encryption_key[0], value_size);
-    encrypted_value[value_size] = '\0';
+    char *encoded = (char*) malloc(CFG_ENC_PREFIX_LEN + 2 * blob_len + 1);
+    if (!encoded) {
+        CONFIG_LOG("[config_set_encrypted_value] Error: Memory allocation failed.");
+        free(blob);
+        return;
+    }
+    static const char hexdigits[] = "0123456789abcdef";
+    memcpy(encoded, CFG_ENC_PREFIX, CFG_ENC_PREFIX_LEN);
+    for (size_t i = 0; i < blob_len; ++i) {
+        encoded[CFG_ENC_PREFIX_LEN + 2 * i] = hexdigits[blob[i] >> 4];
+        encoded[CFG_ENC_PREFIX_LEN + 2 * i + 1] = hexdigits[blob[i] & 0x0F];
+    }
+    encoded[CFG_ENC_PREFIX_LEN + 2 * blob_len] = '\0';
+    free(blob);
 
+    config_set_value(config, section, key, encoded);
+    free(encoded);
     CONFIG_LOG("[config_set_encrypted_value] Encrypted value set for key '%s' in section '%s'.", key, section);
-    config_set_value(config, section, key, encrypted_value);
-    
-    free(encrypted_value);
-    CONFIG_LOG("[config_set_encrypted_value] Encryption process completed and memory freed.");
 }
 
-
-/* =================================================================== */
-/* Extensions — counts, listing, merge, clear, in-memory serialize     */
-/* =================================================================== */
 
 /**
  * @brief Return the number of sections currently in the config.
@@ -1470,6 +1581,18 @@ static bool s_append(char** buf, size_t* len, size_t* cap, const char* s) {
 }
 
 
+typedef struct {
+    char**  buf;
+    size_t* len;
+    size_t* cap;
+} CfgBufSink;
+
+static bool cfg_emit_to_buffer(const char* s, void* ctx) {
+    CfgBufSink* sink = (CfgBufSink*)ctx;
+    return s_append(sink->buf, sink->len, sink->cap, s);
+}
+
+
 /**
  * @brief Serialize the configuration to a heap-allocated INI-format string.
  *
@@ -1495,36 +1618,42 @@ char* config_to_string(const ConfigFile *config) {
     }
     out[0] = '\0';
 
-    char line[1024];
+    /* Appended piece by piece: a 1024-byte line buffer truncated long
+       values and dropped their '\n', gluing the next key onto them. */
     for (size_t i = 0; i < config->section_count; ++i) {
         ConfigSection *sec = config->sections[i];
         if (!sec || !sec->section_name) {
             continue;
         }
 
-        snprintf(line, sizeof(line), "[%s]\n", sec->section_name);
-        if (!s_append(&out, &len, &cap, line)) { 
-            free(out); 
-            return NULL; 
+        if (!s_append(&out, &len, &cap, "[") || !s_append(&out, &len, &cap, sec->section_name) ||
+            !s_append(&out, &len, &cap, "]\n")) {
+            free(out);
+            return NULL;
+        }
+        if (sec->comment) {
+            CfgBufSink sink = { &out, &len, &cap };
+            if (!cfg_emit_section_comment(sec->comment, cfg_emit_to_buffer, &sink)) {
+                free(out);
+                return NULL;
+            }
         }
 
         for (size_t j = 0; j < sec->entry_count; ++j) {
             ConfigEntry *e = &sec->entries[j];
+            bool ok = true;
             if (e->isComment) {
                 if (e->value) {
-                    snprintf(line, sizeof(line), "%s\n", e->value);
-                    if (!s_append(&out, &len, &cap, line)) { 
-                        free(out); 
-                        return NULL; 
-                    }
+                    ok = s_append(&out, &len, &cap, e->value) && s_append(&out, &len, &cap, "\n");
                 }
-            } 
+            }
             else if (e->key && e->value) {
-                snprintf(line, sizeof(line), "%s=%s\n", e->key, e->value);
-                if (!s_append(&out, &len, &cap, line)) { 
-                    free(out); 
-                    return NULL; 
-                }
+                ok = s_append(&out, &len, &cap, e->key) && s_append(&out, &len, &cap, "=") &&
+                     s_append(&out, &len, &cap, e->value) && s_append(&out, &len, &cap, "\n");
+            }
+            if (!ok) {
+                free(out);
+                return NULL;
             }
         }
         if (!s_append(&out, &len, &cap, "\n")) { 
@@ -1535,10 +1664,6 @@ char* config_to_string(const ConfigFile *config) {
     return out;
 }
 
-
-/* =================================================================== */
-/* In-memory construction + string parsing + typed setters             */
-/* =================================================================== */
 
 /**
  * @brief Create an empty ConfigFile with no backing file.
@@ -1579,8 +1704,8 @@ ConfigFile *config_create_empty(void) {
  * The inverse of `config_to_string`: reads `data` as INI-format text and
  * appends its sections, keys and comments to `config`. Lines are split on
  * `\n` with a trailing `\r` (from CRLF) tolerated, and there is NO
- * line-length limit (unlike the file path, which reads in 1024-byte
- * chunks). Parsing rules match `config_create`:
+ * line-length limit. `config_create` parses its file with this function,
+ * so the rules are the same for both:
  *   - `#` or `;` lines become comment entries (only inside a section).
  *   - `[name]` opens a section; a malformed `[name` (no `]`) is skipped.
  *   - `key = value` splits on the FIRST `=`; both sides are trimmed; the
@@ -1606,6 +1731,9 @@ bool config_load_string(ConfigFile *config, const char *data) {
 
     ConfigSection *current_section = NULL;
     const char *p = data;
+    if ((unsigned char)p[0] == 0xEF && (unsigned char)p[1] == 0xBB && (unsigned char)p[2] == 0xBF) {
+        p += 3;   /* UTF-8 byte-order mark */
+    }
 
     while (*p) {
         const char *nl = strchr(p, '\n');
@@ -1644,15 +1772,24 @@ bool config_load_string(ConfigFile *config, const char *data) {
         else if (trimmed[0] == '[') {
             size_t tl = strlen(trimmed);
             if (tl >= 2 && trimmed[tl - 1] == ']') {
-                ConfigSection *sec = (ConfigSection*)malloc(sizeof(ConfigSection));
-                if (sec) {
-                    size_t name_len = tl - 2;
+                trimmed[tl - 1] = '\0';
+                char *name = trim_whitespace(trimmed + 1);   /* "[ spaced ]" is section "spaced" */
+                /* A repeated header continues the section: a second ConfigSection
+                   with the same name was unreachable for every lookup. */
+                ConfigSection *existing = cfg_find_section(config, name);
+                ConfigSection *sec = existing ? NULL : (ConfigSection*)malloc(sizeof(ConfigSection));
+                if (existing) {
+                    current_section = existing;
+                }
+                else if (sec) {
+                    size_t name_len = strlen(name);
                     sec->section_name = (char*)malloc(name_len + 1);
                     if (!sec->section_name) {
                         free(sec);
+                        current_section = NULL;
                     }
                     else {
-                        memcpy(sec->section_name, trimmed + 1, name_len);
+                        memcpy(sec->section_name, name, name_len);
                         sec->section_name[name_len] = '\0';
                         sec->entries = NULL;
                         sec->entry_count = 0;
@@ -1678,13 +1815,30 @@ bool config_load_string(ConfigFile *config, const char *data) {
                 char *key = trim_whitespace(trimmed);
                 char *value = trim_whitespace(eq + 1);
                 if (key[0] != '\0') {
-                    ConfigEntry entry = {0};
-                    entry.isComment = false;
-                    entry.key = string_strdup(key);
-                    entry.value = string_strdup(value);
-                    if (!entry.key || !entry.value || !cfg_section_add_entry(current_section, entry)) {
-                        free(entry.key);
-                        free(entry.value);
+                    /* a repeated key replaces the earlier value (the later
+                       one was stored but invisible to every lookup) */
+                    ConfigEntry *same = NULL;
+                    for (size_t j = 0; j < current_section->entry_count && !same; ++j) {
+                        if (current_section->entries[j].key && strcmp(current_section->entries[j].key, key) == 0) {
+                            same = &current_section->entries[j];
+                        }
+                    }
+                    if (same) {
+                        char *copy = string_strdup(value);
+                        if (copy) {
+                            free(same->value);
+                            same->value = copy;
+                        }
+                    }
+                    else {
+                        ConfigEntry entry = {0};
+                        entry.isComment = false;
+                        entry.key = string_strdup(key);
+                        entry.value = string_strdup(value);
+                        if (!entry.key || !entry.value || !cfg_section_add_entry(current_section, entry)) {
+                            free(entry.key);
+                            free(entry.value);
+                        }
                     }
                 }
             }

@@ -40,21 +40,11 @@
 #ifndef UNITTEST_H_
 #define UNITTEST_H_
 
-#if defined(_WIN32)
-#include <windows.h>
-#include <io.h>
-#define F_OK 0
-#define access _access
-
-#elif defined(__MACH__) && defined(__APPLE__)
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-#include <unistd.h>
-#else
-#include <sys/time.h>
-#include <unistd.h>
-#endif
-
+/* Platform headers (<windows.h>, mach, <unistd.h>) are only needed by
+   unittest.c: including <windows.h> here leaked its min/max/ERROR macros
+   (and a `#define access _access`) into every test file. The regex
+   declarations below are plain C; the regex module is only linked when
+   a regex assertion is actually used. */
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -161,6 +151,14 @@ typedef struct {
     void* return_value;
 } Stub;
 
+/* Link-time names. These functions keep their documented names in C code,
+ * but the library exports them with a "unittest_" prefix: generic global symbols
+ * such as add_memory_record clashed at link time with any other library or program
+ * defining the same name ("multiple definition of ..."). */
+#define total_memory_allocated unittest_total_memory_allocated
+#define add_memory_record      unittest_add_memory_record
+#define print_memory_leaks     unittest_print_memory_leaks
+
 /**
  * @var   total_memory_allocated
  * @brief Running total of bytes tracked by `unittest_malloc` /
@@ -235,6 +233,28 @@ void        unittest_set_timeout                  (double timeout_ms);
 
 void        unittest_reset_state                  (void);
 void        unittest_display_progress             (int completed, int total);
+void        unittest_record_skip                  (const char* func, const char* file, int line, const char* reason);
+
+/* Failure-message builders used by the assertion macros: set writes
+ * "<func> failed:\n\t<file>:<line>: " and the formatted message (or
+ * `fallback` when the message is empty) into unittest_last_message; append
+ * adds more formatted text. The message is the first variadic argument of
+ * every assertion macro, so the macros are plain C17 (no GNU ", ##__VA_ARGS__"
+ * comma elision) and GCC / Clang still check the format against its arguments.
+ * The macros glue one marker space in front of the message literal (" " fmt),
+ * which unittest_set_failure skips: an empty message is then not a zero-length
+ * format (-Wformat-zero-length). As before, the message must be a string literal. */
+#if defined(__MINGW_PRINTF_FORMAT)   /* MinGW: the archetype its own stdio uses (knows %zu) */
+    #define UNITTEST_PRINTF_FORMAT(fmt_index, first_arg) __attribute__((format(__MINGW_PRINTF_FORMAT, fmt_index, first_arg)))
+#elif defined(__GNUC__) || defined(__clang__)
+    #define UNITTEST_PRINTF_FORMAT(fmt_index, first_arg) __attribute__((format(printf, fmt_index, first_arg)))
+#else
+    #define UNITTEST_PRINTF_FORMAT(fmt_index, first_arg)
+#endif
+void        unittest_set_failure                  (const char* func, const char* file, int line, const char* fallback,
+                                                   const char* fmt, ...) UNITTEST_PRINTF_FORMAT(5, 6);
+void        unittest_append_failure               (const char* fmt, ...) UNITTEST_PRINTF_FORMAT(1, 2);
+bool        unittest_file_exists                  (const char* path);
 
 /**
  * @var   unittest_setup
@@ -346,6 +366,20 @@ extern int unittest_summary_only;
  *        by `unittest_reset_state`.
  */
 extern char unittest_last_message[UNITTEST_MESSAGE_LEN];
+
+/**
+ * @def   UNITTEST_SKIP_LOG_LEN
+ * @brief Size of `unittest_skip_log`, the list of every skip message
+ *        printed by `UNITTEST_REPORT` (longer lists are truncated).
+ */
+#define UNITTEST_SKIP_LOG_LEN 4096
+
+/**
+ * @var unittest_skip_log
+ * @brief One line per `UNITTEST_SKIP` since the last reset
+ *        ("test: reason (file:line)"). Cleared by `unittest_reset_state`.
+ */
+extern char unittest_skip_log[UNITTEST_SKIP_LOG_LEN];
 
 /**
  * @var unittest_retry_count
@@ -501,6 +535,7 @@ extern void* unittest_param;
  */
 #define UNITTEST_RUN_TEST(test, total_tests) UNITTEST_SAFE_BLOCK(\
     int retries = unittest_retry_count; \
+    int unittest_skips_before = unittest_skipped; \
     while (retries >= 0) { \
         double start_time = unittest_timer_real(); \
         if (unittest_real_timer == 0) { \
@@ -513,9 +548,9 @@ extern void* unittest_param;
         unittest_status = 0; \
         test(); \
         double end_time = unittest_timer_real(); \
-        unittest_run++; \
         double elapsed_time_ms = (end_time - start_time) * 1000.0; \
-        printf("Elapsed time for %s: %.2f ms\n", #test, elapsed_time_ms); \
+        UNITTEST_LOG("Elapsed time for %s: %.2f ms\n", #test, elapsed_time_ms); \
+        /* checked once the test returns: a hung test is not interrupted */ \
         if (unittest_timeout_ms > 0 && elapsed_time_ms > unittest_timeout_ms) { \
             snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\tTest timed out after %.2f ms", #test, elapsed_time_ms); \
             unittest_status = 1; \
@@ -525,19 +560,29 @@ extern void* unittest_param;
            the early `break` on pass), leaving resources allocated by \
            setup() leaking on success. */ \
         if (unittest_teardown) (*unittest_teardown)(); \
-        if (unittest_status == 0) { \
-            break; /* Test passed, exit retry loop */ \
-        } else { \
-            printf("\033[31mTest failed: %s. Retrying...\033[0m\n", #test); \
-            retries--; \
+        if (unittest_status == 0 || unittest_skipped != unittest_skips_before) { \
+            break; /* passed or skipped: no retry */ \
         } \
+        if (retries > 0) { \
+            printf("\033[31mTest failed: %s. Retrying...\033[0m\n", #test); \
+        } \
+        retries--; \
     } \
-    unittest_display_progress(unittest_run, total_tests); \
-    if (retries < 0) { \
+    unittest_run++; /* once per test, however many attempts it took */ \
+    if (!unittest_summary_only) { \
+        unittest_display_progress(unittest_run, total_tests); \
+    } \
+    if (unittest_skipped != unittest_skips_before) { \
+        UNITTEST_LOG("\033[33mTest skipped: %s\033[0m\n", #test); \
+    } else if (retries < 0) { \
         unittest_fail++; \
-        printf("\033[31mTest ultimately failed after retries: %s\033[0m\n", #test); \
+        if (unittest_retry_count > 0) { \
+            printf("\033[31mTest ultimately failed after retries: %s\033[0m\n", #test); \
+        } else { \
+            printf("\033[31mTest failed: %s\033[0m\n", #test); \
+        } \
     } else { \
-        printf("\033[32mTest passed: %s\033[0m\n", #test); \
+        UNITTEST_LOG("\033[32mTest passed: %s\033[0m\n", #test); \
     } \
 )
 
@@ -554,7 +599,7 @@ extern void* unittest_param;
     printf("\n\n\033[32m%d tests\033[0m, \033[32m%d assertions\033[0m, \033[31m%d failures\033[0m, \033[33m%d skipped\033[0m\n", \
         unittest_run, unittest_assert, unittest_fail, unittest_skipped); \
     if (unittest_skipped > 0) { \
-        printf("\033[33m\nSkipped Tests:\n---------------\n%s\n\033[0m", unittest_last_message); \
+        printf("\033[33m\nSkipped Tests:\n---------------\n%s\033[0m", unittest_skip_log); \
     } \
     if (unittest_real_timer > 0) { \
         printf("\nFinished in \033[32m%.8f seconds (real)\033[0m \033[32m%.8f seconds (proc)\033[0m\n\n", \
@@ -607,16 +652,15 @@ extern void* unittest_param;
  *     unittest_assert(n > 0, "expected positive, got %d", n);
  * @endcode
  */
-#define unittest_assert(test, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert(test, ...) UNITTEST_SAFE_BLOCK(\
     unittest_assert++;\
     if (!(test)) {\
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format,\
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__);\
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__);\
         unittest_status = 1;\
         fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */\
         return;\
     } else {\
-        printf(".");\
+        UNITTEST_LOG(".");\
     }\
 )
 
@@ -625,18 +669,17 @@ extern void* unittest_param;
  * @def   unittest_assert_int_eq
  * @brief Assert that two `int` expressions are equal.
  */
-#define unittest_assert_int_eq(expected, actual, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_int_eq(expected, actual, ...) UNITTEST_SAFE_BLOCK(\
     int unittest_tmp_e = (expected); \
     int unittest_tmp_r = (actual); \
     unittest_assert++; \
     if (unittest_tmp_e != unittest_tmp_r) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */ \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -645,18 +688,20 @@ extern void* unittest_param;
  * @brief Assert that two `double` expressions are equal within
  *        `UNITTEST_EPSILON` tolerance.
  */
-#define unittest_assert_double_eq(expected, actual, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_double_eq(expected, actual, ...) UNITTEST_SAFE_BLOCK(\
     double unittest_tmp_e = (expected); \
     double unittest_tmp_r = (actual); \
     unittest_assert++; \
-    if (fabs(unittest_tmp_e - unittest_tmp_r) > UNITTEST_EPSILON) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+    /* Fails for NaN (every comparison with NaN is false), passes for equal \
+       infinities, and scales the tolerance with the magnitude of the values. */ \
+    if (!(unittest_tmp_e == unittest_tmp_r || \
+          fabs(unittest_tmp_e - unittest_tmp_r) <= UNITTEST_EPSILON * fmax(1.0, fmax(fabs(unittest_tmp_e), fabs(unittest_tmp_r))))) { \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */ \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -666,20 +711,19 @@ extern void* unittest_param;
  * @brief Assert that two C strings are equal via `strcmp`. NULL is
  *        rendered as "<null>" in the failure message.
  */
-#define unittest_assert_string_eq(expected, actual, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_string_eq(expected, actual, ...) UNITTEST_SAFE_BLOCK(\
     const char* unittest_tmp_e = (expected); \
     const char* unittest_tmp_r = (actual); \
     unittest_assert++; \
     if (!unittest_tmp_e) unittest_tmp_e = "<null>"; \
     if (!unittest_tmp_r) unittest_tmp_r = "<null>"; \
     if (strcmp(unittest_tmp_e, unittest_tmp_r) != 0) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); /* Properly use format and args */ \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */ \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -688,21 +732,15 @@ extern void* unittest_param;
  * @def   unittest_assert_not_null
  * @brief Assert that @p pointer is non-NULL.
  */
-#define unittest_assert_not_null(pointer, message_format, ...) UNITTEST_SAFE_BLOCK( \
+#define unittest_assert_not_null(pointer, ...) UNITTEST_SAFE_BLOCK( \
     unittest_assert++; \
     if ((pointer) == NULL) { \
-        if (*#message_format != '\0') { /* Check if a custom message is provided */ \
-            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                     __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
-        } else { \
-            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Pointer is NULL", \
-                     __func__, __FILE__, __LINE__); \
-        } \
+        unittest_set_failure(__func__, __FILE__, __LINE__, "Pointer is NULL", " " __VA_ARGS__); /* an empty message gives the default text */ \
         fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */ \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -712,19 +750,18 @@ extern void* unittest_param;
  * @brief Assert that @p value is in the closed interval `[min, max]`.
  *        All three are coerced to `double` for the comparison.
  */
-#define unittest_assert_in_range(value, min, max, message_format, ...) UNITTEST_SAFE_BLOCK( \
+#define unittest_assert_in_range(value, min, max, ...) UNITTEST_SAFE_BLOCK( \
     double unittest_tmp_val = (value); \
     double unittest_tmp_min = (min); \
     double unittest_tmp_max = (max); \
     unittest_assert++; \
-    if (unittest_tmp_val < unittest_tmp_min || unittest_tmp_val > unittest_tmp_max) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+    if (!(unittest_tmp_val >= unittest_tmp_min && unittest_tmp_val <= unittest_tmp_max)) { /* NaN is out of range */ \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); /* Log failure message immediately */ \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -734,21 +771,17 @@ extern void* unittest_param;
  * @brief Element-wise equality assertion for `int` arrays. On the
  *        first differing index, prints `(expected: X, actual: Y)`.
  */
-#define unittest_assert_array_int_eq(expected, actual, size, message_format, ...) UNITTEST_SAFE_BLOCK( \
+#define unittest_assert_array_int_eq(expected, actual, size, ...) UNITTEST_SAFE_BLOCK( \
     int unittest_size = (size); \
     int unittest_arrays_equal = 1; \
-    for (int i = 0; i < unittest_size; i++) { \
-        if ((expected)[i] != (actual)[i]) { \
+    /* unittest_i, not i: a caller's own `i` in the arguments (expected[i] in \
+       a row loop) was captured by the macro's loop variable. */ \
+    for (int unittest_i = 0; unittest_i < unittest_size; unittest_i++) { \
+        if ((expected)[unittest_i] != (actual)[unittest_i]) { \
             unittest_arrays_equal = 0; \
-            if (strlen(message_format) > 0) { /* Check if a custom message is provided */ \
-                snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-                    "%s failed:\n\t%s:%d: " message_format " at index %d (expected: %d, actual: %d)", \
-                    __func__, __FILE__, __LINE__, ##__VA_ARGS__, i, (expected)[i], (actual)[i]); \
-            } else { \
-                snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-                    "%s failed:\n\t%s:%d: Arrays differ at index %d (expected: %d, actual: %d)", \
-                    __func__, __FILE__, __LINE__, i, (expected)[i], (actual)[i]); \
-            } \
+            unittest_set_failure(__func__, __FILE__, __LINE__, "Arrays differ", " " __VA_ARGS__); \
+            unittest_append_failure(" at index %d (expected: %d, actual: %d)", \
+                                    unittest_i, (int)(expected)[unittest_i], (int)(actual)[unittest_i]); \
             break; \
         } \
     } \
@@ -758,7 +791,7 @@ extern void* unittest_param;
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -767,15 +800,15 @@ extern void* unittest_param;
  * @def   unittest_assert_array_float_eq
  * @brief Element-wise equality for `float` arrays within a tolerance.
  */
-#define unittest_assert_array_float_eq(expected, actual, size, epsilon, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_array_float_eq(expected, actual, size, epsilon, ...) UNITTEST_SAFE_BLOCK(\
     unittest_assert++; \
     int unittest_arrays_equal = 1; \
-    for (size_t i = 0; i < size; i++) { \
-        if (fabs((expected)[i] - (actual)[i]) > (epsilon)) { \
+    for (size_t unittest_i = 0; unittest_i < (size_t)(size); unittest_i++) { \
+        if (!((expected)[unittest_i] == (actual)[unittest_i] || fabs((expected)[unittest_i] - (actual)[unittest_i]) <= (epsilon))) { /* NaN fails */ \
             unittest_arrays_equal = 0; \
-            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-                "%s failed:\n\t%s:%d: " message_format " (index %zu: expected %.6f, got %.6f)", \
-                __func__, __FILE__, __LINE__, ##__VA_ARGS__, i, (expected)[i], (actual)[i]); \
+            unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
+            unittest_append_failure(" (index %zu: expected %.6f, got %.6f)", \
+                                    unittest_i, (double)(expected)[unittest_i], (double)(actual)[unittest_i]); \
             fprintf(stderr, "%s\n", unittest_last_message); \
             break; \
         } \
@@ -784,7 +817,7 @@ extern void* unittest_param;
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -793,15 +826,15 @@ extern void* unittest_param;
  * @def   unittest_assert_array_double_eq
  * @brief Element-wise equality for `double` arrays within a tolerance.
  */
-#define unittest_assert_array_double_eq(expected, actual, size, epsilon, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_array_double_eq(expected, actual, size, epsilon, ...) UNITTEST_SAFE_BLOCK(\
     unittest_assert++; \
     int unittest_arrays_equal = 1; \
-    for (size_t i = 0; i < size; i++) { \
-        if (fabs((expected)[i] - (actual)[i]) > (epsilon)) { \
+    for (size_t unittest_i = 0; unittest_i < (size_t)(size); unittest_i++) { \
+        if (!((expected)[unittest_i] == (actual)[unittest_i] || fabs((expected)[unittest_i] - (actual)[unittest_i]) <= (epsilon))) { /* NaN fails */ \
             unittest_arrays_equal = 0; \
-            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-                "%s failed:\n\t%s:%d: " message_format " (index %zu: expected %.12f, got %.12f)", \
-                __func__, __FILE__, __LINE__, ##__VA_ARGS__, i, (expected)[i], (actual)[i]); \
+            unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
+            unittest_append_failure(" (index %zu: expected %.12f, got %.12f)", \
+                                    unittest_i, (double)(expected)[unittest_i], (double)(actual)[unittest_i]); \
             fprintf(stderr, "%s\n", unittest_last_message); \
             break; \
         } \
@@ -810,7 +843,7 @@ extern void* unittest_param;
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -820,15 +853,14 @@ extern void* unittest_param;
  * @brief Element-wise equality for arrays of POD structs using a
  *        user-supplied comparator (`bool comparator(const T*, const T*)`).
  */
-#define unittest_assert_array_struct_eq(expected, actual, size, comparator, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_array_struct_eq(expected, actual, size, comparator, ...) UNITTEST_SAFE_BLOCK(\
     unittest_assert++; \
     int unittest_arrays_equal = 1; \
-    for (size_t i = 0; i < size; i++) { \
-        if (!(comparator(&(expected)[i], &(actual)[i]))) { \
+    for (size_t unittest_i = 0; unittest_i < (size_t)(size); unittest_i++) { \
+        if (!(comparator(&(expected)[unittest_i], &(actual)[unittest_i]))) { \
             unittest_arrays_equal = 0; \
-            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-                "%s failed:\n\t%s:%d: " message_format " (index %zu)", \
-                __func__, __FILE__, __LINE__, ##__VA_ARGS__, i); \
+            unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
+            unittest_append_failure(" (index %zu)", unittest_i); \
             fprintf(stderr, "%s\n", unittest_last_message); \
             break; \
         } \
@@ -837,7 +869,7 @@ extern void* unittest_param;
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -879,8 +911,7 @@ extern void* unittest_param;
  *        `unittest_skipped`. Returns from the test body.
  */
 #define UNITTEST_SKIP(message) UNITTEST_SAFE_BLOCK(\
-    snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s skipped:\n\tFile: %s\n\tLine: %d\n\tReason: %s", __func__, __FILE__, __LINE__, message);\
-    unittest_skipped++;\
+    unittest_record_skip(__func__, __FILE__, __LINE__, (message));\
     return;\
 )
 
@@ -889,7 +920,9 @@ extern void* unittest_param;
  * @def   UNITTEST_CHECK_NO_LEAKS
  * @brief Run @p code_block and assert that `total_memory_allocated`
  *        is the same before and after. If not, prints every leaked
- *        record via `print_memory_leaks` and fails the test.
+ *        record via `print_memory_leaks` and fails the test (counted
+ *        once, by `UNITTEST_RUN_TEST`). Counts as one assertion; the
+ *        block may contain top-level commas (`int a, b;`).
  *
  * @code
  *     UNITTEST_CHECK_NO_LEAKS({
@@ -898,18 +931,20 @@ extern void* unittest_param;
  *     });
  * @endcode
  */
-#define UNITTEST_CHECK_NO_LEAKS(code_block) UNITTEST_SAFE_BLOCK(\
+#define UNITTEST_CHECK_NO_LEAKS(...) UNITTEST_SAFE_BLOCK(\
     size_t memory_before = total_memory_allocated; \
-    code_block; \
+    __VA_ARGS__; \
     size_t memory_after = total_memory_allocated; \
+    unittest_assert++; \
     if (memory_before != memory_after) { \
         print_memory_leaks(); \
         snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-            "Memory leak detected: %zu bytes not freed", memory_after - memory_before); \
+            "%s failed:\n\t%s:%d: Memory leak detected: %zu bytes not freed", __func__, __FILE__, __LINE__, \
+            memory_after - memory_before); \
+        fprintf(stderr, "%s\n", unittest_last_message); \
         unittest_status = 1; \
-        unittest_fail++; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
@@ -919,7 +954,7 @@ extern void* unittest_param;
  * @brief Assert that @p string contains a match for @p pattern using
  *        the project's PCRE-backed `regex_search`.
  */
-#define unittest_assert_regex_match(pattern, string, flags, message_format, ...) UNITTEST_SAFE_BLOCK(\
+#define unittest_assert_regex_match(pattern, string, flags, ...) UNITTEST_SAFE_BLOCK(\
     Regex* unittest_regex = regex_compile(pattern, flags); \
     if (!unittest_regex) { \
         snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Failed to compile regex: %s", \
@@ -931,14 +966,13 @@ extern void* unittest_param;
     RegexMatch unittest_match; \
     RegexResult unittest_result = regex_search(unittest_regex, string, &unittest_match); \
     if (unittest_result != REGEX_SUCCESS) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); \
         regex_deallocate(unittest_regex); \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
     regex_match_free(&unittest_match); \
     regex_deallocate(unittest_regex); \
@@ -950,46 +984,53 @@ extern void* unittest_param;
  * @brief Assert that the @p group_index capture of regex @p pattern
  *        against @p input equals @p expected.
  */
-#define unittest_assert_regex_group(pattern, input, group_index, expected, flags, message_format, ...) UNITTEST_SAFE_BLOCK( \
-    Regex* regex = regex_compile((pattern), (flags)); \
-    if (!regex) { \
+#define unittest_assert_regex_group(pattern, input, group_index, expected, flags, ...) UNITTEST_SAFE_BLOCK( \
+    /* group_index 0 is the FIRST capturing group (unlike regex_match_group, \
+       where 0 is the whole match). Failures fail the test like every other \
+       assertion; the group must equal `expected` exactly (a prefix such as \
+       "2024" against "2024-EXTRA" used to pass). */ \
+    unittest_assert++; \
+    Regex* unittest_rx = regex_compile((pattern), (flags)); \
+    if (!unittest_rx) { \
         snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Regex compilation failed for pattern '%s'", \
                  __func__, __FILE__, __LINE__, (pattern)); \
         fprintf(stderr, "%s\n", unittest_last_message); \
-        unittest_fail++; \
+        unittest_status = 1; \
         return; \
     } \
-    RegexMatch match; \
-    RegexResult result = regex_search(regex, (input), &match); \
-    if (result != REGEX_SUCCESS) { \
+    RegexMatch unittest_rm; \
+    if (regex_search(unittest_rx, (input), &unittest_rm) != REGEX_SUCCESS) { \
         snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Regex search failed for input '%s'", \
                  __func__, __FILE__, __LINE__, (input)); \
         fprintf(stderr, "%s\n", unittest_last_message); \
-        unittest_fail++; \
-        regex_deallocate(regex); \
+        regex_deallocate(unittest_rx); \
+        unittest_status = 1; \
         return; \
     } \
-    if ((group_index) < 0 || (group_index) >= match.group_count) { \
+    int unittest_gi = (group_index); \
+    if (unittest_gi < 0 || unittest_gi >= unittest_rm.group_count) { \
         snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: Group index %d out of bounds", \
-                 __func__, __FILE__, __LINE__, (group_index)); \
+                 __func__, __FILE__, __LINE__, unittest_gi); \
         fprintf(stderr, "%s\n", unittest_last_message); \
-        unittest_fail++; \
-        regex_match_free(&match); \
-        regex_deallocate(regex); \
+        regex_match_free(&unittest_rm); \
+        regex_deallocate(unittest_rx); \
+        unittest_status = 1; \
         return; \
     } \
-    const char* group_start = match.group_starts[(group_index)]; \
-    size_t group_length = match.group_lengths[(group_index)]; \
-    if (strncmp(group_start, (expected), group_length) != 0) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+    const char* unittest_gs = unittest_rm.group_starts[unittest_gi]; \
+    size_t unittest_gl = unittest_gs ? unittest_rm.group_lengths[unittest_gi] : 0; \
+    const char* unittest_ex = (expected) ? (expected) : ""; \
+    int unittest_same = strlen(unittest_ex) == unittest_gl && (unittest_gl == 0 || memcmp(unittest_gs, unittest_ex, unittest_gl) == 0); \
+    regex_match_free(&unittest_rm); \
+    regex_deallocate(unittest_rx); \
+    if (!unittest_same) { \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); \
-        unittest_fail++; \
+        unittest_status = 1; \
+        return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
-    regex_match_free(&match); \
-    regex_deallocate(regex); \
 )
 
 
@@ -999,7 +1040,7 @@ extern void* unittest_param;
  *        first differing chunk reports the line number (1-based, in
  *        units of 1 KiB blocks).
  */
-#define unittest_assert_file_eq(file1, file2, message_format, ...) UNITTEST_SAFE_BLOCK( \
+#define unittest_assert_file_eq(file1, file2, ...) UNITTEST_SAFE_BLOCK( \
     unittest_assert++; \
     FILE *unittest_f1 = fopen((file1), "rb"); \
     FILE *unittest_f2 = fopen((file2), "rb"); \
@@ -1017,24 +1058,29 @@ extern void* unittest_param;
     char unittest_buf1[1024], unittest_buf2[1024]; \
     size_t unittest_read1, unittest_read2; \
     int unittest_line_number = 1; \
-    while ((unittest_read1 = fread(unittest_buf1, 1, sizeof(unittest_buf1), unittest_f1)) > 0 && \
-           (unittest_read2 = fread(unittest_buf2, 1, sizeof(unittest_buf2), unittest_f2)) > 0) { \
-        if (unittest_read1 != unittest_read2 || memcmp(unittest_buf1, unittest_buf2, unittest_read1) != 0) { \
+    /* Both files are read every round: the old && skipped reading file2 \
+       once file1 ran dry, so a file equal to a prefix of the other passed. */ \
+    for (;;) { \
+        unittest_read1 = fread(unittest_buf1, 1, sizeof(unittest_buf1), unittest_f1); \
+        unittest_read2 = fread(unittest_buf2, 1, sizeof(unittest_buf2), unittest_f2); \
+        if (unittest_read1 != unittest_read2) { \
             unittest_files_equal = 0; \
-            snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-                "%s failed:\n\t%s:%d: " message_format " (file content differs at line %d)", \
-                __func__, __FILE__, __LINE__, ##__VA_ARGS__, unittest_line_number); \
+            unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
+            unittest_append_failure(" (file lengths differ)"); \
+            fprintf(stderr, "%s\n", unittest_last_message); \
+            break; \
+        } \
+        if (unittest_read1 == 0) { \
+            break; \
+        } \
+        if (memcmp(unittest_buf1, unittest_buf2, unittest_read1) != 0) { \
+            unittest_files_equal = 0; \
+            unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
+            unittest_append_failure(" (file content differs at line %d)", unittest_line_number); \
             fprintf(stderr, "%s\n", unittest_last_message); \
             break; \
         } \
         unittest_line_number++; \
-    } \
-    if (!feof(unittest_f1) || !feof(unittest_f2)) { \
-        unittest_files_equal = 0; \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, \
-            "%s failed:\n\t%s:%d: " message_format " (file lengths differ)", \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
-        fprintf(stderr, "%s\n", unittest_last_message); \
     } \
     fclose(unittest_f1); \
     fclose(unittest_f2); \
@@ -1042,25 +1088,24 @@ extern void* unittest_param;
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 )
 
 
 /**
  * @def   unittest_assert_file_exists
- * @brief Assert that @p filepath exists (`access(F_OK)`).
+ * @brief Assert that @p filepath exists (`unittest_file_exists`).
  */
-#define unittest_assert_file_exists(filepath, message_format, ...) UNITTEST_SAFE_BLOCK({ \
+#define unittest_assert_file_exists(filepath, ...) UNITTEST_SAFE_BLOCK({ \
     unittest_assert++; \
-    if (access((filepath), F_OK) != 0) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+    if (!unittest_file_exists(filepath)) { \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 })
 
@@ -1069,16 +1114,15 @@ extern void* unittest_param;
  * @def   unittest_assert_file_not_exists
  * @brief Assert that @p filepath does NOT exist.
  */
-#define unittest_assert_file_not_exists(filepath, message_format, ...) UNITTEST_SAFE_BLOCK({ \
+#define unittest_assert_file_not_exists(filepath, ...) UNITTEST_SAFE_BLOCK({ \
     unittest_assert++; \
-    if (access((filepath), F_OK) == 0) { \
-        snprintf(unittest_last_message, UNITTEST_MESSAGE_LEN, "%s failed:\n\t%s:%d: " message_format, \
-                 __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+    if (unittest_file_exists(filepath)) { \
+        unittest_set_failure(__func__, __FILE__, __LINE__, NULL, " " __VA_ARGS__); \
         fprintf(stderr, "%s\n", unittest_last_message); \
         unittest_status = 1; \
         return; \
     } else { \
-        printf("."); \
+        UNITTEST_LOG("."); \
     } \
 })
 
@@ -1113,12 +1157,14 @@ extern void* unittest_param;
 /**
  * @def   UNITTEST_VERIFY_ARGUMENTS
  * @brief Assert that the most recent call to @p func received the
- *        given arguments (each as a C string).
+ *        given arguments (each as a C string). (It passed 3 arguments to
+ *        the 4-parameter unittest_verify_mock_call and did not compile;
+ *        call index -1 now means "the most recent call".)
  */
 #define UNITTEST_VERIFY_ARGUMENTS(func, ...) \
     do { \
-        void* args[] = {__VA_ARGS__}; \
-        unittest_verify_mock_call(#func, sizeof(args) / sizeof(args[0]), args); \
+        void* unittest_args[] = {__VA_ARGS__}; \
+        unittest_verify_mock_call(#func, sizeof(unittest_args) / sizeof(unittest_args[0]), unittest_args, -1); \
     } while (0)
 
 

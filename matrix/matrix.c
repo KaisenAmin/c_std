@@ -8,8 +8,13 @@
 #include <string.h>
 #include <float.h>
 #include <stdint.h>
+#include <limits.h>   /* LLONG_MAX */
 #include <time.h>
 #include "matrix.h"
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>   /* _InterlockedExchangeAdd64 for mat_rng_next */
+#endif
 
 #define EPSILON 1e-9
 
@@ -29,16 +34,16 @@ static bool is_effectively_zero(double value) {
 }
 
 // function to generate the Walsh matrix recursively
-static void generateWalshMatrixRecursively(double* data, int order, int dim, int startRow, int startCol, int val) {
-    MATRIX_LOG("[generateWalshMatrixRecursively] Info: Generating Walsh matrix with order %d at position (%d, %d) with initial value %d.\n", order, startRow, startCol, val);
+static void generateWalshMatrixRecursively(double* data, size_t order, size_t dim, size_t startRow, size_t startCol, int val) {
+    MATRIX_LOG("[generateWalshMatrixRecursively] Info: Generating Walsh matrix with order %zu at position (%zu, %zu) with initial value %d.\n", order, startRow, startCol, val);
 
     if (order == 1) {
         data[startRow * dim + startCol] = val;
-        MATRIX_LOG("[generateWalshMatrixRecursively] Success: Base case reached, set value %d at (%d, %d).\n", val, startRow, startCol);
+        MATRIX_LOG("[generateWalshMatrixRecursively] Success: Base case reached, set value %d at (%zu, %zu).\n", val, startRow, startCol);
         return;
     }
 
-    int halfOrder = order / 2;
+    size_t halfOrder = order / 2;
     // Top-left quadrant
     generateWalshMatrixRecursively(data, halfOrder, dim, startRow, startCol, val);
     // Top-right quadrant
@@ -48,112 +53,62 @@ static void generateWalshMatrixRecursively(double* data, int order, int dim, int
     // Bottom-right quadrant (invert the values)
     generateWalshMatrixRecursively(data, halfOrder, dim, startRow + halfOrder, startCol + halfOrder, -val);
 
-    MATRIX_LOG("[generateWalshMatrixRecursively] Success: Walsh matrix generated recursively with order %d.\n", order);
+    MATRIX_LOG("[generateWalshMatrixRecursively] Success: Walsh matrix generated recursively with order %zu.\n", order);
 }
 
-static inline int min_number(int a, int b) {
-    MATRIX_LOG("[min_number] Info: Calculating minimum between %d and %d.\n", a, b);
-    int result = (a < b) ? a : b;
-    MATRIX_LOG("[min_number] Success: The minimum value is %d.\n", result);
-    return result;
-}
-
-// Function to calculate binomial coefficient
-static double binomial_coefficient(int n, int k) {
-    MATRIX_LOG("[binomial_coefficient] Info: Calculating binomial coefficient C(%d, %d).\n", n, k);
-
-    double *C = (double*) malloc(sizeof(double) * (k + 1));
-    if (!C) {
-        MATRIX_LOG("[binomial_coefficient] Error: Memory allocation failed for binomial coefficient calculation.\n");
-        return -1;
-    }
-    
-    memset(C, 0, sizeof(double) * (k + 1));
-    C[0] = 1;
-
-    for (int i = 1; i <= n; i++) {
-        for (int j = min_number(i, k); j > 0; j--) {
-            C[j] = C[j] + C[j-1];
-        }
-    }
-
-    double value = C[k];
-    free(C);
-
-    MATRIX_LOG("[binomial_coefficient] Success: Binomial coefficient C(%d, %d) = %lf.\n", n, k, value);
-    return value;
-}
-
-// Function to calculate factorial
-static int64_t factorial(int n) {
-    MATRIX_LOG("[factorial] Info: Calculating factorial of %d.\n", n);
-    
-    int64_t result = 1;
-    for (int i = 2; i <= n; ++i) {
-        result *= i;
-    }
-
-    MATRIX_LOG("[factorial] Success: Factorial of %d is %lld.\n", n, result);
-    return result;
-}
-
-// Function to calculate binomial coefficient
-static int64_t binomial_factorial(int n, int k) {
-    MATRIX_LOG("[binomial_factorial] Info: Calculating binomial coefficient using factorial method C(%d, %d).\n", n, k);
-
+/* Binomial coefficient C(n, k) in double precision, computed multiplicatively:
+   each partial product is itself a binomial coefficient, so the result is
+   exact while it stays below 2^53. (The old int64 factorials overflowed at
+   21!, which broke matrix_inverse_hilbert for n >= 11.) */
+static double mat_binomial(size_t n, size_t k) {
     if (k > n) {
-        MATRIX_LOG("[binomial_factorial] Error: k is greater than n in C(%d, %d), returning 0.\n", n, k);
-        return 0;
+        return 0.0;
     }
-    if (k == 0 || k == n) {
-        MATRIX_LOG("[binomial_factorial] Info: Trivial case of C(%d, %d), returning 1.\n", n, k);
-        return 1;
+    if (k > n - k) {
+        k = n - k;
     }
-
-    int64_t result = factorial(n) / (factorial(k) * factorial(n - k));
-    MATRIX_LOG("[binomial_factorial] Success: Binomial coefficient C(%d, %d) = %lld.\n", n, k, result);
-
+    double result = 1.0;
+    for (size_t i = 1; i <= k; ++i) {
+        result = result * (double)(n - k + i) / (double)i;
+    }
     return result;
 }
 
 
-// function to subtract vector projection of u onto v from u (u = u - proj_v(u))
-static double dot_product(const double* v1, const double* v2, size_t length) {
-    MATRIX_LOG("[dot_product] Info: Calculating dot product of two vectors of length %zu.\n", length);
-
-    double sum = 0.0;
-    for (size_t i = 0; i < length; ++i) {
-        sum += v1[i] * v2[i];
+/* Overflow-checked size arithmetic for result dimensions computed from
+   caller-supplied counts: a wrapped product or sum made matrix_create
+   allocate a small block that the fill loops then wrote far past. */
+static bool mat_size_mul(size_t a, size_t b, size_t* out) {
+    if (b != 0 && a > SIZE_MAX / b) {
+        return false;
     }
-
-    MATRIX_LOG("[dot_product] Success: Dot product calculation completed. Result = %lf.\n", sum);
-    return sum;
+    *out = a * b;
+    return true;
 }
 
-// function to normalize a vector
-static void normalize_vector(double* v, size_t length) {
-    MATRIX_LOG("[normalize_vector] Info: Starting vector normalization.\n");
-
-    double norm = sqrt(dot_product(v, v, length));
-    for (size_t i = 0; i < length; ++i) {
-        v[i] /= norm;
+static bool mat_size_add(size_t a, size_t b, size_t* out) {
+    if (a > SIZE_MAX - b) {
+        return false;
     }
-
-    MATRIX_LOG("[normalize_vector] Success: Vector normalization completed.\n");
+    *out = a + b;
+    return true;
 }
 
-void subtract_projection(double* u, const double* v, size_t length) {
-    MATRIX_LOG("[subtract_projection] Info: Starting vector projection subtraction.\n");
 
-    double dot_uv = dot_product(u, v, length);
-    double dot_vv = dot_product(v, v, length);
-    double scale = dot_uv / dot_vv;
-    
-    for (size_t i = 0; i < length; ++i) {
-        u[i] -= scale * v[i];
-    }
-
-    MATRIX_LOG("[subtract_projection] Success: Vector projection subtraction completed.\n");
+/* 64-bit generator for matrix_random: a splitmix64 stream over an atomic
+   counter, offset by the clock, so concurrent calls never share a value and
+   libc's rand()/srand() state is left alone. Not for cryptographic use. */
+static uint64_t mat_rng_next(void) {
+    static uint64_t counter;
+#if defined(_MSC_VER) && !defined(__clang__)
+    uint64_t c = (uint64_t)_InterlockedExchangeAdd64((volatile long long*)&counter, (long long)0x9E3779B97F4A7C15ULL);
+#else
+    uint64_t c = __atomic_fetch_add(&counter, 0x9E3779B97F4A7C15ULL, __ATOMIC_RELAXED);
+#endif
+    uint64_t z = c + ((uint64_t)time(NULL) * 0xD1B54A32D192ED03ULL) + (uint64_t)(uintptr_t)&counter;
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
 }
 
 /**
@@ -277,6 +232,14 @@ Matrix* matrix_create(size_t rows, size_t cols) {
     Matrix* matrix = (Matrix*) malloc(sizeof(Matrix));
     if (!matrix) {
         MATRIX_LOG("[matrix_create] Error: Memory allocation failed for matrix object.\n");
+        return NULL;
+    }
+
+    /* Reject element counts whose byte size would overflow size_t: a wrapped
+       size would give an undersized buffer that the zero-fill below overruns. */
+    if (cols > SIZE_MAX / rows || rows * cols > SIZE_MAX / sizeof(double)) {
+        MATRIX_LOG("[matrix_create] Error: %zu x %zu elements overflow the addressable size.\n", rows, cols);
+        free(matrix);
         return NULL;
     }
 
@@ -1962,7 +1925,14 @@ Matrix* matrix_mod(const Matrix* matrix1, const Matrix* matrix2) {
     for (size_t i = 0; i < matrix1->rows * matrix1->cols; ++i) {
         double a = matrix1->data[i];
         double b = matrix2->data[i];
-        result->data[i] = a - b * floor(a / b);   /* sign of divisor, like NumPy */
+        if (isinf(b) && isfinite(a)) {
+            /* a - b*floor(a/b) is inf*0 = NaN here; NumPy gives a when it
+               has the divisor's sign (or is 0), else the divisor */
+            result->data[i] = (a == 0.0 || (a > 0.0) == (b > 0.0)) ? a : b;
+        }
+        else {
+            result->data[i] = a - b * floor(a / b);   /* sign of divisor, like NumPy */
+        }
     }
 
     MATRIX_LOG("[matrix_mod] Success: element-wise modulo computed.");
@@ -2772,6 +2742,7 @@ bool matrix_is_identity(const Matrix* matrix) {
  * @brief Checks if a matrix is idempotent (i.e., A^2 = A).
  *
  * An idempotent matrix is a matrix that, when multiplied by itself, yields the same matrix.
+ * A*A is compared with A within a tolerance (1e-9 absolute and relative), not bitwise.
  *
  * @param matrix The matrix to be checked.
  * @return true if the matrix is idempotent, false otherwise. Returns false if the matrix is NULL, not square, or if the matrix multiplication fails.
@@ -2790,7 +2761,10 @@ bool matrix_is_idempotent(const Matrix* matrix) {
         return false;
     }
 
-    bool isIdempotent = matrix_is_equal(square, matrix);
+    /* A*A computed in floating point is rarely bit-identical to A (a
+       projection matrix came out "not idempotent"): compare with the same
+       absolute / relative tolerance as matrix_allclose's defaults. */
+    bool isIdempotent = matrix_allclose(square, matrix, 1e-9, 1e-9);
     matrix_deallocate(square);
 
     if (isIdempotent) {
@@ -3078,7 +3052,8 @@ Matrix* matrix_reshape(const Matrix* matrix, size_t new_rows, size_t new_cols) {
         MATRIX_LOG("[matrix_reshape] Error: New dimensions must be non-zero.");
         return NULL;
     }
-    if (new_rows * new_cols != matrix->rows * matrix->cols) {
+    /* The product must not wrap: 2^63+1 x 2 "equals" 1 x 2 modulo 2^64. */
+    if (new_cols > SIZE_MAX / new_rows || new_rows * new_cols != matrix->rows * matrix->cols) {
         MATRIX_LOG("[matrix_reshape] Error: Element count mismatch (%zu vs %zu).",
                    new_rows * new_cols, matrix->rows * matrix->cols);
         return NULL;
@@ -3600,14 +3575,18 @@ Matrix* matrix_tile(const Matrix* matrix, size_t reps_row, size_t reps_col) {
 
     size_t R = matrix->rows;
     size_t C = matrix->cols;
-    size_t newC = C * reps_col;
-    Matrix* result = matrix_create(R * reps_row, newC);
+    size_t newC, newR;
+    if (!mat_size_mul(C, reps_col, &newC) || !mat_size_mul(R, reps_row, &newR)) {
+        MATRIX_LOG("[matrix_tile] Error: result size overflows.");
+        return NULL;
+    }
+    Matrix* result = matrix_create(newR, newC);
     if (!result) {
         MATRIX_LOG("[matrix_tile] Error: Failed to create result matrix.");
         return NULL;
     }
 
-    for (size_t i = 0; i < R * reps_row; ++i) {
+    for (size_t i = 0; i < newR; ++i) {
         for (size_t j = 0; j < newC; ++j) {
             result->data[i * newC + j] = matrix->data[(i % R) * C + (j % C)];
         }
@@ -3645,7 +3624,12 @@ Matrix* matrix_repeat(const Matrix* matrix, size_t repeats) {
     }
 
     size_t n = matrix->rows * matrix->cols;
-    Matrix* result = matrix_create(1, n * repeats);
+    size_t total;
+    if (!mat_size_mul(n, repeats, &total)) {
+        MATRIX_LOG("[matrix_repeat] Error: result size overflows.");
+        return NULL;
+    }
+    Matrix* result = matrix_create(1, total);
     if (!result) {
         MATRIX_LOG("[matrix_repeat] Error: Failed to create result vector.");
         return NULL;
@@ -3697,9 +3681,14 @@ Matrix* matrix_repeat_axis(const Matrix* matrix, size_t repeats, int axis) {
 
     size_t R = matrix->rows;
     size_t C = matrix->cols;
+    size_t scaled;
+    if (!mat_size_mul(axis == 0 ? R : C, repeats, &scaled)) {
+        MATRIX_LOG("[matrix_repeat_axis] Error: result size overflows.");
+        return NULL;
+    }
 
     if (axis == 0) {
-        Matrix* result = matrix_create(R * repeats, C);
+        Matrix* result = matrix_create(scaled, C);
         if (!result) {
             MATRIX_LOG("[matrix_repeat_axis] Error: Failed to create result matrix.");
             return NULL;
@@ -3713,7 +3702,7 @@ Matrix* matrix_repeat_axis(const Matrix* matrix, size_t repeats, int axis) {
         return result;
     }
 
-    size_t newC = C * repeats;
+    size_t newC = scaled;
     Matrix* result = matrix_create(R, newC);
     if (!result) {
         MATRIX_LOG("[matrix_repeat_axis] Error: Failed to create result matrix.");
@@ -3757,8 +3746,11 @@ Matrix* matrix_pad(const Matrix* matrix, size_t pad, double value) {
 
     size_t R = matrix->rows;
     size_t C = matrix->cols;
-    size_t newR = R + 2 * pad;
-    size_t newC = C + 2 * pad;
+    size_t pad2, newR, newC;
+    if (!mat_size_mul(pad, 2, &pad2) || !mat_size_add(R, pad2, &newR) || !mat_size_add(C, pad2, &newC)) {
+        MATRIX_LOG("[matrix_pad] Error: result size overflows.");
+        return NULL;
+    }
     Matrix* result = matrix_create(newR, newC);
     if (!result) {
         MATRIX_LOG("[matrix_pad] Error: Failed to create result matrix.");
@@ -4010,7 +4002,10 @@ double matrix_median(const Matrix* matrix) {
     qsort(tmp, n, sizeof(double), mat_cmp_asc);
 
     double median;
-    if (n % 2 == 1) {
+    if (isnan(tmp[n - 1])) {
+        median = tmp[n - 1];   /* NaN sorts last: a NaN anywhere -> NaN (NumPy) */
+    }
+    else if (n % 2 == 1) {
         median = tmp[n / 2];
     }
     else {
@@ -4426,16 +4421,39 @@ static bool mat_jacobi(const Matrix* A, double* eigvals, Matrix* V) {
         }
     }
 
+    /* Convergence is judged relative to the matrix's own size: the old
+       absolute threshold (off <= 1e-30) declared any matrix with entries of
+       about 1e-15 converged before a single rotation. Sums are taken over
+       entries scaled by the largest magnitude so they cannot overflow; the
+       Frobenius norm is invariant under the rotations, so it is fixed. */
+    double scale = 0.0;
+    for (size_t i = 0; i < n * n; ++i) {
+        if (fabs(a[i]) > scale) {
+            scale = fabs(a[i]);
+        }
+    }
+    double fro2 = 0.0;
+    if (scale > 0.0) {
+        for (size_t i = 0; i < n * n; ++i) {
+            double x = a[i] / scale;
+            fro2 += x * x;
+        }
+    }
+    const double tol2 = (4.0 * DBL_EPSILON) * (4.0 * DBL_EPSILON) * fro2;
+
     const int max_sweeps = 100;
     bool converged = false;
     for (int sweep = 0; sweep < max_sweeps && !converged; ++sweep) {
         double off = 0.0;
-        for (size_t p = 0; p < n; ++p) {
-            for (size_t q = p + 1; q < n; ++q) {
-                off += a[p * n + q] * a[p * n + q];
+        if (scale > 0.0) {
+            for (size_t p = 0; p < n; ++p) {
+                for (size_t q = p + 1; q < n; ++q) {
+                    double x = a[p * n + q] / scale;
+                    off += x * x;
+                }
             }
         }
-        if (off <= 1e-30) {
+        if (off <= tol2) {
             converged = true;
             break;
         }
@@ -4448,6 +4466,14 @@ static bool mat_jacobi(const Matrix* A, double* eigvals, Matrix* V) {
                 }
                 double app = a[p * n + p];
                 double aqq = a[q * n + q];
+                /* An entry far below the eps-level of its diagonal pair no
+                   longer changes the result; dropping it guarantees the
+                   sweeps finish. */
+                if (fabs(apq) <= 0.25 * DBL_EPSILON * (fabs(app) + fabs(aqq))) {
+                    a[p * n + q] = 0.0;
+                    a[q * n + p] = 0.0;
+                    continue;
+                }
                 double phi = 0.5 * atan2(2.0 * apq, app - aqq);
                 double c = cos(phi);
                 double s = sin(phi);
@@ -4589,7 +4615,8 @@ bool matrix_eig(const Matrix* matrix, Matrix** eigenvalues, Matrix** eigenvector
  * an `m x n` matrix (with `m >= n`) as `A = U · diag(S) · Vᵀ`, where `U` is
  * `m x n` with orthonormal columns, `S` is the `n x 1` column of singular values
  * in descending order, and `V` is the `n x n` orthogonal matrix of right
- * singular vectors. Computed via the symmetric eigen-decomposition of `AᵀA`.
+ * singular vectors. Computed with one-sided Jacobi rotations on `A` itself, which
+ * keeps small singular values accurate (forming `AᵀA` would not).
  *
  * @param matrix The matrix to decompose. Must not be NULL and must have at least
  *               as many rows as columns (`m >= n`).
@@ -4621,48 +4648,95 @@ bool matrix_svd(const Matrix* matrix, Matrix** U, Matrix** S, Matrix** V) {
     size_t m = matrix->rows;
     size_t n = matrix->cols;
 
-    Matrix* At = matrix_transpose(matrix);
-    if (!At) {
-        return false;
-    }
-    Matrix* B = matrix_multiply(At, matrix);   /* AᵀA : n x n symmetric PSD */
-    matrix_deallocate(At);
-    if (!B) {
-        return false;
-    }
-
-    double* lambda = (double*)malloc(n * sizeof(double));
-    Matrix* Vmat = matrix_create(n, n);
-    if (!lambda || !Vmat) {
-        free(lambda);
+    /* One-sided Jacobi (Hestenes): rotate pairs of columns of a copy of A
+       until all columns are mutually orthogonal; the column norms are then
+       the singular values. Working on A itself keeps full accuracy for small
+       singular values, which forming AᵀA would square away (a zero singular
+       value came out as ~1e-8·σmax, wrecking pinv, cond and rank). */
+    Matrix* Umat = matrix_copy(matrix);
+    Matrix* Vmat = matrix_create_identity(n);
+    Matrix* Smat = matrix_create(n, 1);
+    bool* good = (bool*)malloc(n * sizeof(bool));
+    if (!Umat || !Vmat || !Smat || !good) {
+        if (Umat) {
+            matrix_deallocate(Umat);
+        }
         if (Vmat) {
             matrix_deallocate(Vmat);
         }
-        matrix_deallocate(B);
+        if (Smat) {
+            matrix_deallocate(Smat);
+        }
+        free(good);
+        return false;
+    }
+    double* u = Umat->data;
+    double* v = Vmat->data;
+
+    const int max_sweeps = 100;
+    bool converged = (n < 2);
+    for (int sweep = 0; sweep < max_sweeps && !converged; ++sweep) {
+        bool rotated = false;
+        for (size_t p = 0; p + 1 < n; ++p) {
+            for (size_t q = p + 1; q < n; ++q) {
+                double alpha = 0.0, beta = 0.0, gamma = 0.0;
+                for (size_t r = 0; r < m; ++r) {
+                    double up = u[r * n + p];
+                    double uq = u[r * n + q];
+                    alpha += up * up;
+                    beta  += uq * uq;
+                    gamma += up * uq;
+                }
+                if (gamma == 0.0 || fabs(gamma) <= DBL_EPSILON * sqrt(alpha) * sqrt(beta)) {
+                    continue;   /* columns p and q are already orthogonal */
+                }
+                double zeta = (beta - alpha) / (2.0 * gamma);
+                double t = (fabs(zeta) > 1e150) ? 0.5 / zeta
+                         : ((zeta >= 0.0) ? 1.0 : -1.0) / (fabs(zeta) + sqrt(1.0 + zeta * zeta));
+                if (t == 0.0) {
+                    continue;
+                }
+                double c = 1.0 / sqrt(1.0 + t * t);
+                double s = c * t;
+                rotated = true;
+                for (size_t r = 0; r < m; ++r) {
+                    double up = u[r * n + p];
+                    double uq = u[r * n + q];
+                    u[r * n + p] = c * up - s * uq;
+                    u[r * n + q] = s * up + c * uq;
+                }
+                for (size_t r = 0; r < n; ++r) {
+                    double vp = v[r * n + p];
+                    double vq = v[r * n + q];
+                    v[r * n + p] = c * vp - s * vq;
+                    v[r * n + q] = s * vp + c * vq;
+                }
+            }
+        }
+        if (!rotated) {
+            converged = true;
+        }
+    }
+    if (!converged) {
+        MATRIX_LOG("[matrix_svd] Error: Jacobi iteration did not converge.");
+        matrix_deallocate(Umat);
+        matrix_deallocate(Vmat);
+        matrix_deallocate(Smat);
+        free(good);
         return false;
     }
 
-    if (!mat_jacobi(B, lambda, Vmat)) {
-        MATRIX_LOG("[matrix_svd] Error: Jacobi iteration failed.");
-        free(lambda);
-        matrix_deallocate(Vmat);
-        matrix_deallocate(B);
-        return false;
-    }
-    matrix_deallocate(B);
-
-    double* sigma = (double*)malloc(n * sizeof(double));
-    if (!sigma) {
-        free(lambda);
-        matrix_deallocate(Vmat);
-        return false;
-    }
+    /* singular values = column norms */
+    double* sigma = Smat->data;
     for (size_t i = 0; i < n; ++i) {
-        sigma[i] = (lambda[i] > 0.0) ? sqrt(lambda[i]) : 0.0;
+        double ss = 0.0;
+        for (size_t r = 0; r < m; ++r) {
+            ss += u[r * n + i] * u[r * n + i];
+        }
+        sigma[i] = sqrt(ss);
     }
-    free(lambda);
 
-    /* sort singular values descending, reordering V columns */
+    /* sort singular values descending, reordering U and V columns */
     for (size_t i = 0; i < n; ++i) {
         size_t best = i;
         for (size_t j = i + 1; j < n; ++j) {
@@ -4674,44 +4748,59 @@ bool matrix_svd(const Matrix* matrix, Matrix** U, Matrix** S, Matrix** V) {
             double tmp = sigma[i];
             sigma[i] = sigma[best];
             sigma[best] = tmp;
+            mat_swap_cols(Umat, i, best);
             mat_swap_cols(Vmat, i, best);
         }
     }
 
-    /* U column i = A · v_i / sigma_i (0 for negligible singular values) */
-    Matrix* Umat = matrix_create(m, n);
-    Matrix* Smat = matrix_create(n, 1);
-    if (!Umat || !Smat) {
-        if (Umat) {
-            matrix_deallocate(Umat);
-        }
-        if (Smat) {
-            matrix_deallocate(Smat);
-        }
-        free(sigma);
-        matrix_deallocate(Vmat);
-        return false;
-    }
-
-    double tol = (sigma[0] > 0.0) ? sigma[0] * 1e-12 : 0.0;
+    /* Normalize the columns of U. A column whose singular value is at the
+       rounding-noise level carries no direction, so it is replaced by a unit
+       vector orthogonal to the others; U keeps orthonormal columns. */
+    double tolU = sigma[0] * (double)m * DBL_EPSILON;
     for (size_t i = 0; i < n; ++i) {
-        Smat->data[i] = sigma[i];
-        if (sigma[i] > tol) {
+        good[i] = sigma[i] > tolU && sigma[i] > 0.0;
+        if (good[i]) {
             for (size_t r = 0; r < m; ++r) {
-                double dot = 0.0;
-                for (size_t k = 0; k < n; ++k) {
-                    dot += matrix->data[r * n + k] * Vmat->data[k * n + i];
-                }
-                Umat->data[r * n + i] = dot / sigma[i];
-            }
-        }
-        else {
-            for (size_t r = 0; r < m; ++r) {
-                Umat->data[r * n + i] = 0.0;
+                u[r * n + i] /= sigma[i];
             }
         }
     }
-    free(sigma);
+    for (size_t i = 0; i < n; ++i) {
+        if (good[i]) {
+            continue;
+        }
+        for (size_t k = 0; k < m && !good[i]; ++k) {
+            for (size_t r = 0; r < m; ++r) {
+                u[r * n + i] = (r == k) ? 1.0 : 0.0;
+            }
+            for (int pass = 0; pass < 2; ++pass) {   /* Gram-Schmidt, twice */
+                for (size_t j = 0; j < n; ++j) {
+                    if (!good[j]) {
+                        continue;
+                    }
+                    double dot = 0.0;
+                    for (size_t r = 0; r < m; ++r) {
+                        dot += u[r * n + j] * u[r * n + i];
+                    }
+                    for (size_t r = 0; r < m; ++r) {
+                        u[r * n + i] -= dot * u[r * n + j];
+                    }
+                }
+            }
+            double norm = 0.0;
+            for (size_t r = 0; r < m; ++r) {
+                norm += u[r * n + i] * u[r * n + i];
+            }
+            norm = sqrt(norm);
+            if (norm > 0.5) {
+                for (size_t r = 0; r < m; ++r) {
+                    u[r * n + i] /= norm;
+                }
+                good[i] = true;
+            }
+        }
+    }
+    free(good);
 
     *U = Umat;
     *S = Smat;
@@ -4734,9 +4823,9 @@ bool matrix_svd(const Matrix* matrix, Matrix** U, Matrix** S, Matrix** V) {
  *         fails, or allocation fails. The caller owns the result and must
  *         release it with `matrix_deallocate`.
  *
- * @note Singular values at or below `rcond · σ_max` (with `rcond = 1e-15`,
- *       NumPy's default) are treated as zero, so the pseudo-inverse is robust to
- *       rank deficiency.
+ * @note Singular values at or below `rcond · σ_max` (with `rcond` the larger of
+ *       `1e-15` and `max(m, n)·eps`) are treated as zero, so the pseudo-inverse
+ *       is robust to rank deficiency.
  */
 Matrix* matrix_pinv(const Matrix* matrix) {
     MATRIX_LOG("[matrix_pinv] Entering function");
@@ -4773,8 +4862,14 @@ Matrix* matrix_pinv(const Matrix* matrix) {
         return NULL;
     }
 
-    double smax = S->data[0];   /* descending, so first is largest */
-    double tol = smax * 1e-15;
+    /* descending, so first is largest. Cutoff: NumPy's rcond = 1e-15, or
+       max(m, n)·eps (NumPy 2's default) when that is larger. */
+    double smax = S->data[0];
+    double rcond = (double)(m > n ? m : n) * DBL_EPSILON;
+    if (rcond < 1e-15) {
+        rcond = 1e-15;
+    }
+    double tol = smax * rcond;
 
     Matrix* result = matrix_create(n, m);
     if (!result) {
@@ -4882,8 +4977,8 @@ double matrix_cond(const Matrix* matrix) {
  *          same number of rows as `A`.
  *
  * @return A new `n x k` least-squares solution, or `NULL` if either argument is
- *         NULL, the row counts differ, `A` has fewer rows than columns, the QR
- *         decomposition fails, or allocation fails. The caller owns the result
+ *         NULL, the row counts differ, `A` has fewer rows than columns, `A` is
+ *         rank-deficient, the QR decomposition fails, or allocation fails. The caller owns the result
  *         and must release it with `matrix_deallocate`.
  *
  * @note For the minimum-norm solution of an underdetermined or rank-deficient
@@ -4910,6 +5005,27 @@ Matrix* matrix_lstsq(const Matrix* A, const Matrix* b) {
     if (!matrix_qr_decomposition(A, &Q, &R)) {
         MATRIX_LOG("[matrix_lstsq] Error: QR decomposition failed.");
         return NULL;
+    }
+
+    /* Back-substitution needs every R(i,i) to be clearly non-zero; for a
+       rank-deficient A it would divide by ~0 and return inf/NaN. */
+    {
+        size_t nn = A->cols;
+        double rmax = 0.0;
+        for (size_t i = 0; i < nn; ++i) {
+            if (fabs(R->data[i * nn + i]) > rmax) {
+                rmax = fabs(R->data[i * nn + i]);
+            }
+        }
+        double rtol = rmax * (double)A->rows * DBL_EPSILON;
+        for (size_t i = 0; i < nn; ++i) {
+            if (!(fabs(R->data[i * nn + i]) > rtol)) {
+                MATRIX_LOG("[matrix_lstsq] Error: A is rank-deficient; use matrix_pinv.");
+                matrix_deallocate(Q);
+                matrix_deallocate(R);
+                return NULL;
+            }
+        }
     }
 
     Matrix* Qt = matrix_transpose(Q);
@@ -5102,9 +5218,9 @@ bool matrix_is_skew_symmetric(const Matrix* matrix) {
 /**
  * @brief Calculates the determinant of a square matrix.
  *
- * This function computes the determinant of a square matrix using a recursive approach. 
- * For 1x1 and 2x2 matrices, it uses direct formulas. For larger matrices, it computes 
- * the determinant by expanding along the first row and using recursive calls on submatrices.
+ * For 1x1, 2x2 and 3x3 matrices it uses the direct formulas; larger matrices are
+ * reduced by Gaussian elimination with partial pivoting (LU), O(n^3), and the
+ * determinant is the signed product of the pivots.
  *
  * @param matrix The input square matrix.
  * @return The determinant of the matrix. Returns 0 if the matrix is not square or an error occurs.
@@ -5128,28 +5244,63 @@ double matrix_determinant(const Matrix* matrix) {
         double det = matrix->data[0] * matrix->data[3] - matrix->data[1] * matrix->data[2];
         MATRIX_LOG("[matrix_determinant] Determinant of 2x2 matrix is %lf.", det);
         return det;
-    } 
+    }
+    else if (matrix->rows == 3) {
+        /* Closed-form expansion: exact for small integer matrices (a singular
+           integer matrix gives exactly 0, not rounding noise). */
+        const double* m = matrix->data;
+        double det = m[0] * (m[4] * m[8] - m[5] * m[7])
+                   - m[1] * (m[3] * m[8] - m[5] * m[6])
+                   + m[2] * (m[3] * m[7] - m[4] * m[6]);
+        MATRIX_LOG("[matrix_determinant] Determinant of 3x3 matrix is %lf.", det);
+        return det;
+    }
     else {
-        double det = 0;
-        for (int j1 = 0; j1 < (int)matrix->cols; j1++) {
-            Matrix* submatrix = matrix_create(matrix->rows - 1, matrix->cols - 1);
-            
-            for (int i = 1; i < (int)matrix->rows; i++) {
-                int j2 = 0;
-                for (int j = 0; j < (int)matrix->cols; j++) {
-                    if (j == j1) {
-                        continue;
-                    }
-                    matrix_set(submatrix, i - 1, j2++, matrix->data[i * matrix->cols + j]);
+        /* Gaussian elimination with partial pivoting, O(n^3). (Laplace
+           expansion was O(n!) and took seconds already at n = 11.) */
+        size_t n = matrix->rows;
+        double* a = (double*)malloc(n * n * sizeof(double));
+        if (!a) {
+            MATRIX_LOG("[matrix_determinant] Error: Memory allocation failed.");
+            return 0.0;
+        }
+        memcpy(a, matrix->data, n * n * sizeof(double));
+
+        double det = 1.0;
+        for (size_t k = 0; k < n; k++) {
+            size_t piv = k;
+            double best = fabs(a[k * n + k]);
+            for (size_t i = k + 1; i < n; i++) {
+                if (fabs(a[i * n + k]) > best) {
+                    best = fabs(a[i * n + k]);
+                    piv = i;
                 }
             }
-            double cofactor = (j1 % 2 == 0 ? 1 : -1) * matrix->data[j1];
-            double subDet = matrix_determinant(submatrix);
-            det += cofactor * subDet;
-
-            MATRIX_LOG("[matrix_determinant] Submatrix determinant at column %d is %lf.", j1, subDet);
-            matrix_deallocate(submatrix);
+            if (best == 0.0) {
+                free(a);
+                MATRIX_LOG("[matrix_determinant] Matrix is singular, determinant is 0.");
+                return 0.0;
+            }
+            if (piv != k) {
+                for (size_t j = 0; j < n; j++) {
+                    double t = a[k * n + j];
+                    a[k * n + j] = a[piv * n + j];
+                    a[piv * n + j] = t;
+                }
+                det = -det;
+            }
+            double pk = a[k * n + k];
+            det *= pk;
+            for (size_t i = k + 1; i < n; i++) {
+                double f = a[i * n + k] / pk;
+                if (f != 0.0) {
+                    for (size_t j = k + 1; j < n; j++) {
+                        a[i * n + j] -= f * a[k * n + j];
+                    }
+                }
+            }
         }
+        free(a);
 
         MATRIX_LOG("[matrix_determinant] Determinant of matrix is %lf.", det);
         return det;
@@ -5258,6 +5409,17 @@ Matrix* matrix_adjugate(const Matrix* matrix) {
         return NULL;
     }
 
+    /* adj([[a]]) = [[1]]: the only minor is the empty determinant, 1. The loop
+       below cannot express it (a 1x1 matrix has no 0x0 submatrix), which made
+       inverse([[a]]) come out as [0]. */
+    if (matrix->rows == 1) {
+        Matrix* one = matrix_create(1, 1);
+        if (one) {
+            one->data[0] = 1.0;
+        }
+        return one;
+    }
+
     Matrix* cofactorMatrix = matrix_create(matrix->rows, matrix->cols);
     if (!cofactorMatrix) {
         MATRIX_LOG("[matrix_adjugate] Error: Memory allocation failed for cofactorMatrix.");
@@ -5267,8 +5429,13 @@ Matrix* matrix_adjugate(const Matrix* matrix) {
     for (size_t i = 0; i < matrix->rows; i++) {
         for (size_t j = 0; j < matrix->cols; j++) {
             Matrix* submatrix = matrix_create_submatrix(matrix, i, j);
+            if (!submatrix) {
+                MATRIX_LOG("[matrix_adjugate] Error: Failed to create submatrix.");
+                matrix_deallocate(cofactorMatrix);
+                return NULL;
+            }
             double minor = matrix_determinant(submatrix);
-            double cofactor = pow(-1, i + j) * minor;
+            double cofactor = ((i + j) % 2 == 0 ? 1.0 : -1.0) * minor;
 
             matrix_set(cofactorMatrix, i, j, cofactor);
             MATRIX_LOG("[matrix_adjugate] Set cofactorMatrix(%zu, %zu) = %lf", i, j, cofactor);
@@ -5286,9 +5453,9 @@ Matrix* matrix_adjugate(const Matrix* matrix) {
 /**
  * @brief Computes the inverse of a square matrix.
  *
- * This function calculates the inverse of a square matrix by first computing its determinant.
- * If the determinant is non-zero, the function then calculates the adjugate matrix and divides
- * it by the determinant to obtain the inverse.
+ * Uses Gauss-Jordan elimination with partial pivoting, O(n^3). The matrix is
+ * treated as singular when a pivot is no larger than `n * DBL_EPSILON` times its
+ * largest entry, so the test does not depend on the matrix's scale.
  *
  * @param matrix The input square matrix.
  * @return A pointer to the newly created inverse matrix, or NULL if the matrix is singular or if an error occurs.
@@ -5305,26 +5472,78 @@ Matrix* matrix_inverse(const Matrix* matrix) {
         return NULL;
     }
 
-    double det = matrix_determinant(matrix);
-    // Use a tolerance check rather than strict equality — for floating-point
-    // matrices, a "singular" determinant rarely lands at exact 0.
-    if (is_effectively_zero(det)) {
-        MATRIX_LOG("[matrix_inverse] Error: Matrix is singular (det ~ 0) and cannot be inverted.");
+    /* Gauss-Jordan elimination with partial pivoting, O(n^3). The old
+       determinant/adjugate route was O(n * n!), returned [0] for every 1x1
+       matrix, and called anything with |det| < 1e-9 singular, which rejected
+       perfectly invertible small-scale matrices such as 0.01 * I(5). A
+       matrix is now singular when a pivot is at the rounding-noise level of
+       its own entries (n * eps * max|a_ij|). */
+    size_t n = matrix->rows;
+    double* a = (double*)malloc(n * n * sizeof(double));
+    Matrix* inverse = matrix_create_identity(n);
+    if (!a || !inverse) {
+        MATRIX_LOG("[matrix_inverse] Error: Memory allocation failed.");
+        free(a);
+        if (inverse) {
+            matrix_deallocate(inverse);
+        }
         return NULL;
     }
+    memcpy(a, matrix->data, n * n * sizeof(double));
+    double* b = inverse->data;
 
-    Matrix* inverse = matrix_adjugate(matrix);
-    if (!inverse) {
-        MATRIX_LOG("[matrix_inverse] Error: Failed to calculate adjugate matrix.");
-        return NULL;
-    }
-
-    for (size_t i = 0; i < inverse->rows; i++) {
-        for (size_t j = 0; j < inverse->cols; j++) {
-            inverse->data[i * inverse->cols + j] /= det;
-            MATRIX_LOG("[matrix_inverse] Set inverse(%zu, %zu) = %lf", i, j, inverse->data[i * inverse->cols + j]);
+    double scale = 0.0;
+    for (size_t i = 0; i < n * n; i++) {
+        if (fabs(a[i]) > scale) {
+            scale = fabs(a[i]);
         }
     }
+    double tol = (double)n * DBL_EPSILON * scale;
+
+    for (size_t k = 0; k < n; k++) {
+        size_t piv = k;
+        double best = fabs(a[k * n + k]);
+        for (size_t i = k + 1; i < n; i++) {
+            if (fabs(a[i * n + k]) > best) {
+                best = fabs(a[i * n + k]);
+                piv = i;
+            }
+        }
+        if (!(best > tol)) {   /* also catches NaN */
+            MATRIX_LOG("[matrix_inverse] Error: Matrix is singular and cannot be inverted.");
+            free(a);
+            matrix_deallocate(inverse);
+            return NULL;
+        }
+        if (piv != k) {
+            for (size_t j = 0; j < n; j++) {
+                double t = a[k * n + j];
+                a[k * n + j] = a[piv * n + j];
+                a[piv * n + j] = t;
+                t = b[k * n + j];
+                b[k * n + j] = b[piv * n + j];
+                b[piv * n + j] = t;
+            }
+        }
+        double pk = a[k * n + k];
+        for (size_t j = 0; j < n; j++) {
+            a[k * n + j] /= pk;
+            b[k * n + j] /= pk;
+        }
+        for (size_t i = 0; i < n; i++) {
+            if (i == k) {
+                continue;
+            }
+            double f = a[i * n + k];
+            if (f != 0.0) {
+                for (size_t j = 0; j < n; j++) {
+                    a[i * n + j] -= f * a[k * n + j];
+                    b[i * n + j] -= f * b[k * n + j];
+                }
+            }
+        }
+    }
+    free(a);
 
     MATRIX_LOG("[matrix_inverse] Success: Matrix inversion completed successfully.");
     return inverse;
@@ -5385,10 +5604,6 @@ Matrix* matrix_power(const Matrix* matrix, int power) {
         MATRIX_LOG("[matrix_power] Error: Matrix is not square.");
         return NULL;
     }
-    if (power < 0) {
-        MATRIX_LOG("[matrix_power] Error: Negative power is not supported.");
-        return NULL;
-    }
     if (power == 0) {
         MATRIX_LOG("[matrix_power] Power is zero, returning the identity matrix.");
         return matrix_create_identity(matrix->rows);
@@ -5413,14 +5628,15 @@ Matrix* matrix_power(const Matrix* matrix, int power) {
         MATRIX_LOG("[matrix_power] Error: Failed to allocate identity result.");
         return NULL;
     }
-    Matrix* base = matrix_copy(matrix);
+    /* A^-n = (A^-1)^n, as documented (NULL when A is singular). */
+    Matrix* base = (power < 0) ? matrix_inverse(matrix) : matrix_copy(matrix);
     if (!base) {
-        MATRIX_LOG("[matrix_power] Error: Failed to allocate base copy.");
+        MATRIX_LOG("[matrix_power] Error: Failed to build the base (copy, or inverse for a negative power).");
         matrix_deallocate(result);
         return NULL;
     }
 
-    unsigned int p = (unsigned int)power;
+    unsigned int p = (power < 0) ? (unsigned int)(-(long long)power) : (unsigned int)power;
     while (p > 0) {
         if (p & 1u) {
             Matrix* t = matrix_multiply(result, base);
@@ -5455,8 +5671,9 @@ Matrix* matrix_power(const Matrix* matrix, int power) {
 /**
  * @brief Computes the rank of a matrix.
  *
- * The rank of a matrix is the maximum number of linearly independent row or column vectors in the matrix. 
- * This function uses a variant of Gaussian elimination to determine the rank.
+ * The rank of a matrix is the maximum number of linearly independent row or column vectors in the matrix.
+ * Like `numpy.linalg.matrix_rank`, it counts the singular values greater than
+ * `σmax · max(rows, cols) · DBL_EPSILON`.
  *
  * @param matrix The input matrix.
  * @return The rank of the matrix, or -1 if an error occurs (e.g., the input matrix is NULL).
@@ -5469,51 +5686,43 @@ int matrix_rank(const Matrix* matrix) {
         return -1;
     }
 
-    Matrix* tempMatrix = matrix_copy(matrix);
-    if (!tempMatrix) {
-        MATRIX_LOG("[matrix_rank] Error: Failed to copy matrix.");
+    /* NumPy's definition: the number of singular values above
+       σmax · max(m, n) · eps. (The old elimination indexed the diagonal past
+       the last row of a wide matrix and could report rank > min(m, n).) */
+    const Matrix* target = matrix;
+    Matrix* transposed = NULL;
+    if (matrix->rows < matrix->cols) {
+        transposed = matrix_transpose(matrix);
+        if (!transposed) {
+            return -1;
+        }
+        target = transposed;
+    }
+
+    Matrix* U = NULL;
+    Matrix* S = NULL;
+    Matrix* V = NULL;
+    bool ok = matrix_svd(target, &U, &S, &V);
+    if (transposed) {
+        matrix_deallocate(transposed);
+    }
+    if (!ok) {
+        MATRIX_LOG("[matrix_rank] Error: SVD failed.");
         return -1;
     }
 
-    int rank = tempMatrix->cols;
-    MATRIX_LOG("[matrix_rank] Starting rank calculation with initial rank = %d", rank);
-
-    for (int row = 0; row < rank; row++) {
-        if (is_effectively_zero(tempMatrix->data[row * tempMatrix->cols + row])) {
-            MATRIX_LOG("[matrix_rank] Diagonal element at (%d, %d) is effectively zero. Searching for a non-zero element.", row, row);
-            bool reduce = true;
-            for (int i = row + 1; i < (int)tempMatrix->rows; i++) {
-                if (!is_effectively_zero(tempMatrix->data[i * tempMatrix->cols + row])) {
-                    matrix_swap_rows(tempMatrix, row, i);
-                    MATRIX_LOG("[matrix_rank] Swapped row %d with row %d.", row, i);
-                    reduce = false;
-                    break;
-                }
-            }
-
-            if (reduce) {
-                rank--;
-                MATRIX_LOG("[matrix_rank] Reduced rank to %d.", rank);
-
-                for (int i = 0; i < (int)tempMatrix->rows; i++) {
-                    tempMatrix->data[i * tempMatrix->cols + row] = tempMatrix->data[i * tempMatrix->cols + rank];
-                }
-                row--;
-            }
-        } 
-        else {
-            for (int i = row + 1; i < (int)tempMatrix->rows; i++) {
-                double mult = tempMatrix->data[i * tempMatrix->cols + row] / tempMatrix->data[row * tempMatrix->cols + row];
-                MATRIX_LOG("[matrix_rank] Eliminating element at (%d, %d) using multiplier %lf", i, row, mult);
-
-                for (int j = row; j < (int)tempMatrix->cols; j++) {
-                    tempMatrix->data[i * tempMatrix->cols + j] -= mult * tempMatrix->data[row * tempMatrix->cols + j];
-                }
-            }
+    size_t big = matrix->rows > matrix->cols ? matrix->rows : matrix->cols;
+    double tol = S->data[0] * (double)big * DBL_EPSILON;
+    int rank = 0;
+    for (size_t i = 0; i < S->rows; i++) {
+        if (S->data[i] > tol) {
+            rank++;
         }
     }
 
-    matrix_deallocate(tempMatrix);
+    matrix_deallocate(U);
+    matrix_deallocate(S);
+    matrix_deallocate(V);
     MATRIX_LOG("[matrix_rank] Rank calculation completed. Final rank = %d", rank);
     return rank;
 }
@@ -5622,7 +5831,12 @@ Matrix* matrix_kronecker_product(const Matrix* matrix1, const Matrix* matrix2) {
     }
 
     size_t m = matrix1->rows, n = matrix1->cols, p = matrix2->rows, q = matrix2->cols;
-    Matrix* product = matrix_create(m * p, n * q);
+    size_t mp, nq;
+    if (!mat_size_mul(m, p, &mp) || !mat_size_mul(n, q, &nq)) {
+        MATRIX_LOG("[matrix_kronecker_product] Error: result size overflows.");
+        return NULL;
+    }
+    Matrix* product = matrix_create(mp, nq);
     if (!product) {
         MATRIX_LOG("[matrix_kronecker_product] Error: Memory allocation failed for the result matrix.");
         return NULL;
@@ -5712,19 +5926,16 @@ bool matrix_is_hankel(const Matrix* matrix) {
         return false;
     }
 
-    for (size_t i = 0; i < matrix->rows - 1; i++) {
-        for (size_t j = 0; j < matrix->cols - 1; j++) {
-            if (i + j >= matrix->rows - 1) {
-                continue; // Skip checks not relevant for a Hankel matrix
-            }
-
-            double value = matrix_get(matrix, i, j);
-            if (i + 1 < matrix->rows && j > 0) {
-                double next = matrix_get(matrix, i + 1, j - 1);
-                if (!is_effectively_zero(value - next)) {
-                    MATRIX_LOG("[matrix_is_hankel] Error: Matrix is not Hankel at element [%zu, %zu].", i + 1, j - 1);
-                    return false;
-                }
+    /* Every element must equal its up-right neighbour: a[i][j] == a[i-1][j+1].
+       That covers each anti-diagonal completely (the old loop skipped all
+       anti-diagonals from the main one down). */
+    for (size_t i = 1; i < matrix->rows; i++) {
+        for (size_t j = 0; j + 1 < matrix->cols; j++) {
+            double value = matrix->data[i * matrix->cols + j];
+            double up_right = matrix->data[(i - 1) * matrix->cols + j + 1];
+            if (!is_effectively_zero(value - up_right)) {
+                MATRIX_LOG("[matrix_is_hankel] Error: Matrix is not Hankel at element [%zu, %zu].", i, j);
+                return false;
             }
         }
     }
@@ -5892,7 +6103,9 @@ Matrix* matrix_circulant(const Matrix* firstRow) {
     // Populate the circulant matrix
     for (size_t row = 0; row < n; ++row) {
         for (size_t col = 0; col < n; ++col) {
-            size_t index = (col + row) % n;
+            /* each row is the previous one shifted RIGHT by one, as
+               documented (the old (col + row) % n shifted left) */
+            size_t index = (col + n - row) % n;
             double value = matrix_get(firstRow, 0, index);
             matrix_set(circulantMatrix, row, col, value);
             MATRIX_LOG("[matrix_circulant] Set circulant(%zu, %zu) = %lf", row, col, value);
@@ -5946,9 +6159,9 @@ Matrix* matrix_hilbert(size_t n) {
 /**
  * @brief Creates a Helmert matrix of the specified size.
  *
- * A Helmert matrix is an orthogonal matrix used in statistical analysis. This function generates 
- * either the full Helmert matrix or the reduced version by removing the last row. The entries in the 
- * Helmert matrix are calculated based on the size of the matrix and whether it is the full or reduced version.
+ * A Helmert matrix is an orthogonal matrix used in statistical analysis. This function generates
+ * either the full n x n Helmert matrix or the reduced (n-1) x n version, which drops the first
+ * (constant) row, exactly as scipy.linalg.helmert does.
  *
  * @param n The size of the Helmert matrix.
  * @param full Boolean value indicating whether to generate the full Helmert matrix (true) or the reduced version (false).
@@ -5958,31 +6171,35 @@ Matrix* matrix_hilbert(size_t n) {
 Matrix* matrix_helmert(size_t n, bool full) {
     MATRIX_LOG("[matrix_helmert] Entering function with n = %zu, full = %s", n, full ? "true" : "false");
 
-    Matrix* helmertMatrix = matrix_create(n, full ? n : n - 1);
+    if (n == 0 || (!full && n < 2)) {
+        MATRIX_LOG("[matrix_helmert] Error: n must be >= 1 (>= 2 for the reduced form).");
+        return NULL;
+    }
+
+    /* As scipy.linalg.helmert: the full matrix is n x n; the reduced one drops
+       the first row (the constant 1/sqrt(n) row) and is (n-1) x n. */
+    size_t rows = full ? n : n - 1;
+    Matrix* helmertMatrix = matrix_create(rows, n);
     if (!helmertMatrix) {
         MATRIX_LOG("[matrix_helmert] Error: Memory allocation failed for Helmert matrix.");
         return NULL;
     }
 
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t r = 0; r < rows; ++r) {
+        size_t i = full ? r : r + 1;   /* row index in the full Helmert matrix */
         for (size_t j = 0; j < n; ++j) {
+            double value = 0.0;
             if (i == 0) {
-                // First row
-                matrix_set(helmertMatrix, i, j, 1.0 / sqrt(n));
-                MATRIX_LOG("[matrix_helmert] Set helmert(%zu, %zu) = %lf", i, j, 1.0 / sqrt(n));
-            } 
-            else if (j < i) {
-                // Below diagonal for subsequent rows
-                double value = 1.0 / sqrt(i * (i + 1.0));
-                matrix_set(helmertMatrix, full ? i : i - 1, j, value);
-                MATRIX_LOG("[matrix_helmert] Set helmert(%zu, %zu) = %lf", full ? i : i - 1, j, value);
-            } 
-            else if (j == i) {
-                // Diagonal elements for subsequent rows
-                double value = -sqrt((double)i / (i + 1.0));
-                matrix_set(helmertMatrix, full ? i : i - 1, j, value);
-                MATRIX_LOG("[matrix_helmert] Set helmert(%zu, %zu) = %lf", full ? i : i - 1, j, value);
+                value = 1.0 / sqrt((double)n);
             }
+            else if (j < i) {
+                value = 1.0 / sqrt(i * (i + 1.0));
+            }
+            else if (j == i) {
+                value = -sqrt((double)i / (i + 1.0));
+            }
+            helmertMatrix->data[r * n + j] = value;
+            MATRIX_LOG("[matrix_helmert] Set helmert(%zu, %zu) = %lf", r, j, value);
         }
     }
 
@@ -6018,6 +6235,11 @@ Matrix* matrix_cofactor(const Matrix* matrix) {
     if (!cofactorMatrix) {
         MATRIX_LOG("[matrix_cofactor] Error: Memory allocation failed for cofactor matrix.");
         return NULL;
+    }
+    if (n == 1) {
+        /* The cofactor of a 1x1 matrix is the empty determinant, 1. */
+        cofactorMatrix->data[0] = 1.0;
+        return cofactorMatrix;
     }
 
     for (size_t i = 0; i < n; ++i) {
@@ -6123,8 +6345,8 @@ Matrix* matrix_cholesky_decomposition(const Matrix* matrix) {
 bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
     MATRIX_LOG("[matrix_lu_decomposition] Entering function");
 
-    if (!matrix || !matrix_is_square(matrix)) {
-        MATRIX_LOG("[matrix_lu_decomposition] Error: Matrix must be square for LU decomposition.");
+    if (!matrix || !matrix->data || !L || !U || !matrix_is_square(matrix)) {
+        MATRIX_LOG("[matrix_lu_decomposition] Error: NULL argument, or matrix is not square.");
         return false;
     }
 
@@ -6136,8 +6358,21 @@ bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
         MATRIX_LOG("[matrix_lu_decomposition] Error: Memory allocation failed for L or U.");
         if (*L) matrix_deallocate(*L);
         if (*U) matrix_deallocate(*U);
+        *L = NULL;
+        *U = NULL;
         return false;
     }
+
+    /* Doolittle without pivoting divides by every pivot but the last; one at
+       the rounding level of the matrix means this factorization does not
+       exist (it used to return true with inf/NaN in L and U). */
+    double scale = 0.0;
+    for (size_t i = 0; i < n * n; i++) {
+        if (fabs(matrix->data[i]) > scale) {
+            scale = fabs(matrix->data[i]);
+        }
+    }
+    double tol = (double)n * DBL_EPSILON * scale;
 
     for (size_t i = 0; i < n; i++) {
         for (size_t k = i; k < n; k++) {
@@ -6147,6 +6382,14 @@ bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
             }
             matrix_set(*U, i, k, matrix_get(matrix, i, k) - sum);
             MATRIX_LOG("[matrix_lu_decomposition] Set U(%zu, %zu) = %lf", i, k, matrix_get(matrix, i, k) - sum);
+        }
+        if (i + 1 < n && !(fabs(matrix_get(*U, i, i)) > tol)) {
+            MATRIX_LOG("[matrix_lu_decomposition] Error: zero pivot at %zu; no LU factorization without pivoting.", i);
+            matrix_deallocate(*L);
+            matrix_deallocate(*U);
+            *L = NULL;
+            *U = NULL;
+            return false;
         }
 
         // Lower Triangular
@@ -6176,7 +6419,9 @@ bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
  * This function decomposes a given matrix into two matrices: 
  * an orthogonal matrix `Q` and an upper triangular matrix `R`, 
  * such that the original matrix `A` can be represented as `A = Q * R`.
- * Note: The input matrix must have more rows than columns (m >= n).
+ * Computed with Householder reflections: `Q` (m x n) has orthonormal columns
+ * even for rank-deficient input, and `R` (n x n) has a non-negative diagonal.
+ * Note: The input matrix must have at least as many rows as columns (m >= n).
  *
  * @param A The input matrix to decompose.
  * @param Q Pointer to a pointer that will store the orthogonal matrix.
@@ -6187,80 +6432,117 @@ bool matrix_lu_decomposition(const Matrix* matrix, Matrix** L, Matrix** U) {
 bool matrix_qr_decomposition(const Matrix* A, Matrix** Q, Matrix** R) {
     MATRIX_LOG("[matrix_qr_decomposition] Entering function");
 
-    if (!A || A->rows < A->cols) {
-        MATRIX_LOG("[matrix_qr_decomposition] Error: Matrix must have more rows than columns.");
+    if (!A || !A->data || !Q || !R || A->rows < A->cols) {
+        MATRIX_LOG("[matrix_qr_decomposition] Error: NULL argument, or matrix has fewer rows than columns.");
         return false;
     }
 
     size_t m = A->rows;
     size_t n = A->cols;
 
+    /* Householder QR. (Classical Gram-Schmidt lost orthogonality on
+       ill-conditioned input and produced NaN, while reporting success, as
+       soon as a column was dependent.) The reflector vectors are kept in V
+       (column k uses rows k..m-1) to build the thin Q afterwards. */
+    double* a = (double*)malloc(m * n * sizeof(double));
+    double* V = (double*)calloc(m * n, sizeof(double));
+    double* tau = (double*)calloc(n, sizeof(double));
     *Q = matrix_create(m, n);
     *R = matrix_create(n, n);
-    if (!*Q || !*R) {
-        MATRIX_LOG("[matrix_qr_decomposition] Error: Memory allocation failed for Q and R.");
-        if (*Q) { 
-            matrix_deallocate(*Q); 
-            *Q = NULL; 
+    if (!a || !V || !tau || !*Q || !*R) {
+        MATRIX_LOG("[matrix_qr_decomposition] Error: Memory allocation failed.");
+        free(a);
+        free(V);
+        free(tau);
+        if (*Q) {
+            matrix_deallocate(*Q);
         }
-        if (*R) { 
-            matrix_deallocate(*R); 
-            *R = NULL; 
+        if (*R) {
+            matrix_deallocate(*R);
         }
+        *Q = NULL;
+        *R = NULL;
         return false;
     }
+    memcpy(a, A->data, m * n * sizeof(double));
 
-    // Log memory allocation for temporary vectors
-    MATRIX_LOG("[matrix_qr_decomposition] Allocating memory for temporary vectors.");
-
-    double* a_col = (double*)calloc(m, sizeof(double));
-    double* q_col = (double*)calloc(m, sizeof(double));
-    if (!a_col || !q_col) {
-        MATRIX_LOG("[matrix_qr_decomposition] Error: Memory allocation failed for column vectors.");
-
-        free(a_col);
-        free(q_col);
-        matrix_deallocate(*Q); *Q = NULL;
-        matrix_deallocate(*R); *R = NULL;
-        
-        return false;
+    for (size_t k = 0; k < n; ++k) {
+        double norm = 0.0;
+        for (size_t i = k; i < m; ++i) {
+            norm = hypot(norm, a[i * n + k]);
+        }
+        if (norm == 0.0) {
+            tau[k] = 0.0;               /* zero column: no reflection needed */
+            continue;
+        }
+        double x0 = a[k * n + k];
+        double alpha = (x0 >= 0.0) ? -norm : norm;   /* avoids cancellation */
+        double vnorm2 = 0.0;
+        for (size_t i = k; i < m; ++i) {
+            double vi = a[i * n + k] - ((i == k) ? alpha : 0.0);
+            V[i * n + k] = vi;
+            vnorm2 += vi * vi;
+        }
+        tau[k] = 2.0 / vnorm2;
+        for (size_t j = k; j < n; ++j) {
+            double s = 0.0;
+            for (size_t i = k; i < m; ++i) {
+                s += V[i * n + k] * a[i * n + j];
+            }
+            s *= tau[k];
+            for (size_t i = k; i < m; ++i) {
+                a[i * n + j] -= s * V[i * n + k];
+            }
+        }
     }
 
+    /* R is the upper triangle of the reduced matrix. */
     for (size_t i = 0; i < n; ++i) {
-        // Copy the ith column of A to a_col
-        for (size_t j = 0; j < m; ++j) {
-            a_col[j] = matrix_get(A, j, i);
-        }
-
-        for (size_t k = 0; k < i; ++k) {
-            for (size_t j = 0; j < m; ++j) {
-                q_col[j] = matrix_get(*Q, j, k);
-            }
-            subtract_projection(a_col, q_col, m);  // a_col -= projection of a_col onto q_col
-        }
-
-        normalize_vector(a_col, m);  
-
-        for (size_t j = 0; j < m; ++j) {
-            matrix_set(*Q, j, i, a_col[j]);
-        }
-
-        MATRIX_LOG("[matrix_qr_decomposition] Set column %zu of Q", i);
-    }
-
-    for (size_t j = 0; j < n; ++j) {
-        for (size_t i = 0; i <= j; ++i) {
-            double r_ij = 0.0;
-            for (size_t k = 0; k < m; ++k) {
-                r_ij += matrix_get(*Q, k, i) * matrix_get(A, k, j);
-            }
-            matrix_set(*R, i, j, r_ij);
-            MATRIX_LOG("[matrix_qr_decomposition] Set R(%zu, %zu) = %lf", i, j, r_ij);
+        for (size_t j = 0; j < n; ++j) {
+            (*R)->data[i * n + j] = (j >= i) ? a[i * n + j] : 0.0;
         }
     }
 
-    free(a_col);
-    free(q_col);
+    /* Thin Q = H0 · H1 · ... · H(n-1) applied to the first n columns of I. */
+    double* q = (*Q)->data;
+    for (size_t i = 0; i < m; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            q[i * n + j] = (i == j) ? 1.0 : 0.0;
+        }
+    }
+    for (size_t kk = n; kk-- > 0; ) {
+        if (tau[kk] == 0.0) {
+            continue;
+        }
+        for (size_t j = 0; j < n; ++j) {
+            double s = 0.0;
+            for (size_t i = kk; i < m; ++i) {
+                s += V[i * n + kk] * q[i * n + j];
+            }
+            s *= tau[kk];
+            for (size_t i = kk; i < m; ++i) {
+                q[i * n + j] -= s * V[i * n + kk];
+            }
+        }
+    }
+
+    /* Make R's diagonal non-negative (flip the matching column of Q), the
+       convention Gram-Schmidt produces; for full-rank A this factorization
+       is unique. */
+    for (size_t i = 0; i < n; ++i) {
+        if ((*R)->data[i * n + i] < 0.0) {
+            for (size_t j = i; j < n; ++j) {
+                (*R)->data[i * n + j] = -(*R)->data[i * n + j];
+            }
+            for (size_t r = 0; r < m; ++r) {
+                q[r * n + i] = -q[r * n + i];
+            }
+        }
+    }
+
+    free(a);
+    free(V);
+    free(tau);
 
     MATRIX_LOG("[matrix_qr_decomposition] Exiting function.");
     return true;
@@ -6286,7 +6568,7 @@ Matrix* matrix_pascal(size_t n) {
 
     for (size_t i = 0; i < n; i++) {
         for (size_t j = 0; j <= i; j++) {
-            double value = binomial_coefficient(i + j, i);
+            double value = mat_binomial(i + j, i);   /* exact below 2^53 */
             matrix_set(pascalMatrix, i, j, value);
             matrix_set(pascalMatrix, j, i, value);
 
@@ -6309,6 +6591,9 @@ Matrix* matrix_pascal(size_t n) {
  */
 double matrix_frobenius_norm(const Matrix* matrix) {
     MATRIX_LOG("[matrix_frobenius_norm] Entering function");
+    if (!matrix || !matrix->data) {
+        return 0.0;   /* documented result for NULL */
+    }
 
     double sum = 0.0;
     for (size_t i = 0; i < matrix->rows; i++) {
@@ -6336,6 +6621,9 @@ double matrix_frobenius_norm(const Matrix* matrix) {
  */
 double matrix_l1_norm(const Matrix* matrix) {
     MATRIX_LOG("[matrix_l1_norm] Entering function");
+    if (!matrix || !matrix->data) {
+        return 0.0;   /* documented result for NULL */
+    }
 
     double maxSum = 0.0;
     for (size_t j = 0; j < matrix->cols; j++) {
@@ -6365,6 +6653,9 @@ double matrix_l1_norm(const Matrix* matrix) {
  */
 double matrix_infinity_norm(const Matrix* matrix) {
     MATRIX_LOG("[matrix_infinity_norm] Entering function");
+    if (!matrix || !matrix->data) {
+        return 0.0;   /* documented result for NULL */
+    }
 
     double maxSum = 0.0;
     for (size_t i = 0; i < matrix->rows; i++) {
@@ -6396,7 +6687,7 @@ double matrix_infinity_norm(const Matrix* matrix) {
 Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix) {
     MATRIX_LOG("[matrix_inverse_gauss_jordan] Entering function");
 
-    if (matrix->rows != matrix->cols) {
+    if (!matrix || !matrix->data || matrix->rows != matrix->cols) {
         MATRIX_LOG("[matrix_inverse_gauss_jordan] Error: Matrix must be square for inversion.");
         return NULL;
     }
@@ -6417,21 +6708,34 @@ Matrix* matrix_inverse_gauss_jordan(const Matrix* matrix) {
         }
     }
 
+    /* Partial pivoting (largest magnitude in the column), and a pivot at the
+       rounding level of the matrix's own entries means singular. Swapping
+       only on an exact zero used tiny pivots as they were and lost all
+       accuracy ([[1e-20,1],[1,1]] came out wrong by 1.0). */
+    double scale = 0.0;
+    for (size_t i = 0; i < n * n; i++) {
+        if (fabs(matrix->data[i]) > scale) {
+            scale = fabs(matrix->data[i]);
+        }
+    }
+    double tol = (double)n * DBL_EPSILON * scale;
+
     // Perform Gauss-Jordan elimination
     for (size_t col = 0; col < n; col++) {
-        if (augmented->data[col * 2 * n + col] == 0) {
-            MATRIX_LOG("[matrix_inverse_gauss_jordan] Pivot element is zero, searching for non-zero element to swap.");
-            size_t swapRow = col + 1;
-            while (swapRow < n && augmented->data[swapRow * 2 * n + col] == 0) {
-                swapRow++;
+        size_t best = col;
+        for (size_t r = col + 1; r < n; r++) {
+            if (fabs(augmented->data[r * 2 * n + col]) > fabs(augmented->data[best * 2 * n + col])) {
+                best = r;
             }
-            if (swapRow == n) {
-                MATRIX_LOG("[matrix_inverse_gauss_jordan] Error: Matrix is singular, cannot invert.");
-                matrix_deallocate(augmented);
-                return NULL;
-            }
-            MATRIX_LOG("[matrix_inverse_gauss_jordan] Swapping row %zu with row %zu", col, swapRow);
-            matrix_swap_rows(augmented, col, swapRow);
+        }
+        if (!(fabs(augmented->data[best * 2 * n + col]) > tol)) {
+            MATRIX_LOG("[matrix_inverse_gauss_jordan] Error: Matrix is singular, cannot invert.");
+            matrix_deallocate(augmented);
+            return NULL;
+        }
+        if (best != col) {
+            MATRIX_LOG("[matrix_inverse_gauss_jordan] Swapping row %zu with row %zu", col, best);
+            matrix_swap_rows(augmented, col, best);
         }
 
         matrix_row_divide(augmented, col, augmented->data[col * 2 * n + col]);
@@ -6590,11 +6894,17 @@ Matrix* matrix_projection(const Matrix* matrix) {
 Matrix* matrix_vandermonde(const Matrix* matrix, size_t n) {
     MATRIX_LOG("[matrix_vandermonde] Entering function with n = %zu", n);
 
-    if (!matrix) {
+    if (!matrix || !matrix->data) {
         MATRIX_LOG("[matrix_vandermonde] Error: Matrix object is null");
         return NULL;
     }
-    
+    if (n == 0 || n > matrix->rows * matrix->cols) {
+        /* Each of the n rows uses one input element; reading past the input
+           would use memory beyond the buffer. */
+        MATRIX_LOG("[matrix_vandermonde] Error: n (%zu) must be between 1 and the number of input elements.", n);
+        return NULL;
+    }
+
     Matrix* vandermonde = matrix_create(n, n);
     if (!vandermonde) {
         MATRIX_LOG("[matrix_vandermonde] Error: Memory allocation failed for Vandermonde matrix");
@@ -6605,7 +6915,7 @@ Matrix* matrix_vandermonde(const Matrix* matrix, size_t n) {
 
     for (size_t i = 0; i < n; i++) {
         for (size_t j = 0; j < n; j++) {
-            vandermonde->data[i * n + j] = pow(matrix->data[i], j);
+            vandermonde->data[i * n + j] = pow(matrix->data[i], (double)j);
             MATRIX_LOG("[matrix_vandermonde] Setting element at (row, col) = (%zu, %zu) to %lf", i, j, vandermonde->data[i * n + j]);
         }
     }
@@ -6617,22 +6927,37 @@ Matrix* matrix_vandermonde(const Matrix* matrix, size_t n) {
 /**
  * @brief Generates a companion matrix from the given polynomial coefficients.
  *
- * @param coefficients A matrix representing the polynomial coefficients, where the highest degree coefficient comes last.
- * @param degree The degree of the polynomial.
- * 
- * @return A pointer to the generated companion matrix. If the input coefficients are `NULL` or memory allocation fails,
- * `NULL` is returned.
+ * Follows scipy.linalg.companion: the coefficients are given highest degree
+ * first, a[0]·x^(n-1) + a[1]·x^(n-2) + ... + a[n-1]; the first row of the result
+ * is -a[1..n-1] / a[0] and the sub-diagonal is 1, so its eigenvalues are the
+ * roots of the polynomial.
+ *
+ * @param coefficients A matrix holding at least `degree` coefficients, highest degree first.
+ * @param degree The number of coefficients to use (polynomial degree + 1); at least 2.
+ *
+ * @return A pointer to the `(degree-1) x (degree-1)` companion matrix, or `NULL` if the coefficients are
+ * `NULL`, `degree` is below 2 or above the number of coefficients, the leading coefficient is 0, or memory
+ * allocation fails.
  */
 Matrix* matrix_companion(const Matrix* coefficients, size_t degree) {
     MATRIX_LOG("[matrix_companion] Entering function with degree = %zu", degree);
 
-    if (!coefficients) {
+    if (!coefficients || !coefficients->data) {
         MATRIX_LOG("[matrix_companion] Error: Coefficients matrix is null");
         return NULL;
     }
-    
-    size_t n = degree - 1; 
-    Matrix* companion = matrix_create(n, n);
+    if (degree < 2 || degree > coefficients->rows * coefficients->cols) {
+        MATRIX_LOG("[matrix_companion] Error: degree must be between 2 and the number of coefficients.");
+        return NULL;
+    }
+    double lead = coefficients->data[0];
+    if (lead == 0.0 || !isfinite(lead)) {
+        MATRIX_LOG("[matrix_companion] Error: the leading coefficient must be a non-zero number.");
+        return NULL;
+    }
+
+    size_t n = degree - 1;
+    Matrix* companion = matrix_create(n, n);   /* zero-filled */
     if (!companion) {
         MATRIX_LOG("[matrix_companion] Error: Memory allocation failed for companion matrix");
         return NULL;
@@ -6640,21 +6965,11 @@ Matrix* matrix_companion(const Matrix* coefficients, size_t degree) {
 
     MATRIX_LOG("[matrix_companion] Successfully created companion matrix of size %zux%zu", n, n);
 
-    for (size_t i = 0; i < n; i++) {
-        for (size_t j = 0; j < n; j++) {
-            if (j == n - 1) { 
-                companion->data[i * n + j] = -coefficients->data[n - 1 - i] / coefficients->data[degree - 1];
-                MATRIX_LOG("[matrix_companion] Setting element at (row, col) = (%zu, %zu) to %lf (last column)", i, j, companion->data[i * n + j]);
-            } 
-            else if (i == j + 1) { 
-                companion->data[i * n + j] = 1;
-                MATRIX_LOG("[matrix_companion] Setting element at (row, col) = (%zu, %zu) to 1 (sub-diagonal)", i, j);
-            } 
-            else { 
-                companion->data[i * n + j] = 0;
-                MATRIX_LOG("[matrix_companion] Setting element at (row, col) = (%zu, %zu) to 0", i, j);
-            }
-        }
+    for (size_t j = 0; j < n; j++) {
+        companion->data[j] = -coefficients->data[j + 1] / lead;
+    }
+    for (size_t i = 1; i < n; i++) {
+        companion->data[i * n + (i - 1)] = 1.0;
     }
 
     MATRIX_LOG("[matrix_companion] Successfully created companion matrix");
@@ -6759,10 +7074,16 @@ double matrix_min_element(const Matrix* matrix) {
         return DBL_MAX; 
     }
 
-    double min = DBL_MAX;
+    /* Seeded with the first element (an all-+inf matrix used to report the
+       DBL_MAX error sentinel); a NaN anywhere makes the result NaN, as in
+       NumPy. */
+    double min = matrix->data[0];
     for (size_t i = 0; i < matrix->rows; ++i) {
         for (size_t j = 0; j < matrix->cols; ++j) {
             double value = matrix->data[i * matrix->cols + j];
+            if (isnan(value)) {
+                return value;
+            }
             if (value < min) {
                 MATRIX_LOG("[matrix_min_element] New minimum found: %f at (row, col) = (%zu, %zu)", value, i, j);
                 min = value;
@@ -6792,10 +7113,13 @@ double matrix_max_element(const Matrix* matrix) {
         return -DBL_MAX; 
     }
 
-    double max = -DBL_MAX;
+    double max = matrix->data[0];   /* see matrix_min_element */
     for (size_t i = 0; i < matrix->rows; ++i) {
         for (size_t j = 0; j < matrix->cols; ++j) {
             double value = matrix->data[i * matrix->cols + j];
+            if (isnan(value)) {
+                return value;
+            }
             if (value > max) {
                 MATRIX_LOG("[matrix_max_element] New maximum found: %f at (row, col) = (%zu, %zu)", value, i, j);
                 max = value;
@@ -7176,7 +7500,7 @@ Matrix* matrix_min_axis(const Matrix* matrix, int axis) {
             double m = matrix->data[j];
             for (size_t i = 1; i < R; ++i) {
                 double v = matrix->data[i * C + j];
-                if (v < m) {
+                if (!isnan(m) && (isnan(v) || v < m)) {
                     m = v;
                 }
             }
@@ -7194,7 +7518,7 @@ Matrix* matrix_min_axis(const Matrix* matrix, int axis) {
         double m = matrix->data[i * C];
         for (size_t j = 1; j < C; ++j) {
             double v = matrix->data[i * C + j];
-            if (v < m) {
+            if (!isnan(m) && (isnan(v) || v < m)) {
                 m = v;
             }
         }
@@ -7244,7 +7568,7 @@ Matrix* matrix_max_axis(const Matrix* matrix, int axis) {
             double m = matrix->data[j];
             for (size_t i = 1; i < R; ++i) {
                 double v = matrix->data[i * C + j];
-                if (v > m) {
+                if (!isnan(m) && (isnan(v) || v > m)) {
                     m = v;
                 }
             }
@@ -7262,7 +7586,7 @@ Matrix* matrix_max_axis(const Matrix* matrix, int axis) {
         double m = matrix->data[i * C];
         for (size_t j = 1; j < C; ++j) {
             double v = matrix->data[i * C + j];
-            if (v > m) {
+            if (!isnan(m) && (isnan(v) || v > m)) {
                 m = v;
             }
         }
@@ -7317,7 +7641,7 @@ Matrix* matrix_argmax_axis(const Matrix* matrix, int axis) {
             double m = matrix->data[j];
             for (size_t i = 1; i < R; ++i) {
                 double v = matrix->data[i * C + j];
-                if (v > m) {
+                if (!isnan(m) && (isnan(v) || v > m)) {
                     m = v;
                     best = i;
                 }
@@ -7337,7 +7661,7 @@ Matrix* matrix_argmax_axis(const Matrix* matrix, int axis) {
         double m = matrix->data[i * C];
         for (size_t j = 1; j < C; ++j) {
             double v = matrix->data[i * C + j];
-            if (v > m) {
+            if (!isnan(m) && (isnan(v) || v > m)) {
                 m = v;
                 best = j;
             }
@@ -8155,10 +8479,11 @@ Matrix* matrix_unique(const Matrix* matrix) {
     memcpy(tmp, matrix->data, n * sizeof(double));
     qsort(tmp, n, sizeof(double), mat_cmp_asc);
 
-    /* compact out adjacent duplicates */
+    /* compact out adjacent duplicates; NaNs (sorted last) count as one value,
+       as in NumPy (NaN != NaN kept every one of them) */
     size_t k = 0;
     for (size_t i = 0; i < n; ++i) {
-        if (k == 0 || tmp[i] != tmp[k - 1]) {
+        if (k == 0 || !(tmp[i] == tmp[k - 1] || (isnan(tmp[i]) && isnan(tmp[k - 1])))) {
             tmp[k++] = tmp[i];
         }
     }
@@ -8217,7 +8542,9 @@ Matrix* matrix_searchsorted(const Matrix* a, const Matrix* v) {
         size_t hi = na;
         while (lo < hi) {
             size_t mid = lo + (hi - lo) / 2;
-            if (a->data[mid] < key) {
+            /* NaN orders after every number (NumPy): a NaN key goes past
+               all non-NaN entries instead of to index 0 */
+            if (isnan(key) ? !isnan(a->data[mid]) : (a->data[mid] < key)) {
                 lo = mid + 1;
             }
             else {
@@ -8335,6 +8662,13 @@ double matrix_percentile(const Matrix* matrix, double p) {
         MATRIX_LOG("[matrix_percentile] Error: Invalid matrix provided.");
         return 0.0;
     }
+    if (!(p >= 0.0 && p <= 100.0)) {
+        /* Like NumPy, p must lie in [0, 100]; a negative or NaN p used to
+           convert a negative double to size_t (undefined behaviour) and
+           index far outside the buffer. */
+        MATRIX_LOG("[matrix_percentile] Error: p must be in [0, 100].");
+        return NAN;
+    }
 
     size_t n = matrix->rows * matrix->cols;
     double* tmp = (double*)malloc(n * sizeof(double));
@@ -8350,7 +8684,10 @@ double matrix_percentile(const Matrix* matrix, double p) {
     double frac = rank - (double)lo;
 
     double result;
-    if (hi >= n) {
+    if (isnan(tmp[n - 1])) {
+        result = tmp[n - 1];   /* NaN sorts last: any NaN -> NaN, like NumPy */
+    }
+    else if (hi >= n) {
         result = tmp[n - 1];
     }
     else {
@@ -8555,6 +8892,9 @@ Matrix* matrix_rolling_mean(const Matrix* matrix, size_t window, int axis) {
 
 /* Linear-interpolated percentile of an already-sorted array (NumPy method). */
 static double mat_pct_sorted(const double* a, size_t n, double p) {
+    if (n > 0 && isnan(a[n - 1])) {
+        return a[n - 1];   /* mat_cmp_asc sorts NaN last: any NaN -> NaN, like NumPy */
+    }
     if (n == 1) {
         return a[0];
     }
@@ -9188,7 +9528,7 @@ Matrix* matrix_roots(const Matrix* coeffs) {
  * @param matrix The square matrix. Must not be NULL.
  *
  * @return A new matrix holding `e^A`, or `NULL` if `matrix` is NULL, not square,
- *         or an intermediate computation/allocation fails. The caller owns the
+ *         contains inf/NaN, or an intermediate computation/allocation fails. The caller owns the
  *         result and must release it with `matrix_deallocate`.
  */
 Matrix* matrix_expm(const Matrix* matrix) {
@@ -9207,6 +9547,12 @@ Matrix* matrix_expm(const Matrix* matrix) {
 
     /* choose scaling s so that ||A|| / 2^s <= 0.5 */
     double norm = matrix_infinity_norm(matrix);
+    if (!isfinite(norm)) {
+        /* inf/2 == inf: the scaling loop would never end (NaN would skip it
+           and return garbage). */
+        MATRIX_LOG("[matrix_expm] Error: matrix contains inf or NaN.");
+        return NULL;
+    }
     int s = 0;
     double scaled_norm = norm;
     while (scaled_norm > 0.5) {
@@ -9444,12 +9790,19 @@ bool matrix_col_addition(Matrix* matrix, size_t targetCol, size_t sourceCol, dou
 Matrix* matrix_leslie(Matrix* f, size_t f_size, Matrix* s, size_t s_size) {
     MATRIX_LOG("[matrix_leslie] Entering function with f_size = %zu, s_size = %zu", f_size, s_size);
 
-    if (!f) {
+    if (!f || !f->data) {
         MATRIX_LOG("[matrix_leslie] Error: Matrix f is null");
         return NULL;
     }
     if (f_size != s_size + 1) {
         MATRIX_LOG("[matrix_leslie] Error: f_size (%zu) must be one more than s_size (%zu)", f_size, s_size);
+        return NULL;
+    }
+    /* The sizes are caller-supplied: they must not exceed the matrices they
+       describe, or the loops below read past the buffers. */
+    if (f_size > f->rows * f->cols ||
+        (s_size > 0 && (!s || !s->data || s_size > s->rows * s->cols))) {
+        MATRIX_LOG("[matrix_leslie] Error: f_size/s_size exceed the given matrices (or s is NULL).");
         return NULL;
     }
 
@@ -9539,13 +9892,16 @@ Matrix* matrix_inverse_hilbert(size_t n) {
         return NULL;
     }
 
+    /* (H^-1)_ij = (-1)^(i+j) (i+j+1) C(n+i, n-j-1) C(n+j, n-i-1) C(i+j, i)^2,
+       evaluated in double precision: the entries grow past int64 for n >= 11
+       (the old int64 version overflowed, which is undefined behaviour). They
+       are exact integers while below 2^53. */
     for (size_t i = 0; i < n; ++i) {
         for (size_t j = 0; j < n; ++j) {
-            int s = i + j;
-            int64_t sign = (s % 2 == 0) ? 1 : -1;
-            int64_t numerator = sign * (i + j + 1) * binomial_factorial(n + i, n - j - 1) * binomial_factorial(n + j, n - i - 1) * binomial_factorial(s, i) * binomial_factorial(s, j);
-            int64_t denominator = 1; // The denominator for Hilbert matrix inverse entries when n <= 14 are effectively 1
-            double value = (double)numerator / denominator;
+            size_t s = i + j;
+            double sign = (s % 2 == 0) ? 1.0 : -1.0;
+            double cij = mat_binomial(s, i);
+            double value = sign * (double)(s + 1) * mat_binomial(n + i, n - j - 1) * mat_binomial(n + j, n - i - 1) * cij * cij;
 
             MATRIX_LOG("[matrix_inverse_hilbert] Setting element at (%zu, %zu) to %f", i, j, value);
             matrix_set(invH, i, j, value);
@@ -9691,9 +10047,13 @@ Matrix* matrix_block_diag(size_t count, ...) {
     va_start(args, count);
     for (size_t i = 0; i < count; ++i) {
         Matrix* mat = va_arg(args, Matrix*);
-        totalRows += mat->rows;
-        totalCols += mat->cols;
-        
+        if (!mat || !mat->data ||
+            !mat_size_add(totalRows, mat->rows, &totalRows) || !mat_size_add(totalCols, mat->cols, &totalCols)) {
+            MATRIX_LOG("[matrix_block_diag] Error: block %zu is NULL or the total size overflows.", i + 1);
+            va_end(args);
+            return NULL;
+        }
+
         MATRIX_LOG("[matrix_block_diag] Matrix %zu: %zux%zu", i + 1, mat->rows, mat->cols);
     }
     va_end(args);
@@ -9803,7 +10163,6 @@ Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
     MATRIX_LOG("[matrix_random] Entering function with row=%zu, col=%zu, start=%zu, end=%zu", row, col, start, end);
 
     Matrix* matrix = matrix_create(row, col);
-    srand(time(NULL));
 
     if (!matrix) {
         MATRIX_LOG("[matrix_random] Error: creation of Matrix object failed");
@@ -9811,9 +10170,19 @@ Matrix* matrix_random(size_t row, size_t col, size_t start, size_t end) {
     }
     MATRIX_LOG("[matrix_random] Matrix created with size %zux%zu", row, col);
 
-    size_t range = (end > start) ? (end - start) : 1;
+    /* A private generator instead of srand(time(NULL)) + rand(): reseeding on
+       every call made all calls within one second identical and clobbered the
+       program's own rand() sequence, rand() never exceeds RAND_MAX (32767 on
+       Windows), and rand() % range is biased. Rejection sampling keeps the
+       draw uniform over the whole [start, end) range. */
+    uint64_t range = (end > start) ? (uint64_t)(end - start) : 1;
+    uint64_t limit = (UINT64_MAX / range) * range;
     for (size_t i = 0; i < matrix_size(matrix); i++) {
-        matrix->data[i] = (double)((rand() % range) + start);
+        uint64_t r;
+        do {
+            r = mat_rng_next();
+        } while (r >= limit);
+        matrix->data[i] = (double)(start + (size_t)(r % range));
     }
     MATRIX_LOG("[matrix_random] Matrix filled with random values in range [%zu, %zu)", start, end);
 
@@ -9945,6 +10314,17 @@ Matrix* matrix_solve(const Matrix* A, const Matrix* b) {
     memcpy(M, A->data, n * n * sizeof(double));
     memcpy(X, b->data, n * k * sizeof(double));
 
+    /* Singular when a pivot is at the rounding level of A's own entries; the
+       old absolute 1e-9 test rejected well-conditioned small-scale systems
+       such as 1e-10 * I. */
+    double scale = 0.0;
+    for (size_t i = 0; i < n * n; ++i) {
+        if (fabs(M[i]) > scale) {
+            scale = fabs(M[i]);
+        }
+    }
+    double tol = (double)n * DBL_EPSILON * scale;
+
     /* Forward elimination with partial pivoting. */
     for (size_t col = 0; col < n; ++col) {
         size_t pivot = col;
@@ -9957,7 +10337,7 @@ Matrix* matrix_solve(const Matrix* A, const Matrix* b) {
                 pivot = r;
             }
         }
-        if (is_effectively_zero(maxVal)) {
+        if (!(maxVal > tol)) {
             MATRIX_LOG("[matrix_solve] Error: A is singular (no unique solution).");
             free(M);
             free(X);
@@ -10049,7 +10429,7 @@ Matrix* matrix_argmin_axis(const Matrix* matrix, int axis) {
             double m = matrix->data[j];
             for (size_t i = 1; i < R; ++i) {
                 double v = matrix->data[i * C + j];
-                if (v < m) { m = v; best = i; }
+                if (!isnan(m) && (isnan(v) || v < m)) { m = v; best = i; }
             }
             result->data[j] = (double)best;
         }
@@ -10062,7 +10442,7 @@ Matrix* matrix_argmin_axis(const Matrix* matrix, int axis) {
         double m = matrix->data[i * C];
         for (size_t j = 1; j < C; ++j) {
             double v = matrix->data[i * C + j];
-            if (v < m) { m = v; best = j; }
+            if (!isnan(m) && (isnan(v) || v < m)) { m = v; best = j; }
         }
         result->data[i] = (double)best;
     }
@@ -10099,8 +10479,8 @@ Matrix* matrix_ptp_axis(const Matrix* matrix, int axis) {
             double mn = matrix->data[j], mx = matrix->data[j];
             for (size_t i = 1; i < R; ++i) {
                 double v = matrix->data[i * C + j];
-                if (v < mn) { mn = v; }
-                if (v > mx) { mx = v; }
+                if (!isnan(mn) && (isnan(v) || v < mn)) { mn = v; }   /* NaN sticks (NumPy) */
+                if (!isnan(mx) && (isnan(v) || v > mx)) { mx = v; }
             }
             result->data[j] = mx - mn;
         }
@@ -10112,8 +10492,8 @@ Matrix* matrix_ptp_axis(const Matrix* matrix, int axis) {
         double mn = matrix->data[i * C], mx = matrix->data[i * C];
         for (size_t j = 1; j < C; ++j) {
             double v = matrix->data[i * C + j];
-            if (v < mn) { mn = v; }
-            if (v > mx) { mx = v; }
+            if (!isnan(mn) && (isnan(v) || v < mn)) { mn = v; }   /* NaN sticks (NumPy) */
+            if (!isnan(mx) && (isnan(v) || v > mx)) { mx = v; }
         }
         result->data[i] = mx - mn;
     }
@@ -10331,7 +10711,14 @@ Matrix* matrix_take(const Matrix* matrix, const Matrix* indices) {
     Matrix* result = matrix_create(indices->rows, indices->cols);
     if (!result) { return NULL; }
     for (size_t t = 0; t < ni; ++t) {
-        ptrdiff_t idx = (ptrdiff_t)indices->data[t];
+        double d = indices->data[t];
+        /* range-check BEFORE converting: (ptrdiff_t)NaN or a huge value is
+           undefined behaviour and produced a garbage index */
+        if (!(d > -(double)n - 1.0 && d < (double)n)) {
+            matrix_deallocate(result);
+            return NULL;
+        }
+        ptrdiff_t idx = (ptrdiff_t)d;
         if (idx < 0) {
             idx += (ptrdiff_t)n;   /* negative indices wrap, like NumPy */
         }
@@ -10563,7 +10950,7 @@ Matrix* matrix_digitize(const Matrix* x, const Matrix* bins) {
         size_t lo = 0, hi = nb;
         while (lo < hi) {
             size_t mid = lo + (hi - lo) / 2;
-            if (bins->data[mid] <= v) {
+            if (isnan(v) || bins->data[mid] <= v) {   /* NaN: past every bin, like NumPy */
                 lo = mid + 1;
             }
             else {
@@ -10596,8 +10983,15 @@ Matrix* matrix_bincount(const Matrix* x) {
     size_t n = x->rows * x->cols;
     size_t maxv = 0;
     for (size_t i = 0; i < n; ++i) {
-        if (x->data[i] < 0.0) {
-            MATRIX_LOG("[matrix_bincount] Error: negative value not allowed.");
+        /* NaN fails every comparison, so test the accepted range positively:
+           a NaN or infinite value must be rejected before the size_t cast
+           (that cast is undefined behavior and used to yield a huge index). */
+        if (!(x->data[i] >= 0.0)) {
+            MATRIX_LOG("[matrix_bincount] Error: negative or NaN value not allowed.");
+            return NULL;
+        }
+        if (!(x->data[i] < (double)SIZE_MAX)) {
+            MATRIX_LOG("[matrix_bincount] Error: value too large (or infinite) to count.");
             return NULL;
         }
         size_t v = (size_t)x->data[i];
@@ -10636,6 +11030,11 @@ bool matrix_histogram(const Matrix* x, size_t bins, Matrix** hist, Matrix** edge
         return false;
     }
     size_t n = x->rows * x->cols;
+    for (size_t i = 0; i < n; ++i) {
+        if (!isfinite(x->data[i])) {
+            return false;   /* NumPy rejects a non-finite range; NaN used to be counted in bin 0 */
+        }
+    }
     double mn = x->data[0], mx = x->data[0];
     for (size_t i = 1; i < n; ++i) {
         double v = x->data[i];
@@ -10769,6 +11168,12 @@ Matrix* matrix_exprel(const Matrix* matrix) {
     return result;
 }
 
+/* True if v converts to long long without undefined behaviour (finite and
+   |v| < 2^63, so negating the result cannot overflow either). */
+static bool mat_ll_ok(double v) {
+    return isfinite(v) && fabs(v) < 9223372036854775808.0;
+}
+
 /* Euclidean GCD of two (already integer-valued) magnitudes. */
 static long long mat_gcd_ll(long long a, long long b) {
     if (a < 0) { a = -a; }
@@ -10808,6 +11213,10 @@ Matrix* matrix_gcd(const Matrix* a, const Matrix* b) {
     if (!result) { return NULL; }
     size_t n = a->rows * a->cols;
     for (size_t i = 0; i < n; ++i) {
+        if (!mat_ll_ok(a->data[i]) || !mat_ll_ok(b->data[i])) {
+            result->data[i] = NAN;   /* NaN / inf / out of range: no integer */
+            continue;
+        }
         long long x = (long long)a->data[i];
         long long y = (long long)b->data[i];
         result->data[i] = (double)mat_gcd_ll(x, y);
@@ -10843,6 +11252,10 @@ Matrix* matrix_lcm(const Matrix* a, const Matrix* b) {
     if (!result) { return NULL; }
     size_t n = a->rows * a->cols;
     for (size_t i = 0; i < n; ++i) {
+        if (!mat_ll_ok(a->data[i]) || !mat_ll_ok(b->data[i])) {
+            result->data[i] = NAN;
+            continue;
+        }
         long long x = (long long)a->data[i];
         long long y = (long long)b->data[i];
         long long g = mat_gcd_ll(x, y);
@@ -10850,9 +11263,17 @@ Matrix* matrix_lcm(const Matrix* a, const Matrix* b) {
             result->data[i] = 0.0;
         }
         else {
-            long long l = (x / g) * y;
-            if (l < 0) { l = -l; }
-            result->data[i] = (double)l;
+            long long q  = x / g;
+            long long aq = q < 0 ? -q : q;
+            long long ay = y < 0 ? -y : y;
+            if (ay != 0 && aq > LLONG_MAX / ay) {
+                /* the exact value exceeds long long (it used to overflow, UB):
+                   return the nearest double instead */
+                result->data[i] = (double)aq * (double)ay;
+            }
+            else {
+                result->data[i] = (double)(aq * ay);
+            }
         }
     }
     return result;
@@ -12356,6 +12777,9 @@ Matrix* matrix_unravel_index(const Matrix* indices, size_t rows, size_t cols) {
         return NULL;
     }
 
+    if (rows != 0 && cols > SIZE_MAX / rows) {
+        return NULL;
+    }
     size_t limit = rows * cols;
     Matrix* result = matrix_create(k, 2);
 
@@ -12365,8 +12789,10 @@ Matrix* matrix_unravel_index(const Matrix* indices, size_t rows, size_t cols) {
     for (size_t t = 0; t < k; ++t) {
         double dv = indices->data[t];
 
-        if (dv < 0.0) {
-            MATRIX_LOG("[matrix_unravel_index] Error: negative index.");
+        /* NaN fails every comparison: test the accepted range positively
+           before the size_t conversion */
+        if (!(dv >= 0.0) || !(dv < (double)limit)) {
+            MATRIX_LOG("[matrix_unravel_index] Error: index is negative, NaN or out of range.");
             matrix_deallocate(result);
             return NULL;
         }

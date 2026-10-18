@@ -19,10 +19,11 @@
  *   - Opt-in diagnostic logging via QUEUE_LOGGING_ENABLE → QUEUE_LOG.
  *
  * Performance note:
- *   The underlying storage is a contiguous Vector, so queue_pop()
- *   shifts the remaining elements and is O(n). Functionally this
- *   matches std::queue's interface; if you need O(1) pop, prefer a
- *   deque- or list-backed FIFO.
+ *   The underlying storage is a contiguous Vector used as a ring:
+ *   queue_pop() only advances a front index (O(1)), and queue_push()
+ *   is amortized O(1) (the popped prefix is reclaimed in bulk, only
+ *   when it is at least as long as the live elements; otherwise the
+ *   buffer grows by doubling).
  */
 
 #ifndef QUEUE_H_
@@ -41,8 +42,8 @@ extern "C" {
 /* #define QUEUE_LOGGING_ENABLE */
 
 #ifdef QUEUE_LOGGING_ENABLE
-    #define QUEUE_LOG(fmt, ...) \
-        do { fprintf(stderr, "[QUEUE LOG]: " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define QUEUE_LOG(...) \
+        do { fprintf(stderr, "[QUEUE LOG]: "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define QUEUE_LOG(...) do { } while (0)
 #endif
@@ -118,6 +119,7 @@ static inline void queue_pop(Queue* q) {
 /* ------------------------------------------------------------------ */
 
 Queue*  queue_create                  (size_t itemSize);
+void    queue_set_compare             (Queue* q, QueueCompareFunc compare);
 Queue*  queue_copy                    (const Queue* src);
 
 

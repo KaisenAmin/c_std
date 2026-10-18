@@ -7,7 +7,7 @@
  *
  */
 
-#include <limits.h> /* CHAR_BIT */
+#include <limits.h> 
 #include <stdlib.h>
 #include <string.h>
 #include "span.h"
@@ -15,6 +15,22 @@
 
 
 static int spanp_lex_compare(const Span* a, const Span* b) {
+    SpanCompareFunc cmp = a->compare ? a->compare : b->compare;
+    if (cmp && a->elemSize == b->elemSize) {
+        /* element by element: a byte compare puts {256} before {1} */
+        size_t minN = a->size < b->size ? a->size : b->size;
+        for (size_t i = 0; i < minN; ++i) {
+            int c = cmp((const char*)a->data + i * a->elemSize, (const char*)b->data + i * b->elemSize);
+            if (c != 0) {
+                return c < 0 ? -1 : 1;
+            }
+        }
+        if (a->size != b->size) {
+            return a->size < b->size ? -1 : 1;
+        }
+        return 0;
+    }
+
     size_t aBytes   = a->size * a->elemSize;
     size_t bBytes   = b->size * b->elemSize;
     size_t minBytes = aBytes < bBytes ? aBytes : bBytes;
@@ -28,6 +44,24 @@ static int spanp_lex_compare(const Span* a, const Span* b) {
     }
 
     return 0;
+}
+
+
+/**
+ * @brief Sets the element comparator used by span_is_equal / is_less / ... .
+ *
+ * Without one the spans' bytes are compared, which is not the numeric order
+ * of int, negative or floating-point elements. span_first / span_last /
+ * span_subspan copy the comparator into the sub-view. When only one of two
+ * spans has a comparator (and the element sizes match), it is used.
+ *
+ * @param span    The span (NULL is a no-op).
+ * @param compare qsort-style comparator, or NULL for byte comparison.
+ */
+void span_set_compare(Span* span, SpanCompareFunc compare) {
+    if (span) {
+        span->compare = compare;
+    }
 }
 
 
@@ -62,7 +96,7 @@ Span span_view(void* data, size_t elemCount, size_t elemSize) {
     SPAN_LOG("[span_view]: enter data=%p elemCount=%zu elemSize=%zu",
              data, elemCount, elemSize);
 
-    Span out = { NULL, 0, elemSize };
+    Span out = { NULL, 0, elemSize, NULL };
 
     if (elemCount == 0) {
         SPAN_LOG("[span_view]: empty span (elemCount=0), elemSize preserved");
@@ -124,6 +158,7 @@ Span* span_create(void* data, size_t elemCount, size_t elemSize) {
     s->data     = (elemCount == 0) ? NULL : data;
     s->size     = elemCount;
     s->elemSize = elemSize;
+    s->compare  = NULL;
     SPAN_LOG("[span_create]: exit ok span=%p data=%p size=%zu elemSize=%zu",
              (void*)s, s->data, s->size, s->elemSize);
     return s;
@@ -325,12 +360,13 @@ const void* span_cdata(const Span* s) {
 Span span_first(const Span* s, size_t count) {
     SPAN_LOG("[span_first]: enter span=%p count=%zu", (const void*)s, count);
 
-    Span out = { NULL, 0, 0 };
+    Span out = { NULL, 0, 0, NULL };
     if (!s) {
         SPAN_LOG("[span_first]: NULL source -> zeroed empty span");
         return out;
     }
     out.elemSize = s->elemSize;
+    out.compare  = s->compare;
 
     if (count > s->size) {
         SPAN_LOG("[span_first]: count=%zu > size=%zu, empty span (elemSize=%zu)",
@@ -362,12 +398,13 @@ Span span_first(const Span* s, size_t count) {
 Span span_last(const Span* s, size_t count) {
     SPAN_LOG("[span_last]: enter span=%p count=%zu", (const void*)s, count);
 
-    Span out = { NULL, 0, 0 };
+    Span out = { NULL, 0, 0, NULL };
     if (!s) {
         SPAN_LOG("[span_last]: NULL source -> zeroed empty span");
         return out;
     }
     out.elemSize = s->elemSize;
+    out.compare  = s->compare;
 
     if (count > s->size) {
         SPAN_LOG("[span_last]: count=%zu > size=%zu, empty span (elemSize=%zu)",
@@ -400,12 +437,13 @@ Span span_subspan(const Span* s, size_t offset, size_t count) {
     SPAN_LOG("[span_subspan]: enter span=%p offset=%zu count=%zu",
              (const void*)s, offset, count);
 
-    Span out = { NULL, 0, 0 };
+    Span out = { NULL, 0, 0, NULL };
     if (!s) {
         SPAN_LOG("[span_subspan]: NULL source -> zeroed empty span");
         return out;
     }
     out.elemSize = s->elemSize;
+    out.compare  = s->compare;
 
     if (offset > s->size || count > s->size - offset) {
         SPAN_LOG("[span_subspan]: out of range (size=%zu, offset=%zu, count=%zu) -> empty",
@@ -458,7 +496,8 @@ bool span_is_equal(const Span* a, const Span* b) {
         SPAN_LOG("[span_is_equal]: both empty with equal elemSize -> true");
         return true;
     }
-    bool out = memcmp(a->data, b->data, a->size * a->elemSize) == 0;
+    bool out = (a->compare || b->compare) ? spanp_lex_compare(a, b) == 0
+                                          : memcmp(a->data, b->data, a->size * a->elemSize) == 0;
     SPAN_LOG("[span_is_equal]: memcmp result -> %s", out ? "true" : "false");
     return out;
 }
@@ -492,9 +531,18 @@ bool span_is_not_equal(const Span* a, const Span* b) {
  * @param b Right span.
  * @return true if @p a is lexicographically less than @p b.
  */
+/* Ordering needs spans of the same element size: comparing raw bytes of,
+   say, an int span against a short span gave answers that were neither less,
+   greater nor equal. Such spans are unordered (every ordering test is false,
+   span_is_not_equal is true), like set / queue / vector comparisons. */
+static bool spanp_orderable(const Span* a, const Span* b) {
+    return a && b && a->elemSize == b->elemSize;
+}
+
+
 bool span_is_less(const Span* a, const Span* b) {
     SPAN_LOG("[span_is_less]: enter a=%p b=%p", (const void*)a, (const void*)b);
-    if (!a || !b) {
+    if (!spanp_orderable(a, b)) {
         SPAN_LOG("[span_is_less]: one operand is NULL -> false");
         return false;
     }
@@ -515,7 +563,7 @@ bool span_is_less(const Span* a, const Span* b) {
  */
 bool span_is_greater(const Span* a, const Span* b) {
     SPAN_LOG("[span_is_greater]: enter a=%p b=%p", (const void*)a, (const void*)b);
-    if (!a || !b) {
+    if (!spanp_orderable(a, b)) {
         SPAN_LOG("[span_is_greater]: one operand is NULL -> false");
         return false;
     }
@@ -540,7 +588,7 @@ bool span_is_less_or_equal(const Span* a, const Span* b) {
     if (a == b) {
         out = true;                         
     }
-    else if (!a || !b) {
+    else if (!spanp_orderable(a, b)) {
         out = false;
     }
     else {
@@ -567,7 +615,7 @@ bool span_is_greater_or_equal(const Span* a, const Span* b) {
     if (a == b) {
         out = true;                        
     }
-    else if (!a || !b) {
+    else if (!spanp_orderable(a, b)) {
         out = false;
     }
     else {

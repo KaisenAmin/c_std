@@ -14,9 +14,19 @@
  */
 
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdint.h>
 #include "set.h"
+
+
+/* MSVC's C mode has no max_align_t; this union has the same alignment. */
+#if defined(_MSC_VER) && !defined(__clang__)
+typedef union { long long ll; long double ld; double d; void* p; } rbset_max_align_t;
+#define RBSET_MAX_ALIGN _Alignof(rbset_max_align_t)
+#else
+#define RBSET_MAX_ALIGN _Alignof(max_align_t)
+#endif
 
 
 #define RED   1
@@ -30,6 +40,12 @@ typedef struct SetSlab {
     size_t          used;       /* node slots handed out from this slab */
     size_t          cap;        /* node slots this slab can hold        */
 } SetSlab;
+
+/* Slots start after the header rounded up to the maximum alignment: with the
+   raw 24-byte header every slot (and its inline element) sat at 8 mod 16, so
+   16-byte types (long double on x64 MinGW, __int128, _Alignas(16) structs)
+   were misaligned even though malloc returns 16-aligned blocks. */
+#define SET_SLAB_HEADER ((sizeof(SetSlab) + RBSET_MAX_ALIGN - 1) / RBSET_MAX_ALIGN * RBSET_MAX_ALIGN)
 
 struct Set {
     SetNode*        root;
@@ -50,7 +66,7 @@ struct Set {
  * max_align_t — letting a generic void* set pack as compactly as a typed
  * container instead of wasting up to 8 bytes per node. */
 static size_t rbset_elem_align(size_t elemSize) {
-    size_t maxa = _Alignof(max_align_t), a = 1;
+    size_t maxa = RBSET_MAX_ALIGN, a = 1;
 
     while (a < maxa && (elemSize % (a * 2)) == 0) {
         a *= 2;
@@ -71,7 +87,11 @@ static SetNode* rbset_pool_alloc(Set* set) {
 
         if (!slab || slab->used == slab->cap) {
             size_t cap = set->slabCap;
-            slab = (SetSlab*)malloc(sizeof(SetSlab) + cap * set->slotSize);
+            if (cap > (SIZE_MAX - SET_SLAB_HEADER) / set->slotSize) {
+                SET_LOG("[rbset_pool_alloc] Error: slab size overflows size_t.");
+                return NULL;
+            }
+            slab = (SetSlab*)malloc(SET_SLAB_HEADER + cap * set->slotSize);
 
             if (!slab) {
                 SET_LOG("[rbset_pool_alloc] Error: slab malloc failed.");
@@ -94,7 +114,7 @@ static SetNode* rbset_pool_alloc(Set* set) {
                 }
             }
         }
-        node = (SetNode*)((unsigned char*)slab + sizeof(SetSlab) + slab->used * set->slotSize);
+        node = (SetNode*)((unsigned char*)slab + SET_SLAB_HEADER + slab->used * set->slotSize);
         slab->used++;
     }
     node->key = (unsigned char*)node + set->dataOffset;
@@ -491,6 +511,13 @@ Set* set_create(size_t elemSize, SetCompareFunc compare) {
     SET_LOG("[set_create] Creating set with elemSize=%zu.", elemSize);
     if (elemSize == 0 || !compare) {
         SET_LOG("[set_create] Error: invalid elemSize (0) or NULL comparator.");
+        return NULL;
+    }
+    /* A slot is the node header + the element, rounded up to its alignment
+       (at most RBSET_MAX_ALIGN); a huge elemSize used to wrap that sum to a
+       tiny slot, followed by elemSize-byte copies (heap overflow). */
+    if (elemSize > SIZE_MAX - sizeof(SetNode) - 2 * RBSET_MAX_ALIGN - 8) {
+        SET_LOG("[set_create] Error: elemSize too large.");
         return NULL;
     }
 
@@ -1104,7 +1131,11 @@ Set* set_union(const Set* a, const Set* b) {
     }
 
     for (SetIterator it = set_begin(b); it.node; set_iterator_increment(&it)) {
-        set_insert(result, it.node->key);
+        /* false is also "already there"; only a missing element is a failure */
+        if (!set_insert(result, it.node->key) && !set_contains(result, it.node->key)) {
+            set_deallocate(result);   /* no partial result (used to be returned as success) */
+            return NULL;
+        }
     }
     return result;
 }
@@ -1133,8 +1164,9 @@ Set* set_intersection(const Set* a, const Set* b) {
     const Set* small = (a->size <= b->size) ? a : b;
     const Set* other = (small == a) ? b : a;
     for (SetIterator it = set_begin(small); it.node; set_iterator_increment(&it)) {
-        if (set_contains(other, it.node->key)) {
-            set_insert(result, it.node->key);
+        if (set_contains(other, it.node->key) && !set_insert(result, it.node->key)) {
+            set_deallocate(result);   /* allocation failed: no partial result */
+            return NULL;
         }
     }
     return result;
@@ -1158,8 +1190,9 @@ Set* set_difference(const Set* a, const Set* b) {
         return NULL;
     }
     for (SetIterator it = set_begin(a); it.node; set_iterator_increment(&it)) {
-        if (!set_contains(b, it.node->key)) {
-            set_insert(result, it.node->key);
+        if (!set_contains(b, it.node->key) && !set_insert(result, it.node->key)) {
+            set_deallocate(result);   /* allocation failed: no partial result */
+            return NULL;
         }
     }
 
@@ -1185,13 +1218,15 @@ Set* set_symmetric_difference(const Set* a, const Set* b) {
         return NULL;
     }
     for (SetIterator it = set_begin(a); it.node; set_iterator_increment(&it)) {
-        if (!set_contains(b, it.node->key)) {
-            set_insert(result, it.node->key);
+        if (!set_contains(b, it.node->key) && !set_insert(result, it.node->key)) {
+            set_deallocate(result);   /* allocation failed: no partial result */
+            return NULL;
         }
     }
     for (SetIterator it = set_begin(b); it.node; set_iterator_increment(&it)) {
-        if (!set_contains(a, it.node->key)) {
-            set_insert(result, it.node->key);
+        if (!set_contains(a, it.node->key) && !set_insert(result, it.node->key)) {
+            set_deallocate(result);
+            return NULL;
         }
     }
     return result;
@@ -1201,10 +1236,12 @@ Set* set_symmetric_difference(const Set* a, const Set* b) {
 /**
  * @brief Reports whether every element of `a` is also in `b` (`a ⊆ b`).
  * @param a Candidate subset. @param b Candidate superset.
- * @return true if `a` is a subset of `b`; false otherwise or if an operand is NULL.
+ * @return true if `a` is a subset of `b`; false otherwise, if an operand is NULL,
+ *         or if the element sizes differ (the comparator would read one set's
+ *         elements with the other's size).
  */
 bool set_is_subset(const Set* a, const Set* b) {
-    if (!a || !b) {
+    if (!rbset_compatible(a, b)) {
         return false;
     }
     if (a->size > b->size) {
@@ -1232,10 +1269,11 @@ bool set_is_superset(const Set* a, const Set* b) {
 /**
  * @brief Reports whether `a` and `b` share no elements.
  * @param a First operand. @param b Second operand.
- * @return true if the sets are disjoint; false if they intersect or an operand is NULL.
+ * @return true if the sets are disjoint; false if they intersect, an operand is
+ *         NULL, or the element sizes differ.
  */
 bool set_is_disjoint(const Set* a, const Set* b) {
-    if (!a || !b) {
+    if (!rbset_compatible(a, b)) {
         return false;
     }
 
@@ -1282,10 +1320,11 @@ static int rbset_lex_compare(const Set* a, const Set* b) {
 /**
  * @brief Reports whether two sets contain exactly the same elements.
  * @param set1 First set. @param set2 Second set.
- * @return true if equal; false otherwise or if an operand is NULL.
+ * @return true if equal; false otherwise, if an operand is NULL, or if the
+ *         element sizes differ.
  */
 bool set_is_equal(const Set* set1, const Set* set2) {
-    if (!set1 || !set2) {
+    if (!rbset_compatible(set1, set2)) {
         return false;
     }
     if (set1->size != set2->size) {
@@ -1299,7 +1338,8 @@ bool set_is_equal(const Set* set1, const Set* set2) {
 /**
  * @brief Logical negation of set_is_equal (for two non-NULL sets).
  * @param set1 First set. @param set2 Second set.
- * @return true if the sets differ; false if equal or an operand is NULL.
+ * @return true if the sets differ (sets with different element sizes always
+ *         differ); false if equal or an operand is NULL.
  */
 bool set_is_not_equal(const Set* set1, const Set* set2) {
     if (!set1 || !set2) {
@@ -1315,8 +1355,8 @@ bool set_is_not_equal(const Set* set1, const Set* set2) {
  * @return true if `set1` < `set2`; false otherwise or if an operand is NULL.
  */
 bool set_is_less(const Set* set1, const Set* set2) {
-    if (!set1 || !set2) {
-        return false;
+    if (!rbset_compatible(set1, set2)) {
+        return false;   /* NULL, or element sizes differ: not ordered */
     }
     return rbset_lex_compare(set1, set2) < 0;
 }
@@ -1328,7 +1368,7 @@ bool set_is_less(const Set* set1, const Set* set2) {
  * @return true if `set1` <= `set2`; false otherwise or if an operand is NULL.
  */
 bool set_is_less_or_equal(const Set* set1, const Set* set2) {
-    if (!set1 || !set2) {
+    if (!rbset_compatible(set1, set2)) {
         return false;
     }
     return rbset_lex_compare(set1, set2) <= 0;
@@ -1341,7 +1381,7 @@ bool set_is_less_or_equal(const Set* set1, const Set* set2) {
  * @return true if `set1` > `set2`; false otherwise or if an operand is NULL.
  */
 bool set_is_greater(const Set* set1, const Set* set2) {
-    if (!set1 || !set2) {
+    if (!rbset_compatible(set1, set2)) {
         return false;
     }
     return rbset_lex_compare(set1, set2) > 0;
@@ -1354,7 +1394,7 @@ bool set_is_greater(const Set* set1, const Set* set2) {
  * @return true if `set1` >= `set2`; false otherwise or if an operand is NULL.
  */
 bool set_is_greater_or_equal(const Set* set1, const Set* set2) {
-    if (!set1 || !set2) {
+    if (!rbset_compatible(set1, set2)) {
         return false;
     }
     return rbset_lex_compare(set1, set2) >= 0;

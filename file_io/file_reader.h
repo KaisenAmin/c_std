@@ -20,8 +20,8 @@ extern "C" {
 /* #define FILE_READER_LOGGING_ENABLE */
 
 #ifdef FILE_READER_LOGGING_ENABLE
-    #define FILE_READER_LOG(fmt, ...) \
-        do { fprintf(stderr, "[FILE_READER LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define FILE_READER_LOG(...) \
+        do { fprintf(stderr, "[FILE_READER LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define FILE_READER_LOG(...) do { } while (0)
 #endif
@@ -51,6 +51,7 @@ typedef struct {
     bool             is_open;
     ReadEncodingType encoding;
     char*            file_path;
+    int              unicode_form;   /* internal (POSIX READ_UNICODE): 0 = UTF-16LE, 1 = UTF-8 (BOM found) */
 } FileReader;
 
 

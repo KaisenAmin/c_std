@@ -8,6 +8,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <limits.h>
+#include <locale.h>
 #include "json.h"
 #include "../string/std_string.h"
 
@@ -82,109 +84,104 @@ static void jsonp_format_internal(const JsonElement* element, JsonSB* sb, int in
 
 static JsonError last_error = {0, ""};
 
-static void print_indent(int indent) {
-    for (int i = 0; i < indent; i++) {
-        printf(" ");
+/* Shortest decimal text that reads back as the same double (as JavaScript and
+   Python print numbers): 0.1 is "0.1", not "0.10000000000000001". Integral
+   values in the long long range print as integers (the upper bound is strict:
+   (long long)2^63 overflowed, UB); Infinity / NaN print as null (not JSON). */
+static int jsonp_number_text(double v, char* buf, size_t n) {
+    if (!isfinite(v)) {
+        return snprintf(buf, n, "null");
     }
+    if (v >= -9.2233720368547758e18 && v < 9.2233720368547758e18 && v == (double)(long long)v) {
+        return snprintf(buf, n, "%lld", (long long)v);
+    }
+    int len = 0;
+    for (int prec = 15; prec <= 17; ++prec) {
+        len = snprintf(buf, n, "%.*g", prec, v);
+        if (strtod(buf, NULL) == v) {
+            break;
+        }
+    }
+    return len;
 }
 
-static void jsonp_print_internal(const JsonElement* element, int indent) {
-    if (!element) {
-        printf("null");
+/* Frees a token array returned by split_query (each token, then the array). */
+static void free_query_tokens(char** tokens, size_t count) {
+    if (!tokens) {
         return;
     }
-
-    switch (element->type) {
-        case JSON_OBJECT:
-            printf("{\n");
-            MapIterator it = map_begin(element->value.object_val);
-            MapIterator end = map_end(element->value.object_val);
-            bool first = true;
-            while (it.node != end.node) {
-                if (!first) {
-                    printf(",\n");
-                }
-                print_indent(indent + 2);
-                printf("\"%s\": ", (char*)it.node->key);
-                jsonp_print_internal((JsonElement*)it.node->value, indent + 2);
-                first = false;
-                map_iterator_increment(&it);
-            }
-            if (!first) {
-                printf("\n");
-            }
-            print_indent(indent - 2);
-            printf("}");
-            break;
-        case JSON_ARRAY:
-            printf("[\n");
-            for (size_t i = 0; i < vector_size(element->value.array_val); ++i) {
-                print_indent(indent + 2);
-                jsonp_print_internal(*(JsonElement**)vector_at(element->value.array_val, i), indent + 2);
-                if (i < vector_size(element->value.array_val) - 1) {
-                    printf(",");
-                }
-                printf("\n");
-            }
-            print_indent(indent - 2);
-            printf("]");
-            break;
-        case JSON_STRING:
-            printf("\"%s\"", element->value.string_val);
-            break;
-        case JSON_NUMBER:
-            if (floor(element->value.number_val) == element->value.number_val) {
-                printf("%d", (int)element->value.number_val);
-            } 
-            else {
-                printf("%.2f", element->value.number_val);
-            }
-            break;
-        case JSON_BOOL:
-            printf(element->value.bool_val ? "true" : "false");
-            break;
-        case JSON_NULL:
-            printf("null");
-            break;
-        default:
-            printf("Unknown type");
+    for (size_t i = 0; i < count; ++i) {
+        free(tokens[i]);
     }
+    free(tokens);
 }
 
-static char** split_query(const char* query, int* count) {
-    static char* tokens[256]; // Simple example, real code should dynamically allocate
-    int i = 0;
-
-    if (!query) {
+/*
+ * Splits a dot-separated query ("a.b[2].c") into a heap-allocated array of
+ * heap-allocated tokens. Empty segments are skipped ("a..b" -> "a","b"), as
+ * the previous strtok-based version did. The result is owned by the caller
+ * (release it with free_query_tokens). Reentrant: no static state and no strtok,
+ * so concurrent queries never share or free each other's tokens.
+ */
+static char** split_query(const char* query, size_t* count) {
+    if (!query || !count) {
         JSON_LOG("[split_query] Error: Null query provided in split_query.");
         snprintf(last_error.message, sizeof(last_error.message), "Error: Null query provided in split_query.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return NULL;
     }
 
-    char* tempQuery = string_strdup(query); // Duplicate query to avoid modifying the original string
-    if (!tempQuery) {
-        JSON_LOG("[split_query] Error: Memory allocation failed for temporary query in split_query.");
+    size_t cap = 8;
+    size_t n = 0;
+    char** tokens = (char**)malloc(cap * sizeof(char*));
+    if (!tokens) {
+        JSON_LOG("[split_query] Error: Memory allocation failed for token array in split_query.");
         snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in split_query.");
         last_error.code = JSON_ERROR_MEMORY;
         return NULL;
     }
 
-    char* token = strtok(tempQuery, ".");
-    while (token != NULL && i < 256) {
-        tokens[i++] = string_strdup(token); 
-        if (!tokens[i - 1]) {
+    const char* p = query;
+    while (*p) {
+        while (*p == '.') {
+            p++;
+        }
+        if (!*p) {
+            break;
+        }
+        const char* start = p;
+        while (*p && *p != '.') {
+            p++;
+        }
+        size_t len = (size_t)(p - start);
+
+        if (n == cap) {
+            char** grown = (char**)realloc(tokens, cap * 2 * sizeof(char*));
+            if (!grown) {
+                JSON_LOG("[split_query] Error: Memory allocation failed while growing token array.");
+                snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in split_query.");
+                last_error.code = JSON_ERROR_MEMORY;
+                free_query_tokens(tokens, n);
+                return NULL;
+            }
+            tokens = grown;
+            cap *= 2;
+        }
+
+        char* tok = (char*)malloc(len + 1);
+        if (!tok) {
             JSON_LOG("[split_query] Error: Memory allocation failed for token in split_query.");
             snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed in split_query.");
             last_error.code = JSON_ERROR_MEMORY;
-            free(tempQuery);
+            free_query_tokens(tokens, n);
             return NULL;
         }
-        token = strtok(NULL, ".");
+        memcpy(tok, start, len);
+        tok[len] = '\0';
+        tokens[n++] = tok;
     }
 
-    *count = i;
-    free(tempQuery); // Free the duplicated query
+    *count = n;
     return tokens;
 }
 
@@ -334,7 +331,7 @@ static void jsonp_element_deallocator(void* data) {
  * @brief Compares two strings used as keys in a JSON object.
  * @return An integer less than, equal to, or greater than zero if `a` is found, respectively, to be less than, equal to, or greater than `b`.
  */
-static int compare_strings_json(const KeyType a, const KeyType b) {
+static int compare_strings_json(const void* a, const void* b) {
     if (!a || !b) {
         JSON_LOG("[compare_strings_json] Error: One or both of the strings are NULL in compare_strings_json.");
         return 0;
@@ -454,7 +451,40 @@ static void next_token(JsonParserState* state) {
  * @return JsonElement* Pointer to a newly created JsonElement representing the parsed array, 
  *         or NULL if an error occurs during parsing.
  */
+/* Enforces JSON_MAX_DEPTH: entering an array/object goes one level deeper. */
+static bool parser_enter_level(JsonParserState* state) {
+    if (state->depth >= JSON_MAX_DEPTH) {
+        snprintf(last_error.message, sizeof(last_error.message), "Maximum nesting depth (%d) exceeded at position %zu", JSON_MAX_DEPTH, state->position);
+        last_error.code = JSON_ERROR_SYNTAX;
+        JSON_LOG("[parser_enter_level] Error: %s", last_error.message);
+        return false;
+    }
+    state->depth++;
+    return true;
+}
+
+static JsonElement* parse_array_impl(JsonParserState* state);
+static JsonElement* parse_object_impl(JsonParserState* state);
+
 static JsonElement* parse_array(JsonParserState* state) {
+    if (!parser_enter_level(state)) {
+        return NULL;
+    }
+    JsonElement* result = parse_array_impl(state);
+    state->depth--;
+    return result;
+}
+
+static JsonElement* parse_object(JsonParserState* state) {
+    if (!parser_enter_level(state)) {
+        return NULL;
+    }
+    JsonElement* result = parse_object_impl(state);
+    state->depth--;
+    return result;
+}
+
+static JsonElement* parse_array_impl(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_ARRAY_START) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected start of array at position %zu", state->position);
         last_error.code = JSON_ERROR_SYNTAX;
@@ -471,10 +501,16 @@ static JsonElement* parse_array(JsonParserState* state) {
     }
     next_token(state);
 
-    while (state->current_token.type != JSON_TOKEN_ARRAY_END) {
-        if (state->current_token.type == JSON_TOKEN_COMMA) {
-             JSON_LOG("[parse_array] Found comma at position %zu, expecting next element", state->position);
-            next_token(state);
+    /* Strict separators: values are separated by exactly one ','; "[1 2]",
+       "[,1]", "[1,]" and "[1,,2]" are syntax errors (the comma used to be
+       optional). */
+    bool expect_value = false;
+    while (expect_value || state->current_token.type != JSON_TOKEN_ARRAY_END) {
+        if (state->current_token.type == JSON_TOKEN_COMMA || state->current_token.type == JSON_TOKEN_ARRAY_END) {
+            snprintf(last_error.message, sizeof(last_error.message), "Expected a value in array at position %zu", state->position);
+            last_error.code = JSON_ERROR_SYNTAX;
+            json_deallocate(array_element);
+            return NULL;
         }
         else if (state->current_token.type == JSON_TOKEN_EOF) {
             snprintf(last_error.message, sizeof(last_error.message), "Unexpected end of input in array at position %zu", state->position);
@@ -494,8 +530,26 @@ static JsonElement* parse_array(JsonParserState* state) {
         }
 
         JSON_LOG("[parse_array] Adding element to array at position %zu", state->position);
-        vector_push_back(array_element->value.array_val, &element);
+        if (!vector_push_back(array_element->value.array_val, &element)) {
+            snprintf(last_error.message, sizeof(last_error.message), "Memory allocation failed adding array element at position %zu", state->position);
+            last_error.code = JSON_ERROR_MEMORY;
+            JSON_LOG("[parse_array] Error: %s", last_error.message);
+            json_deallocate(element);
+            json_deallocate(array_element);
+            return NULL;
+        }
         next_token(state);
+        expect_value = false;
+        if (state->current_token.type == JSON_TOKEN_COMMA) {
+            next_token(state);
+            expect_value = true;   /* a value must follow the comma */
+        }
+        else if (state->current_token.type != JSON_TOKEN_ARRAY_END) {
+            snprintf(last_error.message, sizeof(last_error.message), "Expected ',' or ']' in array at position %zu", state->position);
+            last_error.code = JSON_ERROR_SYNTAX;
+            json_deallocate(array_element);
+            return NULL;
+        }
     }
     JSON_LOG("[parse_array] Finished parsing array at position %zu", state->position);
     return array_element;
@@ -510,6 +564,49 @@ static JsonElement* parse_array(JsonParserState* state) {
  * @return JsonElement* Pointer to a newly created JsonElement representing the parsed string, 
  *         or NULL if an error occurs during parsing.
  */
+/* Four hex digits at p into *out; false if any is not a hex digit. */
+static bool json_hex4(const char* p, unsigned int* out) {
+    unsigned int v = 0;
+    for (int k = 0; k < 4; ++k) {
+        char h = p[k];
+        v <<= 4;
+        if (h >= '0' && h <= '9')      v |= (unsigned)(h - '0');
+        else if (h >= 'a' && h <= 'f') v |= (unsigned)(h - 'a' + 10);
+        else if (h >= 'A' && h <= 'F') v |= (unsigned)(h - 'A' + 10);
+        else return false;
+    }
+    *out = v;
+    return true;
+}
+
+/* Strict RFC 8259 number: -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)? */
+static bool json_number_syntax_ok(const char* p) {
+    if (*p == '-') {
+        p++;
+    }
+    if (*p == '0') {
+        p++;
+    }
+    else if (*p >= '1' && *p <= '9') {
+        while (isdigit((unsigned char)*p)) p++;
+    }
+    else {
+        return false;
+    }
+    if (*p == '.') {
+        p++;
+        if (!isdigit((unsigned char)*p)) return false;
+        while (isdigit((unsigned char)*p)) p++;
+    }
+    if (*p == 'e' || *p == 'E') {
+        p++;
+        if (*p == '+' || *p == '-') p++;
+        if (!isdigit((unsigned char)*p)) return false;
+        while (isdigit((unsigned char)*p)) p++;
+    }
+    return *p == '\0';
+}
+
 static JsonElement* parse_string(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_STRING) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected string token at position %zu", state->position);
@@ -558,30 +655,42 @@ static JsonElement* parse_string(JsonParserState* state) {
                 case 'r':  decoded = '\r'; break;
                 case 't':  decoded = '\t'; break;
                 case 'u': {
-                    // Minimal \uXXXX support: decode the BMP codepoint to UTF-8.
+                    /* \uXXXX, including surrogate pairs ("\ud83d\ude00" is one
+                       code point, U+1F600, encoded as 4 UTF-8 bytes; the two
+                       halves used to be encoded separately: invalid UTF-8). A
+                       lone surrogate becomes U+FFFD. \u0000 is refused: a
+                       string value is a C string, and the NUL silently cut it. */
                     unsigned int cp = 0;
-                    for (int k = 0; k < 4; ++k) {
-                        char hc = state->input[++state->position];
-                        if (hc == '\0') {
-                            snprintf(last_error.message, sizeof(last_error.message),
-                                     "Truncated \\u escape at position %zu", state->position);
-                            last_error.code = JSON_ERROR_SYNTAX;
-                            free(out);
-                            return NULL;
+                    if (!json_hex4(state->input + state->position + 1, &cp)) {
+                        snprintf(last_error.message, sizeof(last_error.message),
+                                 "Bad or truncated \\u escape at position %zu", state->position);
+                        last_error.code = JSON_ERROR_SYNTAX;
+                        free(out);
+                        return NULL;
+                    }
+                    state->position += 4;
+                    if (cp >= 0xD800 && cp <= 0xDBFF) {
+                        unsigned int lo = 0;
+                        const char* nx = state->input + state->position + 1;
+                        if (nx[0] == '\\' && nx[1] == 'u' && json_hex4(nx + 2, &lo) && lo >= 0xDC00 && lo <= 0xDFFF) {
+                            cp = 0x10000 + ((cp - 0xD800) << 10) + (lo - 0xDC00);
+                            state->position += 6;
                         }
-                        cp <<= 4;
-                        if (hc >= '0' && hc <= '9')      cp |= (unsigned)(hc - '0');
-                        else if (hc >= 'a' && hc <= 'f') cp |= (unsigned)(hc - 'a' + 10);
-                        else if (hc >= 'A' && hc <= 'F') cp |= (unsigned)(hc - 'A' + 10);
                         else {
-                            snprintf(last_error.message, sizeof(last_error.message),
-                                     "Bad hex in \\u escape at position %zu", state->position);
-                            last_error.code = JSON_ERROR_SYNTAX;
-                            free(out);
-                            return NULL;
+                            cp = 0xFFFD;
                         }
                     }
-                    // Encode as UTF-8 (handle BMP only; surrogate pairs not supported).
+                    else if (cp >= 0xDC00 && cp <= 0xDFFF) {
+                        cp = 0xFFFD;
+                    }
+                    if (cp == 0) {
+                        snprintf(last_error.message, sizeof(last_error.message),
+                                 "\\u0000 at position %zu: a NUL cannot be stored in a string value", state->position);
+                        last_error.code = JSON_ERROR_SYNTAX;
+                        free(out);
+                        return NULL;
+                    }
+
                     char utf8[4];
                     int nbytes;
                     if (cp < 0x80) {
@@ -590,11 +699,17 @@ static JsonElement* parse_string(JsonParserState* state) {
                         utf8[0] = (char)(0xC0 | (cp >> 6));
                         utf8[1] = (char)(0x80 | (cp & 0x3F));
                         nbytes = 2;
-                    } else {
+                    } else if (cp < 0x10000) {
                         utf8[0] = (char)(0xE0 | (cp >> 12));
                         utf8[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
                         utf8[2] = (char)(0x80 | (cp & 0x3F));
                         nbytes = 3;
+                    } else {
+                        utf8[0] = (char)(0xF0 | (cp >> 18));
+                        utf8[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+                        utf8[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+                        utf8[3] = (char)(0x80 | (cp & 0x3F));
+                        nbytes = 4;
                     }
                     // Append utf8 bytes
                     while (len + (size_t)nbytes + 1 > cap) {
@@ -682,9 +797,29 @@ static JsonElement* parse_number(JsonParserState* state) {
     strncpy(number_str, state->input + start, length);
     number_str[length] = '\0';
 
+    /* The token must be a whole JSON number: strtod alone accepted "1-2",
+       "1.2.3", "1e", "01" and "1." by parsing a prefix. */
+    if (!json_number_syntax_ok(number_str)) {
+        snprintf(last_error.message, sizeof(last_error.message), "Invalid number '%.32s' at position %zu", number_str, start);
+        JSON_LOG("[parse_number] %s", last_error.message);
+        last_error.code = JSON_ERROR_SYNTAX;
+        free(number_str);
+        return NULL;
+    }
     char* endptr;
     double number_double = strtod(number_str, &endptr);
-    if (endptr == number_str) {
+    if (*endptr != '\0') {
+        /* strtod follows LC_NUMERIC; under a locale with a decimal comma it
+           stops at the '.'. JSON always uses '.', so retry with the locale's
+           decimal point. */
+        const struct lconv* lc = localeconv();
+        char* dot = strchr(number_str, '.');
+        if (dot && lc && lc->decimal_point && lc->decimal_point[0] && lc->decimal_point[1] == '\0') {
+            *dot = lc->decimal_point[0];
+            number_double = strtod(number_str, &endptr);
+        }
+    }
+    if (endptr == number_str || *endptr != '\0') {
         snprintf(last_error.message, sizeof(last_error.message), "Invalid number format at position %zu", start);
         JSON_LOG("[parse_string] %s", last_error.message);
         last_error.code = JSON_ERROR_SYNTAX;
@@ -830,7 +965,7 @@ static JsonElement* parser_internal(JsonParserState* state) {
  * @return JsonElement* Pointer to a newly created JsonElement representing the parsed object, 
  * or NULL if an error occurs during parsing.
  */
-static JsonElement* parse_object(JsonParserState* state) {
+static JsonElement* parse_object_impl(JsonParserState* state) {
     if (state->current_token.type != JSON_TOKEN_OBJECT_START) {
         snprintf(last_error.message, sizeof(last_error.message), "Expected start of object at position %zu", state->position);
         JSON_LOG("[parse_object] %s", last_error.message);
@@ -890,8 +1025,22 @@ static JsonElement* parse_object(JsonParserState* state) {
         map_insert(object_element->value.object_val, key, value);
         next_token(state);
 
+        /* Strict separators: members are separated by exactly one ','
+           ('{"a":1 "b":2}' and '{"a":1,}' used to be accepted). */
         if (state->current_token.type == JSON_TOKEN_COMMA) {
             next_token(state);
+            if (state->current_token.type != JSON_TOKEN_STRING) {
+                snprintf(last_error.message, sizeof(last_error.message), "Expected a key after ',' in object at position %zu", state->position);
+                last_error.code = JSON_ERROR_SYNTAX;
+                json_deallocate(object_element);
+                return NULL;
+            }
+        }
+        else if (state->current_token.type != JSON_TOKEN_OBJECT_END) {
+            snprintf(last_error.message, sizeof(last_error.message), "Expected ',' or '}' in object at position %zu", state->position);
+            last_error.code = JSON_ERROR_SYNTAX;
+            json_deallocate(object_element);
+            return NULL;
         }
     }
     return object_element;
@@ -1024,14 +1173,7 @@ static void jsonp_serialize_internal(const JsonElement* element, JsonSB* sb) {
         case JSON_NUMBER:
             {
                 char buffer[64];
-                double v = element->value.number_val;
-                int len;
-                if (v >= -9.2233720368547758e18 && v <= 9.2233720368547758e18 &&
-                    v == (double)(long long)v) {
-                    len = snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
-                } else {
-                    len = snprintf(buffer, sizeof(buffer), "%.17g", v);
-                }
+                int len = jsonp_number_text(element->value.number_val, buffer, sizeof(buffer));
                 if (len > 0) {
                     jsonsb_append(sb, buffer, (size_t)len);
                 }
@@ -1073,11 +1215,10 @@ static void append_indent(JsonSB* sb, int indent) {
  * @param str Pointer to the String structure where the formatted string will be appended.
  */
 static void format_string(const char* value, JsonSB* sb) {
-    jsonsb_putc(sb, '"');
-    if (value) {
-        jsonsb_puts(sb, value);
-    }
-    jsonsb_putc(sb, '"');
+    /* Escaped exactly like json_serialize: the raw bytes made keys or values
+       containing '"', '\\' or control characters unparseable (and let a
+       value inject extra members). */
+    serialize_string(value, sb);
 }
 
 /**
@@ -1173,14 +1314,7 @@ static void jsonp_format_internal(const JsonElement* element, JsonSB* sb, int in
         case JSON_NUMBER:
             {
                 char buffer[64];
-                double v = element->value.number_val;
-                int len;
-                if (v >= -9.2233720368547758e18 && v <= 9.2233720368547758e18 &&
-                    v == (double)(long long)v) {
-                    len = snprintf(buffer, sizeof(buffer), "%lld", (long long)v);
-                } else {
-                    len = snprintf(buffer, sizeof(buffer), "%.17g", v);
-                }
+                int len = jsonp_number_text(element->value.number_val, buffer, sizeof(buffer));
                 if (len > 0) {
                     jsonsb_append(sb, buffer, (size_t)len);
                 }
@@ -1310,6 +1444,7 @@ JsonElement* json_parse(const char* json_str) {
     }
 
     state.position = 0;
+    state.depth = 0;
     state.input_len = string_length_cstr(json_str);
     state.error.code = JSON_ERROR_NONE;
     strcpy(state.error.message, "");
@@ -1442,8 +1577,12 @@ void json_print(const JsonElement* element) {
     }
 
     JSON_LOG("[json_print] Info: Printing JSON element in json_print.");
-    jsonp_print_internal(element, 2);
-    printf("\n");
+    /* the same text as json_format: consistent indentation, escaped strings,
+       exact numbers (the old printer misaligned closing brackets, printed
+       strings raw and numbers as (int) or with 2 decimals) */
+    char* text = json_format(element);
+    printf("%s\n", text ? text : "null");
+    free(text);
 }
 
 /**
@@ -1792,6 +1931,10 @@ bool json_compare(const JsonElement *element1, const JsonElement *element2) {
             JSON_LOG("[json_compare] Comparing JSON_NUMBER values: %f vs %f.", element1->value.number_val, element2->value.number_val);
             return element1->value.number_val == element2->value.number_val;
         case JSON_STRING:
+            /* json_create(JSON_STRING) leaves string_val NULL until it is set */
+            if (!element1->value.string_val || !element2->value.string_val) {
+                return element1->value.string_val == element2->value.string_val;
+            }
             JSON_LOG("[json_compare] Comparing JSON_STRING values: \"%s\" vs \"%s\".", element1->value.string_val, element2->value.string_val);
             return strcmp(element1->value.string_val, element2->value.string_val) == 0;
         case JSON_ARRAY:
@@ -1858,6 +2001,12 @@ bool json_set_element(JsonElement *element, const char *key_or_index, JsonElemen
         last_error.code = JSON_ERROR_NONE;
         return false;
     }
+    if (new_element == element) {
+        JSON_LOG("[json_set_element] Error: Cannot store an element inside itself.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Cannot store an element inside itself.\n");
+        last_error.code = JSON_ERROR_INVALID_VALUE;
+        return false;
+    }
 
     switch (element->type) {
         case JSON_OBJECT: {
@@ -1870,7 +2019,15 @@ bool json_set_element(JsonElement *element, const char *key_or_index, JsonElemen
                 return false;
             }
 
-            map_insert(element->value.object_val, non_const_key, new_element);
+            /* map_insert keeps the stored element when new_element is the same
+               pointer (get-modify-set), and replaces/frees the old one otherwise. */
+            if (!map_insert(element->value.object_val, non_const_key, new_element)) {
+                JSON_LOG("[json_set_element] Error: Failed to insert key '%s'.", key_or_index);
+                free(non_const_key);
+                snprintf(last_error.message, sizeof(last_error.message), "Error: Failed to insert key in json_set_element.\n");
+                last_error.code = JSON_ERROR_INSERTION_FAILED;
+                return false;
+            }
             JSON_LOG("[json_set_element] Key '%s' inserted into JSON object.", key_or_index);
             return true;
         }
@@ -1888,8 +2045,10 @@ bool json_set_element(JsonElement *element, const char *key_or_index, JsonElemen
             // Replace the existing element at the specified index
             JsonElement **array_element = vector_at(element->value.array_val, (size_t)index);
             JSON_LOG("[json_set_element] Replacing element at index %ld in JSON array.", index);
-            json_deallocate(*array_element); // Deallocate the old element
-            *array_element = new_element;
+            if (*array_element != new_element) {   /* get-modify-set of the same element: keep it */
+                json_deallocate(*array_element); // Deallocate the old element
+                *array_element = new_element;
+            }
             return true;
         }
         default:
@@ -2226,7 +2385,7 @@ void* json_convert(const JsonElement *element, JsonType type) {
                     json_deallocate(stringElement);  
                     return NULL;
                 }
-                snprintf(str, 64, "%g", element->value.number_val);
+                jsonp_number_text(element->value.number_val, str, 64);   /* "%g" kept 6 digits */
                 stringElement->value.string_val = str;
                 return stringElement;
             } 
@@ -2238,6 +2397,8 @@ void* json_convert(const JsonElement *element, JsonType type) {
                     last_error.code = JSON_ERROR_MEMORY;
                     return NULL;
                 }
+                stringElement->value.string_val = string_strdup(element->value.bool_val ? "true" : "false");
+
                 if (!stringElement->value.string_val) {
                     JSON_LOG("[json_convert] Error: Memory allocation failed for string duplication.");
                     snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string duplication in json_convert.\n");
@@ -2245,8 +2406,6 @@ void* json_convert(const JsonElement *element, JsonType type) {
                     json_deallocate(stringElement);
                     return NULL;
                 }
-
-                stringElement->value.string_val = string_strdup(element->value.bool_val ? "true" : "false");
                 return stringElement;
             }
             JSON_LOG("[json_convert] Error: Conversion to string is not supported for the given type.");
@@ -2255,15 +2414,31 @@ void* json_convert(const JsonElement *element, JsonType type) {
             return NULL;
         case JSON_NUMBER:
             if (element->type == JSON_STRING) {
-                double *num = (double*)malloc(sizeof(double));
-                if (!num) {
-                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string to number conversion in json_convert.\n");
-                    last_error.code = JSON_ERROR_MEMORY;
-                    JSON_LOG("[json_convert] %s", last_error.message);  
+                /* Return a JsonElement (as documented, freed with json_deallocate),
+                   not a bare double*: a caller following the contract used to run
+                   json_deallocate on a raw double. The whole string must be a finite
+                   number (surrounding whitespace allowed). */
+                const char* text = element->value.string_val ? element->value.string_val : "";
+                char* endp = NULL;
+                double value = strtod(text, &endp);
+                while (endp && isspace((unsigned char)*endp)) {
+                    endp++;
+                }
+                if (endp == text || !endp || *endp != '\0' || !isfinite(value)) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: String is not a valid finite number in json_convert.\n");
+                    last_error.code = JSON_ERROR_TYPE;
+                    JSON_LOG("[json_convert] %s", last_error.message);
                     return NULL;
                 }
-                *num = strtod(element->value.string_val, NULL);
-                return num;
+                JsonElement *numberElement = json_create(JSON_NUMBER);
+                if (!numberElement) {
+                    snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for string to number conversion in json_convert.\n");
+                    last_error.code = JSON_ERROR_MEMORY;
+                    JSON_LOG("[json_convert] %s", last_error.message);
+                    return NULL;
+                }
+                numberElement->value.number_val = value;
+                return numberElement;
             }
             snprintf(last_error.message, sizeof(last_error.message), "Error: Conversion to number is not supported for the given type in json_convert.\n");
             last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
@@ -2271,15 +2446,16 @@ void* json_convert(const JsonElement *element, JsonType type) {
             return NULL;
         case JSON_BOOL:
             if (element->type == JSON_NUMBER) {
-                bool *bool_val = (bool*)malloc(sizeof(bool));
-                if (!bool_val) {
+                /* Return a JsonElement (freed with json_deallocate), not a bare bool*. */
+                JsonElement *boolElement = json_create(JSON_BOOL);
+                if (!boolElement) {
                     snprintf(last_error.message, sizeof(last_error.message), "Error: Memory allocation failed for number to boolean conversion in json_convert.\n");
                     last_error.code = JSON_ERROR_MEMORY;
-                    JSON_LOG("[json_convert] %s", last_error.message);  
+                    JSON_LOG("[json_convert] %s", last_error.message);
                     return NULL;
                 }
-                *bool_val = (element->value.number_val != 0); // Non-zero numbers are true
-                return bool_val;
+                boolElement->value.bool_val = (element->value.number_val != 0); // Non-zero numbers are true
+                return boolElement;
             }
             snprintf(last_error.message, sizeof(last_error.message), "Error: Conversion to boolean is not supported for the given type in json_convert.\n");
             last_error.code = JSON_ERROR_UNEXPECTED_TOKEN;
@@ -2690,28 +2866,178 @@ char* json_generate_schema(const JsonElement* element) {
     return out;
 }
 
-/* json_validate: checks that element's top-level type matches what
- * schema_json describes (a minimal validator matching json_generate_schema). */
+/* ---- json_validate: a subset of JSON Schema --------------------------- */
+
+static const JsonElement* jsonp_member(const JsonElement* object, const char* key) {
+    if (!object || object->type != JSON_OBJECT || !object->value.object_val) {
+        return NULL;
+    }
+    return (const JsonElement*)map_at(object->value.object_val, (KeyType)key);
+}
+
+static bool jsonp_type_is(const JsonElement* el, const char* t) {
+    switch (el->type) {
+        case JSON_NULL:   return strcmp(t, "null") == 0;
+        case JSON_BOOL:   return strcmp(t, "boolean") == 0;
+        case JSON_NUMBER: return strcmp(t, "number") == 0 ||
+                                 (strcmp(t, "integer") == 0 && isfinite(el->value.number_val) &&
+                                  floor(el->value.number_val) == el->value.number_val);
+        case JSON_STRING: return strcmp(t, "string") == 0;
+        case JSON_ARRAY:  return strcmp(t, "array") == 0;
+        case JSON_OBJECT: return strcmp(t, "object") == 0;
+    }
+    return false;
+}
+
+/* A numeric keyword: true and *out set when present and a number. */
+static bool jsonp_num_kw(const JsonElement* schema, const char* kw, double* out) {
+    const JsonElement* k = jsonp_member(schema, kw);
+    if (k && k->type == JSON_NUMBER) {
+        *out = k->value.number_val;
+        return true;
+    }
+    return false;
+}
+
+/* Characters (UTF-8 code points), as JSON Schema's minLength/maxLength count them. */
+static size_t jsonp_utf8_length(const char* s) {
+    size_t n = 0;
+    for (; s && *s; ++s) {
+        if (((unsigned char)*s & 0xC0) != 0x80) {
+            n++;
+        }
+    }
+    return n;
+}
+
+static bool jsonp_schema_ok(const JsonElement* el, const JsonElement* schema, int depth) {
+    if (depth > 64) {
+        return false;
+    }
+    if (schema->type == JSON_BOOL) {
+        return schema->value.bool_val;          /* true accepts anything, false nothing */
+    }
+    if (schema->type != JSON_OBJECT) {
+        return false;                           /* not a schema */
+    }
+    const JsonElement* kw = jsonp_member(schema, "type");
+    if (kw) {
+        bool any = false;
+        if (kw->type == JSON_STRING && kw->value.string_val) {
+            any = jsonp_type_is(el, kw->value.string_val);
+        }
+        else if (kw->type == JSON_ARRAY) {
+            for (size_t i = 0; i < vector_size(kw->value.array_val) && !any; ++i) {
+                const JsonElement* t = *(JsonElement**)vector_at(kw->value.array_val, i);
+                any = t && t->type == JSON_STRING && t->value.string_val && jsonp_type_is(el, t->value.string_val);
+            }
+        }
+        if (!any) {
+            return false;
+        }
+    }
+    if ((kw = jsonp_member(schema, "enum")) != NULL) {
+        bool any = false;
+        if (kw->type == JSON_ARRAY) {
+            for (size_t i = 0; i < vector_size(kw->value.array_val) && !any; ++i) {
+                any = json_compare(el, *(JsonElement**)vector_at(kw->value.array_val, i));
+            }
+        }
+        if (!any) {
+            return false;
+        }
+    }
+    if ((kw = jsonp_member(schema, "const")) != NULL && !json_compare(el, kw)) {
+        return false;
+    }
+
+    double limit;
+    if (el->type == JSON_NUMBER) {
+        double v = el->value.number_val;
+        if ((jsonp_num_kw(schema, "minimum", &limit) && !(v >= limit)) ||
+            (jsonp_num_kw(schema, "maximum", &limit) && !(v <= limit)) ||
+            (jsonp_num_kw(schema, "exclusiveMinimum", &limit) && !(v > limit)) ||
+            (jsonp_num_kw(schema, "exclusiveMaximum", &limit) && !(v < limit))) {
+            return false;
+        }
+    }
+    else if (el->type == JSON_STRING) {
+        double len = (double)jsonp_utf8_length(el->value.string_val);
+        if ((jsonp_num_kw(schema, "minLength", &limit) && len < limit) ||
+            (jsonp_num_kw(schema, "maxLength", &limit) && len > limit)) {
+            return false;
+        }
+    }
+    else if (el->type == JSON_ARRAY) {
+        size_t count = vector_size(el->value.array_val);
+        if ((jsonp_num_kw(schema, "minItems", &limit) && (double)count < limit) ||
+            (jsonp_num_kw(schema, "maxItems", &limit) && (double)count > limit)) {
+            return false;
+        }
+        const JsonElement* items = jsonp_member(schema, "items");
+        if (items && (items->type == JSON_OBJECT || items->type == JSON_BOOL)) {
+            for (size_t i = 0; i < count; ++i) {
+                if (!jsonp_schema_ok(*(JsonElement**)vector_at(el->value.array_val, i), items, depth + 1)) {
+                    return false;
+                }
+            }
+        }
+    }
+    else if (el->type == JSON_OBJECT) {
+        size_t count = map_size(el->value.object_val);
+        if ((jsonp_num_kw(schema, "minProperties", &limit) && (double)count < limit) ||
+            (jsonp_num_kw(schema, "maxProperties", &limit) && (double)count > limit)) {
+            return false;
+        }
+        const JsonElement* required = jsonp_member(schema, "required");
+        if (required && required->type == JSON_ARRAY) {
+            for (size_t i = 0; i < vector_size(required->value.array_val); ++i) {
+                const JsonElement* name = *(JsonElement**)vector_at(required->value.array_val, i);
+                if (name && name->type == JSON_STRING && name->value.string_val && !jsonp_member(el, name->value.string_val)) {
+                    return false;
+                }
+            }
+        }
+        const JsonElement* props = jsonp_member(schema, "properties");
+        const JsonElement* extra = jsonp_member(schema, "additionalProperties");
+        MapIterator it = map_begin(el->value.object_val);
+        MapIterator end = map_end(el->value.object_val);
+        while (it.node != end.node) {
+            const char* key = (const char*)it.node->key;
+            const JsonElement* value = (const JsonElement*)it.node->value;
+            const JsonElement* sub = jsonp_member(props, key);
+            if (sub ? !jsonp_schema_ok(value, sub, depth + 1)
+                    : (extra && (extra->type == JSON_OBJECT || extra->type == JSON_BOOL) && !jsonp_schema_ok(value, extra, depth + 1))) {
+                return false;
+            }
+            map_iterator_increment(&it);
+        }
+    }
+    return true;
+}
+
+/**
+ * @brief Validate @p element against a JSON Schema (a documented subset).
+ *
+ * Supported keywords: type (a name or a list; "integer" = an integral
+ * number), enum, const, minimum, maximum, exclusiveMinimum,
+ * exclusiveMaximum, minLength, maxLength (in characters), items (one schema
+ * for every element), minItems, maxItems, required, properties,
+ * additionalProperties (false or a schema), minProperties, maxProperties,
+ * and the boolean schemas true / false. Other keywords ($ref, pattern,
+ * format, oneOf, ...) are ignored. It used to check only the top-level
+ * "type".
+ *
+ * @return true if the element satisfies the schema; false if not, or if the
+ *         schema is not valid JSON / not a schema.
+ */
 bool json_validate(const JsonElement *element, const char *schema_json) {
     if (!element || !schema_json) return false;
     JsonElement* schema = json_parse(schema_json);
-    if (!schema || schema->type != JSON_OBJECT) {
-        if (schema) json_deallocate(schema);
+    if (!schema) {
         return false;
     }
-    JsonElement* type_el = json_get_element(schema, "type");
-    bool ok = false;
-    if (type_el && type_el->type == JSON_STRING) {
-        const char* t = type_el->value.string_val;
-        switch (element->type) {
-            case JSON_NULL:   ok = (strcmp(t, "null")    == 0); break;
-            case JSON_BOOL:   ok = (strcmp(t, "boolean") == 0); break;
-            case JSON_NUMBER: ok = (strcmp(t, "number")  == 0); break;
-            case JSON_STRING: ok = (strcmp(t, "string")  == 0); break;
-            case JSON_ARRAY:  ok = (strcmp(t, "array")   == 0); break;
-            case JSON_OBJECT: ok = (strcmp(t, "object")  == 0); break;
-        }
-    }
+    bool ok = jsonp_schema_ok(element, schema, 0);
     json_deallocate(schema);
     return ok;
 }
@@ -2816,9 +3142,21 @@ bool json_add_to_array(JsonElement* element1, JsonElement* element2) {
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return false;
     }
+    if (element1->type != JSON_ARRAY || !element1->value.array_val) {
+        JSON_LOG("[json_add_to_array] Error: element1 is not a JSON array (type %d).", (int)element1->type);
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Target is not a JSON array.");
+        last_error.code = JSON_ERROR_TYPE;
+        return false;
+    }
     if (!element2) {
         JSON_LOG("[json_add_to_array] Error: element2 is NULL.");
         snprintf(last_error.message, sizeof(last_error.message), "Error: element2 is NULL and invalid.");
+        last_error.code = JSON_ERROR_INVALID_VALUE;
+        return false;
+    }
+    if (element2 == element1) {
+        JSON_LOG("[json_add_to_array] Error: cannot add an array to itself.");
+        snprintf(last_error.message, sizeof(last_error.message), "Error: Cannot add an array to itself.");
         last_error.code = JSON_ERROR_INVALID_VALUE;
         return false;
     }
@@ -2933,7 +3271,7 @@ JsonElement* json_query(const JsonElement *element, const char *query) {
         return NULL;
     }
 
-    int count;
+    size_t count = 0;
     char** tokens = split_query(query, &count);
     if (!tokens) {
         JSON_LOG("[json_query] Error: Failed to split query.");
@@ -2941,42 +3279,44 @@ JsonElement* json_query(const JsonElement *element, const char *query) {
     }
 
     JsonElement* currentElement = (JsonElement*)element;
-    for (int i = 0; i < count; ++i) {
+    for (size_t i = 0; i < count; ++i) {
         char* token = tokens[i];
         JSON_LOG("[json_query] Processing token: %s", token);
 
-        // Handle array access
+        // Handle array access: "key[i]", "key[i][j]...", or "[i]" on the current array
         char* bracketPos = strchr(token, '[');
         if (bracketPos) {
             *bracketPos = '\0'; // End the string at the bracket to isolate the key
+            if (token[0] != '\0') {
+                currentElement = json_get_element(currentElement, token); // Get the array or object
+            }
             char* indexStr = bracketPos + 1;
-            char* endBracket = strchr(indexStr, ']');
-            if (!endBracket) {
-                JSON_LOG("[json_query] Error: Invalid query format, missing closing bracket.");
-                break; // Break early on syntax error
-            }
-            *endBracket = '\0';
-
-            currentElement = json_get_element(currentElement, token); // Get the array or object
-            if (!currentElement) {
-                JSON_LOG("[json_query] Error: Element not found for key: %s", token);
-                break;
-            }
-
-            JSON_LOG("[json_query] Accessing array element at index: %s", indexStr);
-            if (json_type_of_element(currentElement) == JSON_ARRAY) {
-                currentElement = json_get_element(currentElement, indexStr); // Get the element at index
-                if (!currentElement) {
-                    JSON_LOG("[json_query] Error: Element not found at index %s.", indexStr);
+            /* Every [N] in the segment: a second index used to be ignored, so
+               "a[1][0]" returned a[1]. Any malformed part gives NULL. */
+            while (currentElement) {
+                char* endBracket = strchr(indexStr, ']');
+                if (!endBracket || json_type_of_element(currentElement) != JSON_ARRAY) {
+                    JSON_LOG("[json_query] Error: missing ']' or not an array.");
+                    currentElement = NULL;
                     break;
                 }
-            } 
-            else {
-                JSON_LOG("[json_query] Error: Expected an array but found a different type.");
-                currentElement = NULL;
+                *endBracket = '\0';
+                JSON_LOG("[json_query] Accessing array element at index: %s", indexStr);
+                currentElement = json_get_element(currentElement, indexStr);
+                char* rest = endBracket + 1;
+                if (*rest == '\0') {
+                    break;
+                }
+                if (*rest != '[') {
+                    currentElement = NULL;   /* text after ']', e.g. "a[1]x" */
+                    break;
+                }
+                indexStr = rest + 1;
+            }
+            if (!currentElement) {
                 break;
             }
-        } 
+        }
         else {
             currentElement = json_get_element(currentElement, token);
             if (!currentElement) {
@@ -2986,24 +3326,12 @@ JsonElement* json_query(const JsonElement *element, const char *query) {
         }
     }
 
-    for (int i = 0; i < count; ++i) {
-        free(tokens[i]); // Free the duplicated tokens
-    }
+    free_query_tokens(tokens, count);
 
     JSON_LOG("[json_query] Query completed. Returning element: %p", (void*)currentElement);
     return currentElement;
 }
 
-
-/* =================================================================== */
-/* Typed convenience layer: leaf constructors + typed getters          */
-/*                                                                     */
-/* Without these, building a leaf value takes three steps (json_create */
-/* + manual union assignment + string_strdup) and reading one takes a  */
-/* json_get_element + NULL check + type check + union access. These    */
-/* wrappers collapse both into a single call, the way mainstream JSON  */
-/* libraries do.                                                       */
-/* =================================================================== */
 
 /**
  * @brief Create a JSON null value.
@@ -3102,7 +3430,15 @@ static const JsonElement* jsonp_resolve(const JsonElement* element, const char* 
  */
 int json_get_int(const JsonElement* element, const char* key_or_index, int default_value) {
     const JsonElement* e = jsonp_resolve(element, key_or_index);
-    return (e && e->type == JSON_NUMBER) ? (int)e->value.number_val : default_value;
+    if (!e || e->type != JSON_NUMBER) {
+        return default_value;
+    }
+    double v = e->value.number_val;
+    /* (int) of 3000000000 was undefined (INT_MIN here): out of range -> default */
+    if (!(v > (double)INT_MIN - 1.0 && v < (double)INT_MAX + 1.0)) {
+        return default_value;
+    }
+    return (int)v;
 }
 
 /**

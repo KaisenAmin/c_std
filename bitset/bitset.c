@@ -11,7 +11,9 @@
 
 
 static inline size_t bitset_num_bytes(size_t num_bits) {
-    return (num_bits + 7) / 8;
+    /* (num_bits + 7) / 8 wrapped to 0 for num_bits > SIZE_MAX - 7, giving a
+       1-byte buffer for a bitset that claimed ~2^64 bits */
+    return num_bits / 8 + (num_bits % 8 != 0);
 }
 
 
@@ -112,42 +114,47 @@ void bitset_print(const Bitset* bs) {
 /**
  * @brief Sets the Bitset's bits from a string representation.
  *
- * Converts a string of '0's and '1's into corresponding bits in the Bitset. The leftmost
- * character of the string corresponds to the highest bit index (MSB), matching the
- * behavior of std::bitset's string constructor.
+ * Like std::bitset's string constructor: of a string longer than the bitset
+ * only the first (leftmost) `size` characters are used; the last character
+ * used is bit 0, so the leftmost one is the highest bit; every bit above the
+ * string's length is cleared. Any character other than '0' and '1' makes the
+ * whole call fail and leaves the bitset unchanged (std::bitset throws
+ * invalid_argument). It used to take the RIGHTMOST characters of a long
+ * string, store any other character as 0, and keep the old upper bits.
  *
  * @param bs Pointer to the Bitset to modify.
  * @param str String of '0's and '1's representing the desired bit pattern.
+ * @return true on success; false for a NULL argument or an invalid character.
  */
-void bitset_set_from_string(Bitset* bs, const char* str) {
+bool bitset_set_from_string(Bitset* bs, const char* str) {
     BITSET_LOG("[bitset_set_from_string]: Function start.");
     if (!bs || !str) {
         BITSET_LOG("[bitset_set_from_string]: Error - Null pointer provided.");
-        return;
+        return false;
     }
 
     size_t str_len = strlen(str);
-    BITSET_LOG("[bitset_set_from_string]: String length: %zu.", str_len);
+    size_t used = (str_len < bs->size) ? str_len : bs->size;   /* the first `used` characters */
+    BITSET_LOG("[bitset_set_from_string]: String length: %zu, using %zu.", str_len, used);
 
-    for (size_t bit_pos = 0; bit_pos < str_len; ++bit_pos) {
-        if (bit_pos >= bs->size) {
-            BITSET_LOG("[bitset_set_from_string]: Warning - String length exceeds bitset size.");
-            break;
+    for (size_t i = 0; i < used; ++i) {
+        if (str[i] != '0' && str[i] != '1') {
+            BITSET_LOG("[bitset_set_from_string]: Error - invalid character at %zu.", i);
+            return false;
         }
-        bool bit_value = (str[str_len - 1 - bit_pos] == '1');
-        size_t byte_index = bit_pos / 8;
-        size_t bit_index = bit_pos % 8;
+    }
 
-        if (bit_value) {
-            bs->bits[byte_index] |= (unsigned char)(1u << bit_index);
+    if (bs->bits) {
+        memset(bs->bits, 0, (bs->size + 7) / 8);   /* bits above the string are 0 */
+    }
+    for (size_t bit_pos = 0; bit_pos < used; ++bit_pos) {
+        if (str[used - 1 - bit_pos] == '1') {
+            bs->bits[bit_pos / 8] |= (unsigned char)(1u << (bit_pos % 8));
         }
-        else {
-            bs->bits[byte_index] &= (unsigned char)~(1u << bit_index);
-        }
-        BITSET_LOG("[bitset_set_from_string]: Bit set at position %zu: %d.", bit_pos, bit_value);
     }
 
     BITSET_LOG("[bitset_set_from_string]: Function end.");
+    return true;
 }
 
 
@@ -512,6 +519,9 @@ char* bitset_to_string(const Bitset* bs) {
         return NULL;
     }
 
+    if (bs->size == (size_t)-1) {
+        return NULL;   /* size + 1 would wrap */
+    }
     char* str = (char*)malloc(bs->size + 1);
     if (!str) {
         BITSET_LOG("[bitset_to_string]: Error - Memory allocation failed.");

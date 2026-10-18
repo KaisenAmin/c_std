@@ -21,11 +21,10 @@
 #include <stdbool.h>
 #include <locale.h>
 
-#if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
-#else
+/* wchar_t only: <windows.h> (with its min/max macros and the old
+   <winsock.h>, which clashes with a later <winsock2.h>) is included by
+   encoding.c, not by every file that uses this header. */
 #include <wchar.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,8 +34,8 @@ extern "C" {
 /* #define ENCODING_LOGGING_ENABLE */
 
 #ifdef ENCODING_LOGGING_ENABLE
-    #define ENCODING_LOG(fmt, ...) \
-        do { fprintf(stderr, "[ENCODING LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define ENCODING_LOG(...) \
+        do { fprintf(stderr, "[ENCODING LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define ENCODING_LOG(...) do { } while (0)
 #endif

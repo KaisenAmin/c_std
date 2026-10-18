@@ -14,6 +14,7 @@ The HashMap library provides a generic implementation of an unordered associativ
 - **Hash Table Implementation:** Provides average O(1) time complexity for basic operations.
 - **Separate Chaining:** Uses linked lists to handle hash collisions.
 - **Dynamic Resizing:** Automatically rehashes when load factor exceeds threshold.
+- **Fast, robust string hash:** `hashmap_hash_string` is XXH3-64, the same code as `crypto_xxh3_64` (static inline in `crypto/crypto.h`), so hashmap needs neither the crypto sources nor OpenSSL.
 - **Iterators:** Provides iterators to traverse the hashmap.
 - **Flexible Memory Management:** Customizable deallocation functions for keys and values.
 - **Comprehensive Operations:** Includes insertion, deletion, lookup, size, swap, and more.
@@ -32,6 +33,22 @@ The HashMap library provides a generic implementation of an unordered associativ
   - Lookup: O(n) (when all elements hash to the same bucket)
 
 - **Space Complexity:** O(n)
+
+### String hash: XXH3 instead of djb2
+
+`hashmap_hash_string` used to be djb2 (`hash * 33 + c`). It is now XXH3-64, which hashes long keys several times faster and spreads every key set like a random function. djb2 has whole families of colliding strings: `"Ez"` and `"FY"` collide, so does every string built from such pairs, and a map filled with them degrades into one long list.
+
+Measured on an Intel Core i5-10400F with MinGW GCC 14 `-O2`, maps built with `hashmap_create`, keys looked up in random order (time per operation, djb2 → XXH3):
+
+| Keys | Hash | Insert | Lookup hit | Lookup miss |
+| --- | ---: | ---: | ---: | ---: |
+| 1,000,000 words (5–14 random letters) | 16.5 → 18.2 ns | 327 → 320 ns | 241 → 225 ns | 183 → 172 ns |
+| 1,000,000 URLs (~45 bytes) | 42.5 → 19.5 ns | 371 → 378 ns | 386 → 338 ns | 182 → 261 ns |
+| 200,000 long keys (~206 bytes) | 174 → 54 ns | 678 → 382 ns | 485 → 353 ns | 340 → 229 ns |
+| 1,000,000 sequential keys `k0000000`… inserted in order | 7.8 → 9.7 ns | 70 → 301 ns | 180 → 216 ns | 183 → 180 ns |
+| 16,384 djb2-colliding keys (`"Ez"`/`"FY"` pairs) | 17 → 9 ns | 40,270 → 72 ns | 38,850 → 60 ns | 38 → 57 ns |
+
+Most of each operation is cache misses on the buckets and nodes, so the hash matters most for long keys and for colliding ones. Two rows favour djb2 for structural reasons, not because it hashes better. djb2 gives consecutive keys neighbouring hash values, so inserting them in order walks the bucket array sequentially, which is cache-friendly; XXH3 treats them like any other keys. For the URLs, djb2 left 56% of the buckets empty instead of the 49% a random hash leaves, which shortcuts misses but lengthens hit chains. A workload that depends on such a pattern can still pass its own `HashFunc`; for sequential numeric IDs, integer keys with `hashmap_hash_int` are the fastest choice.
 
 ## Memory Management
 
@@ -94,7 +111,7 @@ The `HashMap` structure is the main container that manages the hash table.
   - `size_t max_load_factor_numerator`: Numerator for max load factor calculation.
   - `size_t max_load_factor_denominator`: Denominator for max load factor calculation.
   - `HashFunc hash_func`: Function pointer to the hash function.
-  - `CompareFuncHashMap compare_func`: Function pointer to the comparison function.
+  - `CompareFuncHashMap compare_func`: Function pointer to the comparison function, `int (*)(const void*, const void*)` (the `qsort` signature; `HashFunc` likewise takes a `const void*` key).
   - `ValueDeallocFunc dealloc_key`: Function pointer to key deallocation function.
   - `ValueDeallocFunc dealloc_value`: Function pointer to value deallocation function.
   - `HashMapSlab* slabs`, `HashMapNode* freeList`, `size_t slabCap`: Internal node pool — entries are carved from slabs instead of one `malloc` per node, so teardown is `O(slabs)` and memory tracks the data. Not for external use.
@@ -114,7 +131,7 @@ The `HashMap` structure is the main container that manages the hash table.
 ---
 
 ### `HashMap* hashmap_create_with_buckets(HashFunc hash_func, CompareFuncHashMap compare_func, ValueDeallocFunc dealloc_key, ValueDeallocFunc dealloc_value, size_t initial_bucket_count)`
-**Purpose**: Like `hashmap_create` but pre-allocates exactly `initial_bucket_count` buckets.
+**Purpose**: Like `hashmap_create` but pre-allocates `initial_bucket_count` buckets, rounded up to the next prime (the table always has a prime number of buckets).
 **Parameters**:
 - `hash_func`: Required hash function pointer for hashing keys.
 - `compare_func`: Required comparison function pointer for comparing keys.
@@ -201,7 +218,7 @@ The `HashMap` structure is the main container that manages the hash table.
 ---
 
 ### `ValueType hashmap_operator_bracket(HashMap* map, KeyType key)`
-**Purpose**: Mirrors C++ `operator[]`: returns the existing value for `key`, or inserts a new entry with value NULL and returns NULL.
+**Purpose**: Mirrors C++ `operator[]`: returns the existing value for `key`, or inserts a new entry with value NULL and returns NULL. With a `dealloc_key`, the map owns `key` either way: it is stored when new, and freed when an equal key is already present (as in `hashmap_insert`).
 **Parameters**:
 - `map`: Pointer to the HashMap.
 - `key`: Key to look up or insert.
@@ -314,7 +331,7 @@ The `HashMap` structure is the main container that manages the hash table.
 ---
 
 ### `bool hashmap_insert(HashMap* map, KeyType key, ValueType value)`
-**Purpose**: Inserts a new key-value pair; if `key` already exists the existing entry is unchanged.
+**Purpose**: Inserts a key-value pair, or replaces the value if `key` already exists (insert-or-assign): the old value is passed to `dealloc_value` and the new one stored. The map keeps the key it already has; when the map has a `dealloc_key`, it owns every key you pass, so on an update the duplicate key you passed is freed with `dealloc_key` (exactly like `map_insert`). Do not use or free a key after passing it to a map that owns keys.
 **Parameters**:
 - `map`: Pointer to the HashMap.
 - `key`: Key to insert.
@@ -416,7 +433,7 @@ The `HashMap` structure is the main container that manages the hash table.
 **Purpose**: Sets the maximum load factor; the next insert that would exceed this threshold triggers a rehash.
 **Parameters**:
 - `map`: Pointer to the HashMap.
-- `max_load_factor`: New maximum load factor value.
+- `max_load_factor`: New maximum load factor value, at least `0.001` (it is kept in thousandths) and at most `1000000`; other values (including `<= 0` and NaN) are ignored.
 **Return Value**: None.
 **Usage Case**: Lower the value (e.g., 0.4) to trade memory for fewer collisions on lookup-heavy workloads.
 
@@ -461,11 +478,11 @@ The `HashMap` structure is the main container that manages the hash table.
 ---
 
 ### `bool hashmap_equal(const HashMap* map1, const HashMap* map2)`
-**Purpose**: Returns `true` if both maps contain the same set of key-value pairs (deep element-wise comparison).
+**Purpose**: Returns `true` if both maps contain the same set of **keys** (same size, and every key of `map1` is found in `map2` with `map2`'s comparator). Values are **not** compared: the map stores opaque value pointers and has no value comparator; compare the values yourself if they matter.
 **Parameters**:
 - `map1`: Pointer to the first HashMap.
 - `map2`: Pointer to the second HashMap.
-**Return Value**: `true` if the maps are element-wise equal, `false` otherwise.
+**Return Value**: `true` if the maps hold the same keys (or both are `NULL`), `false` otherwise.
 **Usage Case**: Use in tests to assert that two maps have identical contents.
 
 ---
@@ -480,7 +497,7 @@ The `HashMap` structure is the main container that manages the hash table.
 
 ---
 
-### `void hashmap_print(const HashMap* map, void (*print_key)(const KeyType), void (*print_value)(const ValueType))`
+### `void hashmap_print(const HashMap* map, void (*print_key)(const void*), void (*print_value)(const void*))`
 **Purpose**: Iterates the map and calls `print_key` and `print_value` for each entry.
 **Parameters**:
 - `map`: Pointer to the HashMap to print.
@@ -491,25 +508,25 @@ The `HashMap` structure is the main container that manages the hash table.
 
 ---
 
-### `size_t hashmap_hash_int(const KeyType key)`
-**Purpose**: Built-in hash for `int*` keys; dereferences the pointer and mixes the integer bits.
+### `size_t hashmap_hash_int(const void* key)`
+**Purpose**: Built-in hash for `int*` keys: the integer value itself (identity, like libstdc++'s `std::hash<int>`; no bit mixing). Bucket counts are always prime, so regular key patterns still spread; only keys that are multiples of the bucket count share a bucket.
 **Parameters**:
 - `key`: Pointer to an `int` key.
-**Return Value**: Hash value derived from the integer's bit pattern.
+**Return Value**: `(size_t)*key` (`0` for a `NULL` key).
 **Usage Case**: Pass as `hash_func` to `hashmap_create` when keys are heap- or stack-allocated integers.
 
 ---
 
-### `size_t hashmap_hash_string(const KeyType key)`
-**Purpose**: Built-in djb2 hash for `const char*` keys.
+### `size_t hashmap_hash_string(const void* key)`
+**Purpose**: Built-in XXH3-64 hash for `const char*` keys: the same value as `crypto_xxh3_64(key, strlen(key), 0)`, truncated to `size_t`, and the same on every platform. The code is the static inline implementation in `crypto/crypto.h`, so neither `crypto.c` nor OpenSSL is needed. It is unkeyed, so it is no defence against deliberate hash flooding; for keys that come from untrusted input, pass a `HashFunc` that calls `crypto_xxh3_64` with a secret random seed (see crypto Example 36).
 **Parameters**:
 - `key`: Pointer to a null-terminated string key.
-**Return Value**: djb2 hash value of the string.
+**Return Value**: XXH3 hash of the string's bytes, without the terminator (`0` for a `NULL` key).
 **Usage Case**: Pass as `hash_func` to `hashmap_create` when keys are C strings.
 
 ---
 
-### `size_t hashmap_hash_pointer(const KeyType key)`
+### `size_t hashmap_hash_pointer(const void* key)`
 **Purpose**: Built-in hash that treats the address itself as the key (object-identity hashing).
 **Parameters**:
 - `key`: Pointer whose address is used as the key.
@@ -518,7 +535,7 @@ The `HashMap` structure is the main container that manages the hash table.
 
 ---
 
-### `int hashmap_compare_int(const KeyType key1, const KeyType key2)`
+### `int hashmap_compare_int(const void* key1, const void* key2)`
 **Purpose**: Compares two `int*` keys.
 **Parameters**:
 - `key1`: Pointer to the first integer key.
@@ -528,7 +545,7 @@ The `HashMap` structure is the main container that manages the hash table.
 
 ---
 
-### `int hashmap_compare_string(const KeyType key1, const KeyType key2)`
+### `int hashmap_compare_string(const void* key1, const void* key2)`
 **Purpose**: Compares two `const char*` keys lexicographically (delegates to `strcmp`).
 **Parameters**:
 - `key1`: Pointer to the first string key.
@@ -538,7 +555,7 @@ The `HashMap` structure is the main container that manages the hash table.
 
 ---
 
-### `int hashmap_compare_pointer(const KeyType key1, const KeyType key2)`
+### `int hashmap_compare_pointer(const void* key1, const void* key2)`
 **Purpose**: Compares two pointer keys by raw address.
 **Parameters**:
 - `key1`: First pointer key.
@@ -609,7 +626,9 @@ int main(void) {
     int* v = malloc(sizeof(int)); *v = 42;
     hashmap_insert(m, strdup("answer"), v);
 
-    int* hit = (int*)hashmap_operator_bracket(m, (void*)"answer");
+    /* the map owns its keys (dealloc_key = free), so pass heap keys: an
+       equal existing key makes the map free the one passed in */
+    int* hit = (int*)hashmap_operator_bracket(m, strdup("answer"));
     void* miss = hashmap_operator_bracket(m, strdup("new_slot"));
 
     fmt_printf("answer = %d (existing)\n", *hit);
@@ -818,15 +837,15 @@ int main(void) {
 **Result**
 ```
 counted 13 words -> 9 unique
-  fox      : 2
-  is       : 1
-  the      : 3
-  jumps    : 1
-  brown    : 1
-  over     : 1
   lazy     : 1
+  over     : 1
+  jumps    : 1
   dog      : 1
+  fox      : 2
+  the      : 3
+  brown    : 1
   quick    : 2
+  is       : 1
 ```
 > Note: HashMap iteration order is unspecified; word lines may appear in any order.
 
@@ -878,7 +897,27 @@ size=25, buckets=37, load=0.676
   bucket[0] : 1 entries
   bucket[1] : 1 entries
   bucket[2] : 1 entries
-  ...
+  bucket[3] : 1 entries
+  bucket[4] : 1 entries
+  bucket[5] : 1 entries
+  bucket[6] : 1 entries
+  bucket[7] : 1 entries
+  bucket[8] : 1 entries
+  bucket[9] : 1 entries
+  bucket[10] : 1 entries
+  bucket[11] : 1 entries
+  bucket[12] : 1 entries
+  bucket[13] : 1 entries
+  bucket[14] : 1 entries
+  bucket[15] : 1 entries
+  bucket[16] : 1 entries
+  bucket[17] : 1 entries
+  bucket[18] : 1 entries
+  bucket[19] : 1 entries
+  bucket[20] : 1 entries
+  bucket[21] : 1 entries
+  bucket[22] : 1 entries
+  bucket[23] : 1 entries
   bucket[24] : 1 entries
 key 42 would hash to bucket 5
 ```
@@ -1012,8 +1051,8 @@ int main(void) {
 **Result**
 ```
 source: 5 entries, honors (>= 90): 2 entries
-  alice -> 92
   eve -> 99
+  alice -> 92
 ```
 > Note: HashMap iteration order is unspecified; honor entries may appear in any order.
 

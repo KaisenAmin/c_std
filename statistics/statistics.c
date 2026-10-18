@@ -7,7 +7,73 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "statistics.h"
+
+
+/* Neumaier (improved Kahan) summation: the compensation term keeps the low
+   bits every addition rounds away, so [1e16, 1, -1e16] sums to 1 (a plain
+   += gave 0). Once the sum is infinite or NaN the compensation is dropped. */
+typedef struct {
+    double sum;
+    double c;
+} StatpSum;
+
+static void statp_add(StatpSum* s, double x) {
+    double t = s->sum + x;
+    if (isfinite(t)) {
+        if (fabs(s->sum) >= fabs(x)) {
+            s->c += (s->sum - t) + x;
+        }
+        else {
+            s->c += (x - t) + s->sum;
+        }
+    }
+    s->sum = t;
+}
+
+static double statp_total(const StatpSum* s) {
+    return isfinite(s->sum) ? s->sum + s->c : s->sum;
+}
+
+static bool statp_all_finite(const double* data, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (!isfinite(data[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Mean with compensated summation; when the sum of finite values overflows
+   (mean([1e308, 1e308]) gave inf), the values are scaled by 1/n first. */
+static double statp_mean(const double* data, size_t n) {
+    StatpSum s = {0.0, 0.0};
+    for (size_t i = 0; i < n; i++) {
+        statp_add(&s, data[i]);
+    }
+    double total = statp_total(&s);
+    if (isinf(total) && statp_all_finite(data, n)) {
+        StatpSum scaled = {0.0, 0.0};
+        for (size_t i = 0; i < n; i++) {
+            statp_add(&scaled, data[i] / (double)n);
+        }
+        return statp_total(&scaled);
+    }
+    return total / (double)n;
+}
+
+static bool statp_has_nan(const double* data, size_t n) {
+    if (data == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < n; i++) {
+        if (isnan(data[i])) {
+            return true;
+        }
+    }
+    return false;
+}
 
 
 
@@ -76,12 +142,12 @@ static size_t bisect_right(const double* data, size_t n, double x) {
 static double statistics_sum(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_sum]: Entering with array: %p, size: %zu", (void*)data, n);
 
-    double total = 0.0;
-
+    StatpSum s = {0.0, 0.0};
     for (size_t i = 0; i < n; i++) {
         STATISTICS_LOG("[statistics_sum]: Adding data[%zu] = %f to total.", i, data[i]);
-        total += data[i];
+        statp_add(&s, data[i]);
     }
+    double total = statp_total(&s);
 
     STATISTICS_LOG("[statistics_sum]: Exiting with total sum: %f", total);
     return total;
@@ -109,38 +175,6 @@ static bool fail_neg(const double* data, size_t n) {
 
 
 /**
- * @brief Compares two elements based on their memory content using memcmp. 
- * This function is useful for comparing elements of different types in generic data structures.
- */
-static int statistics_compare_elements(const void* a, const void* b, size_t size) {
-    STATISTICS_LOG("[statistics_compare_elements]: Comparing two elements with size: %zu", size);
-    int result = memcmp(a, b, size);
-    STATISTICS_LOG("[statistics_compare_elements]: Result of comparison: %d", result);
-
-    return result;
-}
-
-
-/**
- * @brief Compares two elements of the type __StatisticsElementCount based on their count field. 
- * This function is used to sort elements by their frequency in statistics functions like mode.
- */
-static int statistics_compare_counts(const void* a, const void* b) {
-    const __StatisticsElementCount* elemA = (const __StatisticsElementCount*)a;
-    const __StatisticsElementCount* elemB = (const __StatisticsElementCount*)b;
-
-    STATISTICS_LOG("[statistics_compare_counts]: Comparing counts: %zu vs %zu", elemA->count, elemB->count);
-    if (elemA->count > elemB->count) {
-        return -1;
-    }
-    if (elemA->count < elemB->count) {
-        return 1;
-    }
-    return 0;
-}
-
-
-/**
  * @brief Compares two double values. It returns -1 if the first value is less than the second,
  * 1 if the first value is greater than the second, and 0 if they are equal.
  */
@@ -149,6 +183,11 @@ static int statistics_compare_doubles(const void* a, const void* b) {
     double arg2 = *(const double*)b;
 
     STATISTICS_LOG("[statistics_compare_doubles]: Comparing values: %f and %f", arg1, arg2);
+
+    /* NaN after every number: returning 0 for NaN broke qsort's ordering */
+    if (isnan(arg1) || isnan(arg2)) {
+        return isnan(arg1) - isnan(arg2) ? (isnan(arg1) ? 1 : -1) : 0;
+    }
 
     if (arg1 < arg2) {
         STATISTICS_LOG("[statistics_compare_doubles]: %f is less than %f", arg1, arg2);
@@ -173,6 +212,10 @@ static int statistics_compare_index_struct(const void* a, const void* b) {
     double arg2 = ((__StatisticsIndexedValue*)b)->value;
 
     STATISTICS_LOG("[statistics_compare_index_struct]: Comparing indexed values: %f and %f", arg1, arg2);
+
+    if (isnan(arg1) || isnan(arg2)) {   /* NaN last, as in statistics_compare_doubles */
+        return isnan(arg1) - isnan(arg2) ? (isnan(arg1) ? 1 : -1) : 0;
+    }
 
     if (arg1 < arg2) {
         STATISTICS_LOG("[statistics_compare_index_struct]: %f is less than %f", arg1, arg2);
@@ -234,10 +277,11 @@ static bool statistics_rank_data(const double* data, size_t n, double* ranked_da
 static double statistics_sumprod(const double* x, const double* y, size_t n) {
     STATISTICS_LOG("[statistics_sumprod]: Entering function with n = %zu", n);
 
-    double sum = 0.0;
+    StatpSum s = {0.0, 0.0};
     for (size_t i = 0; i < n; i++) {
-        sum += x[i] * y[i];
+        statp_add(&s, x[i] * y[i]);
     }
+    double sum = statp_total(&s);
 
     STATISTICS_LOG("[statistics_sumprod]: Sum of products = %f", sum);
     return sum;
@@ -248,10 +292,11 @@ static double statistics_sumprod(const double* x, const double* y, size_t n) {
 static double statistics_sum_of_squares(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_sum_of_squares]: Entering function with n = %zu", n);
 
-    double sum = 0.0;
+    StatpSum s = {0.0, 0.0};
     for (size_t i = 0; i < n; i++) {
-        sum += data[i] * data[i];
+        statp_add(&s, data[i] * data[i]);
     }
+    double sum = statp_total(&s);
 
     STATISTICS_LOG("[statistics_sum_of_squares]: Sum of squares = %f", sum);
     return sum;
@@ -269,6 +314,9 @@ static double statistics_spearman_correlation(const double* x, const double* y, 
     if (n < 2) {
         STATISTICS_LOG("[statistics_spearman_correlation]: n < 2, returning NAN.");
         return NAN;
+    }
+    if (statp_has_nan(x, n) || statp_has_nan(y, n)) {
+        return NAN;   /* ranks of NaN are meaningless */
     }
 
     double* x_ranked = (double*)malloc(n * sizeof(double));
@@ -319,7 +367,7 @@ static double statistics_spearman_correlation(const double* x, const double* y, 
  * @param n The number of elements in the data set.
  * @return The arithmetic mean as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
  */
 double statistics_mean(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_mean]: Entering function with n = %zu", n);
@@ -333,13 +381,9 @@ double statistics_mean(const double* data, size_t n) {
         return NAN;
     }
 
-    double sum = 0.0;
-    for (size_t index = 0; index < n; index++) {
-        sum += data[index];
-    }
-
-    STATISTICS_LOG("[statistics_mean]: Sum = %f, Mean = %f", sum, sum / n);
-    return sum / n;
+    double mean = statp_mean(data, n);
+    STATISTICS_LOG("[statistics_mean]: Mean = %f", mean);
+    return mean;
 }
 
 
@@ -351,10 +395,14 @@ double statistics_mean(const double* data, size_t n) {
  * @param n The number of elements in the data set.
  * @return The median as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
  */
 double statistics_median(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_median]: Entering function with n = %zu", n);
+
+    if (statp_has_nan(data, n)) {
+        return NAN;   /* the order of NaN is undefined */
+    }
 
     if (data == NULL) {
         STATISTICS_LOG("[statistics_median]: Error: data argument is null.");
@@ -404,10 +452,14 @@ double statistics_median(const double* data, size_t n) {
  * @param n The number of elements in the data set.
  * @return The low median as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
  */
 double statistics_median_low(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_median_low]: Entering function with n = %zu", n);
+
+    if (statp_has_nan(data, n)) {
+        return NAN;   /* the order of NaN is undefined */
+    }
 
     if (data == NULL) {
         STATISTICS_LOG("[statistics_median_low]: Error: data argument is null.");
@@ -456,10 +508,14 @@ double statistics_median_low(const double* data, size_t n) {
  * @param n The number of elements in the data set.
  * @return The high median as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
  */
 double statistics_median_high(const double* data, size_t n) {
     STATISTICS_LOG("[statistics_median_high]: Entering function with n = %zu", n);
+
+    if (statp_has_nan(data, n)) {
+        return NAN;   /* the order of NaN is undefined */
+    }
 
     if (data == NULL) {
         STATISTICS_LOG("[statistics_median_high]: Error: data argument is null.");
@@ -502,10 +558,14 @@ double statistics_median_high(const double* data, size_t n) {
  * @return The grouped median as a double. If an error occurs, the function returns `NAN`.
  *
  * @note If `data` is `NULL`, or if `n` is zero, or if `interval` is not positive, 
- *          the function prints an error message to stderr and returns `NAN`.
+ *          the function returns `NAN`.
  */
 double statistics_median_grouped(const double* data, size_t n, double interval) {
     STATISTICS_LOG("[statistics_median_grouped]: Entering function with n = %zu and interval = %f", n, interval);
+
+    if (statp_has_nan(data, n)) {
+        return NAN;   /* the order of NaN is undefined */
+    }
 
     if (data == NULL) {
         STATISTICS_LOG("[statistics_median_grouped]: Error: data argument is null.");
@@ -586,6 +646,10 @@ static double* statp_sorted_copy(const double* data, size_t n) {
 double statistics_percentile(const double* data, size_t n, double p) {
     STATISTICS_LOG("[statistics_percentile]: n = %zu, p = %f", n, p);
 
+    if (statp_has_nan(data, n)) {
+        return NAN;   /* the order of NaN is undefined */
+    }
+
     if (!data || n == 0) {
         STATISTICS_LOG("[statistics_percentile]: Error: NULL data or n == 0.");
         return NAN;
@@ -652,12 +716,27 @@ double* statistics_quantiles(const double* data, size_t n, size_t n_quantiles, b
         return NULL;
     }
 
+    size_t  q     = n_quantiles;
+    if (statp_has_nan(data, n)) {
+        /* NaN in the data: every cut point is NaN (the order is undefined) */
+        double* nan_out = (double*)malloc((q > 1 ? q - 1 : 1) * sizeof(double));
+        if (!nan_out) {
+            return NULL;
+        }
+        for (size_t i = 0; i + 1 < q; ++i) {
+            nan_out[i] = NAN;
+        }
+        if (out_count) {
+            *out_count = q - 1;
+        }
+        return nan_out;
+    }
+
     double* s = statp_sorted_copy(data, n);
     if (!s) {
         return NULL;
     }
 
-    size_t  q     = n_quantiles;
     size_t  out_n = q - 1;
     double* out   = (double*)malloc((out_n ? out_n : 1) * sizeof(double));
     if (!out) {
@@ -676,19 +755,24 @@ double* statistics_quantiles(const double* data, size_t n, size_t n_quantiles, b
     }
     else {
         /* exclusive: cut i at position i*(n+1)/q, with j clamped to [1, n-1]. */
-        size_t m = n + 1;
+        /* 64-bit signed math: `long` is 32-bit on Windows, and i*(n+1)
+           overflowed it (UB) for large n * q. delta may be negative or
+           exceed q once j is clamped. */
+        unsigned long long m = (unsigned long long)n + 1ULL;
+        long long qq = (long long)q;
         for (size_t i = 1; i < q; ++i) {
-            long j = (long)((i * m) / q);
+            unsigned long long im = (unsigned long long)i * m;
+            long long j = (long long)(im / (unsigned long long)q);
 
-            if (j < 1) {           
+            if (j < 1) {
                 j = 1;
             }
-            if (j > (long)(n - 1)) {
-                j = (long)(n - 1);
+            if (j > (long long)(n - 1)) {
+                j = (long long)(n - 1);
             }
 
-            long delta = (long)(i * m) - j * (long)q;
-            out[i - 1] = (s[(size_t)j - 1] * (double)((long)q - delta) + s[(size_t)j]     * (double)delta) / (double)q;
+            long long delta = (long long)im - j * qq;
+            out[i - 1] = (s[(size_t)j - 1] * (double)(qq - delta) + s[(size_t)j] * (double)delta) / (double)q;
         }
     }
 
@@ -698,6 +782,29 @@ double* statistics_quantiles(const double* data, size_t n, size_t n_quantiles, b
     }
     STATISTICS_LOG("[statistics_quantiles]: produced %zu cut point(s).", out_n);
     return out;
+}
+
+
+/* Sum of squared deviations from `center`. When the center is the computed
+   mean, Python's second-order correction (sum of deviations)^2 / n removes
+   the error left by rounding the mean. */
+static double statp_sum_sq_dev(const double* data, size_t n, double center, bool correct) {
+    StatpSum sq = {0.0, 0.0};
+    StatpSum dev = {0.0, 0.0};
+    for (size_t i = 0; i < n; i++) {
+        double d = data[i] - center;
+        statp_add(&sq, d * d);
+        statp_add(&dev, d);
+    }
+    double total = statp_total(&sq);
+    if (correct && isfinite(total)) {
+        double s = statp_total(&dev);
+        total -= s * s / (double)n;
+        if (total < 0.0) {
+            total = 0.0;
+        }
+    }
+    return total;
 }
 
 
@@ -711,7 +818,7 @@ double* statistics_quantiles(const double* data, size_t n, size_t n_quantiles, b
  * @param xbar The mean value to use if `xbar_provided` is `true`. If `xbar_provided` is `false`, this parameter is ignored.
  * @return The sample variance as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is less than 2, the function returns `NAN`.
  */
 double statistics_variance(const double* data, size_t n, bool xbar_provided, double xbar) {
     STATISTICS_LOG("[statistics_variance]: Entering function with n = %zu", n);
@@ -721,14 +828,10 @@ double statistics_variance(const double* data, size_t n, bool xbar_provided, dou
         return NAN;
     }
 
-    double mean = xbar_provided ? xbar : statistics_mean(data, n);
+    double mean = xbar_provided ? xbar : statp_mean(data, n);
     STATISTICS_LOG("[statistics_variance]: Mean = %f", mean);
 
-    double sum_sq_diff = 0.0;
-    for (size_t i = 0; i < n; i++) {
-        double diff = data[i] - mean;
-        sum_sq_diff += diff * diff;
-    }
+    double sum_sq_diff = statp_sum_sq_dev(data, n, mean, !xbar_provided);
 
     double variance = sum_sq_diff / (n - 1);
     STATISTICS_LOG("[statistics_variance]: Variance = %f", variance);
@@ -746,7 +849,7 @@ double statistics_variance(const double* data, size_t n, bool xbar_provided, dou
  * @param xbar The mean value to use if `xbar_provided` is `true`. If `xbar_provided` is `false`, this parameter is ignored.
  * @return The sample standard deviation as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is less than 2, the function returns `NAN`.
  */
 double statistics_stdev(const double* data, size_t n, bool xbar_provided, double xbar) {
     STATISTICS_LOG("[statistics_stdev]: Entering function with n = %zu", n);
@@ -774,7 +877,7 @@ double statistics_stdev(const double* data, size_t n, bool xbar_provided, double
  * @param mu The mean value to use if `mu_provided` is `true`. If `mu_provided` is `false`, this parameter is ignored.
  * @return The population variance as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is less than 1, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is less than 1, the function returns `NAN`.
  */
 double statistics_pvariance(const double* data, size_t n, bool mu_provided, double mu) {
     STATISTICS_LOG("[statistics_pvariance]: Entering function with n = %zu", n);
@@ -784,14 +887,10 @@ double statistics_pvariance(const double* data, size_t n, bool mu_provided, doub
         return NAN;
     }
 
-    double mean = mu_provided ? mu : statistics_mean(data, n);
+    double mean = mu_provided ? mu : statp_mean(data, n);
     STATISTICS_LOG("[statistics_pvariance]: Mean = %f", mean);
 
-    double sum_of_diff = 0.0;
-    for (size_t i = 0; i < n; i++) {
-        double diff = data[i] - mean;
-        sum_of_diff += diff * diff;
-    }
+    double sum_of_diff = statp_sum_sq_dev(data, n, mean, !mu_provided);
 
     double pvariance = sum_of_diff / n;
     STATISTICS_LOG("[statistics_pvariance]: Population variance = %f", pvariance);
@@ -810,7 +909,7 @@ double statistics_pvariance(const double* data, size_t n, bool mu_provided, doub
  * @param mu The mean value to use if `mu_provided` is `true`. If `mu_provided` is `false`, this parameter is ignored.
  * @return The population standard deviation as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is less than 1, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is less than 1, the function returns `NAN`.
  */
 double statistics_pstdev(const double* data, size_t n, bool mu_provided, double mu) {
     STATISTICS_LOG("[statistics_pstdev]: Entering function with n = %zu", n);
@@ -838,9 +937,9 @@ double statistics_pstdev(const double* data, size_t n, bool mu_provided, double 
  *          the unweighted arithmetic mean is computed.
  * @return The arithmetic mean as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
  * @note If weights are provided, the sum of weights must be non-zero. 
- *          If the sum of weights is zero, the function prints an error message to stderr and returns `NAN`.
+ *          If the sum of weights is zero, the function returns `NAN`.
  */
 double statistics_fmean(const double* data, size_t n, const double* weights) {
     STATISTICS_LOG("[statistics_fmean]: Entering function with n = %zu", n);
@@ -855,23 +954,20 @@ double statistics_fmean(const double* data, size_t n, const double* weights) {
     }
 
     if (weights == NULL) {
-        double total = 0.0;
-        for (size_t i = 0; i < n; i++) {
-            total += data[i];
-        }
-
-        double mean = total / n;
+        double mean = statp_mean(data, n);
         STATISTICS_LOG("[statistics_fmean]: Unweighted mean = %f", mean);
         return mean;
-    } 
+    }
     else {
-        double num = 0.0;
-        double den = 0.0;
+        StatpSum num_s = {0.0, 0.0};
+        StatpSum den_s = {0.0, 0.0};
 
         for (size_t i = 0; i < n; i++) {
-            num += data[i] * weights[i];
-            den += weights[i];
+            statp_add(&num_s, data[i] * weights[i]);
+            statp_add(&den_s, weights[i]);
         }
+        double num = statp_total(&num_s);
+        double den = statp_total(&den_s);
 
         if (den == 0) {
             STATISTICS_LOG("[statistics_fmean]: Error: sum of weights must be non-zero.");
@@ -894,8 +990,8 @@ double statistics_fmean(const double* data, size_t n, const double* weights) {
  * @param n The number of elements in the data set.
  * @return The geometric mean as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
- * @note The function does not support negative values in `data`. If any negative values are found, it prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
+ * @note The function does not support negative values in `data`. If any negative values are found, it returns `NAN`.
  * @note If any element in `data` is zero, the geometric mean is zero.
  * @note If the computed mean of the logarithms is `-INFINITY`, the function returns zero.
  */
@@ -949,11 +1045,11 @@ double statistics_geometric_mean(const double* data, size_t n) {
  *          the unweighted harmonic mean is computed.
  * @return The harmonic mean as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr and returns `NAN`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NAN`.
  * @note The function does not support negative values in `data` or `weights`. 
- *          If any negative values are found, it prints an error message to stderr and returns `NAN`.
+ *          If any negative values are found, it returns `NAN`.
  * @note If the sum of weights is zero or if the weighted sum of the reciprocals is non-positive, 
- *          the function prints an error message to stderr and returns `NAN`.
+ *          the function returns `NAN`.
  */
 double statistics_harmonic_mean(const double* data, size_t n, const double* weights) {
     STATISTICS_LOG("[statistics_harmonic_mean]: Entering function with n = %zu", n);
@@ -973,7 +1069,7 @@ double statistics_harmonic_mean(const double* data, size_t n, const double* weig
 
     double sum_weights = 0.0;
     if (weights == NULL) {
-        sum_weights = n;
+        sum_weights = (double)n;
     } 
     else {
         if (fail_neg(weights, n)) {
@@ -987,15 +1083,16 @@ double statistics_harmonic_mean(const double* data, size_t n, const double* weig
         }
     }
 
-    double total = 0.0;
+    StatpSum total_s = {0.0, 0.0};
     for (size_t i = 0; i < n; i++) {
         if (weights == NULL) {
-            total += 1.0 / data[i];
-        } 
-        else {
-            total += weights[i] / data[i];
+            statp_add(&total_s, 1.0 / data[i]);
+        }
+        else if (weights[i] != 0.0) {   /* 0/0 for a zero value with zero weight made the result NaN */
+            statp_add(&total_s, weights[i] / data[i]);
         }
     }
+    double total = statp_total(&total_s);
 
     if (total <= 0.0) {
         STATISTICS_LOG("[statistics_harmonic_mean]: Error: weighted sum must be positive.");
@@ -1018,65 +1115,181 @@ double statistics_harmonic_mean(const double* data, size_t n, const double* weig
  * @return A pointer to the mode element. If an error occurs, the function returns `NULL`.
  *
  * @note The returned mode element should be freed by the caller to avoid memory leaks.
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr
- *       and returns `NULL`.
- * @note If memory allocation fails, the function prints an error message to stderr and returns `NULL`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NULL`.
+ * @note If memory allocation fails, the function returns `NULL`.
  */
 void* statistics_mode(void* data, size_t n, size_t size) {
-    STATISTICS_LOG("[statistics_mode]: Entering function with n = %zu, size = %zu", n, size);
+    return statistics_mode_by(data, n, size, NULL);
+}
 
-    if (data == NULL) {
-        STATISTICS_LOG("[statistics_mode]: Error: data argument is null.");
+
+/* Runs of equal elements: the element indices are merge-sorted (stable, so
+   each run starts at the element's FIRST occurrence) and equal neighbours
+   grouped. O(n log n); the old pairwise scan was O(n * distinct values). */
+typedef struct {
+    size_t first;   /* index of the first occurrence */
+    size_t count;
+} StatpRun;
+
+static int statp_elem_cmp(const unsigned char* base, size_t size, StatisticsCompareFunc cmp, size_t a, size_t b) {
+    const void* pa = base + a * size;
+    const void* pb = base + b * size;
+    return cmp ? cmp(pa, pb) : memcmp(pa, pb, size);
+}
+
+static StatpRun* statp_runs(const void* data, size_t n, size_t size, StatisticsCompareFunc cmp, size_t* run_count) {
+    const unsigned char* base = (const unsigned char*)data;
+    size_t* idx = (size_t*)malloc(n * sizeof(size_t));
+    size_t* tmp = (size_t*)malloc(n * sizeof(size_t));
+    StatpRun* runs = (StatpRun*)malloc(n * sizeof(StatpRun));
+    if (!idx || !tmp || !runs) {
+        free(idx);
+        free(tmp);
+        free(runs);
         return NULL;
     }
-    if (n == 0) {
-        STATISTICS_LOG("[statistics_mode]: Error: number of elements is zero.");
-        return NULL;
-    }
-
-    __StatisticsElementCount* counts = (__StatisticsElementCount*) malloc(n * sizeof(__StatisticsElementCount));
-    if (counts == NULL) {
-        STATISTICS_LOG("[statistics_mode]: Error: memory allocation for counts failed.");
-        return NULL;
-    }
-
-    size_t unique_elements = 0;
     for (size_t i = 0; i < n; i++) {
-        void* element = (char*)data + i * size;
-        int found = 0;
-
-        for (size_t j = 0; j < unique_elements; j++) {
-            if (statistics_compare_elements(element, counts[j].element, size) == 0) {
-                counts[j].count++;
-                found = 1;
-                break;
+        idx[i] = i;
+    }
+    for (size_t width = 1; width < n; width *= 2) {   /* bottom-up merge sort */
+        for (size_t lo = 0; lo < n; lo += 2 * width) {
+            size_t mid = (width < n - lo) ? lo + width : n;
+            size_t hi  = (2 * width < n - lo) ? lo + 2 * width : n;
+            size_t i = lo, j = mid, k = lo;
+            while (i < mid && j < hi) {
+                /* take from the right only when strictly smaller: stable */
+                tmp[k++] = (statp_elem_cmp(base, size, cmp, idx[j], idx[i]) < 0) ? idx[j++] : idx[i++];
+            }
+            while (i < mid) {
+                tmp[k++] = idx[i++];
+            }
+            while (j < hi) {
+                tmp[k++] = idx[j++];
             }
         }
-
-        if (!found) {
-            counts[unique_elements].element = element;
-            counts[unique_elements].count = 1;
-            unique_elements++;
-        }
-
-        STATISTICS_LOG("[statistics_mode]: Processed element %zu, unique_elements = %zu", i, unique_elements);
+        memcpy(idx, tmp, n * sizeof(size_t));
     }
+    size_t r = 0;
+    for (size_t i = 0; i < n; ) {
+        size_t j = i + 1;
+        while (j < n && statp_elem_cmp(base, size, cmp, idx[i], idx[j]) == 0) {
+            j++;
+        }
+        runs[r].first = idx[i];
+        runs[r].count = j - i;
+        r++;
+        i = j;
+    }
+    free(idx);
+    free(tmp);
+    *run_count = r;
+    return runs;
+}
 
-    qsort(counts, unique_elements, sizeof(__StatisticsElementCount), statistics_compare_counts);
+static int statp_cmp_run_first(const void* a, const void* b) {
+    size_t x = ((const StatpRun*)a)->first;
+    size_t y = ((const StatpRun*)b)->first;
+    return (x > y) - (x < y);
+}
 
-    void* mode_element = malloc(size);
-    if (mode_element == NULL) {
-        STATISTICS_LOG("[statistics_mode]: Error: memory allocation for mode_element failed.");
-        free(counts);
+
+/**
+ * @brief Mode with a caller-supplied equality: `compare` returns 0 for equal
+ *        elements (qsort-style ordering otherwise). NULL compares bytes, like
+ *        statistics_mode.
+ *
+ * Ties go to the value that occurs first in `data` (as Python's
+ * statistics.mode); the old qsort-based tie-break depended on the platform.
+ *
+ * @return A malloc'ed copy of the first occurrence of the most frequent
+ *         value, or NULL on NULL data, n == 0, size == 0 or allocation failure.
+ */
+void* statistics_mode_by(void* data, size_t n, size_t size, StatisticsCompareFunc compare) {
+    STATISTICS_LOG("[statistics_mode]: Entering function with n = %zu, size = %zu", n, size);
+
+    if (data == NULL || n == 0 || size == 0) {
+        STATISTICS_LOG("[statistics_mode]: Error: invalid arguments.");
         return NULL;
     }
 
-    memcpy(mode_element, counts[0].element, size);
-    STATISTICS_LOG("[statistics_mode]: Mode element found at index 0 with count = %zu", counts[0].count);
+    size_t run_count = 0;
+    StatpRun* runs = statp_runs(data, n, size, compare, &run_count);
+    if (runs == NULL) {
+        STATISTICS_LOG("[statistics_mode]: Error: memory allocation failed.");
+        return NULL;
+    }
 
-    free(counts);
-    STATISTICS_LOG("[statistics_mode]: Exiting function, mode_element = %p", mode_element);
+    size_t best = 0;
+    for (size_t r = 1; r < run_count; r++) {
+        if (runs[r].count > runs[best].count ||
+            (runs[r].count == runs[best].count && runs[r].first < runs[best].first)) {
+            best = r;
+        }
+    }
+
+    void* mode_element = malloc(size);
+    if (mode_element != NULL) {
+        memcpy(mode_element, (const char*)data + runs[best].first * size, size);
+    }
+    free(runs);
     return mode_element;
+}
+
+
+/**
+ * @brief Every most-frequent value, in order of first appearance (Python's
+ *        statistics.multimode), with the equality given by `compare` (0 =
+ *        equal; NULL compares bytes, like statistics_multimode).
+ *
+ * @return A malloc'ed array of *mode_count elements (first occurrences), or
+ *         NULL (and *mode_count = 0) on NULL data, n == 0, size == 0 or
+ *         allocation failure.
+ */
+void* statistics_multimode_by(void* data, size_t n, size_t size, StatisticsCompareFunc compare, size_t* mode_count) {
+    STATISTICS_LOG("[statistics_multimode]: Entering function with n = %zu, size = %zu", n, size);
+
+    if (mode_count) {
+        *mode_count = 0;
+    }
+    if (data == NULL || n == 0 || size == 0) {
+        STATISTICS_LOG("[statistics_multimode]: Error: invalid arguments.");
+        return NULL;
+    }
+
+    size_t run_count = 0;
+    StatpRun* runs = statp_runs(data, n, size, compare, &run_count);
+    if (runs == NULL) {
+        STATISTICS_LOG("[statistics_multimode]: Error: memory allocation failed.");
+        return NULL;
+    }
+
+    size_t max_count = 0;
+    for (size_t r = 0; r < run_count; r++) {
+        if (runs[r].count > max_count) {
+            max_count = runs[r].count;
+        }
+    }
+    size_t k = 0;
+    for (size_t r = 0; r < run_count; r++) {
+        if (runs[r].count == max_count) {
+            runs[k++] = runs[r];
+        }
+    }
+    qsort(runs, k, sizeof(StatpRun), statp_cmp_run_first);   /* order of first appearance */
+
+    void* modes = malloc(k * size);
+    if (modes == NULL) {
+        free(runs);
+        return NULL;
+    }
+    for (size_t r = 0; r < k; r++) {
+        memcpy((char*)modes + r * size, (const char*)data + runs[r].first * size, size);
+    }
+    free(runs);
+    if (mode_count) {
+        *mode_count = k;
+    }
+    return modes;
 }
 
 
@@ -1091,95 +1304,11 @@ void* statistics_mode(void* data, size_t n, size_t size) {
  * @return A pointer to the array of modes. If an error occurs, the function returns `NULL`.
  *
  * @note The returned array of modes should be freed by the caller to avoid memory leaks.
- * @note If `data` is `NULL`, or if `n` is zero, the function prints an error message to stderr
- *       and returns `NULL`.
- * @note If memory allocation fails, the function prints an error message to stderr and returns `NULL`.
+ * @note If `data` is `NULL`, or if `n` is zero, the function returns `NULL`.
+ * @note If memory allocation fails, the function returns `NULL`.
  */                                           
 void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count) {
-    STATISTICS_LOG("[statistics_multimode]: Entering function with n = %zu, size = %zu", n, size);
-
-    if (mode_count) {
-        *mode_count = 0;
-    }
-    if (data == NULL) {
-        STATISTICS_LOG("[statistics_multimode]: Error: data argument is null.");
-        return NULL;
-    }
-    if (n == 0) {
-        STATISTICS_LOG("[statistics_multimode]: Error: number of elements is zero.");
-        return NULL;
-    }
-
-    __StatisticsElementCount* counts = (__StatisticsElementCount*) malloc(n * sizeof(__StatisticsElementCount));
-    if (counts == NULL) {
-        STATISTICS_LOG("[statistics_multimode]: Error: memory allocation for counts failed.");
-        return NULL;
-    }
-
-    size_t unique_elements = 0;
-    for (size_t i = 0; i < n; i++) {
-        void* element = (char*)data + i * size;
-        int found = 0;
-
-        for (size_t j = 0; j < unique_elements; j++) {
-            if (statistics_compare_elements(element, counts[j].element, size) == 0) {
-                counts[j].count++;
-                found = 1;
-                break;
-            }
-        }
-
-        if (!found) {
-            counts[unique_elements].element = element;
-            counts[unique_elements].count = 1;
-            unique_elements++;
-        }
-
-        STATISTICS_LOG("[statistics_multimode]: Processing element %zu, unique_elements = %zu", i, unique_elements);
-    }
-
-    size_t max_count = 0;
-    for (size_t i = 0; i < unique_elements; i++) {
-        if (counts[i].count > max_count) {
-            max_count = counts[i].count;
-        }
-    }
-
-    STATISTICS_LOG("[statistics_multimode]: max_count = %zu", max_count);
-
-    size_t mode_elements_count = 0;
-    for (size_t i = 0; i < unique_elements; i++) {
-        if (counts[i].count == max_count) {
-            mode_elements_count++;
-        }
-    }
-
-    STATISTICS_LOG("[statistics_multimode]: mode_elements_count = %zu", mode_elements_count);
-
-    void* modes = malloc(mode_elements_count * size);
-    if (modes == NULL) {
-        STATISTICS_LOG("[statistics_multimode]: Error: memory allocation for modes failed.");
-        free(counts);
-        return NULL;
-    }
-
-    size_t index = 0;
-    for (size_t i = 0; i < unique_elements; i++) {
-        if (counts[i].count == max_count) {
-            memcpy((char*)modes + index * size, counts[i].element, size);
-            STATISTICS_LOG("[statistics_multimode]: Mode element %zu: %p", index, counts[i].element);
-            index++;
-        }
-    }
-
-    free(counts);
-    if (mode_count) {
-        *mode_count = mode_elements_count;
-    }
-
-    STATISTICS_LOG("[statistics_multimode]: Exiting function with mode_count = %zu", mode_elements_count);
-
-    return modes;
+    return statistics_multimode_by(data, n, size, NULL, mode_count);
 }
 
 
@@ -1196,7 +1325,7 @@ void* statistics_multimode(void* data, size_t n, size_t size, size_t* mode_count
  * @param n The number of data points in each data set.
  * @return The covariance as a double. If an error occurs, the function returns `NAN`.
  *
- * @note If `x` or `y` is NULL, or if `n` is less than 2, the function prints an error message to stderr and returns `NAN`.
+ * @note If `x` or `y` is NULL, or if `n` is less than 2, the function returns `NAN`.
  */
 double statistics_covariance(const double* x, const double* y, size_t n) {
     STATISTICS_LOG("[statistics_covariance]: Entering function with n = %zu", n);
@@ -1239,7 +1368,7 @@ double statistics_covariance(const double* x, const double* y, size_t n) {
  * @return The correlation coefficient as a double. If an error occurs, the function returns `NAN`.
  *
  * @note If `x` or `y` is NULL, or if `n` is less than 2, or if an unsupported method is specified,
- *       the function prints an error message to stderr and returns `NAN`.
+ *       the function returns `NAN`.
  * @note For `CORRELATION_LINEAR`, the function dynamically allocates memory for copies of the data points.
  *       Ensure that there is enough available memory to avoid allocation failure.
  * @note If the variance of either data set is zero, the function returns `NAN`.
@@ -1320,14 +1449,15 @@ double statistics_correlation(const double* x, const double* y, size_t n, Correl
  * @return A LinearRegression structure containing the slope and intercept of the regression line.
  *
  * @note If `x` or `y` is NULL, or if `n` is less than 2, the function returns a LinearRegression
- *       structure with both slope and intercept set to 0.0 and prints an error message to stderr.
+ *       structure with both slope and intercept set to NAN (check with isnan).
  * @note The function dynamically allocates memory for the centered data points if `proportional` is false.
  *       Ensure that there is enough available memory to avoid allocation failure.
- * @note If the variance of the x-coordinates is zero, the function returns a LinearRegression 
- *       structure with both slope and intercept set to 0.0 and prints an error message to stderr.
+ * @note If the variance of the x-coordinates is zero (or memory allocation fails), the function
+ *       returns a LinearRegression structure with both slope and intercept set to NAN.
  */
 LinearRegression statistics_linear_regression(const double* x, const double* y, size_t n, bool proportional) {
-    LinearRegression result = {0.0, 0.0};
+    /* errors return NaN slope and intercept: {0, 0} was also a valid fit (y = 0) */
+    LinearRegression result = {NAN, NAN};
     STATISTICS_LOG("[statistics_linear_regression]: Entering function with n = %zu, proportional = %d", n, proportional);
 
     if (x == NULL || y == NULL) {

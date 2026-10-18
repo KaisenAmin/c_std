@@ -17,6 +17,10 @@ To use this library, include `statistics.h` in your project and compile the sour
 gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -o main ./main.c ./statistics/statistics.c
 ```
 
+### Errors and special values
+
+Functions never print. Invalid input (a `NULL` array, too few elements, an unsupported option) makes a function return `NAN` (or `NULL` for the functions that return a pointer); `statistics_linear_regression` then returns a slope and intercept of `NAN`. Sums are compensated (Neumaier summation), so `mean({1e16, 1, -1e16})` is `0.333…` and `mean({1e308, 1e308})` is `1e308` rather than `inf`. The order statistics (`median*`, `percentile`, `quantiles`) and the ranked correlation return `NAN` when the data contains `NaN`, since NaN has no place in an ordering.
+
 ### Structures
 
 ### `LinearRegression` Structure:
@@ -29,11 +33,11 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
 ---
 
 ### `__StatisticsElementCount` Structure:
-- **Purpose**: Represents an element and its frequency of occurrence (used internally for mode and multimode calculations).
+- **Purpose**: Represents an element and its frequency of occurrence. Kept for compatibility; mode and multimode no longer use it.
 - **Fields**:
     - `void* element`: A pointer to the data element.
     - `size_t count`: The number of occurrences of this element.
-- **Use case**: Used internally for keeping track of how often each element occurs when calculating mode or multimode.
+- **Use case**: None inside the library any more (mode / multimode now group equal elements after a stable sort).
 
 ---
 
@@ -242,19 +246,26 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
   - `y`: A pointer to the dependent variable dataset of type `double`.
   - `n`: The number of elements in both datasets.
   - `proportional`: A boolean indicating whether the intercept is forced to be zero.
-- **Returns**: A `LinearRegression` structure containing the slope and intercept.
+- **Returns**: A `LinearRegression` structure containing the slope and intercept; both are `NAN` when the fit is impossible (`NULL` input, fewer than 2 points, constant `x`, or out of memory), so a failure cannot be mistaken for the line `y = 0`.
 - **Use case**: Used in modeling the relationship between two variables.
 
 ---
 
 ### `void* statistics_mode(void* data, size_t n, size_t size)`:
-- **Purpose**: Returns the mode (the most common value) in a dataset.
+- **Purpose**: Returns the mode (the most common value) in a dataset. Elements are equal when their **bytes** are equal (`memcmp`); when several values are equally common, the one that appears first wins (like Python's `statistics.mode`). Runs in O(n log n).
 - **Parameters**:
   - `data`: A pointer to the dataset of any data type.
   - `n`: The number of elements in the dataset.
   - `size`: The size of each element in the dataset.
-- **Returns**: A pointer to the mode.
-- **Use case**: Useful for finding the most frequent value in datasets such as categorical data.
+- **Returns**: A `malloc`'ed copy of the mode (free it), or `NULL` on `NULL` data, `n == 0`, `size == 0` or allocation failure.
+- **Use case**: Useful for finding the most frequent value in datasets such as categorical data. For strings (`char*` elements compare as pointers), doubles (`0.0` and `-0.0` have different bytes) or structs with padding, use `statistics_mode_by`.
+
+---
+
+### `void* statistics_mode_by(void* data, size_t n, size_t size, StatisticsCompareFunc compare)`:
+- **Purpose**: `statistics_mode` with your own equality: `compare(a, b)` is a qsort-style comparator that returns `0` for equal elements (`NULL` compares bytes).
+- **Returns**: A `malloc`'ed copy of the first occurrence of the most frequent value, or `NULL` on error.
+- **Use case**: `statistics_mode_by(names, n, sizeof(char*), compare_strings)` with `int compare_strings(const void* a, const void* b) { return strcmp(*(const char* const*)a, *(const char* const*)b); }`.
 
 ---
 
@@ -265,8 +276,14 @@ gcc -std=c17 -O3 -march=native -flto -funroll-loops -Wall -Wextra -pedantic -s -
   - `n`: The number of elements in the dataset.
   - `size`: The size of each element in the dataset.
   - `mode_count`: A pointer to a size_t that will store the number of modes found.
-- **Returns**: A dynamically allocated array of modes.
+- **Returns**: A dynamically allocated array of modes, in order of first appearance (like Python's `statistics.multimode`), or `NULL` with `*mode_count = 0` on error. Elements are compared by their bytes.
 - **Use case**: Useful when there are multiple values with the same frequency, providing a more complete view of the dataset's frequency distribution.
+
+---
+
+### `void* statistics_multimode_by(void* data, size_t n, size_t size, StatisticsCompareFunc compare, size_t* mode_count)`:
+- **Purpose**: `statistics_multimode` with a qsort-style comparator for equality (`0` = equal; `NULL` compares bytes).
+- **Returns**: A dynamically allocated array of the most frequent values (first occurrences, in order of first appearance), or `NULL` on error.
 
 ---
 
@@ -754,7 +771,11 @@ Harmonic mean with weights: 56.000000
 #include "statistics/statistics.h"
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
+static int compare_strings(const void* a, const void* b) {
+    return strcmp(*(const char* const*)a, *(const char* const*)b);
+}
 
 int main() {
     int data1[] = {1, 1, 2, 3, 3, 3, 3, 4};
@@ -772,7 +793,8 @@ int main() {
     const char* data2[] = {"red", "blue", "blue", "red", "green", "red", "red"};
     size_t n2 = sizeof(data2) / sizeof(data2[0]);
 
-    char** result_mode_str = (char**)statistics_mode(data2, n2, sizeof(const char*));
+    /* char* elements: compare the strings, not the pointers */
+    char** result_mode_str = (char**)statistics_mode_by(data2, n2, sizeof(const char*), compare_strings);
     if (result_mode_str != NULL) {
         fmt_printf("Mode (str): %s\n", *result_mode_str);
         free(result_mode_str);
@@ -799,7 +821,11 @@ Mode (str): red
 #include "statistics/statistics.h"
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
+static int compare_strings(const void* a, const void* b) {
+    return strcmp(*(const char* const*)a, *(const char* const*)b);
+}
 
 int main() {
     int data1[] = {1, 1, 2, 3, 3, 3, 3, 4, 4, 4, 4};
@@ -824,7 +850,7 @@ int main() {
     size_t n2 = sizeof(data2) / sizeof(data2[0]);
     size_t mode_count2;
 
-    const char** result_mode_str = (const char**)statistics_multimode(data2, n2, sizeof(const char*), &mode_count2);
+    const char** result_mode_str = (const char**)statistics_multimode_by(data2, n2, sizeof(const char*), compare_strings, &mode_count2);
     if (result_mode_str != NULL) {
         fmt_printf("Multimode (str):");
         for (size_t i = 0; i < mode_count2; i++) {

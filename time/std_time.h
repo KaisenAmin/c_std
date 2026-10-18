@@ -22,8 +22,8 @@ extern "C" {
 /* #define TIME_LOGGING_ENABLE */
 
 #ifdef TIME_LOGGING_ENABLE
-    #define TIME_LOG(fmt, ...) \
-        do { fprintf(stderr, "[TIME LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define TIME_LOG(...) \
+        do { fprintf(stderr, "[TIME LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define TIME_LOG(...) do { } while (0)
 #endif

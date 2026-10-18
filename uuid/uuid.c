@@ -271,12 +271,22 @@ static void sha1_final(Sha1Ctx* ctx, unsigned char out[20]) {
 }
 
 
-/* Current Unix time in milliseconds — for UUIDv7. clock_gettime(CLOCK_REALTIME)
-   gives wall-clock time since the Unix epoch on both POSIX and MinGW. */
+/* Current Unix time as a timespec; false if the clock is unavailable. C11
+   timespec_get is used where it exists (MSVC has no clock_gettime). */
+static int uuid_now_timespec(struct timespec* ts) {
+#if defined(TIME_UTC)
+    return timespec_get(ts, TIME_UTC) == TIME_UTC;
+#else
+    return clock_gettime(CLOCK_REALTIME, ts) == 0;
+#endif
+}
+
+
 static unsigned long long uuid_now_unix_ms(void) {
+    /* Current Unix time in milliseconds — for UUIDv7. */
     struct timespec ts;
 
-    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+    if (!uuid_now_timespec(&ts)) {
         return 0;
     }
 
@@ -284,8 +294,100 @@ static unsigned long long uuid_now_unix_ms(void) {
 }
 
 
+/* splitmix64 finalizer: a bijection on 64-bit values. */
+static uint64_t uuid_mix64(uint64_t z) {
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
+
+/* Process-wide call counter for the fallback below. */
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+static uint64_t uuid_counter_next(void) {
+    static volatile __int64 counter;
+    return (uint64_t)_InterlockedIncrement64(&counter);
+}
+#else
+static uint64_t uuid_counter_next(void) {
+    static uint64_t counter;
+    return __atomic_add_fetch(&counter, 1, __ATOMIC_RELAXED);
+}
+#endif
+
+
+/* Fills u->bytes[from..16) with random bytes from the secrets CSPRNG.
+ *
+ * If the OS generator fails, secrets_token_bytes leaves zeros, which would
+ * make every UUID identical. The fallback instead fills the bytes from the
+ * clock and addresses, and writes a bijective mix of a process-wide counter
+ * into the 8 bytes listed in `unique_pos` (bytes the version/variant stamp
+ * never touches). That is not cryptographically random, but no two UUIDs
+ * from one process can be equal. */
+static void uuid_fill_random(Uuid* u, size_t from, const unsigned char unique_pos[8]) {
+    if (secrets_token_bytes(u->bytes + from, 16 - from)) {
+        return;
+    }
+    UUID_LOG("[uuid_fill_random] CSPRNG failed, using the counter-based fallback");
+
+    static const char key_anchor = 0;    /* its address is the per-process key */
+    uint64_t key = uuid_mix64((uint64_t)(uintptr_t)&key_anchor);
+    uint64_t ctr = uuid_counter_next();
+
+    struct timespec ts;
+    uint64_t t = 0;
+    if (uuid_now_timespec(&ts)) {
+        t = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+    }
+    uint64_t s = t ^ ((uint64_t)(uintptr_t)u << 16) ^ key;
+    uint64_t r = 0;
+    for (size_t i = from; i < 16; i++) {
+        if ((i - from) % 8 == 0) {
+            s += 0x9E3779B97F4A7C15ULL;
+            r = uuid_mix64(s ^ ctr);
+        }
+        u->bytes[i] = (unsigned char)(r >> (8 * ((i - from) % 8)));
+    }
+
+    uint64_t unique = uuid_mix64(ctr + key);
+    for (int i = 0; i < 8; i++) {
+        u->bytes[unique_pos[i]] = (unsigned char)(unique >> (8 * i));
+    }
+}
+
+
+/* Process-wide uuid_v7 state, under a tiny spinlock (the critical section
+   only compares and bumps two integers). */
+#if defined(_MSC_VER) && !defined(__clang__)
+static volatile long uuid_v7_lock_word;
+static void uuid_v7_lock(void) {
+    while (_InterlockedExchange(&uuid_v7_lock_word, 1) != 0) {
+        /* spin */
+    }
+}
+static void uuid_v7_unlock(void) {
+    _InterlockedExchange(&uuid_v7_lock_word, 0);
+}
+#else
+static unsigned char uuid_v7_lock_word;
+static void uuid_v7_lock(void) {
+    while (__atomic_test_and_set(&uuid_v7_lock_word, __ATOMIC_ACQUIRE)) {
+        /* spin */
+    }
+}
+static void uuid_v7_unlock(void) {
+    __atomic_clear(&uuid_v7_lock_word, __ATOMIC_RELEASE);
+}
+#endif
+static unsigned long long uuid_v7_last_ms;
+static uint64_t           uuid_v7_counter;    /* 42 bits: rand_a (12) + top of rand_b (30) */
+
+#define UUID_V7_COUNTER_MAX 0x3FFFFFFFFFFULL  /* 2^42 - 1 */
+
+
 /* Stamp the version nibble (octet 6) and the RFC 4122 variant bits (octet 8). */
-static void uuid_set_version_variant(UUID* u, int version) {
+static void uuid_set_version_variant(Uuid* u, int version) {
     u->bytes[6] = (unsigned char)((u->bytes[6] & 0x0F) | (version << 4));
     u->bytes[8] = (unsigned char)((u->bytes[8] & 0x3F) | 0x80);
 }
@@ -345,9 +447,10 @@ static int uuid_ci_prefix(const char* s, const char* prefix) {
  * @see uuid_v7 for a time-ordered alternative.
  *
  */
-UUID uuid_v4(void) {
-    UUID u;
-    secrets_token_bytes(u.bytes, sizeof(u.bytes));
+Uuid uuid_v4(void) {
+    static const unsigned char unique_pos[8] = {0, 1, 2, 3, 4, 5, 7, 9};
+    Uuid u;
+    uuid_fill_random(&u, 0, unique_pos);
     uuid_set_version_variant(&u, 4);
 
     UUID_LOG("[uuid_v4] generated");
@@ -367,15 +470,51 @@ UUID uuid_v4(void) {
  *
  * @return A freshly generated v7 UUID, returned by value.
  *
- * @note RFC 9562 recommends v7 over v1/v6 for new applications. UUIDs
- *       generated within the same millisecond are ordered by their random
- *       tail, not by call order. Allocation-free and thread-safe.
+ * Within one process every uuid_v7() is greater (by uuid_compare) than the
+ * previous one, also within one millisecond and across threads: the 12-bit
+ * rand_a and the top 30 bits of rand_b hold a 42-bit counter (RFC 9562
+ * §6.2 method 1, like Python 3.14's uuid7) that starts at a random 41-bit
+ * value in each new millisecond and is incremented otherwise. If the clock
+ * goes backwards, the last timestamp is kept; if the counter runs out, the
+ * timestamp is advanced by 1 ms. The last 32 bits stay random. (Without the
+ * counter about half of the UUIDs made within one millisecond compared
+ * lower than the one before.)
+ *
+ * @note RFC 9562 recommends v7 over v1/v6 for new applications. Across
+ *       processes, ordering holds at millisecond granularity only.
+ *       Allocation-free and thread-safe.
  * @see uuid_v7_timestamp_ms to read the embedded timestamp back; uuid_v4.
  *
  */
-UUID uuid_v7(void) {
-    UUID u;
-    unsigned long long ms = uuid_now_unix_ms();
+Uuid uuid_v7(void) {
+    Uuid u;
+    static const unsigned char unique_pos[8] = {7, 9, 10, 11, 12, 13, 14, 15};
+    uuid_fill_random(&u, 6, unique_pos);   /* rand_a (12 bits) + rand_b (62 bits) */
+
+    /* A fresh random 41-bit counter start (top bit clear leaves room for
+       2^41 increments), from bytes that the counter overwrites anyway. */
+    uint64_t seed = 0;
+    for (int i = 6; i < 12; i++) {
+        seed = (seed << 8) | u.bytes[i];
+    }
+    seed &= UUID_V7_COUNTER_MAX >> 1;
+
+    unsigned long long now = uuid_now_unix_ms();   /* read outside the lock */
+    uuid_v7_lock();
+    if (now > uuid_v7_last_ms) {
+        uuid_v7_last_ms = now;
+        uuid_v7_counter = seed;
+    }
+    else if (uuid_v7_counter < UUID_V7_COUNTER_MAX) {
+        uuid_v7_counter++;            /* same millisecond, or the clock went back */
+    }
+    else {
+        uuid_v7_last_ms++;            /* counter exhausted: borrow the next ms */
+        uuid_v7_counter = seed;
+    }
+    unsigned long long ms = uuid_v7_last_ms;
+    uint64_t counter = uuid_v7_counter;
+    uuid_v7_unlock();
 
     u.bytes[0] = (unsigned char)(ms >> 40);
     u.bytes[1] = (unsigned char)(ms >> 32);
@@ -384,7 +523,14 @@ UUID uuid_v7(void) {
     u.bytes[4] = (unsigned char)(ms >> 8);
     u.bytes[5] = (unsigned char)(ms);
 
-    secrets_token_bytes(u.bytes + 6, 10);   /* rand_a (12 bits) + rand_b (62 bits) */
+    uint64_t hi = counter >> 30;              /* 12 bits -> rand_a */
+    uint64_t lo = counter & 0x3FFFFFFFULL;    /* 30 bits -> rand_b, after the variant */
+    u.bytes[6]  = (unsigned char)(hi >> 8);   /* the version nibble is stamped below */
+    u.bytes[7]  = (unsigned char)(hi);
+    u.bytes[8]  = (unsigned char)(lo >> 24);  /* top 2 bits: the variant, stamped below */
+    u.bytes[9]  = (unsigned char)(lo >> 16);
+    u.bytes[10] = (unsigned char)(lo >> 8);
+    u.bytes[11] = (unsigned char)(lo);
     uuid_set_version_variant(&u, 7);
 
     UUID_LOG("[uuid_v7] generated (ts_ms=%llu)", ms);
@@ -414,7 +560,7 @@ UUID uuid_v7(void) {
  *          interoperate with existing MD5-based UUIDs.
  * @see uuid_v5, uuid_namespace_dns
  */
-UUID uuid_v3(UUID namespace_id, const char* name) {
+Uuid uuid_v3(Uuid namespace_id, const char* name) {
     if (!name) {
         name = "";
     }
@@ -426,7 +572,7 @@ UUID uuid_v3(UUID namespace_id, const char* name) {
     md5_update(&ctx, (const unsigned char*)name, strlen(name));
     md5_final(&ctx, digest);
 
-    UUID u;
+    Uuid u;
     memcpy(u.bytes, digest, 16);
     uuid_set_version_variant(&u, 3);
 
@@ -451,7 +597,7 @@ UUID uuid_v3(UUID namespace_id, const char* name) {
  *       `886313e1-3b8a-5372-9b90-0c9aee199e5d`.
  * @see uuid_v3, uuid_namespace_dns
  */
-UUID uuid_v5(UUID namespace_id, const char* name) {
+Uuid uuid_v5(Uuid namespace_id, const char* name) {
     if (!name) {
         name = "";
     }
@@ -464,7 +610,7 @@ UUID uuid_v5(UUID namespace_id, const char* name) {
     sha1_update(&ctx, (const unsigned char*)name, strlen(name));
     sha1_final(&ctx, digest);
 
-    UUID u;
+    Uuid u;
     memcpy(u.bytes, digest, 16);   /* first 128 bits of the SHA-1 digest */
     uuid_set_version_variant(&u, 5);
 
@@ -489,8 +635,8 @@ UUID uuid_v5(UUID namespace_id, const char* name) {
  *       a real UUID is assigned); test for it with @ref uuid_is_nil.
  * @see uuid_is_nil, uuid_max
  */
-UUID uuid_nil(void) {
-    UUID u;
+Uuid uuid_nil(void) {
+    Uuid u;
     memset(u.bytes, 0x00, sizeof(u.bytes));
 
     return u;
@@ -508,16 +654,16 @@ UUID uuid_nil(void) {
  *       for it with @ref uuid_is_max.
  * @see uuid_is_max, uuid_nil
  */
-UUID uuid_max(void) {
-    UUID u;
+Uuid uuid_max(void) {
+    Uuid u;
     memset(u.bytes, 0xFF, sizeof(u.bytes));
     return u;
 }
 
 
 /* DNS / URL / OID / X.500 differ only in octet index 3 (10/11/12/14). */
-static UUID uuid_make_namespace(unsigned char octet3) {
-    UUID u = {{ 0x6b,0xa7,0xb8,0x00, 0x9d,0xad, 0x11,0xd1, 0x80,0xb4, 0x00,0xc0,0x4f,0xd4,0x30,0xc8 }};
+static Uuid uuid_make_namespace(unsigned char octet3) {
+    Uuid u = {{ 0x6b,0xa7,0xb8,0x00, 0x9d,0xad, 0x11,0xd1, 0x80,0xb4, 0x00,0xc0,0x4f,0xd4,0x30,0xc8 }};
     u.bytes[3] = octet3;
 
     return u;
@@ -531,7 +677,7 @@ static UUID uuid_make_namespace(unsigned char octet3) {
  *         name-based UUID whose name is a fully-qualified domain name.
  * @see uuid_v3, uuid_v5
  */
-UUID uuid_namespace_dns(void)  {
+Uuid uuid_namespace_dns(void)  {
     return uuid_make_namespace(0x10);
 }
 
@@ -542,7 +688,7 @@ UUID uuid_namespace_dns(void)  {
  * @return The URL namespace UUID, for names that are URLs.
  * @see uuid_v3, uuid_v5
  */
-UUID uuid_namespace_url(void)  {
+Uuid uuid_namespace_url(void)  {
     return uuid_make_namespace(0x11);
 }
 
@@ -553,7 +699,7 @@ UUID uuid_namespace_url(void)  {
  * @return The OID namespace UUID, for names that are ISO object identifiers.
  * @see uuid_v3, uuid_v5
  */
-UUID uuid_namespace_oid(void)  {
+Uuid uuid_namespace_oid(void)  {
     return uuid_make_namespace(0x12);
 }
 
@@ -564,7 +710,7 @@ UUID uuid_namespace_oid(void)  {
  * @return The X.500 namespace UUID, for names that are X.500 DNs.
  * @see uuid_v3, uuid_v5
  */
-UUID uuid_namespace_x500(void) {
+Uuid uuid_namespace_x500(void) {
     return uuid_make_namespace(0x14);
 }
 
@@ -584,7 +730,7 @@ UUID uuid_namespace_x500(void) {
  *          behaviour — the function always writes exactly 37 bytes.
  * @see uuid_from_string, uuid_to_urn
  */
-void uuid_to_string(UUID u, char out[UUID_STR_LEN]) {
+void uuid_to_string(Uuid u, char out[UUID_STR_LEN]) {
     static const char hex[] = "0123456789abcdef";
     int pos = 0;
 
@@ -615,7 +761,7 @@ void uuid_to_string(UUID u, char out[UUID_STR_LEN]) {
  *          behaviour.
  * @see uuid_to_string
  */
-void uuid_to_urn(UUID u, char out[UUID_URN_LEN]) {
+void uuid_to_urn(Uuid u, char out[UUID_URN_LEN]) {
     memcpy(out, "urn:uuid:", 9);
     uuid_to_string(u, out + 9);
 }
@@ -640,7 +786,7 @@ void uuid_to_urn(UUID u, char out[UUID_URN_LEN]) {
  * @see uuid_to_string
  *
  */
-bool uuid_from_string(const char* str, UUID* out) {
+bool uuid_from_string(const char* str, Uuid* out) {
     if (!str || !out) {
         return false;
     }
@@ -699,7 +845,7 @@ bool uuid_from_string(const char* str, UUID* out) {
  *
  * @see uuid_from_bytes
  */
-void uuid_to_bytes(UUID u, unsigned char out[16]) {
+void uuid_to_bytes(Uuid u, unsigned char out[16]) {
     memcpy(out, u.bytes, 16);
 }
 
@@ -718,8 +864,8 @@ void uuid_to_bytes(UUID u, unsigned char out[16]) {
  *          generators (uuid_v4 etc.) to produce spec-compliant UUIDs.
  * @see uuid_to_bytes
  */
-UUID uuid_from_bytes(const unsigned char in[16]) {
-    UUID u;
+Uuid uuid_from_bytes(const unsigned char in[16]) {
+    Uuid u;
     memcpy(u.bytes, in, 16);
     
     return u;
@@ -736,7 +882,7 @@ UUID uuid_from_bytes(const unsigned char in[16]) {
  *         library; 0 for the Nil UUID).
  * @see uuid_variant
  */
-int uuid_version(UUID u) {
+int uuid_version(Uuid u) {
     return (u.bytes[6] >> 4) & 0x0F;
 }
 
@@ -752,7 +898,7 @@ int uuid_version(UUID u) {
  *         produced by this library is `UUID_VARIANT_RFC4122`.
  * @see uuid_version
  */
-UuidVariant uuid_variant(UUID u) {
+UuidVariant cstd_uuid_variant(Uuid u) {   /* uuid_variant (header macro) */
     unsigned char b = u.bytes[8];
 
     if ((b & 0x80) == 0x00) {
@@ -775,7 +921,7 @@ UuidVariant uuid_variant(UUID u) {
  * @return `true` if @p u is the Nil UUID, otherwise `false`.
  * @see uuid_nil
  */
-bool uuid_is_nil(UUID u) {
+bool uuid_is_nil(Uuid u) {
     for (int i = 0; i < 16; i++) {
         if (u.bytes[i] != 0x00) {
             return false;
@@ -792,7 +938,7 @@ bool uuid_is_nil(UUID u) {
  * @return `true` if @p u is the Max UUID, otherwise `false`.
  * @see uuid_max
  */
-bool uuid_is_max(UUID u) {
+bool uuid_is_max(Uuid u) {
     for (int i = 0; i < 16; i++) {
         if (u.bytes[i] != 0xFF) {
             return false;
@@ -810,7 +956,7 @@ bool uuid_is_max(UUID u) {
  * @return `true` if @p a and @p b are identical, otherwise `false`.
  * @see uuid_compare
  */
-bool uuid_equal(UUID a, UUID b) {
+bool uuid_equal(Uuid a, Uuid b) {
     return memcmp(a.bytes, b.bytes, 16) == 0;
 }
 
@@ -829,7 +975,7 @@ bool uuid_equal(UUID a, UUID b) {
  * @see uuid_equal
  *
  */
-int uuid_compare(UUID a, UUID b) {
+int cstd_uuid_compare(Uuid a, Uuid b) {   /* uuid_compare (header macro) */
     int c = memcmp(a.bytes, b.bytes, 16);
 
     return (c > 0) - (c < 0);
@@ -847,7 +993,7 @@ int uuid_compare(UUID a, UUID b) {
  *         @p u is not a version-7 UUID.
  * @see uuid_v7
  */
-unsigned long long uuid_v7_timestamp_ms(UUID u) {
+unsigned long long uuid_v7_timestamp_ms(Uuid u) {
     if (uuid_version(u) != 7) {
         return 0;
     }

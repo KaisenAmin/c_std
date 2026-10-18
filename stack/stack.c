@@ -63,6 +63,7 @@ Stack* stack_copy(const Stack* src) {
     if (!dst) {
         return NULL;
     }
+    vector_set_compare(dst->vec, src->vec->compare);
 
     size_t n = vector_size(src->vec);
     if (n > 0 && !vector_reserve(dst->vec, n)) {
@@ -226,7 +227,20 @@ void stack_swap(Stack* stk1, Stack* stk2) {
 }
 
 
-/** @brief true if both stacks hold the same bytes (NULL == NULL). */
+/**
+ * @brief Sets the element comparator used by the stack_is_* comparisons.
+ *
+ * Without one the elements' bytes are compared (memcmp), which is not the
+ * numeric order of int / double elements. NULL stack is a no-op.
+ */
+void stack_set_compare(Stack* stk, VectorCompareFunc compare) {
+    if (stk && stk->vec) {
+        vector_set_compare(stk->vec, compare);
+    }
+}
+
+
+/** @brief true if both stacks hold equal elements (comparator, or bytes without one; NULL == NULL). */
 bool stack_is_equal(const Stack* stk1, const Stack* stk2) {
     if (stk1 == stk2) {
         return true;
@@ -245,7 +259,7 @@ bool stack_is_not_equal(const Stack* stk1, const Stack* stk2) {
 }
 
 
-/** @brief Lexicographic less-than over the underlying vector bytes. */
+/** @brief Lexicographic less-than over the elements (comparator from stack_set_compare, else bytes). */
 bool stack_is_less(const Stack* stk1, const Stack* stk2) {
     if (!stk1 || !stk2 || !stk1->vec || !stk2->vec) {
         return false;

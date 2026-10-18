@@ -25,11 +25,16 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 #include "algorithm/algorithm.h"
 ```
 
+The comparator type is `AlgorithmCompareFunc` (`int (*)(const void*, const
+void*)`, the `qsort` signature); `CompareFunc` below is an alias for it.
+`sort.h` defines the same alias for the same type, so both headers can be
+included together.
+
 ## Function Descriptions
 
 ### `void algorithm_stable_sort(void *base, size_t num, size_t size, CompareFunc comp)`
 
-**Purpose**: Performs a stable sort using the merge sort algorithm, which preserves the relative order of equal elements.
+**Purpose**: Performs a stable sort (`std::stable_sort`): elements that compare equal keep their relative order (`algorithm_sort` is the same function). Bottom-up merge sort over insertion-sorted runs, merging between the array and one buffer of the same size: cache-sized blocks first, and equal-length runs with **parity merges** (from both ends at once, two run pairs in lockstep, so the comparator calls overlap). Runs already in order are concatenated, reversed runs swapped as blocks, and sorted or strictly descending input is recognised in one pass (O(n)). If the buffer cannot be allocated it merges in place with rotations (O(n log² n)) — the array is always sorted (the old version silently left it unsorted).
 
 **Parameters**:
   - `base`: Pointer to the start of the array.
@@ -43,7 +48,21 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void algorithm_sort(void *base, size_t num, size_t size, CompareFunc comp)`
 
-**Purpose**: Uses quicksort to sort an array. This is a non-stable sort, which means the relative order of equal elements may not be preserved.
+**Purpose**: Sorts an array. The sort is **stable**: elements that compare equal keep the order they had in the input, so the result is fully defined and identical on every compiler and system — like Python's `sorted`, Rust's `sort` or `std::stable_sort`. It is the same algorithm as `algorithm_stable_sort` (merge sort with parity merges; sorted and reversed input in O(n)), about 1.5× faster than the unstable introsort this function used before. It allocates a buffer of `num * size` bytes; without memory it sorts in place (slower, still stable). When the order of equal elements does not matter and speed does, use `algorithm_sort_unstable`.
+
+**Parameters**:
+  - `base`: Pointer to the start of the array.
+  - `num`: Number of elements in the array.
+  - `size`: Size of each element in bytes.
+  - `comp`: Comparison function to define the order of elements.
+
+**Return Value**: No return value. The array is sorted in place.
+
+---
+
+### `void algorithm_sort_unstable(void *base, size_t num, size_t size, CompareFunc comp)`
+
+**Purpose**: The fastest sort here, for when the order of equal elements does not matter (`std::sort`, Rust's `sort_unstable`): equal elements may end up in any order (the same input always gives the same output, though). The algorithm is **pattern-defeating quicksort** (pdqsort, the unstable sort of Rust and Go): ninther pivot, branchless block partitioning, pattern breaking, a separate pass for runs of equal elements, and an early exit for sorted input — O(n log n) worst case, O(n) for sorted, reversed and all-equal input. Faster than `std::sort` even though the comparator is called through a pointer (see [Performance](#performance-compared-with-c-algorithm)). Element sizes 4, 8 and 16 bytes use specialised moves; nothing is allocated for elements up to 256 bytes.
 
 **Parameters**:
   - `base`: Pointer to the start of the array.
@@ -100,7 +119,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void *algorithm_find_end(const void *base1, size_t num1, size_t size1, const void *base2, size_t num2, size_t size2, CompareFunc comp)`
 
-**Purpose**: Finds the last occurrence of a subsequence within a larger array.
+**Purpose**: Finds the last occurrence of a subsequence within a larger array. It searches from the end, so it stops at the last occurrence instead of scanning the whole array.
 
 **Parameters**:
   - `base1`: Pointer to the main array.
@@ -190,7 +209,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void algorithm_copy(const void *source, size_t num, size_t size, void *dest)`
 
-**Purpose**: Copies elements from a source array to a destination array.
+**Purpose**: Copies elements from a source array to a destination array, as one block copy (`memmove`): overlapping ranges are copied correctly.
 
 **Parameters**:
   - `source`: Pointer to the source array.
@@ -255,7 +274,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void algorithm_fill(void *first, void *last, size_t size, const void *val)`
 
-**Purpose**: Fills a range of elements with a specified value.
+**Purpose**: Fills a range of elements with a specified value. A value whose bytes are all equal (0, -1, ...) becomes one `memset`; other values are written by doubling block copies. `val` may point into the range. Only whole elements are written: a range that is not a multiple of `size` used to run past `last`.
 
 **Parameters**:
   - `first`: Pointer to the start of the range.
@@ -308,13 +327,13 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void algorithm_shuffle(void *base, size_t num, size_t size, UniformRandomNumberGenerator rng)`
 
-**Purpose**: Randomly shuffles the elements of an array.
+**Purpose**: Randomly shuffles the elements of an array (Fisher–Yates), with every permutation equally likely. Each index is `rng() % (i + 1)` — exactly what this function has always computed, so **the same generator gives the same permutation as before** — except that a draw from the incomplete top range of the generator (the last `2^32 mod (i + 1)` values, which made plain `%` favour small indices) is rejected and drawn again. That happens with probability `(2^32 mod (i + 1)) / 2^32` per step, i.e. practically never for small arrays. The rejection test costs no division unless the draw is in the top `i + 1` values.
 
 **Parameters**:
   - `base`: Pointer to the start of the array.
   - `num`: Number of elements in the array.
   - `size`: Size of each element.
-  - `rng`: Random number generator function.
+  - `rng`: Generator of uniformly random **32-bit** values (the full range `0 .. 0xFFFFFFFF`). `rand()` gives only 15 random bits on Windows (`RAND_MAX` is 32767), which can never move an element to a position past 32767 — combine calls: `((uint32_t)rand() << 30) ^ ((uint32_t)rand() << 15) ^ (uint32_t)rand()`.
 
 **Return Value**: None. The array is shuffled in place.
 
@@ -332,6 +351,8 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
   - `comp`: Comparison function used to compare elements.
 
 **Return Value**: Pointer to the first position where `val` can be inserted.
+
+**Performance**: arrays larger than 512 KiB are searched branchlessly with prefetching of both possible next probes (the search is memory-bound there); smaller ones with the classic branchy loop, which lets the CPU start the next comparison speculatively. Same results either way.
 
 ---
 
@@ -476,13 +497,13 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void algorithm_copy_backward(const void *first, const void *last, size_t size, void *result)`
 
-**Purpose**: Copies elements from one range to another in reverse order.
+**Purpose**: Copies the range `[first, last)` so that it ENDS at `result` (`std::copy_backward`), the right tool for shifting elements to the right inside one array: overlapping ranges are handled. One block copy.
 
 **Parameters**:
   - `first`: Pointer to the start of the range.
   - `last`: Pointer to the end of the range.
   - `size`: Size of each element.
-  - `result`: Pointer to the destination array.
+  - `result`: Pointer one past the end of the destination.
 
 **Return Value**: None.
 
@@ -490,7 +511,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 ### `void algorithm_copy_if(const void *first, const void *last, size_t size, void *result, UnaryPredicateFunc pred)`
 
-**Purpose**: Copies elements from one array to another if they satisfy a predicate function.
+**Purpose**: Copies elements from one array to another if they satisfy a predicate function. Uses the same core as `algorithm_filter` (predicate answers collected 64 at a time, then only the kept elements copied), so an unpredictable predicate causes no branch mispredictions.
 
 **Parameters**:
   - `first`, `last`: Source range.
@@ -558,6 +579,8 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 ---
 
 ### `void algorithm_swap(void *a, void *b, size_t size)`
+
+Any element size, without allocating (the old version called `malloc` for elements over 256 bytes).
 
 **Purpose**: Swaps the values of two elements.
 
@@ -657,7 +680,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
   - `size`: Size of each element in bytes.
   - `comp`: Comparison function to order elements.
 
-**Purpose**: This function rearranges elements between two sorted parts of an array into one merged sorted array.
+**Return Value**: None. The two sorted parts `[0, middle)` and `[middle, num)` become one sorted array; the merge is stable. With a buffer for the smaller part it takes O(n) (like `std::inplace_merge`; the old version shifted the tail for every element, O(n²)); without memory O(n log n) by rotations. Already ordered input returns after one comparison.
 
 ---
 
@@ -682,9 +705,9 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 **Parameters**:
   - `base1`, `num1`, `size1`: First array details.
   - `base2`, `num2`, `size2`: Second array details.
-  - `comp`: Comparison function to compare elements.
+  - `comp`: Predicate that returns `true` while two elements match (e.g. `a == b`); the first pair for which it returns `false` is the mismatch.
 
-**Return Value**: A `Pair` where `first` and `second` point to the first differing elements in the two arrays. If the ranges are equal, both pointers are `NULL`.
+**Return Value**: A `Pair` where `first` and `second` point to the first mismatching elements in the two arrays. When one range is a prefix of the other, the shorter side is `NULL` and the longer side points at its first extra element. Both pointers are `NULL` only when the ranges are equal (same length, every pair matches).
 
 ---
 
@@ -724,7 +747,9 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
   - `val`: Pointer to the value that the elements should match.
   - `comp`: Comparison function to compare elements with `val`.
 
-**Return Value**: Pointer to the first element of the found sequence, or `last` if not found.
+**Return Value**: Pointer to the first element of the found sequence, or `last` if not found (`first` for `count == 0`).
+
+**Complexity**: at most one comparison per element, usually far fewer: each candidate window is tested from its end, and a mismatch skips every window that contains it (the old version restarted at every position: O(n × count)).
 
 ---
 
@@ -734,7 +759,7 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 **Parameters**:
   - `base`, `num`, `size`: Details of the array.
-  - `val`: Pointer to the value to remove from the array.
+  - `val`: Pointer to the value to remove from the array. It may point at one of the array's own elements.
   - `comp`: Comparison function to compare elements with `val`.
 
 **Return Value**: Pointer to the new end of the array after the matching elements are removed.
@@ -774,8 +799,8 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 **Parameters**:
   - `base`, `num`, `size`: Details of the array.
-  - `old_val`: Pointer to the value to replace.
-  - `new_val`: Pointer to the new value.
+  - `old_val`: Pointer to the value to replace (may point at one of the array's elements).
+  - `new_val`: Pointer to the new value (may point at one of the array's elements).
   - `comp`: Comparison function to compare elements with `old_val`.
 
 **Return Value**: No return value, but replaces elements matching `old_val` with `new_val`.
@@ -841,6 +866,124 @@ To use the Algorithm library in your project, include the `algorithm.h` header f
 
 - **Ready-made incrementers** (all in `algorithm.h`):  
   `algorithm_inc_int`, `_char`, `_short`, `_long`, `_long_long`, `_uchar`, `_ushort`, `_uint`, `_ulong`, `_ulong_long`, `_float`, `_double`, `_long_double`, `_int8`, `_int16`, `_int32`, `_int64`, `_uint8`, `_uint16`, `_uint32`, `_uint64`, `_size_t`.
+
+---
+
+### `size_t algorithm_filter(const void* base, size_t num, size_t size, void* result, BoolPredicateFunc pred)`
+
+**Purpose**: Python's `filter(function, iterable)`: keeps, in order, the elements for which `pred` returns `true`. Python builds a new sequence; here the kept elements go to `result`, which is either a separate buffer (the input stays untouched, like `list(filter(...))`) or `base` itself (filtering in place, like `data[:] = filter(...)`).
+
+With `pred == NULL` it is `filter(None, iterable)`: an element is kept when it is "truthy", i.e. when not all of its bytes are zero — so `0`, `NULL` pointers, `'\0'` and all-zero structs are dropped (for floating point, `0.0` is dropped and `-0.0`, whose sign bit is set, is kept).
+
+**Parameters**:
+  - `base`: Pointer to the input elements.
+  - `num`: Number of input elements.
+  - `size`: Size of each element in bytes.
+  - `result`: `base` (in place) or a buffer that does not overlap the input, with room for the kept elements (at most `num`). Nothing is written beyond the kept elements.
+  - `pred`: `bool pred(const void* item)`, or `NULL` for truthiness.
+
+**Return Value**: The number of elements written to `result` (0 for invalid arguments).
+
+**Performance**: the predicate's answers are collected 64 at a time in a bit mask, and only the kept elements are then copied (walking the set bits), so a random predicate costs no branch mispredictions: about 1.7× faster than C++ `std::copy_if` with a lambda on random data, even though the predicate is called through a pointer. In place, nothing is moved until the first dropped element.
+
+---
+
+### `size_t algorithm_filter_ctx(const void* base, size_t num, size_t size, void* result, ContextPredicateFunc pred, void* ctx)`
+
+**Purpose**: `algorithm_filter` with a context pointer passed to the predicate — what a Python lambda gets from the variables it captures, e.g. `filter(lambda p: p.age > limit, people)`.
+
+**Parameters**:
+  - `base`, `num`, `size`, `result`: As for `algorithm_filter`.
+  - `pred`: `bool pred(const void* item, void* ctx)`, or `NULL` for truthiness.
+  - `ctx`: Passed to `pred` unchanged.
+
+**Return Value**: The number of elements written to `result`.
+
+---
+
+### `size_t algorithm_combination(const void* base, size_t num, size_t size, size_t r, CombinationFunc callback, void* ctx)`
+
+**Purpose**: Python's `itertools.combinations(iterable, r)`: visits every r-element combination of the input. The order is the same as Python's — lexicographic by position, so for sorted input the tuples come out sorted — and elements are told apart by position, not by value (duplicates give repeated tuples). Each combination is handed to `callback` as `r` consecutive elements, i.e. a C array of the element type, valid during the call:
+
+```text
+for c in itertools.combinations(data, r):   ->   bool callback(const void* c, size_t r, void* ctx)
+```
+
+Returning `false` from the callback stops the iteration (Python's `break`). Like Python, `r == 0` gives exactly one (empty) combination — the callback is called once with `r = 0` — and `r > num` gives none.
+
+**Parameters**:
+  - `base`: Pointer to the input elements.
+  - `num`: Number of input elements (Python's `len(iterable)`).
+  - `size`: Size of each element in bytes.
+  - `r`: Length of each combination.
+  - `callback`: `bool callback(const void* combination, size_t r, void* ctx)`.
+  - `ctx`: Passed to `callback` unchanged.
+
+**Return Value**: The number of combinations passed to `callback` — `C(num, r)` unless it stopped early; 0 for invalid arguments or out of memory.
+
+**Performance**: nothing is materialised; between two consecutive combinations only the tail that changed is updated, and that tail is a contiguous run of the input, so it is copied with one `memcpy`. The indices and the combination live on the stack for `r <= 32` (and `r * size <= 512`). Visiting all `C(24, 8) = 735471` combinations of `int`s takes about 5 ms, ~6× faster than the usual C++ idiom (`std::prev_permutation` over a selection mask).
+
+---
+
+### `size_t algorithm_combination_count(size_t n, size_t r)`
+
+**Purpose**: The number of r-element combinations of n elements, `C(n, r)` — Python's `math.comb(n, r)`, and the number of tuples `itertools.combinations` yields. Computed exactly, without intermediate overflow (each step divides by a gcd first).
+
+**Return Value**: `C(n, r)`; 0 when `r > n`; 1 when `r == 0` or `r == n`; `SIZE_MAX` when the result does not fit in a `size_t`.
+
+---
+
+### `bool algorithm_next_combination(size_t* indices, size_t n, size_t r)`
+
+**Purpose**: The index-level step behind `algorithm_combination`, for writing your own loop without a callback — the combination counterpart of `algorithm_next_permutation`. Start with `indices = {0, 1, ..., r-1}`; each call advances it to the next combination of `{0, ..., n-1}`, in the same order as Python's `itertools.combinations(range(n), r)`.
+
+**Parameters**:
+  - `indices`: `r` strictly increasing indices in `[0, n)`.
+  - `n`: Number of elements to choose from.
+  - `r`: Number of chosen elements.
+
+**Return Value**: `true` when the next combination was produced; `false` when `indices` was the last one (it is then reset to `{0, ..., r-1}`, like `next_permutation`'s wrap-around), and for `r == 0`, `r > n` or `NULL`.
+
+---
+
+## Performance compared with C++ `<algorithm>`
+
+Same data and checksums in C and C++, one non-inlined function per workload, MinGW-w64 GCC / G++ 14.2 `-O2`, Windows; best of several runs. "was" is this library before this optimisation round, on the same data. `C ÷ C++` below 1.0 means the C version is faster. The C functions call the comparator / predicate through a function pointer for every element, which C++ inlines from a lambda; that fixed cost is what remains in the slower rows.
+
+| Workload (5M `int`s unless noted) | C now | was | C++ | C ÷ C++ |
+| --- | --: | --: | --: | :--: |
+| `sort` (stable) ↔ `std::stable_sort`, random | 0.451 s | 0.682 s ¹ | 0.383 s | 1.18 |
+| `sort` (stable) ↔ `std::stable_sort`, already sorted | **0.008 s** | 0.159 s ¹ | 0.079 s | **0.10** |
+| `sort` (stable) ↔ `std::stable_sort`, 10 distinct values | 0.255 s | 0.322 s ¹ | 0.163 s | 1.57 |
+| `sort` / `stable_sort`, 2M 8-byte structs | 0.166 s | 0.310 s | 0.149 s | 1.12 |
+| `sort_unstable` ↔ `std::sort`, random | **0.280 s** | 0.682 s ¹ | 0.313 s | **0.89** |
+| `sort_unstable` ↔ `std::sort`, already sorted | **0.015 s** | 0.159 s ¹ | 0.053 s | **0.28** |
+| `sort_unstable` ↔ `std::sort`, 10 distinct values | **0.043 s** | 0.322 s ¹ | 0.097 s | **0.45** |
+| `inplace_merge`, 20k + 20k | 0.08 ms | 904 ms | 0.03 ms | 2.7 |
+| `merge`, 5M + 5M | 0.021 s | 0.056 s | 0.011 s | 1.93 |
+| `copy` / `fill_n` | 1.6 / 1.4 ms | 22.8 / 17.2 ms | 1.6 / 1.4 ms | 1.00 |
+| `rotate` by 1/3 | **4.7 ms** | 12.5 ms | 4.9 ms | **0.97** |
+| `swap_ranges` | 3.6 ms | 60.3 ms | 3.3 ms | 1.10 |
+| `search_n` (1000 in a row, in 1M) | 0.73 ms | 636 ms | 0.73 ms | 1.00 |
+| `find_end` (match near the end) | ~0 | 9.5 ms | ~0 | 1.00 |
+| `shuffle` (full 32-bit generator) ↔ `std::shuffle` | 0.077 s | 0.146 s | 0.061 s | 1.27 |
+| `copy_if` (random predicate) | **9.9 ms** | 30.5 ms | 17.1 ms | **0.58** |
+| `filter` to a buffer / in place | **9.9 / 11.8 ms** | — | 17.1 / 19.0 ms | **0.58 / 0.62** |
+| `filter(None, ...)` (truthiness) | **11.3 ms** | — | 21.5 ms | **0.53** |
+| `combination`, all `C(24, 8)` | **5.0 ms** | — | 32.7 ms | **0.15** |
+| `lower_bound`, 1M random keys in range | 0.208 s | 0.273 s | 0.209 s | 1.00 |
+| `lower_bound`, 1M keys past the end | 0.078 s | 0.040 s | 0.021 s | 3.66 |
+| `unique` / `remove` | 11.9 / 11.5 ms | 18.3 / 24.8 ms | 5.0 / 4.2 ms | 2.40 / 2.76 |
+| `partition` | 24.1 ms | 25.7 ms | 18.9 ms | 1.27 |
+| `count_if` / `find` | 6.7 / 6.8 ms | 8.0 / 6.8 ms | 2.5 / 1.6 ms | 2.69 / 4.18 |
+| `next_permutation`, all 10! | 0.042 s | 0.043 s | 0.007 s | 5.9 |
+
+¹ the previous `algorithm_sort`, an unstable introsort.
+
+- **Algorithmic fixes:** `inplace_merge` was O(n²), `search_n` O(n × count), `find_end` always scanned the whole array, and `shuffle` was biased (it still produces the same permutations, minus the bias).
+- **Bulk memory work** (`copy`, `copy_n`, `copy_backward`, `fill`, `rotate`, `rotate_copy`, `swap_ranges`, `merge` tails) is one block operation instead of a `memcpy` call per element.
+- **`lower_bound` trade-off:** on large arrays (> 512 KiB) the branchless, prefetching search is 1.3× faster than before for keys spread over the array and matches `std::lower_bound`; when nearly every key is past the end (so the old loop's branches were perfectly predictable) it is 2× slower than before.
+- **Still slower than C++:** everything whose cost is one comparator or predicate call per element (`count_if`, `find`, `unique`, `remove`, `partition`, `merge`, the permutation steps). The library's API takes function pointers, and an indirect call per element costs ~1–2 ns where an inlined lambda is nearly free.
 
 ---
 
@@ -1413,7 +1556,7 @@ int main() {
     int value = 7;
 
     size_t found = algorithm_binary_search(arr, 10, sizeof(int), &value, compare_ints);
-    if (found) {
+    if (found != (size_t)-1) {   /* an index: 0 is a valid position, (size_t)-1 means "not found" */
         fmt_printf("Value %d found in the array at index %zu.\n", value, found);
     } 
     else {
@@ -1454,7 +1597,7 @@ int main() {
     double value = 4.4;
 
     size_t found = algorithm_binary_search(arr, 9, sizeof(double), &value, compare_doubles);
-    if (found) {
+    if (found != (size_t)-1) {
         fmt_printf("Value %.1f found in the array at index %zu.\n", value, found);
     } 
     else {
@@ -1772,8 +1915,8 @@ int main() {
 ```
 **Result**
 ```
-Source is  Hello C Programmers
-Destination is Hello C Programmers
+Source is -> Hello C Programmers
+Destination is -> Hello C Programmers
 ```
 
 ---
@@ -2646,7 +2789,8 @@ Count of numbers greater than 5: 3
 #include <time.h>
 
 uint32_t simple_rng() {
-    return rand(); 
+    /* rand() may give only 15 random bits; algorithm_shuffle wants 32 */
+    return ((uint32_t)rand() << 30) ^ ((uint32_t)rand() << 15) ^ (uint32_t)rand();
 }
 
 int main() {
@@ -2682,7 +2826,8 @@ typedef struct {
 } Person;
 
 uint32_t simple_rng() {
-    return rand();  
+    /* rand() may give only 15 random bits; algorithm_shuffle wants 32 */
+    return ((uint32_t)rand() << 30) ^ ((uint32_t)rand() << 15) ^ (uint32_t)rand();
 }
 
 int main() {
@@ -2727,7 +2872,8 @@ ID: 2, Name: Bob
 #include <time.h>
 
 uint32_t simple_rng() {
-    return rand();  // Simple RNG, replace with a better one if needed
+    /* rand() may give only 15 random bits; algorithm_shuffle wants 32 */
+    return ((uint32_t)rand() << 30) ^ ((uint32_t)rand() << 15) ^ (uint32_t)rand();
 }
 
 int main() {
@@ -3752,8 +3898,8 @@ int main() {
 ```
 **Result**
 ```
-Even elements: 2 4 6 8 10 
-Odd elements: 1 3 5 7 9
+Even elements: 10 2 8 4 6
+Odd elements: 5 7 3 9 1
 ```
 
 ---
@@ -4725,7 +4871,8 @@ int main() {
 ```
 **Result**
 ```
-Unique elements: 1 2 3 4
+Unique elements:
+1 2 3 4
 ```
 
 ---
@@ -5836,36 +5983,33 @@ The second pair of repeated elements are: 10
 #include "fmt/fmt.h"
 #include <stdbool.h>
 
+/* comp returns true while the two elements "match"; the mismatch is the
+   first pair for which it returns false */
 bool mypredicate(const void *i, const void *j) {
-    return (*(const int *)i != *(const int *)j);
+    return (*(const int *)i == *(const int *)j);
 }
 
 int main() {
-	Vector* vec = vector_create(sizeof(int));
-	int myints[] = {10, 20, 80, 320, 1024};
-	size_t myints_size = sizeof(myints) / sizeof(myints[0]);
-	Pair mypair;
+    Vector* vec = vector_create(sizeof(int));
+    int myints[] = {10, 20, 80, 320, 1024};
+    size_t myints_size = sizeof(myints) / sizeof(myints[0]);
+    Pair mypair;
 
-	for (size_t index = 1; index < 6; index++) {
-		vector_push_back(vec, &index);
-	}
+    for (int value = 10; value <= 50; value += 10) {   /* 10 20 30 40 50 (ints, like the vector's elements) */
+        vector_push_back(vec, &value);
+    }
 
     mypair = algorithm_mismatch(vector_begin(vec), vector_size(vec), sizeof(int), myints, myints_size, sizeof(int), mypredicate);
     if (mypair.first != NULL && mypair.second != NULL) {
         fmt_printf("First mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
-    }
 
-    // Move iterators to the next elements
-    if (mypair.first != NULL) {
-        mypair.first = (char *)mypair.first + sizeof(int);
-    }
-    if (mypair.second != NULL) {
-        mypair.second = (char *)mypair.second + sizeof(int);
-    }
-
-    mypair = algorithm_mismatch(mypair.first, vector_size(vec), sizeof(int), mypair.second, myints_size, sizeof(int), mypredicate);
-    if (mypair.first != NULL && mypair.second != NULL) {
-        fmt_printf("Second mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
+        /* continue after that position, with the counts that are left */
+        size_t pos = (size_t)((char *)mypair.first - (char *)vector_begin(vec)) / sizeof(int) + 1;
+        mypair = algorithm_mismatch((char *)vector_begin(vec) + pos * sizeof(int), vector_size(vec) - pos, sizeof(int),
+                                    myints + pos, myints_size - pos, sizeof(int), mypredicate);
+        if (mypair.first != NULL && mypair.second != NULL) {
+            fmt_printf("Second mismatching elements: %d and %d\n", *(int *)mypair.first, *(int *)mypair.second);
+        }
     }
 
     vector_deallocate(vec);
@@ -5874,8 +6018,8 @@ int main() {
 ```
 **Result**
 ```
-First mismatching elements: 1 and 10
-Second mismatching elements: 2 and 20
+First mismatching elements: 30 and 80
+Second mismatching elements: 40 and 320
 ```
 
 ---
@@ -6136,7 +6280,7 @@ int main() {
 
 `c++ same code`
 
-```c
+```cpp
 #include <iostream>     // std::cout
 #include <algorithm>    // std::remove
 
@@ -6482,6 +6626,226 @@ Diagonal points: (0,100) (1,101) (2,102) (3,103) (4,104)
 
 Step-by-5: 100 105 110 115 120 125
 ```
+
+## Example 142 : Python's `filter` with `algorithm_filter`
+
+`filter(lambda x: x % 2 == 0, nums)` into a new array, `filter(None, values)` in place, and NULL pointers dropped as "falsy".
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+static bool is_even(const void* p) {
+    return *(const int*)p % 2 == 0;
+}
+
+static void print_ints(const char* label, const int* a, size_t n) {
+    fmt_printf("%s:", label);
+    for (size_t i = 0; i < n; ++i) {
+        fmt_printf(" %d", a[i]);
+    }
+    fmt_printf("\n");
+}
+
+int main(void) {
+    int nums[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t n = sizeof(nums) / sizeof(nums[0]);
+
+    // list(filter(lambda x: x % 2 == 0, nums)) -> a new array, nums untouched
+    int evens[10];
+    size_t count = algorithm_filter(nums, n, sizeof(int), evens, is_even);
+    print_ints("evens", evens, count);
+    print_ints("nums ", nums, n);
+
+    // values[:] = filter(None, values) -> drop the falsy (zero) elements in place
+    int values[] = {0, 3, 0, -2, 5, 0, 0, 9};
+    count = algorithm_filter(values, 8, sizeof(int), values, NULL);
+    print_ints("truthy", values, count);
+
+    // NULL pointers are falsy too
+    const char* names[] = {"Ali", NULL, "Sara", NULL, "Reza"};
+    count = algorithm_filter(names, 5, sizeof(const char*), names, NULL);
+    for (size_t i = 0; i < count; ++i) {
+        fmt_printf("%s ", names[i]);
+    }
+    fmt_printf("(%zu names)\n", count);
+
+    return 0;
+}
+```
+**Result**
+```
+evens: 2 4 6 8 10
+nums : 1 2 3 4 5 6 7 8 9 10
+truthy: 3 -2 5 9
+Ali Sara Reza (3 names)
+```
+
+---
+
+## Example 143 : `algorithm_filter_ctx` — a predicate with captured state
+
+The context pointer plays the role of the variables a Python lambda captures: `filter(lambda p: p.age > limit, people)`.
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+typedef struct {
+    const char* name;
+    int age;
+} Person;
+
+static bool older_than(const void* item, void* ctx) {
+    return ((const Person*)item)->age > *(const int*)ctx;
+}
+
+int main(void) {
+    Person people[] = {{"Amin", 31}, {"Leila", 17}, {"Omid", 45}, {"Nika", 22}, {"Sam", 15}};
+    int limit = 18;
+
+    Person adults[5];
+    size_t n = algorithm_filter_ctx(people, 5, sizeof(Person), adults, older_than, &limit);
+    fmt_printf("%zu people older than %d:\n", n, limit);
+    for (size_t i = 0; i < n; ++i) {
+        fmt_printf("  %s (%d)\n", adults[i].name, adults[i].age);
+    }
+
+    limit = 30;
+    n = algorithm_filter_ctx(people, 5, sizeof(Person), people, older_than, &limit);   // in place
+    fmt_printf("in place, older than %d:", limit);
+    for (size_t i = 0; i < n; ++i) {
+        fmt_printf(" %s", people[i].name);
+    }
+    fmt_printf("\n");
+
+    return 0;
+}
+```
+**Result**
+```
+3 people older than 18:
+  Amin (31)
+  Omid (45)
+  Nika (22)
+in place, older than 30: Amin Omid
+```
+
+---
+
+## Example 144 : Python's `itertools.combinations` with `algorithm_combination`
+
+The tuples come in the same order as in Python; returning `false` from the callback works like `break`.
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+static bool print_combo(const void* combo, size_t r, void* ctx) {
+    const char* c = (const char*)combo;
+    size_t* printed = (size_t*)ctx;
+
+    fmt_printf("%s(", (*printed)++ ? " " : "");
+    for (size_t i = 0; i < r; ++i) {
+        fmt_printf("%s%c", i ? ", " : "", c[i]);
+    }
+    fmt_printf(")");
+    return true;
+}
+
+typedef struct {
+    int target;
+    int found[3];
+    bool ok;
+} SumSearch;
+
+static bool find_sum(const void* combo, size_t r, void* ctx) {
+    const int* c = (const int*)combo;
+    SumSearch* s = (SumSearch*)ctx;
+    (void)r;
+
+    if (c[0] + c[1] + c[2] == s->target) {
+        s->found[0] = c[0];
+        s->found[1] = c[1];
+        s->found[2] = c[2];
+        s->ok = true;
+        return false;                 // stop, like `break`
+    }
+    return true;
+}
+
+int main(void) {
+    const char letters[] = {'A', 'B', 'C', 'D'};
+    size_t printed = 0;
+
+    // for c in combinations('ABCD', 2): print(c)
+    size_t n = algorithm_combination(letters, 4, sizeof(char), 2, print_combo, &printed);
+    fmt_printf("\n%zu combinations, math.comb(4, 2) = %zu\n", n, algorithm_combination_count(4, 2));
+
+    printed = 0;
+    n = algorithm_combination(letters, 4, sizeof(char), 3, print_combo, &printed);
+    fmt_printf("\n%zu combinations of 3\n", n);
+
+    // the first three numbers that add up to 20
+    int nums[] = {8, 3, 11, 5, 2, 7};
+    SumSearch s = {20, {0, 0, 0}, false};
+    size_t tried = algorithm_combination(nums, 6, sizeof(int), 3, find_sum, &s);
+    if (s.ok) {
+        fmt_printf("%d + %d + %d = %d (found after %zu of %zu combinations)\n",
+                   s.found[0], s.found[1], s.found[2], s.target, tried, algorithm_combination_count(6, 3));
+    }
+
+    return 0;
+}
+```
+**Result**
+```
+(A, B) (A, C) (A, D) (B, C) (B, D) (C, D)
+6 combinations, math.comb(4, 2) = 6
+(A, B, C) (A, B, D) (A, C, D) (B, C, D)
+4 combinations of 3
+8 + 5 + 7 = 20 (found after 9 of 20 combinations)
+```
+
+---
+
+## Example 145 : your own loop with `algorithm_next_combination`, and `math.comb`
+
+`algorithm_next_combination` steps an index array through the combinations without a callback; `algorithm_combination_count` is `math.comb`.
+
+```c
+#include "algorithm/algorithm.h"
+#include "fmt/fmt.h"
+
+int main(void) {
+    const char* colors[] = {"red", "green", "blue", "gold"};
+    size_t idx[2] = {0, 1};                     // the first combination
+
+    do {
+        fmt_printf("%s+%s\n", colors[idx[0]], colors[idx[1]]);
+    } while (algorithm_next_combination(idx, 4, 2));
+    fmt_printf("back to the first: %zu %zu\n", idx[0], idx[1]);
+
+    fmt_printf("C(52, 5) = %zu\n", algorithm_combination_count(52, 5));    // poker hands
+    fmt_printf("C(10, 0) = %zu, C(3, 5) = %zu\n", algorithm_combination_count(10, 0), algorithm_combination_count(3, 5));
+
+    return 0;
+}
+```
+**Result**
+```
+red+green
+red+blue
+red+gold
+green+blue
+green+gold
+blue+gold
+back to the first: 0 1
+C(52, 5) = 2598960
+C(10, 0) = 1, C(3, 5) = 0
+```
+
+---
 
 ## License
 

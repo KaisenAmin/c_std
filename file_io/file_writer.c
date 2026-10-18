@@ -6,9 +6,12 @@
 
 #if defined(_WIN32) || defined(_WIN64) 
 #include <windows.h>
-#include <io.h> // _get_osfhandle
+#include <io.h> // _get_osfhandle, _setmode
+#include <fcntl.h> // _O_BINARY
 #else
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -20,6 +23,78 @@
 #include "file_writer.h"
 #include "../encoding/encoding.h"
 #include "../string/std_string.h"
+#include <limits.h>
+#include <stdarg.h>
+
+
+/*
+ * Writes `len` bytes of UTF-8 text through the stream's encoding. On Windows
+ * the WRITE_UNICODE and WRITE_APPEND streams are opened with "ccs=UTF-8": the
+ * CRT then expects wide characters (and stores them as UTF-8 itself), so raw
+ * UTF-8 bytes passed to fwrite came out as CJK mojibake or were dropped. The
+ * text is converted with its explicit length (it need not be NUL-terminated).
+ * Returns true when all of it was written.
+ */
+static bool fw_write_utf8(FileWriter* writer, const char* text, size_t len) {
+    if (len == 0) {
+        return true;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    if (writer->mode == WRITE_UNICODE || writer->mode == WRITE_APPEND) {
+        if (len > (size_t)INT_MAX) {
+            return false;
+        }
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, text, (int)len, NULL, 0);
+        if (wlen <= 0) {
+            return false;
+        }
+        wchar_t* wide = (wchar_t*)malloc((size_t)wlen * sizeof(wchar_t));
+        if (!wide) {
+            return false;
+        }
+        MultiByteToWideChar(CP_UTF8, 0, text, (int)len, wide, wlen);
+        size_t n = fwrite(wide, sizeof(wchar_t), (size_t)wlen, writer->file_writer);
+        free(wide);
+        return n == (size_t)wlen;
+    }
+#else
+    /* POSIX WRITE_UNICODE files are UTF-16LE (see file_writer_write): the
+       line/format writers used to put raw UTF-8 into the same file. */
+    if (writer->mode == WRITE_UNICODE && writer->encoding == WRITE_ENCODING_UTF16) {
+        uint16_t* units = encoding_utf8_to_utf16((const uint8_t*)text, len);
+        if (!units) {
+            return false;
+        }
+        size_t count = 0;
+        while (units[count] != 0) {
+            count++;
+        }
+        size_t n = fwrite(units, sizeof(uint16_t), count, writer->file_writer);
+        free(units);
+        return n == count;
+    }
+#endif
+    return fwrite(text, 1, len, writer->file_writer) == len;
+}
+
+/* vsnprintf into a heap buffer of exactly the needed size (no 2048-byte cap,
+   which silently truncated long lines). Caller frees; *outLen gets the length. */
+static char* fw_vformat(const char* format, va_list args, size_t* outLen) {
+    va_list copy;
+    va_copy(copy, args);
+    int needed = vsnprintf(NULL, 0, format, copy);
+    va_end(copy);
+    if (needed < 0) {
+        return NULL;
+    }
+    char* buf = (char*)malloc((size_t)needed + 1);
+    if (!buf) {
+        return NULL;
+    }
+    vsnprintf(buf, (size_t)needed + 1, format, args);
+    *outLen = (size_t)needed;
+    return buf;
+}
 
 
 /**
@@ -301,13 +376,24 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
     // Handle text and Unicode data with conversion if necessary
     switch (writer->encoding) {
         case WRITE_ENCODING_UTF32: {
+            if (size != 0 && count > SIZE_MAX / size) {
+                return 0;
+            }
             uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size * count);
             if (!utf32Buffer) {
                 FILE_WRITER_LOG("[file_writer_write] Error: Conversion to UTF-32 failed.");
                 return 0;
             }
-            written = fwrite(utf32Buffer, sizeof(uint32_t), wcslen((wchar_t*)utf32Buffer), writer->file_writer);
+            /* Count uint32_t units: wcslen on this buffer read 16-bit units on
+               Windows and stopped inside the first character. */
+            size_t utf32Len = 0;
+            while (utf32Buffer[utf32Len] != 0) {
+                utf32Len++;
+            }
+            size_t units = fwrite(utf32Buffer, sizeof(uint32_t), utf32Len, writer->file_writer);
             free(utf32Buffer);
+            /* Like every other path: the caller's element count on success. */
+            written = (units == utf32Len) ? count : 0;
 
             FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu UTF-32 elements.", written);
             break;
@@ -315,18 +401,16 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
 
         case WRITE_ENCODING_UTF16: {
             #if defined(_WIN32) || defined(_WIN64)
-            // For Windows, if mode requires UTF-16, convert and write
+            // ccs=UTF-8 streams (WRITE_UNICODE / WRITE_APPEND) take wide characters.
+            // Convert exactly size * count bytes (the buffer need not be
+            // NUL-terminated) and report the caller's element count on success.
             if (writer->mode == WRITE_UNICODE || writer->mode == WRITE_APPEND) {
-                wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
-                if (!wBuffer) {
-                    FILE_WRITER_LOG("[file_writer_write] Error: Conversion to wchar_t failed.");
+                if (size != 0 && count > SIZE_MAX / size) {
                     return 0;
                 }
-                written = fwrite(wBuffer, sizeof(wchar_t), wcslen(wBuffer), writer->file_writer);
-                free(wBuffer);
-
-                FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu UTF-16 elements in Windows mode.", written);
-            } 
+                written = fw_write_utf8(writer, (const char*)buffer, size * count) ? count : 0;
+                FILE_WRITER_LOG("[file_writer_write] Wrote %zu elements through the UTF-8 stream.", written);
+            }  
             else {
                 // For non-Unicode modes, write directly
                 written = fwrite(buffer, size, count, writer->file_writer);
@@ -351,8 +435,11 @@ size_t file_writer_write(void *buffer, size_t size, size_t count, FileWriter *wr
                 while (utf16Buffer[utf16Len] != 0) {
                     utf16Len++;
                 }
-                written = fwrite(utf16Buffer, sizeof(uint16_t), utf16Len, writer->file_writer);
+                size_t units = fwrite(utf16Buffer, sizeof(uint16_t), utf16Len, writer->file_writer);
                 free(utf16Buffer);
+                /* The caller's element count on success (it returned UTF-16
+                   units, unlike the Windows and binary paths). */
+                written = (units == utf16Len) ? count : 0;
 
                 FILE_WRITER_LOG("[file_writer_write] Successfully wrote %zu UTF-16 elements.", written);
             } 
@@ -397,57 +484,18 @@ bool file_writer_write_line(char *buffer, size_t size, FileWriter *writer) {
         return false;
     }
 
-    size_t written = 0;
-    size_t elementToWriteSize = size;
-
-    #if defined(_WIN32) || defined(_WIN64)
-    if (writer->mode == WRITE_UNICODE) {
-        wchar_t* wBuffer = encoding_utf8_to_wchar(buffer);
-        if (!wBuffer) {
-            FILE_WRITER_LOG("[file_writer_write_line] Error: Cannot convert buffer to wchar.");
-            return false;
-        }
-
-        elementToWriteSize = wcslen(wBuffer);
-        written = fwrite(wBuffer, sizeof(wchar_t), elementToWriteSize, writer->file_writer);
-        free(wBuffer);
-
-        FILE_WRITER_LOG("[file_writer_write_line] Successfully wrote %zu UTF-16 elements.", written);
-    } 
-    else {
-        written = fwrite(buffer, sizeof(char), elementToWriteSize, writer->file_writer);
-        FILE_WRITER_LOG("[file_writer_write_line] Successfully wrote %zu elements.", written);
-    }
-    #else 
-    written = fwrite(buffer, sizeof(char), size, writer->file_writer);
-    FILE_WRITER_LOG("[file_writer_write_line] Successfully wrote %zu elements.", written);
-    #endif 
-
-    if (written < elementToWriteSize) {
+    /* fw_write_utf8 routes the text through the stream's encoding (WRITE_APPEND
+       is a ccs=UTF-8 stream on Windows too, and used to get raw bytes). */
+    if (!fw_write_utf8(writer, buffer, size)) {
         FILE_WRITER_LOG("[file_writer_write_line] Error: Could not write the entire buffer.");
         return false;
     }
-
-    #if defined(_WIN32) || defined(_WIN64)
-    if (writer->mode == WRITE_UNICODE) {
-        wchar_t newLine[] = L"\n";
-        written = fwrite(newLine, sizeof(wchar_t), 1, writer->file_writer);
-
-        FILE_WRITER_LOG("[file_writer_write_line] Wrote newline (UTF-16).");
-    } else {
-        char newLine[] = "\n";
-        written = fwrite(newLine, sizeof(char), 1, writer->file_writer);
-
-        FILE_WRITER_LOG("[file_writer_write_line] Wrote newline.");
+    if (!fw_write_utf8(writer, "\n", 1)) {
+        FILE_WRITER_LOG("[file_writer_write_line] Error: Could not write the newline.");
+        return false;
     }
-
-    #else 
-    char newLine[] = "\n";
-    written = fwrite(newLine, sizeof(char), 1, writer->file_writer);
-    FILE_WRITER_LOG("[file_writer_write_line] Wrote newline.");
-    #endif 
-
-    return written == 1;
+    FILE_WRITER_LOG("[file_writer_write_line] Successfully wrote %zu bytes and a newline.", size);
+    return true;
 }
 
 
@@ -545,36 +593,64 @@ bool file_writer_copy(FileWriter *src_writer, FileWriter *dest_writer) {
         return false;
     }
 
+    /* Flush first: data still buffered in the source writer is not on disk
+       yet and was silently left out of the copy. */
+    if (fflush(src_writer->file_writer) != 0 || fflush(dest_writer->file_writer) != 0) {
+        FILE_WRITER_LOG("[file_writer_copy] Error: Could not flush the writers.");
+        return false;
+    }
+
+#if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wPath = encoding_utf8_to_wchar(src_writer->file_path);
+    FILE* src_file = wPath ? _wfopen(wPath, L"rb") : NULL;
+    free(wPath);
+#else
     FILE* src_file = fopen(src_writer->file_path, "rb");
+#endif
     if (!src_file) {
         FILE_WRITER_LOG("[file_writer_copy] Error: Cannot reopen source file for reading.");
         return false;
     }
 
-    FILE* dest_file = fopen(dest_writer->file_path, "wb");
-    if (!dest_file) {
-        FILE_WRITER_LOG("[file_writer_copy] Error: Cannot reopen destination file for writing.");
-        fclose(src_file);
-        return false;
-    }
+    /* The bytes go through the destination's OWN open stream, at its current
+       position. Reopening the destination path with "wb" truncated the file
+       behind that stream, which later wrote its pending data over the copy.
+       The bytes are copied verbatim, so a text or "ccs=" stream is switched
+       to binary for the copy (no newline or encoding translation). */
+#if defined(_WIN32) || defined(_WIN64)
+    int destFd = _fileno(dest_writer->file_writer);
+    int oldMode = _setmode(destFd, _O_BINARY);
+#endif
 
+    bool ok = true;
     char buffer[4096];
     size_t bytes_read;
-
-    while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), src_file))) {
-        if (fwrite(buffer, sizeof(char), bytes_read, dest_file) != bytes_read) {
+    while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), src_file)) > 0) {
+        if (fwrite(buffer, sizeof(char), bytes_read, dest_writer->file_writer) != bytes_read) {
             FILE_WRITER_LOG("[file_writer_copy] Error: Failed to write data to the destination file.");
-            fclose(src_file);
-            fclose(dest_file);
-            return false;
+            ok = false;
+            break;
         }
     }
+    if (ok && ferror(src_file)) {
+        FILE_WRITER_LOG("[file_writer_copy] Error: Failed to read the source file.");
+        ok = false;
+    }
+    if (fflush(dest_writer->file_writer) != 0) {
+        ok = false;
+    }
 
+#if defined(_WIN32) || defined(_WIN64)
+    if (oldMode != -1) {
+        _setmode(destFd, oldMode);
+    }
+#endif
     fclose(src_file);
-    fclose(dest_file);
 
-    FILE_WRITER_LOG("[file_writer_copy] File content copied successfully.");
-    return true;
+    if (ok) {
+        FILE_WRITER_LOG("[file_writer_copy] File content copied successfully.");
+    }
+    return ok;
 }
 
 
@@ -766,24 +842,25 @@ size_t file_writer_write_fmt(FileWriter* writer, const char* format, ...) {
 
     va_list args;
     va_start(args, format);
-
-    char buffer[2048]; // Adjust buffer size as necessary
-    vsnprintf(buffer, sizeof(buffer), format, args);
-
-    // Write the formatted string to the file
-    size_t written = fwrite(buffer, 1, strlen(buffer), writer->file_writer);
-    fflush(writer->file_writer);
-
+    size_t len = 0;
+    char* buffer = fw_vformat(format, args, &len);
     va_end(args);
-
-    if (written != strlen(buffer)) {
-        FILE_WRITER_LOG("[file_writer_write_fmt] Error: Failed to write full data to the file.");
-    } 
-    else {
-        FILE_WRITER_LOG("[file_writer_write_fmt] Successfully written %zu characters to the file.", written);
+    if (!buffer) {
+        FILE_WRITER_LOG("[file_writer_write_fmt] Error: Formatting failed.");
+        return 0;
     }
 
-    return written;
+    // Write the formatted string through the stream's encoding
+    bool ok = fw_write_utf8(writer, buffer, len);
+    fflush(writer->file_writer);
+    free(buffer);
+
+    if (!ok) {
+        FILE_WRITER_LOG("[file_writer_write_fmt] Error: Failed to write full data to the file.");
+        return 0;
+    }
+    FILE_WRITER_LOG("[file_writer_write_fmt] Successfully written %zu characters to the file.", len);
+    return len;
 }
 
 
@@ -808,16 +885,26 @@ size_t file_writer_get_size(FileWriter* writer) {
         return 0;
     }
 
-    size_t current_position = file_writer_get_position(writer);
+    /* ftell / fseek work with long (see file_reader_get_size). */
+    long current_position = ftell(writer->file_writer);
+    if (current_position < 0) {
+        FILE_WRITER_LOG("[file_writer_get_size] Error: ftell failed.");
+        return 0;
+    }
     if (fseek(writer->file_writer, 0, SEEK_END) != 0) {
         FILE_WRITER_LOG("[file_writer_get_size] Error: Failed to seek to end of file.");
         return 0;
     }
 
-    size_t size = file_writer_get_position(writer);
+    long end = ftell(writer->file_writer);
     if (fseek(writer->file_writer, current_position, SEEK_SET) != 0) {
         FILE_WRITER_LOG("[file_writer_get_size] Error: Failed to return to original position.");
     }
+    if (end < 0) {
+        FILE_WRITER_LOG("[file_writer_get_size] Error: ftell failed at the end of the file.");
+        return 0;
+    }
+    size_t size = (size_t)end;
 
     FILE_WRITER_LOG("[file_writer_get_size] File size: %zu bytes.", size);
     return size;
@@ -1041,95 +1128,28 @@ bool file_writer_write_batch(FileWriter* writer, const void** buffers, const siz
         return total_written == all_bytes;
     }
 
+    /* Every other mode: each buffer goes through file_writer_write, so a
+       batch writes exactly what the same writes one by one would. The batch
+       used to widen even WRITE_TEXT data to UTF-16 on Windows (mixing
+       encodings in one file and breaking on the text-mode LF -> CRLF), and
+       compared bytes written with input bytes (x2 for Unicode only), so it
+       reported failure for writes that had succeeded. */
     for (size_t i = 0; i < count; ++i) {
         const void* buffer = buffers[i];
         size_t size = sizes[i];
-        all_bytes += size;
-
         if (!buffer || size == 0) {
             FILE_WRITER_LOG("[file_writer_write_batch] Error: Invalid buffer or size at index %zu.", i);
             continue;
         }
-
-        size_t written = 0;
-        void* convertedBuffer = NULL;
-        size_t convertedSize = 0;
-
-        // Convert buffer based on encoding
-        switch (writer->encoding) {
-            case WRITE_ENCODING_UTF32: {
-                uint32_t* utf32Buffer = encoding_utf8_to_utf32((const uint8_t*)buffer, size);
-
-                if (!utf32Buffer) {
-                    FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to UTF-32 failed at index %zu.", i);
-                    continue;
-                }
-                convertedBuffer = utf32Buffer;
-                convertedSize = wcslen((wchar_t*)utf32Buffer) * sizeof(uint32_t);
-
-                break;
-            }
-            default: // Default case is ENCODING_UTF16
-            case WRITE_ENCODING_UTF16: {
-                #if defined(_WIN32) || defined(_WIN64)
-                wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
-
-                if (!wBuffer) {
-                    FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to wchar_t failed at index %zu.", i);
-                    continue;
-                }
-                convertedBuffer = wBuffer;
-                convertedSize = wcslen(wBuffer) * sizeof(wchar_t);
-
-                #else
-                if (writer->mode == WRITE_UNICODE) {
-                    uint16_t* utf16Buffer = encoding_utf8_to_utf16((const uint8_t*)buffer, size);
-                    if (!utf16Buffer) {
-                        FILE_WRITER_LOG("[file_writer_write_batch] Error: Conversion to UTF-16 failed at index %zu.", i);
-                        continue;
-                    }
-                    /* Count uint16_t units; wcslen would over-read (wchar_t is 4 bytes on Linux). */
-                    size_t u16len = 0;
-                    while (utf16Buffer[u16len] != 0) {
-                        u16len++;
-                    }
-                    convertedBuffer = utf16Buffer;
-                    convertedSize = u16len * sizeof(uint16_t);
-                }
-                else {
-                    /* Plain UTF-8 bytes (matches Windows' ccs=UTF-8 stream on disk). Copy
-                       so the shared fwrite+free path below can own and free the buffer. */
-                    convertedBuffer = malloc(size);
-                    if (!convertedBuffer) {
-                        FILE_WRITER_LOG("[file_writer_write_batch] Error: allocation failed at index %zu.", i);
-                        continue;
-                    }
-                    memcpy(convertedBuffer, buffer, size);
-                    convertedSize = size;
-                }
-                #endif
-                break;
-            }
-        }
-
-        // Write the buffer to the file
-        written = fwrite(convertedBuffer, 1, convertedSize, writer->file_writer);
-        free(convertedBuffer);
-
-        if (written != convertedSize) {
+        if (file_writer_write((void*)buffer, 1, size, writer) != size) {
             FILE_WRITER_LOG("[file_writer_write_batch] Error: Partial or failed write at index %zu.", i);
             return false;
         }
-
-        total_written += written;
-    }
-
-    if (writer->mode == WRITE_UNICODE) {
-        all_bytes *= 2; // Because we use wchar_t in Unicode
+        total_written += size;
     }
 
     FILE_WRITER_LOG("[file_writer_write_batch] Successfully wrote %zu bytes.", total_written);
-    return total_written == all_bytes;
+    return true;
 }
 
 
@@ -1161,15 +1181,18 @@ bool file_writer_append_fmt(FileWriter* writer, const char* format, ...) {
 
     va_list args;
     va_start(args, format);
-
-    char buffer[2048]; 
-    vsnprintf(buffer, sizeof(buffer), format, args);
-
-    size_t written = file_writer_write(buffer, strlen(buffer), 1, writer);
-
+    size_t len = 0;
+    char* buffer = fw_vformat(format, args, &len);
     va_end(args);
+    if (!buffer) {
+        FILE_WRITER_LOG("[file_writer_append_fmt] Error: Formatting failed.");
+        return false;
+    }
 
-    FILE_WRITER_LOG("[file_writer_append_fmt] Successfully appended %zu characters to the file.", written);
-    return written > 0;
+    bool ok = fw_write_utf8(writer, buffer, len);
+    free(buffer);
+
+    FILE_WRITER_LOG("[file_writer_append_fmt] Appended %zu characters to the file (ok=%d).", len, ok);
+    return ok;
 }
 

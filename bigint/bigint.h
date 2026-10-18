@@ -14,7 +14,14 @@
 #ifndef BIGINT_H_
 #define BIGINT_H_
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4146 4244)   /* inside GMP's own inline functions */
+#endif
 #include <gmp.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -27,8 +34,8 @@ extern "C" {
 /* #define BIGINT_LOGGING_ENABLE */
 
 #ifdef BIGINT_LOGGING_ENABLE
-    #define BIGINT_LOG(fmt, ...) \
-        do { fprintf(stderr, "[BIGINT LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define BIGINT_LOG(...) \
+        do { fprintf(stderr, "[BIGINT LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define BIGINT_LOG(...) do { } while (0)
 #endif

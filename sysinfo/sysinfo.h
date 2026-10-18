@@ -22,8 +22,8 @@ extern "C" {
 /* #define SYSINFO_LOGGING_ENABLE */
 
 #ifdef SYSINFO_LOGGING_ENABLE
-    #define SYSINFO_LOG(fmt, ...) \
-        do { fprintf(stderr, "[SYSINFO LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define SYSINFO_LOG(...) \
+        do { fprintf(stderr, "[SYSINFO LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define SYSINFO_LOG(...) do { } while (0)
 #endif
@@ -84,20 +84,22 @@ bool               sysinfo_is_64bit_process        (void);
 
 
 /* ------------------------------------------------------------------ */
-/* Identity strings — static storage                                  */
+/* Identity strings — per-thread static storage: do NOT free; the     */
+/* buffer is reused by the next call of the same function on the same  */
+/* thread (copy the text to keep it).                                 */
 /* ------------------------------------------------------------------ */
 
-char*              sysinfo_product_version         (void);
-char*              sysinfo_product_type            (void);
-char*              sysinfo_kernel_version          (void);
-char*              sysinfo_kernel_type             (void);
-char*              sysinfo_boot_unique_id          (void);
-char*              sysinfo_cpu_architecture        (void);
-char*              sysinfo_cpu_model               (void);
-char*              sysinfo_machine_host_name       (void);
-char*              sysinfo_machine_unique_id       (void);
-char*              sysinfo_pretty_product_name     (void);
-char*              sysinfo_build_abi               (void);
+const char*        sysinfo_product_version         (void);
+const char*        sysinfo_product_type            (void);
+const char*        sysinfo_kernel_version          (void);
+const char*        sysinfo_kernel_type             (void);
+const char*        sysinfo_boot_unique_id          (void);
+const char*        sysinfo_cpu_architecture        (void);
+const char*        sysinfo_cpu_model               (void);
+const char*        sysinfo_machine_host_name       (void);
+const char*        sysinfo_machine_unique_id       (void);
+const char*        sysinfo_pretty_product_name     (void);
+const char*        sysinfo_build_abi               (void);
 const char*        sysinfo_endianness              (void);
 
 

@@ -444,7 +444,7 @@ gcc -std=c17 -O2 -Wall -Wextra -pedantic -o main \
 
 ### `Time* time_from_string(const char* str)`
 
-**Purpose**: Parses a textual time representation back into a `Time` object. Accepts `"HH:MM:SS"`, `"HH:MM:SS.mmm"`, `"HH:MM:SS:mmm"`, and the parenthesised form `"(HH:MM:SS:mmm)"`. Leading/trailing whitespace is tolerated; out-of-range components are rejected.
+**Purpose**: Parses a textual time representation back into a `Time` object. Accepts `"HH:MM:SS"`, `"HH:MM:SS.f"` (an ISO 8601 fraction of 1-3 digits, scaled by position: `".5"` is 500 ms, `".05"` 50 ms, `".123"` 123 ms), `"HH:MM:SS:mmm"` (this module's own form: a plain millisecond count), and the parenthesised form `"(HH:MM:SS:mmm)"`. Hours, minutes and seconds are 1-2 digits without a sign. Leading/trailing whitespace is tolerated; out-of-range components are rejected. (A fraction used to be read as a plain integer, so `".5"` became 5 ms, and signed parts such as `"12:-0:+5"` were accepted.)
 
 **Parameters**:
 - `str`: Input string. May be `NULL`.

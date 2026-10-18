@@ -6,13 +6,14 @@
 
 ## Overview
 
-The Crypto Library in C is a comprehensive cryptographic library designed for developers who require secure and efficient hashing and encryption capabilities in their C programs. It provides a straightforward API for a variety of cryptographic operations, including hashing with multiple algorithms and encryption/decryption using DES in various modes. The library is built on top of the OpenSSL library, ensuring robust and widely trusted cryptographic functionality.
+The Crypto Library in C is a comprehensive cryptographic library designed for developers who require secure and efficient hashing and encryption capabilities in their C programs. It provides a straightforward API for a variety of cryptographic operations, including hashing with multiple algorithms and encryption/decryption using DES in various modes. The library is built on top of the OpenSSL library, ensuring robust and widely trusted cryptographic functionality. It also contains fast non-cryptographic hashes and checksums (FNV-1a, MurmurHash3, xxHash, CRC-32/CRC-32C), written in portable C, for hash tables, fingerprints and integrity checks.
 
 This library is particularly useful for developers who are familiar with cryptographic libraries in higher-level languages like C++ or Python and wish to leverage similar capabilities in C.
 
 ## Key Features
 
 - **Multiple Hashing Algorithms:** Supports a wide range of hashing algorithms, including MD4, MD5, SHA-1, SHA-2 (SHA-224, SHA-256, SHA-384, SHA-512), SHA-3, SHAKE variants, BLAKE2, MDC2, and RIPEMD-160.
+- **Fast Non-Cryptographic Hashes:** FNV-1a (32/64), MurmurHash3 (32/128), xxHash (XXH32, XXH64, XXH3) and CRC-32 / CRC-32C, bit-identical to the reference implementations, with SSE2/AVX2/SSE4.2 acceleration where the build allows it. See [Non-Cryptographic Hashes and Checksums](#non-cryptographic-hashes-and-checksums-14).
 - **DES Encryption/Decryption:** Provides DES encryption and decryption in various modes (ECB, CBC, CFB, OFB), allowing for flexibility depending on the security needs.
 - **Cross-Platform Support:** The library can be compiled and used on both Windows and Unix-like systems, with platform-specific random number generation.
 - **OpenSSL Integration:** Utilizes the OpenSSL library for cryptographic operations, ensuring reliability and security.
@@ -115,7 +116,7 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
 
 **Return Value**: A pointer to the encrypted data (ciphertext) or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the ciphertext.
 
-**Usage Case**: Use to encrypt data with DES in one of four modes (ECB, CBC, CFB, OFB). The plaintext is padded to ensure its length is a multiple of the DES block size (8 bytes). Error handling ensures that null inputs for critical parameters (e.g., `plaintext`, `key`, `out_len`) lead to early returns with error messages logged. Memory is allocated for the padded plaintext and ciphertext, which must be freed by the caller.
+**Usage Case**: Use to encrypt data with DES in one of four modes (ECB, CBC, CFB, OFB). In ECB and CBC the plaintext gets PKCS#7 padding (1 to 8 bytes, so the ciphertext is always longer than the plaintext and a multiple of 8); CFB and OFB are stream modes and the ciphertext has the plaintext's length. (Older versions zero-padded every mode, so decryption could not recover the original length or trailing zero bytes; such old ECB/CBC ciphertexts are rejected by the padding check of the new `crypto_des_decrypt`.) Error handling ensures that null inputs for critical parameters (e.g., `plaintext`, `key`, `out_len`) lead to early returns with error messages logged. Memory is allocated for the padded plaintext and ciphertext, which must be freed by the caller.
 
 ---
 
@@ -130,20 +131,20 @@ The library supports DES encryption and decryption in several modes: ECB, CBC, C
   - `mode`: The mode of operation for DES (e.g., `CRYPTO_MODE_ECB`, `CRYPTO_MODE_CBC`).
   - `out_len`: A pointer to a variable that will store the length of the decrypted data.
 
-**Return Value**: A pointer to the decrypted data (plaintext), or `NULL` if an error occurs. The caller is responsible for freeing the memory allocated for the decrypted data.
+**Return Value**: A pointer to the decrypted data (plaintext), or `NULL` if an error occurs — including, in ECB/CBC, malformed PKCS#7 padding (usually a wrong key or IV). `*out_len` is the original plaintext length, and the buffer is NUL-terminated (the terminator is not counted), so text can be printed with `%s`. The caller is responsible for freeing the memory allocated for the decrypted data.
 
 **Usage Case**: Use to decrypt DES ciphertext produced by `crypto_des_encrypt`. The ciphertext is processed in blocks of 8 bytes (the DES block size), and memory is allocated for the plaintext. If an initialization vector (IV) is not provided, the function defaults to using an IV of all zeros. Memory allocated for the plaintext must be freed by the caller. If any input parameters are invalid (e.g., `ciphertext`, `key`, or `out_len` is `NULL`), the function logs an error and returns `NULL`.
 
 ---
 
-### `void crypto_generate_random_iv(uint8_t *iv, size_t length)`
+### `bool crypto_generate_random_iv(uint8_t *iv, size_t length)`
 **Purpose**: Generates a cryptographically secure random Initialization Vector (IV) using platform-specific methods (CryptGenRandom on Windows, /dev/urandom on POSIX).
 
 **Parameters**:
   - `iv`: Pointer to the buffer where the generated IV will be stored.
   - `length`: The length in bytes of the IV to generate.
 
-**Return Value**: None.
+**Return Value**: `true` on success; `false` for invalid arguments or when the system CSPRNG fails (the IV is then zero-filled and must not be used).
 
 **Usage Case**: Use before encrypting with CBC, CFB, or OFB mode to produce a unique, unpredictable IV. The function terminates the program if the platform CSPRNG fails, preventing use of an uninitialized IV.
 
@@ -197,10 +198,10 @@ generating CSPRNG bytes.
 ---
 
 ### `uint8_t* crypto_hash_file(const char* path, HashAlgorithm algorithm, size_t* outLength)`
-**Purpose**: Stream-hash the contents of a file. Reads in 64 KiB chunks and never holds the whole file in memory.
+**Purpose**: Stream-hash the contents of a file. Reads in 64 KiB chunks and never holds the whole file in memory. A read error part-way through returns `NULL` (it used to return the digest of the prefix that was read).
 
 **Parameters**:
-  - `path`: Filesystem path. NULL → returns NULL.
+  - `path`: Filesystem path in UTF-8 (on Windows it is opened with the wide-character API, so non-ASCII names work whatever the system code page). NULL → returns NULL.
   - `algorithm`: Any `HashAlgorithm` value (SHAKE-128/256 not supported by this wrapper).
   - `outLength`: Receives the hash length on success.
 
@@ -238,14 +239,14 @@ generating CSPRNG bytes.
 
 ---
 
-### `void crypto_random_bytes(uint8_t* buffer, size_t length)`
+### `bool crypto_random_bytes(uint8_t* buffer, size_t length)`
 **Purpose**: Fill a buffer with cryptographically-secure random bytes, wrapping OpenSSL's `RAND_bytes`.
 
 **Parameters**:
   - `buffer`: Destination buffer.
   - `length`: Number of bytes to fill.
 
-**Return Value**: None. NULL or zero-length input is a safe no-op. On CSPRNG failure the buffer is zero-filled (the function never aborts the process).
+**Return Value**: `true` on success. `false` for a NULL buffer or when the CSPRNG fails; on failure the buffer is zero-filled and must not be used as a key, salt or nonce (the function never aborts the process).
 
 **Usage Case**: Use to generate keys, IVs, nonces, session tokens, or any value that must be unpredictable.
 
@@ -327,10 +328,10 @@ the day after it's deployed.
 ---
 
 ### `uint8_t* crypto_hmac_file(const char* path, const uint8_t* key, size_t key_len, HashAlgorithm algorithm, size_t* outLength)`
-**Purpose**: Stream-compute HMAC over a file's contents. Reads the file in 64 KiB chunks via `HMAC_Update` — never holds the whole file in memory.
+**Purpose**: Stream-compute HMAC over a file's contents. Reads the file in 64 KiB chunks via `HMAC_Update` — never holds the whole file in memory. A read error part-way through returns `NULL`.
 
 **Parameters**:
-  - `path`: Filesystem path. NULL → NULL.
+  - `path`: Filesystem path in UTF-8 (wide-character API on Windows). NULL → NULL.
   - `key`, `key_len`: Shared HMAC key.
   - `algorithm`: Hash algorithm. SHAKE variants are not supported.
   - `outLength`: Receives the MAC length on success.
@@ -345,9 +346,9 @@ the day after it's deployed.
 
 **Purpose**: AES encryption with a modern, hardware-accelerated cipher. `key_len` selects the variant — 16 → AES-128, 24 → AES-192, 32 → AES-256.
 
-**Parameters**: `plaintext`/`len` input; `key`/`key_len` the key; `iv` a 16-byte IV (ignored for `CRYPTO_MODE_ECB`); `mode` one of ECB/CBC/CFB/OFB/CTR; `out_len` receives the ciphertext length.
+**Parameters**: `plaintext`/`len` input (any length, including 2 GiB and more); `key`/`key_len` the key; `iv` a 16-byte IV — required for CBC/CFB/OFB/CTR (`NULL` is rejected: OpenSSL would use an all-zero IV, giving identical ciphertexts for identical messages and keystream reuse in CTR/OFB), ignored for `CRYPTO_MODE_ECB`; `mode` one of ECB/CBC/CFB/OFB/CTR; `out_len` receives the ciphertext length.
 
-**Return Value**: Heap-allocated ciphertext (caller `free`s), or `NULL` on error (e.g. an invalid key length). CBC/ECB apply PKCS#7 padding so the output is rounded up to the 16-byte block; CFB/OFB/CTR are stream modes whose output length equals the input length.
+**Return Value**: Heap-allocated ciphertext (caller `free`s), or `NULL` on error (e.g. an invalid key length or a missing IV).CBC/ECB apply PKCS#7 padding so the output is rounded up to the 16-byte block; CFB/OFB/CTR are stream modes whose output length equals the input length.
 
 **Usage Case**: General-purpose symmetric encryption when you manage integrity separately (or don't need it). When in doubt, use `crypto_aes_gcm_encrypt` instead.
 
@@ -355,7 +356,7 @@ the day after it's deployed.
 
 ### `uint8_t* crypto_aes_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, CryptoMode mode, size_t* out_len)`
 
-**Purpose**: Inverse of `crypto_aes_encrypt` (same key, IV and mode).
+**Purpose**: Inverse of `crypto_aes_encrypt` (same key, IV and mode). As there, the IV is required for every mode except ECB.
 
 **Return Value**: Heap-allocated plaintext (caller `free`s) and `*out_len`, or `NULL` on error — which for CBC/ECB includes a PKCS#7 **padding failure** (a wrong key or corrupted ciphertext). Note that CBC is *not* authenticated: a successful decrypt does not prove the ciphertext wasn't tampered with — use an AEAD mode for that.
 
@@ -365,7 +366,7 @@ the day after it's deployed.
 
 **Purpose**: **Authenticated encryption (AEAD)** with AES-GCM — the industry standard (used by TLS). Provides confidentiality *and* integrity/authenticity in one pass.
 
-**Parameters**: `key_len` ∈ {16,24,32}; `iv` is the nonce (**12 bytes recommended, and it MUST be unique for every message encrypted under the same key**); `aad`/`aad_len` is *Additional Authenticated Data* (may be `NULL`) — authenticated but not encrypted (e.g. a header/version); on return the `tag_len`-byte (use 16) authentication tag is written to `tag`; `out_len` receives the ciphertext length (== plaintext length).
+**Parameters**: `key_len` ∈ {16,24,32}; `iv` is the nonce (**12 bytes recommended, and it MUST be unique for every message encrypted under the same key**); `aad`/`aad_len` is *Additional Authenticated Data* (may be `NULL`) — authenticated but not encrypted (e.g. a header/version); on return the `tag_len`-byte (12 to 16; use 16) authentication tag is written to `tag`; `out_len` receives the ciphertext length (== plaintext length).
 
 **Return Value**: Heap-allocated ciphertext (caller `free`s), or `NULL` on error.
 
@@ -375,7 +376,7 @@ the day after it's deployed.
 
 ### `uint8_t* crypto_aes_gcm_decrypt(const uint8_t* ciphertext, size_t len, const uint8_t* key, size_t key_len, const uint8_t* iv, size_t iv_len, const uint8_t* aad, size_t aad_len, const uint8_t* tag, size_t tag_len, size_t* out_len)`
 
-**Purpose**: Authenticated decryption. The tag is verified **before** the plaintext is accepted.
+**Purpose**: Authenticated decryption. The tag is verified **before** the plaintext is accepted. `tag_len` must be 12 to 16: shorter values are refused, because OpenSSL would compare only that many bytes (a 1-byte prefix of the tag used to be accepted).
 
 **Return Value**: Heap-allocated plaintext, or **`NULL` if the tag does not verify** — i.e. the ciphertext, IV, AAD or key is wrong or was tampered with. Always check for `NULL`; never use the output of a failed decrypt.
 
@@ -395,7 +396,7 @@ the day after it's deployed.
 
 **Purpose**: High-level, hard-to-misuse password-based encryption. Derives a key from `password` with **PBKDF2-HMAC-SHA256** (a fresh random 16-byte salt per call) and encrypts with **AES-256-GCM** (a fresh random nonce per call), returning **one self-describing blob**: `magic | iterations | salt | nonce | tag | ciphertext`.
 
-**Parameters**: `plaintext`/`len`; `password` (NUL-terminated); `iterations` (PBKDF2 cost; `<= 0` uses a sane default of 200,000); `out_len` receives the blob length.
+**Parameters**: `plaintext`/`len`; `password` (NUL-terminated); `iterations` (PBKDF2 cost; `<= 0` uses a sane default of 200,000; more than 10,000,000 is refused with `NULL`, because `crypto_password_decrypt` refuses such blobs to bound the work a hostile blob can demand); `out_len` receives the blob length.
 
 **Return Value**: Heap-allocated blob (caller `free`s), or `NULL` on error.
 
@@ -419,6 +420,131 @@ the day after it's deployed.
 
 ---
 
+## Non-Cryptographic Hashes and Checksums (14)
+
+Fast hashes for **hash tables, sharding, caches, Bloom filters, deduplication and integrity checks against accidental corruption**: FNV-1a, MurmurHash3, xxHash (XXH32, XXH64, XXH3) and CRC-32 / CRC-32C. They are written in plain C inside `crypto.c` (no OpenSSL calls), allocate nothing, keep no global state and are thread-safe.
+
+> **Not for security.** Anyone can deliberately construct collisions for all of these functions. For passwords, signatures, MACs or tamper detection use `crypto_hash_data` (SHA-256, BLAKE2, ...), `crypto_hmac` or the AEAD ciphers above. A random seed (from `crypto_random_bytes`) makes accidental worst cases unlikely, but none of these resists a deliberate hash-flooding attack the way a keyed hash such as SipHash does; MurmurHash3 even has seed-independent collisions.
+
+**Common contract**
+
+- `data` may point anywhere (no alignment needed). `data == NULL` is treated as empty input, whatever `length` says.
+- The values are the same on every CPU, OS and compiler (input is read as little-endian words), and equal those of the reference implementations: zlib `crc32`, the `xxhsum` tool / Python `xxhash` (libxxhash 0.8), SMHasher's MurmurHash3 / Python `mmh3`, and the published FNV test vectors. Verified on GCC, Clang and MSVC, with and without SIMD, under AddressSanitizer and UBSan.
+- The `_update` functions continue a running value, so data can be fed in pieces (file chunks, network packets); the result equals hashing it all at once. Start CRCs from `0` and FNV from `CRYPTO_FNV1A_32_INIT` / `CRYPTO_FNV1A_64_INIT`.
+- Hardware acceleration is chosen at compile time: CRC-32C uses the SSE4.2 `crc32` instruction when the build targets it (`-msse4.2`, `-march=native`, or MSVC `/arch:AVX` and above); XXH3's long-input loop uses SSE2 on every x86-64 and AVX2 when the build targets it (`-mavx2`, `/arch:AVX2`). Define `CRYPTO_HASH_PORTABLE` to force the plain-C paths. Results never depend on these options.
+- FNV-1a, MurmurHash3 and xxHash are implemented as `static inline` functions at the end of `crypto.h` (internal `cryp_` prefix, not part of the API) that call nothing in `crypto.c` or OpenSSL. That is how `hashmap` uses XXH3 for `hashmap_hash_string` without depending on the crypto module. CRC-32 / CRC-32C live in `crypto.c`.
+
+**Which one?**
+
+| Need | Use |
+| --- | --- |
+| Hash-table keys, general fingerprints | `crypto_xxh3_64` (fastest on short keys; on large buffers on par with XXH64, faster with AVX2) |
+| Smallest possible code, short keys | `crypto_fnv1a_32` / `crypto_fnv1a_64` |
+| Fingerprints of large data / files | `crypto_xxh3_64` or `crypto_xxh64` |
+| Several independent hashes (Bloom filters, consistent hashing) | `crypto_murmur3_32` / `crypto_murmur3_128` with different seeds, or `crypto_xxh3_64` with different seeds |
+| Compatibility with existing data | `crypto_crc32` (zlib, gzip, PNG, ZIP, Ethernet), `crypto_crc32c` (iSCSI, ext4, Btrfs, SCTP, LevelDB/RocksDB), `crypto_murmur3_*` (`mmh3`, Guava), `crypto_xxh*` (`xxhsum`) |
+| Checksum of a file or packet | `crypto_crc32` / `crypto_crc32c` for standard formats, otherwise `crypto_xxh64` |
+
+**Speed** (Intel Core i5-10400F, one core, MinGW GCC 14 `-O2`; throughput on 64 MiB, time per call for short keys):
+
+| Function | 64 MiB | 16-byte key | 100-byte key |
+| --- | ---: | ---: | ---: |
+| `crypto_fnv1a_32` / `crypto_fnv1a_64` | 0.98 GB/s | 8.6 ns | 82 ns |
+| `crypto_murmur3_32` | 2.9 GB/s | 5.8 ns | 26 ns |
+| `crypto_murmur3_128` | 6.6 GB/s | 6.8 ns | 18.5 ns |
+| `crypto_xxh32` | 6.5 GB/s | 6.0 ns | 16.5 ns |
+| `crypto_xxh64` | 11.3 GB/s | 5.8 ns | 14.6 ns |
+| `crypto_xxh3_64` (SSE2 / with `-mavx2`) | 11.0 / 14.6 GB/s | 3.8 ns | 10.6 ns |
+| `crypto_crc32` | 2.5 GB/s | 6.2 ns | 36 ns |
+| `crypto_crc32c` (tables / with `-msse4.2`) | 2.5 / 8.9 GB/s | 6.2 / 2.8 ns | 36 / 6.5 ns |
+| for comparison: zlib `crc32` (MSYS2 build) | 1.9 GB/s | 18.8 ns | 129 ns |
+
+---
+
+### `uint32_t crypto_fnv1a_32(const void* data, size_t length)` / `uint32_t crypto_fnv1a_32_update(uint32_t hash, const void* data, size_t length)`
+
+**Purpose**: FNV-1a, 32-bit: one XOR and one multiply per byte. `crypto_fnv1a_32(d, n)` is `crypto_fnv1a_32_update(CRYPTO_FNV1A_32_INIT, d, n)`.
+
+**Parameters**: `data`/`length` the bytes; `hash` the running value (`CRYPTO_FNV1A_32_INIT` to start).
+
+**Return Value**: The hash (`0x811C9DC5` for empty input).
+
+**Usage Case**: Short identifiers and small strings where code size matters more than speed; hashing a key that is made of several parts without concatenating them.
+
+---
+
+### `uint64_t crypto_fnv1a_64(const void* data, size_t length)` / `uint64_t crypto_fnv1a_64_update(uint64_t hash, const void* data, size_t length)`
+
+**Purpose**: FNV-1a, 64-bit. Same as the 32-bit pair with a 64-bit state; start from `CRYPTO_FNV1A_64_INIT`.
+
+**Return Value**: The hash (`0xCBF29CE484222325` for empty input).
+
+---
+
+### `uint32_t crypto_murmur3_32(const void* data, size_t length, uint32_t seed)`
+
+**Purpose**: MurmurHash3_x86_32 (Austin Appleby). Equals Python's `mmh3.hash(data, seed, signed=False)`.
+
+**Parameters**: `seed` selects one of 2^32 different hash functions.
+
+**Return Value**: The 32-bit hash.
+
+**Usage Case**: Bloom filters and other structures that need several independent hashes of one key; compatibility with systems that store MurmurHash3 values.
+
+---
+
+### `void crypto_murmur3_128(const void* data, size_t length, uint32_t seed, uint64_t out[2])`
+
+**Purpose**: MurmurHash3_x64_128. Writes the low 64 bits to `out[0]` and the high 64 bits to `out[1]` (Python's `mmh3.hash64` returns the same two halves as signed numbers; `mmh3.hash128` is `out[1] << 64 | out[0]`). Does nothing when `out` is `NULL`.
+
+**Usage Case**: A 128-bit fingerprint where collisions must be negligible across billions of items (deduplication keys, cache keys), or two 64-bit hashes from one call.
+
+---
+
+### `uint32_t crypto_xxh32(const void* data, size_t length, uint32_t seed)`
+
+**Purpose**: XXH32. Equals `xxhsum -H0` and Python's `xxhash.xxh32_intdigest(data, seed)`.
+
+**Usage Case**: A 32-bit hash for 32-bit targets, or compatibility with formats that use XXH32 (LZ4 frame checksums).
+
+---
+
+### `uint64_t crypto_xxh64(const void* data, size_t length, uint64_t seed)`
+
+**Purpose**: XXH64. Equals `xxhsum -H1` and Python's `xxhash.xxh64_intdigest(data, seed)`.
+
+**Usage Case**: Fast 64-bit checksums of large data (Zstandard's content checksum is the low 32 bits of XXH64).
+
+---
+
+### `uint64_t crypto_xxh3_64(const void* data, size_t length, uint64_t seed)`
+
+**Purpose**: XXH3, 64-bit: the fastest function in this group on short keys, and on large buffers as fast as XXH64 with SSE2 and about 30% faster with AVX2. Equals `xxhsum -H3` and Python's `xxhash.xxh3_64_intdigest(data, seed)` (seed `0` is the default secret).
+
+**Usage Case**: The default choice for hash tables (`hashmap_hash_string` uses it; see Example 36) and fingerprints.
+
+---
+
+### `uint32_t crypto_crc32(const void* data, size_t length)` / `uint32_t crypto_crc32_update(uint32_t crc, const void* data, size_t length)`
+
+**Purpose**: CRC-32 (IEEE 802.3, reflected polynomial `0xEDB88320`): the checksum of zlib, gzip, PNG, ZIP and Ethernet. `crypto_crc32_update(crc, d, n)` equals zlib's `crc32(crc, d, n)`; start from `0`.
+
+**Return Value**: The CRC (`0xCBF43926` for `"123456789"`).
+
+**Usage Case**: Reading or writing those formats; detecting accidental corruption of stored or transmitted data. Implemented with slicing-by-8 tables (on the test machine about 30% faster than the MSYS2 zlib build on large buffers and 3x faster on short ones).
+
+---
+
+### `uint32_t crypto_crc32c(const void* data, size_t length)` / `uint32_t crypto_crc32c_update(uint32_t crc, const void* data, size_t length)`
+
+**Purpose**: CRC-32C (Castagnoli, reflected polynomial `0x82F63B78`), used by iSCSI, ext4, Btrfs, SCTP and LevelDB/RocksDB. Start from `0`. Uses the CPU's `crc32` instruction when the build targets SSE4.2.
+
+**Return Value**: The CRC (`0xE3069283` for `"123456789"`).
+
+**Usage Case**: Those formats, or a new checksum where SSE4.2 is available (it is then the fastest checksum here on short input).
+
+---
+
 ## Example Programs
 
 The library includes several example programs demonstrating how to use the various cryptographic functions:
@@ -437,6 +563,8 @@ The library includes several example programs demonstrating how to use the vario
 12. **DES Encryption in OFB Mode Example:** Encrypts and decrypts a string using DES in OFB mode.
 13. **DES Encryption in ECB Mode Example:** Encrypts and decrypts a string using DES in ECB mode.
 14. **Random IV Generation and CBC Encryption Example:** Demonstrates random IV generation and DES encryption/decryption in CBC mode.
+
+Examples 15–31 cover the helpers, HMAC, PBKDF2, AES and the AEAD ciphers; Examples 32–36 cover the non-cryptographic hashes (FNV-1a, MurmurHash3, xxHash, CRC-32/CRC-32C, and XXH3 in `hashmap`, with a seeded variant for untrusted keys).
 
 ---
 
@@ -809,7 +937,7 @@ int main() {
 ```
 **Result**
 ```
-Encrypted text: bbc09bb6b902b921ba2a316cabfa1019
+Encrypted text: bbc09bb6b902b921ba2a31
 Decrypted text: Hello World
 ```
 
@@ -847,7 +975,7 @@ int main() {
 ```
 **Result**
 ```
-ECB Encrypted: 92c71e526502038398375d833b4af95d
+ECB Encrypted: 92c71e5265020383f0e1c12cdd18f594
 ECB Decrypted: Hello World
 ```
 
@@ -1537,6 +1665,215 @@ int main(void) {
 **Result**
 ```
 AES-256-CBC: 32 -> 23 bytes, plaintext="Block-cipher round trip"
+```
+
+---
+
+## Example 32 : `crypto_fnv1a_32` / `crypto_fnv1a_64` — tiny hashes for short keys
+
+```c
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* key = "foobar";
+    size_t n = strlen(key);
+
+    printf("fnv1a_32(\"%s\") = %08" PRIx32 "\n", key, crypto_fnv1a_32(key, n));
+    printf("fnv1a_64(\"%s\") = %016" PRIx64 "\n", key, crypto_fnv1a_64(key, n));
+
+    /* Hash a key made of several parts without concatenating them. */
+    uint64_t h = CRYPTO_FNV1A_64_INIT;
+    h = crypto_fnv1a_64_update(h, "foo", 3);
+    h = crypto_fnv1a_64_update(h, "bar", 3);
+    printf("in two parts       = %016" PRIx64 "\n", h);
+
+    /* Bucket of the key in a table of 16 buckets. */
+    printf("bucket (of 16)     = %" PRIu32 "\n", crypto_fnv1a_32(key, n) & 15u);
+    return 0;
+}
+```
+**Result**
+```
+fnv1a_32("foobar") = bf9cf968
+fnv1a_64("foobar") = 85944171f73967e8
+in two parts       = 85944171f73967e8
+bucket (of 16)     = 8
+```
+
+---
+
+## Example 33 : `crypto_murmur3_32` / `crypto_murmur3_128` — seeded hashes, Bloom filter bits
+
+```c
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    const char* msg = "The quick brown fox jumps over the lazy dog";
+    size_t n = strlen(msg);
+
+    printf("murmur3_32 (seed 0x9747b28c) = %08" PRIx32 "\n", crypto_murmur3_32(msg, n, 0x9747B28Cu));
+    printf("murmur3_32 (seed 0)          = %08" PRIx32 "\n", crypto_murmur3_32(msg, n, 0));
+
+    uint64_t h[2];
+    crypto_murmur3_128(msg, n, 0, h);
+    printf("murmur3_128 (seed 0)         = %016" PRIx64 " %016" PRIx64 "\n", h[0], h[1]);
+
+    /* A Bloom filter needs k independent hashes: one algorithm, k seeds. */
+    for (uint32_t seed = 1; seed <= 3; ++seed) {
+        printf("bit for seed %" PRIu32 " (of 1024)    = %" PRIu32 "\n", seed, crypto_murmur3_32(msg, n, seed) % 1024u);
+    }
+    return 0;
+}
+```
+**Result**
+```
+murmur3_32 (seed 0x9747b28c) = 2fa826cd
+murmur3_32 (seed 0)          = 2e4ff723
+murmur3_128 (seed 0)         = e34bbc7bbc071b6c 7a433ca9c49a9347
+bit for seed 1 (of 1024)    = 551
+bit for seed 2 (of 1024)    = 651
+bit for seed 3 (of 1024)    = 372
+```
+
+---
+
+## Example 34 : `crypto_xxh32` / `crypto_xxh64` / `crypto_xxh3_64` — xxHash
+
+The values are the same as `xxhsum -H0` / `-H1` / `-H3` and Python's `xxhash` module print.
+
+```c
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    printf("xxh32  (\"abc\", seed 0)  = %08" PRIx32 "\n", crypto_xxh32("abc", 3, 0));
+    printf("xxh64  (\"abc\", seed 0)  = %016" PRIx64 "\n", crypto_xxh64("abc", 3, 0));
+    printf("xxh3_64(\"abc\", seed 0)  = %016" PRIx64 "\n", crypto_xxh3_64("abc", 3, 0));
+    printf("xxh3_64(\"abc\", seed 42) = %016" PRIx64 "\n", crypto_xxh3_64("abc", 3, 42));
+
+    /* Fingerprint 1 MiB of data; a single flipped bit changes the whole hash. */
+    size_t n = (size_t)1 << 20;
+    unsigned char* buf = malloc(n);
+    if (buf == NULL) {
+        return 1;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        buf[i] = (unsigned char)(i * 31u);
+    }
+    printf("xxh3_64(1 MiB)          = %016" PRIx64 "\n", crypto_xxh3_64(buf, n, 0));
+    buf[n / 2] ^= 1;
+    printf("after flipping one bit  = %016" PRIx64 "\n", crypto_xxh3_64(buf, n, 0));
+
+    free(buf);
+    return 0;
+}
+```
+**Result**
+```
+xxh32  ("abc", seed 0)  = 32d153ff
+xxh64  ("abc", seed 0)  = 44bc2cf5ad770999
+xxh3_64("abc", seed 0)  = 78af5f94892f3950
+xxh3_64("abc", seed 42) = d8438def21bbdcc3
+xxh3_64(1 MiB)          = 8aa721cade95685b
+after flipping one bit  = 68b03668de36d716
+```
+
+---
+
+## Example 35 : `crypto_crc32` / `crypto_crc32c` — checksums, fed in pieces
+
+```c
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
+#include "crypto/crypto.h"
+
+int main(void) {
+    /* "123456789" is the standard check input for CRCs. */
+    printf("crc32 (\"123456789\") = %08" PRIx32 "   (zlib, gzip, PNG, ZIP)\n", crypto_crc32("123456789", 9));
+    printf("crc32c(\"123456789\") = %08" PRIx32 "   (iSCSI, ext4, Btrfs)\n", crypto_crc32c("123456789", 9));
+
+    /* Data that arrives in pieces (file chunks, packets): start from 0 and
+       keep updating; the result equals the one-shot checksum. */
+    const char* parts[] = { "1234", "56", "789" };
+    uint32_t crc = 0, crcc = 0;
+    for (size_t i = 0; i < sizeof parts / sizeof parts[0]; ++i) {
+        crc  = crypto_crc32_update(crc, parts[i], strlen(parts[i]));
+        crcc = crypto_crc32c_update(crcc, parts[i], strlen(parts[i]));
+    }
+    printf("in 3 pieces          = %08" PRIx32 " / %08" PRIx32 "\n", crc, crcc);
+
+    /* Detect corruption: the receiver recomputes the CRC and compares. */
+    char packet[] = "transfer 100 coins to bob";
+    uint32_t sent = crypto_crc32(packet, strlen(packet));
+    packet[9] = '9';                                   /* a byte changed in transit */
+    printf("corrupted packet     : %s\n", crypto_crc32(packet, strlen(packet)) == sent ? "not detected" : "detected");
+    return 0;
+}
+```
+**Result**
+```
+crc32 ("123456789") = cbf43926   (zlib, gzip, PNG, ZIP)
+crc32c("123456789") = e3069283   (iSCSI, ext4, Btrfs)
+in 3 pieces          = cbf43926 / e3069283
+corrupted packet     : detected
+```
+
+---
+
+## Example 36 : `hashmap` and XXH3 — the default string hash, and a seeded one for untrusted keys
+
+`hashmap_hash_string` already is XXH3 with seed 0 (the static inline code in `crypto.h`, so hashmap needs no OpenSSL). When keys come from untrusted input (HTTP parameters, user names, file names), a secret per-process seed makes precomputed lists of colliding keys useless. It raises the bar rather than closing the door, because XXH3 is not a cryptographic keyed hash such as SipHash. `hashmap_create` takes any `size_t (*)(const void*)`, so the seeded hash plugs straight in.
+
+```c
+#include <stdio.h>
+#include <string.h>
+#include "crypto/crypto.h"
+#include "hashmap/hashmap.h"
+
+static uint64_t hash_seed;   /* secret, random per process */
+
+/* HashFunc for NUL-terminated string keys, keyed with hash_seed. */
+static size_t seeded_string_hash(const void* key) {
+    const char* s = (const char*)key;
+    return (size_t)crypto_xxh3_64(s, strlen(s), hash_seed);
+}
+
+int main(void) {
+    const char* key = "alice";
+    printf("hashmap_hash_string == crypto_xxh3_64(seed 0): %s\n",
+           hashmap_hash_string(key) == (size_t)crypto_xxh3_64(key, strlen(key), 0) ? "yes" : "no");
+
+    if (!crypto_random_bytes((uint8_t*)&hash_seed, sizeof hash_seed)) {
+        return 1;
+    }
+
+    /* The keys and values are string literals here, so nothing is freed. */
+    HashMap* roles = hashmap_create(seeded_string_hash, hashmap_compare_string, NULL, NULL);
+    hashmap_insert(roles, (void*)"alice", (void*)"admin");
+    hashmap_insert(roles, (void*)"bob",   (void*)"user");
+    hashmap_insert(roles, (void*)"carol", (void*)"guest");
+
+    printf("size : %zu\n", hashmap_size(roles));
+    printf("bob  : %s\n", (const char*)hashmap_at(roles, (void*)"bob"));
+
+    hashmap_deallocate(roles);
+    return 0;
+}
+```
+**Result**
+```
+hashmap_hash_string == crypto_xxh3_64(seed 0): yes
+size : 3
+bob  : user
 ```
 
 ---

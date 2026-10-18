@@ -32,8 +32,8 @@
 /* #define TCP_LOGGING_ENABLE */
 
 #ifdef TCP_LOGGING_ENABLE
-    #define TCP_LOG(fmt, ...) \
-        do { fprintf(stderr, "[TCP LOG] " fmt "\n", ##__VA_ARGS__); } while (0)
+    #define TCP_LOG(...) \
+        do { fprintf(stderr, "[TCP LOG] "); fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } while (0)
 #else
     #define TCP_LOG(...) do { } while (0)
 #endif
@@ -43,6 +43,8 @@
 /* Limits                                                             */
 /* ------------------------------------------------------------------ */
 
+/* Kept for source compatibility only: the socket -> SSL table now grows on
+   demand, so there is no limit on concurrent TLS connections. */
 #define MAX_SSL_CONNECTIONS 256
 
 
@@ -149,7 +151,9 @@ TcpStatus    tcp_recv                       (TcpSocket socket, void* buf, size_t
 TcpStatus    tcp_send_all                   (TcpSocket socket, const void* buf, size_t len);
 TcpStatus    tcp_recv_all                   (TcpSocket socket, void* buf, size_t len);
 TcpStatus    tcp_async_send                 (TcpSocket socket, const void* buf, size_t len);
+TcpStatus    tcp_async_send_ex              (TcpSocket socket, const void* buf, size_t len, size_t* sent);
 TcpStatus    tcp_async_recv                 (TcpSocket socket, void* buf, size_t len);
+TcpStatus    tcp_async_recv_ex              (TcpSocket socket, void* buf, size_t len, size_t* received);
 
 
 /* ------------------------------------------------------------------ */
@@ -207,7 +211,10 @@ TcpStatus    tcp_ssl_cleanup                (void);
 TcpStatus    tcp_enable_ssl                 (TcpSocket socket);
 TcpStatus    tcp_disable_ssl                (TcpSocket socket);
 TcpStatus    tcp_ssl_connect                (TcpSocket socket, const char* host);
+TcpStatus    tcp_ssl_connect_timeout        (TcpSocket socket, const char* host, long timeout_ms);
+TcpStatus    tcp_ssl_connect_verify         (TcpSocket socket, const char* host, long timeout_ms, bool verify);
 TcpStatus    tcp_ssl_accept                 (TcpSocket socket);
+TcpStatus    tcp_ssl_accept_timeout         (TcpSocket socket, long timeout_ms);
 TcpStatus    tcp_ssl_send                   (TcpSocket socket, const void* buf, size_t len, size_t* sent);
 TcpStatus    tcp_ssl_recv                   (TcpSocket socket, void* buf, size_t len, size_t* received);
 TcpStatus    tcp_ssl_close                  (TcpSocket socket);

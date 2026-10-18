@@ -1,40 +1,38 @@
-# Variant Library CMakeLists.txt
+# Standalone build of the c_std "variant" module.
+#
+# The top-level CMakeLists.txt does not use this file: it builds every module
+# into the single `cstd` library (link `cstd` to get all of them). Use this
+# file to build only this module, together with the c_std modules it uses
+# (none), e.g. from your own project:
+#
+#     add_subdirectory(path/to/c_std/variant c_std_variant)
+#     target_link_libraries(your_app PRIVATE c_std_variant)
+#
+# or on its own: cmake -S path/to/c_std/variant -B build-variant && cmake --build build-variant
+# Sources are #include "<module>/<header>.h" relative to the c_std root.
+# (Generated from the modules' #include graph.)
+cmake_minimum_required(VERSION 3.15)
+project(c_std_variant LANGUAGES C)
 
-# Create the variant library
-add_library(variant SHARED
-    variant.c
-)
+get_filename_component(_c_std_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(_c_std_variant_sources "")
+foreach(_m variant)
+    file(GLOB _s CONFIGURE_DEPENDS "${_c_std_root}/${_m}/*.c")
+    list(APPEND _c_std_variant_sources ${_s})
+endforeach()
 
-# Set target properties
-set_target_properties(variant PROPERTIES
-    OUTPUT_NAME "variant"
-    VERSION 1.0.0
-    SOVERSION 1
-)
+add_library(c_std_variant STATIC ${_c_std_variant_sources})
+target_include_directories(c_std_variant PUBLIC "${_c_std_root}")
+set_target_properties(c_std_variant PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED ON C_EXTENSIONS ON)
+if(MSVC)
+    target_compile_options(c_std_variant PRIVATE /W3 /utf-8)
+    target_compile_definitions(c_std_variant PRIVATE _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
+else()
+    target_compile_options(c_std_variant PRIVATE -Wall -Wextra)
+endif()
 
-# Set compiler flags
-target_compile_options(variant PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -pedantic -std=c17>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4 /std:c17>
-)
-
-# Include directories
-target_include_directories(variant PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# Link libraries
-target_link_libraries(variant PRIVATE
-    $<$<PLATFORM_ID:Linux>:-lm>
-)
-
-# Install rules
-install(TARGETS variant
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-
-install(FILES variant.h
-    DESTINATION include
-) 
+if(WIN32)
+    target_link_libraries(c_std_variant PUBLIC ws2_32 iphlpapi ole32 oleaut32 wbemuuid rpcrt4 bthprops winmm bcrypt crypt32 setupapi shlwapi)
+else()
+    target_link_libraries(c_std_variant PUBLIC ${CMAKE_DL_LIBS} m)
+endif()

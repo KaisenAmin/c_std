@@ -16,6 +16,18 @@ The Turtle Graphics library in C provides functions for drawing shapes and lines
 - **User-Defined Drawing Functions:** Support for user-defined drawing functions to be executed within the main drawing loop.
 - **Documentation:** Fully documented with Doxygen format for easy integration and usage.
 
+**Combining with other headers.** `turtle.h` exposes raylib types (`Color`,
+`Vector2`) and therefore includes `raylib.h`, which has two known conflicts:
+
+- with `<windows.h>` (`Rectangle`, `CloseWindow`, `ShowCursor`, `DrawText`,
+  `LoadImage`), and so with c_std headers that include it: `concurrent.h`,
+  `thread_pool.h`, `encoding.h`, `serial_port.h`, `unittest.h`, `tcp.h`,
+  `udp.h`, `http.h`. Define `WIN32_LEAN_AND_MEAN`, `NOGDI` and `NOUSER` before
+  the first include (or with `-D...`) and the combination compiles, as long as
+  that file does not need the Win32 GDI/USER API itself.
+- with `matrix/matrix.h` (both declare `struct Matrix`): keep turtle code and
+  matrix code in separate `.c` files.
+
 ## Installation and Compilation
 
 To use this library, you need to have the `raylib` library installed. Follow the instructions below for your operating system:
@@ -121,7 +133,7 @@ Call this function when you are done with the turtle to free up memory and avoid
 ### `void turtle_close_window(void)`
 
 **Purpose**:  
-Closes the window used for rendering turtle graphics. This function should be called when the drawing session is over and the window is no longer needed.
+Closes the window used for rendering turtle graphics. This function should be called when the drawing session is over and the window is no longer needed. `turtle_done` already closes the window when its loop ends, so calling this afterwards (as the examples do) is a harmless no-op; it used to close the raylib window a second time.
 
 **Parameters**:  
 None.
@@ -171,7 +183,7 @@ Use this function to adjust the speed of rendering in your turtle window. A high
 ### `void turtle_set_speed(Turtle *state, float speed)`
 
 **Purpose**:  
-This function adjusts the movement speed of the turtle. It also recalculates the step size that determines how far the turtle moves per frame based on the given speed.
+This function adjusts the movement speed of the turtle. It also recalculates the step size that determines how far the turtle moves per frame based on the given speed (5 pixels per unit of speed). A speed of `0` or less means "no animation": every move is done in one frame (with `0` the turtle used to loop forever).
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure whose speed is being set.
@@ -238,7 +250,7 @@ Use this function to determine if the turtle is actively drawing on the screen, 
 ### `void turtle_forward(Turtle *state, float distance)`
 
 **Purpose**:  
-This function moves the turtle forward by a specified distance. If the pen is down, it draws a line along the turtle's path. The movement is broken into smaller steps for smooth transitions, and if the turtle is in fill mode, points are added to the fill buffer.
+This function moves the turtle forward by a specified distance. If the pen is down, it draws a line along the turtle's path. The movement is animated in smaller steps, but each move is recorded as ONE line (it used to be one line per pixel, so every frame redrew thousands of segments and `turtle_undo` removed a single pixel); in fill mode the end point of the move becomes a vertex of the fill.Heading 0 points right and angles grow counterclockwise on screen, so `turtle_left(t, 90)` followed by a move goes up (the y step used to have the wrong sign, which made left turns clockwise and mirrored every drawing). A negative distance moves backwards; an infinite or NaN distance is ignored.
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure representing the turtle's state.
@@ -277,7 +289,7 @@ This function adjusts the turtle's heading by a specified angle in degrees.
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure.
-- `angle`: The angle (in degrees) to turn the turtle.
+- `angle`: The angle to turn the turtle, in the current angle unit (degrees by default, radians after `turtle_radians`). Positive turns counterclockwise.
 
 **Return Value**:  
 None.
@@ -294,7 +306,7 @@ This function turns the turtle to the right (clockwise) by decreasing the turtle
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure.
-- `angle`: The angle (in degrees) to turn the turtle to the right.
+- `angle`: The angle to turn the turtle to the right, in the current angle unit (degrees by default, radians after `turtle_radians`).
 
 **Return Value**:  
 None.
@@ -311,7 +323,7 @@ This function turns the turtle to the left (counterclockwise) by increasing the 
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure.
-- `angle`: The angle (in degrees) to turn the turtle to the left.
+- `angle`: The angle to turn the turtle to the left, in the current angle unit (degrees by default, radians after `turtle_radians`).
 
 **Return Value**:  
 None.
@@ -448,7 +460,7 @@ Use this function when you want the turtle to begin collecting points for creati
 ### `void turtle_end_fill(Turtle *state)`
 
 **Purpose**:  
-This function ends the fill operation and draws the filled shape using the points collected during the fill process. The shape is drawn using the turtle's current fill color.
+This function ends the fill operation: the outline collected since `turtle_begin_fill` is triangulated (so concave shapes fill correctly) and kept, in the fill color current at this moment, together with every earlier fill. All fills are drawn under the lines in every later frame, including during animation. (Previously only the last fill survived, it was redrawn in whatever the fill color was at drawing time, concave outlines were fanned from the first vertex, and fills disappeared while the turtle moved.)
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure.
@@ -532,7 +544,7 @@ This function runs the main drawing loop for the turtle graphics, rendering the 
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure representing the turtle's current state.
-- `user_draw`: A function pointer to a user-defined drawing function that takes a `Turtle` pointer as a parameter.
+- `user_draw`: A function pointer to a user-defined drawing function that takes a `Turtle` pointer as a parameter, or `NULL` when there is nothing extra to draw. The loop ends when the window is asked to close; the window is then closed.
 
 **Return Value**:  
 None.
@@ -614,7 +626,7 @@ Use this function to change the turtle's direction to a specific angle.
 ### `void turtle_home(Turtle *state)`
 
 **Purpose**:  
-This function moves the turtle back to the home position `(0, 0)` and resets its heading to 0 degrees. If the pen is down, a line is drawn from the turtle's current position to the home position.
+This function moves the turtle back to its home position - where it started, `(400, 300)`, the centre of the default 800x600 window - and resets its heading to 0 degrees. If the pen is down, a line is drawn from the turtle's current position to the home position. (It used to go to the screen corner `(0, 0)`.)
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure representing the turtle's current state.
@@ -630,12 +642,12 @@ Use this function to bring the turtle back to its starting position at the cente
 ### `void turtle_circle(Turtle *state, float radius, float extent, int steps)`
 
 **Purpose**:  
-This function draws a circle or an arc with the specified radius, extent (arc angle), and number of steps (resolution). If the number of steps is not provided, it is automatically calculated based on the radius.
+This function draws a circle or an arc with the specified radius, extent (arc angle), and number of steps (resolution). If the number of steps is not provided, it is automatically calculated based on the radius. As in Python's turtle, the centre lies `radius` units to the turtle's left, so a positive radius goes counterclockwise; a negative radius puts the centre on the right (clockwise), and a negative extent draws the arc backwards (it used to draw nothing and only turn the turtle).
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure representing the turtle's current state.
 - `radius`: The radius of the circle.
-- `extent`: The angular extent of the circle or arc in degrees (default is 360 for a full circle).
+- `extent`: The angular extent of the circle or arc, in the current angle unit (360 degrees, or `2 * PI` in radians mode, for a full circle).
 - `steps`: The number of steps to divide the circle into. If set to 0, it is automatically calculated.
 
 **Return Value**:  
@@ -755,7 +767,7 @@ Use this function to configure the turtle to work with degrees for its angular m
 ### `void turtle_radians(Turtle *state)`
 
 **Purpose**:  
-This function switches the turtle's angular movement to use radians, with `2 * PI` radians representing a full circle.
+This function switches the turtle's angular movement to use radians, with `2 * PI` radians representing a full circle. Every angle the API takes or returns (`turtle_turn`, `turtle_left`, `turtle_right`, `turtle_set_heading`, the `turtle_circle` extent, `turtle_heading`, `turtle_towards`) then uses radians; before, only `turtle_heading` was converted, so `turtle_left(t, PI / 2)` turned 1.57 degrees.
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure.
@@ -963,13 +975,13 @@ Use this function in animation loops where you want to erase the previous frame'
 ### `bool turtle_undo(Turtle *state)`
 
 **Purpose**:  
-Removes the most recently drawn line segment from the internal draw buffer — the C equivalent of Logo's classic `undo` command.
+Undoes the most recent drawn move — the C equivalent of Logo's classic `undo` command: the move's line is removed and the turtle goes back to where that move started. Every pen-down move (`turtle_forward`, `turtle_set_position`, a circle's chords, ...) is one line; pen-up moves and turns are not recorded, so they are not undone.
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure. May be `NULL`.
 
 **Return Value**:  
-`true` if a line was successfully removed, `false` if the buffer was already empty or `state` is `NULL`.
+`true` if a move was undone, `false` if nothing was drawn or `state` is `NULL`.
 
 **Usage Case**:  
 Use this function to implement an undo feature in interactive drawing applications, or to step backward through a recorded drawing sequence.
@@ -979,7 +991,7 @@ Use this function to implement an undo feature in interactive drawing applicatio
 ### `float turtle_towards(const Turtle *state, float x, float y)`
 
 **Purpose**:  
-Calculates and returns the bearing in degrees (0..360) from the turtle's current position to the point `(x, y)`. Zero degrees points east, 90 degrees points south (screen coordinates), and so on.
+Calculates and returns the bearing (0..360 degrees, or 0..2*PI in radians mode) from the turtle's current position to the point `(x, y)`. It uses the same orientation as the heading: zero points east (right) and angles grow counterclockwise on screen, so 90 degrees points up (north) even though screen y grows downwards. `turtle_set_heading(t, turtle_towards(t, x, y))` therefore faces the point. (It used to return 90 for a point below the turtle, which did not match the heading.)
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure representing the turtle's current position. May be `NULL` (returns `0.0f`).
@@ -987,7 +999,7 @@ Calculates and returns the bearing in degrees (0..360) from the turtle's current
 - `y`: The Y-coordinate of the target point.
 
 **Return Value**:  
-The bearing angle in degrees as a `float`.
+The bearing angle, in the current angle unit, as a `float`.
 
 **Usage Case**:  
 Use this function to compute the angle the turtle must face before walking toward a target point, typically followed by `turtle_set_heading` or `turtle_face_towards`.
@@ -1015,7 +1027,7 @@ Use this function as a convenience shorthand for the common pattern of computing
 ### `int turtle_get_line_count(const Turtle *state)`
 
 **Purpose**:  
-Returns the number of line segments currently stored in the draw buffer.
+Returns the number of line segments currently stored in the draw buffer (one per pen-down move).
 
 **Parameters**:  
 - `state`: A pointer to the `Turtle` structure. May be `NULL` (returns `0`).
@@ -2326,9 +2338,9 @@ int main(void) {
 
 ```
 east  -> 0.0
-south -> 90.0
+south -> 270.0
 west  -> 180.0
-north -> 270.0
+north -> 90.0
 ```
 
 ---
@@ -2357,8 +2369,8 @@ int main(void) {
 **Output**
 
 ```
-heading = 45.0
-heading = 270.0
+heading = 315.0
+heading = 90.0
 ```
 
 ---

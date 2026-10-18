@@ -27,6 +27,16 @@ gcc -std=c17 -O2 -Wall -Wextra -o main \
 
 ## Key Concepts
 
+### `CompareFunc` and `algorithm.h`
+
+The comparator type is `SortCompareFunc`
+(`int (*)(const void*, const void*)`, the `qsort` signature, so the comparators
+you already use with `qsort`, `list`, `set` or `algorithm` work here too).
+`CompareFunc` is an alias for it; `algorithm.h` defines the same alias, and
+both headers can be included together. (The parameters used to be
+`const ElementType`, which means `void* const`, so GCC 14 and Clang rejected
+standard `const void*` comparators.)
+
 ### Element model
 
 Every sort routine operates on an `ElementType[]` array, where each slot holds one **user pointer** (e.g. `int*`, `char*`, `double*`). The library never copies or owns the pointed-to data.
@@ -237,12 +247,12 @@ A practical choice between insertion sort and quicksort for medium-sized dataset
 ### `void sort_counting(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap)`
 
 **Purpose**:  
-Counting sort adapted for pointer-based element arrays. O(n + k) where k is the value range. Requires integer-valued elements.
+Counting sort adapted for pointer-based element arrays. O(n + k) where k is the value range. Requires `int`-valued elements; `compare` and `swap` are not used (they only keep the signature uniform).
 
 **Parameters**:  
 - `array`: Array of integer-pointer elements.
 - `size`: Number of elements.
-- `compare`: Comparator (used to determine ordering).
+- `compare`: Unused (any comparator, e.g. `sort_compare_int`).
 - `swap`: Swap callback.
 
 **Return Value**:  
@@ -313,7 +323,7 @@ The standard library-grade algorithm: O(n log n) worst-case, O(n log n) average,
 ### `void sort_quicksort_optimized(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap)`
 
 **Purpose**:  
-Quicksort enhanced with median-of-three pivot selection and an insertion-sort fallback for sub-arrays ≤ 10 elements.
+Quicksort enhanced with median-of-three pivot selection: it runs the same introsort as `sort_quicksort` (Hoare partitioning, recursion into the smaller side, heapsort fallback past 2·log₂(n) depth) with insertion sort for ranges of up to 16 elements.
 
 **Parameters**:  
 - `array`: Array of element pointers.
@@ -370,7 +380,7 @@ Best general-purpose algorithm in the library; closest to C++ `std::sort`.
 ### `void sort_parallel_mergesort(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap)`
 
 **Purpose**:  
-Parallel merge sort using POSIX threads. Splits the array into halves sorted concurrently, then merges.
+Placeholder for a parallel merge sort: currently **single-threaded** — it delegates to `sort_mergesort_optimized` (no threads are created). Kept so code written against it keeps compiling when a threaded version is added.
 
 **Parameters**:  
 - `array`: Array of element pointers.
@@ -389,7 +399,7 @@ Throughput-maximising sort on multi-core machines for large datasets.
 ### `void sort_parallel_quicksort(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap)`
 
 **Purpose**:  
-Parallel quicksort that spawns threads to sort sub-partitions concurrently.
+Placeholder for a parallel quicksort: currently **single-threaded** — it delegates to the sequential quicksort (no threads are spawned).
 
 **Parameters**:  
 - `array`: Array of element pointers.
@@ -427,7 +437,7 @@ When you need the speed of quicksort combined with the stability guarantee of me
 ### `void sort_stable_heapsort(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap)`
 
 **Purpose**:  
-A stable variant of heap sort that preserves the relative order of equal elements.
+A stable O(n log n) sort that preserves the relative order of equal elements. Heapsort cannot be both stable and in-place, so this is implemented as a merge sort (O(n) extra memory) under a heap-sort name.
 
 **Parameters**:  
 - `array`: Array of element pointers.
@@ -439,14 +449,14 @@ A stable variant of heap sort that preserves the relative order of equal element
 None.
 
 **Usage Case**:  
-Guaranteed O(n log n) in-place sort with stability — a rarer combination.
+Guaranteed O(n log n) with stability (it uses O(n) extra memory; it is not in-place).
 
 ---
 
 ### `void sort_adaptive(ElementType* array, size_t size, CompareFunc compare, SwapFunc swap)`
 
 **Purpose**:  
-Automatically selects the most appropriate algorithm based on array size: insertion sort for ≤ 16 elements, merge sort for ≤ 64, quicksort optimised otherwise.
+Automatically selects the most appropriate algorithm based on array size: insertion sort for ≤ 10 elements, shell sort for ≤ 100, introsort (`sort_introspective_optimized`) otherwise. Not stable for more than 10 elements.
 
 **Parameters**:  
 - `array`: Array of element pointers.
@@ -646,8 +656,8 @@ Quickselect: rearranges `array` so that `array[n]` contains the element that wou
 **Return Value**:  
 The element at position `n`, or `NULL` on bad arguments.
 
-**Usage Case**:  
-Finding the kth smallest element in O(n) average time without fully sorting the array.
+**Usage Case**:
+Finding the kth smallest element in O(n) average time without fully sorting the array. The partition is three-way (less / equal / greater than the pivot), so arrays with many equal keys stay linear (they used to take quadratic time).
 
 ---
 
@@ -965,7 +975,7 @@ One-shot performance comparison without writing any benchmarking boilerplate.
 
 ---
 
-### `int sort_compare_int(const ElementType a, const ElementType b)`
+### `int sort_compare_int(const void* a, const void* b)`
 
 **Purpose**:  
 Dereferences both pointers as `int*` and returns a three-way comparison result.
@@ -981,7 +991,7 @@ Pass as the `compare` argument when sorting `int*` elements.
 
 ---
 
-### `int sort_compare_string(const ElementType a, const ElementType b)`
+### `int sort_compare_string(const void* a, const void* b)`
 
 **Purpose**:  
 Compares two C strings using `strcmp`.
@@ -997,7 +1007,7 @@ Pass as `compare` when sorting `char*` elements.
 
 ---
 
-### `int sort_compare_float(const ElementType a, const ElementType b)`
+### `int sort_compare_float(const void* a, const void* b)`
 
 **Purpose**:  
 Dereferences both pointers as `float*` and compares the values.
@@ -1013,7 +1023,7 @@ Pass as `compare` when sorting `float*` elements.
 
 ---
 
-### `int sort_compare_double(const ElementType a, const ElementType b)`
+### `int sort_compare_double(const void* a, const void* b)`
 
 **Purpose**:  
 Dereferences both pointers as `double*` and compares the values.
@@ -1029,7 +1039,7 @@ Pass as `compare` when sorting `double*` elements.
 
 ---
 
-### `int sort_compare_pointer(const ElementType a, const ElementType b)`
+### `int sort_compare_pointer(const void* a, const void* b)`
 
 **Purpose**:  
 Compares two element pointers by their raw address (identity ordering).
@@ -1062,7 +1072,7 @@ The standard swap to pass to any sort function in this library.
 
 ---
 
-### `void sort_print_int(const ElementType element)`
+### `void sort_print_int(const void* element)`
 
 **Purpose**:  
 Prints the `int` value pointed to by `element` using `printf("%d", ...)`.
@@ -1078,7 +1088,7 @@ Pass as `print` to `sort_print_array` when the array holds `int*` elements.
 
 ---
 
-### `void sort_print_string(const ElementType element)`
+### `void sort_print_string(const void* element)`
 
 **Purpose**:  
 Prints the `char*` string pointed to by `element` wrapped in double quotes.
@@ -1094,7 +1104,7 @@ Pass as `print` to `sort_print_array` when the array holds `char*` elements.
 
 ---
 
-### `void sort_print_float(const ElementType element)`
+### `void sort_print_float(const void* element)`
 
 **Purpose**:  
 Prints the `float` value pointed to by `element` with 2 decimal places.
@@ -1110,7 +1120,7 @@ Pass as `print` to `sort_print_array` when the array holds `float*` elements.
 
 ---
 
-### `void sort_print_double(const ElementType element)`
+### `void sort_print_double(const void* element)`
 
 **Purpose**:  
 Prints the `double` value pointed to by `element` with 2 decimal places.
@@ -1126,7 +1136,7 @@ Pass as `print` to `sort_print_array` when the array holds `double*` elements.
 
 ---
 
-### `void sort_print_pointer(const ElementType element)`
+### `void sort_print_pointer(const void* element)`
 
 **Purpose**:  
 Prints the raw pointer address of `element` using `printf("%p", ...)`.
@@ -1312,9 +1322,9 @@ Sorted: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 Sort Statistics:
   Comparisons: 20
   Swaps: 0
-  Recursive calls: 0
+  Recursive calls: 8
   Execution time: 0.000 ms
-  Stable: No
+  Stable: Yes
   In-place: No
 ```
 

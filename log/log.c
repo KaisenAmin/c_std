@@ -4,6 +4,12 @@
  * @class Log
 */
 
+/* POSIX / GNU declarations (strdup, clock_gettime, localtime_r, ...) must be
+   requested before the first #include, so that strict -std=c17 builds
+   (CMAKE_C_EXTENSIONS=OFF) see them as well. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
@@ -29,6 +35,143 @@ static void logp_unlock(Log* config) {
     if (config && config->_lock) {
         mutex_unlock((Mutex*)config->_lock);
     }
+}
+
+/* Moves src over dst, replacing dst atomically when it exists. Rotation used
+ * to remove() the previous archive first and, if the rename then failed,
+ * reopen the live log with "w" -- losing both files. */
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#include "../encoding/encoding.h"
+static bool logp_replace_file(const char* src, const char* dst) {
+    wchar_t* wsrc = encoding_utf8_to_wchar(src);
+    wchar_t* wdst = encoding_utf8_to_wchar(dst);
+    bool ok = wsrc && wdst && MoveFileExW(wsrc, wdst, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED) != 0;
+    free(wsrc);
+    free(wdst);
+    return ok;
+}
+static bool logp_path_exists(const char* path) {
+    wchar_t* wpath = encoding_utf8_to_wchar(path);
+    bool exists = wpath && GetFileAttributesW(wpath) != INVALID_FILE_ATTRIBUTES;
+    free(wpath);
+    return exists;
+}
+#else
+#include <stdio.h>
+#include <sys/stat.h>
+static bool logp_replace_file(const char* src, const char* dst) {
+    return rename(src, dst) == 0;   /* POSIX rename replaces dst atomically */
+}
+static bool logp_path_exists(const char* path) {
+    struct stat st;
+    return stat(path, &st) == 0;
+}
+#endif
+
+/* The format is handed to snprintf with exactly three string arguments
+ * (timestamp, level, message), so only "%s" and "%%" may appear, and at most
+ * three "%s". Anything else (e.g. "%d" or "%n") would read the wrong
+ * argument types: undefined behavior driven by the format string. */
+static bool logp_format_is_safe(const char* format) {
+    int strings = 0;
+    for (const char* p = format; *p; ++p) {
+        if (*p != '%') {
+            continue;
+        }
+        ++p;
+        if (*p == '%') {
+            continue;
+        }
+        if (*p != 's' || ++strings > 3) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Path of the live log file ("log.txt" when none was recorded). */
+static void logp_live_path(const Log* config, char* out, size_t cap) {
+    const char* src = config->current_file_path[0] ? config->current_file_path : "log.txt";
+    size_t n = strlen(src);
+    if (n >= cap) {
+        n = cap - 1;
+    }
+    memcpy(out, src, n);
+    out[n] = '\0';
+}
+
+/* Archives the live log file under strftime(archivePathFormat, now) and starts
+ * an empty one at the same path. An archive name that already exists gets a
+ * ".1", ".2", ... suffix, so rotations within the same second keep every
+ * archive. On failure the live file is reopened for appending (nothing is
+ * lost). Caller holds the lock and has checked config->file_writer. */
+static bool logp_archive_current(Log* config, const char* archivePathFormat) {
+    char source_path[LOG_MAX_PATH];
+    logp_live_path(config, source_path, sizeof(source_path));
+
+    char archivePath[LOG_MAX_PATH];
+    time_t now = time(NULL);
+    struct tm tm_buf;                          /* reentrant localtime */
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(&tm_buf, &now);
+#else
+    localtime_r(&now, &tm_buf);
+#endif
+    if (strftime(archivePath, sizeof(archivePath), archivePathFormat, &tm_buf) == 0) {
+        return false;   /* empty or too long a name */
+    }
+    if (logp_path_exists(archivePath)) {
+        char numbered[LOG_MAX_PATH + 16];
+        bool found = false;
+        for (unsigned n = 1; n < 10000 && !found; ++n) {
+            snprintf(numbered, sizeof(numbered), "%s.%u", archivePath, n);
+            found = strlen(numbered) < sizeof(archivePath) && !logp_path_exists(numbered);
+        }
+        if (!found) {
+            return false;
+        }
+        strcpy(archivePath, numbered);
+    }
+
+    file_writer_close(config->file_writer);
+    config->file_writer = NULL;
+
+    /* Same safe sequence as log_rotate: atomic replace, append on failure. */
+    if (!logp_replace_file(source_path, archivePath)) {
+        config->file_writer = file_writer_append(source_path, WRITE_TEXT);
+        return false;
+    }
+    config->file_writer = file_writer_open(source_path, WRITE_TEXT);
+    return config->file_writer != NULL;
+}
+
+/* Switches the file sink to `path`, all or nothing: the new file is opened
+ * before the old one is closed, so a failed open leaves the current file, its
+ * path and the output setting untouched. (The old file used to be closed
+ * first: a NULL path or a failed open silently stopped file logging, and the
+ * stale current_file_path later made log_set_output reopen the old name.)
+ * Caller holds the lock and has validated `path`. */
+static bool logp_switch_file(Log* config, const char* path) {
+    if (config->file_writer) {
+        fflush(config->file_writer->file_writer);   /* before a reopen of the same path truncates it */
+    }
+    FileWriter* fresh = file_writer_open(path, WRITE_TEXT);
+    if (!fresh) {
+        return false;
+    }
+    if (config->file_writer) {
+        file_writer_close(config->file_writer);
+    }
+    config->file_writer = fresh;
+    strncpy(config->current_file_path, path, sizeof(config->current_file_path) - 1);
+    config->current_file_path[sizeof(config->current_file_path) - 1] = '\0';
+    return true;
+}
+
+/* A usable log file path: not NULL, not empty, fits current_file_path. */
+static bool logp_path_ok(const char* path) {
+    return path && path[0] != '\0' && strlen(path) < LOG_MAX_PATH;
 }
 
 /* Thread-safe local timestamp ("YYYY-MM-DD HH:MM:SS"). Uses the reentrant
@@ -96,7 +239,9 @@ Log* log_init() {
 
     config->level = LOG_LEVEL_DEBUG;
     config->output = LOG_OUTPUT_BOTH;
-    config->file_writer = file_writer_open("log.txt", WRITE_TEXT);
+    /* Append, like Python's FileHandler: opening with "w" silently emptied an
+       existing ./log.txt (from an earlier run or an unrelated program). */
+    config->file_writer = file_writer_append("log.txt", WRITE_TEXT);
 
     // Track the active log file path so rotation/archive can act on the
     // correct file even after log_set_file_path / log_redirect_output.
@@ -139,6 +284,8 @@ Log* log_init() {
     // Production-default behaviour, opt-in:
     config->errors_to_stderr = false;  // all console output to stdout (legacy default)
     config->auto_flush       = false;  // rely on stdio buffering by default
+    config->max_file_size    = 0;      // no automatic rotation until log_set_max_file_size
+    config->archive_path_format[0] = '\0';
 
     // Internal recursive mutex for thread safety. If allocation/init fails the
     // logger still works (single-threaded); locking helpers become no-ops.
@@ -178,8 +325,8 @@ bool log_set_output(Log* config, LogOutput output) {
     logp_lock(config);
     config->output = output;
     if (output == LOG_OUTPUT_FILE && !config->file_writer) {
-        // Attempt to open log file if not already open
-        config->file_writer = file_writer_open("log.txt", WRITE_TEXT);
+        // Attempt to open log file if not already open (appending, see log_init)
+        config->file_writer = file_writer_append(config->current_file_path[0] ? config->current_file_path : "log.txt", WRITE_TEXT);
         if (!config->file_writer) {
             config->output = LOG_OUTPUT_CONSOLE;
             logp_unlock(config);
@@ -213,7 +360,9 @@ bool log_enable_timestamp(Log* config, bool enable) {
         LOG_LOG("[log_enable_timestamp] Error: Log configuration object is null.");
         return false;
     }
+    logp_lock(config);
     config->enable_timestamp = enable;
+    logp_unlock(config);
 
     LOG_LOG("[log_enable_timestamp] Info: Timestamps are now %s.", enable ? "enabled" : "disabled");
     return true;
@@ -239,19 +388,12 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         LOG_LOG("[log_message] Error: Log configuration is null.");
         return;
     }
-    if (config->suspended) {
-        LOG_LOG("[log_message] Info: Logging is currently suspended.");
+    if ((int)level < 0 || (int)level > LOG_LEVEL_FATAL || !message) {
+        /* level indexes the per-level arrays below */
+        LOG_LOG("[log_message] Error: Invalid log level %d or NULL message.", (int)level);
         return;
     }
-    if (level < config->level) {
-        LOG_LOG("[log_message] Info: Current log level (%d) is higher than the message log level (%d); message not logged.", config->level, level);
-        return;
-    }
-    if (!config->level_visibility[level]) {
-        LOG_LOG("[log_message] Info: Log level is currently not visible.");
-        return; // Skip logging if this level is currently not visible
-    }
-    
+
     // Compose the caller's message up-front (local buffer; the va_args must be
     // consumed on this thread). All shared-state work below is mutex-guarded.
     char formatted_message[1024];
@@ -262,27 +404,32 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
 
     logp_lock(config);
 
-    // Rate limiting: only active when both interval and count are non-zero.
-    // Without this guard, an interval of 0 would reset the counters on every
-    // call (since currentTime - last_reset_time >= 0 is always true).
-    if (config->rate_limit_interval > 0 && config->rate_limit_count > 0) {
-        time_t currentTime = time(NULL);
-        if ((unsigned int)(currentTime - config->last_reset_time) >= config->rate_limit_interval) {
-            // Reset rate limit counters
-            memset(config->log_counts, 0, sizeof(config->log_counts));
-            config->last_reset_time = currentTime;
-        }
-        if (config->log_counts[level] >= config->rate_limit_count) {
-            LOG_LOG("[log_message] Info: Rate limit exceeded for this level, message skipped.");
-            logp_unlock(config);
-            return;
-        }
-        config->log_counts[level]++;
+    /* The gates read settings that other threads may change concurrently, so
+       they are evaluated under the lock as well. */
+    if (config->suspended) {
+        LOG_LOG("[log_message] Info: Logging is currently suspended.");
+        logp_unlock(config);
+        return;
+    }
+    if (level < config->level) {
+        LOG_LOG("[log_message] Info: Current log level (%d) is higher than the message log level (%d); message not logged.", config->level, level);
+        logp_unlock(config);
+        return;
+    }
+    if (!config->level_visibility[level]) {
+        LOG_LOG("[log_message] Info: Log level is currently not visible.");
+        logp_unlock(config);
+        return; // Skip logging if this level is currently not visible
     }
 
     // Keyword filtering
     if (config->is_keyword_filter_enabled && strstr(formatted_message, config->keyword_filter) == NULL) {
         LOG_LOG("[log_message] Info: Message does not contain the keyword filter; not logged.");
+        logp_unlock(config);
+        return;
+    }
+    if (config->custom_filter && !config->custom_filter(level, formatted_message, config->custom_filter_user_data)) {
+        LOG_LOG("[log_message] Info: Logging skipped due to custom filter.");
         logp_unlock(config);
         return;
     }
@@ -302,10 +449,25 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         logp_unlock(config);
         return;
     }
-    if (config->custom_filter && !config->custom_filter(level, formatted_message, config->custom_filter_user_data)) {
-        LOG_LOG("[log_message] Info: Logging skipped due to custom filter.");
-        logp_unlock(config);
-        return;
+
+    // Rate limiting: only active when both interval and count are non-zero.
+    // Without this guard, an interval of 0 would reset the counters on every
+    // call (since currentTime - last_reset_time >= 0 is always true). It runs
+    // after the keyword and custom filters: messages they drop used to use up
+    // the quota, so the matching ones were then suppressed.
+    if (config->rate_limit_interval > 0 && config->rate_limit_count > 0) {
+        time_t currentTime = time(NULL);
+        if ((unsigned int)(currentTime - config->last_reset_time) >= config->rate_limit_interval) {
+            // Reset rate limit counters
+            memset(config->log_counts, 0, sizeof(config->log_counts));
+            config->last_reset_time = currentTime;
+        }
+        if (config->log_counts[level] >= config->rate_limit_count) {
+            LOG_LOG("[log_message] Info: Rate limit exceeded for this level, message skipped.");
+            logp_unlock(config);
+            return;
+        }
+        config->log_counts[level]++;
     }
 
     // The message passed every gate/filter and is about to be emitted: count it.
@@ -322,6 +484,14 @@ void log_message(Log* config, LogLevel level, const char* message, ...) {
         fprintf(config->file_writer->file_writer, "%s\n", log_buffer);
         if (config->auto_flush) {
             fflush(config->file_writer->file_writer);
+        }
+        /* Automatic rotation set up by log_set_max_file_size. */
+        if (config->max_file_size > 0) {
+            long size = ftell(config->file_writer->file_writer);
+            if (size >= 0 && (size_t)size >= config->max_file_size &&
+                !logp_archive_current(config, config->archive_path_format)) {
+                LOG_LOG("[log_message] Error: automatic rotation failed.");
+            }
         }
     }
 
@@ -386,9 +556,11 @@ bool log_set_log_level(Log* config, LogLevel newLevel) {
         LOG_LOG("[log_set_log_level] Error: Invalid log level specified.");
         return false;
     }
+    logp_lock(config);
     config->level = newLevel;
+    logp_unlock(config);
 
-    LOG_LOG("[log_set_log_level] Info: Log Level changed to %s.", log_level_to_string(config->level));
+    LOG_LOG("[log_set_log_level] Info: Log Level changed to %s.", log_level_to_string(newLevel));
     return true;
 }
 
@@ -418,14 +590,18 @@ bool log_enable_keyword_filter(Log* config, const char* keyword, bool enable) {
             return false;
         }
         
+        logp_lock(config);
         strncpy(config->keyword_filter, keyword, sizeof(config->keyword_filter) - 1);
         config->keyword_filter[sizeof(config->keyword_filter) - 1] = '\0'; // Ensure null termination
         config->is_keyword_filter_enabled = true;
+        logp_unlock(config);
 
         LOG_LOG("[log_enable_keyword_filter] Info: Keyword filtering enabled for '%s'.", keyword);
     } 
     else {
+        logp_lock(config);
         config->is_keyword_filter_enabled = false;
+        logp_unlock(config);
         LOG_LOG("[log_enable_keyword_filter] Info: Keyword filtering disabled.");
     }
 
@@ -451,16 +627,20 @@ bool log_update_keyword_filter(Log* config, const char* newKeyword) {
         return false;
     }
     if (newKeyword && strlen(newKeyword) > 0 && strlen(newKeyword) < MAX_KEYWORD_LENGTH) {
+        logp_lock(config);
         strncpy(config->keyword_filter, newKeyword, MAX_KEYWORD_LENGTH);
         config->keyword_filter[MAX_KEYWORD_LENGTH - 1] = '\0';
         config->is_keyword_filter_enabled = true;
+        logp_unlock(config);
         LOG_LOG("[log_update_keyword_filter] Info: Keyword filter updated to '%s'.", newKeyword);
-    } 
+    }
     else if (newKeyword && strlen(newKeyword) == 0) {
+        logp_lock(config);
         config->is_keyword_filter_enabled = false;
         config->keyword_filter[0] = '\0';
+        logp_unlock(config);
         LOG_LOG("[log_update_keyword_filter] Info: Keyword filter disabled.");
-    } 
+    }  
     else {
         LOG_LOG("[log_update_keyword_filter] Error: Invalid keyword length.");
         return false;
@@ -473,11 +653,13 @@ bool log_update_keyword_filter(Log* config, const char* newKeyword) {
 /**
  * @brief Sets the file path for the log output.
  *
- * This function changes the log file to the specified path. It closes the current log file 
- * (if open) and attempts to open a new log file at the specified path.
+ * This function changes the log file to the specified path. The new file is opened first and
+ * the current one is closed only when that worked: on any failure the current file, its path
+ * and the output setting are left as they were.
  *
  * @param config Pointer to the `Log` configuration object.
- * @param newFilePath The path to the new log file. If `newFilePath` is `NULL` or an empty string, the operation fails.
+ * @param newFilePath The path to the new log file. If `newFilePath` is `NULL`, empty or not
+ * shorter than `LOG_MAX_PATH`, the operation fails.
  *
  * @return `true` if the log file path was successfully updated, `false` if the `config` is `NULL`, `newFilePath` is invalid, or if the new file could not be opened.
  */
@@ -486,28 +668,17 @@ bool log_set_file_path(Log* config, const char* newFilePath) {
         LOG_LOG("[log_set_file_path] Error: Log configuration object is null.");
         return false;
     }
-    logp_lock(config);
-    if (config->file_writer) {
-        file_writer_close(config->file_writer);
-        config->file_writer = NULL;
-    }
-
-    if (!newFilePath || strlen(newFilePath) == 0) {
-        logp_unlock(config);
+    if (!logp_path_ok(newFilePath)) {
         LOG_LOG("[log_set_file_path] Error: Invalid new file path.");
         return false;
     }
 
-    config->file_writer = file_writer_open(newFilePath, WRITE_TEXT);
-    if (!config->file_writer) {
-        config->output = LOG_OUTPUT_CONSOLE; // Optionally, revert to console logging if file opening fails
+    logp_lock(config);
+    if (!logp_switch_file(config, newFilePath)) {
         logp_unlock(config);
         LOG_LOG("[log_set_file_path] Error: Failed to open new log file.");
         return false;
     }
-
-    strncpy(config->current_file_path, newFilePath, sizeof(config->current_file_path) - 1);
-    config->current_file_path[sizeof(config->current_file_path) - 1] = '\0';
     logp_unlock(config);
 
     LOG_LOG("[log_set_file_path] Info: Log file path updated to '%s'.", newFilePath);
@@ -556,20 +727,20 @@ void log_flush(Log* config) {
  * or if there was an error during the rotation process.
  */
 bool log_rotate(Log* config, const char* newLogPath, size_t maxSize) {
-    if (!config || !config->file_writer || !newLogPath) {
-        LOG_LOG("[log_rotate] Error: Log configuration object is null or file_writer is not initialized.");
+    if (!config || !newLogPath) {
+        LOG_LOG("[log_rotate] Error: Log configuration object or path is null.");
         return false;
     }
 
     logp_lock(config);
-    long fileSize = file_writer_get_size(config->file_writer);
-    if (fileSize < 0) {
+    if (!config->file_writer) {
         logp_unlock(config);
-        LOG_LOG("[log_rotate] Error: Failed to get log file size.");
+        LOG_LOG("[log_rotate] Error: file_writer is not initialized.");
         return false;
     }
+    size_t fileSize = file_writer_get_size(config->file_writer);   /* 0 on error */
 
-    if ((size_t)fileSize >= maxSize) {
+    if (fileSize >= maxSize) {
         char source_path[LOG_MAX_PATH];
         strncpy(source_path, config->current_file_path, sizeof(source_path) - 1);
         source_path[sizeof(source_path) - 1] = '\0';
@@ -582,10 +753,11 @@ bool log_rotate(Log* config, const char* newLogPath, size_t maxSize) {
         file_writer_close(config->file_writer);
         config->file_writer = NULL;
 
-        remove(newLogPath);
-        if (rename(source_path, newLogPath) != 0) {
+        /* Replace the archive atomically (no remove() first) and, if that
+           fails, reopen the live log for APPENDING: "w" truncated it. */
+        if (!logp_replace_file(source_path, newLogPath)) {
             LOG_LOG("[log_rotate] Error: Failed to rename log file.");
-            config->file_writer = file_writer_open(source_path, WRITE_TEXT);
+            config->file_writer = file_writer_append(source_path, WRITE_TEXT);
             logp_unlock(config);
             return false;
         }
@@ -616,7 +788,9 @@ void log_suspend(Log* config) {
         LOG_LOG("[log_suspend] Error: Log configuration object is null.");
         return;
     }
+    logp_lock(config);
     config->suspended = true;
+    logp_unlock(config);
     LOG_LOG("[log_suspend] Info: Logging suspended.");
 }
 
@@ -633,7 +807,9 @@ void log_resume(Log* config) {
         LOG_LOG("[log_resume] Error: Log configuration object is null.");
         return;
     }
+    logp_lock(config);
     config->suspended = false;
+    logp_unlock(config);
     LOG_LOG("[log_resume] Info: Logging resumed.");
 }
 
@@ -658,9 +834,18 @@ bool log_set_format(Log* config, const char* format) {
         return false;
     }
     
+    if (!logp_format_is_safe(format)) {
+        LOG_LOG("[log_set_format] Error: Only %%s (at most three) and %%%% are allowed in the format.");
+        return false;
+    }
+
+    /* Under the lock: log_message formats with config->format, and a copy
+       racing with that read produced a torn format string (crash). */
+    logp_lock(config);
     strncpy(config->format, format, sizeof(config->format) - 1);
-    config->format[sizeof(config->format) - 1] = '\0'; 
-    
+    config->format[sizeof(config->format) - 1] = '\0';
+    logp_unlock(config);
+
     LOG_LOG("[log_set_format] Info: Log format updated.");
     return true;
 }
@@ -689,7 +874,9 @@ bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible) {
         return false;
     }
 
+    logp_lock(config);
     config->level_visibility[level] = visible;
+    logp_unlock(config);
 
     LOG_LOG("[log_toggle_level_visibility] Info: Visibility for log level %s is now %s.", log_level_to_string(level), visible ? "enabled" : "disabled");
 
@@ -708,34 +895,26 @@ bool log_toggle_level_visibility(Log* config, LogLevel level, bool visible) {
  * @param newFilePath The path to the new log file where future log messages should be written. 
  * This path should be a valid file path, and the file will be created if it does not exist.
  *
- * @return `true` if the log output was successfully redirected to the new file, `false` if the `config` 
- * parameter is `NULL`, `newFilePath` is invalid, or if an error occurs while opening the new file.
+ * @return `true` if the log output was successfully redirected to the new file, `false` if the `config`
+ * parameter is `NULL`, `newFilePath` is invalid, or if an error occurs while opening the new file
+ * (the current file then stays in use: it is closed only after the new one opened).
  */
 bool log_redirect_output(Log* config, const char* newFilePath) {
     if (!config) {
         LOG_LOG("[log_redirect_output] Error: Log configuration object is null.");
         return false;
     }
-    if (!newFilePath || strlen(newFilePath) == 0) {
+    if (!logp_path_ok(newFilePath)) {
         LOG_LOG("[log_redirect_output] Error: Invalid new file path.");
         return false;
     }
     logp_lock(config);
-    if (config->file_writer) {
-        file_writer_close(config->file_writer);
-        config->file_writer = NULL;
-    }
-
-    config->file_writer = file_writer_open(newFilePath, WRITE_TEXT);
-    if (!config->file_writer) {
+    // Also tracks the active log file path so rotation/archive uses the right source.
+    if (!logp_switch_file(config, newFilePath)) {
         logp_unlock(config);
         LOG_LOG("[log_redirect_output] Error: Failed to open new log file.");
         return false;
     }
-
-    // Track the active log file path so rotation/archive uses the right source.
-    strncpy(config->current_file_path, newFilePath, sizeof(config->current_file_path) - 1);
-    config->current_file_path[sizeof(config->current_file_path) - 1] = '\0';
     logp_unlock(config);
 
     LOG_LOG("[log_redirect_output] Info: Log output redirected to '%s'.", newFilePath);
@@ -746,8 +925,10 @@ bool log_redirect_output(Log* config, const char* newFilePath) {
 /**
  * @brief Enables or disables verbose logging.
  *
- * When verbose logging is enabled, all log levels, including `DEBUG` and `INFO`, are logged. 
- * When verbose logging is disabled, only higher-severity log levels, such as `WARN`, `ERROR`, and `FATAL`, are logged.
+ * Verbose mode switches the visibility of `DEBUG` and `INFO` on (`true`) or off (`false`),
+ * like two log_toggle_level_visibility calls. The minimum level set by log_set_log_level is
+ * not changed and still applies: after log_set_log_level(ERROR), DEBUG stays hidden even
+ * in verbose mode.
  *
  * @param config Pointer to the `Log` configuration object.
  * @param verbose `true` to enable verbose logging (enables `DEBUG` and `INFO` logs), `false` to disable verbose logging (disables `DEBUG` and `INFO` logs).
@@ -760,8 +941,10 @@ bool log_set_verbose(Log* config, bool verbose) {
         return false;
     }
 
+    logp_lock(config);
     config->level_visibility[LOG_LEVEL_DEBUG] = verbose;
     config->level_visibility[LOG_LEVEL_INFO] = verbose;
+    logp_unlock(config);
     LOG_LOG("[log_set_verbose] Info: Verbose logging is now %s.", verbose ? "enabled" : "disabled");
 
     return true;
@@ -788,8 +971,12 @@ bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_dat
         return false;
     }
 
+    /* Both fields change together under the lock, so a concurrent
+       log_message never calls one filter with another filter's user_data. */
+    logp_lock(config);
     config->custom_filter = filter;
     config->custom_filter_user_data = user_data;
+    logp_unlock(config);
 
     LOG_LOG("[log_set_custom_filter] Info: Custom log filter set successfully.");
 
@@ -800,75 +987,55 @@ bool log_set_custom_filter(Log* config, LogFilterFunction filter, void* user_dat
 /**
  * @brief Sets a maximum log file size and automatically rotates the log file when this size is exceeded.
  *
- * This function configures the logging system to monitor the size of the current log file. 
- * If the log file exceeds the specified size, the current log file is archived, and a new 
- * log file is started. The archived log file is renamed using the specified format.
+ * The setting is kept: after every record written to the file, log_message checks the size
+ * and, once it reaches @p maxSize, archives the file under the strftime() name made from
+ * @p archivePathFormat and starts an empty one at the same path. (It used to be a one-shot
+ * check at the time of the call.) An archive name that already exists gets a ".1", ".2", ...
+ * suffix. The current file is checked right away as well.
  *
  * @param config Pointer to the `Log` configuration object.
- * @param maxSize The maximum size (in bytes) that the log file is allowed to reach before being rotated.
- * @param archivePathFormat A format string used to generate the name of the archived log file. 
+ * @param maxSize The maximum size (in bytes) that the log file is allowed to reach before being
+ * rotated; 0 turns automatic rotation off (@p archivePathFormat may then be NULL).
+ * @param archivePathFormat A format string used to generate the name of the archived log file.
  * The format string can include time-based formatting specifiers.
  *
- * @return `true` if the maximum file size was set successfully and log rotation was performed as needed, 
- * `false` if `config` is `NULL`, `config->file_writer` is `NULL`, `maxSize` is zero, or if any error occurs during file operations.
+ * @return `true` if the setting was stored (and the immediate check, when a file is open, did not
+ * fail), `false` if `config` is `NULL`, the format is NULL, empty or too long while `maxSize` is
+ * not 0, or the immediate rotation failed.
  */
 bool log_set_max_file_size(Log* config, size_t maxSize, const char* archivePathFormat) {
-    if (!config || !config->file_writer || maxSize == 0 || !archivePathFormat) {
+    if (!config) {
         LOG_LOG("[log_set_max_file_size] Error: Invalid parameters.");
         return false;
     }
-
-    // Check current log file size
-    logp_lock(config);
-    long fileSize = file_writer_get_size(config->file_writer);
-    if (fileSize < 0) {
+    if (maxSize == 0) {
+        logp_lock(config);
+        config->max_file_size = 0;   /* automatic rotation off */
         logp_unlock(config);
-        LOG_LOG("[log_set_max_file_size] Error: Could not retrieve file size.");
+        return true;
+    }
+    if (!archivePathFormat || archivePathFormat[0] == '\0' || strlen(archivePathFormat) >= LOG_MAX_PATH) {
+        LOG_LOG("[log_set_max_file_size] Error: Invalid archive path format.");
         return false;
     }
 
-    if ((size_t)fileSize >= maxSize) {
-        char source_path[LOG_MAX_PATH];
-        strncpy(source_path, config->current_file_path, sizeof(source_path) - 1);
-        source_path[sizeof(source_path) - 1] = '\0';
+    logp_lock(config);
+    config->max_file_size = maxSize;
+    strcpy(config->archive_path_format, archivePathFormat);
 
-        if (source_path[0] == '\0') {
-            strncpy(source_path, "log.txt", sizeof(source_path) - 1);
-            source_path[sizeof(source_path) - 1] = '\0';
+    bool ok = true;
+    if (config->file_writer) {
+        fflush(config->file_writer->file_writer);
+        size_t fileSize = file_writer_get_size(config->file_writer);
+        if (fileSize >= maxSize) {
+            ok = logp_archive_current(config, config->archive_path_format);
+            if (!ok) {
+                LOG_LOG("[log_set_max_file_size] Error: Could not archive log file.");
+            }
         }
-
-        char archivePath[1024];
-        time_t now = time(NULL);
-        struct tm tm_buf;                          /* reentrant localtime */
-#if defined(_WIN32) || defined(_WIN64)
-        localtime_s(&tm_buf, &now);
-#else
-        localtime_r(&now, &tm_buf);
-#endif
-        strftime(archivePath, sizeof(archivePath), archivePathFormat, &tm_buf);
-        file_writer_close(config->file_writer);
-
-        config->file_writer = NULL;
-        remove(archivePath);
-
-        if (rename(source_path, archivePath) != 0) {
-            LOG_LOG("[log_set_max_file_size] Error: Could not archive log file.");
-            config->file_writer = file_writer_open(source_path, WRITE_TEXT);
-            logp_unlock(config);
-            return false;
-        }
-
-        config->file_writer = file_writer_open(source_path, WRITE_TEXT);
-        if (!config->file_writer) {
-            logp_unlock(config);
-            LOG_LOG("[log_set_max_file_size] Error: Could not open new log file.");
-            return false;
-        }
-        LOG_LOG("[log_set_max_file_size] Info: Log file archived and new log file started.");
     }
-
     logp_unlock(config);
-    return true;
+    return ok;
 }
 
 
@@ -970,7 +1137,9 @@ bool log_set_level_from_string(Log* config, const char* level_str) {
             ++k;
         }
         if (equal) {
+            logp_lock(config);
             config->level = table[i].level;
+            logp_unlock(config);
             LOG_LOG("[log_set_level_from_string] Info: Level set to %s.", log_level_to_string(config->level));
             return true;
         }
@@ -1004,13 +1173,10 @@ bool log_is_level_enabled(const Log* config, LogLevel level) {
     if ((int)level < 0 || (int)level > LOG_LEVEL_FATAL) {
         return false;
     }
-    if (config->suspended) {
-        return false;
-    }
-    if (level < config->level) {
-        return false;
-    }
-    return config->level_visibility[level];
+    logp_lock((Log*)config);   /* internal mutex: const-cast as in log_get_message_count */
+    bool enabled = !config->suspended && level >= config->level && config->level_visibility[level];
+    logp_unlock((Log*)config);
+    return enabled;
 }
 
 
@@ -1034,11 +1200,13 @@ bool log_set_rate_limit(Log* config, unsigned int max_logs_per_interval, unsigne
         LOG_LOG("[log_set_rate_limit] Error: NULL config.");
         return false;
     }
+    logp_lock(config);
     config->rate_limit_count = max_logs_per_interval;
     config->rate_limit_interval = interval_seconds;
     /* Start a fresh window so the new limit applies from now. */
     memset(config->log_counts, 0, sizeof(config->log_counts));
     config->last_reset_time = time(NULL);
+    logp_unlock(config);
 
     LOG_LOG("[log_set_rate_limit] Info: Rate limit set to %u message(s) per %u second(s).", max_logs_per_interval, interval_seconds);
     return true;
